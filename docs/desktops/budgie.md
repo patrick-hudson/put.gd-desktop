@@ -233,6 +233,21 @@ halves; the design and the upstream sources are in
 a window reaches both put.gd and the window, and after the recording the file
 is as it was.
 
+## Scrolling capture
+
+Scrolling capture ([design](../design/scroll-capture.md)) reads `ext-image-copy-capture` frames of the
+output the region lies on, cropped to the region, through the same `wlr-capture` source as a recording
+and with its session created without `paint_cursors`. The wheel is a `zwlr_virtual_pointer_v1` on the
+helper's own Wayland connection, not a portal and not a bind: pointer motion is `motion_absolute`
+mapped to that output (manager version 2 maps a pointer to one of several outputs; version 1 is
+refused when there are several), and each notch is a wheel `axis_source`, an `axis_discrete` of 15.0
+with step 1 and a `frame`, as wayvnc and lan-mouse send it. labwc offers the manager with no client
+filter, so no access is needed. Region selection is the helper's layer-shell selector, with the ready
+ring and bar outside the rectangle. Because a frame may show the pointer, the capture keeps
+appended rows at least 48 px below the parked pointer and holds it outside the region while a
+way to the top is scrolled. The `scroll` shortcut goes through the labwc bridge or the
+GlobalShortcuts portal like the other actions, with no default key. `budgie_labwc_integration` has a case for a wheel notch reaching a real labwc window.
+
 ## Budgie 11
 
 Budgie 11 has no release and no installable session. The adapter works from

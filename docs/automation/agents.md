@@ -26,6 +26,7 @@ from passing tests.
 | Session JSON transport | `src/app/LocalServer.*`, `src/cli/main.cpp` | `tests/integration/test_cli.cpp`, [CLI](cli.md) |
 | Optional stdio MCP | `tools/mcp/` | `tests/integration/test_mcp.py`, [MCP](mcp.md) |
 | Screen recording, helper supervisor and private review | `src/core/RecordingModel.*`, `src/app/RecordingService.*`, `src/app/RecordingBackend.h`, `src/app/RecordingHelperBackend.*`, `src/record/` | `tests/unit/test_recording_model.cpp`, `tests/integration/test_recording_service.cpp`, `tests/integration/test_recording_helper.cpp`, `tests/integration/test_recording_pipeline.cpp`, [recording](../design/recording.md) |
+| Scrolling capture, its helper session and stitcher | `src/core/ScrollStitcher.*`, `src/record/Scroll*`, `src/record/FrameTap.*`, `src/record/X11ScrollInjector.*`, `src/record/KdeFakeInput.*`, `src/platform/wayland/VirtualPointer.*`, `src/app/ScrollBackend.h`, `src/app/ScrollCaptureService.*`, `src/app/ScrollHelperBackend.*` | `tests/unit/test_scroll_stitcher.cpp`, `tests/integration/test_scroll_service.cpp`, `tests/integration/test_scroll_capture_x11.cpp`, [scrolling capture](../design/scroll-capture.md), [its suites](../testing/testing.md#scrolling-capture-suites) |
 | Edit & upload editor and agent editing | `src/editor/`, `src/ui/EditorWindow.*`, `src/ui/ImageEditor.*`, `src/core/EditorJob.*`, `src/core/SanitizedPng.*` | `tests/unit/test_editor.cpp`, `tests/gui/test_editor_window.cpp`, `tests/integration/test_editor_job.cpp`, [image editor](../design/image-editor.md) |
 | File-manager “Upload with put.gd” | `src/app/FileManagerIntegration.*`, `src/app/file-manager-script.sh`, `src/app/file-manager-launcher.sh`, `src/filemanager/` | `tests/unit/test_file_manager_integration.cpp`, `tests/unit/test_file_manager_launcher.py`, [file-manager upload](../design/file-manager-upload.md) |
 | Core listener/native tray and ephemeral capture | `src/platform/NativeSession.h`, `src/ui/NativeTray.*`, `src/platform/x11/`, `src/capture/` | `tests/integration/`, [architecture](../design/architecture.md), [desktop gates](../testing/acceptance-matrix.md) |
@@ -84,6 +85,17 @@ for conditional naming, ambiguous upload reconciliation, serialization identity,
 round trips, replacement/missing/denied deletes, and lost deletion replies.
 [storage-providers.md](../design/storage-providers.md) specifies callbacks and failure semantics.
 Do not teach shared code to decode URLs or provider object keys.
+
+To take a scrolling capture as an agent, read `scroll.capabilities` first (`available`, `injector`,
+`frames`), then `scroll.prepare` with a `rect` (or none, for the selector), `scroll.start`, poll
+`scroll.inspect` until `state` is `done`, `failed` or `cancelled`, and read `endReason`: only
+`end_of_content` is a complete capture, and a `lost_track` or `height_cap` image is exact but partial.
+The tool and method forms are in [CLI](cli.md#scrolling-capture) and [MCP](mcp.md#tools-and-effects).
+It sends real wheel events to a live desktop, so run it only at a window you opened for the test, with
+the pointer and keyboard left alone, and never on a physical desktop without its lease.
+A wrong stitch looks like a valid image, so acceptance decodes the page: the [acceptance
+matrix](../testing/acceptance-matrix.md#scrolling-capture-rows) lists the pages and what each must
+show.
 
 ## Desktop and release gates
 

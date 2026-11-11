@@ -34,7 +34,8 @@ resident answers only after the recording helper wait 15 s past the helper's own
 deadline, so its `recording_helper_timeout` still arrives: 45 s for
 `recording.stop` and `action.invoke` (a record toggle can stop), and 30 s for
 `recording.capabilities`, `microphones`, `prepare`, `select`,
-`start`, `pause`, `resume`, `raise`, `overlay` and `preview`. Work that can take longer
+`start`, `pause`, `resume`, `raise`, `overlay` and `preview`. The `scroll.*` methods wait 40 s, and
+`scroll.stop` 45 s, for the same reason. Work that can take longer
 replies when it starts: `recording.prepare` with `state: preparing`, and
 `recording.saveCopy` and `recording.upload` with `state: exporting`; poll
 `recording.inspect` (see [recording.md](../design/recording/session-contract.md#exports)). A missed wait is
@@ -55,9 +56,10 @@ Methods and parameters:
 
 | Method | Parameters |
 |---|---|
-| `action.invoke` | `action`: region, window, monitor, desktop, repeat, clipboard, edit, record. `monitor` captures the monitor the pointer is on; `repeat` captures the rectangle of the last region capture again with no selector, and its operation is a `region` capture (`repeat_unavailable` with nothing remembered, `repeat_layout_changed` after the monitors changed). region, window, monitor, desktop and repeat accept `delaySeconds`: 0 (default, immediate, no countdown), 3, 5 or 10. With 3, 5 or 10 the reply still comes at once with the operation ID, a countdown shows for that long, and `operation.cancel` ends it ([capture monitor, delay and repeat](../design/capture-delay.md)). `edit` also accepts `source` and `path` as `editor.open`; only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording/overlay-and-review.md#tray-and-shortcut)) |
+| `action.invoke` | `action`: region, window, monitor, desktop, repeat, clipboard, edit, scroll, record. `monitor` captures the monitor the pointer is on; `repeat` captures the rectangle of the last region capture again with no selector, and its operation is a `region` capture (`repeat_unavailable` with nothing remembered, `repeat_layout_changed` after the monitors changed). region, window, monitor, desktop and repeat accept `delaySeconds`: 0 (default, immediate, no countdown), 3, 5 or 10. With 3, 5 or 10 the reply still comes at once with the operation ID, a countdown shows for that long, and `operation.cancel` ends it ([capture monitor, delay and repeat](../design/capture-delay.md)). `edit` also accepts `source` and `path` as `editor.open`; `scroll` takes no other parameter and, while a scrolling capture is capturing, is Stop ([scrolling capture](#scrolling-capture)); only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording/overlay-and-review.md#tray-and-shortcut)) |
 | `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](../design/file-manager-upload.md)) |
-| `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
+| `editor.open` | optional `source` region (default)/window/desktop/clipboard/file/scroll, `path` (absolute, file only). `scroll` selects a scrolling capture whose result opens in the editor |
+| `scroll.capabilities`, `.prepare`, `.select`, `.start`, `.stop`, `.cancel`, `.inspect` | a scrolling capture's session; see [scrolling capture](#scrolling-capture) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
 | `editor.apply` | `id`, `commands` array (1–100); atomic; shapes redact, blur (`style` blur/pixelate), arrow, line, rectangle, ellipse, pen, step, text, highlight |
 | `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
@@ -267,3 +269,43 @@ reconciles before another upload.
 `history.copyImage` copies the selected retained original image through the resident clipboard adapter, so it remains available after closing History. It accepts only a history ID; input is limited to 32 MiB and 16 million pixels, with a bounded full-size PNG conversion. Changed or unavailable originals are rejected.
 
 S3 destination settings accept `linkMode: "public"` (default) or `"presigned"` and integer `linkValidityDays` from 1 to 7 (default 7) through `settings.patch`. Presigned mode ignores the custom link domain and omits public ACLs. History copy renewal does not use the current profile.
+
+## Scrolling capture
+
+A scrolling capture ([design](../design/scroll-capture.md)) is driven by seven session methods.
+`putgd-cli` forwards each like any other method. Failures use the codes in
+[errors](../user/errors.md#scrolling-capture).
+
+| Method | Parameters | Reply |
+| --- | --- | --- |
+| `scroll.capabilities` | none | `{available, reason?, message?, injector, frames, selection, maxHeight}`: `injector` is `xtest`, `mutter-remote-desktop`, `kwin-fake-input` or `wlr-virtual-pointer`; `frames` is `ximagesrc`, `mutter-screencast`, `kde-screencast` or `image-copy`; `selection` says who selects the region (`helper`, `shell`, `none`); `maxHeight` is the configured cap. Also under `capabilities` as `result.scroll`. Opens no source and sends no input |
+| `scroll.prepare` | optional `rect` `[x, y, w, h]` (logical desktop pixels, X11 root pixels; at least 64 each way), optional `maxHeight` 2,000 to 60,000 | `{id, operationId, state, height, steps, pixelsPerNotch}`, `state` `selecting` (the region selector is open) or `ready` (a `rect` was given). Never starts capturing: call `scroll.start`. The `id` is the operation ID |
+| `scroll.select` | `id`, `rect` | Completes an open selector with a rectangle, as a drag would; the state becomes `ready` and `rect` is set |
+| `scroll.start` | `id` | The state `capturing` once the helper has begun; the capture then runs on its own, at most 180 s |
+| `scroll.stop` | `id` | Keeps the image. The reply is the finished view (below), after the PNG is written and admitted |
+| `scroll.cancel` | `id` | Discards the capture: state `cancelled`, no history row, no staging files |
+| `scroll.inspect` | `id` | The session's view while it runs and after: the last 32 sessions stay inspectable |
+
+The view is `{id, operationId, state, rect?, height, steps, pixelsPerNotch}` while running, with
+`state` `preparing`, `selecting`, `ready`, `capturing` (including the way to the top) or
+`finishing`. After the end it also carries what the helper reported: `state: "done"`,
+`endReason` (`end_of_content`, `height_cap`, `stopped`, `lost_track`, `time_limit`), `truncated`
+(false only for `end_of_content`), `height`, `bytes`, `stats {steps, pixelsPerNotch, lowConfidenceSteps,
+elapsedMs}` (also flat), `result` (the helper's descriptor without its path: `sha256`, `width`,
+`height`, `appliedMaxHeight`, and `note` for a `lost_track`) and, for `height_cap`, `note`: the warning
+text. A failed or cancelled session has `state` `failed` or `cancelled` and `error`. Inspect
+`operation.inspect` with the same `id` for the upload and the link. Only `end_of_content` means the
+whole scroll area is in the image.
+
+```sh
+putgd-cli scroll.capabilities
+putgd-cli scroll.prepare '{"rect":[100,100,900,700],"maxHeight":12000}'
+putgd-cli scroll.start '{"id":"RETURNED-ID"}'
+putgd-cli scroll.inspect '{"id":"RETURNED-ID"}'
+putgd-cli scroll.stop '{"id":"RETURNED-ID"}'
+```
+
+One scroll session exists at a time. While it is capturing, another `action.invoke` (and
+`recording.prepare`) is `scroll_active`, and `action.invoke {"action":"scroll"}` is Stop.
+`scroll.start` on a session that is not `ready` is `scroll_state`; a command sent while another is
+pending is `scroll_busy`; an unknown or finished-and-forgotten ID is `scroll_not_found`.

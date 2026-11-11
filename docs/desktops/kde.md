@@ -45,8 +45,9 @@ X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2;
 
 The screen-recording helper has its own entry, `putgd-record.desktop`, whose
 `Exec` names the helper binary and whose `X-KDE-Wayland-Interfaces` lists
-`zkde_screencast_unstable_v1`; KWin advertises its screencast protocol only to
-executables matched that way (see `docs/design/recording/wayland.md`, "Wayland acquisition").
+`zkde_screencast_unstable_v1,org_kde_kwin_fake_input`; KWin advertises its screencast
+protocol, and through Plasma 6.7 the fake input protocol a [scrolling capture](#scrolling-capture)
+turns the wheel with, only to executables matched that way (see `docs/design/recording/wayland.md`, "Wayland acquisition").
 The helper also links the layer-shell region selector: a recording of a
 region without a rectangle shows the same `LayerShellRegionOverlay` as a region
 screenshot before any stream exists, and the ready ring, dimming and control
@@ -157,6 +158,36 @@ effect on and none with it off. `kwin_click_effect_contract`
 (`tests/integration/test_kwin_click_effect.cpp`) runs the three starting states
 against a scripted KWin. The design is in
 [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
+## Scrolling capture
+
+Scrolling capture ([design](../design/scroll-capture.md)) reads frames from `stream_region` of
+KWin's screencast protocol with the pointer hidden and at the output's own scale (from protocol
+version 5, scale 0 lets KWin choose; earlier versions get the scale computed from the output's mode),
+and turns the wheel through `org_kde_kwin_fake_input` on the helper's own Wayland connection: one
+`authenticate` (it shows nothing), `pointer_motion_absolute` in global logical coordinates, and
+`axis(vertical, 15.0)` per notch. KWin sends a continuous delta with no discrete step, so one unit is
+a notch or 15 px depending on the application; the loop measures it. After a way up the helper sends
+an `axis` of 0, so that a GTK 4 view overscrolled by the continuous wheel springs back. Version 3 of
+the interface or later is needed for absolute motion.
+
+**Access.** On Plasma 6.3 to 6.7 KWin announces `org_kde_kwin_fake_input` only to an executable that is
+the first `Exec=` token of a desktop entry whose `X-KDE-Wayland-Interfaces` lists it. The packaged
+`putgd-record.desktop` lists `zkde_screencast_unstable_v1,org_kde_kwin_fake_input`, and AppRun's
+per-mount entry for the AppImage's `putgd-record` the same two. Without the entry the global is
+missing and the helper reports `injection_unavailable`; KWin caches the answer per connection, so
+restart the resident after installing an entry. On Plasma 6.8 and later the interface is hidden only
+from Flatpak and Snap clients and the entry is not needed (measured on 6.8.2 with and without it);
+keep it anyway, because the screencast still wants it. `KWIN_WAYLAND_NO_PERMISSION_CHECKS` is never set.
+A development build of `putgd-record` needs an entry whose `Exec` is that exact binary and the same
+list, then `kbuildsycoca6`; remove it afterwards.
+
+KWin's region stream drops an isolated repaint. While frames are read the helper commits a clear 1×1
+layer surface on the region's output every 30 ms (`BoundsOverlay::showHeartbeat`), and the loop only
+calls the end of the content when a frame grabbed from the screen agrees. The region selector is the
+helper's layer-shell one, so the Ubuntu 24.04 DEB, built without LayerShellQt for Qt 6, reports
+`region_unavailable` (`selection: none`) on Plasma Wayland; the AppImage bundles it.
+`test_kde_ownership` and `record_identity_contract` pin the entry's list and its first `Exec` token.
 
 ## Clipboard and shortcuts
 

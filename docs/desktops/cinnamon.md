@@ -100,6 +100,21 @@ recordings. An X server without XInput 2.1 reports `xinput2_unavailable`, and a
 serves every X11 session, Plasma X11 included. The design is in
 [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
 
+## Scrolling capture
+
+Scrolling capture ([design](../design/scroll-capture.md)) uses `ximagesrc` on the region with
+`show-pointer=false` for its frames and XTest for the wheel, and serves every X11 session,
+Plasma X11 included. The helper's own xcb connection sends XTest button 5 and 4 presses and
+releases (one pair per notch) and absolute pointer motion; it reads the user's pointer before the
+first move and puts it back at the end. It needs the XTEST extension (`injection_unavailable`
+without it) and waits up to 10 seconds for Ctrl, Shift, Alt and Super to be up before the first
+notch, because Ctrl plus wheel zooms (`capture_timeout`, check `modifiers_released`). The region
+selector is the helper's own, as for a region recording. Escape stops the capture and keeps the
+image: it is read as an XInput 2.1 raw key press, so the bar never needs the keyboard and the key
+still goes where it was going. `scroll_capture_x11` drives the real helper on Xvfb and
+reads the X server's raw input to show that nothing is injected before capturing or after Stop,
+Cancel or the end of the control pipe; it does not establish Cinnamon behaviour.
+
 ## Evidence boundary
 
 The automated X11 tests run in a disposable Xvfb display with synthetic clipboard ownership and pixels. They do not establish Cinnamon focus behavior, a physical monitor layout, real global keys, clipboard paste into an independent desktop app, live S3 public links, or release timing.

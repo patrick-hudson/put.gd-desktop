@@ -2,7 +2,8 @@
 
 put.gd is a Linux desktop capture and sharing app. It captures a region, window
 or desktop, uploads clipboard images, text and local files, and accepts files or
-folders from a file manager. It can edit a still image or record the screen,
+folders from a file manager. It can capture a scrolling region as one tall image,
+edit a still image or record the screen,
 review the result privately, then upload only after an explicit action. Output
 can stay local, go to S3-compatible storage, Backblaze B2, Proton Drive or a
 custom HTTP uploader, and
@@ -29,7 +30,7 @@ packages use dynamically linked distribution Qt. See
 | `putgd-capture` | Frozen-target X11 selection and acquisition | Resident control pipes and private PNG output; X11/Cinnamon capture APIs | Temporary graphical helper on the Cinnamon Core route |
 | `putgd-region` | Wayland region selector (layer-shell), shared by Plasma and Budgie | Private control pipes; geometry out, optional frozen background in | Temporary native helper on the Plasma and Budgie Wayland routes |
 | `putgd-clipboard-keeper` | Holds the last clipboard result after the resident quits, on Budgie and Hyprland | The content on an anonymous memory file on standard input; Wayland data control | Detached and short-lived: exits once anything else owns the clipboard |
-| `putgd-record` | Recording, overlays, private review, previews and export | Resident control pipes; X11 or Wayland/PipeWire acquisition; private media files | Temporary recording session; also bounded poster jobs |
+| `putgd-record` | Recording, overlays, private review, previews and export; also the scrolling-capture session (frame tap, wheel injector, stitcher) | Resident control pipes; X11 or Wayland/PipeWire acquisition; wheel injection per desktop; private media files | Temporary recording or scroll session; also bounded poster jobs |
 | `putgd-s3-worker` | Official AWS C++ SDK requests and private S3 module | Private framed pipes, durable-checkpoint acknowledgements and credential requests; S3 HTTPS | New Linux process per driver call |
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |
 | `putgd-http-worker` | The one request of a custom HTTP uploader: upload, deletion or Test connection | Private newline JSON input carrying the stored values, progress, a deletion checkpoint and result; HTTPS, or HTTP where the destination allows it | New process per request |
@@ -241,6 +242,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Remote goldens](../lab/remote-golden-images.md) | Locate, verify, transfer and restore immutable images. |
 | [Remote displays](../lab/remote-vm-displays.md) | Loopback VNC tunnels and display-wall exposure. |
 | [S3](../user/s3.md) | SDK transport, compatible services and safe object operations. |
+| [Scrolling capture](scroll-capture.md) | A region scrolled with injected wheel events and stitched into one tall image: frames, injectors, control loop, proof rules and limits. |
 | [Storage providers](storage-providers.md) | Provider-neutral capabilities, receipts and checkpoints. |
 | [Surface prerequisites](../testing/surface-driver-prerequisites.md) | Probe setup, admission and restoration rules. |
 | [Testing](../testing/testing.md) | Test suites and verification entry points. |

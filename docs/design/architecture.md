@@ -85,7 +85,10 @@ previews and FFmpeg export. `RecordingService` owns the authoritative session,
 durable intent and edit revision. Stop opens private review; preview, editing,
 Save a copy, cancellation and restart never authorize upload. Only explicit
 Upload admits a validated export to `OperationService`. The editor and recording
-session exclude one another. See [recording](recording.md).
+session exclude one another. A [scrolling capture](scroll-capture.md) is a second
+session kind of the same helper, owned by `ScrollCaptureService`; it excludes recording,
+the editor and any other selection, and its stitched PNG enters the pipeline as an
+ordinary image payload when it ends.
 
 A resident belongs to its login session. `SessionWatch` observes logind; loss of
 the resident's X server also triggers shutdown. A launcher hands off to a live

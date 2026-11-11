@@ -54,6 +54,29 @@ filenames, history URLs, authorization values or credential references.
 | `public_url_unreachable` (custom uploader) | Test connection uploaded the file but could not open the returned link. When the link is plain HTTP and **Allow plain HTTP** is off, put.gd does not open it and says so |
 | `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file (also when a check of the link was cut short and its bytes match as far as they came); nothing is recorded as deleted. Try again later or delete it on the server |
 
+## Scrolling capture
+
+These come from [scrolling capture](../design/scroll-capture.md). A capture that ends with a
+partial image is not a failure: it is the result's `endReason` (`height_cap`, `stopped`,
+`lost_track`, `time_limit`) and the image so far is exact and kept.
+
+| Code | `details` | User action |
+|---|---|---|
+| `scroll_unavailable` | `reason` | Scrolling capture can't start here, or the desktop stopped giving it what it needs mid-capture. `recording_helper_missing`: this installation has no `putgd-record`, reinstall the package. `injection_unavailable`: the desktop gave no way to turn the wheel (X11 without XTEST; GNOME without Mutter's RemoteDesktop service; Plasma 6.7 or earlier without the `putgd-record` desktop entry that lists `org_kde_kwin_fake_input`, restart the resident after installing it; a wlroots compositor without `zwlr_virtual_pointer_v1`); the message says which. `frame_source_unavailable`: the desktop's native frame stream or a GStreamer element is missing, or the stream ended during the capture. `region_unavailable`: this build has no region selector for the desktop (the Ubuntu 24.04 DEB on Plasma Wayland has none; use the AppImage). The reasons `scroll_not_probed`, `scroll_probe_pending` and `scroll_probe_failed` are transient: try again |
+| `scroll_active` | `operationId` | A scrolling capture is already running, or a recording, the editor or another capture wants to start during one. Stop or cancel it first |
+| `scroll_no_movement` | `parkPositions` | Nothing under the selection scrolled, at the centre or at the two other places tried. Select a scrollable area (include the page, not only a fixed toolbar) and check that the application takes wheel scrolling |
+| `scroll_region` | `rect`, `minimum` | The region spans monitors, lies off the output, or is under 64 px in a direction. Select again inside one monitor |
+| `scroll_helper_failed` | `check` | The recording helper died or broke protocol (`exited`, `crashed`, `protocol`, `start_timeout`, `command_timeout`, `build`). Nothing was captured or kept. For `build`, reinstall the package and restart put.gd; otherwise try again and send a [diagnostics package](../design/diagnostics.md) if it repeats |
+| `scroll_output_invalid` | none | The resident refused the helper's PNG (wrong size, hash, header or location). Nothing was admitted. Try again |
+| `scroll_state`, `scroll_busy`, `scroll_not_found` | none | A `scroll.*` session call that does not fit the session: the command is not valid in its state, another command is pending, or no session has that ID. Inspect the session and send the right command |
+| `capture_timeout` | `check` | `first_frame`: the frame stream sent nothing within 3 seconds. `modifiers_released`: a modifier key stayed down for 10 seconds on X11, so no wheel step was sent. Release the keys and try again |
+| `display_changed` | `stage` | The monitors or their size changed during the capture. Nothing was kept. Try again |
+| `encoding_failed`, `input_excessive` | `stage`, `check` | The spool or the PNG could not be written, or the PNG would pass its size bound. Free disk space in put.gd's data folder, or lower the height cap |
+
+`output_required`, `recording_active`, `editor_active` and `busy_selecting` also mean what
+they do elsewhere here. `invalid_request` covers a `scroll.prepare` whose rectangle is
+under 64 px or whose `maxHeight` is outside 2,000 to 60,000.
+
 ## GNOME 50 setup states
 
 If GNOME 50 setup reports `login_required`, log out and back in once. Any other

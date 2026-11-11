@@ -277,3 +277,54 @@ on loopback and a loopback destination may be answered with loopback addresses: 
 refusal of a returned address that is, or resolves to, this computer. Both are covered
 by tables in `http_uploader_rules` (`thisMachineInEverySpelling`,
 `namesThatResolveToThisMachine`, `addressesAReplyMayName`).
+
+## Scrolling capture suites
+
+A wrong stitch looks like a valid image, and the feature sends input to a live desktop, so
+these suites compare pixels and check what is injected. None of them is desktop proof. The
+design is in [scrolling capture](../design/scroll-capture.md).
+
+- `scroll_stitcher_contract` (`tests/unit/test_scroll_stitcher.cpp`, on the synthetic application in
+  `tests/fixtures/ScrollSynthetic.*`; no display): the stitcher and `ScrollRun` together. Plain,
+  sticky header and footer, hover, caret, scrollbar, dropped events, end bounce, flat and blank
+  regions, near-periodic text, numbered lines whose digits sit in the side margin, a short line scrolled
+  under a painted pointer, a jump past the whole viewport that must not be accepted on a sliver of
+  rows, a stream that goes quiet or answers late, scroll to the top (overscroll, Stop on the way up
+  with and without a painted pointer), end proof by a fresh frame, recovery and the limits.
+  `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
+  It is in the contract lists of `cmake/TestPolicy.cmake`.
+- `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
+  `LocalServer` and the production `putgd-cli` against a fake backend. The session's states, the
+  journal entry before the first frame, `scroll_active` for a screenshot or a recording started during one,
+  `scroll_busy` and `scroll_not_found`, a fake GNOME Shell that selects the region and places the bar
+  (`select`, `overlay`, `start` in order), Stop keeps and Cancel discards, the cap warning and the
+  History note, a start held for put.gd's own notices to go, and admission refusing a wrong hash, size
+  or IHDR.
+- `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
+  private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`, a window of 40 px rows each
+  painted as a bar code with its number, through `ximagesrc` and XTest. The PNG must decode to every row once and in
+  order, with the expected height: plain, sticky bands, from the top or from the row on screen, a late
+  tail, the cap, Stop, Cancel, Esc, a selector or `select`, a region too small, a page that does not
+  scroll. An XInput 2 listener shows that only wheel steps and pointer motion are injected, only while
+  capturing, and nothing after Stop, Cancel or the end of the control pipe. There is no compositor
+  or window manager, so it does not establish Cinnamon behaviour.
+- `budgie_labwc_integration`: the product's virtual pointer, mapped to a real headless labwc output,
+  sends a wheel notch that reaches a window as a wheel step (15.0, discrete 1) and no button press.
+  `tools/lab/wayland_pointer.py axis` sends the same over the whole layout.
+- `native_tray_integration`: put.gd's own notices are closed and followed to confirmation before a capture
+  starts; on a `quickshell` server the shell's dismissal command runs once per summary with the
+  server's own `XDG_RUNTIME_DIR`.
+- `gnome_core_transport_integration` and `gnome_ui_ownership_contract`: a scroll frame carries
+  `beat: true` and a recording frame does not; the extension's 40 ms 1×1 actor exists only while such
+  a frame shows. `scroll` is in the extension's `ACTIONS`.
+- Desktop entries and packages: `kde_ownership_integration` and `record_identity_contract` pin
+  `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input` and the first `Exec` token of
+  `putgd-record.desktop`; `tests/unit/test_portable_appimage.py` pins the same list in AppRun's per-mount entry and
+  that the AppImage bundles `libxcb-xtest.so.0`.
+- Settings, schema, UI and MCP: `tests/unit/test_settings.cpp` (preferences, bounds, the `scroll` route),
+  `tests/integration/test_config_schema.py`, `tests/gui/test_settings_capture.cpp` (the two Settings controls, the
+  capability badge), and `tests/integration/test_mcp.py` (the three tools, `scroll` in `perform_action`, forwarding parity).
+
+`test_scroll_capture_driver` (`tests/fixtures/scroll_capture_driver.cpp`) is a lab tool, not a test:
+it runs one capture through the production backend and helper without a resident, and
+`PUTGD_RECORD_DEBUG_LOG` gives the helper's timeline (each stitch attempt's geometry, never pixels).

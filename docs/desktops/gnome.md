@@ -284,6 +284,39 @@ has the remembered preference on starts without rings. The route is
 all four targets have them; see
 [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
 
+## Scrolling capture
+
+Scrolling capture ([design](../design/scroll-capture.md)) adds the `scroll` action (extension
+version 22). The extension selects the region and draws the ring (`SelectArea`,
+`ShowRecordingFrame`, as for a recording), and the resident places the bar through it. The helper
+reads frames from Mutter's `RecordArea` with `cursor-mode` 0 inside a ScreenCast session linked to a
+RemoteDesktop session, and turns the wheel through the same session
+(`NotifyPointerMotionAbsolute` on the area stream, `NotifyPointerAxisDiscrete`). The order is
+Mutter's: RemoteDesktop `CreateSession`, its `SessionId`, ScreenCast `CreateSession` with
+`remote-desktop-session-id`, `RecordArea`, then `Start` on the RemoteDesktop session only. Mutter
+accepts `Start`, `Stop` and every `Notify*` only from the D-Bus connection that created the session, so
+one connection makes all the calls. The interface is private to Mutter and promises no
+compatibility; no owner for `org.gnome.Mutter.RemoteDesktop`, or a refused `CreateSession`, is
+`scroll_unavailable` with reason `injection_unavailable`. The Shell shows its screen-sharing
+indicator while the session runs; a click on it closes the session, and the helper reads that as Stop.
+
+`ShowRecordingFrame` takes `beat: true` for a scroll capture's frame (`GnomeAdapter::showFrameImpl`).
+While that frame shows, the extension adds one transparent 1×1 `St.Widget` at the rectangle's
+corner and queues it for redraw every 40 ms. Mutter's area stream sends a frame only for damage inside
+its area, and at 125%, and on some logins at 100%, a page at rest sent none, so the end of the
+content could not be proved and the capture stopped `lost_track`. Queueing the same pixel on the stage
+with a clip sent nothing; a widget in the area sends about seven frames in 300 ms of a still page.
+The actor is the only one inside the area, a new frame replaces it and its timer, and hiding the frame
+ends both. `gnome_ui_ownership_contract` and `gnome_core_transport_integration` cover the field and
+the timer.
+
+An extension loaded before the update (below version 22) ignores `beat` and has no `scroll` in its
+`ACTIONS`: the `scroll` shortcut reports `bound: false` with `helper_outdated` until the next login,
+while the tray, the main window, the CLI and MCP start a capture as before (a loaded extension must
+still offer region selection, `recordingVersion` 1 or later). Without the beat a capture at a
+fractional scale can end `lost_track` after an exact image. Log out and back in once, as for any
+extension update ([Setup](#setup)).
+
 ## UI ownership recovery test
 
 When the final UI process exits, the adapter clears its registered PID. If that

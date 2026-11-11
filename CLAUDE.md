@@ -7,7 +7,7 @@ each folder's README lists its guarantees and every document in it.
 | Where | What is inside |
 | --- | --- |
 | [docs/user/](docs/user/README.md) | User guide, troubleshooting, failure codes, S3, B2, Proton Drive and custom uploader destinations |
-| [docs/design/](docs/design/README.md) | Overview, architecture, memory strategy, UI process contracts, recording, editor, updates, diagnostics, configuration, credentials, appearance |
+| [docs/design/](docs/design/README.md) | Overview, architecture, memory strategy, UI process contracts, recording, scrolling capture, editor, updates, diagnostics, configuration, credentials, appearance |
 | [docs/desktops/](docs/desktops/README.md) | Budgie, Cinnamon, GNOME, Hyprland and Plasma adapters |
 | [docs/automation/](docs/automation/README.md) | Agent source, workflow and acceptance maps, `putgd-cli`, the MCP helper |
 | [docs/release/](docs/release/README.md) | Build, dependencies and packaging, versions, CI, channels and assets, the release runbook, signed apt/dnf repositories |

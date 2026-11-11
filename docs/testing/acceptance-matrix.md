@@ -226,6 +226,49 @@ and Debian 13 ships 7.1, so Debian rows install the release `debian13` DEB, buil
 in a Debian 13 container against `libavcodec61` (issue #85). Before that asset
 existed they used a DEB built on the Debian host.
 
+## Scrolling capture rows
+
+Scrolling capture (#1376, [design](../design/scroll-capture.md)) is accepted on every adapter,
+from the release packages, on the exact build. It sends real wheel events, so a physical
+desktop is used under its lease, with nothing else on the screen, and a guest keeps the wall
+visible. A wrong stitch looks like a valid image, so every case decodes the page: a ruler of
+40 px rows, each painted with its index as a bar code and as text, in a window the test opened,
+in Firefox or Chromium (give it time to draw: a cold start captured black after 4 s), and in
+a Qt and a GTK 4 application. The PNG must show every row once, in order, at the expected height,
+with no cursor, ring, bar or notification pixel. Text pages count distinct bands at one pitch.
+
+| Desktop | Placement and package |
+| --- | --- |
+| Cinnamon / X11 | physical `.74` (m74), Ubuntu 24.04 DEB |
+| GNOME 50 | physical `.70` (f44), Fedora 44 RPM with the package's extension, at 100% and at 125% |
+| Plasma, KWin 6.3 | physical `.69` (d69), Debian 13 DEB, and its AppImage (AppRun's per-mount entry must list `org_kde_kwin_fake_input`) |
+| Plasma, KWin 6.8 or later | an Aurora 45 or neon guest, AppImage |
+| Budgie 10.10 (labwc 0.20) | Fedora 45 Budgie guest (`fedora45-budgie`), AppImage |
+| Hyprland (Omarchy 4.5) | Omarchy guest (`omarchy-hyprland`), AppImage and Arch package |
+
+| Case | Passes when |
+| --- | --- |
+| Fixture window, plain | exact |
+| Fixture window, sticky header and footer | header once, footer once, body exact |
+| The same ruler page in Firefox and in Chromium | every row once, in order |
+| A Qt and a GTK 4 text view of 1,500 numbered lines, wide and narrow | 1,500 distinct bands at one pitch |
+| Page opened halfway down, from the top on | row 0 first, every row once, `end_of_content` |
+| Page opened halfway down, from the top off | starts at the row that was on screen |
+| Page taller than the cap | exact prefix at the cap height, `height_cap`, the warning shown and uploaded |
+| The next capture right after the cap warning or an upload notice | exact: no put.gd notification in the image |
+| Stop halfway | exact prefix, `stopped`, uploaded |
+| Stop on the way to the top | the viewport on screen, with no pointer in it |
+| Cancel | no history row, no staging files |
+| Fractional scale, where the desktop has one | every row once, in order, seams at most one pixel |
+| Agent-only run through MCP | the same result with no pointer or keyboard from the driver; the PNG found by the returned SHA-256 |
+| The shortcut and a real drag | the bar and ring visible outside the rectangle, an exact PNG |
+| GNOME with the extension loaded before the update | `helper_outdated` on the `scroll` shortcut only; the tray still starts a capture |
+| Memory | the resident is back under the idle target after the work drains |
+
+A result that is not `end_of_content` is an honest partial only if its image is exact; it is
+not a pass for a case that must complete. Hyprland shows the pointer in every frame, and
+Omarchy keeps closed notification cards on screen: both are why those two cases exist.
+
 ## AppImage full-acceptance profile
 
 One pass of the exact published AppImage on every desktop below, with every item
