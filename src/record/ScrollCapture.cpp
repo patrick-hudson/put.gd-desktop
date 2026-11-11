@@ -526,6 +526,10 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
 
 void ScrollCapture::stop(Reply reply) {
     if (state_ == State::Done) { reply({}, finished_); return; }
+    // A Stop behind a Cancel whose worker has not ended yet is answered as the
+    // Cancel will end the capture, not as a fault: the resident took the
+    // refusal for a failed capture (acceptance of 2026-11-11).
+    if (state_ == State::Capturing && job_ && cancelRequested_) { reply({"cancelled", "Scroll capture canceled", {}}, {}); return; }
     if (state_ != State::Capturing || !job_ || cancelRequested_) { reply(stateError("Nothing is being captured"), {}); return; }
     if (stopReply_) { reply(stateError("The capture is already stopping"), {}); return; }
     stopRequested_ = true;

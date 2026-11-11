@@ -69,5 +69,13 @@ private:
  bool shellAutoStart_=false;
  bool shellSelecting_=false;
  bool edit_=false;
+ // A Cancel is on its way to the backend, which answers it only when its
+ // worker has ended. From here on it alone decides how the session ends: no
+ // other command is passed on, and what an earlier one is answered or the
+ // backend announces meanwhile (a Stop refused or finished, a finished image)
+ // changes nothing. The session ends cancelled and the image is discarded.
+ // A Stop whose validated image was admitted before the Cancel arrived has
+ // ended the session already: that Cancel is answered scroll_not_found.
+ bool cancelling_=false;
 };
 }

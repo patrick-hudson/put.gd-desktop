@@ -50,6 +50,55 @@ private slots:
   bool cancelled=false;service.command("cancel",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["state"].toString(),QString("cancelled"));cancelled=true;});PUTGD_TRY_VERIFY(cancelled);QVERIFY(!service.active());
   std::exchange(backend->heldCommand,{})({},{{"state","capturing"}});PUTGD_TRY_VERIFY(pendingAnswered);QVERIFY(!service.active());
  }
+ // Acceptance of 2026-11-11 (GNOME 2 of 3, Plasma 3 of 3): Stop and Cancel sent
+ // a millisecond apart. Cancel reached the resident first and was on its way
+ // to the helper, which answers it only when its worker has ended; the Stop
+ // that followed was passed on too, the helper refused it at once (scroll_state,
+ // "Nothing is being captured"), and that refusal ended the operation as failed
+ // before the Cancel was answered. Once a Cancel is on its way it decides: the
+ // session ends cancelled, whatever a Stop beside it is answered or announces.
+ void cancelInFlightDecides_data(){
+  QTest::addColumn<QString>("order");
+  QTest::newRow("stop arrives after the cancel")<<QString("cancel-stop");
+  QTest::newRow("stop is refused while the cancel is on its way")<<QString("stop-cancel-refused");
+  QTest::newRow("stop finishes its image while the cancel is on its way")<<QString("stop-cancel-finished");
+  QTest::newRow("the finished event arrives while the cancel is on its way")<<QString("event");
+ }
+ void cancelInFlightDecides(){
+  QFETCH(QString,order);QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="deciding";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};
+  Operation ended;int finishes=0,admissions=0;host.finish=[&](Operation op){ended=op;++finishes;};host.admit=[&](Operation,ClipboardPayload,auto){++admissions;};
+  ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+  QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});PUTGD_TRY_VERIFY(started);
+  backend->commands.clear();backend->holdCommands={"stop","cancel"};
+  bool stopAnswered=false,cancelAnswered=false;Error stopError;QJsonObject cancelResult;
+  const auto stop=[&]{service.command("stop",{{"id",id}},[&](Error e,QJsonObject){stopError=e;stopAnswered=true;});};
+  const auto cancel=[&]{service.command("cancel",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.code));cancelResult=r;cancelAnswered=true;});};
+  if(order=="cancel-stop"){
+   cancel();QVERIFY(backend->held.contains("cancel"));stop();
+   // The Stop is not passed on: nothing it could be answered would matter.
+   PUTGD_TRY_VERIFY(stopAnswered);QCOMPARE(stopError.code,QString("scroll_busy"));QCOMPARE(backend->commands,QStringList{"cancel"});QVERIFY(service.active());
+  }else if(order=="event"){
+   cancel();QVERIFY(backend->held.contains("cancel"));auto announced=backend->finished();announced["id"]=id;announced["event"]="finished";backend->sink(announced);
+   PUTGD_VERIFY_STEADY(service.active()&&admissions==0,200);
+  }else{
+   stop();QVERIFY(backend->held.contains("stop"));cancel();QVERIFY(backend->held.contains("cancel"));
+   if(order=="stop-cancel-refused")backend->held.take("stop")({"scroll_state","Nothing is being captured",{}},{});
+   else backend->held.take("stop")({},backend->finished());
+   PUTGD_TRY_VERIFY(stopAnswered);QCOMPARE(stopError.code,QString("cancelled"));QVERIFY(service.active());QCOMPARE(finishes,0);
+  }
+  QCOMPARE(admissions,0);QVERIFY(!cancelAnswered);
+  backend->held.take("cancel")({},{});PUTGD_TRY_VERIFY(cancelAnswered);
+  QCOMPARE(cancelResult["state"].toString(),QString("cancelled"));QVERIFY(!service.active());QCOMPARE(finishes,1);QCOMPARE(ended.state,QString("cancelled"));QVERIFY(ended.cancelled);QVERIFY(ended.error.code.isEmpty());QCOMPARE(admissions,0);
+  QVERIFY(!QFileInfo::exists(backend->directory));
+  bool inspected=false;service.command("inspect",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["state"].toString(),QString("cancelled"));inspected=true;});QVERIFY(inspected);
+  // The next capture is not held up by what the last one left.
+  host.accept=[&](Operation& op){op.id="next";op.settings=settings.snapshot();return Error{};};backend->holdCommands.clear();
+  QString next;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);next=r["id"].toString();});PUTGD_TRY_VERIFY(!next.isEmpty());
+  bool again=false;service.command("start",{{"id",next}},[&](Error e,QJsonObject){QVERIFY(!e);again=true;});PUTGD_TRY_VERIFY(again);
+  service.command("stop",{{"id",next}},[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(admissions,1);QVERIFY(!service.active());
+ }
  void helperReleasedBeforeAdmission(){
   QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
   ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="admission";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};host.finish=[](Operation){};
