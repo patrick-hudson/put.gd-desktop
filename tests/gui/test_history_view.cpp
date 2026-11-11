@@ -492,7 +492,7 @@ private slots:
  }
  void scrollNoteKeepsFailuresVisible(){
   const QString note="Stopped at 30,000 px. The page continues below.";
-  QJsonObject op{{"action","scroll"},{"state","failed"},{"note",note}};
+  QJsonObject op{{"action","scroll"},{"state","failed"},{"note",note},{"items",QJsonArray{QJsonObject{{"uploadStatus","failed"}}}}};
   const auto text=HistoryModel::statusText({{"operation",op},{"uploadStatus","failed"}});
   QVERIFY(text.startsWith("Upload failed"));QVERIFY(text.endsWith(note));
   op["state"]="completed";
