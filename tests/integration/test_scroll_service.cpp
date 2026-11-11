@@ -21,6 +21,16 @@ struct ScrollShellFixture final:RecordingShell {
 class ScrollTest:public QObject {
  Q_OBJECT
 private slots:
+ void helperAutoStartHonorsNotificationHold(){
+  QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));ProviderRegistry providers;Source source;
+  OperationService operations(dir.filePath("data"),settings,providers,source);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
+  QElapsedTimer since;connect(&operations.scroll(),&ScrollCaptureService::preparing,&operations,[&]{since.start();operations.scroll().holdStart(600);});
+  QString id;operations.scroll().invoke(false,[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  QVERIFY(!backend->preparedParams["autoStart"].toBool());
+  backend->sink({{"id",id},{"event","selected"},{"rect",QJsonArray{0,0,64,64}}});
+  PUTGD_VERIFY_STEADY(!backend->started,250);PUTGD_TRY_VERIFY(backend->started);QVERIFY(since.elapsed()>=500);
+  bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+ }
  void cancelPendingCommand_data(){QTest::addColumn<QString>("command");QTest::newRow("start")<<QString("start");QTest::newRow("stop")<<QString("stop");}
  void cancelPendingCommand(){
   QFETCH(QString,command);QTemporaryDir dir("/tmp/sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));

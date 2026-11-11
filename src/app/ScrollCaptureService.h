@@ -28,6 +28,7 @@ public:
  // A later call only lengthens the hold, unless it says `fromNow`: what was
  // waited for has happened, and this much more is all that is needed.
  void holdStart(int ms,bool fromNow=false);
+ void failPreparation(Error);
 signals:
  // An image that is kept and is not the whole page: reason is its endReason
  // (height_cap, top_not_reached), message the note on its history entry.
@@ -63,6 +64,8 @@ private:
  // The command the hold keeps back, and the timer that lets it go.
  std::function<void()> heldRun_;QTimer holdTimer_;
  void releaseHeld();
+ void maybeStartHelper();
+ bool helperAutoStart_=false;
  bool shellAutoStart_=false;
  bool shellSelecting_=false;
  bool edit_=false;

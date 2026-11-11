@@ -684,23 +684,39 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // request without waiting; only a bus with no notification server falls back to
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
-void TrayController::closeTrayNotification(uint id) {
+void TrayController::closeTrayNotification(uint id,int attempt) {
+ if(trayKnownClosed_.contains(id)){trayClosingIds_.removeAll(id);return;}
+ if(!trayClosingIds_.contains(id))trayClosingIds_.append(id);
  trayActions_.remove(id);
  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
  close<<id;++trayClosesInFlight_;
- auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,id](QDBusPendingCallWatcher* p){
+ auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close,1000),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,id,attempt](QDBusPendingCallWatcher* p){
   const QDBusPendingReply<> reply=*p;p->deleteLater();
-  if(reply.isError()&&operations_.scroll().active()){
-   // An error says nothing about what is still on screen: keep the hold through retries.
-   QTimer::singleShot(500,this,[this,id]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id);else trayOpen_.append(id);});
+  if(reply.isError()&&!trayKnownClosed_.contains(id)&&operations_.scroll().active()){
+   if(attempt>=2){
+    --trayClosesInFlight_;trayClosingIds_.removeAll(id);trayOpen_.append(id);
+    operations_.scroll().failPreparation({"notification_close_failed","A put.gd notification could not be closed. Dismiss it and try capture again.",{}});
+    return;
+   }
+   QTimer::singleShot(500,this,[this,id,attempt]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id,attempt+1);else {trayClosingIds_.removeAll(id);if(!trayKnownClosed_.contains(id))trayOpen_.append(id);}});
    return;
   }
-  --trayClosesInFlight_;if(reply.isError())trayOpen_.append(id);
+  --trayClosesInFlight_;trayClosingIds_.removeAll(id);if(reply.isError()&&!trayKnownClosed_.contains(id))trayOpen_.append(id);
  });
 }
+void TrayController::trayNotificationClosed(uint id,uint reason) {
+ Q_UNUSED(reason);
+ trayOpen_.removeAll(id);trayActions_.remove(id);
+ if(trayClosingIds_.contains(id)||trayMessagesInFlight_){
+  if(!trayKnownClosed_.contains(id))trayKnownClosed_.append(id);
+  if(trayKnownClosed_.size()>256)trayKnownClosed_.removeFirst();
+ }
+}
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
+ if(!trayMessagesInFlight_&&!trayClosesInFlight_)trayKnownClosed_.clear();
  auto bus=QDBusConnection::sessionBus();
+ if(!trayClosedConnected_&&bus.isConnected())trayClosedConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",this,SLOT(trayNotificationClosed(uint,uint)));
  // A warning is transient only where the server would restore it after a restart (#1298): ask its name first.
  if(warning&&bus.isConnected()){
   auto* named=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetServerInformation")),this);
@@ -761,6 +777,7 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
    if(reply.isValid())closeTrayNotification(reply.value());
    return;
   }
+  if(reply.isValid()&&trayKnownClosed_.contains(reply.value()))return;
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
   if(reply.isValid()){trayOpen_.append(reply.value());if(trayOpen_.size()>16)trayOpen_.removeFirst();}
   const auto error=p->error().type();

@@ -93,6 +93,9 @@ public slots:
  uint Notify(const QString&,uint,const QString&,const QString&,const QString&,const QStringList&,const QVariantMap&,int){
   ++received;if(refuseNotify){sendErrorReply("org.freedesktop.DBus.Error.UnknownMethod","Synthetic missing notification service");return 0;}if(delayNotify){setDelayedReply(true);notice=message();}return uint(received);
  }
+signals:
+ void NotificationClosed(uint id,uint reason);
+public slots:
  void CloseNotification(uint id){++closeAttempts;if(refuseClose){sendErrorReply("org.freedesktop.DBus.Error.Failed","Synthetic close failure");return;}closed.append(id);}
 };
 
@@ -112,25 +115,32 @@ private slots:
   qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");
  }
  void scrollHoldsDelayedQtNotifications_data(){
-  QTest::addColumn<bool>("lookup");QTest::addColumn<bool>("closeError");QTest::addColumn<bool>("balloon");
-  QTest::newRow("pending-notify")<<false<<false<<false;QTest::newRow("pending-server-lookup")<<true<<false<<false;
-  QTest::newRow("failed-close")<<false<<true<<false;QTest::newRow("fallback-balloon")<<false<<false<<true;
+  QTest::addColumn<bool>("lookup");QTest::addColumn<bool>("closeError");QTest::addColumn<bool>("balloon");QTest::addColumn<bool>("permanent");QTest::addColumn<bool>("expired");
+  QTest::newRow("pending-notify")<<false<<false<<false<<false<<false;QTest::newRow("pending-server-lookup")<<true<<false<<false<<false<<false;
+  QTest::newRow("failed-close")<<false<<true<<false<<false<<false;QTest::newRow("fallback-balloon")<<false<<false<<true<<false<<false;
+  QTest::newRow("permanent-close-error")<<false<<true<<false<<true<<false;QTest::newRow("expired-notification")<<false<<false<<false<<false<<true;
  }
  void scrollHoldsDelayedQtNotifications(){
-  QFETCH(bool,lookup);QFETCH(bool,closeError);QFETCH(bool,balloon);auto bus=QDBusConnection::connectToBus(QDBusConnection::SessionBus,"scroll-notification-peer");ScrollNotificationPeer peer(bus);peer.delayInfo=lookup;peer.delayNotify=!lookup&&!balloon;peer.refuseClose=closeError;peer.refuseNotify=balloon;
-  QVERIFY(bus.registerService("org.freedesktop.Notifications"));QVERIFY(bus.registerObject("/org/freedesktop/Notifications",&peer,QDBusConnection::ExportAllSlots));
+  QFETCH(bool,lookup);QFETCH(bool,closeError);QFETCH(bool,balloon);QFETCH(bool,permanent);QFETCH(bool,expired);auto bus=QDBusConnection::connectToBus(QDBusConnection::SessionBus,"scroll-notification-peer");ScrollNotificationPeer peer(bus);peer.delayInfo=lookup;peer.delayNotify=!lookup&&!balloon&&!expired;peer.refuseClose=closeError;peer.refuseNotify=balloon;
+  QVERIFY(bus.registerService("org.freedesktop.Notifications"));QVERIFY(bus.registerObject("/org/freedesktop/Notifications",&peer,QDBusConnection::ExportAllSlots|QDBusConnection::ExportAllSignals));
   const auto unregistered=qScopeGuard([&]{bus.unregisterObject("/org/freedesktop/Notifications");bus.unregisterService("org.freedesktop.Notifications");QDBusConnection::disconnectFromBus("scroll-notification-peer");});
   QTemporaryDir dir("/tmp/qt-sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));ProviderRegistry providers;Source source;
   OperationService operations(dir.filePath("data"),settings,providers,source);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});controller.notifyFailure({"synthetic","Retained warning",{}});
   if(lookup)PUTGD_TRY_VERIFY(peer.info.type()==QDBusMessage::MethodCallMessage);else PUTGD_TRY_COMPARE(peer.received,1);
-  if(balloon)putgd::test::settle(100);
+  if(balloon||expired)putgd::test::settle(100);
+  if(expired){emit peer.NotificationClosed(1,1);putgd::test::settle(50);}
   QString id;operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
-  bool started=false;operations.scroll().command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});
+  bool started=false;Error startError;operations.scroll().command("start",{{"id",id}},[&](Error e,QJsonObject){startError=e;if(!permanent)QVERIFY(!e);started=true;});
   if(lookup){peer.answerInfo();PUTGD_COMPARE_STEADY(peer.received,0,150);}
+  else if(expired){PUTGD_TRY_VERIFY(started);QCOMPARE(peer.closeAttempts,0);}
   else if(balloon){PUTGD_VERIFY_STEADY(!backend->started,250);QVERIFY(controller.findChild<QSystemTrayIcon*>()->isVisible());}
   else {
    PUTGD_VERIFY_STEADY(!backend->started,1400);peer.answerNotify();
+   if(permanent){
+    PUTGD_TRY_VERIFY(!operations.scroll().active());PUTGD_TRY_VERIFY(started);QVERIFY(!backend->started);QCOMPARE(startError.code,QString("notification_close_failed"));
+    QJsonObject result;operations.scroll().command("inspect",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);result=r;});QCOMPARE(result["state"].toString(),QString("failed"));return;
+   }
    if(closeError){PUTGD_TRY_VERIFY(peer.closeAttempts>0);PUTGD_VERIFY_STEADY(!backend->started,800);peer.refuseClose=false;}
    PUTGD_TRY_COMPARE(peer.closed,QList<uint>{1});PUTGD_VERIFY_STEADY(!backend->started,250);
   }
