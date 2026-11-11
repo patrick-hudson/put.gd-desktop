@@ -77,10 +77,12 @@ class ScrollNotificationPeer final : public QObject, protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface", "org.freedesktop.Notifications")
 public:
+ explicit ScrollNotificationPeer(QDBusConnection bus):bus_(std::move(bus)){}
+ QDBusConnection bus_;
  bool delayInfo=false,delayNotify=false;
  QDBusMessage info,notice;int received=0;QList<uint> closed;
- void answerInfo(){delayInfo=false;QDBusConnection::sessionBus().send(info.createReply(QVariantList{QString("Synthetic"),QString("Test"),QString("1"),QString("1.2")}));}
- void answerNotify(){delayNotify=false;QDBusConnection::sessionBus().send(notice.createReply(QVariantList{uint(1)}));}
+ void answerInfo(){delayInfo=false;bus_.send(info.createReply(QVariantList{QString("Synthetic"),QString("Test"),QString("1"),QString("1.2")}));}
+ void answerNotify(){delayNotify=false;bus_.send(notice.createReply(QVariantList{uint(1)}));}
 public slots:
  QString GetServerInformation(QString& vendor,QString& version,QString& spec){
   vendor="Test";version="1";spec="1.2";
@@ -111,9 +113,9 @@ private slots:
  }
  void scrollHoldsDelayedQtNotifications_data(){QTest::addColumn<bool>("lookup");QTest::newRow("pending-notify")<<false;QTest::newRow("pending-server-lookup")<<true;}
  void scrollHoldsDelayedQtNotifications(){
-  QFETCH(bool,lookup);auto bus=QDBusConnection::sessionBus();ScrollNotificationPeer peer;peer.delayInfo=lookup;peer.delayNotify=!lookup;
+  QFETCH(bool,lookup);auto bus=QDBusConnection::connectToBus(QDBusConnection::SessionBus,"scroll-notification-peer");ScrollNotificationPeer peer(bus);peer.delayInfo=lookup;peer.delayNotify=!lookup;
   QVERIFY(bus.registerService("org.freedesktop.Notifications"));QVERIFY(bus.registerObject("/org/freedesktop/Notifications",&peer,QDBusConnection::ExportAllSlots));
-  const auto unregistered=qScopeGuard([&]{bus.unregisterObject("/org/freedesktop/Notifications");bus.unregisterService("org.freedesktop.Notifications");});
+  const auto unregistered=qScopeGuard([&]{bus.unregisterObject("/org/freedesktop/Notifications");bus.unregisterService("org.freedesktop.Notifications");QDBusConnection::disconnectFromBus("scroll-notification-peer");});
   QTemporaryDir dir("/tmp/qt-sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));ProviderRegistry providers;Source source;
   OperationService operations(dir.filePath("data"),settings,providers,source);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});controller.notifyFailure({"synthetic","Retained warning",{}});
