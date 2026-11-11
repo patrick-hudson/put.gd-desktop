@@ -365,7 +365,8 @@ void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& 
  Q_UNUSED(createdColumn);
  // A wide row's one detail line: kind · size · destination · state. State
  // words are never cut; the destination elides first (or goes, rather than
- // shrink below its first word), then the size and the file count go.
+ // shrink below its first word), then the size and the file count go, and
+ // last the kind by the destination's rule, so no "Re…" stub is left.
  if(bounded&&!compact&&!separated&&!HistoryModel::failed(record)){
   const auto parts=text.split(" · ",Qt::SkipEmptyParts);const auto destination=index.data(HistoryModel::OutputRole).toString();
   const auto kind=HistoryModel::friendlyAction(record["operation"].toObject()["action"].toString(record["category"].toString())),size=HistoryModel::fileSize(record["bytes"].toInteger());
@@ -381,7 +382,7 @@ void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& 
    for(auto& [role,part]:shown)if(role==3){const auto elided=metrics.elidedText(part,Qt::ElideRight,int(spare));const auto first=part.section(' ',0,0);part=elided.size()>first.size()||elided==part?elided:QString{};}
    shown=without(-1);shown.erase(std::remove_if(shown.begin(),shown.end(),[](const auto& part){return part.second.isEmpty();}),shown.end());
    for(const int role:{1,2})if(measure(shown)>width)shown=without(role);
-   if(measure(shown)>width)for(auto& [role,part]:shown)if(role==0){const auto others=without(0);part=metrics.elidedText(part,Qt::ElideRight,qMax(0,int(width-measure(others)-metrics.horizontalAdvance(" · "))));}
+   if(measure(shown)>width)for(auto& [role,part]:shown)if(role==0){const auto others=without(0);const auto elided=metrics.elidedText(part,Qt::ElideRight,qMax(0,int(width-measure(others)-metrics.horizontalAdvance(" · "))));const auto first=part.section(' ',0,0);part=elided.size()>first.size()||elided==part?elided:QString{};}
    shown.erase(std::remove_if(shown.begin(),shown.end(),[](const auto& part){return part.second.isEmpty();}),shown.end());
   }
   option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(html(shown));document.setTextWidth(qMax(20,width));return;
