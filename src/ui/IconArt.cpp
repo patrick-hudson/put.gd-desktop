@@ -23,14 +23,72 @@ QPainterPath tray() {
 QPainterPath disc(qreal x,qreal y,qreal radius) {QPainterPath p;p.addEllipse(QPointF(x,y),radius,radius);return p;}
 // Seasonal silhouettes, before any cutouts: the contour follows only the outside,
 // so the turkey's eye stays a clean hole on any panel.
+QPainterPath smallTurkey(bool details) {
+ // A rounded, side-facing poult with a soft scalloped fan.
+ // Draw in actual 16 px coordinates, then map to the common 24-unit grid.
+ QPainterPath p;p.setFillRule(Qt::WindingFill);
+ if(details) {
+  p.addEllipse(QPointF(12.15,4.05),.65,.65);
+  // A short curved wing gives the plump body its own readable gesture.
+  QPainterPath wing;wing.moveTo(4.45,9.65);
+  wing.cubicTo(5.1,8.05,7.4,7.55,8.65,8.55);
+  wing.quadTo(8.95,8.85,8.55,9.2);
+  wing.cubicTo(7.15,8.55,5.95,8.9,5.3,10.15);
+  wing.quadTo(4.75,10.45,4.45,9.65);wing.closeSubpath();
+  p=p.united(wing);
+ } else {
+  p.moveTo(4.05,10.9);
+  // Five broad, pillowy feather tips, with rounded valleys between them.
+  p.cubicTo(1.25,11.0,.15,9.65,.65,8.35);
+  p.quadTo(.9,7.65,2.1,7.5);
+  p.cubicTo(-.2,6.75,.2,4.15,2.55,4.45);
+  p.cubicTo(.95,2.2,2.75,.65,4.45,2.45);
+  p.cubicTo(4.0,-.2,6.85,-.25,7.25,2.35);
+  p.cubicTo(8.65,.15,10.45,1.45,9.65,3.75);
+  p.cubicTo(9.3,4.8,8.9,5.55,8.95,6.25);
+  // A short, curved neck supports an oversized friendly head.
+  p.cubicTo(10.0,6.4,10.1,5.4,10.15,4.25);
+  p.cubicTo(10.15,1.3,13.85,1.05,14.0,4.05);
+  p.quadTo(14.8,4.3,15.65,5.05);
+  p.quadTo(14.9,5.7,13.65,5.7);
+  // Rounded hanging wattle, distinct from the breast.
+  p.cubicTo(14.5,6.8,14.25,8.05,13.5,8.05);
+  p.quadTo(12.85,8.05,12.95,6.8);
+  p.lineTo(12.2,6.95);
+  p.cubicTo(12.5,10.0,11.65,12.25,8.2,12.25);
+  p.cubicTo(6.25,12.25,4.85,11.8,4.05,10.9);p.closeSubpath();
+  // A small, curved U is a signature under the bird, not its pedestal.
+  QPainterPath bowl;bowl.moveTo(4.3,13.25);bowl.lineTo(5.55,13.25);
+  bowl.lineTo(5.55,13.8);bowl.quadTo(5.55,14.25,6.05,14.25);
+  bowl.lineTo(10.4,14.25);bowl.quadTo(10.9,14.25,10.9,13.8);
+  bowl.lineTo(10.9,13.25);bowl.lineTo(12.15,13.25);bowl.lineTo(12.15,13.9);
+  bowl.quadTo(12.15,15.5,10.45,15.5);bowl.lineTo(6,15.5);
+  bowl.quadTo(4.3,15.5,4.3,13.9);bowl.closeSubpath();p=p.united(bowl);
+ }
+ QTransform scale;scale.scale(1.5,1.5);return scale.map(p);
+}
 QPainterPath turkeySilhouette() {
- QPainterPath p;
- p.moveTo(9,16);p.quadTo(7.6,14.5,7.6,12.3);p.lineTo(2,10.3);p.quadTo(.5,9.7,.8,8.2);p.quadTo(1.1,6.7,2.7,7.1);p.lineTo(5.4,8.2);
- p.lineTo(3.6,5.2);p.quadTo(2.7,3.7,4,2.9);p.quadTo(5.3,2.1,6.3,3.5);p.lineTo(8.5,7);
- p.lineTo(8.8,3);p.quadTo(8.9,1.4,10.4,1.4);p.quadTo(12,1.4,11.9,3.2);p.lineTo(11.4,9);p.lineTo(14,9);
- p.lineTo(15,5.6);p.quadTo(13.9,4.7,14.1,3.1);p.quadTo(14.4,.7,16.9,.7);p.quadTo(19.3,.7,19.6,2.9);p.lineTo(23,4.2);p.lineTo(19.5,5.4);
- p.lineTo(18.5,5.8);p.quadTo(20.1,6.6,19.3,9);p.quadTo(18.9,10.1,17.8,9.2);p.lineTo(17.1,10.6);p.quadTo(16.7,13.7,14.8,16);p.closeSubpath();
- return tray().united(p);
+ // Broad scalloped fan, plump breast, and a hanging wattle: avoid long feather
+ // fingers, which read as a hand at 16 px. The smaller bowl leaves the bird room.
+ QPainterPath p;p.moveTo(7,16);
+ p.cubicTo(3,16,.5,15,.5,12);p.quadTo(.5,10,3.5,10.5);
+ p.cubicTo(-.5,9,-.5,5,3.5,5.5);p.cubicTo(1,2,4,-1,6.5,2.5);
+ p.cubicTo(6.5,-.5,10.5,-.5,11,2.5);p.cubicTo(13,-1,14.4,2,13.4,5.2);p.lineTo(13,7.8);
+ p.cubicTo(14.3,7.8,15,6.8,15,5.8);p.cubicTo(15.2,1,20,-.5,21,3.5);
+ p.lineTo(23.5,5.2);p.lineTo(20.2,6.6);p.cubicTo(21.6,7,21.6,10.5,20,10.5);
+ p.quadTo(19,10.5,19.3,8.3);p.lineTo(17.8,8.8);p.cubicTo(18,14,16.8,17,12,17);
+ p.quadTo(9,17,7,16);p.closeSubpath();
+ QPainterPath bowl;bowl.moveTo(4,18.5);bowl.lineTo(6.5,18.5);bowl.lineTo(6.5,19.5);
+ bowl.quadTo(6.5,20.5,8,20.5);bowl.lineTo(17,20.5);bowl.quadTo(18.5,20.5,18.5,19.5);
+ bowl.lineTo(18.5,18.5);bowl.lineTo(21,18.5);bowl.lineTo(21,20);
+ bowl.quadTo(21,23,17.5,23);bowl.lineTo(7.5,23);bowl.quadTo(4,23,4,20);bowl.closeSubpath();
+ return p.united(bowl);
+}
+QPainterPath turkeyDetails() {
+ // A transparent curved separation distinguishes the tail from the body.
+ QPainterPath wing;wing.moveTo(5.2,12.2);wing.cubicTo(7.2,9,10.2,8.4,12.5,10);
+ wing.lineTo(11.7,11.2);wing.cubicTo(9.8,9.8,7.8,10.4,6.4,12.8);wing.closeSubpath();
+ return disc(18,4,1.2).united(wing);
 }
 QPainterPath treeSilhouette() {
  // Broad fir boughs use most of the frame; the tray becomes a small tree stand.
@@ -51,12 +109,14 @@ QPainterPath treeSilhouette() {
  stand.lineTo(17.5,21);stand.quadTo(17.5,23.25,15.25,23.25);stand.lineTo(8.75,23.25);stand.quadTo(6.5,23.25,6.5,21);stand.closeSubpath();
  return tree.united(star).united(stand);
 }
-const QPainterPath& glyphOutline(TrayGlyph glyph) {
- static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
+const QPainterPath& glyphOutline(TrayGlyph glyph,bool small=false) {
+ static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),tinyBird=smallTurkey(false),fir=treeSilhouette();
+ if(small&&glyph==TrayGlyph::Turkey)return tinyBird;
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;
 }
-const QPainterPath& glyphShape(TrayGlyph glyph) {
- static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(disc(17.5,2.9,.9));
+const QPainterPath& glyphShape(TrayGlyph glyph,bool small=false) {
+ static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(turkeyDetails()),tinyBird=smallTurkey(false).subtracted(smallTurkey(true));
+ if(small&&glyph==TrayGlyph::Turkey)return tinyBird;
  return glyph==TrayGlyph::Turkey?bird:glyphOutline(glyph);
 }
 QImage canvas(int scale) {
@@ -65,23 +125,29 @@ QImage canvas(int scale) {
 }
 }
 QImage liftTray(const QColor& color,int percent,int scale,int recording) {return liftTray(TrayIcon{color,percent,recording},scale);}
-QImage liftTray(const TrayIcon& icon,int scale) {
+QImage liftTray(const TrayIcon& icon,int scale) {auto image=liftTrayAtSize(icon,24*scale);image.setDevicePixelRatio(scale);return image;}
+QImage liftTrayAtSize(const TrayIcon& icon,int pixels) {
+ const qreal scale=pixels/24.0;
  const auto& color=icon.color;const int percent=icon.percent,recording=icon.recording;
- auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
+ QImage image(pixels,pixels,QImage::Format_ARGB32);image.fill(Qt::transparent);QPainter p(&image);p.scale(scale,scale);p.setRenderHint(QPainter::Antialiasing);
  const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
  const bool failed=percent==-2;
  const auto glyph=failed?tints.error:color;
- const auto shown=failed||recording?TrayGlyph::Mark:icon.glyph;const auto& shape=glyphShape(shown);
+ const auto shown=failed||recording?TrayGlyph::Mark:icon.glyph;const bool small=pixels==16&&shown==TrayGlyph::Turkey;const auto& shape=glyphShape(shown,small);
  if(percent<0) p.fillPath(shape,glyph);
  else {
   p.fillPath(shape,glyph);
   const auto bounds=shape.boundingRect();const auto level=bounds.bottom()-bounds.height()*qBound(0,percent,100)/100.0;
   // The fill climbs the whole silhouette; a clip at a full fill could round away its top row.
-  p.save();if(percent<100)p.setClipRect(QRectF(0,level,24,bounds.bottom()-level));p.fillPath(shape,tints.encoding);p.restore();
+  p.save();if(percent<100)p.setClipRect(QRectF(0,level,24,bounds.bottom()-level));
+  // Replace the small optical frame's band: painting over idle twice can turn
+  // a nearly opaque edge into an opaque pixel carrying both status tints.
+  if(small){p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(QRectF(0,0,24,24),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);}
+  p.fillPath(shape,tints.encoding);p.restore();
  }
  // Thinner on the seasonal art, whose feathers and gap the full contour would close.
  p.setPen(QPen(Theme::trayOutline(),shown==TrayGlyph::Mark?0.65:0.45,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
- p.setBrush(Qt::NoBrush);p.drawPath(glyphOutline(shown));
+ p.setBrush(Qt::NoBrush);if(!small)p.drawPath(glyphOutline(shown));
  // A 7 px disc at 16 px, with a 1 px transparent ring, always top-right.
  const QRectF badge=failed||recording?QRectF(13.5,0,10.5,10.5):QRectF();
  if(!badge.isEmpty()){
@@ -92,7 +158,7 @@ QImage liftTray(const TrayIcon& icon,int scale) {
   else if(recording==2){p.drawRect(QRectF(16.5,2.5,1.5,5.5));p.drawRect(QRectF(19.5,2.5,1.5,5.5));}
   p.restore();
  }
- return image;
+ p.end();return image;
 }
 QImage liftApp(const QColor& color,int scale) {
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);

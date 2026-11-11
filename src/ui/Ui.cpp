@@ -3182,8 +3182,9 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  return result;
 }
 QIcon trayIcon(const IconArt::TrayIcon& state){
- if(state.glyph==IconArt::TrayGlyph::Mark)return icon("tray",state.color,state.percent,state.recording);
+ if(state.glyph==IconArt::TrayGlyph::Mark||state.recording||state.percent==-2)return icon("tray",state.color,state.percent,state.recording);
  QIcon result;
+ if(state.glyph==IconArt::TrayGlyph::Turkey){auto image=IconArt::liftTrayAtSize(state,16);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  for(int scale:{1,2,3}){auto image=IconArt::liftTray(state,scale);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  return result;
 }
