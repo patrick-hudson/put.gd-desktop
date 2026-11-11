@@ -100,6 +100,7 @@ private:
  int trayMessagesInFlight_ = 0, trayClosesInFlight_ = 0;
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
+ bool trayBalloon_ = false;
  quint64 trayNoticeGeneration_ = 0;
  QList<uint> trayOpen_; // the newest few it sent, for closeOwnNotifications()
  bool trayActionsConnected_ = false;

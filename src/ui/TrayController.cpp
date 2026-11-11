@@ -628,9 +628,14 @@ int TrayController::closeOwnNotifications(std::function<void()> gone) {
  ++trayNoticeGeneration_;
  auto bus=QDBusConnection::sessionBus();
  const auto open=std::exchange(trayOpen_,{});
- if(!bus.isConnected())return 0;
+ const bool balloon=std::exchange(trayBalloon_,false);
+ if(balloon&&tray_){
+  // Qt's X11 fallback removes its balloon when its tray icon is hidden.
+  const bool visible=tray_->isVisible();tray_->hide();if(visible)tray_->show();disconnect(trayRestartClick_);
+ }
+ if(!bus.isConnected()&&!balloon)return 0;
  for(const uint id:open)closeTrayNotification(id);
- const int pending=trayMessagesInFlight_+trayClosesInFlight_;
+ const int pending=trayMessagesInFlight_+trayClosesInFlight_+int(balloon);
  if(pending){
   const auto id=operations_.scroll().activeId();
   operations_.scroll().holdStart(5000,true);
@@ -684,7 +689,15 @@ void TrayController::closeTrayNotification(uint id) {
  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
  close<<id;++trayClosesInFlight_;
  auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this](QDBusPendingCallWatcher* p){--trayClosesInFlight_;p->deleteLater();});
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,id](QDBusPendingCallWatcher* p){
+  const QDBusPendingReply<> reply=*p;p->deleteLater();
+  if(reply.isError()&&operations_.scroll().active()){
+   // An error says nothing about what is still on screen: keep the hold through retries.
+   QTimer::singleShot(500,this,[this,id]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id);else trayOpen_.append(id);});
+   return;
+  }
+  --trayClosesInFlight_;if(reply.isError())trayOpen_.append(id);
+ });
 }
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
  auto bus=QDBusConnection::sessionBus();
@@ -716,7 +729,7 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
   if(!tray||holdNotices_)return;
-  disconnect(trayRestartClick_);
+  trayBalloon_=true;disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
