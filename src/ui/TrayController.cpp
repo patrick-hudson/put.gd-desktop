@@ -172,12 +172,17 @@ TrayController::TrayController(OperationService& operations,
    quit_(std::move(quit)) {
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message){notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
  // put.gd's own notices stay out of a scroll capture: those on screen are
- // closed and given time to go, later ones wait for the capture's end.
- static constexpr int noticeCloseMs=500;
+ // closed, later ones wait for the capture's end. The capture starts
+ // noticeGoneMs after the server has reported them closed (a popup fades
+ // out; Omarchy's card takes 200 ms to leave), and no later than that after
+ // noticeConfirmMs when the server does not say.
+ static constexpr int noticeGoneMs=500,noticeConfirmMs=NativeTray::closeConfirmMs+200;
  connect(&operations_.scroll(),&ScrollCaptureService::preparing,this,[this]{
   holdNotices_=true;
-  if(const int closed=closeOwnNotifications()){
-   operations_.scroll().holdStart(noticeCloseMs);
+  const auto id=operations_.scroll().activeId();
+  const int closed=closeOwnNotifications([this,id]{if(operations_.scroll().activeId()==id)operations_.scroll().holdStart(noticeGoneMs,true);});
+  if(closed){
+   operations_.scroll().holdStart(noticeConfirmMs+noticeGoneMs);
    logging::info(logUi(),"Notifications closed for a scroll capture",{{"count",closed}});
   }
  });
@@ -610,9 +615,9 @@ void TrayController::openNotificationLink(const QUrl& link) {
  openLink(link,"notification-link");
 }
 #endif
-int TrayController::closeOwnNotifications() {
+int TrayController::closeOwnNotifications(std::function<void()> gone) {
 #ifdef Q_OS_LINUX
- if(native_)return native_->closeNotifications();
+ if(native_)return native_->closeNotifications(std::move(gone));
  auto bus=QDBusConnection::sessionBus();
  const auto open=std::exchange(trayOpen_,{});
  if(!bus.isConnected())return 0;
@@ -621,8 +626,11 @@ int TrayController::closeOwnNotifications() {
   auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
   close<<id;bus.asyncCall(close);
  }
+ // This path does not follow the server's NotificationClosed: asked is taken for gone.
+ if(!open.isEmpty()&&gone)QTimer::singleShot(0,this,gone);
  return int(open.size());
 #else
+ Q_UNUSED(gone);
  return 0;
 #endif
 }

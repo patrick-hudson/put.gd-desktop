@@ -3,6 +3,8 @@
 #include "RecordingService.h"
 #include <QElapsedTimer>
 #include <QHash>
+#include <QTimer>
+#include <functional>
 namespace putgd {
 // One private scroll session. The operation journal is committed before the
 // backend may acquire pixels. Terminal descriptors remain inspectable.
@@ -23,7 +25,9 @@ public:
  // Capturing begins no sooner than this long from now: whoever heard
  // preparing() and took something off the screen (put.gd's own notifications)
  // gives it the time to go. `start` and `select` wait, they are not refused.
- void holdStart(int ms);
+ // A later call only lengthens the hold, unless it says `fromNow`: what was
+ // waited for has happened, and this much more is all that is needed.
+ void holdStart(int ms,bool fromNow=false);
 signals:
  void warning(const QString& id,const QString& message);
  // A session was accepted; nothing has been captured yet. Emitted before the
@@ -54,6 +58,9 @@ private:
  // runs when the placement is done. And the hold of holdStart().
  JsonReply startWaiting_;
  QElapsedTimer clock_;qint64 notBefore_=0;bool held_=false;
+ // The command the hold keeps back, and the timer that lets it go.
+ std::function<void()> heldRun_;QTimer holdTimer_;
+ void releaseHeld();
  bool shellAutoStart_=false;
  bool shellSelecting_=false;
  bool edit_=false;

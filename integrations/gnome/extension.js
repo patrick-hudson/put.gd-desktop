@@ -4,6 +4,7 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
+import Mtk from 'gi://Mtk';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -209,14 +210,37 @@ function barPlacement(rect, size, areas, allowOutside = true, gap = 10) {
 // strips over everything else except the bar. Plain non-reactive Shell actors:
 // input passes through them and none overlaps the recorded pixels, so the area
 // stream never contains them.
+//
+// `beat` (a scroll capture, #1376): Mutter's area stream is driven by damage
+// inside its area. A page that has stopped moving sends nothing, and at a
+// fractional scale neither does a newly linked stream, which at 100% begins
+// with the screen as it is: at 125% a capture whose image was complete ended
+// "lost track", because no fresh frame proved the end (Fedora 44, GNOME 50,
+// 2026-11-11; with one pixel of the area repainted every 100 ms it ended as
+// it should). So while the frame shows, one pixel of the stage at the
+// rectangle's corner is queued for redraw every 40 ms, which is what Mutter
+// does for its own follow-up frames. Nothing is drawn there.
+const BEAT_MS = 40;
 class RecordingFrame {
     constructor() {
         this._actors = [];
+        this._beat = 0;
     }
-    show(rect, kind, dimmed, bar) {
+    show(rect, kind, dimmed, bar, beat = false) {
         this.destroy();
         this._shown = [rect, kind, dimmed];
         this._bar = bar;
+        this._beating = beat;
+        if (beat) {
+            this._beat = GLib.timeout_add(GLib.PRIORITY_DEFAULT, BEAT_MS, () => {
+                try {
+                    global.stage.queue_redraw_with_clip(new Mtk.Rectangle({x: rect[0], y: rect[1], width: 1, height: 1}));
+                } catch {
+                    global.stage.queue_redraw();
+                }
+                return true;
+            });
+        }
         const add = (r, color) => {
             if (r[2] <= 0 || r[3] <= 0)
                 return;
@@ -245,11 +269,14 @@ class RecordingFrame {
     // The bar moved: cut its new spot out of the dim strips.
     moveBar(bar) {
         if (this._shown && this._bar && this._shown[2] && (bar[0] !== this._bar[0] || bar[1] !== this._bar[1] || bar[2] !== this._bar[2] || bar[3] !== this._bar[3]))
-            this.show(...this._shown, bar);
+            this.show(...this._shown, bar, this._beating);
         else if (this._bar)
             this._bar = bar;
     }
     destroy() {
+        if (this._beat)
+            GLib.source_remove(this._beat);
+        this._beat = 0;
         for (const actor of this._actors)
             actor.destroy();
         this._actors = [];
@@ -1719,12 +1746,13 @@ export default class PutgdExtension extends Extension {
             const rect = frame.rect;
             check(Array.isArray(rect) && rect.length === 4 && rect.every(Number.isSafeInteger) && rect[2] > 0 && rect[3] > 0 &&
                 RECORDING_STATES.includes(frame.state) && RECORDING_KINDS.includes(frame.kind) &&
-                (frame.pid === undefined || (Number.isSafeInteger(frame.pid) && frame.pid >= 0)),
+                (frame.pid === undefined || (Number.isSafeInteger(frame.pid) && frame.pid >= 0)) &&
+                (frame.beat === undefined || typeof frame.beat === 'boolean'),
             'bridge_protocol', 'Invalid recording frame');
             const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect);
             check(this._enabled && !Main.sessionMode.isLocked, 'helper_unavailable', 'GNOME user session is unavailable');
             this._recordingFrame ??= new RecordingFrame();
-            this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null);
+            this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null, frame.beat === true);
             return {version: 1, bar};
         });
     }

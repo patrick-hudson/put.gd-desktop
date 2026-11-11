@@ -116,6 +116,16 @@ struct RunOptions {
     bool fromTop = false;
     int toTopNotches = 10;
     int toTopLimitMs = 15000;
+    // The frames show the mouse pointer whatever the stream was asked for
+    // (Hyprland composites a software cursor into the output, and every copy
+    // of the output has it; lab guest of 2026-11-11, where Stop on the way to
+    // the top returned the viewport with the arrow in it). On the way to the
+    // top the pointer then goes back to `away` right behind every wheel step
+    // and comes in again for the next, so the viewport Stop keeps is read
+    // with the pointer outside. A Stop that arrives between the pointer's
+    // entry and its wheel step sends no wheel step; the pointer still leaves,
+    // which is the one motion that can follow a Stop. Needs `away`.
+    bool restAwayToTop = false;
     // After a way up that moved the page: this many single steps down may move
     // nothing (an overscrolled view takes them) before the capture gives up.
     int stillStepsAfterTop = 8;
@@ -196,6 +206,7 @@ private:
     bool stopped() const { return afterStop_ ? (opts_.discarded && opts_.discarded()) : (stop_ && stop_->load()); }
     std::optional<RunResult> waitFailure(Wait);
     std::optional<RunResult> scrollToTop();
+    std::optional<RunResult> wayToTop();
     RunResult viewportAfterStop();
     void progress(bool toTop);
     RunResult finishWith(RunResult);
@@ -220,6 +231,7 @@ private:
     double cadenceMs_ = 0;
     int settleNeedMs() const;
     bool afterStop_ = false;   // the viewport is being taken after Stop during scroll-to-top
+    bool toTop_ = false;       // the page is on its way to the top (step 0)
     int64_t lastInjectMs_ = -1;  // when the last wheel step was sent
 };
 }

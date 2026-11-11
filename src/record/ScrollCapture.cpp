@@ -644,6 +644,9 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             // the screen.
             options.hoverMarginRows = std::max(options.hoverMarginRows, int(std::lround(48 * sy)));
             if (!options.away) options.away = RunPoint{width - 1, height - 1};
+            // And Stop on the way to the top keeps the viewport as it is then:
+            // the pointer waits outside between the wheel steps up.
+            options.restAwayToTop = true;
         }
         options.onProgress = [owner, job](const RunProgress& progress) {
             QMetaObject::invokeMethod(owner, [owner, job, progress] {

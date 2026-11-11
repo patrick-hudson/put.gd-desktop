@@ -10,6 +10,7 @@
 #include <QHash>
 #include <QImage>
 #include <QPointer>
+#include <QProcess>
 #include <QUuid>
 #include <QDBusArgument>
 #include <QDBusConnection>
@@ -101,6 +102,8 @@ constexpr auto watcherPath = "/StatusNotifierWatcher";
 constexpr auto notificationService = "org.freedesktop.Notifications";
 constexpr auto notificationPath = "/org/freedesktop/Notifications";
 constexpr int callTimeoutMs = 1500;
+// A dismissal command (notifications::dismissCommand) that has not ended by then is stopped.
+constexpr int dismissTimeoutMs = 900;
 // IDs are 1-based table positions and stay stable; rootOrder sets the display
 // order. An entry with a parent belongs to that entry's submenu. A retired
 // entry keeps its slot, so later IDs don't move, and is unknown on the wire.
@@ -271,7 +274,17 @@ private:
  quint64 notificationGeneration_ = 0;
  QString notificationServer_; // GetServerInformation's name, empty until it answers
  QSet<uint> residentNotifications_; // sent resident (#151): put.gd closes them once used
- QSet<uint> openNotifications_;     // every one sent and not reported closed
+ QHash<uint,QString> openNotifications_; // every one sent and not reported closed, with its summary
+ // closeNotifications(): Notify calls made so far and those it covers; ids it
+ // asked the server to close, answers and dismissals it still waits for.
+ quint64 notifySerial_=0,closeThrough_=0;
+ QSet<uint> closing_;
+ int arriving_=0,dismissing_=0;
+ QList<std::function<void()>> gone_;
+ QTimer closeDeadline_;
+ void sendClose(uint id);
+ void dismissOnScreen(const QStringList& summaries);
+ void closedCheck(bool deadline=false);
  int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_,attentionLabel_="Failed uploads";QHash<QString,QString> shortcuts_;
  QStringList outputs_;
  int delay_=0;
@@ -280,7 +293,7 @@ private:
  QElapsedTimer activationTokenAge_;
  void closeNotification(uint id);
 public:
- int closeNotifications();
+ int closeNotifications(std::function<void()> gone);
 private:
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
@@ -329,7 +342,11 @@ NativeTrayPrivate::NativeTrayPrivate(NativeTray* owner, QDBusConnection bus)
   notificationServer_.clear();queryNotificationServer();
   if(oldOwner.isEmpty())return;
   ++notificationGeneration_;notificationLinks_.clear();notificationActions_.clear();openNotifications_.clear();
+  // The server that held them is gone, and what it showed with it.
+  closing_.clear();arriving_=0;closedCheck();
  });
+ closeDeadline_.setSingleShot(true);
+ connect(&closeDeadline_,&QTimer::timeout,this,[this]{closedCheck(true);});
  bus_.connect(notificationService,notificationPath,notificationService,"ActionInvoked",this,SLOT(notificationActivated(uint,QString)));
  bus_.connect(notificationService,notificationPath,notificationService,"NotificationClosed",this,SLOT(notificationClosed(uint,uint)));
  queryNotificationServer();
@@ -526,26 +543,76 @@ void NativeTrayPrivate::notify(const QString& title, const QString& message, boo
  call.setArguments({QString("put.gd"), uint(0), QString("putgd"), title.left(512), message.left(4096), names, hints, timeout});
  ++notificationsInFlight_;
  const auto generation=notificationGeneration_;
+ const auto serial=++notifySerial_;const auto summary=title.left(512);
  auto* pending = new QDBusPendingCallWatcher(bus_.asyncCall(call, callTimeoutMs), this);
- connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,link,values,resident](QDBusPendingCallWatcher* p) {
+ connect(pending, &QDBusPendingCallWatcher::finished, this, [this,generation,serial,summary,link,values,resident](QDBusPendingCallWatcher* p) {
   const QDBusPendingReply<uint> result=*p;
   --notificationsInFlight_; p->deleteLater();
-  if(generation!=notificationGeneration_||result.isError())return;
+  // closeNotifications() ran before this id was known: it is closed now.
+  const bool late=generation==notificationGeneration_&&serial<=closeThrough_;
+  if(late&&arriving_>0)--arriving_;
+  if(generation!=notificationGeneration_||result.isError()){if(late)closedCheck();return;}
+  if(late){closing_.insert(result.value());sendClose(result.value());dismissOnScreen({summary});closedCheck();return;}
   if(!link.isEmpty())notificationLinks_.insert(result.value(),link);
   if(!values.isEmpty())notificationActions_.insert(result.value(),values);
   if(resident)residentNotifications_.insert(result.value());
   // A server keeps what it showed in a list; the newest few are what can still be on screen.
-  if(openNotifications_.size()<64)openNotifications_.insert(result.value());
+  if(openNotifications_.size()<64)openNotifications_.insert(result.value(),summary);
  });
 }
-int NativeTrayPrivate::closeNotifications() {
+void NativeTrayPrivate::sendClose(uint id) {
+ auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"CloseNotification");
+ call<<id;bus_.asyncCall(call,callTimeoutMs);
+}
+int NativeTrayPrivate::closeNotifications(std::function<void()> gone) {
  const auto open=std::exchange(openNotifications_,{});
- for(const uint id:open){
+ closeThrough_=notifySerial_;arriving_=notificationsInFlight_;
+ QStringList summaries;
+ for(auto it=open.cbegin();it!=open.cend();++it){
+  const uint id=it.key();
   notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);
-  auto call=QDBusMessage::createMethodCall(notificationService,notificationPath,notificationService,"CloseNotification");
-  call<<id;bus_.asyncCall(call,callTimeoutMs);
+  closing_.insert(id);sendClose(id);
+  if(!summaries.contains(it.value()))summaries.append(it.value());
  }
- return int(open.size());
+ const int count=int(open.size())+arriving_;
+ if(count&&gone){gone_.append(std::move(gone));closeDeadline_.start(NativeTray::closeConfirmMs);}
+ dismissOnScreen(summaries);
+ closedCheck();
+ return count;
+}
+// A server that keeps a closed notification on screen is asked in its own way
+// (notifications::dismissCommand), by the process that owns the bus name.
+void NativeTrayPrivate::dismissOnScreen(const QStringList& summaries) {
+ if(summaries.isEmpty()||putgd::notifications::dismissCommand(notificationServer_,1,QStringLiteral("x")).isEmpty())return;
+ auto call=QDBusMessage::createMethodCall("org.freedesktop.DBus","/org/freedesktop/DBus","org.freedesktop.DBus","GetConnectionUnixProcessID");
+ call<<QString(notificationService);
+ ++dismissing_;
+ auto* pending=new QDBusPendingCallWatcher(bus_.asyncCall(call,callTimeoutMs),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,summaries](QDBusPendingCallWatcher* p) {
+  const QDBusPendingReply<uint> owner=*p;p->deleteLater();--dismissing_;
+  for(const auto& summary:summaries){
+   if(owner.isError())break;
+   const auto command=putgd::notifications::dismissCommand(notificationServer_,owner.value(),summary);
+   if(command.isEmpty())continue;
+   auto* process=new QProcess(this);
+   process->setStandardInputFile(QProcess::nullDevice());process->setStandardOutputFile(QProcess::nullDevice());process->setStandardErrorFile(QProcess::nullDevice());
+   ++dismissing_;
+   // Once, whether it ran, could not be started or was stopped below.
+   const auto ended=[this,process]{if(process->property("ended").toBool())return;process->setProperty("ended",true);--dismissing_;process->deleteLater();closedCheck();};
+   connect(process,&QProcess::finished,this,ended);
+   connect(process,&QProcess::errorOccurred,this,[ended](QProcess::ProcessError error){if(error==QProcess::FailedToStart)ended();});
+   QTimer::singleShot(dismissTimeoutMs,process,[process]{process->kill();});
+   process->start(command.first(),command.mid(1));
+  }
+  closedCheck();
+ });
+}
+// Everything asked for has happened, or the deadline says to wait no longer.
+void NativeTrayPrivate::closedCheck(bool deadline) {
+ if(deadline)closing_.clear();
+ if(gone_.isEmpty()||(!deadline&&(!closing_.isEmpty()||arriving_>0||dismissing_>0)))return;
+ closeDeadline_.stop();
+ for(const auto& gone:std::exchange(gone_,{}))QTimer::singleShot(0,q_,gone);
 }
 // A resident notification isn't removed by its server when used; put.gd closes it.
 void NativeTrayPrivate::closeNotification(uint id) {
@@ -569,7 +636,10 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
   if(guard)emit guard->notificationActivated(link);
  });
 }
-void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);openNotifications_.remove(id);}
+void NativeTrayPrivate::notificationClosed(uint id,uint) {
+ notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);openNotifications_.remove(id);
+ if(closing_.remove(id))closedCheck();
+}
 void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {
  percent=qBound(-2,percent,100);
  const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_||glyph!=glyph_;
@@ -763,7 +833,7 @@ void NativeTrayPrivate::setUpdateLabel(const QString& label) {
  signal.setArguments({menuRevision_, 0}); bus_.send(signal);
 }
 void NativeTray::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) { d_->notify(title, message, warning, link, actions); }
-int NativeTray::closeNotifications() { return d_->closeNotifications(); }
+int NativeTray::closeNotifications(std::function<void()> gone) { return d_->closeNotifications(std::move(gone)); }
 }
 #include "NativeTray.moc"
 

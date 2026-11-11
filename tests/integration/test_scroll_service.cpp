@@ -60,6 +60,17 @@ private slots:
  auto held=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto heldId=held.second["id"].toString();QVERIFY(!heldId.isEmpty());QElapsedTimer since;since.start();
  QVERIFY(!call("scroll.start",{{"id",heldId}}).first);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=450,qPrintable(QString::number(since.elapsed())));
  QCOMPARE(ended.size(),0);QVERIFY(!call("scroll.cancel",{{"id",heldId}}).first);QCOMPARE(ended.size(),1);disconnect(hold);
+ // What the hold waited for has happened: said `fromNow`, a long hold ends that much later, also for a start already waiting.
+ backend->started=false;hold=connect(&operations.scroll(),&ScrollCaptureService::preparing,&operations,[&]{operations.scroll().holdStart(4000);});
+ auto moved=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto movedId=moved.second["id"].toString();QVERIFY(!movedId.isEmpty());since.restart();
+ QTimer::singleShot(250,&operations,[&]{operations.scroll().holdStart(200,true);});
+ QVERIFY(!call("scroll.start",{{"id",movedId}}).first);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=400&&since.elapsed()<2500,qPrintable(QString::number(since.elapsed())));
+ QVERIFY(!call("scroll.cancel",{{"id",movedId}}).first);disconnect(hold);
+ // A start the hold keeps back when its session is cancelled is answered, not left waiting.
+ backend->started=false;hold=connect(&operations.scroll(),&ScrollCaptureService::preparing,&operations,[&]{operations.scroll().holdStart(700);});
+ auto dropped=call("scroll.prepare",{{"rect",QJsonArray{0,0,64,64}}});const auto droppedId=dropped.second["id"].toString();QVERIFY(!droppedId.isEmpty());
+ bool answered=false;Error late;operations.scroll().command("start",{{"id",droppedId}},[&](Error e,QJsonObject){late=e;answered=true;});
+ QVERIFY(!call("scroll.cancel",{{"id",droppedId}}).first);QVERIFY(waitFor([&]{return answered;}));QCOMPARE(late.code,QString("scroll_not_found"));QVERIFY(!backend->started);disconnect(hold);
 
  }
 };

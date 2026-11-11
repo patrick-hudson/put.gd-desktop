@@ -52,6 +52,8 @@ const context = {
     Meta: {TabList: {NORMAL_ALL: 2}},
 };
 // Direct eval captures only these deliberately mocked Shell dependencies.
+// Mtk only names the pixel the scroll capture's beat queues for redraw.
+const Mtk = {Rectangle: class {constructor(fields) {Object.assign(this, fields);}}};
 const {Clutter, Gio, GLib, Shell, GObject, St, Extension, Main, global, Meta} = context;
 eval(source);
 context.PutgdExtension = globalThis.PutgdExtension;
@@ -537,6 +539,37 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     const foreign = bridge(extension, 'ShowRecordingFrameAsync', [frame('ready')]);
     for (let i = 0; i < 41; i++) {await flush(); tick(50);}
     assert.deepEqual((await foreign).bar, {placed: false, outside: false}); assert.equal(moved, null);
+    // A scroll capture's frame beats (#1376): while it shows, one pixel at the area's corner is queued
+    // for redraw every 40 ms, so Mutter's area stream has damage to send a frame for; no actor is added
+    // for it, a new frame replaces the timer, and hiding the frame ends it. Other frames never beat.
+    parent = residentPid;
+    const queued = [];
+    context.global.stage = {width: 1920, height: 1080, queue_redraw_with_clip(clip) {queued.push([clip.x, clip.y, clip.width, clip.height]);}};
+    const beating = state => JSON.stringify({rect: area, kind: 'region', state, pid: helperPid, beat: true});
+    const beats = () => [...timers.values()].filter(timer => timer.delay === 40);
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]));
+    assert.equal(beats().length, 0);
+    const plain = context.Main.uiGroup.get_children().length;
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [beating('ready')]));
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [beating('recording')]));
+    assert.equal(beats().length, 1);
+    assert.equal(context.Main.uiGroup.get_children().length, plain);
+    queued.length = 0;
+    assert.equal(beats()[0].callback(), true);
+    assert.deepEqual(queued, [[area[0], area[1], 1, 1]]);
+    // A stage that refuses the clip is redrawn whole rather than not at all.
+    let wholeStage = 0;
+    context.global.stage = {width: 1920, height: 1080, queue_redraw_with_clip() {throw new Error('no clip');}, queue_redraw() {wholeStage++;}};
+    assert.equal(beats()[0].callback(), true);
+    assert.equal(wholeStage, 1);
+    assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state: 'ready', beat: 1})])).error.code, 'bridge_protocol');
+    assert.equal(beats().length, 1);
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [frame('recording')]));
+    assert.equal(beats().length, 0);
+    await settle(bridge(extension, 'ShowRecordingFrameAsync', [beating('recording')]));
+    assert.equal(beats().length, 1);
+    context.global.stage = {width: 1920, height: 1080};
+    parent = 4321;
     assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: [0, 0, 0, 10], kind: 'region', state: 'ready'})])).error.code, 'bridge_protocol');
     assert.equal((await bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: area, kind: 'region', state: 'exporting'})])).error.code, 'bridge_protocol');
     assert.deepEqual(await bridge(extension, 'HideRecordingFrameAsync', []), {});

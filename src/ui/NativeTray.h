@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include "IconArt.h"
 #include <QDBusConnection>
 #include <QObject>
@@ -32,9 +33,16 @@ public:
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
  // Closes every notification this tray sent that its server has not reported
- // closed (CloseNotification), buttons and links with them; how many it asked for.
+ // closed (CloseNotification), buttons and links with them; how many it asked for,
+ // those whose Notify has not been answered yet included (they are closed when
+ // their ids arrive). Where the server leaves a closed notification on screen
+ // it is dismissed there as well (notifications::dismissCommand).
  // A scroll capture clears the screen of put.gd's own notices this way (#1376).
- int closeNotifications();
+ // `gone` is called once, when the server has reported all of them closed and
+ // every dismissal has run, or closeConfirmMs after the call; never when
+ // there was nothing to close.
+ int closeNotifications(std::function<void()> gone = {});
+ static constexpr int closeConfirmMs = 1000;
  // expire_timeout for a notification on this server (GetServerInformation name):
  // 10 s, or 0 (until used or dismissed) for buttons the server would otherwise lose.
  static int notificationTimeoutMs(const QString& server, bool actions);

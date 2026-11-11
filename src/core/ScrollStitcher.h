@@ -180,7 +180,7 @@ class ScrollStitcher {
     int evaluated = 0;
   };
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
-  int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates) const;
+  int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates, bool exact) const;
   void emitRows(const FrameView& f, int y0, int y1);
   void emitRaw(const uint8_t* row);
   void storeFooter(const FrameView& f);

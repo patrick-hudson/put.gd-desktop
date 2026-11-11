@@ -117,7 +117,8 @@ private:
  struct HeldNotice { QString code, title, message; bool warning = false; QUrl link; QString diagnosticsOperation, revealPath, diagnosticsLabel; };
  QList<HeldNotice> heldNotices_;
  bool holdNotices_ = false;
- int closeOwnNotifications();
+ // `gone`: see NativeTray::closeNotifications.
+ int closeOwnNotifications(std::function<void()> gone={});
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();void refreshMenu();void cancelUploads();
  void flashError();void acknowledgeFailures();

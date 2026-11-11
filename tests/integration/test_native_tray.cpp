@@ -4,6 +4,7 @@
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/FakeScrollBackend.h"
 #include "core/Log.h"
+#include "core/NotificationServer.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QDBusArgument>
@@ -86,8 +87,11 @@ class NotificationPeer final : public QObject {
 public:
  QList<QVariantMap> values;
  QString server; int serverQueries = 0; QList<uint> closed;
+ // A real server reports a notification it was asked to close (reason 3). Off by
+ // default: older cases here use a closed notification's buttons afterwards.
+ bool confirmClose = false;
 public slots:
- void CloseNotification(uint id) { closed.append(id); }
+ void CloseNotification(uint id) { closed.append(id); if (confirmClose) emit NotificationClosed(id, 3); }
  QString GetServerInformation(QString& vendor, QString& version, QString& spec) {
   ++serverQueries; vendor = "Synthetic"; version = "1"; spec = "1.2"; return server;
  }
@@ -763,16 +767,18 @@ private slots:
   OperationService operations(directory.filePath("data"),settings,providers,source);
   auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();
+  notifications.confirmClose=true;const auto unconfirmed=qScopeGuard([&]{notifications.confirmClose=false;});
   emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic first notice."}});
   PUTGD_TRY_COMPARE(notifications.values.size(),before+1);const uint open=uint(notifications.values.size());putgd::test::settle(50);
   notifications.closed.clear();QString id;Error refused;bool answered=false;
   operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
   PUTGD_TRY_VERIFY(answered);QVERIFY2(!refused,qPrintable(refused.message));QVERIFY(!id.isEmpty());
   PUTGD_TRY_COMPARE(notifications.closed,QList<uint>{open});
-  // The start waits for the closed notice to leave the screen.
+  // The start waits for the closed notice to leave the screen: half a second
+  // from the server's word that it is closed, not the whole wait for that word.
   QElapsedTimer since;since.start();bool started=false;
   operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});
-  QVERIFY(!backend->started);PUTGD_TRY_VERIFY(started);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=400,qPrintable(QString::number(since.elapsed())));
+  QVERIFY(!backend->started);PUTGD_TRY_VERIFY(started);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=400&&since.elapsed()<1100,qPrintable(QString::number(since.elapsed())));
   // A notice while the capture runs is kept back.
   emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic second notice."}});
   PUTGD_COMPARE_STEADY(notifications.values.size(),before+1,150);
@@ -784,6 +790,49 @@ private slots:
   PUTGD_TRY_VERIFY(answered);QVERIFY(!refused);since.restart();started=false;
   operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});PUTGD_TRY_VERIFY(started);QVERIFY(since.elapsed()<300);QVERIFY(notifications.closed.isEmpty());
   cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+  // A server that never says "closed": the start waits out the confirmation time, then the same half second.
+  notifications.confirmClose=false;const auto quiet=notifications.values.size();
+  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic third notice."}});
+  PUTGD_TRY_COMPARE(notifications.values.size(),quiet+1);putgd::test::settle(50);notifications.closed.clear();answered=false;backend->started=false;
+  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
+  PUTGD_TRY_VERIFY(answered);QVERIFY(!refused);since.restart();started=false;
+  operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});
+  PUTGD_TRY_VERIFY(started);QVERIFY2(since.elapsed()>=NativeTray::closeConfirmMs+300&&since.elapsed()<NativeTray::closeConfirmMs+1200,qPrintable(QString::number(since.elapsed())));
+  QCOMPARE(notifications.closed,QList<uint>{uint(notifications.values.size())});
+  cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+ }
+ void scrollCaptureDismissesNoticesAServerKeepsOnScreen() {
+  // #1376, Omarchy 4.5: its quickshell server answers CloseNotification with
+  // NotificationClosed and keeps the card on screen, and the next capture had
+  // it in its picture. There the shell's own IPC is called too, for the
+  // process that owns the bus name, once per summary; and a notice whose
+  // Notify is still unanswered when the capture is prepared is closed and
+  // dismissed when its id arrives. A stand-in `qs` records what it is asked.
+  QTemporaryDir directory;QVERIFY(directory.isValid());
+  QFile script(directory.filePath("qs"));QVERIFY(script.open(QIODevice::WriteOnly));
+  script.write(("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+directory.filePath("asked")+"'\n").toUtf8());script.close();
+  QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  const auto path=qgetenv("PATH");qputenv("PATH",QFile::encodeName(directory.path())+":"+path);
+  notifications.confirmClose=true;
+  const auto restore=qScopeGuard([&]{qputenv("PATH",path);notifications.server.clear();notifications.confirmClose=false;});
+  const auto asked=[&]{QFile file(directory.filePath("asked"));return file.open(QIODevice::ReadOnly)?QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts):QStringList{};};
+  notifications.server="quickshell";
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());PUTGD_TRY_VERIFY(notifications.serverQueries>0);putgd::test::settle(50);
+  const auto before=notifications.values.size();
+  tray.notify("Upload complete","first");tray.notify("Upload complete","second");tray.notify("put.gd — scrolling capture stopped","third",true);
+  PUTGD_TRY_COMPARE(notifications.values.size(),before+3);putgd::test::settle(50);notifications.closed.clear();
+  // A fourth is on its way when the screen is cleared.
+  tray.notify("Saved locally","fourth");
+  int gone=0;QCOMPARE(tray.closeNotifications([&]{++gone;}),4);
+  PUTGD_TRY_COMPARE(gone,1);QCOMPARE(notifications.closed.size(),4);
+  const auto owner=QString::number(QCoreApplication::applicationPid());
+  auto calls=asked();calls.sort();
+  QCOMPARE(calls,QStringList({"ipc --pid "+owner+" call notifications dismiss Saved locally","ipc --pid "+owner+" call notifications dismiss Upload complete","ipc --pid "+owner+" call notifications dismiss put.gd — scrolling capture stopped"}));
+  // Nothing open: nothing is asked and nothing is reported.
+  QCOMPARE(tray.closeNotifications([&]{++gone;}),0);putgd::test::settle(100);QCOMPARE(gone,1);QCOMPARE(asked().size(),3);
+  // Other servers are not asked that way.
+  QCOMPARE(putgd::notifications::dismissCommand("Plasma",42,"Upload complete"),QStringList{});QCOMPARE(putgd::notifications::dismissCommand("gnome-shell",42,"Upload complete"),QStringList{});
+  QCOMPARE(putgd::notifications::dismissCommand("quickshell",0,"Upload complete"),QStringList{});QCOMPARE(putgd::notifications::dismissCommand("quickshell",42,"--help"),QStringList{});
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

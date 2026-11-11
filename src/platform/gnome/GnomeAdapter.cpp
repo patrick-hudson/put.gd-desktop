@@ -339,8 +339,13 @@ void GnomeAdapter::selectRegionImpl(RecordingShell::Reply reply,bool scroll){
 }
 void GnomeAdapter::cancelSelection(){if(recordingSelection_.isEmpty())return;const auto id=std::exchange(recordingSelection_,QString{});release(id);}
 void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){showFrameImpl(frame,std::move(reply),false);}
-void GnomeAdapter::showFrameImpl(const QJsonObject& frame,RecordingShell::Reply reply,bool scroll){
+void GnomeAdapter::showFrameImpl(const QJsonObject& shown,RecordingShell::Reply reply,bool scroll){
  if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+ // A scroll capture reads its frames from Mutter's area stream, which sends
+ // one only for damage inside the area: the Shell keeps one pixel of it
+ // repainting while the frame shows, or a page that has come to rest gives
+ // no frame to prove it (the extension's RecordingFrame has the measurement).
+ auto frame=shown;if(scroll)frame["beat"]=true;
  // The extension waits up to two seconds for the bar window to map before placing it.
  call("ShowRecordingFrame",{json(frame)},std::move(reply),4000);
 }

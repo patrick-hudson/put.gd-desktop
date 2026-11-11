@@ -18,12 +18,22 @@ Error invalid(){return {"invalid_request","Invalid scrolling capture parameters"
 bool rect(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;const auto a=v.toArray();for(const auto& n:a)if(!n.isDouble()||n.toDouble()!=n.toInteger()||qAbs(n.toDouble())>1000000)return false;return a[2].toInt()>=64&&a[3].toInt()>=64;}
 bool fields(const QJsonObject& p,QStringList allowed){for(auto i=p.begin();i!=p.end();++i)if(!allowed.contains(i.key()))return false;return true;}
 }
-ScrollCaptureService::ScrollCaptureService(QString root,Host host,QObject* parent):QObject(parent),root_(std::move(root)),host_(std::move(host)){clock_.start();QDir().mkpath(root_);QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);RecordingService::discardStaging(root_);setBackend(std::make_unique<UnavailableScrollBackend>());}
+ScrollCaptureService::ScrollCaptureService(QString root,Host host,QObject* parent):QObject(parent),root_(std::move(root)),host_(std::move(host)){clock_.start();holdTimer_.setSingleShot(true);connect(&holdTimer_,&QTimer::timeout,this,&ScrollCaptureService::releaseHeld);QDir().mkpath(root_);QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);RecordingService::discardStaging(root_);setBackend(std::make_unique<UnavailableScrollBackend>());}
 ScrollCaptureService::~ScrollCaptureService(){shutdown();}
 void ScrollCaptureService::setBackend(std::unique_ptr<ScrollBackend> backend){if(active())return;backend_=std::move(backend);QPointer<ScrollCaptureService> g(this);backend_->setEventSink([g](QJsonObject e){if(g)QMetaObject::invokeMethod(g,[g,e]{if(g)g->event(e);},Qt::QueuedConnection);});}
 QJsonObject ScrollCaptureService::capabilities()const{auto c=backend_->capabilities();if(c["reason"]=="scroll_not_probed"||c["reason"]=="scroll_probe_pending"||c["reason"]=="scroll_probe_failed")backend_->refreshCapabilities([]{});c["maxHeight"]=host_.settings().scrollCaptureMaxHeight;return c;}
 void ScrollCaptureService::update(QString state){if(shell_&&view_.contains("rect")&&(state=="capturing"||state=="ready"))shell_->showFrame({{"rect",view_["rect"]},{"kind","region"},{"state",state=="capturing"?"recording":"ready"},{"pid",double(backend_->processId(id_))}},[](Error,QJsonObject){});view_["state"]=state;op_.phase=state;host_.observe(op_);}
-void ScrollCaptureService::holdStart(int ms){notBefore_=std::max(notBefore_,clock_.elapsed()+std::clamp(ms,0,5000));}
+void ScrollCaptureService::holdStart(int ms,bool fromNow){
+ const qint64 until=clock_.elapsed()+std::clamp(ms,0,5000);
+ notBefore_=fromNow?until:std::max(notBefore_,until);
+ if(held_)holdTimer_.start(int(std::max<qint64>(0,notBefore_-clock_.elapsed())));
+}
+// The hold is over, or was moved: the command it kept back runs, or waits on.
+void ScrollCaptureService::releaseHeld(){
+ if(!heldRun_)return;
+ if(clock_.elapsed()<notBefore_){holdTimer_.start(int(notBefore_-clock_.elapsed()));return;}
+ held_=false;std::exchange(heldRun_,{})();
+}
 void ScrollCaptureService::invoke(bool edit,JsonReply reply){if(active()){command("stop",{{"id",id_}},reply);return;}prepare({},edit,true,reply);}
 void ScrollCaptureService::prepare(QJsonObject p,bool edit,bool autoStart,JsonReply reply){
  QPointer<ScrollCaptureService> g(this);
@@ -37,7 +47,9 @@ void ScrollCaptureService::prepareProbed(QJsonObject p,bool edit,bool autoStart,
  if(!capabilities()["available"].toBool()){reply({"scroll_unavailable","Scrolling capture is unavailable",{{"reason",capabilities()["reason"]}}},{});return;}
  if(shell_&&!shell_->selectsRegions()){reply(shell_->regionError(),{});return;}
  op_={};op_.action=edit?"edit":"scroll";if(auto e=host_.accept(op_)){reply(e,{});return;}
- edit_=edit;id_=op_.id;notBefore_=0;held_=false;emit preparing();directory_=root_+"/"+id_;QDir().mkpath(directory_);QFile::setPermissions(directory_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+ // A command an earlier session's hold still keeps back is answered now: its session has ended.
+ notBefore_=0;holdTimer_.stop();releaseHeld();
+ edit_=edit;id_=op_.id;held_=false;emit preparing();directory_=root_+"/"+id_;QDir().mkpath(directory_);QFile::setPermissions(directory_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  op_.state="acquiring";view_={{"id",id_},{"operationId",id_},{"state","preparing"},{"height",0},{"steps",0},{"pixelsPerNotch",0}};
  const auto settings=op_.settings;p["maxHeight"]=p["maxHeight"].toInt(settings.scrollCaptureMaxHeight);p["fromTop"]=settings.scrollCaptureFromTop;p["autoStart"]=autoStart;
  p["maxPixels"]=double(std::min<qint64>({settings.limits.imagePixels,settings.limits.imageBytes/4,edit?EditorJob::admissionPixels:settings.limits.imagePixels}));
@@ -60,8 +72,9 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  // What was taken off the screen for this capture gets its time to go before a frame can be read.
  if((cmd=="start"||cmd=="select")&&clock_.elapsed()<notBefore_){
   if(held_){reply({"scroll_busy","A scroll command is pending",{}},{});return;}
-  held_=true;QPointer<ScrollCaptureService> g(this);
-  QTimer::singleShot(int(notBefore_-clock_.elapsed()),this,[g,id,cmd,p,reply]{if(!g)return;if(g->id_!=id){reply({"scroll_not_found","Session ended",{}},{});return;}g->held_=false;g->notBefore_=0;g->command(cmd,p,reply);});
+  held_=true;
+  heldRun_=[this,id,cmd,p,reply]{if(id_!=id){reply({"scroll_not_found","Session ended",{}},{});return;}notBefore_=0;command(cmd,p,reply);};
+  holdTimer_.start(int(notBefore_-clock_.elapsed()));
   return;
  }
  // GNOME: `ready` is answered while the Shell still places the bar. A start

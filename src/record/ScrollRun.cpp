@@ -47,19 +47,29 @@ bool ScrollRun::park() {
 // have moved the mouse, and the wheel goes to whatever is under the pointer.
 bool ScrollRun::inject(int notches) {
     if (stopped()) return false;
+    // On the way to the top of a desktop that paints the pointer into the
+    // frames, the pointer is in the rectangle only for the wheel step itself.
+    const bool visit = toTop_ && opts_.restAwayToTop && opts_.pointer && opts_.away && haveFrame_;
+    // Stop found the pointer inside: no wheel step follows, the pointer leaves.
+    const auto leave = [&] {
+        parked_ = -1;
+        return injector_.movePointer(opts_.away->x, opts_.away->y);
+    };
     if (opts_.pointer && haveFrame_) {
         if (!park()) return false;
         if (parked_ != stats_.parkPosition) {
             // It just arrived here: let the application see it enter, then say it again.
             parked_ = stats_.parkPosition;
             clock_.sleepMs(opts_.pointerSettleMs);
-            if (stopped() || !park()) return false;
+            if (stopped()) { if (visit) leave(); return false; }
+            if (!park()) return false;
         }
     }
-    if (stopped()) return false;
+    if (stopped()) { if (visit) leave(); return false; }
     stats_.notchesInjected += std::abs(notches);
     lastInjectMs_ = clock_.nowMs();
-    return injector_.scroll(notches);
+    const bool sent = injector_.scroll(notches);
+    return visit ? leave() && sent : sent;
 }
 
 ScrollRun::Screen ScrollRun::screenIsAsSeen() {
@@ -219,6 +229,13 @@ int ScrollRun::planNotches() const {
 
 // Step 0. No stitching here, only frame comparison: the capture has not begun.
 std::optional<RunResult> ScrollRun::scrollToTop() {
+    toTop_ = true;
+    const auto result = wayToTop();
+    toTop_ = false;
+    return result;
+}
+
+std::optional<RunResult> ScrollRun::wayToTop() {
     if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return f;
     settledSig_ = lastSig_;
     progress(true);
@@ -280,7 +297,9 @@ std::optional<RunResult> ScrollRun::scrollToTop() {
 // from before them; real desktop run of 2026-11-10), so the image is a frame
 // grabbed from the screen after the last injection that a second look agrees
 // with. The pointer stays where it was parked, so a hover effect under it can
-// be in this image; moving it away would be an injection after Stop.
+// be in this image; moving it away would be an injection after Stop. Where the
+// compositor paints the pointer itself into the frames (restAwayToTop) it was
+// never left in the rectangle between two wheel steps, so it is not in this one.
 RunResult ScrollRun::viewportAfterStop() {
     if (!haveFrame_ || (opts_.discarded && opts_.discarded())) return RunResult::Stopped;
     afterStop_ = true;

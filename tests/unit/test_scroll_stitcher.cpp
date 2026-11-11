@@ -738,6 +738,25 @@ Image marginNumberedLines(int width, int lines, int pitch, bool distinct, bool w
   return img;
 }
 
+// The same file in a 1,260 px window (margin 50 px) with the number cut by the
+// margin's edge, as Qt drew `Row 0042` on Budgie: thousands, hundreds and tens
+// inside the margin, the units digit and the words beside it.
+Image straddlingNumberedLines(int width, int lines, int pitch) {
+  Image img(width, lines * pitch + 8, kBg);
+  for (int i = 0; i < lines; ++i) {
+    const int y = 4 + i * pitch;
+    Rng same(77), row(55);
+    drawTextLine(img, y, 62, 208, same);
+    drawTextLine(img, y, 5, 22, row);
+    int n = i;
+    for (int cell = 3; cell >= 0; --cell, n /= 10) {
+      Rng digit(1000 + uint64_t(n % 10));
+      drawTextLine(img, y, 30 + cell * 7, 30 + cell * 7 + 6, digit);  // 30, 37, 44 | 51
+    }
+  }
+  return img;
+}
+
 // Two frames given as images.
 Pair pairFrames(const Image& a, const Image& b, int hint, int unc = 0) {
   ScrollStitcher st;
@@ -828,6 +847,50 @@ void testMarginRule() {
       if (!good) det += fmt(" d%d:%s/%d", d, toString(n.r.status), n.r.offset);
     }
     report("all the ink inside the side margin, no hint", ok == total, fmt("%d/%d verified at the true offset%s", ok, total, det.c_str()));
+  }
+  {
+    // A number cut in two by the margin's edge (Budgie, lab guest of
+    // 2026-11-11: a 1,260 px Qt text view ended as "lost track" after one
+    // viewport, 3 of 3, `Ambiguous offset 4 ... score 1.00 evidence 455`).
+    // Ten lines away only the margin differs, three lines away mostly the
+    // compared columns: the first step of a capture, which has no hint, must
+    // still be the true offset, proved.
+    const int w = 1260, v = 600, p = 17;
+    ViewportSpec narrow;
+    narrow.width = w;
+    narrow.height = v;
+    const Image doc = straddlingNumberedLines(w, 1500, p);
+    Renderer rend(doc, narrow);
+    int ok = 0, total = 0;
+    std::string det;
+    for (int d : {13, 17, 51, 55, 306, 340})
+      for (int p0 : {0, 4 + 96 * p, 4 + 1017 * p + 5}) {
+        const Pair n = pairStep(rend, p0, p0 + d, kNoHint);
+        ++total;
+        const bool good = n.r.status == StepStatus::Appended && n.r.offset == d && !n.r.lowConfidence;
+        ok += good;
+        if (!good) det += fmt(" p%d d%d:%s/%d", p0, d, toString(n.r.status), n.r.offset);
+      }
+    report("a number cut by the margin's edge, no hint: the exact offset", ok == total, fmt("%d/%d verified at the true offset%s", ok, total, det.c_str()));
+    const Pair back = pairStep(rend, 4 + 300 * p, 4 + 297 * p, kNoHint);
+    report("a number cut by the margin's edge, three lines back", back.r.status == StepStatus::Reversed && back.r.offset == -3 * p, fmt("%s offset=%d", toString(back.r.status), back.r.offset));
+    // The whole file through the loop, as the lab ran it: from the top, with
+    // the pointer rules, three lines and the document's margin for the first notch.
+    FakeAppSpec as;
+    as.pxPerNotch = 3 * p;
+    FakeClock clock;
+    FakeApp app(doc, narrow, as, clock);
+    RunOptions so;
+    so.stitch.maxOutputRows = doc.h + 100;
+    so.pointer = true;
+    so.away = RunPoint{w + 16, v / 3};
+    so.fromTop = true;
+    ScrollRun run(app, app, clock, so);
+    const RunResult res = run.run();
+    const std::vector<uint8_t> img = run.stitcher().takeImage();
+    const Cmp c = compare(img, run.stats().outputRows, doc, 0, w);
+    report("a number cut by the margin's edge, the whole file", res == RunResult::EndOfContent && c.mismatches == 0 && c.heightOk && run.stats().lowConfidenceSteps == 0,
+           fmt("%s, rows %d of %d, steps %d, low-confidence %d, first bad %d", toString(res), run.stats().outputRows, doc.h, run.stats().steps, run.stats().lowConfidenceSteps, c.firstBad));
   }
   {
     // What the margins must not decide. Lines that are all the same, numbers
@@ -1662,6 +1725,114 @@ void testPointerRules() {
     report("session stop during scroll to top keeps the viewport",
            res == RunResult::Stopped && run.stats().stoppedAtTop && run.stats().outputRows == V && c.mismatches == 0 && c.heightOk && wheels == 2 && app.events.back().kind == 's' && at > 0 && at < 2600,
            fmt("%s, rows %d, page at %d, wheel events %d, first bad %d", toString(res), run.stats().outputRows, at, wheels, c.firstBad));
+  }
+  {
+    // A desktop that paints the pointer into the frames (Hyprland composites a
+    // software cursor; lab guest of 2026-11-11: Stop on the way to the top
+    // returned the right rows with the arrow in them). Here whatever is under
+    // the pointer is painted over, a band across the page. With the rule the
+    // pointer is outside whenever no wheel step is being sent, and the kept
+    // viewport is the page alone; the wheel steps still arrive, and the last
+    // thing sent is the pointer's way out, with no wheel step behind it.
+    for (int rule = 1; rule >= 0; --rule) {
+      static std::atomic<bool> stop;
+      stop.store(false);
+      DocSpec ds;
+      ds.viewport = V;
+      ds.width = W;
+      Document doc = makeDocument(ds);
+      ViewportSpec vs;
+      vs.width = W;
+      vs.height = V;
+      // A start from which the page comes to rest with paper under the pointer, so the band shows.
+      const RunPoint park = ScrollRun::parkPoint(0, W, V);
+      int start = 2600;
+      const auto paperUnderPointer = [&](int at) {
+        for (int y = at + park.y - 9; y < at + park.y + 9; ++y)
+          for (int x = 0; x < W - 12; ++x)
+            if (doc.img.at(x, y) == kBg) return true;
+        return false;
+      };
+      while (!paperUnderPointer(start - 2 * 10 * 53)) start += 53;
+      FakeAppSpec as;
+      as.pxPerNotch = 53;
+      as.startPos = start;
+      as.pointerHover = true;
+      as.wheelArea = Rect{0, 0, W, V};  // the wheel reaches the page only with the pointer on it
+      as.cancelAfterInjections = 1;
+      as.cancelFlag = &stop;
+      FakeClock clock;
+      FakeApp app(doc.img, vs, as, clock);
+      RunOptions so;
+      so.pointer = true;
+      so.away = away;
+      so.fromTop = true;
+      so.restAwayToTop = rule;
+      ScrollRun run(app, app, clock, so);
+      const RunResult res = run.run(&stop);
+      const std::vector<uint8_t> img = run.stitcher().takeImage();
+      const int at = app.positionNow();
+      int wheels = 0, lastWheel = -1;
+      for (size_t i = 0; i < app.events.size(); ++i)
+        if (app.events[i].kind == 's') { ++wheels; lastWheel = int(i); }
+      // Behind the last wheel step: nothing, or with the rule the one motion out.
+      const bool tail = rule ? lastWheel + 2 == int(app.events.size()) && app.events.back().kind == 'm' && app.events.back().a == away.x : lastWheel + 1 == int(app.events.size());
+      Image view(W, V);
+      if (at >= 0 && at + V <= doc.img.h) std::memcpy(view.px.data(), doc.img.row(at), size_t(W) * V * 4);
+      const Cmp c = compare(img, run.stats().outputRows, view, 0, W);
+      const bool common = res == RunResult::Stopped && run.stats().stoppedAtTop && run.stats().outputRows == V && c.heightOk && wheels == 2 && tail && at == start - 2 * 10 * 53;
+      if (rule)
+        report("session stop during scroll to top, painted pointer: the viewport without it", common && c.mismatches == 0,
+               fmt("%s, rows %d, page at %d, wheel events %d, events %zu, first bad %d", toString(res), run.stats().outputRows, at, wheels, app.events.size(), c.firstBad));
+      else
+        // Without the rule the band under the parked pointer is in the image: the test sees what it is for.
+        report("session stop during scroll to top, painted pointer, rule off: the pointer's band is in the image", common && c.mismatches > 0,
+               fmt("%s, rows %d, mismatching pixels %lld, first bad %d", toString(res), run.stats().outputRows, c.mismatches, c.firstBad));
+    }
+  }
+  {
+    // Stop between the pointer's entry and its wheel step: no wheel step is
+    // sent, the pointer leaves, and the viewport is again the page alone.
+    static std::atomic<bool> stop;
+    stop.store(false);
+    struct StopClock final : FakeClock {
+      int settles = 0;
+      void sleepMs(int ms) override {
+        if (ms == RunOptions().pointerSettleMs && ++settles == 2) stop.store(true);
+        FakeClock::sleepMs(ms);
+      }
+    } clock;
+    DocSpec ds;
+    ds.viewport = V;
+    ds.width = W;
+    Document doc = makeDocument(ds);
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    FakeAppSpec as;
+    as.pxPerNotch = 53;
+    as.startPos = 2600;
+    as.pointerHover = true;
+    as.wheelArea = Rect{0, 0, W, V};
+    FakeApp app(doc.img, vs, as, clock);
+    RunOptions so;
+    so.pointer = true;
+    so.away = away;
+    so.fromTop = true;
+    so.restAwayToTop = true;
+    ScrollRun run(app, app, clock, so);
+    const RunResult res = run.run(&stop);
+    const std::vector<uint8_t> img = run.stitcher().takeImage();
+    const int at = app.positionNow();
+    int wheels = 0;
+    for (const auto& e : app.events) wheels += e.kind == 's';
+    Image view(W, V);
+    if (at >= 0 && at + V <= doc.img.h) std::memcpy(view.px.data(), doc.img.row(at), size_t(W) * V * 4);
+    const Cmp c = compare(img, run.stats().outputRows, view, 0, W);
+    report("session stop while the pointer enters, painted pointer: no wheel step, the pointer leaves",
+           res == RunResult::Stopped && run.stats().stoppedAtTop && run.stats().outputRows == V && c.mismatches == 0 && c.heightOk && wheels == 1 && at == 2600 - 10 * 53 &&
+               app.events.back().kind == 'm' && app.events.back().a == away.x,
+           fmt("%s, rows %d, page at %d, wheel events %d, last event %c %d, first bad %d", toString(res), run.stats().outputRows, at, wheels, app.events.back().kind, app.events.back().a, c.firstBad));
   }
   {
     // The same on a stream that has gone quiet (KWin's region stream sent
