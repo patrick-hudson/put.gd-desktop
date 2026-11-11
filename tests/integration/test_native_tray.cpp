@@ -829,7 +829,7 @@ private slots:
   auto calls=asked();calls.sort();
   QCOMPARE(calls,QStringList({"ipc --pid "+owner+" call notifications dismiss Saved locally","ipc --pid "+owner+" call notifications dismiss Upload complete","ipc --pid "+owner+" call notifications dismiss put.gd — scrolling capture stopped"}));
   // Nothing open: nothing is asked and nothing is reported.
-  QCOMPARE(tray.closeNotifications([&]{++gone;}),0);putgd::test::settle(100);QCOMPARE(gone,1);QCOMPARE(asked().size(),3);
+  QCOMPARE(tray.closeNotifications([&]{++gone;}),0);PUTGD_COMPARE_STEADY(gone,1,150);QCOMPARE(asked().size(),3);
   // Other servers are not asked that way.
   QCOMPARE(putgd::notifications::dismissCommand("Plasma",42,"Upload complete"),QStringList{});QCOMPARE(putgd::notifications::dismissCommand("gnome-shell",42,"Upload complete"),QStringList{});
   QCOMPARE(putgd::notifications::dismissCommand("quickshell",0,"Upload complete"),QStringList{});QCOMPARE(putgd::notifications::dismissCommand("quickshell",42,"--help"),QStringList{});
