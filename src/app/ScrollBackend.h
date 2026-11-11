@@ -39,9 +39,14 @@ public:
     //   selected  {rect: [x, y, w, h]}                    the user finished the drag
     //   progress  {state: "scrollingToTop"|"capturing", height, steps, pixelsPerNotch}
     //   finished  {path, bytes, sha256, width, height,
-    //              endReason: "end_of_content"|"height_cap"|"stopped"|"lost_track"|"time_limit",
-    //              truncated, appliedMaxHeight,
+    //              endReason: "end_of_content"|"height_cap"|"stopped"|"lost_track"|"time_limit"|"top_not_reached",
+    //              truncated, appliedMaxHeight, topReached?: false,
     //              stats: {steps, pixelsPerNotch, lowConfidenceSteps, elapsedMs}}
+    //             end_of_content is the whole scroll area, top to bottom. With
+    //             fromTop on, a capture whose scroll-to-top step could not
+    //             prove the top carries topReached: false, whatever ended it;
+    //             one that then ran to the end of the content ends as
+    //             top_not_reached (truncated), never as end_of_content.
     //   cancelled {}                                      Cancel on the bar, Esc in the selector, or a
     //                                                     stop before the first frame was stitched
     //   failed    {error: {code, message, details}}

@@ -111,11 +111,35 @@ struct RunOptions {
     // it enter first. (On GNOME a step sent right after the first motion went
     // nowhere; lab probe of 2026-11-10.)
     int pointerSettleMs = 60;
-    // Step 0: wheel up in steps of this many notches until two settled frames
-    // in a row are the same, for at most toTopLimitMs (inside the total limit).
+    // Step 0: wheel up until the top is proved: two checked steps in a row
+    // that moved nothing, and a fresh frame that agrees. The way up takes what
+    // the page needs, at most toTopLimitMs and at most half of the total limit,
+    // so that a capture can still follow. (It was 15 s whatever the page: a
+    // 27,000 px text view on a Hyprland guest needed 17 s, and the capture
+    // then began at line 78 and ended as "end of content"; final pass of
+    // 2026-11-11.) When the top cannot be proved the way up gives up, the
+    // capture goes on from where the page is, and RunStats::reachedTop is
+    // false with the reason in RunStats::toTopGaveUp: never silently.
     bool fromTop = false;
     int toTopNotches = 10;
-    int toTopLimitMs = 15000;
+    int toTopLimitMs = 90000;
+    // While the page keeps moving the wheel steps grow, doubled at every check
+    // that found it moved, up to this many notches. A larger step that moved
+    // nothing proves nothing (an application may refuse an oversized wheel
+    // event): the top is proved with steps of toTopNotches only.
+    int toTopMaxNotches = 40;
+    // Between two checks the next wheel step is sent as soon as the picture
+    // begins to change, without waiting for it to settle; every
+    // toTopCheckEvery-th step is a check: the picture settles and is compared
+    // with the one at the check before. A check that finds the page where it
+    // was although the steps in between looked like movement (something
+    // changes in place: a pointer painted into the frames, a hover effect)
+    // ends the quick steps for this run. 1: every step is a check.
+    int toTopCheckEvery = 4;
+    // A page that never comes to rest (a video, an animation) cannot be told
+    // from one that still scrolls: when no check has found the picture settled
+    // for this long, the way up gives up.
+    int toTopRestlessMs = 15000;
     // The frames show the mouse pointer whatever the stream was asked for
     // (Hyprland composites a software cursor into the output, and every copy
     // of the output has it; lab guest of 2026-11-11, where Stop on the way to
@@ -143,6 +167,7 @@ struct RunOptions {
 
 enum class RunResult {
     EndOfContent,    // the content stopped moving: the whole scroll area is in the image
+    TopNotReached,   // the content stopped moving, but scroll-to-top had not proved the top: the image starts partway down
     LimitReached,    // maxOutputRows
     Stopped,         // the stop flag
     TimeLimit,
@@ -171,7 +196,12 @@ struct RunStats {
     bool stoppedAtTop = false;   // Stop arrived while scrolling to the top: the image is the viewport then
     bool stopViewportProven = false;  // that viewport is a fresh frame a second look agreed with
     int toTopSteps = 0;
+    // reachedTop: the top was proved. With fromTop on and reachedTop false the
+    // image does not start at the top of the page, whatever ended the capture
+    // (the end of the content is then TopNotReached, never EndOfContent).
     bool toTopMoved = false, reachedTop = false;
+    int64_t toTopMs = 0;         // how long the way up took
+    std::string toTopGaveUp;     // why the way up ended without proof; empty when it was proved, stopped or failed
     int parkPosition = 0;        // 0 centre and a third down, 1 near the right edge, 2 two thirds down
     int64_t elapsedMs = 0;
     int outputRows = 0;
@@ -189,10 +219,13 @@ public:
     // The park positions of rule 2 and rule 7 for a frame of this size.
     static RunPoint parkPoint(int position, int width, int height);
 private:
-    enum class Wait { Settled, TimedOut, Stopped, TimeLimit, NoFrame, Lost };
+    enum class Wait { Settled, TimedOut, Stopped, TimeLimit, NoFrame, Lost, Changed };
     // quietMs: with no change at all since the call began, this long counts as
     // settled (the response wait after an injection); 0: the settle time.
     Wait waitSettled(int timeoutMs, int quietMs = 0);
+    // Until a frame from after the call began differs from the picture as it
+    // was then (Changed), or quietMs have passed without one (Settled).
+    Wait waitChanged(int quietMs);
     int responseWaitMs() const;
     int planNotches() const;
     bool inject(int notches);
@@ -221,7 +254,7 @@ private:
     int64_t startMs_ = 0;
     bool haveFrame_ = false;
     scroll::FrameView last_{};
-    scroll::FrameSignatures lastSig_, tmpSig_, settledSig_;
+    scroll::FrameSignatures lastSig_, tmpSig_, settledSig_, beforeSig_;
     int notchCap_ = 0, verifiedRun_ = 0;
     int parked_ = -1;  // the park position the pointer was last put at, -1 elsewhere
     // The last waitSettled: when its first changed frame arrived (-1: none did).

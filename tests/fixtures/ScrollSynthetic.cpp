@@ -336,6 +336,8 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
         for (int x = 0; x < scratch_.w - 12; ++x)
           if (scratch_.at(x, y) == kBg) scratch_.at(x, y) = rgb(228, 236, 247);
     }
+    for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)
+      for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb((frameIndex_ * 37 + y) & 255, (x * 3 + frameIndex_ * 11) & 255, 90);
     if (spec_.damageOnly && haveDelivered_ && scratch_.px == delivered_.px) continue;
     std::swap(scratch_, delivered_);
     haveDelivered_ = true;

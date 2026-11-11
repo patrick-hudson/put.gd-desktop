@@ -29,7 +29,9 @@ public:
  // waited for has happened, and this much more is all that is needed.
  void holdStart(int ms,bool fromNow=false);
 signals:
- void warning(const QString& id,const QString& message);
+ // An image that is kept and is not the whole page: reason is its endReason
+ // (height_cap, top_not_reached), message the note on its history entry.
+ void warning(const QString& id,const QString& message,const QString& reason);
  // A session was accepted; nothing has been captured yet. Emitted before the
  // backend is asked, so a listener can clear the screen of put.gd's own things.
  void preparing();

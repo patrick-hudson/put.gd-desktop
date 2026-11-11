@@ -1927,6 +1927,132 @@ void testPointerRules() {
     }
   }
   {
+    // The way to the top takes what the page needs. It had 15 s whatever the
+    // page; a 27,000 px text view on a Hyprland guest needed 17 s, and the
+    // capture began at line 78 and was reported as the end of the content
+    // (final pass of 2026-11-11). A page at 4 px a notch, opened at its end:
+    // at the old pace (every step checked, ten notches a step) the way up is
+    // longer than 15 s and now reaches the top; the image is whole from row 0.
+    int64_t checkedMs = 0;
+    DocSpec page;
+    page.viewport = V;
+    page.width = W;
+    const int bottom = makeDocument(page).img.h - V;
+    SessCfg slow = base("way to the top longer than the old 15 s, every step checked");
+    slow.px = 4;
+    slow.so.fromTop = true;
+    slow.so.toTopCheckEvery = 1;
+    slow.so.toTopMaxNotches = slow.so.toTopNotches;
+    slow.app.startPos = bottom;
+    slow.extraName = "reachedTop,longerThan15s";
+    slow.extra = [&](const RunStats& s, const FakeApp& a) {
+      checkedMs = s.toTopMs;
+      bool tens = true;
+      for (const auto& e : a.events)
+        if (e.kind == 's' && e.a < 0) tens = tens && e.a == -10;
+      return s.reachedTop && s.toTopGaveUp.empty() && s.toTopMs > 15000 && tens;
+    };
+    runSession(slow);
+    // The same page with the loop's own pace: the steps grow while the page
+    // moves and only every fourth waits for the picture to settle. Much
+    // sooner at the top, which is still proved with plain steps of ten.
+    SessCfg quick = base("way to the top, steps grow while the page moves");
+    quick.px = 4;
+    quick.so.fromTop = true;
+    quick.app.startPos = bottom;
+    quick.extraName = "reachedTop,sooner,provedWithPlainSteps";
+    quick.extra = [&](const RunStats& s, const FakeApp& a) {
+      int largest = 0, lastUp = 0, beforeLast = 0;
+      for (const auto& e : a.events) {
+        if (e.kind != 's' || e.a >= 0) continue;
+        largest = std::max(largest, -e.a);
+        beforeLast = lastUp;
+        lastUp = -e.a;
+      }
+      return s.reachedTop && s.toTopGaveUp.empty() && s.toTopMs * 3 < checkedMs && largest == RunOptions().toTopMaxNotches && lastUp == 10 && beforeLast == 10;
+    };
+    runSession(quick);
+  }
+  {
+    // The top is never reached: the time for the way up ends first (a page
+    // that keeps growing upward does the same). The capture goes on from
+    // where the page is and is exact from there, and its end is "top not
+    // reached", never "end of content"; with a height cap or Stop instead of
+    // the end the result is theirs, and the stats still say that the top
+    // was not proved.
+    for (int cap : {0, 1500}) {
+      DocSpec ds;
+      ds.viewport = V;
+      ds.width = W;
+      Document doc = makeDocument(ds);
+      ViewportSpec vs;
+      vs.width = W;
+      vs.height = V;
+      FakeAppSpec as;
+      as.pxPerNotch = 2;
+      as.startPos = doc.img.h - V;
+      FakeClock clock;
+      FakeApp app(doc.img, vs, as, clock);
+      RunOptions so;
+      so.pointer = true;
+      so.away = away;
+      so.fromTop = true;
+      so.toTopLimitMs = 3000;
+      if (cap) so.stitch.maxOutputRows = cap;
+      int first = -1;
+      so.onProgress = [&](const RunProgress& p) {
+        if (!p.scrollingToTop && first < 0) first = app.framePositions.back();
+      };
+      ScrollRun run(app, app, clock, so);
+      const RunResult res = run.run();
+      const RunStats& st = run.stats();
+      const std::vector<uint8_t> img = run.stitcher().takeImage();
+      int c0, c1;
+      comparedColumns(W, so.stitch, c0, c1);
+      const int rows = std::max(0, std::min(st.outputRows, doc.img.h - std::max(0, first)));
+      Image tail(W, std::max(1, rows));
+      if (first >= 0 && rows > 0) std::memcpy(tail.px.data(), doc.img.row(first), size_t(W) * rows * 4);
+      const Cmp c = compare(img, st.outputRows, tail, c0, c1);
+      const bool exact = first > 0 && c.mismatches == 0 && c.heightOk;
+      const bool said = !st.reachedTop && !st.toTopGaveUp.empty() && st.toTopMs >= so.toTopLimitMs && st.toTopMs < so.toTopLimitMs + 3000;
+      if (cap)
+        report("session top not reached, then the height cap: the cap's result, the top still not proved", res == RunResult::LimitReached && exact && said && st.outputRows == cap,
+               fmt("%s, rows %d from row %d, first bad %d, way up %lld ms [%s]", toString(res), st.outputRows, first, c.firstBad, (long long)st.toTopMs, st.toTopGaveUp.c_str()));
+      else
+        report("session top not reached in its time: never end of content", res == RunResult::TopNotReached && exact && said && first + st.outputRows == doc.img.h,
+               fmt("%s, rows %d from row %d of %d, first bad %d, way up %lld ms [%s]", toString(res), st.outputRows, first, doc.img.h, c.firstBad, (long long)st.toTopMs, st.toTopGaveUp.c_str()));
+    }
+  }
+  {
+    // A page that never comes to rest (a video in a fixed player) cannot be
+    // told from one that still scrolls. The way up ends after the time such a
+    // page gets, says so, and whatever the capture then makes of the page is
+    // not "end of content".
+    DocSpec ds;
+    ds.viewport = V;
+    ds.width = W;
+    Document doc = makeDocument(ds);
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    FakeAppSpec as;
+    as.pxPerNotch = 53;
+    as.startPos = 1500;
+    as.restlessRows = 200;
+    FakeClock clock;
+    FakeApp app(doc.img, vs, as, clock);
+    RunOptions so;
+    so.pointer = true;
+    so.away = away;
+    so.fromTop = true;
+    ScrollRun run(app, app, clock, so);
+    const RunResult res = run.run();
+    const RunStats& st = run.stats();
+    report("session page never at rest: the way to the top gives up and says so",
+           res != RunResult::EndOfContent && !st.reachedTop && st.toTopGaveUp.find("rest") != std::string::npos && st.toTopMs >= so.toTopRestlessMs && st.toTopMs < so.toTopRestlessMs + 4000,
+           fmt("%s, rows %d, way up %lld ms in %d steps [%s]", toString(res), st.outputRows, (long long)st.toTopMs, st.toTopSteps, st.toTopGaveUp.c_str()));
+  }
+  {
     // Stop is honoured before the next injection: nothing is sent after it.
     static std::atomic<bool> stop{false};
     SessCfg c = base("stop: no injection after the flag");
