@@ -96,6 +96,7 @@ struct Primed final : RunFrames {
 const char* endReason(RunResult result) {
     switch (result) {
         case RunResult::EndOfContent: return "end_of_content";
+        case RunResult::TopNotReached: return "top_not_reached";
         case RunResult::LimitReached: return "height_cap";
         case RunResult::Stopped: return "stopped";
         case RunResult::TimeLimit: return "time_limit";
@@ -684,6 +685,14 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     outcome->result = result;
     outcome->stats = stats;
     const char* reason = endReason(result);
+    // Scroll-to-top was asked for and the top was not proved: the image starts
+    // where the page was then. A capture that then ran to the end of the
+    // content is not the whole scroll area and does not say it is (the loop
+    // ends it as TopNotReached); one that ended otherwise carries the mark.
+    const bool topMissed = job->fromTop && first && !stats.reachedTop;
+    if (first && job->fromTop)
+        debugLog(QStringLiteral("scroll: way to the top %1 steps, %2 ms, %3%4").arg(stats.toTopSteps).arg(stats.toTopMs).arg(stats.reachedTop ? QStringLiteral("top proved") : QStringLiteral("top not proved"))
+                     .arg(stats.toTopGaveUp.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(stats.toTopGaveUp))));
     const QString detail = QString::fromStdString(stats.lastError);
     if (spoolFailed) outcome->error = {"encoding_failed", "The capture could not be written to its staging file", {{"stage", "capture"}, {"check", "spool"}}};
     else if (result == RunResult::Stopped && rows == 0) outcome->nothing = true;
@@ -720,9 +729,14 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             QFile check(job->pngPath);
             if (written && !job->discard.load() && check.open(QIODevice::ReadOnly) && hash.addData(&check) && check.size() == bytes) {
                 outcome->descriptor = {{"path", job->pngPath}, {"bytes", double(bytes)}, {"sha256", QString::fromLatin1(hash.result().toHex())}, {"width", width}, {"height", int(rows)},
-                    {"endReason", reason}, {"truncated", result == RunResult::LimitReached}, {"appliedMaxHeight", applied},
+                    {"endReason", reason}, {"truncated", result == RunResult::LimitReached || result == RunResult::TopNotReached}, {"appliedMaxHeight", applied},
                     {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", stats.pxPerNotch}, {"lowConfidenceSteps", stats.lowConfidenceSteps}, {"elapsedMs", double(stats.elapsedMs)}}}};
                 if (!detail.isEmpty() && result == RunResult::LostTrack) outcome->descriptor["note"] = detail;
+                if (topMissed) {
+                    // Whatever ended the capture (the end, the cap, Stop): its first row is not the page's.
+                    outcome->descriptor["topReached"] = false;
+                    if (result == RunResult::TopNotReached && !stats.toTopGaveUp.empty()) outcome->descriptor["note"] = QString::fromStdString(stats.toTopGaveUp);
+                }
             } else if (!job->discard.load()) outcome->error = {png.exceeded() ? "input_excessive" : "encoding_failed", png.exceeded() ? "The PNG exceeded its size bound" : "The PNG could not be written", {{"stage", "encode"}, {"check", "png"}}};
         }
     }

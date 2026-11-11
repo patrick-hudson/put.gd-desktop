@@ -199,7 +199,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
         'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
-        'Scrolling capture: prepare_scroll_capture and control_scroll_capture select/start/stop/cancel; Stop keeps the PNG and Cancel discards it. Inspect get_scroll_capture endReason and truncated; only end_of_content means a complete capture. '
+        'Scrolling capture: prepare_scroll_capture and control_scroll_capture select/start/stop/cancel; Stop keeps the PNG and Cancel discards it. Inspect get_scroll_capture endReason and truncated; only end_of_content means a complete capture, top to bottom. top_not_reached means the image is kept but starts partway down the page, and topReached false says the same of a capture that ended for another reason. '
         'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording, or work the review window itself with drive_recording_review; only upload_recording or retryExport after a failed Upload publishes. '
         'save_recording_copy and upload_recording return once the export starts; poll get_recording until state leaves exporting. '
         'Supply only non-secret configuration and credential references.'))
@@ -408,7 +408,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=read)
     async def get_scroll_capture(id: str) -> Json:
-        """Inspect progress and endReason/truncated. Only end_of_content means complete."""
+        """Inspect progress and endReason/truncated: end_of_content, height_cap, stopped, lost_track, time_limit or top_not_reached. Only end_of_content means complete, top to bottom. top_not_reached: scroll-to-top could not prove the top, so the kept image starts partway down; topReached false marks the same on a capture that ended for another reason."""
         return await adapter.call('scroll.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=read)

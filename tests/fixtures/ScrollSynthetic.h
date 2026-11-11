@@ -154,6 +154,9 @@ struct FakeAppSpec {
   // The injector can say that the wheel has stopped (RunInjector::rest), and
   // the view then springs back from its overscroll (KWin's axis stop).
   bool restEndsOverscroll = false;
+  // This many rows at the top of the viewport change with every frame (a
+  // video in a fixed player): the picture never comes to rest.
+  int restlessRows = 0;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
