@@ -1478,6 +1478,23 @@ void testSessions() {
 }
 
 void testReviewFrameProofs() {
+  {
+    DocSpec ds; ds.width = 480; ds.viewport = 600;
+    const auto doc = makeDocument(ds);
+    ViewportSpec vs; vs.width = 480; vs.height = 600;
+    FakeClock clock; FakeAppSpec spec;
+    spec.startPos = 1500; spec.pxPerNotch = 53;
+    spec.wheelArea = {360, 0, 120, 600};
+    FakeApp app(doc.img, vs, spec, clock);
+    RunOptions opts; opts.fromTop = true; opts.pointer = true; opts.away = RunPoint{-12, 200};
+    ScrollRun run(app, app, clock, opts);
+    const auto result = run.run();
+    const auto image = run.stitcher().takeImage();
+    int c0, c1; comparedColumns(480, opts.stitch, c0, c1);
+    const auto cmp = compare(image, run.stats().outputRows, app.renderer().expected(doc.img.h), c0, c1);
+    report("from top resolves right-edge target before stitching", result == RunResult::EndOfContent && run.stats().reachedTop && run.stats().toTopMoved && run.stats().parkPosition == 1 && cmp.heightOk && cmp.mismatches == 0,
+           fmt("%s, rows=%d, exact=%d", toString(result), run.stats().outputRows, cmp.heightOk && cmp.mismatches == 0));
+  }
   struct Source : RunFrames, RunInjector {
     FakeClock clock;
     Image original{480, 600, kBg}, changed{480, 600, kBg};
@@ -1557,15 +1574,6 @@ void testPointerRules() {
       }
       return ok && wheels > 3;
     };
-    runSession(c);
-  }
-  {
-    SessCfg c = base("from top resolves right-edge target before first frame");
-    c.app.wheelArea = {W - W / 4, 0, W / 4, V};
-    c.app.startPos = 1500;
-    c.so.fromTop = true;
-    c.extraName = "top proven at effective target";
-    c.extra = [](const RunStats& s, const FakeApp&) { return s.reachedTop && s.toTopMoved && s.parkPosition == 1; };
     runSession(c);
   }
   {
