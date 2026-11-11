@@ -94,7 +94,10 @@ private:
  void showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
  void askCapabilities(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient);
  void sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient);
- int trayMessagesInFlight_ = 0;
+ struct HeldTrayMessage { QString title,message; bool warning; QList<NotificationAction> actions; bool transient; };
+ QList<HeldTrayMessage> heldTrayMessages_;
+ void closeTrayNotification(uint id);
+ int trayMessagesInFlight_ = 0, trayClosesInFlight_ = 0;
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
  quint64 trayNoticeGeneration_ = 0;

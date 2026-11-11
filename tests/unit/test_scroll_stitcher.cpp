@@ -626,7 +626,11 @@ void testEndsAndBounce() {
     StitchOptions o;
     o.maxOutputRows = 20;
     Drive d = drive(r2, {0, 100}, true, o);
-    report("footer larger than output cap", d.outH <= 20 && d.img.size() <= size_t(20 * v2.width * 4), fmt("height=%d", d.outH));
+    Image first; r2.render(0, 0, first);
+    Image prefix(v2.width, 20, kBg);
+    std::copy_n(first.px.begin(), prefix.px.size(), prefix.px.begin());
+    const auto cmp = compare(d.img, d.outH, prefix, 0, v2.width);
+    report("footer larger than output cap", cmp.heightOk && cmp.mismatches == 0, fmt("height=%d, exact prefix=%d", d.outH, cmp.heightOk && cmp.mismatches == 0));
   }
   {
     ViewportSpec v2 = vs;

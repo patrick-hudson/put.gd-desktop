@@ -2,6 +2,9 @@
 #include "fixtures/TrayCatalog.h"
 #include "fixtures/CatalogLabels.h"
 #include "fixtures/FakeRecordingBackend.h"
+#include "fixtures/FakeScrollBackend.h"
+#include <QDBusContext>
+#include <QDBusMessage>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include "ui/TrayController.h"
@@ -70,6 +73,27 @@ public:
 
 }
 
+class ScrollNotificationPeer final : public QObject, protected QDBusContext {
+ Q_OBJECT
+ Q_CLASSINFO("D-Bus Interface", "org.freedesktop.Notifications")
+public:
+ bool delayInfo=false,delayNotify=false;
+ QDBusMessage info,notice;int received=0;QList<uint> closed;
+ void answerInfo(){delayInfo=false;QDBusConnection::sessionBus().send(info.createReply(QVariantList{QString("Synthetic"),QString("Test"),QString("1"),QString("1.2")}));}
+ void answerNotify(){delayNotify=false;QDBusConnection::sessionBus().send(notice.createReply(QVariantList{uint(1)}));}
+public slots:
+ QString GetServerInformation(QString& vendor,QString& version,QString& spec){
+  vendor="Test";version="1";spec="1.2";
+  if(delayInfo){setDelayedReply(true);info=message();}
+  return "Synthetic";
+ }
+ QStringList GetCapabilities(){return {"actions"};}
+ uint Notify(const QString&,uint,const QString&,const QString&,const QString&,const QStringList&,const QVariantMap&,int){
+  ++received;if(delayNotify){setDelayedReply(true);notice=message();}return uint(received);
+ }
+ void CloseNotification(uint id){closed.append(id);}
+};
+
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
@@ -84,6 +108,24 @@ private slots:
     QFAIL("Refusing a session bus with a notification server: run through ctest (gui_tray), which uses dbus-run-session with tests/fixtures/dbus-session-isolated.conf");
   }
   qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");
+ }
+ void scrollHoldsDelayedQtNotifications_data(){QTest::addColumn<bool>("lookup");QTest::newRow("pending-notify")<<false;QTest::newRow("pending-server-lookup")<<true;}
+ void scrollHoldsDelayedQtNotifications(){
+  QFETCH(bool,lookup);auto bus=QDBusConnection::sessionBus();ScrollNotificationPeer peer;peer.delayInfo=lookup;peer.delayNotify=!lookup;
+  QVERIFY(bus.registerService("org.freedesktop.Notifications"));QVERIFY(bus.registerObject("/org/freedesktop/Notifications",&peer,QDBusConnection::ExportAllSlots));
+  const auto unregistered=qScopeGuard([&]{bus.unregisterObject("/org/freedesktop/Notifications");bus.unregisterService("org.freedesktop.Notifications");});
+  QTemporaryDir dir("/tmp/qt-sc-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));ProviderRegistry providers;Source source;
+  OperationService operations(dir.filePath("data"),settings,providers,source);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});controller.notifyFailure({"synthetic","Retained warning",{}});
+  if(lookup)PUTGD_TRY_VERIFY(peer.info.type()==QDBusMessage::MethodCallMessage);else PUTGD_TRY_COMPARE(peer.received,1);
+  QString id;operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool started=false;operations.scroll().command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});
+  if(lookup){peer.answerInfo();PUTGD_COMPARE_STEADY(peer.received,0,150);}
+  else {
+   PUTGD_VERIFY_STEADY(!backend->started,1400);peer.answerNotify();PUTGD_TRY_COMPARE(peer.closed,QList<uint>{1});PUTGD_VERIFY_STEADY(!backend->started,250);
+  }
+  PUTGD_TRY_VERIFY(started);bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+  if(lookup)PUTGD_TRY_COMPARE(peer.received,1);
  }
  void diagnosticsNamesTheWorkThatActuallyRan(){
   for(const auto& action:QStringList{"region","window","desktop","edit"}){

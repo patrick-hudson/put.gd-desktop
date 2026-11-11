@@ -498,6 +498,11 @@ private slots:
   op["state"]="completed";
   const auto local=HistoryModel::statusText({{"operation",op},{"uploadStatus","local_only"},{"local",QJsonObject{{"status","failed"}}}});
   QVERIFY(local.startsWith("Local save failed"));QVERIFY(local.endsWith(note));
+  for(const auto& phase:QStringList{"queued","uploading","cancelled"}){
+   op["state"]=phase=="cancelled"?"cancelled":"running";op["phase"]=phase;
+   const auto stateText=HistoryModel::statusText({{"operation",op},{"uploadStatus",phase=="cancelled"?"cancelled":"uploading"}});
+   QVERIFY(stateText.endsWith(note));QVERIFY(stateText.startsWith(phase=="queued"?"Waiting to upload":phase=="uploading"?"Uploading":"Canceled"));
+  }
  }
  void recordingsHavePhaseSpecificStatus(){
   for(const auto& [phase,label]:QList<std::pair<QString,QString>>{{"preparing","Setting up the recording…"},{"ready","Ready to record"},{"recording","Recording"},{"paused","Recording paused"},{"stopping","Stopping the recording…"},{"reviewing","Review recording"},{"exporting","Saving a recording copy…"},{"encoding","Encoding recording…"}})QCOMPARE(HistoryModel::statusText({{"operation",QJsonObject{{"action","record"},{"state","recording"},{"phase",phase}}}}),label);

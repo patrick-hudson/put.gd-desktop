@@ -461,6 +461,12 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     }
     estTop_ = top;
     estBot_ = bot;
+    if (!moved_ && bot >= opts_.maxOutputRows) {
+      flushPending(H);  // the cap cannot hold the footer: keep the first viewport's prefix
+      limited_ = finished_ = true;
+      r.status = StepStatus::LimitReached;
+      return r;
+    }
     if (!moved_) {
       moved_ = true;
       flushPending(H - bot);  // first frame minus its (now known) footer
@@ -475,6 +481,12 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   } else {
     estTop_ = top;
     estBot_ = bot;
+    if (!moved_ && bot >= opts_.maxOutputRows) {
+      flushPending(H);  // the cap cannot hold the footer: keep the first viewport's prefix
+      limited_ = finished_ = true;
+      r.status = StepStatus::LimitReached;
+      return r;
+    }
     if (!moved_) {
       moved_ = true;
       flushPending(H - bot);

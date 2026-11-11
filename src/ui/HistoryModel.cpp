@@ -140,7 +140,7 @@ bool HistoryModel::localCopyUnavailable(const QJsonObject& r){return (r["local"]
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();if(!op["note"].toString().isEmpty()){
   auto plain=r;auto operation=op;operation.remove("note");plain["operation"]=operation;
-  if(r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial"||localSaveFailed(r))return statusText(plain)+" · "+op["note"].toString();
+  if(active(r)||op["state"]=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled"||r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial"||localSaveFailed(r))return statusText(plain)+" · "+op["note"].toString();
   return op["note"].toString();
  }const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){

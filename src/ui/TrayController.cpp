@@ -191,6 +191,9 @@ TrayController::TrayController(OperationService& operations,
  connect(&operations_.scroll(),&ScrollCaptureService::ended,this,[this]{
   if(operations_.scroll().active())return;
   holdNotices_=false;
+#ifdef Q_OS_LINUX
+  for(const auto& n:std::exchange(heldTrayMessages_,{}))sendTrayMessage(n.title,n.message,n.warning,n.actions,n.transient);
+#endif
   for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
   for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
  },Qt::QueuedConnection);
@@ -626,14 +629,20 @@ int TrayController::closeOwnNotifications(std::function<void()> gone) {
  auto bus=QDBusConnection::sessionBus();
  const auto open=std::exchange(trayOpen_,{});
  if(!bus.isConnected())return 0;
- for(const uint id:open){
-  trayActions_.remove(id);
-  auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
-  close<<id;bus.asyncCall(close);
+ for(const uint id:open)closeTrayNotification(id);
+ const int pending=trayMessagesInFlight_+trayClosesInFlight_;
+ if(pending){
+  const auto id=operations_.scroll().activeId();
+  operations_.scroll().holdStart(5000,true);
+  auto* waiting=new QTimer(this);waiting->setInterval(50);
+  connect(waiting,&QTimer::timeout,this,[this,waiting,id,gone]{
+   if(operations_.scroll().activeId()!=id){waiting->stop();waiting->deleteLater();return;}
+   if(trayMessagesInFlight_||trayClosesInFlight_){operations_.scroll().holdStart(5000,true);return;}
+   waiting->stop();waiting->deleteLater();if(gone)gone();
+  });
+  waiting->start();
  }
- // This path does not follow the server's NotificationClosed: asked is taken for gone.
- if(!open.isEmpty()&&gone)QTimer::singleShot(0,this,gone);
- return int(open.size());
+ return pending;
 #else
  Q_UNUSED(gone);
  return 0;
@@ -670,6 +679,13 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // request without waiting; only a bus with no notification server falls back to
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
+void TrayController::closeTrayNotification(uint id) {
+ trayActions_.remove(id);
+ auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+ close<<id;++trayClosesInFlight_;
+ auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this](QDBusPendingCallWatcher* p){--trayClosesInFlight_;p->deleteLater();});
+}
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
  auto bus=QDBusConnection::sessionBus();
  // A warning is transient only where the server would restore it after a restart (#1298): ask its name first.
@@ -696,7 +712,7 @@ void TrayController::askCapabilities(const QString& title, const QString& messag
  });
 }
 void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
- if(holdNotices_)return;
+ if(holdNotices_){if(heldTrayMessages_.size()<32)heldTrayMessages_.append({title,message,warning,actions,transient});return;}
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
   if(!tray||holdNotices_)return;
@@ -729,10 +745,7 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   --trayMessagesInFlight_;p->deleteLater();
   const QDBusPendingReply<uint> reply=*p;
   if(generation!=trayNoticeGeneration_||holdNotices_){
-   if(reply.isValid()){
-    auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
-    close<<reply.value();QDBusConnection::sessionBus().asyncCall(close);
-   }
+   if(reply.isValid())closeTrayNotification(reply.value());
    return;
   }
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
