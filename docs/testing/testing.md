@@ -292,7 +292,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   rows, a stream that goes quiet or answers late, scroll to the top (overscroll, Stop on the way up
   with and without a painted pointer, a way up longer than the old 15 s that still reaches the top,
   a top that is not reached in its time or on a page that never rests and must not end as
-  `EndOfContent`), end proof by a fresh frame, recovery and the limits.
+  `EndOfContent`), end proof by a fresh frame, recovery and the limits. `testReviewFrameProofs`
+  adds the height cap with a sticky footer (never above the cap; the first viewport's prefix when
+  the cap cannot hold the footer), a frame-size change ending as `LayoutChanged`, the top proved again
+  on a switch of pointer target, and fresh-frame proof after a retry.
   `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
   It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
@@ -302,7 +305,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   (`select`, `overlay`, `start` in order), Stop keeps and Cancel discards, the cap warning and the
   History note, `top_not_reached` (kept, warned, noted, `topReached: false`, also after Stop and the
   cap; `end_of_content` with an unproved top refused), a start held for put.gd's own notices to go,
-  and admission refusing a wrong hash, size or IHDR.
+  admission refusing a wrong hash, size or IHDR, and (review round on #1398) the helper's own auto-start
+  honouring the notification hold, a build with no selector needing a rectangle, Cancel accepted while
+  `start` or `stop` is pending, and the helper released once the PNG is validated, before the upload queue
+  is done.
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`, a window of 40 px rows each
   painted as a bar code with its number, through `ximagesrc` and XTest. The PNG must decode to every row once and in
@@ -315,8 +321,16 @@ design is in [scrolling capture](../design/scroll-capture.md).
   sends a wheel notch that reaches a window as a wheel step (15.0, discrete 1) and no button press.
   `tools/lab/wayland_pointer.py axis` sends the same over the whole layout.
 - `native_tray_integration`: put.gd's own notices are closed and followed to confirmation before a capture
-  starts; on a `quickshell` server the shell's dismissal command runs once per summary with the
+  starts, and stay held across a late `ended`; on a `quickshell` server the shell's dismissal command runs once per summary with the
   server's own `XDG_RUNTIME_DIR`.
+- `gui_tray` (`tests/gui/test_tray.cpp`): a scroll capture holds delayed Qt notifications on a real
+  D-Bus connection (a pending `Notify`, a pending server lookup, a failed close, the fallback balloon,
+  a permanent close error, an expired notification); a close that cannot succeed fails the start with
+  `notification_close_failed` and nothing is started.
+- `gui_history_view` (`tests/gui/test_history_view.cpp`, `scrollNoteKeepsFailuresVisible`): an upload
+  or local-save failure leads the status text and the scroll note follows it.
+- `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
+  component spec.
 - `gnome_core_transport_integration` and `gnome_ui_ownership_contract`: a scroll frame carries
   `beat: true` and a recording frame does not; the extension's 40 ms 1×1 actor exists only while such
   a frame shows. `scroll` is in the extension's `ACTIONS`.

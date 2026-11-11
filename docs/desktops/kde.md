@@ -186,7 +186,10 @@ KWin's region stream drops an isolated repaint. While frames are read the helper
 layer surface on the region's output every 30 ms (`BoundsOverlay::showHeartbeat`), and the loop only
 calls the end of the content when a frame grabbed from the screen agrees. The region selector is the
 helper's layer-shell one, so the Ubuntu 24.04 DEB, built without LayerShellQt for Qt 6, reports
-`region_unavailable` (`selection: none`) on Plasma Wayland; the AppImage bundles it.
+`selection: none` on Plasma Wayland; the AppImage bundles the selector. With no selector the
+window's button reports `region_unavailable`, and a request without a rectangle is refused with
+`scroll_unavailable` (reason `region_unavailable`) before an operation is created; a rectangle named
+through `putgd-cli` or MCP is still captured.
 `test_kde_ownership` and `record_identity_contract` pin the entry's list and its first `Exec` token.
 
 ## Clipboard and shortcuts

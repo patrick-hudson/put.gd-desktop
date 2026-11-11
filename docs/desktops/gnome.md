@@ -331,12 +331,12 @@ The actor is the only one inside the area, a new frame replaces it and its timer
 ends both. `gnome_ui_ownership_contract` and `gnome_core_transport_integration` cover the field and
 the timer.
 
-An extension loaded before the update (below version 22) ignores `beat` and has no `scroll` in its
-`ACTIONS`: the `scroll` shortcut reports `bound: false` with `helper_outdated` until the next login,
-while the tray, the main window, the CLI and MCP start a capture as before (a loaded extension must
-still offer region selection, `recordingVersion` 1 or later). Without the beat a capture at a
-fractional scale can end `lost_track` after an exact image. Log out and back in once, as for any
-extension update ([Setup](#setup)).
+A scrolling capture needs the extension at version 22 or later (`ScrollShell::selectsRegions` also
+requires `recordingVersion` 1 or later). An extension loaded before the update (below version 22)
+ignores `beat` and has no `scroll` in its `ACTIONS`: the `scroll` shortcut reports `bound: false` with
+`helper_outdated` until the next login, and every start (tray, main window, CLI, MCP) gets the region
+error (`helper_outdated`, else `region_unavailable`) instead of a capture. Log out and back in once,
+as for any extension update ([Setup](#setup)).
 
 ## UI ownership recovery test
 

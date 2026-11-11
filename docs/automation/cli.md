@@ -309,7 +309,9 @@ putgd-cli scroll.inspect '{"id":"RETURNED-ID"}'
 putgd-cli scroll.stop '{"id":"RETURNED-ID"}'
 ```
 
+On a build with no region selector (`scroll.capabilities` `selection: none`, the Ubuntu 24.04 package on KDE Wayland), `scroll.prepare` without `rect` is `scroll_unavailable` with reason `region_unavailable` before a session exists; with `rect` it captures.
+
 One scroll session exists at a time. While it is capturing, another `action.invoke` (and
 `recording.prepare`) is `scroll_active`, and `action.invoke {"action":"scroll"}` is Stop.
 `scroll.start` on a session that is not `ready` is `scroll_state`; a command sent while another is
-pending is `scroll_busy`; an unknown or finished-and-forgotten ID is `scroll_not_found`.
+pending is `scroll_busy` (`scroll.cancel` is accepted while a `start` or `stop` is pending); an unknown or finished-and-forgotten ID is `scroll_not_found`.

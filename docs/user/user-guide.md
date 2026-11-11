@@ -91,16 +91,19 @@ Use **Capture scrolling region** to get one tall image of something longer than 
 
 **Top not reached.** If put.gd cannot get to the top (the page keeps loading more above, never holds still, or is longer than a minute and a half of scrolling), it captures from where the page is. The image is kept and shared as usual, and a warning says "Could not reach the top of the page. The image starts partway down." History carries the same note. Scroll the page to its top yourself and capture again, with **Scroll to the top first** off if it keeps happening.
 
-**Height cap.** An image stops at the **Maximum height** in **Settings → Capture → Scrolling capture** (2,000 to 60,000 px, 30,000 by default), or earlier when the image would pass the size limits. The image so far is kept and shared as usual, and a warning says "Stopped at 30,000 px. The page continues below." History carries the same note. Raise the cap, or capture the rest separately, if you need more.
+**Height cap.** An image stops at the **Maximum height** in **Settings → Capture → Scrolling capture** (2,000 to 60,000 px, 30,000 by default), or earlier when the image would pass the size limits. The image so far is kept and shared as usual, and a warning says "Stopped at 30,000 px. The page continues below." History carries the same note. If the upload or the local save failed, History shows that failure first and keeps the note after it. Raise the cap, or capture the rest separately, if you need more. The image never passes the cap; a sticky footer counts in it, and if the cap is too small to hold the footer you get the first screenful.
 
 Tips:
 
 - Include the scrollbar in the rectangle. Without it a blank stretch the height of the window looks like the end.
 - A sticky header or footer is kept once, at the top and bottom of the image, not repeated.
 - Content that changes while it scrolls (images that load late, video, animations) can stop the capture early. The image so far is exact. Wait for the page to finish loading first.
-- put.gd closes its own notifications when a capture starts and holds new ones until it ends. A notification from another application over the rectangle ends up in the image, so close it first.
+- put.gd closes its own notifications (including the file-manager notice and the fallback balloon) when a capture starts and holds new ones until it ends. If one cannot be closed the capture does not start (`notification_close_failed`): dismiss it and try again. A notification from another application over the rectangle ends up in the image, so close it first.
 - The region has to lie on one monitor and be at least 64 px each way.
-- GNOME shows its screen-sharing indicator while a capture runs. Clicking it ends the capture like Stop. After an update, log out and back in once so the `scroll` shortcut works there.
+- GNOME shows its screen-sharing indicator while a capture runs. Clicking it ends the capture like Stop. Scrolling capture needs the put.gd Shell extension at version 22 or later: after an update, log out and back in once, or it reports an error until then.
+- On the Ubuntu 24.04 package for KDE Wayland there is no region selector, so the window's button says scrolling capture is unavailable (`region_unavailable`); use the AppImage. A script can still name the rectangle.
+- A new capture can start as soon as the image is finished, while it is still waiting to upload.
+- If the window or its size changes while it scrolls, the capture ends with `display_changed` and keeps nothing.
 
 ## Record the screen
 

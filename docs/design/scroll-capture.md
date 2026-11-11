@@ -62,11 +62,15 @@ The contract in `ScrollBackend.h`:
   `frame_source_unavailable` or `region_unavailable`, or while the first probe
   (`putgd-record --scroll-capabilities`, which opens no source and sends no input) has not
   answered, `scroll_not_probed`, `scroll_probe_pending` or `scroll_probe_failed`. Those
-  three are transient: ask again, and do not show them as a permanent failure.
+  three are transient: ask again, and do not show them as a permanent failure. With
+  `selection: none` the probe is still `available`: a request that names `rect` is
+  captured, and one without it is refused (see [no region selector](#known-limits)).
 - `prepare {rect?, maxHeight, maxPixels, fromTop, autoStart, selection}` then `select
   {rect}`, `start`, `stop`, `cancel` and `overlay {visible}`. Replies come only once the
   helper reached the state. `stop` keeps the image, and its reply is the object a later
-  `scroll.inspect` returns.
+  `scroll.inspect` returns. `cancel` is accepted while a `start` or `stop` is pending (it
+  is never `scroll_busy`); a `start` or `stop` waiting for the helper then ends with the
+  session.
 - Events, each with the session id: `selected {rect}`; `progress {state: scrollingToTop |
   capturing, height, steps, pixelsPerNotch}`; `finished {path, bytes, sha256, width,
   height, endReason, truncated, appliedMaxHeight, topReached?, stats}`; `cancelled`;
@@ -85,8 +89,13 @@ capture with no spot for the bar outside the rectangle hides it for the whole ca
 bar never takes the keyboard and has no handle inside the frame.
 
 put.gd's own notifications stay out of the picture. When a session is accepted the
-resident closes those on screen, holds back new ones until the session ends, and delays the
-first frame until the server has reported the old ones closed (at the latest about 1.7 s).
+resident closes those on screen and holds back new ones until the session ends: in-flight
+notifications whose server reply has not come yet, the file-manager notice and Qt's
+fallback balloon (the tray icon is hidden and shown again to remove it). It delays the
+first frame until the server has reported the old ones closed (at the latest about 1.7 s)
+and the hold on the start is bounded (5 s). A notice that cannot be closed, after the
+close was retried twice, fails the preparation with `notification_close_failed`; nothing
+is captured.
 On Omarchy's quickshell notification server a closed card stays on screen, so the resident
 also asks the shell to dismiss it by summary with `qs ipc --pid <server> call
 notifications dismiss <summary>`, run with the server's own `XDG_RUNTIME_DIR`. A
@@ -145,7 +154,9 @@ so Stop is seen soon.
    checked steps of 10 notches in a row that moved nothing (two, because one wheel step
    can go nowhere), and a fresh frame grabbed from the screen that agrees, because a
    damage-driven stream that sends nothing looks the same as a page at rest. No stitching
-   happens here.
+   happens here. When the run later switches to another pointer target (rule 7), the
+   top is proved again there before the capture goes on, and the first viewport is taken
+   anew; no downward step has been kept by then.
    - *Pace.* Every fourth step is a check: the picture settles and is compared with the
      picture at the check before. The steps between are sent as soon as a frame from after
      the wheel step differs from the one before it. While checks find movement the steps
@@ -196,7 +207,8 @@ so Stop is seen soon.
    then two thirds down, then `scroll_no_movement`. If the page did scroll up and then does
    not scroll down, up to 8 still steps are allowed (an overscrolled view takes them) before
    the capture ends `lost_track`.
-8. **Recovery.** A step that does not match is retried after a fresh settle. If it still
+8. **Recovery.** A step that does not match is retried after a fresh settle, and the
+   fresh-frame check of rule 6 is made again after that retry. If it still
    does not match or is ambiguous, the loop scrolls back by the same count, re-finds the
    last stitched frame (twice more without a hint if it is not there), halves the step
    cap and goes on. The cap doubles again after three verified steps. If one notch fails
@@ -245,7 +257,9 @@ wrapped as a `QImage` and written as a PNG within a bound, and the spool is dele
 staging is swept at start, as for recordings. Finished files survive helper exit until the
 resident has admitted them.
 
-- **Height cap.** The smallest of `preferences.scrollCaptureMaxHeight` (2,000 to 60,000, default
+- **Height cap.** The image never exceeds the cap. With a sticky footer the rows reserved
+  for it are counted in the cap, and when the cap cannot hold the footer the first
+  viewport's prefix is kept (`height_cap`). The cap is the smallest of `preferences.scrollCaptureMaxHeight` (2,000 to 60,000, default
   30,000), `limits.imagePixels / width` and `limits.imageBytes / (4 × width)`; for the editor route also
   `EditorJob::admissionPixels / width` (24 MP, 15,000 px at 1,600 wide). The helper reports the
   height it applied as `appliedMaxHeight`.
@@ -273,6 +287,8 @@ result report them so an agent can tell a complete capture from a partial one.
 | `lost_track` | true | A step could not be matched or recovered, or the end could not be proved. The image so far is exact and `result.note` says why |
 | `time_limit` | true | The 180 s limit ended it. The image so far is exact |
 
+A note (`height_cap`, `top_not_reached`) is extra information on the History row. When the upload or the local save failed, or the operation was cancelled or ended partial, the row's status shows that first and the note follows after a `·`.
+
 `topReached: false` goes with any of them except `end_of_content`: a capture that ended by
 Stop, the height cap, `lost_track` or the time limit after an unproved top keeps its own
 end reason and carries the flag, with no extra warning. The field is absent when the top
@@ -280,9 +296,14 @@ was proved and when scroll-to-top is off. The resident refuses a helper result t
 `end_of_content` with `topReached: false`, or `top_not_reached` without it
 (`scroll_output_invalid`).
 
+The resident releases the helper as soon as it has validated the PNG, before the image
+leaves the upload queue, so a new capture can start while the previous one still waits to
+upload.
+
 A capture that keeps nothing fails instead: `scroll_no_movement` (nothing under the
 selection scrolled at any park position), `capture_timeout` (no frame in 3 s, or modifier
-keys held), `display_changed` (the frame size changed), `scroll_unavailable` with
+keys held), `display_changed` (the frame size changed during the capture, compared with the first
+frame; the stitcher result is `LayoutChanged`), `scroll_unavailable` with
 `injection_unavailable` or `frame_source_unavailable` (the desktop refused the input or the
 stream ended), `encoding_failed` or `input_excessive` (the spool or the PNG). The codes
 and what to do are in [errors](../user/errors.md#scrolling-capture).
@@ -306,11 +327,16 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   rectangle wherever a frame may become the image. A Stop in the 60 ms between the pointer's entry and its
   wheel step sends one pointer motion (out of the rectangle) after Stop.
 - **Ubuntu 24.04 DEB on KDE Wayland has no region selector,** because `cmake/Platform.cmake`
-  builds the layer-shell selector only when LayerShellQt for Qt 6 exists. The probe says
-  `region_unavailable`, and the AppImage, which bundles it, works.
-- **GNOME: an extension loaded before the update** (loaded version below 22) has no `scroll` shortcut
-  (`helper_outdated` until the next login) and no beat, so a capture can end `lost_track` for want of a
-  frame that proves the end. Tray, window, CLI and MCP starts work meanwhile.
+  builds the layer-shell selector only when LayerShellQt for Qt 6 exists. The probe reports
+  `selection: none` and is still available, so a rectangle named through `putgd-cli` or MCP is
+  captured. The window's button reports `region_unavailable`, and a request with no rectangle
+  is refused with `scroll_unavailable`, reason `region_unavailable`, before an operation is
+  created. The AppImage, which bundles the selector, works.
+- **GNOME: an extension loaded before version 22** has no `scroll` shortcut
+  (`helper_outdated` until the next login) and no beat. Scroll capture needs version 22 or later
+  (`selectsRegions`): with an older loaded extension every start, tray, window, CLI and MCP
+  included, gets the region error (`helper_outdated` while the packaged extension is newer, else
+  `region_unavailable`) until the next login.
 - **Only vertical scrolling** exists. Horizontal scrolling, a manual-scroll mode, scrolling by key
   presses, window and monitor targets and regions that span outputs are out of scope.
 
