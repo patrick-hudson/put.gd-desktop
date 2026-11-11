@@ -23,7 +23,8 @@ inline bool failuresTransient(const QString& server) { return server == QLatin1S
 // scroll capture's picture (#1376, lab guest of 2026-11-11). The shell's own
 // IPC takes cards off by summary, the call omarchy-notification-dismiss
 // wraps; `qs ipc --pid` reaches the shell that owns the bus name without
-// Omarchy's environment. This is that command for one summary, empty where
+// Omarchy's environment, given the shell's XDG_RUNTIME_DIR (the caller runs
+// it with the owner's). This is that command for one summary, empty where
 // CloseNotification is enough. A quickshell configuration without the target
 // refuses the call, which costs nothing.
 inline QStringList dismissCommand(const QString& server, qint64 serverPid, const QString& summary) {

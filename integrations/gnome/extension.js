@@ -4,7 +4,6 @@ import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
-import Mtk from 'gi://Mtk';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -212,14 +211,15 @@ function barPlacement(rect, size, areas, allowOutside = true, gap = 10) {
 // stream never contains them.
 //
 // `beat` (a scroll capture, #1376): Mutter's area stream is driven by damage
-// inside its area. A page that has stopped moving sends nothing, and at a
-// fractional scale neither does a newly linked stream, which at 100% begins
-// with the screen as it is: at 125% a capture whose image was complete ended
-// "lost track", because no fresh frame proved the end (Fedora 44, GNOME 50,
-// 2026-11-11; with one pixel of the area repainted every 100 ms it ended as
-// it should). So while the frame shows, one pixel of the stage at the
-// rectangle's corner is queued for redraw every 40 ms, which is what Mutter
-// does for its own follow-up frames. Nothing is drawn there.
+// inside its area. A page that has stopped moving sends nothing, and a newly
+// linked stream does not always begin with the screen as it is: at 125% and,
+// on some logins, at 100% a capture whose image was complete ended "lost
+// track", because no fresh frame proved the end (Fedora 44, GNOME 50.6,
+// 2026-11-11). So while the frame shows, one transparent pixel of the Shell's
+// own sits at the rectangle's corner and is queued for redraw every 40 ms:
+// nothing is drawn, and the stream sends a frame for each (7 in 300 ms of a
+// still page, measured). Queueing the same pixel on the stage with a clip,
+// which is what Mutter does for its own follow-up frames, sent none.
 const BEAT_MS = 40;
 class RecordingFrame {
     constructor() {
@@ -232,12 +232,12 @@ class RecordingFrame {
         this._bar = bar;
         this._beating = beat;
         if (beat) {
+            const pixel = new St.Widget({reactive: false, can_focus: false, track_hover: false,
+                x: rect[0], y: rect[1], width: 1, height: 1, style: 'background-color: rgba(0, 0, 0, 0);'});
+            Main.uiGroup.add_child(pixel);
+            this._actors.push(pixel);
             this._beat = GLib.timeout_add(GLib.PRIORITY_DEFAULT, BEAT_MS, () => {
-                try {
-                    global.stage.queue_redraw_with_clip(new Mtk.Rectangle({x: rect[0], y: rect[1], width: 1, height: 1}));
-                } catch {
-                    global.stage.queue_redraw();
-                }
+                pixel.queue_redraw();
                 return true;
             });
         }

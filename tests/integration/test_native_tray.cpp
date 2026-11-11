@@ -810,11 +810,16 @@ private slots:
   // dismissed when its id arrives. A stand-in `qs` records what it is asked.
   QTemporaryDir directory;QVERIFY(directory.isValid());
   QFile script(directory.filePath("qs"));QVERIFY(script.open(QIODevice::WriteOnly));
-  script.write(("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+directory.filePath("asked")+"'\n").toUtf8());script.close();
+  script.write(("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+directory.filePath("asked")+"'\nprintf '%s\\n' \"$XDG_RUNTIME_DIR\" >> '"+directory.filePath("runtime")+"'\n").toUtf8());script.close();
   QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
   const auto path=qgetenv("PATH");qputenv("PATH",QFile::encodeName(directory.path())+":"+path);
+  // The shell is asked in its own runtime directory, not in the one this process has taken since
+  // (the server here is this process: what it started with is in /proc/self/environ).
+  QByteArray started;QFile self("/proc/self/environ");QVERIFY(self.open(QIODevice::ReadOnly));
+  for(const auto& entry:self.readAll().split('\0'))if(entry.startsWith("XDG_RUNTIME_DIR="))started=entry.mid(16);
+  const auto runtime=qgetenv("XDG_RUNTIME_DIR");const bool hadRuntime=qEnvironmentVariableIsSet("XDG_RUNTIME_DIR");qputenv("XDG_RUNTIME_DIR",QFile::encodeName(directory.filePath("elsewhere")));
   notifications.confirmClose=true;
-  const auto restore=qScopeGuard([&]{qputenv("PATH",path);notifications.server.clear();notifications.confirmClose=false;});
+  const auto restore=qScopeGuard([&]{qputenv("PATH",path);if(hadRuntime)qputenv("XDG_RUNTIME_DIR",runtime);else qunsetenv("XDG_RUNTIME_DIR");notifications.server.clear();notifications.confirmClose=false;});
   const auto asked=[&]{QFile file(directory.filePath("asked"));return file.open(QIODevice::ReadOnly)?QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts):QStringList{};};
   notifications.server="quickshell";
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());PUTGD_TRY_VERIFY(notifications.serverQueries>0);putgd::test::settle(50);
@@ -828,6 +833,7 @@ private slots:
   const auto owner=QString::number(QCoreApplication::applicationPid());
   auto calls=asked();calls.sort();
   QCOMPARE(calls,QStringList({"ipc --pid "+owner+" call notifications dismiss Saved locally","ipc --pid "+owner+" call notifications dismiss Upload complete","ipc --pid "+owner+" call notifications dismiss put.gd — scrolling capture stopped"}));
+  if(!started.isEmpty()){QFile seen(directory.filePath("runtime"));QVERIFY(seen.open(QIODevice::ReadOnly));QCOMPARE(seen.readAll().split('\n').first(),started);}
   // Nothing open: nothing is asked and nothing is reported.
   QCOMPARE(tray.closeNotifications([&]{++gone;}),0);PUTGD_COMPARE_STEADY(gone,1,150);QCOMPARE(asked().size(),3);
   // Other servers are not asked that way.

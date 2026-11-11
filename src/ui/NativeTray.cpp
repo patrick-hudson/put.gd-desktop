@@ -595,6 +595,15 @@ void NativeTrayPrivate::dismissOnScreen(const QStringList& summaries) {
    const auto command=putgd::notifications::dismissCommand(notificationServer_,owner.value(),summary);
    if(command.isEmpty())continue;
    auto* process=new QProcess(this);
+   // The shell is found through its own runtime directory, which is not this
+   // process's when put.gd runs with another one (an isolated profile): there
+   // `qs ipc` answered "No instance found" and the cards stayed.
+   auto environment=QProcessEnvironment::systemEnvironment();
+   QFile theirs(QStringLiteral("/proc/%1/environ").arg(owner.value()));
+   if(theirs.open(QIODevice::ReadOnly))
+    for(const auto& entry:theirs.readAll().split('\0'))
+     if(entry.startsWith("XDG_RUNTIME_DIR="))environment.insert(QStringLiteral("XDG_RUNTIME_DIR"),QString::fromLocal8Bit(entry.mid(16)));
+   process->setProcessEnvironment(environment);
    process->setStandardInputFile(QProcess::nullDevice());process->setStandardOutputFile(QProcess::nullDevice());process->setStandardErrorFile(QProcess::nullDevice());
    ++dismissing_;
    // Once, whether it ran, could not be started or was stopped below.
