@@ -109,6 +109,16 @@ public:
  // destination takes a single request at a time (Proton locks its account), so an
  // operation holds it for all of its provider work; more lets uploads overlap.
  virtual int maximumConcurrentRequests(const Destination&) const { return 1; }
+ // Lets the provider keep what it can reuse between one operation's requests to this
+ // destination (Proton: one signed-in helper for the name check, upload and link) until
+ // the handle is released. Requests made on the calling thread meanwhile use it. Release
+ // the handle on that thread; a provider with nothing to keep returns none.
+ virtual std::shared_ptr<void> openSession(const Destination&) { return {}; }
+ // A hint that requests to this destination are about to follow: an action that uploads
+ // there was just invoked. The provider may get ready ahead of them (Proton starts and
+ // signs in a helper). Never waits, and is callable from any thread; whatever it readied
+ // and no request used ends when the handle is released.
+ virtual std::shared_ptr<void> anticipate(const Destination&) { return {}; }
  // Providers may adopt longer execution budgets on explicit retry, without changing destination identity.
  virtual std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const { return {}; }
  virtual QString defaultPublicationMode(const Destination&) const { return "share"; }

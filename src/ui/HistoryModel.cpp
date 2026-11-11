@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QImageReader>
 #include <QJsonDocument>
+#include <QLocale>
 #include <QPointer>
 #include <algorithm>
 #include <utility>
@@ -15,7 +16,9 @@ namespace {
 QDateTime created(const QJsonObject& r){auto d=QDateTime::fromString(r["created"].toString(),Qt::ISODateWithMs);if(!d.isValid())d=QDateTime::fromString(r["created"].toString(),Qt::ISODate);return d.toLocalTime();}
 QString relative(const QDateTime& d){if(!d.isValid())return {};const auto s=d.secsTo(QDateTime::currentDateTime());if(s<60)return "Just now";if(s<3600)return QString("%1 min ago").arg(s/60);if(d.date()==QDate::currentDate())return d.toString("HH:mm");if(d.date()==QDate::currentDate().addDays(-1))return "Yesterday";return d.toString("MMM d, yyyy");}
 QString relative(const QJsonObject& r){return relative(created(r));}
-QString day(const QDateTime& created){const auto date=created.date();if(date==QDate::currentDate())return "TODAY";if(date==QDate::currentDate().addDays(-1))return "YESTERDAY";return date.isValid()?date.toString("MMMM d, yyyy").toUpper():QString("EARLIER");}
+// A day section's heading, in sentence case: the year only when it is not this one.
+QString day(const QDateTime& created){const auto date=created.date();const auto today=QDate::currentDate();if(date==today)return QStringLiteral("Today");if(date==today.addDays(-1))return QStringLiteral("Yesterday");return date.isValid()?QLocale().toString(date,date.year()==today.year()?QStringLiteral("dddd, MMMM d"):QStringLiteral("dddd, MMMM d, yyyy")):QStringLiteral("Earlier");}
+QString itemCount(qint64 count){return QStringLiteral("%1 %2").arg(QLocale().toString(count),count==1?QStringLiteral("item"):QStringLiteral("items"));}
 struct AggregateProgress {
  qint64 sent=0,total=0;bool known=false;
  int percent()const{return total>0?qBound(0,int(100.0*sent/total),100):-1;}
@@ -37,11 +40,47 @@ bool localSaveFailed(const QJsonObject& r){
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
 QString HistoryModel::relativeTime(const QJsonObject& r){return relative(r);}
+// The locale's short time of day, never with seconds (the C locale's short form has them).
+static QString shortTime(const QTime& time){auto format=QLocale().timeFormat(QLocale::ShortFormat);format.remove(QStringLiteral(":ss"));format.remove(QStringLiteral(".ss"));return QLocale().toString(time,format);}
+QString HistoryModel::longTimestamp(const QDateTime& when){if(!when.isValid())return {};const auto local=when.toLocalTime();return QLocale().toString(local.date(),QStringLiteral("MMMM d, yyyy"))+QStringLiteral(", ")+shortTime(local.time());}
+// The time column: relative within the last hour, else the locale's short
+// time; with the date (and a year that is not this one) where there are no
+// day headings to carry it.
+QString HistoryModel::timeColumn(const QDateTime& when,bool withDate){
+ if(!when.isValid())return {};const auto local=when.toLocalTime();const auto seconds=local.secsTo(QDateTime::currentDateTime());
+ if(seconds<60)return QStringLiteral("Just now");if(seconds<3600)return QStringLiteral("%1 min ago").arg(seconds/60);
+ const auto time=shortTime(local.time());if(!withDate)return time;
+ return QLocale().toString(local.date(),local.date().year()==QDate::currentDate().year()?QStringLiteral("MMM d"):QStringLiteral("MMM d, yyyy"))+QStringLiteral(", ")+time;
+}
 QString HistoryModel::dayLabel(int row)const{
  // Today and Yesterday move at midnight; the labels follow the date.
  const auto today=QDate::currentDate();
  if(dayLabelsFor_!=today){dayLabels_.clear();for(const auto& created:createdAt_)dayLabels_.append(day(created));dayLabelsFor_=today;}
  return dayLabels_.at(row);
+}
+// Work in progress sorts first under its own heading; a page that starts in
+// the middle of a day says so.
+QString HistoryModel::section(int row)const{
+ if(facts_.at(row).active)return QStringLiteral("In progress");
+ auto label=dayLabel(row);if(continued_.isValid()&&createdAt_.at(row).date()==continued_)label+=QStringLiteral(" · continued");return label;
+}
+QJsonArray HistoryModel::dayCounts()const{
+ QJsonArray result;QList<QDate> seen;
+ for(int row=0;row<rows_.size();++row){if(facts_.at(row).active)continue;const auto date=createdAt_.at(row).date();if(seen.contains(date))continue;seen.append(date);
+  result.append(QJsonObject{{"day",date.toString(Qt::ISODate)},{"heading",section(row)},{"files",dayCounts_.contains(date)?QJsonValue(double(dayCounts_.value(date))):QJsonValue()}});}
+ return result;
+}
+// Where a row's result went or was going: this device for a local-only
+// result, else the destination's current name, or its provider when the
+// destination was since removed.
+QString HistoryModel::destination(int row)const{
+ const auto r=record(row);const auto op=r["operation"].toObject();
+ if(r["uploadStatus"]=="local_only")return QStringLiteral("This device");
+ const auto profileId=r["profileId"].toString(op["destination"].toObject()["profileId"].toString());
+ for(const auto& value:history_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId&&!profileId.isEmpty())return value.toObject()["label"].toString();
+ auto provider=r["receipt"].toObject()["destination"].toObject()["providerId"].toString();if(provider.isEmpty())provider=op["destination"].toObject()["providerId"].toString();
+ if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="custom-http")return QStringLiteral("Custom uploader");if(provider=="s3")return QStringLiteral("S3 destination");
+ return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
 }
 HistoryModel::RowFacts HistoryModel::rowFacts(const QJsonObject& r){
  RowFacts facts;facts.active=active(r);facts.failed=failed(r);
@@ -152,27 +191,33 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==Qt::DisplayRole){const auto name=r["name"].toString();return r["mime"].toString().startsWith("image/")?QFileInfo(name).completeBaseName():name;}
  if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+statusText(r);
  if(role==Qt::ToolTipRole)return r["name"].toString()+"\n"+statusText(r);
- if(role==DayRole){const auto currentDay=dayLabel(i.row());return i.row()==0||currentDay!=dayLabel(i.row()-1)?currentDay:QString{};}
+ if(role==DayRole){if(!daySections())return QString{};const auto current=section(i.row());return i.row()==0||current!=section(i.row()-1)?current:QString{};}
+ if(role==SectionRole)return daySections()?section(i.row()):QString{};
+ if(role==DayCountRole){if(!daySections()||facts_.at(i.row()).active)return QString{};const auto date=createdAt_.at(i.row()).date();return dayCounts_.contains(date)?itemCount(dayCounts_.value(date)):QString{};}
+ if(role==CreatedTipRole)return longTimestamp(createdAt_.at(i.row()));
  if(role==ActiveRole)return facts_.at(i.row()).active;
  if(role==FailedRole)return facts_.at(i.row()).failed;
  if(role==PrimaryActionRole)return facts_.at(i.row()).primary;
  if(role==ProgressRole)return aggregateProgress(op).percent();
- if(role==CreatedRole)return relative(createdAt_.at(i.row()));
- if(role==OutputRole){
-  // Where the result went: this device for a local-only result, else the
-  // destination's current name (or its provider when it was since removed).
-  if(r["uploadStatus"]=="local_only")return QStringLiteral("This device");
-  const auto profileId=r["profileId"].toString(op["destination"].toObject()["profileId"].toString());
-  for(const auto& value:history_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId&&!profileId.isEmpty())return value.toObject()["label"].toString();
-  const auto provider=r["receipt"].toObject()["destination"].toObject()["providerId"].toString();
-  if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="custom-http")return QStringLiteral("Custom uploader");if(provider=="s3")return QStringLiteral("S3 destination");
-  return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
+ if(role==CreatedRole)return timeColumn(createdAt_.at(i.row()),!daySections());
+ if(role==OutputRole)return destination(i.row());
+ // The detail line: kind · size · destination · state. A failure names where
+ // the upload was going, then its stored error text; live work keeps its
+ // phase words. The time is a column of its own (CreatedRole).
+ if(role==SubtitleRole){
+  const auto files=r["records"].toArray();const auto where=destination(i.row());
+  if(facts_.at(i.row()).failed){auto text=statusText(r);const auto label=failureLabel(r);if(label=="Upload failed"&&!where.isEmpty()&&where!="This device"&&text.startsWith(label))text.replace(0,label.size(),"Upload to "+where+" failed");return text;}
+  if(files.isEmpty())return statusText(r);
+  QStringList parts{friendlyAction(op["action"].toString(r["category"].toString())),fileSize(r["bytes"].toInteger())};if(files.size()>1)parts.append(QString("%1 files").arg(files.size()));if(!where.isEmpty())parts.append(where);
+  if(active(r)||op["state"]=="cancelled"||(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r))){parts.append(statusText(r));return parts.join(" · ");}
+  const auto remote=remoteStateText(r);if(!remote.isEmpty())parts.append(remote);
+  else if(op["copyStatus"]=="copied")parts.append(r["uploadStatus"]=="local_only"?"Copied to clipboard":"Shared link");else if(op["copyStatus"]=="failed")parts.append(r["uploadStatus"]=="local_only"?"Couldn't copy result":"Couldn't copy link");else if(op["copyStatus"]=="suppressed")parts.append(r["uploadStatus"]=="local_only"?"Result not copied":"Link not copied");
+  return parts.join(" · ");
  }
- if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled"||(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)))return statusText(r);const auto remote=remoteStateText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());if(!remote.isEmpty())text+=" · "+remote;else{if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Shared link";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Couldn't copy result":" · Couldn't copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}const auto time=relative(createdAt_.at(i.row()));if(!time.isEmpty())text+=" · "+time;if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }
-void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();createdAt_.clear();facts_.clear();dayLabelsFor_={};multipleDestinations_=false;records_={};total_=0;endResetModel();refresh();}
+void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();createdAt_.clear();facts_.clear();dayLabelsFor_={};multipleDestinations_=false;records_={};total_=0;dayCounts_.clear();continued_={};countsKey_.clear();++countsRequest_;endResetModel();refresh();}
 void HistoryModel::setShowCancelled(bool show){if(showCancelled_==show)return;showCancelled_=show;if(!queryBusy_)rebuild();}
 void HistoryModel::refresh(){
  if(loadInFlight_){loadPending_=true;return;}const auto seq=request_;loadInFlight_=true;
@@ -220,13 +265,39 @@ void HistoryModel::rebuild(){
   hiddenCancelled_=hidden;for(int row:changed)emit dataChanged(index(row),index(row),{RecordRole,SubtitleRole,ThumbnailRole,ProgressRole,OutputRole,Qt::ToolTipRole,Qt::AccessibleTextRole});
   // Nothing else repaints the rows that didn't change, so their ages would stop.
   if(timesMoved&&!rows_.isEmpty())emit dataChanged(index(0),index(rows_.size()-1),{CreatedRole});
-  emit loaded();return;
+  emit loaded();requestCounts();return;
  }
  // Paths queued for the old rows mustn't crowd out the ones the new rows ask for.
  for(const auto& path:std::as_const(thumbnailQueue_))thumbnailRequested_.remove(path);thumbnailQueue_.clear();
  thumbnails_.setMaxCost(thumbnailCacheCost(rows.size()));
  beginResetModel();rows_=rows;createdAt_=createdAt;facts_=facts;dayLabelsFor_={};hiddenCancelled_=hidden;
- multipleDestinations_=scanDestinations();endResetModel();emit loaded();
+ multipleDestinations_=scanDestinations();endResetModel();emit loaded();requestCounts();
+}
+void HistoryModel::requestCounts(){
+ // The page's files decide every count; live progress never does.
+ QStringList key{query_.search,query_.category,query_.mime,query_.profileId,query_.uploadStatus,query_.localStatus,query_.remoteStatus,query_.from,query_.to,QString::number(query_.offset),QString::number(query_.limit),QString::number(total_),QDate::currentDate().toString(Qt::ISODate)};
+ for(const auto& value:std::as_const(records_)){const auto file=value.toObject();key<<file["id"].toString()+'/'+file["uploadStatus"].toString();}
+ // Totals also move when something outside this page changes (an upload into
+ // another category, expiry): an operation changing state is part of the key,
+ // and a count older than half a minute is asked for again on the next refresh.
+ for(const auto& value:std::as_const(operations_)){const auto operation=value.toObject();key<<operation["id"].toString()+'/'+operation["state"].toString();}
+ const auto joined=key.join(QChar(0x1f));if(joined==countsKey_&&countsAge_.isValid()&&countsAge_.elapsed()<30000)return;countsKey_=joined;countsAge_.start();
+ QList<QDate> dates;QDateTime first;
+ for(int row=0;row<rows_.size();++row){if(facts_.at(row).active)continue;const auto date=createdAt_.at(row).date();if(!first.isValid())first=createdAt_.at(row);if(date.isValid()&&!dates.contains(date))dates.append(date);}
+ QJsonArray days;if(daySections())for(const auto& date:std::as_const(dates).mid(0,64))days.append(QJsonObject{{"from",QDateTime(date,QTime(0,0)).toUTC().toString(Qt::ISODateWithMs)},{"to",QDateTime(date,QTime(23,59,59,999)).toUTC().toString(Qt::ISODateWithMs)}});
+ const auto query=query_;const auto seq=++countsRequest_;
+ QJsonObject params{{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to},{"days",days}};
+ history_.request("history.counts",params,this,[g=QPointer<HistoryModel>(this),seq,dates,query,first](Error e,QJsonObject data){
+  if(!g||g->countsRequest_!=seq)return;
+  if(e){g->countsKey_.clear();g->categoryTotals_={};g->dayCounts_.clear();g->continued_={};g->dayLabelsFor_={};emit g->countsChanged();return;}
+  g->categoryTotals_=data["categories"].toObject();g->dayCounts_.clear();const auto counts=data["days"].toArray();for(int i=0;i<counts.size()&&i<dates.size();++i)g->dayCounts_.insert(dates[i],counts[i].toInteger());
+  auto finish=[g](const QDate& continued){g->continued_=continued;g->dayLabelsFor_={};if(g->rowCount())emit g->dataChanged(g->index(0),g->index(g->rowCount()-1),{DayRole,SectionRole,DayCountRole});emit g->countsChanged();};
+  // Whether the first day began on an earlier page: the stored file just before this page.
+  if(query.offset<=0||!first.isValid()||!g->daySections()){finish({});return;}
+  g->history_.request("history.list",{{"limit",1},{"offset",query.offset-1},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,first,finish](Error e,QJsonObject page){
+   if(!g||g->countsRequest_!=seq)return;const auto before=page["records"].toArray();finish(!e&&!before.isEmpty()&&created(before.first().toObject()).date()==first.date()?first.date():QDate{});
+  });
+ });
 }
 void HistoryModel::loadThumbnail(const QString& path)const{if(thumbnailRequested_.contains(path)||thumbnailQueue_.size()>=qMax(32,rowCount()))return;thumbnailRequested_.insert(path);thumbnailQueue_.append(path);nextThumbnail();}
 void HistoryModel::nextThumbnail()const{

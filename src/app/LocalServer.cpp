@@ -216,6 +216,19 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   for(auto it=p.begin();it!=p.end();++it) {if(it.key()=="limit"||it.key()=="offset") {if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()>INT_MAX||it.value().toDouble()<0) {reply(invalid(),{});return;}}else if(!it.value().isString()||it.value().toString().size()>256) {reply(invalid(),{});return;}}
   HistoryQuery q;q.limit=p["limit"].toInt(50);q.offset=p["offset"].toInt();q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.list(q,reply);return;
  }
+ // History's counts: the same filters as history.list (no paging) and up to
+ // 64 [from, to] day ranges; category totals ignore the filters.
+ if(method=="history.counts") {
+  const QStringList allowed{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to","days"};if(!fields(p,{},allowed)) {reply(invalid(),{});return;}
+  QList<std::pair<QString,QString>> days;
+  for(auto it=p.begin();it!=p.end();++it) {
+   if(it.key()=="days") {
+    if(!it.value().isArray()||it.value().toArray().size()>64) {reply(invalid(),{});return;}
+    for(const auto& value:it.value().toArray()) {const auto day=value.toObject();if(!value.isObject()||!fields(day,{"from","to"})||!string(day,"from",64)||!string(day,"to",64)) {reply(invalid(),{});return;}days.append({day["from"].toString(),day["to"].toString()});}
+   }else if(!it.value().isString()||it.value().toString().size()>256) {reply(invalid(),{});return;}
+  }
+  HistoryQuery q;q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.counts(q,days,reply);return;
+ }
  if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.unlockLinkCredentials"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
   // history.preview alone takes an optional boolean retry (Retry preview).
   if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,reply);else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
@@ -297,9 +310,16 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // Drives the open History page: filters, selection and the compact details view.
  if(method=="ui.history") {
-  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
-  if(!fields(p,{"action"},{"scope","ids"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
-     ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))){reply(invalid(),{});return;}
+  static const QStringList actions{"inspect","clearFilters","retryLoading","copyDeletionDetails","select","clearSelection","openDetails","closeDetails","toggleDetails","nextPage","previousPage","goToPage","setFilter","removeFilter","showCategory","setView","copySelectedLinks","deleteSelected","cancelConfirmation","expandPreview","closePreview","retryPreview","showSavedCopy","copySavedPath","dismissSavedCopy","cancelAll","confirmCancelAll","keepUploading"};const auto action=p["action"].toString();
+  static const QStringList filterKeys{"from","to","mime","profileId","uploadStatus","localStatus","remoteStatus","exactRemoteStatus","includeCanceled"};
+  // Each parameter belongs to exactly the actions that take it.
+  if(!fields(p,{"action"},{"scope","ids","page","key","value","category","view"})||!actions.contains(action)||(p.contains("scope")&&(action!="clearFilters"||!QStringList{"filters","all"}.contains(p["scope"].toString())))
+     ||(action=="select")!=p.contains("ids")||(p.contains("ids")&&(!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000))
+     ||(action=="goToPage")!=p.contains("page")||(p.contains("page")&&(!p["page"].isDouble()||std::floor(p["page"].toDouble())!=p["page"].toDouble()||p["page"].toDouble()<1||p["page"].toDouble()>INT_MAX))
+     ||(action=="setFilter"||action=="removeFilter")!=p.contains("key")||(p.contains("key")&&!filterKeys.contains(p["key"].toString()))
+     ||(action=="setFilter")!=p.contains("value")||(p.contains("value")&&(!p["value"].isString()||p["value"].toString().size()>256))
+     ||(action=="showCategory")!=p.contains("category")||(p.contains("category")&&!QStringList{"all","images","videos","text+other","failed"}.contains(p["category"].toString()))
+     ||(action=="setView")!=p.contains("view")||(p.contains("view")&&!QStringList{"list","gallery"}.contains(p["view"].toString()))){reply(invalid(),{});return;}
   for(const auto& id:p["ids"].toArray())if(!id.isString()||id.toString().isEmpty()||id.toString().size()>138){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("history",p,std::move(reply));return;

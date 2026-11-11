@@ -149,10 +149,22 @@ official account code would sign the account out and remove it from the
 keychain. Live, three parallel helpers finished three uploads 1.7–2.7 times
 faster than one at a time, so concurrent Proton uploads remain a tracked design
 item (#176) that needs refresh coordinated across helpers first. Helper requests use bounded stdin/stdout;
-passwords and sessions never use argv. Each helper request keeps at most 64
-SDK crypto-key entries in memory to avoid repeated parent-key decryption. Entity
-metadata stays uncached, so identity/revision checks still read from the service.
-The key cache is discarded with the helper process and is never persisted.
+passwords and sessions never use argv.
+
+An upload's name check, transfer and link share one helper process, which the
+app keeps for that operation only and ends with it. The helper signs in once,
+keeps its connections, and answers each request in turn; the account stays
+locked to it meanwhile. The app starts it when the action is invoked, so it
+signs in while you choose a region or the capture is taken; Edit & upload
+starts it only when the edit is uploaded. A helper started for an action you
+cancel ends by itself. History actions and setup start a helper per request.
+A helper keeps at most 64 SDK crypto-key entries and 64 file or folder
+metadata entries in memory, so the SDK does not fetch the same parent again.
+The helper's own folder and ownership checks never use that metadata: each is
+a new read from the service, and sharing reads the file before and after the
+link is made. The one exception is an upload that follows its own name check
+within ten seconds, which uses that check's folder read. Both caches are discarded with the helper process and are never
+persisted. A file under 128 KiB uploads in one request.
 Timeouts/cancellation can leave an uncertain mutation, which the journal reconciles instead of hiding with another upload. SDK transport retries
 are separate from application-level operation replay.
 

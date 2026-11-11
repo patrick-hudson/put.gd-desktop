@@ -258,10 +258,10 @@ QList<Operation> HistoryStore::recover(Error* error) {
  d.finish();for(const auto& doc:pending) if(auto e=saveDeletion(doc)) {if(error)*error=e;return {};}
  return result;
 }
-HistoryPage HistoryStore::list(const HistoryQuery& query) const {
- HistoryPage r;if(error_) {r.error=error_;return r;}
- if(query.limit<1||query.limit>200||query.offset<0||query.search.size()>256) {r.error={"invalid_query","History page must be between 1 and 200 records",{}};return r;}
- QString where=" WHERE 1=1";QVariantList values;
+namespace {
+// The WHERE clause every history query shares: list, its total and counts.
+void historyWhere(const HistoryQuery& query,QString& where,QVariantList& values){
+ where=" WHERE 1=1";
  auto filter=[&](QString column,const QString& value) {if(!value.isEmpty()) {where+=" AND "+column+"=?";values.append(value);}};
  // "text+other" is an aggregate, never a stored category: clipboard text and
  // other files together, History's "Other files" (2026-10-26). Every other
@@ -274,10 +274,38 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  else filter("remote_status",query.remoteStatus);
  if(!query.from.isEmpty()) {where+=" AND created>=?";values.append(query.from);}if(!query.to.isEmpty()) {where+=" AND created<=?";values.append(query.to);}
  if(!query.search.isEmpty()) {where+=" AND name LIKE ? ESCAPE '\\'";auto escaped=query.search;escaped.replace("\\","\\\\");escaped.replace("%","\\%");escaped.replace("_","\\_");values.append("%"+escaped+"%");}
+}
+}
+HistoryPage HistoryStore::list(const HistoryQuery& query) const {
+ HistoryPage r;if(error_) {r.error=error_;return r;}
+ if(query.limit<1||query.limit>200||query.offset<0||query.search.size()>256) {r.error={"invalid_query","History page must be between 1 and 200 records",{}};return r;}
+ QString where;QVariantList values;historyWhere(query,where,values);
  auto q=forwardQuery(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
  if(!q.exec()||!q.next()) {r.error=sqlError();return r;}r.total=q.value(0).toLongLong();
  q.prepare("SELECT data FROM history"+where+" ORDER BY created DESC,id LIMIT ? OFFSET ?");for(const auto& v:values) q.addBindValue(v);q.addBindValue(query.limit);q.addBindValue(query.offset);
  if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(relocate(publicRecord(decode(q.value(0)))));return r;
+}
+QJsonObject HistoryStore::counts(const HistoryQuery& query,const QList<std::pair<QString,QString>>& days,Error* error) const {
+ if(error_) {if(error)*error=error_;return {};}
+ if(query.search.size()>256||days.size()>64) {if(error)*error={"invalid_query","History counts take at most 64 days",{}};return {};}
+ // Category totals ignore the search and filters: History's sidebar and the
+ // denominator of "12 of 168 items".
+ auto q=forwardQuery(db_);
+ if(!q.exec("SELECT count(*),coalesce(sum(category='images'),0),coalesce(sum(category='videos'),0),coalesce(sum(category IN ('text','other')),0),coalesce(sum(upload_status='failed'),0) FROM history")||!q.next()) {if(error)*error=sqlError();return {};}
+ const QJsonObject categories{{"all",double(q.value(0).toLongLong())},{"images",double(q.value(1).toLongLong())},{"videos",double(q.value(2).toLongLong())},{"text+other",double(q.value(3).toLongLong())},{"failed",double(q.value(4).toLongLong())}};
+ q.finish();
+ // Each day is a [from, to] range of ISO times the caller derives from its own
+ // calendar; the count is the query's stored files created in it.
+ QString where;QVariantList values;historyWhere(query,where,values);
+ if(!q.prepare("SELECT count(*) FROM history"+where)) {if(error)*error=sqlError();return {};}
+ for(const auto& v:values) q.addBindValue(v);if(!q.exec()||!q.next()) {if(error)*error=sqlError();return {};}const auto total=q.value(0).toLongLong();q.finish();
+ QJsonArray dayCounts;
+ for(const auto& [from,to]:days) {
+  if(!q.prepare("SELECT count(*) FROM history"+where+" AND created>=? AND created<=?")) {if(error)*error=sqlError();return {};}
+  for(const auto& v:values) q.addBindValue(v);q.addBindValue(from);q.addBindValue(to);
+  if(!q.exec()||!q.next()) {if(error)*error=sqlError();return {};}dayCounts.append(double(q.value(0).toLongLong()));q.finish();
+ }
+ return {{"categories",categories},{"total",double(total)},{"days",dayCounts}};
 }
 QJsonObject HistoryStore::detail(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"history_not_found","History record not found",{}};return {};}return relocate(publicRecord(decode(q.value(0))));}

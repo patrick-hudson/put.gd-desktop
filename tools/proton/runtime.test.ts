@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
-import { checkName, createFolder, destinationFolder, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
+import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
-import { saveToKeychain } from './account';
+import { SharedAccountReads, saveToKeychain } from './account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
 import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
@@ -48,10 +48,23 @@ function folder(uid: string, parentUid?: string): NodeEntity {
 }
 // Only SDK methods reached by production setup/stat functions are stubbed.
 // This proves their branching and scope, not a live account or desktop gate.
-function context(options: { rootUid?: string; listedUids?: string[]; listThrows?: boolean } = {}) {
+function context(options: { rootUid?: string; listedUids?: string[]; listThrows?: boolean; batchThrows?: boolean } = {}) {
     const calls: Call[] = [];
     let listCompleted = false;
-    const ctx = { auth: { isLoggedIn: () => true }, sdk: {
+    const ctx = { auth: { isLoggedIn: () => true }, fresh: (read: () => Promise<unknown>) => read(),
+        warm: () => { calls.push({ method: 'warm', args: [] }); },
+        modulusAhead: () => { calls.push({ method: 'modulus', args: [] }); return () => { calls.push({ method: 'modulus-unused', args: [] }); }; }, sdk: {
+        // The batched read: the root as the service names it, and each node the single-node
+        // stub answers. A node whose lookup the stub refuses is absent from the batch.
+        iterateNodes: async function* (uids: string[]) {
+            calls.push({ method: 'nodes', args: [uids] });
+            for (const uid of uids) {
+                if (uid === (options.rootUid ?? 'root')) { yield folder(uid); continue; }
+                let node;
+                try { node = await (ctx.sdk as any).getNode(uid); } catch (error) { if (options.batchThrows) throw error; continue; }
+                yield node;
+            }
+        },
         getMyFilesRootFolder: async () => {
             calls.push({ method: 'root', args: [] }); return folder(options.rootUid ?? 'root');
         },
@@ -62,7 +75,6 @@ function context(options: { rootUid?: string; listedUids?: string[]; listThrows?
             calls.push({ method: 'create', args }); return folder('new-folder', 'root');
         },
         getNode: async (uid: string) => {
-            calls.push({ method: 'node', args: [uid] });
             if (uid === 'folder') return folder('folder', 'root');
             throw new Error('Synthetic denied lookup');
         },
@@ -84,31 +96,59 @@ function statRequest(): JsonObject {
 test('inspect accepts a matching configured account before any folder is selected', async () => {
     const stub = context();
     expect(await inspectAccount(stub.ctx, setup)).toEqual({ accountRootUid: 'root', accountEmail: 'synthetic@example.invalid', folders: [{ uid: 'folder', name: 'Uploads' }] });
-    expect(stub.calls.map(call => call.method)).toEqual(['root', 'children']);
-    expect(stub.calls[1].args[0]).toBe('root');
-    expect(stub.calls[1].args[1]).toEqual({ type: NodeType.Folder });
+    expect(stub.calls.map(call => call.method)).toEqual(['warm', 'root', 'children']);
+    expect(stub.calls[2].args[0]).toBe('root');
+    expect(stub.calls[2].args[1]).toEqual({ type: NodeType.Folder });
 });
 test('first folder creation accepts matching configured account with empty folder UID', async () => {
     const stub = context();
     expect(await createFolder(stub.ctx, setup)).toEqual({ uid: 'new-folder', name: 'Uploads', accountRootUid: 'root' });
-    expect(stub.calls).toEqual([{ method: 'root', args: [] }, { method: 'create', args: ['root', 'Uploads'] }]);
+    expect(stub.calls).toEqual([{ method: 'warm', args: [] }, { method: 'root', args: [] }, { method: 'create', args: ['root', 'Uploads'] }]);
 });
 test('wrong configured account rejects inspection and creation before either SDK action', async () => {
     for (const operation of [inspectAccount, createFolder]) {
         const stub = context({ rootUid: 'other-root' });
         await expect(operation(stub.ctx, setup)).rejects.toThrow('account_changed');
-        expect(stub.calls).toEqual([{ method: 'root', args: [] }]);
+        expect(stub.calls).toEqual([{ method: 'warm', args: [] }, { method: 'root', args: [] }]);
+    }
+});
+test('another account under the configured root rejects file operations whatever the batch returned', async () => {
+    const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } } };
+    for (const batchThrows of [false, true]) {
+        const stub = context({ rootUid: 'other-root', batchThrows });
+        (stub.ctx.sdk as any).getNode = async () => { throw new Error('Synthetic foreign volume'); };
+        await expect(destinationFolder(stub.ctx, request)).rejects.toThrow('account_changed');
+    }
+});
+test('the folder and a further node are read from the service in one batch, past the request cache', async () => {
+    const stub = context(); let fresh = 0, batchesWhileFresh = 0, reading = false;
+    stub.ctx.fresh = async read => { ++fresh; reading = true; try { return await read(); } finally { reading = false; } };
+    const batch = (stub.ctx.sdk as any).iterateNodes;
+    (stub.ctx.sdk as any).iterateNodes = (...args: unknown[]) => { if (reading) ++batchesWhileFresh; return batch(...args); };
+    const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } } };
+    const { folder: selected, nodes } = await readDestination(stub.ctx, request, ['file-node', 'folder']);
+    expect(selected.uid).toBe('folder'); expect([...nodes.keys()]).toEqual(['root', 'folder']);
+    expect(fresh).toBe(1); expect(batchesWhileFresh).toBe(1);
+    expect(stub.calls.filter(call => call.method === 'nodes').map(call => call.args[0])).toEqual([['root', 'folder', 'file-node']]);
+});
+test('a folder the service no longer returns, or one outside My files, is an unavailable destination', async () => {
+    for (const parent of [undefined, 'elsewhere']) {
+        const stub = context();
+        (stub.ctx.sdk as any).getNode = async (uid: string) => { if (parent) return folder(uid, parent); throw new Error('Synthetic missing folder'); };
+        const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } } };
+        await expect(destinationFolder(stub.ctx, request)).rejects.toThrow('destination_unavailable');
     }
 });
 test('file operations still require a selected folder', async () => {
     const stub = context();
     await expect(destinationFolder(stub.ctx, setup)).rejects.toThrow('invalid_request');
-    expect(stub.calls).toEqual([{ method: 'root', args: [] }]);
+    expect(stub.calls).toEqual([]);
 });
 test('failed node lookup remains unknown when destination UID listing contains the target', async () => {
     const stub = context({ listedUids: ['other-node', 'file-node'] });
     expect((await stat(stub.ctx, statRequest())).status).toBe('unknown');
-    expect(stub.calls.map(call => call.method)).toEqual(['root', 'node', 'node', 'uids']);
+    expect(stub.calls.map(call => call.method)).toEqual(['warm', 'nodes', 'warm', 'root', 'uids']);
+    expect(stub.calls[1].args[0]).toEqual(['root', 'folder', 'file-node']);
     expect(stub.calls.at(-1)?.args[0]).toBe('folder');
 });
 test('failed node lookup is missing only after a complete destination UID list excludes it', async () => {
@@ -129,8 +169,8 @@ test('name preflight uses SDK hashed availability without listing unrelated fold
         const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } }, candidate: 'photo.png' };
         const result = await checkName(stub.ctx, request);
         expect(result.status).toBe(available === 'photo.png' ? 'absent' : 'present');
-        expect(stub.calls.map(call => call.method)).toEqual(['root', 'node', 'available']);
-        expect(stub.calls[2].args).toEqual(['folder', 'photo.png', NodeType.File]);
+        expect(stub.calls.map(call => call.method)).toEqual(['warm', 'nodes', 'warm', 'root', 'available']);
+        expect(stub.calls[4].args).toEqual(['folder', 'photo.png', NodeType.File]);
     }
 });
 test('failed name availability is inconclusive rather than permission-as-absence', async () => {
@@ -443,4 +483,44 @@ test('a refused keychain session write reports keychain_unavailable without prov
     let saved = 0;
     await saveToKeychain(async () => { ++saved; });
     expect(saved).toBe(1);
+});
+
+test('a session shares only good My files and root share answers between its clients', async () => {
+    const calls: string[] = [];
+    let status = 200, myFiles: unknown = { Share: { ShareID: 'root-share' } }, hold: Promise<void> | undefined;
+    const inner = {
+        fetchBlob: async () => new Response('blob'),
+        fetchJson: async (options: { url: string; method: string; signal?: AbortSignal }) => {
+            const path = new URL(options.url).pathname; calls.push(options.method + ' ' + path + (options.signal ? ' signalled' : ''));
+            const serial = calls.length;
+            if (path.endsWith('/root-share')) await hold;
+            const body = path.endsWith('/my-files') ? myFiles : { path, serial };
+            return new Response(JSON.stringify(body), { status, headers: { 'x-synthetic': String(serial) } });
+        },
+    };
+    const reads = new SharedAccountReads(inner as any);
+    const signal = new AbortController().signal;
+    const get = (path: string, method = 'GET') => reads.fetchJson({ url: 'https://synthetic.invalid/' + path, method, signal } as any);
+    // Before My files names the root share, no share answer is kept: any of them may change.
+    await get('drive/shares/root-share'); await get('drive/shares/root-share');
+    expect(calls.length).toBe(2);
+    // A refused or malformed My files answer is passed on and asked again.
+    status = 500; expect((await get('drive/v2/shares/my-files')).status).toBe(500);
+    status = 200; myFiles = { Share: {} }; expect(await (await get('drive/v2/shares/my-files')).json()).toEqual({ Share: {} });
+    expect(calls.length).toBe(4);
+    // A good one is kept, and the root share it names is read at once, free of the request's signal.
+    myFiles = { Share: { ShareID: 'root-share' } };
+    let release = () => {}; hold = new Promise(resolve => { release = resolve; });
+    const first = await get('drive/v2/shares/my-files'), second = await get('drive/v2/shares/my-files');
+    expect(calls.slice(4)).toEqual(['GET /drive/v2/shares/my-files signalled', 'GET /drive/shares/root-share']);
+    expect(await second.json()).toEqual(await first.json()); expect(second.headers.get('x-synthetic')).toBe('5');
+    // A client that asks while that read is under way waits for it instead of asking again.
+    const waiting = get('drive/shares/root-share'); release();
+    const root = await (await waiting).json();
+    expect(root).toEqual({ path: '/drive/shares/root-share', serial: 6 });
+    expect(await (await get('drive/shares/root-share')).json()).toEqual(root);
+    expect(calls.length).toBe(6);
+    // Another share, another method and every other read still reach the service each time.
+    for (let i = 0; i < 2; i++) { await get('drive/shares/file-share'); await get('drive/shares/root-share', 'DELETE'); await get('drive/v2/volumes/v/links', 'POST'); }
+    expect(calls.length).toBe(12);
 });

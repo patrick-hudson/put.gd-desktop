@@ -25,6 +25,7 @@
 #include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
+#include <algorithm>
 #include <QApplication>
 #include <QScreen>
 #include "platform/NativeSession.h"
@@ -441,6 +442,13 @@ int main(int argc,char* argv[]) {
  // upload waits until it has (#1105): it would otherwise reach the destination
  // with no credentials and fail.
  QTimer::singleShot(startedForUpload?0:3000,&setup,[&setup]{setup.unlockSavedCredentials();});
+ // With a Proton destination configured, check its bundled runtime once in the background,
+ // so the first upload does not wait for the hash of a 110 MB file.
+ const auto prepareProton=[&settings,proton]{
+  const auto profiles=settings.snapshot().profiles;
+  if(std::any_of(profiles.cbegin(),profiles.cend(),[](const QJsonObject& profile){return profile["provider"]=="proton-drive";}))proton->prepare();
+ };
+ QTimer::singleShot(startedForUpload?0:3000,&app,prepareProton);QObject::connect(&settings,&putgd::SettingsService::accepted,&app,prepareProton);
  operations.setUploadGate([&setup]()->putgd::Error{return setup.savedCredentialsSettled()?putgd::Error{}:putgd::Error{"initializing","put.gd is reading its saved credentials",{}};});
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;

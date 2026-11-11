@@ -135,6 +135,6 @@ if(BUILD_TESTING)
       PUTGD_PROTON_INSTALL_RELATIVE="proton-fixture/helper"
       PUTGD_PROTON_RUNTIME_SHA512="${proton_test_hash}")
     add_test(NAME proton_transport COMMAND test_proton_transport)
-    set_tests_properties(proton_transport PROPERTIES TIMEOUT 20)
+    set_tests_properties(proton_transport PROPERTIES TIMEOUT 40)
   endif()
 endif()

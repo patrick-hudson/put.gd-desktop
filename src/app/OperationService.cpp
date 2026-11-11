@@ -314,6 +314,8 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
+ // An edit uploads only when its editor is done; every other upload follows its capture at once.
+ if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -468,7 +470,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
   if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
   Operation op;op.id=uuid();op.action=fileManagerAction;op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));op.settingsRevision=revision;
   op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
-  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);beginUploadCopies(op,false);
+  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);beginUploadCopies(op,false);anticipate(op);
   ClipboardPayload payload;payload.kind="files";payload.files=selected->files;payload.zipFolders=selected->zipFolders;
   const auto origins=selected->origins;const auto database=databasePath();
   background([database,op](Error& e) {HistoryStore store(database);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,payload,origins,reply](Error e,QJsonObject result) mutable {
@@ -694,11 +696,12 @@ Operation OperationService::run(Job job) {
  // A provider that takes one request at a time (Proton locks its account) is leased
  // to this operation for all of its provider work, preflight to sharing.
  const bool parallel=provider->maximumConcurrentRequests(op.destination)>1;
- struct Lease{std::shared_ptr<DestinationLease> held;~Lease(){if(held)held->release();}} lease;
+ // What the provider keeps between this operation's requests ends before the lease passes on.
+ struct Lease{std::shared_ptr<DestinationLease> held;std::shared_ptr<void> session;~Lease(){session.reset();if(held)held->release();}} lease;
  if(!parallel) {
   const auto destination=destinationLease(op.destination);op.phase="queued";observe(op.publicJson());
   if(!destination->acquire([&job]{return job.cancelled->load();})){op.cancelled=true;op.state="cancelled";save();return op;}
-  lease.held=destination;
+  lease.held=destination;lease.session=provider->openSession(op.destination);
  }
  op.state="running";op.phase="preflight";if(!save())return op;
  // Check all pending names before the first PUT, including opaque references that
@@ -905,7 +908,13 @@ Operation OperationService::run(Job job) {
  op.state=op.cancelled?"cancelled":"completed";for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.uploadStatus=="cancelled"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")op.state=op.cancelled?"cancelled":"partial";
  op.phase=op.state;save();return op;
 }
+// Lets the destination's provider get ready while the operation's content is still being
+// chosen, captured or copied. What it readied and the operation never used ends with it.
+void OperationService::anticipate(const Operation& op) {
+ if(const auto provider=providers_.find(op.destination.providerId))if(auto ready=provider->anticipate(op.destination))anticipated_.insert(op.id,std::move(ready));
+}
 void OperationService::releaseActive(const QString& id) {
+ anticipated_.remove(id);
  // Durable completion and source drain can arrive in either order. Retain the
  // bounded operation slot until both have happened; never unlock a live helper.
  if(preparedOwners_.contains(id))finishedPrepared_.insert(id);
@@ -913,7 +922,7 @@ void OperationService::releaseActive(const QString& id) {
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
- clipboardImports_.remove(op.id);pumpCopies();
+ anticipated_.remove(op.id);clipboardImports_.remove(op.id);pumpCopies();
  // Its link is copied only when asked for (diagnostics.bundle copyLink).
  if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
  if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}

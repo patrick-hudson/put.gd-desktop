@@ -8,6 +8,8 @@ public:
  explicit HistoryService(OperationService&,QObject* parent=nullptr);
  ~HistoryService() override;
  void list(const HistoryQuery&,JsonReply);
+ // Category totals, the query's total and its files per day range (HistoryStore::counts).
+ void counts(const HistoryQuery&,const QList<std::pair<QString,QString>>& days,JsonReply);
  void detail(const QString&,JsonReply);
  // Makes the item's missing image or video preview (#190); see OperationService::makePreview.
  void preview(const QString&,JsonReply,bool retry=false);

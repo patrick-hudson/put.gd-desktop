@@ -277,9 +277,9 @@ def clear_filters(ctx):
     row = _row(ctx, 'history_rows')
     _frame(ctx, 'before')
     ctx.click('historyFiltersExpanded', window='history')
-    ctx.click('text:Add a history filter', window='history')
     ctx.click('text:Upload state', window='historyAddFilterMenu')
-    # The real Add Filter action focuses its newly revealed control. Bind the
+    # Filter opens the add-filter menu directly; the chosen filter's own editor
+    # opens under it inside the window with its control focused. Bind the
     # owning window, then prove that focus by the resulting query change.
     ctx.focus('history', raise_window=False)
     _frame(ctx, 'filter-revealed', None)

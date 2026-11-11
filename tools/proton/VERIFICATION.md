@@ -226,3 +226,85 @@ budget acceptance and out-of-range rejection without an account; complete
 1,048,337-byte stdout drain passed. Four upstream Crypto/Bun type errors remain;
 no helper/test type diagnostics remain. Live large-file recovery and release
 acceptance are recorded separately in `docs/history/proton-drive-verification.md`.
+
+
+## Faster publishing: fewer requests, one helper per operation, started ahead (2026-11-10)
+
+A 64 KiB upload with a share link took 15 to 20 seconds. Tracing every request
+of the three helper calls showed why: 38 sequential requests to Proton, most of
+them repeats. Each helper call re-read the account and folder one request at a
+time, the SDK fetched each parent again because entity metadata used NullCache,
+and the application hashed the 110 MB runtime (about 0.8 s with Qt's SHA-512)
+before every helper start.
+
+Helper changes:
+
+- Node metadata has a second bounded cache. The helper's destination and
+  ownership checks read past it in one batch (root, folder and file); the SDK
+  reuses that batch for its own lookups.
+- The user and address reads start together beside the first Drive read; the
+  root share is read as soon as My files names it; a new link's SRP modulus is
+  read beside the share's creation.
+- Files under 128 KiB use the SDK's single-request upload.
+- `--session` answers an operation's requests from one signed-in process. Its
+  Drive clients share their caches and their My files and root share answers.
+  An upload reuses the destination read of the name check just before it, and
+  a name query runs beside the destination read once the folder's keys are in
+  the process.
+- `warm` signs a session in before its first request.
+
+Application changes: the provider hears of an upload when its action is
+invoked and starts a helper with `warm`; the operation's session takes that
+helper; the adapter keeps a helper only while every answer is clean; the
+runtime's hash verdict is kept per file and first computed in the background.
+The helper process is no longer a QProcess, which belongs to one thread, but a
+small pipe-and-spawn wrapper that the invoking thread can hand to the
+operation's thread.
+
+Requests for one 64 KiB publish: 38 before; 20 with a helper per request; 8
+after the warm-up's 5.
+
+Timed on d69 against the live test account with `proton_latency_probe`, the
+production adapter and compiled helper. Each row is name check + upload + share
+link, in alternating runs. "Nightly" is commit 8662a5fd1 with only the probe's
+folder-name allowance applied. "Cold" starts the helper at the first request;
+"started ahead" starts it 1.5 s before, as an action's invocation does while a
+region is chosen.
+
+| Payload | Nightly | New, cold | New, started ahead |
+| --- | --- | --- | --- |
+| 64 KiB | 14.5, 18.1, 18.4, 15.8 s | 5.8, 5.3, 3.6, 2.9 s | 2.0, 2.4, 2.4, 2.4 s |
+| 1 MiB | 13.8, 19.1, 15.5 s | 9.0, 6.8, 6.4 s | 9.1, 4.4, 8.8 s; then 4.3, 4.4, 7.5, 4.9, 4.3 s |
+
+Means: 64 KiB 16.7 s to 2.3 s (4.4 s cold); 1 MiB 16.1 s to 5.9 s over all
+eight runs started ahead, 4.4 s in its five typical ones. Service and uplink
+latency varied between runs, so single runs are not comparable; the
+alternation is what makes the columns comparable. Above 128 KiB the SDK's block
+upload is five sequential requests, and the 1 MiB block alone took 1.7 to 2.0 s
+on d69's uplink.
+
+What is left in a started-ahead 64 KiB publish: the name query (about 0.2 s),
+one upload request (0.5 to 0.7 s, of which 0.15 s is key generation), and the
+link (1.3 to 1.5 s): an ownership read, the share's creation, about 0.55 s of
+Proton's own password hashing on d69 (two bcrypt hashes and a 65 MB iterated
+key derivation), the link's creation and a second ownership read.
+
+Every run ended `absent`, `uploaded`, `shared` and `revoked`. Sharing requires
+the ownership check to read back the publication marker, so the single-request
+upload stores it. 51 helper tests, 12 compiled stdio cases, 3 compiled session
+cases and the stdout drain pass in provisioning; `proton_transport` (45 cases,
+11 new for kept helpers and helpers started ahead), `proton_contract` (31) and
+`test_operations` (122) pass on d69. Type checking reports only the three
+upstream Crypto stream declaration errors.
+
+The rebuilt helper is
+`3a5167cbe44c854b53d10a40e1e91f5094dc2d1cf4f950213dcb970b21324d48`, reproduced
+by two provisions on d69. `SOURCES.json` binds it and its overlay sources. The
+native relink proof and the desktop/resource acceptance describe helper
+`9fd4d72f8635`: both are open gates again, and their flags are off, until they
+are repeated for this helper.
+
+Not done, with reasons: Bun's experimental HTTP/2 client and pre-connect API;
+running the link's password hashing on another thread; raising the SDK's
+128 KiB single-request limit; and keeping a helper alive between operations,
+which the idle memory gate rules out.

@@ -37,6 +37,18 @@ private slots:
   QCOMPARE(count({}),4);QCOMPARE(count("images"),1);QCOMPARE(count("videos"),1);QCOMPARE(count("text"),1);QCOMPARE(count("other"),1);
   QCOMPARE(count("text+other"),2);QCOMPARE(count("files"),0);
  }
+ // History's counts: category totals ignore the filters; each day range counts
+ // the query's own files, so a day cut by a page edge still has its total.
+ void countsTotalCategoriesAndTheQueryPerDay() {
+  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));
+  auto save=[&](const QString& id,const QString& created,const QString& mime,const QString& category,const QString& status){Operation op;op.id=id;op.created=created;op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="test";OperationItem item;item.artifact.id=id+"-item";item.artifact.name=id;item.artifact.mime=mime;item.artifact.category=category;item.uploadStatus=status;op.items.append(item);QVERIFY(!store.saveOperation(op));};
+  save("a","2026-11-09T10:00:00.000Z","image/png","images","uploaded");save("b","2026-11-09T11:00:00.000Z","image/png","images","failed");save("c","2026-11-10T09:00:00.000Z","video/mp4","videos","uploaded");save("d","2026-11-10T09:30:00.000Z","text/plain","text","uploaded");save("e","2026-11-10T10:00:00.000Z","image/png","images","uploaded");
+  HistoryQuery q;q.category="images";Error error;const auto counts=store.counts(q,{{"2026-11-09T00:00:00.000Z","2026-11-09T23:59:59.999Z"},{"2026-11-10T00:00:00.000Z","2026-11-10T23:59:59.999Z"},{"2026-11-11T00:00:00.000Z","2026-11-11T23:59:59.999Z"}},&error);QVERIFY(!error);
+  const auto categories=counts["categories"].toObject();QCOMPARE(categories["all"].toInt(),5);QCOMPARE(categories["images"].toInt(),3);QCOMPARE(categories["videos"].toInt(),1);QCOMPARE(categories["text+other"].toInt(),1);QCOMPARE(categories["failed"].toInt(),1);
+  QCOMPARE(counts["total"].toInt(),3);{const auto days=counts["days"].toArray();QCOMPARE(days.size(),3);QCOMPARE(days[0].toInt(),2);QCOMPARE(days[1].toInt(),1);QCOMPARE(days[2].toInt(),0);}
+  q.search="a";QCOMPARE(store.counts(q,{},&error)["total"].toInt(),1);QCOMPARE(store.counts(q,{},&error)["categories"].toObject()["all"].toInt(),5);
+  QList<std::pair<QString,QString>> tooMany;for(int i=0;i<65;++i)tooMany.append(std::pair<QString,QString>{"2026-11-09T00:00:00.000Z","2026-11-09T23:59:59.999Z"});store.counts(q,tooMany,&error);QCOMPARE(error.code,QString("invalid_query"));
+ }
  void friendlyRemoteGroupsKeepExactStatesAndPagination() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="remote-groups";op.created="2026-10-07T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());
   const QStringList states{"not_requested","present","removed","already_missing","pending","deleting","failed","unknown","changed","superseded","hidden_version_retained","version_retained","unsupported_safe_removal"};

@@ -37,15 +37,24 @@ public:
  // Concurrent uploads (#28): requests the destination accepts at once, and names that fail.
  int concurrency=1;QSet<QString> failCandidates;
  int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
+ // The session one operation holds around its requests to a destination that takes one
+ // at a time (Proton keeps a signed-in helper in it): how many were opened and are open,
+ // and how many requests ran outside one or off the thread that opened it.
+ std::atomic_int sessionsOpened{0},sessionsOpen{0},requestsOutsideSession{0};std::atomic<std::thread::id> sessionThread{};
+ std::shared_ptr<void> openSession(const Destination&) override {++sessionsOpened;++sessionsOpen;sessionThread=std::this_thread::get_id();return std::shared_ptr<void>(this,[this](void*){--sessionsOpen;});}
+ // What the provider was asked to ready ahead of an operation, and how much of it is still held.
+ std::atomic_int anticipations{0},anticipationsHeld{0};
+ std::shared_ptr<void> anticipate(const Destination&) override {++anticipations;++anticipationsHeld;return std::shared_ptr<void>(this,[this](void*){--anticipationsHeld;});}
+ void countRequest() {if(concurrency==1&&(sessionsOpen.load()!=1||sessionThread.load()!=std::this_thread::get_id()))++requestsOutsideSession;}
  QHash<QString,QString> deletionResults;std::function<void(const DeleteRequest&)> checkpointObserver;
  static QString fileId(const QString& candidate) {return "opaque:α/%?#:"+QString::fromLatin1(QCryptographicHash::hash(candidate.toUtf8(),QCryptographicHash::Sha256).toHex());}
  bool reportsUploadProgress() const override {return prepareUploads;}
  ProviderCapabilities capabilities(const Destination&) const override {if(capabilitiesGate)capabilitiesGate();ProviderCapabilities c{true,true,true,true,true,allowDelete,true,255,"Remove only the recorded opaque file revision"};c.maximumObjectBytes=maximumObjectBytes;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name) const override {return d.settings["workspace"].toString()+":"+(ref.isEmpty()?fileId(name):ref["fileId"].toString());}
  Error validateSettings(const QJsonObject& s) const override {if(s.size()!=1||!s["workspace"].isString())return {"config_invalid","A workspace is required",{}};return {};}
- void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {if(cancellation&&cancellation->load()){cb({"inconclusive",{},{},{"cancelled","Synthetic name check cancelled",{}}});return;}++checks;QMutexLocker lock(&mutex);auto id=fileId(name);auto found=objects.value(id);NameCheck r{objects.contains(id)?"present":"absent",{{"format",1},{"fileId",id}},found.concurrencyToken,{}};lock.unlock();if(deferChecks)QMetaObject::invokeMethod(dispatcher,[this,cb,r]{checkCompletions.append([cb,r]{cb(r);});},Qt::QueuedConnection);else cb(r);}
+ void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {if(cancellation&&cancellation->load()){cb({"inconclusive",{},{},{"cancelled","Synthetic name check cancelled",{}}});return;}++checks;countRequest();QMutexLocker lock(&mutex);auto id=fileId(name);auto found=objects.value(id);NameCheck r{objects.contains(id)?"present":"absent",{{"format",1},{"fileId",id}},found.concurrencyToken,{}};lock.unlock();if(deferChecks)QMetaObject::invokeMethod(dispatcher,[this,cb,r]{checkCompletions.append([cb,r]{cb(r);});},Qt::QueuedConnection);else cb(r);}
  void upload(const UploadRequest& request,std::function<void(UploadResult)> cb) override {
-  ++uploads;
+  ++uploads;countRequest();
   {QMutexLocker lock(&mutex);resumes.append(request.resume);}
   if(journalThenFail&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"uploadId","opaque-upload"}},[cb](Error e){cb({"failed",{},e?e:Error{"fixture_failed","Synthetic failure",{}}});});return;}
   if(journalThenUnknown&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"upload","opaque-resumable"}},[cb](Error e){cb({"unknown",{},e?e:Error{"fixture_interrupted","Synthetic interruption",{}}});});return;}
