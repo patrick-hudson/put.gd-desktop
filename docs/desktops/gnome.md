@@ -204,7 +204,28 @@ title `put.gd recording controls`) out of the rectangle with
 `move_frame`/`make_above`. The bar is accepted only when its process's parent
 (from `/proc/PID/stat`) is the authenticated resident, so a request cannot move
 another application's window. `HideRecordingFrame` removes the actors; a
-disable, a lock or the resident leaving the bus does the same. Mutter offers
+disable, a lock or the resident leaving the bus does the same.
+
+Placing the bar takes several waits: up to 2 s for its window to appear, up to
+1 s for it to be shown, and 100 ms after each of up to five moves, because
+Mutter places a new window when it is first shown and undoes an earlier move.
+The bar can go away during any of them (the helper hides it, exits or is
+killed), and a `Meta.Window` object outlives its window. The extension
+therefore watches the bar from the moment it finds it: on Mutter's
+`unmanaging` or `unmanaged` signal the bar is no longer live, the placement
+answers `bar: {placed: false, outside: false}`, the size-change follower drops
+it, and no method of that window is called again. The lookup also skips a
+window whose actor `is_destroyed()`, since the actor stays listed while it
+fades out. Hiding the frame (the bridge call, a disable, a lock, the resident
+leaving the bus) ends a placement that is still waiting: it answers
+`cancelled`, and neither the frame nor a scroll capture's beat is shown again.
+Before this, `meta_window_move_frame()` on the unmanaged Wayland window read
+through NULL inside Mutter and ended the session: GNOME Shell 50.6 took a
+SIGSEGV in `meta_window_update_monitor` when a scroll capture was cancelled
+right after it was prepared, and when a recording was cancelled or its helper
+killed while its bar was being placed (2026-11-11, #1376). After a Shell crash
+gnome-session also turns every user extension off
+(`org.gnome.shell disable-user-extensions`). Mutter offers
 no per-window screencast exclusion: a recording of a whole monitor with no
 other monitor to hold the bar contains it. The resident then reports
 `overlayPlacement: handle` and has the helper shrink the bar to its dot-and-Stop
