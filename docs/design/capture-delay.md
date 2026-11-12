@@ -6,7 +6,7 @@ Each one is native on every desktop adapter; no portal picker stands in for any 
 | Addition | What it does | How it is started |
 | --- | --- | --- |
 | Capture monitor | Captures the monitor the pointer is on, at that monitor's native size | The `monitor` action: tray, dashboard, a shortcut (unbound by default), `action.invoke`, MCP `perform_action` |
-| Delayed capture | Waits 3, 5 or 10 seconds before a region, window, monitor or desktop capture, or a repeat | `delaySeconds` on `action.invoke`; the tray and the dashboard pass `preferences.captureDelaySeconds` |
+| Delayed capture | Waits 3, 5 or 10 seconds before a region, window, monitor or desktop capture, a repeat, or Capture region & edit | `delaySeconds` on `action.invoke`; the tray and the dashboard pass `preferences.captureDelaySeconds`, and so does a shortcut when `preferences.captureDelayShortcuts` is on |
 | Repeat last region | Captures the rectangle of the last region capture again, with no selector | The `repeat` action: tray, the Capture region button's context menu, a shortcut (unbound by default), `action.invoke`, MCP |
 
 ## Capture monitor
@@ -38,15 +38,25 @@ read. A pointer that is over no output (a gap in the layout) is refused with
 
 `delaySeconds` is an option of the existing actions, not a new set of actions.
 `action.invoke` accepts `0` (immediate), `3`, `5` or `10` for `region`, `window`,
-`monitor`, `desktop` and `repeat`, and refuses anything else with `invalid_request`
-before an operation exists.
+`monitor`, `desktop`, `repeat` and `edit`, and refuses anything else with
+`invalid_request` before an operation exists. An `edit` is delayed as the capture it
+starts with is: its `source` must be `region` (the default), `window` or `desktop`.
+An edit of the clipboard or a file reads no screen, so a delay on one is refused.
 
 - **The tray and the dashboard** read `preferences.captureDelaySeconds`. The tray's
   **Capture delay** submenu and the same submenu in the context menu of the
-  dashboard's Capture region, window, monitor and desktop buttons set it, as one
-  radio group: None, 3, 5 or 10 seconds. The submenu's own label names the current
-  choice ("Capture delay: 3 seconds"). Settings has no control for it.
-- **A shortcut capture is always immediate**, whatever that preference says.
+  dashboard's Capture region, window, monitor and desktop and Edit & upload buttons
+  set it, as one radio group: None, 3, 5 or 10 seconds. The submenu's own label names
+  the current choice ("Capture delay: 3 seconds"). **Settings → Capture → Capture
+  delay** has the same choice as **Wait before capturing**.
+- **A shortcut capture is immediate by default**, whatever that delay is.
+  `preferences.captureDelayShortcuts` (Settings → Capture → Capture delay → **Also
+  delay captures started by a shortcut**) makes shortcuts wait for it too. An open
+  menu usually holds the keyboard, so a shortcut cannot fire while one shows; with
+  this on, press the shortcut first and open the menu during the countdown.
+- **Capture region & edit** waits like Capture region, from the tray, the dashboard
+  and (with the option above) its shortcut. The tray's Edit image entries (the
+  clipboard, a file) never wait.
 - **`action.invoke` and MCP `perform_action`** use the `delaySeconds` they are given
   and never read the preference.
 
@@ -57,7 +67,7 @@ The operation is accepted and journalled first, so its ID is returned at once an
 
 | Capture | Order |
 | --- | --- |
-| Region, live selection | The area is chosen first, then the countdown runs, then the area is captured |
+| Region and Capture region & edit, live selection | The area is chosen first, then the countdown runs, then the area is captured |
 | Region, screenshot first | The countdown runs first, then every monitor is frozen, then the area is chosen on the frozen frame |
 | Window | The countdown runs, then the window that is active at that moment is frozen and captured |
 | Monitor | The countdown runs, then the monitor under the pointer at that moment is captured |
@@ -165,13 +175,17 @@ region capture is refused as with any older loaded extension
 | `session_locked` | The screen was locked when a capture delay ended, or the countdown was not on screen at that moment |
 | `delay_unavailable` | The desktop cannot show the countdown, or its helper failed |
 | `capture_target` | Capture monitor with the pointer over no monitor, or the desktop did not report the pointer |
-| `invalid_request` | `delaySeconds` other than 0, 3, 5 or 10, or on an action that takes none |
+| `invalid_request` | `delaySeconds` other than 0, 3, 5 or 10, on an action that takes none, or on an edit of the clipboard or a file |
 
 ## Tests
 
 - `capture_delay_contract` (`tests/unit/test_capture_delay.cpp`): the operation
   service against a fake adapter: what is prepared when, a cancelled and a locked
-  countdown, repeat's refusal and its region record, `delaySeconds` validation.
+  countdown, repeat's refusal and its region record, `delaySeconds` validation, and
+  an edit that waits only when it captures the screen.
+- `gui_tray`: a shortcut waits for the delay only with
+  `preferences.captureDelayShortcuts`, the tray's Capture region & edit waits, and an
+  edit of the clipboard does not.
 - `budgie_labwc_integration`: on a real headless labwc with two outputs, the monitor
   under a virtual pointer (both outputs, and the shared edge), Repeat last region and
   its refusal after an output moves, the countdown pill seen on screen, absent from
@@ -179,8 +193,9 @@ region capture is refused as with any older loaded extension
 - `gnome_ui_ownership_contract`: the extension's monitor, repeat and countdown paths
   against a stand-in Shell whose chrome rejects unknown parameters as Shell 50 does.
 - `gui_settings_capture`: the capture buttons' context menu (Repeat last region on
-  Capture region only, the named delay submenu, one preference for every button) and
-  the band's full labels at a width that fits them.
+  Capture region only, the named delay submenu, one preference for every button), the
+  Capture delay section of Settings → Capture, and the band's full labels at a width
+  that fits them.
 - `tests/integration/test_mcp.py`: the MCP helper's side only, against a stand-in
   resident socket: `perform_action` maps `monitor`, `repeat` and `delay_seconds` to
   `action.invoke`, and refuses a delay that is not 3, 5 or 10 or sits on an action

@@ -165,9 +165,13 @@ Every other host keeps the pixmap only
 The tray icon follows the local calendar, every year: a turkey from November 1
 to 30, a Christmas tree from December 1 to 31, and the ordinary mark otherwise.
 Both are vector silhouettes in `src/ui/IconArt.cpp`, using the same panel tints
-as the mark. The turkey keeps the mark's bowl. December's broad, three-tier fir
-uses a separate five-point star and a shallow tray-shaped stand, leaving most
-of the frame for the tree. Nothing else about the app icon changes.
+as the mark. The turkey uses a compact bowl and a rounded optical drawing for
+16 physical pixels, rasterized directly instead of shrinking a larger bitmap.
+The Qt tray icon and the resident's StatusNotifier item offer that frame alongside
+24/48/72 px frames; the host selects the size it needs. The larger turkey frames
+use their own vector silhouette. December's broad, three-tier fir uses a separate
+five-point star and a shallow tray-shaped stand, leaving most of the frame for
+the tree. Nothing else about the app icon changes.
 
 | State | What the icon shows | Tooltip title |
 | --- | --- | --- |

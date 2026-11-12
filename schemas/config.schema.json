@@ -1064,7 +1064,12 @@
         "captureDelaySeconds": {
           "enum": [0, 3, 5, 10],
           "default": 0,
-          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, or a repeat of the last region. A countdown shows meanwhile and can be cancelled. Shortcut captures are always immediate, and session requests pass their own delaySeconds. Omitted means 0."
+          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, a repeat of the last region, or Capture region & edit. A countdown shows meanwhile and can be cancelled. Shortcut captures are immediate unless captureDelayShortcuts is true, and session requests pass their own delaySeconds. Omitted means 0."
+        },
+        "captureDelayShortcuts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether captures started by a keyboard shortcut also wait captureDelaySeconds. Omitted means false: shortcut captures are immediate."
         },
         "scrollCaptureMaxHeight": {"type": "integer", "minimum": 2000, "maximum": 60000, "default": 30000},
         "scrollCaptureFromTop": {"type": "boolean", "default": true},

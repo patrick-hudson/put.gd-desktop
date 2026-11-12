@@ -292,17 +292,19 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  const bool repeat=requestedAction==Settings::repeatActionName();
  const QString action=repeat?QStringLiteral("region"):requestedAction;
  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
- // delaySeconds (#1363): region, window, monitor and desktop captures and a
- // repeat can start after 3, 5 or 10 seconds; 0 is immediate.
+ // delaySeconds (#1363): region, window, monitor and desktop captures, a repeat
+ // and an edit of a screen capture can start after 3, 5 or 10 seconds; 0 is immediate.
  auto stripped=requested;const auto delayValue=stripped.take("delaySeconds");
  const QJsonObject options=stripped; // const: operator[] must not insert
  const int delay=delayValue.toInt();
- if(!delayValue.isUndefined()&&(!Settings::delayableAction(requestedAction)||!delayValue.isDouble()||delayValue.toDouble()!=delay||!Settings::captureDelayChoices().contains(delay))){reply({"invalid_request","delaySeconds is 0, 3, 5 or 10, for region, window, monitor, desktop and repeat captures",{}},{});return;}
+ if(!delayValue.isUndefined()&&(!Settings::delayableAction(requestedAction)||!delayValue.isDouble()||delayValue.toDouble()!=delay||!Settings::captureDelayChoices().contains(delay))){reply({"invalid_request","delaySeconds is 0, 3, 5 or 10, for region, window, monitor, desktop, repeat and edit captures",{}},{});return;}
  // Edit & upload acquires from a chosen source, by default the native region
  // selector; every other action is its own source and takes no other options.
  const auto source=repeat?requestedAction:action=="edit"?options["source"].toString("region"):action;
  const auto sourcePath=options["path"].toString();
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
+ // An edit of the clipboard or a file reads no screen, so it has nothing to delay.
+ if(action=="edit"&&delay>0&&!Settings::delayableEditSource(source)){reply({"invalid_request","delaySeconds applies to an edit of a region, window or desktop capture",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is active; stop or cancel it before editing",{{"operationId",recording_->activeId()}}},{});return;}
  const bool interactive=source!="clipboard"&&source!="file";

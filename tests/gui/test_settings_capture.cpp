@@ -95,6 +95,21 @@ private slots:
   auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["regionSelectionMode"]="live";doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
   PUTGD_TRY_COMPARE(mode->currentData().toString(),QString("live"));
  }
+ void captureDelayLivesOnTheCapturePage(){
+  // #1363: the delay the tray and the capture buttons set, and whether shortcuts wait for it.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);
+  auto* delay=window.findChild<QComboBox*>("captureDelaySeconds");QVERIFY(delay);QVERIFY(tabs->widget(1)->isAncestorOf(delay));
+  QStringList texts;for(int index=0;index<delay->count();++index)texts<<delay->itemText(index);QCOMPARE(texts,QStringList({"None","3 seconds","5 seconds","10 seconds"}));QCOMPARE(delay->currentData().toInt(),0);
+  auto* shortcuts=window.findChild<QCheckBox*>("captureDelayShortcuts");QVERIFY(shortcuts);QVERIFY(tabs->widget(1)->isAncestorOf(shortcuts));QVERIFY(!shortcuts->isChecked());
+  QVERIFY(window.findChild<QToolButton*>("captureDelaySecondsHelp"));QVERIFY(shortcuts->accessibleDescription().contains("shortcut"));
+  // An untouched configuration keeps neither key; a choice writes its own.
+  for(const auto* key:{"captureDelaySeconds","captureDelayShortcuts"})QVERIFY2(!service.document()["preferences"].toObject().contains(key),key);
+  delay->setCurrentIndex(delay->findData(5));PUTGD_TRY_COMPARE(service.snapshot().captureDelaySeconds,5);QVERIFY(!service.document()["preferences"].toObject().contains("captureDelayShortcuts"));
+  shortcuts->click();PUTGD_TRY_VERIFY(service.snapshot().captureDelayShortcuts);QCOMPARE(service.snapshot().captureDelaySeconds,5);
+  // The tray's menu and the CLI/MCP path write the same keys; the open window follows.
+  auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["captureDelaySeconds"]=10;prefs["captureDelayShortcuts"]=false;doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
+  PUTGD_TRY_COMPARE(delay->currentData().toInt(),10);PUTGD_TRY_VERIFY(!shortcuts->isChecked());
+ }
  void recordingFrameRateLivesOnTheCapturePage(){
   // #984: 30 (default) or 60 frames per second for new recordings, saved to the shared config.
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);
@@ -267,7 +282,7 @@ private slots:
  // region only, and the capture delay as a named submenu that saves the preference.
  void captureButtonsOfferRepeatAndANamedDelayMenu(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(Settings::defaults(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,800);window.show();
-  for(const auto& action:QStringList{"region","window","monitor","desktop"}){
+  for(const auto& action:QStringList{"region","window","monitor","desktop","edit"}){
    auto* options=window.findChild<QMenu*>("captureOptionsMenu"+action);QVERIFY2(options,qPrintable(action));
    QCOMPARE(options->findChild<QAction*>("repeatLastRegion")!=nullptr,action=="region");
    auto* delays=window.findChild<QMenu*>("captureDelayMenu"+action);QVERIFY(delays);QVERIFY(options->actions().contains(delays->menuAction()));
@@ -275,7 +290,7 @@ private slots:
    QCOMPARE(texts,QStringList({"None","3 seconds","5 seconds","10 seconds"}));
    emit options->aboutToShow();QCOMPARE(delays->title(),QString("Capture delay: none"));QVERIFY(delays->findChild<QAction*>("captureDelay0")->isChecked());
   }
-  QVERIFY(!window.findChild<QMenu*>("captureOptionsMenuedit")&&!window.findChild<QMenu*>("captureOptionsMenuclipboard")&&!window.findChild<QMenu*>("captureOptionsMenurecord"));
+  QVERIFY(!window.findChild<QMenu*>("captureOptionsMenuclipboard")&&!window.findChild<QMenu*>("captureOptionsMenurecord"));
   window.findChild<QMenu*>("captureDelayMenudesktop")->findChild<QAction*>("captureDelay5")->trigger();
   PUTGD_TRY_VERIFY(fixture.session.document()["preferences"].toObject()["captureDelaySeconds"].toInt()==5);
   // One preference: every button's menu shows it.

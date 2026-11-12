@@ -177,13 +177,27 @@ private slots:
   QTest::newRow("fraction")<<"window"<<QJsonValue(3.5);
   QTest::newRow("text")<<"monitor"<<QJsonValue("3");
   QTest::newRow("clipboard")<<"clipboard"<<QJsonValue(3);
-  QTest::newRow("edit")<<"edit"<<QJsonValue(3);
+  QTest::newRow("edit fraction")<<"edit"<<QJsonValue(3.5);
   QTest::newRow("record")<<"record"<<QJsonValue(3);
  }
  void delayIsValidatedBeforeAnythingIsAccepted() {
   QFETCH(QString,action);QFETCH(QJsonValue,delay);Fixture f;Error refused;
   f.run(action,{{"delaySeconds",delay}},&refused);
   QCOMPARE(refused.code,QString("invalid_request"));QVERIFY(f.source.events.isEmpty());
+ }
+ void anEditWaitsOnlyWhenItCapturesTheScreen() {
+  // Capture region & edit takes the delay as a region does: the area first, then
+  // the adapter's countdown. The clipboard and a file read no screen.
+  Fixture f;QString id;Error error;int replies=0;
+  f.operations->invoke("edit",[&](Error e,QJsonObject accepted){error=e;id=accepted["operationId"].toString();++replies;},{{"delaySeconds",5}});
+  QVERIFY(waitFor([&]{return replies==1;}));QVERIFY2(!error,qPrintable(error.message));
+  QVERIFY(waitFor([&]{return f.source.events.contains("acquire:region");}));
+  QCOMPARE(f.source.preparedDelays,QList<int>{5});
+  int cancelled=0;f.operations->cancel(id,[&](Error,QJsonObject){++cancelled;});QVERIFY(waitFor([&]{return cancelled==1;}));
+  for(const auto& options:{QJsonObject{{"source","clipboard"},{"delaySeconds",3}},QJsonObject{{"source","file"},{"path","/synthetic/picture.png"},{"delaySeconds",3}}}){
+   Fixture refusing;Error refused;refusing.run("edit",options,&refused);
+   QCOMPARE(refused.code,QString("invalid_request"));QVERIFY(refusing.source.events.isEmpty());
+  }
  }
  void zeroDelayIsImmediate() {
   Fixture f;QCOMPARE(f.run("desktop",{{"delaySeconds",0}})["state"].toString(),QString("completed"));

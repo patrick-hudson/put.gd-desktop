@@ -33,7 +33,7 @@ public:
  OperationService(QString dataRoot,SettingsService&,ProviderRegistry&,SourceAdapter&,QObject* parent=nullptr);
  ~OperationService() override;
  // `edit` accepts options {source: region|window|desktop|clipboard|file, path}.
- // region, window, monitor, desktop and repeat accept {delaySeconds: 0|3|5|10}.
+ // region, window, monitor, desktop, repeat and edit (of a screen capture) accept {delaySeconds: 0|3|5|10}.
  void invoke(const QString& action,JsonReply,const QJsonObject& options={});
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
