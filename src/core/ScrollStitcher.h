@@ -94,13 +94,14 @@ struct StitchOptions {
   // the page's distance and where they were, and that in two steps in a row.
   double ownPaceMaxWith = 0.50;
   // The search by quarter bands (ScrollStitcher::columnSearch), for a page
-  // between side bars: this many quarters at least must be proved to be the
-  // page's at the offset.
-  int columnMinQuarters = 4;
-  // And how far apart in brightness (the mean of the channels' sum, in
-  // sixteenths: 96 is 6 of 765) two quarters of a row may be and still be the
-  // same line drawn again.
+  // between side bars: how far apart in brightness (the mean of the channels'
+  // sum, in sixteenths: 96 is 6 of 765) two quarters of a row may be and
+  // still be the same line drawn again.
   int columnLightTolerance = 96;
+  // A quarter whose lines are too short to prove a distance names one when at
+  // that distance at least this share of the rows in which it shows something
+  // are equal bit for bit (and at no other more than exactTieMaxRival).
+  double columnMovedFraction = 0.70;
   // A bar that comes up at the bottom late (ScrollStitcher::lateBar) becomes
   // the footer when every row can be accounted for, instead of ending the
   // capture as a change of layout.
@@ -249,6 +250,7 @@ class ScrollStitcher {
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
   Search locate(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
   Search columnSearch(const FrameSignatures& cur, int top, int bottom) const;
+  bool contradicted(int top, int bottom, int d) const;
   int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates, bool exact) const;
   bool columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady, uint32_t own) const;
   enum class Bar { Is, IsNot, Open };

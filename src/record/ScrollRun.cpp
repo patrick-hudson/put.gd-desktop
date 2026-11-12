@@ -183,6 +183,13 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
     int64_t lastChange = start;  // at least settleMs after the injection
     bool responded = false;
     firstChangeMs_ = -1;
+    // A response wait counts from the wheel step, not from this call: the
+    // pointer stays a moment after the step (leaveDelayMs), and a page that
+    // scrolls at once has moved by the time the call begins. Its one changed
+    // frame was then "from before the call", nothing changed after it, and
+    // every step waited out the whole response time (1.6 s a step on Plasma
+    // with a browser that does not animate its scrolling, 2026-11-12).
+    const int64_t since = quietMs > 0 && lastInjectMs_ >= 0 ? std::min(start, lastInjectMs_) : start;
     // The cadence is measured between frames taken one after the other in one
     // wait; the time the loop spent elsewhere between two waits is not a gap.
     lastFrameMs_ = -1;
@@ -220,8 +227,9 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
         }
         if (changed) {
             lastChange = std::max(lastChange, f->timestampMs);
-            // A frame from before the call began cannot show what the call waits for.
-            if (!haveFrame_ || f->timestampMs >= start) {
+            // A frame from before the call began (before the wheel step, for a
+            // response wait) cannot show what the call waits for.
+            if (!haveFrame_ || f->timestampMs >= since) {
                 if (!responded) firstChangeMs_ = std::max(start, f->timestampMs);
                 responded = true;
             }
@@ -599,7 +607,14 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 if (endPending) ++stats_.falseEnds;
                 endPending = false;
                 moved = true;
-                oneNotchFailures = 0;
+                // Only a step that added rows is progress. One that found its
+                // way back to rows already in the image (after a way back that
+                // went too far) is not: counted as progress, a place where one
+                // wheel step takes the picture further than a viewport, there
+                // and back again, kept the loop going round until the time
+                // limit (a page that lays itself out anew under the viewport;
+                // Chromium, real desktop, 2026-11-12).
+                if (r.appendedRows > 0) oneNotchFailures = 0;
                 if (r.lowConfidence) ++stats_.lowConfidenceSteps;
                 if (!afterStill && firstChange >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(firstChange - injectedAt));
                 // Learn px-per-notch from verified steps; a low-confidence step only

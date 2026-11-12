@@ -1546,6 +1546,35 @@ void testLivePages() {
            fmt("%s, %d rows of %d, first foreign row %d, %d wheel steps, %d of them further than 80 px from where the pointer waits [%s]", toString(result), run.stats().outputRows, doc.h, foreign, wheels, farWheels, run.stats().lastError.c_str()));
   }
   {
+    // A page that scrolls at once (no animation) has moved while the pointer
+    // still stays its moment after the wheel step. That is the step's
+    // response; the wait must not sit out the whole response time for a
+    // change that already happened.
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    FakeAppSpec spec;
+    spec.pxPerNotch = 100;
+    spec.animMinMs = spec.animMaxMs = 1;
+    spec.reactionDelayMs = 0;
+    spec.frameIntervalMs = 16;
+    spec.queued = true;
+    FakeClock clock;
+    FakeApp app(doc, vs, spec, clock);
+    RunOptions opts;
+    opts.pointer = true;
+    opts.away = RunPoint{W / 2, -16};
+    opts.restAway = true;
+    opts.leaveDelayMs = 30;
+    ScrollRun run(app, app, clock, opts);
+    const RunResult result = run.run();
+    const std::vector<uint8_t> img = run.stitcher().takeImage();
+    const int foreign = firstForeignRow(img, run.stats().outputRows, doc);
+    const double perStep = run.stats().steps ? double(run.stats().elapsedMs) / run.stats().steps : 0;
+    report("session a page that scrolls at once: the step's response is seen", result == RunResult::EndOfContent && run.stats().outputRows == doc.h && foreign < 0 && perStep < 450,
+           fmt("%s, %d rows of %d, first foreign row %d, %d steps in %lld ms (%.0f ms a step)", toString(result), run.stats().outputRows, doc.h, foreign, run.stats().steps, (long long)run.stats().elapsedMs, perStep));
+  }
+  {
     // The user's own pointer rested on a link when the capture began: the
     // panel is on the screen and goes a quarter of a second after the pointer left.
     LinkPanel panel(360, true);
@@ -1625,6 +1654,37 @@ void testLivePages() {
     });
     const int bad = firstWrongRow(s, listing, 320, 700, listing.h);
     report("session short lines between two side bars: moved, not changed in place", s.result == RunResult::EndOfContent && s.outH == listing.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d between the bars, steps %d [%s]", toString(s.result), s.outH, listing.h, bad, s.steps, s.error.c_str()));
+  }
+  for (double px : {100.0, 132.0}) {
+    // The same with lines that all begin alike (a listing's tags) and end
+    // before the middle of the page, where the wheel is turned over blank
+    // paper: no quarter has rows enough of its own to prove a distance by,
+    // and the side bars, which stay, are most of what shows. Together the
+    // rows prove it; and where they could not, the step would be ambiguous,
+    // never "in place".
+    Image listing(W, 3600, kBg);
+    Rng rng(34);
+    for (int y = 12; y + 16 < listing.h; y += 19) {
+      Rng tag(7);
+      drawTextLine(listing, y, 330, 366, tag);
+      drawTextLine(listing, y, 370, 370 + rng.range(30, 90), rng);
+    }
+    Image left(260, V - 24, 0xF8F9FA), right(200, V - 24, 0xF8F9FA);
+    for (int y = 8; y + 16 < left.h; y += 22) drawTextLine(left, y, 10, 40 + rng.range(60, 200), rng);
+    for (int y = 14; y + 16 < right.h; y += 26) drawTextLine(right, y, 8, 30 + rng.range(40, 150), rng);
+    const LiveSession s = liveSession(listing, W, V, px, [&](Image& f, const FakeApp&, int pos, int64_t) {
+      const int barTop = std::max(136 - pos, 24);
+      for (int y = barTop; y < V; ++y) {
+        std::memcpy(&f.at(60, y), left.row(y - barTop), size_t(left.w) * 4);
+        std::memcpy(&f.at(700, y), right.row(y - barTop), size_t(right.w) * 4);
+      }
+    });
+    const int bad = firstWrongRow(s, listing, 320, 700, std::min(s.outH, listing.h));
+    // Whole, or an honest end: never an image with rows missing that says it is whole.
+    const bool whole = s.result == RunResult::EndOfContent && s.outH == listing.h && bad < 0;
+    const bool honest = s.result == RunResult::LostTrack && s.outH < listing.h && bad < 0;
+    report(fmt("session lines that begin alike between two side bars, the wheel over blank paper, px=%g", px), whole || honest,
            fmt("%s, %d rows of %d, first wrong row %d between the bars, steps %d [%s]", toString(s.result), s.outH, listing.h, bad, s.steps, s.error.c_str()));
   }
   for (int at : {2, 5})

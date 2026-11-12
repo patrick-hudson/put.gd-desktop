@@ -1004,11 +1004,56 @@ ScrollStitcher::Search ScrollStitcher::locate(const FrameSignatures& cur, int to
   // ties with it, and neither the exact rule nor the hint decides (the last
   // step of an article, 51 px to the page's end, in Chromium; real desktop,
   // 2026-11-12). The quarter bands prove the offset or leave it ambiguous.
-  if (found.status != StepStatus::NoMatch && found.status != StepStatus::Ambiguous && !inPlace) return found;
+  // And an offset the bands found is checked against the quarters: where
+  // some of them show at that offset mostly not what they showed before, two
+  // things moved in the frame, and the bands follow the wider one (side bars
+  // on their way to where they stick, 12 px, beside a narrow page that moved
+  // 300). The quarter bands say which is the page.
+  const bool offset = found.status == StepStatus::Appended && found.d != 0;
+  if (offset && !contradicted(top, bottom, found.d)) return found;
+  if (found.status != StepStatus::NoMatch && found.status != StepStatus::Ambiguous && !inPlace && !offset) return found;
   Search byColumns = columnSearch(cur, top, bottom);
-  if (byColumns.status != StepStatus::Appended) return found;
-  byColumns.evaluated += found.evaluated;
-  return byColumns;
+  if (byColumns.status == StepStatus::Appended) {
+    if (offset && std::abs(byColumns.d - found.d) <= 1) return found;  // the quarters say the same
+    byColumns.evaluated += found.evaluated;
+    return byColumns;
+  }
+  // An offset the bands proved stands unless the quarters prove another.
+  if (offset) return found;
+  // "In place" stands only while nothing in the frame moved as a piece. Where
+  // columns did and no offset is proved for the page, the step is not known
+  // to be none: a reference frame taken here would lose the rows in between
+  // (792 rows of a reference page went missing that way, in an image that
+  // ended as "end of content"; GNOME, 2026-11-12).
+  if (inPlace && byColumns.status == StepStatus::Ambiguous) found.status = StepStatus::Ambiguous;
+  return found;
+}
+
+// Whether at distance d at least two quarter bands show, in the rows in which
+// they show anything, mostly not what they showed before. Such a quarter must
+// show something in an eighth of the rows at least: a hover band, a caret or
+// a scrollbar's thumb over blank paper is a few rows and is what the tolerant
+// rule is for.
+bool ScrollStitcher::contradicted(int top, int bottom, int d) const {
+  const int F = ref_.bands * kFinePerBand;
+  if (refFine_.size() != size_t(height_) * F || curFine_.size() != refFine_.size()) return false;
+  const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+  const int shownMin = std::max({8, opts_.minOverlapRows / 3, (y1 - y0) / 8});
+  int against = 0;
+  for (int j = 0; j < F && against < 2; ++j) {
+    int count = 0, equal = 0;
+    for (int y = y0; y < y1; ++y) {
+      const size_t a = size_t(y) * F + j, b = size_t(y + d) * F + j;
+      // Shows something: not the row above it over again in both frames, or not the same as it was.
+      const bool same = curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance;
+      const bool flat = y > y0 && curFine_[a] == curFine_[a - F] && refFine_[b] == refFine_[b - F];
+      if (same && flat) continue;
+      ++count;
+      equal += same;
+    }
+    against += count >= shownMin && equal < opts_.ownPaceMaxWith * count;
+  }
+  return against >= 2;
 }
 
 // The search by quarter bands, for a page between side bars. The tolerant
@@ -1023,16 +1068,19 @@ ScrollStitcher::Search ScrollStitcher::locate(const FrameSignatures& cur, int to
 // equal bit for bit, minDistinctRows different ones among them; it is
 // something else when it is so at another distance and not at d: where it
 // was (a bar that stays), or part of the way (a bar that sticks or comes
-// unstuck in this step). At least columnMinQuarters quarters must be the
-// page's at d, the quarter the wheel is turned over among them: what scrolls
-// under the pointer is the page, whatever else moves beside it and however
-// wide that is. (When that quarter tells nothing, a gutter, the page's
-// quarters must be half as many again as those at any other distance but
-// none.) The rows are then compared over every quarter that is not proved to be something
-// else, by the tolerant rule's own measure (a quarter of them may differ), and
-// the offset has to pass what any offset has to: the score, the number of
+// unstuck in this step). The page is what moved nearest the pointer: outward
+// from the quarter the wheel is turned over, the first quarters that moved
+// say by how much, as one piece or, where their lines are too short to prove
+// a distance, by the one distance at which most of what they show is equal
+// bit for bit (columnMovedFraction, no other above exactTieMaxRival). What
+// moves beside the page, however wide, is farther from the pointer. The rows
+// are then compared over every quarter that is not proved to be something
+// else, by the tolerant rule's own measure (a quarter of them may differ),
+// and the offset has to pass what any offset has to: the score, the number of
 // evidence rows, different rows among them, more than a sliver of overlap,
-// and no rival. The pixels alone decide; no hint is heard.
+// and no rival. Rows blank in every quarter that counts are no evidence.
+// Where something moved near the pointer and no offset passes, the answer is
+// Ambiguous, never "nothing moved". The pixels alone decide; no hint is heard.
 // A quarter of a row is the same here when it is equal bit for bit, or as
 // bright within columnLightTolerance. A browser does not always draw a line
 // of text the same way twice: in a block that scrolls sideways (a code
@@ -1054,14 +1102,57 @@ ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, 
     const size_t a = size_t(y) * F + j, b = size_t(y + e) * F + j;
     return curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance;
   };
-  // The distances at which each quarter band moved as one piece.
-  std::vector<std::vector<int>> moved(static_cast<size_t>(F));
+  // Each quarter's ground: the row it shows most often (blank paper, a
+  // listing's background). A quarter of a row shows something when it is not that.
+  std::vector<uint64_t> curGround(static_cast<size_t>(F)), refGround(static_cast<size_t>(F));
+  std::vector<int> distinct(static_cast<size_t>(F));
   std::vector<uint64_t> rows;
-  for (int j = 0; j < F; ++j) {
+  const auto ground = [&](const std::vector<uint64_t>& fine, int j, int* different) {
     rows.clear();
-    for (int y = top; y < bottom; ++y) rows.push_back(curFine_[size_t(y) * F + j]);
+    for (int y = top; y < bottom; ++y) rows.push_back(fine[size_t(y) * F + j]);
     std::sort(rows.begin(), rows.end());
-    if (int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) continue;  // nothing to tell it by
+    uint64_t best = rows.front();
+    int bestRun = 0, kinds = 0;
+    for (size_t i = 0; i < rows.size();) {
+      size_t k = i;
+      while (k < rows.size() && rows[k] == rows[i]) ++k;
+      ++kinds;
+      if (int(k - i) > bestRun) {
+        bestRun = int(k - i);
+        best = rows[i];
+      }
+      i = k;
+    }
+    if (different) *different = kinds;
+    return best;
+  };
+  for (int j = 0; j < F; ++j) {
+    curGround[size_t(j)] = ground(curFine_, j, &distinct[size_t(j)]);
+    refGround[size_t(j)] = ground(refFine_, j, nullptr);
+  }
+  // Of the rows in which quarter j shows something in either frame at distance e: how many, and how many are the same.
+  const auto shown = [&](int j, int e, int stride, int& count, bool exact = false) {
+    const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
+    int equal = 0;
+    count = 0;
+    for (int y = y0; y < y1; y += stride) {
+      if (curFine_[size_t(y) * F + j] == curGround[size_t(j)] && refFine_[size_t(y + e) * F + j] == refGround[size_t(j)]) continue;
+      ++count;
+      equal += exact ? curFine_[size_t(y) * F + j] == refFine_[size_t(y + e) * F + j] : same(y, e, j);
+    }
+    return equal;
+  };
+  // The distances at which each quarter band moved as one piece; whether it
+  // stayed where it was; whether what it shows changed.
+  std::vector<std::vector<int>> moved(static_cast<size_t>(F));
+  std::vector<uint8_t> still(static_cast<size_t>(F), 0), changed(static_cast<size_t>(F), 0);
+  const int shownMin = std::max(8, opts_.minOverlapRows / 3);
+  for (int j = 0; j < F; ++j) {
+    int count = 0;
+    const int equal = shown(j, 0, 1, count);
+    still[size_t(j)] = count >= shownMin && equal >= opts_.layoutBrokenFraction * count;
+    changed[size_t(j)] = count >= shownMin && equal < opts_.ownPaceMaxWith * count;
+    if (distinct[size_t(j)] < opts_.minDistinctRows) continue;  // nothing to tell it by
     for (int e = -Dmax; e <= Dmax; ++e) {
       const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
       const int allowed = int(std::floor((1.0 - opts_.layoutBrokenFraction) * (y1 - y0) + 1e-9));
@@ -1078,22 +1169,6 @@ ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, 
     if (moved[size_t(j)].size() > 8) moved[size_t(j)].clear();
   }
   const auto at = [&](int j, int d) { return std::find(moved[size_t(j)].begin(), moved[size_t(j)].end(), d) != moved[size_t(j)].end(); };
-  std::vector<int> distances;
-  for (int j = 0; j < F; ++j)
-    for (int e : moved[size_t(j)])
-      if (e != 0 && std::find(distances.begin(), distances.end(), e) == distances.end()) distances.push_back(e);
-  const auto support = [&](int d) {
-    int n = 0;
-    for (int j = 0; j < F; ++j) n += at(j, d);
-    return n;
-  };
-  struct Passing {
-    int d, quarters, evidence;
-    double score;
-    int exact;  // matched rows equal bit for bit
-    std::vector<int> kept;
-  };
-  std::vector<Passing> passing;
   // The quarter under the pointer (the middle of the frame when no one said).
   const int wheelX = std::clamp(wheelColumn_ >= 0 ? wheelColumn_ : width_ / 2, ref_.colStart, std::max(ref_.colStart, ref_.colEnd - 1));
   int under = 0;
@@ -1103,52 +1178,132 @@ ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, 
     const int x0 = ref_.colStart + int((long long)n * k / B), x1 = ref_.colStart + int((long long)n * (k + 1) / B);
     under = k * kFinePerBand + std::min(kFinePerBand - 1, int((long long)(wheelX - x0) * kFinePerBand / std::max(1, x1 - x0)));
   }
-  const bool underTells = !moved[size_t(under)].empty();
-  for (int d : distances) {
-    const int quarters = support(d);
-    if (quarters < opts_.columnMinQuarters) continue;
-    bool leads = !underTells || at(under, d);
-    for (int e : distances)
-      if (!underTells && std::abs(e - d) > 1 && 2 * quarters < 3 * support(e)) leads = false;
-    if (!leads) continue;
-    // Every quarter that is not proved to be something else.
+  struct Passing {
+    int d, evidence;
+    double score, exact;  // exact: the share of the rows that show something that are equal bit for bit
+    int exactRows;
     std::vector<int> kept;
-    for (int j = 0; j < F; ++j)
-      if (moved[size_t(j)].empty() || at(j, d)) kept.push_back(j);
+  };
+  std::vector<Passing> passing;
+  // A quarter that changed and has no rows enough of its own to prove a
+  // distance by (short lines) may still name one: the distance at which most
+  // of what it shows is equal bit for bit, when no other comes near it. One
+  // that is itself nowhere changed in place (a video). 0: none; found once.
+  std::vector<int> named(static_cast<size_t>(F), INT_MIN);
+  const auto nameOf = [&](int j) {
+    int& name = named[size_t(j)];
+    if (name != INT_MIN) return name;
+    name = 0;
+    if (!changed[size_t(j)] || !moved[size_t(j)].empty()) return name;
+    int bestD = 0;
+    double best = 0, second = 0;
+    for (int e = -Dmax; e <= Dmax; ++e) {
+      if (e == 0) continue;
+      int count = 0;
+      int equal = shown(j, e, 4, count, true);  // every fourth row first
+      if (count < shownMin / 2 || equal < opts_.ownPaceMaxWith * count) continue;
+      equal = shown(j, e, 1, count, true);
+      if (count < shownMin) continue;
+      const double share = double(equal) / count;
+      if (share > best) {
+        if (std::abs(e - bestD) > 1) second = best;
+        best = share;
+        bestD = e;
+      } else if (std::abs(e - bestD) > 1 && share > second) {
+        second = share;
+      }
+    }
+    if (best >= opts_.columnMovedFraction && second <= opts_.exactTieMaxRival) name = bestD;
+    return name;
+  };
+  // One distance as the page's: every quarter that is not proved to be
+  // something else (it stayed and shows something, or moved by another
+  // distance) is compared row by row.
+  std::vector<int> tried;
+  const auto consider = [&](int d) {
+    if (d == 0 || std::abs(d) > Dmax || std::find(tried.begin(), tried.end(), d) != tried.end()) return;
+    tried.push_back(d);
+    std::vector<int> kept;
+    for (int j = 0; j < F; ++j) {
+      if (at(j, d)) kept.push_back(j);
+      else if (!moved[size_t(j)].empty() || still[size_t(j)]) continue;
+      else if (named[size_t(j)] != INT_MIN && named[size_t(j)] != 0 && std::abs(named[size_t(j)] - d) > 1) continue;
+      else kept.push_back(j);
+    }
+    if (kept.empty()) return;
     const int mayDiffer = int(kept.size()) / 4;
     const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
     const int budget = int(std::floor((1.0 - opts_.minScore) * (y1 - y0) + 1e-9));
-    int match = 0, conflict = 0;
+    int match = 0, conflict = 0, showing = 0, exactShowing = 0;
     rows.clear();
     for (int y = y0; y < y1 && conflict <= budget; ++y) {
       int differ = 0;
+      bool exact = true, shows = false;
       uint64_t row = kFnvOffset;
-      bool exact = true;
       for (int j : kept) {
+        const uint64_t a = curFine_[size_t(y) * F + j], b = refFine_[size_t(y + d) * F + j];
         differ += !same(y, d, j);
-        exact = exact && curFine_[size_t(y) * F + j] == refFine_[size_t(y + d) * F + j];
-        row = (row ^ curFine_[size_t(y) * F + j]) * kFnvPrime;
+        exact = exact && a == b;
+        shows = shows || a != curGround[size_t(j)] || b != refGround[size_t(j)];
+        row = (row ^ a) * kFnvPrime;
       }
-      if (differ > mayDiffer) ++conflict;
-      else if (!(ref_.rowFlat[y + d] && cur.rowFlat[y])) {
-        ++match;
-        if (exact) rows.push_back(row);  // only rows equal bit for bit count as different rows
+      if (differ > mayDiffer) {
+        ++conflict;
+        showing += shows;
+        continue;
+      }
+      if (!shows) continue;  // blank in every quarter that counts: no evidence
+      ++match;
+      ++showing;
+      if (exact) {
+        ++exactShowing;
+        rows.push_back(row);  // only rows equal bit for bit count as different rows
       }
     }
     ++out.evaluated;
-    if (conflict > budget || match + conflict < opts_.minOverlapRows) continue;
+    if (conflict > budget || match + conflict < opts_.minOverlapRows) return;
     const double score = double(match) / (match + conflict);
     std::sort(rows.begin(), rows.end());
-    if (score < opts_.minScore || int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) continue;
-    passing.push_back({d, quarters, match + conflict, score, int(rows.size()), kept});
+    if (score < opts_.minScore || int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) return;
+    passing.push_back({d, match + conflict, score, showing ? double(exactShowing) / showing : 0.0, exactShowing, kept});
+  };
+  // The page is what moved nearest the pointer: outward from the quarter the
+  // wheel was turned over, the first quarters that moved (as a piece, or by a
+  // distance they name) say by how much. Side bars that stay, or that move
+  // part of the way, are farther off, however wide they are.
+  bool somethingMoved = false;
+  for (int reach = 0; reach < F && !somethingMoved; ++reach) {
+    for (int j : {under - reach, under + reach}) {
+      if (j < 0 || j >= F || (reach == 0 && j != under)) continue;
+      for (int e : moved[size_t(j)])
+        if (e != 0) {
+          somethingMoved = true;
+          consider(e);
+        }
+      if (moved[size_t(j)].empty() && nameOf(j) != 0) {
+        somethingMoved = true;
+        consider(nameOf(j));
+      }
+      if (reach == 0) break;
+    }
   }
-  if (passing.empty()) return out;
+  if (passing.empty()) {
+    // Something moved near the pointer and no offset is proved: not known to be none.
+    if (somethingMoved) out.status = StepStatus::Ambiguous;
+    return out;
+  }
+  // One distance, or the one whose rows are equal bit for bit where the
+  // others' mostly are not (the exact rule's measure).
   const Passing* best = &passing.front();
   for (const Passing& p : passing)
-    if (p.exact > best->exact || (p.exact == best->exact && p.score > best->score)) best = &p;
-  // Two offsets explain the frame: a rival as good by its score, with at least half as many rows equal bit for bit.
-  for (const Passing& p : passing)
-    if (std::abs(p.d - best->d) > 1 && p.score >= best->score - opts_.uniquenessMargin && 2 * p.exact >= best->exact) return out;
+    if (p.exact > best->exact || (p.exact == best->exact && p.exactRows > best->exactRows)) best = &p;
+  for (const Passing& p : passing) {
+    if (std::abs(p.d - best->d) <= 1) continue;
+    if (best->exact < opts_.exactTieMinFraction || p.exact > opts_.exactTieMaxRival) {
+      out.status = StepStatus::Ambiguous;  // two offsets explain the frame
+      return out;
+    }
+  }
   out.status = StepStatus::Appended;
   out.d = best->d;
   out.score = best->score;

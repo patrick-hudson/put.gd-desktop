@@ -168,6 +168,10 @@ struct FakeAppSpec {
   // pointer, and when the pointer last moved), where the page is scrolled to
   // in this frame, and the frame's time.
   std::function<void(Image& frame, const FakeApp& app, int pos, int64_t t)> scene;
+  // Frames keep coming while nobody reads them, and the last two wait in a
+  // queue with the time they were taken (a real frame tap): a frame read
+  // after a pause may be older than the call that reads it.
+  bool queued = false;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {

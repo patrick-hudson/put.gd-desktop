@@ -321,7 +321,7 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
   }
   for (;;) {
     const int64_t t = lastFrameT_ < 0 ? clock_.nowMs()
-                                      : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs());
+                                      : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs() - (spec_.queued ? 2 * spec_.frameIntervalMs : 0));
     if (t > limit) {
       clock_.set(limit);
       return std::nullopt;
