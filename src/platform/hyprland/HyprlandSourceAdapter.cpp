@@ -11,7 +11,7 @@
 namespace putgd {
 namespace {
 const QString cleanupMessage="Region helper exited before confirming surface cleanup; restart put.gd before capturing again";
-const QString focusMessage="Focus an external window and invoke the window shortcut or CLI";
+const QString focusMessage="Focus an external window and invoke the window hotkey or CLI";
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){
  if(error)return {{},error};

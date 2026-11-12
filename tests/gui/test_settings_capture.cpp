@@ -97,7 +97,7 @@ private slots:
   auto* delay=window.findChild<QComboBox*>("captureDelaySeconds");QVERIFY(delay);QVERIFY(tabs->widget(1)->isAncestorOf(delay));
   QStringList texts;for(int index=0;index<delay->count();++index)texts<<delay->itemText(index);QCOMPARE(texts,QStringList({"None","3 seconds","5 seconds","10 seconds"}));QCOMPARE(delay->currentData().toInt(),0);
   auto* shortcuts=window.findChild<QCheckBox*>("captureDelayShortcuts");QVERIFY(shortcuts);QVERIFY(tabs->widget(1)->isAncestorOf(shortcuts));QVERIFY(!shortcuts->isChecked());
-  QVERIFY(window.findChild<QToolButton*>("captureDelaySecondsHelp"));QVERIFY(shortcuts->accessibleDescription().contains("shortcut"));
+  QVERIFY(window.findChild<QToolButton*>("captureDelaySecondsHelp"));QVERIFY(shortcuts->accessibleDescription().contains("hotkey"));
   // An untouched configuration keeps neither key; a choice writes its own.
   for(const auto* key:{"captureDelaySeconds","captureDelayShortcuts"})QVERIFY2(!service.document()["preferences"].toObject().contains(key),key);
   delay->setCurrentIndex(delay->findData(5));PUTGD_TRY_COMPARE(service.snapshot().captureDelaySeconds,5);QVERIFY(!service.document()["preferences"].toObject().contains("captureDelayShortcuts"));
