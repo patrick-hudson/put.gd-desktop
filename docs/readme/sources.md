@@ -82,7 +82,7 @@ sanitised desktops with nothing but put.gd open:
 
 Each instance ran with isolated XDG directories and a lab configuration:
 local copies on, an S3 destination named `put.gd` with no credentials (the
-development template's non-secret settings), and shortcuts `Ctrl+Shift+1`
+development template's non-secret settings), and hotkeys `Ctrl+Shift+1`
 to `Ctrl+Shift+6`. Nothing was uploaded anywhere; every History entry is a
 local-only capture, the edited photo, or a six-second local recording.
 
@@ -91,7 +91,7 @@ local-only capture, the edited photo, or a six-second local recording.
 | `settings-cinnamon.png` | Settings › General | guest frame, window maximised, crop `0, 0, 1280, 760` |
 | `settings-gnome.png` | Settings › General | Fedora VNC frame, crop `298, 90, 1622, 1016` |
 | `settings-plasma.png` | Settings › General | Debian VNC frame, crop `298, 64, 1620, 972` |
-| `capture-plasma.png`, `shortcuts-plasma.png`, `destinations-plasma.png`, `history-plasma.png` | Settings › Capture, Settings › Shortcuts, Destinations, History (gallery, edited photo selected) | Debian VNC frames, same crop |
+| `capture-plasma.png`, `shortcuts-plasma.png`, `destinations-plasma.png`, `history-plasma.png` | Settings › Capture, Settings › Hotkeys, Destinations, History (gallery, edited photo selected) | Debian VNC frames, same crop |
 | `review-plasma.png` | Review recording window (#283 layout) with a blur and a solid cover, after a 6.5 s region recording of a lab test card through KWin's screencast stream; replaced 2026-10-20 from a scratch build of PR #290 | Debian VNC frame, the window's client area (960×600), from [the #283 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-review-window-283/README.md) |
 | `editor-gnome.png` | Edit & upload with rectangle, highlight, redaction, arrow and text applied through `editor.apply` | Fedora VNC frame, crop `288, 54, 1632, 1052` |
 | `tray-cinnamon.png`, `tray-gnome.png`, `tray-plasma.png` | The tray context menu, without Recent activity (#374), from build `0.1.1-dev.943+gef7b1eca305a` | menu-only crops from [the #374 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-22-tray-drop-recent-activity-374/README.md): m74 Cinnamon VNC frame `1711, 746, 1913, 1039`; f44 GNOME menu crop inset 10 px past its rounded corners; k72 Plasma VNC frame `1509, 690, 1702, 1025` |

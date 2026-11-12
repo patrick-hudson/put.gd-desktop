@@ -6,7 +6,7 @@
 
 **Take a screenshot or screen recording on Linux and get a link to share it.**
 
-Press a shortcut, drag over what you want to share, and the link is on your clipboard, ready to paste into a chat or a ticket.
+Press a hotkey, drag over what you want to share, and the link is on your clipboard, ready to paste into a chat or a ticket.
 
 Files go to storage you control, and there's no put.gd account. If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea for Linux.
 
@@ -47,9 +47,9 @@ Prefer to download a package yourself? They're all on [app.put.gd](https://app.p
 1. Open put.gd and choose **Destinations → Add destination**.
 2. Enter your storage details and click **Save to keychain**, or connect Proton Drive and choose a folder. Then click **Test connection**.
 3. Pick that destination in **Settings → Capture**.
-4. Press a shortcut:
+4. Press a hotkey:
 
-| Shortcut | What it captures |
+| Hotkey | What it captures |
 | --- | --- |
 | `Ctrl+Shift+1` | A region you drag |
 | `Ctrl+Shift+2` | The active window |
@@ -57,7 +57,7 @@ Prefer to download a package yourself? They're all on [app.put.gd](https://app.p
 
 The capture uploads, and if your destination shares links, the link lands on your clipboard. Press Escape to cancel a region.
 
-You can change the keys in **Settings → Shortcuts**, which also tells you why a shortcut couldn't be set. The buttons in the main window and tray always work. On Budgie, window capture needs labwc 0.20 or newer, so on Fedora 44 and Ubuntu 26.04 use a region instead.
+You can change the keys in **Settings → Hotkeys**, which also tells you why a hotkey couldn't be set. The buttons in the main window and tray always work. On Budgie, window capture needs labwc 0.20 or newer, so on Fedora 44 and Ubuntu 26.04 use a region instead.
 
 ## What else it does
 

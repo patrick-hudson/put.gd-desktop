@@ -1,7 +1,7 @@
 # Hyprland adapter (Omarchy)
 
 The `hyprland-wayland` adapter runs put.gd's resident on Hyprland in the Core
-route: region, desktop and window capture, global shortcuts, clipboard import
+route: region, desktop and window capture, hotkeys, clipboard import
 and result copy, and screen recording, with no picker, no dialog and no
 substitute tool. Tray, notifications, file dialogs and the Nautilus upload menu
 use the desktop's own services. Tracking issue
@@ -13,7 +13,7 @@ use the desktop's own services. Tracking issue
 | --- | --- | --- |
 | Omarchy 4.5.0 (Hyprland 0.56.2, Lua config) | Wayland, SDDM autologin, uwsm | **Accepted** on the `omarchy-hyprland-20261108` VM golden, AppImage and the Arch package ([acceptance matrix](../testing/acceptance-matrix.md#hyprland-omarchy-vm-row)) |
 | Other Hyprland 0.56+ sessions with a Lua config (plain Arch, other dotfiles) | Wayland | Same adapter by protocol; **not accepted** |
-| Hyprland on the legacy `hyprland.conf` parser | Wayland | Capture, clipboard and recording work; shortcuts report unavailable with that reason |
+| Hyprland on the legacy `hyprland.conf` parser | Wayland | Capture, clipboard and recording work; hotkeys report unavailable with that reason |
 
 Omarchy runs in VMs only in the lab (software rendering, `virtio-vga`); no
 physical Hyprland machine has been tested. Hyprland is an acceptance-matrix VM
@@ -47,7 +47,7 @@ Nothing is chosen by the word Omarchy. `capabilities` reports
 | `ext-image-copy-capture-v1` with the output and foreign-toplevel image capture sources | Desktop, region and window pixels (the shared Wayland layer). Screenshots exclude the cursor; recordings paint it |
 | `ext-foreign-toplevel-list-v1` | Window identities; the identifier equals Hyprland's `stableId` |
 | `hyprland-toplevel-mapping-v1` | Confirms that the identifier a window capture reads is the window IPC reported |
-| `hyprland-global-shortcuts-v1` | put.gd's `putgd:<action>` shortcuts |
+| `hyprland-global-shortcuts-v1` | put.gd's `putgd:<action>` hotkeys |
 | `wlr-layer-shell` (layer-shell-qt, and directly for the press catcher) | The region selector (`putgd-region-selector`), the press catcher (`putgd-region-catcher`) and recording overlays (`putgd-record`) on the overlay layer, above Omarchy's bar, dock and notifications |
 | `ext-data-control-v1` | Clipboard import and result copy |
 
@@ -87,7 +87,7 @@ Hyprland briefly refuses connections; requests retry within a 3 s deadline.
   2-vCPU VM) still goes to the window underneath; the selector then works normally
   for the next drag.
 - **Desktop**: every output, composed at native density.
-- **Window**: the window the shortcut or CLI call finds active, frozen through
+- **Window**: the window the hotkey or CLI call finds active, frozen through
   `j/activewindow`. Its `stableId` is the capture identifier and its `pid`
   decides ownership: put.gd's own windows (the resident, Settings, the editor,
   the recorder, the region helper, any process below the resident) are refused
@@ -158,7 +158,7 @@ need a Hyprland restart. An unlisted client gets Hyprland's "ask" dialog.
 
 ![put.gd reports a denied capture with the rule to add (CI build 26.1108.4146-dev+g3af1e6b2b0a5)](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/3c57254830be09016030f82bf5b51d561f298bdf/records/2026-11-08-hyprland-omarchy-1275/pictures/omarchy-capture-permission-refused.png)
 
-## Shortcuts
+## Hotkeys
 
 put.gd registers `putgd:region`, `putgd:window` and so on with
 `hyprland-global-shortcuts-v1` on its own Wayland connection and binds each key
@@ -183,7 +183,7 @@ Omarchy 4.5:
   matches the chord as written (spaces and case ignored, modifier order not), taking
   every bind written that way in every submap (measured on 0.56.2); put.gd writes its
   binds in one fixed order and calls it only for a chord nothing else holds. To change
-  or remove its binds, pause for the shortcut recorder, or quit, put.gd unbinds those
+  or remove its binds, pause for the hotkey recorder, or quit, put.gd unbinds those
   chords. If something else holds the chord, or put.gd's bind can't be read, it runs
   `reload` and re-applies its set: the configuration's binds come back, but other
   programs' runtime binds are lost, so this path is only for that shared-key case.
@@ -196,15 +196,15 @@ Omarchy 4.5:
 - **`j/binds` is the truth.** Only binds that read back are reported `bound`;
   put.gd's are the ones whose description starts with `put.gd: `. A bind left
   by a resident that crashed is adopted, not doubled; with no resident running
-  it points at a shortcut nobody registered and does nothing.
+  it points at a hotkey nobody registered and does nothing.
 - After a quit, `j/binds` holds exactly the configuration's binds.
 
-On the legacy `hyprland.conf` parser `eval` is unavailable and shortcuts report
+On the legacy `hyprland.conf` parser `eval` is unavailable and hotkeys report
 `shortcut_unavailable` with that reason; put.gd writes no `keyword` binds.
 
 ![Settings shows Ctrl+Shift+1/2/3 bound and Omarchy's Print and Super+Shift+S as conflicts (CI build 26.1108.4146-dev+g3af1e6b2b0a5)](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/3c57254830be09016030f82bf5b51d561f298bdf/records/2026-11-08-hyprland-omarchy-1275/pictures/omarchy-settings-shortcuts-conflicts.png)
 
-Settings → Shortcuts shows each binding's state, and `putgd-cli capabilities`
+Settings → Hotkeys shows each binding's state, and `putgd-cli capabilities`
 reports it under `source.shortcuts` (`backend: hyprland-ipc`, per-action
 `state`, `actual`, `error`, and `hyprland` diagnostics).
 
@@ -227,7 +227,7 @@ A/V sync (median -19 ms) were measured there too.
 
 Hyprland reports pointer buttons to binds. From Record to Stop the resident
 holds three runtime binds on the bare mouse buttons (`mouse:272`, `mouse:273`,
-`mouse:274`), written through `eval` like the shortcut binds and never into a
+`mouse:274`), written through `eval` like the hotkey binds and never into a
 file. They are `non_consuming` and `ignore_mods`, so the click still reaches
 the window under the pointer whatever modifiers are held (measured: a terminal
 under the pointer received every click). Their Lua callback reads the cursor
@@ -297,5 +297,5 @@ selector appears in one step, and a capture contains no selector.
 Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/82185b9d2ccfa39c976ab2fd36b45eac4ebe5c35/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
 `sudo pacman -Sy` before `pacman -U`, never `-Syu`. Hyprland cannot run headless
 in CI (aquamarine needs a DRM device), so CI covers routing, key and bind
-normalisation, the bind plan, refusal frames and the shortcut backend against a
+normalisation, the bind plan, refusal frames and the hotkey backend against a
 fake IPC server; the compositor itself is covered by the golden.

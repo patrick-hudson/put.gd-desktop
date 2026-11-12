@@ -21,6 +21,6 @@ What must be tested, how, and what has been recorded.
 - [ThreadSanitizer dependency build](thread-sanitizer.md): the instrumented Qt used for thread checks.
 - [Surface driver prerequisites](surface-driver-prerequisites.md): target tools and cleanup for the surface driver.
 - [Live S3 acceptance](live-s3.md): acceptance against an isolated synthetic S3 destination.
-- [Shortcut dispatch](shortcut-dispatch.md): testing that a shortcut's capture is accepted, not only registered.
+- [Hotkey dispatch](shortcut-dispatch.md): testing that a hotkey's capture is accepted, not only registered.
 - [Tray progress](tray-progress.md): the replay path for tray progress on the disposable desktop lab.
-- [X11 shortcut refresh](x11-shortcut-refresh.md): the X11 keyboard-mapping regression and its checks.
+- [X11 hotkey refresh](x11-shortcut-refresh.md): the X11 keyboard-mapping regression and its checks.

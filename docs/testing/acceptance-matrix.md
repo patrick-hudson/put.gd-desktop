@@ -78,7 +78,7 @@ show; `tests/desktop/budgie.yaml` lists the scenarios.
 | Ubuntu Budgie 26.04 (labwc 0.9.3) | `ubuntu-budgie-2604` | DEB | As Fedora 44 |
 | Fedora 45 Budgie (labwc 0.20.2) | `fedora45-budgie` | AppImage (`lab.py install`) and RPM (`dnf` in the overlay) | Everything, including window capture and window recording |
 | Ubuntu Budgie 24.04 (Budgie 10.9, X11) | `ubuntu-budgie-2404` | DEB | Everything through the X11 adapter |
-| Magpie at a recorded SHA on Mir 2.29+ | none (compositor only) | dev build or AppImage | Capture, clipboard, region and window; shortcut status truthful |
+| Magpie at a recorded SHA on Mir 2.29+ | none (compositor only) | dev build or AppImage | Capture, clipboard, region and window; hotkey status truthful |
 
 Hotkeys count only with real keyboard input (QMP or VNC), never `wtype`. The
 headless `budgie_labwc_integration` test is supporting evidence only.
@@ -141,7 +141,7 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
   not in the capture.
 - Region (exact pixels, no selector outline, live and screenshot-first),
   desktop, window (exact against `grim -T`), refusal of put.gd's own windows.
-- Shortcuts fire from real keys; conflicts with Omarchy's `PRINT` and
+- Hotkeys fire from real keys; conflicts with Omarchy's `PRINT` and
   `SUPER + SHIFT + S` are reported and both still work; rebind, unbind, quit
   and an Omarchy theme change leave `j/binds` with exactly Omarchy's binds plus
   put.gd's current ones; a hotkey with no resident is harmless.
@@ -192,7 +192,7 @@ Each row must show:
    no file.
 6. A lock during the countdown ends it `session_locked` with no file.
 7. The tray's Capture monitor, Repeat last region and Capture delay entries, the
-   capture buttons' context menu, and the two unbound Shortcuts rows; a shortcut
+   capture buttons' context menu, and the two unbound Hotkeys rows; a hotkey
    capture stays immediate with a tray delay chosen.
 8. GNOME with the older extension loaded: `helper_outdated` for monitor, repeat and
    any delay, the two rows in Desktop support details, window and desktop screenshots

@@ -122,7 +122,7 @@ python3 tests/performance/run_capture.py \
 ```
 
 Use a new output directory per attempt. The supervisor records exact binary hashes,
-shortcut, warmup/sample counts, timeout, capabilities, owned operation outcomes and
+hotkey, warmup/sample counts, timeout, capabilities, owned operation outcomes and
 logs; driver results add display geometry/scale and all 30 timing samples. Every
 screen is covered by a labelled grey synthetic canvas, all selections are cancelled,
 and the isolated profile is local-only. The driver waits for the fixture to be visible

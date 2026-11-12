@@ -1,6 +1,6 @@
 # Cinnamon / X11
 
-The adapter requires the Qt `xcb` backend, RandR, XFixes, and a resident process in the same X11 user session. Wayland is a separate integration and is not selected by this adapter. Capture, clipboard import/result ownership, and each requested shortcut have separate diagnostics.
+The adapter requires the Qt `xcb` backend, RandR, XFixes, and a resident process in the same X11 user session. Wayland is a separate integration and is not selected by this adapter. Capture, clipboard import/result ownership, and each requested hotkey have separate diagnostics.
 
 Window capture freezes `_NET_ACTIVE_WINDOW` and the framed target rectangle before journal work can change focus. The frame is captured from visible desktop pixels; overlapping windows appear in the image. A disappeared, unmapped, moved, resized, or app-owned target produces an actionable target error. There is no hidden-window reconstruction. Frame extents follow [EWMH](https://specifications.freedesktop.org/wm/latest/ar01s05.html).
 
@@ -44,7 +44,7 @@ button cancels. Monitor identity, geometry, scale and rotation are fixed when th
 action starts; a changed layout invalidates the selection. Each monitor has a
 transparent selection surface carrying native and logical geometry. Surfaces keep
 external application input focus and take a temporary keyboard grab for Escape;
-dispatch releases the shortcut connection's passive grab before selection starts,
+dispatch releases the hotkey connection's passive grab before selection starts,
 including when trigger keys remain held.
 
 Pixels are acquired after the selection surfaces are removed. On an identified
@@ -69,7 +69,7 @@ rotated a second time.
 
 Clipboard import requests supported X11 selection targets without waiting synchronously on the owner. It prefers local files, images supported by the installed QImageReader plugins (PNG first), and UTF-8 plain text, using the existing payload contract; plain-text URLs remain text. A remote URI list falls through to the owner’s actual image or text representation when available. Each selection transfer has a five-second deadline and resource bounds, and owner changes invalidate acquisition. Imports are queued in frozen-revision order within the accepted operation limit; cancelling a capture leaves independent clipboard imports active. PNG decoding and capture composition run on workers. Results use `X11Clipboard` selection ownership through XCB, with local image results supplied as previously encoded PNG bytes by the shared copy worker so paste does not encode screenshots on the session thread. The resident application must continue running to serve clipboard results. The transfer protocol follows [ICCCM selections](https://xorg.freedesktop.org/archive/X11R7.7/doc/xorg-docs/icccm/icccm.html).
 
-Shortcut setup uses checked XCB passive grabs and reports disabled, unmapped, unsupported, or conflicting bindings individually. Successful grabs include the active Caps Lock, Num Lock, and Scroll Lock modifier combinations. Keyboard mapping changes refresh requested bindings and update actual status. ASCII letter shortcuts do not require an implicit Shift; shifted printable symbols use their actual keymap modifier. Missing modifiers and unsupported symbol levels report explicit binding failures. Conflicting grabs are released without stealing another client's shortcut.
+Hotkey setup uses checked XCB passive grabs and reports disabled, unmapped, unsupported, or conflicting bindings individually. Successful grabs include the active Caps Lock, Num Lock, and Scroll Lock modifier combinations. Keyboard mapping changes refresh requested bindings and update actual status. ASCII letter hotkeys do not require an implicit Shift; shifted printable symbols use their actual keymap modifier. Missing modifiers and unsupported symbol levels report explicit binding failures. Conflicting grabs are released without stealing another client's hotkey.
 
 ## Recording click highlights
 

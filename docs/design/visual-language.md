@@ -148,7 +148,7 @@ second source of truth.
 
 ## Words and actions
 
-Use the same action names in the command band, menus, help and shortcut settings:
+Use the same action names in the command band, menus, help and hotkey settings:
 
 | Action ID | Visible action |
 | --- | --- |
@@ -290,7 +290,7 @@ recording and Stop recording and exposes its actual state. See
 
 Test shared control behavior and actual workflows rather than snapshotting copy
 or duplicating token declarations. Preserve the existing minimum-size,
-frame-share, canvas-stability, popup, shortcut, autosave and privacy regression
+frame-share, canvas-stability, popup, hotkey, autosave and privacy regression
 gates. Button centering checks must isolate label/icon ink rather than count
 rounded-corner background pixels. A large-text check must verify that the text
 is still enlarged after window construction.

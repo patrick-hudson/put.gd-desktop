@@ -51,7 +51,7 @@ only way into DING's menu.
 ## Copying the link
 
 X11, GNOME and KDE copy the link through their own adapters. Any other Wayland
-desktop has no capture or shortcuts, and copies through the compositor's
+desktop has no capture or hotkeys, and copies through the compositor's
 data-control protocol (`ext-data-control-v1`, or `wlr-data-control` where ext is
 missing), so no put.gd window needs focus. Clipboard text, images and files, and
 **Upload clipboard**, use the same route.

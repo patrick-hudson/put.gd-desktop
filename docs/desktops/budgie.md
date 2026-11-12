@@ -3,8 +3,8 @@
 Budgie 10.10 runs on labwc, a wlroots compositor with no screenshot or
 screencast service of its own. put.gd captures through standard Wayland
 protocols on its own connections: no ScreenCast portal, no picker, no `grim` or
-`slurp`. Shortcuts use Budgie's labwc bridge, or the GlobalShortcuts portal
-where a desktop offers it ([Shortcuts](#shortcuts)).
+`slurp`. Hotkeys use Budgie's labwc bridge, or the GlobalShortcuts portal
+where a desktop offers it ([Hotkeys](#hotkeys)).
 On Budgie 10.10/labwc, screenshots are refused with `session_locked` while the display is blanked or powered off even if the session is unlocked; keep the display awake for unattended captures.
 
 Budgie 10.9 is an X11 desktop and uses the existing X11 adapter. Budgie 11
@@ -33,7 +33,7 @@ and other wlroots compositors keep the unavailable source: nothing here has
 accepted them.
 
 `capabilities` reports `adapter: budgie-wayland`, the outputs, each capture
-kind with its reason when unavailable, the clipboard protocol, the shortcut
+kind with its reason when unavailable, the clipboard protocol, the hotkey
 backend with every binding's state, and `imageCopy.protocols`, the version of
 every global the compositor offers. Nothing is chosen by compositor name.
 
@@ -54,7 +54,7 @@ clipboard manager. A helper keeps a copied link available after a normal quit, s
 doesn't disappear with put.gd. See [Clipboard after quitting](../design/clipboard-keeper.md).
 
 The capture, toplevel and data-control code lives in `src/platform/wayland/`
-and is compositor-neutral; only the shortcut bridge and the D-Bus trigger are
+and is compositor-neutral; only the hotkey bridge and the D-Bus trigger are
 in `src/platform/budgie/`. Protocol XML is vendored unmodified
 (wayland-protocols 1.45, wlr-protocols) and installed beside the notices.
 
@@ -65,7 +65,7 @@ with `display_changed`, as does any output change during selection.
 
 ## Window capture
 
-The window shortcut, `action.invoke window` and the CLI freeze the active
+The window hotkey, `action.invoke window` and the CLI freeze the active
 window at invocation: the one ext handle whose app ID and title match the one
 activated wlr handle. No match, or more than one (two windows with the same
 app ID and title), fails with `capture_target`; there is no fallback to region
@@ -78,7 +78,7 @@ bar is not included, and a window covered by another still captures its own
 pixels (occlusion does not apply, unlike KDE and X11).
 
 Where window capture is unavailable (labwc 0.9 on Fedora 44 and Ubuntu 26.04),
-pressing the window shortcut or button fails with `window_unavailable` and a
+pressing the window hotkey or button fails with `window_unavailable` and a
 notification naming the missing protocol (no fallback to region selection),
 the Capture window button carries the alert badge and the protocol in its
 tooltip, and Settings → Advanced → Desktop support details shows a Window
@@ -120,7 +120,7 @@ batch or window copy; if gtklock withholds either frame, put.gd discards the pix
 `session_locked`. This also protects requests made by an agent. See
 [capture monitor, delay and repeat](../design/capture-delay.md).
 
-## Shortcuts
+## Hotkeys
 
 The resident owns `org.putgd.App.Budgie` on the session bus. A bound key runs
 
@@ -132,7 +132,7 @@ so no binary path is written into the desktop's settings (an AppImage moves)
 and no process starts per key press. `Trigger` accepts only an action put.gd
 has bound; with no resident running the call fails harmlessly.
 
-The backend is chosen when shortcuts are bound:
+The backend is chosen when hotkeys are bound:
 
 1. **labwc bridge** (Budgie 10.10): the
    `org.buddiesofbudgie.settings-daemon.plugins.media-keys` schema answers and
@@ -153,13 +153,13 @@ already uses (for example `Print` for its own screenshot) reports
 `shortcut_conflict` naming the owner and is not written, so Budgie's binding
 survives. A binding stays `pending` until its `rc.xml` entry appears.
 `rc.xml` is what put.gd reports as bound, so a change made in Budgie Control
-Center shows in Settings. While Settings records a new shortcut, put.gd's
+Center shows in Settings. While Settings records a new hotkey, put.gd's
 keys are cleared from `rc.xml` so the key reaches the recorder. Unbinding
 clears the binding and command, drops the path from `custom-keybindings` and
 resets the keys; quitting put.gd removes all of its entries. `gsettings` runs
 with the host environment, never the AppImage's libraries.
 
-![Settings → Shortcuts on Fedora 45 Budgie: Print reported as a conflict with Budgie's own screenshot binding](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275/images/budgie-shortcut-conflict.png)
+![Settings → Hotkeys on Fedora 45 Budgie: Print reported as a conflict with Budgie's own screenshot binding](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275/images/budgie-shortcut-conflict.png)
 
 ## Recording
 
@@ -211,7 +211,7 @@ halves; the design and the upstream sources are in
   but elements carrying `putgd="click-highlights"` is added or removed, and the
   file after a recording is the file before it. This is the one place the
   adapter writes `rc.xml`: Budgie's settings offer key bindings (see
-  **Shortcuts**) and no mouse binding.
+  **Hotkeys**) and no mouse binding.
 - **The position.** The recording is captured without the compositor's painted
   cursor; `putgd-record` reads the pointer from the capture's cursor session
   and draws the cursor into the frames itself, so the clip still shows it.

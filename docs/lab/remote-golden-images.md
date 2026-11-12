@@ -103,7 +103,7 @@ Fresh d69 overlays passed real-session preflight and ran published nightly
 `26.1105.3986` DEBs/AppImage with saved VNC/QMP frames. All three labwc sessions
 (both bridge generations) fired real QEMU Ctrl+Shift+1/2/3 and removed `customputgd*` entries
 cleanly. Ubuntu 24.04's existing X11 adapter captured region/window/desktop
-and bound all three shortcuts. These are step-1 infrastructure/probe results;
+and bound all three hotkeys. These are step-1 infrastructure/probe results;
 they do not certify the new Budgie adapter or a Budgie 11 desktop.
 See [Budgie runs](vm-lab.md#budgie-goldens) for profile and launch details.
 

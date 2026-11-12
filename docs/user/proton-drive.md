@@ -61,7 +61,7 @@ observed; see [the round-10 evidence](https://github.com/patrick-hudson/put.gd-e
 Sharing is the destination default. Clear that choice for private uploads, or
 use Settings → Capture → Per-action exceptions to override publication per action. Private upload
 creates no public link and leaves the clipboard unchanged. Existing folder and
-member access still applies. Shortcuts remain global app/action settings.
+member access still applies. Hotkeys remain global app/action settings.
 
 Advanced settings set new-link expiration (0–365 days; 0 means no expiration)
 and an optional password. Store the password explicitly in the secret service;
