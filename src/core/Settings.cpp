@@ -60,7 +60,8 @@ QStringList Settings::invocableActionNames() { return actionNames() << recording
 QStringList Settings::presentationOrder() { return {"region", "window", "monitor", "desktop", "edit", "record", "clipboard"}; }
 QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "clipboard"}; }
 QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
-bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat"}.contains(action); }
+bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit"}.contains(action); }
+bool Settings::delayableEditSource(const QString& source) { return QStringList{"region", "window", "desktop"}.contains(source); }
 
 QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;
@@ -285,7 +286,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -336,6 +337,8 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
     if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
         return invalid("/preferences/captureDelaySeconds", "Choose 0, 3, 5 or 10 seconds for the capture delay.");
+    if (preferences.contains("captureDelayShortcuts") && !preferences["captureDelayShortcuts"].isBool())
+        return invalid("/preferences/captureDelayShortcuts", "Delaying shortcut captures is true or false.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
     if (preferences.contains("recordingMicrophone") && !preferences["recordingMicrophone"].isBool())
@@ -426,6 +429,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.recordingMicrophoneDevice = doc["preferences"].toObject()["recordingMicrophoneDevice"].toString();
     settings.recordingClickHighlights = doc["preferences"].toObject()["recordingClickHighlights"].toBool(false);
     settings.captureDelaySeconds = doc["preferences"].toObject()["captureDelaySeconds"].toInt(0);
+    settings.captureDelayShortcuts = doc["preferences"].toObject()["captureDelayShortcuts"].toBool(false);
     settings.appearanceTheme = doc["preferences"].toObject()["appearance"].toObject()["theme"].toString("system");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();

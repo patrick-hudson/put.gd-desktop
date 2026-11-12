@@ -49,7 +49,7 @@ def safe_patch(value: Any) -> bool:
 EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
 # Delayed capture (#1363): the delays action.invoke accepts and the actions that take one.
 DELAY_SECONDS = {0, 3, 5, 10}
-DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat'}
+DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat', 'edit'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
@@ -235,7 +235,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def perform_action(action: str, delay_seconds: int | None = None) -> Json:
-        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop and repeat only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
+        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop, repeat and edit only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
         if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record'}:
             return invalid()
         params: Json = {'action': action}

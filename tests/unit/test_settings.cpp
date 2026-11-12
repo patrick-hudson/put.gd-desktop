@@ -503,8 +503,28 @@ private slots:
             document["preferences"] = preferences;
             QCOMPARE(putgd::Settings::validate(document).details["path"].toString(), QStringLiteral("/preferences/captureDelaySeconds"));
         }
-        QVERIFY(putgd::Settings::delayableAction("region") && putgd::Settings::delayableAction("monitor") && putgd::Settings::delayableAction("repeat"));
-        QVERIFY(!putgd::Settings::delayableAction("clipboard") && !putgd::Settings::delayableAction("edit") && !putgd::Settings::delayableAction("record"));
+        QVERIFY(putgd::Settings::delayableAction("region") && putgd::Settings::delayableAction("monitor") && putgd::Settings::delayableAction("repeat") && putgd::Settings::delayableAction("edit"));
+        QVERIFY(!putgd::Settings::delayableAction("clipboard") && !putgd::Settings::delayableAction("record"));
+        // An edit waits only when it captures the screen.
+        QVERIFY(putgd::Settings::delayableEditSource("region") && putgd::Settings::delayableEditSource("window") && putgd::Settings::delayableEditSource("desktop"));
+        QVERIFY(!putgd::Settings::delayableEditSource("clipboard") && !putgd::Settings::delayableEditSource("file"));
+        // Shortcuts stay immediate until captureDelayShortcuts is true.
+        document = putgd::Settings::defaults();
+        QVERIFY(!document["preferences"].toObject().contains("captureDelayShortcuts"));
+        QVERIFY(!putgd::Settings::fromValidated(document).captureDelayShortcuts);
+        for (const bool on : {true, false}) {
+            auto preferences = document["preferences"].toObject();
+            preferences["captureDelayShortcuts"] = on;
+            document["preferences"] = preferences;
+            QVERIFY(!putgd::Settings::validate(document));
+            QCOMPARE(putgd::Settings::fromValidated(document).captureDelayShortcuts, on);
+        }
+        for (const auto& value : QList<QJsonValue>{1, QStringLiteral("true"), QJsonValue::Null}) {
+            auto preferences = document["preferences"].toObject();
+            preferences["captureDelayShortcuts"] = value;
+            document["preferences"] = preferences;
+            QCOMPARE(putgd::Settings::validate(document).details["path"].toString(), QStringLiteral("/preferences/captureDelayShortcuts"));
+        }
     }
     // validate() once read each action through a reference into a destroyed
     // temporary object, and the Debian 13 resident crashed saving this document
