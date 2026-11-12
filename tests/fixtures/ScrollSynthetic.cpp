@@ -226,6 +226,7 @@ bool FakeApp::movePointer(int x, int y) {
   pointerKnown = true;
   pointerX = x;
   pointerY = y;
+  pointerMovedAt = clock_.nowMs();
   return true;
 }
 
@@ -339,6 +340,7 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)
       for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb((frameIndex_ * 37 + y) & 255, (x * 3 + frameIndex_ * 11) & 255, 90);
     if (spec_.overlay) spec_.overlay(scratch_, injections);
+    if (spec_.scene) spec_.scene(scratch_, *this, pos, t);
     if (spec_.damageOnly && haveDelivered_ && scratch_.px == delivered_.px) continue;
     std::swap(scratch_, delivered_);
     haveDelivered_ = true;

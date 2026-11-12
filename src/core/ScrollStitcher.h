@@ -70,7 +70,32 @@ struct StitchOptions {
   double layoutBrokenFraction = 0.90;
   int layoutStaticMinRows = 4;
   int layoutStaticRatio = 3;
+  // The frame's edges are where things lie over the page that are not the
+  // page: a browser's link status panel, a window border blended into the
+  // last row, a button that floats over the bottom corner. Two rules keep
+  // them out of the image (live web pages, acceptance of 2026-11-12).
+  // The last edgeGuardFraction of the moving band (at least edgeGuardMinRows
+  // rows, at most a quarter of it) is not written out when its frame is
+  // stitched: the next frame shows the same rows higher up, away from the
+  // edge, and they are taken from there; only rows the next frame no longer
+  // shows inside its interior are written as they were first seen. 0: off.
+  double edgeGuardFraction = 0.08;
+  int edgeGuardMinRows = 24;
+  // The interior of a frame, for those rows and for a bar that has just come
+  // up at the top (see ScrollStitcher::addFrame): the moving band without
+  // its first edgeTopFraction.
+  double edgeTopFraction = 0.25;
+  // A part of the frame that scrolls at a pace of its own (a code editor's
+  // minimap, a column with a parallax effect) cannot be in one picture with
+  // the page. It is proved per quarter of a band: at least
+  // layoutBrokenFraction of the rows equal bit for bit at one other distance
+  // (minDistinctRows different ones among them), fewer than ownPaceMaxWith at
+  // the page's distance and where they were, and that in two steps in a row.
+  double ownPaceMaxWith = 0.50;
 };
+
+// Quarters of a band: the columns the own-pace rule looks at.
+inline constexpr int kFinePerBand = 4;
 
 // Per-row signatures of one frame. This is the only per-frame state the
 // stitcher keeps (for the reference frame).
@@ -125,7 +150,7 @@ enum class StepStatus {
   Ambiguous,     // several offsets explain the frame equally well; output and reference untouched
   LimitReached,  // maxOutputRows reached; output truncated at the limit
   InvalidFrame,  // size changed, null data, or finish() already called
-  LayoutChanged, // the page's place inside the frame changed (the layout rule); the output ends with the rows from before, and no later frame is taken
+  LayoutChanged, // the page's place inside the frame changed (the layout rule), or a part of the frame scrolls at its own pace; the output ends with the rows from before, and no later frame is taken
 };
 const char* toString(StepStatus);
 
@@ -140,12 +165,13 @@ struct StepResult {
   int evidenceRows = 0;    // matched + conflicting rows of the chosen candidate
   int changedRows = 0;     // same-y changed rows versus the reference frame
   int candidatesEvaluated = 0;
+  bool ownPace = false;    // LayoutChanged because a part of the frame scrolls at a pace of its own
 };
 
 // Receives each output row once, top to bottom. Rows are never revised.
 using RowSink = std::function<void(const uint8_t* bgrxRow, int width)>;
-// The one exception: the layout rule (ScrollStitcher::barVerdict) takes back
-// the last `rows` rows the sink was given, before any row after them. A sink
+// The one exception: the layout rules (ScrollStitcher::barVerdict, ownPace)
+// take back the last `rows` rows the sink was given, before any row after them. A sink
 // that comes without it keeps those rows; its image is then not cut back.
 using RowTakeBack = std::function<void(long long rows)>;
 
@@ -171,7 +197,7 @@ class ScrollStitcher {
   void restartBeforeMovement();
 
   int outputWidth() const { return width_; }
-  int outputHeight() const;  // rows emitted so far + pending + footer
+  int outputHeight() const;  // rows emitted so far + held + pending + footer
   // Moving band of the reference frame, [top, bottom) in frame rows.
   int movingBandTop() const { return estTop_ > 0 ? estTop_ : 0; }
   int movingBandBottom() const { return height_ - (estBot_ > 0 ? estBot_ : 0); }
@@ -181,6 +207,10 @@ class ScrollStitcher {
   // (a blind, hint-only step is then unavoidable).
   int maxEvidenceStep() const;
   bool limitReached() const { return limited_; }
+  // The pointer rests in the rectangle while frames are read (it has no place
+  // outside): rows of a frame above this one may show what the page does
+  // under it and are not taken in place of rows that wait (the edge guard).
+  void setTrustedFrom(int row) { trustedFrom_ = std::max(0, row); }
   const StitchOptions& options() const { return opts_; }
 
   // Internal-buffer mode only (no sink): the image, valid after finish().
@@ -201,9 +231,24 @@ class ScrollStitcher {
   };
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
   int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates, bool exact) const;
-  bool columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady) const;
+  bool columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady, uint32_t own) const;
   enum class Bar { Is, IsNot, Open };
   Bar barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, int d) const;
+  bool headerVerdict(const FrameSignatures& cur, int top, int run, int bot, int d) const;
+  void paceOf(int top, int bottom, int d, std::vector<uint8_t>& astray) const;
+  long long ownPace(const std::vector<uint8_t>& astray, long long before);
+  void fineHashes(const FrameView& f, const FrameSignatures& sig, std::vector<uint64_t>& out) const;
+  int guardRows(int band) const;
+  void holdRows(const uint8_t* rows, std::ptrdiff_t stride, int count);
+  void emitHeld(int count);
+  long long logicalRows() const { return bodyRows_ + heldRows_; }
+  struct Shadow {
+    std::vector<uint8_t> pixels;
+    long long start = 0;
+    int count = 0;
+    void save(const std::vector<uint8_t>& held, int heldRows, long long bodyRows, int width);
+  };
+  bool cutBackTo(long long rows, const Shadow& shadow);
   bool takeBackTo(long long rows);
   StepResult layoutChanged(StepResult r, bool takeBack);
   void emitRows(const FrameView& f, int y0, int y1);
@@ -218,11 +263,16 @@ class ScrollStitcher {
   std::vector<uint8_t> pending_;   // copy of the first frame until the first movement
   std::vector<uint8_t> footer_;    // bottom rows of the reference frame (>= estBot_ rows)
   int footerRows_ = 0;
+  // The edge guard: body rows bodyRows_ .. bodyRows_ + heldRows_, seen at the
+  // bottom of the reference frame and not written out yet.
+  std::vector<uint8_t> held_;
+  int heldRows_ = 0;
+  int trustedFrom_ = 0;
   FrameSignatures ref_;
   bool hasRef_ = false, moved_ = false, limited_ = false, finished_ = false;
   int width_ = 0, height_ = 0;
   long long refOrigin_ = 0;        // body row of reference frame row 0
-  long long bodyRows_ = 0;         // body rows emitted (or pending) so far
+  long long bodyRows_ = 0;         // body rows emitted (or pending) so far; held rows come on top
   int estTop_ = -1, estBot_ = -1;  // fixed header/footer estimates, -1 unknown
   // The layout rule's memory: the bands every proved step so far left steady;
   // how many body rows were out before the last step that showed no new
@@ -231,6 +281,16 @@ class ScrollStitcher {
   uint32_t steadyBands_ = 0;
   bool haveSteady_ = false, changed_ = false;
   long long provedRows_ = 0, firstRows_ = -1;
+  // The own-pace rule's memory, per quarter band: how many body rows were out
+  // before the step that first showed it at a pace of its own, -1 when the
+  // last step did not.
+  std::vector<long long> paceSince_;
+  bool paceBegan_ = false;
+  // The rows that waited when the step began that provedRows_ names, and when
+  // the earliest own-pace run began (see cutBackTo).
+  Shadow proved_, pace_;
+  // Exact hashes per quarter of a band and row (see fineHashes): the reference frame's and this frame's.
+  std::vector<uint64_t> refFine_, curFine_;
 };
 
 }  // namespace putgd::scroll

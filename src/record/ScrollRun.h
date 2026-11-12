@@ -150,6 +150,21 @@ struct RunOptions {
     // entry and its wheel step sends no wheel step; the pointer still leaves,
     // which is the one motion that can follow a Stop. Needs `away`.
     bool restAwayToTop = false;
+    // The same for every wheel step of the capture, on every desktop: the
+    // pointer is inside the rectangle only to deliver the wheel step and
+    // waits at `away` while the frames are read. A pointer that rests on the
+    // page makes the page answer it: a browser shows the address of the link
+    // under it in a panel at the bottom of the viewport, in the very rows
+    // the next step appends, and every capture of a web page had that panel
+    // in it several times (live pages, acceptance of 2026-11-12). A visit of
+    // pointerSettleMs is shorter than the time a browser waits before it
+    // shows that panel or a tooltip. Needs `away`; without one (the rectangle
+    // covers its whole output) the pointer stays parked as before.
+    bool restAway = false;
+    // After the pointer has left for the first frame, what it had called up
+    // while it rested on the page (the user's own pointer before the capture,
+    // or the way to the top without restAway) gets this long to go away.
+    int awayLingerMs = 0;
     // After a way up that moved the page: this many single steps down may move
     // nothing (an overscrolled view takes them) before the capture gives up.
     int stillStepsAfterTop = 8;

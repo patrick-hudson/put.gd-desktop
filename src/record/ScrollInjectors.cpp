@@ -117,6 +117,13 @@ QJsonObject probeScroll() {
         // The portal screen cast is never used for a scroll capture.
         refuse("frame_source_unavailable", session == "wayland" ? QStringLiteral("This desktop has no dialog-free frame stream") : QStringLiteral("No display session"));
     }
+    // A build with no region selector has no layer-shell surfaces either: the
+    // ring, the bar and the heartbeat would be ordinary windows the compositor
+    // places, inside the rectangle among other places, and a capture of a
+    // named rectangle was admitted there with the panel and the helper's own
+    // windows in it (Ubuntu 24.04 package on KDE, acceptance of 2026-11-12).
+    // So the capture is unavailable on such a build, for every caller.
+    if (selection == "none") refuse("region_unavailable", QStringLiteral("This desktop has no region selector for a scroll capture"));
     result["frames"] = frames;
     result["injector"] = injector;
     result["selection"] = selection;

@@ -1379,6 +1379,248 @@ void testLayoutChange() {
   }
 }
 
+// ------------------------------------------------------------------ live pages
+
+uint32_t rgb(int r, int g, int b) { return uint32_t((std::clamp(r, 0, 255) << 16) | (std::clamp(g, 0, 255) << 8) | std::clamp(b, 0, 255)); }
+
+// The control loop on a page that does what web pages do (acceptance of
+// 2026-11-12, a pull request on GitHub in Firefox: 16 of 16 captures ended as
+// "lost track" a few steps in, with the browser's link panel stitched into
+// the image several times). `scene` paints it; the rows go to a sink.
+struct LiveSession {
+  RunResult result = RunResult::NoFrames;
+  int outH = 0, steps = 0, scrollBacks = 0;
+  std::string error;
+  std::vector<uint8_t> img;
+  std::vector<FakeApp::Event> events;
+  bool sinkAgrees = false;
+};
+LiveSession liveSession(const Image& doc, int W, int V, double px, std::function<void(Image&, const FakeApp&, int, int64_t)> scene, RunOptions opts = {}, int startPos = 0) {
+  ViewportSpec vs;
+  vs.width = W;
+  vs.height = V;
+  FakeAppSpec spec;
+  spec.pxPerNotch = px;
+  spec.scene = std::move(scene);
+  spec.startPos = startPos;
+  FakeClock clock;
+  FakeApp app(doc, vs, spec, clock);
+  const char* traced = std::getenv("PUTGD_SCROLL_STITCHER_TRACE");
+  if (traced && std::strstr("live", traced))
+    opts.onStep = [&](const StepResult& r, int hint, int notches) {
+      std::printf("    trace live: t=%lld pos %d %s offset %d hint %d notches %d score %.2f evidence %d appended %d fixed %d/%d\n", (long long)clock.nowMs(), app.framePositions.empty() ? 0 : app.framePositions.back(),
+                  toString(r.status), r.offset, hint, notches, r.score, r.evidenceRows, r.appendedRows, r.fixedTop, r.fixedBottom);
+    };
+  LiveSession s;
+  ScrollRun run(app, app, clock, opts, [&](const uint8_t* row, int width) { s.img.insert(s.img.end(), row, row + size_t(width) * 4); },
+                [&](long long rows) { s.img.resize(s.img.size() - size_t(rows) * W * 4); });
+  s.result = run.run();
+  s.outH = run.stats().outputRows;
+  s.steps = run.stats().steps;
+  s.scrollBacks = run.stats().scrollBacks;
+  s.error = run.stats().lastError;
+  s.events = app.events;
+  s.sinkAgrees = s.img.size() == size_t(W) * size_t(s.outH) * 4;
+  return s;
+}
+// The first row of the image that differs from `want` in columns [x0, x1); -1 when none does.
+int firstWrongRow(const LiveSession& s, const Image& want, int x0, int x1, int rows) {
+  if (!s.sinkAgrees) return 0;
+  for (int y = 0; y < rows; ++y)
+    if (y >= s.outH || y >= want.h || std::memcmp(&s.img[(size_t(y) * want.w + x0) * 4], want.row(y) + x0, size_t(x1 - x0) * 4) != 0) return y;
+  return -1;
+}
+// A bar with something on it: a colour, a line of text, a border below.
+Image barImage(int W, int rows, uint32_t color, uint64_t seed) {
+  Image bar(W, rows, color);
+  Rng rng(seed);
+  drawTextLine(bar, std::max(2, rows / 2 - 8), 24, W - 200, rng, 0xFFFFFF);
+  for (int x = 0; x < W; ++x) bar.at(x, rows - 1) = 0x30363D;
+  return bar;
+}
+// A browser's link panel: at the bottom left of the viewport while the
+// pointer has been still over the page for 80 ms, and for 250 ms after it left.
+struct LinkPanel {
+  Image panel;
+  bool visible = false;
+  explicit LinkPanel(int width, bool shownAtStart = false) : panel(width, 22, 0xF9F9FA), visible(shownAtStart) {
+    Rng rng(11);
+    drawTextLine(panel, 3, 6, width - 10, rng, 0x15141A);
+    for (int x = 0; x < width; ++x) panel.at(x, 0) = 0xB1B1B3;
+    for (int y = 0; y < panel.h; ++y) panel.at(width - 1, y) = 0xB1B1B3;
+  }
+  void paint(Image& f, const FakeApp& app, int64_t t) {
+    const bool inside = app.pointerKnown && app.pointerX >= 0 && app.pointerX < f.w && app.pointerY >= 0 && app.pointerY < f.h;
+    if (inside && t - app.pointerMovedAt >= 80) visible = true;
+    if (!inside && app.pointerKnown && t - app.pointerMovedAt >= 250) visible = false;
+    if (!visible) return;
+    for (int y = 0; y < panel.h; ++y) std::memcpy(&f.at(0, f.h - 2 - panel.h + y), panel.row(y), size_t(panel.w) * 4);
+  }
+};
+
+void testLivePages() {
+  std::printf("\n[session] live pages: a header that comes late, a link panel, a line at the edge\n");
+  const int W = 960, V = 600;
+  const Image doc = vmRuler(W, 120);  // 4,800 rows
+  {
+    // The page's sticky header: not there at the top of the page, over the
+    // first rows of the viewport from 150 px on. The image is the page; the
+    // header, which a browser's own full-page picture does not show either,
+    // is in none of its rows.
+    for (int headerRows : {48, 80, 120})
+      for (double px : {60.0, 100.0, 138.0}) {
+        const Image header = barImage(W, headerRows, 0x24292F, 3);
+        const LiveSession s = liveSession(doc, W, V, px, [&](Image& f, const FakeApp&, int pos, int64_t) {
+          if (pos >= 150) std::memcpy(&f.at(0, 0), header.row(0), size_t(W) * header.h * 4);
+        });
+        const int bad = firstWrongRow(s, doc, 0, W, doc.h);
+        report(fmt("session sticky header of %d rows that comes after 150 px, px=%g", headerRows, px), s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+               fmt("%s, %d rows of %d, first wrong row %d, steps %d, scroll-backs %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.scrollBacks, s.error.c_str()));
+      }
+  }
+  {
+    // The same header whose text changes once on the way (the section the
+    // page is in): the estimate falls back to nothing and the header is found again.
+    const Image one = barImage(W, 64, 0x24292F, 3), two = barImage(W, 64, 0x24292F, 4);
+    const LiveSession s = liveSession(doc, W, V, 100, [&](Image& f, const FakeApp&, int pos, int64_t) {
+      if (pos >= 150) std::memcpy(&f.at(0, 0), (pos >= 2000 ? two : one).row(0), size_t(W) * one.h * 4);
+    });
+    const int bad = firstWrongRow(s, doc, 0, W, doc.h);
+    report("session sticky header that comes late and changes its text", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d, steps %d, scroll-backs %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.scrollBacks, s.error.c_str()));
+  }
+  for (bool restAway : {false, true}) {
+    // The link panel a browser shows while the pointer rests on the page. With
+    // the pointer parked in the rectangle (no place outside it) the panel is
+    // on the screen in every frame, and the edge guard alone keeps it out of
+    // every row but the last frame's; with the pointer waiting outside it
+    // never shows.
+    LinkPanel panel(360);
+    RunOptions opts;
+    opts.pointer = true;
+    if (restAway) {
+      opts.away = RunPoint{W / 2, -16};
+      opts.restAway = true;
+      opts.awayLingerMs = 450;
+    }
+    const LiveSession s = liveSession(doc, W, V, 100, [&](Image& f, const FakeApp& app, int, int64_t t) { panel.paint(f, app, t); }, opts);
+    // Without a place outside, the last viewport is the screen as it was: the panel is in its last rows.
+    const int clean = restAway ? doc.h : doc.h - 24;
+    const int bad = firstWrongRow(s, doc, 0, W, clean);
+    bool visits = true;
+    for (size_t i = 0; restAway && i < s.events.size(); ++i)
+      if (s.events[i].kind == 's') visits = visits && i + 1 < s.events.size() && s.events[i + 1].kind == 'm' && s.events[i + 1].a == W / 2 && s.events[i + 1].b == -16;
+    report(restAway ? "session link panel under a resting pointer: the pointer waits outside" : "session link panel under a pointer that cannot leave: not in the body", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0 && visits,
+           fmt("%s, %d rows of %d, first wrong row %d of the first %d, pointer leaves after every wheel step %d, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, clean, visits, s.steps, s.error.c_str()));
+  }
+  {
+    // The user's own pointer rested on a link when the capture began: the
+    // panel is on the screen and goes a quarter of a second after the pointer left.
+    LinkPanel panel(360, true);
+    RunOptions opts;
+    opts.pointer = true;
+    opts.away = RunPoint{W / 2, -16};
+    opts.restAway = true;
+    opts.awayLingerMs = 450;
+    const LiveSession s = liveSession(doc, W, V, 100, [&](Image& f, const FakeApp& app, int, int64_t t) { panel.paint(f, app, t); }, opts);
+    const int bad = firstWrongRow(s, doc, 0, W, doc.h);
+    report("session link panel on the screen when the capture begins", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+  }
+  {
+    // A window's border in the rectangle's last row, blended with what is
+    // under it, so that it is never the same row twice and no footer: it was
+    // a line across the image at the end of every step.
+    const LiveSession s = liveSession(doc, W, V, 100, [&](Image& f, const FakeApp&, int, int64_t) {
+      for (int x = 0; x < W; ++x) {
+        const uint32_t v = f.at(x, V - 1);
+        f.at(x, V - 1) = rgb(36 + ((v >> 16) & 255) / 64, 36 + ((v >> 8) & 255) / 64, 40 + (v & 255) / 64);
+      }
+    });
+    const int bad = firstWrongRow(s, doc, 0, W, doc.h - 1);
+    report("session a blended line in the last row of the rectangle", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d (the image's last row is the line), steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+  }
+
+  std::printf("\n[session] a column that scrolls at a pace of its own\n");
+  // The acceptance fixture: a 100 px strip at the right that scrolls at a
+  // third of the page's rate (a code editor's minimap), one colour a row.
+  const auto strip = [&](Image& f, int first) {
+    for (int y = 0; y < f.h; ++y) {
+      const int n = first + y;
+      const uint32_t c = rgb(30 + (n * 17) % 190, 40 + (n * 23) % 180, 50 + (n * 31) % 170);
+      for (int x = W - 100; x < W; ++x) f.at(x, y) = c;
+    }
+  };
+  for (double px : {40.0, 60.0, 100.0})
+    for (int start : {0, 3000}) {
+      const LiveSession s = liveSession(doc, W, V, px, [&](Image& f, const FakeApp&, int pos, int64_t) { strip(f, pos / 3); }, [&] { RunOptions o; o.fromTop = start > 0; return o; }(), start);
+      // The first viewport, whole, with the strip as it stood beside it: nothing else is one picture.
+      Image want(W, V);
+      std::memcpy(want.px.data(), doc.row(0), size_t(W) * V * 4);
+      strip(want, 0);
+      const int bad = firstWrongRow(s, want, 0, W, s.outH);
+      report(fmt("session minimap at a third of the page's rate, px=%g, from %d", px, start), s.result == RunResult::LostTrack && s.outH == V && bad < 0 && s.error.find("pace of its own") != std::string::npos,
+             fmt("%s, %d rows (the first viewport has %d), first wrong row %d, steps %d [%s]", toString(s.result), s.outH, V, bad, s.steps, s.error.c_str()));
+    }
+  {
+    // What must go on to the end as before. A strip that never moves (a side
+    // bar): the page beside it is whole.
+    const LiveSession s = liveSession(doc, W, V, 60, [&](Image& f, const FakeApp&, int, int64_t) { strip(f, 0); });
+    const int bad = firstWrongRow(s, doc, 0, W - 100, doc.h);
+    report("session a strip that stays put is not a pace of its own", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d beside the strip, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+  }
+  for (int stick : {90, 150, 400}) {
+    // A sticky side bar: it scrolls with the page until `stick`, then stays;
+    // in one step it has moved part of the way.
+    const LiveSession s = liveSession(doc, W, V, 60, [&](Image& f, const FakeApp&, int pos, int64_t) { strip(f, std::min(pos, stick)); });
+    const int bad = firstWrongRow(s, doc, 0, W - 100, doc.h);
+    report(fmt("session a side bar that sticks after %d px is not a pace of its own", stick), s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d beside the strip, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+  }
+  {
+    // Something that changes without moving (a video in a column): no
+    // distance explains it, the tolerant rule goes on as before.
+    const LiveSession s = liveSession(doc, W, V, 60, [&](Image& f, const FakeApp&, int, int64_t t) {
+      for (int y = 100; y < 400; ++y)
+        for (int x = W - 100; x < W - 40; ++x) f.at(x, y) = rgb(int((t / 50 * 37 + y * 3) & 255), int((x * 5 + t / 50 * 11) & 255), 90);
+    });
+    const int bad = firstWrongRow(s, doc, 0, W - 100, doc.h);
+    report("session a video in a column is not a pace of its own", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d beside it, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+  }
+
+  std::printf("\n[stitcher] the edge guard\n");
+  {
+    // Something over the last rows of one frame only (a panel, a toast): the
+    // next frame shows those rows without it, and the image has them from there.
+    for (int step : {60, 240, 360}) {
+      ScrollStitcher st;
+      std::vector<int> pos{0};
+      while (pos.back() + step + V <= 3000) pos.push_back(pos.back() + step);
+      int refPos = 0;
+      for (size_t i = 0; i < pos.size(); ++i) {
+        Image f(W, V);
+        std::memcpy(f.px.data(), doc.row(pos[i]), size_t(W) * V * 4);
+        if (i % 3 == 1)
+          for (int y = V - 30; y < V - 4; ++y)
+            for (int x = 0; x < 200; ++x) f.at(x, y) = 0xF9F9FA;
+        const StepResult r = st.addFrame(f.view(), i ? pos[i] - refPos : kNoHint);
+        if (r.status == StepStatus::First || r.status == StepStatus::Appended) refPos = pos[i];
+      }
+      // The last frame once more, as the loop sees it when the page has ended.
+      Image f(W, V);
+      std::memcpy(f.px.data(), doc.row(pos.back()), size_t(W) * V * 4);
+      st.addFrame(f.view(), 0);
+      st.finish();
+      const int outH = st.outputHeight();
+      const int foreign = firstForeignRow(st.takeImage(), outH, doc);
+      report(fmt("a panel over the last rows of every third frame, step %d", step), foreign < 0 && outH == pos.back() + V, fmt("%d rows (%d), first foreign row %d", outH, pos.back() + V, foreign));
+    }
+  }
+}
+
 // ------------------------------------------------------------------ session tests
 
 struct SessCfg {
@@ -2397,6 +2639,7 @@ int main(int argc, char** argv) {
   testPointerRules();
   testReviewFrameProofs();
   testLayoutChange();
+  testLivePages();
 
   int pass = 0, fail = 0, known = 0;
   std::printf("\n==================== summary ====================\n");

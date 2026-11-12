@@ -118,6 +118,8 @@ class FakeClock : public putgd::record::RunClock {
   int64_t t_ = 1000;
 };
 
+class FakeApp;
+
 struct FakeAppSpec {
   double pxPerNotch = 100;
   int animMinMs = 150, animMaxMs = 350;
@@ -162,6 +164,10 @@ struct FakeAppSpec {
   // events sent so far: whatever is in the captured rectangle beside the page
   // (a window that is resized under it, a bar that comes up late).
   std::function<void(Image& frame, int injections)> overlay;
+  // The same, for what a page does by itself: with the application (its
+  // pointer, and when the pointer last moved), where the page is scrolled to
+  // in this frame, and the frame's time.
+  std::function<void(Image& frame, const FakeApp& app, int pos, int64_t t)> scene;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -188,6 +194,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   std::vector<Event> events;
   bool pointerKnown = false;
   int pointerX = 0, pointerY = 0;
+  int64_t pointerMovedAt = 0;  // the clock when the pointer was last put somewhere
 
  private:
   struct Seg {

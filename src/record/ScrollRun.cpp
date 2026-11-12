@@ -10,6 +10,8 @@ using scroll::StepResult;
 using scroll::StepStatus;
 namespace {
 const char* const layoutNote = "the layout inside the selection changed during the capture; the image ends with the rows from before the change";
+const char* const paceNote = "a part of the selection scrolls at a pace of its own (a minimap, a column with a parallax effect), so no single image shows it beside the page; the image ends with the rows from before it moved";
+const char* noteFor(const StepResult& r) { return r.ownPace ? paceNote : layoutNote; }
 }
 
 const char* toString(RunResult r) {
@@ -53,13 +55,16 @@ bool ScrollRun::inject(int notches) {
     if (stopped()) return false;
     // On the way to the top of a desktop that paints the pointer into the
     // frames, the pointer is in the rectangle only for the wheel step itself.
-    const bool visit = toTop_ && opts_.restAwayToTop && opts_.pointer && opts_.away && haveFrame_;
+    const bool visit = (opts_.restAway || (toTop_ && opts_.restAwayToTop)) && opts_.pointer && opts_.away && haveFrame_;
     // Stop found the pointer inside: no wheel step follows, the pointer leaves.
     const auto leave = [&] {
         parked_ = -1;
         return injector_.movePointer(opts_.away->x, opts_.away->y);
     };
     if (opts_.pointer && haveFrame_) {
+        // Rows a frame shows above the parked pointer's margin are under the
+        // pointer's influence unless it leaves again right after the wheel step.
+        stitcher_.setTrustedFrom(visit ? 0 : parkPoint(stats_.parkPosition, last_.width, last_.height).y + opts_.hoverMarginRows);
         if (!park()) return false;
         if (parked_ != stats_.parkPosition) {
             // It just arrived here: let the application see it enter, then say it again.
@@ -422,6 +427,8 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             return finishWith(RunResult::InjectorFailed);
         }
         parked_ = -1;
+        if (opts_.awayLingerMs > 0) clock_.sleepMs(opts_.awayLingerMs);
+        if (stopped()) return finishWith(RunResult::Stopped);
     }
     if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
     referenceWidth_ = last_.width; referenceHeight_ = last_.height;
@@ -547,7 +554,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 }
             }
             if (back.status != StepStatus::NoMovement && back.status != StepStatus::Appended && back.status != StepStatus::Reversed) {
-                stats_.lastError = back.status == StepStatus::LayoutChanged ? layoutNote : std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
+                stats_.lastError = back.status == StepStatus::LayoutChanged ? noteFor(back) : std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
                 return finishWith(back.status == StepStatus::LimitReached ? RunResult::LimitReached
                                   : back.status == StepStatus::InvalidFrame ? RunResult::LayoutChanged : RunResult::LostTrack);
             }
@@ -671,7 +678,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             case StepStatus::LayoutChanged:
                 // The frames kept their size, so the display did not change:
                 // what was proved before is an exact image and is kept.
-                stats_.lastError = layoutNote;
+                stats_.lastError = noteFor(r);
                 return finishWith(RunResult::LostTrack);
             default:
                 stats_.lastError = std::string("stitcher returned ") + scroll::toString(r.status);
