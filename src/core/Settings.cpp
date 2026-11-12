@@ -203,7 +203,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         const auto action = value.toObject();
         // Repeat last region is a key only: it always uses the region route.
         if (name == repeatActionName() && !(value.isObject() && keys(action, {"shortcut"})))
-            return invalid("/actions/" + name, "Repeat last region holds only a shortcut; it uses the region capture's output.");
+            return invalid("/actions/" + name, "Repeat last region holds only a hotkey; it uses the region capture's output.");
         // A shortcut-only record entry follows the region route.
         const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName()) && value.isObject() && keys(action, {"shortcut"});
         if (inheritedRecord) {
@@ -219,7 +219,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!action["shortcut"].toString().isEmpty()) {
             const auto sequence = QKeySequence::fromString(action["shortcut"].toString(), QKeySequence::PortableText);
             if (sequence.count() != 1 || sequence[0].key() == Qt::Key_unknown || sequence[0].key() == 0)
-                return invalid("/actions/" + name + "/shortcut", "Shortcuts must contain one valid key combination.");
+                return invalid("/actions/" + name + "/shortcut", "Hotkeys must contain one valid key combination.");
         }
     }
     const auto archive = doc["archive"].toObject();

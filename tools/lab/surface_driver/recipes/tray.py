@@ -949,7 +949,7 @@ def recorder_ignores_shortcut(ctx):
     recorder.start('region')
     previous = {o['id'] for o in _recent(ctx)}
     ctx.keys(CHORDS['clipboard'])
-    ctx.wait(lambda: not ((recorder.recording_status() or {}).get('text') or '').startswith('Press shortcut'), 'recorder consumed the chord')
+    ctx.wait(lambda: not ((recorder.recording_status() or {}).get('text') or '').startswith('Press hotkey'), 'recorder consumed the chord')
     ctx.expect({o['id'] for o in _recent(ctx)} == previous, 'recorded chord admitted no operation')
     after = recorder.no_operation_baseline()
     ctx.expect(after == before, 'native shortcut recorder leaves operations and history unchanged')

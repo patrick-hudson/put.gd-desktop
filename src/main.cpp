@@ -463,7 +463,7 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_HYPRLAND
   if(hyprland){hyprland->setShortcutRecording(active,std::move(reply));return;}
 #endif
-  reply(active?putgd::Error{"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}}:putgd::Error{});
+  reply(active?putgd::Error{"shortcut_recording_unavailable","Hotkey recording is unavailable in this session.",{}}:putgd::Error{});
  });
  QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);if(!pid)operations.requestHeapReclamation();});
  const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};

@@ -63,7 +63,7 @@ struct HyprlandShortcuts::Registry:QObject {
  void open(){
   if(closing||display)return;
   display=wl_display_connect(nullptr);
-  if(!display){error="Cannot connect to the Wayland compositor for shortcuts";retry();return;}
+  if(!display){error="Cannot connect to the Wayland compositor for hotkeys";retry();return;}
   registry=wl_display_get_registry(display);
   static const wl_registry_listener listener{[](void* data,wl_registry* r,uint32_t name,const char* interface,uint32_t){
    auto* self=static_cast<Registry*>(data);
@@ -129,12 +129,12 @@ struct HyprlandShortcuts::Registry:QObject {
   flush();
  }
  void lost(){
-  QString reason=QStringLiteral("The Wayland connection for shortcuts was lost");
+  QString reason=QStringLiteral("The Wayland connection for hotkeys was lost");
   if(display){
    const hyprland_global_shortcuts_manager_v1* source=nullptr;uint32_t id=0;const wl_interface* interface=nullptr;
    const auto code=wl_display_get_protocol_error(display,&interface,&id);Q_UNUSED(source);
    if(interface&&std::strcmp(interface->name,hyprland_global_shortcuts_manager_v1_interface.name)==0&&code==HYPRLAND_GLOBAL_SHORTCUTS_MANAGER_V1_ERROR_ALREADY_TAKEN)
-    reason=QStringLiteral("Another client already registered put.gd's global shortcuts (putgd:*) in this Hyprland session");
+    reason=QStringLiteral("Another client already registered put.gd's hotkeys (putgd:*) in this Hyprland session");
   }
   fail(reason);
  }
@@ -418,7 +418,7 @@ void HyprlandShortcuts::evalNext(QList<QPair<QString,Chord>> queue){
    const auto text=QString::fromUtf8(reply.left(300)).trimmed();
    // The legacy hyprland.conf parser has no Lua: nothing can be bound at runtime.
    if(text.contains("lua",Qt::CaseInsensitive)||text.contains("legacy",Qt::CaseInsensitive)||text.contains("eval",Qt::CaseInsensitive))
-    evalError_="Hyprland did not run put.gd's Lua bind (a session on the legacy hyprland.conf parser has no put.gd shortcuts): "+text;
+    evalError_="Hyprland did not run put.gd's Lua bind (a session on the legacy hyprland.conf parser has no put.gd hotkeys): "+text;
    else failed_.insert(action,"Hyprland refused the bind: "+text);
   }else evalError_.clear();
   evalNext(std::move(queue));
@@ -491,7 +491,7 @@ QJsonObject HyprlandShortcuts::status()const{
   }
   else if(failed_.contains(action)){entry["state"]="shortcut_unavailable";entry["error"]=failed_.value(action);}
   else if(bound_.contains(action)){entry["state"]="bound";entry["bound"]=true;}
-  else{entry["state"]="pending";if(applied_&&!applying_)entry["error"]="Hyprland's bind list does not show this shortcut";}
+  else{entry["state"]="pending";if(applied_&&!applying_)entry["error"]="Hyprland's bind list does not show this hotkey";}
   out[action]=entry;
  }
  return out;

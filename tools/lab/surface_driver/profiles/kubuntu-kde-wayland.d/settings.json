@@ -69,7 +69,7 @@
       "role": "list item"
     },
     "settingsSection2": {
-      "name": "Shortcuts",
+      "name": "Hotkeys",
       "role": "list item"
     },
     "settingsSection3": {
@@ -77,7 +77,7 @@
       "role": "list item"
     },
     "clearRecordShortcut": {
-      "name": "Clear record screen shortcut",
+      "name": "Clear record screen hotkey",
       "role": "push button"
     },
     "resetAdvancedDefaults": {
@@ -89,39 +89,39 @@
       "role": "check box"
     },
     "recordRegionShortcut": {
-      "name": "Change capture region shortcut",
+      "name": "Change capture region hotkey",
       "role": "push button"
     },
     "clearRegionShortcut": {
-      "name": "Clear capture region shortcut",
+      "name": "Clear capture region hotkey",
       "role": "push button"
     },
     "recordWindowShortcut": {
-      "name": "Change capture window shortcut",
+      "name": "Change capture window hotkey",
       "role": "push button"
     },
     "clearWindowShortcut": {
-      "name": "Clear capture window shortcut",
+      "name": "Clear capture window hotkey",
       "role": "push button"
     },
     "recordDesktopShortcut": {
-      "name": "Change capture desktop shortcut",
+      "name": "Change capture desktop hotkey",
       "role": "push button"
     },
     "clearDesktopShortcut": {
-      "name": "Clear capture desktop shortcut",
+      "name": "Clear capture desktop hotkey",
       "role": "push button"
     },
     "recordClipboardShortcut": {
-      "name": "Change upload clipboard shortcut",
+      "name": "Change upload clipboard hotkey",
       "role": "push button"
     },
     "clearClipboardShortcut": {
-      "name": "Clear upload clipboard shortcut",
+      "name": "Clear upload clipboard hotkey",
       "role": "push button"
     },
     "recordRecordShortcut": {
-      "name": "Change record screen shortcut",
+      "name": "Change record screen hotkey",
       "role": "push button"
     }
   },

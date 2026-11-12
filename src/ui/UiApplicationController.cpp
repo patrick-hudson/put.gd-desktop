@@ -23,7 +23,7 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
   // A timeout is not evidence of suspension: discard capture and restore via
   // the ordered private pipe. The supervisor also restores if this pipe dies.
   control_.send("shortcutRecording",{{"active",false}});
-  finishShortcutRecordingRequests({"shortcut_recording_timeout","Global shortcuts could not be paused. Try recording again.",{}});
+  finishShortcutRecordingRequests({"shortcut_recording_timeout","Hotkeys could not be paused. Try recording again.",{}});
  });
  // #60: the setting picks the scheme and "system" follows the desktop live;
  // CLI/MCP patches arrive through the same accepted revisions.
@@ -154,7 +154,7 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto it=recordingRequests_.find(payload["replyTo"].toString());if(it==recordingRequests_.end())return;
   const auto request=std::move(it.value());recordingRequests_.erase(it);if(recordingRequests_.isEmpty())recordingDeadline_.stop();
   const auto value=payload["error"].toObject();Error error{value["code"].toString(),value["message"].toString(),value["details"].toObject()};
-  if(!error&&payload["active"]!=request.active)error={"ui_protocol","Invalid shortcut recording acknowledgement.",{}};
+  if(!error&&payload["active"]!=request.active)error={"ui_protocol","Invalid hotkey recording acknowledgement.",{}};
   if(request.reply)request.reply(error);
   return;
  }

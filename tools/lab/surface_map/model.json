@@ -176,7 +176,7 @@
   }
  ],
  "surfaces": [
-  {"id": "shortcuts", "label": "Global shortcuts", "kind": "channel", "notes": "X11 key grabs, KDE KGlobalAccel, GNOME Shell extension. No portal GlobalShortcuts: other Wayland desktops get none."},
+  {"id": "shortcuts", "label": "Hotkeys", "kind": "channel", "notes": "X11 key grabs, KDE KGlobalAccel, GNOME Shell extension. No portal GlobalShortcuts: other Wayland desktops get none."},
   {"id": "cli", "label": "Command line", "kind": "channel"},
   {"id": "mcp", "label": "MCP tools", "kind": "channel"},
   {"id": "events", "label": "OS and desktop events", "kind": "channel"},
@@ -187,7 +187,7 @@
   {"id": "destinations", "label": "Destinations", "kind": "window", "capture": "04-destinations-s3"},
   {"id": "settings-general", "label": "Settings · General and Updates", "kind": "window", "capture": "07-settings-general"},
   {"id": "settings-capture", "label": "Settings · Capture", "kind": "window", "capture": "08-settings-capture"},
-  {"id": "settings-shortcuts", "label": "Settings · Shortcuts", "kind": "window", "capture": "06-settings-shortcuts"},
+  {"id": "settings-shortcuts", "label": "Settings · Hotkeys", "kind": "window", "capture": "06-settings-shortcuts"},
   {"id": "settings-advanced", "label": "Settings · Advanced and Diagnostics", "kind": "window", "capture": "05-settings-advanced"},
   {"id": "diagnostics-dialog", "label": "Diagnostics package dialog", "kind": "dialog", "capture": "58-diagnostics-package"},
   {"id": "about", "label": "About", "kind": "dialog", "capture": "about"},
@@ -412,7 +412,7 @@
   {"id": "destinations.empty", "surface": "destinations", "kind": "state", "label": "No destinations yet", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "destinations.autosave", "surface": "destinations", "kind": "state", "label": "Edits autosave after 400 ms; invalid fields stay local", "source": "src/ui/SettingsWindow.cpp"},
 
-  {"id": "settings.nav", "surface": "settings-general", "kind": "button", "label": "Rail: General / Capture / Shortcuts / Advanced", "control": ["settingsNavigation", "settingsTabs"], "source": "src/ui/SettingsWindow.cpp"},
+  {"id": "settings.nav", "surface": "settings-general", "kind": "button", "label": "Rail: General / Capture / Hotkeys / Advanced", "control": ["settingsNavigation", "settingsTabs"], "source": "src/ui/SettingsWindow.cpp"},
   {"id": "settings.launch-at-login", "surface": "settings-general", "kind": "button", "label": "Launch at login", "control": "launchAtLogin", "method": "settings.patch", "source": "src/app/LoginStartup.cpp"},
   {"id": "settings.unlock-at-startup", "surface": "settings-general", "kind": "button", "label": "Unlock saved credentials when put.gd starts", "control": "unlockCredentialsAtStartup", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "settings.notifications", "surface": "settings-general", "kind": "button", "label": "Show desktop notifications", "control": "notifications", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
@@ -440,7 +440,7 @@
   {"id": "capture.naming", "surface": "settings-capture", "kind": "field", "label": "Naming, When a name exists, Custom file-name pattern", "control": "namingMode", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "capture.help-toggles", "surface": "settings-capture", "kind": "button", "label": "ⓘ per-setting help", "control": "glob:*Help", "source": "src/ui/Ui.cpp"},
 
-  {"id": "shortcuts-page.refresh", "surface": "settings-shortcuts", "kind": "button", "label": "Check shortcuts again", "control": "refreshShortcutSupport", "source": "src/ui/ShortcutEditor.cpp"},
+  {"id": "shortcuts-page.refresh", "surface": "settings-shortcuts", "kind": "button", "label": "Check hotkeys again", "control": "refreshShortcutSupport", "source": "src/ui/ShortcutEditor.cpp"},
   {"id": "shortcuts-page.record", "surface": "settings-shortcuts", "kind": "button", "label": "Keycap starts recording a chord; click again cancels (six rows)", "control": "glob:record*Shortcut", "method": "settings.patch", "source": "src/ui/ShortcutEditor.cpp"},
   {"id": "shortcuts-page.field", "surface": "settings-shortcuts", "kind": "field", "label": "Shortcut field and status line (bound / unsupported / conflict)", "control": "glob:shortcut[A-Z]*", "source": "src/ui/ShortcutEditor.cpp"},
   {"id": "shortcuts-page.clear", "surface": "settings-shortcuts", "kind": "button", "label": "✕ disables the shortcut", "control": "glob:clear*Shortcut", "method": "settings.patch", "source": "src/ui/ShortcutEditor.cpp"},
@@ -448,7 +448,7 @@
   {"id": "shortcuts-page.key-backspace", "surface": "settings-shortcuts", "kind": "key", "label": "Clear the shortcut while recording", "keys": ["Backspace"], "source": "src/ui/ShortcutEditor.cpp"},
   {"id": "shortcuts-page.chord", "surface": "settings-shortcuts", "kind": "gesture", "label": "Releasing all keys commits; a second key aborts; Shift+digit stored unshifted; AltGr rejected", "source": "src/ui/ShortcutEditor.cpp"},
   {"id": "shortcuts-page.focus-loss", "surface": "settings-shortcuts", "kind": "state", "label": "Focus loss, hide or deactivation cancels recording", "source": "src/ui/ShortcutEditor.cpp"},
-  {"id": "shortcuts-page.help", "surface": "settings-shortcuts", "kind": "button", "label": "How shortcuts work", "control": "shortcutHelpToggle", "source": "src/ui/ShortcutEditor.cpp"},
+  {"id": "shortcuts-page.help", "surface": "settings-shortcuts", "kind": "button", "label": "How hotkeys work", "control": "shortcutHelpToggle", "source": "src/ui/ShortcutEditor.cpp"},
   {"id": "shortcuts-page.unsupported-desktop", "surface": "settings-shortcuts", "kind": "state", "label": "Status on a desktop without global shortcuts (non-KDE/GNOME Wayland)", "source": "src/ui/ShortcutEditor.cpp"},
 
   {"id": "advanced.history-retention", "surface": "settings-advanced", "kind": "field", "label": "Keep history for (Forever, 30, 90 days, 1 year)", "control": "historyRetentionChoice", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},

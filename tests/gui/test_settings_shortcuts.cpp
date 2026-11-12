@@ -10,7 +10,7 @@ private slots:
   auto actions=Settings::defaults()["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="";actions[name]=action;}
   editor->setActions(actions);editor->setRecordingControl([](bool,auto reply){reply({});});PreferenceRows::alignChoices(&window);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   auto* input=editor->editors().value("region");auto* record=editor->findChild<QPushButton*>("recordRegionShortcut");QVERIFY(input&&record);PUTGD_VERIFY_STEADY(input->placeholderText()=="Not set",100);const int idleWidth=input->width();QSignalSpy changed(input,&QLineEdit::textChanged);
-  record->click();QCOMPARE(input->placeholderText(),QString("Press shortcut…"));QCOMPARE(changed.count(),0);
+  record->click();QCOMPARE(input->placeholderText(),QString("Press hotkey…"));QCOMPARE(changed.count(),0);
   PUTGD_TRY_VERIFY(input->contentsRect().width()>=input->fontMetrics().horizontalAdvance(input->placeholderText())+4);
   editor->cancelRecording();PUTGD_TRY_COMPARE(input->width(),idleWidth);PUTGD_VERIFY_STEADY(input->width()==idleWidth,100);
  }
@@ -73,7 +73,7 @@ private slots:
   auto* input=editor.editors().value("region");const auto saved=input->text();
   auto click=[&]{QTest::mouseClick(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,input->mapTo(&page,input->rect().center()));};
   click();PUTGD_TRY_COMPARE(transitions,QList<bool>({true}));
-  QCOMPARE(input->placeholderText(),QString("Press shortcut…"));
+  QCOMPARE(input->placeholderText(),QString("Press hotkey…"));
   click();PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false}));
   if(acknowledge)acknowledge({});
   QCOMPARE(input->text(),saved);QCOMPARE(input->placeholderText(),QString("Not set"));
@@ -84,7 +84,7 @@ private slots:
   QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,nextPoint);putgd::test::settle(50);
   QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,nextPoint);
   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true}));
-  QCOMPARE(input->placeholderText(),QString("Not set"));QCOMPARE(next->placeholderText(),QString("Press shortcut…"));
+  QCOMPARE(input->placeholderText(),QString("Not set"));QCOMPARE(next->placeholderText(),QString("Press hotkey…"));
   QTest::keyClick(page.windowHandle(),Qt::Key_Escape);
   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true,false}));QCOMPARE(next->text(),nextSaved);
   click();const auto abandoned=next->mapTo(&page,next->rect().center());
@@ -179,7 +179,7 @@ private slots:
   send(QEvent::KeyPress,Qt::Key_Shift,Qt::ShiftModifier,50);send(QEvent::KeyPress,Qt::Key_Exclam,Qt::ShiftModifier,10);
   send(QEvent::KeyRelease,Qt::Key_Shift,Qt::NoModifier,50);QCOMPARE(input->text(),old);
   // X11 can report a repeated key with a new symbol when modifiers change.
-  send(QEvent::KeyPress,Qt::Key_1,Qt::NoModifier,10);QCOMPARE(input->placeholderText(),QString("Press shortcut…"));
+  send(QEvent::KeyPress,Qt::Key_1,Qt::NoModifier,10);QCOMPARE(input->placeholderText(),QString("Press hotkey…"));
   send(QEvent::KeyRelease,Qt::Key_1,Qt::NoModifier,10);QCOMPARE(input->text(),QString("Shift+!"));QCOMPARE(input->placeholderText(),QString("Not set"));
   record->click();send(QEvent::KeyPress,Qt::Key_1,Qt::KeypadModifier,87);send(QEvent::KeyRelease,Qt::Key_1,Qt::KeypadModifier,87);
   QCOMPARE(input->text(),QKeySequence(QKeyCombination(Qt::KeypadModifier,Qt::Key_1)).toString(QKeySequence::PortableText));QCOMPARE(input->placeholderText(),QString("Not set"));
@@ -250,18 +250,18 @@ private slots:
   auto* accessible=QAccessible::queryAccessibleInterface(status);QVERIFY(accessible);
   auto check=[&](const QString& expected){
    QVERIFY2(status->text().contains(expected),qPrintable(status->text()));
-   QCOMPARE(accessible->text(QAccessible::Name),QString("Shortcut recording status"));
+   QCOMPARE(accessible->text(QAccessible::Name),QString("Hotkey recording status"));
    QCOMPARE(accessible->text(QAccessible::Description),status->text());
   };
-  record->click();check("Preparing");prepared({});check("Press shortcut");
+  record->click();check("Preparing");prepared({});check("Press hotkey");
   QTest::keyPress(input,Qt::Key_1);check("release all keys");QTest::keyRelease(input,Qt::Key_1);check("recorded.");restored({});
   record->click();editor.cancelRecording();check("Recording canceled.");prepared({});check("Recording canceled.");
-  restored({"shortcut_restore_failed","Synthetic cancel restore failure",{}});check("Couldn't restore shortcuts: Synthetic cancel restore failure");
+  restored({"shortcut_restore_failed","Synthetic cancel restore failure",{}});check("Couldn't restore hotkeys: Synthetic cancel restore failure");
   record->click();prepared({"shortcut_unavailable","Synthetic preparation failure",{}});check("Can't record: Synthetic preparation failure");restored({});
   record->click();prepared({});QKeyEvent unsupported(QEvent::KeyPress,Qt::Key_unknown,Qt::NoModifier);QApplication::sendEvent(input,&unsupported);check("Unsupported key");restored({});
   record->click();prepared({});QTest::keyPress(input,Qt::Key_1);QTest::keyPress(input,Qt::Key_2);check("Use one key with modifiers");restored({});
-  record->click();prepared({});QTest::keyClick(input,Qt::Key_Backspace);check("Shortcut cleared.");
-  restored({"shortcut_recording_interrupted","Superseded",{}});check("Shortcut cleared.");
+  record->click();prepared({});QTest::keyClick(input,Qt::Key_Backspace);check("Hotkey cleared.");
+  restored({"shortcut_recording_interrupted","Superseded",{}});check("Hotkey cleared.");
  }
  void shortcutRecordingDistinguishesSupersededRestoreFromFailure(){
   std::function<void(Error)> restored;ShortcutEditor editor;
@@ -270,7 +270,7 @@ private slots:
   auto* record=editor.findChild<QPushButton*>("recordRegionShortcut");auto* input=editor.editors().value("region");auto* status=editor.findChild<QLabel*>("shortcutRecordingStatus");
   record->click();QTest::keyClick(input,Qt::Key_1,Qt::ControlModifier);const auto recorded=status->text();
   restored({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});QCOMPARE(status->text(),recorded);QCOMPARE(input->text(),QString("Ctrl+1"));
-  record->click();QTest::keyClick(input,Qt::Key_Escape);restored({"shortcut_restore_failed","Synthetic restore failure",{}});QVERIFY(status->text().contains("Couldn't restore shortcuts"));QCOMPARE(input->text(),QString("Ctrl+1"));
+  record->click();QTest::keyClick(input,Qt::Key_Escape);restored({"shortcut_restore_failed","Synthetic restore failure",{}});QVERIFY(status->text().contains("Couldn't restore hotkeys"));QCOMPARE(input->text(),QString("Ctrl+1"));
  }
  // #344: Channel offers Stable and Nightly and starts on this build's own; the
  // build's own is stored as "build", the other one explicitly.
