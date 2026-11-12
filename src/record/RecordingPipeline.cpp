@@ -941,7 +941,7 @@ void RecordingPipeline::poll() {
 void RecordingPipeline::observeRate() {
     if (!rate_.enabled()) return;
     if (timeline_.paused()) { rateClock_.invalidate(); return; }
-    auto mark = [this] { rateMarks_ = {gate_.delivered.load(), dropped_.load(), cpuProbe_ ? cpuProbe_() : readCpu()}; rateClock_.start(); };
+    auto mark = [this] { rateMarks_ = {gate_.delivered.load(), dropped_.load(), readCpu()}; rateClock_.start(); };
     if (!rateClock_.isValid()) { mark(); return; }
     if (rateClock_.elapsed() < 1000) return;
     const gint64 elapsed = rateClock_.nsecsElapsed();

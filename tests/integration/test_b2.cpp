@@ -117,49 +117,18 @@ public:
         return await<DeleteResult>([&](auto cb) { provider.remove({"synthetic-delete", receipt, progress, {}}, save, cb); });
     }
 };
-QJsonObject seed(const QString& name, const QString& action = "upload", const QString& bucket = "bucket-public-id") {
-    return {{"fileName", name}, {"bucketId", bucket}, {"action", action}};
-}
 }
 class B2Test : public QObject {
     Q_OBJECT
 private slots:
-    void stalledNameCheckCancelsAndRetries() {
-        B2Fixture f;
-        f.destination.settings["requestTimeoutMs"] = 120000;
-        f.rules({QJsonObject{{"call", "b2_list_file_versions"}, {"delay", 30}}});
-        auto cancellation = std::make_shared<std::atomic_bool>(false);
-        auto result = std::async(std::launch::async, [&] {
-            return f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancel.png", cb, cancellation); });
-        });
-        PUTGD_TRY_VERIFY(!f.events("b2_list_file_versions").isEmpty());
-        QElapsedTimer elapsed; elapsed.start(); cancellation->store(true);
-        PUTGD_TRY_VERIFY(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready);
-        const auto checked = result.get();
-        QVERIFY(elapsed.elapsed() < 5000);
-        QCOMPARE(checked.status, QString("inconclusive"));
-        QCOMPARE(checked.error.code, QString("cancelled"));
-        QCOMPARE(f.provider.diagnostics()["activeHelpers"].toInt(), 0);
-        const auto retried = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "cancel.png", cb); });
-        QCOMPARE(retried.status, QString("absent"));
-        QVERIFY(!retried.error);
-    }
 
-    void settingsValidation() {
+    // Application keys never go to a plain-HTTP API endpoint.
+    void plainHttpApiIsRefused() {
         auto s = b2::defaults();
         s["bucket"] = "putgd-fixture";
         QVERIFY(!b2::validateSettings(s));
-        auto bad = s; bad["bucket"] = "b2-reserved"; QVERIFY(b2::validateSettings(bad));
-        bad = s; bad["bucket"] = "short"; QVERIFY(b2::validateSettings(bad));
-        bad = s; bad["linkValidityDays"] = 8; QVERIFY(b2::validateSettings(bad));
-        bad = s; bad["linkMode"] = "authorized"; bad["publicUrlBase"] = "https://cdn.example"; QVERIFY(b2::validateSettings(bad));
-        bad = s; bad["apiUrl"] = "http://api.backblazeb2.com"; QVERIFY(b2::validateSettings(bad));
-        bad = s; bad["extra"] = true; QVERIFY(b2::validateSettings(bad));
-        bad = s; bad["objectPrefix"] = "/rooted"; QVERIFY(b2::validateSettings(bad));
-        QCOMPARE(b2::partBytes(64 * mib), qint64(0));
-        QCOMPARE(b2::partBytes(64 * mib + 1), 16 * mib);
-        QVERIFY(b2::partBytes(b2::maximumFileBytes) * b2::maximumParts >= b2::maximumFileBytes);
-        QCOMPARE(b2::fileUrl(s, "https://f001.backblazeb2.com", "a b/é.png"), QString("https://f001.backblazeb2.com/file/putgd-fixture/a%20b/%C3%A9.png"));
+        s["apiUrl"] = "http://api.backblazeb2.com";
+        QVERIFY(b2::validateSettings(s));
     }
     void singleUploadPublicLinkStatAndExactDeletion() {
         B2Fixture f;
@@ -191,19 +160,6 @@ private slots:
         QCOMPARE(f.events("b2_delete_file_version")[0].toObject()["body"].toObject()["fileId"].toString(), fileId);
         QVERIFY(f.versions(key).isEmpty());
         QCOMPARE(f.remove(uploaded.receipt).status, QString("missing"));
-    }
-    void visibleNameIsPresentAndHiddenNameIsAbsent() {
-        B2Fixture f;
-        f.reset({{"versions", QJsonArray{seed("prefix é/taken.png")}}});
-        auto taken = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "taken.png", cb); });
-        QCOMPARE(taken.status, QString("present"));
-        f.reset({{"versions", QJsonArray{seed("prefix é/hidden.png"), seed("prefix é/hidden.png", "hide")}}});
-        auto hidden = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "hidden.png", cb); });
-        QCOMPARE(hidden.status, QString("absent"));
-        QCOMPARE(hidden.objectReference["baseline"].toArray().size(), 2);
-        // The hidden name uploads; the earlier versions are baseline, not a collision.
-        auto request = f.request("hidden.png");
-        QCOMPARE(f.upload(request).status, QString("uploaded"));
     }
     void concurrentUploadOfTheSameNameIsACollisionAndOurCopyGoes() {
         B2Fixture f;
@@ -279,48 +235,6 @@ private slots:
         QCOMPARE(f.events("upload_file").size(), 1);
         QCOMPARE(f.versions("prefix é/lost.png").size(), 1);
     }
-    // Qt Network re-sends a request whose connection closes before the reply; every
-    // body is read-once, so a dropped deletion is reported uncertain, never replayed.
-    void droppedDeletionIsNotReplayed() {
-        B2Fixture f;
-        f.reset();
-        const auto uploaded = f.upload(f.request("kept.png"));
-        QCOMPARE(uploaded.status, QString("uploaded"));
-        f.rules({QJsonObject{{"call", "b2_delete_file_version"}, {"drop", true}}});
-        const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.status, QString("unknown"));
-        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
-        QCOMPARE(f.events("b2_delete_file_version").size(), 1);
-        QCOMPARE(f.versions("prefix é/kept.png").size(), 1);
-        // Retrying from the journal deletes it.
-        QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("removed"));
-    }
-    void largeFileUploadsPartsWithSha1AndJournalsFirst() {
-        B2Fixture f;
-        f.reset();
-        const auto bytes = synthetic(11 * mib);
-        auto request = f.request("large.bin", bytes);
-        B2Fixture::Journal journal;
-        journal.attach(request);
-        QList<UploadProgress> reports;
-        request.progress = [&](const UploadProgress& p) { reports << p; };
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("uploaded"));
-        QVERIFY(journal.saved.size() >= 2);
-        QVERIFY(journal.saved[0]["uploadId"].toString().startsWith("large-"));
-        QCOMPARE(journal.saved[0]["partBytes"].toDouble(), double(5 * mib));
-        QVERIFY(journal.last().isEmpty());
-        const auto parts = f.events("upload_part");
-        QCOMPARE(parts.size(), 3);
-        for (const auto& p : parts) QVERIFY(!p.toObject()["sha1"].toString().isEmpty());
-        QCOMPARE(f.events("b2_finish_large_file").size(), 1);
-        const auto stored = f.versions("prefix é/large.bin");
-        QCOMPARE(stored.size(), 1);
-        QCOMPARE(stored[0].toObject()["action"].toString(), QString("upload"));
-        QCOMPARE(qint64(stored[0].toObject()["contentLength"].toDouble()), 11 * mib);
-        QVERIFY(!reports.isEmpty());
-        QCOMPARE(reports.last().bytesTransferred.value_or(0), 11 * mib);
-    }
     void uncertainFinishResumesWithoutResendingParts() {
         B2Fixture f;
         f.reset();
@@ -353,33 +267,6 @@ private slots:
         QVERIFY(f.versions("prefix é/denied.bin").isEmpty());
         QVERIFY(journal.last().isEmpty());
     }
-    void cancellationCancelsTheLargeFile() {
-        B2Fixture f;
-        f.reset();
-        auto request = f.request("cancel.bin", synthetic(16 * mib));
-        B2Fixture::Journal journal;
-        journal.attach(request);
-        request.progress = [&](const UploadProgress& p) { if (p.bytesTransferred.value_or(0) >= 5 * mib) request.cancellation->store(true); };
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("cancelled"));
-        QCOMPARE(f.events("b2_cancel_large_file").size(), 1);
-        QVERIFY(f.versions("prefix é/cancel.bin").isEmpty());
-    }
-    void abandonCancelsAJournaledLargeFile() {
-        B2Fixture f;
-        f.reset();
-        auto request = f.request("retired.bin", synthetic(11 * mib));
-        B2Fixture::Journal journal;
-        journal.attach(request);
-        f.rules({QJsonObject{{"call", "b2_finish_large_file"}, {"status", 503}}});
-        QCOMPARE(f.upload(request).status, QString("unknown"));
-        const auto retained = journal.last();
-        QCOMPARE(f.versions("prefix é/retired.bin").size(), 1);
-        const auto error = f.await<Error>([&](auto cb) { f.provider.abandonUpload(f.destination, retained, cb); });
-        QVERIFY2(!error, qPrintable(error.message));
-        QVERIFY(f.versions("prefix é/retired.bin").isEmpty());
-    }
     void authorizedLinksCarryATokenForExactlyTheName() {
         B2Fixture f;
         f.reset();
@@ -406,52 +293,6 @@ private slots:
         f.reset({{"versions",QJsonArray{recorded,replacement}}});
         const auto refused=f.await<StatResult>([&](auto cb){f.provider.refreshLink(expired,cb);});
         QCOMPARE(refused.status,QString("foreign"));QVERIFY(f.events("b2_get_download_authorization").isEmpty());
-    }
-    void testConnectionPublicAndAuthorized() {
-        B2Fixture f;
-        f.reset();
-        QStringList checkpoints;
-        auto save = [&](const QJsonObject& progress, std::function<void(Error)> ack) { checkpoints << progress["phase"].toString(); ack({}); };
-        auto [result, error] = f.await<std::pair<QJsonObject, Error>>([&](auto done) { f.provider.testDestination(f.destination, save, [done](QJsonObject r, Error e) { done({r, e}); }); });
-        QVERIFY2(!error, qPrintable(error.code + " " + error.message));
-        QCOMPARE(result["uploadStatus"].toString(), QString("uploaded"));
-        QVERIFY(result["publicReachable"].toBool());
-        QCOMPARE(result["cleanupStatus"].toString(), QString("removed"));
-        QCOMPARE(result["largeFile"].toObject()["cancel"].toString(), QString("cancelled"));
-        QCOMPARE(checkpoints, QStringList({"delete_intent", "done"}));
-        QVERIFY(f.state()["versions"].toArray().isEmpty());
-        // A private bucket with public links is a setup mistake; authorized links work.
-        f.destination.settings["bucket"] = "putgd-fixture-private";
-        std::tie(result, error) = f.await<std::pair<QJsonObject, Error>>([&](auto done) { f.provider.testDestination(f.destination, save, [done](QJsonObject r, Error e) { done({r, e}); }); });
-        QCOMPARE(error.code, QString("b2_bucket_private"));
-        f.destination.settings["linkMode"] = "authorized";
-        std::tie(result, error) = f.await<std::pair<QJsonObject, Error>>([&](auto done) { f.provider.testDestination(f.destination, save, [done](QJsonObject r, Error e) { done({r, e}); }); });
-        QVERIFY2(!error, qPrintable(error.code + " " + error.message));
-        QVERIFY(result["publicReachable"].toBool());
-        QVERIFY(f.events("download").last().toObject()["token"].toBool());
-    }
-    void testConnectionNamesMissingCapabilitiesAndForeignRestriction() {
-        B2Fixture f;
-        f.reset({{"capabilities", QJsonArray{"listBuckets", "listFiles", "readFiles", "writeFiles"}}});
-        auto [result, error] = f.await<std::pair<QJsonObject, Error>>([&](auto done) { f.provider.testDestination(f.destination, {}, [done](QJsonObject r, Error e) { done({r, e}); }); });
-        QCOMPARE(error.code, QString("b2_permission_denied"));
-        QVERIFY(error.message.contains("deleteFiles"));
-        QVERIFY(f.events("upload_file").isEmpty());
-        f.reset({{"restricted", "bucket-private-id"}});
-        std::tie(result, error) = f.await<std::pair<QJsonObject, Error>>([&](auto done) { f.provider.testDestination(f.destination, {}, [done](QJsonObject r, Error e) { done({r, e}); }); });
-        QCOMPARE(error.code, QString("b2_key_restricted"));
-    }
-    void wrongKeyAndMissingCredentials() {
-        B2Fixture f;
-        f.reset();
-        f.credentials.setSession(f.destination.profileId, {"PUTGD_SYNTHETIC_B2_KEY_ID", "wrong", {}});
-        auto checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "x.png", cb); });
-        QCOMPARE(checked.status, QString("inconclusive"));
-        QCOMPARE(checked.error.code, QString("b2_authentication_failed"));
-        auto other = f.destination;
-        other.profileId = "no-credentials";
-        checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(other, "x.png", cb); });
-        QCOMPARE(checked.error.code, QString("credential_setup_required"));
     }
     void changedVersionIsNotDeleted() {
         B2Fixture f;

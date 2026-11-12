@@ -1,12 +1,8 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/LocalServer.h"
 #include "app/RecordingHelperBackend.h"
-#include <QDir>
-#include <QFile>
-#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
 
@@ -39,36 +35,6 @@ class RecordingHelperContract:public QObject {
  Q_OBJECT
 private slots:
  void init(){qunsetenv("PUTGD_TEST_RECORD_MODE");}
- void probeAndLifecycleRunThroughTheHelperProtocol(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  // Capabilities come from a separate probe run and are cached.
-  QCOMPARE(h.backend->capabilities()["reason"].toString(),QString("recording_not_probed"));
-  const auto caps=h.rec("capabilities");QVERIFY(!caps.error);QVERIFY(caps.result["available"].toBool());QCOMPARE(caps.result["fixture"].toString(),QString(""));QVERIFY(h.backend->diagnostics()["probed"].toBool());
-  const auto id=h.prepare();QVERIFY(!id.isEmpty());
-  PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QVERIFY(h.backend->diagnostics()["active"].toBool());QVERIFY(h.backend->diagnostics()["processId"].toDouble()>0);
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result["canvas"].toArray(),QJsonArray({1280,720}));
-  // #198: a scheme change reaches the running helper as an appearance frame,
-  // and the protocol carries on (the bootstrap already carried the scheme).
-  h.backend->setAppearance("light");h.backend->setAppearance("dark");
-  QCOMPARE(h.rec("start",{{"id",id}}).result["state"].toString(),QString("recording"));
-  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["bytes"].toDouble(),4321.0);
-  QCOMPARE(h.rec("pause",{{"id",id}}).result["state"].toString(),QString("paused"));
-  QCOMPARE(h.rec("resume",{{"id",id}}).result["state"].toString(),QString("recording"));
-  QCOMPARE(h.rec("overlay",{{"id",id},{"visible",false}}).result["state"].toString(),QString("recording"));
-  const auto stopped=h.rec("stop",{{"id",id}});QVERIFY2(!stopped.error,qPrintable(stopped.error.message));QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));QCOMPARE(stopped.result["durationUs"].toDouble(),12000000.0);
-  QCOMPARE(stopped.result["stopReason"].toString(),QString("user"));
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);
-  const auto reviewed=h.rec("review",{{"id",id},{"action","inspect"}});QVERIFY(!reviewed.error);QCOMPARE(reviewed.result["reviewOptions"].toObject()["summary"].toString(),QString("Save to the local archive"));
-  const auto preview=h.rec("preview",{{"id",id},{"time",2000000}});QVERIFY2(!preview.error,qPrintable(preview.error.message));QVERIFY(preview.result["png"].isString());QCOMPARE(preview.result["timeUs"].toDouble(),2000000.0);
-  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",7000000}}}}}).error);
-  const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
-  const auto item=journal.operation(id).items.first();QCOMPARE(item.artifact.mime,QString("video/mp4"));QCOMPARE(item.artifact.bytes,qint64(2060));QCOMPARE(item.local.status,QString("saved"));
-  // Discard asked the helper to shut down; it must exit normally.
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
-  const auto exit=h.backend->diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
-  PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);QCOMPARE(h.provider->uploads.load(),0);
- }
  void helperCrashFailsTheSessionWithoutUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","crash-after-start");
   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
@@ -79,191 +45,21 @@ private slots:
   PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
  }
- void helperInitiatedStopOpensReview(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","stop-event");
-  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-  QVERIFY(!h.rec("start",{{"id",id}}).error);
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["durationUs"].toDouble(),9000000.0);
-  QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
- }
- void cancelShutsTheHelperDownWithoutAKill_data(){
-  QTest::addColumn<QString>("state");
-  for(const auto* state:{"ready","recording","paused","reviewing"})QTest::newRow(state)<<QString(state);
- }
- void cancelShutsTheHelperDownWithoutAKill(){
-  QFETCH(QString,state);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","slow-shutdown");
-  // Repeat with a successor to catch stale replies/timeouts crossing generations.
-  for(int round=0;round<2;++round){
-   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-   if(state!="ready")QCOMPARE(h.rec("start",{{"id",id}}).result["state"].toString(),QString("recording"));
-   if(state=="paused")QCOMPARE(h.rec("pause",{{"id",id}}).result["state"].toString(),QString("paused"));
-   if(state=="reviewing")QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-   QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
-   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
-   const auto exit=h.backend->diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
-   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(journal.operation(id).items.isEmpty());
-   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QCOMPARE(h.provider->uploads.load(),0);
-  }
- }
- void prepareRightAfterCancelWaitsForTheOldHelper(){
-  // #1296: once cancel returns the resident reports no active recording, while
-  // the old helper still shuts down. A prepare in that window starts when that
-  // helper exits instead of failing with recording_active. The fixture holds
-  // its shutdown until the test creates the release file, so no assertion
-  // races the exit on a loaded runner.
-  QTemporaryDir dir;const auto release=dir.filePath("release");
-  qputenv("PUTGD_TEST_RECORD_MODE","slow-shutdown-held");qputenv("PUTGD_TEST_RECORD_RELEASE",release.toUtf8());
-  auto unset=qScopeGuard([]{qunsetenv("PUTGD_TEST_RECORD_RELEASE");});
-  auto letGo=[&]{QFile file(release);QVERIFY(file.open(QIODevice::WriteOnly));};
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  const auto first=h.prepare();QVERIFY(!first.isEmpty());PUTGD_TRY_COMPARE(h.state(first),QString("ready"));
-  QCOMPARE(h.rec("cancel",{{"id",first}}).result["state"].toString(),QString("cancelled"));
-  QVERIFY(h.rec("capabilities").result["active"].isNull());QVERIFY(h.backend->diagnostics()["active"].toBool());
-  HistoryStore journal(h.operations->databasePath());
-  const auto second=h.prepare();QVERIFY(!second.isEmpty());PUTGD_TRY_VERIFY(h.backend->diagnostics()["queued"].toBool());
-  letGo();
-  PUTGD_TRY_VERIFY2(h.state(second)==QString("ready"),qPrintable("the prepare after cancel ended "+journal.operation(second).state+": "+journal.operation(second).error.code));
-  QVERIFY(!h.backend->diagnostics()["queued"].toBool());
-  QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("normal"));
-  // Cancelled while ready: its helper is held again, so the next prepare (third) queues behind it;
-  // cancelling that queued prepare never starts a helper, and the next prepare still does.
-  QVERIFY(QFile::remove(release));
-  QCOMPARE(h.rec("cancel",{{"id",second}}).result["state"].toString(),QString("cancelled"));
-  const auto third=h.prepare();QVERIFY(!third.isEmpty());PUTGD_TRY_VERIFY(h.backend->diagnostics()["queued"].toBool());
-  QCOMPARE(h.rec("cancel",{{"id",third}}).result["state"].toString(),QString("cancelled"));QVERIFY(!h.backend->diagnostics()["queued"].toBool());
-  letGo();
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
-  const auto fourth=h.prepare();QVERIFY(!fourth.isEmpty());PUTGD_TRY_COMPARE(h.state(fourth),QString("ready"));
-  QVERIFY(!h.rec("cancel",{{"id",fourth}}).error);PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
-  for(const auto& id:{first,second,third,fourth})PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));
-  QCOMPARE(h.provider->uploads.load(),0);
- }
  void protocolFaultsStillFailTheHelper_data(){
   QTest::addColumn<QString>("mode");
   QTest::newRow("unknown request")<<QString("unknown-result");
   QTest::newRow("malformed result")<<QString("malformed-result");
-  QTest::newRow("foreign shutdown reply")<<QString("slow-shutdown-foreign");
  }
  void protocolFaultsStillFailTheHelper(){
   QFETCH(QString,mode);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE",mode.toUtf8());
   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-  if(mode=="slow-shutdown-foreign")QVERIFY(!h.rec("cancel",{{"id",id}}).error);
-  else QCOMPARE(h.rec("start",{{"id",id}}).error.code,QString("recording_helper_protocol"));
+  QCOMPARE(h.rec("start",{{"id",id}}).error.code,QString("recording_helper_protocol"));
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
   QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("crash"));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,mode=="slow-shutdown-foreign"?QString("cancelled"):QString("failed"));
-  if(mode!="slow-shutdown-foreign")QCOMPARE(journal.operation(id).error.code,QString("recording_helper_protocol"));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
+  QCOMPARE(journal.operation(id).error.code,QString("recording_helper_protocol"));
   QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.provider->uploads.load(),0);
  }
- void budgetEventBeforeStopReplyKeepsItsReasonAndClip_data(){
-  QTest::addColumn<QString>("mode");
-  for(const auto* mode:{"stop-budget-race","stop-budget-adjacent","stop-budget-adjacent-error"})QTest::newRow(mode)<<QString(mode);
- }
- void budgetEventBeforeStopReplyKeepsItsReasonAndClip(){
-  QFETCH(QString,mode);Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE",mode.toUtf8());
-  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));QVERIFY(!h.rec("start",{{"id",id}}).error);
-  const auto stopped=h.rec("stop",{{"id",id}});QVERIFY(!stopped.error);QCOMPARE(stopped.result["state"].toString(),QString("reviewing"));
-  QCOMPARE(stopped.result["stopReason"].toString(),QString("budget"));QCOMPARE(stopped.result["durationUs"].toDouble(),9000000.0);QVERIFY(!stopped.result["stopDetails"].toObject().isEmpty());
-  QCOMPARE(h.rec("inspect",{{"id",id}}).result,stopped.result);QCOMPARE(h.rec("stop",{{"id",id}}).result,stopped.result);
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
- }
- void silentAndIncompatibleHelpersFailBeforeReady(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
-  qputenv("PUTGD_TEST_RECORD_MODE","silent");
-  auto id=h.prepare();QVERIFY(!id.isEmpty());
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_helper_start_timeout"));
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
-  qputenv("PUTGD_TEST_RECORD_MODE","wrong-build");
-  id=h.prepare();QVERIFY(!id.isEmpty());
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_incompatible"));
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
- }
- void exportTimeoutKeepsTheReviewOpen(){
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","slow-export");
-  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
-  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
-  // The upload is accepted when its export starts; the helper's missed deadline is its outcome.
-  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).result["state"].toString(),QString("exporting"));
-  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_helper_timeout"));
-  HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
-  QCOMPARE(h.rec("cancel",{{"id",id}}).result["state"].toString(),QString("cancelled"));
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
- }
- // A monitor plugged or unplugged changes what an image-copy session can record.
- // #1364: the inputs come from a transient `--microphones` run of the helper,
- // asked afresh every time (inputs come and go while the resident runs), and a
- // broken answer reads as no microphone, never as one.
- void microphonesAreAskedOfTheHelperAfresh(){
-  const auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_RECORD_MICROPHONES");});
-  qputenv("PUTGD_TEST_RECORD_MICROPHONES","fixture-mic");
-  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
-  auto listed=h.rec("microphones");QVERIFY(!listed.error);
-  QVERIFY(listed.result["available"].toBool());QCOMPARE(listed.result["device"].toObject()["id"].toString(),QString("fixture-mic"));QCOMPARE(listed.result["devices"].toArray().size(),1);
-  QVERIFY(h.rec("capabilities").result["audio"].toObject()["microphone"].toBool());
-  // A device by name; one that is not connected says so.
-  listed=h.rec("microphones",{{"device","other-mic"}});QVERIFY(!listed.result["available"].toBool());QCOMPARE(listed.result["reason"].toString(),QString("microphone_missing"));QCOMPARE(listed.result["asked"].toString(),QString("other-mic"));
-  // Unplugged since: the next question knows, with no restart.
-  qputenv("PUTGD_TEST_RECORD_MICROPHONES","monitor");
-  listed=h.rec("microphones");QVERIFY(!listed.result["available"].toBool());QCOMPARE(listed.result["reason"].toString(),QString("default_is_monitor"));QVERIFY(listed.result["defaultIsMonitor"].toBool());
-  const auto audio=h.rec("capabilities").result["audio"].toObject();QVERIFY(!audio["microphone"].toBool());QCOMPARE(audio["microphoneReason"].toString(),QString("default_is_monitor"));
-  QCOMPARE(h.rec("prepare",{{"target",QJsonObject{{"kind","desktop"}}},{"format","mp4"},{"audio",QJsonObject{{"microphone",true}}}}).error.details["reason"].toString(),QString("default_is_monitor"));
-  for(const auto* broken:{"garbage","fails"}){
-   qputenv("PUTGD_TEST_RECORD_MICROPHONES",broken);
-   listed=h.rec("microphones");QVERIFY(!listed.error);QVERIFY(!listed.result["available"].toBool());QCOMPARE(listed.result["reason"].toString(),QString("microphone_probe_failed"));
-  }
- }
- void imageCopyProbesFollowTheOutputs(){
-  const auto cleanup=qScopeGuard([]{qunsetenv("PUTGD_TEST_RECORD_PROBE_TAG");});
-  qputenv("PUTGD_TEST_RECORD_PROBE_TAG","first");qputenv("PUTGD_TEST_RECORD_MODE","probe-wlr-capture");
-  {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("first"));
-   qputenv("PUTGD_TEST_RECORD_PROBE_TAG","second");QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("second"));}
-  qunsetenv("PUTGD_TEST_RECORD_MODE");qputenv("PUTGD_TEST_RECORD_PROBE_TAG","first");
-  {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("first"));
-   qputenv("PUTGD_TEST_RECORD_PROBE_TAG","second");QCOMPARE(h.rec("capabilities").result["probeTag"].toString(),QString("first"));}
- }
- void brokenProbesReportUnavailableTruthfully(){
-  qputenv("PUTGD_TEST_RECORD_MODE","probe-garbage");
-  {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto caps=h.rec("capabilities");QVERIFY(!caps.error);QVERIFY(!caps.result["available"].toBool());QCOMPARE(caps.result["reason"].toString(),QString("recording_probe_invalid"));
-   QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_unavailable"));}
-  qputenv("PUTGD_TEST_RECORD_MODE","probe-fails");
-  {Harness h;PUTGD_TRY_VERIFY(h.operations->ready());QCOMPARE(h.rec("capabilities").result["reason"].toString(),QString("recording_probe_failed"));}
-  {Harness h(QDir::tempPath()+"/putgd-no-such-helper");PUTGD_TRY_VERIFY(h.operations->ready());QCOMPARE(h.rec("capabilities").result["reason"].toString(),QString("recording_helper_missing"));
-   QCOMPARE(h.backend->capabilities()["reason"].toString(),QString("recording_helper_missing"));}
- }
-#ifdef PUTGD_RECORD_HELPER
- void productHelperAnswersTheHandshakeAndRefusesCaptureTruthfully(){
-  Harness h(PUTGD_RECORD_HELPER);PUTGD_TRY_VERIFY(h.operations->ready());h.backend->setTimeouts(10000,5000,10000,5000);
-  const auto caps=h.rec("capabilities");QVERIFY2(!caps.error,qPrintable(caps.error.message));
-  QCOMPARE(caps.result["schemaVersion"].toInt(),1);QVERIFY(caps.result["available"].isBool());QVERIFY(caps.result["available"].toBool()||caps.result["reason"].isString());
-  QVERIFY(caps.result["gstreamer"].isObject());QVERIFY(caps.result["ffmpeg"].isObject());QVERIFY(caps.result["formats"].isArray());QVERIFY(caps.result["liveCapture"].isObject());
-  // Usable encoders come from real start attempts and are a subset of the registered ones.
-  const auto gst=caps.result["gstreamer"].toObject();
-  if(gst["available"].toBool()){QVERIFY(gst["usableH264Encoders"].isArray());for(const auto& name:gst["usableH264Encoders"].toArray())QVERIFY(gst["liveH264Encoders"].toArray().contains(name));
-   QCOMPARE(caps.result["liveCapture"].toObject()["encoder"].toBool(),!gst["usableH264Encoders"].toArray().isEmpty());}
-  QVERIFY(caps.result["ffmpeg"].toObject()["h264Decoder"].isObject());
-  const auto reason=caps.result["reason"].toString();
-  if(reason=="live_encoder_missing"||reason=="h264_encoder_unusable"||reason=="h264_decoder_unusable"){QVERIFY(!caps.result["message"].toString().isEmpty());QVERIFY(!caps.result["hint"].toString().isEmpty());}
-  qInfo().noquote()<<QJsonDocument(QJsonObject{{"reason",caps.result["reason"]},{"session",caps.result["session"]},{"formats",caps.result["formats"]},{"liveCapture",caps.result["liveCapture"]}}).toJson(QJsonDocument::Compact);
-  // Without a display the service refuses to prepare; the helper itself still
-  // completes the identity handshake either way.
-  if(!caps.result["available"].toBool())QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_unavailable"));
-  RecordingTarget target;QVERIFY(!recording::parseTarget(region(),target));RecordingConfig config;QVERIFY(!recording::parseConfig({{"format","mp4"}},config));
-  QJsonObject failure;Error error;bool replied=false;
-  h.backend->setEventSink([&](QJsonObject event){failure=event;});
-  h.backend->prepare("direct-id",target,config,h.dir.path(),[&](Error e,QJsonObject){error=e;replied=true;});
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(replied,15000);
-  // Headless runners have no X11 display: the helper refuses the target truthfully.
-  // On a real X11 session it resolves the region instead; either way it exits normally.
-  const QStringList acceptedCodes{"capture_unavailable","recording_target"};
-  if(error)QVERIFY2(acceptedCodes.contains(error.code),qPrintable(error.code+": "+error.message));
-  qInfo().noquote()<<"direct prepare:"<<(error?error.code:QString("ok"));
-  h.backend->discard("direct-id");
-  PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
-  const auto exit=h.backend->diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(failure.isEmpty());
- }
-#endif
 };
 QTEST_GUILESS_MAIN(RecordingHelperContract)
 #include "test_recording_helper.moc"

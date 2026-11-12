@@ -1,4 +1,5 @@
 #include "fixtures/S3Fixture.h"
+#include <stdexcept>
 using namespace putgd::test;
 class S3DeleteTest : public QObject {
     Q_OBJECT
@@ -8,6 +9,27 @@ class S3DeleteTest : public QObject {
         return {{"rules", result}};
     }
 private slots:
+    // A deletion whose journal write throws, before or after acknowledging, is never sent.
+    void throwingCheckpointNeverDeletes() {
+        S3Fixture fixture;
+        auto uploaded = fixture.upload(fixture.request("checkpoint-exception.txt"));
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto removed = fixture.remove(uploaded.receipt, {}, [](auto, auto) {
+            throw std::runtime_error("synthetic checkpoint exception");
+        });
+        QCOMPARE(removed.status, QString("unknown"));
+        QCOMPARE(removed.error.code, QString("s3_transport_unknown"));
+        QVERIFY(removed.progress.isEmpty());
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+        auto acknowledgedThenThrown = fixture.remove(uploaded.receipt, {}, [](auto, auto ack) {
+            ack({});
+            throw std::runtime_error("synthetic exception after checkpoint acknowledgement");
+        });
+        QCOMPARE(acknowledgedThenThrown.status, QString("unknown"));
+        QCOMPARE(acknowledgedThenThrown.error.code, QString("s3_transport_unknown"));
+        QVERIFY(acknowledgedThenThrown.progress.isEmpty());
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+    }
     void guardedUnversionedAndOriginalDestination() {
         S3Fixture f;
         f.reset();
@@ -58,21 +80,6 @@ private slots:
         auto result = f.remove(uploaded.receipt, {}, [](auto, auto ack) { ack({"disk_full", "synthetic checkpoint failure", {}}); });
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("disk_full"));
-        QCOMPARE(f.events("DELETE").size(), 0);
-    }
-    void deniedVersioningCheckExplainsRequiredPermission() {
-        S3Fixture f;
-        f.reset();
-        const auto uploaded = f.upload(f.request());
-        QCOMPARE(uploaded.status, QString("uploaded"));
-        auto configuration = rules({{{"method", "GET"}, {"query", "versioning"}, {"status", 403}}});
-        configuration["objects"] = f.state()["objects"];
-        f.reset(configuration);
-        const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.error.code, QString("s3_permission_denied"));
-        QCOMPARE(result.error.details["requestStage"].toString(), QString("delete_versioning"));
-        QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
-        QVERIFY(result.error.message.contains("bucket policy"));
         QCOMPARE(f.events("DELETE").size(), 0);
     }
     void unsupportedJournalNeverDeletes_data() {

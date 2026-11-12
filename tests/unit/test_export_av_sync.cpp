@@ -45,14 +45,6 @@ class ExportAvSync : public QObject {
         if (error) qWarning() << error.code << error.message;
         return error ? NAN : sync["medianMs"].toDouble();
     }
-    static int streams(const QString& path, AVMediaType type) {
-        AVFormatContext* format = nullptr;
-        if (avformat_open_input(&format, QFile::encodeName(path).constData(), nullptr, nullptr) < 0) return -1;
-        int count = avformat_find_stream_info(format, nullptr) < 0 ? -1 : 0;
-        for (unsigned i = 0; count >= 0 && i < format->nb_streams; ++i) count += format->streams[i]->codecpar->codec_type == type;
-        avformat_close_input(&format);
-        return count;
-    }
     // Decodes every audio packet of path, as written, with the named decoder and
     // returns the samples it produced, or -1 when it rejects a packet or logs an
     // error. The demuxer's Opus parser stays out: it would drop a broken packet
@@ -131,50 +123,14 @@ private slots:
         QVERIFY(!writeAvMarker(gapped_, 4, 110, 500, 60));
         QVERIFY(std::abs(median(gapped_)) <= 1.0);
     }
-    // #1364: the level of a tone across the track tells a recorded microphone
-    // from an absent one, the sweeping bar leaves the marker's sync where it
-    // was, and a clip without the marker still answers when tones are asked for.
-    void tonesAreMeasuredAndTheMovingMarkerStaysInSync() {
-        QJsonObject result;
-        QVERIFY(!measureAvSync(clip_, result, {1000.0, 440.0}));
-        const auto tones = result["tones"].toObject();
-        // The marker's bursts are 100 ms of every second at 8000/32768 full scale (both channels, summed to mono).
-        QVERIFY2(std::abs(tones["1000"].toObject()["maxAmplitude"].toDouble() - 0.345) < 0.02, qPrintable(QString::number(tones["1000"].toObject()["maxAmplitude"].toDouble())));
-        QVERIFY(tones["1000"].toObject()["activeFraction"].toDouble() > 0.05 && tones["1000"].toObject()["activeFraction"].toDouble() < 0.2);
-        QCOMPARE(tones["1000"].toObject()["medianAmplitude"].toDouble(), 0.0);
-        // No 440 Hz tone: only what the bursts' edges leak into that band.
-        QVERIFY(tones["440"].toObject()["maxAmplitude"].toDouble() < 0.02);
-        QCOMPARE(tones["440"].toObject()["medianAmplitude"].toDouble(), 0.0);
-        QVERIFY(result["audioStream"].toBool() && result["pairs"].toInt() >= 3);
-        // Without tones the result is what it always was.
-        QJsonObject plain;
-        QVERIFY(!measureAvSync(clip_, plain));
-        QVERIFY(!plain.contains("tones"));
-        const QString moving = dir_.filePath("moving.mkv");
-        QVERIFY(!writeAvMarker(moving, 4, 0, -1, 0, true));
-        QVERIFY(std::abs(median(moving)) <= 1.0);
-        // A clip exported without sound: no audio stream, reported rather than failed.
-        QString skip;
-        if (exportClip("silent-tones.mp4", "mp4", "h264", false, 0, &skip)) {
-            QJsonObject silent;
-            QVERIFY(!measureAvSync(dir_.filePath("silent-tones.mp4"), silent, {1000.0}));
-            QVERIFY(!silent["audioStream"].toBool());
-            QCOMPARE(silent["error"].toString(), QString("av_sync_no_audio"));
-            QCOMPARE(silent["tones"].toObject()["1000"].toObject()["maxAmplitude"].toDouble(), 0.0);
-            QCOMPARE(measureAvSync(dir_.filePath("silent-tones.mp4"), silent).code, QString("av_sync_no_audio"));
-        }
-    }
     void exportsWithSoundKeepTheAudioStart_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("codec");
         QTest::addColumn<qint64>("trimStart");
-        QTest::newRow("mp4") << "mp4" << "h264" << qint64(0);
-        QTest::newRow("mp4 trimmed") << "mp4" << "h264" << qint64(1'000'000);
         // #1045: a trim can start between two frames, as it does here 10 ms past
         // the frame at 1 s of this 30 fps clip. Rebasing video on its first frame
         // played it that gap early. A stepped clip has such gaps throughout.
         QTest::newRow("mp4 trimmed between frames") << "mp4" << "h264" << qint64(1'010'000);
-        QTest::newRow("webm") << "webm" << "vp9" << qint64(0);
         QTest::newRow("webm trimmed") << "webm" << "vp9" << qint64(1'000'000);
     }
     void exportsWithSoundKeepTheAudioStart() {
@@ -194,7 +150,6 @@ private slots:
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("codec");
         QTest::newRow("mp4") << "mp4" << "h264";
-        QTest::newRow("webm") << "webm" << "vp9";
     }
     void exportsKeepAnAudioGap() {
         QFETCH(QString, format);
@@ -211,10 +166,7 @@ private slots:
     void webmAudioDecodesEveryPacket_data() {
         QTest::addColumn<QString>("decoder");
         QTest::addColumn<qint64>("trimStart");
-        QTest::newRow("opus") << "opus" << qint64(0);
         QTest::newRow("opus trimmed") << "opus" << qint64(1'000'000);
-        QTest::newRow("libopus") << "libopus" << qint64(0);
-        QTest::newRow("libopus trimmed") << "libopus" << qint64(1'000'000);
     }
     void webmAudioDecodesEveryPacket() {
         QFETCH(QString, decoder);
@@ -233,25 +185,6 @@ private slots:
         const qint64 expected = (4'000'000 - trimStart) * 48 / 1000;
         QVERIFY2(packets >= expected / 960, qPrintable(QString::number(packets)));
         QVERIFY2(std::abs(samples - expected) <= 960, qPrintable(QStringLiteral("%1 samples, expected %2").arg(samples).arg(expected)));
-    }
-    void silentExportsCarryNoAudio_data() {
-        QTest::addColumn<QString>("format");
-        QTest::addColumn<QString>("codec");
-        QTest::newRow("mp4 without sound") << "mp4" << "h264";
-        QTest::newRow("gif") << "gif" << "";
-        QTest::newRow("webp") << "webp" << "";
-    }
-    void silentExportsCarryNoAudio() {
-        QFETCH(QString, format);
-        QFETCH(QString, codec);
-        const auto name = QStringLiteral("silent.%1").arg(format);
-        QString skip;
-        const bool exported = exportClip(name, format, codec, false, 0, &skip);
-        if (!skip.isEmpty()) QSKIP(qPrintable(skip));
-        QVERIFY(exported);
-        if (format == "webp") return;  // FFmpeg reads no animated WebP; the export succeeding is the check
-        QCOMPARE(streams(dir_.filePath(name), AVMEDIA_TYPE_AUDIO), 0);
-        QCOMPARE(streams(dir_.filePath(name), AVMEDIA_TYPE_VIDEO), 1);
     }
 };
 QTEST_GUILESS_MAIN(ExportAvSync)

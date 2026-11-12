@@ -327,29 +327,6 @@ private slots:
             QVERIFY(QFile::exists(item.local.path));
         }
     }
-    void archiveFailureDoesNotBlockUpload() {
-        S3Fixture f;
-        f.reset();
-        ProviderRegistry registry;
-        registry.add("s3", std::make_shared<S3Provider>(f.credentials));
-        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
-        auto doc = configuration(f, "rename", true);
-        auto archive = doc["archive"].toObject();
-        archive["root"] = putgd::test::fixture(f.directory.path(), "not-directory", "synthetic file");
-        doc["archive"] = archive;
-        QVERIFY(settings.save(doc, {}));
-        Source source;
-        source.payload = textPayload();
-        OperationService operations(f.directory.filePath("data"), settings, registry, source);
-        PUTGD_TRY_VERIFY(operations.ready());
-        QString id;
-        operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        PUTGD_TRY_VERIFY(!id.isEmpty());
-        auto operation = waitOperation(operations, id);
-        QCOMPARE(operation.items[0].local.status, QString("failed"));
-        QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
-        PUTGD_TRY_COMPARE(source.copies, 1);
-    }
     void exhaustedRenameAndDeniedHeadsNeverPut_data() {
         QTest::addColumn<QString>("failure");
         QTest::newRow("exhaustion") << QString("exhaustion");

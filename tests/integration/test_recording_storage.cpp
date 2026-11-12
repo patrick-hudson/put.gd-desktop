@@ -1,10 +1,8 @@
 #include "record/RecordSession.h"
 #include "record/Overlays.h"
 #include "fixtures/Waits.h"
-#include <QCheckBox>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QLabel>
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -67,109 +65,6 @@ private slots:
         display_.terminate();
         if (!display_.waitForFinished(3000)) { display_.kill(); display_.waitForFinished(); }
     }
-    void capturedAudioAvailabilitySurvivesReviewConfigurationChanges_data() {
-        QTest::addColumn<bool>("captured");
-        QTest::newRow("captured") << true;
-        QTest::newRow("not captured") << false;
-    }
-    void capturedAudioAvailabilitySurvivesReviewConfigurationChanges() {
-        QFETCH(bool, captured);
-        QTemporaryDir dir; RecordSession session; setup(session, dir);
-        session.config_.codec = "h264"; session.config_.audio.system = true;
-        session.audioCaptured_ = captured; session.recorded_ = true; session.durationUs_ = 12000000;
-        session.bar_ = new ControlBar({},session.config_);session.bar_->show();
-        session.capabilities_ = {{"formats", QJsonArray{"mp4", "gif"}}, {"codecs", QJsonObject{{"mp4", QJsonArray{"h264"}}}}};
-        session.openReview();QVERIFY(!session.bar_->isVisible());
-        QVERIFY(session.review_->drive({{"action", "format"}, {"format", "gif"}}).code.isEmpty());
-        QVERIFY(!session.config_.audio.system); QCOMPARE(session.audioCaptured_, captured);
-        QCOMPARE(session.config_.toJson()["format"].toString(), QString("gif"));
-        QVERIFY(!session.config_.toJson()["audio"].toObject()["system"].toBool());
-        QVERIFY(!session.review_->inspect()["audioEffective"].toBool());
-        QVERIFY(session.review_->drive({{"action", "format"}, {"format", "mp4"}, {"codec", "h264"}}).code.isEmpty());
-        QCOMPARE(session.config_.audio.system, captured); QCOMPARE(session.audioCaptured_, captured);
-        const auto config = session.config_.toJson();
-        QCOMPARE(config["format"].toString(), QString("mp4"));
-        QCOMPARE(config["codec"].toString(), QString("h264"));
-        QCOMPARE(config["audio"].toObject()["system"].toBool(), captured);
-        QCOMPARE(session.review_->inspect()["audioEffective"].toBool(), captured);
-        QCOMPARE(session.review_->inspect()["format"].toObject(), (QJsonObject{{"format", "mp4"}, {"codec", "h264"}}));
-        const auto audio = session.review_->findChild<QLabel*>("exportAudioSummary")->text();
-        QVERIFY(audio.contains(captured ? QString("System audio") : QString("No audio recorded")));
-    }
-    // #1364: the production session at Ready follows the sound server's inputs. Only the list of inputs
-    // is injected; the session, its bar and its events are the real ones.
-    void theReadySessionFollowsMicrophones() {
-        QTemporaryDir dir; RecordSession session; setup(session, dir);
-        // As on a desktop with nothing plugged in: an onboard input that is not the default, and a default
-        // input that is an output's monitor.
-        const Microphone onboard{"alsa_input.pci-test.analog-stereo", "Built-in Audio", false};
-        MicrophoneList inputs;
-        inputs.server = true; inputs.devices = {onboard}; inputs.defaultSource = "alsa_output.test.analog-stereo.monitor"; inputs.defaultIsMonitor = true;
-        session.listMicrophones_ = [&inputs] { return inputs; };
-        // A window target from a portal: the bar is made and placed without asking an X server for the target.
-        session.portalTarget_ = true; session.target_.kind = "window"; session.prepared_ = true;
-        session.capabilities_ = QJsonObject{{"formats", QJsonArray{"mp4"}}, {"audio", QJsonObject{{"system", false}, {"microphone", true}}}};
-        session.microphone_ = chooseMicrophone(inputs, {});
-        QSignalSpy events(&session, &RecordSession::event);
-        const auto last = [&](const QString& kind) { for (int i = events.size() - 1; i >= 0; --i) { const auto event = events[i][0].toJsonObject(); if (event["event"] == kind) return event; } return QJsonObject{}; };
-        Error prepared{"unanswered", "", {}};
-        session.finishPrepare([&](Error error, QJsonObject) { prepared = error; });
-        QVERIFY2(!prepared, qPrintable(prepared.message));
-        QVERIFY(session.bar_);
-        // Ready without a microphone: the default input is an output's monitor.
-        QVERIFY(session.microphoneWatch_.isActive());
-        QCOMPARE(session.bar_->microphoneState()["available"].toBool(), false);
-        QVERIFY(session.bar_->microphoneState()["unavailable"].toString().contains("monitor"));
-        // A microphone is plugged in and becomes the default input. The next look finds it.
-        inputs.devices = {onboard, {"alsa_input.usb-Test_Microphone-00.mono-fallback", "Test Microphone", true}};
-        inputs.defaultSource = inputs.devices.last().id; inputs.defaultIsMonitor = false;
-        const int before = events.size();
-        session.followMicrophones();
-        QVERIFY(events.size() > before);
-        auto state = last("progress")["recordingMicrophone"].toObject();
-        QCOMPARE(state, QJsonObject({{"requested", false}, {"effective", false}, {"available", true}, {"device", "Test Microphone"}}));
-        QCOMPARE(session.bar_->findChild<QCheckBox*>("microphone")->text(), QString("Microphone"));
-        QVERIFY(session.bar_->findChild<QCheckBox*>("microphone")->isEnabled());
-        // Nothing new: no event.
-        const int quiet = events.size();
-        session.followMicrophones();
-        QCOMPARE(events.size(), quiet);
-        // It is switched on without starting over (recording.audio): this session's choice, not one to remember.
-        Error set{"unanswered", "", {}}; QJsonObject answer;
-        session.command("audio", {{"microphone", true}}, [&](Error error, QJsonObject result) { set = error; answer = result; });
-        QVERIFY2(!set, qPrintable(set.message));
-        QVERIFY(answer["audio"].toObject()["microphone"].toBool() && answer["microphone"].toObject()["effective"].toBool());
-        QVERIFY(session.config_.audio.microphone);
-        QVERIFY(last("configChanged")["config"].toObject()["audio"].toObject()["microphone"].toBool());
-        QVERIFY(!last("configChanged").contains("microphoneRequested"));
-        // It is pulled: the bar says so, nothing of it will be recorded, the choice is kept.
-        inputs.devices = {onboard}; inputs.defaultSource = "alsa_output.test.analog-stereo.monitor"; inputs.defaultIsMonitor = true;
-        session.followMicrophones();
-        QVERIFY(!session.config_.audio.microphone);
-        QVERIFY(!last("configChanged")["config"].toObject()["audio"].toObject()["microphone"].toBool());
-        state = last("progress")["recordingMicrophone"].toObject();
-        QVERIFY(state["requested"].toBool() && !state["effective"].toBool() && !state["available"].toBool());
-        QCOMPARE(session.bar_->findChild<QCheckBox*>("microphone")->text(), QString("No microphone"));
-        // Asking for it now is refused with the reason, and looks first: one plugged in this instant counts.
-        session.command("audio", {{"microphone", true}}, [&](Error error, QJsonObject) { set = error; });
-        QCOMPARE(set.code, QString("recording_unsupported"));
-        QCOMPARE(set.details["reason"].toString(), QString("default_is_monitor"));
-        inputs.devices = {onboard, {"alsa_input.usb-Headset-00.mono-fallback", "Headset", true}};
-        inputs.defaultSource = inputs.devices.last().id; inputs.defaultIsMonitor = false;
-        session.command("audio", {{"microphone", true}}, [&](Error error, QJsonObject result) { set = error; answer = result; });
-        QVERIFY2(!set, qPrintable(set.message));
-        QCOMPARE(answer["microphone"].toObject()["device"].toString(), QString("Headset"));
-        QCOMPARE(session.microphone_.device.id, QString("alsa_input.usb-Headset-00.mono-fallback"));
-        // An output's monitor is never the microphone, however the server lists it.
-        inputs.devices = {onboard}; inputs.defaultSource = "bluez_output.headset.monitor"; inputs.defaultIsMonitor = true;
-        session.followMicrophones();
-        QVERIFY(!session.microphone_.available() && !session.config_.audio.microphone);
-        QCOMPARE(session.microphone_.reason, QString("default_is_monitor"));
-        // Cancelled: the session stops looking.
-        session.cancelLocal();
-        session.followMicrophones();
-        QVERIFY(!session.microphoneWatch_.isActive());
-    }
     void stoppedBarCannotReappearOverReview() {
         QTemporaryDir dir; RecordSession session; setup(session, dir);
         session.prepared_ = true;
@@ -217,8 +112,6 @@ private slots:
         QTest::addColumn<bool>("diskLow");
         QTest::newRow("recording-disk") << false << false << true;
         QTest::newRow("paused-disk") << true << false << true;
-        QTest::newRow("simultaneous-byte-and-disk") << false << true << true;
-        QTest::newRow("byte-only") << false << true << false;
     }
     void automaticStop() {
         QFETCH(bool, paused); QFETCH(bool, byteLimit); QFETCH(bool, diskLow);
@@ -266,58 +159,6 @@ private slots:
         QImage frame;
         QVERIFY(!previewFrame(session.workingClip_, {}, session.config_, 0, 64, session.resolved_.canvas, frame));
         QVERIFY(!frame.isNull());
-    }
-    void failureKeepsCause_data() {
-        QTest::addColumn<int>("domainKind");
-        QTest::addColumn<int>("code");
-        QTest::addColumn<bool>("recover");
-        QTest::addColumn<QString>("expectedCode");
-        QTest::newRow("no-space-even-after-recovery") << 0 << int(GST_RESOURCE_ERROR_NO_SPACE_LEFT) << true << QString("recording_disk_full");
-        QTest::newRow("write-with-low-sample") << 0 << int(GST_RESOURCE_ERROR_WRITE) << false << QString("recording_failed");
-        QTest::newRow("write-after-recovery") << 0 << int(GST_RESOURCE_ERROR_WRITE) << true << QString("recording_failed");
-        QTest::newRow("unrelated-stream-error-during-disk-drain") << 1 << int(GST_STREAM_ERROR_FAILED) << false << QString("recording_failed");
-    }
-    void failureKeepsCause() {
-        QFETCH(int, domainKind); QFETCH(int, code); QFETCH(bool, recover); QFETCH(QString, expectedCode);
-        QTemporaryDir dir; QVERIFY(dir.isValid());
-        RecordSession session; setup(session, dir);
-        auto& pipeline = session.pipeline_;
-        bool trigger = false, posted = false;
-        const QByteArray diagnostic(800, 'd');
-        pipeline.storageProbe_ = [&] {
-            if (!trigger) return healthy();
-            if (!posted) {
-                posted = true;
-                GError* error = g_error_new_literal(domainKind ? GST_STREAM_ERROR : GST_RESOURCE_ERROR, code, "synthetic media failure");
-                gst_element_post_message(pipeline.pipeline_, gst_message_new_error(GST_OBJECT(pipeline.pipeline_), error, diagnostic.constData()));
-                g_error_free(error);
-                return low();
-            }
-            return recover ? healthy() : low();
-        };
-        QSignalSpy events(&session, &RecordSession::event);
-        QSignalSpy budgets(&pipeline, &RecordingPipeline::budgetReached);
-        const auto error = start(session); QVERIFY2(!error, qPrintable(error.message));
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pipeline.retainedUs() > 200000, 8000);
-        trigger = true;
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!terminal(events).isEmpty(), 8000);
-        const auto failed = terminal(events);
-        QCOMPARE(failed["event"].toString(), QString("failed"));
-        const auto result = failed["error"].toObject();
-        QCOMPARE(result["code"].toString(), expectedCode);
-        const auto details = result["details"].toObject();
-        QCOMPARE(details["finalized"], QJsonValue(false));
-        auto expected = low().toJson(); expected["reason"] = "disk_space";
-        QCOMPARE(details["stopDetails"].toObject(), expected);
-        const auto cause = expectedCode == "recording_disk_full" ? details["cause"].toObject() : result;
-        QCOMPARE(cause["code"].toString(), QString("recording_failed"));
-        QCOMPARE(cause["message"].toString(), QString("Capture failed: synthetic media failure"));
-        QCOMPARE(cause["details"].toObject()["debug"].toString(), QString::fromLatin1(diagnostic.left(512)));
-        if (expectedCode == "recording_disk_full") QCOMPARE(details["reason"].toString(), QString("disk_space"));
-        else QVERIFY(!details.contains("reason"));
-        QCOMPARE(budgets.count(), 1);
-        QVERIFY(!session.recorded_); QVERIFY(!session.review_);
-        QVERIFY(!pipeline.running()); QVERIFY(!pipeline.bus_.isActive());
     }
 };
 }

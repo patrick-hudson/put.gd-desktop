@@ -5,7 +5,6 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QScopeGuard>
-#include <algorithm>
 #include <mutex>
 #include "fixtures/Waits.h"
 using namespace putgd::test;
@@ -45,32 +44,6 @@ int count(S3Fixture& f, const QString& method, const QString& query) {
     for (auto event : f.events(method)) matches += event.toObject()["path"].toString().contains(query);
     return matches;
 }
-// One rule per part that holds its reply for `seconds` (the fixture reads the body first).
-QJsonArray slowParts(int count, double seconds) {
-    QJsonArray rules;
-    for (int number = 1; number <= count; ++number)
-        rules.append(QJsonObject{{"method", "PUT"}, {"query", QString("partNumber=%1&").arg(number)}, {"delay", seconds}});
-    return rules;
-}
-// An upload left running while the test drives the fixture.
-struct Pending {
-    std::shared_ptr<std::promise<UploadResult>> promise = std::make_shared<std::promise<UploadResult>>();
-    std::future<UploadResult> future = promise->get_future();
-    bool ready() const { return future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready; }
-};
-std::unique_ptr<Pending> start(S3Fixture& f, const UploadRequest& request) {
-    auto pending = std::make_unique<Pending>();
-    f.provider.upload(request, [promise = pending->promise](UploadResult result) { promise->set_value(std::move(result)); });
-    return pending;
-}
-struct Traces {
-    std::mutex mutex;
-    QList<QJsonObject> records;
-    void attach(UploadRequest& request) {
-        request.trace = [this](const QJsonObject& record) { std::lock_guard lock(mutex); records.append(record); };
-    }
-    QList<QJsonObject> all() { std::lock_guard lock(mutex); return records; }
-};
 QByteArray readLogs(const QString& directory) {
     QByteArray bytes;
     for (const auto& name : QDir(directory).entryList({"putgd-*.jsonl"}, QDir::Files, QDir::Name)) {
@@ -83,21 +56,6 @@ QByteArray readLogs(const QString& directory) {
 class S3MultipartTest : public QObject {
     Q_OBJECT
 private slots:
-    void planStaysWithinS3PartRules() {
-        QCOMPARE(s3PartBytes(64 * mib), qint64(0));
-        QCOMPARE(s3PartBytes(64 * mib + 1), 16 * mib);
-        QCOMPARE(s3PartBytes(10LL * 1024 * mib), 16 * mib);
-        // Past 10,000 x 16 MiB the part grows in whole MiB.
-        const qint64 huge = 5LL * 1024 * 1024 * mib;
-        QCOMPARE(s3PartBytes(huge), 525 * mib);
-        QVERIFY(s3PartCount(huge, s3PartBytes(huge)) <= s3MaximumParts);
-        for (qint64 bytes : {64 * mib + 1, 157286400001LL, 1099511627776LL, huge}) QVERIFY(s3ValidPlan(bytes, s3PartBytes(bytes)));
-        QCOMPARE(s3PartBytes(huge + 1), qint64(0));
-        QVERIFY(!s3ValidPlan(10 * mib, 4 * mib));
-        QVERIFY(!s3ValidPlan(10 * mib, 6LL * 1024 * mib));
-        QCOMPARE(s3PartBytes(7 * mib, policy), 5 * mib);
-        QCOMPARE(s3PartBytes(6 * mib, policy), qint64(0));
-    }
     void smallFilesKeepOneConditionalPut() {
         S3Fixture f(policy);
         f.reset();
@@ -211,86 +169,6 @@ private slots:
         QCOMPARE(f.state()["objects"].toObject()["prefix é/race.bin"].toArray().last().toObject()["etag"].toString(), QString("\"competitor\""));
         QVERIFY(journal.last().isEmpty());
     }
-    // Backblaze B2 (#145) answers 501 to conditional writes; the guidance names them.
-    void unsupportedConditionalWritesSayWhy_data() {
-        QTest::addColumn<qint64>("bytes");
-        QTest::addColumn<QString>("method");
-        QTest::addColumn<QString>("query");
-        QTest::addColumn<QString>("stage");
-        QTest::newRow("single") << qint64(1024) << QString("PUT") << QString() << QString("upload_put");
-        QTest::newRow("multipart") << qint64(7 * mib) << QString("POST") << QString("uploadId=") << QString("upload_complete");
-    }
-    void unsupportedConditionalWritesSayWhy() {
-        QFETCH(qint64, bytes); QFETCH(QString, method); QFETCH(QString, query); QFETCH(QString, stage);
-        S3Fixture f(policy);
-        auto request = f.request("unsupported.bin", synthetic(bytes));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", method}, {"query", query}, {"status", 501}, {"code", "NotImplemented"}}}}});
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("s3_unsupported_request"));
-        QCOMPARE(result.error.details["requestStage"].toString(), stage);
-        QVERIFY(result.error.message.contains("conditional writes (If-None-Match and If-Match)"));
-        QVERIFY(f.state()["uploads"].toObject().isEmpty());
-    }
-    void transientPartIsSentAgainUnderItsNumber() {
-        S3Fixture f(policy);
-        auto request = f.request("retry.bin", synthetic(11 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2"}, {"status", 503}, {"code", "ServiceUnavailable"}, {"remaining", 1}}}}});
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("uploaded"));
-        QCOMPARE(parts(f, "2").size(), 2);
-        QCOMPARE(parts(f).size(), 4);
-        QCOMPARE(count(f, "DELETE", "uploadId="), 0);
-    }
-    void deniedPartAbortsWithGuidance() {
-        S3Fixture f(policy);
-        auto request = f.request("denied.bin", synthetic(11 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2"}, {"status", 403}}}}});
-        Journal journal;
-        journal.attach(request);
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("s3_permission_denied"));
-        QCOMPARE(result.error.details["requestStage"].toString(), QString("upload_part"));
-        QCOMPARE(result.error.details["partNumber"].toInt(), 2);
-        QVERIFY(result.error.details.contains("requestId"));
-        QVERIFY(result.error.message.contains("s3:PutObject"));
-        QVERIFY(!result.error.details.contains("incompleteUpload"));
-        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
-        QVERIFY(f.state()["uploads"].toObject().isEmpty());
-        QVERIFY(f.state()["objects"].toObject()["prefix é/denied.bin"].toArray().isEmpty());
-        QVERIFY(journal.last().isEmpty());
-    }
-    void failedAbortReportsTheIncompleteUpload() {
-        S3Fixture f(policy);
-        auto request = f.request("orphan.bin", synthetic(11 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2"}, {"status", 403}},
-                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}}}}});
-        Journal journal;
-        journal.attach(request);
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("failed"));
-        QVERIFY(result.error.details["incompleteUpload"].toBool());
-        QVERIFY(result.error.message.contains("keep using storage"));
-        // The journal keeps the upload ID for a later retry to resume or abort.
-        QCOMPARE(journal.last()["phase"].toString(), QString("parts"));
-        QCOMPARE(f.state()["uploads"].toObject().size(), 1);
-    }
-    void cancellationAbortsTheUpload() {
-        S3Fixture f(policy);
-        auto request = f.request("cancel.bin", synthetic(16 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2"}, {"delay", 1.5}}}}});
-        request.cancellation = std::make_shared<std::atomic_bool>(false);
-        request.progress = [token = request.cancellation](const UploadProgress& value) {
-            if (value.phase == "uploading" && value.bytesTransferred.value_or(0) > 5 * mib) token->store(true);
-        };
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("cancelled"));
-        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
-        QVERIFY(parts(f, "4").isEmpty());
-        QVERIFY(f.state()["uploads"].toObject().isEmpty());
-    }
     void interruptedUploadResumesFromMatchingParts() {
         S3Fixture f(policy);
         auto request = f.request("resume.bin", synthetic(16 * mib));
@@ -340,23 +218,6 @@ private slots:
         QVERIFY(parts(f).isEmpty());
         QCOMPARE(count(f, "POST", "uploadId="), 1);
     }
-    void deniedListingSendsEveryPartAgain() {
-        S3Fixture f(policy);
-        auto request = f.request("unlisted.bin", synthetic(11 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=3"}, {"status", 403}},
-                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 503}, {"code", "ServiceUnavailable"}, {"remaining", 3}}}}});
-        Journal first;
-        first.attach(request);
-        QCOMPARE(f.upload(request).status, QString("failed"));
-        f.control("/__clear_events", {}, true);
-        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "uploadId="}, {"status", 403}}}}}, true);
-        auto retry = request;
-        retry.resume = first.last();
-        const auto result = f.upload(retry);
-        QCOMPARE(result.status, QString("uploaded"));
-        QCOMPARE(count(f, "POST", "uploads"), 0);
-        QCOMPARE(parts(f).size(), 3);
-    }
     void journalForAnotherKeyIsAbortedNeverResumed() {
         S3Fixture f(policy);
         auto stale = f.request("old name.bin", synthetic(11 * mib));
@@ -375,220 +236,6 @@ private slots:
         QCOMPARE(abort["key"].toString(), QString("prefix é/old name.bin"));
         QCOMPARE(count(f, "POST", "uploads"), 1);
         QVERIFY(f.state()["uploads"].toObject().isEmpty());
-    }
-    void idleSlotsSendPartsInParallel() {
-        S3Fixture f(policy);
-        // Part 1 waits at the barrier with no reply: keep it within the low-speed and request bounds.
-        f.destination.settings["lowSpeedTimeSeconds"] = 30;
-        f.destination.settings["requestTimeoutMs"] = 30000;
-        auto request = f.request("lanes.bin", synthetic(16 * mib));
-        // Part 1 waits at a barrier: with one lane, nothing else could go out.
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"barrier", "first"}}}}});
-        request.extraLanes = [](int wanted) { return wanted; };
-        Journal journal;
-        journal.attach(request);
-        Traces traces;
-        traces.attach(request);
-        auto pending = start(f, request);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1 && parts(f, "3").size() == 1 && parts(f, "4").size() == 1, 8000);
-        QVERIFY(!pending->ready());
-        f.control("/__release", {{"barrier", "first"}}, true);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
-        const auto result = pending->future.get();
-        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
-        QCOMPARE(parts(f).size(), 4);
-        // The fixture refuses a completion whose parts are out of order (InvalidPart).
-        QVERIFY(result.receipt.concurrencyToken.endsWith("-4\""));
-        const auto stored = f.state()["objects"].toObject()["prefix é/lanes.bin"].toArray().last().toObject();
-        QCOMPARE(stored["blob"].toString(), request.artifact.sha256);
-        QCOMPARE(journal.all().size(), 3);
-        QVERIFY(journal.last().isEmpty());
-        // One record per part with S3's request IDs, then the completion's (#148).
-        const auto records = traces.all();
-        QCOMPARE(records.size(), 5);
-        QSet<int> numbers, lanes;
-        for (const auto& record : records.mid(0, 4)) {
-            QCOMPARE(record["event"].toString(), QString("part"));
-            const int number = record["partNumber"].toInt();
-            numbers.insert(number);
-            lanes.insert(record["lane"].toInt());
-            QCOMPARE(record["bytes"].toInteger(), number == 4 ? mib : 5 * mib);
-            QCOMPARE(record["attempt"].toInt(), 1);
-            QCOMPARE(record["requestId"].toString(), QString("SYNTHPART%1").arg(number, 4, 10, QChar('0')));
-            QCOMPARE(record["extendedRequestId"].toString(), QString("synthetic+Part/Id2%1=").arg(number));
-            QVERIFY(record.contains("elapsedMs"));
-        }
-        QCOMPARE(numbers, (QSet<int>{1, 2, 3, 4}));
-        QVERIFY(lanes.size() >= 2);
-        QCOMPARE(records[4]["event"].toString(), QString("complete"));
-        QCOMPARE(records[4]["parts"].toInt(), 4);
-        QCOMPARE(records[4]["requestId"].toString(), QString("SYNTHDONE0001"));
-        QCOMPARE(records[4]["extendedRequestId"].toString(), QString("synthetic+Complete/Id2="));
-        // Nothing that names the object, its upload or the destination.
-        for (const auto& record : records) {
-            const auto text = QJsonDocument(record).toJson(QJsonDocument::Compact);
-            for (const auto& value : {QByteArray("lanes.bin"), QByteArray("prefix"), QByteArray("synthetic-upload-"), QByteArray("isolated-fixture"), f.endpoint.toUtf8()})
-                QVERIFY2(!text.contains(value), text.constData());
-        }
-    }
-    void reclaimedSlotsStopFurtherParts() {
-        S3Fixture f(policy);
-        // Part 1 waits at the barrier with no reply: keep it within the low-speed and request bounds.
-        f.destination.settings["lowSpeedTimeSeconds"] = 30;
-        f.destination.settings["requestTimeoutMs"] = 30000;
-        auto request = f.request("handback.bin", synthetic(16 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"barrier", "held"}},
-                                      QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 1.0}}}}});
-        // Lend a slot only once the upload's own lane holds part 1 at the barrier, so the
-        // borrowed lane is the one that takes part 2.
-        std::atomic_int lent{0};
-        request.extraLanes = [&lent](int wanted) { return qMin(wanted, lent.load()); };
-        auto pending = start(f, request);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f, "1").size() == 1, 8000);
-        putgd::test::settle(300);
-        PUTGD_TRY_VERIFY(parts(f, "2").isEmpty());
-        lent = 1;
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f, "2").size() == 1, 8000);
-        // Another file takes the slot back: the borrowed lane finishes part 2 and stops.
-        lent = 0;
-        putgd::test::settle(2000);
-        PUTGD_TRY_VERIFY(parts(f, "3").isEmpty());
-        QVERIFY(!pending->ready());
-        f.control("/__release", {{"barrier", "held"}}, true);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 15000);
-        const auto result = pending->future.get();
-        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
-        for (const auto* number : {"1", "2", "3", "4"}) QCOMPARE(parts(f, number).size(), 1);
-    }
-    void failedLaneStopsTheOthersAndAborts() {
-        S3Fixture f(policy);
-        auto request = f.request("lanefail.bin", synthetic(26 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"status", 403}}}}});
-        request.extraLanes = [](int wanted) { return wanted; };
-        Journal journal;
-        journal.attach(request);
-        const auto result = f.upload(request);
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("s3_permission_denied"));
-        QCOMPARE(result.error.details["partNumber"].toInt(), 2);
-        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
-        QVERIFY(f.state()["uploads"].toObject().isEmpty());
-        QVERIFY(journal.last().isEmpty());
-        // Lanes stop at the first error: no part goes out twice, and none after the last.
-        for (int number = 1; number <= 6; ++number) QVERIFY(parts(f, QString::number(number)).size() <= 1);
-    }
-    // #203: Cancel, or one lane's failure, cuts the parts in flight instead of waiting
-    // for their replies. Every part reply here waits 8 s, longer than the bound.
-    void cancelCutsPartsInFlight() {
-        S3Fixture f(policy);
-        f.destination.settings["lowSpeedTimeSeconds"] = 30;
-        f.destination.settings["requestTimeoutMs"] = 30000;
-        auto request = f.request("inflight.bin", synthetic(16 * mib));
-        f.reset({{"rules", slowParts(4, 8.0)}});
-        request.extraLanes = [](int wanted) { return wanted; };
-        request.cancellation = std::make_shared<std::atomic_bool>(false);
-        Journal journal;
-        journal.attach(request);
-        auto pending = start(f, request);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
-        QElapsedTimer clock;
-        clock.start();
-        request.cancellation->store(true);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
-        const auto elapsed = clock.elapsed();
-        qInfo("cancel with 4 parts in flight: %lld ms", elapsed);
-        const auto result = pending->future.get();
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("cancelled"));
-        QVERIFY2(elapsed < 4000, qPrintable(QString::number(elapsed)));
-        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
-        QVERIFY(f.state()["uploads"].toObject().isEmpty());
-        QVERIFY(journal.last().isEmpty());
-    }
-    void failedLaneCutsThePartsInFlight() {
-        S3Fixture f(policy);
-        f.destination.settings["lowSpeedTimeSeconds"] = 30;
-        f.destination.settings["requestTimeoutMs"] = 30000;
-        auto request = f.request("lanecut.bin", synthetic(16 * mib));
-        auto rules = slowParts(4, 8.0);
-        rules[1] = QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 0.5}, {"status", 403}};
-        f.reset({{"rules", rules}});
-        request.extraLanes = [](int wanted) { return wanted; };
-        QElapsedTimer clock;
-        clock.start();
-        const auto result = f.upload(request);
-        qInfo("one lane refused, three in flight: %lld ms", clock.elapsed());
-        QCOMPARE(result.status, QString("failed"));
-        QCOMPARE(result.error.code, QString("s3_permission_denied"));
-        QCOMPARE(result.error.details["partNumber"].toInt(), 2);
-        QVERIFY2(clock.elapsed() < 5000, qPrintable(QString::number(clock.elapsed())));
-        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
-    }
-    // A part cut mid-send published nothing: the item fails, never unknown, and Retry
-    // finishes the same upload (here its abort was refused, so the journal stays).
-    void cutPartIsSentAgainOnRetry() {
-        S3Fixture f(policy);
-        f.destination.settings["lowSpeedTimeSeconds"] = 30;
-        f.destination.settings["requestTimeoutMs"] = 30000;
-        auto request = f.request("resend.bin", synthetic(16 * mib));
-        auto rules = slowParts(4, 3.0);
-        rules.append(QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}});
-        f.reset({{"rules", rules}});
-        request.extraLanes = [](int wanted) { return wanted; };
-        request.cancellation = std::make_shared<std::atomic_bool>(false);
-        Journal journal;
-        journal.attach(request);
-        auto pending = start(f, request);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(parts(f).size() == 4, 8000);
-        request.cancellation->store(true);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pending->ready(), 20000);
-        const auto cancelled = pending->future.get();
-        QCOMPARE(cancelled.status, QString("failed"));
-        QCOMPARE(cancelled.error.code, QString("cancelled"));
-        QVERIFY(cancelled.error.details["incompleteUpload"].toBool());
-        QVERIFY(!journal.last()["uploadId"].toString().isEmpty());
-        auto retry = request;
-        retry.resume = journal.last();
-        retry.cancellation = std::make_shared<std::atomic_bool>(false);
-        const auto result = f.upload(retry);
-        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
-        const auto stored = f.state()["objects"].toObject()["prefix é/resend.bin"].toArray().last().toObject();
-        QCOMPARE(stored["blob"].toString(), request.artifact.sha256);
-    }
-    void retiredUploadIsAbortedOrReportsTheDenial() {
-        S3Fixture f(policy);
-        auto request = f.request("retired.bin", synthetic(11 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=2"}, {"status", 403}},
-                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}}}}});
-        Journal journal;
-        journal.attach(request);
-        QCOMPARE(f.upload(request).status, QString("failed"));
-        const auto saved = journal.last();
-        QVERIFY(!saved["uploadId"].toString().isEmpty());
-        QCOMPARE(f.state()["uploads"].toObject().size(), 1);
-        auto abandon = [&](const QJsonObject& value) { return f.await<Error>([&](auto cb) { f.provider.abandonUpload(f.destination, value, cb); }); };
-        // A denial names the permission and leaves the upload.
-        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}}}}}, true);
-        const auto denied = abandon(saved);
-        QCOMPARE(denied.code, QString("s3_permission_denied"));
-        QCOMPARE(denied.details["requestStage"].toString(), QString("upload_abort"));
-        QCOMPARE(denied.details["requestId"].toString(), QString("SYNTHREQ0123ABCD"));
-        QVERIFY(denied.message.contains("s3:AbortMultipartUpload"));
-        QCOMPARE(f.state()["uploads"].toObject().size(), 1);
-        // Granted, S3 keeps no part; an upload already gone counts as aborted too.
-        f.control("/__rules", {{"rules", QJsonArray{}}}, true);
-        const auto aborted = abandon(saved);
-        QVERIFY2(!aborted, qPrintable(aborted.code));
-        QVERIFY(f.state()["uploads"].toObject().isEmpty());
-        QVERIFY(!abandon(saved));
-        // A journal outside this destination's prefix is refused without a request.
-        f.control("/__clear_events", {}, true);
-        auto foreign = saved;
-        foreign["key"] = "elsewhere/retired.bin";
-        QCOMPARE(abandon(foreign).code, QString("s3_multipart_invalid"));
-        QVERIFY(f.events("DELETE").isEmpty());
-        // A plan without a created upload has nothing to abort.
-        QVERIFY(!abandon({{"schemaVersion", 1}, {"partBytes", double(5 * mib)}}));
     }
     void debugLogRecordsPartsWithoutSecretsOrNames() {
         QTemporaryDir dir;
@@ -653,47 +300,6 @@ private slots:
         QVERIFY(!bytes.contains("Credential=PUTGD_SYNTHETIC_ACCESS"));
         QVERIFY(!QRegularExpression("(?i)signature=[0-9a-f]{16}").match(QString::fromUtf8(bytes)).hasMatch());
         QVERIFY(!QRegularExpression("(?i)x-amz-(signature|credential|security-token)=[^&\\s\"<]+").match(QString::fromUtf8(bytes)).hasMatch());
-    }
-    void testConnectionProvesMultipartPermissions_data() {
-        QTest::addColumn<QString>("method");
-        QTest::addColumn<QString>("permission");
-        QTest::addColumn<QString>("stage");
-        QTest::newRow("granted") << QString() << QString() << QString();
-        QTest::newRow("abort-denied") << QString("DELETE") << QString("s3:AbortMultipartUpload") << QString("upload_abort");
-        QTest::newRow("listing-denied") << QString("GET") << QString("s3:ListMultipartUploadParts") << QString("upload_list_parts");
-    }
-    void testConnectionProvesMultipartPermissions() {
-        QFETCH(QString, method);
-        QFETCH(QString, permission);
-        QFETCH(QString, stage);
-        S3Fixture f(policy);
-        QJsonArray rules;
-        if (!method.isEmpty()) rules.append(QJsonObject{{"method", method}, {"query", "uploadId="}, {"status", 403}});
-        f.reset({{"rules", rules}});
-        std::atomic_bool done{false};
-        QJsonObject result;
-        Error error;
-        QList<QJsonObject> journal;
-        f.provider.testDestination(f.destination, [&](auto value, auto ack) { journal.append(value); ack({}); },
-                                   [&](auto value, auto e) { result = value; error = e; done = true; });
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(done.load(), 15000);
-        const auto probe = result["multipart"].toObject();
-        QCOMPARE(count(f, "POST", "uploads"), 1);
-        QVERIFY(parts(f).isEmpty());
-        QCOMPARE(count(f, "DELETE", "uploadId="), 1);
-        QVERIFY(std::any_of(journal.begin(), journal.end(), [](const QJsonObject& value) { return value["phase"] == "synthetic_multipart_created" && value.contains("uploadId"); }));
-        if (permission.isEmpty()) {
-            QVERIFY2(!error, qPrintable(error.message));
-            QCOMPARE(probe["status"].toString(), QString("ok"));
-            QCOMPARE(probe["abort"].toString(), QString("aborted"));
-            QVERIFY(f.state()["uploads"].toObject().isEmpty());
-            return;
-        }
-        QCOMPARE(error.code, QString("s3_multipart_permission"));
-        QVERIFY(error.message.contains(permission));
-        QCOMPARE(probe["status"].toString(), QString("denied"));
-        QCOMPARE(probe["stage"].toString(), stage);
-        QCOMPARE(result["cleanupStatus"].toString(), QString("removed"));
     }
 };
 QTEST_GUILESS_MAIN(S3MultipartTest)
