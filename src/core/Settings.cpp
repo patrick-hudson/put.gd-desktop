@@ -338,7 +338,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
         return invalid("/preferences/captureDelaySeconds", "Choose 0, 3, 5 or 10 seconds for the capture delay.");
     if (preferences.contains("captureDelayShortcuts") && !preferences["captureDelayShortcuts"].isBool())
-        return invalid("/preferences/captureDelayShortcuts", "Delaying shortcut captures is true or false.");
+        return invalid("/preferences/captureDelayShortcuts", "Delaying hotkey captures is true or false.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
     if (preferences.contains("recordingMicrophone") && !preferences["recordingMicrophone"].isBool())
