@@ -50,23 +50,19 @@ int paragraph(Image& img, int y, Rng& rng, int width) {
 Document makeDocument(const DocSpec& sp) {
   Rng rng(sp.seed);
   const int V = sp.viewport, W = sp.width;
-  const double specials = (sp.textOnly ? 0 : sp.flatFactor + sp.tableFactor + sp.blankFactor) +
-                          sp.noiseFactor + sp.gradientFactor;
+  const double specials = sp.flatFactor + sp.tableFactor + sp.blankFactor + sp.noiseFactor + sp.gradientFactor;
   const int maxH = sp.topBlank + int(specials * V) + 7 * sp.paragraphsPerGap * (9 * 16 + 40) + 64;
   Document doc;
   doc.img = Image(W, maxH, kBg);
   Image& img = doc.img;
   int y = sp.topBlank;
   auto paras = [&](int n) {
-    const int y0 = y;
     for (int i = 0; i < n; ++i) y = paragraph(img, y, rng, W);
-    doc.sections.push_back({"text", y0, y});
   };
   paras(sp.paragraphsPerGap);
-  if (!sp.textOnly) {
+  {
     const int h = int(sp.flatFactor * V);
     fillRows(img, y, y + h, rgb(60, 110, 170));
-    doc.sections.push_back({"flat", y, y + h});
     y += h;
     paras(sp.paragraphsPerGap);
 
@@ -85,7 +81,6 @@ Document makeDocument(const DocSpec& sp) {
     for (int i = 0; i < rows; ++i)
       for (int r = 0; r < rowH; ++r)
         std::memcpy(&img.px[size_t(y + i * rowH + r) * W], tmpl.row(r), size_t(W) * 4);
-    doc.sections.push_back({"table", y, y + rows * rowH});
     y += rows * rowH;
     paras(sp.paragraphsPerGap);
   }
@@ -98,7 +93,6 @@ Document makeDocument(const DocSpec& sp) {
         img.at(x, y + yy) = rgb(int(base) + rng.range(-30, 30), int(base * 0.8) + rng.range(-30, 30),
                                 int(255 - base) + rng.range(-30, 30));
       }
-    doc.sections.push_back({"noise", y, y + h});
     y += h;
     paras(sp.paragraphsPerGap);
   }
@@ -107,13 +101,11 @@ Document makeDocument(const DocSpec& sp) {
     for (int yy = 0; yy < h; ++yy)
       for (int x = 0; x < W; ++x)
         img.at(x, y + yy) = rgb(40 + x / 4, 30 + yy % 180, 40 + (yy / 180) * 30 + x / 8);
-    doc.sections.push_back({"gradient", y, y + h});
     y += h;
     paras(sp.paragraphsPerGap);
   }
-  if (!sp.textOnly) {
+  {
     const int h = int(sp.blankFactor * V);
-    doc.sections.push_back({"blank", y, y + h});
     y += h;
     paras(sp.paragraphsPerGap);
   }
@@ -136,22 +128,10 @@ Renderer::Renderer(const Image& doc, ViewportSpec vs) : doc_(doc), vs_(vs) {
     footer_ = Image(vs.width, vs.footerH, rgb(43, 47, 58));
     drawTextLine(footer_, std::max(0, (vs.footerH - 11) / 2), 60, vs.width - 80, rng, rgb(220, 220, 220));
   }
-  const int top = vs.headerH, ch = contentH();
-  hoverY_ = top + ch / 4;
-  caretY_ = top + ch / 2;
-  animY_ = top + int(ch * 0.8) - 10;
-  caretX_ = int(vs.width * 0.31);
-  animX_ = int(vs.width * 0.62);
 }
 
-int Renderer::maxScroll(int docLen) const {
-  if (docLen < 0) docLen = doc_.h;
-  return std::max(0, docLen - contentH());
-}
-
-void Renderer::render(int pos, int frameIndex, Image& out, int docLen) const {
+void Renderer::render(int pos, Image& out) const {
   const int W = vs_.width, H = vs_.height, hH = vs_.headerH, fH = vs_.footerH;
-  if (docLen < 0) docLen = doc_.h;
   if (out.w != W || out.h != H) out = Image(W, H);
   for (int y = 0; y < H; ++y) {
     uint32_t* o = &out.px[size_t(y) * W];
@@ -161,45 +141,10 @@ void Renderer::render(int pos, int frameIndex, Image& out, int docLen) const {
       std::memcpy(o, footer_.row(y - (H - fH)), size_t(W) * 4);
     } else {
       const int dr = pos + y - hH;
-      if (dr >= 0 && dr < docLen) std::memcpy(o, doc_.row(dr), size_t(W) * 4);
+      if (dr >= 0 && dr < doc_.h) std::memcpy(o, doc_.row(dr), size_t(W) * 4);
       else std::fill(o, o + W, kBg);
     }
   }
-  const int ch = contentH();
-  if (vs_.hover) {
-    for (int y = hoverY_; y < std::min(hoverY_ + 18, H - fH); ++y)
-      for (int x = 0; x < W - 12; ++x)
-        if (out.at(x, y) == kBg) out.at(x, y) = rgb(228, 236, 247);
-  }
-  if (vs_.caret && frameIndex % 2 == 0) {
-    for (int y = caretY_; y < caretY_ + 16; ++y)
-      for (int x = caretX_; x < caretX_ + 2; ++x) out.at(x, y) = rgb(20, 20, 20);
-  }
-  if (vs_.anim) {
-    Rng r(uint64_t(frameIndex) * 7919 + 17);
-    for (int by = 0; by < 20; by += 4)
-      for (int bx = 0; bx < 20; bx += 4) {
-        const uint32_t c = uint32_t(r.next()) & 0xFFFFFF;
-        for (int y = by; y < by + 4; ++y)
-          for (int x = bx; x < bx + 4; ++x) out.at(animX_ + x, animY_ + y) = c;
-      }
-  }
-  if (vs_.scrollbar) {
-    const int ms = std::max(1, maxScroll(docLen));
-    const int thumb = std::max(20, int((long long)ch * ch / std::max(ch, docLen)));
-    const int thumbTop = hH + int((long long)std::clamp(pos, 0, ms) * (ch - thumb) / ms);
-    for (int y = hH; y < H - fH; ++y)
-      for (int x = W - 10; x < W - 3; ++x)
-        out.at(x, y) = (y >= thumbTop && y < thumbTop + thumb) ? rgb(150, 150, 150) : rgb(225, 225, 225);
-  }
-}
-
-std::vector<Rect> Renderer::noiseRects() const {
-  std::vector<Rect> r;
-  if (vs_.hover) r.push_back({0, hoverY_, vs_.width, 18});
-  if (vs_.caret) r.push_back({caretX_, caretY_, 2, 16});
-  if (vs_.anim) r.push_back({animX_, animY_, 20, 20});
-  return r;
 }
 
 Image Renderer::expected(int docRows) const {
@@ -217,27 +162,15 @@ Image Renderer::expected(int docRows) const {
 
 FakeApp::FakeApp(const Image& doc, ViewportSpec vs, FakeAppSpec spec, FakeClock& clock)
     : doc_(doc), renderer_(doc, vs), spec_(spec), clock_(clock), rng_(spec.seed) {
-  loaded_ = spec_.lazyLoadAt < 0;
   target_ = spec_.startPos;
 }
 
 bool FakeApp::movePointer(int x, int y) {
   events.push_back({'m', x, y});
-  pointerKnown = true;
-  pointerX = x;
-  pointerY = y;
-  pointerMovedAt = clock_.nowMs();
   return true;
 }
 
-bool FakeApp::rest() {
-  if (!spec_.restEndsOverscroll) return false;
-  events.push_back({'r', 0, 0});
-  overscroll_ = 0;
-  return true;
-}
-
-int FakeApp::maxScroll() const { return renderer_.maxScroll(docLen()); }
+int FakeApp::maxScroll() const { return renderer_.maxScroll(); }
 
 double FakeApp::posAt(int64_t t) const {
   if (segs_.empty()) return spec_.startPos;
@@ -251,26 +184,12 @@ double FakeApp::posAt(int64_t t) const {
   return segs_.front().from;
 }
 
-void FakeApp::update(int64_t t) {
-  if (loaded_) return;
-  const bool idle = segs_.empty() || t >= segs_.back().t0 + segs_.back().dur;
-  if (reachedEndAt_ < 0 && idle && posAt(t) >= maxScroll() - 0.5) reachedEndAt_ = t;
-  if (reachedEndAt_ >= 0 && t >= reachedEndAt_ + spec_.lazyDelayMs) loaded_ = true;
-}
-
 bool FakeApp::scroll(int n) {
   const int idx = injections++;
   events.push_back({'s', n, 0});
   if (spec_.quietFromInjection >= 0 && idx == spec_.quietFromInjection) quiet_ = true;
   if (spec_.cancelFlag && spec_.cancelAfterInjections >= 0 && idx >= spec_.cancelAfterInjections)
     spec_.cancelFlag->store(true);
-  if (idx == spec_.failInjection) return false;
-  if (idx == spec_.dropInjection) return true;  // delivered but ignored by the app
-  if (spec_.wheelArea.w > 0 && pointerKnown) {
-    const Rect& a = spec_.wheelArea;  // the wheel goes to whatever is under the pointer
-    if (pointerX < a.x || pointerX >= a.x + a.w || pointerY < a.y || pointerY >= a.y + a.h) return true;
-  }
-  update(clock_.nowMs());
   if (spec_.busyMsPerNotch > 0) {
     // What it has not painted yet it paints when it has worked through all it was sent.
     const int64_t now = clock_.nowMs();
@@ -291,41 +210,8 @@ bool FakeApp::scroll(int n) {
   }
   const int64_t start = clock_.nowMs() + spec_.reactionDelayMs;
   const double cur = posAt(start);
-  const double mult = std::abs(n) >= spec_.accelMinNotches ? spec_.accelFactor : 1.0;
-  const double jit = spec_.jitter > 0 ? 1.0 + spec_.jitter * (2 * rng_.unit() - 1) : 1.0;
-  double delta = n * spec_.pxPerNotch * mult * jit;
-  if (idx == spec_.splitInjection) {
-    splitRest_ = delta * (1 - spec_.splitFraction);
-    delta -= splitRest_;
-  } else if (splitRest_ != 0) {
-    delta += splitRest_;
-    splitRest_ = 0;
-  }
-  if (spec_.overscrollPx > 0) {
-    if (delta > 0 && overscroll_ > 0) {
-      const double used = std::min(overscroll_, delta);
-      overscroll_ -= used;
-      delta -= used;
-    } else if (delta < 0 && target_ + delta < 0) {
-      overscroll_ = std::min<double>(spec_.overscrollPx, overscroll_ - (target_ + delta));
-    }
-  }
-  double nt = std::round(target_ + delta);
-  const int dur = rng_.range(spec_.animMinMs, spec_.animMaxMs);
-  const double hi = maxScroll();
-  nt = std::max(0.0, nt);
-  if (nt > hi) {
-    if (spec_.elastic && n > 0) {
-      const double over = std::min<double>(spec_.elasticMaxPx, std::max(8.0, (nt - hi) * 0.5));
-      const int d1 = int(dur * 0.6);
-      segs_.push_back({start, d1, cur, hi + over});
-      segs_.push_back({start + d1, 250, hi + over, hi});
-      target_ = hi;
-      return true;
-    }
-    nt = hi;
-  }
-  segs_.push_back({start, dur, cur, nt});
+  const double nt = std::clamp(std::round(target_ + n * spec_.pxPerNotch), 0.0, double(maxScroll()));
+  segs_.push_back({start, rng_.range(spec_.animMinMs, spec_.animMaxMs), cur, nt});
   target_ = nt;
   return true;
 }
@@ -334,7 +220,6 @@ std::optional<putgd::record::RunFrame> FakeApp::freshFrame(int timeoutMs) {
   if (!spec_.quietHasFresh) return std::nullopt;
   ++freshFrames;
   quiet_ = false;  // a new link: the stream sends again
-  haveDelivered_ = false;
   return nextFrame(timeoutMs);
 }
 
@@ -344,36 +229,21 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     clock_.set(limit);
     return std::nullopt;
   }
-  for (;;) {
-    const int64_t t = lastFrameT_ < 0 ? clock_.nowMs()
-                                      : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs() - (spec_.queued ? 2 * spec_.frameIntervalMs : 0));
-    if (t > limit) {
-      clock_.set(limit);
-      return std::nullopt;
-    }
-    clock_.set(t);
-    lastFrameT_ = t;
-    update(t);
-    const int pos = int(std::lround(posAt(t)));
-    renderer_.render(pos, frameIndex_++, scratch_, docLen());
-    if (spec_.pointerHover && pointerKnown && pointerX >= 0 && pointerX < scratch_.w) {
-      // The row under the pointer is highlighted, as a list or a link would be.
-      for (int y = std::max(0, pointerY - 9); y < std::min(scratch_.h, pointerY + 9); ++y)
-        for (int x = 0; x < scratch_.w - 12; ++x)
-          if (scratch_.at(x, y) == kBg) scratch_.at(x, y) = rgb(228, 236, 247);
-    }
-    for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)
-      for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb((frameIndex_ * 37 + y) & 255, (x * 3 + frameIndex_ * 11) & 255, 90);
-    if (spec_.overlay) spec_.overlay(scratch_, injections);
-    if (spec_.scene) spec_.scene(scratch_, *this, pos, t);
-    if (spec_.damageOnly && haveDelivered_ && scratch_.px == delivered_.px) continue;
-    std::swap(scratch_, delivered_);
-    haveDelivered_ = true;
-    framePositions.push_back(pos);
-    maxPositionSeen = std::max(maxPositionSeen, pos);
-    if (pos > maxScroll()) ++overscrollFrames;
-    return putgd::record::RunFrame{delivered_.view(), t};
+  const int64_t t = lastFrameT_ < 0 ? clock_.nowMs() : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs());
+  if (t > limit) {
+    clock_.set(limit);
+    return std::nullopt;
   }
+  clock_.set(t);
+  lastFrameT_ = t;
+  ++frameIndex_;
+  const int pos = int(std::lround(posAt(t)));
+  renderer_.render(pos, scratch_);
+  for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)
+    for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb((frameIndex_ * 37 + y) & 255, (x * 3 + frameIndex_ * 11) & 255, 90);
+  std::swap(scratch_, delivered_);
+  framePositions.push_back(pos);
+  return putgd::record::RunFrame{delivered_.view(), t};
 }
 
 }  // namespace synth

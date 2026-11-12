@@ -790,8 +790,8 @@ bool ScrollStitcher::takeBackTo(long long rows) {
 // run did not move with the page: it is a bar that came up over the page, or
 // the window's background under a viewport that got shorter, and the rows
 // appended since it came were the bar's, with the page's rows hidden under it
-// (the cases in test_scroll_stitcher after the acceptance of 2026-11-11: a
-// complete-looking image with a bar in its body, ended as "end of content").
+// (acceptance of 2026-11-11: a complete-looking image with a bar in its
+// body, ended as "end of content").
 // Is: at least layoutStaticMinRows rows contradict the run and they outnumber
 // the rows that did come out of it by more than layoutStaticRatio to one.
 // IsNot: every row is accounted for. Open: neither.

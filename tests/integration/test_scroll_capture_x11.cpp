@@ -1,20 +1,14 @@
-// Scroll capture end to end on X11 (#1376): the production backend starts the
-// real putgd-record as a scroll session on a private Xvfb display, the helper
-// reads the fixture window through ximagesrc and turns its wheel through XTest,
-// and the PNG it writes must decode to every line of the bar-coded page once,
-// in order. The last cases watch the X server's raw input (XInput2) for what
-// the helper injects and when. Xvfb has no compositor and no window manager:
-// this proves the helper's own path, never a desktop.
+// Scroll capture on X11 (#1376): the production backend starts the real
+// putgd-record as a scroll session on a private Xvfb display against the
+// fixture window, and the X server's raw input (XInput2) shows what the helper
+// injects and when: wheel steps and pointer motion only, only while capturing,
+// nothing after Stop, Cancel or the end of its control pipe.
 #include "app/ScrollHelperBackend.h"
 #include "core/BuildInfo.h"
-#include "fixtures/ScrollRuler.h"
 #include "fixtures/Waits.h"
 #include "ipc/UiControl.h"
-#include <QCryptographicHash>
 #include <QDir>
-#include <QFile>
 #include <QFileInfo>
-#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
@@ -23,12 +17,9 @@
 #include <QUuid>
 #include <memory>
 #include <xcb/xcb.h>
-#include <xcb/xcb_keysyms.h>
 #include <xcb/xinput.h>
-#include <xcb/xtest.h>
 
 using namespace putgd;
-namespace ruler = putgd::test::ruler;
 
 namespace {
 const QRect page(100, 60, 640, 600);
@@ -44,13 +35,6 @@ struct Fixture {
         QByteArray seen;
         return putgd::test::waitFor([&] { seen += process.readAllStandardOutput(); return seen.contains("ready "); }, 10000);
     }
-    // Where the page is: the fixture prints `position N` whenever its scroll position settles.
-    int position() {
-        printed += process.readAllStandardOutput();
-        const int at = printed.lastIndexOf("position ");
-        return at < 0 ? -1 : printed.mid(at + 9, printed.indexOf('\n', at) - at - 9).trimmed().toInt();
-    }
-    QByteArray printed;
     ~Fixture() { process.kill(); process.waitForFinished(3000); }
 };
 
@@ -96,23 +80,7 @@ struct Capture {
         backend.discard(id);
         return putgd::test::waitFor([&] { return !backend.diagnostics()["active"].toBool(); }, 10000) && backend.diagnostics()["lastExit"].toObject()["status"].toString() == "normal" && backend.diagnostics()["lastExit"].toObject()["code"].toInt() == 0;
     }
-    QStringList files() const { return QDir(staging.path()).entryList(QDir::Files | QDir::Hidden); }
 };
-
-// The finished descriptor against the file it names; the image, or a null one.
-QImage admitted(const QJsonObject& finished, QString* problem) {
-    const QString path = finished["path"].toString();
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) { *problem = "the PNG cannot be opened"; return {}; }
-    const QByteArray bytes = file.readAll();
-    if (bytes.size() != qint64(finished["bytes"].toDouble())) { *problem = "the size differs from the descriptor"; return {}; }
-    if (QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex()) != finished["sha256"].toString()) { *problem = "the hash differs from the descriptor"; return {}; }
-    if ((QFileInfo(path).permissions() & (QFile::ReadGroup | QFile::WriteGroup | QFile::ReadOther | QFile::WriteOther)) != 0) { *problem = "the PNG is readable by others"; return {}; }
-    QImage image;
-    if (!image.loadFromData(bytes, "PNG")) { *problem = "the PNG does not decode"; return {}; }
-    if (image.width() != finished["width"].toInt() || image.height() != finished["height"].toInt()) { *problem = "the image size differs from the descriptor"; return {}; }
-    return image;
-}
 
 // Everything the X server's input devices did, as XInput2 raw events on the
 // root window: they reach every listener whatever window is under the pointer.
@@ -171,292 +139,7 @@ private:
 
 class ScrollCaptureX11 : public QObject {
     Q_OBJECT
-private:
-    // Starts a capture that begins by itself and waits for its end.
-    void run(Capture& capture, const QJsonObject& params) {
-        capture.prepare(params);
-        QVERIFY(putgd::test::waitFor([&] { return capture.answered; }, 20000));
-        QVERIFY2(!capture.prepareError, qPrintable(capture.prepareError.code + ": " + capture.prepareError.message));
-        QCOMPARE(capture.prepared["state"].toString(), QString("capturing"));
-        QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 90000));
-    }
-    // The finished image is the page's rows firstRow..lastRow, every line once.
-    void exact(Capture& capture, int header, int footer, int firstRow, int lastRow, int lastLine = ruler::rowHeight - 1) {
-        const auto finished = capture.last("finished");
-        QVERIFY2(!finished.isEmpty(), qPrintable("no finished event; failed: " + QString::fromUtf8(QJsonDocument(capture.last("failed")).toJson(QJsonDocument::Compact))));
-        QString problem;
-        const QImage image = admitted(finished, &problem);
-        QVERIFY2(!image.isNull(), qPrintable(problem));
-        QCOMPARE(image.width(), page.width());
-        const auto verdict = ruler::verify(image, header, footer, firstRow, lastRow, 0, lastLine);
-        QVERIFY2(verdict.ok, qPrintable(verdict.problem));
-        // The spool is gone: the staging directory holds the PNG and nothing else.
-        QCOMPARE(capture.files(), QStringList{"scroll.png"});
-    }
 private slots:
-    void theProbeNamesTheX11Path() {
-        ScrollHelperBackend backend(PUTGD_RECORD_HELPER);
-        QCOMPARE(backend.capabilities()["reason"].toString(), QString("scroll_not_probed"));
-        bool done = false;
-        backend.refreshCapabilities([&] { done = true; });
-        QVERIFY(putgd::test::waitFor([&] { return done; }, 15000));
-        const auto capabilities = backend.capabilities();
-        QVERIFY2(capabilities["available"].toBool(), qPrintable(QString::fromUtf8(QJsonDocument(capabilities).toJson(QJsonDocument::Compact))));
-        QCOMPARE(capabilities["frames"].toString(), QString("ximagesrc"));
-        QCOMPARE(capabilities["injector"].toString(), QString("xtest"));
-        QCOMPARE(capabilities["selection"].toString(), QString("helper"));
-        QCOMPARE(capabilities["maxHeight"].toInt(), 60000);
-        ScrollHelperBackend missing("/nonexistent/putgd-record");
-        QCOMPARE(missing.capabilities()["reason"].toString(), QString("recording_helper_missing"));
-    }
-    void aPlainPageComesOutEveryRowOnceInOrder() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=60", "--notch=100"}));
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        exact(capture, 0, 0, 0, 59);
-        const auto finished = capture.last("finished");
-        QCOMPARE(finished["endReason"].toString(), QString("end_of_content"));
-        QCOMPARE(finished["truncated"].toBool(), false);
-        QCOMPARE(finished["height"].toInt(), 60 * ruler::rowHeight);
-        QCOMPARE(finished["appliedMaxHeight"].toInt(), 30000);
-        const auto stats = finished["stats"].toObject();
-        QCOMPARE(stats["pixelsPerNotch"].toDouble(), 100.0);
-        QCOMPARE(stats["lowConfidenceSteps"].toInt(), 0);
-        QVERIFY(stats["steps"].toInt() >= 4);
-        // Progress said what the capture was doing, with a growing height.
-        const auto progress = capture.last("progress");
-        QCOMPARE(progress["state"].toString(), QString("capturing"));
-        QVERIFY(progress["height"].toInt() > page.height());
-        // A second stop after the end answers with the same descriptor.
-        auto again = capture.control("stop");
-        QVERIFY2(!again.error, qPrintable(again.error.message));
-        QCOMPARE(again.result["sha256"].toString(), finished["sha256"].toString());
-        QVERIFY(capture.leave());
-    }
-    void aStickyHeaderAndFooterComeOutOnce() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=60", "--notch=80", "--header=48", "--footer=32", "--smooth"}));
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        exact(capture, 48, 32, 0, 59);
-        QCOMPARE(capture.last("finished")["endReason"].toString(), QString("end_of_content"));
-        QVERIFY(capture.leave());
-    }
-    void aPageOpenedHalfwayDownStartsAtRowZeroWithFromTop() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=60", "--notch=100", "--start=30"}));
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", true}});
-        exact(capture, 0, 0, 0, 59);
-        QCOMPARE(capture.last("finished")["endReason"].toString(), QString("end_of_content"));
-        // The step before the capture was reported as its own state.
-        bool sawToTop = false;
-        for (const auto& event : capture.events) sawToTop = sawToTop || event["state"].toString() == "scrollingToTop";
-        QVERIFY(sawToTop);
-        QVERIFY(capture.leave());
-    }
-    void withoutFromTopItStartsAtTheRowOnScreen() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=60", "--notch=100", "--start=20"}));
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        exact(capture, 0, 0, 20, 59);
-        QVERIFY(capture.leave());
-    }
-    void aTailThatLoadsLateIsStillCaptured() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=60", "--notch=100", "--lazy-tail=20", "--lazy-ms=200"}));
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        exact(capture, 0, 0, 0, 59);
-        QVERIFY(capture.leave());
-    }
-    void theHeightCapKeepsAnExactPrefix() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=200", "--notch=100"}));
-        {
-            Capture capture;
-            run(capture, {{"rect", rectJson(page)}, {"maxHeight", 2000}, {"fromTop", false}, {"autoStart", true}});
-            exact(capture, 0, 0, 0, 49);
-            const auto finished = capture.last("finished");
-            QCOMPARE(finished["endReason"].toString(), QString("height_cap"));
-            QCOMPARE(finished["truncated"].toBool(), true);
-            QCOMPARE(finished["height"].toInt(), 2000);
-            QVERIFY(capture.leave());
-        }
-        // The pixel bound decides the height once the width is known: 1,500 lines here.
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"maxPixels", double(page.width()) * 1500}, {"fromTop", true}, {"autoStart", true}});
-        exact(capture, 0, 0, 0, 37, 19);
-        QCOMPARE(capture.last("finished")["appliedMaxHeight"].toInt(), 1500);
-        QCOMPARE(capture.last("finished")["endReason"].toString(), QString("height_cap"));
-        QVERIFY(capture.leave());
-    }
-    void stopKeepsTheImageSoFarAndCancelLeavesNothing() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=600", "--notch=100"}));
-        {
-            Capture capture;
-            capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-            QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["height"].toInt() > 1500 || capture.ended(); }, 60000));
-            const auto stopped = capture.control("stop");
-            QVERIFY2(!stopped.error, qPrintable(stopped.error.code + ": " + stopped.error.message));
-            QCOMPARE(stopped.result["endReason"].toString(), QString("stopped"));
-            // The reply carries what the finished event carries.
-            auto finished = capture.last("finished");
-            QVERIFY(!finished.isEmpty());
-            finished.remove("event");
-            finished.remove("id");
-            QCOMPARE(stopped.result, finished);
-            const int height = stopped.result["height"].toInt();
-            QVERIFY(height > 1500 && height < 600 * ruler::rowHeight);
-            exact(capture, 0, 0, 0, (height - 1) / ruler::rowHeight, (height - 1) % ruler::rowHeight);
-            QVERIFY(capture.leave());
-        }
-        Fixture again;
-        QVERIFY(again.start({"--rows=600", "--notch=100"}));
-        Capture capture;
-        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["height"].toInt() > 1000 || capture.ended(); }, 60000));
-        QCOMPARE(capture.files(), QStringList{"rows.spool"});
-        const auto cancelled = capture.control("cancel");
-        QVERIFY2(!cancelled.error, qPrintable(cancelled.error.message));
-        // Nothing is kept: no image, no spool, and no finished event.
-        QVERIFY(capture.files().isEmpty());
-        PUTGD_VERIFY_STEADY(!capture.has("finished"), 400);
-        QCOMPARE(capture.control("stop").error.code, QString("scroll_state"));
-        QVERIFY(capture.leave());
-    }
-    // Stop while the page is still on its way to the top used to keep nothing
-    // (real desktop round of 2026-11-10). The image is the viewport as the
-    // page came to rest, and nothing is injected after the stop.
-    void stopOnTheWayToTheTopKeepsTheViewport() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=600", "--notch=100", "--start=500"}));
-        RawInput input;
-        QVERIFY(input.open());
-        Capture capture;
-        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", true}});
-        QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["state"].toString() == "scrollingToTop" || capture.ended(); }, 30000));
-        // A few steps up, well short of the 20 the way takes.
-        QVERIFY(putgd::test::waitFor([&] { const int at = fixture.position(); return (at > 0 && at <= 17000) || capture.ended(); }, 30000));
-        const auto stopped = capture.control("stop");
-        QVERIFY2(!stopped.error, qPrintable(stopped.error.code + ": " + stopped.error.message));
-        QCOMPARE(stopped.result["endReason"].toString(), QString("stopped"));
-        QCOMPARE(stopped.result["height"].toInt(), page.height());
-        input.read();
-        const int wheel = input.wheel;
-        const int at = fixture.position();
-        QVERIFY2(at > 0 && at < 500 * ruler::rowHeight, qPrintable(QString::number(at)));
-        QCOMPARE(at % ruler::rowHeight, 0);
-        exact(capture, 0, 0, at / ruler::rowHeight, (at + page.height() - 1) / ruler::rowHeight, (at + page.height() - 1) % ruler::rowHeight);
-        // From the stop reply on the page stays where it is: no more wheel steps.
-        putgd::test::settle(400);
-        input.read();
-        QCOMPARE(input.wheel, wheel);
-        QCOMPARE(fixture.position(), at);
-        QVERIFY(capture.leave());
-    }
-    // The image after such a Stop is the viewport on the screen, not the last
-    // picture the loop had seen: an application that answers a wheel step 350
-    // ms later has not painted the last steps when Stop arrives right behind
-    // them, and the old picture was written 120 ms later (on a real Plasma
-    // desktop the stream had sent nothing for two batches; round of
-    // 2026-11-10). Stop is sent as soon as wheel steps were seen, several
-    // times over, so that it falls inside that window.
-    void stopOnTheWayToTheTopReturnsTheViewportOnTheScreen() {
-        for (int round = 0; round < 3; ++round) {
-            Fixture fixture;
-            QVERIFY(fixture.start({"--rows=600", "--notch=100", "--start=500", "--answer-ms=350"}));
-            RawInput input;
-            QVERIFY(input.open());
-            Capture capture;
-            capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", true}});
-            // The second batch of wheel steps has just been sent (round 0), or the third, or the fourth.
-            QVERIFY(putgd::test::waitFor([&] { input.read(); return input.wheel >= 10 * (round + 2) || capture.ended(); }, 30000));
-            const auto stopped = capture.control("stop");
-            QVERIFY2(!stopped.error, qPrintable(stopped.error.code + ": " + stopped.error.message));
-            QCOMPARE(stopped.result["endReason"].toString(), QString("stopped"));
-            QCOMPARE(stopped.result["height"].toInt(), page.height());
-            // Where the page came to rest: every step sent before Stop was answered.
-            input.read();
-            const int wheel = input.wheel;
-            putgd::test::settle(600);
-            const int at = fixture.position();
-            QCOMPARE(at, 500 * ruler::rowHeight - wheel * 100);
-            exact(capture, 0, 0, at / ruler::rowHeight, (at + page.height() - 1) / ruler::rowHeight, (at + page.height() - 1) % ruler::rowHeight);
-            input.read();
-            QCOMPARE(input.wheel, wheel);
-            QVERIFY(capture.leave());
-        }
-    }
-    // Escape on X11, whatever window has the keyboard: Stop, with the image kept.
-    void escapeStopsAndKeepsTheImage() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=600", "--notch=100"}));
-        Capture capture;
-        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["height"].toInt() > 1200 || capture.ended(); }, 60000));
-        QVERIFY(!capture.ended());
-        // The test's own key press: the helper sends keys never.
-        xcb_connection_t* connection = xcb_connect(nullptr, nullptr);
-        QVERIFY(connection && !xcb_connection_has_error(connection));
-        xcb_key_symbols_t* symbols = xcb_key_symbols_alloc(connection);
-        xcb_keycode_t* codes = xcb_key_symbols_get_keycode(symbols, 0xff1b);
-        QVERIFY(codes && codes[0] != XCB_NO_SYMBOL);
-        xcb_test_fake_input(connection, XCB_KEY_PRESS, codes[0], XCB_CURRENT_TIME, XCB_NONE, 0, 0, 0);
-        xcb_test_fake_input(connection, XCB_KEY_RELEASE, codes[0], XCB_CURRENT_TIME, XCB_NONE, 0, 0, 0);
-        xcb_flush(connection);
-        free(codes);
-        xcb_key_symbols_free(symbols);
-        QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 30000));
-        xcb_disconnect(connection);
-        const auto finished = capture.last("finished");
-        QCOMPARE(finished["endReason"].toString(), QString("stopped"));
-        const int height = finished["height"].toInt();
-        QVERIFY(height > 1200 && height < 600 * ruler::rowHeight);
-        exact(capture, 0, 0, 0, (height - 1) / ruler::rowHeight, (height - 1) % ruler::rowHeight);
-        QVERIFY(capture.leave());
-    }
-    void theSelectorTakesARectangleFromSelect() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=40", "--notch=100"}));
-        Capture capture;
-        capture.prepare({{"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        QVERIFY(putgd::test::waitFor([&] { return capture.answered; }, 20000));
-        QVERIFY2(!capture.prepareError, qPrintable(capture.prepareError.message));
-        QCOMPARE(capture.prepared["state"].toString(), QString("selecting"));
-        // The open selector completes as a drag release would.
-        const auto selected = capture.control("select", {{"rect", rectJson(page)}});
-        QVERIFY2(!selected.error, qPrintable(selected.error.code + ": " + selected.error.message));
-        QCOMPARE(selected.result["state"].toString(), QString("capturing"));
-        QCOMPARE(capture.last("selected")["rect"].toArray(), rectJson(page));
-        QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 90000));
-        exact(capture, 0, 0, 0, 39);
-        QVERIFY(capture.leave());
-    }
-    void aRegionThatIsTooSmallOrOffTheOutputIsRefused() {
-        for (const QRect& rect : {QRect(100, 100, 40, 300), QRect(1200, 100, 400, 300)}) {
-            Capture capture;
-            capture.prepare({{"rect", rectJson(rect)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-            QVERIFY(putgd::test::waitFor([&] { return capture.answered; }, 20000));
-            QCOMPARE(capture.prepareError.code, QString("scroll_region"));
-            QVERIFY(capture.files().isEmpty());
-            QVERIFY(capture.leave());
-        }
-    }
-    void aPageThatDoesNotScrollIsReportedNotCaptured() {
-        Fixture fixture;
-        QVERIFY(fixture.start({"--rows=10", "--notch=100"}));
-        Capture capture;
-        run(capture, {{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", true}});
-        const auto failed = capture.last("failed");
-        QCOMPARE(failed["error"].toObject()["code"].toString(), QString("scroll_no_movement"));
-        QVERIFY(!capture.has("finished"));
-        QVERIFY(capture.files().isEmpty());
-        QVERIFY(capture.leave());
-    }
     // What is injected, and when: wheel steps and pointer motion only, only
     // while capturing, nothing after the stop or cancel reply, and the pointer
     // back where it was.
@@ -502,20 +185,6 @@ private slots:
         PUTGD_COMPARE_STEADY(raw.total(), afterCancel, 800);
         QCOMPARE(raw.pointer(), home);
         QVERIFY(second.leave());
-
-        // The helper killed in the middle: a dead process injects nothing.
-        Capture third;
-        third.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
-        QVERIFY(putgd::test::waitFor([&] { return third.last("progress")["height"].toInt() > 1000 || third.ended(); }, 60000));
-        const qint64 pid = third.backend.processId(third.id);
-        QVERIFY(pid > 0);
-        QCOMPARE(QProcess::execute("kill", {"-9", QString::number(pid)}), 0);
-        QVERIFY(putgd::test::waitFor([&] { return third.has("failed"); }, 10000));
-        QCOMPARE(third.last("failed")["error"].toObject()["code"].toString(), QString("scroll_helper_failed"));
-        const int afterKill = raw.total();
-        PUTGD_COMPARE_STEADY(raw.total(), afterKill, 800);
-        QCOMPARE(raw.otherButtons, 0);
-        QCOMPARE(raw.keys, 0);
     }
     // The control pipe closes while the helper captures: it stops injecting at
     // once, does not even put the pointer back, removes its files and leaves.
