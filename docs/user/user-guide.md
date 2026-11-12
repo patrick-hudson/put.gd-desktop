@@ -43,8 +43,8 @@ capture, and before Repeat last region and Capture region & edit, so you can ope
 menu, hover a button or hold a key first. Choose it in **Settings → Capture → Capture
 delay**, in the tray's **Capture delay** submenu, or right-click one of those capture
 buttons in the window and open **Capture delay** there; the choice stays until you set
-it back to None. A capture you start with a keyboard shortcut is immediate unless you
-turn on **Also delay captures started by a shortcut** in the same Settings section. A small pill at the top of the
+it back to None. A capture you start with a hotkey is immediate unless you
+turn on **Also delay captures started by a hotkey** in the same Settings section. A small pill at the top of the
 screen counts down. It doesn't take the keyboard and you can keep working around it;
 click it to cancel, and nothing is captured. It is never in the picture.
 
