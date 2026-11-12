@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
 import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, stat, upload, share, serviceFailure, transferHost } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
-import { LINK_AHEAD_MS, LinkAhead, LinkOpenPGP, SLOW_ANSWER_MS, SharedAccountReads, fastestConnectionFetch, keepUserDataAcrossRefresh, linkPasswordAhead, saveToKeychain } from './account';
+import { LINK_AHEAD_MS, LinkAhead, LinkOpenPGP, SLOW_ANSWER_MS, SharedAccountReads, fastestConnectionFetch, keepUserDataAcrossRefresh, linkPasswordAhead, linkPreparation, saveToKeychain } from './account';
 import { initSharingModule } from '@protontech/drive-sdk/internal/sharing';
 import { Addresses } from 'proton-drive-sdk-account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
@@ -630,13 +630,14 @@ test('the pinned SDK draws a link password where the helper takes it over', asyn
     const sharing = initSharingModule({ getLogger: () => ({}) } as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
     const stub = srpStub();
     const link = new LinkAhead(stub.inner as any, () => 0);
-    const prepare = linkPasswordAhead({ sharing }, link);
-    expect(prepare).toBeDefined();
+    const draw = linkPasswordAhead({ sharing }, link);
+    expect(draw).toBeDefined();
+    const prepare = async () => { link.prepare(await draw!()); };
     const generator = (sharing.management as any).cryptoService;
     // Unprepared, the SDK's own generator answers: twelve characters of its alphabet.
     const plain = await generator.generatePublicLinkPassword();
     expect(plain).toMatch(/^[A-Za-z0-9]{12}$/); expect(link.prepared).toBe(false);
-    await prepare!();
+    await prepare();
     const drawn = stub.calls.find(call => call.startsWith('verifier '))!.slice('verifier '.length);
     expect(drawn).toMatch(/^[A-Za-z0-9]{12}$/); expect(drawn).not.toBe(plain);
     expect(await generator.generatePublicLinkPassword()).toBe(drawn);
@@ -644,6 +645,37 @@ test('the pinned SDK draws a link password where the helper takes it over', asyn
     // An SDK without the generator there leaves links unprepared instead of failing.
     expect(linkPasswordAhead({ sharing: { management: {} } }, link)).toBeUndefined();
     expect(linkPasswordAhead({}, link)).toBeUndefined();
+});
+test('a link preparation ended before it began, or before its password was drawn, leaves nothing', async () => {
+    const stub = srpStub();
+    const link = new LinkAhead(stub.inner as any, () => 0);
+    const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    let draws = 0, release: (password: string) => void = () => {};
+    const draw = () => { ++draws; return new Promise<string>(resolve => { release = resolve; }); };
+    const preparation = linkPreparation(link, draw, 10);
+    // Ended before its start came due: no password is drawn.
+    preparation.start(); preparation.unused();
+    await pause(30);
+    expect(draws).toBe(0); expect(link.prepared).toBe(false);
+    // Ended while the password was being drawn: it is not hashed or kept.
+    preparation.start(); await pause(30);
+    expect(draws).toBe(1);
+    preparation.unused(); release('late'); await pause(5);
+    expect(link.prepared).toBe(false); expect(stub.calls).toEqual([]);
+    // A start made after an earlier one supersedes it, and only its password is prepared.
+    preparation.start(); await pause(30);
+    const first = release;
+    preparation.start(); await pause(30);
+    first('superseded'); release('current'); await pause(5);
+    expect(link.prepared).toBe(true); expect(link.take()).toBe('current');
+    expect(stub.calls.filter(call => call.startsWith('verifier '))).toEqual(['verifier current']);
+    // A draw that fails prepares nothing, and an SDK without the generator starts nothing.
+    preparation.unused();
+    const failing = linkPreparation(link, () => Promise.reject(new Error('synthetic')), 1);
+    failing.start(); await pause(20);
+    expect(link.prepared).toBe(false);
+    linkPreparation(link, undefined, 1).start(); await pause(10);
+    expect(link.prepared).toBe(false);
 });
 test('transfers and share creation are reported to their listeners, and nothing else is', async () => {
     const inner = { fetchBlob: async () => new Response('blob'), fetchJson: async () => new Response('{}') };

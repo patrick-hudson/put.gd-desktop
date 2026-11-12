@@ -207,14 +207,33 @@ export class LinkOpenPGP extends OpenPGPCryptoWithCryptoProxy {
     wrapAhead(): void { this.link.wrapAhead((key, keyPassword) => super.encryptSessionKeyWithPassword(key, keyPassword)); }
 }
 // The SDK draws a link's password inside its sharing code. Its own generator is asked ahead
-// for the password `prepare` hashes, and hands that one over when the link is made. An SDK
-// without the generator where this pin has it makes links as before, unprepared.
-export function linkPasswordAhead(sdk: unknown, link: LinkAhead): (() => Promise<void>) | undefined {
+// for the password `prepare` hashes (the returned function draws one), and hands that one
+// over when the link is made. An SDK without the generator where this pin has it makes links
+// as before, unprepared.
+export function linkPasswordAhead(sdk: unknown, link: LinkAhead): (() => Promise<string>) | undefined {
     const sharing = (sdk as any)?.sharing?.management?.cryptoService;
     if (typeof sharing?.generatePublicLinkPassword !== 'function') return undefined;
     const draw: () => Promise<string> = sharing.generatePublicLinkPassword.bind(sharing);
     sharing.generatePublicLinkPassword = async () => link.take() ?? draw();
-    return async () => { link.prepare(await draw()); };
+    return draw;
+}
+// One upload's link preparation. It starts a moment after the request being made has left:
+// the hashing holds this thread, and must not hold that request back. `unused` ends it for
+// good: a start it overtook never draws a password, and a password drawn before it is not
+// hashed or kept after it.
+export function linkPreparation(link: LinkAhead, draw: (() => Promise<string>) | undefined, afterMs = AFTER_DISPATCH_MS) {
+    let current = 0;
+    return {
+        start: (): void => {
+            if (!draw) return;
+            const mine = ++current;
+            setTimeout(() => {
+                if (mine !== current) return;
+                void draw().then(password => { if (mine === current) link.prepare(password); }, () => {});
+            }, afterMs);
+        },
+        unused: (): void => { ++current; link.drop(); },
+    };
 }
 // A token refresh makes the account code forget the user and address keys it has loaded,
 // although the refreshed session is the same account's: a load under way at the refresh was
@@ -523,18 +542,17 @@ export async function openClient(opened: Awaited<ReturnType<typeof openAccount>>
         entitiesCache: entities, cryptoCache: keys,
         // One request carries a file under 128 KiB, as in Proton's own CLI at this pin.
         featureFlagProvider: { isEnabled: async flag => flag === FeatureFlags.DriveSmallFileUpload } });
-    const prepareLink = linkPasswordAhead(sdk, link);
+    const preparation = linkPreparation(link, linkPasswordAhead(sdk, link));
     return { sdk, auth: account.auth, accountReferenceExists: opened.referenceExists(),
         fresh: <R>(read: () => Promise<R>) => entities.fresh(read), warm: opened.warm, modulusAhead: opened.modulusAhead,
         // Hears of each request that carries a file's bytes, with the host it goes to.
         watchTransfers: (seen?: (host: string) => void) => { http.onTransfer = seen; },
-        // Starts the next link's password work (see LinkAhead) once the request now being
-        // made has left: the hashing holds this thread, and must not hold that request back.
-        prepareLink: () => { if (prepareLink) setTimeout(() => { void prepareLink().catch(() => link.drop()); }, AFTER_DISPATCH_MS); },
+        // Starts the next link's password work (see LinkAhead and linkPreparation).
+        prepareLink: preparation.start,
         // While a link is being made, its share's session key is wrapped beside the share's request.
         linkBeingMade: (making: boolean) => { http.onShareCreate = making ? () => setTimeout(() => pgp.wrapAhead(), AFTER_DISPATCH_MS) : undefined; },
         linkPrepared: () => link.prepared,
-        // Ends a preparation no link used: nothing of it is kept.
-        linkUnused: () => link.drop() };
+        // Ends a preparation no link used: nothing of it is kept, and none still to come is made.
+        linkUnused: preparation.unused };
 }
 export async function initialize(request: JsonObject) { return openClient(await openAccount(request), request); }

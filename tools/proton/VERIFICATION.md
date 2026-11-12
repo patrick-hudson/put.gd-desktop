@@ -411,14 +411,21 @@ one request or five for the upload, and four in sequence for the link (the
 ownership read, the share, the link and the second ownership read), each about
 0.18 to 0.26 s on a fast connection from this lab.
 
-72 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
+73 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
 stdout drain pass in provisioning; `proton_transport` (51 cases: upload hints
 and six for a session's helper passing to the next operation), `proton_contract`
 (31) and `test_operations` (122) pass on d69. Type checking reports only the
 three upstream Crypto stream declaration errors.
 
+The timings above were taken with helper `c99f3c9fb468`. One change followed
+them, from review: a link preparation is tied to its upload, so cleanup also
+stops one that has not started or is still drawing its password. It is not on
+the path of a publish that succeeds. Through the production adapter and the
+final compiled helper, two 64 KiB publishes took 1.91 and 1.77 s and one
+360 KB publish 3.68 s.
+
 The rebuilt helper is
-`c99f3c9fb468b9c510662952eef71047c2ff5490f00b300e6bf92ba8e3bb4660`, reproduced
+`ed95dc4a6d20fc8588130b84feff2c4bfc008ea900468ee31b5f5a31a9607696`, reproduced
 by two provisions on d69. `SOURCES.json` binds it and its overlay sources. The
 native relink proof and the desktop/resource acceptance still describe helper
 `9fd4d72f8635` and remain open gates (#1399).
