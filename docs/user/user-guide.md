@@ -53,7 +53,7 @@ click it to cancel, and nothing is captured. It is never in the picture.
   frozen when it ends.
 - A delayed window or monitor capture takes the window that is active, or the monitor
   under the pointer, when the countdown ends.
-- A capture started with a keyboard hotkey is always immediate.
+- A capture started with a hotkey is always immediate.
 - If the screen is locked when the countdown ends, nothing is captured.
 
 **Repeat last region** captures the same rectangle as your last region capture, with

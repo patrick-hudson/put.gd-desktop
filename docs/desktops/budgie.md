@@ -159,7 +159,7 @@ clears the binding and command, drops the path from `custom-keybindings` and
 resets the keys; quitting put.gd removes all of its entries. `gsettings` runs
 with the host environment, never the AppImage's libraries.
 
-![Settings → Hotkeys on Fedora 45 Budgie: Print reported as a conflict with Budgie's own screenshot binding](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275/images/budgie-shortcut-conflict.png)
+![Settings → Shortcuts (now Hotkeys) on Fedora 45 Budgie: Print reported as a conflict with Budgie's own screenshot binding](https://raw.githubusercontent.com/patrick-hudson/put.gd-evidence/6f522d18635d7789dc271bf3be1b5cf6bf752e43/records/2026-11-08-budgie-adapter-1275/images/budgie-shortcut-conflict.png)
 
 ## Recording
 
