@@ -461,11 +461,12 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     return strictRuns ? ref_.rowHash[y] == cur.rowHash[y] : sameRowLoose(ref_, y, cur, y, opts_);
   };
   auto refresh = [&] {
-    // The page is where it was: rows that wait for a better look (the edge
-    // guard) get this frame's, where it shows them as the same rows. What was
-    // over them when their frame was taken (a status panel that has gone
-    // since) is then not in the image.
-    for (int i = 0; moved_ && i < heldRows_; ++i) {
+    // The page is where it was, the same picture but for a few rows: rows that
+    // wait for a better look (the edge guard) get this frame's, where it shows
+    // them as the same rows. What was over them when their frame was taken (a
+    // status panel that has gone since) is then not in the image. Not after a
+    // change in place found by the search: its rows may be another page's.
+    for (int i = 0; moved_ && identical && i < heldRows_; ++i) {
       const long long y = bodyRows_ + i - refOrigin_;
       if (y < std::max(estTop_, 0) || y >= H - std::max(estBot_, 0)) continue;
       if (sameRowLoose(ref_, int(y), cur, int(y), opts_)) std::memcpy(&held_[size_t(i) * width_ * 4], f.row(int(y)), size_t(width_) * 4);
@@ -988,10 +989,22 @@ bool ScrollStitcher::columnsChanged(const FrameSignatures& cur, int top, int bot
 }
 
 // The offset of this frame: the search over the eight bands, and where that
-// finds none, the search by quarter bands (columnSearch).
+// finds none or cannot decide, the search by quarter bands (columnSearch). And where it finds
+// "changed in place" (no offset, which needs no proof): between two side bars
+// the page is what changes in a few bands of every row, and a page of short
+// lines that had moved 414 px was taken for one that stood still, twice, and
+// the capture ended as "end of content" a third short of the page's end
+// (a reference page, real desktop, 2026-11-12). The quarter bands say whether
+// the page moved after all.
 ScrollStitcher::Search ScrollStitcher::locate(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const {
   Search found = search(cur, top, bottom, hint, unc);
-  if (found.status != StepStatus::NoMatch) return found;
+  const bool inPlace = found.status == StepStatus::Appended && found.d == 0;
+  // Ambiguous as well: beside one side bar the rows of the true offset are
+  // not equal bit for bit as whole rows, a sliver at the far end of the range
+  // ties with it, and neither the exact rule nor the hint decides (the last
+  // step of an article, 51 px to the page's end, in Chromium; real desktop,
+  // 2026-11-12). The quarter bands prove the offset or leave it ambiguous.
+  if (found.status != StepStatus::NoMatch && found.status != StepStatus::Ambiguous && !inPlace) return found;
   Search byColumns = columnSearch(cur, top, bottom);
   if (byColumns.status != StepStatus::Appended) return found;
   byColumns.evaluated += found.evaluated;

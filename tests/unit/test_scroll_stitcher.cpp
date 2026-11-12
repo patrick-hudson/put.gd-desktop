@@ -1605,6 +1605,28 @@ void testLivePages() {
              fmt("%s, %d rows of %d, first wrong row %d between the bars, steps %d, scroll-backs %d [%s]", toString(s.result), s.outH, text.h, bad, s.steps, s.scrollBacks, s.error.c_str()));
     }
 
+  {
+    // Between the same side bars, a stretch of short lines (a code listing):
+    // the page changes in two bands of every row and no more, which is what
+    // "changed in place" looks like to the eight bands. It moved; the capture
+    // must not end there as if the page had.
+    Image listing(W, 3600, kBg);
+    Rng rng(33);
+    for (int y = 12; y + 16 < listing.h; y += 20) drawTextLine(listing, y, 330, 330 + rng.range(70, 230), rng);
+    Image left(260, V - 24, 0xF8F9FA), right(200, V - 24, 0xF8F9FA);
+    for (int y = 8; y + 16 < left.h; y += 22) drawTextLine(left, y, 10, 40 + rng.range(60, 200), rng);
+    for (int y = 14; y + 16 < right.h; y += 26) drawTextLine(right, y, 8, 30 + rng.range(40, 150), rng);
+    const LiveSession s = liveSession(listing, W, V, 100, [&](Image& f, const FakeApp&, int pos, int64_t) {
+      const int barTop = std::max(136 - pos, 24);
+      for (int y = barTop; y < V; ++y) {
+        std::memcpy(&f.at(60, y), left.row(y - barTop), size_t(left.w) * 4);
+        std::memcpy(&f.at(700, y), right.row(y - barTop), size_t(right.w) * 4);
+      }
+    });
+    const int bad = firstWrongRow(s, listing, 320, 700, listing.h);
+    report("session short lines between two side bars: moved, not changed in place", s.result == RunResult::EndOfContent && s.outH == listing.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d between the bars, steps %d [%s]", toString(s.result), s.outH, listing.h, bad, s.steps, s.error.c_str()));
+  }
   for (int at : {2, 5})
     for (int barRows : {40, 120}) {
       // The page's own banner, slid in over the bottom after wheel event `at`
