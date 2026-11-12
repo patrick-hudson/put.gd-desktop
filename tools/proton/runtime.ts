@@ -11,6 +11,11 @@ import { writeJson } from './stdout';
 import { createProgressReporter } from './progress';
 
 type Context = Awaited<ReturnType<typeof initialize>>;
+// The SDK sends a file under this size in one request, and a larger one in blocks.
+const SINGLE_REQUEST_BYTES = 120 * 1024;
+// The SDK's block size. A link is prepared beside an upload of one block at most: a longer
+// transfer outlasts it.
+const ONE_BLOCK_BYTES = 4 * 1024 * 1024;
 let controller = new AbortController();
 let mutationStarted = false;
 let finalWrite: Promise<void> | undefined;
@@ -172,6 +177,40 @@ async function nameStillFree(ctx: Context, folderUid: string, candidate: string)
     try { return await ctx.sdk.getAvailableName(folderUid, candidate, NodeType.File) === candidate; }
     catch { return false; }
 }
+const API_HOST = 'drive-api.proton.me';
+// A file this process uploaded moments ago was once read back, straight after its upload, as
+// not known to be its own, with no error from the service; minutes later the same read said
+// it was (desktop acceptance of #1414, one publish in about four hundred). What made that
+// first read incomplete was not established. Such a read is made again, three times at most,
+// before it is believed: only for the file this process has just uploaded, and only when the
+// service answered without an error. A file that stays incomplete still gets no link.
+let uploadedHere: { key: string; nodeUid: string; revisionUid: string; publicationId: string; at: number } | undefined;
+const REREADS = 3, REREAD_AFTER_MS = 300, JUST_UPLOADED_MS = 30000;
+async function ownershipAfterUpload(ctx: Context, request: JsonObject, justUploaded: boolean) {
+    let checked = await stat(ctx, request);
+    for (let again = 0; justUploaded && again < REREADS && !controller.signal.aborted &&
+        (checked.status === 'unknown' || checked.status === 'missing') && !Object.keys(checked.error ?? {}).length; again++) {
+        await new Promise(resolve => setTimeout(resolve, REREAD_AFTER_MS));
+        checked = await stat(ctx, request);
+    }
+    return checked;
+}
+// A file over the single-request limit goes to a storage host named only by the request
+// before its bytes. The application remembers the host its last upload used and names it in
+// the next one; the connection is then opened while the upload is being set up, instead of
+// when its bytes are ready. The request carries nothing of the account or the file. Only a
+// file of one block gets it: with several blocks sent side by side, the block on the opened
+// connection started ahead of the others and the late ones crawled (8.6 to 10.7 s for 8 MiB
+// with it, 4.5 to 6.6 s without, on the lab's uplink).
+export function transferHost(value: unknown): string | undefined {
+    return typeof value === 'string' && /^[a-z0-9-]{1,48}\.proton\.me$/.test(value) && value !== API_HOST ? value : undefined;
+}
+function openTransferConnection(host: string) {
+    // A GET whose answer is read to its end: the HTTP client keeps that connection for the
+    // request that follows, which it does not after a HEAD.
+    void fetch(`https://${host}/`, { signal: AbortSignal.timeout(5000) })
+        .then(response => response.arrayBuffer()).catch(() => {});
+}
 export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {
     if (request.condition !== 'absent') throw new ProtocolError('unsupported_condition');
     const artifact = object(request.artifact);
@@ -195,7 +234,18 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
         const after = await file.stat();
         if (sha256.digest('hex') !== artifact.sha256 || after.size !== initial.size || after.mtimeMs !== initial.mtimeMs)
             throw new ProtocolError('artifact_changed');
-        mutationStarted = true;
+        mutationStarted = true; ctx.connectionSettled();
+        let sentTo: string | undefined;
+        // The link that follows this upload needs its password hashed: that starts when the
+        // file's bytes go out, and is ready when they have arrived.
+        let prepare = request.linkFollows === true && !request.destination.settings.sharePasswordReference &&
+            artifact.bytes <= ONE_BLOCK_BYTES;
+        ctx.watchTransfers(host => {
+            if (host !== API_HOST) sentTo = host;
+            if (prepare) { prepare = false; ctx.prepareLink(); }
+        });
+        const hinted = artifact.bytes > SINGLE_REQUEST_BYTES && artifact.bytes <= ONE_BLOCK_BYTES ? transferHost(request.transferHostHint) : undefined;
+        if (hinted) openTransferConnection(hinted);
         try {
             const uploader = await ctx.sdk.getFileUploader(folder.uid, request.candidate, {
                 mediaType: artifact.mime, expectedSize: artifact.bytes, expectedSha1: sha1.digest('hex'),
@@ -209,8 +259,13 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
             // plaintext artifact bytes or infer publication from its counter.
             const pending = await uploader.uploadFromStream(stream, [], bytes => uploadProgress?.report(bytes));
             const completed = await pending.completion();
-            return status('uploaded', { receipt: makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid) });
+            const made = makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid);
+            uploadedHere = { key: destinationKey(request), nodeUid: completed.nodeUid, revisionUid: completed.nodeRevisionUid,
+                publicationId: request.publicationId, at: performance.now() };
+            const usedHost = transferHost(sentTo);
+            return status('uploaded', { receipt: made, ...(usedHost ? { transferHost: usedHost } : {}) });
         } catch (error) {
+            ctx.linkUnused();
             if (error instanceof NodeWithSameNameExistsValidationError) return status('collision', { error: error.isUnfinishedUpload ? failure('upload_draft_conflict') : {} });
             if (deadlineExpired) return status('unknown', { error: deadlineError() });
             const refused = serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
@@ -219,7 +274,7 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
                 return status('failed', { error: refused });
             return status('unknown', { error: refused });
         }
-    } finally { try { await uploadProgress.finish(); } finally { await file.close(); } }
+    } finally { ctx.watchTransfers(); try { await uploadProgress.finish(); } finally { await file.close(); } }
 }
 export async function share(ctx: Context, request: JsonObject) {
     const proof = receipt(request), options = object(request.options);
@@ -228,7 +283,10 @@ export async function share(ctx: Context, request: JsonObject) {
     const expirationDays = days(options.expirationDays ?? settings.linkExpirationDays ?? 0);
     const passwordReference = options.passwordReference === undefined ? settings.sharePasswordReference : options.passwordReference;
     if (passwordReference !== null && passwordReference !== undefined) text(passwordReference);
-    const checked = await stat(ctx, request);
+    const here = uploadedHere, ref = proof.objectReference;
+    const justUploaded = options.action === 'create' && !!here && here.key === destinationKey(request) && here.nodeUid === ref.nodeUid &&
+        here.revisionUid === ref.revisionUid && here.publicationId === proof.publicationId && performance.now() - here.at < JUST_UPLOADED_MS;
+    const checked = await ownershipAfterUpload(ctx, request, justUploaded);
     if (checked.status !== 'own') return { ...shareOutcome(proof, options.action, '', checked.status), error: checked.error };
     let customPassword: string | undefined;
     if (options.action === 'create' && passwordReference) {
@@ -248,26 +306,28 @@ export async function share(ctx: Context, request: JsonObject) {
         let info;
         if (options.action === 'inspect') info = await ctx.sdk.getSharingInfo(uid);
         else {
-            mutationStarted = true;
-            if (options.action === 'create') modulusUnused = ctx.modulusAhead();
+            mutationStarted = true; ctx.connectionSettled();
+            // A link prepared during the upload has its modulus already.
+            if (options.action === 'create' && !(ctx.linkPrepared() && !customPassword)) modulusUnused = ctx.modulusAhead();
+            ctx.linkBeingMade(options.action === 'create');
             info = options.action === 'revoke' ? await ctx.sdk.unshareNode(uid, { urlAccess: 'remove' }) :
                 await ctx.sdk.shareNode(uid, { urlAccess: { role: MemberRole.Viewer, customPassword,
                     expiration: expirationDays ? new Date(Date.now() + expirationDays * 86400000) : undefined } });
         }
         // URL is returned intact by the SDK, including its capability fragment. Never reconstruct it.
         const directUrl = info?.urlAccess?.url ?? '';
-        const after = await stat(ctx, request);
+        const after = await ownershipAfterUpload(ctx, request, justUploaded);
         return { ...shareOutcome(proof, options.action, directUrl, after.status, info?.urlAccess?.expirationTime), error: after.error };
     } catch (error) {
         const result = shareOutcome(proof, options.action, '', 'unknown');
         result.error = deadlineExpired ? deadlineError() : serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
         return result;
-    } finally { customPassword = undefined; modulusUnused(); }
+    } finally { customPassword = undefined; modulusUnused(); ctx.linkBeingMade(false); ctx.linkUnused(); }
 }
 export async function createFolder(ctx: Context, request: JsonObject): Promise<JsonObject> {
     const folderName = name(request.options?.name ?? request.candidate);
     const root = await accountRoot(ctx, request, !!request.destination.settings.accountRootUid);
-    mutationStarted = true;
+    mutationStarted = true; ctx.connectionSettled();
     try {
         const folder = await ctx.sdk.createFolder(root.uid, folderName);
         return { uid: folder.uid, name: folderName, accountRootUid: root.uid };
@@ -323,6 +383,8 @@ async function run(request: JsonObject): Promise<JsonObject> {
     }
     if (request.method === 'warm' && !sessions) throw new ProtocolError('unsupported_request');
     const ctx = await context(request);
+    // What an upload prepared serves the link that follows it, and nothing else.
+    if (request.method !== 'share') { ctx.linkUnused(); uploadedHere = undefined; }
     // A session started ahead of its first request signs in, opens its connections and reads
     // the account. It changes nothing, and the requests after it still make their own reads.
     if (request.method === 'warm') {

@@ -37,6 +37,10 @@ bool nodeUid(const QString& value) {
  static const QRegularExpression pattern("^([A-Za-z0-9=_-]{88,108}|[A-Za-z0-9_-]{22})~([A-Za-z0-9=_-]{88,108}|[A-Za-z0-9_-]{22})$");
  return pattern.match(value).hasMatch();
 }
+bool storageHost(const QString& value) {
+ static const QRegularExpression pattern("^[a-z0-9-]{1,48}\\.proton\\.me$");
+ return value!=QLatin1String("drive-api.proton.me")&&pattern.match(value).hasMatch();
+}
 QString runtimePath() {
  const auto app=QCoreApplication::applicationDirPath();
  if(app==QString::fromUtf8(PUTGD_PROTON_BUILD_APP_DIR))return QString::fromUtf8(PUTGD_PROTON_BUILD_RUNTIME);
@@ -83,6 +87,8 @@ struct ProtonProvider::Helper {
  bool warming=false;
  // Which helper started ahead this is: an address can be used again, a number is not.
  quint64 serial=0;
+ // A finished session passed it on to an operation that had asked for the account meanwhile.
+ bool passedOn=false;
  // Lets a helper nobody will ask again end by itself. It finishes what it is doing first:
  // a helper killed while it refreshes the session loses the account. `hurry` ends the wait.
  void finish(const std::function<bool()>& hurry){
@@ -97,7 +103,30 @@ struct ProtonProvider::Helper {
   process.closeInput();if(!process.waitForFinished(2000)){process.kill();process.waitForFinished(5000);}
  }
 };
-struct ProtonProvider::Session {QString reference;std::unique_ptr<Helper> helper;};
+// Helpers that wait for a request, by keychain reference: one started ahead of its operation,
+// or one a finished session passed on. `asked` counts the operations that wanted a helper
+// started ahead while the account's session had it.
+struct ProtonProvider::Waiting {
+ std::mutex mutex;std::map<QString,std::unique_ptr<Helper>> helpers;std::map<QString,int> asked;bool closed=false;
+};
+struct ProtonProvider::Session {
+ QString reference;std::unique_ptr<Helper> helper;std::shared_ptr<Waiting> waiting;
+ // An operation that has registered for this account (see anticipate) gets the session's
+ // helper, signed in and connected, instead of a new one. Only a helper that waits for its
+ // next request, and has said nothing since its last clean answer, is passed on; any other
+ // ends here, as does every helper no registered operation is left to take. The session's
+ // own operation is registered too, so its helper waits until that operation ends and is
+ // retired then if no other took it.
+ ~Session(){
+  if(!helper||!waiting||!helper->lines)return;
+  auto& process=helper->process;
+  if(!process.running()||!process.outputOpen()||process.waitForReadable(0))return;
+  std::lock_guard lock(waiting->mutex);
+  if(waiting->closed||!waiting->asked.count(reference)||waiting->helpers.count(reference))return;
+  helper->warming=false;helper->serial=0;helper->passedOn=true;
+  waiting->helpers[reference]=std::move(helper);
+ }
+};
 namespace {
 // One session per provider and thread: an operation's requests all run on its own thread.
 QHash<const ProtonProvider*,std::weak_ptr<void>>& threadSessions() {thread_local QHash<const ProtonProvider*,std::weak_ptr<void>> sessions;return sessions;}
@@ -112,12 +141,12 @@ bool settled(HelperProcess& process,int milliseconds,const std::function<bool()>
  return answer.endsWith('\n')&&answer.count('\n')==1&&value.size()==2&&value["ok"].toBool()&&value["result"].isObject()&&value["result"].toObject()["error"].toObject().isEmpty();
 }
 }
-ProtonProvider::ProtonProvider()=default;
+ProtonProvider::ProtonProvider():waiting_(std::make_shared<Waiting>()){}
 ProtonProvider::~ProtonProvider() {
  stopping_.store(true);
  if(verifier_.joinable())verifier_.join();
  std::map<QString,std::unique_ptr<Helper>> unused;
- {std::lock_guard lock(standbyMutex_);unused.swap(standby_);}
+ {std::lock_guard lock(waiting_->mutex);waiting_->closed=true;unused.swap(waiting_->helpers);}
  for(auto& entry:unused)retire(std::move(entry.second));
  std::unique_lock lock(retiringMutex_);retired_.wait(lock,[this]{return retiring_==0;});
 }
@@ -128,7 +157,7 @@ void ProtonProvider::prepare() {
 std::shared_ptr<void> ProtonProvider::openSession(const Destination& destination) {
  const auto reference=destination.credentialReference["reference"].toString();
  if(reference.isEmpty()||threadSessions().value(this).lock())return {};
- auto opened=std::make_shared<Session>();opened->reference=reference;threadSessions().insert(this,opened);return opened;
+ auto opened=std::make_shared<Session>();opened->reference=reference;opened->waiting=waiting_;threadSessions().insert(this,opened);return opened;
 }
 std::shared_ptr<ProtonProvider::Session> ProtonProvider::session(const QString& reference) const {
  auto current=std::static_pointer_cast<Session>(threadSessions().value(this).lock());
@@ -165,25 +194,49 @@ void ProtonProvider::retire(std::unique_ptr<Helper> helper) {
  }).detach();
 }
 std::unique_ptr<ProtonProvider::Helper> ProtonProvider::takeStandby(const QString& reference) {
- std::lock_guard lock(standbyMutex_);
- const auto found=standby_.find(reference);if(found==standby_.end())return {};
- auto helper=std::move(found->second);standby_.erase(found);return helper;
+ std::lock_guard lock(waiting_->mutex);
+ const auto found=waiting_->helpers.find(reference);if(found==waiting_->helpers.end())return {};
+ auto helper=std::move(found->second);waiting_->helpers.erase(found);return helper;
 }
 std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination) {
  const auto reference=destination.credentialReference["reference"].toString();
  if(stopping_.load()||destination.credentialReference["mode"]!="keychain"||reference.isEmpty())return {};
- {std::lock_guard lock(standbyMutex_);if(standby_.count(reference))return {};}
+ // Every operation registers that it will ask, for as long as it lives: a session's helper is
+ // passed on when the session ends (see Session) while a registered operation may take it.
+ // That includes the operation that starts a helper below, because another operation's
+ // session may take that helper first, and this one then asks for it afterwards. It registers
+ // before it looks, so a session that ends meanwhile still passes its helper on.
+ {std::lock_guard lock(waiting_->mutex);++waiting_->asked[reference];}
+ std::shared_ptr<void> registered(this,[this,waiting=waiting_,reference](void*){
+  std::unique_ptr<Helper> unused;
+  {
+   std::lock_guard lock(waiting->mutex);
+   const auto asked=waiting->asked.find(reference);
+   if(asked==waiting->asked.end()||--asked->second>0)return;
+   waiting->asked.erase(asked);
+   // Nobody is left to ask a helper that was passed on and not taken.
+   const auto found=waiting->helpers.find(reference);
+   if(found!=waiting->helpers.end()&&found->second->passedOn){unused=std::move(found->second);waiting->helpers.erase(found);}
+  }
+  retire(std::move(unused));
+ });
+ bool waitingAlready=false;
+ {std::lock_guard lock(waiting_->mutex);waitingAlready=waiting_->helpers.count(reference)>0;}
+ if(waitingAlready)return registered;
  // Never waits: not for the account, and not for the runtime's hash if it is not known yet.
- Error unused;auto helper=start(reference,true,0,false,{},unused);if(!helper)return {};
+ Error refused;auto helper=start(reference,true,0,false,{},refused);
+ if(!helper)return refused.code=="proton_account_busy"?registered:std::shared_ptr<void>{};
  const auto warm=QJsonDocument(QJsonObject{{"schemaVersion",1},{"method","warm"},{"destination",destination.toJson()}}).toJson(QJsonDocument::Compact)+'\n';
  if(helper->process.write(warm,0)!=warm.size()){helper->process.kill();return {};}
  static std::atomic<quint64> serials{0};
  helper->warming=true;const auto mine=helper->serial=++serials;
- {std::lock_guard lock(standbyMutex_);standby_[reference]=std::move(helper);}
- return std::shared_ptr<void>(this,[this,reference,mine](void*){
+ {std::lock_guard lock(waiting_->mutex);waiting_->helpers[reference]=std::move(helper);}
+ // The helper it started ends with the operation if nobody took it; then its registration ends.
+ return std::shared_ptr<void>(this,[this,waiting=waiting_,reference,mine,registered](void*) mutable {
   std::unique_ptr<Helper> unused;
-  {std::lock_guard lock(standbyMutex_);const auto found=standby_.find(reference);if(found!=standby_.end()&&found->second->serial==mine){unused=std::move(found->second);standby_.erase(found);}}
+  {std::lock_guard lock(waiting->mutex);const auto found=waiting->helpers.find(reference);if(found!=waiting->helpers.end()&&found->second->serial==mine){unused=std::move(found->second);waiting->helpers.erase(found);}}
   retire(std::move(unused));
+  registered.reset();
  });
 }
 QProcessEnvironment ProtonProvider::helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory) {
@@ -262,8 +315,10 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
    // Account setup takes the account for itself, once the waiting helper has ended.
    ready->finish([&]{return stopping_.load()||(cancelled&&cancelled->load());});ready.reset();
   }else if(ready){
-   // Its warm-up answer comes before ours. One that is late, refused or unclear ends that helper.
-   const bool usable=!ready->warming||settled(ready->process,qMin(timeout,30000),[&]{return stopping_.load()||(cancelled&&cancelled->load());});
+   // A helper started ahead answers its warm-up before our request: one that is late, refused
+   // or unclear ends that helper. One a session passed on has nothing left to say.
+   const bool usable=ready->warming?settled(ready->process,qMin(timeout,30000),[&]{return stopping_.load()||(cancelled&&cancelled->load());})
+     :ready->process.outputOpen()&&!ready->process.waitForReadable(0);
    if(usable&&ready->process.running())ready->warming=false;
    else{ready->process.kill();ready->process.waitForFinished(5000);ready.reset();}
   }
@@ -332,7 +387,13 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
 void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply,std::shared_ptr<std::atomic_bool> cancellation){Error e;auto r=call("checkName",d,{{"candidate",name}},e,cancellation);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
  if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton cannot safely replace a recorded file revision",{}}});return;}
- Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain,req.progress);
+ QJsonObject params{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}};
+ if(req.linkFollows)params["linkFollows"]=true;
+ const auto account=req.destination.credentialReference["reference"].toString();
+ {std::lock_guard lock(transferHostsMutex_);const auto known=transferHosts_.value(account);if(!known.isEmpty())params["transferHostHint"]=known;}
+ Error e;bool uncertain=false;auto r=call("upload",req.destination,params,e,req.cancellation,{},&uncertain,req.progress);
+ // Only a Proton storage host is remembered, whatever the answer names.
+ if(const auto used=r["transferHost"].toString();!e&&storageHost(used)){std::lock_guard lock(transferHostsMutex_);transferHosts_.insert(account,used);}
  auto error=e?e:parseError(r["error"].toObject());
  // The plan's per-file limit is Proton's own (#147): name the file's size beside it.
  if(error.code=="destination_file_too_large_for_plan"){

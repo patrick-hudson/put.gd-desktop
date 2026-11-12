@@ -4,7 +4,7 @@
   "distributionReady": true,
   "published": true,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
-  "helperSha256": "3a5167cbe44c854b53d10a40e1e91f5094dc2d1cf4f950213dcb970b21324d48",
+  "helperSha256": "42e1decb6d718e2640f0a419b3d135a3755f65a27e66682126ed16a2f6581065",
   "sourcePins": {
     "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
     "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -113,12 +113,12 @@
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "32db7988dac152d6ab9cbbab171ca2b18f640483d632b515314d28a33d40b501"
+        "sha256": "84785618528e5fa15e5a44e172fa0ba249e933b6389a295d915c95b1c8efd018"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "0a9a26dc05d09b2c844fe998863994cdf16daf6ad407e49f0523df035f842b10"
+        "sha256": "54c82199fd4adbbaf75006164d62d538fa08bb2effae93f2234d1dbb297ab97f"
       },
       {
         "source": "tools/proton/protocol.ts",
@@ -133,7 +133,7 @@
       {
         "source": "tools/proton/account.ts",
         "destination": "build-source/account.ts",
-        "sha256": "c22f2a73f412f82da3af1b69059576dd5b542dd402e12303e9a6884006268e03"
+        "sha256": "ccf6d7ae4f8a4810da7f5c9ed94d700a6cdbe98e49f49301d366ec3720a66f20"
       },
       {
         "source": "tools/proton/crypto-cache.ts",

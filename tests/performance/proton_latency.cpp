@@ -60,6 +60,8 @@ int main(int argc,char** argv){
  QElapsedTimer elapsed;elapsed.start();NameCheck check;provider.checkName(destination,candidate,[&](auto result){check=result;});report("checkName",elapsed.elapsed(),check.status,check.error);if(check.status!="absent"||check.error)return 1;
  Artifact artifact;artifact.id=id;artifact.path=payload.fileName();artifact.name=candidate;artifact.mime="application/octet-stream";artifact.category="other";artifact.bytes=bytes.size();artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  UploadRequest upload;upload.destination=destination;upload.artifact=artifact;upload.candidate=candidate;upload.publicationId=id;upload.condition="absent";upload.objectReference=check.objectReference;
+ // As in an application operation that shares: the link's local work starts beside the transfer.
+ upload.linkFollows=!qEnvironmentVariableIntValue("PUTGD_PROBE_NO_LINK_AHEAD");
  QFile progressFile(QDir(output.absoluteFilePath()).filePath("upload-progress.jsonl"));
  if(!progressFile.open(QIODevice::WriteOnly|QIODevice::NewOnly))return 2;
  if(!progressFile.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return 2;

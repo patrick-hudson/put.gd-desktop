@@ -1,12 +1,17 @@
-import { expect, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
+import http2 from 'node:http2';
+import zlib from 'node:zlib';
+import type { AddressInfo } from 'node:net';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
-import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, stat, upload, share, serviceFailure } from './runtime';
+import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, stat, upload, share, serviceFailure, transferHost } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
-import { SharedAccountReads, saveToKeychain } from './account';
+import { LINK_AHEAD_MS, LinkAhead, LinkOpenPGP, SLOW_ANSWER_MS, SharedAccountReads, fastestConnectionFetch, keepUserDataAcrossRefresh, linkPasswordAhead, linkPreparation, saveToKeychain } from './account';
+import { initSharingModule } from '@protontech/drive-sdk/internal/sharing';
+import { Addresses } from 'proton-drive-sdk-account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
 import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
@@ -50,10 +55,16 @@ function folder(uid: string, parentUid?: string): NodeEntity {
 // This proves their branching and scope, not a live account or desktop gate.
 function context(options: { rootUid?: string; listedUids?: string[]; listThrows?: boolean; batchThrows?: boolean } = {}) {
     const calls: Call[] = [];
-    let listCompleted = false;
+    let listCompleted = false, linkPrepared = false, settledBeforeChange = 0, transfers: ((host: string) => void) | undefined;
     const ctx = { auth: { isLoggedIn: () => true }, fresh: (read: () => Promise<unknown>) => read(),
         warm: () => { calls.push({ method: 'warm', args: [] }); },
-        modulusAhead: () => { calls.push({ method: 'modulus', args: [] }); return () => { calls.push({ method: 'modulus-unused', args: [] }); }; }, sdk: {
+        modulusAhead: () => { calls.push({ method: 'modulus', args: [] }); return () => { calls.push({ method: 'modulus-unused', args: [] }); }; },
+        watchTransfers: (seen?: (host: string) => void) => { transfers = seen; },
+        prepareLink: () => { calls.push({ method: 'prepare-link', args: [] }); linkPrepared = true; },
+        linkBeingMade: (making: boolean) => { calls.push({ method: 'link-being-made', args: [making] }); },
+        linkPrepared: () => linkPrepared,
+        linkUnused: () => { calls.push({ method: 'link-unused', args: [] }); linkPrepared = false; },
+        connectionSettled: () => { ++settledBeforeChange; }, sdk: {
         // The batched read: the root as the service names it, and each node the single-node
         // stub answers. A node whose lookup the stub refuses is absent from the batch.
         iterateNodes: async function* (uids: string[]) {
@@ -85,7 +96,8 @@ function context(options: { rootUid?: string; listedUids?: string[]; listThrows?
             listCompleted = true;
         },
     } } as unknown as Context;
-    return { ctx, calls, listCompleted: () => listCompleted };
+    return { ctx, calls, listCompleted: () => listCompleted, transfer: (host: string) => transfers?.(host), watching: () => !!transfers,
+        prepared: (value: boolean) => { linkPrepared = value; }, settledBeforeChange: () => settledBeforeChange };
 }
 function statRequest(): JsonObject {
     const upload = { schemaVersion: 1, method: 'upload', destination: {
@@ -523,4 +535,616 @@ test('a session shares only good My files and root share answers between its cli
     // Another share, another method and every other read still reach the service each time.
     for (let i = 0; i < 2; i++) { await get('drive/shares/file-share'); await get('drive/shares/root-share', 'DELETE'); await get('drive/v2/volumes/v/links', 'POST'); }
     expect(calls.length).toBe(12);
+});
+
+function srpStub() {
+    const calls: string[] = [];
+    let salts = 0, failing = false;
+    const inner = {
+        generateKeySalt: () => { calls.push('salt'); return 'salt-' + ++salts; },
+        computeKeyPassword: async (password: string, salt: string) => { calls.push('key ' + password + ' ' + salt); if (failing) throw new Error('synthetic'); return 'key(' + password + ',' + salt + ')'; },
+        getSrpVerifier: async (password: string) => { calls.push('verifier ' + password); if (failing) throw new Error('synthetic'); return { modulusId: 'm', version: 4, salt: 's', verifier: 'v(' + password + ')' }; },
+        getSrp: async () => { calls.push('srp'); return { expectedServerProof: '', clientProof: '', clientEphemeral: '' }; },
+    };
+    return { inner, calls, fail: (value: boolean) => { failing = value; } };
+}
+test('a prepared link answers the SDK for exactly the password and salt it hashed, once', async () => {
+    const stub = srpStub();
+    let now = 0;
+    const link = new LinkAhead(stub.inner as any, () => now);
+    link.prepare('drawn');
+    expect(stub.calls).toEqual(['salt', 'key drawn salt-1', 'verifier drawn']);
+    // Before the SDK takes the password, every call is the account code's own.
+    expect(link.generateKeySalt()).toBe('salt-2');
+    expect(await link.computeKeyPassword('drawn', 'salt-1')).toBe('key(drawn,salt-1)');
+    expect(stub.calls.length).toBe(5);
+    expect(link.take()).toBe('drawn');
+    // The salt it was hashed with is given once, and the two answers are not computed again.
+    expect(link.generateKeySalt()).toBe('salt-1'); expect(link.generateKeySalt()).toBe('salt-3');
+    expect(await link.computeKeyPassword('drawn', 'salt-1')).toBe('key(drawn,salt-1)');
+    expect((await link.getSrpVerifier('drawn')).verifier).toBe('v(drawn)');
+    expect(stub.calls.length).toBe(6);
+    // A password with the user's own added, or another salt, is hashed in line.
+    expect(await link.computeKeyPassword('drawn-own', 'salt-1')).toBe('key(drawn-own,salt-1)');
+    expect(await link.computeKeyPassword('drawn', 'salt-9')).toBe('key(drawn,salt-9)');
+    expect((await link.getSrpVerifier('drawn-own')).verifier).toBe('v(drawn-own)');
+    expect(stub.calls.length).toBe(9);
+    // It is handed over once, and nothing of it is left after `drop`.
+    expect(link.take()).toBeUndefined(); expect(link.prepared).toBe(false);
+    link.prepare('second'); link.drop();
+    expect(link.take()).toBeUndefined();
+    expect((await link.getSrpVerifier('second')).verifier).toBe('v(second)');
+});
+test('a prepared link is not used once its modulus is old, and a failed preparation is made again in line', async () => {
+    const stub = srpStub();
+    let now = 0;
+    const link = new LinkAhead(stub.inner as any, () => now);
+    link.prepare('old'); now = LINK_AHEAD_MS + 1;
+    expect(link.take()).toBeUndefined(); expect(link.prepared).toBe(false);
+    stub.fail(true); link.prepare('failed'); await Promise.resolve();
+    stub.fail(false); now += 1;
+    expect(link.take()).toBe('failed');
+    const salt = link.generateKeySalt();
+    expect(await link.computeKeyPassword('failed', salt)).toBe('key(failed,' + salt + ')');
+    expect((await link.getSrpVerifier('failed')).verifier).toBe('v(failed)');
+});
+test('the share session key is wrapped ahead for the prepared password only, and only that wrap is reused', async () => {
+    const stub = srpStub();
+    const link = new LinkAhead(stub.inner as any, () => 0);
+    const wraps: string[] = [];
+    const wrap = (key: any, password: string) => { wraps.push(key.id + ' ' + password); return Promise.resolve({ keyPacket: new Uint8Array([wraps.length]) }); };
+    const inline = (key: any, password: string) => () => wrap(key, password);
+    const share = { id: 'share-key' } as any, other = { id: 'other-key' } as any;
+    // Nothing prepared: no key is remembered and nothing is wrapped ahead.
+    link.sessionKeyMade(share); link.wrapAhead(wrap);
+    expect(wraps).toEqual([]);
+    link.prepare('drawn'); link.sessionKeyMade(other); link.sessionKeyMade(share); link.wrapAhead(wrap);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(wraps).toEqual(['share-key key(drawn,salt-1)']);
+    // A key made after the wrap began does not replace the one being wrapped.
+    link.sessionKeyMade(other); link.wrapAhead(wrap);
+    // Before the SDK has taken the password the wrap is not handed out.
+    expect((await link.wrapped(share, 'key(drawn,salt-1)', inline(share, 'key(drawn,salt-1)'))).keyPacket[0]).toBe(2);
+    link.take();
+    expect((await link.wrapped(share, 'key(drawn,salt-1)', inline(share, 'unused'))).keyPacket[0]).toBe(1);
+    expect((await link.wrapped(other, 'key(drawn,salt-1)', inline(other, 'key(drawn,salt-1)'))).keyPacket[0]).toBe(3);
+    expect((await link.wrapped(share, 'another', inline(share, 'another'))).keyPacket[0]).toBe(4);
+    expect(wraps.length).toBe(4);
+});
+test('the OpenPGP module reports session keys and asks for the wrap made ahead', async () => {
+    const stub = srpStub();
+    const link = new LinkAhead(stub.inner as any, () => 0);
+    const asked: string[] = [];
+    const proxy = { generateSessionKey: async () => ({ data: new Uint8Array(32), algorithm: 'aes256' }),
+        encryptSessionKey: async (options: { passwords?: string[] }) => { asked.push(options.passwords?.[0] ?? ''); return new Uint8Array([asked.length]); } };
+    const pgp = new LinkOpenPGP(proxy as any, link);
+    link.prepare('drawn');
+    const key = await pgp.generateSessionKey([], { enableAeadWithEncryptionKeys: false });
+    pgp.wrapAhead(); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(asked).toEqual(['key(drawn,salt-1)']);
+    link.take();
+    expect((await pgp.encryptSessionKeyWithPassword(key as any, 'key(drawn,salt-1)')).keyPacket[0]).toBe(1);
+    expect((await pgp.encryptSessionKeyWithPassword(key as any, 'another')).keyPacket[0]).toBe(2);
+    expect(asked).toEqual(['key(drawn,salt-1)', 'another']);
+});
+test('the pinned SDK draws a link password where the helper takes it over', async () => {
+    const sharing = initSharingModule({ getLogger: () => ({}) } as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const stub = srpStub();
+    const link = new LinkAhead(stub.inner as any, () => 0);
+    const draw = linkPasswordAhead({ sharing }, link);
+    expect(draw).toBeDefined();
+    const prepare = async () => { link.prepare(await draw!()); };
+    const generator = (sharing.management as any).cryptoService;
+    // Unprepared, the SDK's own generator answers: twelve characters of its alphabet.
+    const plain = await generator.generatePublicLinkPassword();
+    expect(plain).toMatch(/^[A-Za-z0-9]{12}$/); expect(link.prepared).toBe(false);
+    await prepare();
+    const drawn = stub.calls.find(call => call.startsWith('verifier '))!.slice('verifier '.length);
+    expect(drawn).toMatch(/^[A-Za-z0-9]{12}$/); expect(drawn).not.toBe(plain);
+    expect(await generator.generatePublicLinkPassword()).toBe(drawn);
+    expect(await generator.generatePublicLinkPassword()).not.toBe(drawn);
+    // An SDK without the generator there leaves links unprepared instead of failing.
+    expect(linkPasswordAhead({ sharing: { management: {} } }, link)).toBeUndefined();
+    expect(linkPasswordAhead({}, link)).toBeUndefined();
+});
+test('a link preparation ended before it began, or before its password was drawn, leaves nothing', async () => {
+    const stub = srpStub();
+    const link = new LinkAhead(stub.inner as any, () => 0);
+    const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    let draws = 0, release: (password: string) => void = () => {};
+    const draw = () => { ++draws; return new Promise<string>(resolve => { release = resolve; }); };
+    const account = linkPreparation(link, 10);
+    const preparation = { start: () => account.start(draw), unused: account.unused };
+    // Ended before its start came due: no password is drawn.
+    preparation.start(); preparation.unused();
+    await pause(30);
+    expect(draws).toBe(0); expect(link.prepared).toBe(false);
+    // Ended while the password was being drawn: it is not hashed or kept.
+    preparation.start(); await pause(30);
+    expect(draws).toBe(1);
+    preparation.unused(); release('late'); await pause(5);
+    expect(link.prepared).toBe(false); expect(stub.calls).toEqual([]);
+    // A start made after an earlier one supersedes it, and only its password is prepared.
+    preparation.start(); await pause(30);
+    const first = release;
+    preparation.start(); await pause(30);
+    first('superseded'); release('current'); await pause(5);
+    expect(link.prepared).toBe(true); expect(link.take()).toBe('current');
+    expect(stub.calls.filter(call => call.startsWith('verifier '))).toEqual(['verifier current']);
+    // A draw that fails prepares nothing, and an SDK without the generator starts nothing.
+    preparation.unused();
+    account.start(() => Promise.reject(new Error('synthetic'))); await pause(30);
+    expect(link.prepared).toBe(false);
+    account.start(undefined); await pause(30);
+    expect(link.prepared).toBe(false);
+    // Another client's cleanup ends a preparation the first client started: there is one per account.
+    const other = { unused: account.unused };
+    preparation.start(); other.unused(); await pause(30);
+    expect(draws).toBe(3); expect(link.prepared).toBe(false);
+});
+test('transfers and share creation are reported to their listeners, and nothing else is', async () => {
+    const inner = { fetchBlob: async () => new Response('blob'), fetchJson: async () => new Response('{}') };
+    const reads = new SharedAccountReads(inner as any);
+    const seen: string[] = [];
+    reads.onTransfer = host => { seen.push('transfer ' + host); };
+    reads.onShareCreate = () => { seen.push('share'); };
+    await reads.fetchBlob({ url: 'https://fra-storage.proton.me/storage/blocks', method: 'POST', body: new Blob() } as any);
+    await reads.fetchBlob({ url: 'https://fra-storage.proton.me/storage/blocks/x', method: 'GET' } as any);
+    await reads.fetchJson({ url: 'https://drive-api.proton.me/drive/v2/volumes/v/files/small', method: 'POST', body: new FormData() } as any);
+    await reads.fetchJson({ url: 'https://drive-api.proton.me/drive/v2/volumes/v/files', method: 'POST', json: {} } as any);
+    await reads.fetchJson({ url: 'https://drive-api.proton.me/drive/volumes/v/shares', method: 'POST', json: {} } as any);
+    await reads.fetchJson({ url: 'https://drive-api.proton.me/drive/volumes/v/shares', method: 'GET' } as any);
+    await reads.fetchJson({ url: 'https://drive-api.proton.me/drive/shares/s/urls', method: 'POST', json: {} } as any);
+    expect(seen).toEqual(['transfer fra-storage.proton.me', 'transfer drive-api.proton.me', 'share']);
+    // A listener that throws never fails the transfer it heard of.
+    reads.onTransfer = () => { throw new Error('synthetic'); };
+    expect(await (await reads.fetchBlob({ url: 'https://fra-storage.proton.me/storage/blocks', method: 'POST' } as any)).text()).toBe('blob');
+});
+test('only a Proton storage host is named as a transfer host or accepted as a hint', () => {
+    expect(transferHost('fra-storage.proton.me')).toBe('fra-storage.proton.me');
+    for (const value of ['drive-api.proton.me', 'proton.me', 'storage.proton.me.example.org', 'a.b.proton.me', 'FRA-storage.proton.me',
+        'fra-storage.proton.me:8443', 'user@fra-storage.proton.me', 'fra-storage.proton.me/path', '', undefined, 7, null])
+        expect(transferHost(value)).toBeUndefined();
+});
+async function uploadWith(fields: JsonObject, transfers: string[], bytes = 65536) {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-link-ahead-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(bytes, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    const fetched: string[] = [], direct = globalThis.fetch;
+    (globalThis as any).fetch = async (url: string) => { fetched.push(url); return new Response(''); };
+    try {
+        const stub = context();
+        (stub.ctx.sdk as any).getFileUploader = async () => ({
+            uploadFromStream: async (stream: ReadableStream) => {
+                const reader = stream.getReader();
+                while (!(await reader.read()).done) {}
+                for (const host of transfers) stub.transfer(host);
+                return { completion: async () => ({ nodeUid: 'file-node', nodeRevisionUid: 'file-revision' }) };
+            },
+        });
+        const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent', ...fields,
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+        return { result, calls: stub.calls.map(call => call.method), fetched, watching: stub.watching() };
+    } finally { (globalThis as any).fetch = direct; await rm(directory, { recursive: true, force: true }); }
+}
+test('an upload a link follows prepares that link once, when its bytes go out', async () => {
+    const followed = await uploadWith({ linkFollows: true }, ['drive-api.proton.me', 'drive-api.proton.me']);
+    expect(followed.result.status).toBe('uploaded');
+    expect(followed.calls.filter(call => call === 'prepare-link').length).toBe(1);
+    expect(followed.watching).toBe(false);
+    // The single-request upload goes to the API host: no storage host is named.
+    expect(followed.result.transferHost).toBeUndefined();
+    const alone = await uploadWith({}, ['drive-api.proton.me']);
+    expect(alone.calls).not.toContain('prepare-link');
+    const stub = statRequest();
+    const withPassword = await uploadWith({ linkFollows: true, destination: { ...stub.destination,
+        settings: { ...stub.destination.settings, sharePasswordReference: 'putgd/share-password' } } }, ['drive-api.proton.me']);
+    expect(withPassword.calls).not.toContain('prepare-link');
+});
+test('a block upload names its storage host, and opens a hinted one before its bytes are ready', async () => {
+    const big = 200 * 1024;
+    const first = await uploadWith({ linkFollows: true }, ['fra-storage.proton.me'], big);
+    expect(first.result.transferHost).toBe('fra-storage.proton.me'); expect(first.fetched).toEqual([]);
+    expect(first.calls.filter(call => call === 'prepare-link').length).toBe(1);
+    const hinted = await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['fra-storage.proton.me'], big);
+    expect(hinted.fetched).toEqual(['https://fra-storage.proton.me/']);
+    // A hint that is not a Proton storage host is ignored, and a small file opens nothing.
+    expect((await uploadWith({ transferHostHint: 'storage.example.org' }, ['fra-storage.proton.me'], big)).fetched).toEqual([]);
+    expect((await uploadWith({ transferHostHint: 'drive-api.proton.me' }, ['fra-storage.proton.me'], big)).fetched).toEqual([]);
+    expect((await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['drive-api.proton.me'])).fetched).toEqual([]);
+    // A file of more than one block opens nothing: its blocks start together.
+    expect((await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['fra-storage.proton.me'], 4 * 1024 * 1024 + 1)).fetched).toEqual([]);
+    expect((await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['fra-storage.proton.me'], 4 * 1024 * 1024)).fetched).toEqual(['https://fra-storage.proton.me/']);
+    // A host the service names that is not Proton's is not passed on.
+    expect((await uploadWith({}, ['storage.example.org'], big)).result.transferHost).toBeUndefined();
+});
+test('a failed upload ends its link preparation', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-link-failed-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    try {
+        const stub = context();
+        (stub.ctx.sdk as any).getFileUploader = async () => ({
+            uploadFromStream: async () => { stub.transfer('drive-api.proton.me'); throw new ServerError('synthetic'); },
+        });
+        const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent', linkFollows: true,
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+        expect(result.status).toBe('unknown');
+        const calls = stub.calls.map(call => call.method);
+        expect(calls.indexOf('link-unused')).toBeGreaterThan(calls.indexOf('prepare-link'));
+        expect(stub.watching()).toBe(false);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+});
+test('a link prepared ahead reads no modulus of its own, and its preparation ends with the request', async () => {
+    const prepared = sharingContext(); prepared.prepared(true);
+    expect((await share(prepared.ctx, prepared.request)).status).toBe('shared');
+    const calls = prepared.calls.map(call => call.method === 'link-being-made' ? 'making ' + call.args[0] : call.method);
+    expect(calls).not.toContain('modulus');
+    expect(calls.indexOf('making true')).toBeLessThan(calls.indexOf('share'));
+    expect(calls.slice(calls.indexOf('share')).filter(call => call === 'making false' || call === 'link-unused')).toEqual(['making false', 'link-unused']);
+    // Unprepared, the modulus is still read beside the share's creation, and both reads of the file are made.
+    const plain = sharingContext();
+    expect((await share(plain.ctx, plain.request)).status).toBe('shared');
+    expect(plain.calls.map(call => call.method)).toContain('modulus'); expect(plain.reads()).toBe(2);
+    expect(prepared.reads()).toBe(2);
+});
+test('a token refresh keeps the user data load of the same session, and of no other', async () => {
+    const listeners: (() => void)[] = [];
+    let uid: string | undefined = 'session', loggedIn = true;
+    const credentials = { on: (_: 'sessionInfoChanged', callback: () => void) => { listeners.push(callback); },
+        isLoggedIn: () => loggedIn, get uid() { return uid; }, getUserKeyPassword: () => 'synthetic' };
+    const attach = keepUserDataAcrossRefresh(credentials);
+    let users = 0;
+    const api = { users: () => { ++users; return new Promise(() => {}); }, addresses: async () => ({ Addresses: [] }) };
+    // The pinned account code keeps its load in `userDataPromise` and forgets it on every session change.
+    const addresses = new Addresses(api as any, credentials as any, {} as any, { debug: () => {}, error: () => {} } as any);
+    attach(addresses);
+    const changed = () => { for (const listener of listeners) listener(); };
+    void addresses.getOwnPrimaryAddress().catch(() => {});
+    await Promise.resolve();
+    const loading = (addresses as any).userDataPromise;
+    expect(loading).toBeInstanceOf(Promise); expect(users).toBe(1);
+    changed();
+    expect((addresses as any).userDataPromise).toBe(loading);
+    void addresses.getOwnPrimaryAddress().catch(() => {}); await Promise.resolve();
+    expect(users).toBe(1);
+    // Another account's session, or a signed-out one, keeps nothing.
+    uid = 'another'; changed();
+    expect((addresses as any).userDataPromise).toBeUndefined();
+    void addresses.getOwnPrimaryAddress().catch(() => {}); await Promise.resolve();
+    expect(users).toBe(2);
+    loggedIn = false; changed();
+    expect((addresses as any).userDataPromise).toBeUndefined();
+});
+
+// A synthetic service: every connection has a number, and answers after its own delay.
+type Seen = { connection: number; method: string; path: string; body: string; headers: http2.IncomingHttpHeaders };
+const servers: http2.Http2Server[] = [];
+afterEach(() => { for (const server of servers.splice(0)) server.close(); });
+async function service(delay: (connection: number) => number, status: (seen: Seen) => number = () => 200) {
+    const seen: Seen[] = [], sessions: http2.ServerHttp2Session[] = [];
+    const server = http2.createServer();
+    servers.push(server);
+    server.on('session', session => { sessions.push(session); session.on('error', () => {}); });
+    server.on('stream', (stream, headers) => {
+        const connection = sessions.indexOf(stream.session as http2.ServerHttp2Session) + 1, path = String(headers[':path']);
+        stream.on('error', () => {});
+        // A stream that ends without an answer.
+        if (path === '/lost') { stream.close(http2.constants.NGHTTP2_INTERNAL_ERROR); return; }
+        let body = '';
+        stream.on('data', chunk => { body += chunk; });
+        stream.on('end', () => {
+            const request = { connection, method: String(headers[':method']), path, body, headers };
+            seen.push(request);
+            setTimeout(() => {
+                const out = stream as http2.ServerHttp2Stream;
+                if (out.destroyed || out.closed) return;
+                const code = status(request), answer = JSON.stringify({ connection, path });
+                if (path === '/gzip') { out.respond({ ':status': code, 'content-encoding': 'gzip', 'x-connection': String(connection) }); out.end(zlib.gzipSync(answer)); return; }
+                if (path === '/coded') { out.respond({ ':status': code, 'content-encoding': 'synthetic' }); out.end(answer); return; }
+                out.respond({ ':status': code, 'content-type': 'application/json', 'x-connection': String(connection) });
+                out.end(code === 204 ? undefined : answer);
+            }, delay(connection));
+        });
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    return { origin, seen, sessions, open: () => sessions.filter(session => !session.closed && !session.destroyed).length };
+}
+function directStub() {
+    const calls: string[] = [];
+    const direct = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const request = new Request(input as RequestInfo, init);
+        calls.push(request.method + ' ' + new URL(request.url).pathname + (request.body ? ' ' + await request.text() : ''));
+        return new Response('direct');
+    }) as typeof fetch;
+    return { direct, calls };
+}
+const settle = (ms = 60) => new Promise(resolve => setTimeout(resolve, ms));
+const connectionOf = (response: Response) => Number(response.headers.get('x-connection'));
+
+test('the first read is sent on every candidate, and the connection that answers first carries the rest', async () => {
+    const backend = await service(connection => connection === 3 ? 5 : 80);
+    const { direct, calls } = directStub();
+    const api = fastestConnectionFetch(backend.origin, direct, { candidates: 4 });
+    // Requests made while the choice is under way wait for it instead of opening connections of their own.
+    const [first, beside] = await Promise.all([api(backend.origin + '/core/v4/addresses?Page=0', { headers: { 'x-pm-uid': 'synthetic' } }),
+        api(backend.origin + '/core/v4/users')]);
+    expect(first.status).toBe(200); expect(connectionOf(first)).toBe(3);
+    expect(await first.json()).toEqual({ connection: 3, path: '/core/v4/addresses?Page=0' });
+    expect(connectionOf(beside)).toBe(3);
+    await settle();
+    // The other candidates are closed. Only the read was ever sent more than once.
+    expect(backend.open()).toBe(1); expect(backend.sessions.length).toBe(4);
+    expect(backend.seen.filter(request => request.path.startsWith('/core/v4/addresses')).every(request => request.method === 'GET')).toBe(true);
+    // Every later request, with its body and fields, is a stream on the kept connection.
+    const posted = await api(backend.origin + '/drive/v2/volumes/v/links', { method: 'POST', body: JSON.stringify({ LinkIDs: ['a'] }),
+        headers: { 'content-type': 'application/json', authorization: 'Bearer synthetic' } });
+    expect(connectionOf(posted)).toBe(3);
+    const sent = backend.seen.find(request => request.method === 'POST')!;
+    expect(sent.body).toBe('{"LinkIDs":["a"]}'); expect(sent.headers.authorization).toBe('Bearer synthetic');
+    expect(sent.headers['content-type']).toBe('application/json'); expect(sent.headers['accept-encoding']).toBe('gzip');
+    const form = new FormData(); form.set('Metadata', new Blob(['{}'], { type: 'application/json' }), 'Metadata'); form.set('ContentBlock', new Blob([new Uint8Array(200000)]), 'ContentBlock');
+    expect(connectionOf(await api(backend.origin + '/drive/v2/volumes/v/files/small', { method: 'POST', body: form }))).toBe(3);
+    const multipart = backend.seen.at(-1)!;
+    expect(String(multipart.headers['content-type'])).toStartWith('multipart/form-data; boundary='); expect(multipart.body.length).toBeGreaterThan(200000);
+    // A compressed answer is read as the ordinary client reads it, and an empty one stays empty.
+    const packed = await api(backend.origin + '/gzip');
+    expect(await packed.json()).toEqual({ connection: 3, path: '/gzip' }); expect(packed.headers.get('content-encoding')).toBeNull();
+    expect(backend.sessions.length).toBe(4); expect(calls).toEqual([]);
+});
+test('requests to other origins and a first request that is not a read go to the ordinary client', async () => {
+    const backend = await service(() => 5);
+    const { direct, calls } = directStub();
+    const api = fastestConnectionFetch(backend.origin, direct, { candidates: 3 });
+    expect(await (await api('https://fra-storage.proton.me/storage/blocks', { method: 'POST', body: 'block' })).text()).toBe('direct');
+    // It is handed on as it came: the very request object, never read or copied here.
+    const handed: unknown[] = [];
+    const passing = fastestConnectionFetch(backend.origin, (async (input: unknown, init?: unknown) => { handed.push(input, init); return new Response('direct'); }) as typeof fetch);
+    const block = new Request('https://zrh-storage.proton.me/storage/blocks', { method: 'POST', body: new Uint8Array(1024) }), options = { keepalive: true };
+    await passing(block, options);
+    expect(handed[0]).toBe(block); expect(handed[1]).toBe(options); expect(block.bodyUsed).toBe(false);
+    // A request that changes something is never sent more than once: it chooses nothing.
+    expect(await (await api(backend.origin + '/auth/v4/refresh', { method: 'POST', body: '{}' })).text()).toBe('direct');
+    expect(backend.sessions.length).toBe(0);
+    expect(calls).toEqual(['POST /storage/blocks block', 'POST /auth/v4/refresh {}']);
+    expect(connectionOf(await api(backend.origin + '/core/v4/users'))).toBeGreaterThan(0);
+    expect(connectionOf(await api(backend.origin + '/auth/v4/refresh', { method: 'POST', body: '{}' }))).toBeGreaterThan(0);
+    expect(calls.length).toBe(2);
+});
+test('an expired token still chooses a connection, and later answers are returned as the service gave them', async () => {
+    const backend = await service(connection => connection === 1 ? 5 : 80, seen => seen.path === '/expired' ? 401 : seen.path === '/empty' ? 204 : seen.path === '/missing' ? 404 : 200);
+    const api = fastestConnectionFetch(backend.origin, directStub().direct, { candidates: 2 });
+    const refused = await api(backend.origin + '/expired');
+    expect(refused.status).toBe(401); expect(refused.ok).toBe(false);
+    const empty = await api(backend.origin + '/empty');
+    expect(empty.status).toBe(204); expect(await empty.text()).toBe('');
+    expect(connectionOf(empty)).toBe(connectionOf(refused));
+    expect((await api(backend.origin + '/missing')).status).toBe(404);
+});
+test('the ordinary client takes over for good when no candidate connects, answers in time or answers as the API does', async () => {
+    const { direct, calls } = directStub();
+    // Nothing listens there.
+    const refused = fastestConnectionFetch('http://127.0.0.1:9', direct, { candidates: 3 });
+    expect(await (await refused('http://127.0.0.1:9/core/v4/users')).text()).toBe('direct');
+    expect(await (await refused('http://127.0.0.1:9/core/v4/users')).text()).toBe('direct');
+    const slow = await service(() => 400);
+    const late = fastestConnectionFetch(slow.origin, direct, { candidates: 2, chooseWithinMs: 50 });
+    expect(await (await late(slow.origin + '/core/v4/users')).text()).toBe('direct');
+    await settle();
+    expect(slow.open()).toBe(0);
+    expect(await (await late(slow.origin + '/core/v4/users')).text()).toBe('direct');
+    // An answer that is neither a success nor an expired token chooses nothing: the service
+    // may not want these connections, and the ordinary client is asked the same read.
+    const changed = await service(() => 5, () => 503);
+    const unwelcome = fastestConnectionFetch(changed.origin, direct, { candidates: 2 });
+    expect(await (await unwelcome(changed.origin + '/core/v4/users')).text()).toBe('direct');
+    expect(await (await unwelcome(changed.origin + '/drive/v2/volumes/v/links', { method: 'POST', body: '{}' })).text()).toBe('direct');
+    await settle();
+    expect(changed.open()).toBe(0); expect(calls.length).toBe(6);
+    // So does an answer in a coding the helper cannot read.
+    const coded = await service(() => 5);
+    const unreadable = fastestConnectionFetch(coded.origin, direct, { candidates: 2 });
+    expect(await (await unreadable(coded.origin + '/coded')).text()).toBe('direct');
+});
+test('a failed request retires the kept connection, and is sent again only when that is safe', async () => {
+    const { direct, calls } = directStub();
+    const start = async () => {
+        const backend = await service(() => 5);
+        const api = fastestConnectionFetch(backend.origin, direct, { candidates: 2 });
+        expect(connectionOf(await api(backend.origin + '/core/v4/users'))).toBeGreaterThan(0);
+        return { backend, api };
+    };
+    // A read that fails is asked of the ordinary client, as is everything after it.
+    let { backend, api } = await start();
+    expect(await (await api(backend.origin + '/lost')).text()).toBe('direct');
+    expect(await (await api(backend.origin + '/core/v4/users')).text()).toBe('direct');
+    expect(calls).toEqual(['GET /lost', 'GET /core/v4/users']);
+    // A change lost after it was sent may have happened: it fails as a lost connection does, and is not repeated.
+    ({ backend, api } = await start());
+    const before = calls.length;
+    let failure: unknown;
+    try { await api(backend.origin + '/lost', { method: 'POST', body: '{}' }); } catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(TypeError); expect((failure as Error).message).toBe('fetch failed');
+    expect(calls.length).toBe(before);
+    expect(await (await api(backend.origin + '/core/v4/users')).text()).toBe('direct');
+    // A connection the service closed carries nothing more.
+    ({ backend, api } = await start());
+    await settle();
+    for (const session of backend.sessions) session.destroy();
+    await settle();
+    expect(await (await api(backend.origin + '/drive/v2/volumes/v/links', { method: 'POST', body: '{}' })).text()).toBe('direct');
+});
+test('a first connection that is not on a fast backend is replaced by one that is', async () => {
+    // The first round's two connections answer slowly; the second round's fourth connection is fast.
+    const backend = await service(connection => connection === 4 ? 5 : SLOW_ANSWER_MS + 80);
+    const { direct, calls } = directStub();
+    const api = fastestConnectionFetch(backend.origin, direct, { candidates: 2 });
+    const first = await api(backend.origin + '/core/v4/users');
+    expect([1, 2]).toContain(connectionOf(first));
+    // Requests go on with the first connection while a better one is looked for.
+    expect(connectionOf(await api(backend.origin + '/drive/v2/shares/my-files'))).toBe(connectionOf(first));
+    await settle(SLOW_ANSWER_MS + 250);
+    expect(connectionOf(await api(backend.origin + '/drive/v2/shares/my-files'))).toBe(4);
+    await settle();
+    expect(backend.open()).toBe(1); expect(backend.sessions.length).toBe(4); expect(calls).toEqual([]);
+    // When the second round finds nothing faster, the first connection stays.
+    const even = await service(() => SLOW_ANSWER_MS + 80);
+    const same = fastestConnectionFetch(even.origin, direct, { candidates: 2 });
+    const kept = connectionOf(await same(even.origin + '/core/v4/users'));
+    await settle(2 * SLOW_ANSWER_MS + 350);
+    expect(connectionOf(await same(even.origin + '/core/v4/users'))).toBe(kept);
+    expect(even.open()).toBe(1); expect(even.sessions.length).toBe(4);
+    // A fast first connection looks no further.
+    const quick = await service(() => 5);
+    const fine = fastestConnectionFetch(quick.origin, direct, { candidates: 2 });
+    await fine(quick.origin + '/core/v4/users'); await settle(150);
+    expect(quick.sessions.length).toBe(2);
+});
+test('a cancelled request ends its stream and rejects as the ordinary client would', async () => {
+    const slow = await service(() => 300);
+    const waiting = fastestConnectionFetch(slow.origin, directStub().direct, { candidates: 1 });
+    await waiting(slow.origin + '/core/v4/users');
+    const controller = new AbortController();
+    const pending = waiting(slow.origin + '/drive/v2/volumes/v/links', { method: 'POST', body: '{}', signal: controller.signal });
+    setTimeout(() => controller.abort(), 30);
+    let failure: unknown;
+    try { await pending; } catch (error) { failure = error; }
+    expect((failure as Error)?.name).toBe('AbortError');
+    // The connection outlives the cancelled request.
+    expect((await waiting(slow.origin + '/core/v4/users')).status).toBe(200);
+    const already = new AbortController(); already.abort();
+    let refused: unknown;
+    try { await waiting(slow.origin + '/core/v4/users', { signal: already.signal }); } catch (error) { refused = error; }
+    expect((refused as Error)?.name).toBe('AbortError');
+});
+test('a read cancelled while the choice is under way keeps no connection', async () => {
+    const backend = await service(() => 200);
+    const { direct, calls } = directStub();
+    const api = fastestConnectionFetch(backend.origin, direct, { candidates: 3 });
+    const controller = new AbortController();
+    const pending = api(backend.origin + '/core/v4/users', { signal: controller.signal });
+    setTimeout(() => controller.abort(), 40);
+    let failure: unknown;
+    try { await pending; } catch (error) { failure = error; }
+    expect((failure as Error)?.name).toBe('AbortError');
+    await settle();
+    expect(backend.open()).toBe(0);
+    expect(await (await api(backend.origin + '/core/v4/users')).text()).toBe('direct');
+    expect(calls.length).toBe(1);
+});
+
+// A connection whose streams end as the test says, to exercise what a real service rarely does.
+function scriptedConnection(end: (stream: any, session: any) => void) {
+    const listeners = (target: any) => { const map = new Map<string, ((...args: any[]) => void)[]>();
+        target.on = target.once = (name: string, run: (...args: any[]) => void) => { map.set(name, [...(map.get(name) ?? []), run]); return target; };
+        target.emit = (name: string, ...args: any[]) => { for (const run of map.get(name) ?? []) run(...args); }; return target; };
+    let streams = 0;
+    const session: any = listeners({ closed: false, destroyed: false, destroy() { session.destroyed = true; }, close() { session.closed = true; },
+        ping(done: (error: Error | null, ms: number) => void) { done(null, 0); },
+        request(headers: Record<string, string>) {
+            const stream: any = listeners({ id: 2 * streams++ + 1, rstCode: 0, path: headers[':path'], close() {}, end() { queueMicrotask(() => end(stream, session)); } });
+            if (!headers[':method'] || headers[':method'] === 'GET') queueMicrotask(() => end(stream, session));
+            return stream;
+        } });
+    queueMicrotask(() => session.emit('connect'));
+    return session;
+}
+const answered = (stream: any) => { stream.emit('response', { ':status': 200 }); stream.emit('data', Buffer.from('{}')); stream.emit('end'); stream.emit('close'); };
+test('a change the service says it never acted on is sent again on the ordinary client', async () => {
+    for (const refusal of ['refused', 'http/1.1 required', 'shut down before it']) {
+        const { direct, calls } = directStub();
+        const api = fastestConnectionFetch('http://synthetic.invalid', direct, { candidates: 1, connect: () => scriptedConnection((stream, session) => {
+            if (stream.path !== '/change') { answered(stream); return; }
+            if (refusal === 'refused') stream.rstCode = http2.constants.NGHTTP2_REFUSED_STREAM;
+            else if (refusal === 'http/1.1 required') stream.rstCode = http2.constants.NGHTTP2_HTTP_1_1_REQUIRED;
+            else session.emit('goaway', 0, stream.id - 2);
+            stream.emit('end'); stream.emit('close');
+        }) });
+        expect((await api('http://synthetic.invalid/core/v4/users')).status).toBe(200);
+        expect(await (await api('http://synthetic.invalid/change', { method: 'POST', body: '{"Name":"x"}' })).text()).toBe('direct');
+        expect(calls).toEqual(['POST /change {"Name":"x"}']);
+        // The connection is retired with it.
+        expect(await (await api('http://synthetic.invalid/core/v4/users')).text()).toBe('direct');
+    }
+    // A stream the service had already counted when it shut down may have been acted on: not repeated.
+    const { direct, calls } = directStub();
+    const api = fastestConnectionFetch('http://synthetic.invalid', direct, { candidates: 1, connect: () => scriptedConnection((stream, session) => {
+        if (stream.path !== '/change') { answered(stream); return; }
+        session.emit('goaway', 0, stream.id); stream.emit('end'); stream.emit('close');
+    }) });
+    await api('http://synthetic.invalid/core/v4/users');
+    let failure: unknown;
+    try { await api('http://synthetic.invalid/change', { method: 'POST', body: '{}' }); } catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(TypeError); expect(calls).toEqual([]);
+});
+
+test('a connection is not replaced once the caller is about to change something', async () => {
+    // As above, only the second round's fourth connection is fast; the caller settles before it is found.
+    const backend = await service(connection => connection === 4 ? 5 : SLOW_ANSWER_MS + 80);
+    const api = fastestConnectionFetch(backend.origin, directStub().direct, { candidates: 2 });
+    const first = connectionOf(await api(backend.origin + '/core/v4/users'));
+    api.settle();
+    await settle(SLOW_ANSWER_MS + 300);
+    expect(connectionOf(await api(backend.origin + '/drive/v2/volumes/v/files', { method: 'POST', body: '{}' }))).toBe(first);
+    await settle();
+    expect(backend.open()).toBe(1);
+    // Settled before the first connection's ping came back: no second round is begun at all.
+    const untouched = await service(() => SLOW_ANSWER_MS + 80);
+    const early = fastestConnectionFetch(untouched.origin, directStub().direct, { candidates: 2 });
+    const answered = early(untouched.origin + '/core/v4/users'); early.settle();
+    await answered; await settle(SLOW_ANSWER_MS + 250);
+    expect(untouched.sessions.length).toBe(2);
+});
+test('a file this process just uploaded is read again before an incomplete read of it is believed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-reread-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    const sha256 = createHash('sha256').update(data).digest('hex');
+    const prepared = (incompleteReads: number) => {
+        const stub = sharingContext();
+        const whole = (stub.ctx.sdk as any).getNode;
+        let fileReads = 0;
+        // The file is read back without its revision for the first reads, then whole.
+        (stub.ctx.sdk as any).getNode = async (uid: string) => {
+            const node = await whole(uid);
+            if (uid === 'folder') return node;
+            if (++fileReads <= incompleteReads) return { ...node, activeRevision: undefined };
+            return { ...node, activeRevision: { ...node.activeRevision, claimedAdditionalMetadata: { putgd: { publicationId: 'publication', sha256 } } } };
+        };
+        (stub.ctx.sdk as any).getFileUploader = async () => ({ uploadFromStream: async (stream: ReadableStream) => {
+            const reader = stream.getReader(); while (!(await reader.read()).done) {}
+            return { completion: async () => ({ nodeUid: 'file-node', nodeRevisionUid: 'file-revision' }) };
+        } });
+        const request = { ...stub.request, receipt: { ...stub.request.receipt, objectReference: { ...stub.request.receipt.objectReference, sha256 } } };
+        const uploaded = (publicationId = 'publication') => upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent', publicationId,
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256 } });
+        return { stub, request, uploaded, fileReads: () => fileReads };
+    };
+    try {
+        // The last file this process uploaded was another: the first incomplete read stands, and nothing is changed.
+        let run = prepared(1);
+        expect((await run.uploaded('an-earlier-publication')).status).toBe('uploaded');
+        expect(run.stub.settledBeforeChange()).toBe(1);
+        expect((await share(run.stub.ctx, run.request)).status).toBe('unknown');
+        expect(run.fileReads()).toBe(1); expect(run.stub.mutations()).toBe(0);
+        // Just uploaded here: the read is made again, the link is made, and the read after it too.
+        run = prepared(1);
+        expect((await run.uploaded()).status).toBe('uploaded');
+        const shared = await share(run.stub.ctx, run.request);
+        expect(shared.status).toBe('shared'); expect(run.fileReads()).toBe(3); expect(run.stub.mutations()).toBe(1);
+        // The upload and the link each settled the connection before changing anything.
+        expect(run.stub.settledBeforeChange()).toBe(2);
+        // A file that stays incomplete gets no link: four reads, no change.
+        run = prepared(99);
+        expect((await run.uploaded()).status).toBe('uploaded');
+        expect((await share(run.stub.ctx, run.request)).status).toBe('unknown');
+        expect(run.fileReads()).toBe(4); expect(run.stub.mutations()).toBe(0);
+        // Another file's link, and a link asked for after another request, are read once.
+        run = prepared(1);
+        expect((await run.uploaded()).status).toBe('uploaded');
+        const other = { ...run.request, receipt: { ...run.request.receipt, publicationId: 'another-publication' } };
+        expect((await share(run.stub.ctx, other)).status).not.toBe('shared');
+        expect(run.fileReads()).toBe(1);
+    } finally { await rm(directory, { recursive: true, force: true }); }
 });
