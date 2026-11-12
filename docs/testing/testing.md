@@ -277,3 +277,103 @@ on loopback and a loopback destination may be answered with loopback addresses: 
 refusal of a returned address that is, or resolves to, this computer. Both are covered
 by tables in `http_uploader_rules` (`thisMachineInEverySpelling`,
 `namesThatResolveToThisMachine`, `addressesAReplyMayName`).
+
+## Scrolling capture suites
+
+A wrong stitch looks like a valid image, and the feature sends input to a live desktop, so
+these suites compare pixels and check what is injected. None of them is desktop proof. The
+design is in [scrolling capture](../design/scroll-capture.md).
+
+- `scroll_stitcher_contract` (`tests/unit/test_scroll_stitcher.cpp`, on the synthetic application in
+  `tests/fixtures/ScrollSynthetic.*`; no display): the stitcher and `ScrollRun` together. Plain,
+  sticky header and footer, hover, caret, scrollbar, dropped events, end bounce, flat and blank
+  regions, near-periodic text, numbered lines whose digits sit in the side margin, a short line scrolled
+  under a painted pointer, a jump past the whole viewport that must not be accepted on a sliver of
+  rows, a stream that goes quiet or answers late, scroll to the top (overscroll, Stop on the way up
+  with and without a painted pointer, a way up longer than the old 15 s that still reaches the top,
+  a top that is not reached in its time or on a page that never rests and must not end as
+  `EndOfContent`), end proof by a fresh frame, recovery and the limits. `testReviewFrameProofs`
+  adds the height cap with a sticky footer (never above the cap; the first viewport's prefix when
+  the cap cannot hold the footer), a frame-size change ending as `LayoutChanged`, the top proved again
+  on a switch of pointer target, and fresh-frame proof after a retry. `testLayoutChange` covers the
+  layout rule: a viewport that gets narrower or shorter, or a bar that pins itself to the bottom,
+  after rows were committed (at four step sizes through the stitcher and at three wheel distances and
+  two moments through `ScrollRun`) must end `lost_track` with an image that is only the document's
+  first rows and never `EndOfContent`, and the same change in place; the mirror cases must still end
+  `EndOfContent` exact: margins and bands that were always there, a resize on the way to the top, a bar
+  pinned from the first scroll on, a scrollbar that fades and a blinking cursor; a bar pinned after rows
+  were taken from under it ends `lost_track` with an exact prefix. `testLivePages` (48 checks) covers
+  what real web pages did: a sticky header of 48, 80 and 120 rows that comes after 150 px, at three
+  wheel distances; a link panel over the bottom rows under a pointer that cannot leave (the edge guard
+  alone) and one that waits outside; a line blended into the rectangle's last row; the pointer coming in
+  just inside the edge it waits beyond, with the centre next where nothing scrolls there; a page
+  between two side bars that stick, with and without a header, and short lines between the same bars;
+  a banner of 40 and 120 rows that slides in and becomes the footer (window background that comes up is
+  still a change of layout); a minimap at a third of the page's rate, at three wheel distances, from the
+  top and from the end, which must end `lost_track`, and what must still run to the end (a strip that never
+  moves, a side bar that sticks after 90, 150 and 400 px, a video in a column); the edge guard at the
+  stitcher; tables that repeat and a step that moved farther than the overlap (`tieHintTolerance`); lines
+  that begin alike between two side bars; a page that answers the wheel at once (the response wait counted
+  from the wheel step); and a column of tens digits under a faint tint where nothing moved. The fixtures'
+  `FakeAppSpec::scene` is a page that knows where it is scrolled to, the clock and the pointer.
+  The session `session a page slower than the wait is not at its end` (`busyMsPerNotch` of 60, 120
+  and 250 ms, with the first notch shown at once or not, 24 runs) is a page that works through its
+  wheel notches one by one and paints once none is waiting: the whole page exact, or an honest end
+  with an exact prefix, never `EndOfContent` early (the end proof). `session a step seen halfway is
+  not matched beside its hint` (`splitInjection` of 2 to 4, a table that repeats, 12 runs) is the
+  short-step rule. `PUTGD_SCROLL_STITCHER_TRACE=<name part>` prints the steps of the slow runs.
+  `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
+  It is in the contract lists of `cmake/TestPolicy.cmake`.
+- `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
+  `LocalServer` and the production `putgd-cli` against a fake backend. The session's states, the
+  journal entry before the first frame, `scroll_active` for a screenshot or a recording started during one,
+  `scroll_busy` and `scroll_not_found`, a fake GNOME Shell that selects the region and places the bar
+  (`select`, `overlay`, `start` in order), Stop keeps and Cancel discards, the cap warning and the
+  History note, `top_not_reached` (kept, warned, noted, `topReached: false`, also after Stop and the
+  cap; `end_of_content` with an unproved top refused), a start held for put.gd's own notices to go,
+  admission refusing a wrong hash, size or IHDR, and (review round on #1398) the helper's own auto-start
+  honouring the notification hold, `noSelectorNoCapture` (a build with no selector refuses `scroll.prepare` with `scroll_unavailable`, reason `region_unavailable`, with a rectangle as well as without one: nothing prepared, no session; it replaced `noSelectorNeedsARectangle`), Cancel accepted while
+  `start` or `stop` is pending, `cancelInFlightDecides` (a Cancel that is on its way decides the end:
+  a Stop that arrives after it, a Stop refused or finished with its image while it is on its way, and a
+  `finished` event meanwhile all end the session cancelled with no image, other commands are
+  `scroll_busy`, and the next capture is admitted), and the helper released once the PNG is validated, before the upload queue
+  is done.
+- `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
+  private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`, a window of 40 px rows each
+  painted as a bar code with its number, through `ximagesrc` and XTest. The PNG must decode to every row once and in
+  order, with the expected height: plain, sticky bands, from the top or from the row on screen, a late
+  tail, the cap, Stop, Cancel, Esc, a selector or `select`, a region too small, a page that does not
+  scroll. An XInput 2 listener shows that only wheel steps and pointer motion are injected, only while
+  capturing, and nothing after Stop, Cancel or the end of the control pipe. There is no compositor
+  or window manager, so it does not establish Cinnamon behaviour.
+- `budgie_labwc_integration`: the product's virtual pointer, mapped to a real headless labwc output,
+  sends a wheel notch that reaches a window as a wheel step (15.0, discrete 1) and no button press.
+  `tools/lab/wayland_pointer.py axis` sends the same over the whole layout.
+- `native_tray_integration`: put.gd's own notices are closed and followed to confirmation before a capture
+  starts, and stay held across a late `ended`; on a `quickshell` server the shell's dismissal command runs once per summary with the
+  server's own `XDG_RUNTIME_DIR`.
+- `gui_tray` (`tests/gui/test_tray.cpp`): a scroll capture holds delayed Qt notifications on a real
+  D-Bus connection (a pending `Notify`, a pending server lookup, a failed close, the fallback balloon,
+  a permanent close error, an expired notification); a close that cannot succeed fails the start with
+  `notification_close_failed` and nothing is started.
+- `gui_history_view` (`tests/gui/test_history_view.cpp`, `scrollNoteKeepsFailuresVisible`): an upload
+  or local-save failure leads the status text and the scroll note follows it.
+- `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
+  component spec.
+- `gnome_core_transport_integration` and `gnome_ui_ownership_contract`: a scroll frame carries
+  `beat: true` and a recording frame does not; the extension's 40 ms 1×1 actor exists only while such
+  a frame shows. `scroll` is in the extension's `ACTIONS`.
+- Desktop entries and packages: `kde_ownership_integration` and `record_identity_contract` pin
+  `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input` and the first `Exec` token of
+  `putgd-record.desktop`; `tests/unit/test_portable_appimage.py` pins the same list in AppRun's per-mount entry and
+  that the AppImage bundles `libxcb-xtest.so.0`.
+- Settings, schema, UI and MCP: `tests/unit/test_settings.cpp` (preferences, bounds, the `scroll` route),
+  `tests/integration/test_config_schema.py`, `tests/gui/test_settings_capture.cpp` (the two Settings controls, the
+  capability badge), and `tests/integration/test_mcp.py` (the three tools, `scroll` in `perform_action`, forwarding parity,
+  every end reason named by `get_scroll_capture`, and a `top_not_reached` view passed through unchanged).
+  That file is not a CTest entry: run it with the MCP SDK's Python and `PUTGD_CLI` and `PUTGD_APP` set
+  to the built `putgd-cli` and `putgd`.
+
+`test_scroll_capture_driver` (`tests/fixtures/scroll_capture_driver.cpp`) is a lab tool, not a test:
+it runs one capture through the production backend and helper without a resident, and
+`PUTGD_RECORD_DEBUG_LOG` gives the helper's timeline (each stitch attempt's geometry, never pixels).

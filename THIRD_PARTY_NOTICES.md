@@ -47,7 +47,8 @@ capture sends its wheel steps through are vendored the same way:
 `c11408942e2fb54d41dadb84cdf844331076ae11`, Copyright 2019 Josef Gajdusek, MIT-style), installed as
 `share/doc/putgd/wayland-wlr-virtual-pointer-unstable-v1.xml`, and KWin's `fake-input.xml` from
 plasma-wayland-protocols 1.17.0 (Copyright 2015 Martin Gräßlin, LGPL-2.1-or-later), installed as
-`share/doc/putgd/wayland-fake-input.xml`.
+`share/doc/putgd/wayland-fake-input.xml`. The native packages and the AppImage also ship the
+LGPL 2.1 text for that file as `share/doc/putgd/LGPL-2.1.txt`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt

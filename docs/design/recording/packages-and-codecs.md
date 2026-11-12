@@ -99,8 +99,9 @@ mount. Only the helper sets these, so host programs started by put.gd (the
 browser behind a notification) keep the host's GStreamer. On Plasma, AppRun
 writes a second temporary private entry next to the ScreenShot2 one,
 `putgd-record-appimage-XXXXXXXX.desktop` with `Exec` naming the mounted
-`putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1`,
-so KWin offers its screencast protocol to the helper; both entries are removed
+`putgd-record` and `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input`,
+so KWin offers its screencast protocol, and through Plasma 6.7 the fake input protocol a
+[scrolling capture](../scroll-capture.md) turns the wheel with, to the helper; both entries are removed
 on exit. The assembly audit runs the relocated helper's probe and fails unless
 every required element loads from the image's plugin directory only, the
 H.264 decoder opens, all four formats export, the bundled `x264enc`,

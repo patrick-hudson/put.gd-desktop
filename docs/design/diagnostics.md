@@ -131,6 +131,7 @@ Records at the default level:
 - **Notifications:** `Notification shown` (`putgd.ui`) for each toast, with a
   `notificationId` counted from 1 in each resident, a `summary` code (the error code
   for a failure, `operation_completed`, `operation_failed`, `recording_budget_stopped`,
+  `scroll_height_cap`, `scroll_top_not_reached`,
   `diagnostics_saved` and so on), the `title` and the text as `notificationText`,
   which a package hashes unless `includeNames` is set. `Tray tooltip changed` is a
   debug record with the tooltip's `title` and `activity` lines.

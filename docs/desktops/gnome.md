@@ -204,7 +204,28 @@ title `put.gd recording controls`) out of the rectangle with
 `move_frame`/`make_above`. The bar is accepted only when its process's parent
 (from `/proc/PID/stat`) is the authenticated resident, so a request cannot move
 another application's window. `HideRecordingFrame` removes the actors; a
-disable, a lock or the resident leaving the bus does the same. Mutter offers
+disable, a lock or the resident leaving the bus does the same.
+
+Placing the bar takes several waits: up to 2 s for its window to appear, up to
+1 s for it to be shown, and 100 ms after each of up to five moves, because
+Mutter places a new window when it is first shown and undoes an earlier move.
+The bar can go away during any of them (the helper hides it, exits or is
+killed), and a `Meta.Window` object outlives its window. The extension
+therefore watches the bar from the moment it finds it: on Mutter's
+`unmanaging` or `unmanaged` signal the bar is no longer live, the placement
+answers `bar: {placed: false, outside: false}`, the size-change follower drops
+it, and no method of that window is called again. The lookup also skips a
+window whose actor `is_destroyed()`, since the actor stays listed while it
+fades out. Hiding the frame (the bridge call, a disable, a lock, the resident
+leaving the bus) ends a placement that is still waiting: it answers
+`cancelled`, and neither the frame nor a scroll capture's beat is shown again.
+Before this, `meta_window_move_frame()` on the unmanaged Wayland window read
+through NULL inside Mutter and ended the session: GNOME Shell 50.6 took a
+SIGSEGV in `meta_window_update_monitor` when a scroll capture was cancelled
+right after it was prepared, and when a recording was cancelled or its helper
+killed while its bar was being placed (2026-11-11, #1376). After a Shell crash
+gnome-session also turns every user extension off
+(`org.gnome.shell disable-user-extensions`). Mutter offers
 no per-window screencast exclusion: a recording of a whole monitor with no
 other monitor to hold the bar contains it. The resident then reports
 `overlayPlacement: handle` and has the helper shrink the bar to its dot-and-Stop
@@ -283,6 +304,39 @@ has the remembered preference on starts without rings. The route is
 `gnome-shell-extension`, the rings are drawn by the recorder into the clip, and
 all four targets have them; see
 [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
+
+## Scrolling capture
+
+Scrolling capture ([design](../design/scroll-capture.md)) adds the `scroll` action (extension
+version 22). The extension selects the region and draws the ring (`SelectArea`,
+`ShowRecordingFrame`, as for a recording), and the resident places the bar through it. The helper
+reads frames from Mutter's `RecordArea` with `cursor-mode` 0 inside a ScreenCast session linked to a
+RemoteDesktop session, and turns the wheel through the same session
+(`NotifyPointerMotionAbsolute` on the area stream, `NotifyPointerAxisDiscrete`). The order is
+Mutter's: RemoteDesktop `CreateSession`, its `SessionId`, ScreenCast `CreateSession` with
+`remote-desktop-session-id`, `RecordArea`, then `Start` on the RemoteDesktop session only. Mutter
+accepts `Start`, `Stop` and every `Notify*` only from the D-Bus connection that created the session, so
+one connection makes all the calls. The interface is private to Mutter and promises no
+compatibility; no owner for `org.gnome.Mutter.RemoteDesktop`, or a refused `CreateSession`, is
+`scroll_unavailable` with reason `injection_unavailable`. The Shell shows its screen-sharing
+indicator while the session runs; a click on it closes the session, and the helper reads that as Stop.
+
+`ShowRecordingFrame` takes `beat: true` for a scroll capture's frame (`GnomeAdapter::showFrameImpl`).
+While that frame shows, the extension adds one transparent 1×1 `St.Widget` at the rectangle's
+corner and queues it for redraw every 40 ms. Mutter's area stream sends a frame only for damage inside
+its area, and at 125%, and on some logins at 100%, a page at rest sent none, so the end of the
+content could not be proved and the capture stopped `lost_track`. Queueing the same pixel on the stage
+with a clip sent nothing; a widget in the area sends about seven frames in 300 ms of a still page.
+The actor is the only one inside the area, a new frame replaces it and its timer, and hiding the frame
+ends both. `gnome_ui_ownership_contract` and `gnome_core_transport_integration` cover the field and
+the timer.
+
+A scrolling capture needs the extension at version 22 or later (`ScrollShell::selectsRegions` also
+requires `recordingVersion` 1 or later). An extension loaded before the update (below version 22)
+ignores `beat` and has no `scroll` in its `ACTIONS`: the `scroll` shortcut reports `bound: false` with
+`helper_outdated` until the next login, and every start (tray, main window, CLI, MCP) gets the region
+error (`helper_outdated`, else `region_unavailable`) instead of a capture. Log out and back in once,
+as for any extension update ([Setup](#setup)).
 
 ## UI ownership recovery test
 

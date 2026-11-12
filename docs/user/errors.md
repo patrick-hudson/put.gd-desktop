@@ -54,6 +54,33 @@ filenames, history URLs, authorization values or credential references.
 | `public_url_unreachable` (custom uploader) | Test connection uploaded the file but could not open the returned link. When the link is plain HTTP and **Allow plain HTTP** is off, put.gd does not open it and says so |
 | `http_delete_refused`, `http_delete_unconfirmed` | The server refused the deletion, or answered while the link still serves the file (also when a check of the link was cut short and its bytes match as far as they came); nothing is recorded as deleted. Try again later or delete it on the server |
 
+## Scrolling capture
+
+These come from [scrolling capture](../design/scroll-capture.md). A capture that ends with a
+partial image is not a failure: it is the result's `endReason` (`height_cap`, `stopped`,
+`lost_track`, `time_limit`, `top_not_reached`) and the image it has is exact and kept.
+`lost_track` is also what a change of layout inside the rectangle ends as (the window was resized, a bar appeared at the bottom); the note says "the layout inside the selection changed during the capture; the image ends with the rows from before the change". A column of the selection that scrolls at its own pace (a minimap, a parallax strip) ends it the same way, with the note "a part of the selection scrolls at a pace of its own (a minimap, a column with a parallax effect), so no single image shows it beside the page; the image ends with the rows from before it moved". A live web page can end it too when it lays itself out anew while it is scrolled, or draws its text at another place after a step ([known limits](../design/scroll-capture.md#known-limits)); the rows in the image are exact. `top_not_reached` means the scroll to the top could not be finished, so the image starts
+partway down the page; its warning says "Could not reach the top of the page. The image
+starts partway down."
+
+| Code | `details` | User action |
+|---|---|---|
+| `scroll_unavailable` | `reason` | Scrolling capture can't start here, or the desktop stopped giving it what it needs mid-capture. `recording_helper_missing`: this installation has no `putgd-record`, reinstall the package. `injection_unavailable`: the desktop gave no way to turn the wheel (X11 without XTEST; GNOME without Mutter's RemoteDesktop service; Plasma 6.7 or earlier without the `putgd-record` desktop entry that lists `org_kde_kwin_fake_input`, restart the resident after installing it; a wlroots compositor without `zwlr_virtual_pointer_v1`); the message says which. `frame_source_unavailable`: the desktop's native frame stream or a GStreamer element is missing, or the stream ended during the capture. `region_unavailable`: this build has no region selector for the desktop (the Ubuntu 24.04 DEB on Plasma Wayland has none; use the AppImage). Scroll capture is unavailable for every caller there: it is refused with it before anything starts, with a rectangle named through `putgd-cli` or MCP as well as without one, and the window's button reports it. On GNOME the same reason, or `helper_outdated`, means the loaded Shell extension is older than version 22: log out and back in once. The reasons `scroll_not_probed`, `scroll_probe_pending` and `scroll_probe_failed` are transient: try again |
+| `scroll_active` | `operationId` | A scrolling capture is already running, or a recording, the editor or another capture wants to start during one. Stop or cancel it first |
+| `scroll_no_movement` | `parkPositions` | Nothing under the selection scrolled, at the centre or at the two other places tried. Select a scrollable area (include the page, not only a fixed toolbar) and check that the application takes wheel scrolling |
+| `scroll_region` | `rect`, `minimum` | The region spans monitors, lies off the output, or is under 64 px in a direction. Select again inside one monitor |
+| `scroll_helper_failed` | `check` | The recording helper died or broke protocol (`exited`, `crashed`, `protocol`, `start_timeout`, `command_timeout`, `build`). Nothing was captured or kept. For `build`, reinstall the package and restart put.gd; otherwise try again and send a [diagnostics package](../design/diagnostics.md) if it repeats |
+| `scroll_output_invalid` | none | The resident refused the helper's PNG (wrong size, hash, header or location). Nothing was admitted. Try again |
+| `scroll_state`, `scroll_busy`, `scroll_not_found` | none | A `scroll.*` session call that does not fit the session: the command is not valid in its state, another `start`, `select` or `stop` is pending, or a `cancel` is on its way (`cancel` itself is always accepted, but a `stop` whose image was admitted before it arrived has ended the session, so that `cancel` is `scroll_not_found`), or no session has that ID. Inspect the session and send the right command |
+| `notification_close_failed` | none | A put.gd notification was on screen and the notification server did not close it after three tries, so the capture was not started (a notice on screen would end up in the image). Dismiss the notification and capture again |
+| `capture_timeout` | `check` | `first_frame`: the frame stream sent nothing within 3 seconds. `modifiers_released`: a modifier key stayed down for 10 seconds on X11, so no wheel step was sent. Release the keys and try again |
+| `display_changed` | `stage` | The monitors or the size of the captured area changed during the capture. Nothing was kept. (A change of layout inside an area of the same size is `lost_track`, with the rows from before.) Try again |
+| `encoding_failed`, `input_excessive` | `stage`, `check` | The spool or the PNG could not be written, or the PNG would pass its size bound. Free disk space in put.gd's data folder, or lower the height cap |
+
+`output_required`, `recording_active`, `editor_active` and `busy_selecting` also mean what
+they do elsewhere here. `invalid_request` covers a `scroll.prepare` whose rectangle is
+under 64 px or whose `maxHeight` is outside 2,000 to 60,000.
+
 ## GNOME 50 setup states
 
 If GNOME 50 setup reports `login_required`, log out and back in once. Any other

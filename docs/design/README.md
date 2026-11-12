@@ -27,6 +27,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - [Temporary image worker](image-worker.md): the source contract of `putgd-ui --image-job`.
 - [Storage provider contract](storage-providers.md): what a `StorageProvider` must do.
 - [Screen recording](recording.md): the recording contract, helper, review, export and packages.
+- [Scrolling capture](scroll-capture.md): a region scrolled with injected wheel events and stitched into one tall image: the helper session, frames and injectors per desktop, the control loop, proof rules, limits and end reasons.
 - [Image editor](image-editor.md): the Capture region & edit workflow, privacy boundaries and agent control.
 - [Capture monitor, delay and repeat](capture-delay.md): the monitor under the pointer, the capture countdown and Repeat last region.
 - [File dialogs](file-dialogs.md): open, save and folder dialogs through `putgd::FileDialog`.

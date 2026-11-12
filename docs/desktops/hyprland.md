@@ -255,6 +255,34 @@ each press through the window's place at that press, so a press outside the
 recorded window draws nothing. The design
 is in [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
 
+## Scrolling capture
+
+Scrolling capture ([design](../design/scroll-capture.md)) uses the `wlr-capture` frames of a
+recording for the region, with the session created without `paint_cursors`, and a
+`zwlr_virtual_pointer_v1` on put.gd's own Wayland connection for the wheel and for pointer placement:
+`motion_absolute` and wheel `axis_source`, `axis_discrete` (15.0, step 1) and `frame`. This is a
+Wayland protocol, not a `hyprctl` call: it touches no Hyprland configuration file, no bind
+handle and no `hl.unbind`, so the guarantees of this adapter hold. It binds with
+`ecosystem.enforce_permissions = true`, since Hyprland's permission types contain no virtual-pointer
+gate. The `scroll` shortcut is bound like the other actions (a runtime Lua bind through the
+adapter's action table), with no default key.
+
+Two Omarchy 4.5 facts shape the capture, both measured in the lab VM:
+
+- **Hyprland 0.56 composites a software cursor into the output**, so every copy of it shows the arrow
+  whatever `paint_cursors` says, and `hyprctl keyword cursor:invisible` is refused on the Lua parser.
+  The stream cannot be made pointer-free. Instead the loop keeps the pointer out of the rectangle
+  wherever a frame may become the image: it rests at a place outside the region for the first frame
+  (the bottom right corner if there is none), keeps appended rows at least 48 px below the parked
+  pointer, and on the way to the top leaves the rectangle again right behind every wheel step.
+- **Omarchy's notification shell keeps a closed card on screen.** quickshell answers
+  `CloseNotification` with `NotificationClosed` and leaves a visible card where it is (a critical one
+  until it is dismissed, any other for at least 5 to 8 seconds), so put.gd's own notices would stand
+  in the next capture. The resident also dismisses them through the shell's IPC by summary: `qs ipc
+  --pid <owner of org.freedesktop.Notifications> call notifications dismiss <summary>`, run with that
+  process's `XDG_RUNTIME_DIR`. A quickshell configuration without that target refuses the call at no
+  cost, and a card of another application with the same summary goes too.
+
 ## Clipboard, tray, notifications and files
 
 - Clipboard import works while put.gd is unfocused; results copy as

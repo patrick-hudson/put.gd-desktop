@@ -452,7 +452,8 @@ Two traps when you drive a private resident in a desktop session (#214, #198):
   `putgd-record` falls back to the portal and its picker on Plasma. Export
   `PIPEWIRE_RUNTIME_DIR=/run/user/$(id -u)` next to it. A lab build of
   `putgd-record` also needs an application entry with
-  `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1` and its `Exec` path
+  `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input` (the second
+  is what a scrolling capture's wheel needs through Plasma 6.7) and its `Exec` path
   (remove it afterwards and run `kbuildsycoca6`). On f44 the full-screen cover
   stayed behind the session's windows (0% cover); crop strictly inside your own
   window there and check every crop edge is its background token.
