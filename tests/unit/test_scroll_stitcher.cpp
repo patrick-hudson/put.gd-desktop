@@ -1513,6 +1513,38 @@ void testLivePages() {
     report(restAway ? "session link panel under a resting pointer: the pointer waits outside" : "session link panel under a pointer that cannot leave: not in the body", s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0 && visits,
            fmt("%s, %d rows of %d, first wrong row %d of the first %d, pointer leaves after every wheel step %d, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, clean, visits, s.steps, s.error.c_str()));
   }
+  for (bool edgeScrolls : {true, false}) {
+    // The pointer that waits outside comes in by the shortest way: just inside
+    // the edge it waits beyond (a pointer that jumps back and forth across
+    // the screen is one Plasma takes for shaken and blows up). Where that
+    // strip does not scroll (a tool bar inside the rectangle) the centre is next.
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    FakeAppSpec spec;
+    spec.pxPerNotch = 100;
+    if (!edgeScrolls) spec.wheelArea = {0, 100, W, V - 100};
+    FakeClock clock;
+    FakeApp app(doc, vs, spec, clock);
+    RunOptions opts;
+    opts.pointer = true;
+    opts.away = RunPoint{W / 2, -16};
+    opts.restAway = true;
+    opts.leaveDelayMs = 30;
+    ScrollRun run(app, app, clock, opts);
+    const RunResult result = run.run();
+    const std::vector<uint8_t> img = run.stitcher().takeImage();
+    const int foreign = firstForeignRow(img, run.stats().outputRows, doc);
+    int wheels = 0, farWheels = 0;
+    for (size_t i = 1; i < app.events.size(); ++i)
+      if (app.events[i].kind == 's') {
+        ++wheels;
+        farWheels += app.events[i - 1].kind != 'm' || std::abs(app.events[i - 1].a - W / 2) + std::abs(app.events[i - 1].b + 16) > 80;
+      }
+    report(edgeScrolls ? "session the pointer comes in just inside the edge it waits beyond" : "session nothing scrolls at the edge: the centre is next",
+           result == RunResult::EndOfContent && run.stats().outputRows == doc.h && foreign < 0 && wheels > 3 && (edgeScrolls ? farWheels == 0 : farWheels > 3),
+           fmt("%s, %d rows of %d, first foreign row %d, %d wheel steps, %d of them further than 80 px from where the pointer waits [%s]", toString(result), run.stats().outputRows, doc.h, foreign, wheels, farWheels, run.stats().lastError.c_str()));
+  }
   {
     // The user's own pointer rested on a link when the capture began: the
     // panel is on the screen and goes a quarter of a second after the pointer left.

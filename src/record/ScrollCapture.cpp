@@ -646,6 +646,8 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         // the pointer has left, and fades it out).
         options.restAway = true;
         options.awayLingerMs = 450;
+        options.leaveDelayMs = 30;
+        options.entryInset = std::max(24, int(std::lround(48 * sy)));
         // A page's own bar that slides in over the bottom on the way becomes the footer.
         options.stitch.lateBarIsFooter = true;
         if (job->paintedPointer) {

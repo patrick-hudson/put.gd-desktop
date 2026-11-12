@@ -44,8 +44,22 @@ RunPoint ScrollRun::parkPoint(int position, int width, int height) {
     return {width / 2, height / 3};
 }
 
+// Where the wheel is turned. A pointer that waits outside the rectangle
+// (restAway) comes in by the shortest way first: the point entryInset inside
+// the edge it waits beyond. On Plasma a pointer that goes back and forth over
+// more than a hundred pixels several times a second is a pointer its user
+// shakes to find it, and KWin blows it up to many times its size for as long
+// as that lasts (the capture's own visits did that on a real desktop,
+// 2026-11-12, with the stream's frames coming in bursts 350 ms apart while it
+// was up). Where nothing scrolls at that edge the classic places follow.
+RunPoint ScrollRun::wheelPoint() const {
+    if (!atEntry_ || !opts_.away) return parkPoint(stats_.parkPosition, last_.width, last_.height);
+    const int inset = std::min({opts_.entryInset, last_.width / 2, last_.height / 2});
+    return {std::clamp(opts_.away->x, inset, std::max(inset, last_.width - 1 - inset)), std::clamp(opts_.away->y, inset, std::max(inset, last_.height - 1 - inset))};
+}
+
 bool ScrollRun::park() {
-    const RunPoint at = parkPoint(stats_.parkPosition, last_.width, last_.height);
+    const RunPoint at = wheelPoint();
     return injector_.movePointer(at.x, at.y);
 }
 
@@ -61,11 +75,12 @@ bool ScrollRun::inject(int notches) {
         parked_ = -1;
         return injector_.movePointer(opts_.away->x, opts_.away->y);
     };
+    atEntry_ = atEntry_ && opts_.restAway && opts_.pointer && opts_.away;
     if (opts_.pointer && haveFrame_) {
         // Rows a frame shows above the parked pointer's margin are under the
         // pointer's influence unless it leaves again right after the wheel step.
-        stitcher_.setTrustedFrom(visit ? 0 : parkPoint(stats_.parkPosition, last_.width, last_.height).y + opts_.hoverMarginRows);
-        stitcher_.setWheelColumn(parkPoint(stats_.parkPosition, last_.width, last_.height).x);
+        stitcher_.setTrustedFrom(visit ? 0 : wheelPoint().y + opts_.hoverMarginRows);
+        stitcher_.setWheelColumn(wheelPoint().x);
         if (!park()) return false;
         if (parked_ != stats_.parkPosition) {
             // It just arrived here: let the application see it enter, then say it again.
@@ -79,7 +94,12 @@ bool ScrollRun::inject(int notches) {
     stats_.notchesInjected += std::abs(notches);
     lastInjectMs_ = clock_.nowMs();
     const bool sent = injector_.scroll(notches);
-    return visit ? leave() && sent : sent;
+    if (!visit) return sent;
+    // The application gets the wheel step with the pointer still on it: a
+    // step whose pointer had left before the application came to it was lost
+    // or went to what was under the pointer by then.
+    if (sent && opts_.leaveDelayMs > 0) clock_.sleepMs(opts_.leaveDelayMs);
+    return leave() && sent;
 }
 
 ScrollRun::Screen ScrollRun::screenIsAsSeen() {
@@ -221,7 +241,7 @@ int ScrollRun::planNotches() const {
     if (opts_.pointer) {
         // Rule 4: the appended rows are the frame's last rows; keep them below
         // the parked pointer so a hover effect under it never reaches the image.
-        const RunPoint at = parkPoint(stats_.parkPosition, last_.width, last_.height);
+        const RunPoint at = wheelPoint();
         maxPx = std::min(maxPx, double(std::max(0, stitcher_.movingBandBottom() - at.y - opts_.hoverMarginRows)));
         targetPx = std::min(targetPx, maxPx);
     }
@@ -412,6 +432,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
     stop_ = stop;
     startMs_ = clock_.nowMs();
     notchCap_ = opts_.maxNotchesPerStep;
+    atEntry_ = opts_.restAway && opts_.pointer && opts_.away.has_value();
     static const std::atomic<bool> never{false};
     if (!injector_.waitReady(stop ? *stop : never)) {
         if (!stopped()) stats_.lastError = "the modifier keys were never released";
@@ -630,11 +651,16 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                     // steps), then the two other park positions.
                     if (stillAtPark < (stats_.parkPosition == 0 && stats_.toTopSteps > 0 ? 4 : 2)) break;
                     stillAtPark = 0;
-                    if (stats_.parkPosition >= 2) {
-                        stats_.lastError = "nothing under the selection scrolled at any park position";
-                        return finishWith(RunResult::NoMovement);
+                    if (atEntry_) {
+                        // Nothing scrolls just inside the edge: the classic places, the centre first.
+                        atEntry_ = false;
+                    } else {
+                        if (stats_.parkPosition >= 2) {
+                            stats_.lastError = "nothing under the selection scrolled at any park position";
+                            return finishWith(RunResult::NoMovement);
+                        }
+                        ++stats_.parkPosition;
                     }
-                    ++stats_.parkPosition;
                     if (opts_.fromTop) {
                         stats_.reachedTop = false;
                         stitcher_.restartBeforeMovement();

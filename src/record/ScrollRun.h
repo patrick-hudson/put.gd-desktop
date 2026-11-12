@@ -161,6 +161,13 @@ struct RunOptions {
     // shows that panel or a tooltip. Needs `away`; without one (the rectangle
     // covers its whole output) the pointer stays parked as before.
     bool restAway = false;
+    // With restAway: how far inside the rectangle's edge the pointer comes in
+    // to turn the wheel (see ScrollRun::wheelPoint), and how long it stays
+    // after the wheel step before it leaves again. Both together stay under
+    // the time a browser waits before it shows a link's address (80 ms after
+    // the pointer last moved).
+    int entryInset = 48;
+    int leaveDelayMs = 0;
     // After the pointer has left for the first frame, what it had called up
     // while it rested on the page (the user's own pointer before the capture,
     // or the way to the top without restAway) gets this long to go away.
@@ -245,6 +252,7 @@ private:
     int planNotches() const;
     bool inject(int notches);
     bool park();
+    RunPoint wheelPoint() const;
     // Before a conclusion drawn from stillness: whether a fresh frame agrees
     // with the last one seen. Moved: it does not, and it is now the last frame.
     // Unknown: the source gave none, so nothing is proven.
@@ -274,6 +282,7 @@ private:
     scroll::FrameSignatures lastSig_, tmpSig_, settledSig_, beforeSig_;
     int notchCap_ = 0, verifiedRun_ = 0;
     int parked_ = -1;  // the park position the pointer was last put at, -1 elsewhere
+    bool atEntry_ = false;  // restAway: the wheel is turned just inside the edge the pointer waits beyond
     // The last waitSettled: when its first changed frame arrived (-1: none did).
     int64_t firstChangeMs_ = -1;
     // The stream's cadence: when the last frame arrived, and the longest recent gap between two.
