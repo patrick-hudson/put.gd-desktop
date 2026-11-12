@@ -2,10 +2,13 @@
 // output gets a background layer surface in its own colour with a white square
 // at its logical top-left and a black one at its top-right, so a capture shows
 // both its pixels and its orientation. One toplevel window is solid green.
-// Prints "ready" once every surface has drawn, and "press N" (Qt's button
-// number) for each button press the window receives.
+// Prints "ready" once every surface has drawn, "press N" (Qt's button
+// number) for each button press the window receives, and "wheel D" (Qt's
+// vertical angle delta, 120 a notch, negative when scrolling down) for each
+// wheel event.
 #include <QApplication>
 #include <QMouseEvent>
+#include <QWheelEvent>
 #include <QPainter>
 #include <QScreen>
 #include <QTimer>
@@ -30,6 +33,7 @@ protected:
   ++painted;
  }
  void mousePressEvent(QMouseEvent* event) override{if(!marks_){std::printf("press %d\n",int(event->button()));std::fflush(stdout);}}
+ void wheelEvent(QWheelEvent* event) override{if(!marks_){std::printf("wheel %d\n",event->angleDelta().y());std::fflush(stdout);}}
 private:
  QColor fill_;bool marks_;
 };

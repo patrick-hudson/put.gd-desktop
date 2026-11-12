@@ -17,6 +17,7 @@ class QHBoxLayout;
 class QLabel;
 class QPushButton;
 class QTimer;
+class QScreen;
 
 namespace putgd::record {
 // How the helper's own surfaces reach the screen. X11 windows bypass the window
@@ -27,6 +28,13 @@ enum class SurfaceMode { X11, LayerShell, Compositor };
 SurfaceMode surfaceMode();
 // The window title the GNOME Shell extension uses to find and place the bar.
 inline constexpr const char* controlBarTitle = "put.gd recording controls";
+// What the helper's bars share (the recording bar, the scroll capture's bar):
+// the screens in Qt logical pixels, X11 root pixels as a logical rectangle
+// (each screen's piece mapped at its own scale), and, on a layer-shell
+// desktop, a widget made an overlay layer surface at a logical position.
+QList<QRect> barScreens();
+QRect barLogicalRect(const QRect& root);
+void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard);
 
 // Drag-to-select over every screen. Reports the selection in X11 root pixels;
 // Escape or a right click cancels. Surfaces are released before reporting.
@@ -75,6 +83,12 @@ public:
     ~BoundsOverlay() override;
     void showBounds(const QRect& rootRect);
     void setDimmed(bool dimmed);
+    // A clear one-pixel surface at `at`, committed again on every beat(): damage
+    // on its output that changes no pixel. KWin's region stream delivers a
+    // repaint reliably only when more damage follows it, so the scroll capture
+    // keeps one coming while it reads frames (#1376). Gone with hideAll().
+    void showHeartbeat(const QPoint& at);
+    void beat();
     void hideAll();
     QRect rect() const { return rect_; }
 private:
@@ -83,7 +97,7 @@ private:
     void addDim(const QColor& color);
     static inline const QColor dimColor{0, 0, 0, 110};
     QRect rect_;
-    QList<QWidget*> ring_, dim_;
+    QList<QWidget*> ring_, dim_, heart_;
     bool dimmed_ = false;
 };
 

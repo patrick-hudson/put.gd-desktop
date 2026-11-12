@@ -3,12 +3,13 @@
 
 Headless labwc has no input devices; a region selector still needs a real
 drag. This stdlib-only Wayland client creates a virtual pointer and sends
-absolute motion and button events over the whole output layout, then waits
-for the compositor to process them. It is lab input, never desktop proof.
+absolute motion, button and wheel events over the whole output layout, then
+waits for the compositor to process them. It is lab input, never desktop proof.
 
   wayland_pointer.py drag X1 Y1 X2 Y2 --extent W H [--steps N] [--button left|right]
   wayland_pointer.py click X Y --extent W H [--button left|right]
   wayland_pointer.py move X Y --extent W H
+  wayland_pointer.py axis X Y NOTCHES --extent W H     (a positive count scrolls down)
 """
 import argparse
 import struct
@@ -53,19 +54,28 @@ class Pointer(wire.Client):
         self.send(wire.message(self.pointer, 2, struct.pack('<III', self.stamp(), code, 1 if pressed else 0)))
         self.send(wire.message(self.pointer, 4))
 
+    def axis(self, notches):
+        # One wheel notch as a mouse sends it (and as the product's scroll capture does, #1376): the wheel
+        # as the axis source, the value 15 with a discrete step of 1 on the vertical axis, then a frame.
+        direction = 1 if notches > 0 else -1
+        for _ in range(abs(notches)):
+            self.send(wire.message(self.pointer, 5, struct.pack('<I', 0)))
+            self.send(wire.message(self.pointer, 7, struct.pack('<IIii', self.stamp(), 0, 15 * 256 * direction, direction)))
+            self.send(wire.message(self.pointer, 4))
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument('action', choices=('drag', 'click', 'move'))
+    parser.add_argument('action', choices=('drag', 'click', 'move', 'axis'))
     parser.add_argument('coords', type=float, nargs='+')
     parser.add_argument('--extent', type=int, nargs=2, required=True, metavar=('W', 'H'))
     parser.add_argument('--steps', type=int, default=12)
     parser.add_argument('--step-ms', type=int, default=16)
     parser.add_argument('--button', choices=sorted(BUTTONS), default='left')
-    parser.add_argument('--settle-ms', type=int, default=300, help='click: the wait between the motion and the press')
+    parser.add_argument('--settle-ms', type=int, default=300, help='click, axis: the wait between the motion and the press or wheel')
     parser.add_argument('--display')
     args = parser.parse_args(argv)
-    expected = 4 if args.action == 'drag' else 2
+    expected = {'drag': 4, 'axis': 3}.get(args.action, 2)
     if len(args.coords) != expected:
         parser.error('%s takes %d coordinates, got %d' % (args.action, expected, len(args.coords)))
     width, height = args.extent
@@ -74,6 +84,13 @@ def main(argv=None):
         p.open()
         if args.action == 'move':
             p.motion(args.coords[0], args.coords[1], width, height)
+        elif args.action == 'axis':
+            # As for a click: the client under the pointer binds it only after the seat announced it.
+            p.motion(args.coords[0], args.coords[1], width, height)
+            p.sync()
+            time.sleep(args.settle_ms / 1000)
+            p.motion(args.coords[0], args.coords[1], width, height)
+            p.axis(int(args.coords[2]))
         elif args.action == 'click':
             p.motion(args.coords[0], args.coords[1], width, height)
             # A client binds wl_pointer only once the seat has announced a pointer, and this device is the

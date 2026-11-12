@@ -48,7 +48,9 @@ public:
  // output name or window identifier.
  // pointer: draw the cursor here and know where it is (outputs only, upright ones);
  // *pointerOpened says whether that is what the stream does.
- Error open(const Target&,QSize* size,QString* identity,QString* appId=nullptr,bool pointer=false,bool* pointerOpened=nullptr);
+ // cursorHidden: no cursor in the frames at all (the scroll capture, #1376): the
+ // session is created without paint_cursors and nothing draws one. It wins over pointer.
+ Error open(const Target&,QSize* size,QString* identity,QString* appId=nullptr,bool pointer=false,bool* pointerOpened=nullptr,bool cursorHidden=false);
  // Where the pointer's hotspot is in the stream's pixels, any thread. False when the
  // stream does not track it, or the cursor is off this output or hidden by its client
  // right now; *ever says whether the compositor has reported it at all since open.
@@ -58,6 +60,11 @@ public:
  // Starts pushing frames; lost() runs on the capture thread when the source
  // ends (the window closed, the output went away, the compositor stopped it).
  void attach(GstElement* appsrc,std::function<void(Error)> lost);
+ // Any thread, while attached: the capture session is opened anew, and the first frame of a new session
+ // is the source as it is then, whether or not it changed (the scroll capture's proof that a still
+ // picture is the screen, #1376). Frames of the new session carry the returned number as their buffer
+ // offset (GST_BUFFER_OFFSET); earlier frames carry a smaller one.
+ quint64 refresh();
  void stop();
  QJsonObject status()const;
 private:

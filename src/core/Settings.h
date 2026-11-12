@@ -67,6 +67,8 @@ struct Settings {
     QString uploadClipboardBehavior = "each_link";
     // preferences.regionSelectionMode (#629): live (default) keeps the desktop
     // updating under the selector; screenshot_first freezes every monitor first.
+    int scrollCaptureMaxHeight = 30000;
+    bool scrollCaptureFromTop = true;
     QString regionSelectionMode = "live";
     // preferences.recordingFrameRate (#984): 30 (default) or 60 frames per
     // second for recordings that don't ask for a rate; the recorder may still

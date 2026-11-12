@@ -80,6 +80,7 @@
 #include "ui/RegionOverlay.h"
 #include "ui/CountdownPill.h"
 #include "record/Overlays.h"
+#include "record/ScrollBar.h"
 #endif
 using namespace putgd;
 using namespace putgd::test;
@@ -460,7 +461,7 @@ int main(int argc,char** argv){
   putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-click-limits"))return 2;
   support->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);if(!save("settings-resource-limits-expanded"))return 2;{auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");if(!help)return 2;help->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QLabel*>("historyRetentionChoiceHelpText"),0,20);if(!save("settings-retention-help"))return 2;help->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(false);
  {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());auto* retention=window.findChild<QLineEdit*>("historyRetentionDays");putgd::test::settle(100);scroll->ensureWidgetVisible(retention,0,100);if(!save("settings-forever-retention"))return 2;scroll->verticalScrollBar()->setValue(0);auto* limit=window.findChild<QLineEdit*>("maxFileBytes");const auto before=limit->text();limit->setText("3");if(!save("settings-numeric-limit-unit"))return 2;limit->setText(before);}
- tabs->setCurrentIndex(2);if(!save("06-settings-shortcuts"))return 2;tabs->setCurrentIndex(0);if(!save("07-settings-general"))return 2;tabs->setCurrentIndex(1);if(!save("08-settings-capture"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(true);{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("customFileNamePattern"),0,24);if(!save("settings-custom-name-pattern"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(false);scroll->verticalScrollBar()->setValue(0);}
+ tabs->setCurrentIndex(2);if(!save("06-settings-shortcuts"))return 2;tabs->setCurrentIndex(0);if(!save("07-settings-general"))return 2;tabs->setCurrentIndex(1);if(!save("08-settings-capture"))return 2;{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());scroll->ensureWidgetVisible(window.findChild<QWidget*>("scrollCaptureMaxHeight"),0,24);if(!save("settings-scroll-capture"))return 2;scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(true);{auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("customFileNamePattern"),0,24);if(!save("settings-custom-name-pattern"))return 2;window.findChild<QToolButton*>("customFileNamePatternToggle")->setChecked(false);scroll->verticalScrollBar()->setValue(0);}
 // #984: the Screen recording section's frame rate, below Region selection.
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
@@ -838,6 +839,14 @@ int main(int argc,char** argv){
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("paused");if(auto* cancel=ready.findChild<QPushButton*>("cancel"))cancel->click();if(!ready.confirming()||!shot(ready,"42-record-paused-discard-confirm"))return 2;
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!shot(ready,"37-record-ready-narrow"))return 2;
   ready.hide();
+  {
+   record::ScrollBar scroll;
+   for(const auto& state:QStringList{"ready","scrollingToTop","capturing","finishing"}){
+    scroll.setState(state);scroll.setHeight(state=="ready"?0:12340);scroll.show();
+    if(!shot(scroll,"scroll-bar-"+state))return 2;
+   }
+   scroll.hide();
+  }
   // #1364: the microphone toggle with its meter, the state without a microphone, and a recording that lost it.
   {
    auto withMicrophone=bar;withMicrophone.microphoneAvailable=true;withMicrophone.microphoneLabel="Example USB Microphone";

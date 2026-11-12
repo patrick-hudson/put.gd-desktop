@@ -112,6 +112,16 @@ QList<QRect> screenRects() {
 // actions use the shared neutral role.
 
 }
+QList<QRect> barScreens() { return screenRects(); }
+QRect barLogicalRect(const QRect& root) { return fromRootSpan(root); }
+void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard) {
+#ifdef PUTGD_RECORD_LAYER_SHELL
+    toLayer(widget, screen, logical, keyboard);
+#else
+    Q_UNUSED(screen); Q_UNUSED(keyboard);
+    widget->setGeometry(logical);
+#endif
+}
 
 namespace {
 // The microphone's level beside its toggle: a short bar that follows the
@@ -282,7 +292,7 @@ void SelectionOverlay::finish() {
 void SelectionOverlay::cancel(Error error) { if (finished_) return; finish(); emit cancelled(error); }
 
 BoundsOverlay::BoundsOverlay(QObject* parent) : QObject(parent) {}
-BoundsOverlay::~BoundsOverlay() { hideAll(); for (auto* w : ring_ + dim_) delete w; }
+BoundsOverlay::~BoundsOverlay() { hideAll(); }
 namespace {
 // A flat, input-transparent surface: ring segments and dim strips.
 class PassiveSurface final : public QWidget {
@@ -361,10 +371,19 @@ void BoundsOverlay::setDimmed(bool dimmed) {
     if (dimmed) addDim(dimColor);
     else { for (auto* w : dim_) delete w; dim_.clear(); }
 }
+void BoundsOverlay::showHeartbeat(const QPoint& at) {
+    for (auto* w : heart_) delete w;
+    heart_.clear();
+    add(heart_, QRect(at, QSize(1, 1)), Qt::transparent);
+}
+void BoundsOverlay::beat() {
+    for (auto* w : heart_) w->update();
+}
 void BoundsOverlay::hideAll() {
-    for (auto* w : ring_ + dim_) delete w;
+    for (auto* w : ring_ + dim_ + heart_) delete w;
     ring_.clear();
     dim_.clear();
+    heart_.clear();
     rect_ = {};
 }
 

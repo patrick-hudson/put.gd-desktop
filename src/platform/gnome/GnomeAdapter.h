@@ -35,6 +35,7 @@ public:
  bool selectsRegions()const override;
  Error regionError()const override;
  // The loaded extension is older than the packaged one: a log-out loads it.
+ RecordingShell* scrollShell() {return &scrollShell_;}
  bool outdated()const;
  QJsonObject desktopSetup()const override;
  void recheckDesktopSetup(std::function<void(QJsonObject)>) override;
@@ -65,6 +66,19 @@ private slots:
  void helperClipboardChanged(qulonglong revision);
  void helperChanged();
 private:
+ void selectRegionImpl(RecordingShell::Reply,bool scroll);
+ void showFrameImpl(const QJsonObject&,RecordingShell::Reply,bool scroll);
+ class ScrollShell final:public RecordingShell {
+ public:
+  explicit ScrollShell(GnomeAdapter& owner):owner_(owner){}
+  bool selectsRegions()const override{return owner_.ready_&&owner_.helper_["recordingVersion"].toInt()>=1&&owner_.helper_["extensionVersion"].toInt()>=22;}
+  Error regionError()const override{return selectsRegions()?Error{}:owner_.regionError();}
+  void selectRegion(Reply reply)override{owner_.selectRegionImpl(std::move(reply),true);}
+  void cancelSelection()override{owner_.cancelSelection();}
+  void showFrame(const QJsonObject& frame,Reply reply)override{owner_.showFrameImpl(frame,std::move(reply),true);}
+  void hideFrame()override{if(selectsRegions())owner_.call("HideRecordingFrame",{},[](Error,QJsonObject){});}
+ private:GnomeAdapter& owner_;
+ } scrollShell_{*this};
  // Why a region cannot be recorded through the Shell right now.
  Error recordingShellError()const;
  // The per-user GNOME setup (GnomeExtensionSetup): once per Shell, on a worker.

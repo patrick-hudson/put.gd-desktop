@@ -522,6 +522,21 @@ private slots:
   int completed=0;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(info_.queries.size(),1);QCOMPARE(completed,0);
   source.cancelAcquisition();PUTGD_TRY_COMPARE(completed,1);QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.payload.image.isNull());putgd::test::settle(30);PUTGD_TRY_COMPARE(completed,1);
  }
+ // The other KWin authorization: its restricted Wayland interfaces go only to
+ // the executable of a desktop entry that lists them. The recorder's packaged
+ // entry names the screencast and, for a scrolling capture's wheel (#1376),
+ // the fake input protocol, with putgd-record as the first Exec token.
+ void recorderEntryListsItsRestrictedWaylandInterfaces(){
+#ifdef PUTGD_RECORD_DESKTOP_ENTRY
+  QFile entry(QStringLiteral(PUTGD_RECORD_DESKTOP_ENTRY));QVERIFY2(entry.open(QIODevice::ReadOnly),PUTGD_RECORD_DESKTOP_ENTRY);
+  const auto lines=QString::fromUtf8(entry.readAll()).split('\n');
+  QVERIFY(lines.contains("X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input"));
+  // No D-Bus restricted interface: ScreenShot2 is the resident's, by its own entry.
+  for(const auto& line:lines){QVERIFY(!line.startsWith("X-KDE-DBUS-Restricted-Interfaces"));if(line.startsWith("Exec="))QVERIFY2(line.section('=',1).section(' ',0,0).endsWith("/putgd-record"),qPrintable(line));}
+#else
+  QSKIP("This build has no recording helper");
+#endif
+ }
  void noHelperDoesNotQueryWindowInfo(){
   KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);source.setUiProcess(0);info_.fail=true;
   bool done=false;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);done=true;});PUTGD_TRY_VERIFY(done);

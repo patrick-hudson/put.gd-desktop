@@ -16,6 +16,11 @@
       "profileId": "development-s3",
       "shortcut": "Ctrl+Shift+3"
     },
+    "scroll": {
+      "destination": "upload",
+      "profileId": "development-s3",
+      "shortcut": ""
+    },
     "clipboard": {
       "destination": "upload",
       "profileId": "development-s3",

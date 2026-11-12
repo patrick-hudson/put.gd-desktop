@@ -224,6 +224,13 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                       'sourceWidth': 2, 'sourceHeight': 1, 'png': base64.b64encode(synthetic_png()).decode()}
         if method == 'delete.prepare':
             result = {'acknowledgement': 'synthetic-effect', 'targets': request['params']['ids']}
+        if method == 'scroll.inspect' and request['params'].get('id') == 'top-missed':
+            # What the resident reports of a capture whose scroll to the top did not prove the top (#1376).
+            note = 'Could not reach the top of the page. The image starts partway down.'
+            result = {'id': 'top-missed', 'operationId': 'top-missed', 'state': 'done', 'endReason': 'top_not_reached', 'truncated': True,
+                      'topReached': False, 'note': note, 'height': 19920, 'bytes': 3657450, 'steps': 61,
+                      'result': {'endReason': 'top_not_reached', 'truncated': True, 'topReached': False, 'width': 1260, 'height': 19920,
+                                 'appliedMaxHeight': 60000, 'sha256': '0' * 64, 'note': 'the page was still scrolling up when the time for the way to the top was over'}}
         error = {'code': '', 'message': '', 'details': {}}
         if method == 'settings.patch':
             error['code'] = 'config_conflict'
@@ -247,14 +254,15 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
             '-m', 'share_mcp.server', '--cli', self.cli, '--socket', self.socket])
         async with stdio_client(parameters) as (read, write):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                initialized = await session.initialize()
+                self.assertIn('top_not_reached', initialized.instructions)
                 discovered = (await session.list_tools()).tools
                 expected = {'inspect', 'get_view_state', 'get_desktop_setup', 'recheck_desktop_setup', 'perform_action', 'get_operation', 'retry_operation',
                             'copy_result', 'cancel_operation', 'list_history', 'count_history', 'get_history_entry',
                             'make_history_preview', 'copy_history_link', 'unlock_history_link_credentials', 'copy_history_links', 'open_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'copy_editor_image', 'submit_editor', 'cancel_editor',
-                            'raise_editor', 'get_recording_capabilities', 'list_recording_windows', 'list_recording_microphones', 'prepare_recording', 'control_recording',
+                            'raise_editor', 'prepare_scroll_capture', 'control_scroll_capture', 'get_scroll_capture', 'get_recording_capabilities', 'list_recording_windows', 'list_recording_microphones', 'prepare_recording', 'control_recording',
                             'get_recording', 'select_recording_region', 'set_recording_overlay', 'set_recording_audio', 'edit_recording', 'preview_recording', 'drive_recording_review',
                             'save_recording_copy', 'upload_recording', 'reorder_destinations', 'move_destination',
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
@@ -499,6 +507,10 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'geometryDetails'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'geometryDetails'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'keepEditing'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'keepEditing'}),
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}, 'editor.view', {'id': 'synthetic-operation', 'action': 'confirmDiscard'}),
+                    ('perform_action', {'action': 'scroll'}, 'action.invoke', {'action': 'scroll'}),
+                    ('prepare_scroll_capture', {'rect': [0, 0, 640, 480], 'max_height': 12000}, 'scroll.prepare', {'rect': [0, 0, 640, 480], 'maxHeight': 12000}),
+                    ('control_scroll_capture', {'id': 'synthetic-operation', 'command': 'stop'}, 'scroll.stop', {'id': 'synthetic-operation'}),
+                    ('get_scroll_capture', {'id': 'synthetic-operation'}, 'scroll.inspect', {'id': 'synthetic-operation'}),
                     ('get_recording_capabilities', {}, 'recording.capabilities', {}),
                     ('list_recording_windows', {}, 'recording.windows', {}),
                     # #1364: the inputs a recording can narrate from, the microphone and click highlights.
@@ -630,6 +642,19 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     before = len(self.calls)
                     self.assertEqual((await call(name, args))['error']['code'], 'invalid_request', name)
                     self.assertEqual(len(self.calls), before, 'Invalid recording arguments must issue no IPC')
+                # #1376: an image that starts partway down is never a complete capture to an agent. The tool
+                # says which end reasons there are, and passes the resident's view through unchanged.
+                scroll = next(tool for tool in discovered if tool.name == 'get_scroll_capture')
+                for word in ('end_of_content', 'height_cap', 'stopped', 'lost_track', 'time_limit', 'top_not_reached', 'topReached'):
+                    self.assertIn(word, scroll.description)
+                partial = await call('get_scroll_capture', {'id': 'top-missed'})
+                self.assertEqual(self.calls[-1]['method'], 'scroll.inspect')
+                self.assertTrue(partial['ok'], partial)
+                self.assertEqual(partial['result']['endReason'], 'top_not_reached')
+                self.assertIs(partial['result']['truncated'], True)
+                self.assertIs(partial['result']['topReached'], False)
+                self.assertIs(partial['result']['result']['topReached'], False)
+                self.assertEqual(partial['result']['note'], 'Could not reach the top of the page. The image starts partway down.')
                 conflict = await call('patch_configuration', {'patch': {'preferences': {'notifications': False}}, 'expected_revision': 'stale'})
                 self.assertEqual(conflict['error']['code'], 'config_conflict')
                 self.assertTrue(all(r['schemaVersion'] == 1 and r['session'] == self.socket for r in self.calls))

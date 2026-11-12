@@ -27,6 +27,8 @@ WINDOW_ICON = "usr/share/icons/hicolor/scalable/apps/putgd.svg"
 # The pinned FFmpeg build (media.json) installs these; their notices come from its source.
 FFMPEG_LIBRARIES = ("libavcodec", "libavformat", "libavfilter", "libavutil", "libswscale", "libswresample")
 SECRET_SERVICE_LIBRARIES = ("libsecret-", "libglib-", "libgio-", "libgobject-", "libgmodule-", "libgthread-")
+# The scrolling capture's wheel steps on X11 (#1376). A host need not have it.
+SCROLL_INPUT_LIBRARY = "libxcb-xtest.so.0"
 
 
 def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
@@ -276,6 +278,15 @@ def pkg_config_variable(module: str, variable: str) -> Path:
     if not value:
         raise ValueError("pkg-config has no " + variable + " for " + module)
     return Path(value)
+
+
+def audit_scroll_input(appdir: Path) -> str:
+    """putgd-record links libxcb-xtest for the scrolling capture; the image must carry it."""
+    appdir = appdir.resolve()
+    library = appdir / "usr/lib" / SCROLL_INPUT_LIBRARY
+    if not library.is_file() or not library.resolve().is_relative_to(appdir):
+        raise ValueError("AppImage must bundle " + SCROLL_INPUT_LIBRARY + " for putgd-record's scrolling capture")
+    return SCROLL_INPUT_LIBRARY
 
 
 def audit_secret_service(appdir: Path) -> dict:
@@ -579,17 +590,18 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             if "=>" not in line:
                 continue
             library, target = line.split("=>", 1)
-            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
+            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
                 resolved = Path(target.strip().split()[0]).resolve()
                 if not resolved.is_relative_to(appdir):
                     raise ValueError("Bundled dependency resolves outside AppDir: " + library.strip())
         checked += 1
     result = {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
               "bundledDependenciesResolvedInsideImage": True,
-              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
+              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
               "secretService": audit_secret_service(appdir)}
     if media_audit:
         result["recording"] = media_audit
+        result["scrollInput"] = audit_scroll_input(appdir)
     return result
 
 

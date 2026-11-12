@@ -58,6 +58,16 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('latest', True, None, 42):
             self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
 
+    def test_scrolling_preferences(self):
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for height in (2000, 30000, 60000):
+            self.assertTrue(validator.is_valid(legacy | {'scrollCaptureMaxHeight': height, 'scrollCaptureFromTop': True}))
+        for height in (1999, 60001, 30000.5, '30000', None):
+            self.assertFalse(validator.is_valid(legacy | {'scrollCaptureMaxHeight': height}))
+        self.assertFalse(validator.is_valid(legacy | {'scrollCaptureFromTop': 'yes'}))
+
     def test_region_selection_modes(self):
         # #629: live by default (omitted), or screenshot_first.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
@@ -201,8 +211,9 @@ class ConfigurationSchema(unittest.TestCase):
                     self.assertEqual([error.message for error in errors], [])
                     inherited = copy.deepcopy(document)
                     inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
-                    for action in inherited['actions'].values():
-                        action.update(destination='default', profileId=None, publicationMode='default')
+                    for name, action in inherited['actions'].items():
+                        if name != 'repeat':  # Repeat is always a shortcut-only entry.
+                            action.update(destination='default', profileId=None, publicationMode='default')
                     validator.validate(inherited)
                     checked = subprocess.run([cli, '--socket', str(socket), 'settings.validate', json.dumps({'document': inherited})], env=environment,
                         check=True, capture_output=True, text=True, timeout=20)

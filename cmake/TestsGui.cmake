@@ -11,7 +11,7 @@
   add_dependencies(putgd-ui-catalog putgd_refresh_build_identity)
   if(TARGET putgd-record)
     # The review window and control bar states (synthetic UI catalog states).
-    target_sources(putgd-ui-catalog PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
+    target_sources(putgd-ui-catalog PRIVATE src/record/ScrollBar.cpp src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
     target_link_libraries(putgd-ui-catalog PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     target_compile_definitions(putgd-ui-catalog PRIVATE PUTGD_CATALOG_REVIEW=1)
   endif()

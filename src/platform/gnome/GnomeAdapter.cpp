@@ -172,7 +172,7 @@ void GnomeAdapter::helperAction(const QString& action,const QString& ticket){
  if(!ready_||!Settings::invocableActionNames().contains(action)||ticket.size()!=36)return;
  if(recording_){release(ticket);return;}
  // Recording prepares its own region later; the ticket carries no frozen source.
- if(action==Settings::recordingActionName()){emit actionRequested(action);return;}
+ if(action=="scroll"||action==Settings::recordingActionName()){emit actionRequested(action);return;}
  hotkeyPrepared_[action].append(ticket);emit actionRequested(action);
  // Rejected actions do not leave unused frozen targets behind.
  if(hotkeyPrepared_[action].removeOne(ticket))release(ticket);
@@ -326,8 +326,9 @@ Error GnomeAdapter::recordingShellError()const{
  return {"region_unavailable","Recording a region on GNOME needs the put.gd Shell extension with recording support",{}};
 }
 Error GnomeAdapter::regionError()const{return selectsRegions()?Error{}:recordingShellError();}
-void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
- if(!selectsRegions()){reply(recordingShellError(),{});return;}
+void GnomeAdapter::selectRegion(RecordingShell::Reply reply){selectRegionImpl(std::move(reply),false);}
+void GnomeAdapter::selectRegionImpl(RecordingShell::Reply reply,bool scroll){
+ if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(recordingShellError(),{});return;}
  const auto id=uuid();recordingSelection_=id;
  // The user drags at their own pace; the extension's request deadline (120 s) ends it first.
  call("SelectArea",{json(QJsonObject{{"id",id},{"appearance",captureAppearance_}})},[this,id,reply](Error error,QJsonObject result){
@@ -337,8 +338,14 @@ void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
  },125000);
 }
 void GnomeAdapter::cancelSelection(){if(recordingSelection_.isEmpty())return;const auto id=std::exchange(recordingSelection_,QString{});release(id);}
-void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){
- if(!selectsRegions()){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){showFrameImpl(frame,std::move(reply),false);}
+void GnomeAdapter::showFrameImpl(const QJsonObject& shown,RecordingShell::Reply reply,bool scroll){
+ if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+ // A scroll capture reads its frames from Mutter's area stream, which sends
+ // one only for damage inside the area: the Shell keeps one pixel of it
+ // repainting while the frame shows, or a page that has come to rest gives
+ // no frame to prove it (the extension's RecordingFrame has the measurement).
+ auto frame=shown;if(scroll)frame["beat"]=true;
  // The extension waits up to two seconds for the bar window to map before placing it.
  call("ShowRecordingFrame",{json(frame)},std::move(reply),4000);
 }
@@ -445,6 +452,7 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
     auto entry=bindings_[action].toObject();entry["requested"]=requested_.value(action);
     if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all of put.gd's hotkeys.",{}};}
     if(!recording_&&reply&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};
+    if(action=="scroll"&&helper_["extensionVersion"].toInt()<22&&!recording_){entry["bound"]=false;entry["error"]="helper_outdated";}
     bindings_[action]=entry;
    }
   }else for(const auto& action:Settings::invocableActionNames()){auto entry=bindings_[action].toObject();if(!entry.contains("error"))entry["error"]=error.code;bindings_[action]=entry;}

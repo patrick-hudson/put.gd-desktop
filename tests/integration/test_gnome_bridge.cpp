@@ -88,7 +88,7 @@ class GnomeHelperFixture final:public QObject,protected QDBusContext {
  uint currentPid_=0,failPid_=0,failures_=0;
  QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_,lastRegionMode_;int acquires_=0,previews_=0,previewsAtAcquire_=0,releases_=0;QJsonObject lastPreview_;
  int hellos_=0,binds_=0,commits_=0;
- QJsonObject lastBindings_;
+ QJsonObject lastBindings_;QJsonArray frames_;
  QString helloError_=qEnvironmentVariable("PUTGD_TEST_HELLO_ERROR"),prepareError_=qEnvironmentVariable("PUTGD_TEST_PREPARE_ERROR");
  QString copyId_,copyMime_;QByteArray copyBytes_;qulonglong copySize_=0;
  static QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
@@ -136,7 +136,10 @@ public slots:
   QJsonObject{{"identity","42"},{"title","Notes"},{"appId","org.example.Notes.desktop"},{"rect",QJsonArray{10,20,640,480}},{"active",true},{"minimized",false}},
   QJsonObject{{"identity",""},{"title","Broken"},{"rect",QJsonArray{0,0,1,1}}}}}});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"previews",previews_},{"releases",releases_},{"previewsAtAcquire",previewsAtAcquire_},{"lastPreview",lastPreview_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
+ // The frames the resident asked the Shell to show, as it sent them.
+ QString ShowRecordingFrame(const QString& encoded){frames_.append(QJsonDocument::fromJson(encoded.toUtf8()).object());return json({{"version",1},{"bar",QJsonObject{{"placed",false},{"outside",false}}}});}
+ QString HideRecordingFrame(){return json({});}
+ QString State(){return json({{"frames",frames_},{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"previews",previews_},{"releases",releases_},{"previewsAtAcquire",previewsAtAcquire_},{"lastPreview",lastPreview_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
  // As the extension's enable() and disable(): announce first, then (un)export.
  void Enable(){helloError_.clear();emit CapabilitiesChanged();}
@@ -395,6 +398,22 @@ private slots:
   source.setUiProcess(5678);QVERIFY(windowAvailable(source));putgd::test::settle(3300);
   PUTGD_TRY_COMPARE(state()["currentPid"].toInt(),5678);PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
  }
+ void scrollFrameAsksTheShellForItsBeat(){
+  // #1376: Mutter's area stream sends a frame only for damage inside its
+  // area, and at a fractional scale a page at rest gave none to prove the
+  // end. The frame of a scroll capture asks the Shell to keep one pixel of
+  // the area repainting; a recording's frame does not.
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));PUTGD_TRY_VERIFY(source.selectsRegions());
+  const auto before=state()["frames"].toArray().size();
+  const QJsonObject frame{{"rect",QJsonArray{10,20,640,480}},{"kind","region"},{"state","recording"}};
+  int answered=0;Error failed;
+  source.showFrame(frame,[&](Error e,QJsonObject){if(e)failed=e;++answered;});PUTGD_TRY_COMPARE(answered,1);
+  source.scrollShell()->showFrame(frame,[&](Error e,QJsonObject){if(e)failed=e;++answered;});PUTGD_TRY_COMPARE(answered,2);
+  QVERIFY2(!failed,qPrintable(failed.message));
+  const auto frames=state()["frames"].toArray();QCOMPARE(frames.size(),before+2);
+  QCOMPARE(frames[before].toObject(),frame);
+  auto beating=frame;beating["beat"]=true;QCOMPARE(frames[before+1].toObject(),beating);
+ }
  void outdatedExtensionAsksForALogOut_data(){QTest::addColumn<int>("loadedVersion");QTest::newRow("no-recording-protocol")<<1;QTest::newRow("prior-appearance-protocol")<<putgd::gnome::extensionVersion-1;}
  void outdatedExtensionAsksForALogOut(){
   QFETCH(int,loadedVersion);stopFixture();QVERIFY(startFixture(loadedVersion));
@@ -404,6 +423,7 @@ private slots:
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
   QVERIFY(!source.selectsRegions());
+  QCOMPARE(source.scrollShell()->selectsRegions(),loadedVersion>=22);
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
   QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
   // Non-region acquisition remains available with the loaded extension.

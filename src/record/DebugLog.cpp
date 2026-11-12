@@ -8,8 +8,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 namespace putgd::record {
-void debugLog(const QString& line) {
+namespace {
+const QString& debugLogPath() {
     static const QString path = QProcessEnvironment::systemEnvironment().value("PUTGD_RECORD_DEBUG_LOG");
+    return path;
+}
+}
+bool debugLogEnabled() { return !debugLogPath().isEmpty(); }
+void debugLog(const QString& line) {
+    const QString& path = debugLogPath();
     if (path.isEmpty()) return;
     QFile file(path);
     if (!file.open(QIODevice::Append | QIODevice::Text)) return;

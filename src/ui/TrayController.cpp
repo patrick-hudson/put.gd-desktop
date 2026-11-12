@@ -170,6 +170,33 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
+ connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
+  if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
+  else notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
+ // put.gd's own notices stay out of a scroll capture: those on screen are
+ // closed, later ones wait for the capture's end. The capture starts
+ // noticeGoneMs after the server has reported them closed (a popup fades
+ // out; Omarchy's card takes 200 ms to leave), and no later than that after
+ // noticeConfirmMs when the server does not say.
+ static constexpr int noticeGoneMs=500,noticeConfirmMs=NativeTray::closeConfirmMs+200;
+ connect(&operations_.scroll(),&ScrollCaptureService::preparing,this,[this]{
+  holdNotices_=true;
+  const auto id=operations_.scroll().activeId();
+  const int closed=closeOwnNotifications([this,id]{if(operations_.scroll().activeId()==id)operations_.scroll().holdStart(noticeGoneMs,true);});
+  if(closed){
+   operations_.scroll().holdStart(noticeConfirmMs+noticeGoneMs);
+   logging::info(logUi(),"Notifications closed for a scroll capture",{{"count",closed}});
+  }
+ });
+ connect(&operations_.scroll(),&ScrollCaptureService::ended,this,[this]{
+  if(operations_.scroll().active())return;
+  holdNotices_=false;
+#ifdef Q_OS_LINUX
+  for(const auto& n:std::exchange(heldTrayMessages_,{}))sendTrayMessage(n.title,n.message,n.warning,n.actions,n.transient);
+#endif
+  for(const auto& managers:std::exchange(heldFileManagerNotices_,{}))notifyFileManagerMenu(managers);
+  for(const auto& n:std::exchange(heldNotices_,{}))notifyMessage(n.code,n.title,n.message,n.warning,n.link,n.diagnosticsOperation,n.revealPath,n.diagnosticsLabel);
+ },Qt::QueuedConnection);
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
   if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
@@ -222,7 +249,7 @@ TrayController::TrayController(OperationService& operations,
   entry->setData(action);entry->setProperty("commandLabel",label);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
- const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
  for(const auto& action:Settings::shortcutOrder()){
   capture(action,labels.value(action));
   if(action!="desktop")continue;
@@ -422,7 +449,7 @@ void TrayController::retintMenu() {
  const auto tint=Theme::trayTints(panel_.light()).idle;
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
- static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
+ static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"scroll","scroll"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
  for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(Ui::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {
@@ -443,7 +470,7 @@ void TrayController::acknowledgeFailures(){const auto view=attentionView_;failed
 void TrayController::refreshMenu() {
  QHash<QString,QString> shortcuts;const auto settings=operations_.settingsSnapshot();const auto shortcutStatus=operations_.shortcutStatus();const auto bindings=shortcutStatus["bindings"].toObject();for(const auto& action:Settings::shortcutOrder()){const auto binding=bindings[action].toObject();if(!shortcutStatus["available"].toBool()||!binding["bound"].toBool()||!binding["error"].toString().isEmpty()||!binding["error"].toObject().isEmpty()||binding["requested"].toString()!=settings.actions.value(action).shortcut)continue;QStringList actual;if(binding["actual"].isString())actual<<binding["actual"].toString();else for(const auto& value:binding["actual"].toArray())actual<<value.toString();actual.removeAll(QString{});if(!actual.isEmpty())shortcuts.insert(action,actual.first());}
  const auto outputName=[&](const QString& action){const auto route=settings.actions.value(action);if(route.destination=="local"||route.profileId.isEmpty())return settings.archive.keepUploads?QString("Local only"):QString("Nothing is saved or uploaded");const auto profile=settings.profiles.value(route.profileId);const bool privateUpload=route.publicationMode=="private"||(route.publicationMode=="default"&&profile["provider"]=="proton-drive"&&!profile["settings"].toObject()["shareByDefault"].toBool(true));return QString(privateUpload?"Private upload":"Shared link")+" · "+profile["label"].toString()+(settings.archive.keepUploads?" + local copy":"");};
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};QStringList outputs;const auto first=outputName("region");bool mixed=false;for(const auto& action:Settings::presentationOrder()){const auto output=outputName(action);mixed|=output!=first;outputs<<labels.value(action)+": "+output;}const auto output=mixed?QString("Mixed outputs"):first;
  const auto attention=attentionLabel_=="Failed uploads"?QString("Failed uploads (%1)").arg(failedItems_.size()):attentionLabel_;
  int files=0,uploads=0;bool uploading=false;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;uploading=true;++uploads;
@@ -597,8 +624,43 @@ void TrayController::openNotificationLink(const QUrl& link) {
  openLink(link,"notification-link");
 }
 #endif
+int TrayController::closeOwnNotifications(std::function<void()> gone) {
+#ifdef Q_OS_LINUX
+ if(native_)return native_->closeNotifications(std::move(gone));
+ ++trayNoticeGeneration_;
+ auto bus=QDBusConnection::sessionBus();
+ const auto open=std::exchange(trayOpen_,{});
+ const bool balloon=std::exchange(trayBalloon_,false);
+ if(balloon&&tray_){
+  // Qt's X11 fallback removes its balloon when its tray icon is hidden.
+  const bool visible=tray_->isVisible();tray_->hide();if(visible)tray_->show();disconnect(trayRestartClick_);
+ }
+ if(!bus.isConnected()&&!balloon)return 0;
+ for(const uint id:open)closeTrayNotification(id);
+ const int pending=trayMessagesInFlight_+trayClosesInFlight_+int(balloon);
+ if(pending){
+  const auto id=operations_.scroll().activeId();
+  operations_.scroll().holdStart(5000,true);
+  auto* waiting=new QTimer(this);waiting->setInterval(50);
+  connect(waiting,&QTimer::timeout,this,[this,waiting,id,gone]{
+   if(operations_.scroll().activeId()!=id){waiting->stop();waiting->deleteLater();return;}
+   if(trayMessagesInFlight_||trayClosesInFlight_){operations_.scroll().holdStart(5000,true);return;}
+   waiting->stop();waiting->deleteLater();if(gone)gone();
+  });
+  waiting->start();
+ }
+ return pending;
+#else
+ Q_UNUSED(gone);
+ return 0;
+#endif
+}
 void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath,const QString& diagnosticsLabel) {
  Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);Q_UNUSED(diagnosticsLabel);
+ if(holdNotices_&&operations_.scroll().active()){
+  if(heldNotices_.size()<32)heldNotices_.append({code,title,message,warning,link,diagnosticsOperation,revealPath,diagnosticsLabel});
+  return;
+ }
  // Each toast, so "a toast appeared" can be matched to its cause (#250). The
  // text can name files: diagnostics packages hash it unless --include-names.
  QJsonObject fields{{"notificationId",qint64(++notifications_)},{"summary",code},{"title",title},{"notificationText",message},{"warning",warning}};
@@ -624,8 +686,39 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // request without waiting; only a bus with no notification server falls back to
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
+void TrayController::closeTrayNotification(uint id,int attempt) {
+ if(trayKnownClosed_.contains(id)){trayClosingIds_.removeAll(id);return;}
+ if(!trayClosingIds_.contains(id))trayClosingIds_.append(id);
+ trayActions_.remove(id);
+ auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+ close<<id;++trayClosesInFlight_;
+ auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(close,1000),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,id,attempt](QDBusPendingCallWatcher* p){
+  const QDBusPendingReply<> reply=*p;p->deleteLater();
+  if(reply.isError()&&!trayKnownClosed_.contains(id)&&operations_.scroll().active()){
+   if(attempt>=2){
+    --trayClosesInFlight_;trayClosingIds_.removeAll(id);trayOpen_.append(id);
+    operations_.scroll().failPreparation({"notification_close_failed","A put.gd notification could not be closed. Dismiss it and try capture again.",{}});
+    return;
+   }
+   QTimer::singleShot(500,this,[this,id,attempt]{--trayClosesInFlight_;if(operations_.scroll().active())closeTrayNotification(id,attempt+1);else {trayClosingIds_.removeAll(id);if(!trayKnownClosed_.contains(id))trayOpen_.append(id);}});
+   return;
+  }
+  --trayClosesInFlight_;trayClosingIds_.removeAll(id);if(reply.isError()&&!trayKnownClosed_.contains(id))trayOpen_.append(id);
+ });
+}
+void TrayController::trayNotificationClosed(uint id,uint reason) {
+ Q_UNUSED(reason);
+ trayOpen_.removeAll(id);trayActions_.remove(id);
+ if(trayClosingIds_.contains(id)||trayMessagesInFlight_){
+  if(!trayKnownClosed_.contains(id))trayKnownClosed_.append(id);
+  if(trayKnownClosed_.size()>256)trayKnownClosed_.removeFirst();
+ }
+}
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
+ if(!trayMessagesInFlight_&&!trayClosesInFlight_)trayKnownClosed_.clear();
  auto bus=QDBusConnection::sessionBus();
+ if(!trayClosedConnected_&&bus.isConnected())trayClosedConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",this,SLOT(trayNotificationClosed(uint,uint)));
  // A warning is transient only where the server would restore it after a restart (#1298): ask its name first.
  if(warning&&bus.isConnected()){
   auto* named=new QDBusPendingCallWatcher(bus.asyncCall(QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","GetServerInformation")),this);
@@ -650,10 +743,11 @@ void TrayController::askCapabilities(const QString& title, const QString& messag
  });
 }
 void TrayController::sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions, bool transient) {
+ if(holdNotices_){if(heldTrayMessages_.size()<32)heldTrayMessages_.append({title,message,warning,actions,transient});return;}
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
-  if(!tray)return;
-  disconnect(trayRestartClick_);
+  if(!tray||holdNotices_)return;
+  trayBalloon_=true;disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
@@ -675,12 +769,19 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   if(!trayActionsConnected_)trayActionsConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",this,SLOT(trayNotificationAction(uint,QString)));
  }
  call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,names,hints,values.isEmpty()?10000:0});
+ const auto generation=trayNoticeGeneration_;
  ++trayMessagesInFlight_;
  auto* pending=new QDBusPendingCallWatcher(bus.asyncCall(call),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values](QDBusPendingCallWatcher* p) {
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values,generation](QDBusPendingCallWatcher* p) {
   --trayMessagesInFlight_;p->deleteLater();
   const QDBusPendingReply<uint> reply=*p;
+  if(generation!=trayNoticeGeneration_||holdNotices_){
+   if(reply.isValid())closeTrayNotification(reply.value());
+   return;
+  }
+  if(reply.isValid()&&trayKnownClosed_.contains(reply.value()))return;
   if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
+  if(reply.isValid()){trayOpen_.append(reply.value());if(trayOpen_.size()>16)trayOpen_.removeFirst();}
   const auto error=p->error().type();
   if(error==QDBusError::ServiceUnknown||error==QDBusError::UnknownObject||error==QDBusError::UnknownInterface||error==QDBusError::UnknownMethod)fallback();
  });
@@ -741,6 +842,7 @@ QString fileManagerName(const QString& name){
 }
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
+ if(holdNotices_){heldFileManagerNotices_.append(restartable);return;}
  QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.

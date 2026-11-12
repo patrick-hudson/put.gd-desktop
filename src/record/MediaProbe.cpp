@@ -37,13 +37,6 @@ QString kwinVersion() {
     return match.hasMatch() ? match.captured(1) : QString{};
 }
 #endif
-QString sessionType() {
-    const auto env = QProcessEnvironment::systemEnvironment();
-    const auto type = env.value("XDG_SESSION_TYPE");
-    if (type == "wayland" || (type.isEmpty() && !env.value("WAYLAND_DISPLAY").isEmpty())) return "wayland";
-    if (type == "x11" || (type.isEmpty() && !env.value("DISPLAY").isEmpty())) return "x11";
-    return type.isEmpty() ? QStringLiteral("none") : type;
-}
 // Plugin version of a registered element factory, or null when absent; the
 // plugin file's directory goes into `directories` (the AppImage audit checks
 // that every one is inside the image).
@@ -76,6 +69,14 @@ QJsonArray present(const QJsonObject& inventory, const QStringList& ordered) {
 }
 QString avVersion(unsigned packed) { return QStringLiteral("%1.%2.%3").arg(packed >> 16).arg((packed >> 8) & 0xff).arg(packed & 0xff); }
 QStringList strings(const QJsonArray& values) { QStringList result; for (const auto& value : values) result.append(value.toString()); return result; }
+}
+
+QString sessionType() {
+    const auto env = QProcessEnvironment::systemEnvironment();
+    const auto type = env.value("XDG_SESSION_TYPE");
+    if (type == "wayland" || (type.isEmpty() && !env.value("WAYLAND_DISPLAY").isEmpty())) return "wayland";
+    if (type == "x11" || (type.isEmpty() && !env.value("DISPLAY").isEmpty())) return "x11";
+    return type.isEmpty() ? QStringLiteral("none") : type;
 }
 
 QJsonObject probeMedia() {

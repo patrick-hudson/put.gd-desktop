@@ -229,6 +229,8 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   QPainterPath mountains;mountains.moveTo(4,18);mountains.lineTo(10,14);mountains.lineTo(14,17);mountains.lineTo(17,12);mountains.lineTo(20,15);p.drawPath(mountains);
  } else if(name=="stop") {
   fill(color);rounded(6,6,12,12,2);
+ } else if(name=="scroll") {
+  p.drawRoundedRect(QRectF(5,2,14,20),2,2);p.drawLine(QPointF(12,6),QPointF(12,18));p.drawLine(QPointF(8,14),QPointF(12,18));p.drawLine(QPointF(16,14),QPointF(12,18));
  } else if(name=="record") {
   rounded(3,6,12,12);QPainterPath lens;lens.moveTo(15,10);lens.lineTo(21,6);lens.lineTo(21,18);lens.lineTo(15,14);p.drawPath(lens);
  } else if(name=="record-dot") {

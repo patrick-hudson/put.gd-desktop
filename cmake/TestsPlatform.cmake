@@ -105,6 +105,9 @@
       "${protocol_dir}/ext-data-control-v1-server-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-server-protocol.h")
     target_include_directories(test_kde_ownership PRIVATE "${protocol_dir}")
     target_link_libraries(test_kde_ownership PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
+    if(TARGET putgd-record)
+      target_compile_definitions(test_kde_ownership PRIVATE PUTGD_RECORD_DESKTOP_ENTRY="${CMAKE_BINARY_DIR}/packaging/linux/putgd-record.desktop")
+    endif()
     add_test(NAME kde_ownership_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_ownership>)
     set_tests_properties(kde_ownership_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-server-protocol.h"
@@ -162,6 +165,10 @@ if(BUILD_TESTING AND TARGET putgd_budgie)
     target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_TEST_IMAGE_COPY_SOURCE=1)
     target_link_libraries(test_budgie_labwc PRIVATE PkgConfig::PUTGD_GST PkgConfig::PUTGD_WAYLAND)
   endif()
+  # The scroll capture's virtual pointer against the real compositor (#1376): a wheel notch reaches a window.
+  target_sources(test_budgie_labwc PRIVATE src/platform/wayland/VirtualPointer.cpp)
+  target_include_directories(test_budgie_labwc PRIVATE src "${protocol_dir}")
+  target_link_libraries(test_budgie_labwc PRIVATE PkgConfig::PUTGD_WAYLAND)
   add_test(NAME budgie_labwc_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_budgie_labwc>)
   set_tests_properties(budgie_labwc_integration PROPERTIES TIMEOUT 120)
   # The labwc bridge's gsettings sequencing against a fake gsettings; needs no labwc.
