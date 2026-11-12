@@ -1546,6 +1546,48 @@ void testLivePages() {
            fmt("%s, %d rows of %d, first foreign row %d, %d wheel steps, %d of them further than 80 px from where the pointer waits [%s]", toString(result), run.stats().outputRows, doc.h, foreign, wheels, farWheels, run.stats().lastError.c_str()));
   }
   {
+    // The end of a numbered text in a GTK 4 view on Plasma: the wheel moves
+    // nothing, the view shows its edge effect over the last rows, and the
+    // column of the tens digits is the same one line up and one line down as
+    // where it is. That column "moved" to the quarter-band search, nothing
+    // proved it, and "changed in place" became ambiguous: the capture had all
+    // 1,500 lines and ended lost_track (real desktop, 2026-11-12). A column
+    // that stayed where it was has not moved, whatever else it matches.
+    const int W = 1200, V = 700, pitch = 18;
+    Image doc(W, 300 * pitch + 8, kBg);
+    for (int i = 0; i < 300; ++i) {
+      const int y = 4 + i * pitch;
+      Rng words(5000 + uint64_t(i));
+      drawTextLine(doc, y, 330, 900, words);
+      Rng tens(1000 + uint64_t((i / 10) % 10));
+      drawTextLine(doc, y, 200, 226, tens);
+    }
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    {
+      // Two frames at one place after a step; between them the view laid a faint tint
+      // over a part of its lower rows (its edge effect): more rows changed
+      // than "no movement" allows at a glance, every one the same row to the
+      // bands (two of eight differ).
+      Renderer rend(doc, vs);
+      Image before, a, b;
+      rend.render(2962, 0, before);
+      rend.render(3000, 1, a);
+      rend.render(3000, 2, b);
+      for (int y = 420; y < 600; ++y)
+        for (int x = 610; x < 860; ++x) b.at(x, y) -= 0x010101;
+      ScrollStitcher st;
+      st.addFrame(before.view(), kNoHint);
+      st.addFrame(a.view(), 38);
+      const StepResult r = st.addFrame(b.view(), 38);
+      const bool nothingMoved = (r.status == StepStatus::NoMovement || r.status == StepStatus::Appended) && r.offset == 0 && r.appendedRows == 0;
+      report("a column of tens digits under a faint tint: nothing moved", nothingMoved,
+             fmt("%s offset=%d appended=%d score=%.2f evidence=%d", toString(r.status), r.offset, r.appendedRows, r.score, r.evidenceRows));
+    }
+  }
+
+  {
     // A page that scrolls at once (no animation) has moved while the pointer
     // still stays its moment after the wheel step. That is the step's
     // response; the wait must not sit out the whole response time for a

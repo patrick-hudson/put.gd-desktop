@@ -1271,18 +1271,28 @@ ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, 
   // wheel was turned over, the first quarters that moved (as a piece, or by a
   // distance they name) say by how much. Side bars that stay, or that move
   // part of the way, are farther off, however wide they are.
-  bool somethingMoved = false;
-  for (int reach = 0; reach < F && !somethingMoved; ++reach) {
+  // A quarter that is where it was has not moved, whatever other distance it
+  // fits as well: a column of line numbers' tens digits is the same one line
+  // up and one line down, and at the end of a text, where the wheel moves
+  // nothing, it was taken for a column that moved and nothing proved it (a
+  // GTK 4 text view on Plasma had all 1,500 lines and ended lost_track;
+  // real desktop, 2026-11-12). The nearest quarter that tells anything and
+  // stayed ends the search: nothing moved under the pointer.
+  bool somethingMoved = false, stayed = false;
+  for (int reach = 0; reach < F && !somethingMoved && !stayed; ++reach) {
     for (int j : {under - reach, under + reach}) {
       if (j < 0 || j >= F || (reach == 0 && j != under)) continue;
-      for (int e : moved[size_t(j)])
-        if (e != 0) {
+      if (at(j, 0) || still[size_t(j)]) {
+        stayed = true;
+      } else {
+        for (int e : moved[size_t(j)]) {
           somethingMoved = true;
           consider(e);
         }
-      if (moved[size_t(j)].empty() && nameOf(j) != 0) {
-        somethingMoved = true;
-        consider(nameOf(j));
+        if (moved[size_t(j)].empty() && nameOf(j) != 0) {
+          somethingMoved = true;
+          consider(nameOf(j));
+        }
       }
       if (reach == 0) break;
     }
