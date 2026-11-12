@@ -65,6 +65,7 @@ bool ScrollRun::inject(int notches) {
         // Rows a frame shows above the parked pointer's margin are under the
         // pointer's influence unless it leaves again right after the wheel step.
         stitcher_.setTrustedFrom(visit ? 0 : parkPoint(stats_.parkPosition, last_.width, last_.height).y + opts_.hoverMarginRows);
+        stitcher_.setWheelColumn(parkPoint(stats_.parkPosition, last_.width, last_.height).x);
         if (!park()) return false;
         if (parked_ != stats_.parkPosition) {
             // It just arrived here: let the application see it enter, then say it again.

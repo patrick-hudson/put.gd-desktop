@@ -646,6 +646,8 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         // the pointer has left, and fades it out).
         options.restAway = true;
         options.awayLingerMs = 450;
+        // A page's own bar that slides in over the bottom on the way becomes the footer.
+        options.stitch.lateBarIsFooter = true;
         if (job->paintedPointer) {
             // A compositor that paints the pointer into the frames whatever was
             // asked (Hyprland 0.56 did; lab guest of 2026-11-10): rows are kept

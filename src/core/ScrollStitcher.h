@@ -92,6 +92,18 @@ struct StitchOptions {
   // (minDistinctRows different ones among them), fewer than ownPaceMaxWith at
   // the page's distance and where they were, and that in two steps in a row.
   double ownPaceMaxWith = 0.50;
+  // The search by quarter bands (ScrollStitcher::columnSearch), for a page
+  // between side bars: this many quarters at least must be proved to be the
+  // page's at the offset.
+  int columnMinQuarters = 4;
+  // And how far apart in brightness (the mean of the channels' sum, in
+  // sixteenths: 96 is 6 of 765) two quarters of a row may be and still be the
+  // same line drawn again.
+  int columnLightTolerance = 96;
+  // A bar that comes up at the bottom late (ScrollStitcher::lateBar) becomes
+  // the footer when every row can be accounted for, instead of ending the
+  // capture as a change of layout.
+  bool lateBarIsFooter = false;
 };
 
 // Quarters of a band: the columns the own-pace rule looks at.
@@ -211,6 +223,9 @@ class ScrollStitcher {
   // outside): rows of a frame above this one may show what the page does
   // under it and are not taken in place of rows that wait (the edge guard).
   void setTrustedFrom(int row) { trustedFrom_ = std::max(0, row); }
+  // The column of the frame the wheel is turned over (the pointer's place):
+  // what scrolls there is the page (see columnSearch). Unset: the middle.
+  void setWheelColumn(int x) { wheelColumn_ = x; }
   const StitchOptions& options() const { return opts_; }
 
   // Internal-buffer mode only (no sink): the image, valid after finish().
@@ -228,16 +243,21 @@ class ScrollStitcher {
     bool lowConfidence = false;
     int evidence = 0;
     int evaluated = 0;
+    std::vector<int> kept;  // columnSearch: the quarter bands the rows were compared over
   };
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
+  Search locate(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
+  Search columnSearch(const FrameSignatures& cur, int top, int bottom) const;
   int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates, bool exact) const;
   bool columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady, uint32_t own) const;
   enum class Bar { Is, IsNot, Open };
-  Bar barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, int d) const;
-  bool headerVerdict(const FrameSignatures& cur, int top, int run, int bot, int d) const;
+  Bar barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, const Search& how) const;
+  bool headerVerdict(const FrameSignatures& cur, int top, int run, int bot, const Search& how) const;
+  bool lateBar(const FrameSignatures& cur, int top, int bot, int stayed, int d);
+  int rowPair(const Search& how, const FrameSignatures& cur, int yRef, int yCur) const;
   void paceOf(int top, int bottom, int d, std::vector<uint8_t>& astray) const;
   long long ownPace(const std::vector<uint8_t>& astray, long long before);
-  void fineHashes(const FrameView& f, const FrameSignatures& sig, std::vector<uint64_t>& out) const;
+  void fineHashes(const FrameView& f, const FrameSignatures& sig, std::vector<uint64_t>& out, std::vector<uint16_t>& light) const;
   int guardRows(int band) const;
   void holdRows(const uint8_t* rows, std::ptrdiff_t stride, int count);
   void emitHeld(int count);
@@ -267,7 +287,10 @@ class ScrollStitcher {
   // bottom of the reference frame and not written out yet.
   std::vector<uint8_t> held_;
   int heldRows_ = 0;
-  int trustedFrom_ = 0;
+  int trustedFrom_ = 0, wheelColumn_ = -1;
+  // The last step that appended: how far the page moved, and how many rows were out before it.
+  int lastStep_ = 0;
+  long long lastBefore_ = -1;
   FrameSignatures ref_;
   bool hasRef_ = false, moved_ = false, limited_ = false, finished_ = false;
   int width_ = 0, height_ = 0;
@@ -291,6 +314,7 @@ class ScrollStitcher {
   Shadow proved_, pace_;
   // Exact hashes per quarter of a band and row (see fineHashes): the reference frame's and this frame's.
   std::vector<uint64_t> refFine_, curFine_;
+  std::vector<uint16_t> refLight_, curLight_;
 };
 
 }  // namespace putgd::scroll

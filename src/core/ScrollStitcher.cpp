@@ -258,7 +258,7 @@ int ScrollStitcher::outputHeight() const {
 }
 
 size_t ScrollStitcher::memoryBytes() const {
-  return image_.capacity() + pending_.capacity() + footer_.capacity() + held_.capacity() + proved_.pixels.capacity() + pace_.pixels.capacity() + (refFine_.capacity() + curFine_.capacity()) * 8 + ref_.bytes();
+  return image_.capacity() + pending_.capacity() + footer_.capacity() + held_.capacity() + proved_.pixels.capacity() + pace_.pixels.capacity() + (refFine_.capacity() + curFine_.capacity()) * 8 + (refLight_.capacity() + curLight_.capacity()) * 2 + ref_.bytes();
 }
 
 void ScrollStitcher::emitRaw(const uint8_t* row) {
@@ -300,11 +300,13 @@ void ScrollStitcher::storeFooter(const FrameView& f) {
 }
 
 // The compared columns of every row in quarters of a band, each an exact hash
-// of its pixels: what the own-pace rule compares. Only for the frames the
-// stitcher is given, not for every frame a settle check looks at.
-void ScrollStitcher::fineHashes(const FrameView& f, const FrameSignatures& sig, std::vector<uint64_t>& out) const {
+// of its pixels, and its mean brightness (the channels' sum, in sixteenths):
+// what the own-pace rule and the search by quarter bands compare. Only for
+// the frames the stitcher is given, not for every frame a settle check looks at.
+void ScrollStitcher::fineHashes(const FrameView& f, const FrameSignatures& sig, std::vector<uint64_t>& out, std::vector<uint16_t>& light) const {
   const int F = sig.bands * kFinePerBand, n = sig.colEnd - sig.colStart;
   out.resize(size_t(f.height) * F);
+  light.resize(size_t(f.height) * F);
   std::vector<int> edge(size_t(F) + 1);
   for (int j = 0; j <= F; ++j) {
     // Quarters of the signature's own bands, so that a quarter never straddles two.
@@ -318,13 +320,21 @@ void ScrollStitcher::fineHashes(const FrameView& f, const FrameSignatures& sig, 
     for (int j = 0; j < F; ++j) {
       uint64_t h = kFnvOffset, h2 = 0x6c62272e07bb0142ull;
       int x = edge[size_t(j)];
-      const int x1 = edge[size_t(j) + 1];
+      const int x0 = x, x1 = edge[size_t(j) + 1];
+      uint32_t sum = 0;
       for (; x + 1 < x1; x += 2) {
-        h = (h ^ loadPx(r, x)) * kFnvPrime;
-        h2 = (h2 ^ loadPx(r, x + 1)) * kFnvPrime;
+        const uint32_t v0 = loadPx(r, x), v1 = loadPx(r, x + 1);
+        h = (h ^ v0) * kFnvPrime;
+        h2 = (h2 ^ v1) * kFnvPrime;
+        sum += uint32_t(chanSum(v0) + chanSum(v1));
       }
-      if (x < x1) h = (h ^ loadPx(r, x)) * kFnvPrime;
+      if (x < x1) {
+        const uint32_t v = loadPx(r, x);
+        h = (h ^ v) * kFnvPrime;
+        sum += uint32_t(chanSum(v));
+      }
       o[j] = fmix64(h ^ fmix64(h2 + uint64_t(x1)));
+      light[size_t(y) * F + j] = uint16_t(x1 > x0 ? (uint64_t(sum) * 16) / uint64_t(x1 - x0) : 0);
     }
   }
 }
@@ -417,7 +427,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     bodyRows_ = height_;
     refOrigin_ = 0;
     ref_ = cur;
-    fineHashes(f, cur, refFine_);
+    fineHashes(f, cur, refFine_, refLight_);
     hasRef_ = true;
     r.status = StepStatus::First;
     return r;
@@ -435,7 +445,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     return r;
   }
   const int H = height_;
-  fineHashes(f, cur, curFine_);
+  fineHashes(f, cur, curFine_, curLight_);
   r.changedRows = countChangedRows(ref_, cur, 0, H, opts_);
   const bool margin = marginsChanged(ref_, cur);
   // Loose rule: changes confined to <= (bands - minBandsEqual) bands are noise.
@@ -462,6 +472,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     }
     ref_ = cur;
     refFine_.swap(curFine_);
+    refLight_.swap(curLight_);
     if (moved_) storeFooter(f);
   };
   auto noMovement = [&](double score) {
@@ -512,7 +523,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   }
   if (H - top - bot < opts_.minOverlapRows + 1) return noMovement(0.0);  // changed in place
 
-  Search s = search(cur, top, H - bot, hint, unc);
+  Search s = locate(cur, top, H - bot, hint, unc);
   if (s.status == StepStatus::NoMatch && !identical) {
     // Runs of identical rows at the frame edges may just be blank content that
     // did not change; header/footer bands end with informative rows, so retry
@@ -522,7 +533,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     while (t2 > 0 && cur.rowFlat[t2 - 1]) --t2;
     while (b2 > 0 && cur.rowFlat[H - b2]) --b2;
     if ((t2 != top || b2 != bot) && H - t2 - b2 >= opts_.minOverlapRows + 1) {
-      Search s2 = search(cur, t2, H - b2, hint, unc);
+      Search s2 = locate(cur, t2, H - b2, hint, unc);
       s2.evaluated += s.evaluated;
       if (s2.status == StepStatus::Appended ||
           (s.status == StepStatus::NoMatch && s2.status == StepStatus::Ambiguous))
@@ -546,10 +557,10 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   if (moved_ && stayedTop > top) {
     Search below = s;
     if ((s.status == StepStatus::NoMatch || s.status == StepStatus::Ambiguous) && H - stayedTop - bot >= opts_.minOverlapRows + 1) {
-      below = search(cur, stayedTop, H - bot, hint, unc);
+      below = locate(cur, stayedTop, H - bot, hint, unc);
       below.evaluated += s.evaluated;
     }
-    if (below.status == StepStatus::Appended && below.d > 0 && headerVerdict(cur, top, stayedTop, bot, below.d)) {
+    if (below.status == StepStatus::Appended && below.d > 0 && headerVerdict(cur, top, stayedTop, bot, below)) {
       top = stayedTop;
       s = below;
     } else {
@@ -567,7 +578,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   if (s.status == StepStatus::NoMatch && !identical && !topRefused) {
     const int skip = int((H - top - bot) * opts_.edgeTopFraction);
     if (skip > 0 && H - top - skip - bot >= opts_.minOverlapRows + 1) {
-      Search inner = search(cur, top + skip, H - bot, hint, unc);
+      Search inner = locate(cur, top + skip, H - bot, hint, unc);
       inner.evaluated += s.evaluated;
       if (inner.status == StepStatus::Appended && inner.d > 0) {
         s = inner;
@@ -593,8 +604,8 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   if (moved_ && stayedBottom > bot) {
     Search above = s;
     if ((s.status == StepStatus::NoMatch || s.status == StepStatus::Ambiguous) && H - top - stayedBottom >= opts_.minOverlapRows + 1)
-      above = search(cur, top, H - stayedBottom, hint, unc);
-    const Bar bar = above.status == StepStatus::Appended && above.d > 0 ? barVerdict(cur, top, bot, stayedBottom, above.d) : Bar::Open;
+      above = locate(cur, top, H - stayedBottom, hint, unc);
+    const Bar bar = above.status == StepStatus::Appended && above.d > 0 ? barVerdict(cur, top, bot, stayedBottom, above) : Bar::Open;
     if (bar == Bar::Is) {
       // A bar that was in every frame since the page first moved (only the
       // first frame, taken before any wheel step, is without it) is how the
@@ -603,8 +614,11 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
       // footer, and this frame, which shows those rows above the bar, goes
       // on from the first frame's last row. A bar that comes later, after
       // rows of frames that moved without it are in the image, is a change.
+      // (And, where the caller asked for it, a bar that came up in the last
+      // frame alone and shows something: see lateBar.)
       const long long start = provedRows_ - (refOrigin_ + above.d);
-      if (provedRows_ != firstRows_ || start < top || start > H - stayedBottom || !cutBackTo(provedRows_, proved_)) {
+      const bool sinceFirst = provedRows_ == firstRows_ && start >= top && start <= H - stayedBottom;
+      if (sinceFirst ? !cutBackTo(provedRows_, proved_) : !lateBar(cur, top, bot, stayedBottom, above.d)) {
         r.offset = above.d;
         return layoutChanged(r, true);
       }
@@ -707,9 +721,12 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
       }
     }
     r.appendedRows = int(logicalRows() - before);
+    lastStep_ = d;
+    lastBefore_ = before;
     refOrigin_ = curOrigin;
     ref_ = cur;
     refFine_.swap(curFine_);
+    refLight_.swap(curLight_);
     storeFooter(f);
     r.status = limited_ ? StepStatus::LimitReached : StepStatus::Appended;
   } else {
@@ -727,8 +744,10 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
       proved_.save(held_, heldRows_, bodyRows_, width_);
     }
     refOrigin_ += d;  // later frames append only rows below what is already emitted
+    lastStep_ = 0;
     ref_ = cur;
     refFine_.swap(curFine_);
+    refLight_.swap(curLight_);
     storeFooter(f);
     r.status = StepStatus::Reversed;
   }
@@ -779,10 +798,11 @@ bool ScrollStitcher::takeBackTo(long long rows) {
 // with the bar in it and its rows are already appended), so rows count as
 // proved only up to the last step whose verdict was IsNot or that showed no
 // such run (provedRows_), and the image is cut back to there.
-ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, int d) const {
+ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, const Search& how) const {
+  const int d = how.d;
   int against = 0, with = 0, open = 0;
   for (int y = std::max(top, height_ - stayed - d); y < height_ - bot - d; ++y) {
-    const int k = classifyRowPair(ref_, y + d, cur, y, opts_);
+    const int k = rowPair(how, cur, y + d, y);
     if (k == 0 || k == -2) ++against;
     else if (k > 0) ++with;
     else if (!(ref_.rowFlat[y + d] && cur.rowFlat[y] && ref_.flatColor[y + d] == cur.flatColor[y])) ++open;
@@ -791,14 +811,61 @@ ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int t
   return against == 0 && open == 0 ? Bar::IsNot : Bar::Open;
 }
 
+// A pair of rows as the search that found the offset compares them: by the
+// eight bands (classifyRowPair), or over the quarters columnSearch kept.
+int ScrollStitcher::rowPair(const Search& how, const FrameSignatures& cur, int yRef, int yCur) const {
+  if (how.kept.empty()) return classifyRowPair(ref_, yRef, cur, yCur, opts_);
+  const int F = ref_.bands * kFinePerBand;
+  int differ = 0;
+  for (int j : how.kept) {
+    const size_t a = size_t(yCur) * F + j, b = size_t(yRef) * F + j;
+    differ += !(curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance);
+  }
+  if (differ > int(how.kept.size()) / 4) return 0;
+  return ref_.rowFlat[yRef] && cur.rowFlat[yCur] ? -1 : 1;
+}
+
+// A bar that came up at the bottom in the last frame, after rows of frames
+// without it are in the image: a web page's own banner, slid in over the last
+// rows of the viewport once the reader has scrolled a while (an
+// encyclopedia's appeal for donations, a cookie notice; live pages,
+// acceptance of 2026-11-12, where the capture of such an article ended at
+// 1,611 of 24,117 rows). The layout rule ends the capture there, because the
+// step that first showed the bar appended the bar's rows as page. Where the
+// caller asks for it (StitchOptions::lateBarIsFooter) the bar becomes the
+// footer instead and the capture goes on, when every row can be accounted for:
+//  - the bar shows something (a viewport that got shorter leaves window
+//    background, one flat colour, and that stays a change of layout);
+//  - it came up in the last frame and no earlier: the step before was the
+//    last that showed no such run (provedRows_ is what was out before it);
+//  - that step moved the page at least as far as the bar is high, so the rows
+//    it took from under the bar are the image's last rows and no row seen
+//    before it was taken from there;
+//  - and this frame shows the first of those rows above the bar.
+// Those last rows are taken back; this frame, whose rows above the bar the
+// search proved, supplies them. Returns false when any of that fails.
+bool ScrollStitcher::lateBar(const FrameSignatures& cur, int top, int bot, int stayed, int d) {
+  if (!opts_.lateBarIsFooter) return false;
+  const int rows = stayed - bot;
+  if (rows <= 0 || lastStep_ < rows || provedRows_ != lastBefore_) return false;
+  int shows = 0;
+  for (int y = height_ - stayed; y < height_ - bot; ++y) shows += !cur.rowFlat[y];
+  if (shows < opts_.layoutStaticMinRows) return false;
+  const long long keep = logicalRows() - rows;
+  const long long start = keep - (refOrigin_ + d);
+  if (keep < provedRows_ || start < top || start > height_ - stayed) return false;
+  return takeBackTo(keep);
+}
+
 // The same question at the top, for a run of rows [top, run) that newly stays
 // where it is: a header that came up over the page, when it shows something
 // (at least layoutStaticMinRows rows that are not one flat colour) and the
 // rows that should have scrolled into it contradict it.
-bool ScrollStitcher::headerVerdict(const FrameSignatures& cur, int top, int run, int bot, int d) const {
+bool ScrollStitcher::headerVerdict(const FrameSignatures& cur, int top, int run, int bot, const Search& how) const {
+  const int d = how.d;
   int against = 0, with = 0, shows = 0;
   for (int y = top; y < run && y + d < height_ - bot; ++y) {
-    const int k = classifyRowPair(ref_, y + d, cur, y, opts_);
+    const int k = rowPair(how, cur, y + d, y);
     if (k == 0 || k == -2) ++against;
     else if (k > 0) ++with;
     shows += !cur.rowFlat[y];
@@ -918,6 +985,163 @@ bool ScrollStitcher::columnsChanged(const FrameSignatures& cur, int top, int bot
     if (neither[k] >= opts_.layoutBrokenFraction * n) broken |= 1u << k;
   }
   return haveSteady_ && (broken & steadyBands_ & ~own) != 0;
+}
+
+// The offset of this frame: the search over the eight bands, and where that
+// finds none, the search by quarter bands (columnSearch).
+ScrollStitcher::Search ScrollStitcher::locate(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const {
+  Search found = search(cur, top, bottom, hint, unc);
+  if (found.status != StepStatus::NoMatch) return found;
+  Search byColumns = columnSearch(cur, top, bottom);
+  if (byColumns.status != StepStatus::Appended) return found;
+  byColumns.evaluated += found.evaluated;
+  return byColumns;
+}
+
+// The search by quarter bands, for a page between side bars. The tolerant
+// rule forgives two bands of eight that do not move with the page, which is
+// one side bar. A page with one at each side (an encyclopedia article between
+// its contents and its tools, a reference page between two navigation
+// columns) has four to six such bands; every row with something in a side bar
+// then contradicts every offset, and the capture ended at its first step
+// (live pages, acceptance of 2026-11-12). Which columns are not the page is
+// proved here instead of allowed for: a quarter band is the page's when at
+// one distance d at least layoutBrokenFraction of the overlap's rows are
+// equal bit for bit, minDistinctRows different ones among them; it is
+// something else when it is so at another distance and not at d: where it
+// was (a bar that stays), or part of the way (a bar that sticks or comes
+// unstuck in this step). At least columnMinQuarters quarters must be the
+// page's at d, the quarter the wheel is turned over among them: what scrolls
+// under the pointer is the page, whatever else moves beside it and however
+// wide that is. (When that quarter tells nothing, a gutter, the page's
+// quarters must be half as many again as those at any other distance but
+// none.) The rows are then compared over every quarter that is not proved to be something
+// else, by the tolerant rule's own measure (a quarter of them may differ), and
+// the offset has to pass what any offset has to: the score, the number of
+// evidence rows, different rows among them, more than a sliver of overlap,
+// and no rival. The pixels alone decide; no hint is heard.
+// A quarter of a row is the same here when it is equal bit for bit, or as
+// bright within columnLightTolerance. A browser does not always draw a line
+// of text the same way twice: in a block that scrolls sideways (a code
+// listing) the same glyphs come out with other antialiasing after the page
+// has moved, 150 of 783 rows in one step of a documentation page, and every
+// such capture ended there (Firefox 158, acceptance of 2026-11-12). The same
+// line drawn again is as bright in every quarter to within two of 765; another
+// line is not: one row off, a quarter of the rows had more than a quarter of
+// their quarters further apart than that. Rows equal bit for bit must still
+// be there, different ones, for a column to count and for an offset to pass.
+ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, int top, int bottom) const {
+  Search out;
+  const int F = ref_.bands * kFinePerBand, M = bottom - top;
+  if (refFine_.size() != size_t(height_) * F || curFine_.size() != refFine_.size()) return out;
+  const int sliver = std::max({opts_.minOverlapRows, opts_.sliverMinRows, int(M * opts_.sliverFraction)});
+  const int Dmax = M - sliver;
+  if (Dmax < 1) return out;
+  const auto same = [&](int y, int e, int j) {
+    const size_t a = size_t(y) * F + j, b = size_t(y + e) * F + j;
+    return curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance;
+  };
+  // The distances at which each quarter band moved as one piece.
+  std::vector<std::vector<int>> moved(static_cast<size_t>(F));
+  std::vector<uint64_t> rows;
+  for (int j = 0; j < F; ++j) {
+    rows.clear();
+    for (int y = top; y < bottom; ++y) rows.push_back(curFine_[size_t(y) * F + j]);
+    std::sort(rows.begin(), rows.end());
+    if (int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) continue;  // nothing to tell it by
+    for (int e = -Dmax; e <= Dmax; ++e) {
+      const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
+      const int allowed = int(std::floor((1.0 - opts_.layoutBrokenFraction) * (y1 - y0) + 1e-9));
+      int differ = 0;
+      for (int y = y0; y < y1 && differ <= allowed; ++y) differ += !same(y, e, j);
+      if (differ > allowed) continue;
+      rows.clear();
+      for (int y = y0; y < y1; ++y)
+        if (curFine_[size_t(y) * F + j] == refFine_[size_t(y + e) * F + j]) rows.push_back(curFine_[size_t(y) * F + j]);
+      std::sort(rows.begin(), rows.end());
+      if (int(std::unique(rows.begin(), rows.end()) - rows.begin()) >= opts_.minDistinctRows) moved[size_t(j)].push_back(e);
+    }
+    // A column that repeats moves "as one piece" at every multiple of its pitch: it tells nothing.
+    if (moved[size_t(j)].size() > 8) moved[size_t(j)].clear();
+  }
+  const auto at = [&](int j, int d) { return std::find(moved[size_t(j)].begin(), moved[size_t(j)].end(), d) != moved[size_t(j)].end(); };
+  std::vector<int> distances;
+  for (int j = 0; j < F; ++j)
+    for (int e : moved[size_t(j)])
+      if (e != 0 && std::find(distances.begin(), distances.end(), e) == distances.end()) distances.push_back(e);
+  const auto support = [&](int d) {
+    int n = 0;
+    for (int j = 0; j < F; ++j) n += at(j, d);
+    return n;
+  };
+  struct Passing {
+    int d, quarters, evidence;
+    double score;
+    int exact;  // matched rows equal bit for bit
+    std::vector<int> kept;
+  };
+  std::vector<Passing> passing;
+  // The quarter under the pointer (the middle of the frame when no one said).
+  const int wheelX = std::clamp(wheelColumn_ >= 0 ? wheelColumn_ : width_ / 2, ref_.colStart, std::max(ref_.colStart, ref_.colEnd - 1));
+  int under = 0;
+  {
+    const int n = ref_.colEnd - ref_.colStart, B = ref_.bands;
+    const int k = std::min(B - 1, int((long long)(wheelX - ref_.colStart) * B / std::max(1, n)));
+    const int x0 = ref_.colStart + int((long long)n * k / B), x1 = ref_.colStart + int((long long)n * (k + 1) / B);
+    under = k * kFinePerBand + std::min(kFinePerBand - 1, int((long long)(wheelX - x0) * kFinePerBand / std::max(1, x1 - x0)));
+  }
+  const bool underTells = !moved[size_t(under)].empty();
+  for (int d : distances) {
+    const int quarters = support(d);
+    if (quarters < opts_.columnMinQuarters) continue;
+    bool leads = !underTells || at(under, d);
+    for (int e : distances)
+      if (!underTells && std::abs(e - d) > 1 && 2 * quarters < 3 * support(e)) leads = false;
+    if (!leads) continue;
+    // Every quarter that is not proved to be something else.
+    std::vector<int> kept;
+    for (int j = 0; j < F; ++j)
+      if (moved[size_t(j)].empty() || at(j, d)) kept.push_back(j);
+    const int mayDiffer = int(kept.size()) / 4;
+    const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+    const int budget = int(std::floor((1.0 - opts_.minScore) * (y1 - y0) + 1e-9));
+    int match = 0, conflict = 0;
+    rows.clear();
+    for (int y = y0; y < y1 && conflict <= budget; ++y) {
+      int differ = 0;
+      uint64_t row = kFnvOffset;
+      bool exact = true;
+      for (int j : kept) {
+        differ += !same(y, d, j);
+        exact = exact && curFine_[size_t(y) * F + j] == refFine_[size_t(y + d) * F + j];
+        row = (row ^ curFine_[size_t(y) * F + j]) * kFnvPrime;
+      }
+      if (differ > mayDiffer) ++conflict;
+      else if (!(ref_.rowFlat[y + d] && cur.rowFlat[y])) {
+        ++match;
+        if (exact) rows.push_back(row);  // only rows equal bit for bit count as different rows
+      }
+    }
+    ++out.evaluated;
+    if (conflict > budget || match + conflict < opts_.minOverlapRows) continue;
+    const double score = double(match) / (match + conflict);
+    std::sort(rows.begin(), rows.end());
+    if (score < opts_.minScore || int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) continue;
+    passing.push_back({d, quarters, match + conflict, score, int(rows.size()), kept});
+  }
+  if (passing.empty()) return out;
+  const Passing* best = &passing.front();
+  for (const Passing& p : passing)
+    if (p.exact > best->exact || (p.exact == best->exact && p.score > best->score)) best = &p;
+  // Two offsets explain the frame: a rival as good by its score, with at least half as many rows equal bit for bit.
+  for (const Passing& p : passing)
+    if (std::abs(p.d - best->d) > 1 && p.score >= best->score - opts_.uniquenessMargin && 2 * p.exact >= best->exact) return out;
+  out.status = StepStatus::Appended;
+  out.d = best->d;
+  out.score = best->score;
+  out.evidence = best->evidence;
+  out.kept = best->kept;
+  return out;
 }
 
 int ScrollStitcher::maxEvidenceStep() const {

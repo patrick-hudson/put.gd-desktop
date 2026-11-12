@@ -1542,6 +1542,72 @@ void testLivePages() {
            fmt("%s, %d rows of %d, first wrong row %d (the image's last row is the line), steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
   }
 
+  for (double px : {60.0, 100.0, 138.0})
+    for (int headerRows : {0, 72}) {
+      // A page between two side bars of text that scroll with it for 112 px
+      // and then stay (an encyclopedia article between its contents and its
+      // tools), with or without a header that sticks as well: five of the
+      // eight bands are not the page's. The image is the page between them.
+      // (An article: lines of text. The ruler's cells tell a narrow column nothing.)
+      DocSpec article;
+      article.seed = 9;
+      article.width = W;
+      article.viewport = V;
+      article.textOnly = true;
+      const Image text = makeDocument(article).img;
+      Image left(260, V - 24, 0xF8F9FA), right(200, V - 24, 0xF8F9FA);
+      Rng rng(21);
+      for (int y = 8; y + 16 < left.h; y += 22) drawTextLine(left, y, 10, 40 + rng.range(60, 200), rng);
+      for (int y = 14; y + 16 < right.h; y += 26) drawTextLine(right, y, 8, 30 + rng.range(40, 150), rng);
+      const Image header = barImage(W, std::max(headerRows, 1), 0x1B1B1B, 5);
+      const LiveSession s = liveSession(text, W, V, px, [&](Image& f, const FakeApp&, int pos, int64_t) {
+        const int barTop = std::max(136 - pos, 24 + headerRows);
+        for (int y = barTop; y < V; ++y) {
+          std::memcpy(&f.at(60, y), left.row(y - barTop), size_t(left.w) * 4);
+          std::memcpy(&f.at(700, y), right.row(y - barTop), size_t(right.w) * 4);
+        }
+        if (headerRows && pos >= 90) std::memcpy(&f.at(0, 0), header.row(0), size_t(W) * header.h * 4);
+      });
+      const int bad = firstWrongRow(s, text, 320, 700, text.h);
+      report(fmt("session a page between two side bars that stick%s, px=%g", headerRows ? " under a header that sticks" : "", px), s.result == RunResult::EndOfContent && s.outH == text.h && bad < 0,
+             fmt("%s, %d rows of %d, first wrong row %d between the bars, steps %d, scroll-backs %d [%s]", toString(s.result), s.outH, text.h, bad, s.steps, s.scrollBacks, s.error.c_str()));
+    }
+
+  for (int at : {2, 5})
+    for (int barRows : {40, 120}) {
+      // The page's own banner, slid in over the bottom after wheel event `at`
+      // (an appeal for donations). Asked to, the stitcher takes it for the
+      // footer: the page down to its last row that the banner leaves to be
+      // seen, then the banner, once. Without being asked the layout rule ends
+      // the capture, as before (testLayoutChange).
+      const Image banner = barImage(W, barRows, 0x2A4B8D, 8);
+      RunOptions opts;
+      opts.stitch.lateBarIsFooter = true;
+      const LiveSession s = liveSession(doc, W, V, 60, [&](Image& f, const FakeApp& app, int, int64_t) {
+        if (app.injections >= at) std::memcpy(&f.at(0, V - barRows), banner.row(0), size_t(W) * barRows * 4);
+      }, opts);
+      Image want(W, doc.h);
+      std::memcpy(want.px.data(), doc.row(0), size_t(W) * (doc.h - barRows) * 4);
+      std::memcpy(&want.at(0, doc.h - barRows), banner.row(0), size_t(W) * barRows * 4);
+      const int bad = firstWrongRow(s, want, 0, W, doc.h);
+      report(fmt("session a banner of %d rows that slides in after wheel event %d becomes the footer", barRows, at), s.result == RunResult::EndOfContent && s.outH == doc.h && bad < 0,
+             fmt("%s, %d rows of %d, first wrong row %d, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+    }
+  {
+    // What stays a change of layout although asked: window background (one
+    // flat colour) under a viewport that got shorter.
+    RunOptions opts;
+    opts.stitch.lateBarIsFooter = true;
+    const LiveSession s = liveSession(doc, W, V, 60, [&](Image& f, const FakeApp& app, int, int64_t) {
+      if (app.injections >= 3)
+        for (int y = V - 100; y < V; ++y)
+          for (int x = 0; x < W; ++x) f.at(x, y) = 0x666666;
+    }, opts);
+    const int bad = firstWrongRow(s, doc, 0, W, s.outH);
+    report("session window background that comes up at the bottom is still a change of layout", s.result == RunResult::LostTrack && s.outH < doc.h && bad < 0,
+           fmt("%s, %d rows of %d, first wrong row %d, steps %d [%s]", toString(s.result), s.outH, doc.h, bad, s.steps, s.error.c_str()));
+  }
+
   std::printf("\n[session] a column that scrolls at a pace of its own\n");
   // The acceptance fixture: a 100 px strip at the right that scrolls at a
   // third of the page's rate (a code editor's minimap), one colour a row.
