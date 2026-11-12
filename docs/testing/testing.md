@@ -302,7 +302,20 @@ design is in [scrolling capture](../design/scroll-capture.md).
   first rows and never `EndOfContent`, and the same change in place; the mirror cases must still end
   `EndOfContent` exact: margins and bands that were always there, a resize on the way to the top, a bar
   pinned from the first scroll on, a scrollbar that fades and a blinking cursor; a bar pinned after rows
-  were taken from under it ends `lost_track` with an exact prefix.
+  were taken from under it ends `lost_track` with an exact prefix. `testLivePages` (48 checks) covers
+  what real web pages did: a sticky header of 48, 80 and 120 rows that comes after 150 px, at three
+  wheel distances; a link panel over the bottom rows under a pointer that cannot leave (the edge guard
+  alone) and one that waits outside; a line blended into the rectangle's last row; the pointer coming in
+  just inside the edge it waits beyond, with the centre next where nothing scrolls there; a page
+  between two side bars that stick, with and without a header, and short lines between the same bars;
+  a banner of 40 and 120 rows that slides in and becomes the footer (window background that comes up is
+  still a change of layout); a minimap at a third of the page's rate, at three wheel distances, from the
+  top and from the end, which must end `lost_track`, and what must still run to the end (a strip that never
+  moves, a side bar that sticks after 90, 150 and 400 px, a video in a column); the edge guard at the
+  stitcher; tables that repeat and a step that moved farther than the overlap (`tieHintTolerance`); lines
+  that begin alike between two side bars; a page that answers the wheel at once (the response wait counted
+  from the wheel step); and a column of tens digits under a faint tint where nothing moved. The fixtures'
+  `FakeAppSpec::scene` is a page that knows where it is scrolled to, the clock and the pointer.
   `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
   It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
@@ -313,7 +326,7 @@ design is in [scrolling capture](../design/scroll-capture.md).
   History note, `top_not_reached` (kept, warned, noted, `topReached: false`, also after Stop and the
   cap; `end_of_content` with an unproved top refused), a start held for put.gd's own notices to go,
   admission refusing a wrong hash, size or IHDR, and (review round on #1398) the helper's own auto-start
-  honouring the notification hold, a build with no selector needing a rectangle, Cancel accepted while
+  honouring the notification hold, `noSelectorNoCapture` (a build with no selector refuses `scroll.prepare` with `scroll_unavailable`, reason `region_unavailable`, with a rectangle as well as without one: nothing prepared, no session; it replaced `noSelectorNeedsARectangle`), Cancel accepted while
   `start` or `stop` is pending, `cancelInFlightDecides` (a Cancel that is on its way decides the end:
   a Stop that arrives after it, a Stop refused or finished with its image while it is on its way, and a
   `finished` event meanwhile all end the session cancelled with no image, other commands are

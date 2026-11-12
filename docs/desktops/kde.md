@@ -186,10 +186,16 @@ KWin's region stream drops an isolated repaint. While frames are read the helper
 layer surface on the region's output every 30 ms (`BoundsOverlay::showHeartbeat`), and the loop only
 calls the end of the content when a frame grabbed from the screen agrees. The region selector is the
 helper's layer-shell one, so the Ubuntu 24.04 DEB, built without LayerShellQt for Qt 6, reports
-`selection: none` on Plasma Wayland; the AppImage bundles the selector. With no selector the
-window's button reports `region_unavailable`, and a request without a rectangle is refused with
-`scroll_unavailable` (reason `region_unavailable`) before an operation is created; a rectangle named
-through `putgd-cli` or MCP is still captured.
+`selection: none` on Plasma Wayland; the AppImage bundles the selector. With no selector there
+is no scrolling capture for any caller: the probe says `available: false` (reason
+`region_unavailable`), the window's button reports it, and `scroll.prepare` is refused with
+`scroll_unavailable` (reason `region_unavailable`) before an operation is created, with a
+rectangle named through `putgd-cli` or MCP as well as without one. The ring, bar and heartbeat
+would be ordinary windows that the compositor places, inside the rectangle among other places.
+While frames are read the pointer waits outside the rectangle and comes in only for each wheel
+step, 48 px inside the edge it waits beyond, so that its travel stays short: KWin takes a pointer
+that goes back and forth over more than a hundred pixels several times a second for one its user
+shakes to find it, and blows it up to many times its size.
 `test_kde_ownership` and `record_identity_contract` pin the entry's list and its first `Exec` token.
 
 ## Clipboard and hotkeys

@@ -261,8 +261,10 @@ with no cursor, ring, bar or notification pixel. Text pages count distinct bands
 | Cancel | no history row, no staging files |
 | Fractional scale, where the desktop has one | every row once, in order, seams at most one pixel |
 | Agent-only run through MCP | the same result with no pointer or keyboard from the driver; the PNG found by the returned SHA-256 |
-| The shortcut and a real drag | the bar and ring visible outside the rectangle, an exact PNG |
-| GNOME with the extension loaded before the update | `helper_outdated` on the `scroll` shortcut only; the tray still starts a capture |
+| The hotkey and a real drag | the bar and ring visible outside the rectangle, an exact PNG |
+| GNOME with the extension loaded before the update | `helper_outdated` on the `scroll` hotkey only; the tray still starts a capture |
+| Live web pages in Firefox and Chromium (a pull request page, an encyclopedia article, a documentation page, a reference page, a repository page), from the top and halfway down | `end_of_content` or `height_cap` with every band exact against the browser's own picture of the page, or an honest `lost_track` or `top_not_reached` with an exact prefix and a note; never a wrong row ([known limits](../design/scroll-capture.md#known-limits)) |
+| A column that scrolls at a third of the page's rate | `lost_track` with the note about a pace of its own, the rows from before it moved exact |
 | Memory | the resident is back under the idle target after the work drains |
 
 A result that is not `end_of_content` is an honest partial only if its image is exact; it is
