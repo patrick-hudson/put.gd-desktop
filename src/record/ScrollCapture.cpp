@@ -526,6 +526,10 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
 
 void ScrollCapture::stop(Reply reply) {
     if (state_ == State::Done) { reply({}, finished_); return; }
+    // A Stop behind a Cancel whose worker has not ended yet is answered as the
+    // Cancel will end the capture, not as a fault: the resident took the
+    // refusal for a failed capture (acceptance of 2026-11-11).
+    if (state_ == State::Capturing && job_ && cancelRequested_) { reply({"cancelled", "Scroll capture canceled", {}}, {}); return; }
     if (state_ != State::Capturing || !job_ || cancelRequested_) { reply(stateError("Nothing is being captured"), {}); return; }
     if (stopReply_) { reply(stateError("The capture is already stopping"), {}); return; }
     stopRequested_ = true;
@@ -671,7 +675,12 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             if (spoolFailed || spool.write(reinterpret_cast<const char*>(row), bytes) != bytes) spoolFailed = true;
             else ++rows;
         };
-        ScrollRun run(job->gate, frames, clock, options, sink);
+        // The layout rule takes the last rows back (ScrollStitcher::barVerdict).
+        const scroll::RowTakeBack takeBack = [&](long long taken) {
+            rows = std::max<qint64>(0, rows - taken);
+            if (!spoolFailed && (!spool.resize(rows * qint64(width) * 4) || !spool.seek(rows * qint64(width) * 4))) spoolFailed = true;
+        };
+        ScrollRun run(job->gate, frames, clock, options, sink, takeBack);
         if (!spoolFailed) result = run.run(&job->stop);
         stats = run.stats();
         // X11: the pointer goes back where the user had it, unless the pipe closed.

@@ -56,6 +56,7 @@ const char* toString(StepStatus s) {
     case StepStatus::Ambiguous: return "Ambiguous";
     case StepStatus::LimitReached: return "LimitReached";
     case StepStatus::InvalidFrame: return "InvalidFrame";
+    case StepStatus::LayoutChanged: return "LayoutChanged";
   }
   return "?";
 }
@@ -243,8 +244,8 @@ int classifyRowPair(const FrameSignatures& p, int yp, const FrameSignatures& c, 
 
 // ---------------------------------------------------------------- stitcher
 
-ScrollStitcher::ScrollStitcher(StitchOptions opts, RowSink sink)
-    : opts_(opts), sink_(std::move(sink)) {
+ScrollStitcher::ScrollStitcher(StitchOptions opts, RowSink sink, RowTakeBack takeBack)
+    : opts_(opts), sink_(std::move(sink)), takeBack_(std::move(takeBack)) {
   opts_.bands = std::clamp(opts_.bands, 1, 32);
   opts_.minOverlapRows = std::max(1, opts_.minOverlapRows);
 }
@@ -299,7 +300,7 @@ void ScrollStitcher::storeFooter(const FrameView& f) {
 }
 
 void ScrollStitcher::restartBeforeMovement() {
-  if (!moved_ && !finished_) *this = ScrollStitcher(opts_, std::move(sink_));
+  if (!moved_ && !finished_) *this = ScrollStitcher(opts_, std::move(sink_), std::move(takeBack_));
 }
 
 void ScrollStitcher::finish() {
@@ -354,6 +355,10 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     r.status = StepStatus::LimitReached;
     return r;
   }
+  if (changed_) {
+    r.status = StepStatus::LayoutChanged;
+    return r;
+  }
   const int H = height_;
   r.changedRows = countChangedRows(ref_, cur, 0, H, opts_);
   const bool margin = marginsChanged(ref_, cur);
@@ -386,6 +391,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   if (identical && !margin) return noMovement(1.0);
 
   int top, bot;
+  int stayedBottom = 0;  // rows at the bottom that are where they were, as measured in this step
   if (identical) {
     top = std::max(estTop_, 0);
     bot = std::max(estBot_, 0);
@@ -414,6 +420,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     // shrink over later steps: the estimate is the minimum over moving steps.
     top = estTop_ >= 0 ? std::min(estTop_, t) : t;
     bot = estBot_ >= 0 ? std::min(estBot_, b) : b;
+    stayedBottom = b;
   }
   if (H - top - bot < opts_.minOverlapRows + 1) return noMovement(0.0);  // changed in place
 
@@ -436,20 +443,60 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
         s.evaluated = s2.evaluated;
     }
   }
-  r.candidatesEvaluated = s.evaluated;
-  r.score = s.score;
-  r.evidenceRows = s.evidence;
-  r.lowConfidence = s.lowConfidence;
-  r.offset = s.d;
+  const auto tell = [&r](const Search& found) {
+    r.candidatesEvaluated = found.evaluated;
+    r.score = found.score;
+    r.evidenceRows = found.evidence;
+    r.lowConfidence = found.lowConfidence;
+    r.offset = found.d;
+  };
+  tell(s);
+  // The layout rule, rows (see barVerdict). The run is asked about whether or
+  // not the search found an offset: a bar a tenth of the overlap high leaves
+  // the search with too many conflicts, and the page above the bar then says
+  // how far it moved.
+  bool settled = true;
+  if (moved_ && stayedBottom > bot) {
+    Search above = s;
+    if ((s.status == StepStatus::NoMatch || s.status == StepStatus::Ambiguous) && H - top - stayedBottom >= opts_.minOverlapRows + 1)
+      above = search(cur, top, H - stayedBottom, hint, unc);
+    const Bar bar = above.status == StepStatus::Appended && above.d > 0 ? barVerdict(cur, top, bot, stayedBottom, above.d) : Bar::Open;
+    if (bar == Bar::Is) {
+      // A bar that was in every frame since the page first moved (only the
+      // first frame, taken before any wheel step, is without it) is how the
+      // page looks once it scrolls: a footer the first step could not know.
+      // The rows that step took from under it go back, the bar becomes the
+      // footer, and this frame, which shows those rows above the bar, goes
+      // on from the first frame's last row. A bar that comes later, after
+      // rows of frames that moved without it are in the image, is a change.
+      const long long start = provedRows_ - (refOrigin_ + above.d);
+      if (provedRows_ != firstRows_ || start < top || start > H - stayedBottom || !takeBackTo(provedRows_)) {
+        r.offset = above.d;
+        return layoutChanged(r, true);
+      }
+      s = above;
+      tell(s);
+      bot = stayedBottom;
+    } else if (s.status == StepStatus::Appended) {
+      settled = bar == Bar::IsNot;
+    }
+  }
   if (s.status != StepStatus::Appended) {
     if (identical) return noMovement(1.0);
     r.status = s.status;
     return r;
   }
   const int d = s.d;
+  // The layout rule, columns: the offset explains the rows, but a band of
+  // columns that every step so far left steady is now different in nearly
+  // every row, neither moved with the page nor where it was.
+  uint32_t steady = 0;
+  if (columnsChanged(cur, top, H - bot, d, steady)) return layoutChanged(r, false);
   // In-place change only. Frames alike in the compared columns say "moved
   // back" only when the pixels proved it (the margin rule), not on a hint.
   if (d == 0 || (identical && d < 0 && s.lowConfidence)) return noMovement(s.score);
+  steadyBands_ = haveSteady_ ? steadyBands_ & steady : steady;
+  haveSteady_ = true;
 
   if (d > 0) {
     const long long curOrigin = refOrigin_ + d;
@@ -470,8 +517,10 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     if (!moved_) {
       moved_ = true;
       flushPending(H - bot);  // first frame minus its (now known) footer
+      firstRows_ = bodyRows_;
     }
     const long long before = bodyRows_;
+    if (settled) provedRows_ = before;
     emitRows(f, int(start), H - bot);
     r.appendedRows = int(bodyRows_ - before);
     refOrigin_ = curOrigin;
@@ -490,6 +539,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     if (!moved_) {
       moved_ = true;
       flushPending(H - bot);
+      firstRows_ = provedRows_ = bodyRows_;
     }
     refOrigin_ += d;  // later frames append only rows below what is already emitted
     ref_ = cur;
@@ -499,6 +549,94 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   r.fixedTop = estTop_;
   r.fixedBottom = estBot_;
   return r;
+}
+
+// The layout inside the frame changed: nothing of this frame or a later one is
+// taken. With takeBack the image also loses the rows that are not proved to be
+// the page's (see barVerdict).
+StepResult ScrollStitcher::layoutChanged(StepResult r, bool takeBack) {
+  changed_ = true;
+  if (takeBack) takeBackTo(provedRows_);
+  r.status = StepStatus::LayoutChanged;
+  r.appendedRows = 0;
+  return r;
+}
+
+bool ScrollStitcher::takeBackTo(long long rows) {
+  if (rows >= bodyRows_) return true;
+  if (sink_ && !takeBack_) return false;
+  if (sink_) takeBack_(bodyRows_ - rows);
+  else image_.resize(size_t(rows) * size_t(width_) * 4);
+  bodyRows_ = rows;
+  return true;
+}
+
+// The layout rule, rows. The footer estimate only shrinks, so a run of rows
+// that newly stays where it is at the bottom of the frame (`stayed` rows, more
+// than the footer `bot`) is taken for page: blank lines that happen to be
+// alike, most of the time. When the page moved by d, the rows that were in
+// that run are now d higher. If instead the rows d above it contradict it, the
+// run did not move with the page: it is a bar that came up over the page, or
+// the window's background under a viewport that got shorter, and the rows
+// appended since it came were the bar's, with the page's rows hidden under it
+// (the cases in test_scroll_stitcher after the acceptance of 2026-11-11: a
+// complete-looking image with a bar in its body, ended as "end of content").
+// Is: at least layoutStaticMinRows rows contradict the run and they outnumber
+// the rows that did come out of it by more than layoutStaticRatio to one.
+// IsNot: every row is accounted for. Open: neither.
+// The step in which a bar first shows cannot tell (its frame is the first
+// with the bar in it and its rows are already appended), so rows count as
+// proved only up to the last step whose verdict was IsNot or that showed no
+// such run (provedRows_), and the image is cut back to there.
+ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, int d) const {
+  int against = 0, with = 0, open = 0;
+  for (int y = std::max(top, height_ - stayed - d); y < height_ - bot - d; ++y) {
+    const int k = classifyRowPair(ref_, y + d, cur, y, opts_);
+    if (k == 0 || k == -2) ++against;
+    else if (k > 0) ++with;
+    else if (!(ref_.rowFlat[y + d] && cur.rowFlat[y] && ref_.flatColor[y + d] == cur.flatColor[y])) ++open;
+  }
+  if (against >= opts_.layoutStaticMinRows && against > opts_.layoutStaticRatio * with) return Bar::Is;
+  return against == 0 && open == 0 ? Bar::IsNot : Bar::Open;
+}
+
+// The layout rule, columns. A row passes the tolerant rule with up to
+// (bands - minBandsEqual) bands different, which is right for what changes in
+// place in a few rows (a hover effect, a caret, a pointer) and for a column
+// that never scrolls with the page (a side bar, a minimap). It is wrong when
+// the page's viewport gets narrower under a rectangle that stays as it is: the
+// window's background then replaces the page in the same bands of every row,
+// every row still passes, and rows of two different layouts are stitched into
+// one image that ends as "end of content" (acceptance of 2026-11-11: a 960 px
+// rectangle over a window resized to show 760 px of the page).
+// What tells the two apart is the band's own history. In a band that belongs
+// to the page, or to something fixed beside it, nearly every row of the overlap
+// is either where the offset says (it moved with the page) or where it was (it
+// stayed): `steady`. A band that was steady in every proved step so far and in
+// this step is neither in nearly every row was repainted as a whole. A band
+// that never was steady (a minimap, a scrollbar's thumb wider than the side
+// margin over most rows) is left to the tolerant rule as before, and so is
+// anything that touches a few rows. The side margins are not looked at: a
+// scrollbar fades in and out there.
+// `steady`: the bands this step left steady. d == 0 asks about a change in place.
+bool ScrollStitcher::columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady) const {
+  const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d), n = y1 - y0;
+  steady = 0;
+  if (n < opts_.minOverlapRows) return false;
+  const int B = ref_.bands;
+  int neither[32] = {};
+  for (int y = y0; y < y1; ++y) {
+    const uint64_t* now = &cur.bandHash[size_t(y) * B];
+    const uint64_t* moved = &ref_.bandHash[size_t(y + d) * B];
+    const uint64_t* stayed = &ref_.bandHash[size_t(y) * B];
+    for (int k = 0; k < B; ++k) neither[k] += now[k] != moved[k] && now[k] != stayed[k];
+  }
+  uint32_t broken = 0;
+  for (int k = 0; k < B; ++k) {
+    if (neither[k] <= opts_.layoutSteadyFraction * n) steady |= 1u << k;
+    if (neither[k] >= opts_.layoutBrokenFraction * n) broken |= 1u << k;
+  }
+  return haveSteady_ && (broken & steadyBands_) != 0;
 }
 
 int ScrollStitcher::maxEvidenceStep() const {

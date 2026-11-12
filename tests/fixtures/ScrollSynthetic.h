@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -157,6 +158,10 @@ struct FakeAppSpec {
   // This many rows at the top of the viewport change with every frame (a
   // video in a fixed player): the picture never comes to rest.
   int restlessRows = 0;
+  // Painted over every frame before it is delivered, with the number of wheel
+  // events sent so far: whatever is in the captured rectangle beside the page
+  // (a window that is resized under it, a bar that comes up late).
+  std::function<void(Image& frame, int injections)> overlay;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
