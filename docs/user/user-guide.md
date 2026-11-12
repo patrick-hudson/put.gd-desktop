@@ -101,6 +101,7 @@ Tips:
 - Include the scrollbar in the rectangle. Without it a blank stretch the height of the window looks like the end.
 - A sticky header or footer is kept once, at the top and bottom of the image, not repeated. A header that only shows after you have scrolled a little (a bar that appears once the title has gone) is left out of the image, and a banner that slides in over the bottom later is kept once as the footer. A bar the page pins beside every row, such as a side bar, is in the image beside every row, as it is on the screen.
 - The last rows of each frame wait for the next frame, so a link panel or a window border at the bottom edge is in the image only at its end, where it is on the screen.
+- A page that is slow to answer the wheel takes longer, and at its end the page may move up and back down once: put.gd sends a step up and one down again to prove that it is at the end, and a page that does not answer them ends the capture as `lost_track` with the rows so far.
 - Content that changes while it scrolls (images that load late, video, animations) can stop the capture early. The image so far is exact. Wait for the page to finish loading first.
 - put.gd closes its own notifications (including the file-manager notice and the fallback balloon) when a capture starts and holds new ones until it ends. If one cannot be closed the capture does not start (`notification_close_failed`): dismiss it and try again. A notification from another application over the rectangle ends up in the image, so close it first.
 - The region has to lie on one monitor and be at least 64 px each way.
@@ -117,6 +118,7 @@ Tips:
 - The way up can be slow when the point where the pointer comes in sits on a link: the browser shows its link panel after each visit and the picture is not at rest until it has gone. It can take a minute or more on Plasma, and can end `top_not_reached` for an image that is whole.
 - Side bars beside every row are in the image beside every row, as on the screen, not once as in a browser's own full-page picture.
 - A bar the page pins to the bottom that appears only once the capture is at its end covers the page's last rows in the image, as on the screen.
+- A page that paints the first notch of a wheel step at once and then works through a long backlog before it paints the rest could still be taken for the end of the content.
 - A column that scrolls at its own pace (a minimap, a parallax strip) ends the capture, `lost_track`, with the rows from before it moved: no single tall image can show it beside the page.
 
 ## Record the screen

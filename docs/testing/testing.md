@@ -316,6 +316,12 @@ design is in [scrolling capture](../design/scroll-capture.md).
   that begin alike between two side bars; a page that answers the wheel at once (the response wait counted
   from the wheel step); and a column of tens digits under a faint tint where nothing moved. The fixtures'
   `FakeAppSpec::scene` is a page that knows where it is scrolled to, the clock and the pointer.
+  The session `session a page slower than the wait is not at its end` (`busyMsPerNotch` of 60, 120
+  and 250 ms, with the first notch shown at once or not, 24 runs) is a page that works through its
+  wheel notches one by one and paints once none is waiting: the whole page exact, or an honest end
+  with an exact prefix, never `EndOfContent` early (the end proof). `session a step seen halfway is
+  not matched beside its hint` (`splitInjection` of 2 to 4, a table that repeats, 12 runs) is the
+  short-step rule. `PUTGD_SCROLL_STITCHER_TRACE=<name part>` prints the steps of the slow runs.
   `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
   It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,

@@ -20,7 +20,8 @@ the whole scroll area, top to bottom, is in the image.
    in the [editor](image-editor.md) instead of sending it on.
 2. **Select.** The recording region selector opens, live as for a recording. The
    ring sits just outside the rectangle, and a small bar (state, height so far, **Stop**,
-   **Cancel**) sits outside it too.
+   **Cancel**) sits outside it too (on X11 32 px from the rectangle, so that the window
+   manager's shadow around the bar stays out of the last rows; 10 px elsewhere).
 3. **Capture.** It starts by itself after the drag. put.gd keeps the pointer outside the region
    and brings it in for each wheel step. It scrolls the content to its top first (`preferences.scrollCaptureFromTop`, on by
    default), then sends wheel steps down and stitches until the content stops moving.
@@ -225,9 +226,30 @@ so Stop is seen soon.
    the appended rows start less than 24 rows below the parked pointer (48 where the frames
    show a painted pointer), and at most 64 notches.
 6. **Prove stillness before the end.** A step with no movement waits at least 400 ms and is
-   repeated. Two still steps in a row are the end, and only when a frame grabbed from the
-   screen after the last injection agrees with the last one seen. With no such frame
-   the end is not proven and the capture stops as `lost_track`.
+   repeated, as one notch whose answer gets twice the response time (more notches are only more
+   for a busy page to work through before it can answer). Two still steps in a row are the end,
+   and only when a frame grabbed from the screen after the last injection agrees with the last
+   one seen. With no such frame the end is not proven and the capture stops as `lost_track`.
+   Where there is reason to doubt a still step, the end is proved by the end proof (below) instead.
+   A still step says only that the picture did not move in the time it was given: a page that
+   works through its wheel notches one after another and paints once none is waiting is still
+   for as long as it is busy, and two such steps once ended a capture as complete with 1,020 of
+   24,000 rows.
+   **The end proof** (`ScrollRun::proveEnd`) runs when an earlier still step was followed by
+   movement after all, when the last step moved all of the distance it asked, or when the page's
+   answer takes longer than the picture's settle time (a short step may then have been seen
+   halfway). A page answers its wheel steps in the order they came, so the loop sends one notch
+   up and requires the page to move: everything sent before has then been answered. A step up
+   that is not answered is sent again twice as large with twice the patience (1, 2 and 4 notches),
+   because a view overscrolled at its edge spends its first steps back. Then it sends one notch
+   more down than it went up and requires the page to return to exactly the picture the capture
+   ended on; where that is too far to place in one frame (a notch near half of a short
+   selection's band) it comes down in two steps. Back where it ended is the end of the content.
+   A page that is further down goes on as after any step (the time it took becomes the least the
+   loop waits for an answer). A page that never answers the step up, or does not come back, ends
+   the capture `lost_track` with the note "the page did not answer a wheel step up and back down,
+   so the end of the content is not proven". At the end of a capture of a slow page the page may
+   therefore move up and back down once, and such a capture takes longer.
 7. **No movement at all.** If nothing has scrolled down yet, each place for the wheel gets two
    single notches (four at the first after a way up), then the next: just inside the edge the
    pointer waits beyond, then the centre a third of the way down, near the right edge, two
@@ -265,6 +287,13 @@ shadows). A second hash of where the edges are lets a row match through a hover 
   (at least 36 rows and an eighth of the band). The loop never plans a step that keeps less than
   a quarter of the band, so a candidate with a tiny overlap at the far end of the search range is
   what a jump past the whole viewport leaves by coincidence. Rows were once lost this way.
+- **A step seen halfway.** After a step that moved less than the hint asked (a short step: the
+  last, partial one at the end of the content, or one seen before the page had finished it, whose
+  rest comes with the next step), the next step's hint is less sure by what that step lacked, so
+  the hint does not pick among tied offsets, and that next step does not teach the distance per
+  notch (it moves more than it asks). Without this a table between tables that repeat went
+  missing (60 px taken for 200 asked, then 340 for 196), and Chromium on Plasma learned 309 px a
+  notch where a notch is 180.
 - **Near-periodic content.** Lines of text that differ in a few characters tie under the tolerant
   rule. One candidate wins when nearly all its informative rows are equal bit for bit and
   every rival is mostly not. Content that repeats exactly stays ambiguous. Among tied candidates the loop's hint decides
@@ -551,6 +580,9 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   - A bar the page pins to the bottom of the viewport is in the image once, at its end, over
     the page's last rows, when it is there as the capture ends (a bar that appears only at the
     end is such a bar).
+  - A page that paints the first notch of a step at once and then works through a long backlog
+    before it paints the rest could still be taken for its end. The end proof does not rule that
+    case out.
   A page taller than the cap ends `height_cap`.
 - **Only vertical scrolling** exists. Horizontal scrolling, a manual-scroll mode, scrolling by key
   presses, window and monitor targets and regions that span outputs are out of scope.

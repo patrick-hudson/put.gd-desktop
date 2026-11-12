@@ -111,7 +111,9 @@ without it) and waits up to 10 seconds for Ctrl, Shift, Alt and Super to be up b
 notch, because Ctrl plus wheel zooms (`capture_timeout`, check `modifiers_released`). The region
 selector is the helper's own, as for a region recording. Escape stops the capture and keeps the
 image: it is read as an XInput 2.1 raw key press, so the bar never needs the keyboard and the key
-still goes where it was going. `scroll_capture_x11` drives the real helper on Xvfb and
+still goes where it was going. The capture bar sits 32 px below the rectangle on X11 (10 px
+elsewhere), because Muffin draws a shadow around it that at 10 px darkened the last rows of the
+image under the bar's columns. `scroll_capture_x11` drives the real helper on Xvfb and
 reads the X server's raw input to show that nothing is injected before capturing or after Stop,
 Cancel or the end of the control pipe; it does not establish Cinnamon behaviour.
 
