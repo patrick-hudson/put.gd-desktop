@@ -309,8 +309,8 @@ private slots:
    // registers that it will ask.
    if(then!="unasked"){std::jthread([&]{asked=provider.anticipate(d);}).join();QVERIFY(asked);}
    if(then=="gone-before")asked.reset();
-   if(then=="chatter")QTest::qWait(500);
-   QVERIFY(running(pid));
+   // It goes on running while it says what nobody asked for.
+   if(then=="chatter")PUTGD_VERIFY_STEADY(running(pid),500);else QVERIFY(running(pid));
   }
   if(then=="taken"){
    // The session's helper waits, still holding the account, and answers the next session.
