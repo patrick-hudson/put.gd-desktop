@@ -91,6 +91,23 @@ The pull requests measured the suites they touched before and after:
 | Storage, recording and job suites (24 CTest entries before, 21 after) | f44 | 267 s | 85 s |
 | Desktop adapter suites | k72 | 231 s | 103 s |
 
+[#1426](https://github.com/patrick-hudson/put.gd-desktop/pull/1426) brought back
+eight functions that #1421 removed and that meet the bar, each cut down to the
+check that matters:
+
+| Test | Functions | What they catch |
+| --- | --- | --- |
+| `gui_application` | `railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch`, `screenRailActionKeepsUnstoredCredentialsInTheirWindow` | A capture started from Settings that leaves put.gd's windows on screen, so a revealed credential could land in a screenshot that uploads |
+| `gui_application` | `explicitQuitFlushesFinishedEditsBeforeStoppingTheResident`, `finalCloseWaitsForPendingAutosaveDuringAcceptedSetup`, `closeRejectionRetainsTheDraftAndAllowsRetry` | Settings edits dropped on quit, on close during a save, or after a refused close |
+| `gui_editor_window` | `saveCopyFinishesThePendingCropLikeUpload` | Save Copy writing the uncropped image when a crop was drawn but not applied |
+| `gui_settings_capture` | `shortcutRecordingCancellationAndFailuresReleaseSuspension` | Global hotkeys left suspended after a failed or cancelled shortcut recording |
+| `gui_tray` | `failuresStayBadgedUntilAcknowledged` | A failed upload losing its mark on the tray icon |
+
+It also brought back seven contrast-ratio checks from `gui_theme` as
+`gui_theme_contrast`. That test carries the CTest label `nightly`: it runs on
+pushes to `nightly` and not on pull requests. See [ci.md](../release/ci.md).
+The rest of `gui_application`, `gui_tray` and `gui_theme` stays removed.
+
 The second round closed eight `flaky-test` issues. #1402
 (`scroll_service_integration`), #635 (`gui_history_view`), #1113
 (`recording_pipeline_throughput`), #393 (`operations_contract`) and #1416

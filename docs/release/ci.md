@@ -448,6 +448,8 @@ short private TMPDIR, configure with `-DPUTGD_TEST_TIMEOUT_SCALE=3`, then run
 `tools/ci/ctest_preflight.py` and, with `PUTGD_TEST_TIME_SCALE=3`,
 `python3 tools/ci/ctest_retry.py --ledger LEDGER --junit PATH -- --preset dev
 --parallel 12 --resource-spec-file "$PWD/tools/ci/ctest-resources.json"`.
+Pull requests add `--label-exclude ^nightly$`, which leaves out
+`gui_theme_contrast`; pushes run it.
 Plain `ctest` works too, without the retry and ledger. Retain the exact command,
 registered tests, environment/version identity, JUnit and LastTest.log for each
 attempt. Preserve failures before retrying; never fix a long path by weakening
