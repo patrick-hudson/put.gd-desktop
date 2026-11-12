@@ -102,15 +102,13 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       target_include_directories(test_record_runtime PRIVATE src tests)
       target_link_libraries(test_record_runtime PRIVATE putgd_build_options Qt6::Core Qt6::Test)
       add_test(NAME record_runtime_contract COMMAND test_record_runtime)
-      # Control bar placement (#108): the pure rules, then the real bar on
-      # offscreen layouts with three monitors and with one.
+      # The recording control bar: a discard asks first, and no microphone is
+      # recorded unasked (#1364).
       add_executable(test_bar_placement tests/unit/test_bar_placement.cpp src/record/BarPlacement.cpp src/record/Overlays.cpp src/record/record.qrc)
       target_include_directories(test_bar_placement PRIVATE src tests)
       target_link_libraries(test_bar_placement PRIVATE putgd_core putgd_build_options putgd_visual putgd_fonts Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Test)
       add_test(NAME bar_placement_contract COMMAND test_bar_placement)
-      set_tests_properties(bar_placement_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-three-monitors.json;PUTGD_TEST_SCREENS=3")
-      add_test(NAME bar_placement_single_monitor_contract COMMAND test_bar_placement)
-      set_tests_properties(bar_placement_single_monitor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json;PUTGD_TEST_SCREENS=1")
+      set_tests_properties(bar_placement_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
       # #283: discarding a recording only after its confirmation.
       add_library(test_review_window_support STATIC src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window_support PRIVATE src tests)

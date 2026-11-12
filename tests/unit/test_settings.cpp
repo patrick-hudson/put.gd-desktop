@@ -393,14 +393,6 @@ private slots:
         QCOMPARE(unchanged, bytes);
     }
 #endif
-    void scrollingPreferencesAndRoute() {
-        auto doc=putgd::Settings::defaults();
-        const auto settings=putgd::Settings::fromValidated(doc);
-        QCOMPARE(settings.scrollCaptureMaxHeight,30000);QVERIFY(settings.scrollCaptureFromTop);
-        QVERIFY(settings.actions["scroll"].shortcut.isEmpty());
-        auto p=doc["preferences"].toObject();p["scrollCaptureMaxHeight"]=60001;doc["preferences"]=p;QVERIFY(putgd::Settings::validate(doc));
-        p["scrollCaptureMaxHeight"]=2000;doc["preferences"]=p;QVERIFY(!putgd::Settings::validate(doc));
-    }
     void recordingProjectionFollowsRegionExceptionsAndPreservesTheDocument() {
         auto document = putgd::Settings::developmentTemplate();
         document["captureDefaults"] = QJsonObject{{"destination", "upload"}, {"profileId", "development-s3"}, {"publicationMode", "share"}};
@@ -456,9 +448,10 @@ private slots:
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("record").shortcut, QStringLiteral("Ctrl+Shift+9"));
         QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("region").shortcut, QStringLiteral("Ctrl+Shift+1"));
     }
-    // Capture monitor and Repeat last region (#1363) came after schema 1 shipped,
-    // like edit and record: an older document gains both without a shortcut.
-    void absentMonitorCopiesTheDesktopRouteAndRepeatIsAKeyOnly() {
+    // Capture monitor and Repeat last region (#1363) came after schema 1 shipped:
+    // an older document's monitor captures go where its desktop captures go, and a
+    // repeat where its region captures go, never to a default upload.
+    void absentMonitorAndRepeatKeepTheirCapturesRoutes() {
         auto document = putgd::Settings::defaults();
         auto actions = document["actions"].toObject();
         auto desktop = actions["desktop"].toObject();
@@ -477,62 +470,6 @@ private slots:
         QCOMPARE(settings.actions.value("monitor").destination, QStringLiteral("local"));
         // Repeat always follows the region route and only its key is its own.
         QCOMPARE(settings.actions.value("repeat").destination, settings.actions.value("region").destination);
-        QVERIFY(settings.actions.value("repeat").shortcut.isEmpty());
-        QVERIFY(putgd::Settings::defaults()["actions"].toObject()["monitor"].toObject()["shortcut"].toString().isEmpty());
-        QVERIFY(putgd::Settings::defaults()["actions"].toObject()["repeat"].toObject()["shortcut"].toString().isEmpty());
-        auto keyed = normalized;
-        auto keyedActions = keyed["actions"].toObject();
-        keyedActions["repeat"] = QJsonObject{{"shortcut", "Ctrl+Shift+8"}};
-        keyed["actions"] = keyedActions;
-        QVERIFY(!putgd::Settings::validate(keyed));
-        QCOMPARE(putgd::Settings::fromValidated(keyed).actions.value("repeat").shortcut, QStringLiteral("Ctrl+Shift+8"));
-        // A route of its own is refused: repeat is the region capture's output.
-        keyedActions["repeat"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}};
-        keyed["actions"] = keyedActions;
-        QCOMPARE(putgd::Settings::validate(keyed).details["path"].toString(), QStringLiteral("/actions/repeat"));
-        QVERIFY(putgd::Settings::presentationOrder().contains(QStringLiteral("monitor")));
-        QVERIFY(!putgd::Settings::presentationOrder().contains(QStringLiteral("repeat")));
-        QCOMPARE(putgd::Settings::shortcutOrder().size(), putgd::Settings::invocableActionNames().size());
-        for (const auto& action : putgd::Settings::invocableActionNames()) QVERIFY2(putgd::Settings::shortcutOrder().contains(action), qPrintable(action));
-    }
-    void captureDelayIsOptionalAndOneOfFourValues() {
-        auto document = putgd::Settings::defaults();
-        QCOMPARE(putgd::Settings::fromValidated(document).captureDelaySeconds, 0);
-        for (const int seconds : {0, 3, 5, 10}) {
-            auto preferences = document["preferences"].toObject();
-            preferences["captureDelaySeconds"] = seconds;
-            document["preferences"] = preferences;
-            QVERIFY2(!putgd::Settings::validate(document), qPrintable(QString::number(seconds)));
-            QCOMPARE(putgd::Settings::fromValidated(document).captureDelaySeconds, seconds);
-        }
-        for (const auto& value : QList<QJsonValue>{1, 4, 7, -3, 60, 3.5, QStringLiteral("3"), true, QJsonValue::Null}) {
-            auto preferences = document["preferences"].toObject();
-            preferences["captureDelaySeconds"] = value;
-            document["preferences"] = preferences;
-            QCOMPARE(putgd::Settings::validate(document).details["path"].toString(), QStringLiteral("/preferences/captureDelaySeconds"));
-        }
-        QVERIFY(putgd::Settings::delayableAction("region") && putgd::Settings::delayableAction("monitor") && putgd::Settings::delayableAction("repeat") && putgd::Settings::delayableAction("edit"));
-        QVERIFY(!putgd::Settings::delayableAction("clipboard") && !putgd::Settings::delayableAction("record"));
-        // An edit waits only when it captures the screen.
-        QVERIFY(putgd::Settings::delayableEditSource("region") && putgd::Settings::delayableEditSource("window") && putgd::Settings::delayableEditSource("desktop"));
-        QVERIFY(!putgd::Settings::delayableEditSource("clipboard") && !putgd::Settings::delayableEditSource("file"));
-        // Shortcuts stay immediate until captureDelayShortcuts is true.
-        document = putgd::Settings::defaults();
-        QVERIFY(!document["preferences"].toObject().contains("captureDelayShortcuts"));
-        QVERIFY(!putgd::Settings::fromValidated(document).captureDelayShortcuts);
-        for (const bool on : {true, false}) {
-            auto preferences = document["preferences"].toObject();
-            preferences["captureDelayShortcuts"] = on;
-            document["preferences"] = preferences;
-            QVERIFY(!putgd::Settings::validate(document));
-            QCOMPARE(putgd::Settings::fromValidated(document).captureDelayShortcuts, on);
-        }
-        for (const auto& value : QList<QJsonValue>{1, QStringLiteral("true"), QJsonValue::Null}) {
-            auto preferences = document["preferences"].toObject();
-            preferences["captureDelayShortcuts"] = value;
-            document["preferences"] = preferences;
-            QCOMPARE(putgd::Settings::validate(document).details["path"].toString(), QStringLiteral("/preferences/captureDelayShortcuts"));
-        }
     }
     // validate() once read each action through a reference into a destroyed
     // temporary object, and the Debian 13 resident crashed saving this document

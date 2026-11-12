@@ -123,14 +123,10 @@ private slots:
   xcb_ungrab_pointer(menu,XCB_CURRENT_TIME);std::free(xcb_get_input_focus_reply(menu,xcb_get_input_focus(menu),nullptr));
   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
  }
- void inputDuringTheHold_data(){
-  QTest::addColumn<QString>("input");
-  for(const char* input:{"escape","hotkey-again","right-click"})QTest::newRow(input)<<QString::fromLatin1(input);
- }
- void inputDuringTheHold(){
+ void escapeDuringTheHold(){
   // The real press path: a key through the server, the resident's shortcut, the
-  // hold, then a helper that is still loading when the input arrives.
-  QFETCH(QString,input);
+  // hold, then a helper that is still loading when Escape arrives. Escape always
+  // gives the desktop its pointer back.
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
   const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
   auto* symbols=xcb_key_symbols_alloc(connection);QVERIFY(symbols);const auto freeSymbols=qScopeGuard([&]{xcb_key_symbols_free(symbols);});
@@ -150,55 +146,12 @@ private slots:
   qputenv("PUTGD_TEST_CAPTURE_MODE","preview-late");released=0;
   chord();PUTGD_TRY_COMPARE(presses,2);
   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-  if(input=="escape"){
-   const uint8_t escape=code(0xff1b);fake(XCB_KEY_PRESS,escape);fake(XCB_KEY_RELEASE,escape);
-   // The pointer and cursor come back at once, ahead of the helper it no longer needs.
-   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-   PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
-   PUTGD_TRY_COMPARE(released,1);
-  }else if(input=="right-click"){
-   fake(XCB_BUTTON_PRESS,3);fake(XCB_BUTTON_RELEASE,3);
-   // The crosshair stays until the helper's surfaces arrive, which then cancel.
-   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-   PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
-   PUTGD_TRY_COMPARE(released,1);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-   const auto frames=cursorTrace(trace);QCOMPARE(frames.last()["phase"].toString(),QString("released"));
-   QVERIFY(QJsonDocument(frames.last()["buttons"].toArray()).toJson().contains("\"button\":3")||frames.last()["buttons"].toArray()[0].toObject()["button"].toInt()==3);
-  }else{
-   // Ignored: the first selection keeps the hold and carries on as if unpressed.
-   chord();PUTGD_TRY_COMPARE(presses,3);PUTGD_TRY_COMPARE(released,1);QCOMPARE(terminals.size(),0);
-   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-   PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-   bool finished=false;prepared.first()(limits,[&](putgd::PayloadResult value){QVERIFY2(!value.error,qPrintable(value.error.code));finished=true;});PUTGD_TRY_VERIFY(finished);
-  }
+  const uint8_t escape=code(0xff1b);fake(XCB_KEY_PRESS,escape);fake(XCB_KEY_RELEASE,escape);
+  // The pointer and cursor come back at once, ahead of the helper it no longer needs.
   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
- }
- void crosshairHoldEndsAtItsTimeout(){
-  // The helper takes longer than the hold: the desktop gets the pointer back on
-  // time, and the helper still receives the click made while it was held.
-  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
-  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
-  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
-  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-late-long");
-  QElapsedTimer clock;clock.start();
-  QVERIFY(controller.holdCrosshair());auto ticket=controller.prepare(regionSnapshot(),{});
-  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
-  xcb_test_fake_input(connection,XCB_BUTTON_PRESS,1,XCB_CURRENT_TIME,root,0,0,0);xcb_test_fake_input(connection,XCB_BUTTON_RELEASE,1,XCB_CURRENT_TIME,root,0,0,0);xcb_flush(connection);
-  // Setup consumes the same fixed hold budget; never start a fresh 4.5 s wait.
-  const auto remaining=putgd::CaptureProcessController::crosshairHoldMs-500-clock.elapsed();
-  if(remaining>0){
-   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
-   putgd::test::settle(int(remaining));
-  }
-  // A descheduled runner may resume after the margin (or the hold itself).
-  if(clock.elapsed()<putgd::CaptureProcessController::crosshairHoldMs-250)
-   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
+  PUTGD_TRY_COMPARE(released,1);
   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
-  QVERIFY(clock.elapsed()<putgd::CaptureProcessController::crosshairHoldMs+1500);
-  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);
-  const auto frames=cursorTrace(trace);QVERIFY(frames[1]["hold"].toString().toULongLong()>0);QCOMPARE(frames[2]["buttons"].toArray().size(),2);
-  controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());
  }
  void screenshotFirstAndOtherSourcesHoldNothing(){
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});

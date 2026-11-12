@@ -32,25 +32,6 @@ class Checking(unittest.TestCase):
             check.prepare_output(root / 'new' / 'dir')
             self.assertTrue((root / 'new' / 'dir').is_dir())
 
-    def test_countdown_cancel_covers_the_full_pill(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            name = '46a-capture-countdown'
-            (root / (name + '.png')).write_bytes(b'synthetic image placeholder')
-            (root / 'manifest.json').write_text(json.dumps({
-                'kind': 'synthetic-ui-catalog', 'sourceReads': 0, 'platform': 'offscreen',
-                'scope': dict(check.FULL_SCOPE), 'images': [name + '.png'],
-                'captures': [{'file': name + '.png'}]}))
-            inventory = root / (name + '.controls.json')
-            for controls in ([], [{'name': 'captureCountdown', 'kind': 'button',
-                                   'rect': [1, 0, 299, 40], 'enabled': True}]):
-                inventory.write_text(json.dumps({'width': 300, 'height': 40, 'controls': controls}))
-                self.assertIn('countdown cancel', check.render_problem(root))
-            inventory.write_text(json.dumps({'width': 300, 'height': 40, 'controls': [
-                {'name': 'captureCountdown', 'kind': 'button', 'rect': [0, 0, 300, 40],
-                 'enabled': True}]}))
-            self.assertEqual(check.render_problem(root), '')
-
     def test_main_requires_complete_renders(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'dark'

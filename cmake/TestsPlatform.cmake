@@ -100,9 +100,6 @@
       "${protocol_dir}/ext-data-control-v1-server-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-server-protocol.h")
     target_include_directories(test_kde_ownership PRIVATE "${protocol_dir}")
     target_link_libraries(test_kde_ownership PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
-    if(TARGET putgd-record)
-      target_compile_definitions(test_kde_ownership PRIVATE PUTGD_RECORD_DESKTOP_ENTRY="${CMAKE_BINARY_DIR}/packaging/linux/putgd-record.desktop")
-    endif()
     add_test(NAME kde_ownership_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_ownership>)
     set_tests_properties(kde_ownership_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-server-protocol.h"
@@ -125,8 +122,9 @@
     add_test(NAME wayland_data_control_source COMMAND test_wayland_data_control_source)
     set_tests_properties(wayland_data_control_source PROPERTIES TIMEOUT 60)
   endif()
-# The Budgie adapter and shared Wayland capture against a real headless labwc
-# (#1275). It skips where labwc is not installed; the Ubuntu 26.04 CI leg has it.
+# The Budgie adapter's lock-screen refusal and the shared Wayland capture's
+# visibility witness against a real headless labwc (#1275, #1385). It skips
+# where labwc is not installed; the Ubuntu 26.04 CI leg has it.
 if(BUILD_TESTING AND TARGET putgd_budgie)
   set(session_lock_xml "${PUTGD_WAYLAND_PROTOCOLS_DIR}/staging/ext-session-lock/ext-session-lock-v1.xml")
   add_custom_command(OUTPUT "${protocol_dir}/ext-session-lock-v1-client-protocol.h" "${protocol_dir}/ext-session-lock-v1-protocol.c"
@@ -139,34 +137,14 @@ if(BUILD_TESTING AND TARGET putgd_budgie)
   target_link_libraries(putgd-session-lock-fixture PRIVATE PkgConfig::PUTGD_WAYLAND)
   add_executable(test_budgie_labwc tests/integration/test_budgie_labwc.cpp)
   add_dependencies(test_budgie_labwc putgd-session-lock-fixture)
-  target_link_libraries(test_budgie_labwc PRIVATE putgd_budgie Qt6::Test)
-  target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  if(TARGET putgd-region)
-    add_dependencies(test_budgie_labwc putgd-region)
-  endif()
+  target_include_directories(test_budgie_labwc PRIVATE src "${protocol_dir}")
+  target_link_libraries(test_budgie_labwc PRIVATE putgd_budgie Qt6::Test PkgConfig::PUTGD_WAYLAND)
   if(TARGET putgd-clipboard-keeper)
     add_dependencies(test_budgie_labwc putgd-clipboard-keeper)
   endif()
-  if(PUTGD_LAYER_SHELL_REGION)
-    add_executable(putgd-labwc-fixture tests/fixtures/labwc_fixture.cpp)
-    target_link_libraries(putgd-labwc-fixture PRIVATE putgd_build_options Qt6::Widgets LayerShellQt::Interface)
-    add_dependencies(test_budgie_labwc putgd-labwc-fixture)
-  endif()
-  if(TARGET putgd-record)
-    # The recorder's image-copy source on headless labwc: rotated outputs record upright (#1275 review).
-    # Here, after the test target exists (Recording.cmake is included first).
-    target_sources(test_budgie_labwc PRIVATE src/record/ImageCopySource.cpp src/record/DebugLog.cpp)
-    target_include_directories(test_budgie_labwc PRIVATE src "${protocol_dir}")
-    target_compile_definitions(test_budgie_labwc PRIVATE PUTGD_TEST_IMAGE_COPY_SOURCE=1)
-    target_link_libraries(test_budgie_labwc PRIVATE PkgConfig::PUTGD_GST PkgConfig::PUTGD_WAYLAND)
-  endif()
-  # The scroll capture's virtual pointer against the real compositor (#1376): a wheel notch reaches a window.
-  target_sources(test_budgie_labwc PRIVATE src/platform/wayland/VirtualPointer.cpp)
-  target_include_directories(test_budgie_labwc PRIVATE src "${protocol_dir}")
-  target_link_libraries(test_budgie_labwc PRIVATE PkgConfig::PUTGD_WAYLAND)
   add_test(NAME budgie_labwc_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_budgie_labwc>)
   set_tests_properties(budgie_labwc_integration PROPERTIES TIMEOUT 120)
-  # The labwc bridge's gsettings sequencing against a fake gsettings; needs no labwc.
+  # Click highlights' rc.xml edits against a fake gsettings; needs no labwc.
   add_executable(test_labwc_bridge tests/integration/test_labwc_bridge.cpp)
   target_link_libraries(test_labwc_bridge PRIVATE putgd_budgie Qt6::Test)
   add_test(NAME labwc_bridge_contract COMMAND dbus-run-session -- $<TARGET_FILE:test_labwc_bridge>)

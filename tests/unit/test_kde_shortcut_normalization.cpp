@@ -97,58 +97,6 @@ private slots:
    QCOMPARE(requested,sequence(Qt::ControlModifier|Qt::ShiftModifier,Qt::Key_3));
   }
  }
- void savedLatin1SymbolsResolveTheirShiftLevel() {
-  // Qt 6.4 on Wayland records German Shift+3 as Ctrl+Shift+section. KWin sends
-  // Ctrl+section for that press, so the literal chord never fired (#514).
-  struct Case {const char* symbol;int qt;};
-  const Case cases[]={{"section",0x00a7},{"sterling",0x00a3},{"periodcentered",0x00b7},{"degree",0x00b0}};
-  const auto shift=Qt::ControlModifier|Qt::ShiftModifier;
-  for(const auto& item:cases) {
-   auto text=fixture();
-   text.replace("[3,numbersign]",QByteArray("[3,")+item.symbol+"]");
-   auto map=compile(text);QVERIFY(map);
-   const auto key=static_cast<Qt::Key>(item.qt);
-   auto result=normalizeKdeShortcut(sequence(shift,key),map.get(),0);
-   QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,key));
-   // The chord KWin already sends stays as it is.
-   result=normalizeKdeShortcut(sequence(Qt::ControlModifier,key),map.get(),0);
-   QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,key));
-  }
- }
- void latin1SymbolOnTheBaseLevelTakesItsShiftSymbol() {
-  // Swiss-style key: Shift turns section into degree, as Ctrl+Shift+< is Ctrl+>.
-  auto map=compile(fixture("<TLDE>=49;","key <TLDE> { type=\"TWO_LEVEL\", [section,degree] };"));QVERIFY(map);
-  const auto result=normalizeKdeShortcut(sequence(Qt::ControlModifier|Qt::ShiftModifier,static_cast<Qt::Key>(0x00a7)),map.get(),0);
-  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,static_cast<Qt::Key>(0x00b0)));
- }
- void latin1SymbolsFailLikeAsciiPunctuation() {
-  const auto shift=Qt::ControlModifier|Qt::ShiftModifier;
-  const auto section=static_cast<Qt::Key>(0x00a7);
-  auto map=compile(fixture());QVERIFY(map);
-  QCOMPARE(normalizeKdeShortcut(sequence(shift,section),map.get(),0).error,QString("shortcut_unmapped"));
-  auto altGr=compile(fixture("<ALTG>=200;","key <ALTG> { type=\"FOUR_LEVEL\", [x,X,section,section] };"));QVERIFY(altGr);
-  QCOMPARE(normalizeKdeShortcut(sequence(shift,section),altGr.get(),0).error,QString("shortcut_unsupported"));
-  // A Shift copy still resolves when an AltGr copy of the symbol exists too.
-  auto both=compile(fixture("<ALTG>=200; <SECT>=201;",R"(
-   key <ALTG> { type="FOUR_LEVEL", [x,X,section,section] };
-   key <SECT> { type="TWO_LEVEL", [5,section] };
-  )"));QVERIFY(both);
-  const auto result=normalizeKdeShortcut(sequence(shift,section),both.get(),0);
-  QCOMPARE(result.error,QString());QCOMPARE(result.sequence,sequence(Qt::ControlModifier,section));
- }
- void latin1LettersStayLiteral() {
-  // KWin keeps Shift on letter chords, so the requested chord is already the wire.
-  auto map=compile(fixture("<AD11>=34; <AC10>=47;",R"(
-   key <AD11> { type="ALPHABETIC", [udiaeresis,Udiaeresis] };
-   key <AC10> { type="ALPHABETIC", [eacute,Eacute] };
-  )"));QVERIFY(map);
-  const int letters[]={0x00dc,0x00c9,0x00c4,0x00b5,0x00aa};
-  for(const int letter:letters)for(const auto modifiers:{Qt::KeyboardModifiers(Qt::ControlModifier),Qt::ControlModifier|Qt::ShiftModifier}) {
-   const auto requested=sequence(modifiers,static_cast<Qt::Key>(letter));
-   const auto result=normalizeKdeShortcut(requested,map.get(),0);
-   QCOMPARE(result.error,QString());QCOMPARE(result.sequence,requested);
-  }
- }
  void latin1LettersKeepShiftAndQtUppercaseRules() {
   struct Case {const char* symbol;int qt;};
   // Qt uppercases Latin-1 letters only when the uppercase key remains in

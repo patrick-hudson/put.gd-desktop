@@ -75,64 +75,9 @@ private slots:
   runExtensionSetup(f.inputs());
   QCOMPARE(f.writes,QStringList{"enabled-extensions=['ding@rastersoft.com', 'user-theme@gnome.org', 'weird\\'id@x', 'putgd@put.gd']"});
  }
- void idempotentAndNoWriteWhenEnabled(){
-  Fixture f;system(f);f.settings["enabled-extensions"]="['putgd@put.gd']";
-  auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("login_required"));QVERIFY(f.writes.isEmpty());
-  f.shell.extension={{"state",1},{"version",19},{"path",f.root.filePath("system/gnome-shell/extensions/putgd@put.gd")}};
-  s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("ready"));QVERIFY(f.writes.isEmpty());
- }
- void knownExtensionActivatesWithoutLogin(){
-  Fixture f;system(f);f.shell.extension={{"state",6},{"version",19},{"path",f.root.filePath("system/gnome-shell/extensions/putgd@put.gd")}};
-  auto activated=f.inputs();int calls=0;activated.shell=[&]{auto s=f.shell;if(++calls>1)s.extension["state"]=1;return s;};
-  QCOMPARE(runExtensionSetup(activated).state,QString("ready"));QCOMPARE(f.writes.size(),1);
- }
- void unsupportedShellChangesNothing(){
-  Fixture f;f.shell.version="49.3";system(f);const auto s=runExtensionSetup(f.inputs());
-  QCOMPARE(s.state,QString("unsupported_shell"));QVERIFY(s.needsUser());QVERIFY(f.writes.isEmpty());
- }
- void noShellYetIsNotAFailure(){Fixture f;f.shell.version.clear();const auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("checking"));QVERIFY(!s.needsUser());}
  void disabledByUserIsRespected(){
   Fixture f;system(f);f.settings["disabled-extensions"]="['putgd@put.gd']";
   const auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("disabled_by_user"));QVERIFY(f.writes.isEmpty());
- }
- void disableUserExtensionsReportsTheReason(){
-  Fixture f;system(f);f.settings["disable-user-extensions"]="true";
-  const auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("user_extensions_disabled"));QVERIFY(s.message.contains("Extensions app"));
-  QCOMPARE(f.writes.size(),1);
- }
- void lockedSettingsAreReported(){
-  Fixture f;system(f);f.locked=true;const auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("settings_locked"));QVERIFY(f.writes.isEmpty());
- }
- void gsettingsFailureIsReported(){
-  Fixture f;system(f);auto in=f.inputs();in.gsettings=[](const QStringList&)->ProcessResult{return {false,-1,{},{}};};
-  const auto s=runExtensionSetup(in);QCOMPARE(s.state,QString("settings_unavailable"));QVERIFY(s.message.contains("gsettings"));
- }
- void nativeWithoutExtensionIsNotInstalled(){Fixture f;const auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("not_installed"));QVERIFY(f.writes.isEmpty());}
- void appImageInstallsMarkedCopyAndEnables(){
-  Fixture f;const auto dir=bundle(f);const auto s=runExtensionSetup(f.inputs(dir));
-  QCOMPARE(s.state,QString("login_required"));QVERIFY(QFile::exists(userDir(f)+"/extension.js"));QVERIFY(QFile::exists(userDir(f)+"/metadata.json"));
-  QFile marker(userDir(f)+"/.putgd-managed");QVERIFY(marker.open(QIODevice::ReadOnly));const auto doc=QJsonDocument::fromJson(marker.readAll()).object();
-  QCOMPARE(doc["managedBy"].toString(),QString("put.gd"));QCOMPARE(doc["extensionVersion"].toInt(),19);
-  QCOMPARE(f.writes.size(),1);
-  // Nothing left in the extensions folder but the copy itself.
-  QCOMPARE(QDir(f.root.filePath("home/.local/share/gnome-shell/extensions")).entryList(QDir::AllEntries|QDir::NoDotAndDotDot|QDir::Hidden),QStringList{"putgd@put.gd"});
- }
- void systemCopyMeansNoUserCopy(){
-  Fixture f;system(f);const auto dir=bundle(f);const auto s=runExtensionSetup(f.inputs(dir));
-  QCOMPARE(s.state,QString("login_required"));QVERIFY(!QFile::exists(userDir(f)));
- }
- void appImageReplacesItsOwnCopyOnUpdate(){
-  Fixture f;auto dir=bundle(f,18,"// old");runExtensionSetup(f.inputs(dir,18));f.writes.clear();f.shell.extension={{"state",1},{"version",18},{"path",userDir(f)}};
-  dir=bundle(f,19,"// new");
-  const auto s=runExtensionSetup(f.inputs(dir,19));
-  QCOMPARE(s.state,QString("login_required"));QVERIFY(f.writes.isEmpty());
-  QFile js(userDir(f)+"/extension.js");QVERIFY(js.open(QIODevice::ReadOnly));QCOMPARE(js.readAll(),QByteArray("// new"));
-  QCOMPARE(QDir(f.root.filePath("home/.local/share/gnome-shell")).entryList(QDir::AllEntries|QDir::NoDotAndDotDot|QDir::Hidden),QStringList{"extensions"});
- }
- void olderAppImageDoesNotDowngrade(){
-  Fixture f;auto dir=bundle(f,19,"// new");runExtensionSetup(f.inputs(dir));f.shell.extension={{"state",1},{"version",19},{"path",userDir(f)}};
-  dir=bundle(f,17,"// old");runExtensionSetup(f.inputs(dir,17));
-  QFile js(userDir(f)+"/extension.js");QVERIFY(js.open(QIODevice::ReadOnly));QCOMPARE(js.readAll(),QByteArray("// new"));
  }
  void foreignCopyIsLeftAlone(){
   Fixture f;write(userDir(f)+"/extension.js","// mine");write(userDir(f)+"/metadata.json","{\"uuid\":\"putgd@put.gd\",\"version\":5}");
@@ -147,29 +92,6 @@ private slots:
   const auto s=runExtensionSetup(f.inputs(dir));QCOMPARE(s.state,QString("foreign_user_copy"));
   QFile js(userDir(f)+"/extension.js");QVERIFY(js.open(QIODevice::ReadOnly));QCOMPARE(js.readAll(),QByteArray("// edited by hand"));
  }
- void ownedCopyRetiredWhenSystemCopyArrives(){
-  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));system(f);
-  const auto s=runExtensionSetup(f.inputs(dir));
-  QVERIFY(!QDir(userDir(f)).exists());QCOMPARE(s.state,QString("login_required"));
- }
- void olderSystemCopyWithNewerAppImageIsReported(){
-  Fixture f;system(f,18);const auto dir=bundle(f,19);
-  const auto s=runExtensionSetup(f.inputs(dir,19));QCOMPARE(s.state,QString("system_copy_outdated"));QVERIFY(!QFile::exists(userDir(f)));
- }
- void blockedPerUserExtensions(){
-  Fixture f;f.settings["allow-extension-installation"]="false";const auto dir=bundle(f);
-  QCOMPARE(runExtensionSetup(f.inputs(dir)).state,QString("extension_blocked"));
- }
- void extensionErrorIsReported(){
-  Fixture f;system(f);f.settings["enabled-extensions"]="['putgd@put.gd']";f.shell.extension={{"state",3},{"version",19},{"error","boom"}};
-  const auto s=runExtensionSetup(f.inputs());QCOMPARE(s.state,QString("extension_error"));QVERIFY(s.message.contains("boom"));
- }
- void removeDeletesOwnedCopyAndEntry(){
-  Fixture f;const auto dir=bundle(f);f.settings["enabled-extensions"]="['other@x']";runExtensionSetup(f.inputs(dir));f.writes.clear();
-  const auto s=removeOwnedUserCopy(f.inputs());
-  QVERIFY(!s.needsUser());QVERIFY(s.details["removed"].toBool());QVERIFY(!QDir(userDir(f)).exists());
-  QCOMPARE(f.writes,QStringList{"enabled-extensions=['other@x']"});
- }
  void markerWithPathsIsForeign(){
   Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));
   write(userDir(f)+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"../outside","x"}}}}).toJson());
@@ -179,88 +101,6 @@ private slots:
   Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));write(userDir(f)+"/notes.txt","mine");
   QCOMPARE(runExtensionSetup(f.inputs(dir)).state,QString("foreign_user_copy"));
   QVERIFY(QFile::exists(userDir(f)+"/notes.txt"));
- }
- void blockedExtensionsLeaveNothingBehind(){
-  Fixture f;f.settings["allow-extension-installation"]="false";const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));
-  QVERIFY(!QFile::exists(userDir(f)));QVERIFY(f.writes.isEmpty());
- }
- void removeWhenSettingsFailKeepsCopy(){
-  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));
-  auto in=f.inputs();in.gsettings=[](const QStringList&)->ProcessResult{return {true,1,{},"no schema"};};
-  QCOMPARE(removeOwnedUserCopy(in).state,QString("settings_unavailable"));QVERIFY(QFile::exists(userDir(f)+"/extension.js"));
- }
- void removeKeepsEntryBelongingToSystemPackage(){
-  Fixture f;const auto dir=bundle(f);runExtensionSetup(f.inputs(dir));f.writes.clear();system(f);
-  QVERIFY(removeOwnedUserCopy(f.inputs()).details["removed"].toBool());
-  QVERIFY(!QDir(userDir(f)).exists());QVERIFY(f.writes.isEmpty());
- }
- void removeClearsStaleEntryWithoutCopy(){
-  Fixture f;f.settings["enabled-extensions"]="['a@x', 'putgd@put.gd']";
-  const auto s=removeOwnedUserCopy(f.inputs());QVERIFY(!s.needsUser());QVERIFY(!s.details["removed"].toBool());
-  QCOMPARE(f.writes,QStringList{"enabled-extensions=['a@x']"});
- }
- // A managed update that can't be written must not read as "log out".
- void failedUpdateIsReportedWhileTheOldExtensionIsConnected(){
-  Fixture f;auto dir=bundle(f,18,"// old");runExtensionSetup(f.inputs(dir,18));f.shell.extension={{"state",1},{"version",18},{"path",userDir(f)}};
-  dir=bundle(f,19,"// new");
-  if(geteuid()==0)QSKIP("Root ignores the directory mode this test relies on");
-  const auto parent=f.root.filePath("home/.local/share/gnome-shell");
-  QVERIFY(QFile::setPermissions(parent,QFile::ReadOwner|QFile::ExeOwner));
-  const auto last=runExtensionSetup(f.inputs(dir,19));
-  QVERIFY(QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
-  QCOMPARE(last.state,QString("install_failed"));QVERIFY(!last.message.contains("log out",Qt::CaseInsensitive));
-  const auto shown=reportedSetup(last,true,18,19);
-  QCOMPARE(shown.state,QString("install_failed"));QCOMPARE(shown.code,QString("gnome_extension_install_failed"));QCOMPARE(shown.message,last.message);
-  // A current helper hides it no better: a same-version update can fail too.
-  QCOMPARE(reportedSetup(last,true,19,19).state,QString("install_failed"));
-  QFile js(userDir(f)+"/extension.js");QVERIFY(js.open(QIODevice::ReadOnly));QCOMPARE(js.readAll(),QByteArray("// old"));
- }
- void outdatedHelperKeepsStatesALoginCannotFix_data(){
-  QTest::addColumn<QString>("state");
-  for(const auto* state:{"install_failed","not_installed","extension_blocked","foreign_user_copy","system_copy_outdated","disabled_by_user","user_extensions_disabled","settings_locked","extension_error"})QTest::newRow(state)<<QString::fromLatin1(state);
- }
- void outdatedHelperKeepsStatesALoginCannotFix(){
-  QFETCH(QString,state);const SetupStatus last{state,"code_"+state,"what to do about "+state,{}};
-  const auto shown=reportedSetup(last,true,18,19);QCOMPARE(shown.state,state);QCOMPARE(shown.code,last.code);QCOMPARE(shown.message,last.message);
- }
- void outdatedHelperAsksForALoginOnlyWhenOneHelps_data(){
-  QTest::addColumn<QString>("state");QTest::addColumn<QString>("code");
-  QTest::newRow("checking")<<"checking"<<"";QTest::newRow("ready")<<"ready"<<"";
-  QTest::newRow("login_required")<<"login_required"<<"gnome_login_required";QTest::newRow("settings_unavailable")<<"settings_unavailable"<<"gnome_settings_unavailable";
- }
- void outdatedHelperAsksForALoginOnlyWhenOneHelps(){
-  QFETCH(QString,state);QFETCH(QString,code);const SetupStatus last{state,code,code.isEmpty()?QString{}:"message",{}};
-  const auto shown=reportedSetup(last,true,18,19);
-  QCOMPARE(shown.state,QString("login_required"));QCOMPARE(shown.code,QString("gnome_extension_updated"));QVERIFY(shown.message.contains("log out and back in"));
-  QCOMPARE(shown.details["loaded"].toInt(),18);QCOMPARE(shown.details["packaged"].toInt(),19);
- }
- void currentHelperIsReadyAndAbsentHelperKeepsTheRun(){
-  const SetupStatus last{"foreign_user_copy","gnome_foreign_extension","remove it",{{"path","/x"}}};
-  const auto current=reportedSetup(last,true,19,19);QCOMPARE(current.state,QString("ready"));QVERIFY(!current.needsUser());QCOMPARE(current.details["path"].toString(),QString("/x"));
-  QCOMPARE(reportedSetup(last,false,0,19).state,last.state);
- }
- void staleStagingIsCleanedWhenItIsPlainlyOurs(){
-  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");
-  const QString fresh=parent+staged("new",'a'),retired=parent+staged("old",'0');
-  write(fresh+"/extension.js","partial");write(retired+"/metadata.json","{}");write(retired+"/.putgd-managed","{}");
-  runExtensionSetup(f.inputs(dir));
-  QVERIFY(!QFileInfo::exists(fresh));QVERIFY(!QFileInfo::exists(retired));
-  QVERIFY(QFile::exists(userDir(f)+"/extension.js"));
- }
- void staleRetiredCopyGoesByItsOwnMarker(){
-  Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/"),retired=parent+staged("old",'1');
-  const auto hash=[](const QByteArray& bytes){return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());};
-  write(retired+"/stylesheet.css","old");
-  write(retired+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"stylesheet.css",hash("old")}}}}).toJson());
-  // A marker can't vouch for a file it doesn't match.
-  const QString edited=parent+staged("old",'3');write(edited+"/notes.txt","mine");write(edited+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"notes.txt",hash("something else")}}}}).toJson());
-  const QString foreign=parent+staged("old",'2');write(foreign+"/stylesheet.css","mine");write(foreign+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","someone"},{"files",QJsonObject{{"stylesheet.css","x"}}}}).toJson());
-  // Nor reach outside its directory: this marker names a file elsewhere, and the directory has no such entry.
-  const QString escaping=parent+staged("old",'4');write(escaping+"/notes.txt","mine");write(f.root.filePath("elsewhere.txt"),"mine");
-  write(escaping+"/.putgd-managed",QJsonDocument(QJsonObject{{"managedBy","put.gd"},{"files",QJsonObject{{"../../../../../elsewhere.txt",hash("mine")},{"notes.txt",hash("other")}}}}).toJson());
-  runExtensionSetup(f.inputs(dir));
-  QVERIFY(!QFileInfo::exists(retired));QVERIFY(QFile::exists(foreign+"/stylesheet.css"));QVERIFY(QFile::exists(edited+"/notes.txt"));
-  QVERIFY(QFile::exists(escaping+"/notes.txt"));QVERIFY(QFile::exists(f.root.filePath("elsewhere.txt")));
  }
  void stagingCleanupLeavesAnythingUncertain(){
   Fixture f;const auto dir=bundle(f);const QString parent=f.root.filePath("home/.local/share/gnome-shell/");

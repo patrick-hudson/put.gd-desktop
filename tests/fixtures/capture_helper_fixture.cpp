@@ -72,7 +72,7 @@ int main(int argc,char** argv){
    if(mode=="cursor-ready-type")ready["cursor"]="123";
    ready["build"]=QJsonDocument::fromJson(putgd::buildManifestJson()).object();if(mode=="wrong-build")ready["build"]=QJsonObject{};
    // The helper is still loading while the resident holds the pointer.
-   if(mode.startsWith("preview-late")){QTimer::singleShot(mode=="preview-late-long"?6000:700,&app,[&,ready]{control.send("ready",ready);});return;}
+   if(mode.startsWith("preview-late")){QTimer::singleShot(700,&app,[&,ready]{control.send("ready",ready);});return;}
    control.send("ready",ready);
    if(mode=="early-exit"){app.quit();return;}
    if(mode=="prebegin-result"){auto result=identity;result["bytes"]="45";result["sha256"]=QString(64,'0');result["width"]=1;result["height"]=1;if(bootstrap["target"].toObject()["action"]=="region"){result["selection"]=QJsonArray{10,20,30,40};result["layout"]=QJsonArray{QJsonObject{{"identity","monitor"},{"logical",QJsonArray{0,0,640,480}},{"native",QJsonArray{0,0,640,480}},{"rotation",0}}};}control.send("result",result);}
