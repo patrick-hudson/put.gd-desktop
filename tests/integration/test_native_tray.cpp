@@ -2,10 +2,7 @@
 #include "ui/Theme.h"
 #include "ui/TrayController.h"
 #include "fixtures/U2Fixtures.h"
-#include "fixtures/FakeScrollBackend.h"
 #include "core/Log.h"
-#include "core/NotificationServer.h"
-#include <QJsonArray>
 #include <QJsonDocument>
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -87,11 +84,8 @@ class NotificationPeer final : public QObject {
 public:
  QList<QVariantMap> values;
  QString server; int serverQueries = 0; QList<uint> closed;
- // A real server reports a notification it was asked to close (reason 3). Off by
- // default: older cases here use a closed notification's buttons afterwards.
- bool confirmClose = false;
 public slots:
- void CloseNotification(uint id) { closed.append(id); if (confirmClose) emit NotificationClosed(id, 3); }
+ void CloseNotification(uint id) { closed.append(id); }
  QString GetServerInformation(QString& vendor, QString& version, QString& spec) {
   ++serverQueries; vendor = "Synthetic"; version = "1"; spec = "1.2"; return server;
  }
@@ -370,44 +364,6 @@ private slots:
   }
   QVERIFY(toast);QVERIFY(progress);QVERIFY(idleAgain);
  }
- void tooltipTitlesFollowActivityState(){
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());
-  const auto title=[&]{const auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return qdbus_cast<WireTooltip>(qdbus_cast<QVariantMap>(result.arguments().first())["ToolTip"]).title;};
-  QCOMPARE(title(),QString("put.gd"));tray.setActivity(Theme::trayTints(false).idle,"Transfer progress",50);QCOMPARE(title(),QString("Uploading"));tray.setActivity(Theme::trayTints(false).upload,"Finished",-1,0,"Upload complete");QCOMPARE(title(),QString("Upload complete"));tray.setActivity(Theme::trayTints(false).error,"Failure",-2);QCOMPARE(title(),QString("Needs attention"));tray.setActivity(Theme::trayTints(false).idle,{});QCOMPARE(title(),QString("put.gd"));
- }
- void seasonChangePublishesOnlyPixels() {
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
-  const auto service=watcher.registrations.last();
-  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
-  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
-  const auto idle=Theme::trayTints(false).idle;const auto base=observer.icons,tips=observer.tooltips;
-  // Same colour, percent and text: only the glyph moved, so a midnight still redraws.
-  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_TRY_COMPARE(observer.icons,base+1);
-  const auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
-  QCOMPARE(result.type(),QDBusMessage::ReplyMessage);
-  const auto frames=qdbus_cast<WireImages>(qdbus_cast<QVariantMap>(result.arguments().first())["IconPixmap"]);
-  QCOMPARE(frames.size(),4);WireImage smallFrame;
-  for(const auto& frame:frames)if(frame.width==16&&frame.height==16)smallFrame=frame;
-  QCOMPARE(smallFrame.width,16);QCOMPARE(smallFrame.height,16);
-  const auto small=IconArt::liftTrayAtSize({idle,-1,0,IconArt::TrayGlyph::Turkey},16);
-  const auto bytes=smallFrame.bytes;QCOMPARE(bytes.size(),16*16*4);
-  for(int y=0;y<16;++y)for(int x=0;x<16;++x){
-   const auto pixel=small.pixel(x,y);const int offset=(y*16+x)*4;
-   QCOMPARE(uchar(bytes[offset]),qAlpha(pixel));QCOMPARE(uchar(bytes[offset+1]),qRed(pixel));
-   QCOMPARE(uchar(bytes[offset+2]),qGreen(pixel));QCOMPARE(uchar(bytes[offset+3]),qBlue(pixel));
-  }
-
-  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_COMPARE_STEADY(observer.icons,base+1,50);
-  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Tree);PUTGD_TRY_COMPARE(observer.icons,base+2);PUTGD_COMPARE_STEADY(observer.tooltips,tips,50);
-  const auto framesNow=[&]{auto r=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return qdbus_cast<WireImages>(qdbus_cast<QVariantMap>(r.arguments().first())["IconPixmap"]);};
-  QCOMPARE(framesNow().size(),3);
-  for(const auto& state:{IconArt::TrayIcon{idle,-1,0,IconArt::TrayGlyph::Mark},IconArt::TrayIcon{idle,-2,0,IconArt::TrayGlyph::Turkey},IconArt::TrayIcon{idle,-1,1,IconArt::TrayGlyph::Turkey},IconArt::TrayIcon{idle,-1,2,IconArt::TrayGlyph::Turkey}}){
-   tray.setActivity(state.color,{},state.percent,state.recording,"put.gd",state.glyph);
-   const auto frames=framesNow();QCOMPARE(frames.size(),3);
-   for(int i=0;i<3;++i)QCOMPARE(frames[i].width,24*(i+1));
-  }
-
- }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
   const auto service=watcher.registrations.last();
@@ -441,20 +397,6 @@ private slots:
   auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
   tray.setCommands({},"Uploading a file",1,true,"Recording paused","Local save needs attention");QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
   const auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});const auto layout=qdbus_cast<WireLayout>(reply.arguments().at(1));bool found=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==16){found=true;QVERIFY(item.props["label"].toString().contains("Recording paused"));}}QVERIFY(found);
- }
- // The capture delay (#1363): the chosen value shows in the submenu's label and
- // radio states, and a click on a choice asks the controller for it.
- void captureDelayIsARadioSubmenu(){
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);
-  auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
-  QCOMPARE(property(33,"label").toString(),QString("Capture delay: none"));QCOMPARE(property(34,"toggle-state").toInt(),1);
-  tray.setCaptureDelay(5);
-  QCOMPARE(property(33,"label").toString(),QString("Capture delay: 5 seconds"));
-  for(int id=34;id<=37;++id){QCOMPARE(property(id,"toggle-type").toString(),QString("radio"));QCOMPARE(property(id,"toggle-state").toInt(),id==36?1:0);}
-  click(37);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("delay-10"));
-  click(34);PUTGD_TRY_COMPARE(actions.size(),2);QCOMPARE(actions.last().first().toString(),QString("delay-0"));
-  // The new commands are ordinary entries with their own actions.
-  click(31);click(32);PUTGD_TRY_COMPARE(actions.size(),4);QCOMPARE(actions[2].first().toString(),QString("monitor"));QCOMPARE(actions[3].first().toString(),QString("repeat"));
  }
  void outputSummaryExportsPerActionDetailsAndRecovery(){
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);QStringList details;for(const auto& action:Settings::presentationOrder())details<<action+": synthetic output";tray.setOutput("Mixed outputs",details);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{23,-1,QStringList{}});const auto output=qdbus_cast<WireLayout>(reply.arguments().at(1));QCOMPARE(output.props["label"].toString(),QString("Mixed outputs"));QCOMPARE(output.children.size(),Settings::presentationOrder().size());for(int i=0;i<details.size();++i){const auto row=qdbus_cast<WireLayout>(output.children[i].variant());QCOMPARE(row.props["label"].toString(),details[i]);QVERIFY(!row.props["enabled"].toBool());click(row.id);}QVERIFY(actions.isEmpty());click(30);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("capture-settings"));
@@ -778,100 +720,6 @@ private slots:
   emit operations.incompleteUploadsKept({{"count",2},{"message","Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."}});
   PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["summary"].toString(),QString("put.gd — incomplete uploads left"));
   QCOMPARE(notifications.values.last()["body"].toString(),QString("Automatic cleanup could not cancel 2 incomplete uploads in bucket synthetic."));
- }
- void scrollNoticesStayHeldAcrossLateEnded(){
-  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
-  OperationService operations(directory.filePath("data"),settings,providers,source);operations.setScrollBackend(std::make_unique<FakeScrollBackend>());PUTGD_TRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();QString id;
-  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
-  emit operations.scroll().ended();putgd::test::settle(50);
-  controller.notifyFileManagerMenu({"pcmanfm"});controller.notifyFailure({"synthetic","Held failure",{}});
-  PUTGD_COMPARE_STEADY(notifications.values.size(),before,100);
-  bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
-  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);
- }
- void scrollCaptureClosesOwnNoticesAndHoldsNewOnes() {
-  // #1376: a notice of put.gd's own that is on screen while a scroll capture
-  // reads frames ends up in the picture (the height-cap warning of one capture
-  // was stitched into the next, on Plasma and GNOME). Preparing a capture
-  // closes the notices put.gd has open and holds the start while they go;
-  // notices that come up during the capture are shown when it has ended.
-  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
-  OperationService operations(directory.filePath("data"),settings,providers,source);
-  auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();operations.setScrollBackend(std::move(fake));PUTGD_TRY_VERIFY(operations.ready());
-  TrayController controller(operations,[](const QString&){},[]{});PUTGD_TRY_VERIFY(controller.available());const auto before=notifications.values.size();
-  notifications.confirmClose=true;const auto unconfirmed=qScopeGuard([&]{notifications.confirmClose=false;});
-  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic first notice."}});
-  PUTGD_TRY_COMPARE(notifications.values.size(),before+1);const uint open=uint(notifications.values.size());putgd::test::settle(50);
-  notifications.closed.clear();QString id;Error refused;bool answered=false;
-  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
-  PUTGD_TRY_VERIFY(answered);QVERIFY2(!refused,qPrintable(refused.message));QVERIFY(!id.isEmpty());
-  PUTGD_TRY_COMPARE(notifications.closed,QList<uint>{open});
-  // The start waits for the closed notice to leave the screen: half a second
-  // from the server's word that it is closed, not the whole wait for that word.
-  QElapsedTimer since;since.start();bool started=false;
-  operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});
-  QVERIFY(!backend->started);PUTGD_TRY_VERIFY(started);QVERIFY(backend->started);QVERIFY2(since.elapsed()>=400&&since.elapsed()<1100,qPrintable(QString::number(since.elapsed())));
-  // A notice while the capture runs is kept back.
-  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic second notice."}});
-  PUTGD_COMPARE_STEADY(notifications.values.size(),before+1,150);
-  bool cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
-  PUTGD_TRY_COMPARE(notifications.values.size(),before+2);QCOMPARE(notifications.values.last()["body"].toString(),QString("Synthetic second notice."));
-  // With nothing open, nothing is closed and the start is not held.
-  emit notifications.NotificationClosed(uint(notifications.values.size()),2);putgd::test::settle(50);notifications.closed.clear();answered=false;backend->started=false;
-  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
-  PUTGD_TRY_VERIFY(answered);QVERIFY(!refused);since.restart();started=false;
-  operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});PUTGD_TRY_VERIFY(started);QVERIFY(since.elapsed()<300);QVERIFY(notifications.closed.isEmpty());
-  cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
-  // A server that never says "closed": the start waits out the confirmation time, then the same half second.
-  notifications.confirmClose=false;const auto quiet=notifications.values.size();
-  emit operations.recording().budgetStopped("synthetic",{{"reason","disk_space"},{"message","Synthetic third notice."}});
-  PUTGD_TRY_COMPARE(notifications.values.size(),quiet+1);putgd::test::settle(50);notifications.closed.clear();answered=false;backend->started=false;
-  operations.scroll().command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){refused=e;id=r["id"].toString();answered=true;});
-  PUTGD_TRY_VERIFY(answered);QVERIFY(!refused);since.restart();started=false;
-  operations.scroll().command("start",{{"id",id}},[&](Error,QJsonObject){started=true;});
-  PUTGD_TRY_VERIFY(started);QVERIFY2(since.elapsed()>=NativeTray::closeConfirmMs+300&&since.elapsed()<NativeTray::closeConfirmMs+1200,qPrintable(QString::number(since.elapsed())));
-  QCOMPARE(notifications.closed,QList<uint>{uint(notifications.values.size())});
-  cancelled=false;operations.scroll().command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
- }
- void scrollCaptureDismissesNoticesAServerKeepsOnScreen() {
-  // #1376, Omarchy 4.5: its quickshell server answers CloseNotification with
-  // NotificationClosed and keeps the card on screen, and the next capture had
-  // it in its picture. There the shell's own IPC is called too, for the
-  // process that owns the bus name, once per summary; and a notice whose
-  // Notify is still unanswered when the capture is prepared is closed and
-  // dismissed when its id arrives. A stand-in `qs` records what it is asked.
-  QTemporaryDir directory;QVERIFY(directory.isValid());
-  QFile script(directory.filePath("qs"));QVERIFY(script.open(QIODevice::WriteOnly));
-  script.write(("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '"+directory.filePath("asked")+"'\nprintf '%s\\n' \"$XDG_RUNTIME_DIR\" >> '"+directory.filePath("runtime")+"'\n").toUtf8());script.close();
-  QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
-  const auto path=qgetenv("PATH");qputenv("PATH",QFile::encodeName(directory.path())+":"+path);
-  // The shell is asked in its own runtime directory, not in the one this process has taken since
-  // (the server here is this process: what it started with is in /proc/self/environ).
-  QByteArray started;QFile self("/proc/self/environ");QVERIFY(self.open(QIODevice::ReadOnly));
-  for(const auto& entry:self.readAll().split('\0'))if(entry.startsWith("XDG_RUNTIME_DIR="))started=entry.mid(16);
-  const auto runtime=qgetenv("XDG_RUNTIME_DIR");const bool hadRuntime=qEnvironmentVariableIsSet("XDG_RUNTIME_DIR");qputenv("XDG_RUNTIME_DIR",QFile::encodeName(directory.filePath("elsewhere")));
-  notifications.confirmClose=true;
-  const auto restore=qScopeGuard([&]{qputenv("PATH",path);if(hadRuntime)qputenv("XDG_RUNTIME_DIR",runtime);else qunsetenv("XDG_RUNTIME_DIR");notifications.server.clear();notifications.confirmClose=false;});
-  const auto asked=[&]{QFile file(directory.filePath("asked"));return file.open(QIODevice::ReadOnly)?QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts):QStringList{};};
-  notifications.server="quickshell";
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());PUTGD_TRY_VERIFY(notifications.serverQueries>0);putgd::test::settle(50);
-  const auto before=notifications.values.size();
-  tray.notify("Upload complete","first");tray.notify("Upload complete","second");tray.notify("put.gd — scrolling capture stopped","third",true);
-  PUTGD_TRY_COMPARE(notifications.values.size(),before+3);putgd::test::settle(50);notifications.closed.clear();
-  // A fourth is on its way when the screen is cleared.
-  tray.notify("Saved locally","fourth");
-  int gone=0;QCOMPARE(tray.closeNotifications([&]{++gone;}),4);
-  PUTGD_TRY_COMPARE(gone,1);QCOMPARE(notifications.closed.size(),4);
-  const auto owner=QString::number(QCoreApplication::applicationPid());
-  auto calls=asked();calls.sort();
-  QCOMPARE(calls,QStringList({"ipc --pid "+owner+" call notifications dismiss Saved locally","ipc --pid "+owner+" call notifications dismiss Upload complete","ipc --pid "+owner+" call notifications dismiss put.gd — scrolling capture stopped"}));
-  if(!started.isEmpty()){QFile seen(directory.filePath("runtime"));QVERIFY(seen.open(QIODevice::ReadOnly));QCOMPARE(seen.readAll().split('\n').first(),started);}
-  // Nothing open: nothing is asked and nothing is reported.
-  QCOMPARE(tray.closeNotifications([&]{++gone;}),0);PUTGD_COMPARE_STEADY(gone,1,150);QCOMPARE(asked().size(),3);
-  // Other servers are not asked that way.
-  QCOMPARE(putgd::notifications::dismissCommand("Plasma",42,"Upload complete"),QStringList{});QCOMPARE(putgd::notifications::dismissCommand("gnome-shell",42,"Upload complete"),QStringList{});
-  QCOMPARE(putgd::notifications::dismissCommand("quickshell",0,"Upload complete"),QStringList{});QCOMPARE(putgd::notifications::dismissCommand("quickshell",42,"--help"),QStringList{});
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

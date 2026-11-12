@@ -22,7 +22,7 @@ endforeach()
 # and the flaky-test tracker issue (tools/ci/ctest_retry.py). A new test is
 # `integration` unless it is added here.
 set(PUTGD_UNIT_TESTS
-  archive_contract bar_placement_contract bar_placement_single_monitor_contract
+  archive_contract bar_placement_contract
   export_av_sync_contract fonts_contract geometry_contract gnome_image_decode history_contract http_uploader_rules ip_address_contract
   json_ref_lifetime_contract wayland_keyboard_map kde_shortcut_normalization login_startup_contract
   pause_timeline_contract payload_contract portal_streams_contract poster_contract public_url

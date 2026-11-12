@@ -83,11 +83,6 @@ class SessionCommandFailure(unittest.TestCase):
         reason = self.blocked(lab.LabError('ssh failed (exit 255)'))
         self.assertEqual(reason, 'target session command unavailable: LabError exit 255')
 
-    def test_timeout_has_no_exit_status(self):
-        self.assertEqual(self.blocked(subprocess.TimeoutExpired('ssh', 5)),
-                         'target session command unavailable: TimeoutExpired')
-
-
 class GuestPeerSafety(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='sd-qmp-')

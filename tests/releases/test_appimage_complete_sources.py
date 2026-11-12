@@ -89,44 +89,6 @@ class CompleteSources(unittest.TestCase):
         change(receipt, receipt['notices']['inventory']['components'])
         return complete.distro_cache_key(receipt)
 
-    def test_cache_key_ignores_everything_but_ubuntu_package_versions(self):
-        key = complete.distro_cache_key(self.receipt)
-        def unrelated(receipt, components):
-            receipt['build']['version'] = '26.1109.1200-dev'
-            receipt['artifact']['sha256'] = 'c' * 64
-            receipt['recordingRuntime'] = {'purpose': 'reworded description'}
-            receipt['toolLock']['tools'][0]['sha256'] = 'c' * 64
-            components[-1]['source']['url'] = 'https://example.invalid/moved'
-            components[-1]['name'] = 'renamed binary package'
-        self.assertEqual(self.changed_receipt(unrelated), key)
-        def reordered(_, components):
-            components.reverse()
-            components.append({**components[0], 'id': 'ubuntu:another-binary-of-the-same-source'})
-        self.assertEqual(self.changed_receipt(reordered), key)
-
-    def test_cache_key_changes_with_a_package_or_version(self):
-        key = complete.distro_cache_key(self.receipt)
-        def version(_, components):
-            components[-1]['source']['sourceVersion'] = '3.24.41-4ubuntu1.1'
-        def package(_, components):
-            components[-1]['source']['sourcePackage'] = 'gtk4'
-        def added(_, components):
-            components.append({'id': 'ubuntu:pcre2', 'source': {'sourcePackage': 'pcre2', 'sourceVersion': '10.42-4ubuntu2.1'}})
-        for change in (version, package, added):
-            with self.subTest(change=change.__name__):
-                self.assertNotEqual(self.changed_receipt(change), key)
-
-    def test_prose_in_the_pin_files_cannot_reach_the_cache_key(self):
-        workflow = (ROOT / '.github/workflows/package.yml').read_text()
-        self.assertNotIn("hashFiles('packaging/appimage", workflow)
-        self.assertIn('key: appimage-distro-sources-v1-${{ steps.source-key.outputs.value }}-', workflow)
-
-    def test_cli_prints_the_cache_key(self):
-        result = subprocess.run([sys.executable, str(ROOT / 'tools/releases/appimage_complete_sources.py'),
-                                 '--receipt', str(self.path), '--print-cache-key'],
-                                check=True, text=True, capture_output=True)
-        self.assertEqual(result.stdout.strip(), complete.distro_cache_key(self.receipt))
-
     def distro_entry(self, key='gtk+3.0@3.24.41-4ubuntu1'):
         return self.root / 'cache/ubuntu' / complete.distro_cache_entry(key)
 

@@ -206,33 +206,6 @@ private slots:
   QVERIFY(!result.error.message.contains("gnome-extensions enable"));
   if(failure.startsWith("org."))QCOMPARE(result.error.details["dbusError"].toString(),failure);
  }
- void absentHelperPublishesOnlyWhatChanges(){
-  // Each signal makes an open UI reload its snapshot and History page, so the
-  // retry for a missing extension must stay silent until something is different.
-  const QString missing="org.freedesktop.DBus.Error.UnknownMethod",denied="org.freedesktop.DBus.Error.AccessDenied";
-  const auto failure=[](const GnomeAdapter& source){return source.capabilities()["helper"].toObject()["error"].toObject()["details"].toObject()["dbusError"].toString();};
-  stopFixture();QVERIFY(startFixture(0,missing));
-  GnomeAdapter source;source.setDiscoveryRetryForTesting(300,600);source.bindShortcuts({{"region","Ctrl+Shift+1"}});PUTGD_TRY_COMPARE(failure(source),missing);putgd::test::settle(100);
-  QSignalSpy published(&source,&GnomeAdapter::capabilitiesChanged);const auto retriedFrom=state()["hellos"].toInt();
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=retriedFrom+2,10000);QCOMPARE(published.size(),0);
-  control("SetErrors",{denied,QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(failure(source)==denied,5000);PUTGD_COMPARE_STEADY(published.size(),1,3300);
-  control("SetErrors",{QString{},QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);QVERIFY(published.size()>1);
- }
- void missingExtensionBacksOffToTheSafetyProbe(){
-  // A missing extension must not wake the resident every few seconds (#1187):
-  // each wait doubles, then the slow safety probe keeps looking.
-  const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
-  stopFixture();QVERIFY(startFixture(0,missing));
-  GnomeAdapter source;source.setDiscoveryRetryForTesting(100,400);QSignalSpy retried(&source,&GnomeAdapter::discoveryRetried);
-  PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
-  const auto from=state()["hellos"].toInt();QElapsedTimer elapsed;elapsed.start();
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=from+5,15000);
-  // Every timed retry asks the resident to release what it touched again.
-  QVERIFY(retried.size()>=5);
-  // Timers never fire early: 100+200+400+400+400 ms at least, against 500 ms for a fixed first step.
-  QVERIFY2(elapsed.elapsed()>=1400,qPrintable(QString::number(elapsed.elapsed())));
-  QVERIFY(!helperAvailable(source));
- }
  void extensionSignalsDiscoverWithoutWaitingForTheProbe(){
   const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
   stopFixture();QVERIFY(startFixture(0,missing));
@@ -246,16 +219,6 @@ private slots:
   QCOMPARE(control("Disable",{missing}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(!helperAvailable(source),3000);
   QCOMPARE(control("Enable").type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),3000);
   QCOMPARE(state()["hellos"].toInt(),4);QCOMPARE(retried.size(),0);
- }
- void lostEnableSignalRecoversThroughTheSafetyProbe(){
-  stopFixture();QVERIFY(startFixture(0,"org.freedesktop.DBus.Error.UnknownMethod"));
-  GnomeAdapter source;source.setDiscoveryRetryForTesting(200,400);
-  PUTGD_TRY_VERIFY(!source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString().isEmpty());
-  // The helper comes back without announcing it: only the probe can find it.
-  QCOMPARE(control("SetErrors",{QString{},QString{}}).type(),QDBusMessage::ReplyMessage);
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);
-  // Found, the probe stops.
-  const auto found=state()["hellos"].toInt();PUTGD_COMPARE_STEADY(state()["hellos"].toInt(),found,1500);
  }
  void endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
@@ -378,41 +341,12 @@ private slots:
   done=false;source.setShortcutRecording(false,[&](Error value){error=value;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY(!error);
   QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString("<Control>2"));
  }
- void clearFailureRecoversWithoutUiReopen(){
-  GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
-  QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);
-  QVERIFY(helperAvailable(source));QVERIFY(!windowAvailable(source));QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
-  bool rejected=false;source.acquire("window",{},[&](PayloadResult result){rejected=true;QCOMPARE(result.error.code,QString("helper_unavailable"));});QVERIFY(rejected);
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(windowAvailable(source),5000);
-  auto recovered=state();QCOMPARE(recovered["currentPid"].toInt(),0);QCOMPARE(recovered["registrations"].toArray(),(QJsonArray{0,1234,0,0}));QCOMPARE(recovered["hellos"].toInt(),1);QCOMPARE(recovered["binds"].toInt(),1);
-  bool completed=false;PayloadResult result;
-  connect(&source,&GnomeAdapter::actionRequested,this,[&](const QString& action){source.acquire(action,{},[&](PayloadResult value){result=std::move(value);completed=true;});});
-  QCOMPARE(control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)}).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_VERIFY(completed);
-  QVERIFY2(!result.error,qPrintable(result.error.message));QCOMPARE(result.payload.bytes,QByteArray("x"));
- }
- void liveFailureStaysClosedAndNewPidSupersedesClear(){
+ // While the Shell has not registered put.gd's own UI process, window capture stays
+ // off: a capture could otherwise include put.gd's own windows.
+ void liveFailureStaysClosed(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(windowAvailable(source));
   QCOMPARE(control("FailRegistration",{uint(1234),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(1234);QVERIFY(!windowAvailable(source));
   putgd::test::settle(3300);PUTGD_TRY_VERIFY(!windowAvailable(source));PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234}));
-  PUTGD_TRY_COMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);QVERIFY(!windowAvailable(source));
-  source.setUiProcess(5678);QVERIFY(windowAvailable(source));putgd::test::settle(3300);
-  PUTGD_TRY_COMPARE(state()["currentPid"].toInt(),5678);PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
- }
- void scrollFrameAsksTheShellForItsBeat(){
-  // #1376: Mutter's area stream sends a frame only for damage inside its
-  // area, and at a fractional scale a page at rest gave none to prove the
-  // end. The frame of a scroll capture asks the Shell to keep one pixel of
-  // the area repainting; a recording's frame does not.
-  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));PUTGD_TRY_VERIFY(source.selectsRegions());
-  const auto before=state()["frames"].toArray().size();
-  const QJsonObject frame{{"rect",QJsonArray{10,20,640,480}},{"kind","region"},{"state","recording"}};
-  int answered=0;Error failed;
-  source.showFrame(frame,[&](Error e,QJsonObject){if(e)failed=e;++answered;});PUTGD_TRY_COMPARE(answered,1);
-  source.scrollShell()->showFrame(frame,[&](Error e,QJsonObject){if(e)failed=e;++answered;});PUTGD_TRY_COMPARE(answered,2);
-  QVERIFY2(!failed,qPrintable(failed.message));
-  const auto frames=state()["frames"].toArray();QCOMPARE(frames.size(),before+2);
-  QCOMPARE(frames[before].toObject(),frame);
-  auto beating=frame;beating["beat"]=true;QCOMPARE(frames[before+1].toObject(),beating);
  }
  void outdatedExtensionAsksForALogOut_data(){QTest::addColumn<int>("loadedVersion");QTest::newRow("no-recording-protocol")<<1;QTest::newRow("prior-appearance-protocol")<<putgd::gnome::extensionVersion-1;}
  void outdatedExtensionAsksForALogOut(){

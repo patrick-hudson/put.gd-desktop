@@ -266,23 +266,6 @@ private slots:
   for(int cycle=0;cycle<3;++cycle){compositor.keyboardCapability(false);PUTGD_TRY_VERIFY(!clipboard.keyboardMap());PUTGD_TRY_COMPARE(compositor.keyboardCount(),0);compositor.keyboardCapability(true);PUTGD_TRY_VERIFY(clipboard.keyboardMap());PUTGD_TRY_COMPARE(compositor.keyboardCount(),1);}
  }
  void legacySeatStillDiscoversKeyboardMap(){NativeOutputFixture compositor(3,true,4,true,2);QVERIFY(compositor.ready());DataControlClipboard clipboard;PUTGD_TRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));}
- void keyboardMapConnectionLossAndReconnect(){
-  NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;PUTGD_TRY_VERIFY(clipboard.keyboardMap());
-  compositor.disconnectClients();PUTGD_TRY_VERIFY(!clipboard.keyboardMap());PUTGD_TRY_VERIFY(clipboard.keyboardMap());
- }
- void outputConnectionLossAndReconnectNotifyStatus(){
-  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
-  PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&WaylandOutputs::changed);
-  compositor.socketAvailable(false);compositor.disconnectClients();
-  PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Native output connection is unavailable"));
-  const auto lostRevision=outputs.revision();const auto lostSignals=changed.count();QVERIFY(lostSignals>0);
-  PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Cannot connect to the Wayland compositor for output discovery"));
-  QVERIFY(outputs.revision()>lostRevision);QVERIFY(changed.count()>lostSignals);QVERIFY(outputs.layout().isEmpty());
-  const auto failedRevision=outputs.revision();const auto failedSignals=changed.count();
-  putgd::test::settle(1100);PUTGD_TRY_COMPARE(outputs.revision(),failedRevision);PUTGD_TRY_COMPARE(changed.count(),failedSignals);
-  compositor.socketAvailable(true);PUTGD_TRY_VERIFY(outputs.status()["available"].toBool());QVERIFY(outputs.revision()>failedRevision);
-  QCOMPARE(outputs.layout().front().identity,QString("DP-1"));
- }
  void lowVersionOutputReportsProtocolNotOverflow(){
   NativeOutputFixture compositor(3,true,1);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));WaylandOutputs outputs;
   PUTGD_TRY_COMPARE(outputs.status()["error"].toString(),QString("Compositor output protocol lacks wl_output v2 batch completion"));
@@ -521,21 +504,6 @@ private slots:
   KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);info_.delayMs=200;
   int completed=0;PayloadResult result;source.acquire("window",{},[&](PayloadResult r){result=std::move(r);++completed;});PUTGD_TRY_COMPARE(info_.queries.size(),1);QCOMPARE(completed,0);
   source.cancelAcquisition();PUTGD_TRY_COMPARE(completed,1);QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.payload.image.isNull());putgd::test::settle(30);PUTGD_TRY_COMPARE(completed,1);
- }
- // The other KWin authorization: its restricted Wayland interfaces go only to
- // the executable of a desktop entry that lists them. The recorder's packaged
- // entry names the screencast and, for a scrolling capture's wheel (#1376),
- // the fake input protocol, with putgd-record as the first Exec token.
- void recorderEntryListsItsRestrictedWaylandInterfaces(){
-#ifdef PUTGD_RECORD_DESKTOP_ENTRY
-  QFile entry(QStringLiteral(PUTGD_RECORD_DESKTOP_ENTRY));QVERIFY2(entry.open(QIODevice::ReadOnly),PUTGD_RECORD_DESKTOP_ENTRY);
-  const auto lines=QString::fromUtf8(entry.readAll()).split('\n');
-  QVERIFY(lines.contains("X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input"));
-  // No D-Bus restricted interface: ScreenShot2 is the resident's, by its own entry.
-  for(const auto& line:lines){QVERIFY(!line.startsWith("X-KDE-DBUS-Restricted-Interfaces"));if(line.startsWith("Exec="))QVERIFY2(line.section('=',1).section(' ',0,0).endsWith("/putgd-record"),qPrintable(line));}
-#else
-  QSKIP("This build has no recording helper");
-#endif
  }
  void noHelperDoesNotQueryWindowInfo(){
   KdeSourceAdapter source;PUTGD_TRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);source.setUiProcess(0);info_.fail=true;

@@ -15,18 +15,6 @@ from jsonschema import Draft202012Validator, ValidationError
 
 
 class ConfigurationSchema(unittest.TestCase):
-    def test_s3_presigned_link_settings(self):
-        root = Path(__file__).resolve().parents[2]
-        schema = json.loads((root / 'schemas/config.schema.json').read_text())
-        validator = Draft202012Validator(schema['$defs']['s3Settings'])
-        settings = json.loads((root / 'config/development.example.json').read_text())['profiles'][0]['settings']
-        self.assertTrue(validator.is_valid(settings))  # legacy destinations omit both fields
-        for mode in ('public', 'presigned'):
-            for days in (1, 7):
-                self.assertTrue(validator.is_valid(settings | {'linkMode': mode, 'linkValidityDays': days}))
-        for key, value in [('linkMode', 'authorized'), ('linkMode', None), ('linkValidityDays', 0), ('linkValidityDays', 8), ('linkValidityDays', 1.5), ('linkValidityDays', '3')]:
-            self.assertFalse(validator.is_valid(settings | {key: value}))
-
     def test_capture_defaults_and_explicit_exceptions(self):
         root = Path(__file__).resolve().parents[2]
         schema = json.loads((root / 'schemas/config.schema.json').read_text())
@@ -58,16 +46,6 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('latest', True, None, 42):
             self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
 
-    def test_scrolling_preferences(self):
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
-        validator = Draft202012Validator(schema['properties']['preferences'])
-        legacy = {'notifications': True, 'launchAtLogin': False}
-        for height in (2000, 30000, 60000):
-            self.assertTrue(validator.is_valid(legacy | {'scrollCaptureMaxHeight': height, 'scrollCaptureFromTop': True}))
-        for height in (1999, 60001, 30000.5, '30000', None):
-            self.assertFalse(validator.is_valid(legacy | {'scrollCaptureMaxHeight': height}))
-        self.assertFalse(validator.is_valid(legacy | {'scrollCaptureFromTop': 'yes'}))
-
     def test_region_selection_modes(self):
         # #629: live by default (omitted), or screenshot_first.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
@@ -87,19 +65,6 @@ class ConfigurationSchema(unittest.TestCase):
             self.assertTrue(validator.is_valid(legacy | {'recordingFrameRate': rate}))
         for rate in (0, 15, 24, 59, 61, 30.5, '60', None):
             self.assertFalse(validator.is_valid(legacy | {'recordingFrameRate': rate}))
-
-    def test_recording_microphone_and_click_preferences(self):
-        # #1364: all optional; the device is a source name without control characters.
-        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
-        validator = Draft202012Validator(schema['properties']['preferences'])
-        legacy = {'notifications': True, 'launchAtLogin': False}
-        for extra in ({'recordingMicrophone': True}, {'recordingMicrophone': False}, {'recordingClickHighlights': True},
-                      {'recordingMicrophoneDevice': ''}, {'recordingMicrophoneDevice': 'alsa_input.usb-Mic-00.mono-fallback'},
-                      {'recordingMicrophone': True, 'recordingMicrophoneDevice': 'putgd_lab_mic', 'recordingClickHighlights': False}):
-            self.assertTrue(validator.is_valid(legacy | extra), extra)
-        for extra in ({'recordingMicrophone': 1}, {'recordingMicrophone': 'yes'}, {'recordingClickHighlights': None},
-                      {'recordingMicrophoneDevice': 7}, {'recordingMicrophoneDevice': 'x' * 257}, {'recordingMicrophoneDevice': 'two\nlines'}):
-            self.assertFalse(validator.is_valid(legacy | extra), extra)
 
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.

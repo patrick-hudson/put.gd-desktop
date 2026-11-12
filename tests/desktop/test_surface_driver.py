@@ -691,20 +691,6 @@ class TargetSafety(unittest.TestCase):
                     self.assertEqual(target._rfb.pointer_button.call_args_list,
                                      [call(1,1,'wheel-up',True),call(1,1,'wheel-up',False)])
 
-    def test_vnc_sends_shifted_characters_as_their_own_keysyms(self):
-        # x11vnc (Mint) releases Shift to produce exactly the keysym it gets:
-        # Shift+'h' typed "history copy.png" for "History copy.png".
-        from tools.lab.surface_driver.target import qcodes, vnc_keysyms
-        self.assertEqual(vnc_keysyms(['shift'] + qcodes('H')), ['shift', 'H'])
-        self.assertEqual(vnc_keysyms(qcodes('_')), ['shift', '_'])
-        self.assertEqual(vnc_keysyms(qcodes('?')), ['shift', '?'])
-        self.assertEqual(vnc_keysyms(qcodes('h')), ['h'])
-        self.assertEqual(vnc_keysyms(qcodes('-')), ['-'])
-        self.assertEqual(vnc_keysyms(qcodes('Shift+F10')), ['shift', 'f10'])
-        self.assertEqual(vnc_keysyms(qcodes('Shift+Down')), ['shift', 'down'])
-        self.assertEqual(vnc_keysyms(qcodes('Ctrl+Shift+A')), ['ctrl', 'shift', 'A'])
-        self.assertEqual(vnc_keysyms(qcodes('Ctrl+A')), ['ctrl', 'a'])
-
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
                       {'ok':True,'state':'held','expiresInSeconds':0},

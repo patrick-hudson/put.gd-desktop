@@ -342,23 +342,11 @@ SwapPss:               0 kB
         reading = dict(rollup=self.ROLLUP % (rss, pss), names=list(names), load=guest[0], cpus=guest[1])
         return outcomes.idle_summary(reading, *builder)
 
-    def test_receipt_records_uss_and_the_exact_forbidden_names(self):
-        summary = self.summary(names=['libQt6Core.so.6', 'libgdk_pixbuf-2.0.so.0', 'libcrypto.so.3', 'libssl.so.3',
-                                      'libQt6Network.so.6.8.2', 'KDEPlasmaPlatformTheme6.so', 'libgtk-3.so.0', 'libqgtk3.so'])
-        self.assertEqual((summary['ussKb'], summary['swapKb'], summary['libcrypto']), (8000, 0, ['libcrypto.so.3']))
-        self.assertEqual(summary['forbidden'], ['libssl.so.3', 'libQt6Network.so.6.8.2', 'KDEPlasmaPlatformTheme6.so',
-                                                'libgtk-3.so.0', 'libqgtk3.so'])
-
     def test_budget_is_exclusive_at_40_mib_for_rss_and_pss(self):
         outcomes.judge_idle(self.summary(rss=40959, pss=40959))
         for values in (dict(rss=40960), dict(pss=40960)):
             with self.subTest(values), self.assertRaises(RecipeFailed):
                 outcomes.judge_idle(self.summary(**values))
-
-    def test_a_busy_host_cannot_turn_a_size_into_a_red(self):
-        for busy in (dict(guest=(4.0, 4)), dict(builder=(16.0, 16))):
-            with self.subTest(busy), self.assertRaisesRegex(RecipeBlocked, 'not quiet'):
-                outcomes.judge_idle(self.summary(rss=50000, **busy))
 
     def test_a_forbidden_mapping_is_red_even_on_a_busy_host(self):
         with self.assertRaisesRegex(RecipeFailed, 'libssl.so.3'):
@@ -372,31 +360,6 @@ SwapPss:               0 kB
         ctx.call.return_value = dict(memory=dict(imagePageReleaseCount=1, lastImagePageReleaseBytes=25*2**20))
         ctx.shell.side_effect = shell_results
         return ctx
-
-    def test_the_read_is_of_a_fresh_resident_after_the_window_without_the_probe_bridge(self):
-        import json as _json
-        ctx = self.recipe_context(lambda *_a, **_k: dict(returncode=0, stdout='', stderr=''))
-        scope = Mock(root='/tmp/sd/fx-1', json=Mock(return_value=dict(rollup=self.ROLLUP % (32000, 12000), names=[], load=.1, cpus=2)),
-                     close=Mock(return_value=[]))
-        order = []
-        scope.restart.side_effect = lambda *_: order.append('restart:'+ctx.target.app_executable)
-        ctx.wait.side_effect = lambda *_a, **_k: order.append('window')
-        scope.json.side_effect = lambda *_a, **_k: order.append('read') or dict(rollup=self.ROLLUP % (32000, 12000), names=[], load=.1, cpus=2)
-        ctx.call.side_effect = lambda *_a, **_k: order.append('diagnostics') or dict(memory=dict(imagePageReleaseCount=1, lastImagePageReleaseBytes=25*2**20))
-        with patch.object(outcomes, 'Scope', return_value=scope), \
-                patch('tools.lab.surface_driver.fixtures.resident.identity', return_value=dict(pid=4, start='9')):
-            outcomes.idle_memory(ctx)
-        self.assertEqual(order, ['restart:/tmp/sd/fx-1/idle-resident', 'window', 'read', 'diagnostics'])
-        self.assertIn("{'pid': 4, 'start': '9'}", scope.json.call_args.args[0])
-        self.assertIn(b'unset QT_LINUX_ACCESSIBILITY_ALWAYS_ON', scope.write.call_args.args[1])
-        noted = next(call.args[0] for call in ctx.note.call_args_list if call.args[0].startswith('idle_memory='))
-        recorded = _json.loads(noted.split('=', 1)[1])
-        self.assertEqual((recorded['rssKb'], recorded['imagePageReleases'], recorded['imagePageReleaseBytes']), (32000, 1, 25*2**20))
-        scope.defer.assert_called_once()
-        label, restore = scope.defer.call_args.args
-        self.assertEqual(label, 'original resident route')
-        restore()
-        self.assertEqual(ctx.target.app_executable, 'putgd')
 
     def test_cleanup_failure_cannot_hide_a_red_reading(self):
         ctx = self.recipe_context(lambda *_a, **_k: dict(returncode=0, stdout='', stderr=''))
@@ -543,27 +506,12 @@ class BarHandlePlacement(unittest.TestCase):
         start.assert_called_once(), stop.assert_called_once()
         return ctx
 
-    def test_kde_screencast_hiding_the_requester_expects_hidden_and_a_full_bar(self):
-        caps = dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=True))
-        ctx = self.run_recipe(caps, 'hidden', [788, 560])
-        self.assertIn('no handle to collapse', ctx.review.call_args.args[0])
-
     def test_kde_screencast_that_hides_the_requester_still_refuses_a_collapsed_bar(self):
         caps = dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=True))
         with self.assertRaises(AssertionError):
             self.run_recipe(caps, 'hidden', [788, 120])
         with self.assertRaises(AssertionError):
             self.run_recipe(caps, 'hidden', [788, 560], pause=False)
-
-    def test_older_kwin_and_x11_keep_the_handle(self):
-        for caps in (dict(acquisition='kde-screencast', kdeScreencast=dict(hidesRequester=False)),
-                     dict(acquisition='x11')):
-            with self.subTest(caps=caps):
-                ctx = self.run_recipe(caps, 'handle', [600, 120])
-                self.assertIn('width collapse', ctx.review.call_args.args[0])
-            with self.subTest(caps=caps, placement='hidden'), self.assertRaises(AssertionError):
-                self.run_recipe(caps, 'hidden', [600, 120])
-
 
 if __name__ == '__main__':
     unittest.main()

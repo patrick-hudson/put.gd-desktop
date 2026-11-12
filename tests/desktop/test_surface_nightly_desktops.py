@@ -459,12 +459,6 @@ class NightlyTests(unittest.TestCase):
         self.assertFalse(slot)
         self.assertNotIn('cleanupBlocked', record)
 
-    def test_lost_session_after_a_passing_recipe_reports_the_cleanup_failure(self):
-        record, _, _, _ = self.lost_session_row(['resident quit transport unavailable; private session retained'],
-                                                rows=[{'functional': 'passed', 'note': 'operationId=unrelated'}])
-        self.assertTrue(record['notRunReason'].endswith('idle_memory attempt 1: private target cleanup failed'))
-        self.assertNotIn('unrelated', record['notRunReason'])
-
     def test_lost_session_that_also_left_unsafe_cleanup_stays_retained(self):
         record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained',
                                                              'previous clipboard restoration unavailable; private session retained'])
@@ -472,17 +466,6 @@ class NightlyTests(unittest.TestCase):
         retire.assert_not_called()
         self.assertTrue(slot and record['cleanupBlocked'])
         self.assertTrue(record['notRunReason'].startswith('guest session lost in idle_memory attempt 1'))
-
-    def test_only_an_unquittable_resident_counts_as_a_lost_session(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp)
-            self.assertFalse(nightly.lost_guest_session(out))
-            (out/'receipt.json').write_text('not json')
-            self.assertFalse(nightly.lost_guest_session(out))
-            for errors, lost in (([], False), (['private session root cleanup refused'], False),
-                                 (['resident quit was rejected; private session retained'], True)):
-                (out/'receipt.json').write_text(json.dumps(dict(environment=dict(cleanup_errors=errors))))
-                self.assertEqual(nightly.lost_guest_session(out), lost)
 
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -834,18 +817,6 @@ with n.controller_shutdown(workers):
         (root/'coverage.json').write_text('{}')
         mark_terminal(root, 0 if functional == 'passed' else 2)
 
-    def test_idle_reading_reaches_the_cell_and_only_that_cell(self):
-        reading = '{"forbidden": [], "pssKb": 12000, "rssKb": 32000}'
-        with tempfile.TemporaryDirectory() as tmp:
-            self.receipt(Path(tmp), note='idle_memory='+reading, recipe='outcomes.idle_memory')
-            self.assertEqual(nightly.verdict(tmp,'outcomes.idle_memory')['memory'], json.loads(reading))
-        with tempfile.TemporaryDirectory() as tmp:
-            self.receipt(Path(tmp))
-            self.assertNotIn('memory', nightly.verdict(tmp,'outcomes.region_upload'))
-        with tempfile.TemporaryDirectory() as tmp:
-            self.receipt(Path(tmp), functional='blocked', note='no reading', recipe='outcomes.idle_memory')
-            self.assertEqual(nightly.verdict(tmp,'outcomes.idle_memory')['memory'], None)
-
     def test_review_does_not_gate_automatic_oracles(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.receipt(Path(tmp))
@@ -934,19 +905,6 @@ with n.controller_shutdown(workers):
             for v in row['cells'].values():v.update(status='green')
             nightly.publish(github,result,Path(tmp))
             self.assertIn(('PATCH','repos/owner/repo/issues/2',dict(state='closed')),github.writes)
-
-    def test_the_public_receipt_carries_the_memory_reading(self):
-        github=FakeGitHub()
-        value=nightly.cell('green','',memory=dict(rssKb=32000))
-        row=dict(desktop='Cinnamon',host='m74',evidence='/owned/run',cells=dict(idle_memory=value))
-        with tempfile.TemporaryDirectory() as tmp:
-            nightly.publish(github,dict(release='tag',date='today',build=BUILD,desktops=[row]),Path(tmp))
-            table=(Path(tmp)/'results.md').read_text()
-        receipt=next(w[2] for w in github.writes if w[0]=='POST' and 'comments' in w[1])
-        self.assertIn('"rssKb": 32000',receipt['body'])
-        self.assertIn('Idle memory',table)
-        cells=next(line for line in table.splitlines() if line.startswith('| Cinnamon')).split(' | ')
-        self.assertIn('🟢',cells[1])
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()

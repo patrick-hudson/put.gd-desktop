@@ -16,6 +16,7 @@
 #include <QTimer>
 #include <QUuid>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <functional>
@@ -85,7 +86,14 @@ int main(int argc,char** argv) {
   });
   if(!putgd::showLayerShellCountdown(*pill)) return 1;
   pill->start();
-  return app.exec();
+  const int status=app.exec();
+  // The exit status is the countdown's answer, and the pill's surface is gone by
+  // now. Qt Wayland's display teardown can wait forever on its event thread
+  // (Qt 6.10, #1332), and the resident then saw no answer until its deadline
+  // killed this helper: a cancelled or finished countdown became
+  // delay_unavailable 25 seconds later. Leave without that teardown.
+  std::fflush(nullptr);
+  std::_Exit(status);
  }
  // Load the pill font while this process waits for its bootstrap; a surface does
  // not wait for it to map.

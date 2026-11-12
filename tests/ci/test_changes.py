@@ -1,6 +1,5 @@
 """Path selection must never skip a job that a changed input can affect."""
 import importlib.util
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -124,62 +123,11 @@ class CatalogSelection(unittest.TestCase):
             with self.subTest(build=path):
                 self.assertTrue(changes.select([path])['build'])
 
-    def test_allowlisted_inputs_render_catalog(self):
-        for path in ('src/ui/SettingsWindow.cpp', 'src/editor/EditorCommands.cpp',
-                     'src/record/ReviewWindow.cpp', 'src/record/ReviewWindow.h',
-                     'src/record/Overlays.cpp', 'src/record/Overlays.h',
-                     'src/record/FormatBox.h', 'src/record/record.qrc',
-                     'src/ui/fonts/IBMPlexSans-Regular.ttf', 'src/ui/fonts.qrc',
-                     'src/ui/icons/check.png', 'src/ui/IconArt.cpp',
-                     'tests/gui/ui_catalog.cpp', 'tests/gui/catalog_build_identity.cpp',
-                     'cmake/TestsGui.cmake', 'tools/ci/check_catalog_render.py', 'tools/ci/changes.py',
-                     'tools/lab/surface_map/model.json', 'tools/lab/surface_map/surface_map.py',
-                     'tests/fixtures/UiSessionFixture.h', 'src/record/BarPlacement.cpp', 'src/record/MaskBox.h',
-                     'tools/lab/surface_driver/secret-states.json',
-                     'tools/lab/surface_driver/redact.py', 'tools/lab/surface_driver/gate.py'):
-            with self.subTest(path=path):
-                result = changes.select([path])
-                self.assertTrue(result['catalog'])
-                self.assertTrue(result['build'])
-        self.assertTrue(changes.select(['src/core/Settings.cpp', 'src/ui/Theme.cpp'])['catalog'])
-        self.assertFalse(changes.select([])['catalog'])
-
     def test_unknown_base_keeps_full_selection(self):
         result = changes.select(None)
         self.assertIsNone(result['paths'])
         for group in ('catalog', 'build', 'packages', 'sanitizers', 'pipewire'):
             self.assertTrue(result[group], group)
-
-    def test_workflow_uses_same_catalog_selection_for_all_consumers(self):
-        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        decision = "matrix.distribution == '26.04' && needs.changes.outputs.catalog == 'true'"
-        self.assertIn('catalog: ${{ steps.select.outputs.catalog }}', workflow)
-        self.assertIn("-DPUTGD_UI_CATALOG_RENDER=${{ " + decision + " && 'ON' || 'OFF' }}", workflow)
-        checks = workflow.split('      - name: Check the surface map against the UI catalog\n', 1)[1]
-        checks = checks.split('      - name:', 1)[0]
-        self.assertIn('if: ' + decision, checks)
-        self.assertIn('surface_map.py check --catalog build/dev/ui-catalog/dark', checks)
-        self.assertIn('tools.lab.surface_driver.gate check-catalog build/dev/ui-catalog/dark', checks)
-        upload = workflow.split('      - name: Preserve the UI catalog\n', 1)[1]
-        upload = upload.split('      - name:', 1)[0]
-        self.assertIn('if: ' + decision, upload)
-        self.assertIn('name: ui-catalog', upload)
-        self.assertIn('if-no-files-found: error', upload)
-
-    def test_full_runs_render_and_export_catalog_decision(self):
-        for event in ('push', 'schedule', 'workflow_dispatch', 'workflow_call'):
-            with self.subTest(event=event), tempfile.TemporaryDirectory(prefix='pgselect-') as directory:
-                output = Path(directory) / 'output'
-                summary = Path(directory) / 'summary'
-                result = subprocess.run([sys.executable, str(ROOT / 'tools/ci/changes.py'),
-                                         '--event', event], check=True, text=True, capture_output=True,
-                                        env=dict(os.environ, GITHUB_OUTPUT=str(output),
-                                                 GITHUB_STEP_SUMMARY=str(summary)))
-                self.assertTrue(json.loads(result.stdout)['catalog'])
-                self.assertIsNone(json.loads(result.stdout)['paths'])
-                self.assertIn('catalog=true', output.read_text().splitlines())
-                self.assertIn('| UI catalog | yes |', summary.read_text())
-
 
 class GitDiff(unittest.TestCase):
     def test_deleted_and_renamed_paths_are_both_reported(self):

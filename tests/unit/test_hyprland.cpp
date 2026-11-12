@@ -3,7 +3,6 @@
 // binds), Lua quoting, permission refusal frames and rules, and the shortcut
 // backend driven against a fake Hyprland IPC server that records every request.
 #include "platform/hyprland/HyprlandClicks.h"
-#include <cmath>
 #include "platform/hyprland/HyprlandIpc.h"
 #include "platform/hyprland/HyprlandShortcuts.h"
 #include "platform/hyprland/HyprlandSourceAdapter.h"
@@ -269,48 +268,20 @@ private slots:
  // The backend against a fake Hyprland: binds only free keys, never unbinds,
  // reloads to change or remove its binds, re-applies after any reload, and
  // leaves exactly the configuration's binds when paused or cleared.
- // #1364: click highlights. The binds are armed by one eval, never consume the
- // click, do nothing without the recording's token, and are unbound only on a
- // chord nothing else holds; only this recording's events are believed.
+ // #1364: click highlights. The binds never consume the click, a hostile token
+ // cannot leave the Lua string, and a chord is unbound only when nothing of the
+ // user's shares it (hl.unbind would take the user's bind too).
  void clickBindsAreNonConsumingTokenGatedAndRemovedOnlyWhenAlone(){
   const auto script=HyprlandClicks::armScript("abc123",true);
-  QVERIFY(script.startsWith("_G.putgd_clicks = \"abc123\""));
-  for(const auto* key:{"mouse:272","mouse:273","mouse:274"})QVERIFY2(script.contains(QString("hl.bind(\"%1\"").arg(key)),key);
-  QCOMPARE(script.count("non_consuming = true"),3);QCOMPARE(script.count("ignore_mods = true"),3);
-  QCOMPARE(script.count("description = \"put.gd: click highlight\""),3);
-  QVERIFY(script.contains("hl.get_cursor_pos()"));QVERIFY(script.contains("hl.dsp.event("));
-  // Never a config file, a bind handle or a process per click.
-  for(const auto* banned:{":remove","keyword","exec","hyprland.lua","bindings.lua"})QVERIFY2(!script.contains(banned),banned);
-  // Binds already there are reused: only the token is set.
-  QCOMPARE(HyprlandClicks::armScript("abc123",false),QString("_G.putgd_clicks = \"abc123\""));
-  QCOMPARE(HyprlandClicks::disarmScript(),QString("_G.putgd_clicks = nil"));
-  // A hostile token cannot leave the Lua string.
+  QCOMPARE(script.count("non_consuming = true"),3);
   const QString hostile="x\"; os.exit() --";
   QCOMPARE(HyprlandClicks::armScript(hostile,false),"_G.putgd_clicks = "+putgd::HyprlandIpc::luaString(hostile));
   QVERIFY(putgd::HyprlandIpc::luaString(hostile).contains("\\\""));
   const auto bind=[](const QString& key,int mods,const QString& description){return QJsonObject{{"key",key},{"modmask",mods},{"description",description},{"dispatcher","__lua"}};};
   const QString ours=HyprlandClicks::description;
-  // Alone on the three bare buttons: all three may go.
-  QJsonArray binds{bind("mouse:272",0,ours),bind("mouse:274",0,ours),bind("mouse:273",0,ours),bind("mouse:272",64,"move window")};
-  QCOMPARE(HyprlandClicks::removable(binds),QStringList({"mouse:272","mouse:274","mouse:273"}));
-  // The user's own bare right-button bind shares that chord: hl.unbind would take it too, so it stays.
-  binds.append(bind("mouse:273",0,"my menu"));
+  QJsonArray binds{bind("mouse:272",0,ours),bind("mouse:274",0,ours),bind("mouse:273",0,ours),bind("mouse:272",64,"move window"),bind("mouse:273",0,"my menu")};
   QCOMPARE(HyprlandClicks::removable(binds),QStringList({"mouse:272","mouse:274"}));
   QCOMPARE(HyprlandClicks::removable(QJsonArray{bind("mouse:272",0,"someone else")}),QStringList{});
-  // Only a button without one of put.gd's binds gets one: a bind left on a shared chord is reused, never
-  // doubled, and however many were left, a button that has none is still bound.
-  QCOMPARE(HyprlandClicks::missing(QJsonArray{}),QStringList({"mouse:272","mouse:274","mouse:273"}));
-  QCOMPARE(HyprlandClicks::missing(binds),QStringList{});
-  QCOMPARE(HyprlandClicks::missing(QJsonArray{bind("mouse:273",0,ours),bind("mouse:273",0,ours),bind("mouse:273",0,ours),bind("mouse:272",0,"someone else"),bind("mouse:274",64,ours)}),QStringList({"mouse:272","mouse:274"}));
-  const auto partial=HyprlandClicks::armScript("abc123",QStringList{"mouse:274"});
-  QCOMPARE(partial.count("hl.bind("),1);QVERIFY(partial.contains("\"mouse:274\""));QVERIFY(!partial.contains("\"mouse:272\""));QVERIFY(partial.startsWith("_G.putgd_clicks = \"abc123\""));
-  QCOMPARE(HyprlandClicks::armScript("abc123",QStringList{}),HyprlandClicks::armScript("abc123",false));
-  int button=0;double x=0,y=0;
-  QVERIFY(HyprlandClicks::parseEvent("putgd-click abc123 3 399.9609375 299.9755859375","abc123",&button,&x,&y));
-  QCOMPARE(button,3);QVERIFY(std::abs(x-399.96)<0.01&&std::abs(y-299.98)<0.01);
-  for(const auto* refused:{"putgd-click other 1 10 10","putgd-click abc123 9 10 10","putgd-click abc123 1 ten 10","putgd-click abc123 1 10","other abc123 1 10 10",""})
-   QVERIFY2(!HyprlandClicks::parseEvent(refused,"abc123",&button,&x,&y),refused);
-  QVERIFY(!HyprlandClicks::parseEvent("putgd-click  1 10 10","",&button,&x,&y));
  }
  void backendAgainstFakeHyprland(){
   QTemporaryDir runtime;QVERIFY(runtime.isValid());

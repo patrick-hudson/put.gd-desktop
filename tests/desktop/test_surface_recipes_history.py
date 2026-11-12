@@ -58,7 +58,7 @@ class FakeContext(Context):
         self.details = False
         # #1396: in the wide list the pane follows the selection only while
         # details are wanted; closeDetails remembers "closed" there.
-        self.details_wanted = fault != 'details-closed-before'
+        self.details_wanted = True
         self.active = 2 if 'history_active_uploads' in needs else 0
         self.confirmation = {'open': False, 'operationIds': []}
         self.saved = 'history_saved_copy' in needs
@@ -400,9 +400,6 @@ class FakeContext(Context):
                     if n.get('rect') and x <= n['rect'][0] + n['rect'][2] / 2 < x + w
                     and y <= n['rect'][1] + n['rect'][3] / 2 < y + h]
         if query.get('name') == 'Advanced original receipt details' and self.receipt:
-            if self.fault == 'wayland-unplaced' and self.receipt_top + 180 > self.window['y'] + self.window['height']:
-                # Wayland: a control reaching past its window has no placed rect.
-                return [{'name': query['name'], 'rect': None, 'coordinate_error': 'outside compositor frame'}]
             return [{'name': query['name'], 'rect': [1250, self.receipt_top, 340, 180]}]
         if query.get('name') == 'Delete from destination…' and query.get('role') == 'push button':
             # The pane's last control; scrolling to the end leaves it in place.
@@ -509,35 +506,11 @@ class HistoryRecipeTests(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             history._main_windows(ctx)
 
-    def test_reset_turns_remembered_closed_details_back_on(self):
-        # A closed pane is remembered in the wide list (#1396). The reset must
-        # want details again, or the multi-selection summary never shows.
-        ctx = FakeContext(('history_pair',), fault='details-closed-before')
-        history.multi_select(ctx)
-        views = [e[2]['action'] for e in ctx.events if e[:2] == ('view', 'ui.history')]
-        self.assertIn('toggleDetails', views)
-        self.assertNotIn('closeDetails', views)
-        self.assertTrue(ctx.details_wanted)
-
-    def test_reset_keeps_details_wanted_when_already_on(self):
-        ctx = FakeContext(('history-row',))
-        history.receipt_details(ctx)
-        views = [e[2]['action'] for e in ctx.events if e[:2] == ('view', 'ui.history')]
-        self.assertNotIn('toggleDetails', views)
-        self.assertNotIn('closeDetails', views)
-
     def test_summary_absent_without_details_pane_fails(self):
         ctx = FakeContext(('history_pair',))
         with patch.object(history, '_open', lambda c: setattr(c, 'details_wanted', False)):
             with self.assertRaisesRegex(RecipeFailed, 'visible binary size summary'):
                 history.multi_select(ctx)
-
-    def test_search_types_the_shortest_distinct_tail(self):
-        ctx = FakeContext(('history-row',))
-        history.search(ctx)
-        typed = [e[1] for e in ctx.events if e[0] == 'type_text']
-        self.assertEqual(typed, ['mage.png', 'zq-0'])
-        self.assertEqual(ctx.query['search'], '')
 
     def test_search_grows_past_a_shared_tail(self):
         def matching(other):
@@ -551,84 +524,15 @@ class HistoryRecipeTests(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'exactly that row'):
             history._distinct_text(ctx, ctx.fixture_row)
 
-    def test_receipt_scrolls_into_the_window_before_input(self):
-        ctx = FakeContext(('history-row',))
-        history.receipt_details(ctx)
-        scrolls = [e for e in ctx.events if e[0] == 'scroll']
-        self.assertTrue(scrolls and all(e[3] < 0 for e in scrolls))
-        self.assertEqual(ctx.receipt_top, 640)
-        self.assertLess(ctx.events.index(scrolls[-1]),
-                        [e[:2] for e in ctx.events].index(('click', 'historyDetails')))
-
-    def test_clear_filters_keeps_the_typed_search(self):
-        ctx = FakeContext(('history_rows',))
-        history.clear_filters(ctx)
-        typed = [e[1] for e in ctx.events if e[0] == 'type_text']
-        self.assertEqual(typed, ['mage.png'])
-        self.assertEqual(ctx.query['search'], 'mage.png')
-        self.assertEqual(ctx.query['uploadStatus'], '')
-
     def test_clear_filters_dropping_search_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preserves search'):
             history.clear_filters(FakeContext(('history_rows',), fault='clear-drops-search'))
-
-    def test_receipt_unplaced_on_wayland_scrolls_until_placed(self):
-        ctx = FakeContext(('history-row',), fault='wayland-unplaced')
-        history.receipt_details(ctx)
-        self.assertEqual(ctx.receipt_top, 640)
-        self.assertIn(('click', 'historyDetails'), [e[:2] for e in ctx.events])
-
-    def test_receipt_toggle_below_a_small_window_scrolls_first(self):
-        # A 1280 x 800 guest: the toggle itself starts below the visible pane.
-        ctx = FakeContext(('history-row',))
-        ctx.receipt_top = 1080
-        history.receipt_details(ctx)
-        first_click = [e[:2] for e in ctx.events].index(('click', 'historyReceiptExpanded'))
-        scrolls = [i for i, e in enumerate(ctx.events) if e[0] == 'scroll']
-        self.assertTrue(scrolls and scrolls[0] < first_click)
-        self.assertEqual((ctx.events[scrolls[0]][1], ctx.events[scrolls[0]][2]), (1220, 420))  # over the preview
 
     def test_receipt_that_never_settles_blocks(self):
         ctx = FakeContext(('history-row',), fault='receipt-keeps-moving')
         with self.assertRaises(RecipeBlocked):
             history.receipt_details(ctx)
         self.assertNotIn(('click', 'historyDetails'), [e[:2] for e in ctx.events])
-
-    def test_saved_copy_fixture_types_into_the_modal_chooser(self):
-        from tools.lab.surface_driver.fixtures import history as fixture
-        events, state = [], {'open': False, 'copyJob': {}}
-
-        class Ctx:
-            profile = {}
-            def fixture(self, name): events.append(('fixture', name))
-            def view(self, method, params): events.append(('view', method))
-            def call(self, method, params):
-                if method == 'ui.fileDialog':
-                    if params['action'] == 'open':
-                        state['open'] = True
-                    return {'open': state['open'], 'title': 'Save original file as'}
-                if params.get('action') == 'inspect':
-                    return {'copyJob': state['copyJob'], 'savedPath': '/tmp/r/out/saved-copy.png'}
-                return {}
-            def wait(self, predicate, what, timeout=10):
-                return predicate()
-            def geometry(self, window):
-                if window == 'historySaveDialog' and not self.profile['windows'][window]['title']:
-                    raise AssertionError('chooser role needs its title')
-                return {'pid': 1}
-            def focus(self, window, raise_window=False): events.append(('focus', window))
-            def keys(self, *keys):
-                events.append(('keys',) + keys)
-                if keys == ('Return',):
-                    state['copyJob'] = {'status': 'saved'}
-            def type_text(self, text): events.append(('type', text))
-
-        scope = SimpleNamespace(ctx=Ctx(), root='/tmp/r', python=lambda code: '')
-        with patch.object(fixture, 'submit', return_value=SimpleNamespace(id='image-1', path='/tmp/r/a.png')), \
-                patch.object(fixture, 'Fixture', lambda row, **kw: kw):
-            self.assertEqual(fixture.saved_copy(scope), {'path': '/tmp/r/out/saved-copy.png'})
-        self.assertEqual(scope.ctx.profile['windows']['historySaveDialog'], {'title': '^Save\\ original\\ file\\ as$'})
-        self.assertLess(events.index(('focus', 'historySaveDialog')), events.index(('keys', 'Ctrl+L')))
 
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):

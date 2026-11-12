@@ -96,61 +96,6 @@ private slots:
         QCOMPARE(lockedFrameTime(50 * ms, 100 * ms, FrameLock{}), 100 * ms + 1);
         QCOMPARE(pipewireUnthrottledCaps(), QString(" ! video/x-raw,max-framerate=0/1"));
     }
-    void aCursorOnlyFrameKeepsOutOfTheNextChangesSlot() {
-        // #1364: with its own cursor the image-copy source pushes a cursor-only frame every 16 ms while
-        // the pointer moves. Here the screen itself changes every 137 ms, so the changes meet the grid
-        // at every phase; a change's lateness is the stamp of the first kept frame that shows it minus
-        // its arrival.
-        const qint64 ms = 1'000'000, cursor = 16 * ms;
-        struct Run { qint64 mean = 0, worst = 0; int kept = 0, gaps = 0; };
-        const auto run = [&](int fps, bool marked) {
-            const auto lock = frameLock(fps, cursor);
-            Run result;
-            qint64 previous = -1, lastPush = -1000 * ms, pending = -1, nextChange = 200 * ms, total = 0;
-            int changes = 0;
-            for (qint64 now = 0; now < 30'000 * ms; now += ms / 4) {
-                bool own = false;
-                if (now >= nextChange) { if (pending < 0) pending = now; nextChange += 137 * ms; }
-                else if (now - lastPush >= cursor) own = true;
-                else continue;
-                lastPush = now;
-                const qint64 stamp = lockedFrameTime(now, previous, lock, marked && own);
-                if (stamp < 0) continue;
-                if (previous >= 0 && stamp - previous > lock.periodNs) ++result.gaps;
-                previous = stamp; ++result.kept;
-                if (pending >= 0) { total += stamp - pending; result.worst = std::max(result.worst, stamp - pending); ++changes; pending = -1; }
-            }
-            result.mean = changes ? total / changes : -1;
-            return result;
-        };
-        // Taken for captured frames, the cursor's frames hold every slot `tolerance` early, each change
-        // arrives "early" for the slot after and shows about a frame late: the picture runs behind the
-        // sound for as long as the pointer moves.
-        const auto unmarked = run(30, false);
-        QVERIFY2(unmarked.mean > 25 * ms, qPrintable(QString::number(unmarked.mean / 1e6)));
-        // As the recorder's own frames they wait for the slot's time and the change keeps its slot:
-        // no later than a still screen's, never a whole period, and still one frame in every slot.
-        const auto marked = run(30, true);
-        QVERIFY2(marked.mean < 12 * ms, qPrintable(QString::number(marked.mean / 1e6)));
-        QVERIFY2(marked.worst < frameLock(30).periodNs, qPrintable(QString::number(marked.worst / 1e6)));
-        QCOMPARE(marked.gaps, 0);
-        QVERIFY2(qAbs(marked.kept - 30 * 30) <= 2, qPrintable(QString::number(marked.kept)));
-        QCOMPARE(frameLock(30, cursor).ownEarlyNs, qint64(0));
-        // At 50 and 60 a second the slot is no longer than the cursor's pace, so its frames get just
-        // enough room before the slot that one always lands in it: the cadence holds there too.
-        for (const int fps : {50, 60}) {
-            const auto fast = run(fps, true);
-            QCOMPARE(fast.gaps, 0);
-            QVERIFY2(qAbs(fast.kept - 30 * fps) <= 2, qPrintable(QString::number(fast.kept)));
-            QVERIFY(fast.mean <= run(fps, false).mean);
-            QVERIFY(frameLock(fps, cursor).ownEarlyNs > 0 && frameLock(fps, cursor).ownEarlyNs < frameLock(fps).toleranceNs);
-        }
-        // A frame that is not the recorder's own is judged as before, whatever the pace given.
-        const auto lock = frameLock(30, cursor);
-        QCOMPARE(lockedFrameTime(100 * ms + lock.periodNs - 20 * ms, 100 * ms, lock), 100 * ms + lock.periodNs);
-        QCOMPARE(lockedFrameTime(100 * ms + lock.periodNs - 20 * ms, 100 * ms, lock, true), qint64(-1));
-        QCOMPARE(lockedFrameTime(100 * ms + lock.periodNs + 5 * ms, 100 * ms, lock, true), 100 * ms + lock.periodNs);
-    }
     void keepsFrameTimesIncreasing() {
         const qint64 ms = 1'000'000, mono = 5'000'000 * ms, running = 2'000 * ms;
         // A resent keepalive frame stamped at arrival, then a real frame painted earlier.

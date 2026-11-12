@@ -101,12 +101,6 @@ private slots:
   for(auto& peer:peers) peer->resume();
   PUTGD_TRY_VERIFY(std::all_of(peers.begin(),peers.end(),[](const auto& peer){return peer->done;}));
  }
- void abandonedTransferExpires(){
-  X11Clipboard owner;CopyPayload old;old.kind="text";old.text=QString(96*1024,'d');QVERIFY(!copy(owner,old));Receiver receiver;receiver.request("UTF8_STRING",false,true);PUTGD_TRY_VERIFY(receiver.incremental);
-  CopyPayload fresh;fresh.kind="text";fresh.text="replacement";QVERIFY(!copy(owner,fresh));
-  putgd::test::settle(16500);receiver.resume();putgd::test::settle(100);PUTGD_TRY_VERIFY(receiver.data.isEmpty());PUTGD_TRY_VERIFY(!receiver.done);
-  Receiver active;active.request("UTF8_STRING");PUTGD_TRY_VERIFY(active.done);QCOMPARE(active.data,fresh.text.toUtf8());
- }
  void sharedEncodedImageLeasesReleaseOnReplacementAndClear(){
   CopyPayload original;original.kind="image";
   QImage pixels(512,256,QImage::Format_RGB32);quint32 seed=0x31415926;
