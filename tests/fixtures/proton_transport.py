@@ -6,10 +6,21 @@ import sys
 import time
 if sys.argv[1:] == ['--session']:
     # One process answers every request line until its input closes.
-    served = 0
+    served, read_session = 0, None
     for line in sys.stdin.buffer:
         request, served = json.loads(line), served + 1
         case = request['destination']['settings'].get('fixture', 'session')
+        if case.startswith('session-unread'):
+            # A process that finds no session says so to every request, unless it was started
+            # after one that did: then it believes what it finds (#1418).
+            with open(request['destination']['settings']['startsFile'], 'a') as starts:
+                starts.write(f"{os.getpid()} {request['method']} {bool(request.get('sessionRetry'))}\n")
+            if read_session is None:
+                read_session = bool(request.get('sessionRetry')) and case == 'session-unread'
+            if not read_session:
+                code = 'session_unread' if not request.get('sessionRetry') or case == 'session-unread-always' else 'authentication_required'
+                print(json.dumps({'ok': False, 'error': {'code': code, 'message': 'Synthetic', 'details': {}}}), flush=True)
+                continue
         answer = {'status': 'absent', 'objectReference': {'pid': os.getpid(), 'served': served}, 'concurrencyToken': '', 'error': {}}
         if request['method'] == 'warm':
             # A helper started ahead of its first request; the test finds it by this file.
@@ -38,6 +49,16 @@ if sys.argv[1:] == ['--session']:
     sys.exit(0)
 request = json.loads(sys.stdin.buffer.readline())
 case = request['destination']['settings'].get('fixture', 'auth')
+if case.startswith('session-unread'):
+    with open(request['destination']['settings']['startsFile'], 'a') as starts:
+        starts.write(f"{os.getpid()} {request['method']} {bool(request.get('sessionRetry'))}\n")
+    if request.get('sessionRetry') and case == 'session-unread':
+        print(json.dumps({'ok': True, 'result': {'status': 'absent', 'objectReference': {'pid': os.getpid(), 'served': 1},
+                                                  'concurrencyToken': '', 'error': {}}}), flush=True)
+    else:
+        code = 'session_unread' if not request.get('sessionRetry') or case == 'session-unread-always' else 'authentication_required'
+        print(json.dumps({'ok': False, 'error': {'code': code, 'message': 'Synthetic', 'details': {}}}), flush=True)
+    sys.exit(0)
 if case == 'inspect-account':
     if request['method'] != 'inspectAccount':
         print(json.dumps({'ok': False, 'error': {'code': 'invalid_request',

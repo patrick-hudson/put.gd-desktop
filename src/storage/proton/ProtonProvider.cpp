@@ -289,7 +289,18 @@ Error ProtonProvider::validateCredentials(const QJsonObject& reference) const {
  return {};
 }
 QJsonObject ProtonProvider::diagnostics() const {return {{"activeHelpers",active_.load()},{"protocolVersion",1}};}
+// A helper that found no session in the keychain says `session_unread` and changes nothing:
+// the desktop's secret service now and then answers a new process with nothing, or refuses
+// it, for an entry that is there, and goes on doing so for as long as that process lives
+// (#1418). The request is made once more, by a new helper that is told so and believes what
+// it finds: an account that really is not connected answers as before, one helper later.
 QJsonObject ProtonProvider::call(const QString& method,const Destination& destination,QJsonObject params,Error& error,std::shared_ptr<std::atomic_bool> cancelled,SetupEvent event,bool* outcomeUncertain,std::function<void(const UploadProgress&)> progress) {
+ auto result=callOnce(method,destination,params,error,cancelled,event,outcomeUncertain,progress);
+ if(error.code!="session_unread")return result;
+ error={};params["sessionRetry"]=true;
+ return callOnce(method,destination,params,error,cancelled,event,outcomeUncertain,progress);
+}
+QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& destination,QJsonObject params,Error& error,std::shared_ptr<std::atomic_bool> cancelled,SetupEvent event,bool* outcomeUncertain,std::function<void(const UploadProgress&)> progress) {
  if(outcomeUncertain)*outcomeUncertain=false;
  if(stopping_.load()){error={"operation_cancelled","The application is stopping",{}};return {};}
  const auto reference=destination.credentialReference;
@@ -379,7 +390,7 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  if(!final["ok"].toBool()){
   error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton operation failed",{}};
   // Only protocol-defined pre-mutation failures prove no remote side effect.
-  if(outcomeUncertain&&QStringList{"invalid_request","authentication_required","account_changed","artifact_changed","keychain_unavailable","invalid_destination","invalid_receipt","keychain_required","unsupported_request","unsupported_condition","unsupported_safe_removal","unsafe_data_directory","destination_unavailable"}.contains(error.code))*outcomeUncertain=false;
+  if(outcomeUncertain&&QStringList{"invalid_request","authentication_required","session_unread","account_changed","artifact_changed","keychain_unavailable","invalid_destination","invalid_receipt","keychain_required","unsupported_request","unsupported_condition","unsupported_safe_removal","unsafe_data_directory","destination_unavailable"}.contains(error.code))*outcomeUncertain=false;
   return {};
  }
  return final["result"].toObject();

@@ -167,6 +167,17 @@ requires a new reference. Browser authentication never replaces a prior account
 snapshot in place.
 The session is stored through the Secret Service `default` alias. A refused
 write, during Connect or a token refresh, reports `keychain_unavailable`.
+A new process's exchange with the secret service can go wrong for an entry that
+is there (#1418): on KDE's `ksecretd`, of 700 new processes reading one entry,
+5 were refused (`Client public key size is invalid`) and 3 were answered with
+nothing. A refused read or write made again in the same process succeeds, so the
+helper makes it again up to three times, 30, 90 and 240 ms apart, before it
+reports `keychain_unavailable`. An empty answer stays empty for the life of the
+process. A helper that finds no session therefore answers `session_unread`,
+having changed nothing, unless its request says `sessionRetry:true`. The
+application then asks once more through a new helper with `sessionRetry:true`,
+which believes what it finds: an account that really is not connected answers
+`authentication_required` as before, one helper start later.
 
 Upload accepts only `condition:"absent"`, plus `candidate`, `publicationId`,
 and `artifact:{path,name,mime,bytes,sha256}`. It hashes and streams the same open

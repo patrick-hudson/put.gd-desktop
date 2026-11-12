@@ -506,3 +506,43 @@ native relink proof and the desktop/resource acceptance still describe helper
 `9fd4d72f8635` and remain open gates (#1399).
 
 Not done: a publish that begins with an expired token.
+
+## A keychain exchange that goes wrong for one process (#1418, 2026-11-12)
+
+On k72 (Kubuntu 26.04, secret service `ksecretd`), with Bun 1.4.4 and nothing of
+put.gd involved, 700 new processes each read the lab session's entry once: 692
+got its value, 5 were refused with `Client public key size is invalid (code:
+16)`, and 3 were answered with nothing. From one long-lived process the same
+entry was read 400 times without a miss. In the application these were the
+helper's `keychain_unavailable` (seen once with nightly) and
+`authentication_required` for a connected account: 2 of 93 link revocations with
+#1414's build and 1 of 93 with nightly failed that way, each within 0.32 s
+([record](https://github.com/patrick-hudson/put.gd-evidence/tree/dbcfca8d16ac7ebf61191dc6314e8138f2eaf07f/records/2026-11-12-proton-k72-revoke-reliability)).
+
+Reading again in the same process, up to four times, turned every refusal into
+a value on the second attempt (5 of 5) and no empty answer into one (3 of 3
+stayed empty). So:
+
+- A refused read or write is made again in the helper up to three times, 30,
+  90 and 240 ms apart. That covers the write after a token refresh, where a
+  session not saved is a session lost.
+- A helper that finds no session answers `session_unread` and changes nothing.
+  The application asks once more through a new helper, with
+  `sessionRetry:true`, and that helper believes what it finds. The compiled
+  helper, asked about a reference that was never connected, answers
+  `session_unread` and then, told so, `authentication_required` as before.
+
+77 helper tests pass in provisioning with the 12 stdio and 3 session cases;
+`proton_transport` (58 cases, four for the replaced helper), `proton_contract`
+(31) and `test_operations` (122) pass on d69. Through the production adapter
+and the compiled helper, two 64 KiB publishes took 1.72 and 1.75 s.
+
+The rebuilt helper is
+`d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e`, reproduced
+by two provisions on d69. `SOURCES.json` binds it and its overlay sources; the
+native relink proof and the desktop/resource acceptance remain open gates
+(#1399).
+
+Not shown here: the failure rate in the application with this helper. Two
+fresh helpers both answered with nothing would be about one start in 65,000 at
+the rate measured.
