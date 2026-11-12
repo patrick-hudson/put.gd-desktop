@@ -1,4 +1,5 @@
 #include <chrono>
+#include <mutex>
 #include <thread>
 #include <QJsonDocument>
 #include "fixtures/Waits.h"
@@ -333,9 +334,14 @@ private slots:
   // The account is free again: a request reaches a helper of its own.
   QCOMPARE(ask(provider,d,"auth").error.code,QString("authentication_required"));
  }
+ void operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt_data(){
+  QTest::addColumn<bool>("firstInvokedRunsFirst");
+  QTest::newRow("the first invoked runs first")<<true;QTest::newRow("the second invoked runs first")<<false;
+ }
  void operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt(){
   // Two uploads invoked one right after the other: the second asks while the first's helper,
-  // started ahead, has not been taken yet.
+  // started ahead, has not been taken yet. Either may get the account first.
+  QFETCH(bool,firstInvokedRunsFirst);
   QTemporaryDir dir;QVERIFY(dir.isValid());
   ProtonProvider provider;auto d=destination("session");d.settings["pidFile"]=dir.filePath("pid");
   QCOMPARE(ask(provider,destination("session")).error.code,QString("authentication_required"));
@@ -346,16 +352,44 @@ private slots:
    const auto session=provider.openSession(d);const auto answer=ask(provider,d);
    QCOMPARE(answer.objectReference["pid"],pid);QCOMPARE(answer.objectReference["served"].toInt(),2);
   }
-  first.reset();
-  // The first operation is over; its helper waits for the second, which gets it.
+  // The operation that ran is over. The helper waits for the other, whichever it is, which gets it.
+  (firstInvokedRunsFirst?first:second).reset();
   QVERIFY(running(pid));
   {
    const auto session=provider.openSession(d);const auto answer=ask(provider,d);
    QCOMPARE(answer.objectReference["pid"],pid);QCOMPARE(answer.objectReference["served"].toInt(),3);
   }
-  second.reset();
+  // It waits on for as long as that operation lives, and ends with it.
+  QVERIFY(running(pid));
+  (firstInvokedRunsFirst?second:first).reset();
   PUTGD_TRY_VERIFY(!running(pid));
   QCOMPARE(ask(provider,d,"auth").error.code,QString("authentication_required"));
+ }
+ void twoOperationsInvokedTogetherShareOneHelperWhicheverRunsFirst(){
+  // As the application does it: both operations are invoked, then each takes the account in
+  // turn on a thread of its own, in whatever order the threads get there, and ends a moment
+  // after its session does. One helper serves both, every time.
+  ProtonProvider provider;
+  QCOMPARE(ask(provider,destination("session")).error.code,QString("authentication_required"));
+  for(int round=0;round<10;++round){
+   QTemporaryDir dir;QVERIFY(dir.isValid());
+   auto d=destination("session");d.settings["pidFile"]=dir.filePath("pid");
+   auto first=provider.anticipate(d),second=provider.anticipate(d);QVERIFY(first);QVERIFY(second);
+   std::mutex account;QJsonValue servedFirst,servedSecond;
+   const auto operation=[&](QJsonValue& pid,std::shared_ptr<void>& invoked,int lingerMs){
+    {
+     std::lock_guard held(account);
+     const auto session=provider.openSession(d);pid=ask(provider,d).objectReference["pid"];ask(provider,d);
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(lingerMs));invoked.reset();
+   };
+   {
+    std::jthread one([&]{operation(servedFirst,first,round%3);});
+    std::jthread other([&]{operation(servedSecond,second,(round+1)%3);});
+   }
+   QVERIFY(servedFirst.toInteger()>0);QCOMPARE(servedSecond,servedFirst);
+   PUTGD_TRY_VERIFY(!running(servedFirst));
+  }
  }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));

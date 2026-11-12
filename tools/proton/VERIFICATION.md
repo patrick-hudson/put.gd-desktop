@@ -413,8 +413,8 @@ ownership read, the share, the link and the second ownership read), each about
 0.18 to 0.26 s on a fast connection from this lab.
 
 75 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
-stdout drain pass in provisioning; `proton_transport` (52 cases: upload hints
-and seven for a session's helper passing to the next operation), `proton_contract`
+stdout drain pass in provisioning; `proton_transport` (54 cases: upload hints
+and nine for a session's helper passing to the next operation), `proton_contract`
 (31) and `test_operations` (122) pass on d69. Type checking reports only the
 three upstream Crypto stream declaration errors.
 
@@ -476,6 +476,24 @@ established, and this change does not touch capture. It left two questions.
   11.2 s. With the five alternating pairs above, nothing shows this change
   slower for large files; one upload's time here varies by more than the
   difference.
+
+The third desktop acceptance
+([record](https://github.com/patrick-hudson/put.gd-evidence/tree/0e94369f0480c65c990387496e85666809a30685/records/2026-11-12-proton-chosen-connection-acceptance-round3),
+helper `42e1decb6d71`) had every link end `shared` (64 of 64), no black
+capture in 24, and 15 of 15 cases on d69, k72 and m74 (9 of 15 on f44, whose
+six capture cases need the GNOME extension an unpacked AppImage lacks). Its
+order-balanced large-file samples had this change's 8 MiB totals at 8.2 to
+10.5 s and nightly's at 9.6 to 17.7 s. It found one more fault: on k72 two
+uploads invoked 31 ms apart used two helpers. The second invoked got the
+account first and took the helper the first had started; when it ended, only
+its own registration was left, because the first had withdrawn its
+registration on starting a helper, so the helper was retired and the first
+operation started another. Every operation now stays registered for as long
+as it lives. `operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt` has
+a row for each order, and
+`twoOperationsInvokedTogetherShareOneHelperWhicheverRunsFirst` runs two
+operations on threads ten times; both fail on the code before this fix and
+pass with it. This change is in the application only: the helper is the same.
 
 Through the production adapter and the final compiled helper, two 64 KiB
 publishes took 1.76 and 1.76 s, two 360 KB publishes 3.44 and 3.52 s and one

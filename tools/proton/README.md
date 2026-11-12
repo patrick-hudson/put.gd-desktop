@@ -137,9 +137,10 @@ five for the link.
 
 An operation invoked while another operation's session has the account, or
 while the helper started ahead for another operation has not been taken yet,
-starts no helper of its own. It registers that it will ask instead, and the
-session's helper, signed in and connected, passes to it when that session
-ends, in place of a new process and its sign-in. Only a helper that waits for its next request
+starts no helper of its own. Every operation registers that it will ask, the
+one that started the helper included, because either may get the account
+first. A session's helper, signed in and connected, passes to a registered
+operation when that session ends, in place of a new process and its sign-in. Only a helper that waits for its next request
 and has said nothing since its last clean answer is passed on; it keeps the
 account lock meanwhile, and ends when no registered operation is left to take it.
 

@@ -111,10 +111,12 @@ struct ProtonProvider::Waiting {
 };
 struct ProtonProvider::Session {
  QString reference;std::unique_ptr<Helper> helper;std::shared_ptr<Waiting> waiting;
- // An operation that asked for this account while the session had it gets the session's
+ // An operation that has registered for this account (see anticipate) gets the session's
  // helper, signed in and connected, instead of a new one. Only a helper that waits for its
  // next request, and has said nothing since its last clean answer, is passed on; any other
- // ends here, as does every helper nobody asked for.
+ // ends here, as does every helper no registered operation is left to take. The session's
+ // own operation is registered too, so its helper waits until that operation ends and is
+ // retired then if no other took it.
  ~Session(){
   if(!helper||!waiting||!helper->lines)return;
   auto& process=helper->process;
@@ -199,9 +201,10 @@ std::unique_ptr<ProtonProvider::Helper> ProtonProvider::takeStandby(const QStrin
 std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination) {
  const auto reference=destination.credentialReference["reference"].toString();
  if(stopping_.load()||destination.credentialReference["mode"]!="keychain"||reference.isEmpty())return {};
- // Another operation may have the account, or the helper started ahead for it and not taken
- // yet. This operation registers that it will ask: a session's helper is passed on when the
- // session ends (see Session) for as long as a registered operation may take it. It registers
+ // Every operation registers that it will ask, for as long as it lives: a session's helper is
+ // passed on when the session ends (see Session) while a registered operation may take it.
+ // That includes the operation that starts a helper below, because another operation's
+ // session may take that helper first, and this one then asks for it afterwards. It registers
  // before it looks, so a session that ends meanwhile still passes its helper on.
  {std::lock_guard lock(waiting_->mutex);++waiting_->asked[reference];}
  std::shared_ptr<void> registered(this,[this,waiting=waiting_,reference](void*){
@@ -223,17 +226,17 @@ std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination)
  // Never waits: not for the account, and not for the runtime's hash if it is not known yet.
  Error refused;auto helper=start(reference,true,0,false,{},refused);
  if(!helper)return refused.code=="proton_account_busy"?registered:std::shared_ptr<void>{};
- // It has a helper of its own, and waits for nobody else's.
- registered.reset();
  const auto warm=QJsonDocument(QJsonObject{{"schemaVersion",1},{"method","warm"},{"destination",destination.toJson()}}).toJson(QJsonDocument::Compact)+'\n';
  if(helper->process.write(warm,0)!=warm.size()){helper->process.kill();return {};}
  static std::atomic<quint64> serials{0};
  helper->warming=true;const auto mine=helper->serial=++serials;
  {std::lock_guard lock(waiting_->mutex);waiting_->helpers[reference]=std::move(helper);}
- return std::shared_ptr<void>(this,[this,waiting=waiting_,reference,mine](void*){
+ // The helper it started ends with the operation if nobody took it; then its registration ends.
+ return std::shared_ptr<void>(this,[this,waiting=waiting_,reference,mine,registered](void*) mutable {
   std::unique_ptr<Helper> unused;
   {std::lock_guard lock(waiting->mutex);const auto found=waiting->helpers.find(reference);if(found!=waiting->helpers.end()&&found->second->serial==mine){unused=std::move(found->second);waiting->helpers.erase(found);}}
   retire(std::move(unused));
+  registered.reset();
  });
 }
 QProcessEnvironment ProtonProvider::helperEnvironment(const QProcessEnvironment& host,const QString& dataDirectory) {
