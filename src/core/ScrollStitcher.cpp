@@ -1476,7 +1476,15 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
           (std::abs(d - hint) == std::abs(c1 - hint) && scoreOf(d) > scoreOf(c1)))
         c1 = d;
     const int dist = std::abs(c1 - hint);
-    const int tol = std::max(opts_.hintTolerancePx, int(std::lround(opts_.hintTolerance * hint)));
+    // Among offsets the pixels cannot tell apart the hint decides only close
+    // by: within what the wheel's own spread allows and tieHintTolerance of
+    // the hint. A quarter of the hint was allowed; on a page of tables that
+    // repeat every 505 px a step that had moved 924 px for a hint of 528
+    // (three wheel steps arrived late) was then taken for one of 419, a table
+    // went missing from the image, and the capture ended as "end of content"
+    // (a pull request page on GNOME, 2026-11-12). Farther off than this the
+    // wheel did something else than was asked, and the step is ambiguous.
+    const int tol = std::max(opts_.hintTolerancePx, unc + int(std::lround(opts_.tieHintTolerance * hint)));
     bool ok = dist <= tol;
     for (int d : topSet)
       if (std::abs(d - c1) > 1 && std::abs(d - hint) <= std::max(2 * dist + 2, dist + 2 * unc)) ok = false;

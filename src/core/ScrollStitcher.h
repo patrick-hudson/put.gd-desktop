@@ -32,8 +32,9 @@ struct StitchOptions {
   int flatConflictDelta = 96;        // two flat rows conflict if their colours differ by more (sum |d|)
   int noMoveMaxChangedRows = 2;      // same-y rows failing the loose rule tolerated for NoMovement
   int noMoveMaxStrictRows = -1;      // same-y rows changed at all tolerated; -1 = max(48, height/10)
-  double hintTolerance = 0.25;       // hint tie-break accepts a candidate within max(px, frac*hint)
+  double hintTolerance = 0.25;       // an unproved candidate is taken within max(px, frac*hint) of the hint
   int hintTolerancePx = 8;
+  double tieHintTolerance = 0.08;    // among tied candidates the hint decides only within max(px, spread + frac*hint)
   // Candidates tied under the tolerant rule (lines of text that differ in a
   // few characters): one wins when at least exactTieMinFraction of its
   // informative rows are equal bit for bit and no rival outside +-1 has more

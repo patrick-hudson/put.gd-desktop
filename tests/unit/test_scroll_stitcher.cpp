@@ -1740,6 +1740,43 @@ void testLivePages() {
     }
   }
   {
+    // Tables that repeat every 505 px and differ in a heading and a few
+    // numbers, which the tolerant rule forgives. The wheel moves 924 px where
+    // 528 were asked (steps that arrived late): farther than the overlap
+    // reaches, and one table less than that looks the same. Not an offset the
+    // hint may choose: the step is ambiguous and the loop goes back.
+    const int Hv = 900, period = 505;
+    Image tables(W, 6 * period, kBg);
+    Rng rng(41);
+    Image block(W, period, kBg);
+    for (int row = 0; row < 14; ++row) {
+      for (int x = 60; x < W - 60; ++x) block.at(x, 60 + row * 30) = 0xC8CCD1;
+      drawTextLine(block, 68 + row * 30, 80, 700, rng);
+    }
+    for (int k = 0; k < 6; ++k) {
+      std::memcpy(&tables.at(0, k * period), block.row(0), size_t(W) * period * 4);
+      Rng own(100 + k);
+      drawTextLine(tables, k * period + 20, 60, 250, own);                   // its heading
+      for (int row = 2; row < 14; row += 3) drawTextLine(tables, k * period + 68 + row * 30, 720, 860, own);  // its numbers
+    }
+    ScrollStitcher st;
+    std::string trace;
+    StepResult last;
+    int refPos = 0;
+    for (int pos : {0, 528, 1452}) {
+      Image f(W, Hv);
+      std::memcpy(f.px.data(), tables.row(pos), size_t(W) * Hv * 4);
+      last = st.addFrame(f.view(), pos ? 528 : kNoHint);
+      trace += fmt(" %d:%s/%d%s", pos, toString(last.status), last.offset, last.lowConfidence ? " low" : "");
+      if (last.status == StepStatus::First || last.status == StepStatus::Appended) refPos = pos;
+    }
+    st.finish();
+    const int outH = st.outputHeight();
+    const int foreign = firstForeignRow(st.takeImage(), outH, tables);
+    report("tables that repeat, and a step that moved farther than the overlap: not the hint's to choose", last.status != StepStatus::Appended && foreign < 0 && refPos == 528,
+           fmt("%d rows, first foreign row %d;%s", outH, foreign, trace.c_str()));
+  }
+  {
     // The page springs back and creeps on: rows that wait lie below the next
     // frames, which must not lose them (the image never gets shorter).
     ScrollStitcher st;
