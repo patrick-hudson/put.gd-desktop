@@ -314,4 +314,4 @@ On a build with no region selector (`scroll.capabilities` `selection: none`, the
 One scroll session exists at a time. While it is capturing, another `action.invoke` (and
 `recording.prepare`) is `scroll_active`, and `action.invoke {"action":"scroll"}` is Stop.
 `scroll.start` on a session that is not `ready` is `scroll_state`; a command sent while another is
-pending is `scroll_busy` (`scroll.cancel` is accepted while a `start` or `stop` is pending); an unknown or finished-and-forgotten ID is `scroll_not_found`.
+pending is `scroll_busy` (`scroll.cancel` is accepted while a `start` or `stop` is pending). Once a `scroll.cancel` is on its way every other command is `scroll_busy`, a pending `scroll.stop` is answered `cancelled`, and the session ends cancelled with the image discarded; a `scroll.stop` whose image was admitted before the cancel arrived wins, and that `scroll.cancel` is `scroll_not_found`. An unknown or finished-and-forgotten ID is `scroll_not_found`.

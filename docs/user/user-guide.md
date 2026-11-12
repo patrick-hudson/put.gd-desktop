@@ -103,7 +103,7 @@ Tips:
 - GNOME shows its screen-sharing indicator while a capture runs. Clicking it ends the capture like Stop. Scrolling capture needs the put.gd Shell extension at version 22 or later: after an update, log out and back in once, or it reports an error until then.
 - On the Ubuntu 24.04 package for KDE Wayland there is no region selector, so the window's button says scrolling capture is unavailable (`region_unavailable`); use the AppImage. A script can still name the rectangle.
 - A new capture can start as soon as the image is finished, while it is still waiting to upload.
-- If the window or its size changes while it scrolls, the capture ends with `display_changed` and keeps nothing.
+- If the size of the captured area changes while it scrolls, the capture ends with `display_changed` and keeps nothing. If the page's layout inside the rectangle changes (the window is resized, a bar appears at the bottom), the capture ends as `lost_track` and keeps the rows from before the change; a change before the first row is stitched, while the page is still going up, is not a change, and the image shows the layout on screen from then on. A bar that is there from the first scroll on is kept once as the footer and the capture completes ([the layout rule](../design/scroll-capture.md#the-layout-rule)).
 
 ## Record the screen
 

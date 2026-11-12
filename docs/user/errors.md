@@ -59,7 +59,7 @@ filenames, history URLs, authorization values or credential references.
 These come from [scrolling capture](../design/scroll-capture.md). A capture that ends with a
 partial image is not a failure: it is the result's `endReason` (`height_cap`, `stopped`,
 `lost_track`, `time_limit`, `top_not_reached`) and the image it has is exact and kept.
-`top_not_reached` means the scroll to the top could not be finished, so the image starts
+`lost_track` is also what a change of layout inside the rectangle ends as (the window was resized, a bar appeared at the bottom); the note says "the layout inside the selection changed during the capture; the image ends with the rows from before the change". `top_not_reached` means the scroll to the top could not be finished, so the image starts
 partway down the page; its warning says "Could not reach the top of the page. The image
 starts partway down."
 
@@ -71,10 +71,10 @@ starts partway down."
 | `scroll_region` | `rect`, `minimum` | The region spans monitors, lies off the output, or is under 64 px in a direction. Select again inside one monitor |
 | `scroll_helper_failed` | `check` | The recording helper died or broke protocol (`exited`, `crashed`, `protocol`, `start_timeout`, `command_timeout`, `build`). Nothing was captured or kept. For `build`, reinstall the package and restart put.gd; otherwise try again and send a [diagnostics package](../design/diagnostics.md) if it repeats |
 | `scroll_output_invalid` | none | The resident refused the helper's PNG (wrong size, hash, header or location). Nothing was admitted. Try again |
-| `scroll_state`, `scroll_busy`, `scroll_not_found` | none | A `scroll.*` session call that does not fit the session: the command is not valid in its state, another `start`, `select` or `stop` is pending (`cancel` is always accepted), or no session has that ID. Inspect the session and send the right command |
+| `scroll_state`, `scroll_busy`, `scroll_not_found` | none | A `scroll.*` session call that does not fit the session: the command is not valid in its state, another `start`, `select` or `stop` is pending, or a `cancel` is on its way (`cancel` itself is always accepted, but a `stop` whose image was admitted before it arrived has ended the session, so that `cancel` is `scroll_not_found`), or no session has that ID. Inspect the session and send the right command |
 | `notification_close_failed` | none | A put.gd notification was on screen and the notification server did not close it after three tries, so the capture was not started (a notice on screen would end up in the image). Dismiss the notification and capture again |
 | `capture_timeout` | `check` | `first_frame`: the frame stream sent nothing within 3 seconds. `modifiers_released`: a modifier key stayed down for 10 seconds on X11, so no wheel step was sent. Release the keys and try again |
-| `display_changed` | `stage` | The monitors or the size of the captured area changed during the capture. Nothing was kept. Try again |
+| `display_changed` | `stage` | The monitors or the size of the captured area changed during the capture. Nothing was kept. (A change of layout inside an area of the same size is `lost_track`, with the rows from before.) Try again |
 | `encoding_failed`, `input_excessive` | `stage`, `check` | The spool or the PNG could not be written, or the PNG would pass its size bound. Free disk space in put.gd's data folder, or lower the height cap |
 
 `output_required`, `recording_active`, `editor_active` and `busy_selecting` also mean what

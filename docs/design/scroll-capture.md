@@ -70,7 +70,8 @@ The contract in `ScrollBackend.h`:
   helper reached the state. `stop` keeps the image, and its reply is the object a later
   `scroll.inspect` returns. `cancel` is accepted while a `start` or `stop` is pending (it
   is never `scroll_busy`); a `start` or `stop` waiting for the helper then ends with the
-  session.
+  session. Once a `cancel` is on its way it decides the end: see
+  [Stop and Cancel](#output-and-limits).
 - Events, each with the session id: `selected {rect}`; `progress {state: scrollingToTop |
   capturing, height, steps, pixelsPerNotch}`; `finished {path, bytes, sha256, width,
   height, endReason, truncated, appliedMaxHeight, topReached?, stats}`; `cancelled`;
@@ -242,9 +243,63 @@ shadows). A second hash of where the edges are lets a row match through a hover 
 - **Sticky header and footer.** Rows that stay put while the middle moves are found from the
   first moving step, emitted once, and left out of the search; the estimate only shrinks.
 - **Outcomes.** A step is appended, no movement, reversed (an elastic bounce, tracking kept),
-  ambiguous or no match; ambiguous and no match never touch the output or the reference.
-  Without a proof, a candidate is taken only when the loop's hint (notches times pixels per
-  notch) says the same, and counted as low confidence in the stats.
+  ambiguous, no match or a layout change; ambiguous and no match never touch the output or the
+  reference. Without a proof, a candidate is taken only when the loop's hint (notches times pixels
+  per notch) says the same, and counted as low confidence in the stats.
+
+### The layout rule
+
+The frames keep their size when the page's viewport inside them changes: a window resized
+under the rectangle shows the window's background where the page was, or a bar pins itself to
+the bottom. The tolerant row rule lets two of the eight bands differ, so without more rows of
+both layouts were stitched into one image that ended `end_of_content`. Two signals, each about
+a change in the history of a step, not about how a frame looks, end the capture:
+
+- **Columns.** A band of columns that was steady in every earlier proved step (nearly every
+  row of the overlap was either where the offset says or where it was) and that is now neither
+  in at least nine rows of ten of one step was repainted as a whole. A band that never was
+  steady (a minimap, a scrollbar thumb wider than the side margin) stays with the tolerant rule,
+  and so does anything that touches a few rows: a hover tint, a caret, a pointer.
+- **Rows.** A run of rows at the bottom that newly stays where it is, beyond the footer
+  estimate, is a bar over the page when the rows that should have scrolled out of it contradict
+  it: at least 4 of them, and more than three to one against the rows that did come out of it.
+  Blank rows that happen to be alike do not contradict.
+
+Either way the step is `StepStatus::LayoutChanged`, no later frame is taken, and `ScrollRun`
+ends `lost_track` with the note "the layout inside the selection changed during the capture;
+the image ends with the rows from before the change". The image is the exact part proved
+before the change, never `end_of_content`. `display_changed` stays the frame-size case only
+(`RunResult::LayoutChanged`, from `StepStatus::InvalidFrame`): the frames kept their size here,
+so the display did not change.
+
+- **Rows can be taken back.** The stitcher no longer only appends. A step in which a bar first
+  shows cannot tell it from page, and its rows are already out, so rows count as proved only up
+  to the last step that showed no such run, and the image is cut back to there. The stitcher
+  calls its `RowTakeBack`; the helper truncates its spool and its row count. A sink without a
+  take-back keeps the rows, and the stitcher then does not cut back.
+- **A bar from the first scroll on is the footer.** The first frame is taken before any wheel
+  step, so it lacks a bar that every later frame has. That bar becomes the footer, the rows the
+  first step took from under it go back, and the capture completes. A bar that appears after
+  rows of frames without it are in the image ends the capture. A band that appears at the top is
+  not judged: it hides rows already in the image, appended rows come from the bottom, and the
+  search decides as before.
+- **A change on the way to the top is not a change.** No row is stitched while the page goes
+  up, so nothing of an earlier layout is in the image: it shows the layout on screen from the
+  first stitched frame on, and ends `end_of_content` if the rest is proved.
+- **Limits.** A change confined to the 4% side margins is not seen. A scrollbar wider than the
+  margin whose thumb appears over most of the overlap in one step ends the capture `lost_track`.
+  A change while the page stands still can cost the rows of the last step (cut back further
+  than needed; the image is still an exact prefix). A popup that covers most of the overlap in
+  a steady band ends the capture `lost_track`.
+
+The thresholds are `StitchOptions` (`src/core/ScrollStitcher.h`):
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `layoutSteadyFraction` | 0.10 | A band is steady while at most this fraction of the overlap's rows is neither moved nor stayed |
+| `layoutBrokenFraction` | 0.90 | A steady band with at least this fraction of such rows in one step was repainted |
+| `layoutStaticMinRows` | 4 | Rows that contradict a new static run at the bottom before it is called a bar |
+| `layoutStaticRatio` | 3 | The contradicting rows must outnumber the rows that did come out of the run by more than this to one |
 
 When the step cannot be proved or recovered the capture ends `lost_track` with the exact
 image so far, not an error.
@@ -269,7 +324,13 @@ resident has admitted them.
   normal path as a `png` clipboard payload; through the editor as a one-file payload. A file that fails is
   `scroll_output_invalid`.
 - **Stop and Cancel.** Stop keeps the image. A stop before the first frame was stitched is a
-  cancel. Cancel discards the files and leaves no History row. Closing the control pipe, or the
+  cancel. Cancel discards the files and leaves no History row. The helper answers a Cancel
+  only when its worker has ended, so the resident remembers a Cancel that is on its way and it
+  decides the end: other commands are answered `scroll_busy`; a pending Stop is answered
+  `cancelled` (the helper too answers a Stop behind such a Cancel `cancelled`, not with a state
+  error); a `finished` event is ignored and the image discarded. A Stop whose image was
+  admitted before the Cancel arrived has ended the session, and that Cancel gets
+  `scroll_not_found`. Closing the control pipe, or the
   helper leaving, ends injection at once and removes the files of an unfinished capture.
 
 ## End reasons
@@ -284,7 +345,7 @@ result report them so an agent can tell a complete capture from a partial one.
 | `top_not_reached` | true | The capture reached the end of the content, but the scroll-to-top step had not proved the top, so the image starts partway down. It is kept and routed, a warning notification "put.gd — scrolling capture incomplete" says "Could not reach the top of the page. The image starts partway down.", and History carries the same note. `topReached` is false and `result.note` says why the way up ended. The rows it has are exact |
 | `height_cap` | true | The cap was reached first. The image is kept and routed, a warning notification says "Stopped at 30,000 px. The page continues below.", and History carries the same note. A warning, not a failure: the rows so far are exact |
 | `stopped` | true | The user stopped it (the bar, the shortcut again, Esc on X11, `scroll.stop`) |
-| `lost_track` | true | A step could not be matched or recovered, or the end could not be proved. The image so far is exact and `result.note` says why |
+| `lost_track` | true | A step could not be matched or recovered, the end could not be proved, or the [layout inside the selection changed](#the-layout-rule). The image so far is exact and `result.note` says why |
 | `time_limit` | true | The 180 s limit ended it. The image so far is exact |
 
 A note (`height_cap`, `top_not_reached`) is extra information on the History row. When the upload or the local save failed, or the operation was cancelled or ended partial, the row's status shows that first and the note follows after a `·`.
@@ -303,7 +364,7 @@ upload.
 A capture that keeps nothing fails instead: `scroll_no_movement` (nothing under the
 selection scrolled at any park position), `capture_timeout` (no frame in 3 s, or modifier
 keys held), `display_changed` (the frame size changed during the capture, compared with the first
-frame; the stitcher result is `LayoutChanged`), `scroll_unavailable` with
+frame; the run result is `RunResult::LayoutChanged`; a layout change with the frame size kept is `lost_track`, see [the layout rule](#the-layout-rule)), `scroll_unavailable` with
 `injection_unavailable` or `frame_source_unavailable` (the desktop refused the input or the
 stream ended), `encoding_failed` or `input_excessive` (the spool or the PNG). The codes
 and what to do are in [errors](../user/errors.md#scrolling-capture).
@@ -317,7 +378,8 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   region filling the viewport, with no scrollbar in the selection, looks like the end. Include the scrollbar.
 - **Foreign overlays are stitched in.** A notification of another application over the
   rectangle is stitched where it covers at most two of the eight bands, and ends the capture as
-  `lost_track` where it covers more. put.gd's own notices are handled; the Omarchy
+  `lost_track` where it covers more, or where it covers nine tenths of the overlap's rows in a
+  band that was steady before (see [the layout rule](#the-layout-rule)). put.gd's own notices are handled; the Omarchy
   dismissal is by summary, so a card of another application with the same summary goes with them.
   Fixed parts of a page (a narrow side bar, a floating button) look the same to the stitcher,
   so no rule rejects them.

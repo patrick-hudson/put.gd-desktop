@@ -295,7 +295,14 @@ design is in [scrolling capture](../design/scroll-capture.md).
   `EndOfContent`), end proof by a fresh frame, recovery and the limits. `testReviewFrameProofs`
   adds the height cap with a sticky footer (never above the cap; the first viewport's prefix when
   the cap cannot hold the footer), a frame-size change ending as `LayoutChanged`, the top proved again
-  on a switch of pointer target, and fresh-frame proof after a retry.
+  on a switch of pointer target, and fresh-frame proof after a retry. `testLayoutChange` covers the
+  layout rule: a viewport that gets narrower or shorter, or a bar that pins itself to the bottom,
+  after rows were committed (at four step sizes through the stitcher and at three wheel distances and
+  two moments through `ScrollRun`) must end `lost_track` with an image that is only the document's
+  first rows and never `EndOfContent`, and the same change in place; the mirror cases must still end
+  `EndOfContent` exact: margins and bands that were always there, a resize on the way to the top, a bar
+  pinned from the first scroll on, a scrollbar that fades and a blinking cursor; a bar pinned after rows
+  were taken from under it ends `lost_track` with an exact prefix.
   `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
   It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
@@ -307,7 +314,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   cap; `end_of_content` with an unproved top refused), a start held for put.gd's own notices to go,
   admission refusing a wrong hash, size or IHDR, and (review round on #1398) the helper's own auto-start
   honouring the notification hold, a build with no selector needing a rectangle, Cancel accepted while
-  `start` or `stop` is pending, and the helper released once the PNG is validated, before the upload queue
+  `start` or `stop` is pending, `cancelInFlightDecides` (a Cancel that is on its way decides the end:
+  a Stop that arrives after it, a Stop refused or finished with its image while it is on its way, and a
+  `finished` event meanwhile all end the session cancelled with no image, other commands are
+  `scroll_busy`, and the next capture is admitted), and the helper released once the PNG is validated, before the upload queue
   is done.
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`, a window of 40 px rows each
