@@ -265,7 +265,9 @@ private slots:
   ProtonProvider provider;auto d=destination(use=="refused"?"warm-refused":"session");d.settings["pidFile"]=dir.filePath("pid");
   // The runtime's hash is known before anything is started ahead: that never hashes.
   QCOMPARE(ask(provider,destination("session")).error.code,QString("authentication_required"));
-  auto ahead=provider.anticipate(d);QVERIFY(ahead);QVERIFY(!provider.anticipate(d));
+  auto ahead=provider.anticipate(d);QVERIFY(ahead);
+  // A second operation starts no helper of its own while that one waits; it registers that it will ask.
+  {const auto also=provider.anticipate(d);QVERIFY(also);}
   PUTGD_TRY_VERIFY(startedPid(dir.filePath("pid"))>0);const QJsonValue pid=startedPid(dir.filePath("pid"));QVERIFY(running(pid));
   if(use=="session"){
    // The operation's session takes it, reading the warm-up's answer before its own.
@@ -329,6 +331,30 @@ private slots:
   PUTGD_TRY_VERIFY(!running(pid));
   asked.reset();
   // The account is free again: a request reaches a helper of its own.
+  QCOMPARE(ask(provider,d,"auth").error.code,QString("authentication_required"));
+ }
+ void operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt(){
+  // Two uploads invoked one right after the other: the second asks while the first's helper,
+  // started ahead, has not been taken yet.
+  QTemporaryDir dir;QVERIFY(dir.isValid());
+  ProtonProvider provider;auto d=destination("session");d.settings["pidFile"]=dir.filePath("pid");
+  QCOMPARE(ask(provider,destination("session")).error.code,QString("authentication_required"));
+  auto first=provider.anticipate(d);QVERIFY(first);
+  auto second=provider.anticipate(d);QVERIFY(second);
+  PUTGD_TRY_VERIFY(startedPid(dir.filePath("pid"))>0);const QJsonValue pid=startedPid(dir.filePath("pid"));
+  {
+   const auto session=provider.openSession(d);const auto answer=ask(provider,d);
+   QCOMPARE(answer.objectReference["pid"],pid);QCOMPARE(answer.objectReference["served"].toInt(),2);
+  }
+  first.reset();
+  // The first operation is over; its helper waits for the second, which gets it.
+  QVERIFY(running(pid));
+  {
+   const auto session=provider.openSession(d);const auto answer=ask(provider,d);
+   QCOMPARE(answer.objectReference["pid"],pid);QCOMPARE(answer.objectReference["served"].toInt(),3);
+  }
+  second.reset();
+  PUTGD_TRY_VERIFY(!running(pid));
   QCOMPARE(ask(provider,d,"auth").error.code,QString("authentication_required"));
  }
  void accountBusyNeverDispatches(){

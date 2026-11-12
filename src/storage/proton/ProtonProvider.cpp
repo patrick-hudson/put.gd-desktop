@@ -199,13 +199,18 @@ std::unique_ptr<ProtonProvider::Helper> ProtonProvider::takeStandby(const QStrin
 std::shared_ptr<void> ProtonProvider::anticipate(const Destination& destination) {
  const auto reference=destination.credentialReference["reference"].toString();
  if(stopping_.load()||destination.credentialReference["mode"]!="keychain"||reference.isEmpty())return {};
- {std::lock_guard lock(waiting_->mutex);if(waiting_->helpers.count(reference))return {};}
- // Never waits: not for the account, and not for the runtime's hash if it is not known yet.
- Error refused;auto helper=start(reference,true,0,false,{},refused);
+ bool waitingAlready=false;
+ {std::lock_guard lock(waiting_->mutex);waitingAlready=waiting_->helpers.count(reference)>0;}
+ std::unique_ptr<Helper> helper;
+ if(!waitingAlready){
+  // Never waits: not for the account, and not for the runtime's hash if it is not known yet.
+  Error refused;helper=start(reference,true,0,false,{},refused);
+  if(!helper&&refused.code!="proton_account_busy")return {};
+ }
  if(!helper){
-  if(refused.code!="proton_account_busy")return {};
-  // The account is in use. If a session of this provider has it, that session's helper is
-  // passed on when the session ends (see Session), for as long as this operation may ask.
+  // Another operation has the account, or the helper started ahead for it and not taken yet.
+  // This operation registers that it will ask: a session's helper is passed on when the
+  // session ends (see Session) for as long as a registered operation may take it.
   {std::lock_guard lock(waiting_->mutex);++waiting_->asked[reference];}
   return std::shared_ptr<void>(this,[this,waiting=waiting_,reference](void*){
    std::unique_ptr<Helper> unused;
