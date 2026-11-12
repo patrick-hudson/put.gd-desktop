@@ -308,6 +308,27 @@ ScrollRun::EndProof ScrollRun::proveEnd(StepResult& found, std::optional<RunResu
         }
     }
     if (!answered) return EndProof::Unproved;
+    const auto further_down = [&] {
+        return (s.status == StepStatus::Appended && s.appendedRows > 0) || s.status == StepStatus::LimitReached || s.status == StepStatus::LayoutChanged || s.status == StepStatus::InvalidFrame;
+    };
+    // From where the step up went, one notch more than it is further down than
+    // the stitcher can place in one frame where a notch is near half the band
+    // (a short selection): back down by as much first, then the one notch more.
+    const int band = stitcher_.movingBandBottom() - stitcher_.movingBandTop();
+    if (placed && (up + 1) * std::max(1.0, stats_.pxPerNotch) > opts_.maxStepFraction * band) {
+        if (!inject(up)) return refused();
+        if (failed(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return EndProof::Unproved;
+        look(up, back, int(std::ceil(up * (stats_.maxPxPerNotch - stats_.minPxPerNotch))));
+        if (resized()) return EndProof::Unproved;
+        if (further_down()) {
+            found = s;
+            return EndProof::Moved;
+        }
+        if (s.status == StepStatus::Appended) back -= s.offset;  // no new rows: where it ended, or above
+        else if (s.status != StepStatus::NoMovement) return EndProof::Unproved;
+        placed = back > 0;
+        up = 0;
+    }
     if (!inject(up + 1)) return refused();
     if (failed(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return EndProof::Unproved;
     int top = 0, bottom = lastSig_.height;
@@ -324,7 +345,7 @@ ScrollRun::EndProof ScrollRun::proveEnd(StepResult& found, std::optional<RunResu
     if (resized()) return EndProof::Unproved;
     // Back where it ended, as the stitcher places it, and nothing new below.
     if (placed ? s.status == StepStatus::Appended && s.appendedRows == 0 && s.offset == back : s.status == StepStatus::NoMovement) return EndProof::Proved;
-    if ((s.status == StepStatus::Appended && s.appendedRows > 0) || s.status == StepStatus::LimitReached || s.status == StepStatus::LayoutChanged || s.status == StepStatus::InvalidFrame) {
+    if (further_down()) {
         found = s;
         return EndProof::Moved;
     }
