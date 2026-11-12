@@ -80,8 +80,10 @@ window stylesheet's and the settings stylesheet's near-copies such as `#111318` 
 
 Every text token meets WCAG AA (4.5:1) on `bg`, `surface`, `surfaceRaised`
 and `selected` in both schemes, the accent (focus rings) and icon colour meet
-3:1 on them, and the status tones meet 4.5:1 on their tinted surfaces;
-`gui_theme` checks each pair. Disabled text is exempt, as in WCAG.
+3:1 on them, and the status tones meet 4.5:1 on their tinted surfaces.
+Disabled text is exempt, as in WCAG. No test checks the pairs since `gui_theme`
+went in the second round of [removed tests](../testing/removed-tests.md#second-round);
+check a changed token by hand.
 
 Colours that are not theme colours stay fixed: the brand mark, user content
 (screenshots, annotation colours, redaction black), the custom-colour

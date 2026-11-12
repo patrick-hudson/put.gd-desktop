@@ -97,7 +97,11 @@ helper. A countdown that is not followed by a region selection runs the helper i
 countdown mode (`--countdown SECONDS SCHEME BUILD`): it shows the pill and exits `0`
 when the delay ran out and the pill is gone, `10` when the pill was clicked, `11`
 when the compositor never presented the pill's last frame (see below), `5` when it is
-another build than the resident. It reads no pixels and takes no target.
+another build than the resident. It reads no pixels and takes no target. Once its
+event loop ends the helper leaves with `_Exit`, skipping Qt's teardown: Qt Wayland's
+display teardown could wait forever on its event thread (seen with Qt 6.10, #1332),
+and the resident then killed the helper at its deadline and reported a cancelled or
+finished countdown as `delay_unavailable`.
 
 ### A locked screen
 
@@ -180,26 +184,13 @@ region capture is refused as with any older loaded extension
 ## Tests
 
 - `capture_delay_contract` (`tests/unit/test_capture_delay.cpp`): the operation
-  service against a fake adapter: what is prepared when, a cancelled and a locked
-  countdown, repeat's refusal and its region record, `delaySeconds` validation, and
-  an edit that waits only when it captures the screen.
-- `gui_tray`: a hotkey waits for the delay only with
-  `preferences.captureDelayShortcuts`, the tray's Capture region & edit waits, and an
-  edit of the clipboard does not.
-- `budgie_labwc_integration`: on a real headless labwc with two outputs, the monitor
-  under a virtual pointer (both outputs, and the shared edge), Repeat last region and
-  its refusal after an output moves, the countdown pill seen on screen, absent from
-  the next capture and cancelled by a click, and a delayed live region.
-- `gnome_ui_ownership_contract`: the extension's monitor, repeat and countdown paths
-  against a stand-in Shell whose chrome rejects unknown parameters as Shell 50 does.
-- `gui_settings_capture`: the capture buttons' context menu (Repeat last region on
-  Capture region only, the named delay submenu, one preference for every button), the
-  Capture delay section of Settings → Capture, and the band's full labels at a width
-  that fits them.
-- `tests/integration/test_mcp.py`: the MCP helper's side only, against a stand-in
-  resident socket: `perform_action` maps `monitor`, `repeat` and `delay_seconds` to
-  `action.invoke`, and refuses a delay that is not 3, 5 or 10 or sits on an action
-  that takes none before anything is sent. The captures themselves are covered by the
-  suites above and by the desktop acceptance.
-- Desktop acceptance, with a two-monitor run per desktop, is in the
+  service against a fake adapter: a countdown that ends on a locked screen, or is
+  cancelled during the lock query, reads no pixel.
+- `budgie_labwc_integration`: on a real headless labwc, the countdown's lock query
+  reports a real session lock through the visibility witness.
+- `gnome_ui_ownership_contract`: a countdown that ends on a locked screen, or whose
+  lock disables the extension, answers `session_locked`.
+- Ordering, validation, Repeat last region, Capture monitor, the countdown pill, the
+  tray and Settings controls and the MCP mapping are checked by desktop acceptance
+  only. Desktop acceptance, with a two-monitor run per desktop, is in the
   [acceptance matrix](../testing/acceptance-matrix.md).

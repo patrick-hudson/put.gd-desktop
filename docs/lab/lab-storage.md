@@ -84,10 +84,9 @@ exclusively, preserves mode/mtime and keeps the compressed copy. Restoration
 requires free space for the original plus 64 MiB. Do not bulk-restore all frames
 onto a nearly full filesystem.
 
-Host-only contracts run without guests or credentials:
+The host-only contract runs without guests or credentials:
 
 ```sh
-python3 tests/desktop/test_storage_preflight.py
 python3 tests/desktop/test_restore_evidence.py
 ```
 

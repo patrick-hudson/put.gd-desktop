@@ -22,72 +22,43 @@ Part of [Screen recording](../recording.md).
 
 ## Verification
 
-- `recording_model_contract` (`tests/unit/test_recording_model.cpp`):
-  transitions, target/config parsing, trim/mask rebasing, atomic invalid
-  edits, frame alignment, animation budgets, settings fields, artifact
-  admission of a `recording` payload with the naming template.
+The second round of [removed tests](../../testing/removed-tests.md#second-round)
+cut these suites to the recording guarantees whose failure would be silent and
+costly. What they no longer check (wording, capability reasons, frame rate,
+budgets, the control bar's placement, click highlights, microphones, helper
+lifecycle walk-throughs, A/V sync tones) is left to desktop acceptance.
+
+- `recording_model_contract` (`tests/unit/test_recording_model.cpp`): the live
+  disk budget leaves room to finalize and copy; trim and masks use source time
+  and are rebased at export; a recording artifact streams its exact bytes with
+  its declared type and naming template.
 - `recording_service_integration` (`tests/integration/test_recording_service.cpp`):
-  the full lifecycle through `LocalServer` with a fake backend, including
-  user stop reasons (including while paused and through the record toggle),
-  record `mode` forwarding and rejection at the session boundary, stale revisions,
-  local copies, export failure, cancel,
-  helper events, animation limits, malformed requests, editor exclusion and
-  restart interruption, a fake desktop shell selecting a region and framing
-  the bar (`overlayPlacement`), cancelling and driving a shell selection
-  without ever starting the helper, and the helper's `selecting` event with
-  `recording.select`. Its slow-export case holds the fake export open while the
-  production `putgd-cli` runs `saveCopy` and `upload`: both answer `exporting`
-  at once, `inspect` shows progress, the lock on edits and `lastExport`, and a
-  cancel during the export admits nothing. Deferred successful stop replies
-  preserve a budget-finalized clip and edited revision during pending Save copy
-  and Upload exports; Save copy also covers a late stop error. A stale reply
-  cannot mutate a cancelled session's successor. It also checks that the CLI's wait
-  for every method that waits on the helper outlasts that helper's deadline.
+  the lifecycle through `LocalServer` with a fake backend. Only the explicit
+  Upload export is admitted; cancel and failure admit no bytes; review uses the
+  destination snapshot accepted at the start; a stop on a full disk keeps the
+  clip and its private review; a failed finalization claims neither review nor
+  upload; retry from review repeats only the failed upload; a late stop reply
+  keeps the edits of a pending export and cannot change a cancelled session's
+  successor.
 - `recording_helper_integration` (`tests/integration/test_recording_helper.cpp`):
-  the helper supervisor against a fixture helper (probe caching, lifecycle,
-  delayed graceful cancel in ready/recording/paused/reviewing and successor
-  sessions, active unknown/malformed replies and foreign shutdown envelopes,
-  a budget-stop event before a delayed or adjacent success/error reply and a
-  subsequent stop,
-  progress and helper-initiated stop events, crash, silence, wrong build,
-  export timeout, broken probes, missing helper) and, when built, the product
-  `putgd-record`: its probe JSON, the identity handshake, a direct `prepare`
-  that either succeeds or fails with `capture_unavailable` or
-  `recording_target` (the test accepts all three, so it does not prove that a
-  real X11 session resolves the target), and its normal exit.
-- `tests/integration/test_mcp.py`: tool → method forwarding parity, the
-  preview image route against the synthetic peer, a `recording.stop` that the
-  peer answers after 16 s still reaching the caller through the production CLI,
-  and the adapter's default deadline staying above the CLI's longest wait.
-- `cli_integration` (`tests/integration/test_cli.cpp`): the real `putgd-cli`
-  waits for a toggle stop delayed 16 s by a fake backend, beyond the former
-  `action.invoke` 15 s budget, and returns the same finalized user-stop state
-  as `recording.inspect`. This is client/session evidence, not real capture.
+  a helper crash and protocol faults fail the session without an upload.
+- `recording_storage_integration` and `recording_pipeline_throughput`: a stopped
+  bar cannot reappear over review, a pipeline failure and an automatic stop end
+  the portal share, a recording produces a clip with frames, and a refused
+  PipeWire request is retried with the plain one.
+- `bar_placement_contract`: one click never discards a recording, and no
+  microphone is recorded unless asked for.
 - `gnome_ui_ownership_contract` (`tests/desktop/test_gnome_ownership.mjs`,
   GNOME hosts only): `SelectArea` answering and `Release` cancelling, bar
-  placement order, dim strips cut around the area and the bar, and refusing
-  a bar whose process is not the resident's child.
+  placement order, refusing a bar whose process is not the resident's child,
+  and `WatchClicks` reporting presses to the resident only, never key presses.
+- `hyprland_contracts`: the click binds do not consume the press, need the
+  token and are removed only when put.gd's bind is alone.
+- `labwc_bridge_contract`: Budgie's click binds in `rc.xml` come out byte for
+  byte, a broken file is left alone, and binds a crash left behind are removed.
 - `tests/integration/test_config_schema.py`: optional `record` action,
   template and limits.
-- #1364: `recording_model_contract` (the live microphone, its device name and
-  `clickHighlights`); `recording_service_integration` (a microphone alone and
-  mixed, refusal without an input or with a monitor as the default, the
-  remembered toggle never blocking the record action, loss mid-recording, the
-  click watch from Record to Stop with a fake desktop);
-  `recording_helper_integration` (`--microphones` asked afresh, broken answers
-  reading as no microphone); `bar_placement_contract` (the toggle, the meter
-  and the facts); `click_overlay_contract`
-  (`tests/unit/test_click_overlay.cpp`: the ring's pixels in I420 and NV12 and
-  where a desktop click lands in the picture); `hyprland_contracts` (the bind
-  script, token, unbind rule and which buttons still need a bind);
-  `gnome_ui_ownership_contract` (the extension's click watch);
-  `kwin_click_effect_contract` (`tests/integration/test_kwin_click_effect.cpp`:
-  against a scripted KWin and KGlobalAccel, the effect comes back exactly as it
-  was from each starting state, also after Record followed at once by Stop);
-  `labwc_bridge_contract` (Budgie's mouse binds: `rc.xml` with them added and
-  taken out byte for byte, the actions each bind stands in for, put back after
-  the bridge's rewrite, removed after a crash, the D-Bus entry);
-  `budgie_labwc_integration` (in a real headless labwc: a press over a window
-  reaches put.gd and the window; the recorder's own-cursor capture keeps its
-  frames); `export_av_sync_contract` (tone levels and the moving marker). None
-  of these records a real microphone.
+- `export_av_sync_contract`: an export with sound keeps the audio start and an
+  audio gap, and a WebM's audio decodes every packet.
+
+None of these records a real microphone.

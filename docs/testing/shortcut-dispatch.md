@@ -19,16 +19,12 @@ cache. Logs retain rejection codes without payloads.
 a private D-Bus session and Xvfb desktop. A real XTEST Ctrl+1 chord reaches an
 upload action without a destination. The test checks the notification's message,
 absence of an operation, bounded repeated-press feedback, absence of a UI helper
-and normal shutdown. The GUI tray suite also checks selection and recovery
-re-entry, full queues and clipboard admission errors without mapping a view. Its pre-fix
-result was zero notifications. This fixture proves transport and wiring; it is
+and normal shutdown. Its pre-fix result was zero notifications. This fixture proves transport and wiring; it is
 not compositor or visible notification acceptance.
 
 `liveDigitRebindRemovesOldChordAndKeepsOtherActions` in `x11_isolated` exercises
 default -> Ctrl+1 -> Ctrl+Alt+1, old-chord removal, unchanged desktop hotkeys
-and exactly one action per press. `savingOnlyAShortcutPreservesEveryUploadDestination`
-in `gui_settings` checks the real asynchronous settings-save service without
-provider network requests or credential access.
+and exactly one action per press.
 
 Use the standard development presets. Before launching, create a short private
 TMPDIR and check complete resolved socket paths; the full path, including
@@ -40,7 +36,7 @@ cmake --build --preset dev
 export TMPDIR=$(mktemp -d /tmp/pgsc.XXXXXX)
 python3 tools/diagnostics/check_socket_paths.py --socket \
   "$TMPDIR/test_native_tray-XXXXXX/r/putgd/session.sock"
-ctest --preset dev -R '^(native_shortcut_rejection_integration|x11_isolated|gui_settings_shortcuts|native_tray_integration|gui_tray)$'
+ctest --preset dev -R '^(native_shortcut_rejection_integration|x11_isolated|native_tray_integration)$'
 ctest --preset dev
 ```
 

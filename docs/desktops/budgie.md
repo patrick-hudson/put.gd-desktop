@@ -228,10 +228,10 @@ halves; the design and the upstream sources are in
   Advanced → Desktop support details names the window-recording limit in its
   Click highlights row.
 
-`labwc_bridge_contract` covers the edit of `rc.xml` and the bus entry, and
-`budgie_labwc_integration` runs the binds in a real headless labwc: a press over
-a window reaches both put.gd and the window, and after the recording the file
-is as it was.
+`labwc_bridge_contract` checks the edit of `rc.xml`: put.gd's binds come out
+byte for byte, a broken file is left alone, and binds a crash left behind are
+removed. That a press reaches both put.gd and the window is checked by Budgie
+desktop acceptance only.
 
 ## Scrolling capture
 
@@ -246,7 +246,7 @@ filter, so no access is needed. Region selection is the helper's layer-shell sel
 ring and bar outside the rectangle. Because a frame may show the pointer, the capture keeps
 appended rows at least 48 px below the parked pointer and holds it outside the region while a
 way to the top is scrolled. The `scroll` shortcut goes through the labwc bridge or the
-GlobalShortcuts portal like the other actions, with no default key. `budgie_labwc_integration` has a case for a wheel notch reaching a real labwc window.
+GlobalShortcuts portal like the other actions, with no default key.
 
 ## Budgie 11
 
@@ -276,11 +276,13 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
 ## Tests
 
 - `budgie_labwc_integration` runs the adapter and shared capture against a
-  real headless labwc (`WLR_BACKENDS=headless WLR_RENDERER=pixman`) with a
-  known-colour client: exact output and desktop pixels, window capture or its
-  reason, every output transform, fractional scale, clipboard both ways and
-  display-change invalidation. The Ubuntu 26.04 CI leg installs labwc; the
-  test skips where labwc is absent. Headless results are supporting evidence,
+  real headless labwc (`WLR_BACKENDS=headless WLR_RENDERER=pixman`): nothing
+  behind a lock screen is captured (a locked desktop, a lock during the copy,
+  the countdown's lock query), the visibility witness never answers from another
+  compositor or session, and no clipboard keeper takes the clipboard back from an
+  app that copied later. Pixels, geometry, output transforms, scale, clipboard
+  round trips and click highlights are left to Budgie desktop acceptance. The
+  Ubuntu 26.04 CI leg installs labwc; the test skips where labwc is absent. Headless results are supporting evidence,
   never desktop acceptance.
 - Routing rows in `test_native_session.cpp` cover `Budgie`, `Budgie:GNOME`,
   `labwc:wlroots` and `wayland;xcb`.

@@ -336,12 +336,13 @@ first, and takes any transport error on a successful status as an incomplete rep
 
 ## Verification
 
-- **Parser:** the `http_uploader_rules` CTest suite is table tests of both placeholder
-  generations, the JSON path and XPath subsets, `.sxcu` import and settings rules.
+- **Parser:** the `http_uploader_rules` CTest suite checks response values, `.sxcu`
+  import, the settings rules and that stored values stay out of what is shown or
+  recorded.
 - **Scripted receiver:** `http_uploader_integration` runs the production provider and
-  worker against `tests/fixtures/http_uploader_server.py` on loopback: reply styles,
-  redirects, refusals, lost and late replies, deletion with confirmation and
-  verification, Test connection, History and retry.
+  worker against `tests/fixtures/http_uploader_server.py` on loopback: the multipart,
+  JSON and header reply styles, redirects, refusals, lost and late replies, deletion
+  and its verification, History and retry.
 - **Real receivers:** [HTTP receivers](../lab/http-receivers.md) runs Zipline, Chibisafe
   and XBackBone in containers on a builder, lets each generate its own `.sxcu`, and
   drives a resident against them.

@@ -141,27 +141,12 @@ and retain only their controlled report directory. Never include credentials or 
 
 ## Settings, naming and payload ownership regressions
 
-The standard CTest suite includes settings info-help coverage, fresh S3 drafts,
-quiet autosave and explicit reload/retry feedback, in-flight reversion and Quit
-flushing, old configuration compatibility, filename templates,
-Unicode byte bounds, local collision preservation and actual signed S3 collision
-fixtures. `queuedCaptureNameUsesOriginalActionTime` holds an earlier upload for
-1,100 ms, then verifies the queued capture uses its original action timestamp.
-Names and object candidates remain unchanged across explicit retry.
-
-`decodedImagesReleaseBeforeBlockedUploadAndQueuedCancel` gives a synthetic 8×8
-ARGB image an external-buffer cleanup callback. The callback must run before a
-deferred provider completes, and queued cancellation must release the second
-image while that first upload is blocked. The retry uses the same disk path and
-SHA256 without reading the source again. `queuedImagesRespectByteBudgetAndCancellationReleasesCapacity`
-sets a 256-byte limit and verifies admission, rejection without publication, and
-capacity returned by cancellation. These are ownership/queue checks, not RSS
-benchmarks. History checks release the displayed thumbnail on hide and restore
-it lazily on show; metadata paging retains the 10,000-entry dataset.
-`restoringHistoryKeepsActiveDeletionCancellation` holds the provider at a deletion
-checkpoint, closes and reopens History, then confirms Cancel still reaches the
-accepted deletion operation. The barrier is released and workers drained before
-the temporary fixture is destroyed; no real remote object is involved.
+The standard CTest suite includes old configuration compatibility, filename
+templates, Unicode byte bounds, local collision preservation and actual signed S3
+collision fixtures. The Settings form's help, autosave and reload feedback, capture
+naming in the operation queue, image byte budgets and History thumbnail release
+and paging are no longer tested; they went in the second round of
+[removed tests](removed-tests.md#second-round).
 
 The optional schema integration uses the existing locked MCP environment. It
 starts a private offscreen production resident with an unsupported desktop
@@ -196,63 +181,48 @@ compositor certification.
 
 ### Settings GUI area suites
 
-The Settings GUI tests run as eight CTest entries: `gui_settings_appearance`,
-`gui_settings_general`, `gui_settings_capture`, `gui_settings_shortcuts`,
-`gui_settings_destinations`, `gui_settings_credentials`, `gui_settings_updates`
-and `gui_settings_advanced`. Each has a 90 second timeout before the shared
-CI timeout scale. Shared fixtures live in `tests/gui/SettingsGuiFixture.h`.
-Run all complete area suites and the private-bus startup unlock regression with:
+The Settings GUI tests run as five CTest entries: `gui_settings_general`,
+`gui_settings_capture`, `gui_settings_destinations`, `gui_settings_credentials`
+and `gui_settings_advanced`. They keep only the guards against silent, costly
+faults: secrets kept out of the config, saved view state and credential hints;
+destination edits and routes kept apart when destinations are reordered or
+removed; opening Settings never rewriting the config; and a diagnostics package
+uploading only when asked. Shared fixtures live in `tests/gui/SettingsGuiFixture.h`.
+Run them with:
 
 ```sh
 ctest --preset dev -R '^gui_settings_'
 ```
 
-`gui_settings_startup_unlock` runs `startupUnlockRefreshesTheOpenDestination`
-from `test_gui_settings_credentials` under `dbus-run-session`, with its own
-60 second timeout. Historical evidence retains the original `gui_settings`
-name and runtime.
+Historical evidence retains the original `gui_settings` name and runtime.
 
 ### Custom uploader suites
 
 The custom HTTP uploader (#1361) is tested in four layers:
 
-- `http_uploader_rules` (unit, no network or files): table tests of the placeholder
-  parser in both generations, the JSON path and XPath subsets, `.sxcu` import including
-  older and legacy files, and the settings rules.
+- `http_uploader_rules` (unit, no network or files): response values, `.sxcu` import
+  including legacy fields and text bodies, the settings rules, which hosts and
+  transports are allowed, and that stored values stay names until they are needed and
+  out of what is shown or recorded.
 - `http_uploader_integration`: the production provider and `putgd-http-worker` against
   the scripted loopback receiver `tests/fixtures/http_uploader_server.py`. It covers the
-  body types, reply styles, where the token travels, refusals, lost and late replies,
-  redirects, deletion with its checkpoint, confirmation page and verification, Test
-  connection, and History with an explicit retry that leaves two copies. The receiver
-  also plays a careless or hostile server: it repeats the credential it was sent in
-  the link, the thumbnail or the deletion URL (as sent, percent-encoded, or as PHP
-  writes JSON), names another host or a user name in an address, answers 5xx after it
-  has the file, and cuts its reply short. Two imports in flight and an import whose
-  save fails are covered there as well. From the second review: an ordinary stored word
-  in the link is no secret while a key echoed out of a stored JSON body is; a value
-  echoed around a control character; a plain-HTTP link that Test connection must not
-  open unasked; a deletion that names a stored value and is redirected to another
-  host; a 5xx sent before the file has arrived (a 48 MB file, so it cannot have left
-  whole); and the import's edges (a keychain entry another destination names, a
-  read-back that fails after the write, a secret store that never answers).
+  multipart, JSON and header reply styles, where the token travels, refusals, lost and
+  late replies, redirects that keep credentials on their host, deletion that the server
+  did not do or that belongs to another upload, and History with an explicit retry that
+  may leave two copies. The receiver also plays a careless or hostile server: it repeats
+  the credential it was sent in the link, the thumbnail or the deletion URL, echoes a
+  key out of a stored JSON body or around a control character, names a stored value in
+  a deletion that is redirected to another host, and cuts its reply short. Imports run
+  one at a time and never take another destination's keychain entry.
 - `customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints` in
   `gui_settings_destinations` drives the form: import, masked rows, store, and the
   token's absence from `config.json` and every checkpoint.
-  `unknownUploadWhereTheServerNamesItWarnsOfASecondCopy` in `gui_history_view` covers
-  the History notice. `CustomUploaderResidentTests` in `tests/integration/test_mcp.py`
+  `CustomUploaderResidentTests` in `tests/integration/test_mcp.py`
   does the same through the MCP helper against a real private resident
   ([mcp.md](../automation/mcp.md#headless-contract-checks-and-remaining-acceptance)).
 - Real receivers: [HTTP receivers](../lab/http-receivers.md) runs Zipline, Chibisafe and
   XBackBone in containers on a builder and drives a resident against the `.sxcu` file
   each of them generates. This layer is a lab run, not a CTest entry.
-
-Some Qt Network versions repeat a request that has no body when the connection closes
-before the reply, and some do not. The deletion test accepts both: either the repeated
-request finds the file gone, or the lost reply is reported as unknown and the explicit
-retry finds it gone. In the same way the early-5xx test accepts either definite
-failure: Qt's HTTP/1.1 client reads no reply while it is still sending, so it reports
-`http_upload_interrupted`; a client that read the status would report
-`http_server_error`.
 
 Whether a reply is whole is tested without relying on timing (#1393). The rows of
 `aReplyCutOffAfterItsStatusLineIsUnknown` cut a reply by an unfulfilled
@@ -266,17 +236,13 @@ was once recorded as an upload; the rule produces it on every run, where load pr
 it in about one run in forty. `lostAndLateRepliesAreUnknown` checks that an upload
 with no body is sent once when its reply is lost, is not failed by the connect timeout
 while its reply is slow, is unknown when no reply comes, and is a plain failure when
-the server is absent; `anUnreachableServerFailsABodilessUploadWithinTheConnectTimeout`
-that the connect timeout holds for it against an address that never answers.
-`aReplyCompressedRegardlessIsSaidToBe` covers a server that compresses although asked
-not to. Run the suite under contention with the builder stress lane,
+the server is absent. Run the suite under contention with the builder stress lane,
 `tools/ci/stress_suite.py`, after a change to the worker's reply handling.
 
-Two things these suites cannot show on one machine, because the scripted receiver is
-on loopback and a loopback destination may be answered with loopback addresses: the
-refusal of a returned address that is, or resolves to, this computer. Both are covered
-by tables in `http_uploader_rules` (`thisMachineInEverySpelling`,
-`namesThatResolveToThisMachine`, `addressesAReplyMayName`).
+The suites cannot show on one machine the refusal of a returned address that is, or
+resolves to, this computer, because the scripted receiver is on loopback and a loopback
+destination may be answered with loopback addresses. The tables that covered it went
+in the second round of [removed tests](removed-tests.md#second-round).
 
 ## Scrolling capture suites
 
@@ -285,94 +251,35 @@ these suites compare pixels and check what is injected. None of them is desktop 
 design is in [scrolling capture](../design/scroll-capture.md).
 
 - `scroll_stitcher_contract` (`tests/unit/test_scroll_stitcher.cpp`, on the synthetic application in
-  `tests/fixtures/ScrollSynthetic.*`; no display): the stitcher and `ScrollRun` together. Plain,
-  sticky header and footer, hover, caret, scrollbar, dropped events, end bounce, flat and blank
-  regions, near-periodic text, numbered lines whose digits sit in the side margin, a short line scrolled
-  under a painted pointer, a jump past the whole viewport that must not be accepted on a sliver of
-  rows, a stream that goes quiet or answers late, scroll to the top (overscroll, Stop on the way up
-  with and without a painted pointer, a way up longer than the old 15 s that still reaches the top,
-  a top that is not reached in its time or on a page that never rests and must not end as
-  `EndOfContent`), end proof by a fresh frame, recovery and the limits. `testReviewFrameProofs`
-  adds the height cap with a sticky footer (never above the cap; the first viewport's prefix when
-  the cap cannot hold the footer), a frame-size change ending as `LayoutChanged`, the top proved again
-  on a switch of pointer target, and fresh-frame proof after a retry. `testLayoutChange` covers the
-  layout rule: a viewport that gets narrower or shorter, or a bar that pins itself to the bottom,
-  after rows were committed (at four step sizes through the stitcher and at three wheel distances and
-  two moments through `ScrollRun`) must end `lost_track` with an image that is only the document's
-  first rows and never `EndOfContent`, and the same change in place; the mirror cases must still end
-  `EndOfContent` exact: margins and bands that were always there, a resize on the way to the top, a bar
-  pinned from the first scroll on, a scrollbar that fades and a blinking cursor; a bar pinned after rows
-  were taken from under it ends `lost_track` with an exact prefix. `testLivePages` (48 checks) covers
-  what real web pages did: a sticky header of 48, 80 and 120 rows that comes after 150 px, at three
-  wheel distances; a link panel over the bottom rows under a pointer that cannot leave (the edge guard
-  alone) and one that waits outside; a line blended into the rectangle's last row; the pointer coming in
-  just inside the edge it waits beyond, with the centre next where nothing scrolls there; a page
-  between two side bars that stick, with and without a header, and short lines between the same bars;
-  a banner of 40 and 120 rows that slides in and becomes the footer (window background that comes up is
-  still a change of layout); a minimap at a third of the page's rate, at three wheel distances, from the
-  top and from the end, which must end `lost_track`, and what must still run to the end (a strip that never
-  moves, a side bar that sticks after 90, 150 and 400 px, a video in a column); the edge guard at the
-  stitcher; tables that repeat and a step that moved farther than the overlap (`tieHintTolerance`); lines
-  that begin alike between two side bars; a page that answers the wheel at once (the response wait counted
-  from the wheel step); and a column of tens digits under a faint tint where nothing moved. The fixtures'
-  `FakeAppSpec::scene` is a page that knows where it is scrolled to, the clock and the pointer.
-  The session `session a page slower than the wait is not at its end` (`busyMsPerNotch` of 60, 120
-  and 250 ms, with the first notch shown at once or not, 24 runs) is a page that works through its
-  wheel notches one by one and paints once none is waiting: the whole page exact, or an honest end
-  with an exact prefix, never `EndOfContent` early (the end proof). `session a step seen halfway is
-  not matched beside its hint` (`splitInjection` of 2 to 4, a table that repeats, 12 runs) is the
-  short-step rule. `PUTGD_SCROLL_STITCHER_TRACE=<name part>` prints the steps of the slow runs.
-  `--full` (or `PUTGD_SCROLL_STITCHER_FULL=1`) runs the research prototype's seed counts and sweeps.
-  It is in the contract lists of `cmake/TestPolicy.cmake`.
+  `tests/fixtures/ScrollSynthetic.*`; no display): the stitcher and `ScrollRun` together, only where a
+  wrong result would look like a whole page. No pair of frames further apart than the viewport is ever
+  matched (a ruler sweep); lines that are identical stay ambiguous rather than guessed; the output cap
+  holds, also with a footer larger than it; a stream that goes quiet, a slow page, a top that was not
+  reached and a page that never rests never end as `EndOfContent`; no wheel step follows Stop; and a
+  stream whose frames change size is a layout change. It is in the contract lists of
+  `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
-  `LocalServer` and the production `putgd-cli` against a fake backend. The session's states, the
-  journal entry before the first frame, `scroll_active` for a screenshot or a recording started during one,
-  `scroll_busy` and `scroll_not_found`, a fake GNOME Shell that selects the region and places the bar
-  (`select`, `overlay`, `start` in order), Stop keeps and Cancel discards, the cap warning and the
-  History note, `top_not_reached` (kept, warned, noted, `topReached: false`, also after Stop and the
-  cap; `end_of_content` with an unproved top refused), a start held for put.gd's own notices to go,
-  admission refusing a wrong hash, size or IHDR, and (review round on #1398) the helper's own auto-start
-  honouring the notification hold, `noSelectorNoCapture` (a build with no selector refuses `scroll.prepare` with `scroll_unavailable`, reason `region_unavailable`, with a rectangle as well as without one: nothing prepared, no session; it replaced `noSelectorNeedsARectangle`), Cancel accepted while
-  `start` or `stop` is pending, `cancelInFlightDecides` (a Cancel that is on its way decides the end:
-  a Stop that arrives after it, a Stop refused or finished with its image while it is on its way, and a
-  `finished` event meanwhile all end the session cancelled with no image, other commands are
-  `scroll_busy`, and the next capture is admitted), and the helper released once the PNG is validated, before the upload queue
-  is done.
+  `LocalServer` and the production `putgd-cli` against a fake backend. An image finished beside a
+  Cancel is never admitted (`cancelInFlightDecides`); a PNG that does not match its descriptor is never
+  admitted (`corruptOutputFails`); an unproved top is marked, and a helper that calls such a capture
+  complete is refused (`topNotReached`).
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
-  private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`, a window of 40 px rows each
-  painted as a bar code with its number, through `ximagesrc` and XTest. The PNG must decode to every row once and in
-  order, with the expected height: plain, sticky bands, from the top or from the row on screen, a late
-  tail, the cap, Stop, Cancel, Esc, a selector or `select`, a region too small, a page that does not
-  scroll. An XInput 2 listener shows that only wheel steps and pointer motion are injected, only while
-  capturing, and nothing after Stop, Cancel or the end of the control pipe. There is no compositor
-  or window manager, so it does not establish Cinnamon behaviour.
-- `budgie_labwc_integration`: the product's virtual pointer, mapped to a real headless labwc output,
-  sends a wheel notch that reaches a window as a wheel step (15.0, discrete 1) and no button press.
-  `tools/lab/wayland_pointer.py axis` sends the same over the whole layout.
-- `native_tray_integration`: put.gd's own notices are closed and followed to confirmation before a capture
-  starts, and stay held across a late `ended`; on a `quickshell` server the shell's dismissal command runs once per summary with the
-  server's own `XDG_RUNTIME_DIR`.
-- `gui_tray` (`tests/gui/test_tray.cpp`): a scroll capture holds delayed Qt notifications on a real
-  D-Bus connection (a pending `Notify`, a pending server lookup, a failed close, the fallback balloon,
-  a permanent close error, an expired notification); a close that cannot succeed fails the start with
-  `notification_close_failed` and nothing is started.
-- `gui_history_view` (`tests/gui/test_history_view.cpp`, `scrollNoteKeepsFailuresVisible`): an upload
-  or local-save failure leads the status text and the scroll note follows it.
+  private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
+  only wheel steps and pointer motion are injected, only while capturing, and nothing after the Stop or
+  Cancel reply, with the pointer put back; the end of the control pipe stops injection at once. There is
+  no compositor or window manager, so it does not establish Cinnamon behaviour.
 - `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
   component spec.
-- `gnome_core_transport_integration` and `gnome_ui_ownership_contract`: a scroll frame carries
-  `beat: true` and a recording frame does not; the extension's 40 ms 1×1 actor exists only while such
-  a frame shows. `scroll` is in the extension's `ACTIONS`.
-- Desktop entries and packages: `kde_ownership_integration` and `record_identity_contract` pin
+- `gnome_ui_ownership_contract`: a frame shown with `beat: true` keeps the extension's 40 ms timer
+  until the resident hides it.
+- Desktop entries and packages: `record_identity_contract` pins
   `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_kwin_fake_input` and the first `Exec` token of
   `putgd-record.desktop`; `tests/unit/test_portable_appimage.py` pins the same list in AppRun's per-mount entry and
   that the AppImage bundles `libxcb-xtest.so.0`.
-- Settings, schema, UI and MCP: `tests/unit/test_settings.cpp` (preferences, bounds, the `scroll` route),
-  `tests/integration/test_config_schema.py`, `tests/gui/test_settings_capture.cpp` (the two Settings controls, the
-  capability badge), and `tests/integration/test_mcp.py` (the three tools, `scroll` in `perform_action`, forwarding parity,
-  every end reason named by `get_scroll_capture`, and a `top_not_reached` view passed through unchanged).
-  That file is not a CTest entry: run it with the MCP SDK's Python and `PUTGD_CLI` and `PUTGD_APP` set
-  to the built `putgd-cli` and `putgd`.
+
+Whether stitches come out right on real pages, the notices held before a capture, the Settings
+controls and the MCP tools are left to desktop acceptance and the acceptance drivers since the second
+round of [removed tests](removed-tests.md#second-round).
 
 `test_scroll_capture_driver` (`tests/fixtures/scroll_capture_driver.cpp`) is a lab tool, not a test:
 it runs one capture through the production backend and helper without a resident, and

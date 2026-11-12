@@ -82,9 +82,9 @@ request starts its dedicated worker and loads the module. That worker owns SDK
 initialization, requests and shutdown; the module's code remains mapped until
 process exit. The official SDK runtime and module are packaged privately with
 hashes in `share/putgd/aws-runtime-manifest.json`. Qt remains dynamically linked
-to distribution libraries. The `s3_module_integration` contract covers absent,
-wrong-contract, wrong-build and wrong-transport modules, concurrent first use,
-shutdown and recovery in a new process.
+to distribution libraries. No test checks module loading since
+`s3_module_integration` was removed (#1422). The resident mapping the SDK early
+would go unnoticed; an incompatible module that reaches creation crashes.
 
 For a Linux DEB, use the normal Release preset and CPack with a standard package
 umask and a fresh output directory:

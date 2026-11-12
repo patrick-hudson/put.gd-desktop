@@ -316,10 +316,10 @@ A failed upload retries the finalized bytes: the retry neither reacquires the
 source nor reopens the editor, and its artifact keeps the submitted digest.
 Before an editor starts, a failed write to private staging (a full disk or a
 quota) reports `edit_staging_failed`, not `source_unsupported`.
-`editor_job_integration` covers a helper killed while editing, a helper that
-never becomes ready or hangs while finalizing (startup and finalize timeouts),
-a non-PNG export, a digest mismatch, and a full disk. Each fails closed: no image
-is handed off, staging is empty and the helper is gone.
+`editor_job_integration` covers a helper that crashes while editing or hangs
+while finalizing (the finalize timeout), a non-PNG export and a digest mismatch.
+Each fails closed: no image is handed off, staging is empty and the helper is
+gone.
 `edit_operations_integration` covers the failed-upload retry.
 
 ## Why a custom canvas
@@ -436,17 +436,17 @@ PUTGD_CLI="$PWD/build/dev/putgd-cli" uv run --project tools/mcp --locked python 
 ```
 
 `editor_contract` covers redaction invariance, tiny/edge masks, transparency,
-metadata canaries, the PNG chunk inspector, bounded history, gestures, the
-command contract and canvas interaction. `editor_job_integration` drives the real
-product helper offscreen with agent commands, preview, save, submit, cancel,
-termination, oversize admission and a missing helper. `edit_operations_integration`
+metadata canaries, the PNG chunk inspector, snapping that never traces redacted
+text, and new marks that never reveal redacted pixels in any order. `editor_job_integration`
+drives the real product helper offscreen with agent commands, preview, save and
+submit, and checks the failures above. `edit_operations_integration`
 checks that an uploaded edit leaves no unredacted pixels in any retained raster,
-that cancellation stores nothing, file sources, single-session raising and
-restart recovery. Synthetic screenshots of the themed window are produced by
+that a failed upload retries only the edited bytes, that cancellation stores
+nothing, and that an interrupted edit recovers without uploading. Highlight
+paint, handles, keyboard editing, undo bounds, the drawing tools and the editor
+window went in the second round of [removed tests](../testing/removed-tests.md#second-round). Synthetic screenshots of the themed window are produced by
 `putgd-ui-catalog` (`20-`–`29-editor-*.png`; the step, pen, ellipse, line,
 pixelate, Copy image and narrow-toolbar states are `30-`–`30k-editor-*.png`).
-`editor_contract` also checks that the new marks never reveal redacted pixels in
-any order or crop, the pixelation grid, step numbering and pen smoothing;
 `editor_job_integration` and `edit_operations_integration` check Copy image
 against the real helper and resident. Offscreen results are not
 desktop acceptance. Graphical, memory and MCP evidence is in the
