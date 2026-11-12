@@ -308,3 +308,120 @@ Not done, with reasons: Bun's experimental HTTP/2 client and pre-connect API;
 running the link's password hashing on another thread; raising the SDK's
 128 KiB single-request limit; and keeping a helper alive between operations,
 which the idle memory gate rules out.
+
+## Faster publishing: a chosen API connection, link work beside the transfer (2026-11-11)
+
+A started-ahead 64 KiB publish took about 2.3 s on a good run after the change
+above, and 4 to 5 s on the lab desktops. Tracing about 150 live publishes on
+d69 showed three things left.
+
+**Proton answers each connection from one of several backends, and stays with
+it.** On 24 new connections, the second read of `/core/v4/addresses` took
+161 to 183 ms on six, 327 to 389 ms on six and 545 to 704 ms on twelve. The
+network round trip (120 to 136 ms by HTTP/2 ping) and the unauthenticated
+`/tests/ping` (about 140 ms) were the same on all of them, so the difference
+is the service's own time. Ten name checks in one helper stayed in one band
+for all ten: 178 to 197 ms in one process, 350 to 479 ms in another. Returning
+the service's `Session-Id` and `Tag` cookies did not pin new connections to a
+backend. The compiled `fetch` pools connections and gives no say in which one
+carries a request, so a publish's requests in sequence were as slow as the
+connections they happened to get. Bun 1.4.4's `fetch.preconnect` throws
+`Invalid port` for every address form tried.
+
+**The link's local work ran with nothing in transit.** After the share's
+creation the SDK spent about 0.48 s before it could send the link's request:
+two bcrypt hashes (about 0.1 s each), the SRP modulus read, and the share's
+session key wrapped under the password by an iterated hash of 65 MB (0.25 s).
+
+**A file over 128 KiB opens a new connection to a storage host when its bytes
+are ready.** The single-request limit is the service's: a 360 KB file sent to
+`/files/small` with the SDK's limit raised was refused with 422.
+
+Helper changes:
+
+- The first GET to the API is sent on six new HTTP/2 connections; the one that
+  answers first carries every later API request, and the others are closed. A
+  first answer more than 0.1 s beyond the connection's ping starts a second
+  round of six in the background. The ordinary client takes over for the rest
+  of the process when no candidate connects or answers in four seconds, when
+  the first answer is not a 200 or a 401, when a proxy is configured, or when
+  any request on the kept connection fails. A failed GET and a request the
+  service did not act on (a refused stream, or one opened after the last
+  stream named in a shutdown) are sent again on the ordinary client. Bun 1.4.4
+  reports a reset stream's code as 0, so the refused-stream case is covered by
+  a scripted connection in the tests, not by a live reset.
+- An upload told that a link follows hashes the link's password and reads the
+  modulus while its bytes are in transit; the session key is wrapped while the
+  share's request is in transit. The password is the SDK's own generator's,
+  called ahead through `sharing.management.cryptoService`; an SDK without it
+  there makes links as before, and a test fails provisioning.
+- An upload's answer names its storage host, and an upload request may name
+  one, which the helper connects to while the draft is made. Of 36 block
+  uploads 26 went to `fra-storage` and 10 to `zrh-storage`; a hint that named
+  the other host cost nothing. With the right host and the connection ready
+  60 ms or more before the block, the block's request took 1.10 to 1.22 s in
+  eight of nine runs (1.85 s in the ninth) instead of 1.42 to 1.56 s. A HEAD
+  does not leave a reusable connection in the pool; a GET read to its end does.
+- A token refresh no longer makes the account code read the user and the
+  addresses a second time (two requests in sequence, 1.2 s in the trace that
+  showed it). This is covered by a test against the pinned `Addresses` class;
+  no later run began with an expired token.
+
+Application changes: an upload request says whether the operation's link
+follows; the provider keeps each account's last storage host in memory and
+names it in the next upload; and an operation invoked while another's session
+has the account takes over that session's helper when it ends, instead of
+starting one.
+
+Tried and not kept: skipping the ownership read before the link when this
+helper had just uploaded the file. The SDK then reads the file itself, so no
+request was saved, and the read stayed.
+
+Timed on d69 against the live test account, in alternating runs of the nightly
+helper (commit 4f80bcfff, `3a5167cbe44c`) and this one through one driver, each
+started 1.5 s ahead. Seconds from the name check's request to the link's
+answer; every one of the 32 runs ended `absent`, `uploaded`, `shared` and
+`revoked`.
+
+| Payload | Nightly, mean (lowest to highest), n=8 | This change, mean (lowest to highest), n=8 |
+| --- | --- | --- |
+| 64 KiB | 2.66 s (2.04 to 4.19) | 1.73 s (1.65 to 2.01) |
+| 360 KB | 5.30 s (3.96 to 6.77) | 3.09 s (3.00 to 3.26) |
+
+| Stage, mean | 64 KiB nightly | 64 KiB now | 360 KB nightly | 360 KB now |
+| --- | --- | --- | --- | --- |
+| Name check | 0.27 s | 0.19 s | 0.31 s | 0.19 s |
+| Upload | 0.74 s | 0.64 s | 3.09 s | 1.98 s |
+| Link | 1.64 s | 0.91 s | 1.89 s | 0.92 s |
+
+The 360 KB runs named `fra-storage` as the last storage host, as an
+application's second upload would. Through the production adapter and the
+compiled helper (`proton_latency_probe`, no storage host known), three 64 KiB
+publishes took 1.71, 1.75 and 1.72 s and two 360 KB ones 3.41 and 3.41 s.
+
+Before the connection was chosen, the link work and the storage connection
+alone gave 2.77 s to 2.62 s (64 KiB, n=15) and 4.82 s to 4.52 s (360 KB, n=12)
+on the same account: the requests' own time on slow connections swamped them.
+Adding a 0.48 s idle wait before the link's request did not make that request
+faster (n=8 each), so the service does not need the pause the local work used
+to make.
+
+What is left in a started-ahead publish: one round trip for the name check,
+one request or five for the upload, and four in sequence for the link (the
+ownership read, the share, the link and the second ownership read), each about
+0.18 to 0.26 s on a fast connection from this lab.
+
+72 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
+stdout drain pass in provisioning; `proton_transport` (51 cases: upload hints
+and six for a session's helper passing to the next operation), `proton_contract`
+(31) and `test_operations` (122) pass on d69. Type checking reports only the
+three upstream Crypto stream declaration errors.
+
+The rebuilt helper is
+`c99f3c9fb468b9c510662952eef71047c2ff5490f00b300e6bf92ba8e3bb4660`, reproduced
+by two provisions on d69. `SOURCES.json` binds it and its overlay sources. The
+native relink proof and the desktop/resource acceptance still describe helper
+`9fd4d72f8635` and remain open gates (#1399).
+
+Not done: a desktop run of an installed build, and a publish that begins with
+an expired token.

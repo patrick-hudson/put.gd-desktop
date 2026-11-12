@@ -58,6 +58,55 @@ beside the destination read instead of after it. A passed
 deadline answers and ends the process. A request past the size bound is refused
 and nothing after it is read.
 
+An upload request may say `linkFollows:true`: the operation will ask for a share
+link as soon as the file is uploaded. A new link costs about half a second of
+local work before its request can be sent: two bcrypt hashes of its generated
+password, a read of the SRP modulus, and the share's session key wrapped under
+that password by an iterated hash of 65 MB. The helper then does the hashing
+and reads the modulus while the file's bytes are in transit, and wraps the
+session key while the request that creates the share is in transit. The
+password comes from the SDK's own generator, called ahead; the SDK's link code
+is handed that password and gets the prepared answers for exactly those inputs.
+A link with a share password of the user's own, a file over 4 MiB, a link asked
+for more than ten seconds after its preparation, and a preparation that failed
+are computed in line, as before. A preparation ends with the request after the
+upload, whatever that request is, and nothing of it is stored. The link itself
+is then four requests in sequence: the ownership read, the share, the link and
+the second ownership read.
+
+An upload's answer names the storage host its blocks went to (`transferHost`),
+and an upload request may name one (`transferHostHint`). The application keeps
+the last host per account in memory and names it in the next upload. For a file
+over the single-request limit the helper then opens a connection to that host
+while the upload's draft is being made, with one unauthenticated request that
+carries nothing of the account or the file. Only a `*.proton.me` host other
+than the API's is accepted in either direction. A 360 KB upload spent about
+0.3 s less with the connection already open.
+
+Proton's API answers each connection from one of several backends and stays
+with it for the connection's life. From the lab, the same read took 0.17 s on
+about a quarter of connections and 0.35 to 0.6 s on the rest, with the same
+network round trip on all of them, and a compiled `fetch` gives no say in which
+pooled connection carries a request. The helper therefore sends its first GET
+to the API on six new HTTP/2 connections at once, keeps the one that answers
+first, closes the others, and sends every later API request as a stream on the
+kept one. If that first answer took more than 0.1 s beyond the connection's
+ping, a second round of six looks for a faster connection in the background and
+replaces the first if it finds one. Only a GET is ever sent more than once.
+This is a shortcut, never a requirement: the ordinary client carries the
+request, and every later one in that process, when no candidate connects or
+answers within four seconds, when the first answer is not a 200 or a 401, when
+a proxy is configured in the environment, or when a request on the kept
+connection fails. A failed GET, and a request the service says it never acted
+on, is sent again on the ordinary client; any other failure is reported as a
+lost connection is. File blocks go to Proton's storage hosts through the
+ordinary client as before. An idle kept connection is pinged every 20 seconds.
+
+A token refresh makes the account code forget the user and address keys it
+loaded. The helper puts a load that was under way back for the same session,
+so the first request after an expired token no longer reads the user and the
+addresses twice.
+
 The application holds one session around an operation's name check, upload and
 link for a destination, on that operation's thread, and holds the account lock
 for as long as the helper lives. It starts that helper when the action is
@@ -74,6 +123,13 @@ running and silent; otherwise it ends that helper and starts another for the
 next request. History and setup actions use `--stdio`. After the warm-up, one
 64 KiB publish makes 8 requests: two for the name check, one for the upload and
 five for the link.
+
+An operation invoked while another operation's session has the account cannot
+start a helper ahead. It registers that it will ask instead, and the session's
+helper, signed in and connected, passes to it when that session ends, in place
+of a new process and its sign-in. Only a helper that waits for its next request
+and has said nothing since its last clean answer is passed on; it keeps the
+account lock meanwhile, and ends when no registered operation is left to take it.
 
 The application checks the bundled runtime's SHA-512 before it starts a helper.
 Hashing the 110 MB file takes most of a second, so one verdict stands while the
@@ -135,7 +191,7 @@ nothing. The SDK reuses what that read returned for its own parent and key
 lookups, which were a request each before. Sharing still reads the file from
 the service before and after the mutation. The user and address keys load
 beside the first Drive read, and a new link's SRP modulus beside the share's
-creation. One 64 KiB publish made 38 requests before these changes and makes
+creation, or beside the upload when the link was prepared there. One 64 KiB publish made 38 requests before these changes and makes
 20 with them from three `--stdio` helpers.
 
 Share takes the receipt and `options:{action:"create"|"revoke"|"inspect",
