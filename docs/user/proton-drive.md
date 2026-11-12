@@ -157,9 +157,9 @@ keeps its connections, and answers each request in turn; the account stays
 locked to it meanwhile. The app starts it when the action is invoked, so it
 signs in while you choose a region or the capture is taken; Edit & upload
 starts it only when the edit is uploaded. A helper started for an action you
-cancel ends by itself. An upload you start while another is still running takes
-over that upload's helper when it finishes, already signed in, instead of
-starting its own. History actions and setup start a helper per request.
+cancel ends by itself. An upload you start while another is still waiting or
+running takes over that upload's helper when it finishes, already signed in,
+instead of starting its own. History actions and setup start a helper per request.
 
 Proton answers each connection from one of several backends, some several
 times slower than others, and stays with it. So the helper sends its first
@@ -172,8 +172,8 @@ its ordinary connections for the rest of that upload.
 When a share link follows an upload, the helper prepares the link's password
 while the file is in transit, so the link's requests go out without a pause.
 The app also remembers, in memory only, which Proton storage host your last
-large upload used, and the helper connects to it while the next one is being
-set up.
+large upload used, and for a file of up to 4 MiB the helper connects to it
+while the next upload is being set up.
 A helper keeps at most 64 SDK crypto-key entries and 64 file or folder
 metadata entries in memory, so the SDK does not fetch the same parent again.
 The helper's own folder and ownership checks never use that metadata: each is
