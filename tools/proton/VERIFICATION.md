@@ -412,7 +412,7 @@ one request or five for the upload, and four in sequence for the link (the
 ownership read, the share, the link and the second ownership read), each about
 0.18 to 0.26 s on a fast connection from this lab.
 
-73 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
+75 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
 stdout drain pass in provisioning; `proton_transport` (52 cases: upload hints
 and seven for a session's helper passing to the next operation), `proton_contract`
 (31) and `test_operations` (122) pass on d69. Type checking reports only the
@@ -449,11 +449,40 @@ on d69 (upload stage 2.10, 1.93, 1.87 s) and not on k72 or m74 (about 2.0 s
 each time): it needs the same storage host twice and about half a second
 before the block is ready, and neither is certain.
 
+The second desktop acceptance
+([record](https://github.com/patrick-hudson/put.gd-evidence/tree/4ac749f86dc322bb91023ad18b31d5c423d1c293/records/2026-11-12-proton-chosen-connection-acceptance-round2),
+helper `e1237d260f4c`) showed both faults gone: one helper for two uploads
+invoked together on all four desktops, and 8 MB totals of 8.2 to 8.9 s. None of
+24 screenshots was black; what made one black in the first run was not
+established, and this change does not touch capture. It left two questions.
+
+- **One link ended `unknown`.** On k72, one screenshot of 63 publishes was
+  uploaded and then got no link: the ownership read 0.4 s after its upload came
+  back as not known to be its own, with no error, and the same read minutes
+  later said it was. On d69 the read was `own` every time in 80 uploads read
+  back at once on the same connection, and in 72 uploads read back on another
+  connection (two fast, three medium, one slow). It was not reproduced and its
+  cause is not established. Two changes follow from it, neither shown to be its
+  cure. A connection is no longer replaced by a faster one once a request is
+  about to change something, so a change and the reads after it reach one
+  backend. And a file this process uploaded within thirty seconds, read back
+  incomplete with no error, is read again up to three times, 0.3 s apart, before
+  that is believed.
+- **8 MiB against nightly in the same hour.** The acceptance run's single
+  samples, this change first and nightly straight after, had this change's
+  upload stage 0.2 to 1.1 s longer on three desktops and its totals 0.3 s
+  shorter to 0.9 s longer. Order-balanced on d69 (new, nightly, nightly, new,
+  twice): this change 4.5, 4.7, 6.5 and 11.6 s, nightly 6.2, 8.3, 9.9 and
+  11.2 s. With the five alternating pairs above, nothing shows this change
+  slower for large files; one upload's time here varies by more than the
+  difference.
+
 Through the production adapter and the final compiled helper, two 64 KiB
-publishes took 1.63 and 1.63 s and two 360 KB publishes 3.38 and 3.35 s.
+publishes took 1.76 and 1.76 s, two 360 KB publishes 3.44 and 3.52 s and one
+8 MiB publish 5.71 s.
 
 The rebuilt helper is
-`e1237d260f4c36ebcb8f1832599486860bc7bf842ae85e1e254e8e50848f86d3`, reproduced
+`42e1decb6d718e2640f0a419b3d135a3755f65a27e66682126ed16a2f6581065`, reproduced
 by two provisions on d69. `SOURCES.json` binds it and its overlay sources. The
 native relink proof and the desktop/resource acceptance still describe helper
 `9fd4d72f8635` and remain open gates (#1399).

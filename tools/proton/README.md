@@ -94,7 +94,9 @@ to the API on six new HTTP/2 connections at once, keeps the one that answers
 first, closes the others, and sends every later API request as a stream on the
 kept one. If that first answer took more than 0.1 s beyond the connection's
 ping, a second round of six looks for a faster connection in the background and
-replaces the first if it finds one. Only a GET is ever sent more than once.
+replaces the first if it finds one, until a request is about to change
+something: from then on the kept connection stays, so a change and the reads
+that follow it reach one backend. Only a GET is ever sent more than once.
 This is a shortcut, never a requirement: the ordinary client carries the
 request, and every later one in that process, when no candidate connects or
 answers within four seconds, when the first answer is not a 200 or a 401, when
@@ -103,6 +105,13 @@ connection fails. A failed GET, and a request the service says it never acted
 on, is sent again on the ordinary client; any other failure is reported as a
 lost connection is. File blocks go to Proton's storage hosts through the
 ordinary client as before. An idle kept connection is pinged every 20 seconds.
+
+Sharing reads the file before and after the link is made. For a file this
+process uploaded within the last thirty seconds, a read that comes back as not
+known to be its own, with no error from the service, is made again, three
+times at most and 0.3 s apart, before it is believed. One such read was seen in
+about four hundred publishes; its cause is not known. A file that stays
+incomplete gets no link.
 
 A token refresh makes the account code forget the user and address keys it
 loaded. The helper puts a load that was under way back for the same session,

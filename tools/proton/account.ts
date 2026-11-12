@@ -358,12 +358,15 @@ function send(session: http2.ClientHttp2Session, request: Outgoing, body: Uint8A
     });
 }
 
-export function fastestConnectionFetch(origin: string, direct: typeof fetch, options: ConnectionOptions = {}): typeof fetch {
+// `settle` ends the looking for a faster connection: from then on the kept one is not replaced.
+export type ChosenConnectionFetch = typeof fetch & { settle(): void };
+export function fastestConnectionFetch(origin: string, direct: typeof fetch, options: ConnectionOptions = {}): ChosenConnectionFetch {
     const candidates = options.candidates ?? 6, chooseWithinMs = options.chooseWithinMs ?? 4000, pingEveryMs = options.pingEveryMs ?? 20000;
     const connect = options.connect ?? (target => http2.connect(target));
     // undefined: not chosen yet. null: the ordinary client carries this origin from now on.
     let kept: http2.ClientHttp2Session | null | undefined;
     let choosing: Promise<void> | undefined;
+    let settled = false;
     const abandon = (session: http2.ClientHttp2Session) => { if (kept === session) kept = null; };
     const shutDownAfter = new WeakMap<http2.ClientHttp2Session, number>();
     const keep = (session: http2.ClientHttp2Session) => {
@@ -414,16 +417,18 @@ export function fastestConnectionFetch(origin: string, direct: typeof fetch, opt
             }
         });
     // A first connection that is not on a fast backend is replaced, once, by one that is, if a
-    // second round finds one. The first keeps carrying requests meanwhile, and ends when its own are done.
+    // second round finds one. The first keeps carrying requests meanwhile, and ends when its own
+    // are done. Once the caller is about to change something (`settle`) nothing is replaced: a
+    // change, and the reads that depend on it, all travel on one connection to one backend.
     const improve = (first: Won, request: Request) => {
         const session = first.session;
         if (first.response.status !== 200) return;
         try {
             session.ping((error, roundTrip) => {
-                if (error || kept !== session || first.answerMs - roundTrip <= SLOW_ANSWER_MS) return;
+                if (error || settled || kept !== session || first.answerMs - roundTrip <= SLOW_ANSWER_MS) return;
                 void race(request, candidates, (response, answerMs) => response.status === 200 && answerMs - roundTrip <= SLOW_ANSWER_MS).then(better => {
                     if (!better) return;
-                    if (kept !== session) { better.session.destroy(); return; }
+                    if (settled || kept !== session) { better.session.destroy(); return; }
                     keep(better.session);
                     session.close();
                 }, () => {});
@@ -444,7 +449,7 @@ export function fastestConnectionFetch(origin: string, direct: typeof fetch, opt
         improve(won, again);
         return won.response;
     };
-    return (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const chosen = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
         // A request for anywhere else is handed on as it came, its body untouched.
         let elsewhere = true;
         try { elsewhere = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url).origin !== origin; }
@@ -471,13 +476,15 @@ export function fastestConnectionFetch(origin: string, direct: typeof fetch, opt
             if (request.method === 'GET' || error.unprocessed) return ordinary();
             throw error;
         }
-    }) as typeof fetch;
+    }) as ChosenConnectionFetch;
+    chosen.settle = () => { settled = true; };
+    return chosen;
 }
 // Every API request of this process travels on one connection chosen that way. The account
 // and Drive code reach the API through `fetch`, so that is where the choice is made, once
 // per process.
 const API_ORIGIN = 'https://drive-api.proton.me';
-let apiFetch: typeof fetch | undefined;
+let apiFetch: ChosenConnectionFetch | undefined;
 export function useFastestApiConnection(): void {
     if (apiFetch) return;
     // The ordinary client reaches the service through a configured proxy; a connection of
@@ -558,6 +565,8 @@ export async function openClient(opened: Awaited<ReturnType<typeof openAccount>>
         linkBeingMade: (making: boolean) => { http.onShareCreate = making ? () => setTimeout(() => pgp.wrapAhead(), AFTER_DISPATCH_MS) : undefined; },
         linkPrepared: () => link.prepared,
         // Ends a preparation no link used: nothing of it is kept, and none still to come is made.
-        linkUnused: preparation.unused };
+        linkUnused: preparation.unused,
+        // Called before a request that changes something: the API connection stays as it is from here.
+        connectionSettled: () => { apiFetch?.settle(); } };
 }
 export async function initialize(request: JsonObject) { return openClient(await openAccount(request), request); }

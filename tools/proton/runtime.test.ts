@@ -55,7 +55,7 @@ function folder(uid: string, parentUid?: string): NodeEntity {
 // This proves their branching and scope, not a live account or desktop gate.
 function context(options: { rootUid?: string; listedUids?: string[]; listThrows?: boolean; batchThrows?: boolean } = {}) {
     const calls: Call[] = [];
-    let listCompleted = false, linkPrepared = false, transfers: ((host: string) => void) | undefined;
+    let listCompleted = false, linkPrepared = false, settledBeforeChange = 0, transfers: ((host: string) => void) | undefined;
     const ctx = { auth: { isLoggedIn: () => true }, fresh: (read: () => Promise<unknown>) => read(),
         warm: () => { calls.push({ method: 'warm', args: [] }); },
         modulusAhead: () => { calls.push({ method: 'modulus', args: [] }); return () => { calls.push({ method: 'modulus-unused', args: [] }); }; },
@@ -63,7 +63,8 @@ function context(options: { rootUid?: string; listedUids?: string[]; listThrows?
         prepareLink: () => { calls.push({ method: 'prepare-link', args: [] }); linkPrepared = true; },
         linkBeingMade: (making: boolean) => { calls.push({ method: 'link-being-made', args: [making] }); },
         linkPrepared: () => linkPrepared,
-        linkUnused: () => { calls.push({ method: 'link-unused', args: [] }); linkPrepared = false; }, sdk: {
+        linkUnused: () => { calls.push({ method: 'link-unused', args: [] }); linkPrepared = false; },
+        connectionSettled: () => { ++settledBeforeChange; }, sdk: {
         // The batched read: the root as the service names it, and each node the single-node
         // stub answers. A node whose lookup the stub refuses is absent from the batch.
         iterateNodes: async function* (uids: string[]) {
@@ -96,7 +97,7 @@ function context(options: { rootUid?: string; listedUids?: string[]; listThrows?
         },
     } } as unknown as Context;
     return { ctx, calls, listCompleted: () => listCompleted, transfer: (host: string) => transfers?.(host), watching: () => !!transfers,
-        prepared: (value: boolean) => { linkPrepared = value; } };
+        prepared: (value: boolean) => { linkPrepared = value; }, settledBeforeChange: () => settledBeforeChange };
 }
 function statRequest(): JsonObject {
     const upload = { schemaVersion: 1, method: 'upload', destination: {
@@ -1076,4 +1077,74 @@ test('a change the service says it never acted on is sent again on the ordinary 
     let failure: unknown;
     try { await api('http://synthetic.invalid/change', { method: 'POST', body: '{}' }); } catch (error) { failure = error; }
     expect(failure).toBeInstanceOf(TypeError); expect(calls).toEqual([]);
+});
+
+test('a connection is not replaced once the caller is about to change something', async () => {
+    // As above, only the second round's fourth connection is fast; the caller settles before it is found.
+    const backend = await service(connection => connection === 4 ? 5 : SLOW_ANSWER_MS + 80);
+    const api = fastestConnectionFetch(backend.origin, directStub().direct, { candidates: 2 });
+    const first = connectionOf(await api(backend.origin + '/core/v4/users'));
+    api.settle();
+    await settle(SLOW_ANSWER_MS + 300);
+    expect(connectionOf(await api(backend.origin + '/drive/v2/volumes/v/files', { method: 'POST', body: '{}' }))).toBe(first);
+    await settle();
+    expect(backend.open()).toBe(1);
+    // Settled before the first connection's ping came back: no second round is begun at all.
+    const untouched = await service(() => SLOW_ANSWER_MS + 80);
+    const early = fastestConnectionFetch(untouched.origin, directStub().direct, { candidates: 2 });
+    const answered = early(untouched.origin + '/core/v4/users'); early.settle();
+    await answered; await settle(SLOW_ANSWER_MS + 250);
+    expect(untouched.sessions.length).toBe(2);
+});
+test('a file this process just uploaded is read again before an incomplete read of it is believed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-reread-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    const sha256 = createHash('sha256').update(data).digest('hex');
+    const prepared = (incompleteReads: number) => {
+        const stub = sharingContext();
+        const whole = (stub.ctx.sdk as any).getNode;
+        let fileReads = 0;
+        // The file is read back without its revision for the first reads, then whole.
+        (stub.ctx.sdk as any).getNode = async (uid: string) => {
+            const node = await whole(uid);
+            if (uid === 'folder') return node;
+            if (++fileReads <= incompleteReads) return { ...node, activeRevision: undefined };
+            return { ...node, activeRevision: { ...node.activeRevision, claimedAdditionalMetadata: { putgd: { publicationId: 'publication', sha256 } } } };
+        };
+        (stub.ctx.sdk as any).getFileUploader = async () => ({ uploadFromStream: async (stream: ReadableStream) => {
+            const reader = stream.getReader(); while (!(await reader.read()).done) {}
+            return { completion: async () => ({ nodeUid: 'file-node', nodeRevisionUid: 'file-revision' }) };
+        } });
+        const request = { ...stub.request, receipt: { ...stub.request.receipt, objectReference: { ...stub.request.receipt.objectReference, sha256 } } };
+        const uploaded = (publicationId = 'publication') => upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent', publicationId,
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256 } });
+        return { stub, request, uploaded, fileReads: () => fileReads };
+    };
+    try {
+        // The last file this process uploaded was another: the first incomplete read stands, and nothing is changed.
+        let run = prepared(1);
+        expect((await run.uploaded('an-earlier-publication')).status).toBe('uploaded');
+        expect(run.stub.settledBeforeChange()).toBe(1);
+        expect((await share(run.stub.ctx, run.request)).status).toBe('unknown');
+        expect(run.fileReads()).toBe(1); expect(run.stub.mutations()).toBe(0);
+        // Just uploaded here: the read is made again, the link is made, and the read after it too.
+        run = prepared(1);
+        expect((await run.uploaded()).status).toBe('uploaded');
+        const shared = await share(run.stub.ctx, run.request);
+        expect(shared.status).toBe('shared'); expect(run.fileReads()).toBe(3); expect(run.stub.mutations()).toBe(1);
+        // The upload and the link each settled the connection before changing anything.
+        expect(run.stub.settledBeforeChange()).toBe(2);
+        // A file that stays incomplete gets no link: four reads, no change.
+        run = prepared(99);
+        expect((await run.uploaded()).status).toBe('uploaded');
+        expect((await share(run.stub.ctx, run.request)).status).toBe('unknown');
+        expect(run.fileReads()).toBe(4); expect(run.stub.mutations()).toBe(0);
+        // Another file's link, and a link asked for after another request, are read once.
+        run = prepared(1);
+        expect((await run.uploaded()).status).toBe('uploaded');
+        const other = { ...run.request, receipt: { ...run.request.receipt, publicationId: 'another-publication' } };
+        expect((await share(run.stub.ctx, other)).status).not.toBe('shared');
+        expect(run.fileReads()).toBe(1);
+    } finally { await rm(directory, { recursive: true, force: true }); }
 });
