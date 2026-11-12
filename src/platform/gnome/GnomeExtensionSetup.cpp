@@ -341,7 +341,7 @@ SetupStatus runExtensionSetup(const SetupInputs& in){
   return status("user_extensions_disabled","gnome_user_extensions_off",QStringLiteral("GNOME extensions are turned off for this account. Turn on Extensions in the Extensions app, and put.gd's extension will start too."),details);
  shell=in.shell();
  for(int waited=0;enabledChanged&&waited<30;++waited){
-  const auto current=shell.extension["state"].toInt();
+  const auto current=shell.extension.value("state").toInt();
   if(current==extensionActive||current==extensionError||current==extensionOutOfDate)break;
   if(shell.extension.isEmpty())break;
   QThread::msleep(100);
