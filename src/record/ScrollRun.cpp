@@ -10,6 +10,8 @@ using scroll::StepResult;
 using scroll::StepStatus;
 namespace {
 const char* const layoutNote = "the layout inside the selection changed during the capture; the image ends with the rows from before the change";
+const char* const paceNote = "a part of the selection scrolls at a pace of its own (a minimap, a column with a parallax effect), so no single image shows it beside the page; the image ends with the rows from before it moved";
+const char* noteFor(const StepResult& r) { return r.ownPace ? paceNote : layoutNote; }
 }
 
 const char* toString(RunResult r) {
@@ -42,8 +44,22 @@ RunPoint ScrollRun::parkPoint(int position, int width, int height) {
     return {width / 2, height / 3};
 }
 
+// Where the wheel is turned. A pointer that waits outside the rectangle
+// (restAway) comes in by the shortest way first: the point entryInset inside
+// the edge it waits beyond. On Plasma a pointer that goes back and forth over
+// more than a hundred pixels several times a second is a pointer its user
+// shakes to find it, and KWin blows it up to many times its size for as long
+// as that lasts (the capture's own visits did that on a real desktop,
+// 2026-11-12, with the stream's frames coming in bursts 350 ms apart while it
+// was up). Where nothing scrolls at that edge the classic places follow.
+RunPoint ScrollRun::wheelPoint() const {
+    if (!atEntry_ || !opts_.away) return parkPoint(stats_.parkPosition, last_.width, last_.height);
+    const int inset = std::min({opts_.entryInset, last_.width / 2, last_.height / 2});
+    return {std::clamp(opts_.away->x, inset, std::max(inset, last_.width - 1 - inset)), std::clamp(opts_.away->y, inset, std::max(inset, last_.height - 1 - inset))};
+}
+
 bool ScrollRun::park() {
-    const RunPoint at = parkPoint(stats_.parkPosition, last_.width, last_.height);
+    const RunPoint at = wheelPoint();
     return injector_.movePointer(at.x, at.y);
 }
 
@@ -53,13 +69,18 @@ bool ScrollRun::inject(int notches) {
     if (stopped()) return false;
     // On the way to the top of a desktop that paints the pointer into the
     // frames, the pointer is in the rectangle only for the wheel step itself.
-    const bool visit = toTop_ && opts_.restAwayToTop && opts_.pointer && opts_.away && haveFrame_;
+    const bool visit = (opts_.restAway || (toTop_ && opts_.restAwayToTop)) && opts_.pointer && opts_.away && haveFrame_;
     // Stop found the pointer inside: no wheel step follows, the pointer leaves.
     const auto leave = [&] {
         parked_ = -1;
         return injector_.movePointer(opts_.away->x, opts_.away->y);
     };
+    atEntry_ = atEntry_ && opts_.restAway && opts_.pointer && opts_.away;
     if (opts_.pointer && haveFrame_) {
+        // Rows a frame shows above the parked pointer's margin are under the
+        // pointer's influence unless it leaves again right after the wheel step.
+        stitcher_.setTrustedFrom(visit ? 0 : wheelPoint().y + opts_.hoverMarginRows);
+        stitcher_.setWheelColumn(wheelPoint().x);
         if (!park()) return false;
         if (parked_ != stats_.parkPosition) {
             // It just arrived here: let the application see it enter, then say it again.
@@ -73,7 +94,12 @@ bool ScrollRun::inject(int notches) {
     stats_.notchesInjected += std::abs(notches);
     lastInjectMs_ = clock_.nowMs();
     const bool sent = injector_.scroll(notches);
-    return visit ? leave() && sent : sent;
+    if (!visit) return sent;
+    // The application gets the wheel step with the pointer still on it: a
+    // step whose pointer had left before the application came to it was lost
+    // or went to what was under the pointer by then.
+    if (sent && opts_.leaveDelayMs > 0) clock_.sleepMs(opts_.leaveDelayMs);
+    return leave() && sent;
 }
 
 ScrollRun::Screen ScrollRun::screenIsAsSeen() {
@@ -157,6 +183,13 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
     int64_t lastChange = start;  // at least settleMs after the injection
     bool responded = false;
     firstChangeMs_ = -1;
+    // A response wait counts from the wheel step, not from this call: the
+    // pointer stays a moment after the step (leaveDelayMs), and a page that
+    // scrolls at once has moved by the time the call begins. Its one changed
+    // frame was then "from before the call", nothing changed after it, and
+    // every step waited out the whole response time (1.6 s a step on Plasma
+    // with a browser that does not animate its scrolling, 2026-11-12).
+    const int64_t since = quietMs > 0 && lastInjectMs_ >= 0 ? std::min(start, lastInjectMs_) : start;
     // The cadence is measured between frames taken one after the other in one
     // wait; the time the loop spent elsewhere between two waits is not a gap.
     lastFrameMs_ = -1;
@@ -194,8 +227,9 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
         }
         if (changed) {
             lastChange = std::max(lastChange, f->timestampMs);
-            // A frame from before the call began cannot show what the call waits for.
-            if (!haveFrame_ || f->timestampMs >= start) {
+            // A frame from before the call began (before the wheel step, for a
+            // response wait) cannot show what the call waits for.
+            if (!haveFrame_ || f->timestampMs >= since) {
                 if (!responded) firstChangeMs_ = std::max(start, f->timestampMs);
                 responded = true;
             }
@@ -215,7 +249,7 @@ int ScrollRun::planNotches() const {
     if (opts_.pointer) {
         // Rule 4: the appended rows are the frame's last rows; keep them below
         // the parked pointer so a hover effect under it never reaches the image.
-        const RunPoint at = parkPoint(stats_.parkPosition, last_.width, last_.height);
+        const RunPoint at = wheelPoint();
         maxPx = std::min(maxPx, double(std::max(0, stitcher_.movingBandBottom() - at.y - opts_.hoverMarginRows)));
         targetPx = std::min(targetPx, maxPx);
     }
@@ -406,6 +440,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
     stop_ = stop;
     startMs_ = clock_.nowMs();
     notchCap_ = opts_.maxNotchesPerStep;
+    atEntry_ = opts_.restAway && opts_.pointer && opts_.away.has_value();
     static const std::atomic<bool> never{false};
     if (!injector_.waitReady(stop ? *stop : never)) {
         if (!stopped()) stats_.lastError = "the modifier keys were never released";
@@ -422,6 +457,8 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             return finishWith(RunResult::InjectorFailed);
         }
         parked_ = -1;
+        if (opts_.awayLingerMs > 0) clock_.sleepMs(opts_.awayLingerMs);
+        if (stopped()) return finishWith(RunResult::Stopped);
     }
     if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
     referenceWidth_ = last_.width; referenceHeight_ = last_.height;
@@ -547,7 +584,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 }
             }
             if (back.status != StepStatus::NoMovement && back.status != StepStatus::Appended && back.status != StepStatus::Reversed) {
-                stats_.lastError = back.status == StepStatus::LayoutChanged ? layoutNote : std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
+                stats_.lastError = back.status == StepStatus::LayoutChanged ? noteFor(back) : std::string("after scrolling back the last stitched frame was not found (") + scroll::toString(back.status) + ")";
                 return finishWith(back.status == StepStatus::LimitReached ? RunResult::LimitReached
                                   : back.status == StepStatus::InvalidFrame ? RunResult::LayoutChanged : RunResult::LostTrack);
             }
@@ -570,7 +607,14 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 if (endPending) ++stats_.falseEnds;
                 endPending = false;
                 moved = true;
-                oneNotchFailures = 0;
+                // Only a step that added rows is progress. One that found its
+                // way back to rows already in the image (after a way back that
+                // went too far) is not: counted as progress, a place where one
+                // wheel step takes the picture further than a viewport, there
+                // and back again, kept the loop going round until the time
+                // limit (a page that lays itself out anew under the viewport;
+                // Chromium, real desktop, 2026-11-12).
+                if (r.appendedRows > 0) oneNotchFailures = 0;
                 if (r.lowConfidence) ++stats_.lowConfidenceSteps;
                 if (!afterStill && firstChange >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(firstChange - injectedAt));
                 // Learn px-per-notch from verified steps; a low-confidence step only
@@ -622,11 +666,16 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                     // steps), then the two other park positions.
                     if (stillAtPark < (stats_.parkPosition == 0 && stats_.toTopSteps > 0 ? 4 : 2)) break;
                     stillAtPark = 0;
-                    if (stats_.parkPosition >= 2) {
-                        stats_.lastError = "nothing under the selection scrolled at any park position";
-                        return finishWith(RunResult::NoMovement);
+                    if (atEntry_) {
+                        // Nothing scrolls just inside the edge: the classic places, the centre first.
+                        atEntry_ = false;
+                    } else {
+                        if (stats_.parkPosition >= 2) {
+                            stats_.lastError = "nothing under the selection scrolled at any park position";
+                            return finishWith(RunResult::NoMovement);
+                        }
+                        ++stats_.parkPosition;
                     }
-                    ++stats_.parkPosition;
                     if (opts_.fromTop) {
                         stats_.reachedTop = false;
                         stitcher_.restartBeforeMovement();
@@ -671,7 +720,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             case StepStatus::LayoutChanged:
                 // The frames kept their size, so the display did not change:
                 // what was proved before is an exact image and is kept.
-                stats_.lastError = layoutNote;
+                stats_.lastError = noteFor(r);
                 return finishWith(RunResult::LostTrack);
             default:
                 stats_.lastError = std::string("stitcher returned ") + scroll::toString(r.status);

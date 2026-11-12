@@ -383,8 +383,30 @@ private slots:
   const auto idle=Theme::trayTints(false).idle;const auto base=observer.icons,tips=observer.tooltips;
   // Same colour, percent and text: only the glyph moved, so a midnight still redraws.
   tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_TRY_COMPARE(observer.icons,base+1);
+  const auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
+  QCOMPARE(result.type(),QDBusMessage::ReplyMessage);
+  const auto frames=qdbus_cast<WireImages>(qdbus_cast<QVariantMap>(result.arguments().first())["IconPixmap"]);
+  QCOMPARE(frames.size(),4);WireImage smallFrame;
+  for(const auto& frame:frames)if(frame.width==16&&frame.height==16)smallFrame=frame;
+  QCOMPARE(smallFrame.width,16);QCOMPARE(smallFrame.height,16);
+  const auto small=IconArt::liftTrayAtSize({idle,-1,0,IconArt::TrayGlyph::Turkey},16);
+  const auto bytes=smallFrame.bytes;QCOMPARE(bytes.size(),16*16*4);
+  for(int y=0;y<16;++y)for(int x=0;x<16;++x){
+   const auto pixel=small.pixel(x,y);const int offset=(y*16+x)*4;
+   QCOMPARE(uchar(bytes[offset]),qAlpha(pixel));QCOMPARE(uchar(bytes[offset+1]),qRed(pixel));
+   QCOMPARE(uchar(bytes[offset+2]),qGreen(pixel));QCOMPARE(uchar(bytes[offset+3]),qBlue(pixel));
+  }
+
   tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_COMPARE_STEADY(observer.icons,base+1,50);
   tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Tree);PUTGD_TRY_COMPARE(observer.icons,base+2);PUTGD_COMPARE_STEADY(observer.tooltips,tips,50);
+  const auto framesNow=[&]{auto r=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return qdbus_cast<WireImages>(qdbus_cast<QVariantMap>(r.arguments().first())["IconPixmap"]);};
+  QCOMPARE(framesNow().size(),3);
+  for(const auto& state:{IconArt::TrayIcon{idle,-1,0,IconArt::TrayGlyph::Mark},IconArt::TrayIcon{idle,-2,0,IconArt::TrayGlyph::Turkey},IconArt::TrayIcon{idle,-1,1,IconArt::TrayGlyph::Turkey},IconArt::TrayIcon{idle,-1,2,IconArt::TrayGlyph::Turkey}}){
+   tray.setActivity(state.color,{},state.percent,state.recording,"put.gd",state.glyph);
+   const auto frames=framesNow();QCOMPARE(frames.size(),3);
+   for(int i=0;i<3;++i)QCOMPARE(frames[i].width,24*(i+1));
+  }
+
  }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;

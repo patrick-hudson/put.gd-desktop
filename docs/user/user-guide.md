@@ -39,10 +39,12 @@ this is the one in between. It has its own output and its own shortcut, both set
 the other captures' (the shortcut starts unassigned).
 
 **Capture delay** waits 3, 5 or 10 seconds before a region, window, monitor or desktop
-capture, and before Repeat last region, so you can open a menu, hover a button or hold
-a key first. Choose it in the
-tray's **Capture delay** submenu, or right-click one of those capture buttons in the
-window and open **Capture delay** there; the choice stays until you set it back to None. A small pill at the top of the
+capture, and before Repeat last region and Capture region & edit, so you can open a
+menu, hover a button or hold a key first. Choose it in **Settings → Capture → Capture
+delay**, in the tray's **Capture delay** submenu, or right-click one of those capture
+buttons in the window and open **Capture delay** there; the choice stays until you set
+it back to None. A capture you start with a keyboard shortcut is immediate unless you
+turn on **Also delay captures started by a shortcut** in the same Settings section. A small pill at the top of the
 screen counts down. It doesn't take the keyboard and you can keep working around it;
 click it to cancel, and nothing is captured. It is never in the picture.
 

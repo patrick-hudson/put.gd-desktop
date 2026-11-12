@@ -50,7 +50,7 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
  if(action=="window"){
   if(core_&&region_.cleanupRequired())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});};
   if(region_.busy())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"busy_selecting","Region selection is already active",{}}});};
-  if(!core_&&QGuiApplication::applicationState()==Qt::ApplicationActive&&QGuiApplication::focusWindow())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}}});};
+  if(!core_&&QGuiApplication::applicationState()==Qt::ApplicationActive&&QGuiApplication::focusWindow())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"target_unavailable","Focus an external window and invoke the window hotkey or CLI",{}}});};
   // ScreenShot2 freezes active focus at method invocation. Starting this bounded
   // request now prevents persistence or GUI focus changes from retargeting it.
   auto snapshot=std::make_shared<WindowSnapshot>();const auto generation=generation_;
@@ -171,7 +171,7 @@ void KdeSourceAdapter::verifyExternalWindow(const QString& windowId,std::functio
   if(result.isError()||!text(info.value("uuid"))||QUuid(info.value("uuid").toString())!=frozenId||!text(info.value("resourceClass"))||!text(info.value("desktopFile"))){reply({"target_unavailable","KWin could not verify the captured window identity",{}});return;}
   // Plasma 6.3/6.6 exposes the native xdg app ID here, not a verified PID.
   // The supervised helper sets this dedicated ID before creating any surface.
-  if(info.value("resourceClass").toString()=="putgd-ui"||info.value("desktopFile").toString()=="putgd-ui"){reply({"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}});return;}
+  if(info.value("resourceClass").toString()=="putgd-ui"||info.value("desktopFile").toString()=="putgd-ui"){reply({"target_unavailable","Focus an external window and invoke the window hotkey or CLI",{}});return;}
   reply({});
  });
 }

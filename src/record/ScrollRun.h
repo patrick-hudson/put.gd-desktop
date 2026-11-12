@@ -150,6 +150,28 @@ struct RunOptions {
     // entry and its wheel step sends no wheel step; the pointer still leaves,
     // which is the one motion that can follow a Stop. Needs `away`.
     bool restAwayToTop = false;
+    // The same for every wheel step of the capture, on every desktop: the
+    // pointer is inside the rectangle only to deliver the wheel step and
+    // waits at `away` while the frames are read. A pointer that rests on the
+    // page makes the page answer it: a browser shows the address of the link
+    // under it in a panel at the bottom of the viewport, in the very rows
+    // the next step appends, and every capture of a web page had that panel
+    // in it several times (live pages, acceptance of 2026-11-12). A visit of
+    // pointerSettleMs is shorter than the time a browser waits before it
+    // shows that panel or a tooltip. Needs `away`; without one (the rectangle
+    // covers its whole output) the pointer stays parked as before.
+    bool restAway = false;
+    // With restAway: how far inside the rectangle's edge the pointer comes in
+    // to turn the wheel (see ScrollRun::wheelPoint), and how long it stays
+    // after the wheel step before it leaves again. Both together stay under
+    // the time a browser waits before it shows a link's address (80 ms after
+    // the pointer last moved).
+    int entryInset = 48;
+    int leaveDelayMs = 0;
+    // After the pointer has left for the first frame, what it had called up
+    // while it rested on the page (the user's own pointer before the capture,
+    // or the way to the top without restAway) gets this long to go away.
+    int awayLingerMs = 0;
     // After a way up that moved the page: this many single steps down may move
     // nothing (an overscrolled view takes them) before the capture gives up.
     int stillStepsAfterTop = 8;
@@ -230,6 +252,7 @@ private:
     int planNotches() const;
     bool inject(int notches);
     bool park();
+    RunPoint wheelPoint() const;
     // Before a conclusion drawn from stillness: whether a fresh frame agrees
     // with the last one seen. Moved: it does not, and it is now the last frame.
     // Unknown: the source gave none, so nothing is proven.
@@ -259,6 +282,7 @@ private:
     scroll::FrameSignatures lastSig_, tmpSig_, settledSig_, beforeSig_;
     int notchCap_ = 0, verifiedRun_ = 0;
     int parked_ = -1;  // the park position the pointer was last put at, -1 elsewhere
+    bool atEntry_ = false;  // restAway: the wheel is turned just inside the edge the pointer waits beyond
     // The last waitSettled: when its first changed frame arrived (-1: none did).
     int64_t firstChangeMs_ = -1;
     // The stream's cadence: when the last frame arrived, and the longest recent gap between two.

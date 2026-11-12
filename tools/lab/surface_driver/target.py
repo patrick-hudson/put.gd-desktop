@@ -241,6 +241,25 @@ def qcodes(chord):
     return list(dict.fromkeys(result))
 
 
+def vnc_keysyms(codes):
+    """RFB key names for one chord of qcodes.
+
+    An RFB keysym names the character itself, not a key position. x11vnc's
+    modifier tweak releases Shift to produce exactly the keysym it receives, so
+    Shift plus the unshifted keysym typed "history copy.png" for "History copy.png"
+    on Mint (m74). A shifted character is therefore sent as its own keysym; Shift
+    stays pressed for servers that map keysyms to key positions.
+    """
+    aliases = {'meta_l': 'super', 'compose': 'menu', 'spc': ' ', 'pgup': 'pageup', 'pgdn': 'pagedown',
+               **{v: k for k, v in PUNCTUATION.items()}}
+    names = [aliases.get(c, c) for c in codes]
+    if 'shift' in names:
+        unshifted = {v: k for k, v in SHIFTED.items()}
+        names = [(name.upper() if name.isalpha() else unshifted.get(name, name)) if len(name) == 1 else name
+                 for name in names]
+    return names
+
+
 def checked_socket(path):
     if not path.startswith('/') or len(path.encode('utf-8')) > 107:
         raise RecipeBlocked('resolved Unix socket exceeds 107 UTF-8 bytes or is not absolute: ' + path)
@@ -685,8 +704,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if self.physical and not (self.run / 'qmp.sock').exists():
             if 'alt_r' in codes:
                 raise RecipeBlocked('AltGr requires QMP-compatible input; the VNC keysym backend does not support it')
-            aliases={'meta_l':'super','compose':'menu','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
-            self.vnc().key(*(aliases.get(c,c) for c in codes))
+            self.vnc().key(*vnc_keysyms(codes))
         else:
             lab.key(self.run, codes)
 

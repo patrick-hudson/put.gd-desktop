@@ -49,7 +49,7 @@ def safe_patch(value: Any) -> bool:
 EDITOR_SOURCES = {'scroll', 'region', 'window', 'desktop', 'clipboard', 'file'}
 # Delayed capture (#1363): the delays action.invoke accepts and the actions that take one.
 DELAY_SECONDS = {0, 3, 5, 10}
-DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat'}
+DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat', 'edit'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
 # The editor window's view and selection controls, one per drive_editor call.
 EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
@@ -236,7 +236,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def perform_action(action: str, delay_seconds: int | None = None) -> Json:
-        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop and repeat only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `scroll` starts a scrolling region capture; invoking it again while capturing stops and keeps the image. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
+        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop, repeat and edit only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `scroll` starts a scrolling region capture; invoking it again while capturing stops and keeps the image. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
         if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record', 'scroll'}:
             return invalid()
         params: Json = {'action': action}
@@ -485,7 +485,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def select_recording_region(id: str, rect: list[int]) -> Json:
-        """Complete the open region selector of a preparing recording (get_recording shows selecting: true; the tray, shortcut and dashboard open one) with rect [x, y, width, height], exactly as a drag would: X11 root pixels, logical desktop pixels on Wayland. The session then reaches ready; nothing is captured until control_recording start. Cancel it with control_recording cancel."""
+        """Complete the open region selector of a preparing recording (get_recording shows selecting: true; the tray, hotkey and dashboard open one) with rect [x, y, width, height], exactly as a drag would: X11 root pixels, logical desktop pixels on Wayland. The session then reaches ready; nothing is captured until control_recording start. Cancel it with control_recording cancel."""
         if not identifier(id) or not (isinstance(rect, list) and len(rect) == 4 and all(type(value) is int for value in rect)) or rect[2] < 1 or rect[3] < 1:
             return invalid()
         return await adapter.call('recording.select', {'id': id, 'rect': rect})

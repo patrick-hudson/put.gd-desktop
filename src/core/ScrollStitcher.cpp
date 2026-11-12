@@ -254,11 +254,11 @@ int ScrollStitcher::outputHeight() const {
   if (!hasRef_) return 0;
   if (finished_) return int(bodyRows_);
   if (!moved_) return std::min(height_, opts_.maxOutputRows);
-  return int(bodyRows_) + std::max(estBot_, 0);
+  return int(logicalRows()) + std::max(estBot_, 0);
 }
 
 size_t ScrollStitcher::memoryBytes() const {
-  return image_.capacity() + pending_.capacity() + footer_.capacity() + ref_.bytes();
+  return image_.capacity() + pending_.capacity() + footer_.capacity() + held_.capacity() + proved_.pixels.capacity() + pace_.pixels.capacity() + (refFine_.capacity() + curFine_.capacity()) * 8 + (refLight_.capacity() + curLight_.capacity()) * 2 + ref_.bytes();
 }
 
 void ScrollStitcher::emitRaw(const uint8_t* row) {
@@ -299,6 +299,89 @@ void ScrollStitcher::storeFooter(const FrameView& f) {
     std::memcpy(&footer_[size_t(i) * width_ * 4], f.row(height_ - footerRows_ + i), size_t(width_) * 4);
 }
 
+// The compared columns of every row in quarters of a band, each an exact hash
+// of its pixels, and its mean brightness (the channels' sum, in sixteenths):
+// what the own-pace rule and the search by quarter bands compare. Only for
+// the frames the stitcher is given, not for every frame a settle check looks at.
+void ScrollStitcher::fineHashes(const FrameView& f, const FrameSignatures& sig, std::vector<uint64_t>& out, std::vector<uint16_t>& light) const {
+  const int F = sig.bands * kFinePerBand, n = sig.colEnd - sig.colStart;
+  out.resize(size_t(f.height) * F);
+  light.resize(size_t(f.height) * F);
+  std::vector<int> edge(size_t(F) + 1);
+  for (int j = 0; j <= F; ++j) {
+    // Quarters of the signature's own bands, so that a quarter never straddles two.
+    const int k = j / kFinePerBand, q = j % kFinePerBand;
+    const int x0 = sig.colStart + int((long long)n * k / sig.bands), x1 = sig.colStart + int((long long)n * std::min(k + 1, sig.bands) / sig.bands);
+    edge[size_t(j)] = j == F ? sig.colEnd : x0 + int((long long)(x1 - x0) * q / kFinePerBand);
+  }
+  for (int y = 0; y < f.height; ++y) {
+    const uint8_t* r = f.row(y);
+    uint64_t* o = &out[size_t(y) * F];
+    for (int j = 0; j < F; ++j) {
+      uint64_t h = kFnvOffset, h2 = 0x6c62272e07bb0142ull;
+      int x = edge[size_t(j)];
+      const int x0 = x, x1 = edge[size_t(j) + 1];
+      uint32_t sum = 0;
+      for (; x + 1 < x1; x += 2) {
+        const uint32_t v0 = loadPx(r, x), v1 = loadPx(r, x + 1);
+        h = (h ^ v0) * kFnvPrime;
+        h2 = (h2 ^ v1) * kFnvPrime;
+        sum += uint32_t(chanSum(v0) + chanSum(v1));
+      }
+      if (x < x1) {
+        const uint32_t v = loadPx(r, x);
+        h = (h ^ v) * kFnvPrime;
+        sum += uint32_t(chanSum(v));
+      }
+      o[j] = fmix64(h ^ fmix64(h2 + uint64_t(x1)));
+      light[size_t(y) * F + j] = uint16_t(x1 > x0 ? (uint64_t(sum) * 16) / uint64_t(x1 - x0) : 0);
+    }
+  }
+}
+
+// The edge guard (StitchOptions::edgeGuardFraction): how many of the moving
+// band's last rows wait for the next frame.
+int ScrollStitcher::guardRows(int band) const {
+  if (opts_.edgeGuardFraction <= 0 || band <= 0) return 0;
+  const int rows = std::max(opts_.edgeGuardMinRows, int(std::lround(band * opts_.edgeGuardFraction)));
+  return std::clamp(rows, 0, band / 4);
+}
+
+void ScrollStitcher::holdRows(const uint8_t* rows, std::ptrdiff_t stride, int count) {
+  heldRows_ = std::max(count, 0);
+  held_.resize(size_t(heldRows_) * width_ * 4);
+  for (int i = 0; i < heldRows_; ++i) std::memcpy(&held_[size_t(i) * width_ * 4], rows + i * stride, size_t(width_) * 4);
+}
+
+// Writes the first `count` held rows out as they were seen; the others are
+// dropped, for the caller to take from a frame that shows them.
+void ScrollStitcher::emitHeld(int count) {
+  const int rows = std::clamp(count, 0, heldRows_);
+  heldRows_ = 0;
+  if (rows > 0) emitRows(FrameView{held_.data(), width_, rows, std::ptrdiff_t(width_) * 4}, 0, rows);
+}
+
+// The rows that wait, as they are now, and where they begin: what a cut back
+// to `rows` (the rows known before a step) puts in their place again.
+void ScrollStitcher::Shadow::save(const std::vector<uint8_t>& held, int heldRows, long long bodyRows, int width) {
+  start = bodyRows;
+  count = heldRows;
+  pixels.assign(held.begin(), held.begin() + std::ptrdiff_t(size_t(heldRows) * width * 4));
+}
+
+// Cuts the image back to `rows`. The last of those rows waited when their
+// step began and may since have been taken from a later frame, the very
+// frame the cut is about; with the shadow of that step they are again as
+// they were seen before it.
+bool ScrollStitcher::cutBackTo(long long rows, const Shadow& shadow) {
+  if (shadow.count > 0 && shadow.start + shadow.count == rows && shadow.start <= bodyRows_) {
+    if (!takeBackTo(shadow.start)) return false;
+    holdRows(shadow.pixels.data(), std::ptrdiff_t(width_) * 4, shadow.count);
+    return true;
+  }
+  return takeBackTo(rows);
+}
+
 void ScrollStitcher::restartBeforeMovement() {
   if (!moved_ && !finished_) *this = ScrollStitcher(opts_, std::move(sink_), std::move(takeBack_));
 }
@@ -311,6 +394,7 @@ void ScrollStitcher::finish() {
   if (!moved_) {
     flushPending(height_);
   } else {
+    emitHeld(heldRows_);
     const int rows = int(std::min<long long>(std::max(estBot_, 0), std::max(0LL, opts_.maxOutputRows - bodyRows_)));
     const int skip = footerRows_ - rows;  // footer_ may hold more rows than the final estimate
     for (int i = 0; i < rows; ++i) emitRaw(&footer_[size_t(skip + i) * width_ * 4]);
@@ -343,6 +427,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     bodyRows_ = height_;
     refOrigin_ = 0;
     ref_ = cur;
+    fineHashes(f, cur, refFine_, refLight_);
     hasRef_ = true;
     r.status = StepStatus::First;
     return r;
@@ -360,6 +445,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     return r;
   }
   const int H = height_;
+  fineHashes(f, cur, curFine_, curLight_);
   r.changedRows = countChangedRows(ref_, cur, 0, H, opts_);
   const bool margin = marginsChanged(ref_, cur);
   // Loose rule: changes confined to <= (bands - minBandsEqual) bands are noise.
@@ -375,7 +461,19 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     return strictRuns ? ref_.rowHash[y] == cur.rowHash[y] : sameRowLoose(ref_, y, cur, y, opts_);
   };
   auto refresh = [&] {
+    // The page is where it was, the same picture but for a few rows: rows that
+    // wait for a better look (the edge guard) get this frame's, where it shows
+    // them as the same rows. What was over them when their frame was taken (a
+    // status panel that has gone since) is then not in the image. Not after a
+    // change in place found by the search: its rows may be another page's.
+    for (int i = 0; moved_ && identical && i < heldRows_; ++i) {
+      const long long y = bodyRows_ + i - refOrigin_;
+      if (y < std::max(estTop_, 0) || y >= H - std::max(estBot_, 0)) continue;
+      if (sameRowLoose(ref_, int(y), cur, int(y), opts_)) std::memcpy(&held_[size_t(i) * width_ * 4], f.row(int(y)), size_t(width_) * 4);
+    }
     ref_ = cur;
+    refFine_.swap(curFine_);
+    refLight_.swap(curLight_);
     if (moved_) storeFooter(f);
   };
   auto noMovement = [&](double score) {
@@ -392,6 +490,7 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
 
   int top, bot;
   int stayedBottom = 0;  // rows at the bottom that are where they were, as measured in this step
+  int stayedTop = 0;     // and at the top
   if (identical) {
     top = std::max(estTop_, 0);
     bot = std::max(estBot_, 0);
@@ -421,10 +520,11 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     top = estTop_ >= 0 ? std::min(estTop_, t) : t;
     bot = estBot_ >= 0 ? std::min(estBot_, b) : b;
     stayedBottom = b;
+    stayedTop = t;
   }
   if (H - top - bot < opts_.minOverlapRows + 1) return noMovement(0.0);  // changed in place
 
-  Search s = search(cur, top, H - bot, hint, unc);
+  Search s = locate(cur, top, H - bot, hint, unc);
   if (s.status == StepStatus::NoMatch && !identical) {
     // Runs of identical rows at the frame edges may just be blank content that
     // did not change; header/footer bands end with informative rows, so retry
@@ -434,13 +534,59 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     while (t2 > 0 && cur.rowFlat[t2 - 1]) --t2;
     while (b2 > 0 && cur.rowFlat[H - b2]) --b2;
     if ((t2 != top || b2 != bot) && H - t2 - b2 >= opts_.minOverlapRows + 1) {
-      Search s2 = search(cur, t2, H - b2, hint, unc);
+      Search s2 = locate(cur, t2, H - b2, hint, unc);
       s2.evaluated += s.evaluated;
       if (s2.status == StepStatus::Appended ||
           (s.status == StepStatus::NoMatch && s2.status == StepStatus::Ambiguous))
         s = s2;
       else
         s.evaluated = s2.evaluated;
+    }
+  }
+  // A bar that comes up at the top after the page has moved (a web page's
+  // sticky header, shown once its title has scrolled away). It hides rows
+  // that are in the image already, appended rows come from the bottom, so no
+  // row is lost under it; but the header estimate only shrinks, the bar's
+  // rows then contradict every offset in every later step, and a step that
+  // keeps less than ten times the bar's height of overlap is refused: every
+  // capture of such a page ended as "lost track" a few steps in (live pages,
+  // acceptance of 2026-11-12). The run of rows that newly stays put at the top
+  // is taken for a header when it shows something (window background over a
+  // viewport that got shorter does not) and the rows that should have
+  // scrolled into it contradict it, as for a bar at the bottom (barVerdict).
+  bool topRefused = false;
+  if (moved_ && stayedTop > top) {
+    Search below = s;
+    if ((s.status == StepStatus::NoMatch || s.status == StepStatus::Ambiguous) && H - stayedTop - bot >= opts_.minOverlapRows + 1) {
+      below = locate(cur, stayedTop, H - bot, hint, unc);
+      below.evaluated += s.evaluated;
+    }
+    if (below.status == StepStatus::Appended && below.d > 0 && headerVerdict(cur, top, stayedTop, bot, below)) {
+      top = stayedTop;
+      s = below;
+    } else {
+      topRefused = true;
+    }
+  }
+  // The frame in which such a bar first shows has it only in itself: its top
+  // rows are neither where they were nor where the page moved them. The
+  // offset is then looked for in the frame's interior, by the same rules; the
+  // rows this step appends are the frame's last, joined to the image by the
+  // rows right above them, and what came up at the top is judged by the next
+  // step (a header, or it is gone again). Not when a run at the top stayed
+  // and was refused as a header above: that is a layout change.
+  int interior = top;  // the first row of this frame that may be written out
+  if (s.status == StepStatus::NoMatch && !identical && !topRefused) {
+    const int skip = int((H - top - bot) * opts_.edgeTopFraction);
+    if (skip > 0 && H - top - skip - bot >= opts_.minOverlapRows + 1) {
+      Search inner = locate(cur, top + skip, H - bot, hint, unc);
+      inner.evaluated += s.evaluated;
+      if (inner.status == StepStatus::Appended && inner.d > 0) {
+        s = inner;
+        interior = top + skip;
+      } else {
+        s.evaluated = inner.evaluated;
+      }
     }
   }
   const auto tell = [&r](const Search& found) {
@@ -459,8 +605,8 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   if (moved_ && stayedBottom > bot) {
     Search above = s;
     if ((s.status == StepStatus::NoMatch || s.status == StepStatus::Ambiguous) && H - top - stayedBottom >= opts_.minOverlapRows + 1)
-      above = search(cur, top, H - stayedBottom, hint, unc);
-    const Bar bar = above.status == StepStatus::Appended && above.d > 0 ? barVerdict(cur, top, bot, stayedBottom, above.d) : Bar::Open;
+      above = locate(cur, top, H - stayedBottom, hint, unc);
+    const Bar bar = above.status == StepStatus::Appended && above.d > 0 ? barVerdict(cur, top, bot, stayedBottom, above) : Bar::Open;
     if (bar == Bar::Is) {
       // A bar that was in every frame since the page first moved (only the
       // first frame, taken before any wheel step, is without it) is how the
@@ -469,8 +615,11 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
       // footer, and this frame, which shows those rows above the bar, goes
       // on from the first frame's last row. A bar that comes later, after
       // rows of frames that moved without it are in the image, is a change.
+      // (And, where the caller asked for it, a bar that came up in the last
+      // frame alone and shows something: see lateBar.)
       const long long start = provedRows_ - (refOrigin_ + above.d);
-      if (provedRows_ != firstRows_ || start < top || start > H - stayedBottom || !takeBackTo(provedRows_)) {
+      const bool sinceFirst = provedRows_ == firstRows_ && start >= top && start <= H - stayedBottom;
+      if (sinceFirst ? !cutBackTo(provedRows_, proved_) : !lateBar(cur, top, bot, stayedBottom, above.d)) {
         r.offset = above.d;
         return layoutChanged(r, true);
       }
@@ -490,19 +639,36 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
   // The layout rule, columns: the offset explains the rows, but a band of
   // columns that every step so far left steady is now different in nearly
   // every row, neither moved with the page nor where it was.
-  uint32_t steady = 0;
-  if (columnsChanged(cur, top, H - bot, d, steady)) return layoutChanged(r, false);
+  // A band with a quarter that moved as one piece by a distance of its own is
+  // a side bar that sticks or comes unstuck in this step, not a repaint: the
+  // own-pace rule judges it (ownPace), not this one.
+  uint32_t steady = 0, own = 0;
+  std::vector<uint8_t> astray;
+  if (d > 0) paceOf(top, H - bot, d, astray);
+  for (size_t j = 0; j < astray.size(); ++j)
+    if (astray[j]) own |= 1u << (j / kFinePerBand);
+  if (columnsChanged(cur, top, H - bot, d, steady, own)) return layoutChanged(r, false);
   // In-place change only. Frames alike in the compared columns say "moved
   // back" only when the pixels proved it (the margin rule), not on a hint.
   if (d == 0 || (identical && d < 0 && s.lowConfidence)) return noMovement(s.score);
   steadyBands_ = haveSteady_ ? steadyBands_ & steady : steady;
   haveSteady_ = true;
 
+  // The first frame minus its (now known) footer; its last rows wait for the
+  // next frame like any other frame's (the edge guard).
+  const auto firstMovement = [&] {
+    moved_ = true;
+    const int guard = std::min(guardRows(H - top - bot), H - bot);
+    std::vector<uint8_t> last(pending_.begin() + std::ptrdiff_t(size_t(H - bot - guard) * width_ * 4), pending_.begin() + std::ptrdiff_t(size_t(H - bot) * width_ * 4));
+    flushPending(H - bot - guard);
+    if (!limited_) holdRows(last.data(), std::ptrdiff_t(width_) * 4, guard);
+    firstRows_ = logicalRows();
+  };
   if (d > 0) {
     const long long curOrigin = refOrigin_ + d;
-    const long long body = moved_ ? bodyRows_ : (long long)(H - bot);
+    const long long body = moved_ ? logicalRows() : (long long)(H - bot);
     const long long start = body - curOrigin;
-    if (start < top) {  // would leave a gap (only possible after a footer estimate shrank)
+    if (start < interior) {  // would leave a gap (only possible after a footer estimate shrank), or take rows from under what came up at the top
       r.status = StepStatus::NoMatch;
       return r;
     }
@@ -514,17 +680,54 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
       r.status = StepStatus::LimitReached;
       return r;
     }
-    if (!moved_) {
-      moved_ = true;
-      flushPending(H - bot);  // first frame minus its (now known) footer
-      firstRows_ = bodyRows_;
+    if (!moved_) firstMovement();
+    const long long before = logicalRows();
+    // The layout rule, a pace of its own (see ownPace): nothing of this frame is taken.
+    if (const long long cut = ownPace(astray, before); cut >= 0) {
+      r.ownPace = true;
+      changed_ = true;
+      cutBackTo(cut, pace_);
+      r.status = StepStatus::LayoutChanged;
+      r.appendedRows = 0;
+      return r;
     }
-    const long long before = bodyRows_;
-    if (settled) provedRows_ = before;
-    emitRows(f, int(start), H - bot);
-    r.appendedRows = int(bodyRows_ - before);
+    if (paceBegan_) pace_.save(held_, heldRows_, bodyRows_, width_);
+    if (settled) {
+      provedRows_ = before;
+      proved_.save(held_, heldRows_, bodyRows_, width_);
+    }
+    // The edge guard. Rows that waited and that this frame shows in its
+    // interior are taken from it; those above are written as they were seen.
+    // Then the frame's new rows, but for its own last ones, which wait.
+    const int end = H - bot;
+    const int trusted = std::max({interior, top + int((H - top - bot) * opts_.edgeTopFraction), trustedFrom_});
+    const long long firstHeld = bodyRows_ - curOrigin;  // where this frame has the first row that waits
+    const int above = int(std::clamp<long long>(trusted - firstHeld, 0, heldRows_));
+    // Rows that wait and lie below this frame (it moved less than they reach) go on waiting as they are.
+    const int shown = int(std::clamp<long long>(end - firstHeld, above, heldRows_));
+    const std::vector<uint8_t> below(held_.begin() + std::ptrdiff_t(size_t(shown) * width_ * 4), held_.begin() + std::ptrdiff_t(size_t(heldRows_) * width_ * 4));
+    const int belowRows = heldRows_ - shown;
+    emitHeld(above);
+    if (!limited_) {
+      const int next = int(std::min<long long>(bodyRows_ - curOrigin, end));
+      const int from = std::max(next, end - guardRows(H - top - bot));
+      emitRows(f, next, from);
+      if (!limited_) {
+        holdRows(f.row(from), f.stride, end - from);
+        held_.insert(held_.end(), below.begin(), below.end());
+        heldRows_ += belowRows;
+        // The cap counts the rows that wait as well.
+        const long long reserve = std::min(std::max(estBot_, 0), opts_.maxOutputRows);
+        if (logicalRows() > opts_.maxOutputRows - reserve) emitHeld(heldRows_);
+      }
+    }
+    r.appendedRows = int(logicalRows() - before);
+    lastStep_ = d;
+    lastBefore_ = before;
     refOrigin_ = curOrigin;
     ref_ = cur;
+    refFine_.swap(curFine_);
+    refLight_.swap(curLight_);
     storeFooter(f);
     r.status = limited_ ? StepStatus::LimitReached : StepStatus::Appended;
   } else {
@@ -537,12 +740,15 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
       return r;
     }
     if (!moved_) {
-      moved_ = true;
-      flushPending(H - bot);
-      firstRows_ = provedRows_ = bodyRows_;
+      firstMovement();
+      provedRows_ = firstRows_;
+      proved_.save(held_, heldRows_, bodyRows_, width_);
     }
     refOrigin_ += d;  // later frames append only rows below what is already emitted
+    lastStep_ = 0;
     ref_ = cur;
+    refFine_.swap(curFine_);
+    refLight_.swap(curLight_);
     storeFooter(f);
     r.status = StepStatus::Reversed;
   }
@@ -556,15 +762,20 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
 // the page's (see barVerdict).
 StepResult ScrollStitcher::layoutChanged(StepResult r, bool takeBack) {
   changed_ = true;
-  if (takeBack) takeBackTo(provedRows_);
+  if (takeBack) cutBackTo(provedRows_, proved_);
   r.status = StepStatus::LayoutChanged;
   r.appendedRows = 0;
   return r;
 }
 
 bool ScrollStitcher::takeBackTo(long long rows) {
-  if (rows >= bodyRows_) return true;
+  if (rows >= logicalRows()) return true;
+  if (rows >= bodyRows_) {  // only rows that still wait (the edge guard)
+    heldRows_ = int(rows - bodyRows_);
+    return true;
+  }
   if (sink_ && !takeBack_) return false;
+  heldRows_ = 0;
   if (sink_) takeBack_(bodyRows_ - rows);
   else image_.resize(size_t(rows) * size_t(width_) * 4);
   bodyRows_ = rows;
@@ -588,16 +799,154 @@ bool ScrollStitcher::takeBackTo(long long rows) {
 // with the bar in it and its rows are already appended), so rows count as
 // proved only up to the last step whose verdict was IsNot or that showed no
 // such run (provedRows_), and the image is cut back to there.
-ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, int d) const {
+ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int top, int bot, int stayed, const Search& how) const {
+  const int d = how.d;
   int against = 0, with = 0, open = 0;
   for (int y = std::max(top, height_ - stayed - d); y < height_ - bot - d; ++y) {
-    const int k = classifyRowPair(ref_, y + d, cur, y, opts_);
+    const int k = rowPair(how, cur, y + d, y);
     if (k == 0 || k == -2) ++against;
     else if (k > 0) ++with;
     else if (!(ref_.rowFlat[y + d] && cur.rowFlat[y] && ref_.flatColor[y + d] == cur.flatColor[y])) ++open;
   }
   if (against >= opts_.layoutStaticMinRows && against > opts_.layoutStaticRatio * with) return Bar::Is;
   return against == 0 && open == 0 ? Bar::IsNot : Bar::Open;
+}
+
+// A pair of rows as the search that found the offset compares them: by the
+// eight bands (classifyRowPair), or over the quarters columnSearch kept.
+int ScrollStitcher::rowPair(const Search& how, const FrameSignatures& cur, int yRef, int yCur) const {
+  if (how.kept.empty()) return classifyRowPair(ref_, yRef, cur, yCur, opts_);
+  const int F = ref_.bands * kFinePerBand;
+  int differ = 0;
+  for (int j : how.kept) {
+    const size_t a = size_t(yCur) * F + j, b = size_t(yRef) * F + j;
+    differ += !(curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance);
+  }
+  if (differ > int(how.kept.size()) / 4) return 0;
+  return ref_.rowFlat[yRef] && cur.rowFlat[yCur] ? -1 : 1;
+}
+
+// A bar that came up at the bottom in the last frame, after rows of frames
+// without it are in the image: a web page's own banner, slid in over the last
+// rows of the viewport once the reader has scrolled a while (an
+// encyclopedia's appeal for donations, a cookie notice; live pages,
+// acceptance of 2026-11-12, where the capture of such an article ended at
+// 1,611 of 24,117 rows). The layout rule ends the capture there, because the
+// step that first showed the bar appended the bar's rows as page. Where the
+// caller asks for it (StitchOptions::lateBarIsFooter) the bar becomes the
+// footer instead and the capture goes on, when every row can be accounted for:
+//  - the bar shows something (a viewport that got shorter leaves window
+//    background, one flat colour, and that stays a change of layout);
+//  - it came up in the last frame and no earlier: the step before was the
+//    last that showed no such run (provedRows_ is what was out before it);
+//  - that step moved the page at least as far as the bar is high, so the rows
+//    it took from under the bar are the image's last rows and no row seen
+//    before it was taken from there;
+//  - and this frame shows the first of those rows above the bar.
+// Those last rows are taken back; this frame, whose rows above the bar the
+// search proved, supplies them. Returns false when any of that fails.
+bool ScrollStitcher::lateBar(const FrameSignatures& cur, int top, int bot, int stayed, int d) {
+  if (!opts_.lateBarIsFooter) return false;
+  const int rows = stayed - bot;
+  if (rows <= 0 || lastStep_ < rows || provedRows_ != lastBefore_) return false;
+  int shows = 0;
+  for (int y = height_ - stayed; y < height_ - bot; ++y) shows += !cur.rowFlat[y];
+  if (shows < opts_.layoutStaticMinRows) return false;
+  const long long keep = logicalRows() - rows;
+  const long long start = keep - (refOrigin_ + d);
+  if (keep < provedRows_ || start < top || start > height_ - stayed) return false;
+  return takeBackTo(keep);
+}
+
+// The same question at the top, for a run of rows [top, run) that newly stays
+// where it is: a header that came up over the page, when it shows something
+// (at least layoutStaticMinRows rows that are not one flat colour) and the
+// rows that should have scrolled into it contradict it.
+bool ScrollStitcher::headerVerdict(const FrameSignatures& cur, int top, int run, int bot, const Search& how) const {
+  const int d = how.d;
+  int against = 0, with = 0, shows = 0;
+  for (int y = top; y < run && y + d < height_ - bot; ++y) {
+    const int k = rowPair(how, cur, y + d, y);
+    if (k == 0 || k == -2) ++against;
+    else if (k > 0) ++with;
+    shows += !cur.rowFlat[y];
+  }
+  return shows >= opts_.layoutStaticMinRows && against >= opts_.layoutStaticMinRows && against > opts_.layoutStaticRatio * with;
+}
+
+// The layout rule, a pace of its own. A column that scrolls with the page at
+// another rate (a code editor's minimap at a third of it, a parallax strip)
+// passes the tolerant rule like a side bar that stays put, since it covers
+// two bands at most; but its rows in the image are then neither the page's
+// nor a fixed bar's: every step appends the strip as it happened to stand,
+// and the image, reported as complete, is a mosaic there (acceptance of
+// 2026-11-12: 24,000 rows, the 100 px strip wrong from row 600 on, on five
+// desktops). No tall image can show such a strip: by the time the page has
+// moved a viewport, the strip's row that belongs beside a page row is no
+// longer on the screen. So the capture ends, and says so.
+// It is proved per quarter of a band, and per row: at one distance e that is
+// neither the page's nor none, at least layoutBrokenFraction of the overlap's
+// rows are equal bit for bit, minDistinctRows different ones among them,
+// while fewer than ownPaceMaxWith are at the page's distance and fewer where
+// they were. One such step is what a side bar does when it comes unstuck or
+// sticks (it moves part of the way), so it takes two in a row; the image is
+// then cut back to the rows from before the first of them. Something that
+// changes without moving (a video, an animation) has no such distance and is
+// left to the tolerant rule as before. The side margins are not looked at.
+// paceOf: per quarter band, whether this step shows it at a distance of its own.
+void ScrollStitcher::paceOf(int top, int bottom, int d, std::vector<uint8_t>& astray) const {
+  const int F = ref_.bands * kFinePerBand, M = bottom - top;
+  astray.assign(size_t(F), 0);
+  if (refFine_.size() != size_t(height_) * F || curFine_.size() != refFine_.size()) return;
+  const int sliver = std::max({opts_.minOverlapRows, opts_.sliverMinRows, int(M * opts_.sliverFraction)});
+  std::vector<uint64_t> rows;
+  for (int j = 0; j < F; ++j) {
+    // Rows of this quarter band equal at distance e; stops counting once more than `budget` differ.
+    const auto equalAt = [&](int e, int budget, int& n) {
+      const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
+      n = std::max(0, y1 - y0);
+      int equal = 0, differ = 0;
+      for (int y = y0; y < y1 && differ <= budget; ++y) {
+        if (curFine_[size_t(y) * F + j] == refFine_[size_t(y + e) * F + j]) ++equal;
+        else ++differ;
+      }
+      return differ > budget ? -1 : equal;
+    };
+    int nPage = 0, nStill = 0;
+    const int withPage = equalAt(d, INT_MAX, nPage), still = equalAt(0, INT_MAX, nStill);
+    if (nPage < sliver || withPage >= opts_.ownPaceMaxWith * nPage || still >= opts_.ownPaceMaxWith * nStill) continue;
+    for (int e = -(M - sliver); e <= M - sliver && !astray[size_t(j)]; ++e) {
+      if (std::abs(e - d) <= 1 || std::abs(e) <= 1) continue;
+      int n = 0;
+      const int allowed = int(std::floor((1.0 - opts_.layoutBrokenFraction) * (M - std::abs(e)) + 1e-9));
+      if (equalAt(e, allowed, n) < 0) continue;
+      rows.clear();
+      const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
+      for (int y = y0; y < y1; ++y)
+        if (curFine_[size_t(y) * F + j] == refFine_[size_t(y + e) * F + j]) rows.push_back(curFine_[size_t(y) * F + j]);
+      std::sort(rows.begin(), rows.end());
+      astray[size_t(j)] = int(std::unique(rows.begin(), rows.end()) - rows.begin()) >= opts_.minDistinctRows;
+    }
+  }
+}
+
+// ownPace: the rule's memory. Returns the number of rows to keep when a
+// quarter band was at a distance of its own in this step and the one before, or -1.
+long long ScrollStitcher::ownPace(const std::vector<uint8_t>& astray, long long before) {
+  if (paceSince_.size() != astray.size()) paceSince_.assign(astray.size(), -1);
+  long long cut = -1;
+  for (size_t j = 0; j < astray.size(); ++j) {
+    if (!astray[j]) paceSince_[j] = -1;
+    else if (paceSince_[j] < 0) paceSince_[j] = before;
+    else cut = cut < 0 ? paceSince_[j] : std::min(cut, paceSince_[j]);
+  }
+  // The earliest run still going began with this step: the caller keeps the
+  // rows that wait as they are now (see cutBackTo).
+  long long earliest = -1;
+  for (const long long since : paceSince_)
+    if (since >= 0 && (earliest < 0 || since < earliest)) earliest = since;
+  paceBegan_ = earliest == before;
+  return cut;
 }
 
 // The layout rule, columns. A row passes the tolerant rule with up to
@@ -619,7 +968,7 @@ ScrollStitcher::Bar ScrollStitcher::barVerdict(const FrameSignatures& cur, int t
 // anything that touches a few rows. The side margins are not looked at: a
 // scrollbar fades in and out there.
 // `steady`: the bands this step left steady. d == 0 asks about a change in place.
-bool ScrollStitcher::columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady) const {
+bool ScrollStitcher::columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady, uint32_t own) const {
   const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d), n = y1 - y0;
   steady = 0;
   if (n < opts_.minOverlapRows) return false;
@@ -636,7 +985,341 @@ bool ScrollStitcher::columnsChanged(const FrameSignatures& cur, int top, int bot
     if (neither[k] <= opts_.layoutSteadyFraction * n) steady |= 1u << k;
     if (neither[k] >= opts_.layoutBrokenFraction * n) broken |= 1u << k;
   }
-  return haveSteady_ && (broken & steadyBands_) != 0;
+  return haveSteady_ && (broken & steadyBands_ & ~own) != 0;
+}
+
+// The offset of this frame: the search over the eight bands, and where that
+// finds none or cannot decide, the search by quarter bands (columnSearch). And where it finds
+// "changed in place" (no offset, which needs no proof): between two side bars
+// the page is what changes in a few bands of every row, and a page of short
+// lines that had moved 414 px was taken for one that stood still, twice, and
+// the capture ended as "end of content" a third short of the page's end
+// (a reference page, real desktop, 2026-11-12). The quarter bands say whether
+// the page moved after all.
+ScrollStitcher::Search ScrollStitcher::locate(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const {
+  Search found = search(cur, top, bottom, hint, unc);
+  const bool inPlace = found.status == StepStatus::Appended && found.d == 0;
+  // Ambiguous as well: beside one side bar the rows of the true offset are
+  // not equal bit for bit as whole rows, a sliver at the far end of the range
+  // ties with it, and neither the exact rule nor the hint decides (the last
+  // step of an article, 51 px to the page's end, in Chromium; real desktop,
+  // 2026-11-12). The quarter bands prove the offset or leave it ambiguous.
+  // And an offset the bands found is checked against the quarters: where
+  // some of them show at that offset mostly not what they showed before, two
+  // things moved in the frame, and the bands follow the wider one (side bars
+  // on their way to where they stick, 12 px, beside a narrow page that moved
+  // 300). The quarter bands say which is the page.
+  const bool offset = found.status == StepStatus::Appended && found.d != 0;
+  if (offset && !contradicted(top, bottom, found.d)) return found;
+  if (found.status != StepStatus::NoMatch && found.status != StepStatus::Ambiguous && !inPlace && !offset) return found;
+  Search byColumns = columnSearch(cur, top, bottom);
+  if (byColumns.status == StepStatus::Appended) {
+    if (offset && std::abs(byColumns.d - found.d) <= 1) return found;  // the quarters say the same
+    byColumns.evaluated += found.evaluated;
+    return byColumns;
+  }
+  // An offset the bands proved stands unless the quarters prove another.
+  if (offset) return found;
+  // "In place" stands only while nothing in the frame moved as a piece. Where
+  // columns did and no offset is proved for the page, the step is not known
+  // to be none: a reference frame taken here would lose the rows in between
+  // (792 rows of a reference page went missing that way, in an image that
+  // ended as "end of content"; GNOME, 2026-11-12).
+  if (inPlace && byColumns.status == StepStatus::Ambiguous) found.status = StepStatus::Ambiguous;
+  return found;
+}
+
+// Whether at distance d at least two quarter bands show, in the rows in which
+// they show anything, mostly not what they showed before. Such a quarter must
+// show something in an eighth of the rows at least: a hover band, a caret or
+// a scrollbar's thumb over blank paper is a few rows and is what the tolerant
+// rule is for.
+bool ScrollStitcher::contradicted(int top, int bottom, int d) const {
+  const int F = ref_.bands * kFinePerBand;
+  if (refFine_.size() != size_t(height_) * F || curFine_.size() != refFine_.size()) return false;
+  const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+  const int shownMin = std::max({8, opts_.minOverlapRows / 3, (y1 - y0) / 8});
+  int against = 0;
+  for (int j = 0; j < F && against < 2; ++j) {
+    int count = 0, equal = 0;
+    for (int y = y0; y < y1; ++y) {
+      const size_t a = size_t(y) * F + j, b = size_t(y + d) * F + j;
+      // Shows something: not the row above it over again in both frames, or not the same as it was.
+      const bool same = curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance;
+      const bool flat = y > y0 && curFine_[a] == curFine_[a - F] && refFine_[b] == refFine_[b - F];
+      if (same && flat) continue;
+      ++count;
+      equal += same;
+    }
+    against += count >= shownMin && equal < opts_.ownPaceMaxWith * count;
+  }
+  return against >= 2;
+}
+
+// The search by quarter bands, for a page between side bars. The tolerant
+// rule forgives two bands of eight that do not move with the page, which is
+// one side bar. A page with one at each side (an encyclopedia article between
+// its contents and its tools, a reference page between two navigation
+// columns) has four to six such bands; every row with something in a side bar
+// then contradicts every offset, and the capture ended at its first step
+// (live pages, acceptance of 2026-11-12). Which columns are not the page is
+// proved here instead of allowed for: a quarter band is the page's when at
+// one distance d at least layoutBrokenFraction of the overlap's rows are
+// equal bit for bit, minDistinctRows different ones among them; it is
+// something else when it is so at another distance and not at d: where it
+// was (a bar that stays), or part of the way (a bar that sticks or comes
+// unstuck in this step). The page is what moved nearest the pointer: outward
+// from the quarter the wheel is turned over, the first quarters that moved
+// say by how much, as one piece or, where their lines are too short to prove
+// a distance, by the one distance at which most of what they show is equal
+// bit for bit (columnMovedFraction, no other above exactTieMaxRival). What
+// moves beside the page, however wide, is farther from the pointer. The rows
+// are then compared over every quarter that is not proved to be something
+// else, by the tolerant rule's own measure (a quarter of them may differ),
+// and the offset has to pass what any offset has to: the score, the number of
+// evidence rows, different rows among them, more than a sliver of overlap,
+// and no rival. Rows blank in every quarter that counts are no evidence.
+// Where something moved near the pointer and no offset passes, the answer is
+// Ambiguous, never "nothing moved". The pixels alone decide; no hint is heard.
+// A quarter of a row is the same here when it is equal bit for bit, or as
+// bright within columnLightTolerance. A browser does not always draw a line
+// of text the same way twice: in a block that scrolls sideways (a code
+// listing) the same glyphs come out with other antialiasing after the page
+// has moved, 150 of 783 rows in one step of a documentation page, and every
+// such capture ended there (Firefox 158, acceptance of 2026-11-12). The same
+// line drawn again is as bright in every quarter to within two of 765; another
+// line is not: one row off, a quarter of the rows had more than a quarter of
+// their quarters further apart than that. Rows equal bit for bit must still
+// be there, different ones, for a column to count and for an offset to pass.
+ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, int top, int bottom) const {
+  Search out;
+  const int F = ref_.bands * kFinePerBand, M = bottom - top;
+  if (refFine_.size() != size_t(height_) * F || curFine_.size() != refFine_.size()) return out;
+  const int sliver = std::max({opts_.minOverlapRows, opts_.sliverMinRows, int(M * opts_.sliverFraction)});
+  const int Dmax = M - sliver;
+  if (Dmax < 1) return out;
+  const auto same = [&](int y, int e, int j) {
+    const size_t a = size_t(y) * F + j, b = size_t(y + e) * F + j;
+    return curFine_[a] == refFine_[b] || std::abs(int(curLight_[a]) - int(refLight_[b])) <= opts_.columnLightTolerance;
+  };
+  // Each quarter's ground: the row it shows most often (blank paper, a
+  // listing's background). A quarter of a row shows something when it is not that.
+  std::vector<uint64_t> curGround(static_cast<size_t>(F)), refGround(static_cast<size_t>(F));
+  std::vector<int> distinct(static_cast<size_t>(F));
+  std::vector<uint64_t> rows;
+  const auto ground = [&](const std::vector<uint64_t>& fine, int j, int* different) {
+    rows.clear();
+    for (int y = top; y < bottom; ++y) rows.push_back(fine[size_t(y) * F + j]);
+    std::sort(rows.begin(), rows.end());
+    uint64_t best = rows.front();
+    int bestRun = 0, kinds = 0;
+    for (size_t i = 0; i < rows.size();) {
+      size_t k = i;
+      while (k < rows.size() && rows[k] == rows[i]) ++k;
+      ++kinds;
+      if (int(k - i) > bestRun) {
+        bestRun = int(k - i);
+        best = rows[i];
+      }
+      i = k;
+    }
+    if (different) *different = kinds;
+    return best;
+  };
+  for (int j = 0; j < F; ++j) {
+    curGround[size_t(j)] = ground(curFine_, j, &distinct[size_t(j)]);
+    refGround[size_t(j)] = ground(refFine_, j, nullptr);
+  }
+  // Of the rows in which quarter j shows something in either frame at distance e: how many, and how many are the same.
+  const auto shown = [&](int j, int e, int stride, int& count, bool exact = false) {
+    const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
+    int equal = 0;
+    count = 0;
+    for (int y = y0; y < y1; y += stride) {
+      if (curFine_[size_t(y) * F + j] == curGround[size_t(j)] && refFine_[size_t(y + e) * F + j] == refGround[size_t(j)]) continue;
+      ++count;
+      equal += exact ? curFine_[size_t(y) * F + j] == refFine_[size_t(y + e) * F + j] : same(y, e, j);
+    }
+    return equal;
+  };
+  // The distances at which each quarter band moved as one piece; whether it
+  // stayed where it was; whether what it shows changed.
+  std::vector<std::vector<int>> moved(static_cast<size_t>(F));
+  std::vector<uint8_t> still(static_cast<size_t>(F), 0), changed(static_cast<size_t>(F), 0);
+  const int shownMin = std::max(8, opts_.minOverlapRows / 3);
+  for (int j = 0; j < F; ++j) {
+    int count = 0;
+    const int equal = shown(j, 0, 1, count);
+    still[size_t(j)] = count >= shownMin && equal >= opts_.layoutBrokenFraction * count;
+    changed[size_t(j)] = count >= shownMin && equal < opts_.ownPaceMaxWith * count;
+    if (distinct[size_t(j)] < opts_.minDistinctRows) continue;  // nothing to tell it by
+    for (int e = -Dmax; e <= Dmax; ++e) {
+      const int y0 = top + std::max(0, -e), y1 = bottom - std::max(0, e);
+      const int allowed = int(std::floor((1.0 - opts_.layoutBrokenFraction) * (y1 - y0) + 1e-9));
+      int differ = 0;
+      for (int y = y0; y < y1 && differ <= allowed; ++y) differ += !same(y, e, j);
+      if (differ > allowed) continue;
+      rows.clear();
+      for (int y = y0; y < y1; ++y)
+        if (curFine_[size_t(y) * F + j] == refFine_[size_t(y + e) * F + j]) rows.push_back(curFine_[size_t(y) * F + j]);
+      std::sort(rows.begin(), rows.end());
+      if (int(std::unique(rows.begin(), rows.end()) - rows.begin()) >= opts_.minDistinctRows) moved[size_t(j)].push_back(e);
+    }
+    // A column that repeats moves "as one piece" at every multiple of its pitch: it tells nothing.
+    if (moved[size_t(j)].size() > 8) moved[size_t(j)].clear();
+  }
+  const auto at = [&](int j, int d) { return std::find(moved[size_t(j)].begin(), moved[size_t(j)].end(), d) != moved[size_t(j)].end(); };
+  // The quarter under the pointer (the middle of the frame when no one said).
+  const int wheelX = std::clamp(wheelColumn_ >= 0 ? wheelColumn_ : width_ / 2, ref_.colStart, std::max(ref_.colStart, ref_.colEnd - 1));
+  int under = 0;
+  {
+    const int n = ref_.colEnd - ref_.colStart, B = ref_.bands;
+    const int k = std::min(B - 1, int((long long)(wheelX - ref_.colStart) * B / std::max(1, n)));
+    const int x0 = ref_.colStart + int((long long)n * k / B), x1 = ref_.colStart + int((long long)n * (k + 1) / B);
+    under = k * kFinePerBand + std::min(kFinePerBand - 1, int((long long)(wheelX - x0) * kFinePerBand / std::max(1, x1 - x0)));
+  }
+  struct Passing {
+    int d, evidence;
+    double score, exact;  // exact: the share of the rows that show something that are equal bit for bit
+    int exactRows;
+    std::vector<int> kept;
+  };
+  std::vector<Passing> passing;
+  // A quarter that changed and has no rows enough of its own to prove a
+  // distance by (short lines) may still name one: the distance at which most
+  // of what it shows is equal bit for bit, when no other comes near it. One
+  // that is itself nowhere changed in place (a video). 0: none; found once.
+  std::vector<int> named(static_cast<size_t>(F), INT_MIN);
+  const auto nameOf = [&](int j) {
+    int& name = named[size_t(j)];
+    if (name != INT_MIN) return name;
+    name = 0;
+    if (!changed[size_t(j)] || !moved[size_t(j)].empty()) return name;
+    int bestD = 0;
+    double best = 0, second = 0;
+    for (int e = -Dmax; e <= Dmax; ++e) {
+      if (e == 0) continue;
+      int count = 0;
+      int equal = shown(j, e, 4, count, true);  // every fourth row first
+      if (count < shownMin / 2 || equal < opts_.ownPaceMaxWith * count) continue;
+      equal = shown(j, e, 1, count, true);
+      if (count < shownMin) continue;
+      const double share = double(equal) / count;
+      if (share > best) {
+        if (std::abs(e - bestD) > 1) second = best;
+        best = share;
+        bestD = e;
+      } else if (std::abs(e - bestD) > 1 && share > second) {
+        second = share;
+      }
+    }
+    if (best >= opts_.columnMovedFraction && second <= opts_.exactTieMaxRival) name = bestD;
+    return name;
+  };
+  // One distance as the page's: every quarter that is not proved to be
+  // something else (it stayed and shows something, or moved by another
+  // distance) is compared row by row.
+  std::vector<int> tried;
+  const auto consider = [&](int d) {
+    if (d == 0 || std::abs(d) > Dmax || std::find(tried.begin(), tried.end(), d) != tried.end()) return;
+    tried.push_back(d);
+    std::vector<int> kept;
+    for (int j = 0; j < F; ++j) {
+      if (at(j, d)) kept.push_back(j);
+      else if (!moved[size_t(j)].empty() || still[size_t(j)]) continue;
+      else if (named[size_t(j)] != INT_MIN && named[size_t(j)] != 0 && std::abs(named[size_t(j)] - d) > 1) continue;
+      else kept.push_back(j);
+    }
+    if (kept.empty()) return;
+    const int mayDiffer = int(kept.size()) / 4;
+    const int y0 = top + std::max(0, -d), y1 = bottom - std::max(0, d);
+    const int budget = int(std::floor((1.0 - opts_.minScore) * (y1 - y0) + 1e-9));
+    int match = 0, conflict = 0, showing = 0, exactShowing = 0;
+    rows.clear();
+    for (int y = y0; y < y1 && conflict <= budget; ++y) {
+      int differ = 0;
+      bool exact = true, shows = false;
+      uint64_t row = kFnvOffset;
+      for (int j : kept) {
+        const uint64_t a = curFine_[size_t(y) * F + j], b = refFine_[size_t(y + d) * F + j];
+        differ += !same(y, d, j);
+        exact = exact && a == b;
+        shows = shows || a != curGround[size_t(j)] || b != refGround[size_t(j)];
+        row = (row ^ a) * kFnvPrime;
+      }
+      if (differ > mayDiffer) {
+        ++conflict;
+        showing += shows;
+        continue;
+      }
+      if (!shows) continue;  // blank in every quarter that counts: no evidence
+      ++match;
+      ++showing;
+      if (exact) {
+        ++exactShowing;
+        rows.push_back(row);  // only rows equal bit for bit count as different rows
+      }
+    }
+    ++out.evaluated;
+    if (conflict > budget || match + conflict < opts_.minOverlapRows) return;
+    const double score = double(match) / (match + conflict);
+    std::sort(rows.begin(), rows.end());
+    if (score < opts_.minScore || int(std::unique(rows.begin(), rows.end()) - rows.begin()) < opts_.minDistinctRows) return;
+    passing.push_back({d, match + conflict, score, showing ? double(exactShowing) / showing : 0.0, exactShowing, kept});
+  };
+  // The page is what moved nearest the pointer: outward from the quarter the
+  // wheel was turned over, the first quarters that moved (as a piece, or by a
+  // distance they name) say by how much. Side bars that stay, or that move
+  // part of the way, are farther off, however wide they are.
+  // A quarter that is where it was has not moved, whatever other distance it
+  // fits as well: a column of line numbers' tens digits is the same one line
+  // up and one line down, and at the end of a text, where the wheel moves
+  // nothing, it was taken for a column that moved and nothing proved it (a
+  // GTK 4 text view on Plasma had all 1,500 lines and ended lost_track;
+  // real desktop, 2026-11-12). The nearest quarter that tells anything and
+  // stayed ends the search: nothing moved under the pointer.
+  bool somethingMoved = false, stayed = false;
+  for (int reach = 0; reach < F && !somethingMoved && !stayed; ++reach) {
+    for (int j : {under - reach, under + reach}) {
+      if (j < 0 || j >= F || (reach == 0 && j != under)) continue;
+      if (at(j, 0) || still[size_t(j)]) {
+        stayed = true;
+      } else {
+        for (int e : moved[size_t(j)]) {
+          somethingMoved = true;
+          consider(e);
+        }
+        if (moved[size_t(j)].empty() && nameOf(j) != 0) {
+          somethingMoved = true;
+          consider(nameOf(j));
+        }
+      }
+      if (reach == 0) break;
+    }
+  }
+  if (passing.empty()) {
+    // Something moved near the pointer and no offset is proved: not known to be none.
+    if (somethingMoved) out.status = StepStatus::Ambiguous;
+    return out;
+  }
+  // One distance, or the one whose rows are equal bit for bit where the
+  // others' mostly are not (the exact rule's measure).
+  const Passing* best = &passing.front();
+  for (const Passing& p : passing)
+    if (p.exact > best->exact || (p.exact == best->exact && p.exactRows > best->exactRows)) best = &p;
+  for (const Passing& p : passing) {
+    if (std::abs(p.d - best->d) <= 1) continue;
+    if (best->exact < opts_.exactTieMinFraction || p.exact > opts_.exactTieMaxRival) {
+      out.status = StepStatus::Ambiguous;  // two offsets explain the frame
+      return out;
+    }
+  }
+  out.status = StepStatus::Appended;
+  out.d = best->d;
+  out.score = best->score;
+  out.evidence = best->evidence;
+  out.kept = best->kept;
+  return out;
 }
 
 int ScrollStitcher::maxEvidenceStep() const {
@@ -958,7 +1641,15 @@ ScrollStitcher::Search ScrollStitcher::search(const FrameSignatures& cur, int to
           (std::abs(d - hint) == std::abs(c1 - hint) && scoreOf(d) > scoreOf(c1)))
         c1 = d;
     const int dist = std::abs(c1 - hint);
-    const int tol = std::max(opts_.hintTolerancePx, int(std::lround(opts_.hintTolerance * hint)));
+    // Among offsets the pixels cannot tell apart the hint decides only close
+    // by: within what the wheel's own spread allows and tieHintTolerance of
+    // the hint. A quarter of the hint was allowed; on a page of tables that
+    // repeat every 505 px a step that had moved 924 px for a hint of 528
+    // (three wheel steps arrived late) was then taken for one of 419, a table
+    // went missing from the image, and the capture ended as "end of content"
+    // (a pull request page on GNOME, 2026-11-12). Farther off than this the
+    // wheel did something else than was asked, and the step is ambiguous.
+    const int tol = std::max(opts_.hintTolerancePx, unc + int(std::lround(opts_.tieHintTolerance * hint)));
     bool ok = dist <= tol;
     for (int d : topSet)
       if (std::abs(d - c1) > 1 && std::abs(d - hint) <= std::max(2 * dist + 2, dist + 2 * unc)) ok = false;

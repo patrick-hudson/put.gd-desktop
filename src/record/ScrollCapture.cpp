@@ -281,7 +281,6 @@ void ScrollCapture::prepare(const QJsonObject& params, Reply reply) {
     if ((selection != "helper" && selection != "shell") || (params.contains("rect") && rectFromJson(params["rect"]).isEmpty()) || !std::isfinite(maxHeight) || maxHeight < 1 || !std::isfinite(maxPixels) || maxPixels < 0) {
         reply({"invalid_request", "Invalid scroll capture request", {}}, {}); return;
     }
-    if (!params.contains("rect") && selection != "shell" && probe["selection"] == "none") { reply(unavailable("region_unavailable", "This desktop has no region selector for a scroll capture"), {}); return; }
     id_ = params["id"].toString();
     staging_ = staging;
     frames_ = probe["frames"].toString();
@@ -641,6 +640,16 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             options.away = RunPoint{int(std::lround((candidate.x() - r.left()) * sx)), int(std::lround((candidate.y() - r.top()) * sy))};
             break;
         }
+        // The pointer waits outside the rectangle while frames are read, on
+        // every desktop, and what it called up before the capture gets time
+        // to go (a browser hides its link panel a quarter of a second after
+        // the pointer has left, and fades it out).
+        options.restAway = true;
+        options.awayLingerMs = 450;
+        options.leaveDelayMs = 30;
+        options.entryInset = std::max(24, int(std::lround(48 * sy)));
+        // A page's own bar that slides in over the bottom on the way becomes the footer.
+        options.stitch.lateBarIsFooter = true;
         if (job->paintedPointer) {
             // A compositor that paints the pointer into the frames whatever was
             // asked (Hyprland 0.56 did; lab guest of 2026-11-10): rows are kept

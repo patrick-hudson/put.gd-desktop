@@ -59,8 +59,8 @@ void ScrollCaptureService::prepareProbed(QJsonObject p,bool edit,bool autoStart,
  const auto snapshot=host_.settings();const auto route=snapshot.actions.value(edit?"edit":"scroll");
  if(!(route.destination=="upload"&&!route.profileId.isEmpty())&&!snapshot.archive.keepUploads){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  if(!capabilities()["available"].toBool()){reply({"scroll_unavailable","Scrolling capture is unavailable",{{"reason",capabilities()["reason"]}}},{});return;}
- // No selector in this build: only a caller that names the rectangle can capture.
- if(!shell_&&!p.contains("rect")&&capabilities()["selection"]=="none"){reply({"scroll_unavailable","This desktop has no region selector for a scroll capture",{{"reason","region_unavailable"}}},{});return;}
+ // No selector in this build: no capture, for a caller that names the rectangle either (see probeScroll).
+ if(!shell_&&capabilities()["selection"]=="none"){reply({"scroll_unavailable","This desktop has no region selector for a scroll capture",{{"reason","region_unavailable"}}},{});return;}
  if(shell_&&!shell_->selectsRegions()){reply(shell_->regionError(),{});return;}
  op_={};op_.action=edit?"edit":"scroll";if(auto e=host_.accept(op_)){reply(e,{});return;}
  // A command an earlier session's hold still keeps back is answered now: its session has ended.

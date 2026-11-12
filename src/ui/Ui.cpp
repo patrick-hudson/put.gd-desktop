@@ -364,7 +364,7 @@ int scaled(int pixels) { return int(std::lround(pixels * textScale() * applicati
 int railWidth() {
     const QFontMetrics metrics(labelFont(true));
     int text = 0;
-    for (const auto* name : {"All items", "Images", "Recordings", "Other files", "Failed uploads", "General", "Capture", "Shortcuts", "Advanced"})
+    for (const auto* name : {"All items", "Images", "Recordings", "Other files", "Failed uploads", "General", "Capture", "Hotkeys", "Advanced"})
         text = std::max(text, metrics.horizontalAdvance(QString::fromLatin1(name)));
     const int natural = 2 * space(Space::l) + 2 * space(Space::m) + scaled(Metric::icon) + space(Space::s) + text;
     return std::clamp(natural, Metric::sidebar, Metric::sidebar + 2 * space(Space::xl));
@@ -3182,8 +3182,9 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  return result;
 }
 QIcon trayIcon(const IconArt::TrayIcon& state){
- if(state.glyph==IconArt::TrayGlyph::Mark)return icon("tray",state.color,state.percent,state.recording);
+ if(state.glyph==IconArt::TrayGlyph::Mark||state.recording||state.percent==-2)return icon("tray",state.color,state.percent,state.recording);
  QIcon result;
+ if(state.glyph==IconArt::TrayGlyph::Turkey){auto image=IconArt::liftTrayAtSize(state,16);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  for(int scale:{1,2,3}){auto image=IconArt::liftTray(state,scale);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
  return result;
 }

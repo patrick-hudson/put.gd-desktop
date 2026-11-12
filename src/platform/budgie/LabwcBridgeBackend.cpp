@@ -279,10 +279,10 @@ QJsonObject LabwcBridgeBackend::status()const{
   else if(requested.isEmpty())entry["state"]=actual.isEmpty()?"unbound":"pending";
   else if(invalid_.contains(action)){entry["state"]="shortcut_invalid";entry["error"]=invalid_.value(action);}
   else if(conflicts_.contains(action)){entry["state"]="shortcut_conflict";entry["error"]="Budgie already uses this key";entry["conflict"]=conflicts_.value(action);}
-  else if(pending_.contains(action)){entry["state"]="pending";if(!patience_.isActive()&&!applying_)entry["error"]="Budgie's labwc bridge has not applied this shortcut yet; it starts 10 seconds after login";}
+  else if(pending_.contains(action)){entry["state"]="pending";if(!patience_.isActive()&&!applying_)entry["error"]="Budgie's labwc bridge has not applied this hotkey yet; it starts 10 seconds after login";}
   else if(!actual.isEmpty()&&!commandMatches){entry["state"]="shortcut_conflict";entry["error"]="The Budgie entry no longer runs put.gd";}
   else if(!actual.isEmpty()){entry["state"]="bound";entry["bound"]=true;}
-  else{entry["state"]="pending";entry["error"]=rcError_.isEmpty()?QStringLiteral("rc.xml has no entry for this shortcut"):rcError_;}
+  else{entry["state"]="pending";entry["error"]=rcError_.isEmpty()?QStringLiteral("rc.xml has no entry for this hotkey"):rcError_;}
   out[action]=entry;
  }
  return out;
@@ -298,7 +298,7 @@ void LabwcBridgeBackend::setPaused(bool paused,std::function<void(Error)> reply)
  if(keys.isEmpty()){report();if(reply)reply({});return;}
  for(const auto& action:keys){
   ++*remaining;
-  run({"set",entrySchema+':'+pathFor(action),"binding","''"},[remaining,failure,reply](int code,QString){if(code!=0)*failure={"shortcut_recording_failed","Budgie did not accept pausing put.gd's shortcuts.",{}};if(--*remaining==0&&reply)reply(*failure);});
+  run({"set",entrySchema+':'+pathFor(action),"binding","''"},[remaining,failure,reply](int code,QString){if(code!=0)*failure={"shortcut_recording_failed","Budgie did not accept pausing put.gd's hotkeys.",{}};if(--*remaining==0&&reply)reply(*failure);});
  }
  report();
 }

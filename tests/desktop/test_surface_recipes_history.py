@@ -41,6 +41,8 @@ class FakeContext(Context):
         self.saved_window = None
         self.preview = False
         self.receipt = False
+        # The expanded receipt starts below the details pane's visible end.
+        self.receipt_top = 900
         self.chooser = False
         self.question = None
         self.menu = None
@@ -54,6 +56,9 @@ class FakeContext(Context):
         self.selected = []
         self.grid = False
         self.details = False
+        # #1396: in the wide list the pane follows the selection only while
+        # details are wanted; closeDetails remembers "closed" there.
+        self.details_wanted = fault != 'details-closed-before'
         self.active = 2 if 'history_active_uploads' in needs else 0
         self.confirmation = {'open': False, 'operationIds': []}
         self.saved = 'history_saved_copy' in needs
@@ -96,14 +101,24 @@ class FakeContext(Context):
             total = 1
         rows = min(total, 50)
         if self.query['search']:
-            total = rows = 1 if self.query['search'] == self.fixture_row['name'] else 0
+            total = rows = len(self.matching(self.query['search']))
         return dict(busy=False, query=copy.deepcopy(self.query), rows=rows, total=total,
                     selectedIds=list(self.selected), selectedRows=len(self.selected), gridMode=self.grid,
                     activeFilters=['Upload state: Uploaded'] if self.query['uploadStatus'] and self.query['uploadStatus'] != 'failed' else [],
-                    detailsOpen=self.details, inspectorVisible=bool(self.selected), canExpandPreview=bool(self.selected),
+                    detailsWanted=self.details_wanted, detailsOpen=self.details, inspectorVisible=self.pane(),
+                    canExpandPreview=self.pane(),
                     previewExpanded=self.preview, selectionSummary={'bytes': 3 * 1024 * 1024},
                     activeOperationCount=self.active, cancelAllConfirmation=copy.deepcopy(self.confirmation),
                     savedCopyVisible=self.saved, savedPath='/tmp/private/copy.png', savedCopyFolder=self.folder)
+
+    def pane(self):
+        return bool(self.selected) and (self.details if self.grid else self.details_wanted)
+
+    def matching(self, text):
+        # The resident's search is a case-insensitive substring of the name;
+        # a second, similarly named record shares every short prefix.
+        names = {'image-1': self.fixture_row['name'], 'image-2': 'surface-history-image-2.png'}
+        return [{'id': i, 'name': n} for i, n in names.items() if text.lower() in n.lower()]
 
     def detail(self):
         return dict(id='image-1', name=self.fixture_row['name'], bytes=1024 * 1024,
@@ -125,7 +140,15 @@ class FakeContext(Context):
         elif action == 'closePreview':
             self.preview = False
         elif action == 'closeDetails':
-            self.details = False
+            if self.grid:
+                self.details = False
+            else:
+                self.details_wanted = False
+        elif action == 'toggleDetails':
+            if self.selected and self.grid:
+                self.details = not self.details
+            else:
+                self.details_wanted = not self.details_wanted
         elif action == 'clearSelection':
             self.selected = []
         else:
@@ -142,6 +165,10 @@ class FakeContext(Context):
             return {'state': 'ready'}
         if method == 'history.detail':
             return self.detail()
+        if method == 'history.list':
+            if set(params) != {'search', 'limit'}:
+                raise AssertionError('unexpected history.list query')
+            return {'records': self.matching(params['search'])[:params['limit']]}
         if method == 'delete.prepare':
             return {'targets': [{'historyId': 'image-1'}]}
         if method == 'ui.fileDialog':
@@ -158,7 +185,7 @@ class FakeContext(Context):
 
     def click(self, control, window, button='left', offset=None):
         aliases = {
-            'text:More selection actions': 'historySelectionMore', 'text:Add a history filter': 'historyAddFilter', 'text:Advanced original receipt details': 'historyDetails',
+            'text:More selection actions': 'historySelectionMore', 'text:Advanced original receipt details': 'historyDetails',
             'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
             'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
             'text:Maximize': 'windowMaximize', 'text:Restore': 'windowMaximize',
@@ -194,6 +221,8 @@ class FakeContext(Context):
             self.details = self.grid and button == 'left'
         elif control == 'historyClearFilters':
             self.query['uploadStatus'] = ''
+            if self.fault == 'clear-drops-search':
+                self.query['search'] = ''
         elif control == 'historyPreview' or control == 'expandHistoryPreview':
             self.preview = self.fault != 'preview-no-effect'
         elif control == 'closeHistoryPreview':
@@ -266,7 +295,7 @@ class FakeContext(Context):
         elif control == 'historyAddFilteruploadStatus':
             self.focused_control = 'historyChoiceuploadStatus'
         elif control not in {
-            'historySearch', 'historyCategories', 'historyFiltersExpanded', 'historyAddFilter',
+            'historySearch', 'historyCategories', 'historyFiltersExpanded',
             'historyAddFilteruploadStatus', 'historyChoiceuploadStatus', 'historyDetails',
             'historySelectionMore', 'historyInspectorMore', 'historyManagementExpanded',
             'deleteConfirmationDetailsExpanded',
@@ -363,10 +392,27 @@ class FakeContext(Context):
             return [{'rect': [320, 200, 800, 40], 'states': {'focused': self.focused_control == 'historyList'}}]
         if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
             return [{'rect': [1200, 200, 40, 40]}]
+        if query.get('name') in ('Advanced original receipt details', 'Delete from destination…',
+                                 'Show advanced receipt details') and 'within' in query:
+            # As the probe does: a node matches 'within' only by its centre.
+            x, y, w, h = query['within']
+            return [n for n in self.accessible({k: v for k, v in query.items() if k != 'within'})
+                    if n.get('rect') and x <= n['rect'][0] + n['rect'][2] / 2 < x + w
+                    and y <= n['rect'][1] + n['rect'][3] / 2 < y + h]
+        if query.get('name') == 'Advanced original receipt details' and self.receipt:
+            if self.fault == 'wayland-unplaced' and self.receipt_top + 180 > self.window['y'] + self.window['height']:
+                # Wayland: a control reaching past its window has no placed rect.
+                return [{'name': query['name'], 'rect': None, 'coordinate_error': 'outside compositor frame'}]
+            return [{'name': query['name'], 'rect': [1250, self.receipt_top, 340, 180]}]
+        if query.get('name') == 'Delete from destination…' and query.get('role') == 'push button':
+            # The pane's last control; scrolling to the end leaves it in place.
+            return [{'name': query['name'], 'rect': [1250, max(self.receipt_top, 640) + 200, 200, 36]}]
+        if query.get('name') == 'Show advanced receipt details':
+            return [{'name': query['name'], 'rect': [1250, self.receipt_top - 40, 160, 30]}]
         if query.get('name') == 'Expand preview':
             if query.get('states') not in ({'focusable': True}, {'focusable': False}):
                 raise AssertionError('image and glyph share their button role')
-            return [{'rect': [1200 if query['states']['focusable'] else 1300, 400, 40, 40]}]
+            return [{'rect': [1200 if query['states']['focusable'] else 1300, 400, 40, 40]}] if self.pane() else []
         if query.get('role') == 'menu item':
             return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else {'Copy details'} if self.menu == 'row' else set())]
         if query.get('name') == 'Capture actions':
@@ -380,7 +426,17 @@ class FakeContext(Context):
                      'rect': [self.window['x'] + 5, self.window['y'] + 5, 24, 28]},
                     {'name': 'Navigation', 'role': 'page tab list',
                      'rect': [self.window['x'] + 450, self.window['y'] + 5, 300, 28]}]
-        return [{'name': 'Total size: 3 MB' if query['name'].startswith('Total') else 'Size: 1 MB · 640×320'}]
+        if query['name'].startswith('Total'):
+            # The multi-selection summary lives in the details pane.
+            return [{'name': 'Total size: 3 MB'}] if self.pane() and len(self.selected) > 1 else []
+        return [{'name': 'Size: 1 MB · 640×320'}]
+
+    def scroll(self, x, y, clicks, head=None):
+        self.events.append(('scroll', x, y, clicks))
+        # The pane's scroll range ends with the receipt inside it.
+        self.receipt_top += 120 * clicks
+        if self.fault != 'receipt-keeps-moving':
+            self.receipt_top = max(self.receipt_top, 640)
 
     def clipboard_text(self, *, expected_json=None):
         return self.clipboard
@@ -452,6 +508,127 @@ class HistoryRecipeTests(unittest.TestCase):
         ctx.windows = windows
         with self.assertRaises(RecipeBlocked):
             history._main_windows(ctx)
+
+    def test_reset_turns_remembered_closed_details_back_on(self):
+        # A closed pane is remembered in the wide list (#1396). The reset must
+        # want details again, or the multi-selection summary never shows.
+        ctx = FakeContext(('history_pair',), fault='details-closed-before')
+        history.multi_select(ctx)
+        views = [e[2]['action'] for e in ctx.events if e[:2] == ('view', 'ui.history')]
+        self.assertIn('toggleDetails', views)
+        self.assertNotIn('closeDetails', views)
+        self.assertTrue(ctx.details_wanted)
+
+    def test_reset_keeps_details_wanted_when_already_on(self):
+        ctx = FakeContext(('history-row',))
+        history.receipt_details(ctx)
+        views = [e[2]['action'] for e in ctx.events if e[:2] == ('view', 'ui.history')]
+        self.assertNotIn('toggleDetails', views)
+        self.assertNotIn('closeDetails', views)
+
+    def test_summary_absent_without_details_pane_fails(self):
+        ctx = FakeContext(('history_pair',))
+        with patch.object(history, '_open', lambda c: setattr(c, 'details_wanted', False)):
+            with self.assertRaisesRegex(RecipeFailed, 'visible binary size summary'):
+                history.multi_select(ctx)
+
+    def test_search_types_the_shortest_distinct_tail(self):
+        ctx = FakeContext(('history-row',))
+        history.search(ctx)
+        typed = [e[1] for e in ctx.events if e[0] == 'type_text']
+        self.assertEqual(typed, ['mage.png', 'zq-0'])
+        self.assertEqual(ctx.query['search'], '')
+
+    def test_search_grows_past_a_shared_tail(self):
+        def matching(other):
+            return lambda text: [{'id': i, 'name': n} for i, n in (
+                ('image-1', 'surface-history-image.png'), ('image-2', other)) if text in n]
+        ctx = FakeContext(('history-row',))
+        ctx.matching = matching('the-history-image.png')
+        self.assertEqual(history._distinct_text(ctx, ctx.fixture_row), 'ce-history-image.png')
+        # No part of the name finds this row alone: never search for a guess.
+        ctx.matching = matching('copy-of-surface-history-image.png')
+        with self.assertRaisesRegex(RecipeFailed, 'exactly that row'):
+            history._distinct_text(ctx, ctx.fixture_row)
+
+    def test_receipt_scrolls_into_the_window_before_input(self):
+        ctx = FakeContext(('history-row',))
+        history.receipt_details(ctx)
+        scrolls = [e for e in ctx.events if e[0] == 'scroll']
+        self.assertTrue(scrolls and all(e[3] < 0 for e in scrolls))
+        self.assertEqual(ctx.receipt_top, 640)
+        self.assertLess(ctx.events.index(scrolls[-1]),
+                        [e[:2] for e in ctx.events].index(('click', 'historyDetails')))
+
+    def test_clear_filters_keeps_the_typed_search(self):
+        ctx = FakeContext(('history_rows',))
+        history.clear_filters(ctx)
+        typed = [e[1] for e in ctx.events if e[0] == 'type_text']
+        self.assertEqual(typed, ['mage.png'])
+        self.assertEqual(ctx.query['search'], 'mage.png')
+        self.assertEqual(ctx.query['uploadStatus'], '')
+
+    def test_clear_filters_dropping_search_fails(self):
+        with self.assertRaisesRegex(RecipeFailed, 'preserves search'):
+            history.clear_filters(FakeContext(('history_rows',), fault='clear-drops-search'))
+
+    def test_receipt_unplaced_on_wayland_scrolls_until_placed(self):
+        ctx = FakeContext(('history-row',), fault='wayland-unplaced')
+        history.receipt_details(ctx)
+        self.assertEqual(ctx.receipt_top, 640)
+        self.assertIn(('click', 'historyDetails'), [e[:2] for e in ctx.events])
+
+    def test_receipt_toggle_below_a_small_window_scrolls_first(self):
+        # A 1280 x 800 guest: the toggle itself starts below the visible pane.
+        ctx = FakeContext(('history-row',))
+        ctx.receipt_top = 1080
+        history.receipt_details(ctx)
+        first_click = [e[:2] for e in ctx.events].index(('click', 'historyReceiptExpanded'))
+        scrolls = [i for i, e in enumerate(ctx.events) if e[0] == 'scroll']
+        self.assertTrue(scrolls and scrolls[0] < first_click)
+        self.assertEqual((ctx.events[scrolls[0]][1], ctx.events[scrolls[0]][2]), (1220, 420))  # over the preview
+
+    def test_receipt_that_never_settles_blocks(self):
+        ctx = FakeContext(('history-row',), fault='receipt-keeps-moving')
+        with self.assertRaises(RecipeBlocked):
+            history.receipt_details(ctx)
+        self.assertNotIn(('click', 'historyDetails'), [e[:2] for e in ctx.events])
+
+    def test_saved_copy_fixture_types_into_the_modal_chooser(self):
+        from tools.lab.surface_driver.fixtures import history as fixture
+        events, state = [], {'open': False, 'copyJob': {}}
+
+        class Ctx:
+            profile = {}
+            def fixture(self, name): events.append(('fixture', name))
+            def view(self, method, params): events.append(('view', method))
+            def call(self, method, params):
+                if method == 'ui.fileDialog':
+                    if params['action'] == 'open':
+                        state['open'] = True
+                    return {'open': state['open'], 'title': 'Save original file as'}
+                if params.get('action') == 'inspect':
+                    return {'copyJob': state['copyJob'], 'savedPath': '/tmp/r/out/saved-copy.png'}
+                return {}
+            def wait(self, predicate, what, timeout=10):
+                return predicate()
+            def geometry(self, window):
+                if window == 'historySaveDialog' and not self.profile['windows'][window]['title']:
+                    raise AssertionError('chooser role needs its title')
+                return {'pid': 1}
+            def focus(self, window, raise_window=False): events.append(('focus', window))
+            def keys(self, *keys):
+                events.append(('keys',) + keys)
+                if keys == ('Return',):
+                    state['copyJob'] = {'status': 'saved'}
+            def type_text(self, text): events.append(('type', text))
+
+        scope = SimpleNamespace(ctx=Ctx(), root='/tmp/r', python=lambda code: '')
+        with patch.object(fixture, 'submit', return_value=SimpleNamespace(id='image-1', path='/tmp/r/a.png')), \
+                patch.object(fixture, 'Fixture', lambda row, **kw: kw):
+            self.assertEqual(fixture.saved_copy(scope), {'path': '/tmp/r/out/saved-copy.png'})
+        self.assertEqual(scope.ctx.profile['windows']['historySaveDialog'], {'title': '^Save\\ original\\ file\\ as$'})
+        self.assertLess(events.index(('focus', 'historySaveDialog')), events.index(('keys', 'Ctrl+L')))
 
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):

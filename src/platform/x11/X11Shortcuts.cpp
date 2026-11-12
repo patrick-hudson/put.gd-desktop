@@ -110,19 +110,19 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
 void X11Shortcuts::setRecording(bool active,std::function<void(Error)> reply){
  if(active){
   recording_=true;clear();
-  if(!available()){reply({"shortcut_unavailable","Global shortcuts cannot be paused in this session.",{}});return;}
+  if(!available()){reply({"shortcut_unavailable","Hotkeys cannot be paused in this session.",{}});return;}
   xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
   auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);
   const bool acknowledged=sync&&!xcb_connection_has_error(connection_);free(sync);
   // Discard shortcut presses queued before ungrabbing, including those read
   // during the roundtrip. Mapping events may update the saved bindings only.
   events();bind(requested_);
-  reply(acknowledged?Error{}:Error{"shortcut_unavailable","The desktop did not acknowledge pausing global shortcuts.",{}});
+  reply(acknowledged?Error{}:Error{"shortcut_unavailable","The desktop did not acknowledge pausing hotkeys.",{}});
  }else{
   if(available())events();
   recording_=false;bind(requested_);
-  Error error;if(!available())error={"shortcut_unavailable","Global shortcuts could not be restored.",{}};
-  else for(auto it=status_.begin();it!=status_.end();++it){const auto entry=it.value().toObject();if(!entry["requested"].toString().isEmpty()&&!entry["bound"].toBool()){error={"shortcut_restore_failed","A saved global shortcut could not be restored.",{}};break;}}
+  Error error;if(!available())error={"shortcut_unavailable","Hotkeys could not be restored.",{}};
+  else for(auto it=status_.begin();it!=status_.end();++it){const auto entry=it.value().toObject();if(!entry["requested"].toString().isEmpty()&&!entry["bound"].toBool()){error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};break;}}
   reply(error);
  }
 }
