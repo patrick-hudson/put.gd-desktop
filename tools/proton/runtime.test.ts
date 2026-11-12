@@ -652,7 +652,8 @@ test('a link preparation ended before it began, or before its password was drawn
     const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     let draws = 0, release: (password: string) => void = () => {};
     const draw = () => { ++draws; return new Promise<string>(resolve => { release = resolve; }); };
-    const preparation = linkPreparation(link, draw, 10);
+    const account = linkPreparation(link, 10);
+    const preparation = { start: () => account.start(draw), unused: account.unused };
     // Ended before its start came due: no password is drawn.
     preparation.start(); preparation.unused();
     await pause(30);
@@ -671,11 +672,14 @@ test('a link preparation ended before it began, or before its password was drawn
     expect(stub.calls.filter(call => call.startsWith('verifier '))).toEqual(['verifier current']);
     // A draw that fails prepares nothing, and an SDK without the generator starts nothing.
     preparation.unused();
-    const failing = linkPreparation(link, () => Promise.reject(new Error('synthetic')), 1);
-    failing.start(); await pause(20);
+    account.start(() => Promise.reject(new Error('synthetic'))); await pause(30);
     expect(link.prepared).toBe(false);
-    linkPreparation(link, undefined, 1).start(); await pause(10);
+    account.start(undefined); await pause(30);
     expect(link.prepared).toBe(false);
+    // Another client's cleanup ends a preparation the first client started: there is one per account.
+    const other = { unused: account.unused };
+    preparation.start(); other.unused(); await pause(30);
+    expect(draws).toBe(3); expect(link.prepared).toBe(false);
 });
 test('transfers and share creation are reported to their listeners, and nothing else is', async () => {
     const inner = { fetchBlob: async () => new Response('blob'), fetchJson: async () => new Response('{}') };
@@ -747,6 +751,9 @@ test('a block upload names its storage host, and opens a hinted one before its b
     expect((await uploadWith({ transferHostHint: 'storage.example.org' }, ['fra-storage.proton.me'], big)).fetched).toEqual([]);
     expect((await uploadWith({ transferHostHint: 'drive-api.proton.me' }, ['fra-storage.proton.me'], big)).fetched).toEqual([]);
     expect((await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['drive-api.proton.me'])).fetched).toEqual([]);
+    // A file of more than one block opens nothing: its blocks start together.
+    expect((await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['fra-storage.proton.me'], 4 * 1024 * 1024 + 1)).fetched).toEqual([]);
+    expect((await uploadWith({ transferHostHint: 'fra-storage.proton.me' }, ['fra-storage.proton.me'], 4 * 1024 * 1024)).fetched).toEqual(['https://fra-storage.proton.me/']);
     // A host the service names that is not Proton's is not passed on.
     expect((await uploadWith({}, ['storage.example.org'], big)).result.transferHost).toBeUndefined();
 });
@@ -890,6 +897,12 @@ test('requests to other origins and a first request that is not a read go to the
     const { direct, calls } = directStub();
     const api = fastestConnectionFetch(backend.origin, direct, { candidates: 3 });
     expect(await (await api('https://fra-storage.proton.me/storage/blocks', { method: 'POST', body: 'block' })).text()).toBe('direct');
+    // It is handed on as it came: the very request object, never read or copied here.
+    const handed: unknown[] = [];
+    const passing = fastestConnectionFetch(backend.origin, (async (input: unknown, init?: unknown) => { handed.push(input, init); return new Response('direct'); }) as typeof fetch);
+    const block = new Request('https://zrh-storage.proton.me/storage/blocks', { method: 'POST', body: new Uint8Array(1024) }), options = { keepalive: true };
+    await passing(block, options);
+    expect(handed[0]).toBe(block); expect(handed[1]).toBe(options); expect(block.bodyUsed).toBe(false);
     // A request that changes something is never sent more than once: it chooses nothing.
     expect(await (await api(backend.origin + '/auth/v4/refresh', { method: 'POST', body: '{}' })).text()).toBe('direct');
     expect(backend.sessions.length).toBe(0);

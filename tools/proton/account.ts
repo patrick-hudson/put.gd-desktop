@@ -217,14 +217,15 @@ export function linkPasswordAhead(sdk: unknown, link: LinkAhead): (() => Promise
     sharing.generatePublicLinkPassword = async () => link.take() ?? draw();
     return draw;
 }
-// One upload's link preparation. It starts a moment after the request being made has left:
+// An account's link preparation, one upload's at a time, whichever Drive client made it.
+// It starts a moment after the request being made has left:
 // the hashing holds this thread, and must not hold that request back. `unused` ends it for
 // good: a start it overtook never draws a password, and a password drawn before it is not
 // hashed or kept after it.
-export function linkPreparation(link: LinkAhead, draw: (() => Promise<string>) | undefined, afterMs = AFTER_DISPATCH_MS) {
+export function linkPreparation(link: LinkAhead, afterMs = AFTER_DISPATCH_MS) {
     let current = 0;
     return {
-        start: (): void => {
+        start: (draw: (() => Promise<string>) | undefined): void => {
             if (!draw) return;
             const mine = ++current;
             setTimeout(() => {
@@ -444,8 +445,12 @@ export function fastestConnectionFetch(origin: string, direct: typeof fetch, opt
         return won.response;
     };
     return (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        // A request for anywhere else is handed on as it came, its body untouched.
+        let elsewhere = true;
+        try { elsewhere = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url).origin !== origin; }
+        catch { /* The ordinary client says what is wrong with it. */ }
+        if (elsewhere) return direct(input, init);
         const request = new Request(input as RequestInfo, init);
-        if (new URL(request.url).origin !== origin) return direct(input, init);
         if (choosing) await choosing;
         const signal = request.signal;
         if (kept === undefined && request.method === 'GET') return choose(request, signal);
@@ -513,12 +518,12 @@ export async function openAccount(request: JsonObject) {
     } catch { throw new ProtocolError('keychain_unavailable'); }
     userDataKept(account.addresses);
     let warmed = false;
-    const link = new LinkAhead(account.srp);
+    const link = new LinkAhead(account.srp), preparation = linkPreparation(link);
     // No persisted entities, decrypted keys or names: both caches live in this process's
     // memory, shared by its Drive clients. Ownership and destination checks read past the
     // entity cache (`fresh`).
     return { dataDir, telemetry, logger, http: new SharedAccountReads(new HTTPClient(apiClient)), account, referenceExists: () => accountReferenceExists,
-        entities: new RequestCache<string>(), keys: createCryptoCache(), link,
+        entities: new RequestCache<string>(), keys: createCryptoCache(), link, preparation,
         // Loads the user and address keys every request needs beside its first Drive read.
         // The account code asks for the user, then the addresses: both reads start at once.
         warm: () => {
@@ -533,7 +538,7 @@ export async function openAccount(request: JsonObject) {
 // A Drive client for the account. Uploads use their publication's client identity, so a
 // retry may replace its own unfinished draft and nobody else's.
 export async function openClient(opened: Awaited<ReturnType<typeof openAccount>>, request: JsonObject) {
-    const { dataDir, telemetry, logger, http, account, entities, keys, link } = opened;
+    const { dataDir, telemetry, logger, http, account, entities, keys, link, preparation } = opened;
     const clientUid = publicationClientUid(request) ?? await getOrGenerateClientUid({ appDir: dataDir, clientUidPrefix: 'putgd' } as any, logger);
     const pgp = new LinkOpenPGP(CryptoProxy, link);
     const sdk = new ProtonDriveClient({ config: { baseUrl: 'drive-api.proton.me', clientUid },
@@ -542,13 +547,13 @@ export async function openClient(opened: Awaited<ReturnType<typeof openAccount>>
         entitiesCache: entities, cryptoCache: keys,
         // One request carries a file under 128 KiB, as in Proton's own CLI at this pin.
         featureFlagProvider: { isEnabled: async flag => flag === FeatureFlags.DriveSmallFileUpload } });
-    const preparation = linkPreparation(link, linkPasswordAhead(sdk, link));
+    const drawLinkPassword = linkPasswordAhead(sdk, link);
     return { sdk, auth: account.auth, accountReferenceExists: opened.referenceExists(),
         fresh: <R>(read: () => Promise<R>) => entities.fresh(read), warm: opened.warm, modulusAhead: opened.modulusAhead,
         // Hears of each request that carries a file's bytes, with the host it goes to.
         watchTransfers: (seen?: (host: string) => void) => { http.onTransfer = seen; },
         // Starts the next link's password work (see LinkAhead and linkPreparation).
-        prepareLink: preparation.start,
+        prepareLink: () => preparation.start(drawLinkPassword),
         // While a link is being made, its share's session key is wrapped beside the share's request.
         linkBeingMade: (making: boolean) => { http.onShareCreate = making ? () => setTimeout(() => pgp.wrapAhead(), AFTER_DISPATCH_MS) : undefined; },
         linkPrepared: () => link.prepared,

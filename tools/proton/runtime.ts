@@ -13,8 +13,9 @@ import { createProgressReporter } from './progress';
 type Context = Awaited<ReturnType<typeof initialize>>;
 // The SDK sends a file under this size in one request, and a larger one in blocks.
 const SINGLE_REQUEST_BYTES = 120 * 1024;
-// A link is prepared beside an upload of one block at most: a longer transfer outlasts it.
-const LINK_AHEAD_BYTES = 4 * 1024 * 1024;
+// The SDK's block size. A link is prepared beside an upload of one block at most: a longer
+// transfer outlasts it.
+const ONE_BLOCK_BYTES = 4 * 1024 * 1024;
 let controller = new AbortController();
 let mutationStarted = false;
 let finalWrite: Promise<void> | undefined;
@@ -180,7 +181,10 @@ const API_HOST = 'drive-api.proton.me';
 // A file over the single-request limit goes to a storage host named only by the request
 // before its bytes. The application remembers the host its last upload used and names it in
 // the next one; the connection is then opened while the upload is being set up, instead of
-// when its bytes are ready. The request carries nothing of the account or the file.
+// when its bytes are ready. The request carries nothing of the account or the file. Only a
+// file of one block gets it: with several blocks sent side by side, the block on the opened
+// connection started ahead of the others and the late ones crawled (8.6 to 10.7 s for 8 MiB
+// with it, 4.5 to 6.6 s without, on the lab's uplink).
 export function transferHost(value: unknown): string | undefined {
     return typeof value === 'string' && /^[a-z0-9-]{1,48}\.proton\.me$/.test(value) && value !== API_HOST ? value : undefined;
 }
@@ -218,12 +222,12 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
         // The link that follows this upload needs its password hashed: that starts when the
         // file's bytes go out, and is ready when they have arrived.
         let prepare = request.linkFollows === true && !request.destination.settings.sharePasswordReference &&
-            artifact.bytes <= LINK_AHEAD_BYTES;
+            artifact.bytes <= ONE_BLOCK_BYTES;
         ctx.watchTransfers(host => {
             if (host !== API_HOST) sentTo = host;
             if (prepare) { prepare = false; ctx.prepareLink(); }
         });
-        const hinted = artifact.bytes > SINGLE_REQUEST_BYTES ? transferHost(request.transferHostHint) : undefined;
+        const hinted = artifact.bytes > SINGLE_REQUEST_BYTES && artifact.bytes <= ONE_BLOCK_BYTES ? transferHost(request.transferHostHint) : undefined;
         if (hinted) openTransferConnection(hinted);
         try {
             const uploader = await ctx.sdk.getFileUploader(folder.uid, request.candidate, {

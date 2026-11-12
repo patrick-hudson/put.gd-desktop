@@ -77,9 +77,11 @@ the second ownership read.
 An upload's answer names the storage host its blocks went to (`transferHost`),
 and an upload request may name one (`transferHostHint`). The application keeps
 the last host per account in memory and names it in the next upload. For a file
-over the single-request limit the helper then opens a connection to that host
-while the upload's draft is being made, with one unauthenticated request that
-carries nothing of the account or the file. Only a `*.proton.me` host other
+over the single-request limit and of one 4 MiB block at most, the helper then
+opens a connection to that host while the upload's draft is being made, with
+one unauthenticated request that carries nothing of the account or the file. A
+file of several blocks gets none: its blocks are sent side by side, and the
+block on the opened connection started ahead of the others, which then crawled. Only a `*.proton.me` host other
 than the API's is accepted in either direction. A 360 KB upload spent about
 0.3 s less with the connection already open.
 
@@ -124,10 +126,11 @@ next request. History and setup actions use `--stdio`. After the warm-up, one
 64 KiB publish makes 8 requests: two for the name check, one for the upload and
 five for the link.
 
-An operation invoked while another operation's session has the account cannot
-start a helper ahead. It registers that it will ask instead, and the session's
-helper, signed in and connected, passes to it when that session ends, in place
-of a new process and its sign-in. Only a helper that waits for its next request
+An operation invoked while another operation's session has the account, or
+while the helper started ahead for another operation has not been taken yet,
+starts no helper of its own. It registers that it will ask instead, and the
+session's helper, signed in and connected, passes to it when that session
+ends, in place of a new process and its sign-in. Only a helper that waits for its next request
 and has said nothing since its last clean answer is passed on; it keeps the
 account lock meanwhile, and ends when no registered operation is left to take it.
 

@@ -356,7 +356,8 @@ Helper changes:
   called ahead through `sharing.management.cryptoService`; an SDK without it
   there makes links as before, and a test fails provisioning.
 - An upload's answer names its storage host, and an upload request may name
-  one, which the helper connects to while the draft is made. Of 36 block
+  one, which the helper connects to while the draft is made (for a file of one
+  block only, see below). Of 36 block
   uploads 26 went to `fra-storage` and 10 to `zrh-storage`; a hint that named
   the other host cost nothing. With the right host and the connection ready
   60 ms or more before the block, the block's request took 1.10 to 1.22 s in
@@ -412,23 +413,49 @@ ownership read, the share, the link and the second ownership read), each about
 0.18 to 0.26 s on a fast connection from this lab.
 
 73 helper tests, 12 compiled stdio cases, 3 compiled session cases and the
-stdout drain pass in provisioning; `proton_transport` (51 cases: upload hints
-and six for a session's helper passing to the next operation), `proton_contract`
+stdout drain pass in provisioning; `proton_transport` (52 cases: upload hints
+and seven for a session's helper passing to the next operation), `proton_contract`
 (31) and `test_operations` (122) pass on d69. Type checking reports only the
 three upstream Crypto stream declaration errors.
 
-The timings above were taken with helper `c99f3c9fb468`. One change followed
-them, from review: a link preparation is tied to its upload, so cleanup also
-stops one that has not started or is still drawing its password. It is not on
-the path of a publish that succeeds. Through the production adapter and the
-final compiled helper, two 64 KiB publishes took 1.91 and 1.77 s and one
-360 KB publish 3.68 s.
+The timings above were taken with helper `c99f3c9fb468`. Three changes
+followed them.
+
+From review: a link preparation belongs to its account and is ended by
+cleanup, so one that has not started, or is still drawing its password, is
+never hashed or kept. A request for another origin is handed to the ordinary
+client as it came, without a copy being made of it.
+
+From the first desktop acceptance of this change
+([record](https://github.com/patrick-hudson/put.gd-evidence/blob/c0a3ff1cb04bc6dd96a7242dcd1094775fcc58e5/records/2026-11-12-proton-chosen-connection-acceptance/README.md),
+helper `ed95dc4a6d20`), which passed its Proton cases and found two faults:
+
+- Two uploads invoked one right after the other still started two helpers on
+  all four desktops. The second asked while the first's helper, started ahead,
+  had not been taken yet, and that case registered nothing. It registers now
+  (`operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt`).
+- 8 MB uploads took 7.6 to 12.9 s in their upload stage, against 5.0 to 6.2 s
+  in the previous record. The storage connection opened early was the cause
+  for a file of several blocks: its blocks are sent side by side, the block on
+  the opened connection started ahead, and the late one crawled. With a storage
+  host named, three 8 MiB uploads took 8.6, 9.9 and 10.7 s; without, five took
+  4.5 to 6.6 s (the nightly helper in the same minutes: 6.4 to 12.2 s). The
+  connection is now opened only for a file of one block. With the final helper
+  and a host named, three 8 MiB uploads took 5.2, 8.4 and 5.2 s and opened
+  nothing early.
+
+That record's three screenshots in a row showed the early connection helping
+on d69 (upload stage 2.10, 1.93, 1.87 s) and not on k72 or m74 (about 2.0 s
+each time): it needs the same storage host twice and about half a second
+before the block is ready, and neither is certain.
+
+Through the production adapter and the final compiled helper, two 64 KiB
+publishes took 1.63 and 1.63 s and two 360 KB publishes 3.38 and 3.35 s.
 
 The rebuilt helper is
-`ed95dc4a6d20fc8588130b84feff2c4bfc008ea900468ee31b5f5a31a9607696`, reproduced
+`e1237d260f4c36ebcb8f1832599486860bc7bf842ae85e1e254e8e50848f86d3`, reproduced
 by two provisions on d69. `SOURCES.json` binds it and its overlay sources. The
 native relink proof and the desktop/resource acceptance still describe helper
 `9fd4d72f8635` and remain open gates (#1399).
 
-Not done: a desktop run of an installed build, and a publish that begins with
-an expired token.
+Not done: a publish that begins with an expired token.
