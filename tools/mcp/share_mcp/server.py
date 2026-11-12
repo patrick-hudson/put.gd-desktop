@@ -485,7 +485,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def select_recording_region(id: str, rect: list[int]) -> Json:
-        """Complete the open region selector of a preparing recording (get_recording shows selecting: true; the tray, shortcut and dashboard open one) with rect [x, y, width, height], exactly as a drag would: X11 root pixels, logical desktop pixels on Wayland. The session then reaches ready; nothing is captured until control_recording start. Cancel it with control_recording cancel."""
+        """Complete the open region selector of a preparing recording (get_recording shows selecting: true; the tray, hotkey and dashboard open one) with rect [x, y, width, height], exactly as a drag would: X11 root pixels, logical desktop pixels on Wayland. The session then reaches ready; nothing is captured until control_recording start. Cancel it with control_recording cancel."""
         if not identifier(id) or not (isinstance(rect, list) and len(rect) == 4 and all(type(value) is int for value in rect)) or rect[2] < 1 or rect[3] < 1:
             return invalid()
         return await adapter.call('recording.select', {'id': id, 'rect': rect})

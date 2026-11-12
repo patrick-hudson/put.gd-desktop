@@ -108,7 +108,7 @@ void PortalGlobalShortcuts::close(std::function<void()> closed){
 }
 void PortalGlobalShortcuts::response(uint code,const QVariantMap& results){
  if(stage_=="create"){
-  if(code!=0){error_="The portal refused a global shortcuts session";available_=false;emit changed();return;}
+  if(code!=0){error_="The portal refused a GlobalShortcuts session";available_=false;emit changed();return;}
   session_=results.value("session_handle").toString();stage_="bind";available_=true;error_.clear();
   QList<Shortcut> shortcuts;for(auto it=requested_.cbegin();it!=requested_.cend();++it)if(!it.value().isEmpty())shortcuts.append({it.key(),QVariantMap{{"description",descriptions.value(it.key(),it.key())},{"preferred_trigger",xdgTrigger(it.value())}}});
   const auto handle=token();
@@ -117,7 +117,7 @@ void PortalGlobalShortcuts::response(uint code,const QVariantMap& results){
  }
  if(stage_=="bind"){
   stage_.clear();
-  if(code!=0){error_=code==1?"The shortcuts were declined in the desktop's dialog":"The portal did not bind the shortcuts";emit changed();return;}
+  if(code!=0){error_=code==1?"The hotkeys were declined in the desktop's dialog":"The portal did not bind the hotkeys";emit changed();return;}
   bound_=true;error_.clear();
   for(const auto& shortcut:shortcutsFrom(results.value("shortcuts")))triggers_.insert(shortcut.id,shortcut.properties.value("trigger_description").toString());
   emit changed();
@@ -146,9 +146,9 @@ QJsonObject PortalGlobalShortcuts::status()const{
   else if(paused_)entry["state"]="recording";
   else if(it.value().isEmpty())entry["state"]="unbound";
   else if(!stage_.isEmpty())entry["state"]="pending";
-  else if(bound_&&triggers_.contains(it.key())&&triggers_.value(it.key()).isEmpty()){entry["state"]="pending";entry["error"]="The desktop registered this shortcut without a key; assign one in the desktop's shortcut settings";}
+  else if(bound_&&triggers_.contains(it.key())&&triggers_.value(it.key()).isEmpty()){entry["state"]="pending";entry["error"]="The desktop registered this hotkey without a key; assign one in the desktop's shortcut settings";}
   else if(bound_&&triggers_.contains(it.key())){entry["state"]="bound";entry["bound"]=true;}
-  else{entry["state"]="shortcut_unavailable";entry["error"]=error_.isEmpty()?QStringLiteral("The portal did not report this shortcut"):error_;}
+  else{entry["state"]="shortcut_unavailable";entry["error"]=error_.isEmpty()?QStringLiteral("The portal did not report this hotkey"):error_;}
   out[it.key()]=entry;
  }
  return out;

@@ -214,7 +214,7 @@ void UiProcessController::updateShortcutRecording(){
   if(guard->control_)guard->control_->send("shortcutRecordingChanged",{{"replyTo",request.sequence},{"active",!error&&request.active},{"error",error.toJson()}});
   if(guard)guard->updateShortcutRecording();
  };
- if(!shortcutRecordingHandler_){complete({"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}});return;}
+ if(!shortcutRecordingHandler_){complete({"shortcut_recording_unavailable","Hotkey recording is unavailable in this session.",{}});return;}
  shortcutRecordingHandler_(request.active,[guard,generation,request,complete](Error error){
   if(!guard||guard->recordingGeneration_!=generation)return;
   if(error&&request.active){

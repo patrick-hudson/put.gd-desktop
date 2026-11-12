@@ -20,8 +20,8 @@ public:
 public slots:
  Q_SCRIPTABLE void Trigger(const QString& action){
   if(owner_->trigger(action)||!calledFromDBus())return;
-  if(owner_->recording())sendErrorReply(QStringLiteral("org.putgd.App.Budgie.Error.Paused"),QStringLiteral("put.gd's shortcuts are paused while a shortcut is being recorded"));
-  else sendErrorReply(QStringLiteral("org.putgd.App.Budgie.Error.NotBound"),QStringLiteral("No put.gd shortcut is bound for this action"));
+  if(owner_->recording())sendErrorReply(QStringLiteral("org.putgd.App.Budgie.Error.Paused"),QStringLiteral("put.gd's hotkeys are paused while a hotkey is being recorded"));
+  else sendErrorReply(QStringLiteral("org.putgd.App.Budgie.Error.NotBound"),QStringLiteral("No put.gd hotkey is bound for this action"));
  }
 private:
  BudgieShortcuts* owner_;
@@ -47,7 +47,7 @@ void BudgieShortcuts::use(ShortcutBackend* backend){
 void BudgieShortcuts::choose(){
  if(chosen_||choosing_)return;
  // Without our bus name a bound key would call whoever owns it (another resident): bind nothing.
- if(!registered_){chosen_=true;backendError_="No shortcut backend: "+serviceError_;emit changed();return;}
+ if(!registered_){chosen_=true;backendError_="No hotkey backend: "+serviceError_;emit changed();return;}
  choosing_=true;
  LabwcBridgeBackend::probe([guard=QPointer<BudgieShortcuts>(this)](bool bridge,QString reason){
   if(guard)guard->probed(bridge,reason);
@@ -63,7 +63,7 @@ void BudgieShortcuts::probed(bool bridge,const QString& reason){
 void BudgieShortcuts::portalProbed(bool portal,const QString& reason,const QString& portalReason){
  choosing_=false;chosen_=true;
  if(portal){use(new PortalGlobalShortcuts(this));backend_->bind(requested_);if(recording_)backend_->setPaused(true,{});}
- else backendError_="No shortcut backend: "+reason+"; "+portalReason;
+ else backendError_="No hotkey backend: "+reason+"; "+portalReason;
  emit changed();
 }
 void BudgieShortcuts::bind(const QHash<QString,QString>& desired){

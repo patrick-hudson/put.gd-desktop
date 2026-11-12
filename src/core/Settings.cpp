@@ -204,7 +204,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         const auto action = value.toObject();
         // Repeat last region is a key only: it always uses the region route.
         if (name == repeatActionName() && !(value.isObject() && keys(action, {"shortcut"})))
-            return invalid("/actions/" + name, "Repeat last region holds only a shortcut; it uses the region capture's output.");
+            return invalid("/actions/" + name, "Repeat last region holds only a hotkey; it uses the region capture's output.");
         // A shortcut-only record entry follows the region route.
         const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName()) && value.isObject() && keys(action, {"shortcut"});
         if (inheritedRecord) {
@@ -220,7 +220,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!action["shortcut"].toString().isEmpty()) {
             const auto sequence = QKeySequence::fromString(action["shortcut"].toString(), QKeySequence::PortableText);
             if (sequence.count() != 1 || sequence[0].key() == Qt::Key_unknown || sequence[0].key() == 0)
-                return invalid("/actions/" + name + "/shortcut", "Shortcuts must contain one valid key combination.");
+                return invalid("/actions/" + name + "/shortcut", "Hotkeys must contain one valid key combination.");
         }
     }
     const auto archive = doc["archive"].toObject();
@@ -341,7 +341,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
         return invalid("/preferences/captureDelaySeconds", "Choose 0, 3, 5 or 10 seconds for the capture delay.");
     if (preferences.contains("captureDelayShortcuts") && !preferences["captureDelayShortcuts"].isBool())
-        return invalid("/preferences/captureDelayShortcuts", "Delaying shortcut captures is true or false.");
+        return invalid("/preferences/captureDelayShortcuts", "Delaying hotkey captures is true or false.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
     if (preferences.contains("recordingMicrophone") && !preferences["recordingMicrophone"].isBool())

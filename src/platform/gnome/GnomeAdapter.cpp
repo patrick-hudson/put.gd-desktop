@@ -443,15 +443,15 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
   else if(text.isEmpty())entry["error"]="disabled";else if(gtk.isEmpty())entry["error"]="shortcut_unsupported";else if(!ready_)entry["error"]="helper_unavailable";
   bindings_[action]=entry;entries[action]=QJsonObject{{"requested",text},{"accelerator",gtk}};
  }
- if(!ready_){emit capabilitiesChanged();if(reply)reply({"helper_unavailable","GNOME global shortcuts are unavailable.",{}});return;}
+ if(!ready_){emit capabilitiesChanged();if(reply)reply({"helper_unavailable","put.gd's hotkeys are unavailable on GNOME.",{}});return;}
  call("Bind",{json(entries)},[this,generation,reply=std::move(reply)](Error error,QJsonObject result){
-  if(generation!=bindingGeneration_){if(reply)reply({"shortcut_recording_interrupted","Global shortcut configuration changed. Try recording again.",{}});return;}
+  if(generation!=bindingGeneration_){if(reply)reply({"shortcut_recording_interrupted","Hotkey configuration changed. Try recording again.",{}});return;}
   if(!ready_)invalidateShortcutBindings();else if(!error){
    bindings_=result["bindings"].toObject();
    for(const auto& action:Settings::invocableActionNames()){
     auto entry=bindings_[action].toObject();entry["requested"]=requested_.value(action);
-    if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all global shortcuts.",{}};}
-    if(!recording_&&reply&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved global shortcut could not be restored.",{}};
+    if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all of put.gd's hotkeys.",{}};}
+    if(!recording_&&reply&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};
     if(action=="scroll"&&helper_["extensionVersion"].toInt()<22&&!recording_){entry["bound"]=false;entry["error"]="helper_outdated";}
     bindings_[action]=entry;
    }

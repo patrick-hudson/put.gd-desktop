@@ -98,8 +98,8 @@ void KdeShortcuts::setRecording(bool active,std::function<void(Error)> reply){
   auto* pending=new QDBusPendingCallWatcher(call("setInactive",{actionId(it.key())}),this);
   connect(pending,&QDBusPendingCallWatcher::finished,this,[this,pending,generation,remaining,error,reply]{
    QDBusPendingReply<> result=*pending;pending->deleteLater();
-   if(generation!=generation_)*error={"shortcut_recording_interrupted","Global shortcut configuration changed. Try recording again.",{}};
-   else if(result.isError())*error={"shortcut_recording_failed","KDE did not acknowledge pausing global shortcuts.",{}};
+   if(generation!=generation_)*error={"shortcut_recording_interrupted","Hotkey configuration changed. Try recording again.",{}};
+   else if(result.isError())*error={"shortcut_recording_failed","KDE did not acknowledge pausing hotkeys.",{}};
    if(--*remaining==0)reply(*error);
   });
  }
@@ -110,7 +110,7 @@ void KdeShortcuts::bind(const QHash<QString,QString>& desired,std::function<void
  for(auto it=desired.cbegin();it!=desired.cend();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"state","pending"},{"bound",false}};
  if(!keymap_||layout_==XKB_LAYOUT_INVALID){for(auto it=desired.cbegin();it!=desired.cend();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"state","shortcut_unavailable"},{"bound",false},{"error","Waiting for the compositor keyboard map and current layout"}};emit changed();if(reply)reply({"shortcut_unavailable","Waiting for the compositor keyboard map and current layout.",{}});return;}
  auto m=QDBusMessage::createMethodCall(service,path,"org.freedesktop.DBus.Introspectable","Introspect");m.setAutoStartService(false);auto* pending=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(m,3000),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,pending,generation,complete=std::move(reply)]{QDBusPendingReply<QString> reply=*pending;pending->deleteLater();if(generation!=generation_){if(complete)complete({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});return;}
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,pending,generation,complete=std::move(reply)]{QDBusPendingReply<QString> reply=*pending;pending->deleteLater();if(generation!=generation_){if(complete)complete({"shortcut_recording_interrupted","Hotkey configuration changed.",{}});return;}
   available_=!reply.isError()&&reply.value().contains("name=\"setShortcutKeys\"");apiReady_=available_;
   if(!available_){for(auto it=requested_.cbegin();it!=requested_.cend();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"state","shortcut_unavailable"},{"bound",false},{"error","Current KGlobalAccel shortcut API is unavailable"}};emit changed();if(complete)complete({"shortcut_unavailable","KDE global shortcuts are unavailable.",{}});return;}
   if(requested_.isEmpty()){if(complete)complete({});}
@@ -127,15 +127,15 @@ void KdeShortcuts::bindOne(QString action,QString requested,quint64 generation,s
  if(invalid||!normalized.error.isEmpty()){
   const auto error=invalid?QString("shortcut_invalid"):normalized.error;
   const auto state=error=="shortcut_ambiguous"?QString("shortcut_unmapped"):error;
-  effective_.remove(action);status_[action]=QJsonObject{{"requested",requested},{"bound",false},{"state",state},{"error",error}};emit changed();if(complete)complete({error,"A saved global shortcut could not be restored.",{}});return;
+  effective_.remove(action);status_[action]=QJsonObject{{"requested",requested},{"bound",false},{"state",state},{"error",error}};emit changed();if(complete)complete({error,"A saved hotkey could not be restored.",{}});return;
  }
  effective_[action]=seq;
- auto finish=[this,action,requested,seq,complete](const QString& state,const QList<KdeKeySequence>& keys={}){QJsonArray actual;for(const auto& key:keys)actual.append(text(key));status_[action]=QJsonObject{{"requested",requested},{"effective",seq.toString(QKeySequence::PortableText)},{"layout",int(layout_)},{"actual",actual},{"bound",state=="bound"},{"state",state}};emit changed();if(complete)complete(state=="shortcut_unavailable"||state=="shortcut_conflict"?Error{state,"A saved global shortcut could not be restored.",{}}:Error{});};
+ auto finish=[this,action,requested,seq,complete](const QString& state,const QList<KdeKeySequence>& keys={}){QJsonArray actual;for(const auto& key:keys)actual.append(text(key));status_[action]=QJsonObject{{"requested",requested},{"effective",seq.toString(QKeySequence::PortableText)},{"layout",int(layout_)},{"actual",actual},{"bound",state=="bound"},{"state",state}};emit changed();if(complete)complete(state=="shortcut_unavailable"||state=="shortcut_conflict"?Error{state,"A saved hotkey could not be restored.",{}}:Error{});};
  auto set=[this,action,seq,generation,finish,complete]{auto* reg=new QDBusPendingCallWatcher(call("doRegister",{actionId(action)}),this);
-  connect(reg,&QDBusPendingCallWatcher::finished,this,[this,reg,action,seq,generation,finish,complete]{QDBusPendingReply<> r=*reg;reg->deleteLater();if(generation!=generation_){if(complete)complete({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});return;}if(r.isError()){finish("shortcut_unavailable");return;}
+  connect(reg,&QDBusPendingCallWatcher::finished,this,[this,reg,action,seq,generation,finish,complete]{QDBusPendingReply<> r=*reg;reg->deleteLater();if(generation!=generation_){if(complete)complete({"shortcut_recording_interrupted","Hotkey configuration changed.",{}});return;}if(r.isError()){finish("shortcut_unavailable");return;}
    const auto desired=seq.isEmpty()?QList<KdeKeySequence>{}:QList<KdeKeySequence>{wire(seq)};
    auto* setter=new QDBusPendingCallWatcher(call("setShortcutKeys",{actionId(action),QVariant::fromValue(desired),uint(6)}),this);
-   connect(setter,&QDBusPendingCallWatcher::finished,this,[this,setter,desired,generation,finish,complete]{QDBusPendingReply<QList<KdeKeySequence>> result=*setter;setter->deleteLater();if(generation!=generation_){if(complete)complete({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});return;}if(result.isError()){finish("shortcut_unavailable");return;}
+   connect(setter,&QDBusPendingCallWatcher::finished,this,[this,setter,desired,generation,finish,complete]{QDBusPendingReply<QList<KdeKeySequence>> result=*setter;setter->deleteLater();if(generation!=generation_){if(complete)complete({"shortcut_recording_interrupted","Hotkey configuration changed.",{}});return;}if(result.isError()){finish("shortcut_unavailable");return;}
     const auto actual=result.value();bool matches=actual.size()==desired.size();for(int i=0;matches&&i<actual.size();++i)matches=actual[i].keys==desired[i].keys;
     finish(desired.isEmpty()?"unbound":matches?"bound":"shortcut_conflict",actual);connectComponent(generation);
    });

@@ -339,7 +339,7 @@
               }
             }
           ],
-          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no hotkey."
         },
         "scroll": {
           "type": "object",
@@ -468,7 +468,7 @@
               }
             }
           ],
-          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no hotkey."
         },
         "monitor": {
           "type": "object",
@@ -532,7 +532,7 @@
               }
             }
           ],
-          "description": "Capture monitor: the monitor under the pointer, at its native size. Optional; when absent it copies the desktop output route with no shortcut."
+          "description": "Capture monitor: the monitor under the pointer, at its native size. Optional; when absent it copies the desktop output route with no hotkey."
         },
         "repeat": {
           "type": "object",
@@ -544,7 +544,7 @@
               "maxLength": 128
             }
           },
-          "description": "Repeat last region: a shortcut only. It captures the rectangle of the last region capture again, with the region action's output. Optional; when absent it has no shortcut."
+          "description": "Repeat last region: a hotkey only. It captures the rectangle of the last region capture again, with the region action's output. Optional; when absent it has no hotkey."
         }
       }
     },
@@ -1064,12 +1064,12 @@
         "captureDelaySeconds": {
           "enum": [0, 3, 5, 10],
           "default": 0,
-          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, a repeat of the last region, or Capture region & edit. A countdown shows meanwhile and can be cancelled. Shortcut captures are immediate unless captureDelayShortcuts is true, and session requests pass their own delaySeconds. Omitted means 0."
+          "description": "Seconds the tray and the dashboard wait before a region, window, monitor or desktop capture, a repeat of the last region, or Capture region & edit. A countdown shows meanwhile and can be cancelled. Hotkey captures are immediate unless captureDelayShortcuts is true, and session requests pass their own delaySeconds. Omitted means 0."
         },
         "captureDelayShortcuts": {
           "type": "boolean",
           "default": false,
-          "description": "Whether captures started by a keyboard shortcut also wait captureDelaySeconds. Omitted means false: shortcut captures are immediate."
+          "description": "Whether captures started by a hotkey also wait captureDelaySeconds. Omitted means false: hotkey captures are immediate."
         },
         "scrollCaptureMaxHeight": {"type": "integer", "minimum": 2000, "maximum": 60000, "default": 30000},
         "scrollCaptureFromTop": {"type": "boolean", "default": true},
@@ -1084,7 +1084,7 @@
         "recordingMicrophone": {
           "type": "boolean",
           "default": false,
-          "description": "The microphone toggle on the recording bar, remembered between recordings started from the tray, the dashboard or the shortcut. The microphone is opened only while the toggle is on and released when the recording stops. Omitted means off."
+          "description": "The microphone toggle on the recording bar, remembered between recordings started from the tray, the dashboard or the hotkey. The microphone is opened only while the toggle is on and released when the recording stops. Omitted means off."
         },
         "recordingMicrophoneDevice": {
           "type": "string",
@@ -1650,7 +1650,7 @@
       }
     }
   },
-  "description": "SettingsService is authoritative for profile references, uniqueness, shortcuts and registered provider validation.",
+  "description": "SettingsService is authoritative for profile references, uniqueness, hotkeys and registered provider validation.",
   "allOf": [
     {
       "if": {

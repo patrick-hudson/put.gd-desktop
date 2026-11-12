@@ -84,9 +84,9 @@ SourceAdapter::PreparedAcquisition BudgieSourceAdapter::prepareAcquisition(const
    if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}
   };
   capture_.freezeActive([guard,complete,limits,generation](ImageCopyCapture::Toplevel target,Error error){
-   if(error){if(error.code=="capture_target"&&error.message.startsWith("No window"))error={"target_unavailable","Focus an external window and invoke the window shortcut or CLI",error.details};complete({},std::move(error));return;}
+   if(error){if(error.code=="capture_target"&&error.message.startsWith("No window"))error={"target_unavailable","Focus an external window and invoke the window hotkey or CLI",error.details};complete({},std::move(error));return;}
    if(!guard){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
-   if(ownAppId(target.appId)){complete({},{"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}});return;}
+   if(ownAppId(target.appId)){complete({},{"target_unavailable","Focus an external window and invoke the window hotkey or CLI",{}});return;}
    guard->queryVisibility([guard,complete,limits,generation,id=target.identifier](bool visible){
     if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
     if(!visible){complete({},visibilityError());return;}
