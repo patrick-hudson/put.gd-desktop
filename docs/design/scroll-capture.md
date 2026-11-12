@@ -10,7 +10,8 @@ contract.
 
 It never asks the application how long its content is. It finds the top and the bottom by
 reaching them, and says so when it could not: only the end reason `end_of_content` means
-the whole scroll area, top to bottom, is in the image.
+the whole scroll area, top to bottom, is in the image (with `scrollCaptureFromTop` off, from
+the position the capture started at; `topReached` says which).
 
 ## Workflow
 
@@ -556,7 +557,7 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   (`selectsRegions`): with an older loaded extension every start, tray, window, CLI and MCP
   included, gets the region error (`helper_outdated` while the packaged extension is newer, else
   `region_unavailable`) until the next login.
-- **Live web pages** are captured exactly or not at all: each of these ends the capture
+- **Live web pages**: each of these ends the capture
   early with an honest reason and an exact partial image, and none puts a wrong row in one.
   - A page that lays itself out anew under the viewport while it is scrolled (Chromium on a
     long pull request page lays its sections out as they come into view): one wheel step can

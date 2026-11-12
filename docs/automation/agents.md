@@ -87,7 +87,7 @@ round trips, replacement/missing/denied deletes, and lost deletion replies.
 Do not teach shared code to decode URLs or provider object keys.
 
 To take a scrolling capture as an agent, read `scroll.capabilities` first (`available`, `injector`,
-`frames`), then `scroll.prepare` with a `rect` (or none, for the selector), `scroll.start`, poll
+`frames`), then `scroll.prepare` with a `rect` (or none, for the selector: the session is then `selecting`; finish the selector or call `scroll.select` and wait for `ready`), `scroll.start`, poll
 `scroll.inspect` until `state` is `done`, `failed` or `cancelled`, and read `endReason`: only
 `end_of_content` is a complete capture, and a `lost_track` or `height_cap` image is exact but partial.
 `top_not_reached` (and `topReached: false` on any other end) says the image starts partway down the
