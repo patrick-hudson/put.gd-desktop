@@ -433,7 +433,7 @@ helper `ed95dc4a6d20`), which passed its Proton cases and found two faults:
 - Two uploads invoked one right after the other still started two helpers on
   all four desktops. The second asked while the first's helper, started ahead,
   had not been taken yet, and that case registered nothing. It registers now
-  (`operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt`).
+  (a test for it was removed with the helper reuse cases in #1422).
 - 8 MB uploads took 7.6 to 12.9 s in their upload stage, against 5.0 to 6.2 s
   in the previous record. The storage connection opened early was the cause
   for a file of several blocks: its blocks are sent side by side, the block on
@@ -489,11 +489,13 @@ account first and took the helper the first had started; when it ended, only
 its own registration was left, because the first had withdrawn its
 registration on starting a helper, so the helper was retired and the first
 operation started another. Every operation now stays registered for as long
-as it lives. `operationInvokedBeforeTheFirstTookItsHelperStillInheritsIt` has
-a row for each order, and
-`twoOperationsInvokedTogetherShareOneHelperWhicheverRunsFirst` runs two
-operations on threads ten times; both fail on the code before this fix and
-pass with it. This change is in the application only: the helper is the same.
+as it lives. Two tests, one with a row for each order and one running two
+operations on threads ten times, failed on the code before this fix and passed
+with it. #1422 removed both with the other helper reuse cases;
+`test_proton_transport.cpp` now keeps `sessionKeepsOneHelperUntilItIsReleased`
+and `accountBusyNeverDispatches`, which hold one helper to one session and
+refuse a second request on the same account. This change is in the
+application only: the helper is the same.
 
 Through the production adapter and the final compiled helper, two 64 KiB
 publishes took 1.76 and 1.76 s, two 360 KB publishes 3.44 and 3.52 s and one

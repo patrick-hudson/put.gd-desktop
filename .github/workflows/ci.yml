@@ -345,15 +345,17 @@ jobs:
       - name: Test
         # Wait budgets scale with PUTGD_TEST_TIME_SCALE (tests/fixtures/Waits.h).
         # A failed integration test is retried once and reported; unit tests never are.
+        # Tests labelled `nightly` (gui_theme_contrast) run on pushes, not pull requests.
         env:
           PUTGD_TEST_TIME_SCALE: '3'
           PUTGD_CI_JOB: linux (${{ matrix.distribution }})
           PUTGD_CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PUTGD_CTEST_EXCLUDE: ${{ github.event_name == 'pull_request' && '^nightly$' || '' }}
         run: |
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 12 --resource-spec-file "$3"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" python3 tools/ci/ctest_retry.py --ledger build/dev/flake-ledger.json --junit "$2" -- --preset dev --parallel 12 --resource-spec-file "$3" ${4:+--label-exclude "$4"}' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml" "$PWD/tools/ci/ctest-resources.json" "$PUTGD_CTEST_EXCLUDE"
       - name: Report flaky tests
         # Every test that passed only on its retry is listed in the job summary
         # and recorded in its `flaky-test` tracker issue.

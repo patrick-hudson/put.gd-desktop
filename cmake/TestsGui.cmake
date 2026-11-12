@@ -42,6 +42,26 @@
   target_link_libraries(test_editor_window PRIVATE putgd_editor_window Qt6::Test)
   add_test(NAME gui_editor_window COMMAND test_editor_window)
   set_tests_properties(gui_editor_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+  add_executable(test_gui_application tests/gui/test_ui_application.cpp)
+  target_link_libraries(test_gui_application PRIVATE putgd_ui_application putgd_app Qt6::Test)
+  add_test(NAME gui_application COMMAND test_gui_application)
+  set_tests_properties(gui_application PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+  # Contrast ratios in both schemes. Labelled `nightly`: CI's pull request test
+  # step excludes the label, so it runs on pushes to nightly only.
+  add_executable(test_gui_theme tests/gui/test_theme.cpp)
+  target_link_libraries(test_gui_theme PRIVATE putgd_ui Qt6::Test)
+  add_test(NAME gui_theme_contrast COMMAND test_gui_theme)
+  set_tests_properties(gui_theme_contrast PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60 LABELS nightly)
+  # #251: the shell running ctest may carry the user's session bus, desktop
+  # name and platform theme; without them the desktop's colour scheme cannot decide these results.
+  set(putgd_no_desktop_scheme "DBUS_SESSION_BUS_ADDRESS=set:unix:path=/nonexistent/putgd-test-no-session-bus"
+    "XDG_CURRENT_DESKTOP=unset:" "QT_QPA_PLATFORMTHEME=unset:")
+  set_tests_properties(gui_theme_contrast gui_application PROPERTIES ENVIRONMENT_MODIFICATION "${putgd_no_desktop_scheme}")
+  add_executable(test_gui_tray tests/gui/test_tray.cpp)
+  target_link_libraries(test_gui_tray PRIVATE putgd_tray Qt6::Test Qt6::DBus)
+  # A private bus with nothing to activate (#1307): its synthetic failures must never reach a desktop's notifications.
+  add_test(NAME gui_tray COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_gui_tray>)
+  set_tests_properties(gui_tray PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(test_parent_death tests/integration/test_parent_death.cpp)
     target_include_directories(test_parent_death PRIVATE src)

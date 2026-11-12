@@ -48,6 +48,13 @@
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::editor;
 
+static QByteArray writeCopy(EditorWindow& window,const QString& path,QString& reason){
+ QByteArray png;bool finished=false;
+ if(!window.writeCopy(path,[&](const QByteArray& bytes,const QString& error){png=bytes;reason=error;finished=true;})){reason="save not started";return {};}
+ if(!putgd::test::waitFor([&]{return finished;},10000))reason="save timed out";
+ return png;
+}
+
 class EditorWindowTest:public QObject {
  Q_OBJECT
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
@@ -75,6 +82,21 @@ private slots:
   QVERIFY(window.canvas().cropPending());QCOMPARE(doc.crop(),doc.imageRect());
   QSignalSpy uploads(&window,&EditorWindow::uploadRequested);window.findChild<QPushButton*>("editorUpload")->click();
   QCOMPARE(uploads.size(),1);QCOMPARE(doc.crop(),QRect(25,35,30,20));
+ }
+ // Save Copy, from the window or an agent, writes the crop that was drawn but not applied.
+ void saveCopyFinishesThePendingCropLikeUpload(){
+  qputenv("PUTGD_FILE_DIALOG","fallback");auto restore=qScopeGuard([]{qunsetenv("PUTGD_FILE_DIALOG");});
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","crop"}},code,message);
+  window.viewCommand({{"action","geometry"},{"rect",QJsonArray{20,30,200,100}}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  QVERIFY(window.canvas().cropPending());QVERIFY(window.saveCopy());
+  QTemporaryDir dir;const auto path=dir.filePath("copy.png");
+  QFileDialog* chooser=nullptr;PUTGD_TRY_VERIFY((chooser=window.fileDialog().fallbackDialog())&&chooser->isVisible());
+  chooser->selectFile(path);QMetaObject::invokeMethod(chooser,"accept");
+  PUTGD_TRY_VERIFY(QFileInfo::exists(path));PUTGD_TRY_VERIFY(!window.savingCopy());QCOMPARE(QImageReader(path).size(),QSize(200,100));
+  window.viewCommand({{"action","tool"},{"tool","crop"}},code,message);window.viewCommand({{"action","geometry"},{"rect",QJsonArray{20,30,50,40}}},code,message);
+  QString reason;const auto png=writeCopy(window,dir.filePath("second.png"),reason);QVERIFY2(!png.isEmpty(),qPrintable(reason));
+  QCOMPARE(QImage::fromData(png,"PNG").size(),QSize(50,40));
  }
 };
 QTEST_MAIN(EditorWindowTest)
