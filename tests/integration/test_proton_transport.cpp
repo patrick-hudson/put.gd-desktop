@@ -391,6 +391,36 @@ private slots:
    PUTGD_TRY_VERIFY(!running(servedFirst));
   }
  }
+ void aHelperThatCouldNotReadItsSessionIsReplacedOnce_data(){
+  QTest::addColumn<QString>("fixture");QTest::addColumn<bool>("inSession");QTest::addColumn<QString>("code");
+  QTest::newRow("read by the second helper")<<"session-unread"<<false<<"";
+  QTest::newRow("read by the second helper, in a session")<<"session-unread"<<true<<"";
+  QTest::newRow("an account that is not connected")<<"session-unread-absent"<<false<<"authentication_required";
+  QTest::newRow("a helper that says it again")<<"session-unread-always"<<false<<"session_unread";
+ }
+ void aHelperThatCouldNotReadItsSessionIsReplacedOnce(){
+  QFETCH(QString,fixture);QFETCH(bool,inSession);QFETCH(QString,code);QTemporaryDir dir;QVERIFY(dir.isValid());
+  ProtonProvider provider;auto d=destination(fixture);d.settings["startsFile"]=dir.filePath("starts");
+  const auto starts=[&]{QFile file(dir.filePath("starts"));return file.open(QIODevice::ReadOnly)?QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts):QStringList{};};
+  std::shared_ptr<void> session;if(inSession)session=provider.openSession(d);
+  const auto first=ask(provider,d,fixture);
+  // The first helper said it found no session and changed nothing; the second was told so.
+  auto seen=starts();QCOMPARE(seen.size(),2);QVERIFY(seen[0].endsWith(" checkName False"));QVERIFY(seen[1].endsWith(" checkName True"));
+  QVERIFY(seen[0].section(' ',0,0)!=seen[1].section(' ',0,0));
+  if(!code.isEmpty()){
+   // It is asked once more and no further: what the second helper says is the answer.
+   QCOMPARE(first.status,QString("inconclusive"));QCOMPARE(first.error.code,code);
+   return;
+  }
+  QCOMPARE(first.status,QString("absent"));QVERIFY(!first.error);QCOMPARE(first.objectReference["pid"].toVariant().toString(),seen[1].section(' ',0,0));
+  if(inSession){
+   // The session keeps the helper that read it: the next request is its second, with nothing to repeat.
+   const auto second=ask(provider,d,fixture);
+   QCOMPARE(second.objectReference["pid"],first.objectReference["pid"]);QCOMPARE(second.objectReference["served"].toInt(),2);
+   QCOMPARE(starts().size(),3);
+  }
+  QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+ }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));
   const auto key=QString::fromLatin1(QCryptographicHash::hash(d.credentialReference["reference"].toString().toUtf8(),QCryptographicHash::Sha256).toHex());QLockFile lock(QDir(root).filePath(key+".lock"));lock.setStaleLockTime(0);QVERIFY(lock.tryLock());
