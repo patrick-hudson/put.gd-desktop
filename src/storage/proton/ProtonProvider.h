@@ -61,6 +61,10 @@ private:
  QJsonObject call(const QString&,const Destination&,QJsonObject,Error&,
                  std::shared_ptr<std::atomic_bool> = {},SetupEvent={},bool* outcomeUncertain=nullptr,
                  std::function<void(const UploadProgress&)> progress={});
+ // One helper's answer to one request; `call` asks a second helper when the first could not read its session.
+ QJsonObject callOnce(const QString&,const Destination&,QJsonObject,Error&,
+                 std::shared_ptr<std::atomic_bool>,SetupEvent,bool* outcomeUncertain,
+                 std::function<void(const UploadProgress&)> progress);
  std::atomic_int active_{0};std::atomic_bool stopping_{false},prepared_{false};std::thread verifier_;
 };
 }

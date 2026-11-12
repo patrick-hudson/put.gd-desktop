@@ -91,7 +91,11 @@ bool ScrollBar::place(const QRect& captured) {
     if (mode == SurfaceMode::Compositor) { outside_ = false; return false; }
     const QRect area = mode == SurfaceMode::X11 ? barLogicalRect(captured) : captured;
     const QList<QRect> screens = barScreens();
-    const BarSpot spot = placeBar(size(), area, screens);
+    // On X11 the window manager draws a soft shadow around the bar, and at
+    // 10 px it reached the rectangle: the last five rows of Cinnamon captures
+    // were up to 3 levels darker under the bar's columns (acceptance of
+    // 2026-11-12). Further away, the shadow stays outside the rectangle.
+    const BarSpot spot = placeBar(size(), area, screens, true, mode == SurfaceMode::X11 ? 32 : 10);
     outside_ = spot.outside && spot.screen >= 0;
     if (!outside_) return false;
     const auto native = QGuiApplication::screens();

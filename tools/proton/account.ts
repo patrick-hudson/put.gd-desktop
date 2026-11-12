@@ -32,11 +32,27 @@ export async function privateDataDirectory(): Promise<string> {
     return input;
 }
 export function createCryptoCache(): ProtonDriveCryptoCache { return new RequestCache(); }
+// A keychain read or write is an exchange with the desktop's secret service, and a new client
+// can lose it through no fault of the entry (#1418): on KDE's service about one new process
+// in a hundred had a read refused ("Client public key size is invalid") or answered with
+// nothing, the entry being there all along. A refused exchange made again in the same
+// process succeeds, so it is made again a few times before the refusal is believed. An
+// empty answer is not helped by that, it stays empty for the life of the process: see
+// `sessionUnread` in runtime.ts for what is done about it.
+export const KEYCHAIN_PAUSES_MS = [30, 90, 240];
+export async function keychain<T>(exchange: () => Promise<T>, pauses: readonly number[] = KEYCHAIN_PAUSES_MS): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+        try { return await exchange(); }
+        catch (error) { if (attempt >= pauses.length) throw error; }
+        await new Promise(resolve => setTimeout(resolve, pauses[attempt]));
+    }
+}
 // A refused session write (no default keyring collection, or a locked one) is a
 // keychain failure, not a generic operation failure (#252). libsecret stores
 // through the Secret Service 'default' alias; the provider decides its target.
+// A session that was refreshed and not saved is lost: Proton has replaced its refresh token.
 export async function saveToKeychain(save: () => Promise<void>): Promise<void> {
-    try { await save(); }
+    try { await keychain(save); }
     catch { throw new ProtocolError('keychain_unavailable'); }
 }
 export function accountResponseHooks(onUnsupported: () => never) {
@@ -507,7 +523,7 @@ export async function openAccount(request: JsonObject) {
     let accountReferenceExists = false;
     const credentials = new Credentials({
         load: async () => {
-            const raw = await Bun.secrets.get({ service: SECRET_SERVICE, name: request.destination.credentials.reference });
+            const raw = await keychain(() => Bun.secrets.get({ service: SECRET_SERVICE, name: request.destination.credentials.reference }));
             accountReferenceExists = raw !== null;
             return parseStoredSnapshot(raw);
         },

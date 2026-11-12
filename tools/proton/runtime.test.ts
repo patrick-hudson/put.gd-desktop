@@ -7,9 +7,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
-import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, stat, upload, share, serviceFailure, transferHost } from './runtime';
+import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, sessionUnread, stat, upload, share, serviceFailure, transferHost } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
-import { LINK_AHEAD_MS, LinkAhead, LinkOpenPGP, SLOW_ANSWER_MS, SharedAccountReads, fastestConnectionFetch, keepUserDataAcrossRefresh, linkPasswordAhead, linkPreparation, saveToKeychain } from './account';
+import { LINK_AHEAD_MS, LinkAhead, LinkOpenPGP, SLOW_ANSWER_MS, SharedAccountReads, fastestConnectionFetch, keepUserDataAcrossRefresh, keychain, linkPasswordAhead, linkPreparation, saveToKeychain } from './account';
 import { initSharingModule } from '@protontech/drive-sdk/internal/sharing';
 import { Addresses } from 'proton-drive-sdk-account';
 import { Credentials } from './upstream/cli/src/credentials/credentials';
@@ -1147,4 +1147,39 @@ test('a file this process just uploaded is read again before an incomplete read 
         expect((await share(run.stub.ctx, other)).status).not.toBe('shared');
         expect(run.fileReads()).toBe(1);
     } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('a keychain exchange the service refused is made again before the refusal is believed (#1418)', async () => {
+    const pauses = [1, 1, 1];
+    const script = (outcomes: (string | null | Error)[]) => { let calls = 0;
+        return { calls: () => calls, exchange: async () => { const outcome = outcomes[Math.min(calls++, outcomes.length - 1)]; if (outcome instanceof Error) throw outcome; return outcome; } }; };
+    const refused = new Error('Client public key size is invalid (code: 16)');
+    let read = script([refused, 'entry']);
+    expect(await keychain(read.exchange, pauses)).toBe('entry'); expect(read.calls()).toBe(2);
+    read = script([refused, refused, refused, 'entry']);
+    expect(await keychain(read.exchange, pauses)).toBe('entry'); expect(read.calls()).toBe(4);
+    // A service that keeps refusing is reported, with its own error.
+    read = script([refused]);
+    let failure: unknown;
+    try { await keychain(read.exchange, pauses); } catch (error) { failure = error; }
+    expect(failure).toBe(refused); expect(read.calls()).toBe(4);
+    // An answer is taken as it comes, an empty one included: asking this process again does not change it.
+    read = script([null, 'entry']);
+    expect(await keychain(read.exchange, pauses)).toBeNull(); expect(read.calls()).toBe(1);
+    // A refreshed session's write is made again too; only a write that never succeeds is a keychain failure.
+    let writes = 0;
+    await saveToKeychain(async () => { if (++writes < 3) throw refused; });
+    expect(writes).toBe(3);
+    let lost: unknown;
+    try { await saveToKeychain(async () => { ++writes; throw refused; }); } catch (error) { lost = error; }
+    expect((lost as ProtocolError).code).toBe('keychain_unavailable'); expect(writes).toBe(7);
+});
+test('the first process to find no session says so once, and the one started after it believes what it finds (#1418)', () => {
+    expect(sessionUnread(false, false)).toBe(true);
+    expect(sessionUnread(false, true)).toBe(false);
+    expect(sessionUnread(true, false)).toBe(false);
+    expect(sessionUnread(true, true)).toBe(false);
+    // The application sees a failure that changed nothing and that names itself.
+    const answer = serviceFailure(new ProtocolError('session_unread'));
+    expect(answer.code).toBe('session_unread'); expect(answer.details).toEqual({});
 });

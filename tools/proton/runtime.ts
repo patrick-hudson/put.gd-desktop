@@ -3,7 +3,7 @@ import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
-import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, openAccount, openClient, privateDataDirectory } from './account';
+import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, keychain, openAccount, openClient, privateDataDirectory } from './account';
 import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, configured, days, failure, hash, makeReceipt,
     name, object, parseRequest, publicationClientUid, receipt, reference, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
 import { AccountApiError } from 'proton-drive-sdk-account';
@@ -291,7 +291,7 @@ export async function share(ctx: Context, request: JsonObject) {
     let customPassword: string | undefined;
     if (options.action === 'create' && passwordReference) {
         try {
-            const raw = await Bun.secrets.get({ service: SECRET_SERVICE, name: passwordReference });
+            const raw = await keychain(() => Bun.secrets.get({ service: SECRET_SERVICE, name: passwordReference }));
             const stored = raw ? JSON.parse(raw) : undefined;
             if (stored?.schemaVersion !== 1 || stored?.kind !== 'share-password' || typeof stored?.value !== 'string')
                 throw new ProtocolError('keychain_unavailable');
@@ -339,7 +339,16 @@ export async function createFolder(ctx: Context, request: JsonObject): Promise<J
 // and ownership reads from the service, and has its own deadline and cancellation.
 const SESSION_METHODS = new Set(['warm', 'checkName', 'upload', 'stat', 'reconcile', 'share']);
 let session: { reference: string; account: Awaited<ReturnType<typeof openAccount>>; clientUid?: string; ctx: Context } | undefined;
-async function context(request: JsonObject) {
+// A process whose keychain read found no session cannot tell an account that was never
+// connected from an exchange with the secret service that went wrong for this process, and
+// the second stays wrong however often this process asks (#1418). So the first process to
+// find none says `session_unread` and changes nothing; the application starts another, which
+// is told so (`sessionRetry`) and believes what it finds. A read the service kept refusing is
+// treated the same way.
+export function sessionUnread(found: boolean, told: boolean): boolean { return !found && !told; }
+// This process was started after one that found no session, and has been told so.
+let believesItsKeychain = false;
+async function opened(request: JsonObject) {
     if (!sessions) return initialize(request);
     const reference = request.destination.credentials.reference, clientUid = publicationClientUid(request);
     if (session && session.reference !== reference) throw new ProtocolError('invalid_request');
@@ -348,6 +357,17 @@ async function context(request: JsonObject) {
     const account = session?.account ?? await openAccount(request);
     session = { reference, account, clientUid, ctx: await openClient(account, request) };
     return session.ctx;
+}
+async function context(request: JsonObject) {
+    believesItsKeychain ||= request.sessionRetry === true;
+    let ctx: Context;
+    try { ctx = await opened(request); }
+    catch (error) {
+        if (error instanceof ProtocolError && error.code === 'keychain_unavailable' && sessionUnread(false, believesItsKeychain)) throw new ProtocolError('session_unread');
+        throw error;
+    }
+    if (sessionUnread(ctx.accountReferenceExists, believesItsKeychain)) throw new ProtocolError('session_unread');
+    return ctx;
 }
 async function* requestLines(): AsyncGenerator<Buffer> {
     let pending: Buffer = Buffer.alloc(0);
@@ -370,10 +390,10 @@ async function run(request: JsonObject): Promise<JsonObject> {
         try {
             if (options.reference === request.destination.credentials.reference) throw new ProtocolError('reference_in_use');
             const serialized = JSON.stringify({ schemaVersion: 1, kind: 'share-password', value: options.password });
-            const stored = await Bun.secrets.get({ service: SECRET_SERVICE, name: options.reference });
+            const stored = await keychain(() => Bun.secrets.get({ service: SECRET_SERVICE, name: options.reference }));
             if (stored !== null && stored !== undefined && stored !== serialized) throw new ProtocolError('reference_in_use');
             if (stored === null || stored === undefined)
-                await Bun.secrets.set({ service: SECRET_SERVICE, name: options.reference, value: serialized });
+                await keychain(() => Bun.secrets.set({ service: SECRET_SERVICE, name: options.reference, value: serialized }));
             options.password = undefined;
             return { reference: options.reference };
         } catch (error) {

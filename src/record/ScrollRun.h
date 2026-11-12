@@ -261,6 +261,10 @@ private:
     // After Stop on the way to the top only a discarded capture (Cancel) ends the last waits.
     bool stopped() const { return afterStop_ ? (opts_.discarded && opts_.discarded()) : (stop_ && stop_->load()); }
     std::optional<RunResult> waitFailure(Wait);
+    // After a still step: the end of the content proved, the page found
+    // further down (`found` is that step), or neither. `fail` ends the run.
+    enum class EndProof { Proved, Moved, Unproved };
+    EndProof proveEnd(scroll::StepResult& found, std::optional<RunResult>& fail);
     std::optional<RunResult> scrollToTop();
     std::optional<RunResult> wayToTop();
     RunResult viewportAfterStop();
