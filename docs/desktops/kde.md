@@ -158,7 +158,7 @@ effect on and none with it off. `kwin_click_effect_contract`
 against a scripted KWin. The design is in
 [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
 
-## Clipboard and shortcuts
+## Clipboard and hotkeys
 
 Data control imports `text/uri-list`, supported image MIME types, and UTF-8 plain
 text while the resident application is unfocused. Local files take precedence,
@@ -174,7 +174,7 @@ previous owner, so that committed request is not rolled back. Results set only C
 KGlobalAccel v2 uses `globalShortcutAvailable`, `setShortcutKeys`,
 `yourShortcutsChanged`, and component `globalShortcutPressed`.
 Returned bindings are authoritative and conflicts are exposed without stealing
-shortcuts. Session service changes trigger capability updates and rebinding.
+hotkeys. Session service changes trigger capability updates and rebinding.
 
 ## Required native witness gate
 
@@ -186,7 +186,7 @@ window capture with focus changes; every enabled monitor and panels; permission
 entry absence/mismatch; text/image/two-file imports while unfocused and independent
 pastes of local-only and public-link results. Verify PRIMARY in another app before
 and after every result category. Repeat with two fractional-scale/rotated outputs,
-layout gaps, and output removal during selection. Verify shortcut conflict and
+layout gaps, and output removal during selection. Verify hotkey conflict and
 service/compositor loss expose errors and recover after session restart.
 
 The bounded FD integration test is a synthetic pipe test. It cannot prove

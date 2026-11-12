@@ -5,15 +5,15 @@ Each one is native on every desktop adapter; no portal picker stands in for any 
 
 | Addition | What it does | How it is started |
 | --- | --- | --- |
-| Capture monitor | Captures the monitor the pointer is on, at that monitor's native size | The `monitor` action: tray, dashboard, a shortcut (unbound by default), `action.invoke`, MCP `perform_action` |
-| Delayed capture | Waits 3, 5 or 10 seconds before a region, window, monitor or desktop capture, a repeat, or Capture region & edit | `delaySeconds` on `action.invoke`; the tray and the dashboard pass `preferences.captureDelaySeconds`, and so does a shortcut when `preferences.captureDelayShortcuts` is on |
-| Repeat last region | Captures the rectangle of the last region capture again, with no selector | The `repeat` action: tray, the Capture region button's context menu, a shortcut (unbound by default), `action.invoke`, MCP |
+| Capture monitor | Captures the monitor the pointer is on, at that monitor's native size | The `monitor` action: tray, dashboard, a hotkey (unbound by default), `action.invoke`, MCP `perform_action` |
+| Delayed capture | Waits 3, 5 or 10 seconds before a region, window, monitor or desktop capture, a repeat, or Capture region & edit | `delaySeconds` on `action.invoke`; the tray and the dashboard pass `preferences.captureDelaySeconds`, and so does a hotkey when `preferences.captureDelayShortcuts` is on |
+| Repeat last region | Captures the rectangle of the last region capture again, with no selector | The `repeat` action: tray, the Capture region button's context menu, a hotkey (unbound by default), `action.invoke`, MCP |
 
 ## Capture monitor
 
 `monitor` is a full action in `config.json`, like `desktop`: it has its own output
-route, per-action exception, shortcut and history name ("Monitor"). A document
-written before it existed gets a copy of the `desktop` route with no shortcut
+route, per-action exception, hotkey and history name ("Monitor"). A document
+written before it existed gets a copy of the `desktop` route with no hotkey
 ([configuration](configuration.md)).
 
 The monitor is the one under the pointer **when the capture is prepared**: at the key
@@ -49,13 +49,13 @@ An edit of the clipboard or a file reads no screen, so a delay on one is refused
   set it, as one radio group: None, 3, 5 or 10 seconds. The submenu's own label names
   the current choice ("Capture delay: 3 seconds"). **Settings → Capture → Capture
   delay** has the same choice as **Wait before capturing**.
-- **A shortcut capture is immediate by default**, whatever that delay is.
+- **A hotkey capture is immediate by default**, whatever that delay is.
   `preferences.captureDelayShortcuts` (Settings → Capture → Capture delay → **Also
-  delay captures started by a shortcut**) makes shortcuts wait for it too. An open
-  menu usually holds the keyboard, so a shortcut cannot fire while one shows; with
-  this on, press the shortcut first and open the menu during the countdown.
+  delay captures started by a hotkey**) makes hotkeys wait for it too. An open
+  menu usually holds the keyboard, so a hotkey cannot fire while one shows; with
+  this on, press the hotkey first and open the menu during the countdown.
 - **Capture region & edit** waits like Capture region, from the tray, the dashboard
-  and (with the option above) its shortcut. The tray's Edit image entries (the
+  and (with the option above) its hotkey. The tray's Edit image entries (the
   clipboard, a file) never wait.
 - **`action.invoke` and MCP `perform_action`** use the `delaySeconds` they are given
   and never read the preference.
@@ -132,7 +132,7 @@ entire lock-and-unlock between the two visibility frames cannot be detected.
 
 ## Repeat last region
 
-`repeat` is a shortcut-only entry in `config.json`. It always uses the `region`
+`repeat` is a hotkey-only entry in `config.json`. It always uses the `region`
 action's output, and its operation is recorded as a region capture.
 
 The resident remembers the rectangle of the last region that was actually captured
@@ -183,7 +183,7 @@ region capture is refused as with any older loaded extension
   service against a fake adapter: what is prepared when, a cancelled and a locked
   countdown, repeat's refusal and its region record, `delaySeconds` validation, and
   an edit that waits only when it captures the screen.
-- `gui_tray`: a shortcut waits for the delay only with
+- `gui_tray`: a hotkey waits for the delay only with
   `preferences.captureDelayShortcuts`, the tray's Capture region & edit waits, and an
   edit of the clipboard does not.
 - `budgie_labwc_integration`: on a real headless labwc with two outputs, the monitor

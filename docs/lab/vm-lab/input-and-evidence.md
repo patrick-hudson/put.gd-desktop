@@ -9,7 +9,7 @@ kernel uinput devices, a keyboard and an absolute pointer modelled on QEMU's
 usb-tablet, and accepts the runner's QMP subset (`qmp_capabilities`,
 `input-send-event` with qcode keys, left/right/middle buttons and 0–32767
 absolute axes) on an owner-only Unix socket. Events pass through libinput into
-the compositor or X server like hardware input, so global shortcuts, region
+the compositor or X server like hardware input, so hotkeys, region
 selectors and editor windows receive real input. It refuses every other command,
 including `screendump`; capture frames from the host's loopback VNC tile.
 
@@ -42,7 +42,7 @@ with the region scenario, so the resident and the clipboard fixture are live:
 
 | Driver | Covers |
 | --- | --- |
-| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, redaction drawn and moved with the mouse, keyboard text, undo/redo, the other shape kinds (blur, arrow, highlight, rectangle) and an atomic rejection through `editor.apply`, preview, Ctrl+Enter submit, pixel checks on the saved PNG (redactions black, untouched areas unchanged), an independent paste and screenshots. Crop, save copy and cancel are covered by `mcp_editor_e2e.py` below, not here. It drives the editor at its opening Fit zoom: the scale comes from `editor.view` and `lab.locate_scaled_fixture_paint` finds the scaled image from its quadrant boundaries. On GNOME, restart the guest session after installing a new package so gnome-shell loads its put.gd extension (an older one lacks the edit shortcut). |
+| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, redaction drawn and moved with the mouse, keyboard text, undo/redo, the other shape kinds (blur, arrow, highlight, rectangle) and an atomic rejection through `editor.apply`, preview, Ctrl+Enter submit, pixel checks on the saved PNG (redactions black, untouched areas unchanged), an independent paste and screenshots. Crop, save copy and cancel are covered by `mcp_editor_e2e.py` below, not here. It drives the editor at its opening Fit zoom: the scale comes from `editor.view` and `lab.locate_scaled_fixture_paint` finds the scaled image from its quadrant boundaries. On GNOME, restart the guest session after installing a new package so gnome-shell loads its put.gd extension (an older one lacks the edit hotkey). |
 | `tools/lab/edit_memory.py RUN [SAMPLER]` | Whole-family RSS+swap (`family_sampler.py` in the guest) for generated PNG files opened with `editor.open`: 1080p, 4K and 24 MP edit-and-submit cycles, 100 edits with undo/redo churn on 4K, five open/cancel cycles on 4K, and a 6000×4001 file that must be refused. It does not run the desktop or region capture sources. Gate: incremental peak at most 3R + 96 MiB per case, and the resident returns within 8 MiB of baseline once the fixture takes the clipboard. |
 | `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
 | `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
@@ -52,7 +52,7 @@ request and the `lab` account may run only `dnf` through `sudo`. After
 installing the RPM in a run's overlay, `sync` in the guest and reset the
 disposable VM through its QMP socket (`system_reset`); GDM auto-logs `lab`
 in and the new Shell loads `putgd@put.gd` (seen ACTIVE on 2026-10-18), so the
-capture scenarios bind their shortcuts without a new golden. Never reset a
+capture scenarios bind their hotkeys without a new golden. Never reset a
 golden; only a run's own overlay.
 
 `tools/lab/physical.py HOSTCFG.json install DEB|RPM|SCENARIO|script DRIVER` runs the
@@ -99,7 +99,7 @@ Mint, Ubuntu, Fedora and Kubuntu base disks have been installed and checked loca
 the full Wayland action matrix remains pending.
 Native Wayland profiles require the installed U7/U8 helper, an actual Wayland
 session and the native Qt platform; readiness rejects Xwayland. TCG is explicit and labelled functional-only. VM evidence does not certify the physical-machine performance budgets.
-Multihead/scaling/rotation/removal, cancellation, shortcut conflicts, archive failures,
+Multihead/scaling/rotation/removal, cancellation, hotkey conflicts, archive failures,
 copy suppression, full GUI history/config conflict flows, normal GTK/file-manager
 interop, physical Cinnamon and the complete release matrix remain acceptance gates.
 A host protocol pass, ISO checksum, live desktop boot or installed package alone does

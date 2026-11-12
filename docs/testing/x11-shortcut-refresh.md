@@ -1,10 +1,10 @@
-# X11 shortcut refresh regression
+# X11 hotkey refresh regression
 
-X11 shortcuts must remain active when a keyboard mapping notification leaves
+X11 hotkeys must remain active when a keyboard mapping notification leaves
 their native keycode/modifier combinations unchanged. The original implementation
 removed every passive grab, flushed those removals, then queried the modifier map
 and installed replacement grabs. A chord processed between removal and replacement
-never reached the shortcut connection. Waiting longer could not recover it.
+never reached the hotkey connection. Waiting longer could not recover it.
 
 `X11Shortcuts::bind()` now reconciles native combinations. It retains existing
 combinations, installs missing ones, and removes obsolete ones after resolving all
@@ -41,13 +41,13 @@ these tests at the user's physical display or a lab desktop.
 
 ## Why this test is deterministic
 
-The test binds a shortcut, changes an X server keyboard mapping to the same
+The test binds a hotkey, changes an X server keyboard mapping to the same
 symbols, and processes the resulting real `MappingNotify`. The scoped
 `X11MappingBarrier` intercepts the modifier-map request in the test executable,
 then forwards it to the distro's real libxcb through `QLibrary`. The fixture has
 no effect outside its scope or on another thread.
 
-At that boundary, a server roundtrip on the shortcut connection confirms earlier
+At that boundary, a server roundtrip on the hotkey connection confirms earlier
 requests have completed. A separate X11 client then sends one real XTEST chord
 and completes another roundtrip before the mapping request proceeds. Thus the
 server processes the chord during refresh without relying on sleep duration,
@@ -64,7 +64,7 @@ unaffected action delivery, native-combination transfer to another action,
 duplicate-action precedence, disabled actions, and release on removal.
 
 The existing tests still cover actual changed-keycode delivery, Caps Lock and
-Num Lock, conflicts between clients, and handing a held shortcut chord to the
+Num Lock, conflicts between clients, and handing a held hotkey chord to the
 region selector.
 
 ## Evidence and limits

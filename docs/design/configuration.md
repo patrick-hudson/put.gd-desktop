@@ -4,7 +4,7 @@ The resident app owns one `config.json` in its configuration folder. GUI and CLI
 report the exact path. No separate YAML file or preferences database exists.
 The schema is [config.schema.json](../../schemas/config.schema.json). The shared
 `SettingsService` is the authoritative validator, including registered provider rules,
-absolute paths, shortcut syntax, and cross-profile references.
+absolute paths, hotkey syntax, and cross-profile references.
 
 ## Locations
 
@@ -117,9 +117,9 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Field | Meaning and default |
 | --- | --- |
 | `schemaVersion` | `1` |
-| `actions` | Exactly `region`, `window`, `desktop`, `clipboard`, plus optional `edit` (Capture region & edit), `monitor` (Capture monitor) and `repeat` (Repeat last region). An absent `edit` inherits the region route with no shortcut and an absent `monitor` copies the desktop route with no shortcut; saved documents include both |
+| `actions` | Exactly `region`, `window`, `desktop`, `clipboard`, plus optional `edit` (Capture region & edit), `monitor` (Capture monitor) and `repeat` (Repeat last region). An absent `edit` inherits the region route with no hotkey and an absent `monitor` copies the desktop route with no hotkey; saved documents include both |
 | `actions.monitor` | Capture monitor (#1363): the monitor the pointer is on, at its native size. A full action like `desktop`, with its own `destination`, `profileId`, `shortcut` and optional `publicationMode`, so output routing and per-action exceptions treat it like the other captures |
-| `actions.repeat` | Repeat last region (#1363): a shortcut-only entry `{shortcut}`. It captures the rectangle of the last region capture again with the `region` action's output, and never has a route of its own. Absent entries read as no key |
+| `actions.repeat` | Repeat last region (#1363): a hotkey-only entry `{shortcut}`. It captures the rectangle of the last region capture again with the `region` action's output, and never has a route of its own. Absent entries read as no key |
 | Each action's `destination` | `upload` by default; `local` disables uploads; `default` inherits `captureDefaults` |
 | Each action's `profileId` | A configured profile ID, or `null` until destination setup |
 | Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |
@@ -139,7 +139,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `limits.pendingImageBytes` | Optional aggregate retained decoded-image budget, default 67,108,864 bytes (64 MiB); released after persistence/cancellation |
 | `naming.recordingTemplate` | Optional screen-recording pattern, default `Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
 | `limits.recordingAnimationSeconds` / `recordingAnimationEdge` | Optional animated GIF/WebP export budget: retained seconds (default 60) and output long edge (default 1280); see [recording](recording.md) |
-| `actions.record` | The screen-recording action. Saved documents carry it as a shortcut-only entry `{shortcut}` that keeps following the region route; a full entry (`destination`, `profileId`, `shortcut`, optional `publicationMode`) routes recordings separately. Absent entries read as shortcut-only with no key |
+| `actions.record` | The screen-recording action. Saved documents carry it as a hotkey-only entry `{shortcut}` that keeps following the region route; a full entry (`destination`, `profileId`, `shortcut`, optional `publicationMode`) routes recordings separately. Absent entries read as hotkey-only with no key |
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |
@@ -155,8 +155,8 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `retention.logBytes` | Optional, default 50 MiB (1 MiB–1 GiB): total size of persistent log files; the oldest go first |
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.regionSelectionMode` | Optional, default `live` (also when absent): region screenshots select over the live desktop, and an open menu must close first (#341). `screenshot_first` captures every monitor before the selector opens; you drag over that frozen frame, open menus included, and the result is cut from it with no second capture (#629). put.gd's own tray menu closes before either mode starts, on GNOME too (#924). Applies to Capture region and Capture region & edit; recording always selects live. Settings → Capture → Region selection, `settings.patch` and MCP `patch_configuration` set it |
-| `preferences.captureDelaySeconds` | Optional integer, `0` (default, also when absent), `3`, `5` or `10`: the delay the tray's and the dashboard's Capture region, Capture window, Capture monitor, Capture desktop, Repeat last region and Capture region & edit wait before capturing, with a countdown that can be cancelled. Chosen in Settings → Capture → Capture delay, in the tray's **Capture delay** submenu and in the capture buttons' context menu. A shortcut capture is immediate unless `preferences.captureDelayShortcuts` is on, and `action.invoke` (CLI, MCP `perform_action`) takes its own `delaySeconds` and ignores this preference. `settings.patch` and MCP `patch_configuration` set it. See [capture delay](capture-delay.md) |
-| `preferences.captureDelayShortcuts` | Optional boolean, `false` by default (also when absent): whether a capture started by a keyboard shortcut also waits `preferences.captureDelaySeconds`. Settings → Capture → Capture delay → **Also delay captures started by a shortcut**; `settings.patch` and MCP `patch_configuration` set it. See [capture delay](capture-delay.md) |
+| `preferences.captureDelaySeconds` | Optional integer, `0` (default, also when absent), `3`, `5` or `10`: the delay the tray's and the dashboard's Capture region, Capture window, Capture monitor, Capture desktop, Repeat last region and Capture region & edit wait before capturing, with a countdown that can be cancelled. Chosen in Settings → Capture → Capture delay, in the tray's **Capture delay** submenu and in the capture buttons' context menu. A hotkey capture is immediate unless `preferences.captureDelayShortcuts` is on, and `action.invoke` (CLI, MCP `perform_action`) takes its own `delaySeconds` and ignores this preference. `settings.patch` and MCP `patch_configuration` set it. See [capture delay](capture-delay.md) |
+| `preferences.captureDelayShortcuts` | Optional boolean, `false` by default (also when absent): whether a capture started by a hotkey also waits `preferences.captureDelaySeconds`. Settings → Capture → Capture delay → **Also delay captures started by a hotkey**; `settings.patch` and MCP `patch_configuration` set it. See [capture delay](capture-delay.md) |
 | `preferences.recordingFrameRate` | Optional integer, `30` (default when absent) or `60`. Settings → Capture → Screen recording → Frame rate, `settings.patch` and MCP `patch_configuration` set it. New recordings use it when `recording.prepare` omits `fps`; an explicit `fps` wins. See [adaptive rate and progress](recording/session-contract.md#frame-rate) |
 | `preferences.recordingMicrophone` | Optional boolean, default `false` (also when absent): the recording bar's Microphone toggle, remembered. The microphone is opened only while the toggle is on and released when the recording stops. See [Microphone](recording/microphone-and-clicks.md#microphone) |
 | `preferences.recordingMicrophoneDevice` | Optional string, default empty (the system default input): the sound server's source name of the input to record, as `recording.microphones` lists it; at most 256 characters, no control characters. Settings → Capture → Screen recording → Microphone. The monitor of an output is never used |
@@ -165,7 +165,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `preferences.fileManagerMenu` | Optional boolean, default `true`: the AppImage's per-user Upload with put.gd entries; `false` removes the files it wrote. DEB/RPM entries are system files and always on. See [file-manager-upload.md](file-manager-upload.md#turning-it-on) |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
 | `preferences.updates` | Optional, default `{"check": true, "channel": "build"}`, both keys optional. `check`: look for a newer version once a day (one request to app.put.gd with nothing identifying). `channel`: `build` follows this installation's channel (Settings stores it when you pick the build's own), or `stable` or `nightly` to watch that one; an AppImage then offers to switch to it ([updates.md](updates.md#switching-channels)). Stable notifies once per new version, remembered per channel; nightly only shows it in Settings. Development and source builds never check. Checks disabled at build time report `disabled_at_build` ([updates.md](updates.md)) |
-| `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
+| `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and hotkeys never unlock |
 | `preferences.appearance` | Optional. `theme`: `system` (default, also when absent) follows the desktop's light or dark preference, `dark` or `light`. `accent` (null) and `overrides` (`{"dark": {}, "light": {}}`) are reserved for custom colours (#197) and must keep those values. See [appearance](appearance.md) |
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
 | `preferences.diagnostics.debugLogging` | Optional, default `false`: keep debug records in the persistent log. put.gd sets it back to `false` 24 hours after it was turned on ([diagnostics.md](diagnostics.md#debug-logging)) |
@@ -195,17 +195,17 @@ To make region capture inherit a shared local-only default instead, use:
 ```
 
 An inherited action requires `captureDefaults`, a null own `profileId`, and absent/default
-own `publicationMode`. Its shortcut is always its own setting. Explicit action routes
+own `publicationMode`. Its hotkey is always its own setting. Explicit action routes
 remain exceptions when the default changes. Documents without `captureDefaults` retain
 explicit per-action routing; changing capture output in the GUI adopts the optional shared
 default. This extension remains schema version 1; older strict readers that do not support
 it reject the new field, so use matching application/CLI/MCP versions.
 
-The first three shortcuts default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.
+The first three hotkeys default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.
 Clipboard sharing, Capture region & edit, Capture monitor, Repeat last region and screen
 recording start unbound, allowing explicit setup on GNOME. The recording key toggles a recording (start a ready one, stop
 a running one) so the keyboard can end a capture without reaching for the bar. Availability and
-actual shortcut bindings must be reported by the native adapter; configuration validation
+actual hotkey bindings must be reported by the native adapter; configuration validation
 does not claim a successful grab or resolve conflicts by taking another app's binding.
 
 Unset archive overrides resolve to `<root>/<category>`. Video routing handles existing
@@ -228,7 +228,7 @@ In CLI `settings.get`, these fields are under `result.metadata`, while
 still succeed. Backend `diagnostics` does not include this validation state.
 Loading, validating, and inspecting configuration performs no capture, clipboard-content
 read, provider request, or secret-store unlock. Accepted changes notify consumers so they
-can refresh preferences and request shortcut rebinding. Operations use immutable snapshots;
+can refresh preferences and request hotkey rebinding. Operations use immutable snapshots;
 historical receipts continue to identify their original destination.
 
 For external edits, save a complete JSON document to a temporary file in the same directory

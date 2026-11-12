@@ -11,8 +11,8 @@ clip timeline, previews frames with masks, and exports MP4 (H.264, H.265), WebM
 and MCP) is complete, and the drag selection, ready bounds, outside dimming
 and floating control bar are in place, and every Stop opens the private review
 window. The tray's **Capture Screen Recording** entry, the dashboard's **Record
-screen** button and the `record` global shortcut start one (see "Tray and
-shortcut" below). On Wayland the helper takes a PipeWire stream from the
+screen** button and the `record` hotkey start one (see "Tray and
+hotkey" below). On Wayland the helper takes a PipeWire stream from the
 compositor without a dialog where it can (KWin's screencast protocol on
 Plasma, Mutter's screen cast service on GNOME) and otherwise through the
 ScreenCast portal, whose picker is shown once per target kind thanks to
@@ -58,7 +58,7 @@ quoted above and elsewhere are headings on these pages.
 
 - [Sessions, exports and settings](recording/session-contract.md): Time, geometry and the edit model; Session methods; Exports; Settings; Frame rate.
 - [Process boundary](recording/process-boundary.md): Process boundary; Live free-space stop (#254).
-- [Overlay and review](recording/overlay-and-review.md): Overlay (X11); Tray and shortcut; Review window; Tray feedback; Helper events.
+- [Overlay and review](recording/overlay-and-review.md): Overlay (X11); Tray and hotkey; Review window; Tray feedback; Helper events.
 - [Wayland](recording/wayland.md): Wayland acquisition; Timestamps and A/V sync; Wayland selection, bounds and bar.
 - [Capture and export engine](recording/capture-and-export.md): Capture and export engine (X11), including the lab diagnostics.
 - [History posters](recording/history-posters.md): History poster frames; Previews made on selection.

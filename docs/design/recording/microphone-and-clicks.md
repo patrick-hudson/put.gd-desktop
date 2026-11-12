@@ -23,7 +23,7 @@ WebP stay silent.
   hidden with the rest of the bar.
 - **Off by default, remembered.** The toggle's state is
   `preferences.recordingMicrophone`. The tray, the dashboard's **Record
-  screen** and the shortcut start with the remembered state; a change on the
+  screen** and the hotkey start with the remembered state; a change on the
   bar is saved. `recording.prepare` is explicit: it records the microphone only
   with `audio.microphone: true`.
 - **Never an output's monitor.** A source whose `device.class` is `monitor`, or
@@ -98,7 +98,7 @@ and `audio.microphoneMessage`). A `prepare` that asks for the microphone when
 none is available is refused with `recording_unsupported`, `details.field`
 `audio.microphone` and `details.reason` from the table, before anything is
 accepted. The remembered toggle is not a request: with it on and no microphone,
-the tray, dashboard and shortcut still open a recording, the toggle reads
+the tray, dashboard and hotkey still open a recording, the toggle reads
 **No microphone** with an empty box and the reason in its tooltip, the
 remembered choice stays as it was, and nothing is recorded from an input.
 
@@ -261,7 +261,7 @@ A ring opens at the pointer on each button press and fades over 0.45 s, so a
 viewer can see what was clicked. Off by default:
 `preferences.recordingClickHighlights` (**Settings → Capture → Screen recording
 → Click highlights**) for recordings started from the tray, the dashboard or
-the shortcut, and `clickHighlights: true` on `recording.prepare`.
+the hotkey, and `clickHighlights: true` on `recording.prepare`.
 
 This needs pointer button events from the desktop, and each desktop gives them
 differently or not at all. `recording.capabilities` reports what this session

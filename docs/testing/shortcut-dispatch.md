@@ -1,4 +1,4 @@
-# Testing shortcut dispatch
+# Testing hotkey dispatch
 
 A confirmed desktop binding proves registration, not that a capture was accepted.
 An action without an upload destination is a valid saved setup state. When
@@ -25,7 +25,7 @@ result was zero notifications. This fixture proves transport and wiring; it is
 not compositor or visible notification acceptance.
 
 `liveDigitRebindRemovesOldChordAndKeepsOtherActions` in `x11_isolated` exercises
-default -> Ctrl+1 -> Ctrl+Alt+1, old-chord removal, unchanged desktop shortcuts
+default -> Ctrl+1 -> Ctrl+Alt+1, old-chord removal, unchanged desktop hotkeys
 and exactly one action per press. `savingOnlyAShortcutPreservesEveryUploadDestination`
 in `gui_settings` checks the real asynchronous settings-save service without
 provider network requests or credential access.
@@ -44,7 +44,7 @@ ctest --preset dev -R '^(native_shortcut_rejection_integration|x11_isolated|gui_
 ctest --preset dev
 ```
 
-The dedicated shortcut test is guarded by its CTest-only environment flag so the
+The dedicated hotkey test is guarded by its CTest-only environment flag so the
 ordinary tray suite cannot inject input on an inherited physical desktop.
 
 ## Desktop acceptance and diagnosis
@@ -66,17 +66,17 @@ versions do not establish these desktop gates.
 
 The original issue #8 preview had an accepted/bound Ctrl+1 but no region upload
 destination; the other actions retained theirs. The preview setup script assigned
-all four destinations. A clean shortcut-only GUI save preserves them. The cause
+all four destinations. A clean hotkey-only GUI save preserves them. The cause
 of the original assignment becoming empty is unresolved; do not attribute it to
 keyboard mapping or claim this change repairs unknown settings corruption.
 Activity records accepted operations only. If desktop notification support is
 unavailable, a native admission error remains in the application log; the tray
 menu retains its existing Activity fallback without a rejected-operation row.
-This delivery limitation is distinct from a shortcut registration failure.
+This delivery limitation is distinct from a hotkey registration failure.
 
 ## KDE shifted keys and keyboard layouts
 
-KGlobalAccel reporting a bound shortcut is insufficient proof of native delivery.
+KGlobalAccel reporting a bound hotkey is insufficient proof of native delivery.
 The KDE test at version 100 exposed an older registration defect: the configured
 `Ctrl+Shift+1` was sent as a literal Qt key combination, while the same physical
 press on the guest's US layout reached KWin as `Ctrl+!`. An explicit `Ctrl+!`
@@ -88,7 +88,7 @@ For printable ASCII number and punctuation keys with explicit Shift, registratio
 effective symbol and consumed Shift from the compositor-provided XKB map and
 current KDE layout. Unshifted symbols (including AltGr-produced ones), letters, special keys and
 keypad/group-switch chords retain their existing
-literal wire translation, including Qt/KWin handling of Latin shortcuts in non-Latin layouts.
+literal wire translation, including Qt/KWin handling of Latin hotkeys in non-Latin layouts.
 This change does not recreate Qt's private key-conversion implementation. Settings retain the original
 requested text. Diagnostics expose the effective sequence separately. The
 existing private Wayland connection subscribes to its seat's keyboard map;
@@ -98,7 +98,7 @@ compiled once; its text buffer is released immediately. Each replacement gets
 a fresh compilation context, released with the map, so interned names from old
 keyboard maps cannot accumulate in a long-lived shared context. Every incoming descriptor
 is closed on success or failure. The resident retains one compiled map, shared
-by reference with shortcut registration, without a per-key cache.
+by reference with hotkey registration, without a per-key cache.
 
 A client without keyboard focus cannot depend on Wayland modifier events for
 its current global layout. Registration queries `org.kde.keyboard` at `/Layouts`
@@ -116,7 +116,7 @@ one-level copies of some symbols, such as `KEY_DOLLAR` (`<I442>`) and the keypad
 parentheses; Shift does nothing on them. They lose to a key whose Shift level produces
 the symbol, and lower implicit cost still breaks ties. Before this rule, a saved
 `Ctrl+Shift+$` registered `Ctrl+Shift+$` through `<I442>`, while KWin sends `Ctrl+$`
-for Ctrl+Shift+4, so the shortcut never fired (PR #504). A copy that ignores Shift is
+for Ctrl+Shift+4, so the hotkey never fired (PR #504). A copy that ignores Shift is
 used only when no other key has the symbol.
 
 The Settings recorder saves the configuration form rather than Qt's Shift-level
@@ -146,7 +146,7 @@ German) and Debian 13, is in the
 [2026-10-23 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-23-kde-shortcut-504/README.md).
 
 For native acceptance, preserve the recorded source revision and executable hash;
-start with the unmodified default four shortcuts and invoke each with actual keys.
+start with the unmodified default four hotkeys and invoke each with actual keys.
 Check exactly one delivery, then edit region to `Ctrl+1` and `Ctrl+Alt+1`, verifying
 old-chord removal and unchanged actions. Check the requested and effective fields
 separately. Repeat a controlled layout switch while the app is unfocused, restoring

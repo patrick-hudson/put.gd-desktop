@@ -13,7 +13,7 @@ only. Never commit `credentials.txt`. Record the credential mode, not its values
 
 1. Save the original settings document and accepted/observed revision. Configure
    one test profile and route only the tested action to it. Validate and save with
-   the current revision; preserve other actions and shortcuts. Use a unique
+   the current revision; preserve other actions and hotkeys. Use a unique
    synthetic filename and a prefix allowed by the test credentials. A root-only
    credential cannot write a nested test prefix.
 2. Put synthetic text on the clipboard with a registered native desktop fixture.
