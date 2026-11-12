@@ -4,7 +4,7 @@
 Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions}, /__rules {rules}, GET /__state.
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
 "store": true (store, then drop the connection), "competitor": true (another upload of the same name lands first),
-"partNumber": n, "race": n (n racing uploads store together and reply together)}.
+"partNumber": n, "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
 """
 import base64, hashlib, json, os, socket, threading, time, urllib.parse, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,7 +29,7 @@ ALL_CAPS = ['listBuckets', 'listFiles', 'readFiles', 'shareFiles', 'writeFiles',
 
 
 def fresh():
-    return {'events': [], 'rules': [], 'capabilities': list(ALL_CAPS), 'restricted': None, 'arrived': 0, 'stored': 0,
+    return {'events': [], 'rules': [], 'capabilities': list(ALL_CAPS), 'restricted': None, 'arrived': 0, 'stored': 0, 'race': 0, 'verified': 0,
             'buckets': {'bucket-public-id': {'name': 'putgd-fixture-public', 'type': 'allPublic'},
                         'bucket-private-id': {'name': 'putgd-fixture-private', 'type': 'allPrivate'}},
             'versions': [], 'clock': 1700000000000}
@@ -248,6 +248,7 @@ class Handler(BaseHTTPRequestHandler):
         if r and r.get('race'):
             # A deterministic race: store only once every racer's upload has arrived (so
             # each passed its pre-upload check), reply only once all of them are stored.
+            state['race'] = r['race']
             state['arrived'] += 1
             self.wait_for(lambda: state['arrived'] >= r['race'])
         if r and r.get('competitor'):
@@ -266,6 +267,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def b2_list_file_versions(self, body, rule):
         start, prefix, limit = body.get('startFileName', ''), body.get('prefix', ''), int(body.get('maxFileCount', 100))
+        if state['race'] and state['stored'] >= state['race']:
+            state['verified'] += 1
         rows = [v for v in ordered() if v['bucketId'] == body.get('bucketId') and v['fileName'] >= start and v['fileName'].startswith(prefix)]
         page, rest = rows[:limit], rows[limit:]
         self.reply(200, {'files': [public(v) for v in page], 'nextFileName': rest[0]['fileName'] if rest else None, 'nextFileId': rest[0]['fileId'] if rest else None})
@@ -280,6 +283,9 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(200, public(v))
 
     def b2_delete_file_version(self, body, rule):
+        if state['race']:
+            # No racer removes its copy before every racer has listed the name after storing.
+            self.wait_for(lambda: state['verified'] >= state['race'])
         v = self.find(body.get('fileId'))
         if not v or v['fileName'] != body.get('fileName'):
             return self.error(400, 'file_not_present')

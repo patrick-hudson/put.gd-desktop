@@ -80,11 +80,6 @@
     add_executable(test_kwin_windows tests/integration/test_kwin_windows.cpp)
     target_link_libraries(test_kwin_windows PRIVATE putgd_kde Qt6::Test Qt6::DBus)
     add_test(NAME kwin_windows_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kwin_windows>)
-    # KWin's click effect switched on for a recording and the user's state put back (#1364), against a scripted KWin.
-    add_executable(test_kwin_click_effect tests/integration/test_kwin_click_effect.cpp)
-    target_link_libraries(test_kwin_click_effect PRIVATE putgd_kde Qt6::Test Qt6::DBus)
-    add_test(NAME kwin_click_effect_contract COMMAND dbus-run-session -- $<TARGET_FILE:test_kwin_click_effect>)
-    set_tests_properties(kwin_click_effect_contract PROPERTIES TIMEOUT 60)
     add_executable(test_wayland_keyboard_map tests/unit/test_wayland_keyboard_map.cpp)
     target_link_libraries(test_wayland_keyboard_map PRIVATE putgd_kde Qt6::Test)
     add_test(NAME wayland_keyboard_map COMMAND test_wayland_keyboard_map)

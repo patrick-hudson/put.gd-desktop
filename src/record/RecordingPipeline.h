@@ -125,8 +125,6 @@ signals:
 private:
     friend class RecordingStorageContract;
     friend class RecordingPipelineThroughput;
-    // In-process CPU sample seam for the adaptive-rate contract; /proc otherwise.
-    std::function<CpuSample()> cpuProbe_;
     // In-process storage fault seam; never exposed through helper commands or environment.
     std::function<RecordingStorage()> storageProbe_;
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.

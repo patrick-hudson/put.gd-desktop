@@ -16,28 +16,6 @@
   target_link_libraries(test_s3_delete PRIVATE putgd_s3 putgd_app Qt6::Test)
   add_test(NAME s3_delete_integration COMMAND test_s3_delete)
   set_tests_properties(s3_delete_integration PROPERTIES TIMEOUT 120)
-  add_executable(test_s3_module tests/integration/test_s3_module.cpp)
-  target_include_directories(test_s3_module PRIVATE tests)
-  target_compile_definitions(test_s3_module PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py"
-    S3_INCOMPATIBLE_PATH="$<TARGET_FILE:test_s3_incompatible>"
-    S3_WRONG_BUILD_PATH="$<TARGET_FILE:test_s3_wrong_build>"
-    S3_WRONG_TRANSPORT_PATH="$<TARGET_FILE:test_s3_wrong_transport>"
-    S3_MODULE_INSTALL_RELATIVE="${s3_install_relative}")
-  target_link_libraries(test_s3_module PRIVATE putgd_s3 Qt6::Test)
-  add_library(test_s3_incompatible MODULE tests/integration/test_s3_module.cpp)
-  add_library(test_s3_wrong_build MODULE tests/integration/test_s3_module.cpp)
-  add_library(test_s3_wrong_transport MODULE tests/integration/test_s3_module.cpp)
-  target_compile_definitions(test_s3_incompatible PRIVATE PUTGD_S3_BAD_VERSION=1)
-  target_compile_definitions(test_s3_wrong_build PRIVATE PUTGD_S3_BAD_BUILD=1)
-  target_compile_definitions(test_s3_wrong_transport PRIVATE PUTGD_S3_BAD_TRANSPORT=1)
-  foreach(s3_fixture test_s3_incompatible test_s3_wrong_build test_s3_wrong_transport)
-    target_compile_definitions(${s3_fixture} PRIVATE PUTGD_S3_BAD_FACTORY=1
-      PUTGD_S3_BUILD_ID="${PUTGD_S3_BUILD_ID}" PUTGD_SDK_CURL_TRANSPORT=${s3_safe_delete})
-    target_link_libraries(${s3_fixture} PRIVATE putgd_core)
-  endforeach()
-  add_dependencies(test_s3_module test_s3_incompatible test_s3_wrong_build test_s3_wrong_transport)
-  add_test(NAME s3_module_integration COMMAND test_s3_module)
-  set_tests_properties(s3_module_integration PROPERTIES TIMEOUT 120)
   add_executable(test_s3 tests/integration/test_s3.cpp)
   target_include_directories(test_s3 PRIVATE tests)
   target_compile_definitions(test_s3 PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py")

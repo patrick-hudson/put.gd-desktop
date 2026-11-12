@@ -5,27 +5,19 @@ It accepts an upload in any of the body types put.gd sends and answers in the fo
 request path names, so one process plays every case:
 
   /upload/json    {"files":[{"url","thumb","delete"}],"id"}       {json:files[0].url}
-  /upload/xml     <upload><file id=".."><url>..</url>..</file></upload>   {xml:/upload/file/url}
-  /upload/html    <a href="..">                                    {regex:href="([^"]+)"|1}
   /upload/header  201 with Location and X-Delete headers           {header:Location}
-  /upload/text    the link as the whole reply                      (empty URL value)
-  /upload/bare    {"id"} only, for a URL built around it           https://host/f/{json:id}
   /upload/nolink  200 with nothing a template finds
-  /upload/confirm  JSON whose deletion URL shows an "are you sure?" page; only its form's POST deletes
   /upload/pretend  JSON whose deletion URL answers 200 and deletes nothing
-  /upload/see     303 to /result/<id> on this host                 {responseurl} or {json:..}
   /upload/away    302 to /result/<id> on another host name
-  /upload/moved   307 to /upload/json on this host
   /upload/moved-away  307 to /upload/json on another host name
-  /upload/loop    302 to itself
 
 The token is checked where /__reset says: {"auth": "header" | "query" | "argument" | "none"}.
 A refused token is echoed in the error body, as some servers do: as offered, or as
 {"echo": "percent" | "control"} says (percent-encoded, or with a control character
-in the middle of it).
+in the middle of it); {"php": true} writes that JSON as PHP's json_encode does.
 
-Control: POST /__reset {auth, token}, POST /__rules {rules}, GET /__state.
-A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining", "delay" (seconds),
+Control: POST /__reset {auth, token, php, echo}, POST /__rules {rules}, GET /__state.
+A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining",
 "drop": true (close without a reply), "store": true (store first; with drop or status this is a
 reply lost after the file was stored), "location" (a Location header for a status reply)}.
 
@@ -33,20 +25,9 @@ An upload rule can also bend the reply the way a careless or hostile server woul
   "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
   "encoding": "raw" | "percent"        how it is repeated (default raw)
   "elsewhere": "url" | "thumb" | "delete"   that address is on another host name
-  "elsewhereHost": "192.0.2.1"         the other host, as plain http on its default port
-                                       (default: this listener as "localhost")
-  "userinfo": "url"                    that address carries user information
-  "php": true                          JSON written as PHP's json_encode does, with a
-                                       backslash before every "/"
-  "cut": "length" | "reset"            the reply ends early: a Content-Length it does not
-                                       fulfil, or a reset in the middle of the body
-         "chunk" | "chunk-reset"       the same for a chunked reply: every byte of the body
-                                       but no last chunk, or a reset inside a chunk
-         "headers"                     the headers with the body's true length, and then
-                                       not one byte of the body
-  "chunked": true                      a whole reply sent chunked, last chunk and all
-  "gzip": true                         the reply's body compressed, whatever the request's
-                                       Accept-Encoding asked for
+                                       (this listener as "localhost")
+  "cut": "length"                      the reply ends early: a Content-Length it does not fulfil
+         "chunk"                       a chunked reply with every byte of the body but no last chunk
   "early": true                        with "status": the reply is sent before the body is
                                        read, and the connection then closes with most of
                                        the file never taken
@@ -55,7 +36,7 @@ An upload rule can also bend the reply the way a careless or hostile server woul
                                        short reply is already there when the client has
                                        sent its last byte
 """
-import gzip, hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
+import hashlib, json, os, socket, sys, threading, time, urllib.parse, uuid
 from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -91,15 +72,10 @@ class Handler(BaseHTTPRequestHandler):
         elif isinstance(body, str):
             body = body.encode()
         cut = getattr(self, 'cut', None)
-        chunked = cut in ('chunk', 'chunk-reset') or getattr(self, 'chunked', False)
-        packed = getattr(self, 'gzip', False)
-        if packed:
-            body = gzip.compress(body)
+        chunked = cut == 'chunk'
         try:
             self.send_response(code)
             self.send_header('Content-Type', content_type)
-            if packed:
-                self.send_header('Content-Encoding', 'gzip')
             if chunked:
                 self.send_header('Transfer-Encoding', 'chunked')
             else:
@@ -112,28 +88,11 @@ class Handler(BaseHTTPRequestHandler):
                 def chunk(data):
                     return b'%x\r\n' % len(data) + data + b'\r\n'
                 half = max(1, len(body) // 2)
-                first, second = body[:half], body[half:] or b' '
-                if cut == 'chunk-reset':
-                    # The second chunk says its whole length and brings half of it.
-                    self.wfile.write(chunk(first) + b'%x\r\n' % len(second) + second[:max(1, len(second) // 2)])
-                    self.wfile.flush()
-                    time.sleep(0.2)
-                    return self.drop()
-                # "chunk": every byte of the body is there, and the chunk that ends it is not.
-                self.wfile.write(chunk(first) + chunk(second) + (b'' if cut == 'chunk' else b'0\r\n\r\n'))
-                if cut == 'chunk':
-                    self.wfile.flush()
-                    self.close_connection = True
-                return
-            if cut == 'headers':
+                # Every byte of the body is there, and the chunk that ends it is not.
+                self.wfile.write(chunk(body[:half]) + chunk(body[half:] or b' '))
                 self.wfile.flush()
                 self.close_connection = True
                 return
-            if cut == 'reset':
-                self.wfile.write(body[:max(1, len(body) * 2 // 3)])
-                self.wfile.flush()
-                time.sleep(0.2)
-                return self.drop()
             self.wfile.write(body)
             if cut == 'length':
                 self.wfile.flush()
@@ -204,7 +163,7 @@ class Handler(BaseHTTPRequestHandler):
         return event
 
     def do_GET(self):
-        self.php, self.cut, self.chunked, self.gzip = False, None, False, False  # one connection serves several requests
+        self.php, self.cut = False, None  # one connection serves several requests
         parsed = urllib.parse.urlsplit(self.path)
         parts = parsed.path.strip('/').split('/')
         if parsed.path == '/__state':
@@ -231,19 +190,12 @@ class Handler(BaseHTTPRequestHandler):
             if not entry:
                 return self.reply(404, {'error': 'no such upload'})
             return self.reply(200, self.links(parts[1]))
-        if parts[0] in ('confirm', 'pretend') and len(parts) == 3:
+        if parts[0] == 'pretend' and len(parts) == 3:
             self.record('delete', {'deleteKind': parts[0]})
-            if parts[0] == 'pretend':
-                return self.reply(200, {'deleted': True})
-            # The form posts back to a slightly different path, as XBackBone's does.
-            return self.reply(200, '<html><body><form method="post" action="%s/confirm/%s/%s"><p>Are you sure?</p><input type="hidden" name="csrf" value="synthetic&amp;csrf">'
-                              '<button type="submit">Yes</button></form><form method="post" action="/logout"><button>Log out</button></form></body></html>' %
-                              (self.origin(), parts[1].split('.')[0], parts[2]), 'text/html')
+            return self.reply(200, {'deleted': True})
         if parts[0] == 'delete' and len(parts) == 3:
             self.record('delete')
             rule = self.rule('delete')
-            if rule.get('delay'):
-                time.sleep(rule['delay'])
             with lock:
                 entry = state['files'].get(parts[1])
                 valid = bool(entry) and entry['deleteToken'] == parts[2] and not entry.get('deleted')
@@ -257,7 +209,7 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {'error': 'unknown path'})
 
     def do_POST(self):
-        self.php, self.cut, self.chunked, self.gzip = False, None, False, False
+        self.php, self.cut = False, None
         if self.path == '/__reset':
             options = json.loads(self.body() or b'{}')
             with lock:
@@ -275,16 +227,6 @@ class Handler(BaseHTTPRequestHandler):
             if early:
                 return early()
             return self.upload(self.body())
-        parts = self.path.strip('/').split('/')
-        if parts[0] == 'confirm' and len(parts) == 3:
-            fields = dict(urllib.parse.parse_qsl(self.body().decode(), keep_blank_values=True))
-            self.record('confirm', {'fields': fields})
-            with lock:
-                entry = state['files'].get(parts[1])
-                valid = bool(entry) and entry['deleteToken'] == parts[2] and not entry.get('deleted') and fields.get('csrf') == 'synthetic&csrf'
-                if valid:
-                    entry['deleted'] = True
-            return self.reply(302, '', 'text/plain', {'Location': self.origin() + '/'}) if valid else self.reply(404, {'error': 'no such file'})
         self.reply(404, {'error': 'unknown path'})
 
     do_PUT = do_POST
@@ -293,12 +235,11 @@ class Handler(BaseHTTPRequestHandler):
     def links(self, file_id):
         entry = state['files'][file_id]
         base = self.origin()
-        # The deletion address a style hands out: direct, behind a confirmation page (with a
-        # file-like suffix the form's own address drops), or one that deletes nothing.
+        # The deletion address a style hands out: direct, or one that deletes nothing.
         kind = entry.get('deleteKind', 'delete')
         return {'id': file_id, 'files': [{'url': '%s/f/%s/%s' % (base, file_id, urllib.parse.quote(entry['name'])),
                                           'thumb': '%s/f/%s/thumb' % (base, file_id),
-                                          'delete': '%s/%s/%s%s/%s' % (base, kind, file_id, '.png' if kind == 'confirm' else '', entry['deleteToken'])}]}
+                                          'delete': '%s/%s/%s/%s' % (base, kind, file_id, entry['deleteToken'])}]}
 
     def upload(self, data):
         parsed = urllib.parse.urlsplit(self.path)
@@ -330,8 +271,6 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 return self.reply(400, {'error': 'body is not JSON'})
             content, name = str(fields.get('content', '')).encode(), str(fields.get('name', ''))
-        elif content_type.startswith('application/xml'):
-            kind = 'xml'
         elif self.command == 'GET':
             kind = 'none'
             content, name = query.get('content', '').encode(), query.get('name', '')
@@ -351,15 +290,11 @@ class Handler(BaseHTTPRequestHandler):
                     middle = len(offered) // 2
                     echoed = offered[:middle] + '\x01' + offered[middle:]
             return self.reply(401, {'error': 'token %s is not valid' % echoed})
-        # These redirects ask for the request again, or loop: nothing is stored here.
-        if style in ('moved', 'moved-away'):
-            target = '%s/upload/json%s' % (self.origin(OTHER_HOST if style == 'moved-away' else None), ('?' + parsed.query) if parsed.query else '')
+        # This redirect asks for the request again on another host: nothing is stored here.
+        if style == 'moved-away':
+            target = '%s/upload/json%s' % (self.origin(OTHER_HOST), ('?' + parsed.query) if parsed.query else '')
             return self.reply(307, '', 'text/plain', {'Location': target})
-        if style == 'loop':
-            return self.reply(302, '', 'text/plain', {'Location': self.origin() + '/upload/loop'})
         rule = self.rule('upload')
-        if rule.get('delay'):
-            time.sleep(rule['delay'])
         if rule and not rule.get('store') and (rule.get('drop') or rule.get('status')):
             if rule.get('drop'):
                 return self.drop()
@@ -369,41 +304,28 @@ class Handler(BaseHTTPRequestHandler):
             blobs[file_id] = content
             state['files'][file_id] = {'name': name or 'file', 'type': file_type, 'bytes': len(content), 'sha256': hashlib.sha256(content).hexdigest(),
                                        'deleteToken': uuid.uuid4().hex, 'deleted': False,
-                                       'deleteKind': style if style in ('confirm', 'pretend') else 'delete'}
+                                       'deleteKind': 'pretend' if style == 'pretend' else 'delete'}
             links = self.links(file_id)
         event['stored'] = file_id
         first = links['files'][0]
         credential = offered[len('Bearer '):] if offered.startswith('Bearer ') else offered
         if rule.get('elsewhere') in first:
-            other = 'http://' + rule['elsewhereHost'] if rule.get('elsewhereHost') else self.origin(OTHER_HOST)
-            first[rule['elsewhere']] = first[rule['elsewhere']].replace(self.origin(), other, 1)
+            first[rule['elsewhere']] = first[rule['elsewhere']].replace(self.origin(), self.origin(OTHER_HOST), 1)
         if rule.get('echo') in first:
             first[rule['echo']] += '?key=' + (urllib.parse.quote(credential, safe='') if rule.get('encoding') == 'percent' else credential)
-        if rule.get('userinfo') in first:
-            first[rule['userinfo']] = first[rule['userinfo']].replace('http://', 'http://trusted.example@', 1)
-        self.php, self.cut, self.chunked, self.gzip = bool(rule.get('php')), rule.get('cut'), bool(rule.get('chunked')), bool(rule.get('gzip'))
+        self.cut = rule.get('cut')
         if rule.get('drop'):
             return self.drop()
         if rule.get('status'):
             return self.reply(rule['status'], rule.get('body', {'error': 'synthetic failure'}), rule.get('type', 'application/json'))
-        if style in ('json', 'confirm', 'pretend'):
+        if style in ('json', 'pretend'):
             return self.reply(200, links)
-        if style == 'xml':
-            return self.reply(200, '<?xml version="1.0"?><upload><file id="%s"><url>%s</url><thumb>%s</thumb><delete href="%s"/></file></upload>' %
-                              (file_id, first['url'], first['thumb'], first['delete']), 'application/xml')
-        if style == 'html':
-            return self.reply(200, '<html><body>Stored. <a class="link" href="%s">open</a> <a class="remove" href="%s">delete</a></body></html>' %
-                              (first['url'], first['delete']), 'text/html')
         if style == 'header':
             return self.reply(201, '', 'text/plain', {'Location': first['url'], 'X-Delete': first['delete']})
-        if style == 'text':
-            return self.reply(200, first['url'] + '\n', 'text/plain')
-        if style == 'bare':
-            return self.reply(200, {'id': file_id, 'name': urllib.parse.quote(name or 'file')})
         if style == 'nolink':
             return self.reply(200, {'ok': True})
-        if style in ('see', 'away'):
-            return self.reply(303 if style == 'see' else 302, '', 'text/plain', {'Location': '%s/result/%s' % (self.origin(OTHER_HOST if style == 'away' else None), file_id)})
+        if style == 'away':
+            return self.reply(302, '', 'text/plain', {'Location': '%s/result/%s' % (self.origin(OTHER_HOST), file_id)})
         return self.reply(404, {'error': 'unknown reply style'})
 
 

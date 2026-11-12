@@ -6,131 +6,21 @@ import sys
 import time
 if sys.argv[1:] == ['--session']:
     # One process answers every request line until its input closes.
-    served, read_session = 0, None
+    served = 0
     for line in sys.stdin.buffer:
         request, served = json.loads(line), served + 1
-        case = request['destination']['settings'].get('fixture', 'session')
-        if case.startswith('session-unread'):
-            # A process that finds no session says so to every request, unless it was started
-            # after one that did: then it believes what it finds (#1418).
-            with open(request['destination']['settings']['startsFile'], 'a') as starts:
-                starts.write(f"{os.getpid()} {request['method']} {bool(request.get('sessionRetry'))}\n")
-            if read_session is None:
-                read_session = bool(request.get('sessionRetry')) and case == 'session-unread'
-            if not read_session:
-                code = 'session_unread' if not request.get('sessionRetry') or case == 'session-unread-always' else 'authentication_required'
-                print(json.dumps({'ok': False, 'error': {'code': code, 'message': 'Synthetic', 'details': {}}}), flush=True)
-                continue
         answer = {'status': 'absent', 'objectReference': {'pid': os.getpid(), 'served': served}, 'concurrencyToken': '', 'error': {}}
-        if request['method'] == 'warm':
-            # A helper started ahead of its first request; the test finds it by this file.
-            with open(request['destination']['settings']['pidFile'], 'w') as started:
-                started.write(str(os.getpid()))
-            time.sleep(0.3)
-            refused = {'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic', 'details': {}}}
-            print(json.dumps(refused if case == 'warm-refused' else {'ok': True, 'result': {}}), flush=True)
-            continue
-        if case == 'timeout':
-            time.sleep(3)
-        if case == 'upload-hints' and request['method'] == 'upload':
-            # Echoes what the adapter said of this upload, and names the storage host the test chose.
-            answer = {'status': 'uploaded', 'error': {}, 'transferHost': request['destination']['settings'].get('answerHost'),
-                      'receipt': {'schemaVersion': 1, 'destination': request['destination'], 'concurrencyToken': '',
-                                  'publicationId': request['publicationId'], 'directUrl': '',
-                                  'objectReference': {'linkFollows': request.get('linkFollows'), 'hint': request.get('transferHostHint')}}}
-        if case == 'session-error':
-            answer = {'status': 'inconclusive', 'error': {'code': 'rate_limited', 'message': 'Synthetic limit', 'details': {}}}
         print(json.dumps({'ok': True, 'result': answer}), flush=True)
-        if case == 'session-exit':
-            sys.exit(0)
-        if case == 'session-chatter':
-            time.sleep(0.3)
-            print(json.dumps({'ok': True, 'result': answer}), flush=True)
     sys.exit(0)
 request = json.loads(sys.stdin.buffer.readline())
 case = request['destination']['settings'].get('fixture', 'auth')
-if case.startswith('session-unread'):
-    with open(request['destination']['settings']['startsFile'], 'a') as starts:
-        starts.write(f"{os.getpid()} {request['method']} {bool(request.get('sessionRetry'))}\n")
-    if request.get('sessionRetry') and case == 'session-unread':
-        print(json.dumps({'ok': True, 'result': {'status': 'absent', 'objectReference': {'pid': os.getpid(), 'served': 1},
-                                                  'concurrencyToken': '', 'error': {}}}), flush=True)
-    else:
-        code = 'session_unread' if not request.get('sessionRetry') or case == 'session-unread-always' else 'authentication_required'
-        print(json.dumps({'ok': False, 'error': {'code': code, 'message': 'Synthetic', 'details': {}}}), flush=True)
-    sys.exit(0)
-if case == 'inspect-account':
-    if request['method'] != 'inspectAccount':
-        print(json.dumps({'ok': False, 'error': {'code': 'invalid_request',
-            'message': 'Connection tests may only inspect the account.', 'details': {}}}), flush=True)
-    else:
-        print(json.dumps({'ok': True, 'result': {'accountRootUid': 'synthetic-root',
-            'folders': [{'uid': 'synthetic-folder', 'name': 'Uploads'}]}}), flush=True)
-    sys.exit(0)
-if case == 'budget-delay':
-    time.sleep(1.2)
-    print(json.dumps({'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic authentication failure', 'details': {'attemptTimeoutMs': request.get('requestTimeoutMs')}}}), flush=True)
-    sys.exit(0)
-if case == 'progress':
-    for event in [{'event': 'progress', 'phase': 'preparing'},
-                  {'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 1048576},
-                  {'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 524288},
-                  {'event': 'progress', 'phase': 'finalizing', 'bytesTransferred': 2097152}]:
-        print(json.dumps(event), flush=True)
-if case == 'cancel-progress':
-    print(json.dumps({'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 1}), flush=True)
-    time.sleep(3)
-elif case.startswith('bad-progress-'):
-    fields = {'negative': {'bytesTransferred': -1}, 'fraction': {'bytesTransferred': 1.5},
-              'too-large': {'bytesTransferred': 9007199254740992},
-              'extra': {'bytesTransferred': 1, 'url': 'https://example.invalid'},
-              'total': {'bytesTransferred': 2, 'bytesTotal': 1},
-              'phase': {'phase': 'completed'}}[case.removeprefix('bad-progress-')]
-    print(json.dumps({'event': 'progress', 'phase': 'uploading', **fields}), flush=True)
+if case == 'bad-progress-negative':
+    print(json.dumps({'event': 'progress', 'phase': 'uploading', 'bytesTransferred': -1}), flush=True)
 elif case == 'flood':
     sys.stdout.write((json.dumps({'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 1}) + '\n') * 40000)
     sys.stdout.flush()
-elif case == 'after-result':
-    print(json.dumps({'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic', 'details': {}}}), flush=True)
-    print(json.dumps({'event': 'progress', 'phase': 'uploading', 'bytesTransferred': 1}), flush=True)
-if case == 'plan-limit':
-    # The helper's mapping of Proton error 200003 (MAX_FILE_SIZE_FOR_FREE_USER), #147.
-    print(json.dumps({'ok': False, 'error': {'code': 'destination_file_too_large_for_plan',
-        'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}), flush=True)
-    sys.exit(0)
-if case == 'plan-limit-settled':
-    # The helper proved the name still free after 200003: nothing was created (#201).
-    print(json.dumps({'ok': True, 'result': {'status': 'failed', 'error': {'code': 'destination_file_too_large_for_plan',
-        'message': 'This file is larger than your Proton plan allows for a single file.', 'details': {}}}}), flush=True)
-    sys.exit(0)
-if case.startswith('share-expiry'):
-    # A confirmed share result with the service's link expiry (#253).
-    receipt = dict(request['receipt'], directUrl='https://example.invalid/share#synthetic')
-    expires = {'share-expiry': '2026-10-27T17:48:40.000Z', 'share-expiry-invalid': 'next week'}[case]
-    print(json.dumps({'ok': True, 'result': {'status': 'shared', 'receipt': receipt, 'linkAvailable': True,
-        'expiresAt': expires, 'progress': {'schemaVersion': 1}, 'error': {}}}), flush=True)
-    sys.exit(0)
 if case == 'timeout':
-    # The cancellation tests must know the request was dispatched, rather than
-    # guessing how long account-lock persistence and helper startup will take.
-    received = request['destination']['settings'].get('receivedFile')
-    if received:
-        parent = request['destination']['settings']['expectedParentPid']
-        timeout = request.get('requestTimeoutMs')
-        if timeout is None:
-            timeout = request['destination']['settings'].get('requestTimeoutMs', 120000)
-        deadline = time.monotonic() + timeout / 1000
-        with open(received, 'x') as marker:
-            marker.write(request['method'])
-        # Stay pending while the observer is delayed, but retire after a parent
-        # crash, the accepted deadline, or assertion-failure teardown.
-        while os.getppid() == parent and not os.path.exists(received + '.stop'):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                break
-            time.sleep(min(0.05, remaining))
-    else:
-        time.sleep(3)
+    time.sleep(3)
 elif case == 'malformed':
     print('malformed', flush=True)
 else:

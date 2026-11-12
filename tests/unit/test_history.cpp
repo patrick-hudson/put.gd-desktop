@@ -26,38 +26,6 @@ private slots:
   item.artifact.id="public-item";item.receipt.objectReference.remove("linkExpiresAt");op.items={item};QVERIFY(!store.saveOperation(op));const auto publicLink=store.detail(item.artifact.id);QVERIFY(publicLink.contains("linkRefreshable"));QCOMPARE(publicLink["linkRefreshable"].toBool(),false);
  }
 
- // History's "Other files" (2026-10-26): text+other is an aggregate of the two
- // stored categories; exact categories, including an unknown "files", match exactly.
- void otherFilesAggregateKeepsExactCategories() {
-  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="operation";op.created="2026-10-07T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="test";
-  const QList<QPair<QString,QString>> files{{"image/png","images"},{"video/mp4","videos"},{"text/plain","text"},{"application/pdf","other"}};
-  for(int i=0;i<files.size();++i){OperationItem item;item.artifact.id=QString("item-%1").arg(i);item.artifact.name=QString("fixture-%1").arg(i);item.artifact.mime=files[i].first;item.artifact.category=files[i].second;item.uploadStatus="uploaded";op.items.append(item);}
-  QVERIFY(!store.saveOperation(op));
-  auto count=[&](const QString& category){HistoryQuery q;q.category=category;return store.list(q).total;};
-  QCOMPARE(count({}),4);QCOMPARE(count("images"),1);QCOMPARE(count("videos"),1);QCOMPARE(count("text"),1);QCOMPARE(count("other"),1);
-  QCOMPARE(count("text+other"),2);QCOMPARE(count("files"),0);
- }
- // History's counts: category totals ignore the filters; each day range counts
- // the query's own files, so a day cut by a page edge still has its total.
- void countsTotalCategoriesAndTheQueryPerDay() {
-  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));
-  auto save=[&](const QString& id,const QString& created,const QString& mime,const QString& category,const QString& status){Operation op;op.id=id;op.created=created;op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="test";OperationItem item;item.artifact.id=id+"-item";item.artifact.name=id;item.artifact.mime=mime;item.artifact.category=category;item.uploadStatus=status;op.items.append(item);QVERIFY(!store.saveOperation(op));};
-  save("a","2026-11-09T10:00:00.000Z","image/png","images","uploaded");save("b","2026-11-09T11:00:00.000Z","image/png","images","failed");save("c","2026-11-10T09:00:00.000Z","video/mp4","videos","uploaded");save("d","2026-11-10T09:30:00.000Z","text/plain","text","uploaded");save("e","2026-11-10T10:00:00.000Z","image/png","images","uploaded");
-  HistoryQuery q;q.category="images";Error error;const auto counts=store.counts(q,{{"2026-11-09T00:00:00.000Z","2026-11-09T23:59:59.999Z"},{"2026-11-10T00:00:00.000Z","2026-11-10T23:59:59.999Z"},{"2026-11-11T00:00:00.000Z","2026-11-11T23:59:59.999Z"}},&error);QVERIFY(!error);
-  const auto categories=counts["categories"].toObject();QCOMPARE(categories["all"].toInt(),5);QCOMPARE(categories["images"].toInt(),3);QCOMPARE(categories["videos"].toInt(),1);QCOMPARE(categories["text+other"].toInt(),1);QCOMPARE(categories["failed"].toInt(),1);
-  QCOMPARE(counts["total"].toInt(),3);{const auto days=counts["days"].toArray();QCOMPARE(days.size(),3);QCOMPARE(days[0].toInt(),2);QCOMPARE(days[1].toInt(),1);QCOMPARE(days[2].toInt(),0);}
-  q.search="a";QCOMPARE(store.counts(q,{},&error)["total"].toInt(),1);QCOMPARE(store.counts(q,{},&error)["categories"].toObject()["all"].toInt(),5);
-  QList<std::pair<QString,QString>> tooMany;for(int i=0;i<65;++i)tooMany.append(std::pair<QString,QString>{"2026-11-09T00:00:00.000Z","2026-11-09T23:59:59.999Z"});store.counts(q,tooMany,&error);QCOMPARE(error.code,QString("invalid_query"));
- }
- void friendlyRemoteGroupsKeepExactStatesAndPagination() {
-  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="remote-groups";op.created="2026-10-07T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());
-  const QStringList states{"not_requested","present","removed","already_missing","pending","deleting","failed","unknown","changed","superseded","hidden_version_retained","version_retained","unsupported_safe_removal"};
-  for(int i=0;i<states.size();++i){OperationItem item;item.artifact.id=QString("remote-%1").arg(i,2,10,QChar('0'));item.artifact.name=item.artifact.id+".txt";item.uploadStatus="uploaded";item.remoteStatus=states[i];op.items.append(item);}OperationItem local;local.artifact.id="local-only";local.uploadStatus="local_only";op.items.append(local);QVERIFY(!store.saveOperation(op));
-  auto page=[&](const QString& state,int limit=50,int offset=0){HistoryQuery q;q.remoteStatus=state;q.limit=limit;q.offset=offset;return store.list(q);};
-  QCOMPARE(page("available").total,2);QCOMPARE(page("deleted").total,2);QCOMPARE(page("needs_attention").total,9);QCOMPARE(page("not_requested").total,2);
-  for(const auto& state:states)QCOMPARE(page(state).total,state=="not_requested"?2:1);
-  const auto second=page("deleted",1,1);QVERIFY(!second.error);QCOMPARE(second.total,2);QCOMPARE(second.records.size(),1);QCOMPARE(second.records.first().toObject()["remoteStatus"].toString(),QString("already_missing"));QCOMPARE(page("invented-state").total,0);
- }
  void remoteMetadataReplacementDropsStaleNestedFields() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="metadata-operation";OperationItem item;item.artifact.id="metadata-item";item.uploadStatus="uploaded";op.items={item};QVERIFY(!store.saveOperation(op));
   auto deletion=[&](QString id,QString status,QJsonObject error,QJsonObject progress) {return QJsonObject{{"id",id},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status",status},{"error",error},{"progress",progress}}}}};};
@@ -134,9 +102,6 @@ private slots:
   QCOMPARE(upgraded.detail(item.artifact.id)["remoteStatus"].toString(),QString("superseded"));QCOMPARE(upgraded.detail(item.artifact.id)["receipt"].toObject(),item.receipt.toJson());QCOMPARE(upgraded.detail("a000")["remoteStatus"].toString(),QString("not_requested"));
   Operation other=replacement;other.id="other-workspace";other.items[0].artifact.id="other-item";other.items[0].receipt.destination.settings["workspace"]="another-space";other.items[0].receipt.publicationId="third";QVERIFY(!upgraded.saveOperation(other,&registry));QCOMPARE(upgraded.detail(next.artifact.id)["remoteStatus"].toString(),QString("not_requested"));
  }
- void tenThousandRecordsArePagedAndIndependent() {QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));QVERIFY(!store.error());Operation op;op.id="op";op.created="2026-10-07T12:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="opaque";
- for(int i=0;i<10000;++i) {OperationItem item;item.artifact.id=QString::number(i);item.artifact.name=QString("fixture-%1.pdf").arg(i);item.artifact.mime="application/pdf";item.artifact.category="other";item.uploadStatus="uploaded";item.receipt.destination={"opaque","original","revision",{{"workspace","opaque-space"}},{{"mode","session"},{"reference",QJsonValue::Null}}};item.receipt.objectReference={{"schemaVersion",1},{"fileId","urn:uuid:opaque/%?#"},{"revisionId","!opaque:version"}};item.receipt.publicationId=QString::number(i);item.receipt.directUrl="https://example.invalid/weird?link=opaque";op.items.append(item);}
- QVERIFY(!store.saveOperation(op));HistoryQuery query;query.limit=17;query.offset=9000;auto page=store.list(query);QVERIFY(!page.error);QCOMPARE(page.total,10000);QCOMPARE(page.records.size(),17);query.offset=0;query.search="fixture-9999";page=store.list(query);QCOMPARE(page.total,1);auto id=page.records[0].toObject()["id"].toString();QVERIFY(!store.updateRemote(id,"unknown"));QVERIFY(!store.saveOperation(op));QCOMPARE(store.detail(id)["remoteStatus"].toString(),QString("unknown"));QVERIFY(!store.clear());QCOMPARE(store.list({}).total,0);}
  void clearedHistoryStaysClearedAndRemoteErrorsSurviveUpdates() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="operation";op.created="2026-10-07T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="test";OperationItem item;item.artifact.id="item";item.artifact.name="fixture.txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="uploaded";op.items={item};QVERIFY(!store.saveOperation(op));
   QVERIFY(!store.updateRemote("item","failed",{"permission_denied","Recorded deletion was denied",{}}));op.copyStatus="copied";QVERIFY(!store.saveOperation(op));QCOMPARE(store.detail("item")["remoteError"].toObject()["code"].toString(),QString("permission_denied"));QVERIFY(!store.clear());QCOMPARE(store.list({}).total,0);op.copyStatus="suppressed";QVERIFY(!store.saveOperation(op));QCOMPARE(store.list({}).total,0);

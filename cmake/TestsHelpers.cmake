@@ -7,9 +7,8 @@
       add_executable(test_image_job tests/integration/test_image_job.cpp)
       target_link_libraries(test_image_job PRIVATE putgd_core putgd_ui_control Qt6::Test)
       target_compile_definitions(test_image_job PRIVATE
-        PUTGD_PRODUCT_UI_PATH="$<TARGET_FILE:putgd-ui>"
         PUTGD_IMAGE_JOB_FIXTURE="$<TARGET_FILE:test_image_job_fixture>")
-      add_dependencies(test_image_job putgd-ui test_image_job_fixture)
+      add_dependencies(test_image_job test_image_job_fixture)
       add_test(NAME image_job_integration COMMAND test_image_job)
       set_tests_properties(image_job_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
       # #112: video posters through the transient putgd-record helper.
