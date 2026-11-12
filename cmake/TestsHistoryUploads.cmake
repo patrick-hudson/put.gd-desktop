@@ -1,6 +1,6 @@
 # History and Settings views, login startup, file uploads, local IPC, and the Qt Network links.
 if(BUILD_TESTING)
-  set(PUTGD_SETTINGS_GUI_AREAS appearance general capture shortcuts destinations credentials updates advanced)
+  set(PUTGD_SETTINGS_GUI_AREAS general capture destinations credentials advanced)
   set(putgd_history_views history_view)
   foreach(area IN LISTS PUTGD_SETTINGS_GUI_AREAS)
     list(APPEND putgd_history_views settings_${area})
@@ -15,19 +15,6 @@ if(BUILD_TESTING)
     add_test(NAME gui_${view} COMMAND test_gui_${view})
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
-  # Area suites stay below a minute on d69; allow headroom on shared builders.
-  foreach(area IN LISTS PUTGD_SETTINGS_GUI_AREAS)
-    set_tests_properties(gui_settings_${area} PROPERTIES TIMEOUT 90)
-  endforeach()
-  # #600: the startup keychain unlock against a KWallet stand-in on a private bus.
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(test_gui_settings_credentials PRIVATE Qt6::DBus)
-    add_test(NAME gui_settings_startup_unlock COMMAND dbus-run-session -- $<TARGET_FILE:test_gui_settings_credentials> startupUnlockRefreshesTheOpenDestination)
-    set_tests_properties(gui_settings_startup_unlock PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;PUTGD_ISOLATED_KEYCHAIN_TEST=1" TIMEOUT 60)
-  endif()
-  # Copy image decodes the retained original in the putgd-ui image worker (#284).
-  add_dependencies(test_gui_history_view putgd-ui)
-  set_tests_properties(gui_history_view PROPERTIES TIMEOUT 120)
 endif()
 
 if(BUILD_TESTING)

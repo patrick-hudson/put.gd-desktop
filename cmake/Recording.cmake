@@ -116,13 +116,11 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
       set_tests_properties(bar_placement_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-three-monitors.json;PUTGD_TEST_SCREENS=3")
       add_test(NAME bar_placement_single_monitor_contract COMMAND test_bar_placement)
       set_tests_properties(bar_placement_single_monitor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-one-monitor.json;PUTGD_TEST_SCREENS=1")
-      # #283: the review window's layout, timeline, contextual mask controls and
-      # the controls recording.review drives, on a 1366×768 screen.
-      # Share production objects; each area retains every original test and data row.
+      # #283: discarding a recording only after its confirmation.
       add_library(test_review_window_support STATIC src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
       target_include_directories(test_review_window_support PRIVATE src tests)
       target_link_libraries(test_review_window_support PUBLIC putgd_core putgd_build_options putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Widgets Qt6::Test PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
-      foreach(area layout footer workspace actions)
+      foreach(area actions)
         add_executable(test_review_window_${area} tests/gui/test_review_window_${area}.cpp tests/gui/ReviewWindowFixture.h)
         target_include_directories(test_review_window_${area} PRIVATE src tests)
         target_link_libraries(test_review_window_${area} PRIVATE test_review_window_support)

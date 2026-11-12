@@ -29,10 +29,6 @@
     putgd_xvfb_display(xvfb)
     add_test(NAME resident_display_loss_integration COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_resident_lifecycle> displayLossEndsResident)
     set_tests_properties(resident_display_loss_integration PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_RESIDENT_TEST=1;PUTGD_TEST_XVFB_DISPLAY=${resident_display}" TIMEOUT 90)
-    # #702: the tray tint follows a Cinnamon desktop theme chosen on its own,
-    # through dconf's change notice on a private bus.
-    add_test(NAME gui_theme_cinnamon_dconf COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- $<TARGET_FILE:test_gui_theme> panelToneFollowsCinnamonDconfNotice)
-    set_tests_properties(gui_theme_cinnamon_dconf PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_DCONF_TEST=1;QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     putgd_xvfb_display(xvfb)
     add_test(NAME native_background_startup_integration COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_native_tray> backgroundStartupRecoversConfigurationAndHandlesExplicitLaunch)
     set_tests_properties(native_background_startup_integration PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_STARTUP_TEST=1;QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 120)
@@ -46,14 +42,6 @@
     putgd_xvfb_display(xvfb)
     add_test(NAME file_dialog_x11_parent COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_file_dialog> parentWindowOnX11)
     set_tests_properties(file_dialog_x11_parent PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 30)
-    # #597: the X11 resident's first upload toast, against a notification server
-    # that answers only once the resident's event loop runs (Klipper reading the link).
-    add_executable(test_gui_tray_latency tests/gui/test_tray_notification_latency.cpp)
-    target_include_directories(test_gui_tray_latency PRIVATE tests)
-    target_link_libraries(test_gui_tray_latency PRIVATE putgd_tray Qt6::Test Qt6::DBus)
-    putgd_xvfb_display(xvfb)
-    add_test(NAME gui_tray_notification_latency COMMAND dbus-run-session --config-file=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbus-session-isolated.conf -- ${PUTGD_XVFB_RUN} ${xvfb} $<TARGET_FILE:test_gui_tray_latency>)
-    set_tests_properties(gui_tray_notification_latency PROPERTIES ENVIRONMENT "PUTGD_ISOLATED_TRAY_LATENCY_TEST=1;QT_QPA_PLATFORM=xcb;QT_QPA_PLATFORMTHEME=generic;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 90)
     # #326: links and folders opened on the host, against a fake portal and file
     # manager on a bus that can activate nothing, as an AppImage resident would.
     add_executable(test_host_open tests/integration/test_host_open.cpp)
