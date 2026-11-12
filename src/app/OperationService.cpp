@@ -764,6 +764,8 @@ Operation OperationService::run(Job job) {
    struct Loan{UploadSlots& pool;quint64 id=0;~Loan(){if(id)pool.closeLoan(id);}} loan{uploadSlots_};
    auto uploaded=awaitProvider<UploadResult>([&](auto cb) {
     auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;
+    // The sharing step below starts with the first file once the last has been uploaded.
+    request.linkFollows=capabilities.sharing&&index==op.items.size()-1&&(publicationMode!="private"||item.shareIntent=="create");
     if(parallel)request.extraLanes=[&loan,this](int wanted){return uploadSlots_.lend(loan.id,wanted);};
     // Per-part records are debug-only; a multipart completion is kept at info (#148).
     request.trace=[fields=itemFields(op,item),log=&providerLog(op.destination.providerId)](const QJsonObject& record){

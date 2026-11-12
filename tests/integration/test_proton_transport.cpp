@@ -215,6 +215,27 @@ private slots:
   PUTGD_TRY_VERIFY(!running(pid));
   QCOMPARE(ask(provider,d).error.code,QString("authentication_required"));
  }
+ void uploadNamesAFollowingLinkAndTheLastStorageHost(){
+  ProtonProvider provider;auto d=destination("upload-hints");
+  const auto session=provider.openSession(d);QVERIFY(session);
+  const auto send=[&](const Destination& to,bool linkFollows,const QString& answerHost){
+   UploadRequest req;req.destination=to;req.destination.settings["answerHost"]=answerHost;req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";req.linkFollows=linkFollows;
+   UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
+  };
+  // Nothing is known of the account's storage host before its first block upload, and a
+  // link is named only for an upload one follows.
+  auto seen=send(d,false,"fra-storage.proton.me");
+  QCOMPARE(seen.status,QString("uploaded"));QVERIFY(seen.receipt.objectReference["linkFollows"].isNull());QVERIFY(seen.receipt.objectReference["hint"].isNull());
+  // The host that upload used is named in the next one. Only a Proton storage host is kept.
+  seen=send(d,true,"storage.example.org");
+  QCOMPARE(seen.receipt.objectReference["linkFollows"].toBool(),true);QCOMPARE(seen.receipt.objectReference["hint"].toString(),QString("fra-storage.proton.me"));
+  for(const auto* refused:{"drive-api.proton.me","a.b.proton.me","fra-storage.proton.me:8443",""})
+   QCOMPARE(send(d,false,refused).receipt.objectReference["hint"].toString(),QString("fra-storage.proton.me"));
+  QCOMPARE(send(d,false,"zrh-storage.proton.me").receipt.objectReference["hint"].toString(),QString("fra-storage.proton.me"));
+  QCOMPARE(send(d,false,"").receipt.objectReference["hint"].toString(),QString("zrh-storage.proton.me"));
+  // Another account has a host of its own to learn.
+  std::jthread([&]{const auto other=destination("upload-hints");const auto second=provider.openSession(other);QVERIFY(send(other,false,"").receipt.objectReference["hint"].isNull());}).join();
+ }
  void sessionReplacesAHelperAfterAnythingButACleanAnswer_data(){
   QTest::addColumn<QString>("fixture");QTest::addColumn<QString>("status");QTest::addColumn<QString>("code");
   QTest::newRow("error")<<"session-error"<<"inconclusive"<<"rate_limited";
@@ -269,11 +290,46 @@ private slots:
   QCOMPARE(ask(provider,destination("session")).error.code,QString("authentication_required"));
   QCOMPARE(ask(provider,d,"auth").error.code,QString("authentication_required"));
  }
- void nothingStartsAheadWhileTheAccountIsBusy(){
+ void sessionPassesItsHelperToAnOperationThatAsked_data(){
+  QTest::addColumn<QString>("then");
+  QTest::newRow("the next session takes it")<<"taken";QTest::newRow("nobody asked")<<"unasked";
+  QTest::newRow("asked, then gone before the session ended")<<"gone-before";QTest::newRow("asked, then gone before taking it")<<"gone-after";
+  QTest::newRow("the helper spoke out of turn")<<"chatter";QTest::newRow("account setup")<<"setup";
+ }
+ void sessionPassesItsHelperToAnOperationThatAsked(){
+  QFETCH(QString,then);
   ProtonProvider provider;const auto d=destination("session");
   QCOMPARE(ask(provider,destination("session")).error.code,QString("authentication_required"));
-  const auto session=provider.openSession(d);QCOMPARE(ask(provider,d).status,QString("absent"));
-  std::shared_ptr<void> ahead;std::jthread([&]{ahead=provider.anticipate(d);}).join();QVERIFY(!ahead);
+  QJsonValue pid;std::shared_ptr<void> asked;
+  {
+   const auto session=provider.openSession(d);
+   // The last answer is clean, then (in one row) the helper says something nobody asked for.
+   const auto first=ask(provider,d,then=="chatter"?"session-chatter":"session");QCOMPARE(first.status,QString("absent"));pid=first.objectReference["pid"];
+   // While the session has the account nothing is started ahead for another operation: it
+   // registers that it will ask.
+   if(then!="unasked"){std::jthread([&]{asked=provider.anticipate(d);}).join();QVERIFY(asked);}
+   if(then=="gone-before")asked.reset();
+   if(then=="chatter")QTest::qWait(500);
+   QVERIFY(running(pid));
+  }
+  if(then=="taken"){
+   // The session's helper waits, still holding the account, and answers the next session.
+   QVERIFY(running(pid));
+   {
+    const auto next=provider.openSession(d);const auto second=ask(provider,d);
+    QCOMPARE(second.objectReference["pid"],pid);QCOMPARE(second.objectReference["served"].toInt(),2);
+   }
+   // That operation still counts as asking until it ends: only then does the helper end.
+   asked.reset();
+  }else if(then=="gone-after"){
+   QVERIFY(running(pid));asked.reset();
+  }else if(then=="setup"){
+   QVERIFY(running(pid));Error e;provider.setup("inspectAccount",d,{},e);QCOMPARE(e.code,QString("authentication_required"));
+  }
+  PUTGD_TRY_VERIFY(!running(pid));
+  asked.reset();
+  // The account is free again: a request reaches a helper of its own.
+  QCOMPARE(ask(provider,d,"auth").error.code,QString("authentication_required"));
  }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));
