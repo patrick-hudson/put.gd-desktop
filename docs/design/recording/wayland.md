@@ -101,8 +101,7 @@ the close is sent before review opens, without waiting for the compositor's
 reply.
 `tests/unit` covers the portal stream
 demarshalling; the PipeWire paths are exercised on the Fedora GNOME and Debian
-KDE desktops, `wlr-capture` on the Fedora 45 and Ubuntu Budgie 26.04 goldens
-and on headless labwc in `budgie_labwc_integration`.
+KDE desktops and `wlr-capture` on the Fedora 45 and Ubuntu Budgie 26.04 goldens.
 
 ### Window recordings
 

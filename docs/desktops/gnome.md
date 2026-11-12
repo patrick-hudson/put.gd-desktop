@@ -328,8 +328,7 @@ its area, and at 125%, and on some logins at 100%, a page at rest sent none, so 
 content could not be proved and the capture stopped `lost_track`. Queueing the same pixel on the stage
 with a clip sent nothing; a widget in the area sends about seven frames in 300 ms of a still page.
 The actor is the only one inside the area, a new frame replaces it and its timer, and hiding the frame
-ends both. `gnome_ui_ownership_contract` and `gnome_core_transport_integration` cover the field and
-the timer.
+ends both. `gnome_ui_ownership_contract` covers the timer.
 
 A scrolling capture needs the extension at version 22 or later (`ScrollShell::selectsRegions` also
 requires `recordingVersion` 1 or later). An extension loaded before the update (below version 22)

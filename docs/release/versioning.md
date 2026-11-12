@@ -239,12 +239,11 @@ install and CPack), absent-KDE builds, and supplied/unknown archive provenance. 
 keeps its isolated fixture under the test build's `Testing/version-contract-*`
 directory and prints its path. Expected install/package rejection logs remain
 in that fixture directory. `version_integration` checks the production
-executables without a display and the resident diagnostics object. `gui_version`
-checks About's version, nonmodal behavior, reuse and close/teardown cleanup
-offscreen; native visual acceptance is separate.
+executables without a display and the resident diagnostics object. The About
+window has no automated test.
 
 ```sh
-ctest --preset dev -R '^(version_contract|version_integration|gui_version)$' \
+ctest --preset dev -R '^(version_contract|version_integration)$' \
   --output-junit build/dev/Testing/version-results.xml
 ```
 

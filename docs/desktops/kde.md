@@ -154,9 +154,8 @@ during a recording is `progress.clickHighlightsError`
 (`click_effect_unavailable`) while the recording goes on. Plasma X11 uses the
 X11 route instead ([Cinnamon / X11](cinnamon.md)). Measured on KWin 6.8.2: a
 frame of an output screencast taken while clicking shows the rings with the
-effect on and none with it off. `kwin_click_effect_contract`
-(`tests/integration/test_kwin_click_effect.cpp`) runs the three starting states
-against a scripted KWin. The design is in
+effect on and none with it off. No automated test checks that the effect is put
+back as it was. The design is in
 [Microphone and click highlights](../design/recording/microphone-and-clicks.md).
 
 ## Scrolling capture
@@ -196,7 +195,7 @@ While frames are read the pointer waits outside the rectangle and comes in only 
 step, 48 px inside the edge it waits beyond, so that its travel stays short: KWin takes a pointer
 that goes back and forth over more than a hundred pixels several times a second for one its user
 shakes to find it, and blows it up to many times its size.
-`test_kde_ownership` and `record_identity_contract` pin the entry's list and its first `Exec` token.
+`record_identity_contract` pins the entry's list and its first `Exec` token.
 
 ## Clipboard and hotkeys
 

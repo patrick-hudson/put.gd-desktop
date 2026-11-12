@@ -400,9 +400,9 @@ own time. Taken for captured frames they held every slot up to 23 ms early
 for the slot after, was dropped and showed with a later frame: about 31 ms
 late on average and up to 48 ms, the picture behind the sound for as long as
 the pointer moved. With the rule a change is 8 ms late on average and at most
-24 ms, the lock's own rounding to the grid (`wayland_acquisition_contract`
-drives `lockedFrameTime` with a screen that changes every 137 ms under a
-moving cursor). At 50 and 60 frames a second the slot is no longer than the
+24 ms, the lock's own rounding to the grid (measured with a screen that changed
+every 137 ms under a moving cursor; that test went in the second round of
+[removed tests](../../testing/removed-tests.md#second-round)). At 50 and 60 frames a second the slot is no longer than the
 cursor's pace, so a cursor-only frame may come 6 and 8 ms before the slot's
 time, enough for one to land in every slot.
 A press is placed at the pointer position the helper holds when it arrives.

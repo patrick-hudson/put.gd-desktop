@@ -137,7 +137,7 @@ applied.
   - every fallback trigger, including an immediate `Response` 2 and an error reply;
   - the fallback's contrast and surfaces in Dark and Light, and a scheme switch while open.
 - **`file_dialog_x11_parent`** checks the `x11:<xid>` handle under Xvfb.
-- **`gui_review_window_actions`, `gui_settings_advanced` and `mcp_integration`** cover the commands above.
+- The session methods and MCP tools above have no automated test; desktop acceptance drives them.
 
 ### Native cancellation preconditions (GNOME 50, #847)
 

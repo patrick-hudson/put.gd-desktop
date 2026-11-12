@@ -532,10 +532,11 @@ preflight, the `putgd-ci` user and JUnit retention are as before.
   failed 15 of 80 runs and the new one 0 of 120. In `gui_history_view`,
   `uploadProgressRendersBeforeCompletionDuringDelayedRecentReplies` checked the
   "Reading the clipboard" subtitle once, right after the row turned active; the
-  `acquiring` state can reach the model one update later. The check now retries
-  like its neighbours; the acquisition stays held open, so no later state can
-  satisfy it. Under the same load it failed 21 of 40 runs before and 0 of 80
-  after. It failed once in local suite runs and never on hosted runners.
+  `acquiring` state can reach the model one update later. The check was made to
+  retry like its neighbours, with the acquisition held open so no later state
+  could satisfy it. Under the same load it failed 21 of 40 runs before and 0 of 80
+  after. It failed once in local suite runs and never on hosted runners. The test
+  was removed in #1421.
 - **Floor.** `native_background_startup_integration` takes about 70 s: nine data
   rows in one process, each waiting for a product startup bound. It starts first
   and bounds the wall time.

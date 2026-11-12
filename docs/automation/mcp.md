@@ -172,10 +172,12 @@ PUTGD_CLI="$PWD/build/dev/putgd-cli" PUTGD_APP="$PWD/build/dev/putgd" \
 ```
 
 This separate suite uses an official SDK stdio client, the production CLI, synthetic
-Unix-session responses and temporary malformed/timeout peers. It checks discovery,
-request IDs, methods/parameters, structured errors, explicit deletion acknowledgement,
-spaces in paths, metadata-only inspection, expected-revision conflict forwarding, and
-a slow `recording.stop` (answered after 16 s) outlasting the CLI's ordinary wait.
+Unix-session responses. It checks that invalid input never starts the CLI or sends a
+request, that schemas refuse coerced values and unnamed parameters, that parameters
+travel on stdin and never in a process argument, that deletion is prepared first and
+confirmed only with the acknowledgement it returned, that every request goes to its own
+session, and that a missing session is reported as `session_unavailable`. Parity
+between each tool and its session method is no longer checked tool by tool.
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
 

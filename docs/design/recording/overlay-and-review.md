@@ -192,8 +192,8 @@ helper's export then reports the `encoding` phase and the icon turns amber
 clip is stored and the local copy saved. Once storage traffic starts the
 ordinary upload feedback takes over: dark green filling with the transferred
 fraction, bright green with "Upload complete", then idle. Failures flash red as
-for any operation. `tests/gui/test_tray.cpp` walks this chain with the fake
-backend.
+for any operation. No automated test has walked this chain since the second
+round of [removed tests](../../testing/removed-tests.md#second-round).
 
 ### Helper events
 
