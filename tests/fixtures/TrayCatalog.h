@@ -1,5 +1,5 @@
 #pragma once
-// Catalog-only fixtures shared with gui_tray regression tests; no app UI changes.
+// Catalog-only fixtures; no app UI changes.
 #include "core/StorageProvider.h"
 #include <QCryptographicHash>
 #include <QJsonArray>

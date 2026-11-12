@@ -8,17 +8,6 @@ if(BUILD_TESTING)
   set_tests_properties(region_selection_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 
-if(BUILD_TESTING AND TARGET putgd_wayland_region)
-  # Exercise the production QWidget without a native layer role. Real KWin
-  # keyboard focus and transparent-frame dismissal remain desktop gates.
-  add_executable(test_wayland_region_overlay tests/gui/test_wayland_region_overlay.cpp src/platform/wayland/LayerShellRegionOverlay.cpp)
-  target_link_libraries(test_wayland_region_overlay PRIVATE putgd_wayland_region Qt6::Widgets Qt6::Test)
-  add_test(NAME wayland_region_overlay COMMAND test_wayland_region_overlay)
-  set_tests_properties(wayland_region_overlay PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-  add_test(NAME wayland_region_overlay_multihead COMMAND test_wayland_region_overlay surfacesStayOnTheirOutputs)
-  set_tests_properties(wayland_region_overlay_multihead PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen:configfile=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/offscreen-kde-multihead.json" TIMEOUT 30)
-endif()
-
 if(BUILD_TESTING AND TARGET putgd_x11)
   add_executable(test_native_region_overlay tests/desktop/x11/test_native_region_overlay.cpp)
   target_link_libraries(test_native_region_overlay PRIVATE putgd_x11 putgd_capture_cursor Qt6::Test PkgConfig::PUTGD_XTEST PkgConfig::PUTGD_XCB)

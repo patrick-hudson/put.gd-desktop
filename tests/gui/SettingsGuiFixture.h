@@ -87,23 +87,8 @@ inline QJsonObject threeDestinations(){
  auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=name=="clipboard"?"upload":"default";action["profileId"]=name=="clipboard"?QJsonValue("synthetic-third"):QJsonValue(QJsonValue::Null);actions[name]=action;}doc["actions"]=actions;return doc;
 }
 inline QStringList profileIds(const QJsonObject& document){QStringList ids;for(const auto& p:document["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
-inline QStringList rowLabels(QListWidget* list){QStringList labels;for(int i=0;i<list->count();++i)labels.append(list->item(i)->text().section('\n',0,0));return labels;}
-// Chooses the named action of the next confirmation (Ui::confirm) and
-// keeps the text it showed.
-inline std::shared_ptr<QString> acceptNextConfirmation(){
- auto shown=std::make_shared<QString>();
- QTimer::singleShot(0,[shown]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->objectName()=="confirmAction"&&box->isVisible()){*shown=box->windowTitle()+"\n"+box->property("confirmationText").toString();box->button(QMessageBox::Yes)->click();return;}});
- return shown;
-}
-// The code behind the Settings status line: people read the message, the code
-// stays in a property and the accessible description.
-inline QString statusCode(QWidget& window){return window.findChild<QLabel*>("settingsStatus")->property("errorCode").toString();}
 }
 
 class SettingsGuiFixture:public QObject {
  Q_OBJECT
-protected:
- QList<QUrl> openedUrls_;
-public slots:
- void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 };
