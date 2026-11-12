@@ -73,9 +73,11 @@ struct Settings {
     // lower it while a recording runs when the machine can't keep up.
     int recordingFrameRate = 30;
     // preferences.captureDelaySeconds (#1363): 0 (default), 3, 5 or 10. The tray
-    // and the dashboard start region, window, monitor and desktop captures after
-    // this delay; shortcuts stay immediate and session requests name their own.
+    // and the dashboard start region, window, monitor and desktop captures, a
+    // repeat and Capture region & edit after this delay; session requests name
+    // their own. Shortcuts stay immediate unless captureDelayShortcuts is on.
     int captureDelaySeconds = 0;
+    bool captureDelayShortcuts = false;
     // #1364: preferences.recordingMicrophone remembers the bar's microphone
     // toggle (off until the user turns it on); recordingMicrophoneDevice names
     // the input to open, empty for the system default; recordingClickHighlights
@@ -132,8 +134,11 @@ struct Settings {
     static QStringList shortcutOrder();
     // Delays a capture can start after, in seconds; 0 is immediate.
     static QList<int> captureDelayChoices();
-    // Captures that take delaySeconds: region, window, monitor, desktop and repeat.
+    // Captures that take delaySeconds: region, window, monitor, desktop, repeat
+    // and edit. An edit is delayed only when it captures the screen
+    // (delayableEditSource): the clipboard and a file have nothing to wait for.
     static bool delayableAction(const QString& action);
+    static bool delayableEditSource(const QString& source);
     // Adds absent edit and record actions inheriting the region route without a shortcut,
     // an absent monitor action copying the desktop route, and an absent repeat key.
     static QJsonObject normalized(const QJsonObject&);

@@ -565,9 +565,11 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
  // A click's token raises the editor that is already open (#657).
  if (action == "edit" && !activationToken_.isEmpty()) effective["activationToken"] = activationToken_;
- // The tray's captures start after the chosen delay (#1363); a shortcut never waits.
- if (!fromShortcut && Settings::delayableAction(action) && !effective.contains("delaySeconds"))
-  if (const int delay = operations_.settingsSnapshot().captureDelaySeconds; delay > 0) effective["delaySeconds"] = delay;
+ // The tray's captures start after the chosen delay (#1363). A shortcut waits
+ // only when preferences.captureDelayShortcuts says so, and an edit only when it
+ // captures the screen (the clipboard and a file have nothing to wait for).
+ if (const auto settings = operations_.settingsSnapshot(); (!fromShortcut || settings.captureDelayShortcuts) && settings.captureDelaySeconds > 0 && Settings::delayableAction(action) && !effective.contains("delaySeconds") && (action != "edit" || Settings::delayableEditSource(effective.value("source").toString("region"))))
+  effective["delaySeconds"] = settings.captureDelaySeconds;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));

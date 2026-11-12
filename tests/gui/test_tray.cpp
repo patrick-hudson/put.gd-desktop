@@ -52,6 +52,21 @@ public:
  void cancelAcquisition() override {}
  void copy(const CopyPayload&, std::function<void(Error)> done) override { ++copies; done({}); }
 };
+// Records whether a capture counted down first, and the delay a region was prepared with.
+class DelayRecordingSource final : public SourceAdapter {
+public:
+ QStringList events;
+ quint64 clipboardRevision() const override { return 0; }
+ QJsonObject capabilities() const override { return {}; }
+ void countdown(int seconds, std::function<void(Error)> reply) override { events.append(QStringLiteral("countdown:%1").arg(seconds)); reply({"cancelled", "Synthetic countdown cancelled", {}}); }
+ PreparedAcquisition prepareAcquisition(const QString& action) override {
+  events.append(QStringLiteral("prepare:%1:%2").arg(action).arg(captureDelay_));
+  return [](const ResourceLimits&, std::function<void(PayloadResult)> done) { done({{}, {"source_cancelled", "Synthetic selection cancelled", {}}}); };
+ }
+ void acquire(const QString& action, const ResourceLimits& limits, std::function<void(PayloadResult)> done) override { prepareAcquisition(action)(limits, std::move(done)); }
+ void cancelAcquisition() override {}
+ void copy(const CopyPayload&, std::function<void(Error)> done) override { done({}); }
+};
 class SupersedingSource final : public SourceAdapter {
 public:
  int copies=0;std::function<void(Error)> pendingCopy;
@@ -759,6 +774,31 @@ private slots:
   controller.invokeShortcut("region");
   QVERIFY(views.isEmpty());QVERIFY(source.actions.isEmpty());
   PUTGD_TRY_VERIFY(operations.ready());
+ }
+ void shortcutsWaitForTheCaptureDelayOnlyWhenAsked_data() {
+  QTest::addColumn<bool>("shortcuts");QTest::addColumn<QString>("trigger");QTest::addColumn<QString>("expected");
+  // A shortcut is immediate until preferences.captureDelayShortcuts is on.
+  QTest::newRow("shortcut, off")<<false<<"shortcut:desktop"<<"prepare:desktop:0";
+  QTest::newRow("shortcut, on")<<true<<"shortcut:desktop"<<"countdown:3";
+  QTest::newRow("region shortcut, on")<<true<<"shortcut:region"<<"prepare:region:3";
+  QTest::newRow("edit shortcut, on")<<true<<"shortcut:edit"<<"prepare:region:3";
+  // The tray always waits, now for Capture region & edit too; an edit of the clipboard never does.
+  QTest::newRow("tray edit")<<false<<"Capture region && edit"<<"prepare:region:3";
+  QTest::newRow("tray edit clipboard")<<false<<"Edit clipboard image"<<"prepare:clipboard:0";
+ }
+ void shortcutsWaitForTheCaptureDelayOnlyWhenAsked() {
+  QFETCH(bool,shortcuts);QFETCH(QString,trigger);QFETCH(QString,expected);
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));
+  auto doc=configuration(directory.path(),true);auto preferences=doc["preferences"].toObject();preferences["notifications"]=false;preferences["captureDelaySeconds"]=3;if(shortcuts)preferences["captureDelayShortcuts"]=true;doc["preferences"]=preferences;
+  QVERIFY(settings.save(doc,{}));DelayRecordingSource source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});
+  if(trigger.startsWith("shortcut:"))controller.invokeShortcut(trigger.mid(9));
+  else{
+   QAction* entry=nullptr;const std::function<void(QMenu*)> find=[&](QMenu* menu){for(auto* action:menu->actions()){if(action->text().section('\t',0,0)==trigger)entry=action;if(action->menu())find(action->menu());}};
+   find(controller.findChild<QSystemTrayIcon*>()->contextMenu());QVERIFY2(entry,qPrintable(trigger));entry->trigger();
+  }
+  PUTGD_TRY_VERIFY(!source.events.isEmpty());QCOMPARE(source.events.first(),expected);
  }
  void repeatedNativeCaptureDoesNotOpenViewsOverSelection() {
   QTemporaryDir directory;ProviderRegistry providers;
