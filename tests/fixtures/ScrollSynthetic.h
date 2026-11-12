@@ -172,6 +172,21 @@ struct FakeAppSpec {
   // queue with the time they were taken (a real frame tap): a frame read
   // after a pause may be older than the call that reads it.
   bool queued = false;
+  // The application works through its wheel notches one after another, this
+  // long each, in the order they came, and paints only once none is waiting:
+  // a widget that rebuilds a large picture for every wheel event (the
+  // tester's non-fixed fixture on Cinnamon, 2026-11-12). 0: off.
+  int busyMsPerNotch = 0;
+  // With busyMsPerNotch: the first notch of a step that finds it idle is
+  // painted as soon as it is worked through, the rest only once none waits
+  // (what that fixture did: 60 px of a 360 px step, then nothing for 930 ms).
+  bool busyShowsFirst = false;
+  // At this injection the page moves only splitFraction of the way at first;
+  // the rest comes with the next injection (a step seen halfway: Chromium on
+  // Plasma, where a step of 51 px and one of 309 px were one notch each of
+  // 180 px, 2026-11-12). -1: off.
+  int splitInjection = -1;
+  double splitFraction = 0.3;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -226,6 +241,8 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   bool haveDelivered_ = false;
   bool quiet_ = false;
   double overscroll_ = 0;
+  int64_t busyUntil_ = 0;
+  double splitRest_ = 0;
 };
 
 }  // namespace synth

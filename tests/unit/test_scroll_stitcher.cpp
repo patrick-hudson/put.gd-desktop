@@ -2224,6 +2224,89 @@ void testSessions() {
     }
   }
   {
+    // A page that works through its wheel notches one by one and paints only
+    // once none is waiting is slow to answer, not at its end. The tester's
+    // non-fixed fixture on Cinnamon (operation acff15cd, 2026-11-12) did this
+    // and the capture ended `end_of_content` with 1,020 of 24,000 rows after
+    // two still steps, the page still working through the notches it had been
+    // sent. The image is the whole page, or the end is an honest one with an
+    // exact prefix: never "the end of the content" early.
+    int complete = 0, honest = 0, total = 0;
+    std::string bad;
+    for (int first = 0; first < 2; ++first)
+    for (int busy : {60, 120, 250})
+      for (double px : {40.0, 60.0})
+        for (int V : {600, 800}) {
+          DocSpec ds;
+          ds.seed = uint64_t(41 + busy + V);
+          ds.viewport = V;
+          const Document doc = makeDocument(ds);
+          ViewportSpec vs;
+          vs.height = V;
+          FakeAppSpec spec;
+          spec.pxPerNotch = px;
+          spec.busyMsPerNotch = busy;
+          spec.busyShowsFirst = first;
+          spec.frameIntervalMs = 33;
+          FakeClock clock;
+          FakeApp app(doc.img, vs, spec, clock);
+          RunOptions ro;
+          const char* traced = std::getenv("PUTGD_SCROLL_STITCHER_TRACE");
+          const std::string name = fmt("slow b%d f%d p%g v%d", busy, first, px, V);
+          if (traced && name.find(traced) != std::string::npos)
+            ro.onStep = [&](const StepResult& r, int hint, int notches) {
+              std::printf("    trace %s: t=%lld %s offset %d hint %d notches %d appended %d (page at %d)\n", name.c_str(), (long long)clock.nowMs(), toString(r.status), r.offset, hint, notches, r.appendedRows, app.positionNow());
+            };
+          ScrollRun run(app, app, clock, ro);
+          const RunResult res = run.run();
+          const int outH = run.stats().outputRows;
+          const std::vector<uint8_t> img = run.stitcher().takeImage();
+          int c0, c1;
+          comparedColumns(vs.width, {}, c0, c1);
+          const Cmp whole = compare(img, outH, app.renderer().expected(doc.img.h), c0, c1);
+          const Cmp prefix = compare(img, outH, app.renderer().expected(outH), c0, c1);
+          ++total;
+          if (res == RunResult::EndOfContent && whole.mismatches == 0 && whole.heightOk) ++complete;
+          else if (res != RunResult::EndOfContent && prefix.mismatches == 0 && prefix.heightOk) ++honest;
+          else bad += fmt(" [busy %d%s px %g v %d: %s, %d rows of %d, first bad %d]", busy, first ? " first shown" : "", px, V, toString(res), outH, doc.img.h, whole.firstBad);
+        }
+    report(fmt("session a page slower than the wait is not at its end (%d runs)", total), complete + honest == total,
+           fmt("%d complete, %d honest ends with an exact prefix%s", complete, honest, bad.c_str()));
+  }
+  {
+    // A step seen halfway: the page moves 30% of one step, the rest arrives
+    // with the next, which moves that much more than its hint. Among rows
+    // that repeat, the hint picked the tied offset beside it, and a table
+    // went missing from an image that ended "end of content" (here: 60 px for
+    // 200 asked, then 340 taken for 196). Chromium on Plasma learned 309 px a
+    // notch where a notch is 180 from such a pair (pull request page,
+    // 2026-11-12). The whole page exact, or an honest end with an exact prefix.
+    int ok = 0, honest = 0, total = 0;
+    std::string bad;
+    for (int split : {2, 3, 4})
+      for (double px : {53.0, 100.0})
+        for (int V : {300, 800}) {
+          SessCfg c;
+          c.name = fmt("split s%d px%g v%d", split, px, V);
+          c.V = V;
+          c.px = px;
+          c.ds.seed = uint64_t(61 + split + V);
+          c.ds.tableFactor = 2.0;  // a long table of rows that repeat: tied offsets
+          c.app.splitInjection = split;
+          const size_t before = g_rows.size();
+          g_quiet = true;
+          runSession(c);
+          g_quiet = false;
+          ++total;
+          if (g_rows.back().pass) ++ok;
+          else if (g_lastSafeStop && g_lastWrongVerified == 0) ++honest;
+          else bad += " [" + g_rows.back().name + ": " + g_rows.back().detail + "]";
+          g_rows.resize(before);
+        }
+    report(fmt("session a step seen halfway is not matched beside its hint (%d runs)", total), ok + honest == total,
+           fmt("%d exact + EndOfContent, %d honest ends with an exact prefix%s", ok, honest, bad.c_str()));
+  }
+  {
     // Document shorter than the viewport: nothing can scroll.
     Image small(480, 200, kBg);
     Rng rng(5);

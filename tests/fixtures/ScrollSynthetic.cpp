@@ -271,11 +271,36 @@ bool FakeApp::scroll(int n) {
     if (pointerX < a.x || pointerX >= a.x + a.w || pointerY < a.y || pointerY >= a.y + a.h) return true;
   }
   update(clock_.nowMs());
+  if (spec_.busyMsPerNotch > 0) {
+    // What it has not painted yet it paints when it has worked through all it was sent.
+    const int64_t now = clock_.nowMs();
+    while (!segs_.empty() && segs_.back().t0 > now) segs_.pop_back();
+    const bool idle = busyUntil_ <= now;
+    busyUntil_ = std::max(busyUntil_, now) + int64_t(std::abs(n)) * spec_.busyMsPerNotch;
+    const double nt = std::clamp(std::round(target_ + n * spec_.pxPerNotch), 0.0, double(maxScroll()));
+    if (spec_.busyShowsFirst && idle && std::abs(n) > 1) {
+      const double first = std::clamp(std::round(target_ + (n > 0 ? 1 : -1) * spec_.pxPerNotch), 0.0, double(maxScroll()));
+      segs_.push_back({now + spec_.busyMsPerNotch, 1, posAt(now), first});
+      segs_.push_back({busyUntil_, 1, first, nt});
+      target_ = nt;
+      return true;
+    }
+    segs_.push_back({busyUntil_, 1, posAt(now), nt});
+    target_ = nt;
+    return true;
+  }
   const int64_t start = clock_.nowMs() + spec_.reactionDelayMs;
   const double cur = posAt(start);
   const double mult = std::abs(n) >= spec_.accelMinNotches ? spec_.accelFactor : 1.0;
   const double jit = spec_.jitter > 0 ? 1.0 + spec_.jitter * (2 * rng_.unit() - 1) : 1.0;
   double delta = n * spec_.pxPerNotch * mult * jit;
+  if (idx == spec_.splitInjection) {
+    splitRest_ = delta * (1 - spec_.splitFraction);
+    delta -= splitRest_;
+  } else if (splitRest_ != 0) {
+    delta += splitRest_;
+    splitRest_ = 0;
+  }
   if (spec_.overscrollPx > 0) {
     if (delta > 0 && overscroll_ > 0) {
       const double used = std::min(overscroll_, delta);

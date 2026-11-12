@@ -240,6 +240,97 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
     }
 }
 
+// The end of the content, proved. A still step says only that the picture did
+// not move in the time it was given. A page that works through its wheel
+// notches one after another and paints once none is waiting is still for as
+// long as it is busy: two such steps ended a capture as complete with 1,020 of
+// 24,000 rows, the page still working through what it had been sent (the
+// tester's non-fixed fixture on Cinnamon, 2026-11-12). A page answers its wheel
+// steps in the order they came. So a notch up: once the picture has moved up,
+// everything sent before it has been answered, and none of it took the page
+// past what the image ends on. Then one notch more than that down: a page at
+// its end comes back to exactly the picture it ended on; one that is not goes
+// a notch further (a step that was lost, or content that has loaded
+// meanwhile), and that step goes on as any other. A step up that is not
+// answered is sent again, twice as large and with twice the patience (a view
+// overscrolled at its edge spends the first steps back on that: GTK 4 fed a
+// continuous axis keeps up to 100 px), twice; when none is answered the end
+// is not proved.
+ScrollRun::EndProof ScrollRun::proveEnd(StepResult& found, std::optional<RunResult>& fail) {
+    const scroll::FrameSignatures atEnd = lastSig_;
+    const int64_t stillAt = lastInjectMs_;
+    StepResult s;
+    const auto look = [&](int notches, int hint, int unc) {
+        s = stitcher_.addFrame(last_, lastSig_, hint, unc);
+        if (opts_.onStep) opts_.onStep(s, hint, notches);
+        // The stream may have sent nothing: the screen itself.
+        if (s.status == StepStatus::NoMovement && screenIsAsSeen() == Screen::Moved) {
+            s = stitcher_.addFrame(last_, lastSig_, hint, unc);
+            if (opts_.onStep) opts_.onStep(s, hint, notches);
+        }
+    };
+    const auto refused = [&] {
+        stats_.lastError = "injector refused the scroll event";
+        fail = RunResult::InjectorFailed;
+        return EndProof::Unproved;
+    };
+    const auto failed = [&](Wait w) {
+        fail = waitFailure(w);
+        return fail.has_value();
+    };
+    // A fresh frame of another size (screenIsAsSeen).
+    const auto resized = [&] {
+        if (layoutChanged_) fail = RunResult::LayoutChanged;
+        return layoutChanged_;
+    };
+    int up = 0, back = 0;
+    bool answered = false, placed = false;
+    for (int attempt = 0; attempt < 3 && !answered; ++attempt) {
+        const int step = 1 << attempt;
+        if (!inject(-step)) return refused();
+        up += step;
+        const int patience = std::min(std::max(opts_.settleMs, opts_.responseMaxMs), responseWaitMs() << attempt);
+        if (failed(waitSettled(opts_.stepTimeoutMs, patience))) return EndProof::Unproved;
+        look(-step, kNoHint, 0);
+        if (resized()) return EndProof::Unproved;
+        switch (s.status) {
+            case StepStatus::NoMovement: break;  // not answered yet
+            case StepStatus::Reversed: answered = placed = true; back = -s.offset; break;
+            case StepStatus::NoMatch: case StepStatus::Ambiguous: answered = true; break;  // moved, the pixels cannot say where to
+            default:
+                // Further down than the picture showed (or the cap, or a change
+                // of layout): the page had not answered every step down. How long
+                // it took is the least its answers take.
+                if (s.status == StepStatus::Appended && firstChangeMs_ >= 0 && stillAt >= 0)
+                    stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(firstChangeMs_ - stillAt));
+                found = s;
+                return EndProof::Moved;
+        }
+    }
+    if (!answered) return EndProof::Unproved;
+    if (!inject(up + 1)) return refused();
+    if (failed(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return EndProof::Unproved;
+    int top = 0, bottom = lastSig_.height;
+    if (stitcher_.hasFrame()) {
+        top = stitcher_.movingBandTop();
+        bottom = stitcher_.movingBandBottom();
+    }
+    // Exactly the picture it ended on: the stitcher is told where that is (it
+    // keeps its reference and its footer from the frames it was given).
+    const bool same = atEnd.height == lastSig_.height && atEnd.width == lastSig_.width && !scroll::framesDiffer(atEnd, lastSig_, top, bottom, opts_.stitch, opts_.settleMaxChangedRows);
+    // Otherwise, where a page that is not at its end would be: a notch below where it ended.
+    const int further = (placed ? back : 0) + std::max(1, int(std::lround(stats_.pxPerNotch)));
+    look(up + 1, same ? (placed ? back : 0) : further, same ? 0 : int(std::ceil((up + 1) * (stats_.maxPxPerNotch - stats_.minPxPerNotch))));
+    if (resized()) return EndProof::Unproved;
+    // Back where it ended, as the stitcher places it, and nothing new below.
+    if (placed ? s.status == StepStatus::Appended && s.appendedRows == 0 && s.offset == back : s.status == StepStatus::NoMovement) return EndProof::Proved;
+    if ((s.status == StepStatus::Appended && s.appendedRows > 0) || s.status == StepStatus::LimitReached || s.status == StepStatus::LayoutChanged || s.status == StepStatus::InvalidFrame) {
+        found = s;
+        return EndProof::Moved;
+    }
+    return EndProof::Unproved;
+}
+
 int ScrollRun::planNotches() const {
     const double px = stats_.pxPerNotch;
     if (px <= 0) return 1;
@@ -470,6 +561,17 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
 
     int notches = 1;
     bool endPending = false, moved = false;
+    // How far the last step that moved fell short of the way its notches ask
+    // (0: it went all of it, or no way was known). A short step is the last,
+    // partial one at the end of the content, or a step seen halfway whose rest
+    // comes with the next: that step then moves more than it asks, so its
+    // distance teaches nothing about one notch, and its hint is that much less
+    // sure. A page between tables that repeat had a step of 60 px for 200
+    // asked and then one of 340 taken for 196, beside the hint, in an image
+    // that ended "end of content"; Chromium on Plasma learned 309 px a notch
+    // where a notch is 180 from such a pair, and every later step looked short
+    // against that (2026-11-12).
+    int owed = 0;
     // The step before this one showed no movement. If this one moves, the
     // earlier wheel step may have arrived late and be part of what is seen, so
     // the distance says nothing about one notch and no distance is expected of
@@ -488,11 +590,15 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
         }
         ++stats_.steps;
         const int64_t injectedAt = clock_.nowMs();
-        if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return finishWith(*f);
+        // The step that would confirm an end gets twice the time to be
+        // answered: a page may show the first notch of a step at once and the
+        // rest only once it has worked through them all (see proveEnd).
+        const int answerMs = endPending ? std::min(std::max(opts_.settleMs, opts_.responseMaxMs), 2 * responseWaitMs()) : responseWaitMs();
+        if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, answerMs))) return finishWith(*f);
         int64_t firstChange = firstChangeMs_;
         const bool hinted = stats_.pxPerNotch > 0 && !afterStill;
         const int hint = hinted ? int(std::lround(stats_.pxPerNotch * notches)) : kNoHint;
-        const int unc = hint < 0 ? 0 : int(std::ceil(notches * (stats_.maxPxPerNotch - stats_.minPxPerNotch)));
+        const int unc = hint < 0 ? 0 : int(std::ceil(notches * (stats_.maxPxPerNotch - stats_.minPxPerNotch))) + owed;
         StepResult r = stitcher_.addFrame(last_, lastSig_, hint, unc);
         if (opts_.onStep) opts_.onStep(r, hint, notches);
 
@@ -500,7 +606,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
         // caret) and the picture came to rest again before the response time
         // was over: the scroll itself may still be on its way.
         while (r.status == StepStatus::NoMovement) {
-            const int left = responseWaitMs() - int(clock_.nowMs() - injectedAt);
+            const int left = answerMs - int(clock_.nowMs() - injectedAt);
             if (left <= 0) break;
             if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, left))) return finishWith(*f);
             if (firstChangeMs_ < 0) break;  // nothing changed in all that time
@@ -602,6 +708,8 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             continue;
         }
 
+        for (bool again = true; again;) {
+        again = false;
         switch (r.status) {
             case StepStatus::Appended: {
                 if (endPending) ++stats_.falseEnds;
@@ -619,8 +727,9 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                 if (!afterStill && firstChange >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(firstChange - injectedAt));
                 // Learn px-per-notch from verified steps; a low-confidence step only
                 // teaches it when nothing is known yet (and it had pixel evidence).
-                const bool learn = !afterStill && (r.lowConfidence ? (hint < 0 && r.evidenceRows > 0) : true);
+                const bool learn = !afterStill && owed == 0 && (r.lowConfidence ? (hint < 0 && r.evidenceRows > 0) : true);
                 afterStill = false;
+                owed = hint >= 0 && r.offset < opts_.shortStepFraction * hint ? hint - r.offset : 0;
                 if (learn && r.offset > 0 && (hint < 0 || r.offset >= opts_.shortStepFraction * hint)) {
                     const double px = double(r.offset) / notches;
                     stats_.pxPerNotch = px;
@@ -693,20 +802,53 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                     }
                     break;
                 }
-                if (endPending) {
-                    // The end of the content is a claim about the screen: it
-                    // takes a fresh frame, grabbed after the last injections,
-                    // that shows what was there before them.
-                    if (screen != Screen::Same) {
-                        stats_.lastError = "the frame source gave no fresh frame after the last scroll steps, so the end of the content is not proven";
+                // The end of the content is a claim about the screen: it
+                // takes a fresh frame, grabbed after the last injections,
+                // that shows what was there before them.
+                if (endPending && screen != Screen::Same) {
+                    stats_.lastError = "the frame source gave no fresh frame after the last scroll steps, so the end of the content is not proven";
+                    return finishWith(RunResult::LostTrack);
+                }
+                if (screen == Screen::Same && moved && (stats_.falseEnds > 0 || owed == 0 || stats_.maxResponseMs > settleNeedMs())) {
+                    if (age < opts_.endConfirmDelayMs) clock_.sleepMs(opts_.endConfirmDelayMs - age);
+                    // A page that runs out of content stops partway through a
+                    // step. One that moved all of its last step and then nothing
+                    // at all, one that was still before and then moved after
+                    // all, or one whose answer to a step takes longer than the
+                    // picture's settle time (so that a short step may have been
+                    // seen halfway) may only not have answered yet: a lost
+                    // step, a page still busy with earlier ones. A step back up
+                    // and down again tells (proveEnd).
+                    std::optional<RunResult> fail;
+                    StepResult found;
+                    const EndProof proof = proveEnd(found, fail);
+                    if (fail) return finishWith(*fail);
+                    if (proof == EndProof::Proved) {
+                        ++stats_.endConfirmations;
+                        return finishWith(RunResult::EndOfContent);
+                    }
+                    if (proof == EndProof::Unproved) {
+                        stats_.lastError = "the page did not answer a wheel step up and back down, so the end of the content is not proven";
                         return finishWith(RunResult::LostTrack);
                     }
+                    // Not the end: the step that found the page further down goes on
+                    // as any other, its distance teaching nothing about one notch.
+                    r = found;
+                    endPending = true;
+                    afterStill = true;
+                    again = true;
+                    break;
+                }
+                if (endPending) {
                     ++stats_.endConfirmations;
                     return finishWith(RunResult::EndOfContent);
                 }
-                // Possibly the end, a dropped event or a slow lazy load: confirm once.
+                // Possibly the end, a dropped event or a slow lazy load: confirm
+                // once, with one notch (more is only more for a busy page to
+                // work through before it can answer).
                 endPending = true;
                 afterStill = true;
+                notches = 1;
                 if (age < opts_.endConfirmDelayMs) clock_.sleepMs(opts_.endConfirmDelayMs - age);
                 break;
             }
@@ -725,6 +867,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             default:
                 stats_.lastError = std::string("stitcher returned ") + scroll::toString(r.status);
                 return finishWith(RunResult::LostTrack);
+        }
         }
         progress(false);
     }
