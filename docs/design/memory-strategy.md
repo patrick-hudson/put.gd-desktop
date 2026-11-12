@@ -8,7 +8,7 @@ and CPU accompany RSS so shared mappings and active work remain visible.
 
 ## Keep the event loop; release temporary processes
 
-The resident owns shortcuts, clipboard ownership, tray/menu, shared operation and
+The resident owns hotkeys, clipboard ownership, tray/menu, shared operation and
 history services, recovery and the private command endpoint. Cinnamon/X11,
 GNOME Wayland and KDE Wayland use `QCoreApplication`, avoiding graphical platform
 initialization simply to wait for an action. QtGui stays linked for images and
@@ -19,7 +19,7 @@ key sequences. Other session routes retain the graphical fallback described in
 window releases the graphical address space after a bounded safe checkpoint;
 accepted uploads and native clipboard service continue. Minimize retains the
 window. Pausing the resident would retain its memory and stop callbacks needed
-for shortcuts, clipboard transfers and operations, so the split uses process exit.
+for hotkeys, clipboard transfers and operations, so the split uses process exit.
 
 The resident keeps these costs in temporary helpers:
 

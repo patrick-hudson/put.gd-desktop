@@ -68,6 +68,9 @@ struct UploadRequest {
  // never names, object keys, URLs, credentials or payload. "event" is "part" (one
  // successful part request, kept with debug logging) or "complete".
  std::function<void(const QJsonObject&)> trace={};
+ // The operation makes a share link for this file as soon as it is uploaded. A provider
+ // whose link costs local work may do that work while the file is in transit.
+ bool linkFollows=false;
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown

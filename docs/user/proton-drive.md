@@ -61,7 +61,7 @@ observed; see [the round-10 evidence](https://github.com/patrick-hudson/put.gd-e
 Sharing is the destination default. Clear that choice for private uploads, or
 use Settings → Capture → Per-action exceptions to override publication per action. Private upload
 creates no public link and leaves the clipboard unchanged. Existing folder and
-member access still applies. Shortcuts remain global app/action settings.
+member access still applies. Hotkeys remain global app/action settings.
 
 Advanced settings set new-link expiration (0–365 days; 0 means no expiration)
 and an optional password. Store the password explicitly in the secret service;
@@ -157,7 +157,23 @@ keeps its connections, and answers each request in turn; the account stays
 locked to it meanwhile. The app starts it when the action is invoked, so it
 signs in while you choose a region or the capture is taken; Edit & upload
 starts it only when the edit is uploaded. A helper started for an action you
-cancel ends by itself. History actions and setup start a helper per request.
+cancel ends by itself. An upload you start while another is still waiting or
+running takes over that upload's helper when it finishes, already signed in,
+instead of starting its own. History actions and setup start a helper per request.
+
+Proton answers each connection from one of several backends, some several
+times slower than others, and stays with it. So the helper sends its first
+read on six connections at once, keeps the one that answers first, closes the
+others, and sends its later requests to Proton's API on the kept one. This only
+saves time. If no such connection can be made, if its first answer is not an
+ordinary one, if you use a proxy, or if a request on it fails, the helper uses
+its ordinary connections for the rest of that upload.
+
+When a share link follows an upload, the helper prepares the link's password
+while the file is in transit, so the link's requests go out without a pause.
+The app also remembers, in memory only, which Proton storage host your last
+large upload used, and for a file of up to 4 MiB the helper connects to it
+while the next upload is being set up.
 A helper keeps at most 64 SDK crypto-key entries and 64 file or folder
 metadata entries in memory, so the SDK does not fetch the same parent again.
 The helper's own folder and ownership checks never use that metadata: each is

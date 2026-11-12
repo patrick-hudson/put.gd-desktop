@@ -20,7 +20,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 ## Documents
 
 - [put.gd today](overview.md): the features, executables, pipeline and where to read next.
-- [Architecture](architecture.md): process boundaries and the contracts shared by GUI, shortcuts and agent clients.
+- [Architecture](architecture.md): process boundaries and the contracts shared by GUI, hotkeys and agent clients.
 - [Resident memory strategy](memory-strategy.md): the idle target and what keeps the resident small.
 - [UI process protocol](ui-process-protocol.md): the resident's supervision of `putgd-ui` and its command transport.
 - [UI process state](ui-process-state.md): the `putgd-ui` view state contract.

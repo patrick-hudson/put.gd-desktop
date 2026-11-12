@@ -3,7 +3,7 @@
 put.gd is a Linux desktop application with one resident operation engine and
 on-demand graphical and network helpers. [Overview](overview.md) maps the
 features, executables and documentation; this page describes their boundaries
-and the behavioral contracts shared by GUI, shortcuts and agent clients.
+and the behavioral contracts shared by GUI, hotkeys and agent clients.
 
 ## Process boundaries
 
@@ -24,10 +24,10 @@ QtGui remains linked for image and key-sequence support on Core routes.
 
 | Desktop route | Resident ownership | Transient graphical work |
 | --- | --- | --- |
-| Cinnamon/X11 | Native XCB shortcuts, target/layout snapshots and `X11Clipboard`; session-bus tray | `putgd-capture` selects and captures against the frozen target |
-| GNOME Wayland | `GnomeAdapter` authenticates the GNOME Shell bridge over the session bus; the extension owns Shell selection, capture, shortcuts and clipboard MIME transfer | Shell actors provide selection; `putgd-ui` provides application windows |
+| Cinnamon/X11 | Native XCB hotkeys, target/layout snapshots and `X11Clipboard`; session-bus tray | `putgd-capture` selects and captures against the frozen target |
+| GNOME Wayland | `GnomeAdapter` authenticates the GNOME Shell bridge over the session bus; the extension owns Shell selection, capture, hotkeys and clipboard MIME transfer | Shell actors provide selection; `putgd-ui` provides application windows |
 | KDE Wayland | Independent native Wayland output/data-control connections, KGlobalAccel and KWin ScreenShot2; session-bus tray | `putgd-region` provides the LayerShellQt selector; KWin pixel capture stays in the resident, preserving executable authorization |
-| Budgie Wayland (labwc, Magpie) | Independent native Wayland output/data-control/ext-image-copy-capture connections; the labwc bridge or GlobalShortcuts portal for shortcuts; session-bus tray | `putgd-region` provides the LayerShellQt selector; screenshots stay in the resident, recordings copy frames in `putgd-record` ([Budgie](../desktops/budgie.md)) |
+| Budgie Wayland (labwc, Magpie) | Independent native Wayland output/data-control/ext-image-copy-capture connections; the labwc bridge or GlobalShortcuts portal for hotkeys; session-bus tray | `putgd-region` provides the LayerShellQt selector; screenshots stay in the resident, recordings copy frames in `putgd-record` ([Budgie](../desktops/budgie.md)) |
 
 Targets and display layouts are frozen at invocation. A later focus change never
 retargets a window capture. Layout changes invalidate acquisition; app-owned
@@ -158,7 +158,13 @@ the provider. One runtime process serves an operation's name check, upload and
 link (`StorageProvider::openSession`, held with the destination lease on the
 operation's thread); other Proton requests start one each. That process starts
 when the action is invoked (`StorageProvider::anticipate`) and is handed to the
-operation's thread, which is why it is not a QProcess. The provider checks
+operation's thread, which is why it is not a QProcess. An operation invoked
+while another's session has the account takes over that session's process when
+it ends. The runtime sends its API requests on one HTTP/2 connection it chose
+as the fastest of several, and falls back to its ordinary client whenever that
+connection is unavailable or fails; an upload request tells it whether a link
+follows (`UploadRequest::linkFollows`) and which storage host the account last
+used, both only to save time. The provider checks
 the runtime's hash once per file, in the background after start when a Proton
 destination is configured. Their distinct collision, version and sharing semantics remain
 behind the common receipt contract. See [B2](../user/b2.md) and [Proton](../user/proton-drive.md).

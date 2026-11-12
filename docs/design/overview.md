@@ -8,7 +8,7 @@ review the result privately, then upload only after an explicit action. Output
 can stay local, go to S3-compatible storage, Backblaze B2, Proton Drive or a
 custom HTTP uploader, and
 appear in searchable local history with the resulting link copied to the
-clipboard. Global shortcuts and the tray keep these actions available while
+clipboard. Hotkeys and the tray keep these actions available while
 the main window is closed. See the [user guide](../user/user-guide.md) for everyday use.
 
 Windows, Flatpak and OCR are out of scope. Packages are DEB, RPM and AppImage. Retired experiments and implementation checkpoints live
@@ -24,7 +24,7 @@ packages use dynamically linked distribution Qt. See
 
 | Executable | Role | Links in and out | Where it runs |
 | --- | --- | --- | --- |
-| `putgd` | Resident: tray, shortcuts, source adapters, settings, operations, history, setup, recording coordination and updates | Native desktop APIs; private JSON socket for clients; private helper pipes | User's graphical login session; Qt Core on Cinnamon/X11, GNOME Wayland, KDE Wayland and Budgie Wayland |
+| `putgd` | Resident: tray, hotkeys, source adapters, settings, operations, history, setup, recording coordination and updates | Native desktop APIs; private JSON socket for clients; private helper pipes | User's graphical login session; Qt Core on Cinnamon/X11, GNOME Wayland, KDE Wayland and Budgie Wayland |
 | `putgd-ui` | Main window and About; separate `--edit-image` editor and `--image-job` codec modes | Window helper uses the session socket plus supervised control pipes; editor/image jobs use private pipes and staging files | On demand; image jobs use Qt offscreen |
 | `putgd-cli` | JSON client; update-check and AppImage-install modes | Session socket for app methods; HTTPS for update modes | Same user/session, or a resident-launched temporary update child |
 | `putgd-capture` | Frozen-target X11 selection and acquisition | Resident control pipes and private PNG output; X11/Cinnamon capture APIs | Temporary graphical helper on the Cinnamon Core route |
@@ -75,13 +75,13 @@ See [architecture](architecture.md) for journal, clipboard and deletion semantic
 
 ## Desktop adapters
 
-Capture, shortcut and clipboard capabilities are reported separately. Session
+Capture, hotkey and clipboard capabilities are reported separately. Session
 routing and native connection/protocol checks determine available actions.
 
 | Desktop | Integration and requirements | Details |
 | --- | --- | --- |
-| Cinnamon/X11 | Native XCB clipboard/shortcuts and frozen window/output identities; RandR and XFixes. The temporary capture helper uses Cinnamon's compositor capture service and native region overlays. Window capture includes visible occlusion. | [Cinnamon/X11](../desktops/cinnamon.md) |
-| GNOME Wayland | Matching enabled `putgd@put.gd` Shell extension, session D-Bus and the supported Shell/GJS runtime. The extension owns native selection, pixels, shortcuts and clipboard transfer; the resident authenticates the bridge. A StatusNotifier host such as AppIndicators displays the tray. Extension upgrades require a fresh login to load the installed version. | [GNOME](../desktops/gnome.md) |
+| Cinnamon/X11 | Native XCB clipboard/hotkeys and frozen window/output identities; RandR and XFixes. The temporary capture helper uses Cinnamon's compositor capture service and native region overlays. Window capture includes visible occlusion. | [Cinnamon/X11](../desktops/cinnamon.md) |
+| GNOME Wayland | Matching enabled `putgd@put.gd` Shell extension, session D-Bus and the supported Shell/GJS runtime. The extension owns native selection, pixels, hotkeys and clipboard transfer; the resident authenticates the bridge. A StatusNotifier host such as AppIndicators displays the tray. Extension upgrades require a fresh login to load the installed version. | [GNOME](../desktops/gnome.md) |
 | KDE Wayland | KWin ScreenShot2 and an executable-matching restricted-interface desktop entry; KGlobalAccel; ext-data-control or its supported wlr predecessor; native output metadata. Region selection needs the per-window LayerShellQt API. The Qt 6.4 compatibility build reports that selector unavailable. | [Plasma](../desktops/kde.md) |
 
 GNOME and KDE residents keep independent native integrations without initializing
@@ -217,7 +217,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Configuration](configuration.md) | Schema, roots, migration, routing and retention. |
 | [Credentials](credentials.md) | Secret-store references, setup and cache lifecycle. |
 | [Custom uploader](../user/custom-uploader.md) | One described HTTP request, `.sxcu` import, placeholders, secrets and deletion. |
-| [Cinnamon/X11](../desktops/cinnamon.md) | X11 capture, clipboard and shortcut behavior. |
+| [Cinnamon/X11](../desktops/cinnamon.md) | X11 capture, clipboard and hotkey behavior. |
 | [GNOME](../desktops/gnome.md) | Shell extension setup and authenticated bridge. |
 | [KDE](../desktops/kde.md) | KWin permissions, data control and region selection. |
 | [Diagnostics](diagnostics.md) | Logs, crash records and shareable redacted packages. |
@@ -246,7 +246,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Storage providers](storage-providers.md) | Provider-neutral capabilities, receipts and checkpoints. |
 | [Surface prerequisites](../testing/surface-driver-prerequisites.md) | Probe setup, admission and restoration rules. |
 | [Testing](../testing/testing.md) | Test suites and verification entry points. |
-| [Shortcut dispatch](../testing/shortcut-dispatch.md) | Rebinding, input and native shortcut checks. |
+| [Hotkey dispatch](../testing/shortcut-dispatch.md) | Rebinding, input and native hotkey checks. |
 | [Tray progress](../testing/tray-progress.md) | Native progress, concurrency and notification recipes. |
 | [ThreadSanitizer](../testing/thread-sanitizer.md) | Instrumented dependency setup and thread checks. |
 | [Troubleshooting](../user/troubleshooting.md) | Diagnose common session and storage problems. |

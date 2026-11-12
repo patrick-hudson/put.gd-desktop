@@ -34,7 +34,7 @@ shows the full bar. The handle is in the clip; `overlayPlacement`
 is `handle` and `overlayExcluded` false. For a clip without it, hide the bar
 with `recording.overlay {visible: false}` (CLI `recording.overlay`, MCP
 `set_recording_overlay`), which keeps it hidden through state changes until
-`recording.raise`, and stop with the recording shortcut, the tray,
+`recording.raise`, and stop with the recording hotkey, the tray,
 `putgd-cli` or MCP.
 
 The bar can be dragged by its background (not its buttons). A bar placed
@@ -61,20 +61,20 @@ to the resident as events (`started`, `paused`, `resumed`, `stopped` with
 reason `user`, `cancelled`, `configChanged`), which the service applies to the
 same state machine the CLI drives; `recording.overlay` hides or shows the bar
 and `recording.raise` brings it forward. Stop and Cancel from the bar are
-mouse actions; the recording global shortcut is the keyboard stop route (see
-"Tray and shortcut").
+mouse actions; the recording hotkey is the keyboard stop route (see
+"Tray and hotkey").
 
-### Tray and shortcut
+### Tray and hotkey
 
 `action.invoke {action: "record", mode?}` is the entry point behind the tray,
-the dashboard rail and the global shortcut (`actions.record.shortcut`, unbound
-by default; recorded in Settings → Shortcuts like the others). With no active
+the dashboard rail and the hotkey (`actions.record.shortcut`, unbound
+by default; recorded in Settings → Hotkeys like the others). With no active
 recording it runs `recording.prepare` for a dragged region with the default
 configuration (MP4, no system audio; the bar changes both before Record), the
 remembered microphone toggle and the click-highlight preference
 ([Microphone and click highlights](microphone-and-clicks.md)). With one
 active, mode `open` (the tray and the rail) raises the bar or review window,
-and mode `toggle` (the shortcut) starts a `ready` session, stops a `recording`
+and mode `toggle` (the hotkey) starts a `ready` session, stops a `recording`
 or `paused` one, and otherwise raises. The reply carries the step taken
 (`prepare`, `start`, `stop`, `raise`) beside the command's own result. The MCP
 `perform_action` tool accepts `record` and the CLI passes `mode` through. An

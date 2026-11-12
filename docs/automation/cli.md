@@ -110,7 +110,7 @@ Editor methods, command shapes and error codes are specified in
 window's Upload; `editor.cancel` and `operation.cancel` store nothing.
 
 `ui.quit` acknowledges with `quitting: true` before scheduling shutdown. It exits
-the resident, closes its UI helper, stops shortcuts and cancels pending work through
+the resident, closes its UI helper, stops hotkeys and cancels pending work through
 the normal shutdown path. Closing a Settings, History or Activity window does not
 quit the resident. On desktops without a tray, Settings exposes a **Quit put.gd** button.
 

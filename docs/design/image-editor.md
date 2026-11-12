@@ -8,7 +8,7 @@ desktop acceptance beyond the evidence listed at the end.
 
 ## User workflow
 
-1. Invoke **Capture region & edit** from its global shortcut, the tray menu or the main
+1. Invoke **Capture region & edit** from its hotkey, the tray menu or the main
    window rail. By default the existing native region selector runs first; drag
    the area to edit. Escape cancels without creating an editor. To edit the
    clipboard image or an existing PNG/JPEG instead:
@@ -35,9 +35,9 @@ desktop acceptance beyond the evidence listed at the end.
    the operation stores and uploads nothing. A second edit invocation
    raises the open editor and reports `editor_active` with its operation ID.
 
-The shortcut is unbound by default. Assign it under Settings → Shortcuts, where
+The hotkey is unbound by default. Assign it under Settings → Hotkeys, where
 the usual per-desktop availability and conflict reporting applies. Configurations
-written before this feature inherit the region output route with no shortcut.
+written before this feature inherit the region output route with no hotkey.
 
 | Tool | Key | Behavior |
 | --- | --- | --- |
@@ -177,7 +177,7 @@ briefly, and a failure shows its reason above the footer. See
 
 ## Sources
 
-`action.invoke {"action":"edit"}` and the shortcut use the native region
+`action.invoke {"action":"edit"}` and the hotkey use the native region
 selector. The UI entries above and agents (`editor.open`, or `action.invoke`
 with `source`/`path`) open the other sources:
 
@@ -420,8 +420,8 @@ Editing, export, commands and the resident integration are portable C++20/Qt
 Widgets. The helper transport uses Unix file descriptors; on other platforms
 `EditorJob` reports `editor_unavailable` and capabilities report the editor as
 unavailable. On GNOME the extension binds the
-`edit` shortcut and prepares a native region selection; KDE and Cinnamon use
-their existing generic shortcut and region routes. KDE Wayland has no window
+`edit` hotkey and prepares a native region selection; KDE and Cinnamon use
+their existing generic hotkey and region routes. KDE Wayland has no window
 capture, so `source: window` fails there as it does for ordinary captures.
 
 ## Verification

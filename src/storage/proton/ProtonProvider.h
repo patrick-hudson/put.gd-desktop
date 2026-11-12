@@ -1,5 +1,6 @@
 #pragma once
 #include "core/StorageProvider.h"
+#include <QHash>
 #include <QProcessEnvironment>
 #include <atomic>
 #include <condition_variable>
@@ -49,9 +50,14 @@ private:
  std::unique_ptr<Helper> start(const QString& reference,bool lines,int lockWaitMs,bool mayHash,const std::shared_ptr<std::atomic_bool>& cancelled,Error&);
  std::unique_ptr<Helper> takeStandby(const QString& reference);
  void retire(std::unique_ptr<Helper>);
- // Helpers started ahead of a request, by keychain reference, until a request takes one.
- std::mutex standbyMutex_;std::map<QString,std::unique_ptr<Helper>> standby_;
+ // Helpers that wait for a request, until a request takes one. Sessions share it, to pass
+ // their helper on when they end.
+ struct Waiting;
+ std::shared_ptr<Waiting> waiting_;
  std::mutex retiringMutex_;std::condition_variable retired_;int retiring_=0;
+ // The storage host each account's last block upload went to, by keychain reference. It is
+ // named in the next upload so the helper can open that connection early; never stored.
+ std::mutex transferHostsMutex_;QHash<QString,QString> transferHosts_;
  QJsonObject call(const QString&,const Destination&,QJsonObject,Error&,
                  std::shared_ptr<std::atomic_bool> = {},SetupEvent={},bool* outcomeUncertain=nullptr,
                  std::function<void(const UploadProgress&)> progress={});

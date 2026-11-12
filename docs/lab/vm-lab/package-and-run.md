@@ -93,7 +93,7 @@ Other implemented `--scenario` values are `window`, `desktop`, `clipboard-text`,
 `region-cancel-right-click`, and `region-cancel-zero-area`: they require cancelled/no-result
 completion, no artifacts, and an unchanged independent text clipboard source.
 Use fresh overlays for scenario isolation.
-QMP drives the real global hotkey while the independent fixture is focused. The fixture
+QMP drives the real hotkey while the independent fixture is focused. The fixture
 paints fixed RGB regions, owns real native clipboard sources (Ctrl+Alt+Shift+T/I/F), and
 records actual Ctrl+V MIME results. Region dimensions/interior pixels, full frame/desktop
 geometry and known interior pixels, detached text, image and ordered file bytes are

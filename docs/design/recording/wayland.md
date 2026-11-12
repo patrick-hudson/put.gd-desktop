@@ -248,7 +248,7 @@ for exact hosts, workloads and limitations.
 ### Wayland selection, bounds and bar
 
 A `region` without a rectangle (the tray, the dashboard's Record screen and
-the shortcut all start one) is chosen **before** any compositor stream or
+the hotkey all start one) is chosen **before** any compositor stream or
 portal session exists, with the selector screenshots already use, so Escape
 or a right click leaves nothing behind: the operation ends `cancelled` and no
 share was ever opened.

@@ -105,9 +105,9 @@ object. The helper refuses unknown commands (`ui_command_unknown`) and answers
 fails outstanding commands, and an unanswered command fails after ten seconds with
 `details.outcomeUnknown=true`.
 
-## Shortcut recording
+## Hotkey recording
 
-Shortcut recording uses only the supervised helper's private pipe. The helper
+Hotkey recording uses only the supervised helper's private pipe. The helper
 sends `shortcutRecording` with one boolean `active` field. The resident replies
 with `shortcutRecordingChanged`, the request's `replyTo`, the acknowledged
 `active` value, and an error object. An absent private controller fails recording
@@ -115,8 +115,8 @@ explicitly. The UI must wait for the successful pause acknowledgement before
 accepting a chord; capture state and provisional keys never enter checkpoints.
 
 The resident suppresses action dispatch before asking the native adapter to
-release global shortcuts. X11 removes passive and active keyboard grabs, waits
-for a server roundtrip, and discards queued shortcut presses; XInput2 raw key
+release hotkeys. X11 removes passive and active keyboard grabs, waits
+for a server roundtrip, and discards queued hotkey presses; XInput2 raw key
 presses are ignored until the pause ends. GNOME awaits the
 extension's `Bind` reply with empty accelerators. KDE awaits `setInactive` for
 each registered action. Desired configuration remains separate from effective

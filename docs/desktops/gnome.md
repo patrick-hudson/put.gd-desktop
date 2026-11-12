@@ -97,7 +97,7 @@ can't help. A recording request that already carries its
 rectangle skips that selector check.
 Bump `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
 
-The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard hotkey unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
 
 Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
 through the package manager and an AppImage's owned copy with `--remove-gnome-extension`; remove only your own user directory for a manual
@@ -148,7 +148,7 @@ ambiguous or unavailable public actor leaves the companion hidden; no private-fi
 or replacement-icon fallback is used.
 
 `tests/integration/test_gnome_bridge.cpp` proves bounded transfer decoding and
-request metadata validation. It does not run GNOME, prove global shortcuts,
+request metadata validation. It does not run GNOME, prove hotkeys,
 capture real Wayland pixels, or paste into another application. Real GNOME 50
 single-display capture, native paste, live upload and post-upload memory evidence
 was recorded in [the historical live-S3 campaign](../evidence/live-s3-memory/source114/README.md), with a

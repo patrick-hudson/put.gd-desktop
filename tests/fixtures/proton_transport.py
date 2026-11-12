@@ -21,6 +21,12 @@ if sys.argv[1:] == ['--session']:
             continue
         if case == 'timeout':
             time.sleep(3)
+        if case == 'upload-hints' and request['method'] == 'upload':
+            # Echoes what the adapter said of this upload, and names the storage host the test chose.
+            answer = {'status': 'uploaded', 'error': {}, 'transferHost': request['destination']['settings'].get('answerHost'),
+                      'receipt': {'schemaVersion': 1, 'destination': request['destination'], 'concurrencyToken': '',
+                                  'publicationId': request['publicationId'], 'directUrl': '',
+                                  'objectReference': {'linkFollows': request.get('linkFollows'), 'hint': request.get('transferHostHint')}}}
         if case == 'session-error':
             answer = {'status': 'inconclusive', 'error': {'code': 'rate_limited', 'message': 'Synthetic limit', 'details': {}}}
         print(json.dumps({'ok': True, 'result': answer}), flush=True)
