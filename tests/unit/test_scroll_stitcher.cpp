@@ -1619,6 +1619,28 @@ void testLivePages() {
       report(fmt("a panel over the last rows of every third frame, step %d", step), foreign < 0 && outH == pos.back() + V, fmt("%d rows (%d), first foreign row %d", outH, pos.back() + V, foreign));
     }
   }
+  {
+    // The page springs back and creeps on: rows that wait lie below the next
+    // frames, which must not lose them (the image never gets shorter).
+    ScrollStitcher st;
+    const std::vector<int> pos{0, 300, 250, 260, 275, 600, 960, 1320};
+    int refPos = 0, last = 0;
+    bool shrank = false;
+    std::string trace;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f(W, V);
+      std::memcpy(f.px.data(), doc.row(pos[i]), size_t(W) * V * 4);
+      const StepResult r = st.addFrame(f.view(), i ? pos[i] - refPos : kNoHint);
+      trace += fmt(" %d:%s/%d+%d", pos[i], toString(r.status), r.offset, r.appendedRows);
+      if (r.status == StepStatus::First || r.status == StepStatus::Appended || r.status == StepStatus::Reversed) refPos = pos[i];
+      shrank = shrank || st.outputHeight() < last;
+      last = st.outputHeight();
+    }
+    st.finish();
+    const int outH = st.outputHeight();
+    const int foreign = firstForeignRow(st.takeImage(), outH, doc);
+    report("rows that wait below a frame that moved back and a little on", foreign < 0 && outH == pos.back() + V && !shrank, fmt("%d rows (%d), first foreign row %d, shrank %d;%s", outH, pos.back() + V, foreign, shrank, trace.c_str()));
+  }
 }
 
 // ------------------------------------------------------------------ session tests

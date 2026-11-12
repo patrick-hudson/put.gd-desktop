@@ -686,13 +686,21 @@ StepResult ScrollStitcher::addFrame(const FrameView& f, const FrameSignatures& c
     // Then the frame's new rows, but for its own last ones, which wait.
     const int end = H - bot;
     const int trusted = std::max({interior, top + int((H - top - bot) * opts_.edgeTopFraction), trustedFrom_});
-    emitHeld(int(std::clamp<long long>(trusted - (bodyRows_ - curOrigin), 0, heldRows_)));
+    const long long firstHeld = bodyRows_ - curOrigin;  // where this frame has the first row that waits
+    const int above = int(std::clamp<long long>(trusted - firstHeld, 0, heldRows_));
+    // Rows that wait and lie below this frame (it moved less than they reach) go on waiting as they are.
+    const int shown = int(std::clamp<long long>(end - firstHeld, above, heldRows_));
+    const std::vector<uint8_t> below(held_.begin() + std::ptrdiff_t(size_t(shown) * width_ * 4), held_.begin() + std::ptrdiff_t(size_t(heldRows_) * width_ * 4));
+    const int belowRows = heldRows_ - shown;
+    emitHeld(above);
     if (!limited_) {
-      const int next = int(bodyRows_ - curOrigin);
+      const int next = int(std::min<long long>(bodyRows_ - curOrigin, end));
       const int from = std::max(next, end - guardRows(H - top - bot));
       emitRows(f, next, from);
       if (!limited_) {
         holdRows(f.row(from), f.stride, end - from);
+        held_.insert(held_.end(), below.begin(), below.end());
+        heldRows_ += belowRows;
         // The cap counts the rows that wait as well.
         const long long reserve = std::min(std::max(estBot_, 0), opts_.maxOutputRows);
         if (logicalRows() > opts_.maxOutputRows - reserve) emitHeld(heldRows_);
