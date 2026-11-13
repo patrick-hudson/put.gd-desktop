@@ -67,7 +67,7 @@ You can change the keys in **Settings → Hotkeys**, which also tells you why a 
 
 ![The recording bar with system audio on and Pause and Stop controls](docs/readme/recording-bar.png)
 
-**Copy text from the screen.** Choose **Copy text**, drag a region, and the text in it is on your clipboard, with the contents of any QR code. Nothing is saved or uploaded, and the reading happens on your computer in a short-lived, sandboxed helper. The editor can select and copy text from an image too, and suggest redactions for emails, phone numbers, addresses, card numbers and keys. Recognition can miss text, so Redact is still what removes it. History can show a QR code for a link. English comes with put.gd, and other languages come from your distribution's Tesseract language packages.
+**Copy text from the screen.** Choose **Copy text**, drag a region, and the text in it is on your clipboard, with the contents of any QR code. put.gd does not save or upload it, and the reading happens on your computer in a short-lived, sandboxed helper. It is an ordinary copy, so a clipboard manager that keeps history can keep it. The editor can select and copy text from an image too, and suggest redactions for emails, phone numbers, addresses, card numbers and keys. Recognition can miss text, so Redact is still what removes it. History can show a QR code for a link. English comes with put.gd, and other languages come from your distribution's Tesseract language packages.
 
 **Find old captures.** History lets you search everything you've captured and copy a link again. put.gd keeps running in the tray when you close the window.
 
