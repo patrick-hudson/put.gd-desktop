@@ -106,6 +106,60 @@
       "repository": "https://github.com/microsoft/mimalloc.git",
       "release": "2.1.7",
       "commit": "8c532c32c3c96e5ba1f2283e032f69ead8add00f"
+    },
+    "tesseract": {
+      "repository": "https://github.com/tesseract-ocr/tesseract.git",
+      "release": "5.5.4",
+      "commit": "7e548e6eff172f38f97664afe7f7ce40db36c8d6",
+      "configure": [
+        "-DDISABLED_LEGACY_ENGINE=ON",
+        "-DDISABLE_CURL=ON",
+        "-DDISABLE_ARCHIVE=ON",
+        "-DDISABLE_TIFF=ON",
+        "-DOPENMP_BUILD=OFF",
+        "-DBUILD_TRAINING_TOOLS=OFF",
+        "-DBUILD_TESTS=OFF",
+        "-DGRAPHICS_DISABLED=ON",
+        "-DINSTALL_CONFIGS=OFF",
+        "-DENABLE_NATIVE=OFF"
+      ]
+    },
+    "leptonica": {
+      "repository": "https://github.com/DanBloomberg/leptonica.git",
+      "release": "1.87.0",
+      "commit": "13275a278eb55b5746e33f95fbf5a2c8f604b3ab",
+      "configure": [
+        "-DBUILD_PROG=OFF",
+        "-DSW_BUILD=OFF",
+        "-DENABLE_ZLIB=OFF",
+        "-DENABLE_PNG=OFF",
+        "-DENABLE_GIF=OFF",
+        "-DENABLE_JPEG=OFF",
+        "-DENABLE_TIFF=OFF",
+        "-DENABLE_WEBP=OFF",
+        "-DENABLE_OPENJPEG=OFF"
+      ]
+    },
+    "zxing": {
+      "repository": "https://github.com/zxing-cpp/zxing-cpp.git",
+      "release": "3.1.1",
+      "commit": "287c85df6f961c8efbfb5ffd736cd9457b8b890e",
+      "configure": [
+        "-DZXING_READERS=ON",
+        "-DZXING_WRITERS=OFF",
+        "-DZXING_EXAMPLES=OFF",
+        "-DZXING_C_API=OFF",
+        "-DZXING_UNIT_TESTS=OFF",
+        "-DZXING_BLACKBOX_TESTS=OFF",
+        "-DZXING_DEPENDENCIES=LOCAL"
+      ]
+    },
+    "tessdata_fast": {
+      "repository": "https://github.com/tesseract-ocr/tessdata_fast.git",
+      "ref": "main",
+      "commit": "87416418657359cb625c412a48b6e1d6d41c29bd",
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "file": "eng.traineddata"
     }
   }
 }

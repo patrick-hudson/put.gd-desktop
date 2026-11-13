@@ -47,7 +47,7 @@ def main():
     if metadata['pkgname'] != 'putgd' or metadata['pkgver'] != pkgver(identity['version']) + '-1':
         raise ValueError('Arch package identity differs from compiled manifest')
     dependencies = [line[9:] for line in (extracted / '.PKGINFO').read_text().splitlines() if line.startswith('depend = ')]
-    required = {'qt6-imageformats', 'qt6-wayland', 'qt6-base>=6.4.2', 'gst-plugins-bad', 'gst-plugin-pipewire', 'ffmpeg', 'layer-shell-qt'}
+    required = {'tesseract', 'tesseract-data-eng', 'zxing-cpp', 'qt6-imageformats', 'qt6-wayland', 'qt6-base>=6.4.2', 'gst-plugins-bad', 'gst-plugin-pipewire', 'ffmpeg', 'layer-shell-qt'}
     if not required.issubset(dependencies):
         raise ValueError('Missing Arch runtime dependency: ' + ', '.join(sorted(required - set(dependencies))))
     result = audit_tree(extracted, identity, require_kde=True, require_proton=True, package_target='archlinux')

@@ -39,6 +39,10 @@ SEVERITIES = ('Critical', 'High', 'Medium', 'Low', 'Negligible', 'Unknown')
 BUNDLED = ('bundled', 'bundled-distro', 'detected')
 # NVD product names for components that have CVEs under them; checked with `grype db search`.
 CPES = {
+    'tesseract': ('tesseract-ocr:tesseract_ocr', 'tesseract_project:tesseract'),
+    'leptonica': ('leptonica:leptonica',),
+    # No verified NVD product for ZXing-cpp or tessdata_fast; retain their
+    # package identity and exact upstream commit rather than inventing a CPE.
     'qt': ('qt:qt',), 'ffmpeg': ('ffmpeg:ffmpeg',),
     'icu': ('icu-project:international_components_for_unicode', 'unicode:international_components_for_unicode'),
     'harfbuzz': ('harfbuzz_project:harfbuzz',), 'libpng': ('libpng:libpng',), 'pcre2': ('pcre:pcre2',),
@@ -216,6 +220,16 @@ def aws_components(lock):
     return found
 
 
+def qr_components(lock):
+    pin = lock.get('qrCodeGenerator')
+    if pin is None:
+        return []
+    return [component('qrcodegen', pin['release'],
+                      'pkg:github/nayuki/QR-Code-generator@' + pin['release'], 'bundled',
+                      license='MIT', repository=pin['repository'].removesuffix('.git'),
+                      commit=pin['commit'])]
+
+
 def proton_components(notices):
     """The packages the shipped helper's notices classify as bundled or embedded."""
     found = []
@@ -295,22 +309,31 @@ def appimage_components(root):
                                    'bundled-distro', license=item.get('license'),
                                    properties=[('putgd:sourcePackage', source.get('sourcePackage', ''))]))
             continue
-        if identifier in ('aws-sdk-cpp', 'proton-helper'):
+        if identifier in ('aws-sdk-cpp', 'proton-helper', 'qrcodegen'):
             continue  # Itemized below from their own locks.
         key = 'qt' if identifier.startswith('qt') and identifier != 'qtkeychain' else identifier
-        found.append(component(identifier, version, generic_purl(identifier, version), 'bundled', cpes=cpes_for(key, version),
+        name = 'zxing-cpp' if identifier == 'zxing' else identifier
+        found.append(component(name, version, generic_purl(name, version), 'bundled', cpes=cpes_for(key, version),
                                license=item.get('license'), repository=(source.get('repository') or '').removesuffix('.git') or None,
                                commit=source.get('commit'), properties=appimage_scope_properties(root, item)))
+        if identifier == 'zxing':
+            for embedded in item.get('embedded', []):
+                found.append(component(embedded['name'], embedded['version'],
+                                       generic_purl(embedded['name'], embedded['version']), 'bundled',
+                                       license=embedded['license'], repository=source['repository'].removesuffix('.git'),
+                                       commit=source['commit'], properties=[('putgd:embeddedIn', 'zxing-cpp')]))
         if key == 'qt':
             found += [entry for entry in (qt_embedded(identifier, embedded, embedded_scope_properties(root, item, embedded))
                                           for embedded in item.get('embedded', [])) if entry]
     found += aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
+    found += qr_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
 
 
 def native_components(root):
     found = aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
+    found += qr_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
 

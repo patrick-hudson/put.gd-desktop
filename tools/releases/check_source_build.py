@@ -75,7 +75,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                                  'add them to tools/releases/source_archive.py: ' + ', '.join(missing[:20]))
         identity = receipt['identity']
         commands = [
-            ['cmake', '--preset', 'release', '-DBUILD_TESTING=OFF', '-DPUTGD_LAB_FIXTURE=OFF',
+            ['cmake', '--preset', 'release', '-DPUTGD_OCR=ON', '-DBUILD_TESTING=OFF', '-DPUTGD_LAB_FIXTURE=OFF',
              '-DPUTGD_PHYSICAL_BENCHMARKS=OFF', '-DCMAKE_PREFIX_PATH=' + str(sdk_prefix),
              '-DPUTGD_AWS_SOURCE_DIR=' + str(sdk_source),
              '-DPUTGD_AWS_RUNTIME_DIR=' + str(sdk_prefix / 'lib'),
@@ -113,7 +113,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                 or manifest['version'] != receipt['localBuild']['version']):
             raise ValueError('Extracted source compiled identity differs from supplied provenance')
         verified = []
-        for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker', 'putgd-region', 'putgd-record'):
+        for name in ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker', 'putgd-ocr', 'putgd-region', 'putgd-record'):
             program = build / name
             if name == 'putgd-region' and not program.exists():
                 continue  # Minimum-Qt Cinnamon builder does not declare this optional target.

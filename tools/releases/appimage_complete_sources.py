@@ -65,6 +65,12 @@ def inventory(receipt):
     required = {'putgd', 'proton-helper', 'appimage-runtime', 'ffmpeg', 'icu', 'layershell', 'aws-sdk-cpp'}
     if not required.issubset(seen):
         raise ValueError('Incomplete AppImage component inventory')
+    for name in ('leptonica', 'tesseract', 'zxing', 'tessdata_fast'):
+        pin = receipt['toolLock']['buildInputs'].get(name)
+        if pin:
+            match = next((r for r in records if r['id'] == name), None)
+            if match is None or match['source']['commit'] != pin['commit']:
+                raise ValueError('OCR source inventory differs from pinned input: ' + name)
     # Also require every current Qt module pin, rather than silently accepting
     # an old inventory that predates Qt's complete SPDX/module mapping.
     qt = receipt['toolLock']['buildInputs']['qtLicenseSources']
@@ -372,7 +378,8 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
         # release commit; never scrape arbitrary worktree files or payloads.
         recipes = ['tools/releases/provision-appimage.py', 'tools/releases/build-appimage.sh',
                    'packaging/appimage/tools.lock.json', 'packaging/appimage/media.json',
-                   'packaging/appimage/components.json', 'cmake/dependency-lock.json']
+                   'packaging/appimage/components.json', 'packaging/appimage/BSD-3-Clause.txt',
+                   'cmake/dependency-lock.json']
         for name in recipes:
             data = _run('git', '-C', str(ROOT), 'show', receipt['build']['gitCommit'] + ':' + name).stdout
             path = stage / 'build-recipes' / name

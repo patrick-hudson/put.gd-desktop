@@ -20,7 +20,7 @@ except ModuleNotFoundError:
 RESIDENT_FORBIDDEN_NEEDED = re.compile(r"^lib(Qt6Network|ssl|crypto|gtk)")
 # The interface helper reaches the resident over a native Unix socket (#1161).
 UI_FORBIDDEN_NEEDED = re.compile(r"^libQt6Network")
-PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-launcher")
+PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-launcher", "putgd-ocr")
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
         "aws-c-auth", "aws-c-cal", "aws-c-common", "aws-c-compression", "aws-c-event-stream",
@@ -39,6 +39,19 @@ DESKTOP_ASSETS = ("share/applications/putgd.desktop", "share/applications/putgd-
                   "share/putgd/autostart/putgd.desktop",
                   # AppStream: software centres list put.gd and its updates as an application.
                   "share/metainfo/gd.put.Putgd.metainfo.xml")
+
+
+OCR_LIBRARIES = ("libtesseract", "liblept", "libZXing")
+OCR_FORBIDDEN_NEEDED = re.compile(r"^libQt6(Gui|Sql|Network|DBus)")
+
+
+def audit_ocr_dependencies(name: str, needed: list[str]) -> None:
+    if name == "putgd-ocr":
+        forbidden = [lib for lib in needed if OCR_FORBIDDEN_NEEDED.match(lib)]
+    else:
+        forbidden = [lib for lib in needed if lib.startswith(OCR_LIBRARIES)]
+    if forbidden:
+        raise ValueError(f"OCR dependency isolation violated by {name}: {', '.join(forbidden)}")
 
 
 def sha256(path: Path) -> str:
@@ -72,7 +85,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     required += ["usr/share/putgd/" + name for name in
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]
     required += ["usr/share/doc/putgd/" + name for name in
-                 ("LICENSE", "runtime-notices.txt", "copyright", "changelog.gz", "wayland-ext-data-control-v1.xml",
+                 ("LICENSE", "qrcodegen-LICENSE", "runtime-notices.txt", "copyright", "changelog.gz", "wayland-ext-data-control-v1.xml",
                   "wayland-wlr-data-control-unstable-v1.xml", "wayland-ext-image-copy-capture-v1.xml",
                   "wayland-ext-image-capture-source-v1.xml", "wayland-ext-foreign-toplevel-list-v1.xml",
                   "wayland-wlr-foreign-toplevel-management-unstable-v1.xml", "wayland-hyprland-global-shortcuts-v1.xml",
@@ -119,6 +132,14 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
             "inventory": [{"path": str(path.relative_to(root)), "size": path.stat().st_size,
                            "mode": f"{stat.S_IMODE(path.stat().st_mode):04o}", "sha256": sha256(path)}
                           for path in files]}
+
+
+def files_in_tree(root: Path):
+    for path in root.rglob("*"):
+        if path.is_file() and not path.is_symlink():
+            with path.open("rb") as stream:
+                if stream.read(4) == b"\x7fELF":
+                    yield path
 
 
 def command(argv: list[str], *, env=None) -> str:
@@ -171,7 +192,7 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         identity = json.loads(command([str(path), "--version-json"], env=env))
         if identity != result["manifest"]:
             raise ValueError(f"Compiled build manifest mismatch: {name}")
-        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker"):
+        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-ocr"):
             version = command([str(path), "--version"], env=env)
             if version != name + " " + result["manifest"]["version"]:
                 raise ValueError(f"Compiled version mismatch: {name}")
@@ -196,6 +217,7 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         if path == root / "usr/bin/putgd-ui":
             if forbidden := [soname for soname in needed if UI_FORBIDDEN_NEEDED.match(soname)]:
                 raise ValueError(f"Interface helper links a networking library: {', '.join(forbidden)}")
+        audit_ocr_dependencies(path.name, needed)
         resolved = command(["ldd", str(path)], env=env)
         if "not found" in resolved:
             raise ValueError(f"Unresolved native dependency: {path.name}\n{resolved}")
@@ -205,6 +227,9 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         if path.name == result["runtimeModule"]["file"] and not re.search(r"\(RPATH\).*?\[\$ORIGIN\]", dynamic):
             raise ValueError("Installed S3 module must retain transitive $ORIGIN RPATH")
         result["elfDependencies"][str(path.relative_to(root))] = {"needed": needed, "resolved": resolved.splitlines()}
+    for path in files_in_tree(root):
+        needed = re.findall(r"\(NEEDED\).*?\[(.*?)\]", command(["readelf", "-d", str(path)]))
+        audit_ocr_dependencies(path.name, needed)
     result["schemaVersion"] = 1
     result["scope"] = "native extracted package identity/inventory/dependencies; not desktop acceptance"
     return result
