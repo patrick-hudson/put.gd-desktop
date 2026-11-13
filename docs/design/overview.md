@@ -11,7 +11,7 @@ appear in searchable local history with the resulting link copied to the
 clipboard. Hotkeys and the tray keep these actions available while
 the main window is closed. See the [user guide](../user/user-guide.md) for everyday use.
 
-Windows, Flatpak and OCR are out of scope. Packages are DEB, RPM and AppImage. Retired experiments and implementation checkpoints live
+Windows and Flatpak are out of scope. Text recognition and QR codes are approved and in progress (issue #1428). Nothing has shipped. Packages are DEB, RPM and AppImage. Retired experiments and implementation checkpoints live
 in [history](../history/README.md).
 
 ## Processes and ownership

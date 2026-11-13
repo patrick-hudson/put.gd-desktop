@@ -101,7 +101,13 @@ back into `nightly` by pull request. When the user asks for a release, follow
 Channels and assets are in `docs/release/release.md`; CI coverage is in `docs/release/ci.md`.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
-owned paths, preserving unrelated pre-existing changes. Do not add OCR features.
+owned paths, preserving unrelated pre-existing changes.
+Text recognition and QR codes (#1428) are user-approved as of 2026-11-12. The plan and its
+decisions are in issue #1428 until `docs/design/text-recognition.md` exists. Recognition runs
+only in the temporary `putgd-ocr` helper, so the resident and `putgd-ui` never link or load
+Tesseract, Leptonica or ZXing. put.gd recognizes text only on an explicit action and never
+stores recognized text. Searching History by recognized text and recognition in the
+background stay out of scope.
 Screen recording (#50) is user-approved and ships in the DEB, RPM and AppImage
 (X11 and Wayland capture with region selection, system audio, private review,
 export, explicit upload). Follow `docs/design/recording.md`; finalized files enter the
