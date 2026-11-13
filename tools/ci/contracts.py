@@ -5,6 +5,7 @@ Every suite in a group runs even after an earlier failure. The report records
 each command and exit code; the process exits with the first failing code.
 """
 import argparse
+import ast
 import json
 import os
 from pathlib import Path
@@ -43,17 +44,35 @@ def suites(group):
     return found
 
 
+def is_script(suite):
+    """True when the file runs its own tests: it has an `if __name__ == '__main__'` entry point."""
+    tree = ast.parse((ROOT / suite).read_text(), suite)
+    return any(isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+               and isinstance(node.test.left, ast.Name) and node.test.left.id == '__name__'
+               for node in tree.body)
+
+
+def suite_command(suite):
+    """A script-style suite runs as a script. Any other suite is written for a test runner and
+    runs under pytest, which exits 5 when it collects no test, so a suite cannot pass unrun.
+    Python 3.12's unittest.main() exits 5 the same way."""
+    if is_script(suite):
+        return [sys.executable, suite]
+    return [sys.executable, '-m', 'pytest', '-q', '-p', 'no:cacheprovider', suite]
+
+
 def run_group(group, output):
-    commands = [[sys.executable, suite] for suite in suites(group)]
+    commands = [suite_command(suite) for suite in suites(group)]
     results, log = [], []
     for command in commands:
         started = time.monotonic()
         result = subprocess.run(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
+        name = command[-1]
         results.append({'command': command[1:], 'exitCode': result.returncode,
                         'seconds': round(time.monotonic() - started, 2)})
-        log.append('$ python3 ' + command[1] + '\n' + result.stdout)
-        print(f"{'ok  ' if result.returncode == 0 else 'FAIL'} {command[1]} "
+        log.append('$ python3 ' + ' '.join(command[1:]) + '\n' + result.stdout)
+        print(f"{'ok  ' if result.returncode == 0 else 'FAIL'} {name} "
               f"({results[-1]['seconds']}s)", flush=True)
     (output / (group + '-contracts.log')).write_text('\n'.join(log))
     (output / (group + '-contracts.json')).write_text(json.dumps(
@@ -63,7 +82,7 @@ def run_group(group, output):
     for _, text in failures:
         print(text, file=sys.stderr, flush=True)
     for failure, _ in failures:
-        print('Failed: ' + ' '.join(failure['command']), file=sys.stderr)
+        print('Failed: ' + failure['command'][-1], file=sys.stderr)
     return failures[0][0]['exitCode'] if failures else 0
 
 
