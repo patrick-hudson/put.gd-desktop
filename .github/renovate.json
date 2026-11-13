@@ -82,6 +82,17 @@
       "matchStrings": ["\"bunVersion\": \"(?<currentValue>[^\"]+)\""],
       "depNameTemplate": "bun",
       "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^packaging/appimage/tools\\.lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"repository\": \"https://github\\.com/(?<depName>tesseract-ocr/tessdata_fast)\\.git\",\\s*\"ref\": \"(?<currentValue>[^\"]+)\",\\s*\"commit\": \"(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "datasourceTemplate": "git-refs",
+      "versioningTemplate": "git"
     }
   ],
   "packageRules": [
@@ -192,6 +203,48 @@
       "matchManagers": ["pep621"],
       "groupName": "MCP helper (Python)",
       "labels": ["dependencies", "area: lab"]
+    },
+    {
+      "matchPackageNames": [
+        "tesseract-ocr/tesseract"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "DanBloomberg/leptonica"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "zxing-cpp/zxing-cpp"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "labels": [
+        "dependencies",
+        "area: packaging"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "tesseract-ocr/tesseract",
+        "DanBloomberg/leptonica",
+        "zxing-cpp/zxing-cpp"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "dependencyDashboardApproval": true
     }
   ]
 }

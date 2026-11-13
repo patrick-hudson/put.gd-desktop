@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Provision pinned AppImage dependencies with their upstream builds (CMake, FFmpeg configure)."""
 import argparse
+import hashlib
+import shutil
 import json
 import os
 from pathlib import Path
@@ -84,6 +86,33 @@ def main():
         run('make', '-C', str(build), '-j' + str(os.cpu_count() or 2))
         run('make', '-C', str(build), 'install')
     records.append({'name': 'ffmpeg', 'commit': item['commit'], 'source': str(source), 'configure': configure})
+    # OCR libraries use the same sealed prefix cache as FFmpeg. sdk_cache.py
+    # keys this script, the lock (including configure recipes), and toolchain.
+    for name in ('leptonica', 'tesseract', 'zxing'):
+        item = lock[name]
+        source = sources / name
+        checkout(item, source)
+        options = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=ON',
+                   '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_INSTALL_LIBDIR=lib',
+                   '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_INSTALL_RPATH=$ORIGIN',
+                   *item['configure']]
+        if not args.skip_build:
+            build = root / 'build' / ('appimage-' + name)
+            run('cmake', '-S', str(source), '-B', str(build), '-G', 'Ninja', *options)
+            run('cmake', '--build', str(build), '--parallel', '2')
+            run('cmake', '--install', str(build))
+        records.append({'name': name, 'commit': item['commit'], 'source': str(source), 'configure': options})
+    item = lock['tessdata_fast']
+    source = sources / 'tessdata_fast'
+    checkout(item, source)
+    data = source / item['file']
+    if hashlib.file_digest(data.open('rb'), 'sha256').hexdigest() != item['sha256']:
+        raise ValueError('English tessdata_fast digest differs from lock')
+    if not args.skip_build:
+        destination = prefix / 'share/putgd/tessdata'
+        destination.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(data, destination / item['file'])
+    records.append({'name': 'tessdata_fast', **item})
     # Licence texts only: the Qt modules the image bundles and the ICU build
     # shipped with Qt (tools/releases/appimage_notices.py).
     for item in [*lock['qtLicenseSources'], lock['icu'], lock['mimalloc']]:

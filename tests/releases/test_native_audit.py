@@ -54,6 +54,21 @@ class NativeInventoryTests(unittest.TestCase):
         path.chmod(mode)
         return path
 
+    def test_ocr_helper_cannot_be_omitted(self):
+        (self.root / "usr/bin/putgd-ocr").unlink()
+        with self.assertRaisesRegex(ValueError, "Required release file.*putgd-ocr"):
+            audit.validate_inventory(self.root, self.manifest)
+
+    def test_ocr_libraries_stay_out_of_resident(self):
+        for soname in ("libtesseract.so.5", "liblept.so.6", "libZXing.so.3"):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd"):
+                    return f"(NEEDED) [{soname}]"
+                return self.commands(argv, env=env)
+            with self.subTest(soname=soname), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, "OCR dependency isolation"):
+                    audit.audit_tree(self.root, self.manifest)
+
     def test_valid_native_inventory(self):
         result = audit.validate_inventory(self.root, self.manifest)
         self.assertEqual(result["manifest"], self.manifest)
@@ -278,8 +293,8 @@ class RuntimePackageTests(unittest.TestCase):
     """Qt image plugins the distros package apart from Qt GUI (#189)."""
     def test_deb_and_rpm_require_the_webp_plugin_package(self):
         native.require_runtime_packages({"format": "DEB", "requires": "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, "
-                                         "qt6-image-formats-plugins, libc6 (>= 2.38) | libc6-alt"})
-        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "libc.so.6()(64bit)"]})
+                                         "qt6-image-formats-plugins, tesseract-ocr-eng, libc6 (>= 2.38) | libc6-alt"})
+        native.require_runtime_packages({"format": "RPM", "requires": ["qt6-qtbase-gui", "qt6-qtimageformats", "tesseract-langpack-eng", "libc.so.6()(64bit)"]})
 
     def test_missing_plugin_package_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "DEB does not require qt6-image-formats-plugins"):

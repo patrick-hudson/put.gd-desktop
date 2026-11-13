@@ -39,6 +39,10 @@ SEVERITIES = ('Critical', 'High', 'Medium', 'Low', 'Negligible', 'Unknown')
 BUNDLED = ('bundled', 'bundled-distro', 'detected')
 # NVD product names for components that have CVEs under them; checked with `grype db search`.
 CPES = {
+    'tesseract': ('tesseract-ocr:tesseract_ocr', 'tesseract_project:tesseract'),
+    'leptonica': ('leptonica:leptonica',),
+    # No verified NVD product for ZXing-cpp or tessdata_fast; retain their
+    # package identity and exact upstream commit rather than inventing a CPE.
     'qt': ('qt:qt',), 'ffmpeg': ('ffmpeg:ffmpeg',),
     'icu': ('icu-project:international_components_for_unicode', 'unicode:international_components_for_unicode'),
     'harfbuzz': ('harfbuzz_project:harfbuzz',), 'libpng': ('libpng:libpng',), 'pcre2': ('pcre:pcre2',),
@@ -298,7 +302,8 @@ def appimage_components(root):
         if identifier in ('aws-sdk-cpp', 'proton-helper'):
             continue  # Itemized below from their own locks.
         key = 'qt' if identifier.startswith('qt') and identifier != 'qtkeychain' else identifier
-        found.append(component(identifier, version, generic_purl(identifier, version), 'bundled', cpes=cpes_for(key, version),
+        name = 'zxing-cpp' if identifier == 'zxing' else identifier
+        found.append(component(name, version, generic_purl(name, version), 'bundled', cpes=cpes_for(key, version),
                                license=item.get('license'), repository=(source.get('repository') or '').removesuffix('.git') or None,
                                commit=source.get('commit'), properties=appimage_scope_properties(root, item)))
         if key == 'qt':

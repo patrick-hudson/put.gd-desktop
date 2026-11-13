@@ -12,7 +12,7 @@ import sys
 import tempfile
 import time
 
-from audit_native import sha256 as digest
+from audit_native import sha256 as digest, audit_ocr_dependencies, OCR_LIBRARIES
 from audit_proton import audit_proton
 import appimage_notices
 import appimage_update
@@ -549,6 +549,27 @@ def audit_root_desktop_entry(appdir: Path) -> str:
     return ROOT_DESKTOP_ENTRY
 
 
+def audit_ocr_runtime(appdir: Path) -> dict:
+    """Check the minimal engine closure and exact English data in a packed tree."""
+    lock = json.loads(LOCK.read_text())["buildInputs"]
+    data = appdir / "usr/share/putgd/tessdata/eng.traineddata"
+    if not data.is_file() or digest(data) != lock["tessdata_fast"]["sha256"]:
+        raise ValueError("AppImage English tessdata_fast missing or changed")
+    libraries = {}
+    forbidden = re.compile(r"^lib(?:curl|archive|gomp|omp|png|jpeg|tiff|webp|gif|openjp|zint)")
+    for prefix in OCR_LIBRARIES:
+        files = [p for p in (appdir / "usr/lib").glob(prefix + "*.so*") if not p.is_symlink()]
+        if len(files) != 1:
+            raise ValueError("Expected one bundled OCR engine: " + prefix)
+        path = files[0]
+        resolved = subprocess.run(["ldd", str(path)], check=True, env={}, capture_output=True, text=True).stdout
+        if "not found" in resolved or any(forbidden.match(line.strip().split()[0])
+                                          for line in resolved.splitlines() if line.strip()):
+            raise ValueError("Nonminimal or unresolved OCR engine: " + path.name)
+        libraries[path.name] = digest(path)
+    return {"libraries": libraries, "englishSha256": digest(data)}
+
+
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
     """Check actual relocated helpers and dynamic dependencies without SDK paths."""
     environment = dict(os.environ, LD_LIBRARY_PATH=str(appdir / "usr/lib") + ":" +
@@ -559,7 +580,7 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             continue
         executable = appdir / "usr/bin" / name
         result = subprocess.run([str(executable), "--version-json"], check=True,
-                                env=environment, capture_output=True, text=True, timeout=30)
+                                env={} if name == "putgd-ocr" else environment, capture_output=True, text=True, timeout=30)
         if json.loads(result.stdout) != inventory["manifest"]:
             raise ValueError("Post-deployment executable identity mismatch: " + name)
         identities.append(name)
@@ -582,6 +603,12 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
         with path.open("rb") as stream:
             if stream.read(4) != b"\x7fELF":
                 continue
+        dynamic = subprocess.run(["readelf", "-d", str(path)], check=True,
+                                 capture_output=True, text=True).stdout
+        needed = re.findall(r"\(NEEDED\).*?\[(.*?)\]", dynamic)
+        # Engine libraries themselves may depend on Leptonica; product ELFs may not.
+        if not path.name.startswith(OCR_LIBRARIES):
+            audit_ocr_dependencies(path.name, needed)
         dependencies = subprocess.run(["ldd", str(path)], check=True, env=environment,
                                       capture_output=True, text=True).stdout
         if "not found" in dependencies:
@@ -590,15 +617,16 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             if "=>" not in line:
                 continue
             library, target = line.split("=>", 1)
-            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
+            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
                 resolved = Path(target.strip().split()[0]).resolve()
                 if not resolved.is_relative_to(appdir):
                     raise ValueError("Bundled dependency resolves outside AppDir: " + library.strip())
         checked += 1
     result = {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
               "bundledDependenciesResolvedInsideImage": True,
-              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
-              "secretService": audit_secret_service(appdir)}
+              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
+              "secretService": audit_secret_service(appdir),
+              "ocr": audit_ocr_runtime(appdir)}
     if media_audit:
         result["recording"] = media_audit
         result["scrollInput"] = audit_scroll_input(appdir)
@@ -731,6 +759,7 @@ def main() -> int:
     # generates its own complete notices and source inventory below.
     for native_doc in ("copyright", "changelog.gz"):
         (appdir / "usr/share/doc/putgd" / native_doc).unlink(missing_ok=True)
+    subprocess.run(["patchelf", "--set-rpath", "$ORIGIN/../lib", str(appdir / "usr/bin/putgd-ocr")], check=True)
     notices = appimage_notices.finish(appdir, qt=qt, lock=lock, license_sources=args.license_source,
                                       distro_packages=distro_packages, version=args.version,
                                       build=inventory["manifest"], gpl=gpl)

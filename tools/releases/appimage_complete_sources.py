@@ -65,6 +65,12 @@ def inventory(receipt):
     required = {'putgd', 'proton-helper', 'appimage-runtime', 'ffmpeg', 'icu', 'layershell', 'aws-sdk-cpp'}
     if not required.issubset(seen):
         raise ValueError('Incomplete AppImage component inventory')
+    for name in ('leptonica', 'tesseract', 'zxing', 'tessdata_fast'):
+        pin = receipt['toolLock']['buildInputs'].get(name)
+        if pin:
+            match = next((r for r in records if r['id'] == name), None)
+            if match is None or match['source']['commit'] != pin['commit']:
+                raise ValueError('OCR source inventory differs from pinned input: ' + name)
     # Also require every current Qt module pin, rather than silently accepting
     # an old inventory that predates Qt's complete SPDX/module mapping.
     qt = receipt['toolLock']['buildInputs']['qtLicenseSources']
