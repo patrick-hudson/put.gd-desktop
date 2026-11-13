@@ -123,7 +123,7 @@ void NativeRegionOverlay::start(){
  QTimer::singleShot(0,this,[this]{if(phase_!=Phase::Finished)initializeSurfaces();});
 }
 void NativeRegionOverlay::initializeSurfaces(){
- if(phase_!=Phase::Idle&&phase_!=Phase::Starting)return;
+ if(phase_!=Phase::Starting)return;
  phase_=Phase::Armed;
  const auto input=xcb_window_t(cursorWindow_->winId());
  // Flush Qt's cursor/window creation on its own public native connection.
@@ -198,7 +198,9 @@ void NativeRegionOverlay::initializeSurfaces(){
   // The maps must have taken effect before the resident lets go: the server
   // replays what it held at that moment, onto whatever is under the pointer.
   auto* fence=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);std::free(fence);
-  phase_=Phase::AwaitingPointer;std::exchange(releasePointer_,{})();
+  // The resident is told to let go even if this selection already ended.
+  if(phase_==Phase::Armed)phase_=Phase::AwaitingPointer;
+  std::exchange(releasePointer_,{})();
   return;
  }
  grabClock_.start();
@@ -212,7 +214,11 @@ bool NativeRegionOverlay::button(bool press,int button,QPoint native){
  QPointer<NativeRegionOverlay> guard(this);
  if(press){
   if(button==3){cancel();return false;}
-  if(button==1){keyboardScreen_=-1;anchor_=logicalPoint(native);selection_=QRectF(anchor_,QSizeF{});phase_=Phase::Dragging;move(anchor_);}
+  // A drag starts only from Armed, or from Dragging, which re-anchors as before.
+  // Events are read once both grabs are held, so nothing earlier arrives here;
+  // a press that did would overwrite AwaitingPointer or Starting and leave the
+  // overlay on screen with no way to take its grabs.
+  if(button==1&&(phase_==Phase::Armed||phase_==Phase::Dragging)){keyboardScreen_=-1;anchor_=logicalPoint(native);selection_=QRectF(anchor_,QSizeF{});phase_=Phase::Dragging;move(anchor_);}
  }else if(button==1){release(logicalPoint(native));if(!guard||phase_==Phase::Finished)return false;}
  return guard&&phase_!=Phase::Finished;
 }
@@ -317,7 +323,8 @@ void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint nat
  case RegionKeyAction::Cancel:cancel();break;
  case RegionKeyAction::Accept:{const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);break;}
  case RegionKeyAction::Change:
-  keyboardScreen_=screen;phase_=Phase::Armed;schedulePresent();
+  // Only a drag gives way to the keyboard region; any other phase stays.
+  keyboardScreen_=screen;if(phase_==Phase::Dragging)phase_=Phase::Armed;schedulePresent();
   break;
  case RegionKeyAction::Ignore:break;
  }
