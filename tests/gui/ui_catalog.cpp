@@ -9,6 +9,7 @@
 #include <QFileDialog>
 #include "fixtures/TrayCatalog.h"
 #include "fixtures/CatalogLabels.h"
+#include "fixtures/FakeTextBackend.h"
 #include "ui/SettingsWindow.h"
 #include "platform/HostOpen.h"
 #include "storage/proton/ProtonProvider.h"
@@ -87,6 +88,14 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
+// Text recognition (#1428) as an installed system reports it, whatever the host
+// that renders the catalog has: the helper present, English and German data.
+void installCatalogText(OperationService& operations){
+ auto text=std::make_unique<FakeTextBackend>();
+ text->report["languages"]=QJsonArray{QJsonObject{{"id","deu"},{"bytes",1525436},{"kind","system"}},QJsonObject{{"id","eng"},{"bytes",4113088},{"kind","system"}}};
+ text->installed={{"deu","system","/usr/share/tesseract-ocr/5/tessdata/deu.traineddata",1525436},{"eng","system","/usr/share/tesseract-ocr/5/tessdata/eng.traineddata",4113088}};
+ operations.setTextBackend(std::move(text));
+}
 // The real build this binary was compiled from (the generated build-info.json),
 // not the fixed identity linked for stable renders: the surface driver's live
 // gate binds a catalog to that exact commit. Empty when unreadable (refused).
@@ -287,7 +296,7 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
  ProviderRegistry registry;auto provider=std::make_shared<TrayCatalogProvider>();registry.add("proton-drive",provider);
  // Reply storage outlives the drain guard, including replies arriving after a timeout.
  Error invokeError;QString operationId;QJsonObject failed;bool inspected=false;
- Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);
+ Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);installCatalogText(operations);
  if(!waitUntil([&]{return operations.ready();}))return false;
  // Release future callbacks too: a timed-out wait can precede upload().
  auto drain=qScopeGuard([&]{provider->release();waitUntil([&]{return operations.diagnostics()["activeOperations"].toInt()==0;});});
@@ -358,7 +367,7 @@ int main(int argc,char** argv){
  DataDir data("pgr");if(!data.isValid())return 2;const auto config=catalogConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic catalog configuration");return 2;}
  // No production provider or capture action is used. Credentials below are
  // synthetic and stored only in the fixture session, never the OS keychain.
- ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);if(!waitUntil([&]{return operations.ready();})){qCritical("Synthetic resident did not initialize");return 2;}
+ ProviderRegistry registry;Source source;OperationService operations(data.filePath("data"),settings,registry,source);installCatalogText(operations);if(!waitUntil([&]{return operations.ready();})){qCritical("Synthetic resident did not initialize");return 2;}
  const auto now=QDateTime::currentDateTimeUtc();{HistoryStore ledger(operations.databasePath());for(int i=0;i<8;++i){const auto path=data.filePath(QString("synthetic-preview-%1.png").arg(i));if(!syntheticCapture(i).save(path))return 2;Operation op;op.id=QString("synthetic-preview-operation-%1").arg(i);op.action=i==5?"window":i==6?"clipboard":i==7?"desktop":"region";op.created=now.addSecs(i==7?-86400:-110-i*18).toString(Qt::ISODateWithMs);op.state=i==3?"partial":"completed";op.copyStatus=i==0?"copied":"not_requested";op.settings=settings.snapshot();op.destination.providerId="proton-drive";op.destination.profileId="synthetic-proton";op.destination.profileRevision="synthetic-revision";op.destination.settings=config["profiles"].toArray().first().toObject()["settings"].toObject();OperationItem item;item.artifact.id=QString("synthetic-preview-file-%1").arg(i);item.artifact.name=i==1?"Quarterly-release-readiness-review-with-accessibility-and-localisation-notes-final-v12.png":i==5?"Window — Design review.png":i==6?"Clipboard image.png":i==7?"Desktop.png":"Screenshot "+now.addSecs(-110-i*18).toLocalTime().toString("HH:mm:ss")+".png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status=i==2?"disabled":"saved";item.local.path=i==2?QString{}:path;item.uploadStatus=i==3?"failed":"uploaded";item.remoteStatus="present";item.shareStatus="shared";item.receipt.destination=op.destination;item.receipt.publicationId="synthetic-publication";item.receipt.objectReference=QJsonObject{{"fileUid","synthetic-file"}};item.receipt.directUrl="https://drive.proton.me/urls/synthetic-preview#example";if(i==0)item.receipt.objectReference["linkExpiresAt"]=now.addDays(3).toString(Qt::ISODateWithMs);if(i==3){item.error={"synthetic_network","Connection interrupted. Try again.",{}};item.receipt={};item.shareStatus="not_requested";item.remoteStatus="not_requested";}op.items.append(item);if(ledger.saveOperation(op))return 2;}
   Operation cancelled;cancelled.id="synthetic-cancelled";cancelled.action="region";cancelled.created=now.addSecs(-500).toString(Qt::ISODateWithMs);cancelled.state="cancelled";cancelled.cancelled=true;cancelled.settings=settings.snapshot();if(ledger.saveOperation(cancelled))return 2;
  }
@@ -631,7 +640,7 @@ int main(int argc,char** argv){
  // header, filter chips on one and two lines and the gallery's day sections.
  {
   DataDir pagesData("pgp");if(!pagesData.isValid())return 2;SettingsService pagesSettings(pagesData.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!pagesSettings.save(config,{}))return 2;
-  ProviderRegistry pagesRegistry;Source pagesSource;OperationService pagesOperations(pagesData.filePath("data"),pagesSettings,pagesRegistry,pagesSource);if(!waitUntil([&]{return pagesOperations.ready();}))return 2;
+  ProviderRegistry pagesRegistry;Source pagesSource;OperationService pagesOperations(pagesData.filePath("data"),pagesSettings,pagesRegistry,pagesSource);installCatalogText(pagesOperations);if(!waitUntil([&]{return pagesOperations.ready();}))return 2;
   {HistoryStore ledger(pagesOperations.databasePath());const int perDay[]={4,14,9,20,15,6};int serial=0;const auto today=QDateTime::currentDateTime();
    for(int day=0;day<6;++day)for(int j=0;j<perDay[day];++j,++serial){
     Operation op;op.id=QString("synthetic-page-%1").arg(serial,3,10,QChar('0'));const auto created=day==0?today.addSecs(-300-j*900):QDateTime(today.date().addDays(-day),QTime(22,0)).addSecs(-j*1500);op.created=created.toUTC().toString(Qt::ISODateWithMs);op.action=QStringList{"region","window","desktop","clipboard"}[serial%4];op.state="completed";op.settings=pagesSettings.snapshot();const bool proton=serial%3!=0;op.destination.providerId=proton?"proton-drive":"s3";op.destination.profileId=proton?"synthetic-proton":"synthetic-archive";op.destination.profileRevision="synthetic-revision";
