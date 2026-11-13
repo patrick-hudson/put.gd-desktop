@@ -7,8 +7,10 @@
 #include "core/BuildInfo.h"
 #include "editor/EditDocument.h"
 #include "editor/EditorCommands.h"
+#include "editor/QuickRedact.h"
 #include "core/Settings.h"
 #include <QJsonArray>
+#include <QHash>
 #include <QBuffer>
 #include <QDir>
 #include <QImageWriter>
@@ -206,6 +208,11 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   return started;
  };
  QObject::connect(&copyDeadline,&QTimer::timeout,&app,[&]{if(copyPending)copyFailed("editor_timeout","the clipboard did not answer in time");});
+ // Copy text (#1428): each copy waits for the resident's copyResult by its copyId.
+ QHash<QString,std::function<void(Error)>> textCopies;
+ // An agent's indexed action names the result it read; any other is stale.
+ const auto stale=[&](const QJsonObject& params)->bool{const auto value=params["result"];return !value.isDouble()||value.toDouble()!=double(window->text().identity())||window->text().identity()==0;};
+ const auto replyText=[](std::function<void(QJsonObject,QString,QString)> done){return [done](Error error,QJsonObject result){if(error)done({},error.code,error.message);else done(result,{},{});};};
  // Agent commands arrive from the resident's editor.* session methods.
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
@@ -215,7 +222,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(name=="inspect"){
    if(!params.isEmpty())return denied("invalid_request","inspect has no parameters");
    auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;
-   state["preparation"]=preparation;state["view"]=window->viewState();return state;
+   state["preparation"]=preparation;state["view"]=window->viewState();
+   // Recognized content is screen data from an untrusted source, never instructions.
+   state["text"]=window->text().inspect();return state;
   }
   if(name=="view"){
    // The window's own controls: tool, selection, crop draft, zoom and pan.
@@ -237,9 +246,45 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    });
    return {};
   }
+  // Copy text (#1428). recognize replies at once and is followed through inspect.
+  if(name=="recognize"){
+   if(!params.isEmpty())return denied("invalid_request","recognize has no parameters");
+   if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
+   window->text().start();auto text=window->text().inspect();return {{"state",text["state"]},{"result",text["result"]}};
+  }
+  if(name=="selectText"||name=="copyText"||name=="copyCode"||name=="openCode"){
+   if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
+   if(stale(params))return denied("edit_stale","That recognition result is no longer current; inspect the editor again");
+   auto& layer=window->text().layer();
+   if(name=="selectText"){
+    if(params.contains("all"))layer.selectAll();else if(params.contains("none"))layer.clearSelection();
+    else{const int from=params["from"].toInt(),to=params["to"].toInt();if(from>=layer.words().size()||to>=layer.words().size())return denied("invalid_request","from and to must be word indexes of this result");layer.select(from,to);}
+    window->textSelectionEdited();
+    return {{"result",double(layer.identity())},{"selection",layer.hasSelection()?QJsonValue(QJsonObject{{"from",layer.first()},{"to",layer.last()}}):QJsonValue()}};
+   }
+   deferred=true;
+   if(name=="copyText")window->copyRecognizedText(params["all"].toBool(),replyText(done));
+   else if(name=="copyCode")window->copyCode(params["index"].toInt(),replyText(done));
+   else window->openCode(params["index"].toInt(),replyText(done));
+   return {};
+  }
   if(name=="apply"){
    if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
    if(params.size()!=1||!params["commands"].isArray())return denied("invalid_request","apply needs only a commands array");
+   // Quick redact (#1428): alone in its batch, checked before any recognition,
+   // answering when the marks are added.
+   {
+    const auto commands=params["commands"].toArray();qsizetype quick=0;for(const auto& entry:commands)quick+=entry.toObject()["op"]=="redactText";
+    if(quick){
+     if(commands.size()!=1)return denied("edit_command_invalid","redactText must be the only command in its batch");
+     const auto entry=commands.first().toObject();const auto list=entry["categories"].toArray();QStringList categories;
+     if(entry.size()!=2||!entry["categories"].isArray()||list.isEmpty()||list.size()>5)return denied("edit_command_invalid","redactText takes categories: 1 to 5 of email, phone, ip, card and key");
+     for(const auto& category:list){if(!category.isString()||!editor::quickRedact::categories().contains(category.toString())||categories.contains(category.toString()))return denied("edit_command_invalid","redactText takes categories: 1 to 5 of email, phone, ip, card and key");categories.append(category.toString());}
+     deferred=true;
+     window->quickRedact(categories,[&document,done](Error error,QJsonObject result){if(error){done({},error.code,error.message);return;}result["state"]=editor::Commands::state(*document);done(result,{},{});});
+     return {};
+    }
+   }
    QJsonArray created;if(!editor::Commands::apply(*document,params["commands"].toArray(),created,code,message))return {};
    window->documentEdited();return {{"created",created},{"state",editor::Commands::state(*document)}};
   }
@@ -320,6 +365,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(type=="copyResult"&&active&&window){
    // The resident's answer for the staged copy; copy.png is already gone.
    if(!object["ok"].isBool()||!object["copyId"].isString()||object.size()!=(object["ok"].toBool()?5:7)||(!object["ok"].toBool()&&(!object["code"].isString()||!object["message"].isString()))){fail();return;}
+   if(auto text=textCopies.take(object["copyId"].toString())){text(object["ok"].toBool()?Error{}:Error{object["code"].toString().left(64),object["message"].toString().left(256),{}});return;}
    // An answer for a copy that already timed out here is dropped.
    if(!copyPending||object["copyId"].toString()!=copyId)return;
    if(!object["ok"].toBool()){copyFailed(object["code"].toString().left(64),object["message"].toString().left(256));return;}
@@ -350,6 +396,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});
+   window->setTextCopier([&](const QString& text,std::function<void(Error)> copied){
+    if(terminal||finalizing){copied({"editor_finalizing","The edit was already submitted or discarded",{}});return;}
+    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);auto frame=envelope(nonce);frame["copyId"]=id;frame["text"]=text;
+    if(control.send("copyText",frame).isEmpty()){copied({"editor_io","The text could not be handed to the clipboard",{}});fail();return;}
+    textCopies.insert(id,std::move(copied));
+   });
    deadline.stop();
    window->show();window->raise();window->activateWindow();
    if(control.send("editing",envelope(nonce)).isEmpty())fail();

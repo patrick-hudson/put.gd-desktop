@@ -54,6 +54,17 @@
     add_dependencies(test_ui_process test_ui_helper_fixture)
     add_test(NAME ui_process_integration COMMAND test_ui_process)
   endif()
+  # The editor's Copy text (#1428): nothing under a Redact mark comes back, and
+  # a result for an old recognition revision is rejected.
+  add_executable(test_editor_text tests/integration/test_editor_text.cpp)
+  target_link_libraries(test_editor_text PRIVATE putgd_editor_window Qt6::Test)
+  add_test(NAME editor_text_integration COMMAND test_editor_text)
+  set_tests_properties(editor_text_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+  # Quick redact (#1428): one table over the matching function.
+  add_executable(test_quick_redact tests/unit/test_quick_redact.cpp)
+  target_link_libraries(test_quick_redact PRIVATE putgd_editor Qt6::Test)
+  add_test(NAME quick_redact_contract COMMAND test_quick_redact)
+  set_tests_properties(quick_redact_contract PROPERTIES TIMEOUT 30)
   # History's Show QR code (#1428): a written code reads back as the known-good matrix.
   add_executable(test_qr_code tests/unit/test_qr_code.cpp)
   target_link_libraries(test_qr_code PRIVATE putgd_core Qt6::Test)

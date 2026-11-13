@@ -1,5 +1,6 @@
 #pragma once
 #include "editor/EditorCanvas.h"
+#include "EditorText.h"
 #include "Ui.h"
 #include <QHash>
 #include <QJsonObject>
@@ -80,6 +81,25 @@ public:
  bool copying() const {return copying_;}
  void showCopied();
  void showCopyFailed(const QString& reason);
+ // Copy text (#1428): the tool's recognition and selection.
+ EditorTextRecognition& text() {return *text_;}
+ // The resident owns the clipboard: the host sends it the text and `done`
+ // gets its answer (copy_suppressed when the user copied something since).
+ using TextCopier=std::function<void(const QString& text,std::function<void(Error)> done)>;
+ void setTextCopier(TextCopier copier) {textCopier_=std::move(copier);}
+ // Copy selection, Copy all text and a code's Copy and Open link, as the
+ // panel's buttons. `done` gets {copyStatus, characters} or the launch result.
+ using TextDone=std::function<void(Error,QJsonObject)>;
+ void copyRecognizedText(bool all,TextDone done={});
+ void copyCode(int index,TextDone done={});
+ void openCode(int index,TextDone done={});
+ // After an agent changed the text selection: the tint and the panel follow.
+ void textSelectionEdited();
+ // Quick redact (#1428): suggested Redact marks for these categories, added as
+ // one undo step once the current revision is recognized (starting or joining
+ // its job). edit_stale when a Redact mark or the crop changes first. `done`
+ // gets {created: [shape ids], counts: {category: matches}}.
+ void quickRedact(const QStringList& categories,TextDone done={});
 signals:
  void uploadRequested();
  void cancelRequested();
@@ -159,5 +179,11 @@ private:
  QJsonObject lastSave_,lastShowInFolder_;QString lastCopiedPath_;quint64 savedGeneration_=0,folderRequest_=0;
  QColor annotationColor_=QColor(220,38,38),highlightColor_=QColor(250,204,21);
  bool closing_=false,busy_=false,shown_=false,savingCopy_=false,copying_=false;
+ // Copy text: state, Copy selection and Copy all text, the note, codes, the cut line.
+ EditorTextRecognition* text_=nullptr;TextCopier textCopier_;
+ QWidget *copyTextRow_=nullptr,*codeList_=nullptr;QVBoxLayout* codeLayout_=nullptr;quint64 codesShown_=~quint64(0);
+ QLabel *textState_=nullptr,*textTruncated_=nullptr,*textFeedback_=nullptr,*codesTitle_=nullptr;QPushButton *copySelection_=nullptr,*copyAllText_=nullptr;
+ void syncText();void rebuildCodes();void textOutcome(const QString& what,Error error,int characters,TextDone done);
+ QWidget* quickRedactRow_=nullptr;QToolButton* quickRedact_=nullptr;QLabel* quickRedactResult_=nullptr;bool quickRedacting_=false;
 };
 }
