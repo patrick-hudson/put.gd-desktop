@@ -471,6 +471,42 @@ private slots:
         // Repeat always follows the region route and only its key is its own.
         QCOMPARE(settings.actions.value("repeat").destination, settings.actions.value("region").destination);
     }
+    // A configuration written before Copy text existed (#1428) has no text action
+    // and no languages preference. It must still load, with its routes as they
+    // were; a refusal here would stop the resident starting after an update.
+    void configurationFromBeforeCopyTextStillLoads() {
+        auto document = putgd::Settings::defaults();
+        auto actions = document["actions"].toObject();
+        actions.remove("text");
+        document["actions"] = actions;
+        QVERIFY(!document["preferences"].toObject().contains("textRecognitionLanguages"));
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto normalized = putgd::Settings::normalized(document);
+        QCOMPARE(normalized["actions"].toObject()["text"].toObject(), (QJsonObject{{"shortcut", QString{}}}));
+        QVERIFY(!putgd::Settings::validate(normalized));
+        const auto settings = putgd::Settings::fromValidated(document);
+        QVERIFY(settings.actions.value("text").shortcut.isEmpty());
+        QVERIFY(settings.actions.value("text").destination.isEmpty());
+        QVERIFY(settings.textRecognitionLanguages.isEmpty());
+        QCOMPARE(settings.actions.value("region").destination, putgd::Settings::fromValidated(putgd::Settings::defaults()).actions.value("region").destination);
+        // What the new build writes is a hotkey and nothing else, and language identifiers only.
+        auto routed = normalized;
+        actions = routed["actions"].toObject();
+        actions["text"] = actions["region"];
+        routed["actions"] = actions;
+        QCOMPARE(putgd::Settings::validate(routed).details["path"].toString(), QStringLiteral("/actions/text"));
+        const auto withLanguages = [&](const QJsonValue& languages) {
+            auto changed = normalized;
+            auto preferences = changed["preferences"].toObject();
+            preferences["textRecognitionLanguages"] = languages;
+            changed["preferences"] = preferences;
+            return changed;
+        };
+        QVERIFY(!putgd::Settings::validate(withLanguages(QJsonArray{"deu", "eng", "chi_sim"})));
+        QCOMPARE(putgd::Settings::fromValidated(withLanguages(QJsonArray{"deu", "eng"})).textRecognitionLanguages, (QStringList{"deu", "eng"}));
+        for (const auto& refused : {QJsonValue(QJsonArray{}), QJsonValue(QJsonArray{"eng", "eng"}), QJsonValue(QJsonArray{"../eng"}), QJsonValue(QJsonArray{"eng", "deu", "fra", "spa"}), QJsonValue("eng")})
+            QCOMPARE(putgd::Settings::validate(withLanguages(refused)).details["path"].toString(), QStringLiteral("/preferences/textRecognitionLanguages"));
+    }
     // validate() once read each action through a reference into a destroyed
     // temporary object, and the Debian 13 resident crashed saving this document
     // on its worker thread. Debug builds read the dead object by luck, so

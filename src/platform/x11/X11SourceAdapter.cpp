@@ -23,7 +23,7 @@ Error selectionError(const X11Target& target,const QRectF& rectangle,const Resou
  return {};
 }
 bool sameTarget(const X11Target& a,const X11Target& b){
- if(a.action!=b.action||a.screenshotFirst!=b.screenshotFirst||a.window!=b.window||a.nativeWindowRect!=b.nativeWindowRect||a.nativeArea!=b.nativeArea||a.logicalSelection!=b.logicalSelection||a.layout.size()!=b.layout.size())return false;
+ if(a.action!=b.action||a.rememberRegion!=b.rememberRegion||a.screenshotFirst!=b.screenshotFirst||a.window!=b.window||a.nativeWindowRect!=b.nativeWindowRect||a.nativeArea!=b.nativeArea||a.logicalSelection!=b.logicalSelection||a.layout.size()!=b.layout.size())return false;
  for(int i=0;i<a.layout.size();++i){const auto& x=a.layout[i];const auto& y=b.layout[i];if(x.identity!=y.identity||x.logicalRect!=y.logicalRect||x.nativeRect!=y.nativeRect||x.density!=y.density||x.rotation!=y.rotation)return false;}
  return true;
 }
@@ -52,13 +52,14 @@ QJsonObject X11SourceAdapter::capabilities()const {
  const auto captureStatus=QJsonObject{{"available",capture_.available()},{"mode","visible-pixels"},{"consent","none"}};
  const auto clipboardStatus=QJsonObject{{"available",clipboard_.available()},{"types",QJsonArray{"files","image","text"}},{"import","asynchronous-x11-selection"},{"result","qt-ownership"}};
  auto repeat=captureStatus;repeat["remembered"]=lastRegion_.has_value();
- return {{"adapter","cinnamon-x11"},{"capture",QJsonObject{{"region",captureStatus},{"window",captureStatus},{"desktop",captureStatus},{"monitor",captureStatus},{"repeat",repeat}}},{"delay",QJsonObject{{"available",capture_.available()},{"seconds",QJsonArray{3,5,10}},{"indicator","window"}}},{"clipboard",clipboardStatus},{"shortcuts",QJsonObject{{"available",shortcuts_.available()},{"bindings",shortcuts_.status()},{"keyPaths",shortcuts_.keyPaths()}}}};
+ return {{"adapter","cinnamon-x11"},{"capture",QJsonObject{{"region",captureStatus},{"text",captureStatus},{"window",captureStatus},{"desktop",captureStatus},{"monitor",captureStatus},{"repeat",repeat}}},{"delay",QJsonObject{{"available",capture_.available()},{"seconds",QJsonArray{3,5,10}},{"indicator","window"}}},{"clipboard",clipboardStatus},{"shortcuts",QJsonObject{{"available",shortcuts_.available()},{"bindings",shortcuts_.status()},{"keyPaths",shortcuts_.keyPaths()}}}};
 }
-SourceAdapter::PreparedAcquisition X11SourceAdapter::prepareAcquisition(const QString& action) {
+SourceAdapter::PreparedAcquisition X11SourceAdapter::prepareAcquisition(const QString& requested) {
+ const bool text=requested==QLatin1String("text");const QString action=text?QStringLiteral("region"):requested;
  QPointer<X11SourceAdapter> guard(this);
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};}
  // Repeat last region (#1363): the remembered rectangle on an unchanged layout.
- Error error;auto target=capture_.freeze(action=="repeat"?QStringLiteral("region"):action,error);target.outcome=captureOutcome_;target.screenshotFirst=action=="region"&&regionScreenshotFirst_;
+ Error error;auto target=capture_.freeze(action=="repeat"?QStringLiteral("region"):action,error);target.outcome=captureOutcome_;target.rememberRegion=!text;target.screenshotFirst=action=="region"&&regionScreenshotFirst_;
  target.delaySeconds=action=="region"&&!regionScreenshotFirst_?captureDelay_:0;
  if(action=="repeat"&&!error){
   if(!lastRegion_)error=noLastRegion();
@@ -195,7 +196,7 @@ void X11SourceAdapter::acquireSelectedRegionFrozen(const X11Target& target,const
  const auto error=selectionError(target,selection.rectangle,limits);if(error){cb({{},error});return;}
  // Repeat last region (#1363) remembers a region that was captured, here in memory only.
  cb=[this,target,rectangle=selection.rectangle,cb=std::move(cb)](PayloadResult result)mutable{
-  if(!result.error){auto layout=target.layout;for(auto& frame:layout)frame.pixels={};lastRegion_=RegionMemory{rectangle,std::move(layout)};}
+  if(!result.error&&target.rememberRegion){auto layout=target.layout;for(auto& frame:layout)frame.pixels={};lastRegion_=RegionMemory{rectangle,std::move(layout)};}
   cb(std::move(result));
  };
  // Screenshot first: cut the result from the frames the user selected over.

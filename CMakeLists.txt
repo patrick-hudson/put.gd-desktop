@@ -40,6 +40,8 @@ include(cmake/Ui.cmake)
 include(cmake/Executables.cmake)
 # The putgd-record helper and the tests built from its sources.
 include(cmake/Recording.cmake)
+# The putgd-ocr text recognition helper.
+include(cmake/Ocr.cmake)
 # The Backblaze B2 destination.
 include(cmake/B2.cmake)
 # The custom HTTP uploader destination.

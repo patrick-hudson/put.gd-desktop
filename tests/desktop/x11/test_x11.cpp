@@ -144,6 +144,26 @@ private slots:
   {// Cancellation completes immediately and exactly once.
    X11CompositorSettle settle({selected});int settled=0;connect(&settle,&X11CompositorSettle::settled,this,[&]{++settled;});settle.start();QCOMPARE(settled,0);settle.cancel();QCOMPARE(settled,1);settle.cancel();putgd::test::settle(150);PUTGD_TRY_COMPARE(settled,1);}
  }
+ // Text selects a region in either mode without creating Repeat's memory.
+ void textCaptureLeavesTheRememberedRegionAlone() {
+  X11DesktopFixture desktop;QVERIFY(desktop.window);
+  for(const bool screenshot:{false,true}){
+   X11SourceAdapter source;source.setRegionScreenshotFirst(screenshot);
+   const auto remembered=[&]{return source.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool();};
+   QVERIFY(source.capabilities()["capture"].toObject()["text"].toObject()["available"].toBool());
+   for(const auto& action:QStringList{"text","region"}){
+    bool completed=false;PayloadResult captured;SourceAdapter& adapter=source;
+    adapter.prepareAcquisition(action,{},[](Error){},[]{} )({},[&](PayloadResult result){captured=std::move(result);completed=true;});
+    QWidget* surface=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(widget->objectName()=="putgd-region-overlay"&&widget->isVisible())surface=widget;
+    QVERIFY(surface);
+    QTest::mousePress(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(30,30)));
+    QTest::mouseMove(surface,surface->mapFromGlobal(QPoint(70,60)));
+    QTest::mouseRelease(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(70,60)));
+    PUTGD_TRY_VERIFY(completed);QVERIFY2(!captured.error,qPrintable(captured.error.message));
+    QCOMPARE(captured.payload.image.size(),QSize(40,30));QCOMPARE(remembered(),action=="region");
+   }
+  }
+ }
  void compositedRegionReadsAfterStaleSelectorFrames() {
   X11DesktopFixture desktop;QVERIFY(desktop.window);X11CompositorFixture compositor;
   bool completed=false,staleAtCompletion=true;PayloadResult captured;X11SourceAdapter source;

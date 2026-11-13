@@ -151,6 +151,120 @@
       ],
       "files": [],
       "note": "The exact runtime mi_version returns 217, identifying mimalloc 2.1.7. Its source is included in the complete source asset and its original MIT notice is retained here."
+    },
+    {
+      "id": "leptonica",
+      "name": "leptonica",
+      "version": {
+        "from": "lock",
+        "key": "leptonica"
+      },
+      "source": {
+        "from": "lock",
+        "key": "leptonica"
+      },
+      "license": "BSD-2-Clause",
+      "licenseTexts": {
+        "BSD-2-Clause": "leptonica-license.txt"
+      },
+      "licenseFiles": [
+        "leptonica-license.txt"
+      ],
+      "files": [
+        "usr/lib/liblept*.so*"
+      ]
+    },
+    {
+      "id": "tesseract",
+      "name": "tesseract",
+      "version": {
+        "from": "lock",
+        "key": "tesseract"
+      },
+      "source": {
+        "from": "lock",
+        "key": "tesseract"
+      },
+      "license": "Apache-2.0",
+      "licenseTexts": {
+        "Apache-2.0": "LICENSE"
+      },
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "files": [
+        "usr/lib/libtesseract.so*"
+      ]
+    },
+    {
+      "id": "zxing",
+      "name": "zxing",
+      "version": {
+        "from": "lock",
+        "key": "zxing"
+      },
+      "source": {
+        "from": "lock",
+        "key": "zxing"
+      },
+      "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
+      "licenseTexts": {
+        "Apache-2.0": "LICENSE",
+        "BSD-3-Clause": "PUTGD-THIRD-PARTY-NOTICES.txt",
+        "MIT": "PUTGD-THIRD-PARTY-NOTICES.txt"
+      },
+      "licenseFiles": [
+        "LICENSE",
+        "PUTGD-THIRD-PARTY-NOTICES.txt"
+      ],
+      "embedded": [{"name": "libzueci", "version": "1.0.1", "license": "BSD-3-Clause AND MIT",
+                    "licenseText": "usr/share/doc/putgd/bundled-licenses/zxing/PUTGD-THIRD-PARTY-NOTICES.txt"}],
+      "files": [
+        "usr/lib/libZXing.so*"
+      ]
+    },
+    {
+      "id": "tessdata_fast",
+      "name": "tessdata_fast",
+      "version": {
+        "from": "lock",
+        "key": "tessdata_fast"
+      },
+      "source": {
+        "from": "lock",
+        "key": "tessdata_fast"
+      },
+      "license": "Apache-2.0",
+      "licenseTexts": {
+        "Apache-2.0": "LICENSE"
+      },
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "files": [
+        "usr/share/putgd/tessdata/eng.traineddata"
+      ]
+    },
+    {
+      "id": "qrcodegen",
+      "name": "Nayuki QR Code generator",
+      "version": {
+        "from": "dependencyLock",
+        "key": "qrCodeGenerator"
+      },
+      "source": {
+        "from": "dependencyLock",
+        "key": "qrCodeGenerator"
+      },
+      "license": "MIT",
+      "licenseTexts": {
+        "MIT": "usr/share/doc/putgd/qrcodegen-LICENSE"
+      },
+      "files": [],
+      "noticeFiles": [
+        "usr/share/doc/putgd/qrcodegen-LICENSE"
+      ],
+      "note": "Vendored into the core library; commit and source file hashes are pinned in dependency-lock.json."
     }
   ]
 }

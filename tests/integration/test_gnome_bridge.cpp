@@ -107,7 +107,7 @@ public slots:
  }
  QString Bind(const QString& encoded){
   ++binds_;lastBindings_=QJsonDocument::fromJson(encoded.toUtf8()).object();QJsonObject bindings;
-  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
+  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){if(i.key()=="text"&&qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")>0&&qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")<23)continue;const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
   return json({{"bindings",bindings}});
  }
  QString BeginCopy(const QString& id,const QString& mime,qulonglong size){copyId_=id;copyMime_=mime;copySize_=size;copyBytes_.clear();return json({});}
@@ -356,6 +356,12 @@ private slots:
   PUTGD_TRY_COMPARE(source.capabilities()["helper"].toObject()["setup"].toObject()["state"].toString(),QString("login_required"));
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
+  // An old Shell omits text from Bind; recording existing shortcuts still works.
+  bool recorded=false;Error recordingError;
+  source.setShortcutRecording(true,[&](Error e){recordingError=e;recorded=true;});
+  PUTGD_TRY_VERIFY(recorded);QVERIFY2(!recordingError,qPrintable(recordingError.code));
+  recorded=false;source.setShortcutRecording(false,[&](Error e){recordingError=e;recorded=true;});
+  PUTGD_TRY_VERIFY(recorded);QVERIFY2(!recordingError,qPrintable(recordingError.code));
   QVERIFY(!source.selectsRegions());
   QCOMPARE(source.scrollShell()->selectsRegions(),loadedVersion>=22);
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
@@ -375,6 +381,11 @@ private slots:
   source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
   source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
   QCOMPARE(live.error.code,QString("helper_outdated"));QVERIFY(live.error.message.contains("log out and back in"));QCOMPARE(state()["acquires"].toInt(),before);
+  // Copy text (#1428) selects a region too. An extension loaded before it must give
+  // the same step; capturing with selector code that predates the action is not an answer.
+  PayloadResult text;bool textDone=false;source.acquire("text",{},[&](PayloadResult value){text=std::move(value);textDone=true;});PUTGD_TRY_VERIFY(textDone);
+  QCOMPARE(text.error.code,QString("helper_outdated"));QCOMPARE(state()["acquires"].toInt(),before);
+  QVERIFY(!source.capabilities()["capture"].toObject()["text"].toObject()["available"].toBool());
   PayloadResult desktop;bool desktopDone=false;source.acquire("desktop",{},[&](PayloadResult value){desktop=std::move(value);desktopDone=true;});PUTGD_TRY_VERIFY(desktopDone);
   QVERIFY2(!desktop.error,qPrintable(desktop.error.code+": "+desktop.error.message));QCOMPARE(desktop.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);
   stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());

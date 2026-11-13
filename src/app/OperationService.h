@@ -4,6 +4,7 @@
 #include "core/EditorJob.h"
 #include "RecordingService.h"
 #include "ScrollCaptureService.h"
+#include "TextService.h"
 #include "core/SettingsService.h"
 #include "UploadSlots.h"
 #include <QElapsedTimer>
@@ -50,6 +51,23 @@ public:
  void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare")emit explicitRequest();scroll_->command(command,params,std::move(reply));}
  void setScrollBackend(std::unique_ptr<ScrollBackend> backend) {scroll_->setBackend(std::move(backend));}
  RecordingService& recording() {return *recording_;}
+ // Text recognition (#1428): what the Copy text action, text.recognize and
+ // History's Copy text call. Its host journals the operation, removes a completed
+ // or cancelled one's row and copies through the explicit-copy path.
+ TextService& text() {return *text_;}
+ // Tests inject a fake backend; production runs the putgd-ocr helper.
+ void setTextBackend(std::unique_ptr<TextBackend> backend) {text_->setBackend(std::move(backend));}
+ // text.inspect and text.cancel, answered from the service's live state and terminal record.
+ void textCommand(const QString& command,const QJsonObject& params,JsonReply);
+ // Recognizes text from a source (decision 8): the Copy text action,
+ // text.recognize and History's Copy text. params, already checked for shape:
+ // {source: region|window|monitor|desktop|clipboard|file|history, path?,
+ //  historyId?, languages?, copy?, keepResult?, delaySeconds?}.
+ // Screen sources go through the adapter's prepareAcquisition at the points a
+ // capture uses; a region is the adapter's `text` action, which selects as a
+ // region does and never changes what Repeat last region remembers.
+ // Answers {operationId, state} once the operation is journaled.
+ void recognizeText(const QJsonObject& params,JsonReply);
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
  // The internal action of a diagnostics package upload (#123), outside the
@@ -95,6 +113,10 @@ public:
  void copyResult(const QString& id,JsonReply);
  void copyHistoryImage(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
+ // History's QR code image (#1428): an explicit copy of a PNG the caller made,
+ // superseded like copyHistoryUrl when a newer explicit copy took the ticket.
+ quint64 clipboardRevision() const {return source_.clipboardRevision();}
+ void copyHistoryQr(QByteArray png,JsonReply,quint64 ticket,quint64 revision);
  // A history item's missing preview (#190): an image's or a video's that was
  // never made, failed or was removed by cleanup, made from the retained
  // artifact or a verified local copy through the one-at-a-time poster queue.
@@ -156,6 +178,10 @@ signals:
  // An automatic cleanup kept uploads the destination refused to abort that the user
  // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.
  void incompleteUploadsKept(const QJsonObject& notice);
+ // A text recognition ended (#1428). record is its terminal record, which holds
+ // nothing recognized; notification is the Copy text message for an operation
+ // that asked for a copy (after the clipboard's acknowledgement), else empty.
+ void textFinished(const QString& operationId,const QJsonObject& record,const QString& notification);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
  // Someone asked for a capture, the editor or a recording (tray, shortcut, CLI or
@@ -239,6 +265,8 @@ private:
  void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken);
  QString editorDestination(const Operation&) const;
  void copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done);
+ // The editor's Copy text (#1428): recognized text or a code's content, as an explicit copy.
+ void copyEditedText(const QString& id,QString text,std::function<void(Error)> done);
  void abandonUploadCopies(const QString&);
  // A batch item finished its upload stage, with or without a link (each_link ordering).
  void uploadItemSettled(const QString&,int);
@@ -301,6 +329,13 @@ private:
  std::unique_ptr<ScrollCaptureService> scroll_;
  Error acceptRecording(Operation&);
  std::unique_ptr<RecordingService> recording_;
+ Error acceptText(Operation&,const TextService::Acceptance&);
+ // The text operation's own completion branch: no items, uploads or copies of a link.
+ void finishText(Operation);
+ void copyRecognizedText(const Operation&,const QString& text,std::function<void(Error)> done);
+ // The sources this desktop cannot read for text, each with its adapter's own error.
+ QHash<QString,Error> textSourceErrors() const;
+ std::unique_ptr<TextService> text_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;

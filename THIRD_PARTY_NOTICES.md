@@ -68,3 +68,11 @@ every bundled component with its version, licence, source and files, and
 
 This inventory records build and package inputs. Actual installed-package notice
 inspection, lifecycle checks and the complete release matrix remain release gates.
+
+Nayuki's QR Code generator v1.8.0 is vendored unmodified as
+`src/core/qrcodegen/qrcodegen.cpp` and `qrcodegen.hpp`, from tag commit
+`720f62bddb7226106071d4728c292cb1df519ceb`, under the MIT licence.
+`cmake/dependency-lock.json` pins the commit and both file hashes;
+`tools/verify_dependencies.py` verifies the actual files. Every package retains
+Project Nayuki's full copyright and permission notice in `runtime-notices.txt`
+and `qrcodegen-LICENSE`; AppImage notices and every package's SBOM identify it.

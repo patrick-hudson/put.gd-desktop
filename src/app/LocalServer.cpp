@@ -67,13 +67,18 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="scroll.stop")return scroll::helperStopMs+base;
  if(method.startsWith("scroll."))return scroll::helperStartupMs+scroll::helperCommandMs+base;
  if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
+ // Answered once the running job has stopped.
+ if(method=="text.cancel")return textjob::maximumDeadlineMs+base;
  if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.audio","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
  if(method=="diagnostics.uploadTarget")return diagnosticsUploadTargetReplyMs;
  if(method=="history.preview")return historyPreviewReplyMs;
- if(method=="history.copyLink"||method=="history.copyLinks")return 630000;
+ // history.qr refreshes an expired link first, as Copy link does (#1428).
+ if(method=="history.copyLink"||method=="history.copyLinks"||method=="history.qr")return 630000;
+ // editor.apply with redactText answers when recognition is done, not at once.
+ if(method=="editor.apply")return textjob::maximumDeadlineMs+base;
  if(method=="history.unlockLinkCredentials")return 300000;
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
@@ -174,6 +179,63 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),"view",params,reply);return;
  }
  if(method.startsWith("scroll.")){operations_.scrollCommand(method.mid(7),p,reply);return;}
+ // Text recognition and QR codes (#1428). Every method of the agent contract is
+ // registered and its fields are checked here (schemas/text-recognition.schema.json
+ // states the same shapes); one whose owner has not built it yet answers not_implemented.
+ const auto unbuilt=[&reply]{reply({"not_implemented","This method is part of text recognition (#1428) and is not built yet",{}},{});};
+ const auto wholeNumber=[&p](const QString& key,qint64 minimum,qint64 maximum){const auto value=p[key];return value.isDouble()&&value.toDouble()==double(value.toInteger())&&value.toInteger()>=minimum&&value.toInteger()<=maximum;};
+ if(method=="text.recognize") {
+  const auto source=p["source"].toString();const bool screen=QStringList{"region","window","monitor","desktop"}.contains(source);QStringList languages;
+  bool valid=fields(p,{"source"},{"path","historyId","languages","copy","delaySeconds"})&&p["source"].isString()&&TextService::sources().contains(source)
+   &&(source=="file")==p.contains("path")&&(!p.contains("path")||(string(p,"path",4096)&&QDir::isAbsolutePath(p["path"].toString())))
+   &&(source=="history")==p.contains("historyId")&&(!p.contains("historyId")||string(p,"historyId"))
+   &&(!p.contains("copy")||p["copy"].isBool())&&(!p.contains("delaySeconds")||(screen&&wholeNumber("delaySeconds",0,10)&&Settings::captureDelayChoices().contains(p["delaySeconds"].toInt())))
+   &&(!p.contains("languages")||p["languages"].isArray());
+  if(valid&&p.contains("languages")){for(const auto& language:p["languages"].toArray()){valid=valid&&language.isString();languages.append(language.toString());}valid=valid&&textjob::validLanguages(languages);}
+  if(!valid){reply(invalid(),{});return;}
+  // An agent's recognition keeps its result for text.inspect; copying is its choice.
+  auto params=p;params["keepResult"]=true;
+  operations_.recognizeText(params,reply);return;
+ }
+ if(method=="text.inspect"||method=="text.cancel") {
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
+  operations_.textCommand(method.mid(5),p,reply);return;
+ }
+ if(method=="editor.recognize") {
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
+ }
+ // `result` is the recognition result's identity from editor.inspect; one that
+ // is no longer current is refused by the editor with edit_stale.
+ if(method=="editor.selectText") {
+  const bool range=p.contains("from")||p.contains("to");
+  if(!fields(p,{"id","result"},{"from","to","all","none"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||(range?1:0)+(p.contains("all")?1:0)+(p.contains("none")?1:0)!=1
+     ||(range&&(!wholeNumber("from",0,textjob::maximumWords-1)||!wholeNumber("to",0,textjob::maximumWords-1)))||(p.contains("all")&&p["all"]!=true)||(p.contains("none")&&p["none"]!=true)){reply(invalid(),{});return;}
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
+ }
+ if(method=="editor.copyText") {
+  if(!fields(p,{"id","result"},{"all"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||(p.contains("all")&&!p["all"].isBool())){reply(invalid(),{});return;}
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
+ }
+ if(method=="editor.copyCode"||method=="editor.openCode") {
+  if(!fields(p,{"id","result","index"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||!wholeNumber("index",0,textjob::maximumCodes-1)){reply(invalid(),{});return;}
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
+ }
+ if(method=="history.copyText") {
+  if(!fields(p,{"id"},{"keepResult"})||!string(p,"id")||(p.contains("keepResult")&&!p["keepResult"].isBool())){reply(invalid(),{});return;}
+  // History's Copy text: the retained local copy, one clipboard write; counts only unless asked to keep the result.
+  operations_.recognizeText({{"source","history"},{"historyId",p["id"]},{"copy",true},{"keepResult",p["keepResult"].toBool()}},reply);return;
+ }
+ // save needs an absolute path and may overwrite; copy and show take neither.
+ if(method=="history.qr") {
+  const auto mode=p["mode"].toString();const bool save=mode=="save";
+  if(!fields(p,{"id","mode"},{"path","overwrite"})||!string(p,"id")||!p["mode"].isString()||!QStringList{"copy","save","show"}.contains(mode)||save!=p.contains("path")
+     ||(save&&(!string(p,"path",4096)||!QDir::isAbsolutePath(p["path"].toString())))||(p.contains("overwrite")&&(!save||!p["overwrite"].isBool()))){reply(invalid(),{});return;}
+  // show opens the code in the History window, which the user (or ui.show) opened.
+  QPointer<LocalServer> guarded(this);
+  const auto show=[guarded](const QJsonObject& link,JsonReply done){if(!guarded||!guarded->uiCommand_){done({"ui_unavailable","This resident has no graphical interface",{}},{});return;}guarded->uiCommand_("historyQr",link,std::move(done));};
+  history_.qr(p["id"].toString(),mode,p["path"].toString(),p["overwrite"].toBool(),reply,uiCommand_?HistoryService::QrShow(show):HistoryService::QrShow{});return;
+ }
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
  if(method=="recording.windows") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("windows",{},reply);return;}

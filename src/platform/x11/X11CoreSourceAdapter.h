@@ -38,7 +38,8 @@ private:
  // Freezes the action's target; repeat needs the remembered region on an unchanged layout.
  QJsonObject freeze(const QString& action,Error&);
  // Remembers a region the helper captured, for Repeat last region (resident memory only).
- std::function<void(PayloadResult)> remembering(const QJsonObject& frozen,std::function<void(PayloadResult)>);
+ // A text capture (#1428) passes remember=false: it never changes that region.
+ std::function<void(PayloadResult)> remembering(const QJsonObject& frozen,std::function<void(PayloadResult)>,bool remember=true);
  struct RegionMemory {QJsonArray selection,layout;};
  std::optional<RegionMemory> lastRegion_;
  CountdownProcess countdown_{QStringLiteral("putgd-capture")};

@@ -221,6 +221,12 @@ Error HistoryStore::recordCopiedLink(const QString& historyId,QString& operation
  update.addBindValue(id);update.addBindValue(historyId);if(!update.exec())return sqlError();
  if(update.numRowsAffected())operationId=id;return {};
 }
+Error HistoryStore::removeTextOperation(const QString& id) {
+ if(error_)return error_;
+ // Only a text operation's row, which has no items, ledger rows or history entries.
+ QSqlQuery q(db_);q.prepare("DELETE FROM operations WHERE id=? AND json_extract(data,'$.action')='text' AND json_array_length(data,'$.items')=0");q.addBindValue(id);
+ return q.exec()?Error{}:sqlError();
+}
 Operation HistoryStore::operation(const QString& id,Error* error) const {
  if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}
@@ -240,6 +246,8 @@ QList<Operation> HistoryStore::recover(Error* error) {
   else if(op.state=="editing") {op.state="interrupted";op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};changed=true;}
   // A recording that never reached explicit Upload is discarded with its private clip.
   else if(op.state=="recording") {op.state="interrupted";op.error={"recording_interrupted","Recording was interrupted before upload; nothing was uploaded",{}};changed=true;}
+  // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
+  else if(op.state=="recognizing") {op.state="interrupted";op.error={"text_interrupted","Text recognition was interrupted; nothing was copied",{}};changed=true;}
   else if(op.state=="running"||op.state=="stored"||op.state=="queued") {op.state="interrupted";changed=true;}
   for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
   if(op.state=="interrupted"&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}

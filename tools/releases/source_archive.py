@@ -19,7 +19,9 @@ EXACT_PATHS = frozenset({
     'tools/releases/build-appimage.sh', 'tools/releases/provision-appimage.py',
     'tools/releases/portable_appimage.py', 'tools/releases/appimage_notices.py',
     'tools/releases/appimage_update.py', 'tools/releases/appimage_diagnostics.py',
-    'tools/releases/http_retry.py',
+    'tools/releases/http_retry.py', 'tools/releases/install-native-deps.sh',
+    'tools/maintenance/refresh_pins.py', 'tools/ci/sdk_cache.py', 'tools/ci/sdk-source.sh',
+    'tools/ci/install-packages.sh',
     'tools/releases/appimage_complete_sources.py', 'tools/releases/audit_native.py',
     'tools/releases/audit_proton.py', 'tools/releases/release_identity.py',
 })
@@ -179,7 +181,7 @@ users. Proton setup requires a browser and a working desktop keychain; see
 After provisioning the SDK, run these commands from the extracted archive root:
 
 ```sh
-cmake --preset release \\
+cmake --preset release -DPUTGD_OCR=ON \\
   -DBUILD_TESTING=OFF \\
   -DPUTGD_LAB_FIXTURE=OFF \\
   -DPUTGD_PHYSICAL_BENCHMARKS=OFF \\

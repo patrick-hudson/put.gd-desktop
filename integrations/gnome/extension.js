@@ -27,7 +27,9 @@ const CHUNK = 65536;
 // monitor (#1363) is the monitor under the pointer, frozen at Prepare; repeat is
 // a rectangle the resident remembered, passed to Acquire with its layout key.
 const SOURCES = ['region', 'window', 'desktop', 'clipboard', 'monitor', 'repeat'];
-const ACTIONS = [...SOURCES, 'edit', 'record', 'scroll'];
+// text (#1428, extension version 23) is Copy text: its key prepares a native
+// region selection, as edit's does.
+const ACTIONS = [...SOURCES, 'edit', 'record', 'scroll', 'text'];
 const DELAYS = [3, 5, 10];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
@@ -1212,7 +1214,7 @@ export default class PutgdExtension extends Extension {
                 return;
             }
             try {
-                await this._prepare(id, action === 'edit' ? 'region' : action, sender);
+                await this._prepare(id, action === 'edit' || action === 'text' ? 'region' : action, sender);
             } catch (error) {
                 const request = this._requests.get(id);
                 if (!request)
