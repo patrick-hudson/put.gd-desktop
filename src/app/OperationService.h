@@ -4,6 +4,7 @@
 #include "core/EditorJob.h"
 #include "RecordingService.h"
 #include "ScrollCaptureService.h"
+#include "TextService.h"
 #include "core/SettingsService.h"
 #include "UploadSlots.h"
 #include <QElapsedTimer>
@@ -50,6 +51,14 @@ public:
  void scrollCommand(const QString& command,const QJsonObject& params,JsonReply reply) {if(command=="prepare")emit explicitRequest();scroll_->command(command,params,std::move(reply));}
  void setScrollBackend(std::unique_ptr<ScrollBackend> backend) {scroll_->setBackend(std::move(backend));}
  RecordingService& recording() {return *recording_;}
+ // Text recognition (#1428): what the Copy text action, text.recognize and
+ // History's Copy text call. Its host journals the operation, removes a completed
+ // or cancelled one's row and copies through the explicit-copy path.
+ TextService& text() {return *text_;}
+ // Tests inject a fake backend; production runs the putgd-ocr helper.
+ void setTextBackend(std::unique_ptr<TextBackend> backend) {text_->setBackend(std::move(backend));}
+ // text.inspect and text.cancel, answered from the service's live state and terminal record.
+ void textCommand(const QString& command,const QJsonObject& params,JsonReply);
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
  // The internal action of a diagnostics package upload (#123), outside the
@@ -301,6 +310,11 @@ private:
  std::unique_ptr<ScrollCaptureService> scroll_;
  Error acceptRecording(Operation&);
  std::unique_ptr<RecordingService> recording_;
+ Error acceptText(Operation&,const TextService::Acceptance&);
+ // The text operation's own completion branch: no items, uploads or copies of a link.
+ void finishText(Operation);
+ void copyRecognizedText(const Operation&,const QString& text,std::function<void(Error)> done);
+ std::unique_ptr<TextService> text_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;

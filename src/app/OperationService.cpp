@@ -123,6 +123,14 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   else admit(op,std::move(payload),std::move(released));
  };
  scroll_=std::make_unique<ScrollCaptureService>(root_+"/scroll",std::move(scrollHost),this);
+ TextService::Host textHost;
+ textHost.settings=host.settings;textHost.persist=host.persist;textHost.observe=host.observe;
+ textHost.accept=[this](Operation& op,const TextService::Acceptance& acceptance){return acceptText(op,acceptance);};
+ textHost.finish=[this](Operation op){finishText(std::move(op));};
+ textHost.copy=[this](const Operation& op,const QString& text,std::function<void(Error)> done){copyRecognizedText(op,text,std::move(done));};
+ textHost.background=[this](std::function<void()> work,std::function<void()> done){background([work=std::move(work)](Error&){work();return QJsonObject{};},[done=std::move(done)](Error,QJsonObject){done();});};
+ textHost.reclaim=[this]{requestHeapReclamation();};
+ text_=std::make_unique<TextService>(std::move(textHost),this);
  recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
  connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
  cleanupTimer_.setInterval(cleanupSchedule_.intervalMs);
@@ -173,7 +181,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(text_)text_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -283,6 +291,15 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   if((!options.isEmpty()&&!(options.size()==1&&options.contains("mode")))||(mode!="open"&&mode!="toggle")){reply({"invalid_request","The record action takes mode open or toggle",{}},{});return;}
   if(editor_){reply({"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}},{});return;}
   recording_->invoke(mode,reply);return;
+ }
+ // Copy text (#1428) is route-free and never reaches the upload pipeline. Its
+ // parameters are checked here; the region acquisition that feeds
+ // TextService::recognize is item 4a's.
+ if(action==Settings::textActionName()) {
+  const auto delay=options["delaySeconds"];
+  if((!options.isEmpty()&&!(options.size()==1&&options.contains("delaySeconds")))||(!delay.isUndefined()&&(!delay.isDouble()||delay.toDouble()!=delay.toInt()||!Settings::captureDelayChoices().contains(delay.toInt())))){reply({"invalid_request","The text action takes delaySeconds 0, 3, 5 or 10",{}},{});return;}
+  if(text_->active()){reply(textjob::failure("text_busy"),{});return;}
+  reply({"not_implemented","Copy text from a region is not built yet",{}},{});return;
  }
  return invokeCapture(action,std::move(reply),options,activationToken);
 }
@@ -595,6 +612,54 @@ Error OperationService::acceptScroll(Operation& op) {
  op.action=action;const auto route=op.settings.actions.value(action);op.destination={};
  if(route.destination=="upload"&&!route.profileId.isEmpty()){const auto profile=op.settings.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  return {};
+}
+Error OperationService::acceptText(Operation& op,const TextService::Acceptance& acceptance) {
+ if(!ready_)return startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}};
+ // An interactive source holds the one interactive-acquisition slot, as a capture does.
+ if(acceptance.interactive&&scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}};
+ if(acceptance.interactive&&!selectingId_.isEmpty())return {"busy_selecting","Another interactive acquisition is active",{}};
+ // Every source counts against the pending-operation limit. No output is needed.
+ const auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Pending operation limit reached",{}};
+ op.id=uuid();op.action=Settings::textActionName();op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+ // An explicit copy: it takes the ticket and the expected clipboard revision now,
+ // which also moves the upload-copy epoch past any pending link copy. With
+ // copy false the clipboard and every pending copy are left alone.
+ op.invocation=acceptance.copy?invalidateCopyEligibility():0;op.clipboardRevision=source_.clipboardRevision();op.destination={};
+ active_.insert(op.id,std::make_shared<std::atomic_bool>(false));if(acceptance.interactive)selectingId_=op.id;
+#ifdef __GLIBC__
+ heapReclamationPending_=true;
+#endif
+ // Never the source, a path or anything recognized: only that a text operation began.
+ logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output","none"}});
+ return {};
+}
+void OperationService::copyRecognizedText(const Operation& op,const QString& text,std::function<void(Error)> done) {
+ const auto ticket=op.invocation;const auto revision=op.clipboardRevision;
+ // Suppressed when the user changed the clipboard after acceptance, or a later explicit copy took the ticket.
+ const auto eligible=[this,ticket,revision]{return ticket!=0&&ticket==invocation_&&revision==source_.clipboardRevision();};
+ if(!eligible()){done({"copy_suppressed","The clipboard changed before the text was copied",{}});return;}
+ CopyPayload payload;payload.kind="text";payload.text=text;
+ deliverCopy(payload,std::move(done),eligible);
+}
+void OperationService::finishText(Operation op) {
+ op.phase=op.state;if(selectingId_==op.id)selectingId_.clear();
+ // A completed or cancelled text operation leaves no journal row; a failed one is
+ // kept and listed. Nothing recognized is in either.
+ const bool kept=op.state=="failed"||op.state=="interrupted";const auto path=databasePath();
+ background([path,op,kept](Error& e) {HistoryStore store(path);e=kept?store.saveOperation(op):store.removeTextOperation(op.id);return QJsonObject{};},[this,op](Error e,QJsonObject) {
+  clearObservation(op.id);emit changed(op.id);emit observationsChanged();
+  if(e)logging::error(logHistory(),"Cannot record the operation result",{{"operationId",op.id},{"error",logging::errorFields(e)}});
+  QJsonObject fields{{"operationId",op.id},{"action",op.action},{"state",op.state},{"copyStatus",op.copyStatus}};
+  if(op.error)fields["error"]=logging::errorFields(op.error);
+  logging::write(logOperation(),op.state=="completed"||op.state=="cancelled"?QtInfoMsg:QtWarningMsg,"Operation finished",fields);
+  releaseActive(op.id);
+ });
+}
+void OperationService::textCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
+ const auto id=params["operationId"].toString();
+ if(command=="inspect"){QJsonObject result;const auto error=text_->inspect(id,result);reply(error,result);}
+ else if(command=="cancel")text_->cancel(id,std::move(reply));
+ else reply({"not_implemented","This text recognition method is not built yet",{}},{});
 }
 Error OperationService::acceptRecording(Operation& op) {
  if(scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is active",{}};
@@ -1065,6 +1130,8 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  // A recording session lives in the recording service, not the upload queue:
  // cancelling its operation ends the capture or review and discards the clip.
  if(scroll_&&scroll_->activeId()==id){scroll_->command("cancel",{{"id",id}},std::move(reply));return;}
+ // A text operation ends in its service, which also stops a running helper.
+ if(text_&&text_->activeId()==id){text_->cancel(id,[](Error,QJsonObject){});reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Text recognition stops; nothing is copied"}});return;}
  if(recording_&&recording_->activeId()==id){recording_->command("cancel",{{"id",id}},[reply,id](Error error,QJsonObject){reply(error,error?QJsonObject{}:QJsonObject{{"operationId",id},{"cancellationRequested",true},{"effect","The recording and its working clip are discarded"}});});return;}
  if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.state="cancelled";finish(job.op);break;}
@@ -1240,7 +1307,7 @@ QJsonObject OperationService::capabilities() const {
    {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},
    {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","submit","cancel","raise"}}}},
-  {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()}};
+  {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()},{"text",text_->capabilities()}};
 }
 QJsonObject OperationService::diagnostics() const {
 #ifdef __GLIBC__
@@ -1250,7 +1317,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_}}}};
 }
