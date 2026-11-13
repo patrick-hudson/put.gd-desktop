@@ -90,13 +90,14 @@ def aggregate(rows):
     result = {}
     for name, group in sorted(groups.items()):
         chars = sum(r['characters'] for r in group)
-        result[name] = dict(captures=len(group), reference_words=sum(r['reference_words'] for r in group),
-                            median_cer=statistics.median([r['cer'] for r in group if r['cer'] is not None]) if any(r['cer'] is not None for r in group) else None,
-                            micro_cer=sum(r['edits'] for r in group) / chars if chars else None)
+        failures = sum('error' in r for r in group)
+        result[name] = dict(captures=len(group), failed_captures=failures, reference_words=sum(r['reference_words'] for r in group),
+                            median_cer=statistics.median([r['cer'] for r in group if r['cer'] is not None]) if not failures and any(r['cer'] is not None for r in group) else None,
+                            micro_cer=sum(r['edits'] or 0 for r in group) / chars if chars and not failures else None)
         for kind in ('urls', 'emails'):
-            hits = sum(r[kind]['exact'] for r in group)
+            hits = sum(r[kind]['exact'] or 0 for r in group)
             total = sum(r[kind]['total'] for r in group)
-            result[name][kind] = dict(exact=hits, total=total, rate=hits / total if total else None)
+            result[name][kind] = dict(exact=hits, total=total, rate=hits / total if total and not failures else None)
     return result
 
 
@@ -115,8 +116,10 @@ def main():
     p.add_argument('--scale', type=int, choices=(1, 2, 3), default=1)
     p.add_argument('--language', default='eng')
     p.add_argument('--psm', type=int, default=3)
+    p.add_argument('--timeout-seconds', type=float, default=60)
     p.add_argument('--output', type=Path, required=True)
     a = p.parse_args()
+    if a.timeout_seconds <= 0: p.error('--timeout-seconds must be positive')
     manifest = json.loads(a.manifest.read_text())
     supplied = json.loads(a.results.read_text()) if a.results else {}
     receipt = dict(schemaVersion=1, normalization='NFC; collapse whitespace; case sensitive',
@@ -137,20 +140,28 @@ def main():
         receipt['inputs'][capture['id']] = dict(image_sha256=hashlib.sha256(image.read_bytes()).hexdigest(),
                                                transcript_sha256=hashlib.sha256(reference.encode()).hexdigest())
         start = time.monotonic()
-        if a.tesseract:
-            pixels = image.read_bytes()
-            if a.scale != 1:
-                pixels = subprocess.run(['convert', '-', '-filter', 'Lanczos', '-resize', f'{a.scale*100}%', 'png:-'],
-                                        input=pixels, capture_output=True, check=True, timeout=60).stdout
-            run = subprocess.run(['tesseract', 'stdin', 'stdout', '-l', a.language, '--psm', str(a.psm), '--oem', '1'],
-                                 input=pixels, capture_output=True, check=True, timeout=60)
-            actual = run.stdout.decode('utf-8')
-        else:
-            actual = extract(supplied[capture['id']])
-        row = score(capture, reference, actual)
+        try:
+            if a.tesseract:
+                pixels = image.read_bytes()
+                if a.scale != 1:
+                    pixels = subprocess.run(['convert', '-', '-filter', 'Lanczos', '-resize', f'{a.scale*100}%', 'png:-'],
+                                            input=pixels, capture_output=True, check=True, timeout=a.timeout_seconds).stdout
+                run = subprocess.run(['tesseract', 'stdin', 'stdout', '-l', a.language, '--psm', str(a.psm), '--oem', '1'],
+                                     input=pixels, capture_output=True, check=True, timeout=a.timeout_seconds)
+                actual = run.stdout.decode('utf-8')
+            else:
+                actual = extract(supplied[capture['id']])
+            row = score(capture, reference, actual)
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, KeyError, ValueError) as error:
+            row = score(capture, reference, '')
+            row.update(cer=None, edits=None, error='timeout' if isinstance(error, subprocess.TimeoutExpired) else 'recognizer_failed')
+            for kind in ('urls', 'emails'):
+                row[kind].update(exact=None, rate=None)
         row['elapsed_seconds'] = time.monotonic() - start
         receipt['captures'].append(row)
     receipt['classes'] = aggregate(receipt['captures'])
+    receipt['status'] = 'incomplete' if any('error' in r for r in receipt['captures']) else 'measured'
+    receipt['timeout_seconds'] = a.timeout_seconds
     with a.output.open('x') as out:
         json.dump(receipt, out, indent=2)
         out.write('\n')
