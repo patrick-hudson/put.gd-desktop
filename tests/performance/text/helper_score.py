@@ -34,7 +34,7 @@ def main():
     if not data:raise ValueError('language data files missing')
     languages=a.language or ['eng']
     receipt=dict(engine=a.engine_label,languages=languages,build_id=a.build_id,identities=identities,language_data=data,captures=[],status='blocked')
-    receipt['linked_libraries']=subprocess.check_output(['ldd',str(a.helper.resolve())],text=True)
+    receipt['linked_libraries']=subprocess.check_output(['ldd',str(a.helper.resolve())],text=True,env={'LC_ALL':'C.UTF-8'})
     for line in receipt['linked_libraries'].splitlines():
         if '=>' in line and any(n in line for n in ('libtesseract','liblept','libZXing')):
             library=Path(line.split('=>',1)[1].split()[0]).resolve(strict=True)
