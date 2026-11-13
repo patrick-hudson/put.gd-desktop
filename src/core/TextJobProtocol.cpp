@@ -234,7 +234,7 @@ QString notification(const TextResult& result,const QString& copyStatus,const QS
  else if(characters&&codes)message=QStringLiteral("Copied %1 and %2").arg(plural(characters,"character"),plural(codes,"code"));
  else message=QStringLiteral("Copied %1").arg(characters?plural(characters,"character"):plural(codes,"code"));
  if(!missing.isEmpty())message+=missing.size()==1?QStringLiteral(" (%1 data is missing)").arg(missing.first()):QStringLiteral(" (%1 and %2 data are missing)").arg(missing.mid(0,missing.size()-1).join(", "),missing.last());
- if(result.truncated)message+=QStringLiteral("\nThe text was cut at the size limit");
+ if(result.truncated)message+=QStringLiteral("\nThe text was cut at a size or time limit.");
  return message;
 }
 bool validLanguage(const QString& identifier){
