@@ -209,8 +209,6 @@ text from region** is unavailable for the same reason as Capture region, and the
 Copy text and the editor's tools) still work. The `text` hotkey is registered with KGlobalAccel
 like the other actions and is unassigned by default. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
 
-TO CONFIRM before merge: no acceptance of Copy text has run on Plasma with the real engine.
-
 ## Clipboard and hotkeys
 
 Data control imports `text/uri-list`, supported image MIME types, and UTF-8 plain

@@ -126,7 +126,7 @@ Tips:
 
 ## Copy text from the screen
 
-Use **Copy text** to copy the text out of something you can see but cannot select: a screenshot of a terminal, an error in a dialog, a slide, a video frame, a PDF that is only an image. Choose **Copy text from region** in the tray, **Copy text** in the main window (its button reads **Text** when the window is narrow), or give **Copy text from region** a hotkey in **Settings → Hotkeys** (it has none by default). Drag a rectangle over the text. Escape cancels. A capture delay works as it does for a region.
+Use **Copy text** to copy the text out of something you can see but cannot select: a screenshot of a terminal, an error in a dialog, a slide, a video frame, a PDF that is only an image. Choose **Copy text from region** in the tray, **Copy text** in the main window (its button reads **Text** when the window is narrow), or give **Copy text from region** a hotkey in **Settings → Hotkeys** (it has none by default). Drag a rectangle over the text. Escape cancels. A capture delay works as it does for a region. The selector looks the same as for any other capture. It works on Cinnamon, GNOME, Plasma, Budgie and Hyprland, and on GNOME and Plasma sessions that run on X11.
 
 put.gd reads the region on your computer, in a short-lived helper that has no network access and cannot write a file or start a program. It then puts the text on your clipboard as plain text and tells you with a notification:
 
@@ -138,13 +138,14 @@ put.gd reads the region on your computer, in a short-lived helper that has no ne
 | Nothing | Unchanged | "No text found" |
 | You copied something else meanwhile | Unchanged | "Text not copied: the clipboard changed" |
 
-Codes that put.gd reads are QR, Micro QR, Data Matrix and Aztec codes. A code that holds binary data rather than text is neither copied nor counted. put.gd never opens a link from this action.
+Codes that put.gd reads are QR, Micro QR, Data Matrix and Aztec codes. A code that holds binary data rather than text is neither copied nor counted. A very small rotated Micro QR code (about 3 pixels a module), and a code with no white border around it, may not be read. put.gd never opens a link from this action.
 
 - **Nothing is saved or uploaded.** The action makes no file, no upload and no History item. The text is not written to put.gd's logs, settings or diagnostics, and the notification never shows it. A failed attempt is listed in History as "Text recognition failed" with its reason. Your clipboard manager is another matter: put.gd does not mark the copy as private, so a clipboard manager such as Klipper may keep the text. Clear it there if the text is sensitive.
 - **It reads what is on the screen.** Text a person could not read, such as near-white text on white or glyphs under about 5 pixels tall, is left out. Stray symbols that icons produce are left out. Check what you pasted: recognition can make mistakes, especially with unusual fonts, small type and mixed columns.
 - **Notifications off.** The copy still happens. You just get no message.
 - **One at a time.** Pressing it again while it is still reading says "Text recognition is still running" and changes nothing.
-- **Very long text.** An image over 24 megapixels is refused. A capture with more text than put.gd can read in about 16 seconds, such as a full 4K screen of small dense type, returns what it read so far, in reading order, and the notification adds "The text was cut at a size or time limit." Select a smaller region to read the rest. A copy holds at most 1 MiB of text.
+- **How long it takes.** Reading costs roughly a millisecond a character on each processor core. A paragraph takes about half a second. A region packed with text takes several seconds, for example 8,739 characters of terminal text took 5.7 seconds at the 95th percentile with the native package and 3.6 seconds with the AppImage on a 2015 low-power CPU (the m74 test machine), before the last speed-up, and the reading alone then took 2.55 seconds on that machine. A whole 4K screen takes 5 to 9 seconds. A faster processor with more cores is quicker. A 4K screen is read window by window, each at its own scale.
+- **Very long text.** An image over 24 megapixels is refused. A capture with more text than put.gd can read in about 16 seconds, such as a full 4K screen of small dense type, returns what it read so far, in reading order, and the notification adds "The text was cut at a size or time limit." It does not fail. Select a smaller region to read the rest. A copy holds at most 1 MiB of text.
 - **If it will not run.** The button and the tray entry say why. The usual reasons are missing English data, a missing `putgd-ocr`, or a kernel too old to confine the helper. See [text recognition failures](errors.md#text-recognition-and-qr-codes) for each one and what to do.
 
 ### Languages
@@ -153,7 +154,7 @@ English comes with put.gd. By default put.gd reads the language of your desktop 
 
 You can add data in two ways:
 
-- Install your distribution's Tesseract language package. For German that is `tesseract-ocr-deu` on Debian, Ubuntu and Mint, `tesseract-langpack-deu` on Fedora and `tesseract-data-deu` on Arch.
+- Install your distribution's Tesseract language package. For German that is `tesseract-ocr-deu` on Debian, Ubuntu and Mint, `tesseract-langpack-deu` on Fedora and `tesseract-data-deu` on Arch. Some of these are larger models than English needs, and put.gd loads only the part it uses.
 - Or put the language's `.traineddata` file, such as `deu.traineddata` from the `tessdata_fast` repository, in `~/.local/share/putgd/tessdata/`. Every package kind reads that folder, and a file you put there wins over the system's copy of the same language.
 
 put.gd does not download language data. Reading several languages at once takes more memory, and put.gd refuses more than three or more than 64 MiB of data.
@@ -168,14 +169,14 @@ Choose the **Copy text** tool (G) in the editor, the last one, after Blur. put.g
 - It reads the original image inside your crop with every Redact already applied. Marks you added, such as arrows and text, are not read, and **Blur does not hide text from it**. A word under a Redact is never copied, and neither is a code.
 - If you add, move or remove a Redact, or change the crop, the old result is thrown away and the tool reads again.
 
-**Quick redact** is a menu in the Redact tool's panel: **Email addresses**, **Phone numbers**, **IP addresses**, **Card numbers**, **Keys and tokens** and **All of these**. It adds ordinary Redact marks over matching text, as one step you can undo, and says "Added 3 suggested redactions" or "No matches found. Text can still be there." Hover **Keys and tokens** to see the shapes it knows: AWS access key IDs, GitHub, GitLab, Slack and Stripe tokens, JWTs, private-key blocks, and long unbroken hex or base64 runs.
+**Quick redact** is a menu in the Redact tool's panel: **Email addresses**, **Phone numbers**, **IP addresses**, **Card numbers**, **Keys and tokens** and **All of these**. It adds ordinary Redact marks over matching text, as one step you can undo, and says "Added 3 suggested redactions" or "No matches found. Text can still be there." Hover **Keys and tokens** to see the shapes it knows: AWS access key IDs, GitHub, GitLab, Slack and Stripe tokens, JWTs, private-key blocks, and long unbroken hex or base64 runs. Recognition often splits or misreads a long token, and Quick redact copes with that. A mark reaches about a character and a half beyond the text it covers on each side, and it can take in an ordinary word that is joined to a token, such as a label like "sha256" or the words after a token. A version number such as 26.1112.4660 is not suggested as a phone number.
 
-**Quick redact only suggests. Recognition can miss text, and a page with no matches can still hold some.** Look at the result yourself before you upload. Redact is what removes the pixels, and Quick redact only places Redacts for you.
+**Quick redact only suggests. Recognition can miss text, and a page with no matches can still hold some.** Look at the result yourself before you upload. Redact is what removes the pixels, and Quick redact only places Redacts for you. A number made of repeated digits can be counted wrong, so a card number like that can be missed. If you submit or close the edit while Quick redact is still working, it adds nothing and says "Quick redact added nothing: the edit was already submitted."
 
 ### Copy text and show a QR code from History
 
 - **Copy text** in an image item's inspector and ⋯ menu does the same as the action, reading the item's local copy. It is off, and says why, when the item has no local copy (turn on **Keep a local copy** before capturing) or is not a PNG or JPEG image. put.gd never downloads an upload to read it.
-- **QR code** in an uploaded item's inspector and **Show QR code** in its ⋯ menu open a window with a QR code of the link **Copy link** would copy, so a phone can scan it. An expired link that can be refreshed is refreshed first. **Copy image** puts the code on the clipboard and **Save…** writes it as a 1,024 pixel PNG. It is off, and says why, for a private, removed or revoked link and for an expired link that cannot be refreshed. A link over 2,331 bytes is too long for a QR code, and the window says so.
+- **QR code** in an uploaded item's inspector and **Show QR code** in its ⋯ menu open a window with a QR code of the link **Copy link** would copy, so a phone can scan it. An expired link that can be refreshed is refreshed first. **Copy image** puts the code on the clipboard and **Save…** writes it as a 1,024 pixel PNG. It is off, and says why, for a private, removed or revoked link and for an expired link that cannot be refreshed. A link over 2,331 bytes is too long for a QR code, and the window says so. **Save…** never replaces a file without asking.
 - History search is still by name only. put.gd does not read the text in your captures unless you ask.
 
 ## Record the screen

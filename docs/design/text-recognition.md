@@ -11,10 +11,6 @@ It runs in one temporary helper, `putgd-ocr`, that is confined to a sandbox, tak
 pixels in sealed memory and gives text back in memory. The resident and `putgd-ui`
 never link or load Tesseract, Leptonica or ZXing-cpp.
 
-Lines that start "TO CONFIRM before merge" mark a fact that is still being settled by
-an open item of #1428. The coordinator replaces each one with the settled fact before this
-page merges. They are listed in the pull request that adds this page.
-
 ## What it does
 
 | Where | What | Starts from |
@@ -41,8 +37,8 @@ What it does not do:
    with an optional `delaySeconds`. A screen that is locked refuses it as it refuses every
    capture.
 2. **Select.** The region selector of **Capture region** on that desktop, live or
-   screenshot-first as configured. Escape cancels. Where a selector says what the capture
-   will do, it says "Copies text". The capture delay, the "Also delay captures started by a
+   screenshot-first as configured. Escape cancels. The selector's visible hint is the generic
+   one that every action gets, so it does not say that the capture copies text. The capture delay, the "Also delay captures started by a
    hotkey" preference and their ordering work as they do for a region. A text capture never
    changes the rectangle that **Repeat last region** remembers.
 3. **Recognize.** The pixels go to `putgd-ocr`. It reads codes first and fills their areas
@@ -107,10 +103,7 @@ The helper links a Qt Core only protocol library, not `putgd_core`, which brings
 Qt SQL. The package audits refuse a `putgd-ocr` that needs QtGui, QtSql, QtNetwork or
 QtDBus. It has no display, session socket, configuration or credentials. `putgd-ocr
 --version-json` prints the build identity before it reads any input or confines itself, so
-a package audit can identify it without a control pipe.
-
-TO CONFIRM before merge: the `--version-json` path is in the packaging pull request
-(#1438), not yet on the integration branch.
+a package audit can identify it without a control pipe or any data. `--version` is not supported.
 
 ### How data moves
 
@@ -138,18 +131,34 @@ kernel's Landlock version, and nothing stronger.
   mapped libraries and glibc's reservations would trip it.
 - **Landlock** through system calls, ABI 3 or later so that truncation by path is covered.
   The helper may read `/usr/lib`, `/usr/lib64`, `/lib`, `/lib64`, `/proc/self`,
-  `/sys/devices/system/cpu`, its own installation prefix and the language data directories. It
-  may write nowhere. TCP is denied from ABI 4. The signal and abstract-socket scopes are set
-  from ABI 6. This is what stops a compromised helper from writing `~/.bashrc` or reading
-  `~/.aws/credentials`.
-- **seccomp** on every thread (`SECCOMP_FILTER_FLAG_TSYNC`), a hand-written x86_64 deny
-  list with the architecture checked and x32 numbers refused. `socket` and `connect` fail with
-  `EPERM`. `clone3` fails with `ENOSYS`, so glibc falls back to `clone`. These kill the whole
-  process: `execve`, `execveat`, `ptrace`, `process_vm_readv`, `process_vm_writev`,
-  `pidfd_getfd`, the three `io_uring` calls, `bpf`, `perf_event_open`, `userfaultfd`,
-  `keyctl`, `unshare`, `setns`, `mount`, `pivot_root`, `chroot`, `fork`, `vfork`, and any
-  `clone` that is not a thread or that asks for a new namespace. The helper can start threads
-  but no process, and nothing can outlive it.
+  `/sys/devices/system/cpu`, the language data directories, and under its own installation prefix
+  only `lib`, `lib64` and `share/putgd` (the AppImage's bundled engines and English data). It may
+  write nowhere. TCP is denied from ABI 4. The signal and abstract-socket scopes are set from ABI 6.
+  This is what stops a compromised helper from writing `~/.bashrc` or reading `~/.aws/credentials`.
+  - **The rules are symlink-safe.** Landlock grants the directory a path resolves to, so every
+    path is resolved first. A prefix that is `/`, a home directory or anything above one grants
+    nothing, and a `lib` that is a symlink into a home directory grants nothing. A user language
+    directory is granted only when it reaches the home directory without a symlink below it. A
+    prefix such as `/home/alice/bin` therefore never exposes `/home/alice`.
+- **seccomp** on every thread (`SECCOMP_FILTER_FLAG_TSYNC`), a hand-written x86_64 deny list
+  with the architecture checked and x32 numbers refused. Landlock does not cover everything, so
+  the filter also denies what changes something outside the process:
+  - **Killed, the whole process:** `execve`, `execveat`, `ptrace`, `process_vm_readv`,
+    `process_vm_writev`, `pidfd_getfd`, the three `io_uring` calls, `bpf`, `perf_event_open`,
+    `userfaultfd`, `keyctl`, `unshare`, `setns`, `mount`, `pivot_root`, `chroot`, `fork`, `vfork`,
+    and any `clone` that is not a thread or that asks for a new namespace. The helper can start
+    threads but no process, and nothing can outlive it.
+  - **Fail with `EPERM`:** `socket` and `connect`. The `chmod` and `chown` families, extended
+    attributes, file times, `mknod`, `link`, `symlink`, `rename`, `unlink`, `rmdir`, `mkdir` and
+    `truncate`. `setpriority`, `ioprio_set`, `kcmp`, `process_madvise` and `process_mrelease`.
+    System V IPC and POSIX message queues. `add_key` and `request_key`. The new mount API.
+    `tkill` and `pidfd_send_signal`. `clone3` fails with `ENOSYS`, so glibc falls back to `clone`.
+  - **Allowed only for the helper itself (pid 0 or its own pid):** `prlimit64`, the `sched_set*`
+    calls, `migrate_pages` and `move_pages`. A helper therefore cannot change another process's
+    resource limits, such as setting the parent's hard CPU limit to zero.
+  - **Signals only to itself:** `kill`, `tgkill`, `rt_sigqueueinfo` and `rt_tgsigqueueinfo` are
+    allowed with the helper's own pid as the target and nothing else. Below Landlock ABI 6 nothing
+    else would stop a helper from killing its parent.
 - Sanitizer builds skip the memory limit, the dumpable setting and the `ptrace` kill, which
   the sanitizers need. Confinement is tested on builds without a sanitizer only.
 
@@ -158,28 +167,36 @@ was tried on: Mint 22.3 on m74 (kernel 6.14) 6, Debian 13 on d69 (6.12) 6, Kubun
 k72 (7.0) 8, Fedora 44 on f44 (7.2) 10, and GitHub's runners 8. The confinement test passes on
 m74, d69, k72 and f44 and in CI's `ubuntu:24.04` container as an unprivileged user. It tries a
 socket, an `exec`, a child process, a write in the home directory, a read outside the allowed
-directories and a read of another process's memory after a banded, parallel recognition, and
-all of them fail.
-
-TO CONFIRM before merge: the engine follow-up (#1452) narrows the Landlock read rule from
-the helper's whole prefix to `<prefix>/lib`, `lib64` and `share/putgd`, and allows signals
-only to the helper's own process, so that a kernel below Landlock ABI 6 cannot let it signal
-its parent. Describe the rule that merged.
+directories, a read beside a symlinked prefix, a signal to its parent, a `chmod` in the home
+directory, a change to its parent's limits and a read of another process's memory, after a
+banded, parallel recognition, and all of them fail.
 
 ### Bounds and budgets
 
 | Bound | Value |
 | --- | --- |
-| Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey that is at most 24 MiB, shared through the memfd |
+| Input | At most 24 megapixels and at most 32,768 pixels on a side. More is refused with `input_excessive`, which is the editor's own limit. As 8-bit grey that is at most 24 MiB, shared through the memfd. For a PNG the resident also applies the configured image limits |
 | Deadline | Fixed by the parent before it prepares the input, 20 seconds at most. At the deadline the parent ends the exact child, with terminate and then kill, and the job is `text_job_timeout`. Cancellation is checked between waits |
 | Result | Text at most 1 MiB. At most 20,000 words of at most 256 bytes each. At most 64 codes of at most 8 KiB each. Over a bound the result is cut there and `truncated` is true. The 8 MiB output cap governs all of them together, and the helper cuts candidates first, then words, then codes, then text |
 | Languages | At most three per job and at most 64 MiB of data files in all. A language that a data file pulls in by itself counts toward both. Over either limit the job fails with `language_unavailable` |
-| Memory | Peak resident size of the whole job under 128 MiB with the shipped English data for any accepted input, and under 80 MiB for a region up to 1 megapixel. With other data the budget grows by the size of the data files beyond English, 192 MiB at most. The `RLIMIT_DATA` ceiling comes from the same figure. The resident set size is what acceptance measures |
+| Memory | One budget: peak resident size of the whole job of 128 MiB with the shipped English data, which is a 4 MB file. Other languages add the size of their data beyond English, 192 MiB at most. The `RLIMIT_DATA` ceiling comes from the same figure. The resident set size is what acceptance measures |
 
-TO CONFIRM before merge: the 80 MiB figure for a region up to 1 megapixel is the plan's.
-The engine measured 101 to 103 MiB on a 1-megapixel dense region with four threads (see
-[measurements](#measurements)). The coordinator raised the budget for that case to 128 MiB
-while the engine item measured it. State which figure the engine follow-up settles.
+The helper recognizes on up to four engines at once and starts another engine only while its
+resident set stays under the budget, so the budget decides how many cores a job can use. A
+worker that has read one task reserves only the working memory its next task needs beyond the
+largest it has read, and an extra engine is counted without the language data it shares. There is no smaller memory figure for small regions. The helper is transient, and the memory buys
+speed.
+
+**Language data is trimmed in memory.** Some distributions ship a larger model than English
+needs. Arch's `tesseract-data-eng` is 23,466,654 bytes, because it also holds the legacy
+engine's dictionaries and tables. The helper reads the file and hands Tesseract only the
+entries that the LSTM engine reads (the configuration, the ambiguities and parameters, the LSTM
+model with its three dictionaries, the unicharset, the recoder and the version), with the
+offset table rewritten. The output is identical on all 178 captures, on Arch's model and on the
+small LSTM-only English model. A model with no LSTM entry is refused as `language_unavailable`,
+not run on the legacy engine at about five times the memory. The memory budget grows by the
+trimmed size of an extra language, not the file's size. The receipts still record each data
+file's own size and SHA-256.
 
 ### Time budget
 
@@ -187,55 +204,101 @@ Recognition has a time budget inside the deadline. It stops 16 seconds after the
 and returns what it has recognized so far, in reading order, with `truncated` true. The
 notification and the editor then say the text was cut. A job that has text to give never
 fails for time. This was decided because recognition time follows the number of characters,
-not the number of pixels. On m74 and d69 it costs 0.55 to 1 millisecond for each character on
-Tesseract 5.3.4 and 5.5.0 alike, so a 24-megapixel page of dense text, about 100,000
-characters, needs 54 seconds or more, and no pixel limit brings every accepted input inside
-the deadline.
+not the number of pixels. It costs roughly a millisecond a character on each core. On m74 one
+engine costs 0.77 ms a character and on k72 0.53 ms. A 24-megapixel page of dense text, about
+100,000 characters, therefore cannot be read inside the deadline, and no pixel limit changes
+that.
 
-- A band is not started when the slowest band so far says it cannot finish.
+- A task is not started when the slowest task so far says it cannot finish.
 - Every pass gets Tesseract's own monitor deadline.
 - Most of a dense page's time is in Tesseract's layout and line finding, which the monitor
-  cannot interrupt. A 1.5 second deadline stopped one pass after 717 of about 7,600 characters,
-  and the pass still took 4.4 seconds.
+  cannot interrupt.
+- The budget is a guarantee. At the deadline, plus one second of grace for a pass that ends on
+  its monitor deadline, the main thread closes the hand-over of results under a lock and waits
+  only for band copies already in progress. A thread still in an engine's start or in a
+  recognition that overran is detached. Everything a worker touches is one heap object that is
+  not freed while such a thread lives, and the helper leaves with `_exit` once the result and
+  the checkpoint are accepted. A job therefore never waits on a slow engine start past its
+  budget. This was shown by injecting a 40 second sleep into an extra engine's start: a region
+  finished in 1.02 seconds, a 4K screen in 6.08 seconds, and a dense 24-megapixel page in 15.25
+  seconds, truncated, all with exit 0 and a result.
 
-### Scale, single pass and bands
+Patrick decided that a result cut at the time budget is returned and marked, rather than
+failing (2026-11-13).
 
-- **Scale.** Chosen from the estimated text height, 1 to 3 times, and limited by a cap of 8
-  megapixels on the scaled pixels of one job. Above the cap the scale falls toward 1 times. The
-  cap was measured on m74: a larger one sent 24-megapixel inputs into the CPU limit. Scaling
-  is done one band at a time from the unscaled input, so the whole scaled image never exists.
-- **Single pass.** When the scaled image is at most 8 megapixels it is recognized whole, and
-  Tesseract's own layout gives the reading order.
-- **Bands.** A larger scaled image is cut into horizontal bands of 1 to 2 megapixels, never
-  more than 8 megapixels after scaling with overlap included.
+### Scale, panels, single pass and bands
+
+The method is Tesseract with page segmentation 6 (the region read as one block of lines),
+Otsu thresholding, the dictionary on, no border, and put.gd's own polarity (a dark page, light
+text on a dark background, is inverted by put.gd's estimate before Tesseract sees it). Page
+segmentation 3, which was the first choice, takes monospaced, aligned lines for table columns.
+On the corpus it lost whole terminal and plain-page regions.
+
+- **Screen or region.** An input of at least 4,000,000 pixels is a screen. A screen is cut into
+  panels, and its job has a cap of 16,000,000 scaled pixels. Anything smaller is one panel, the
+  whole image, with a cap of 8,000,000. The caps were measured on m74: a larger one sent
+  24-megapixel inputs into the CPU limit.
+- **Panels.** A whole screen is read panel by panel, each at its own scale, in reading order.
+  An XY cut over a 4 by 4 pixel grid of text-like activity (grey steps of at least 32 levels)
+  separates windows, columns and bars. Long straight runs (window borders, rules, underlines) are
+  ignored, so they do not hide a gutter. A cut down the page needs a gutter of at least three
+  line heights with activity on both sides, and a gutter that a text line runs straight across is
+  not a gutter. A cut across the page is kept only when one of its parts is then cut down. Each
+  panel is trimmed to its content and gets its own profile, polarity and scale. Panels are joined
+  top to bottom, then left to right, with a new block for each. A region under 4 megapixels is
+  never cut into panels, because on a chat window cutting the message list read 2.0 to 2.2 percent
+  against 0.4.
+- **Preferred scale.** Each panel asks for 24 divided by its text height, rounded up, from 1 to 3
+  times. The text height is the median height of its ink row runs, and 2 when unknown.
+- **The cap.** When the panels' scaled pixels together (width times height times scale squared,
+  summed) exceed the job's cap, every panel's scale is multiplied by the square root of the cap
+  over that sum, never below 1. Scaling is done one band at a time from the unscaled input, so the
+  whole scaled image never exists.
+- **Single pass.** A panel is read in one pass up to 8,000,000 scaled pixels, and Tesseract's own
+  layout gives the reading order. A single pass of at least 500,000 scaled pixels is cut into about
+  two strips for each engine, between text lines, and the strips are read in parallel.
+  - A cut goes in the quietest rows of a blank run (a row counts as blank with up to a 256th of
+    its width in ink pixels, so cutting through a descender would read "sample" as "samnle").
+  - Where no row is blank, such as a border down a window or lines set without leading, the cut
+    is the least-inked row within one line pitch of its share, taken only when that row holds at
+    most a quarter of the ink around it. Otherwise that cut is skipped.
+  - Strips are at least four line heights, and are joined in page order.
+  - Strips are not quite the whole block, because Tesseract judges line statistics per strip. On
+    editor code the median error was 1.270 percent for the whole block and 1.481 percent in two
+    strips for each engine (m74, Tesseract 5.3.4). Dense terminals read exactly the same.
+- **Bands.** A panel above 8,000,000 scaled pixels is cut into horizontal bands of the scaled
+  image over twice the number of engines, between 1 and 2 megapixels and at least eight line
+  heights, never more than 8 megapixels with overlap included.
   - Each cut goes at the last blank row gap in the final quarter of the band.
   - With no gap there, the cut is made at the limit and the next band starts earlier by
     twice the estimated line height, and by no more than a quarter of the band. Every band
     starts strictly below the one before. A word found in both bands is merged by box overlap and
-    keeps the higher confidence.
+    keeps the higher confidence, and the seam keeps the engine's logical order, so a right-to-left
+    line joins correctly. A band boundary is not a paragraph break.
   - When a band would be shorter than four text lines, which happens for a very wide image, the
     scale drops to 1 times. If it still would be, the input is refused with `input_excessive`.
-  - Reading order for a banded image is band by band, top to bottom, with Tesseract's order
-    inside each band. The result says `banded: true`. There is no global multi-column order
-    for an image large enough to be banded.
-- **Threads.** Recognition runs on up to four threads, one engine each, from the CPUs the
-  process may run on (its affinity or a container's cpuset, not the machine's online count).
-  Bands run in parallel. A single pass of half a megapixel or more is laid out once and its
-  blocks run in parallel. Results join in task order, never in the order the tasks finish.
-  An extra engine starts only while the resident set stays under the job's memory budget.
+  - The result says `banded: true` when any band was cut.
+- **Two columns.** A tall two-column page of 4 megapixels or more is two panels: the whole left
+  column, then the whole right column, each banded within. Below 4 megapixels a two-column page is
+  one panel, read as page segmentation 6 reads it. There is no global multi-column order across
+  bands.
+- **Threads.** Recognition runs on up to four engines, one for each CPU the process may run on
+  (its affinity or a container's cpuset, not the machine's online count). The bands and strips of
+  every panel go into one pool. Results join in task order, never in the order the tasks finish. A
+  screen measures its first task before it shares, and an extra engine starts only while the time
+  left covers twice an engine's start plus the slowest task.
 - **Codes first.** ZXing-cpp reads the full grey image. Then each decoded code's area is
   filled with the background in every band's copy, so a band never needs a code, and code
   modules never leak into the text. Formats read are QR Code, Micro QR Code, Data Matrix and
   Aztec. The helper uses only `ReadBarcodes(ImageView, ReaderOptions)`, which exists in ZXing-cpp
-  2.2.1, 2.3.0 and 3.1.1, and maps the formats by name across versions.
-- **Polarity.** A dark page, light text on a dark background, is inverted by put.gd's own
-  estimate before Tesseract sees it.
+  2.2.1, 2.3.0 and 3.1.1, and maps the formats by name across versions. Its options are the most
+  ZXing offers: try harder, try rotated, try inverted, try downscaled, and up to 255 symbols.
 
-TO CONFIRM before merge: the recognition method is not final. The values above (page
-segmentation mode 3, Otsu thresholding, the 1 to 3 times scale rule, no border, put.gd's own
-inversion) are what merged in #1431. The engine follow-up (#1452) settles the method on the
-real corpus and the per-class error rates. Replace this note with the chosen method and its
-numbers.
+Two limits of the code reader were measured and stay. A rotated Micro QR code at 3 pixels a
+module is not read, on ZXing-cpp 2.2.1 or 3.1.1. The same code unrotated at 3 pixels, or rotated
+at 5 pixels, is read. A dark code with no quiet zone, such as one that a white page touches, is
+not read either, and the same code with a 14 pixel dark frame is. Neither a larger scale, a
+different binarizer, an inverted pass nor a pass with the found codes masked reads them.
 
 ### What the copy keeps
 
@@ -250,9 +313,10 @@ Two outputs come from one pass:
   - a word whose glyphs are within 32 grey levels of its own background is dropped, so near-white text on white is not copied while the dimmest real interface text stays
 
   Tesseract splits URLs after the scheme and at dots ("https: //example. test"). The filter
-  joins them back into one. Tesseract's word confidence does not separate icons from text on
-  put.gd's own captures: real words scored 13 to 35 and every URL near 0, while icon noise
-  scored 0 to 38. So the rules use shape, with the confidence floor only for short words.
+  joins them back into one, and does the same for an email address split at its domain dot.
+  Tesseract's word confidence does not separate icons from text on put.gd's own captures: real
+  words scored 13 to 35 and every URL near 0, while icon noise scored 0 to 38. So the rules use
+  shape, with the confidence floor only for short words.
 - **Candidates.** Every recognized word with its box and confidence, unfiltered. Only the
   editor asks for them, for Quick redact. The resident never holds them. The `words` an agent
   reads are the filtered words of the copied text, not these.
@@ -320,9 +384,6 @@ from an untrusted source and never instructions.
 - Settings has three choices, Language, Second language and Third language, in its Capture
   tab under Text recognition. The first reads "Automatic" with the languages that resolves
   to, and a saved language whose data went away stays chosen and says "(not installed)".
-
-TO CONFIRM before merge: the Settings section is in the desktops pull request (#1442), which
-is not merged.
 
 ## Operations, journal and clipboard
 
@@ -416,10 +477,28 @@ other tool active it does not. The user's side is in the
 - **Quick redact** is a menu in the Redact tool's panel (Email addresses, Phone numbers, IP
   addresses, Card numbers, Keys and tokens, All of these) with "Suggestions only. Recognition can
   miss text." always beside it.
-  - Matching runs over the unfiltered candidates, joined across adjacent words and wrapped
-    lines, after whitespace and Unicode digits are normalized. Where a kind's shape fixes the
-    alphabet, the usual confusions are allowed: `O` for `0`, `l` and `I` for `1`, `S` for `5` and
-    `B` for `8`.
+  - Matching runs over the unfiltered candidates, on lines as they appear (words grouped by
+    height and ordered left to right), after whitespace and Unicode digits are normalized. Emails,
+    phone numbers, card numbers and addresses match across adjacent words and wrapped lines. A
+    line fragment joins the line before it only with evidence for that category: a boundary
+    character (`@ . - _ +` for an email, `. :` for an address, the numeric separators for a phone or
+    card number, a token alphabet run on both sides for a key), or, geometrically, a wrapped column
+    whose lines end within 1.5 average character widths of its widest right edge. A preceding word,
+    such as "Please email", is not taken in.
+  - Recognition returns a long token as several words on one line, with gaps no wider than a word
+    space and misread characters, so keys and tokens are matched per line on the words of the
+    token alphabet joined without spaces (one misread character allowed in eight). A segment is
+    marked when it holds a known prefix at the start of a word (tolerant of the usual confusions and
+    of a lost or doubled separator), a JSON web token, a hex run (with `l`, `i`, `O`, `S` and `t`
+    confusions) or a base64 run with the shape of random data. A PEM block is everything from a
+    BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
+    interface text from looking like base64: at least 20 percent capitals, at most 40 percent
+    digits, under 30 percent of the letters in lowercase runs of five or more, and at most one dot,
+    colon or comma in 80 characters. A prefix never fires inside a word ("ghosts", "they").
+  - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
+    `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
+    a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
+    version such as 26.1112.4660 is not suggested.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid) and `key`. Keys and
     tokens means these shapes, listed in the tool's help: AWS access key IDs, GitHub, GitLab, Slack
@@ -427,19 +506,34 @@ other tool active it does not. The user's side is in the
     characters or more.
   - A word belongs to one match at most. Where kinds overlap the more specific wins, in the order
     key, email, card, ip, phone.
-  - A match becomes Redact marks over its word boxes, padded by a quarter of the line height, one
-    box per line, clamped to the image. One invocation is one undo step. The result says "Added 3
+  - A match becomes Redact marks over its word boxes, one box per line, padded by a quarter of the
+    line height above and below and by one and a half characters on each side, clamped to the
+    image. Recognition boxes can stop a whole glyph short, which the side padding covers. A mark can
+    also take in an ordinary word joined to a token, such as a label with digits ("sha256"), the
+    words after a prefixed token up to its usual length, or the rest of a PEM BEGIN or END line.
+    Recall wins over that precision. One invocation is one undo step. The result says "Added 3
     suggested redactions" or "No matches found. Text can still be there.". There is no "safe"
     verdict and no upload confirmation.
   - Choosing a category with no result for the current revision starts recognition and waits for
     it, or joins the job already running, under that job's deadline. If a Redact mark or the crop
     changes while it waits, it ends with `edit_stale` and adds nothing.
-  - A match is a suggestion. Redact is what removes pixels.
+  - A match is a suggestion. Redact is what removes pixels. If the edit was already submitted or
+    discarded when it finishes, it adds nothing, says "Quick redact added nothing: the edit was
+    already submitted." and returns `editor_finalizing`.
+  - Known limit: recognition damage that matching cannot repair. A 16-digit card number of repeated
+    digits, such as `9999990000000006` at 13 px in a monospaced dark font, is counted wrong by
+    Tesseract at every scale tried, and a card number read with one digit too many fails the Luhn
+    check. Dropping a digit to repair it would make any number pass.
+  - Measured through the real editor and helper on k72 (Tesseract 5.5.0, offscreen, not a desktop):
+    all 17 items on each of the 24 synthetic pages and 30 of 30 on the hashes page were covered, the
+    two clean pages got no mark, and a held-out set (12, 13, 16 and 24 px, 16 pages) covered 303 of 304
+    items with 2 extra marks. Quick redact still suggests only. The key and token shapes rest on
+    measured thresholds with real but not wide margins, and should stay behind that line.
 
 ## History
 
-- **Copy text** is on an image item's inspector and menu, beside Edit. It is for PNG and JPEG
-  items and reads the retained local copy, the same rule as Edit again. With no local copy it is
+- **Copy text** is on an image item's inspector and menu, beside Edit, including when a batch has
+  several images. It is for PNG and JPEG items and reads the retained local copy, the same rule as Edit again. With no local copy it is
   disabled with "Copy text needs the local copy. Turn on Keep a local copy in Settings → Capture
   for future captures.". put.gd never downloads an upload to read it. It calls `history.copyText`
   and reports counts in the status line.
@@ -466,8 +560,13 @@ other tool active it does not. The user's side is in the
   through `history.qr`, so the window touches neither the clipboard nor a file.
 - **Copy image and Save** produce a 1-bit PNG at the smallest whole scale that reaches 1,024
   pixels, whatever the window shows. The PNG holds only IHDR, IDAT and IEND and is written with
-  zlib by hand. Save needs an absolute `.png` path and fails on an existing file unless
-  `overwrite` is true, as the editor's Save a copy does.
+  zlib by hand. Save needs an absolute `.png` path and fails on an existing file or a dangling symlink
+  unless `overwrite` is true, as the editor's Save a copy does. Without `overwrite` the file is made
+  complete in a private file in the same directory and published with `link()`, which fails if the
+  destination appeared meanwhile. The window's Save asks again before it replaces a file. A PNG that
+  could not be encoded is `save_failed` with "The QR code could not be encoded". The clipboard
+  revision is taken before the receipt refresh and checked with the copy ticket, so a newer user copy
+  made while the refresh runs is not overwritten.
 - **When it is offered.** Show QR code is disabled, with the reason in its tooltip, for a
   private, revoked or removed link and for an expired one that cannot be refreshed. The reasons
   are `details.reason` of `link_unavailable`: `private`, `revoked`, `removed`, `expired` or `none`.
@@ -496,7 +595,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | `history.copyText` | `id`, `keepResult?` (default false) | `operationId` and `state`. Follows `text.inspect` |
 | `history.qr` | `id`, `mode` (`copy`, `save` or `show`), `path` (absolute, `save` only), `overwrite?` (`save` only) | Once the receipt refresh and the copy or write are done, under Copy link's deadline: `copyStatus`, the saved `path`, or the window state. `show` needs the History window open |
 
-`editor.inspect`'s `text` block has `state` (`idle`, `recognizing`, `done` or `failed`),
+`editor.inspect`'s `text` block has `state` (`idle`, `recognizing`, `completed` or `failed`),
 `result` (a positive integer that identifies one recognition result and changes with every new
 one, or null), `words`, `codes`, `truncated`, `selection` (`{from, to}` or null) and, for a
 failure, `error`. Every indexed editor method checks `result` against the current identity and
@@ -529,19 +628,23 @@ Each failure has a fixed message with no path or payload. The user's side is in
 | `qr_too_long` | History | The link is over 2,331 bytes |
 
 Others that these methods use are `source_unsupported`, `source_unavailable`,
-`image_unavailable` and `history_not_found` (a source that is not an image, cannot be read or has
-no retained copy), `session_locked`, `busy_selecting`, `queue_full`, `link_unavailable` and
+`image_unavailable`, `artifact_missing` and `history_not_found` (a source that is not an image,
+cannot be read or has no retained copy), `session_locked`, `busy_selecting`, `queue_full`, `link_unavailable` and
 `qr_empty` (History), `file_exists` and `save_failed` (QR save), and `ui_unavailable` and
-`ui_view_closed` (`history.qr` with `show`).
+`ui_view_closed` (`history.qr` with `show`). The editor methods also answer `editor_finalizing` (the edit
+was submitted or discarded), `editor_busy` (a Quick redact is already waiting), `text_unavailable`
+(nothing recognized to copy), `code_binary`, `link_unsupported` and `link_not_opened`.
 
 ## Desktops
 
 `text` acquires exactly as `region` does. Each adapter's early paths, which name `region` and
-`edit`, learn it.
+`edit`, learn it. Copy text from a region works on Cinnamon X11, GNOME, Plasma, Budgie and
+Hyprland, and on generic graphical X11 sessions (GNOME on X11 and Plasma on X11).
 
 | Desktop | What treats `text` as a region |
 | --- | --- |
 | Cinnamon X11 | The early crosshair in `X11CoreSourceAdapter`, live and screenshot-first |
+| Generic X11 (GNOME on X11, Plasma on X11) | `X11SourceAdapter` reports `capture.text` and maps it to the region path before it freezes the target, with the same live and screenshot-first selection. A text capture does not replace Repeat's rectangle |
 | Plasma | The `putgd-region` selector, its cleanup and the transparent-frame fence before ScreenShot2 |
 | GNOME | The extension's map from an action to its region preparation, and the adapter's prepared hotkey tickets, which are indexed by action |
 | Budgie | As Plasma, with Budgie's presentation-based lock witness |
@@ -549,24 +652,20 @@ no retained copy), `session_locked`, `busy_selecting`, `queue_full`, `link_unava
 
 An adapter that can select a region for text reports `text` in its `capture` capabilities,
 and the capabilities `text.sources.region` folds the desktop's region source and the engine's
-availability together. On an adapter without it `region` is unavailable with
-`source_unsupported`, and the other sources work.
+availability together. The generic Wayland data-control adapter has no region capture, so it reports
+`text` unavailable with `region`, and the other sources work. The selector's visible hint is the
+generic one for every action. It does not say "Copies text".
 
 **GNOME's extension version.** `text` joins the extension's hotkey list, so the packaged
 extension is version 23. As with every extension update, a session that still has version 22
 loaded must log out and in once. Until then `GnomeAdapter` refuses region preparation with the
 existing "log out once" step (`helper_outdated`), so Copy text from a region reports it, as
 Capture region and region recording do, and the `text` hotkey reads `helper_outdated` and is not
-counted as a failed restore of a saved hotkey. With version 22 loaded, `text.recognize` from
-`window`, `monitor`, `desktop`, `clipboard`, `file` and `history`, the editor tools and History's
-actions still work, because they need nothing new from the extension. Every existing gate keeps its
-version rule. Scrolling capture stays available from version 22.
-
-TO CONFIRM before merge: the desktops item (#1442) is not merged. Its facts are taken from its
-branch. Cinnamon X11 on m74 and Plasma Wayland on d69 passed the hotkey, tray and window button
-pipeline to an independent paste with a stand-in helper. GNOME on f44, Budgie and Hyprland have not
-been driven, and the selector's "Copies text" label has not been seen on a screen. No desktop
-acceptance has run for the real engine.
+counted as a failed restore of a saved hotkey. Recording a hotkey for any action still works with
+version 22 loaded. With version 22 loaded, `text.recognize` from `window`, `monitor`, `desktop`,
+`clipboard`, `file` and `history`, the editor tools and History's actions still work, because they
+need nothing new from the extension. Every existing gate keeps its version rule. Scrolling capture
+stays available from version 22.
 
 ## Where the controls are
 
@@ -591,8 +690,8 @@ the house rule.
 | RPM (Fedora 44 and 45) | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF scan | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
 | pacman | `tesseract`, `tesseract-data-eng`, `zxing-cpp` | The same |
 
-- `PUTGD_OCR` is `AUTO` for developer builds, like `PUTGD_RECORDING`, and required in every
-  package build. A package build without the libraries fails. At run time a missing helper or
+- `PUTGD_OCR` is `AUTO` for developer builds, like `PUTGD_RECORDING`, and `ON` in every package
+  build. A package build without the libraries fails. At run time a missing helper or
   missing English data reports `text_helper_missing` or `engine_unavailable` with what to
   install, and the actions stay visible and say why they are off. Recording's Recommends are
   unchanged.
@@ -600,6 +699,11 @@ the house rule.
   26.04 and Debian 13) and 3.1.1 (Arch). The helper is built and tested against both ends,
   Tesseract 5.3.4 with ZXing-cpp 2.2.1 on m74 and Tesseract 5.5.4 with Leptonica 1.87.0 and
   ZXing-cpp 3.1.1 built from source on k72.
+- **Arch** ships a larger English model, 23,466,654 bytes, than Debian, Ubuntu and Fedora, which
+  ship the 4,113,088-byte LSTM-only `eng.traineddata` that the AppImage carries. put.gd loads
+  only the part the LSTM engine uses (see [bounds and budgets](#bounds-and-budgets)), so a job's
+  memory is the same order on every distribution. Arch's installed OCR packages are 35,214,737 bytes,
+  most of it that model, and the roughly 12 MB native estimate does not hold there.
 - **AppImage.** It builds Leptonica (no image-format libraries at all), Tesseract (LSTM only,
   no curl, no archive, no OpenMP, no training tools) and ZXing-cpp (readers only) from pinned
   sources, and carries English `tessdata_fast` pinned by commit and SHA-256. The engines go in
@@ -607,116 +711,158 @@ the house rule.
   `$ORIGIN`, because the helper's own run path does not cover transitive dependencies. Without it,
   a host that has Leptonica installed would bring back every image-format library. The helper
   gets `$ORIGIN/../lib` after deployment, and the audits check every resolved library path from an
-  empty environment, so a host copy cannot satisfy an image-owned library name.
+  empty environment, so a host copy cannot satisfy an image-owned library name. The pins, recipes
+  and commits are in [release](../release/release.md#text-recognition-dependencies-1428).
 - The audits (`tools/releases/audit_native.py` and the AppImage audit) require `putgd-ocr`,
   refuse Tesseract, Leptonica or ZXing-cpp in any other product binary, and refuse QtGui, QtSql,
   QtNetwork and QtDBus in the helper. `libgomp` is allowed: Qt Core already brings it into every
   resident through `libb2` on Debian 13, Ubuntu 26.04, Mint 22 and Fedora 44.
 - The engines and the data join `bundled-components.json` with SBOM identities, complete-source
   collection, configure recipes and notices, and the exact-asset audit. They do not bypass the
-  CVE gate. The QR generator is a component of every package, with its MIT notice.
-
-TO CONFIRM before merge: the packaging pull request (#1438) is not merged and its AppImage
-size, whole-package size, stable CVE rehearsal and policy acceptances are open. See
-[release](../release/release.md#text-recognition-dependencies-1428) and
-[CI](../release/ci.md#text-recognition-packaging) for the rules as they stand.
+  CVE gate. The QR generator is a component of every package, with its MIT notice. The
+  AppImage also carries ZXing-cpp's embedded `libzueci` 1.0.1 (BSD-3-Clause), with its notice.
+- Measured on the integration branch at bcb868f9a (CI run 43380438975): the AppImage grew from
+  158,030,328 bytes to 164,518,392 bytes, which is 6,488,064 bytes, against a target of under 12 MB.
+  A no-Recommends DEB adds 13,537,280 bytes (13,220 KiB, including putgd's own 2,388 KiB) over the
+  nightly head. The named OCR engine and data packages install at 11,283,456 bytes on Ubuntu 24.04,
+  12,387,251 on Fedora 44 and 35,214,737 on Arch (23,466,654 of it the English model). Fresh-container
+  installs of a DEB, an RPM and a pacman package with no optional dependencies each had the engine
+  and English data. The stable CVE policy, rehearsed on d69 against all six SBOMs, passed with zero
+  flagged findings, and no finding named Tesseract, Leptonica, ZXing-cpp, `libzueci`, `tessdata_fast`
+  or `qrcodegen`.
 
 ## Performance and memory
 
 | Rule | Check |
 | --- | --- |
 | No binary but `putgd-ocr` needs libtesseract, libleptonica or libZXing | The audit rule, on every package build |
-| The resident never loads them, or libcurl or libarchive, at run time | After a workload of 20 `text.recognize` monitor jobs and 5 driven region actions and a 180 second wait, the resident's `/proc/<pid>/maps` against the idle forbidden-library list plus these names, on every desktop. `libgomp` is not on the list |
+| The resident never loads them, or libcurl or libarchive, at run time | After a workload of 20 `text.recognize` monitor jobs and 5 driven region actions and a 180 second wait, the resident's `/proc/<pid>/maps` against the idle forbidden-library list plus these names. `libgomp` is not on the list |
 | Idle resident RSS and PSS stay under 40 MiB after that workload, with every helper's exit recorded | Gate C on the same resident |
 | The agent result cache is bounded | Resident RSS 60 seconds after a `text.recognize` of the largest result, against the same point without it: growth under 8 MiB, and gone after 120 seconds |
 | `putgd-ui` startup and its mapped libraries are unchanged | An A/B of main-window and `--edit-image` open time and library list against the nightly head |
-| Helper peak RSS within the budgets above | Measured in every cell, including a dense 24-megapixel input |
-| From the end of the selection to the clipboard acknowledgement, p95 under 1 second for a region up to 1 megapixel and under 3 seconds for a full 4K monitor capture | 30 runs on m74 and on d69, native package and AppImage, 5 runs in every other cell |
-| The hotkey-to-selector time of the other captures does not change | An A/B with the hotkey latency probe |
+| Helper peak RSS within the budget | Measured in every cell, including a dense 24-megapixel input, and with three languages |
 | No recognition without an explicit action, and no warm daemon | By design. The helper exits after one job |
 | AppImage growth under the size target | Compared with the nightly head |
 
-Spawn, engine start, recognition and copy are timed separately in every receipt, so a missed
-bar shows where the time went.
+Spawn, engine start, recognition and copy are timed separately in every receipt, so the time of a
+capture shows where it went. **There is no speed bar.** The 1 second bar for a region up to 1
+megapixel and the 3 second bar for a full 4K screen are withdrawn. Patrick decided on 2026-11-13 that the
+times are recorded, not gated, and that very long text is returned cut at the time budget.
 
-TO CONFIRM before merge: none of the rows above has been measured on a candidate build.
-Item 8 of #1428 (measurement and desktop acceptance) runs them once all items have merged.
-Replace this note with its results.
+Measured on candidate fe838a950 (CI run 43394391197), 20 monitor jobs and 5 driven region jobs and a
+180 second wait, with every helper's exit recorded (25 of 25), none of the forbidden libraries mapped
+and the frozen Gate C evaluator met: on m74 the native package left the resident at 10,040 KiB RSS and
+5,795 KiB PSS, and the AppImage at 10,816 KiB and 8,967 KiB. The same workload on candidate 8a3294c3c (CI run 43423721988) passed too: on k72 the native package left
+the resident at 10,812 KiB RSS and 5,182 KiB PSS and the AppImage at 11,108 and 7,484 KiB, on f44 the
+AppImage at 9,968 and 6,111 KiB, and on an Ubuntu GNOME guest the native package at 9,116 and 5,872 KiB
+and the AppImage at 9,596 and 7,658 KiB.
+
+TO CONFIRM before merge: the final end-to-end figures (selection to clipboard, helper peak and the
+resident's memory after the workload) on the final candidate, commit 357210d2f1cb7b65f77166e34eb535d42e497fd0
+(CI run 43448444706), from the final acceptance comment on #1428. Replace the candidate fe838a950
+numbers above and in the user guide with them.
 
 ### Measurements
 
-These are measurements of the helper alone, taken before any candidate build existed. They are
-not acceptance of a put.gd build. Times are `TextJob`'s `totalMs` (spawn to the result read back),
-so they leave out the parent's grey conversion and the clipboard. Release builds of the helper,
-three runs each, all within 1 percent. Threads were set by CPU affinity. Both hosts are an i5-6500T:
-m74 (Mint 22.3, distribution Tesseract 5.3.4) and d69 (Debian 13, distribution Tesseract 5.5.0).
-Peak is the helper's RSS.
+Recognition costs roughly a millisecond a character on each core. A paragraph takes about half a
+second. A region packed with text or a whole 4K screen takes several seconds. These are
+measurements of the helper alone, taken on the engine round four code (#1462), not acceptance of a
+put.gd build. Times are `TextJob`'s `totalMs` (spawn to the result read back), so they leave out
+the parent's grey conversion and the clipboard. Release builds, up to four engines, peak is the
+helper's VmHWM. m74 is an i5-6500T on Mint 22.3 with distribution Tesseract 5.3.4. k72 uses
+Tesseract 5.5.4 built from source.
 
-| Input | Threads | Scale | m74 time | m74 peak | d69 time | d69 peak |
-| --- | --- | --- | --- | --- | --- | --- |
-| 540×80 paragraph | 1, 2, 4 | 2× | 0.29 s | 46 MiB | 0.28 s | 47 MiB |
-| 1200×830 dense UI region (1 MP) | 1 | 2× | 1.11 s | 62 MiB | 1.09 s | 63 MiB |
-| | 4 | 2× | 0.99 s | 101 MiB | 0.96 s | 103 MiB |
-| 3840×2160 tiled UI (4K) | 1 | 1× | 6.32 s | 73 MiB | 6.49 s | 75 MiB |
-| | 4 | 1× | 2.88 s | 103 MiB | 2.82 s | 105 MiB |
-| 3840×2160 dense text (about 37,000 characters) | 4 | 1× | 14.4 s, cut at 35,262 characters | 122 MiB | 14.6 s, cut | 124 MiB |
-| 6000×4000 tiled UI (24 MP) | 1 | 1× | 9.31 s | 91 MiB | 8.99 s | 92 MiB |
-| 6000×4000 dense text (24 MP) | 4 | 1× | 15.8 s, cut | 139 MiB | 13.0 s, cut | 118 MiB |
+| Input | m74 time and peak | k72 time and peak |
+| --- | --- | --- |
+| Paragraph (540 by 80) | 0.29 s, 46 MiB | 0.16 s, 36 MiB |
+| 1 MP dense region | 0.64 s, 82 MiB | 0.34 s, 73 MiB |
+| Dense terminal, 8,739 characters, 1001 by 990 | 2.55 s, 120 MiB | 1.32 s, 79 MiB |
+| 4K tiled UI | 6.08 s, 72 MiB | 4.26 s, 58 MiB |
+| Dense 4K text | 10.7 s, complete, 101 MiB | 5.7 s, 80 MiB |
+| 24 MP tiled UI | 6.3 s, 111 MiB | 3.2 s, 102 MiB |
+| Dense 24 MP text | 15.8 s, cut, 116 MiB | 13.1 s, 87 MiB |
+| GNOME 4K screen, light | 5.5 s, 89 MiB | 3.4 s, 79 MiB |
+| GNOME 4K screen, dark | 6.9 s, 90 MiB | 2.0 s, 81 MiB |
 
-- A dense 1-megapixel region costs 0.67 seconds at 1×, 0.94 seconds at 2× and 1.37 seconds at
-  3× on m74, so 2× costs about 1.4 times 1×.
-- The model load makes engine start 115 to 135 milliseconds. Not loading the word lists left it
-  unchanged.
-- Extra engines cost 20 to 45 MiB each. Without the memory gate, four threads reached 125 to
-  211 MiB, and the dense 24-megapixel case failed at `RLIMIT_DATA`. Ungated, the 4K UI page took
-  1.48 seconds and the 1-megapixel region 0.97 seconds.
-- One overshoot is left: dense 24 megapixels at 139 MiB on m74, because the first band
-  understates what the next ones add.
-- On m74 the 1 second bar for a 1-megapixel region is missed by a hair: the helper's own work
-  alone is 0.96 to 0.99 seconds before the parent's capture, grey conversion and clipboard. The
-  3 second bar for a 4K monitor is met for dense interface (2.82 to 2.88 seconds) and not met for
-  a 4K page of dense text, which hits the 16 second budget and is cut. Patrick decides whether the
-  bars or the scale rule change.
-
-TO CONFIRM before merge: the speed on m74 against the 1 second and 3 second bars. It is open
-decision 3 of #1428, and the engine follow-up (#1452) may change the numbers.
+- Every measured input stays inside the 128 MiB budget with English data.
+- The dense terminal with a different number of engines on m74: 1 engine 6.72 s (86 MiB), 2
+  3.51 s (87 MiB), 3 2.52 s (104 MiB) and 4 2.55 s (120 MiB). Four take no less time than three
+  because 8 strips do not divide evenly. With four engines about 3,400 characters are read a
+  second on m74 and 6,600 on k72.
+- End to end on m74 on candidate fe838a950, before the last engine change: 30 actual selections of
+  that dense terminal (8,739 characters each), each independently pasted exactly, took p95 5.7 s
+  with the native package and 3.6 s with the AppImage. Whole 4K screens took 5 to 9 s (30 file
+  runs on d69: 9.1 s light, 8.0 s dark at p95). A short paragraph took about half a second end to end.
+- Engine start takes 115 to 153 milliseconds on m74 and d69, which is the model load.
+- With three languages (eng, deu and fra, 2.6 MB beyond English) on m74, measured on the code of #1452:
+  a 1 MP region 1.55 s at 116 MiB, a 4K UI page 9.8 s at 90 MiB, a 24 MP UI page 13.1 s, cut, at 111 MiB
+  and a dense 24 MP page 8.8 s, cut, at 133 MiB with one engine. English alone peaks at 106 MiB of
+  `RLIMIT_DATA`'s data against its 192 MiB limit.
+- On Arch's model, before and after the trim, on m74: English 112 to 54 MiB for a paragraph and 137 to
+  120 MiB for a dense 24 MP page, and three languages (53,117,539 bytes) 155 to 81 MiB and 180 to 115
+  MiB.
 
 ### Quality
 
-Quality is scored per engine build and per target class, never pooled. The fixed corpus is 174
-real Capture region images from published nightly 26.1112.4660 on six desktops (m74 Mint
+Quality is scored per engine build and per target class, never pooled. The fixed corpus is 178 images:
+174 real Capture region images from published nightly 26.1112.4660 on six desktops (m74 Mint
 Cinnamon X11, d69 Debian Plasma, f44 Fedora GNOME, k72 Kubuntu Plasma, Budgie on labwc and
-Hyprland on Omarchy), seven classes each, light and dark, at 100 and 125 percent. Each image has
-a transcript. The scorer is `tests/performance/text/score.py`. It uses Unicode NFC, collapsed
-whitespace and a case-sensitive Levenshtein distance. The bars are a median character error rate
-of at most 2 percent for body text of 11 pixels and larger and at most 5 percent for smaller
-interface text, and an exact match for at least 90 percent of URLs and email addresses of 11
-pixels and larger. A second language (German) must meet the body bar on one engine build.
+Hyprland on Omarchy), seven classes each, light and dark, at 100 and 125 percent, with two real GNOME 4K
+screens and two 24 px pages. Each image has a transcript. The scorer is
+`tests/performance/text/score.py`, and `helper_score.py` runs the real helper. Scores use
+Unicode NFC, collapsed whitespace and a case-sensitive Levenshtein distance. The bars are a median
+character error rate of at most 2 percent for body text of 11 pixels and larger and at most 5 percent
+for smaller interface text, and an exact match for at least 90 percent of URLs and email addresses
+of 11 pixels and larger. A second language (German) must meet the body bar on one engine build.
 
-Distribution Tesseract on the corpus, before put.gd's method, shows why the method matters.
-Default page segmentation 3 reads aligned text as columns, and page segmentation 6 does not.
-Median character error rate, 1× scale, English data, `OMP_THREAD_LIMIT=1`:
+Median character error rate through the real helper after the panel work (#1458, #1462), per class:
 
-| Host | Tesseract | Terminal, mode 3 | Terminal, mode 6 | Small interface, mode 3 | Small interface, mode 6 |
-| --- | --- | --- | --- | --- | --- |
-| m74 | 5.3.4 | 49.050 % | 0.000 % | 1.530 % | 1.530 % |
-| d69 | 5.5.0 | 48.035 % | 0.033 % | 22.417 % | 7.871 % |
-| f44 | 5.5.4 | 55.534 % | 0.196 % | 5.122 % | 54.457 % |
-| k72 | 5.5.0 | 48.003 % | 0.000 % | 23.858 % | 1.397 % |
-| Budgie guest on f44 | 5.5.4 | 48.068 % | 0.000 % | 17.193 % | 1.752 % |
-| Hyprland guest on f44 | 5.5.3 | 46.824 % | 0.000 % | 2.963 % | 1.406 % |
+| Class and size (bar) | Captures | Tesseract 5.3.4, Mint 22 on m74 | Tesseract 5.5.4, built on k72 |
+| --- | --- | --- | --- |
+| browser-github, body (2%) | 24 | 0.147% | 0.147% |
+| browser-local, body (2%) | 24 | 0.000% | 0.000% |
+| browser-wikipedia, body (2%) | 24 | 2.573% | 2.573% |
+| editor-code, body (2%) | 24 | 1.481% | 1.545% |
+| monitor, body (2%) | 26 | 0.000% | 0.000% |
+| small-ui, body (2%) | 8 | 0.421% | 0.417% |
+| small-ui, small (5%) | 16 | 0.089% | 0.067% |
+| terminal, body (2%) | 30 | 0.000% | 0.000% |
+| 24 px pages (2%) | 2 | 0.000% | 0.000% |
+| URLs exact (90%), emails exact (90%) | | 52 of 52, 52 of 52 | 52 of 52, 52 of 52 |
 
-These are method baselines, not the shipped method and not acceptance. The native monitors
-were 1920×1080, so the full 4K case is not in the corpus yet.
+- **Wikipedia.** All 24 Wikipedia transcripts said "squares in a square grid" where the captured pixels
+  say "squares within a square grid". With the transcripts corrected, candidate fe838a950 scored
+  1.874% on every engine build but Arch's (1.533%). The 2.573% above is against the old transcripts.
+  The citation markers are not the cause: left out of transcript and output, the score barely moved.
+- **Whole 4K screens.** The two GNOME 4K captures went from 63 to 64 percent error to 9.2 to 9.3
+  percent once screens were read panel by panel. What remains is words run together in small
+  navigation text, a dropped `#` and the order of panels inside the Wikipedia window. The monitor
+  class median hides these two, which are 2 of its 26 captures.
+- **Before the method changed.** Page segmentation 3 with layout blocks, the first method, scored
+  terminal 54.4%, browser-local 31.0%, editor-code 13.6% and Wikipedia 2.6%, and read 24 of 48 URLs and
+  34 of 48 emails exactly, on the 174 real captures.
+- **German.** On 12 synthetic pages (14, 16 and 20 px, DejaVu Sans and Serif, light and dark, with
+  umlauts and ß; there is no real German capture), `deu` scored 0.00% and `eng+deu` 0.43%, and English
+  alone 5.7%, with `tesseract-ocr-deu` 4.1.0 on m74.
+- **English models.** `tessdata_best` meets every bar at about 3.3 times the time and 15.4 MB, and
+  put.gd ships `tessdata_fast`.
+- **Engine builds.** Candidate fe838a950 scored all six engine builds separately (Mint 22 and
+  Ubuntu 24.04, Ubuntu 26.04, Debian 13, Fedora 44, Arch and the AppImage's own). Every class median
+  and URL and email rate was inside its bar, with Arch's URL rate 50 of 52 (96.15%).
 
-TO CONFIRM before merge: the settled recognition method and its per-class error rates for each
-engine build, against the bars above, from the engine follow-up (#1452) and item 8. Do not
-publish a number that the corpus has not measured.
+TO CONFIRM before merge: the per-class error rates for each engine build on the final candidate, which
+include the strip and panel changes of #1462 that came after fe838a950, from the final acceptance
+comment.
 
-## Not built yet
+## Known limits
 
-- Desktop acceptance of any part. The editor tool and History actions have run in tests, in the
-  synthetic catalog render and once offscreen against the real helper.
+- Recognition can misread. Small, unusual or low-contrast type, superscripts and a busy background
+  produce errors. Check what you paste.
+- A capture with a lot of text is returned cut at the 16 second budget and marked as cut.
+- A rotated Micro QR code at 3 pixels a module, and a code with no quiet zone, are not read.
+- Quick redact suggests only, and a number of repeated digits can be miscounted.
+- A tall two-column page below 4 megapixels is read as one block, and a banded image has no global
+  multi-column order.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
 - Searching History by recognized text, recognition in the background, in-app language downloads,

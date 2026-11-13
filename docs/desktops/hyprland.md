@@ -294,10 +294,6 @@ the clipboard keeper like any other result ([clipboard keeper](../design/clipboa
 adapter never writes the user's Hyprland configuration and uses no `hl.unbind` or bind handle's
 `:remove()` for it. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
 
-TO CONFIRM before merge: this section describes the desktops pull request (#1442), which is not
-merged, and the Omarchy guest has not been driven with it. No acceptance of Copy text has run on
-Hyprland.
-
 ## Clipboard, tray, notifications and files
 
 - Clipboard import works while put.gd is unfocused; results copy as

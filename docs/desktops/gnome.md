@@ -355,12 +355,11 @@ once ([Setup](#setup)). Until then:
 - `text.recognize` from `window`, `monitor`, `desktop`, `clipboard`, `file` and `history`, the
   editor's text tools and History's actions work, because they need nothing new from the extension.
 - Every existing gate keeps its version rule. A scrolling capture is still available from version
-  22. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+  22.
+- Recording a hotkey for any action still works with version 22 loaded.
 
-TO CONFIRM before merge: this section describes the desktops pull request (#1442), which is not
-merged, and GNOME on f44 has not been driven with it. No acceptance of Copy text has run on GNOME.
-Version 22 loaded with 23 installed, and the restore of every shortcut after login, are among the
-cases item 8 of #1428 covers.
+The selector's visible hint is the generic one for every action and does not say that the capture
+copies text. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
 
 ## UI ownership recovery test
 

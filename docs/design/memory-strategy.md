@@ -77,12 +77,14 @@ reads the result back through another. The resident's own cost is one grey copy 
 image for the length of the job, and an optional result for an agent. That result is one byte array of at most 4 MiB, never a parsed tree, kept at most
 120 seconds, after which the resident asks for heap reclamation. No other binary may
 need Tesseract, Leptonica or ZXing-cpp, and the package audits check it. The helper's
-budget is 128 MiB of resident memory for the whole job with English data. The
-measurements and the unsettled numbers are in
-[text recognition](text-recognition.md#performance-and-memory).
+budget is 128 MiB of resident memory for the whole job with English data, plus the size of any other
+language's data. The
+measurements are in [text recognition](text-recognition.md#performance-and-memory).
 
-TO CONFIRM before merge: the resident's idle RSS and PSS after the text workload, and the
-result cache's growth, which item 8 of #1428 measures on a candidate build.
+Measured on candidate fe838a950 on m74 after 20 monitor jobs, 5 region jobs and a 180 second wait, the
+resident was back at 10,040 KiB RSS and 5,795 KiB PSS with the native package and 10,816 KiB and 8,967
+KiB with the AppImage, none of the engine libraries was mapped, every helper had exited, and the frozen
+Gate C evaluator was met.
 
 ## Measure the complete workload
 

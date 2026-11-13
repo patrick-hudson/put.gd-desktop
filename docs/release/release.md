@@ -416,13 +416,40 @@ with the configure recipe as the evidence, as FFmpeg's do. A fixed critical or h
 code warns on a nightly and blocks a stable release, as above. Pull-request CI skips the stable policy,
 so the exact-asset scan is rehearsed on d69 before the text recognition branch merges.
 
-TO CONFIRM before merge: the packaging pull request (#1438) is not merged. The names in the first
-table, the pins, the recipes and the layout are its as it stands. Still open are the final six-package
-and SBOM CI, the QR generator's lock, notice and SBOM entries (they wait for the editor item, which has
-merged), the exact AppImage relocation and stable-policy rehearsal on d69, the whole-AppImage and
-native-install size changes against the target (under 12 MB added to the AppImage and about 12 MB of new
-packages on a system with none of them, provisional), the baseline AppImage of 158,030,328 bytes at head
-`466449a4c69a07a1997668d1b70d637abac76a16`, and any policy acceptance a real finding needs.
+**Measured on the integration branch at bcb868f9a** (CI run 43380438975, all six package builds, the SBOM
+job and source collection green):
+
+- **Size.** The whole AppImage grew from 158,030,328 bytes (nightly head `466449a4c`, run 43355658846) to
+  164,518,392 bytes, which is 6,488,064 bytes, below the 12,000,000 byte target. A no-Recommends DEB install
+  adds 13,537,280 bytes (13,220 KiB, with putgd's own 2,388 KiB) over the exact nightly head, and the
+  recording Recommends are byte for byte unchanged. The named engine and data packages install at 11,283,456
+  bytes on Ubuntu 24.04 and 12,387,251 on Fedora 44. On Arch they are 35,214,737 bytes, of which 23,466,654
+  is `tesseract-data-eng`, a larger English model than the other distributions ship, so the roughly 12 MB
+  native estimate does not hold there. put.gd loads only the part of that model the LSTM engine reads.
+- **Clean installs.** A DEB with `apt-get install --no-install-recommends`, an RPM with
+  `dnf install --setopt=install_weak_deps=False` and a pacman package with required dependencies only each
+  started with no Tesseract, Leptonica, ZXing-cpp or English data, and each ended with `putgd-ocr
+  --version-json` answering under an empty environment, every linked library resolved, the English data
+  present and Nayuki's MIT notice installed. These cover one fresh container for each package kind, not a
+  graphical session or a signed-repository upgrade.
+- **The mounted AppImage.** The exact image passed an independent read-only FUSE mount audit on k72. With
+  an empty environment, the helper and each engine resolved `libtesseract.so.5.5`, `libleptonica.so.6` and
+  `libZXing.so.4` below the image's `usr/lib`, the helper's RUNPATH was `$ORIGIN/../lib`, and the English
+  data matched its pinned SHA-256.
+- **The stable CVE policy**, rehearsed on d69 with Grype 0.121.2, Syft 1.57.0 and a database built
+  2026-11-12, against all six SBOMs: exit 0 with zero flagged findings. The AppImage has 176 bundled
+  components and 163 findings (9 high, 138 medium, 16 low), none flagged, and the others have 25 components
+  and none. No finding names Tesseract, Leptonica, ZXing-cpp, libzueci, `tessdata_fast` or `qrcodegen`, so no
+  policy acceptance was added.
+- **The source archive.** The Ubuntu 24.04 job configured, compiled and linked the extracted curated source
+  archive (24,463,898 bytes, 687 members, no `.git`) with `PUTGD_OCR=ON` in 541 seconds, and all ten product
+  binaries, `putgd-ocr` included, returned the build identity.
+
+**Renovate.** `.github/renovate.json` watches the three source tags (the pull requests are labelled
+`dependencies` and `area: packaging`, and a new minor or major version waits for approval on the dependency
+dashboard) and, through a git-refs manager, the digest of `tessdata_fast`'s `main` branch. A lookup run
+listed Tesseract 5.5.4, Leptonica 1.87.0, ZXing-cpp 3.1.1 and the data digest without warnings, and a
+disposable fixture with a wrong digest produced a digest update proposal.
 
 ### Codec distribution decision (#419)
 

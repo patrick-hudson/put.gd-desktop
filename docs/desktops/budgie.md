@@ -258,10 +258,6 @@ text from region". The text lands on the clipboard through the clipboard keeper 
 other result ([clipboard keeper](../design/clipboard-keeper.md)), so it still pastes after the
 resident quits and the keeper exits when another application copies. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
 
-TO CONFIRM before merge: this section describes the desktops pull request (#1442), which is not
-merged, and the Budgie guest has not been driven with it. No acceptance of Copy text has run on
-Budgie.
-
 ## Budgie 11
 
 Budgie 11 has no release and no installable session. The adapter works from
