@@ -20,6 +20,18 @@ public:
  // Several stored links at once, one per line in selection order: all of
  // them, or none when any is no longer available.
  void copyLinks(const QStringList& ids,JsonReply);
+ // history.qr (#1428): the QR code of the link Copy link would copy now, after
+ // the same receipt refresh, as a PNG on the clipboard (copy) or in a new file
+ // (save; an existing one only with overwrite), or handed to `show` for the
+ // History window. Refused with link_unavailable and its reason for a private,
+ // removed or revoked link and an expired one that cannot be refreshed, and with
+ // qr_too_long over 2,331 bytes.
+ using QrShow=std::function<void(const QJsonObject& link,JsonReply)>;
+ void qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply,QrShow show={});
+ // history.copyText (#1428): Copy text from the item's retained local copy, the
+ // same rule as Edit again; put.gd never downloads an upload to read it. The
+ // text operation is TextService's; keepResult keeps it for text.inspect.
+ void copyText(const QString& id,bool keepResult,JsonReply);
  void changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply);
  void inspectSharing(const QString&,JsonReply);
  void prepareDelete(const QStringList&,JsonReply);

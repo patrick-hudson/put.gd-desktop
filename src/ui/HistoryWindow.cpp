@@ -1520,7 +1520,7 @@ void HistoryWindow::copyText(const QJsonObject& record){
 // copy outcome only, never the text (the resident's notification says the same).
 void HistoryWindow::pollText(){
  if(textOperation_.isEmpty()){textPoll_->stop();return;}
- session_.request("text.inspect",{{"operationId",textOperation_}},this,[g=QPointer<HistoryWindow>(this),id=textOperation_](Error e,QJsonObject record){
+ session_.request("text.inspect",{{"id",textOperation_}},this,[g=QPointer<HistoryWindow>(this),id=textOperation_](Error e,QJsonObject record){
   if(!g||g->textOperation_!=id)return;
   const auto state=record["state"].toString();
   if(!e&&!QStringList{"completed","cancelled","failed","interrupted"}.contains(state))return;
