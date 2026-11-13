@@ -456,9 +456,9 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
    bindings_=result["bindings"].toObject();
    for(const auto& action:Settings::invocableActionNames()){
     auto entry=bindings_[action].toObject();entry["requested"]=requested_.value(action);
-    if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all of put.gd's hotkeys.",{}};}
     // An extension loaded before Copy text (#1428, version 23) does not know its key; that is the login step's to fix, not a failed restore.
     const bool textUnknown=action==Settings::textActionName()&&helper_["extensionVersion"].toInt()<23;
+    if(recording_){entry["state"]="recording";if(!textUnknown&&(!entry["bound"].isBool()||entry["bound"].toBool()))error={"shortcut_recording_failed","GNOME did not release all of put.gd's hotkeys.",{}};}
     if(!recording_&&reply&&!textUnknown&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};
     if(action=="scroll"&&helper_["extensionVersion"].toInt()<22&&!recording_){entry["bound"]=false;entry["error"]="helper_outdated";}
     if(textUnknown&&!recording_){entry["bound"]=false;entry["error"]=requested_.value(action).isEmpty()?"disabled":"helper_outdated";}
