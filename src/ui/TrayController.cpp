@@ -305,6 +305,18 @@ TrayController::TrayController(OperationService& operations,
  // The calendar's glyph takes over at local midnight with no restart.
  connect(&calendar_,&TrayCalendar::glyphChanged,this,&TrayController::refreshActivity);
  connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
+ // Copy text (#1428): one notification after the clipboard has the text. It
+ // carries counts only, never what was recognized, and has no action buttons.
+ connect(&operations_,&OperationService::textFinished,this,[this](const QString& id,const QJsonObject& record,const QString& notification){
+  refreshActivity();
+  if(record["state"]=="failed") {
+   const auto error=record["error"].toObject();const Error failure{error["code"].toString(),error["message"].toString(),error["details"].toObject()};
+   latchFailure(failure,{{"id",id},{"action",Settings::textActionName()},{"state","failed"},{"error",error}});
+   if(operations_.settingsSnapshot().notifications)notifyMessage("operation_failed","Text recognition failed",failure.message,true);
+   return;
+  }
+  if(!notification.isEmpty()&&operations_.settingsSnapshot().notifications)notifyMessage("text_"+record["copyStatus"].toString(),"Copy text",notification,false);
+ });
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  // Not every tray host asks before it shows the menu (Cinnamon's does not), so the
  // output summary, the shortcuts and the capture delay follow the configuration
@@ -600,6 +612,8 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
+   // A second Copy text press while one runs: say so and change nothing else.
+   if (error.code == "text_busy") { if (guard->operations_.settingsSnapshot().notifications) guard->notifyMessage("text_busy", "Copy text", error.message, false); return; }
    if (fromShortcut) {
     // Re-entry must not map a view over selection or startup recovery.
     if (error.code == "busy_selecting" || error.code == "initializing") return;

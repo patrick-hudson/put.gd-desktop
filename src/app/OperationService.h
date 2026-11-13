@@ -59,6 +59,15 @@ public:
  void setTextBackend(std::unique_ptr<TextBackend> backend) {text_->setBackend(std::move(backend));}
  // text.inspect and text.cancel, answered from the service's live state and terminal record.
  void textCommand(const QString& command,const QJsonObject& params,JsonReply);
+ // Recognizes text from a source (decision 8): the Copy text action,
+ // text.recognize and History's Copy text. params, already checked for shape:
+ // {source: region|window|monitor|desktop|clipboard|file|history, path?,
+ //  historyId?, languages?, copy?, keepResult?, delaySeconds?}.
+ // Screen sources go through the adapter's prepareAcquisition at the points a
+ // capture uses; a region is the adapter's `text` action, which selects as a
+ // region does and never changes what Repeat last region remembers.
+ // Answers {operationId, state} once the operation is journaled.
+ void recognizeText(const QJsonObject& params,JsonReply);
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
  // The internal action of a diagnostics package upload (#123), outside the
@@ -165,6 +174,10 @@ signals:
  // An automatic cleanup kept uploads the destination refused to abort that the user
  // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.
  void incompleteUploadsKept(const QJsonObject& notice);
+ // A text recognition ended (#1428). record is its terminal record, which holds
+ // nothing recognized; notification is the Copy text message for an operation
+ // that asked for a copy (after the clipboard's acknowledgement), else empty.
+ void textFinished(const QString& operationId,const QJsonObject& record,const QString& notification);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
  // Someone asked for a capture, the editor or a recording (tray, shortcut, CLI or
@@ -314,6 +327,8 @@ private:
  // The text operation's own completion branch: no items, uploads or copies of a link.
  void finishText(Operation);
  void copyRecognizedText(const Operation&,const QString& text,std::function<void(Error)> done);
+ // The sources this desktop cannot read for text, each with its adapter's own error.
+ QHash<QString,Error> textSourceErrors() const;
  std::unique_ptr<TextService> text_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
