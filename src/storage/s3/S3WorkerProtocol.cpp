@@ -1,6 +1,7 @@
 #include "S3WorkerProtocol.h"
 #include "IpAddress.h"
 #include "PublicUrl.h"
+#include "S3Journal.h"
 #include "S3Multipart.h"
 #include <QDir>
 #include <QJsonDocument>
@@ -116,7 +117,7 @@ bool resumeJournal(const QJsonObject& object) {
     static const QRegularExpression uploadId(QStringLiteral("\\A[A-Za-z0-9+/=._~-]{1,1024}\\z"));
     return !created || (text(object["uploadId"], 1, 1024) && uploadId.match(object["uploadId"].toString()).hasMatch() &&
                         text(object["key"], 1, 1024) && integer(object["bytes"], 0, maximumArtifactBytes) &&
-                        hash(object["sha256"]) && choice(object["phase"], {"parts", "completing"}));
+                        hash(object["sha256"]) && s3UploadPhase(object["phase"]));
 }
 bool deleteStatus(const QJsonValue& value) {
     return choice(value, {"removed", "missing", "changed", "failed", "unknown", "hidden_version_retained", "unsupported_safe_removal"});
@@ -140,9 +141,7 @@ bool errorDetails(const QJsonObject& details) {
     if (details.contains("curlCode") && !integer(details["curlCode"], -1, 999)) return false;
     if (details.contains("sdkRetryable") && !details["sdkRetryable"].isBool()) return false;
     if (details.contains("elapsedMs") && !integer(details["elapsedMs"], 0, 86400000)) return false;
-    if (details.contains("requestStage") && !choice(details["requestStage"], {"name_head", "object_head", "current_head", "upload_put",
-            "upload_create", "upload_part", "upload_list_parts", "upload_complete", "upload_abort",
-            "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object"})) return false;
+    if (details.contains("requestStage") && !s3Stage(details["requestStage"])) return false;
     if (details.contains("partNumber") && !integer(details["partNumber"], 1, s3MaximumParts)) return false;
     if (details.contains("incompleteUpload") && !details["incompleteUpload"].isBool()) return false;
     if (details.contains("itemIndex") && !integer(details["itemIndex"], 0, 9999)) return false;
