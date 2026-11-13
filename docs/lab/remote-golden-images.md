@@ -40,6 +40,7 @@ image hash from the table, and `zst-sha256` and `virtual-size` are also recorded
 | --- | --- | --- | --- |
 | `cinnamon-x11` (Cinnamon/X11) | `4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da` | `transfer-32dfa35ea5c8` | `transfer-7dfa9973258d` |
 | `gnome-provisioned-20261016` (provisioned Ubuntu GNOME/Wayland) | `563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb` | `transfer-2f93113ef3b0` | `transfer-0d2922e34f4b` |
+| `gnome-provisioned-20261016-trimmed-20261113` (the image above with more free disk; nightly Ubuntu GNOME row) | `a330ab0d14f84e1190ac1ef6740149bf4392f9aa266a5c44647f0c6d60779696` | not copied | `gnome-provisioned-20261016-trimmed-20261113` |
 | `kde-provisioned-20261016` (provisioned Kubuntu KDE/Wayland) | `49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c` | `transfer-459d0181e995` | `transfer-541c1316ab6b` |
 | `fedora-gnome-wayland` (Fedora GNOME source) | `fb83af6d5d34d8ba278023376878c822f42e6f33f65288f02fc8cbc541f373c8` | `transfer-de0468ff530f` | `transfer-ed01f06f6523` |
 | `p2c-provisioned-a1` (Cinnamon/X11 variant from historical run `p2c-a1`) | `ebc60005f72aaf67f1c14f51a16e09749cf09d91ad1890e50a0eedda30b40252` | `transfer-55342ecaa28c` | `transfer-f544391582e0` |
@@ -61,6 +62,29 @@ images. `cinnamon-x11` trusts only the workstation's `work/lab-bootstrap/identit
 The historical offloaded images above were standalone qcow2 files with 32 GiB
 virtual disks; the newer Budgie images below have 40 GiB disks.
 That is not a permanent integrity guarantee, so recheck the hash before use.
+
+### Trimmed Ubuntu GNOME golden (d69, 2026-11-13)
+
+`gnome-provisioned-20261016` boots with 3.1 GB free on its 32 GiB disk. Its
+`/home/lab` holds about 15.6 GB of source and build trees from October
+development. On `v26.1113.4757-nightly` the nightly Ubuntu GNOME row ran out of
+guest disk twice: once a capture session was lost, and once GNOME's "Low Disk
+Space" notification covered the test pattern.
+
+`gnome-provisioned-20261016-trimmed-20261113` is that image with 14 of those
+trees and 5 archives removed from `/home/lab`. It boots with 19 GB free.
+Nothing else changed: same packages, account, host key, bootstrap key and idle
+policy, so it uses the parent's `known_hosts` pin. It was made on d69 by booting
+the parent in an overlay, deleting the trees by name as `lab`, zero-filling the
+free space, powering off cleanly and running `qemu-img convert` to a standalone
+qcow2 (10.4 GiB on disk). `origin.json` beside the image records the parent,
+the hash and the change.
+
+d69's `~/.config/putgd-nightly/config.json` names it as the Ubuntu GNOME row's
+`golden`. The previous file is kept beside it as
+`config.json.before-trimmed-gnome-20261113`. The parent image is unchanged and
+is still the one to use for anything that needs those old trees. The trimmed
+image is on d69 only and is not in S3.
 
 ### Budgie goldens (EC2, 2026-11-08)
 
