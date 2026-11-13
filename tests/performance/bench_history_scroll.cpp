@@ -3,6 +3,7 @@
 // previews), focuses the list and times each PageDown from the key press to the
 // end of the list's next viewport paint, the frame that shows the new selection.
 // Synthetic measurement only; not desktop evidence.
+#include "fixtures/ControlDevice.h"
 #include "fixtures/UiSessionFixture.h"
 #include "fixtures/Waits.h"
 #include "ui/UiApplicationController.h"
@@ -28,16 +29,6 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
-class ControlDevice final:public QIODevice {
-public:
- QByteArray input,output;quint64 sequence=0;
- ControlDevice(){open(ReadWrite|Unbuffered);}
- bool isSequential()const override{return true;}
- qint64 bytesAvailable()const override{return input.size();}
- qint64 readData(char* data,qint64 max)override{const auto n=qMin(max,qint64(input.size()));memcpy(data,input.constData(),n);input.remove(0,n);return n;}
- qint64 writeData(const char* data,qint64 n)override{output.append(data,n);if(output.size()>(1<<20))output=output.right(1<<16);return n;}
- void send(const QString& type,QJsonObject payload={}){input+=QJsonDocument(QJsonObject{{"version",1},{"type",type},{"sequence",QString::number(++sequence)},{"payload",payload}}).toJson(QJsonDocument::Compact)+'\n';emit readyRead();}
-};
 // Counts viewport paints; a sample ends when the paint the key caused has run.
 class PaintCounter final:public QObject {
 public:int paints=0;
@@ -95,7 +86,7 @@ int main(int argc,char** argv){
   item.uploadStatus="local_only";item.local.status="saved";item.local.path=originals.at(i%6);
   op.items.append(item);if(ledger.saveOperation(op))return 2;}}
  const double seedMs=ms(seed);
- HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+ HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);ControlDevice device(1<<20);UiControl control(device);UiApplicationController controller(fixture.session,control,{});
  device.send("activate",{{"view","history"}});
  MainWindow* window=nullptr;for(auto* w:QApplication::topLevelWidgets())if(auto* m=qobject_cast<MainWindow*>(w))window=m;
  if(!window){qCritical("Main window did not open");return 2;}window->resize(1320,880);
