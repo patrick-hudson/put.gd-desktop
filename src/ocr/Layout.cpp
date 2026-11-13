@@ -145,6 +145,23 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
   return result;
  }
 }
+QList<Band> strips(const Profile& profile,int width,int height,int parts){
+ QList<Band> out;const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
+ const auto blank=[&](int y){return y>=0&&y<height&&y<profile.rowInk.size()&&profile.blank(y,width);};
+ int start=0;
+ for(int k=1;k<parts&&height>0;++k){
+  const int target=int(qint64(height)*k/parts),reach=std::max(1,height/(2*parts));
+  int found=-1;
+  for(int d=0;d<=reach&&found<0;++d){if(blank(target-d))found=target-d;else if(blank(target+d))found=target+d;}
+  if(found<0)continue;
+  int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
+  const int cut=(first+last+1)/2;
+  if(cut-start<4*lineRows||height-cut<4*lineRows)continue;
+  out.append({start,cut,false});start=cut;
+ }
+ out.append({start,height,false});
+ return out;
+}
 GreyImage bandImage(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes,int background,bool invert){
  GreyImage out;
  const int innerWidth=int(std::ceil(source.width*scale)),innerHeight=int(std::ceil((band.bottom-band.top)*scale));

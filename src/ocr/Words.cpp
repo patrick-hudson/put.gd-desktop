@@ -86,6 +86,8 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
 }
 void joinUrls(Recognition& job){
  static const QRegularExpression scheme(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,15}:$")),url(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,15}://"));
+ // An address split at a dot of its domain: "corpus@example. invalid".
+ static const QRegularExpression address(QStringLiteral("^[\\w.+%-]+@[\\w-]+(\\.[\\w-]+)*\\.$"));
  static const QString joints=QStringLiteral("./?=&#-_");
  QList<Word> out;out.reserve(job.words.size());
  for(auto& word:job.words){
@@ -97,7 +99,8 @@ void joinUrls(Recognition& job){
    const QChar next=word.text.isEmpty()?QChar():word.text.front();
    const bool continues=url.match(last.text).hasMatch()&&!last.text.isEmpty();
    const bool more=continues&&((joints.contains(last.text.back())&&(next.isDigit()||next.isLower()))||QStringLiteral("/?#&=").contains(next));
-   if(sameLine&&(start||more)){
+   const bool domain=address.match(last.text).hasMatch()&&(next.isDigit()||next.isLower());
+   if(sameLine&&(start||more||domain)){
     last.text+=word.text;last.rect=last.rect.united(word.rect);last.confidence=std::min(last.confidence,word.confidence);
     continue;
    }
@@ -140,15 +143,5 @@ QString copiedText(const Recognition& job,QList<int>* lineTops){
   text+=word.text;
  }
  return text;
-}
-BandText joinParts(const QList<BandText>& parts){
- BandText out;int blockBase=0;
- for(const auto& part:parts){
-  const int lineBase=int(out.lines.size());int blocks=0;
-  for(const auto& line:part.lines){out.lines.append({line.rect,blockBase+line.block});blocks=std::max(blocks,line.block+1);}
-  for(const auto& word:part.words){auto copy=word;copy.line+=lineBase;out.words.append(std::move(copy));}
-  blockBase+=blocks;
- }
- return out;
 }
 }

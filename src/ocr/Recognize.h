@@ -30,7 +30,8 @@ struct JobOptions {
  QString dumpBand;          // method comparisons only: write the first band here
  // Threads for recognition (0: one per core, at most maximumWorkerThreads).
  // Bands run in parallel; a single pass of at least parallelPixels (scaled) is
- // laid out once and its blocks run in parallel. Results join in layout order.
+ // cut into strips at blank row gaps that run in parallel. Results join in
+ // page order, by task index.
  int threads=0;
  qint64 parallelPixels=500000;
  // The job's resident memory budget. An extra engine starts, and an extra

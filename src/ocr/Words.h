@@ -29,7 +29,8 @@ struct CopyFilter {
 // band's first word.
 int mergeBand(Recognition& job,const BandText& band,const Band& placement,const Band* previous,int previousFirstWord,
                double scale,int border,int bandIndex,int imageWidth,int imageHeight);
-// Tesseract splits URLs after the scheme and at dots ("https: //example. test"):
+// Tesseract splits URLs after the scheme and at dots ("https: //example. test"),
+// and addresses at a dot of their domain ("corpus@example. invalid"):
 // joins "scheme:" with a following "//...", then continues a URL across a split
 // after . / ? = & # - _ when the next word on the line starts with a lowercase
 // letter or digit, or when the next word starts with / ? # & =, and the gap is

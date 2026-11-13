@@ -163,27 +163,11 @@ void TextEngine::prepare(const GreyImage& band,double scale){
  api_->SetImage(reinterpret_cast<const unsigned char*>(band.pixels.constData()),band.width,band.height,1,band.width);
  api_->SetSourceResolution(options_.resolution>0?options_.resolution:std::clamp(int(96*scale),70,600));
 }
-QList<QRect> TextEngine::layoutBlocks(const GreyImage& band,double scale){
- QList<QRect> blocks;if(!api_||band.width<1||band.height<1)return blocks;
- prepare(band,scale);
- std::unique_ptr<tesseract::PageIterator> it(api_->AnalyseLayout());
- if(it){
-  it->Begin();
-  do{
-   if(it->Empty(tesseract::RIL_BLOCK)||!PTIsTextType(it->BlockType()))continue;
-   int l=0,t=0,r=0,b=0;if(!it->BoundingBox(tesseract::RIL_BLOCK,&l,&t,&r,&b))continue;
-   blocks.append(QRect(l,t,std::max(1,r-l),std::max(1,b-t)));
-  }while(it->Next(tesseract::RIL_BLOCK));
- }
- api_->Clear();
- return blocks;
-}
-BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs,bool* cutShort,const QRect& rectangle,bool* failed){
+BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs,bool* cutShort,bool* failed){
  BandText out;if(cutShort)*cutShort=false;if(failed)*failed=false;
  if(!api_){if(failed)*failed=true;return out;}
  if(band.width<1||band.height<1)return out;
  prepare(band,scale);
- if(rectangle.isValid())api_->SetRectangle(rectangle.x(),rectangle.y(),rectangle.width(),rectangle.height());
  // The monitor's deadline stops recognition between words. Tesseract then
  // returns -1 with the words before the deadline recognized; the iterator
  // below gives exactly those.

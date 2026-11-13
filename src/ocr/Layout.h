@@ -59,6 +59,12 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits);
 // The integer scale the text height asks for, before the cap.
 int preferredScale(int lineHeight,int maximumScale);
 
+// Cuts rows [0, height) into about `parts` strips at blank row gaps only: each
+// cut is the middle of the blank run nearest its even share, searched within
+// half a share either way; with no gap there, that cut is skipped. Strips are
+// at least four line heights. One strip means no cut was possible.
+QList<Band> strips(const Profile& profile,int width,int height,int parts);
+
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.
 GreyImage bandImage(const GreyView& source,const Band& band,double scale,int border,
