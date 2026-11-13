@@ -32,13 +32,16 @@ bool TextLayer::touchesRedaction(const QPolygon& quad,const QList<QRect>& redact
 void TextLayer::exclude(QList<RecognizedWord>& words,QList<RecognizedCode>& codes,const QList<QRect>& redactions) {
  words.erase(std::remove_if(words.begin(),words.end(),[&](const RecognizedWord& word){return word.rect.isEmpty()||touchesRedaction(word.rect,redactions);}),words.end());
  codes.erase(std::remove_if(codes.begin(),codes.end(),[&](const RecognizedCode& code){return touchesRedaction(code.quad,redactions);}),codes.end());
- // A word starts a new line when it is not beside the one before it: its
- // centre is outside that word's height, or it begins left of it.
- int line=0;
+ // A word starts a new line when it is not beside the line so far: its centre
+ // is outside the height of that line's words, or it begins left of the word
+ // before it. The whole line counts, not only the word before: recognition
+ // gives a dash or a dot a box a few pixels high.
+ int line=0;QRect current;
  for(qsizetype i=0;i<words.size();++i){
-  if(i>0){const auto& before=words.at(i-1).rect;const auto& now=words.at(i).rect;const int middle=now.center().y();
-   if(middle<before.top()||middle>before.bottom()||now.left()<before.left())++line;}
-  words[i].line=line;
+  const auto& now=words.at(i).rect;
+  if(i>0){const int middle=now.center().y();
+   if(middle<current.top()||middle>current.bottom()||now.left()<words.at(i-1).rect.left()){++line;current={};}}
+  current=current.united(now);words[i].line=line;
  }
 }
 QString TextLayer::join(const QList<RecognizedWord>& words,int from,int to) {
