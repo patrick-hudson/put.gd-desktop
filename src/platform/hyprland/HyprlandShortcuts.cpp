@@ -91,13 +91,10 @@ struct HyprlandShortcuts::Registry:QObject {
   bool done=false;auto* callback=wl_display_sync(display);
   static const wl_callback_listener synced{[](void* data,wl_callback*,uint32_t){*static_cast<bool*>(data)=true;}};
   wl_callback_add_listener(callback,&synced,&done);
-  if(wl_display_flush(display)<0&&errno!=EAGAIN){wl_callback_destroy(callback);return false;}
-  for(int waited=0;!done&&waited<2000;){
-   if(wl_display_dispatch_pending(display)<0)break;
-   if(done)break;
-   pollfd ready{wl_display_get_fd(display),POLLIN,0};const int count=::poll(&ready,1,100);waited+=100;
-   if(count<0&&errno!=EINTR)break;
-   if(count>0&&wl_display_dispatch(display)<0)break;
+  for(int waited=0;!done&&waited<2000;waited+=100){
+   bool pending=false;if(!wayland::flush(display,pending))break;
+   pollfd ready{wl_display_get_fd(display),short(POLLIN|(pending?POLLOUT:0)),0};
+   if(!wayland::pump(display,&ready,1,100))break;
   }
   wl_callback_destroy(callback);return done;
  }
