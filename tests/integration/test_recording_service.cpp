@@ -78,7 +78,7 @@ private slots:
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["canvas"].toArray(),QJsonArray({1280,720}));
   QCOMPARE(h.rec("capabilities").result["active"].toString(),id);
   // Durable intent exists before any capture; its journal state is `recording`.
-  {HistoryStore journal(h.operations->databasePath());const auto op=journal.operation(id);QCOMPARE(op.state,QString("recording"));QCOMPARE(op.action,QString("record"));}
+  {HistoryStore journal(h.operations->databasePath());const auto op=journal.operation(id);QCOMPARE(op.stateName(),QString("recording"));QCOMPARE(op.action,QString("record"));}
   QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_active"));
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_state"));
   QCOMPARE(h.rec("pause",{{"id",id}}).error.code,QString("recording_state"));
@@ -115,13 +115,13 @@ private slots:
   // once the overwrite has actually returned the session to private review.
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("saved"));
-  {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
+  {HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).stateName(),QString("recording"));QCOMPARE(journal.operation(id).items.size(),0);}
   // Only Upload at the reviewed revision admits bytes.
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1}}).error.code,QString("recording_stale"));
   const auto uploaded=h.rec("upload",{{"id",id},{"revision",2}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["state"].toString(),QString("exporting"));QCOMPARE(uploaded.result["pending"].toString(),QString("upload"));QCOMPARE(uploaded.result["operationId"].toString(),id);
   PUTGD_TRY_COMPARE(h.backend->discards,1);QCOMPARE(h.backend->exports,3);
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);const auto item=op.items.first();
   QCOMPARE(item.artifact.mime,QString("video/mp4"));QCOMPARE(item.artifact.category,QString("videos"));QVERIFY(!item.artifact.originalFile);QVERIFY2(item.artifact.name.startsWith("Screen-Recording-")&&item.artifact.name.endsWith(".mp4"),qPrintable(item.artifact.name));
   QCOMPARE(item.uploadStatus,QString("local_only"));QCOMPARE(item.local.status,QString("saved"));
@@ -137,20 +137,20 @@ private slots:
   QCOMPARE(h.rec("start",{{"id",id}}).result["state"].toString(),QString("recording"));
   const auto cancelled=h.rec("cancel",{{"id",id}});QVERIFY(!cancelled.error);QCOMPARE(cancelled.result["state"].toString(),QString("cancelled"));
   QCOMPARE(h.backend->cancels,1);QCOMPARE(h.backend->discards,1);QCOMPARE(h.backend->exports,0);
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QVERIFY(journal.operation(id).cancelled);QVERIFY(journal.operation(id).items.isEmpty());
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("cancelled"));QVERIFY(journal.operation(id).cancelled);QVERIFY(journal.operation(id).items.isEmpty());
   PUTGD_TRY_VERIFY(!QDir(h.backend->staging).exists());PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(h.rec("cancel",{{"id",id}}).error.code,QString("recording_unavailable"));
   // A backend failure at start fails the operation; nothing is retried or uploaded.
   h.backend->failStart=true;id=h.prepareReady();QVERIFY(!id.isEmpty());
   QCOMPARE(h.rec("start",{{"id",id}}).error.code,QString("recording_start_failed"));
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_start_failed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));QCOMPARE(journal.operation(id).error.code,QString("recording_start_failed"));PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   // An export failure keeps the review open and the original unpublished.
   h.backend->failStart=false;h.backend->failExport=true;id=h.prepareReady();QVERIFY(!id.isEmpty());
   QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
-  {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("upload"));QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_export_failed"));}QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
-  h.backend->failExport=false;QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
+  {const auto last=h.rec("inspect",{{"id",id}}).result["lastExport"].toObject();QCOMPARE(last["command"].toString(),QString("upload"));QCOMPARE(last["status"].toString(),QString("failed"));QCOMPARE(last["error"].toObject()["code"].toString(),QString("recording_export_failed"));}QCOMPARE(journal.operation(id).stateName(),QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());
+  h.backend->failExport=false;QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));
   QCOMPARE(h.provider->uploads.load(),0);
  }
  void liveDiskStopKeepsTriggerFiguresAndPrivateReview(){
@@ -170,7 +170,7 @@ private slots:
   QVERIFY(details["message"].toString().contains("private review"));
   QCOMPARE(h.backend->lastControlParams["text"],details["message"]);
   QCOMPARE(h.rec("stop",{{"id",id}}).result,inspected);
-  HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).state,QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
+  HistoryStore journal(h.operations->databasePath());QCOMPARE(journal.operation(id).stateName(),QString("recording"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
   QVERIFY(!h.rec("preview",{{"id",id},{"time",0}}).error);
   // A failed local export leaves the review; retry is still explicitly local.
   h.backend->failExport=true;
@@ -180,13 +180,13 @@ private slots:
   h.backend->failExport=false;
   QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mp4")}}).error);
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QVERIFY(QFileInfo::exists(h.dir.filePath("copy.mp4")));QVERIFY(journal.operation(id).items.isEmpty());
-  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(h.provider->uploads.load(),0);
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("cancelled"));QCOMPARE(h.provider->uploads.load(),0);
  }
  void diskFinalizationFailureDoesNotClaimReviewOrUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
   const Error failure{"recording_disk_full","The clip could not be finalized; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
   h.backend->sink({{"id",id},{"event","failed"},{"error",failure.toJson()}});
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));
   QCOMPARE(journal.operation(id).error.code,failure.code);
   for(auto it=failure.details.begin();it!=failure.details.end();++it)QCOMPARE(journal.operation(id).error.details[it.key()],it.value());
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.backend->exports,0);QCOMPARE(h.provider->uploads.load(),0);
@@ -200,7 +200,7 @@ private slots:
   QCOMPARE(journal.operation(id).items.size(),0);
   h.backend->failExport=false;
   h.backend->sink({{"id",id},{"event","retryExportRequested"}});
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));
   QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.size(),1);
  }
  void lateStopReplyPreservesEditedPendingExport_data(){
@@ -224,7 +224,7 @@ private slots:
   QCOMPARE(before["stopReason"].toString(),QString("budget"));QCOMPARE(before["durationUs"].toDouble(),9000000.0);QCOMPARE(before["edit"].toObject(),edited.result["edit"].toObject());
   h.backend->pendingExports.takeFirst()();
   HistoryStore journal(h.operations->databasePath());
-  if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
+  if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
   else {PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject(),before["edit"].toObject());QVERIFY(!h.rec("cancel",{{"id",id}}).error);}
   QCOMPARE(h.provider->uploads.load(),0);
  }

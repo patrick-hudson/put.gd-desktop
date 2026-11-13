@@ -184,7 +184,7 @@ private slots:
  // window package, with the failures and the same redaction; a copied one does not.
  void windowPackagesCarryUploadsWhoseLinkWasNotCopied() {
   HistoryStore store(operations_->databasePath());QVERIFY(!store.error());
-  const auto save=[&](const QString& id,const QString& copyStatus){Operation op;op.id=id;op.action="clipboard";op.state="completed";op.phase="completed";op.copyStatus=copyStatus;op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);OperationItem item;item.artifact.id=id+"-item";item.artifact.mime="text/plain";item.artifact.name="synthetic-private-name.txt";item.uploadStatus="uploaded";item.shareStatus="shared";item.receipt.directUrl="https://synthetic-private-cdn.example.invalid/"+id+".txt";op.items={item};return store.saveOperation(op);};
+  const auto save=[&](const QString& id,const QString& copyStatus){Operation op;op.id=id;op.action="clipboard";op.restore(OperationState::Completed);op.phase="completed";op.copyStatus=copyStatus;op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);OperationItem item;item.artifact.id=id+"-item";item.artifact.mime="text/plain";item.artifact.name="synthetic-private-name.txt";item.uploadStatus="uploaded";item.shareStatus="shared";item.receipt.directUrl="https://synthetic-private-cdn.example.invalid/"+id+".txt";op.items={item};return store.saveOperation(op);};
   QVERIFY(!save("suppressed-copy-upload","suppressed"));QVERIFY(!save("copied-upload","copied"));
   Error error;BundleRequest request;request.output=dir_.filePath("suppressed-copy.zip");
   const auto result=build(context(),request,error);QVERIFY2(!error,qPrintable(error.message));

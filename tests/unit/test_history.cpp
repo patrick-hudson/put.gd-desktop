@@ -4,6 +4,7 @@
 #include <QSqlQuery>
 #include <QJsonDocument>
 #include <QTest>
+#include <QSet>
 #include <QElapsedTimer>
 using namespace putgd;
 class HistoryTest:public QObject {
@@ -11,7 +12,7 @@ class HistoryTest:public QObject {
 private slots:
  void expiredLinkRefreshPreservesIdentityAndSurvivesReopen() {
   QTemporaryDir d;const auto path=d.filePath("history.sqlite");HistoryStore store(path);
-  Operation op;op.id="expiring";op.created="2026-11-09T00:00:00.000Z";op.state="completed";op.settings=Settings::fromValidated(Settings::defaults());
+  Operation op;op.id="expiring";op.created="2026-11-09T00:00:00.000Z";op.restore(OperationState::Completed);op.settings=Settings::fromValidated(Settings::defaults());
   OperationItem item;item.artifact.id="expired-item";item.artifact.name="synthetic.txt";item.uploadStatus="uploaded";
   auto& receipt=item.receipt;receipt.destination={"opaque","original","original-revision",{{"opaque","saved"}},{{"mode","keychain"},{"reference","original-reference"}}};
   receipt.objectReference={{"schemaVersion",1},{"opaque","object-id"},{"linkExpiresAt","2000-01-01T00:00:00.000Z"}};
@@ -46,15 +47,15 @@ private slots:
  void changedItemCheckpointPreservesRemoteStateAndRollsBackAsAUnit() {
   QTemporaryDir d;const auto path=d.filePath("history.sqlite");HistoryStore store(path);Operation op;op.id="checkpoint-operation";op.created="2020-01-01T00:00:00.000Z";
   for(int i=0;i<2;++i){OperationItem item;item.artifact.id=QString("checkpoint-item-%1").arg(i);item.artifact.name=QString("item-%1.txt").arg(i);item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/synthetic";op.items.append(item);}QVERIFY(!store.saveOperation(op));QVERIFY(!store.updateRemote(op.items[0].artifact.id,"removed"));
-  op.state="running";op.items[0].local.status="saved";op.items[1].uploadStatus="failed";QVERIFY(!store.checkpointOperation(op,{op.items[0].artifact.id}));QCOMPARE(store.detail(op.items[0].artifact.id)["remoteStatus"].toString(),QString("removed"));QCOMPARE(store.detail(op.items[1].artifact.id)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(store.operation(op.id).items[1].uploadStatus,QString("failed"));
+  op.restore(OperationState::Running);op.items[0].local.status="saved";op.items[1].uploadStatus="failed";QVERIFY(!store.checkpointOperation(op,{op.items[0].artifact.id}));QCOMPARE(store.detail(op.items[0].artifact.id)["remoteStatus"].toString(),QString("removed"));QCOMPARE(store.detail(op.items[1].artifact.id)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(store.operation(op.id).items[1].uploadStatus,QString("failed"));
   const auto connection=QUuid::createUuid().toString();{
    auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TRIGGER refuse_checkpoint BEFORE UPDATE ON history BEGIN SELECT RAISE(ABORT,'synthetic checkpoint failure'); END"));
-   op.state="completed";op.items[1].uploadStatus="local_only";QCOMPARE(store.checkpointOperation(op,{op.items[1].artifact.id}).code,QString("history_io"));QCOMPARE(store.operation(op.id).state,QString("running"));QCOMPARE(store.detail(op.items[1].artifact.id)["uploadStatus"].toString(),QString("uploaded"));db.close();
+   op.restore(OperationState::Completed);op.items[1].uploadStatus="local_only";QCOMPARE(store.checkpointOperation(op,{op.items[1].artifact.id}).code,QString("history_io"));QCOMPARE(store.operation(op.id).stateName(),QString("running"));QCOMPARE(store.detail(op.items[1].artifact.id)["uploadStatus"].toString(),QString("uploaded"));db.close();
   }QSqlDatabase::removeDatabase(connection);
  }
  void remoteOutcomesHydrateRecentAndSurviveHistoryCleanup() {
   for(bool expire:{false,true}) {
-   QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.state="completed";op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());
+   QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.restore(OperationState::Completed);op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());
    OperationItem item;item.artifact.id="item";item.artifact.name="synthetic.txt";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/removed";op.items={item};
    {HistoryStore store(path);QVERIFY(!store.saveOperation(op));
     QJsonObject deletion{{"id","delete"},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId","item"},{"status","removed"},{"progress",QJsonObject{{"phase","done"}}}}}}};
@@ -68,19 +69,19 @@ private slots:
  }
  void knownRemovalSurvivesClearAndExpiry() {
   for(bool expire:{false,true}) {
-   QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.state="completed";op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.artifact.name="synthetic.txt";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/removed";op.items={item};
+   QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.restore(OperationState::Completed);op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.artifact.name="synthetic.txt";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/removed";op.items={item};
    {HistoryStore store(path);QVERIFY(!store.saveOperation(op));QVERIFY(!store.updateRemote("item","removed"));QVERIFY(!(expire?store.expireBefore("2026-10-11T00:00:00.000Z"):store.clear()));QVERIFY(!store.saveOperation(op));QCOMPARE(store.list({}).total,0);}
    HistoryStore reopened(path);const auto restored=reopened.operation("op");QCOMPARE(restored.items[0].remoteStatus,QString("removed"));QVERIFY(!restored.items[0].linkAvailable());
   }
  }
  void versionFourMigrationPreservesDeletionState() {
-  QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.state="completed";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.artifact.name="synthetic";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/original";op.items={item};
+  QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="op";op.restore(OperationState::Completed);op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.artifact.name="synthetic";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/original";op.items={item};
   {HistoryStore store(path);QVERIFY(!store.saveOperation(op));QVERIFY(!store.updateRemote("item","removed"));}
   const auto connection=QString("schema-four");{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("DROP TABLE item_state"));QVERIFY(q.exec("PRAGMA user_version=4"));db.close();}QSqlDatabase::removeDatabase(connection);
   HistoryStore upgraded(path);QVERIFY(!upgraded.error());QVERIFY(!upgraded.clear());QCOMPARE(upgraded.operation("op").items[0].remoteStatus,QString("removed"));QVERIFY(!upgraded.operation("op").items[0].linkAvailable());
  }
  void versionFourClearedDeletionCannotRestoreItsLink() {
-  QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="legacy-cleared";op.state="completed";OperationItem item;item.artifact.id="legacy-cleared-item";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/deleted";op.items={item};
+  QTemporaryDir d;const auto path=d.filePath("history.sqlite");Operation op;op.id="legacy-cleared";op.restore(OperationState::Completed);OperationItem item;item.artifact.id="legacy-cleared-item";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/deleted";op.items={item};
   {HistoryStore store(path);QVERIFY(!store.saveOperation(op));QVERIFY(!store.saveDeletion({{"id","legacy-deletion"},{"state","completed"},{"items",QJsonArray{QJsonObject{{"historyId",item.artifact.id},{"status","removed"}}}}}));QVERIFY(!store.clear());}
   const auto connection=QString("cleared-schema-four");{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("DROP TABLE item_state"));QVERIFY(q.exec("PRAGMA user_version=4"));db.close();}QSqlDatabase::removeDatabase(connection);
   HistoryStore upgraded(path);QVERIFY(!upgraded.error());QCOMPARE(upgraded.operation(op.id).items[0].remoteStatus,QString("removed"));QVERIFY(!upgraded.operation(op.id).items[0].linkAvailable());QVERIFY(!upgraded.saveOperation(op));QCOMPARE(upgraded.list({}).total,0);QVERIFY(!upgraded.operation(op.id).items[0].linkAvailable());
@@ -113,28 +114,54 @@ private slots:
  // and stays so: nothing reads the screen or runs the helper again on its own.
  void interruptedTextRecognitionIsNeverRerun() {
   QTemporaryDir d;const auto path=d.filePath("history.sqlite");
-  {HistoryStore store(path);Operation op;op.id="text-op";op.action="text";op.state="recognizing";op.phase="recognizing";op.settings=Settings::fromValidated(Settings::defaults());QVERIFY(!store.saveOperation(op));}
+  {HistoryStore store(path);Operation op;op.id="text-op";op.action="text";op.restore(OperationState::Recognizing);op.phase="recognizing";op.settings=Settings::fromValidated(Settings::defaults());QVERIFY(!store.saveOperation(op));}
   HistoryStore reopened(path);Error error;QCOMPARE(reopened.recover(&error).size(),1);QVERIFY(!error);
-  const auto saved=reopened.operation("text-op");QCOMPARE(saved.state,QString("interrupted"));QCOMPARE(saved.error.code,QString("text_interrupted"));QCOMPARE(saved.copyStatus,QString("no_result"));
-  QVERIFY(!Operation::activeState(saved.state));
+  const auto saved=reopened.operation("text-op");QCOMPARE(saved.stateName(),QString("interrupted"));QCOMPARE(saved.error.code,QString("text_interrupted"));QCOMPARE(saved.copyStatus,QString("no_result"));
+  QVERIFY(!saved.active());
   reopened.recover(&error);QVERIFY(!error);QCOMPARE(reopened.operation("text-op").toJson(),saved.toJson());
  }
- void interruptedStatesNeverPublish() {QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.state="running";op.phase="uploading";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress=UploadProgress{"uploading",1024,{}};item.candidate="fixed";item.publicationId="marker";op.items={item};QVERIFY(!store.saveOperation(op));auto recovered=store.recover();QCOMPARE(recovered.size(),1);auto saved=store.operation("op");QCOMPARE(saved.state,QString("interrupted"));QCOMPARE(saved.phase,QString("interrupted"));QCOMPARE(saved.copyStatus,QString("no_result"));QCOMPARE(saved.items[0].phase,QString("unknown"));QCOMPARE(saved.items[0].uploadProgress->bytesTransferred.value(),1024);QCOMPARE(saved.items[0].uploadStatus,QString("unknown"));QCOMPARE(saved.items[0].candidate,QString("fixed"));QCOMPARE(saved.items[0].publicationId,QString("marker"));}
+ // The journal and wire strings and the one table of state steps (#1433). A step
+ // missing from the table leaves an operation stuck; an extra one lets a finished
+ // row be rewritten; a changed string misreads every row another build saved.
+ void operationStatesAndStepsMatchTheJournal() {
+  using S=OperationState;
+  const QList<std::pair<S,QString>> states{{S::Accepted,"accepted"},{S::Acquiring,"acquiring"},{S::Editing,"editing"},{S::Recording,"recording"},{S::Recognizing,"recognizing"},{S::Stored,"stored"},
+   {S::Running,"running"},{S::Completed,"completed"},{S::Partial,"partial"},{S::Failed,"failed"},{S::Cancelled,"cancelled"},{S::Interrupted,"interrupted"},{S::Unknown,"unknown"}};
+  const QSet<QString> steps{"accepted>acquiring","accepted>recording","accepted>cancelled","accepted>failed","accepted>interrupted",
+   "acquiring>editing","acquiring>recognizing","acquiring>stored","acquiring>cancelled","acquiring>failed","acquiring>interrupted",
+   "editing>acquiring","editing>cancelled","editing>failed","editing>interrupted","recording>acquiring","recording>cancelled","recording>failed","recording>interrupted",
+   "recognizing>completed","recognizing>cancelled","recognizing>failed","recognizing>interrupted","stored>running","stored>completed","stored>cancelled","stored>failed","stored>interrupted",
+   "running>completed","running>partial","running>cancelled","running>failed","running>interrupted","running>stored","completed>failed","partial>failed","cancelled>failed",
+   "completed>stored","partial>stored","failed>stored","cancelled>stored","interrupted>stored","unknown>stored"};
+  for(const auto& [state,name]:states) {
+   if(state!=S::Unknown){QCOMPARE(operationStateName(state),name);QCOMPARE(operationState(name),state);}
+   for(const auto& [to,toName]:states) {
+    const bool allowed=steps.contains(name+">"+toName);
+    QVERIFY2(operationStep(state,to)==allowed,qPrintable(name+">"+toName));
+    Operation op;op.restore(state);const bool moved=op.advance(to);
+    QVERIFY2(moved==(allowed||state==to)&&op.state()==(moved?to:state),qPrintable(name+">"+toName));
+   }
+  }
+  // Older builds never wrote "queued" as a state; a string no build writes stays as it is.
+  QCOMPARE(operationState("queued"),S::Unknown);
+  const auto newer=Operation::fromJson({{"state","newer-state"}});QCOMPARE(newer.state(),S::Unknown);QCOMPARE(newer.toJson()["state"].toString(),QString("newer-state"));QVERIFY(!newer.active());
+ }
+ void interruptedStatesNeverPublish() {QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.restore(OperationState::Running);op.phase="uploading";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress=UploadProgress{"uploading",1024,{}};item.candidate="fixed";item.publicationId="marker";op.items={item};QVERIFY(!store.saveOperation(op));auto recovered=store.recover();QCOMPARE(recovered.size(),1);auto saved=store.operation("op");QCOMPARE(saved.stateName(),QString("interrupted"));QCOMPARE(saved.phase,QString("interrupted"));QCOMPARE(saved.copyStatus,QString("no_result"));QCOMPARE(saved.items[0].phase,QString("unknown"));QCOMPARE(saved.items[0].uploadProgress->bytesTransferred.value(),1024);QCOMPARE(saved.items[0].uploadStatus,QString("unknown"));QCOMPARE(saved.items[0].candidate,QString("fixed"));QCOMPARE(saved.items[0].publicationId,QString("marker"));}
  void recoveredInterruptedCopiesSettleWithoutChangingConfirmedReceipts_data() {
   QTest::addColumn<QString>("state");QTest::addColumn<QString>("copy");
-  for(const auto& state:QStringList{"accepted","acquiring","stored","queued","running","interrupted"})QTest::newRow(qPrintable(state))<<state<<QString("pending");
+  for(const auto& state:QStringList{"accepted","acquiring","stored","running","interrupted"})QTest::newRow(qPrintable(state))<<state<<QString("pending");
   QTest::newRow("already-copied")<<QString("interrupted")<<QString("copied");
   QTest::newRow("already-suppressed")<<QString("interrupted")<<QString("suppressed");
  }
  void recoveredInterruptedCopiesSettleWithoutChangingConfirmedReceipts() {
   QFETCH(QString,state);QFETCH(QString,copy);QTemporaryDir d;const auto path=d.filePath("history.sqlite");
-  Operation op;op.id="proton-recovery";op.state=state;op.copyStatus=copy;op.settings=Settings::fromValidated(Settings::defaults());
+  Operation op;op.id="proton-recovery";op.restore(operationState(state));op.copyStatus=copy;op.settings=Settings::fromValidated(Settings::defaults());
   OperationItem item;item.artifact.id="confirmed-item";item.uploadStatus="uploaded";item.shareStatus="shared";item.publicationId="saved-publication";
   item.receipt.destination={"proton-drive","saved-profile","saved-revision",{},{{"mode","keychain"},{"reference","synthetic-reference"}}};
   item.receipt.objectReference={{"nodeUid","synthetic-node"},{"revisionUid","synthetic-revision"}};item.receipt.concurrencyToken="synthetic-revision";item.receipt.publicationId=item.publicationId;item.receipt.directUrl="https://synthetic.invalid/share#capability";op.items={item};
   {HistoryStore store(path);QVERIFY(!store.saveOperation(op));}
   HistoryStore reopened(path);Error error;reopened.recover(&error);QVERIFY(!error);const auto recovered=reopened.operation(op.id);
-  QCOMPARE(recovered.state,QString("interrupted"));QCOMPARE(recovered.copyStatus,copy=="pending"?QString("no_result"):copy);
+  QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.copyStatus,copy=="pending"?QString("no_result"):copy);
   QCOMPARE(recovered.items.first().receipt.toJson(),item.receipt.toJson());QCOMPARE(recovered.items.first().publicationId,item.publicationId);
   reopened.recover(&error);QVERIFY(!error);QCOMPARE(reopened.operation(op.id).toJson(),recovered.toJson());
  }

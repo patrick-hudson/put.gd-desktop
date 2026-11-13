@@ -115,7 +115,7 @@ signals:
  // asked for a copy, else empty.
  void finished(const QString& operationId,const QJsonObject& record,const QString& notification);
 private:
- void advance(const QString& id,const QString& state,std::function<void()> next);
+ void advance(const QString& id,OperationState state,std::function<void()> next);
  Deliver deliverer(const QString& id);
  void delivered(const QString& id,Error,Load);
  // Runs what was delivered while a journal save was pending; true when it ended the step.

@@ -39,7 +39,7 @@ private slots:
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","crash-after-start");
   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
   QVERIFY(!h.rec("start",{{"id",id}}).error);
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));
   QCOMPARE(journal.operation(id).error.code,QString("recording_helper_crashed"));QVERIFY(journal.operation(id).items.isEmpty());
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("crash"));
   PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
@@ -56,7 +56,7 @@ private slots:
   QCOMPARE(h.rec("start",{{"id",id}}).error.code,QString("recording_helper_protocol"));
   PUTGD_TRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
   QCOMPARE(h.backend->diagnostics()["lastExit"].toObject()["status"].toString(),QString("crash"));
-  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("failed"));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));
   QCOMPARE(journal.operation(id).error.code,QString("recording_helper_protocol"));
   QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(h.provider->uploads.load(),0);
  }
