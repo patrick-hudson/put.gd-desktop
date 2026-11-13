@@ -232,6 +232,7 @@ struct Activity {
  int columns=0,rows=0;
  std::vector<uint16_t> down,across;
  uint16_t& at(std::vector<uint16_t>& grid,int x,int y){return grid[size_t(y)*size_t(columns)+size_t(x)];}
+ uint16_t at(const std::vector<uint16_t>& grid,int x,int y)const{return grid[size_t(y)*size_t(columns)+size_t(x)];}
  qint64 sum(const std::vector<uint16_t>& grid,int x0,int y0,int x1,int y1)const{
   qint64 n=0;for(int y=y0;y<y1;++y){const auto* row=grid.data()+size_t(y)*size_t(columns);for(int x=x0;x<x1;++x)n+=row[x];}return n;
  }
@@ -270,14 +271,14 @@ Activity activity(const GreyView& image,const QList<Quad>& codes,int longRun){
 struct CellRect { int x0=0,y0=0,x1=0,y1=0; int width()const{return x1-x0;} int height()const{return y1-y0;} };
 // The widest run of empty projection entries strictly inside [0, size), at
 // least minimum long, with activity on both sides. Returns its middle or -1.
-int gutter(const std::vector<qint64>& projection,int minimum,qint64 noise){
+int gutter(const std::vector<qint64>& projection,int minimum,qint64 noise,int* from=nullptr,int* to=nullptr){
  const int size=int(projection.size());int best=-1,bestLength=0;
  int first=0;while(first<size&&projection[size_t(first)]<=noise)++first;
  int last=size-1;while(last>=0&&projection[size_t(last)]<=noise)--last;
  for(int i=first;i<=last;){
   if(projection[size_t(i)]>noise){++i;continue;}
   int j=i;while(j<=last&&projection[size_t(j)]<=noise)++j;
-  if(j-i>=minimum&&j-i>bestLength){bestLength=j-i;best=(i+j)/2;}
+  if(j-i>=minimum&&j-i>bestLength){bestLength=j-i;best=(i+j)/2;if(from)*from=i;if(to)*to=j;}
   i=j;
  }
  return best;
@@ -286,7 +287,20 @@ void cut(const Activity& a,const CellRect& r,int down,int across,int minimumSide
  if(depth<10&&r.width()>=2*minimumSide){
   std::vector<qint64> columns(size_t(r.width()));
   for(int x=r.x0;x<r.x1;++x)columns[size_t(x-r.x0)]=a.sum(a.down,x,r.y0,x+1,r.y1);
-  const int at=gutter(columns,down,r.height()/16);
+  int from=0,to=0;int at=gutter(columns,down,r.height()/16,&from,&to);
+  // Not a gutter where a text line runs straight across it: on a tall page a
+  // single long line past the others is under the noise floor, and its tail
+  // was cut into panels at its word spaces. Two rows of cells in a row, each
+  // active over nine tenths of the gutter's width, are such a line; a bar of
+  // icons or a title across a screen has gaps and is not.
+  if(at>=0){
+   int run=0;
+   for(int y=r.y0;y<r.y1&&at>=0;++y){
+    int active=0;for(int x=r.x0+from;x<r.x0+to;++x)if(a.at(a.down,x,y)||a.at(a.across,x,y))++active;
+    run=10*active>=9*(to-from)?run+1:0;
+    if(run>=2)at=-1;
+   }
+  }
   if(at>=minimumSide&&r.width()-at>=minimumSide){
    cut(a,{r.x0,r.y0,r.x0+at,r.y1},down,across,minimumSide,depth+1,out);
    cut(a,{r.x0+at,r.y0,r.x1,r.y1},down,across,minimumSide,depth+1,out);

@@ -107,7 +107,8 @@ private slots:
  }
  // Whole screens: two windows side by side are two panels, read left then
  // right, each holding every one of its lines once; a single column of the
- // same text is one panel, the whole image, read as before.
+ // same text is one panel, the whole image, read as before, also when one of
+ // its lines runs far past the others.
  void panelsSplitWindowsNotColumnsOfText(){
   const int width=1200,height=400;
   // Fake glyphs: 6 px wide marks with 3 px gaps, 12 px lines, 8 px apart.
@@ -125,6 +126,21 @@ private slots:
   QVERIFY(found[0].right()<found[1].left());
   const auto one=page({QRect(20,20,1160,360)});
   QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12),QList<QRect>{QRect(0,0,width,height)});
+  // On a tall page, one long line (a token) past the others of its column
+  // is not cut off into panels of its own.
+  const int tallWidth=2400,tall=1500;
+  QByteArray tallPage(tallWidth*tall,char(255));
+  for(int y=20;y+12<=tall-20;y+=20){
+   for(int x=20;x+6<=620;x+=9)for(int dy=0;dy<12;++dy)for(int dx=0;dx<6;++dx)tallPage[(y+dy)*tallWidth+x+dx]=char(20);
+   // The long line's tail: dense thin strokes, too little activity a column
+   // for the noise floor of a tall page, and two groups of tall glyphs
+   // (brackets) that stand above it, as a token's tail had.
+   if(y==700){
+    for(int x=620;x<2300;x+=4)for(int dy=2;dy<10;++dy)tallPage[(y+dy)*tallWidth+x]=char(20);
+    for(const int group:{1500,2200})for(int x=group;x<group+12;x+=4)for(int dy=-10;dy<20;++dy)tallPage[(y+dy)*tallWidth+x]=char(20);
+   }
+  }
+  QCOMPARE(panels({reinterpret_cast<const uint8_t*>(tallPage.constData()),tallWidth,tall,tallWidth},{},12),QList<QRect>{QRect(0,0,tallWidth,tall)});
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));
