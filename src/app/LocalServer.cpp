@@ -67,6 +67,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="scroll.stop")return scroll::helperStopMs+base;
  if(method.startsWith("scroll."))return scroll::helperStartupMs+scroll::helperCommandMs+base;
  if(method=="recording.stop"||method=="action.invoke")return recording::helperStopMs+base;
+ // Answered once the running job has stopped.
+ if(method=="text.cancel")return textjob::maximumDeadlineMs+base;
  if(QStringList{"recording.capabilities","recording.microphones","recording.prepare","recording.select","recording.start","recording.pause","recording.resume","recording.raise","recording.overlay","recording.audio","recording.preview","recording.review"}.contains(method))return recording::helperCommandMs+base;
  // Reading the logs and compressing up to 20 MiB stays well inside 45 s; an
  // upload adds the destination test and the upload itself (#123).
@@ -191,7 +193,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
    &&(!p.contains("languages")||p["languages"].isArray());
   if(valid&&p.contains("languages")){for(const auto& language:p["languages"].toArray()){valid=valid&&language.isString();languages.append(language.toString());}valid=valid&&textjob::validLanguages(languages);}
   if(!valid){reply(invalid(),{});return;}
-  unbuilt();return;
+  // An agent's recognition keeps its result for text.inspect; copying is its choice.
+  auto params=p;params["keepResult"]=true;
+  operations_.recognizeText(params,reply);return;
  }
  if(method=="text.inspect"||method=="text.cancel") {
   if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
@@ -219,7 +223,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="history.copyText") {
   if(!fields(p,{"id"},{"keepResult"})||!string(p,"id")||(p.contains("keepResult")&&!p["keepResult"].isBool())){reply(invalid(),{});return;}
-  unbuilt();return;
+  // History's Copy text: the retained local copy, one clipboard write; counts only unless asked to keep the result.
+  operations_.recognizeText({{"source","history"},{"historyId",p["id"]},{"copy",true},{"keepResult",p["keepResult"].toBool()}},reply);return;
  }
  // save needs an absolute path and may overwrite; copy and show take neither.
  if(method=="history.qr") {

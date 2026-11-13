@@ -84,50 +84,77 @@ void TextService::recognize(Request request,JsonReply reply){
  // A kept result lasts until the next recognition is accepted.
  dropCache();
  op.state="accepted";op.phase="accepted";op.copyStatus=request.copy?"pending":"not_requested";
- id_=op.id;op_=op;request_=std::move(request);cancel_=std::make_shared<std::atomic_bool>(false);delivered_=false;copyMs_=0;
+ id_=op.id;op_=op;request_=std::move(request);cancel_=std::make_shared<std::atomic_bool>(false);delivered_=false;waiting_.reset();copyMs_=0;
  const auto id=id_;QPointer<TextService> guard(this);
+ // The adapter freezes its target, or shows its selector, before the journal yields.
+ if(request_.prepare)request_.prepare(op_,deliverer(id));
+ persisting_=true;
  host_.persist(op_,[guard,id,reply](Error error){
   if(!guard||guard->id_!=id){reply(textjob::failure("cancelled"),{});return;}
+  guard->persisting_=false;
   if(error){guard->terminate(error,false);reply(error,{});return;}
   guard->host_.observe(guard->op_);reply({},{{"operationId",id},{"state","accepted"}});
   // Acceptance is durable and observable before the source is read.
   QTimer::singleShot(0,guard.data(),[guard,id]{
    if(!guard||guard->id_!=id)return;
    if(guard->cancel_->load()){guard->terminate({},true);return;}
-   guard->advance(id,"acquiring",[guard,id]{
-    guard->request_.acquire([guard,id](Error error,QImage image){
-     if(guard)QMetaObject::invokeMethod(guard.data(),[guard,id,error,image]{if(guard)guard->acquired(id,error,image);},Qt::QueuedConnection);
-    });
-   });
+   if(guard->settle(id))return;
+   guard->advance(id,"acquiring",[guard,id]{guard->request_.acquire(guard->deliverer(id));});
   });
  });
 }
+TextService::Deliver TextService::deliverer(const QString& id){
+ QPointer<TextService> guard(this);
+ return [guard,id](Error error,Load load){
+  if(guard)QMetaObject::invokeMethod(guard.data(),[guard,id,error,load]{if(guard)guard->delivered(id,error,load);},Qt::QueuedConnection);
+ };
+}
+void TextService::delivered(const QString& id,Error error,Load load){
+ if(id_!=id||delivered_)return;
+ delivered_=true;waiting_=Delivery{std::move(error),std::move(load)};
+ // Before the operation is journaled as acquiring, the step that is running picks it up.
+ if(!persisting_&&op_.state=="acquiring")settle(id);
+}
+bool TextService::settle(const QString& id){
+ if(!waiting_)return false;
+ auto delivery=*std::exchange(waiting_,std::nullopt);
+ acquired(id,std::move(delivery.error),std::move(delivery.load));return true;
+}
 void TextService::advance(const QString& id,const QString& state,std::function<void()> next){
- op_.state=state;op_.phase=state;QPointer<TextService> guard(this);
+ op_.state=state;op_.phase=state;persisting_=true;QPointer<TextService> guard(this);
  host_.persist(op_,[guard,id,next=std::move(next)](Error error){
   if(!guard||guard->id_!=id)return;
+  guard->persisting_=false;
   if(error){guard->terminate(error,false);return;}
   if(guard->cancel_->load()){guard->terminate({},true);return;}
-  guard->host_.observe(guard->op_);next();
+  guard->host_.observe(guard->op_);
+  if(guard->settle(id))return;
+  next();
  });
 }
-void TextService::acquired(const QString& id,Error error,QImage image){
- if(id_!=id||delivered_)return;
- delivered_=true;
+void TextService::acquired(const QString& id,Error error,Load load){
+ if(id_!=id)return;
  if(cancel_->load()||error.code=="cancelled"||error.code=="source_cancelled"){terminate({},true);return;}
  if(error){terminate(error,false);return;}
- if(image.isNull()){terminate({"source_unsupported","This source holds no image to read",{}},false);return;}
- if(qint64(image.width())*image.height()>textjob::maximumInputPixels||image.width()>textjob::maximumEdge||image.height()>textjob::maximumEdge){terminate(textjob::failure("input_excessive"),false);return;}
- auto pixels=std::make_shared<QImage>(std::move(image));QPointer<TextService> guard(this);
+ if(!load){terminate({"source_unsupported","This source holds no image to read",{}},false);return;}
+ if(op_.state!="acquiring"){terminate({"source_unavailable","The source answered before it was asked",{}},false);return;}
+ QPointer<TextService> guard(this);
  // Recognition never starts before the journal says so.
- advance(id,"recognizing",[guard,id,pixels]{
+ advance(id,"recognizing",[guard,id,load]{
   textjob::Options options;options.words=guard->request_.keepResult;options.languagesRequired=!guard->request_.languages.isEmpty();
   options.languages=options.languagesRequired?guard->request_.languages
    :textjob::defaultLanguages(guard->host_.settings().textRecognitionLanguages,guard->host_.locale?guard->host_.locale():QLocale::system().name(),guard->backend_->languages());
   auto result=std::make_shared<TextResult>();auto failure=std::make_shared<Error>();
-  guard->host_.background([backend=guard->backend_,pixels,options,result,failure,cancel=guard->cancel_]{
-   // The colour copy goes as soon as the grey one exists.
-   const auto grey=TextJob::grey(*pixels);*pixels=QImage();
+  guard->host_.background([backend=guard->backend_,load,options,result,failure,cancel=guard->cancel_]{
+   QImage grey;
+   {
+    // The colour copy goes as soon as the grey one exists.
+    auto pixels=load(*failure);if(*failure)return;
+    if(pixels.isNull()){*failure={"source_unsupported","This source holds no image to read",{}};return;}
+    if(qint64(pixels.width())*pixels.height()>textjob::maximumInputPixels||pixels.width()>textjob::maximumEdge||pixels.height()>textjob::maximumEdge){*failure=textjob::failure("input_excessive");return;}
+    grey=TextJob::grey(pixels);
+   }
+   if(cancel->load()){*failure=textjob::failure("cancelled");return;}
    *result=backend->recognize(grey,options,*failure,cancel);
   },[guard,id,result,failure]{if(guard)guard->recognized(id,*failure,result);});
  });
@@ -159,6 +186,8 @@ void TextService::complete(const QString& id,std::shared_ptr<TextResult> result,
 }
 void TextService::terminate(Error error,bool cancelled){
  if(!active())return;
+ // A selector that is still up, or a capture still running, ends with the operation.
+ if(!delivered_&&request_.cancelAcquisition&&(request_.prepare||op_.state=="acquiring")){delivered_=true;request_.cancelAcquisition();}
  op_.error=cancelled?Error{}:error;op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";op_.phase=op_.state;op_.copyStatus=request_.copy?"no_result":"not_requested";
  QJsonObject record{{"operationId",id_},{"state",op_.state},{"source",request_.source},{"copyStatus",op_.copyStatus}};
  if(!cancelled)record["error"]=error.toJson();
@@ -167,7 +196,7 @@ void TextService::terminate(Error error,bool cancelled){
 void TextService::end(QJsonObject record,const QString& notification){
  const auto id=id_;const auto op=op_;
  records_[id]=record;recordOrder_.append(id);while(recordOrder_.size()>terminalRecords)records_.remove(recordOrder_.takeFirst());
- id_.clear();op_={};request_={};cancel_.reset();
+ id_.clear();op_={};request_={};cancel_.reset();waiting_.reset();persisting_=false;
  const auto waiting=std::exchange(cancelReplies_,{});
  host_.finish(op);
  QJsonObject answer;inspect(id,answer);
@@ -203,7 +232,7 @@ Error TextService::inspect(const QString& id,QJsonObject& result) const {
 void TextService::cancel(const QString& id,JsonReply reply){
  if(!active()||id!=id_){QJsonObject record;const auto error=inspect(id,record);reply(error,record);return;}
  cancel_->store(true);cancelReplies_.append(std::move(reply));
- if(op_.state!="acquiring"||delivered_)return; // the step that is running ends it
+ if(persisting_||op_.state!="acquiring"||delivered_)return; // the step that is running ends it
  if(request_.cancelAcquisition)request_.cancelAcquisition();
  // An acquisition that cannot be told to stop is left behind; what it delivers later is dropped.
  else terminate({},true);

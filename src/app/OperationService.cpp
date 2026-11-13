@@ -5,6 +5,7 @@
 #include "core/Log.h"
 #include "core/RunMarker.h"
 #include "core/ReleaseLink.h"
+#include <QBuffer>
 #include <QElapsedTimer>
 #include <QImageReader>
 #ifdef __GLIBC__
@@ -131,6 +132,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  textHost.background=[this](std::function<void()> work,std::function<void()> done){background([work=std::move(work)](Error&){work();return QJsonObject{};},[done=std::move(done)](Error,QJsonObject){done();});};
  textHost.reclaim=[this]{requestHeapReclamation();};
  text_=std::make_unique<TextService>(std::move(textHost),this);
+ connect(text_.get(),&TextService::finished,this,&OperationService::textFinished);
  recording_=std::make_unique<RecordingService>(root_+"/recording",std::move(host),this);
  connect(recording_.get(),&RecordingService::changed,this,[this](const QString& id){emit changed(id);emit observationsChanged();});
  cleanupTimer_.setInterval(cleanupSchedule_.intervalMs);
@@ -292,14 +294,13 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
   if(editor_){reply({"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}},{});return;}
   recording_->invoke(mode,reply);return;
  }
- // Copy text (#1428) is route-free and never reaches the upload pipeline. Its
- // parameters are checked here; the region acquisition that feeds
- // TextService::recognize is item 4a's.
+ // Copy text (#1428) is route-free and never reaches the upload pipeline: a
+ // region selected as for Capture region, read by the helper, then one copy.
  if(action==Settings::textActionName()) {
   const auto delay=options["delaySeconds"];
   if((!options.isEmpty()&&!(options.size()==1&&options.contains("delaySeconds")))||(!delay.isUndefined()&&(!delay.isDouble()||delay.toDouble()!=delay.toInt()||!Settings::captureDelayChoices().contains(delay.toInt())))){reply({"invalid_request","The text action takes delaySeconds 0, 3, 5 or 10",{}},{});return;}
-  if(text_->active()){reply(textjob::failure("text_busy"),{});return;}
-  reply({"not_implemented","Copy text from a region is not built yet",{}},{});return;
+  QJsonObject params{{"source","region"},{"copy",true}};if(delay.toInt()>0)params["delaySeconds"]=delay.toInt();
+  recognizeText(params,std::move(reply));return;
  }
  return invokeCapture(action,std::move(reply),options,activationToken);
 }
@@ -642,7 +643,8 @@ void OperationService::copyRecognizedText(const Operation& op,const QString& tex
  deliverCopy(payload,std::move(done),eligible);
 }
 void OperationService::finishText(Operation op) {
- op.phase=op.state;if(selectingId_==op.id)selectingId_.clear();
+ op.phase=op.state;if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
+ if(clipboardImports_.remove(op.id))pumpCopies();
  // A completed or cancelled text operation leaves no journal row; a failed one is
  // kept and listed. Nothing recognized is in either.
  const bool kept=op.state=="failed"||op.state=="interrupted";const auto path=databasePath();
@@ -654,6 +656,165 @@ void OperationService::finishText(Operation op) {
   logging::write(logOperation(),op.state=="completed"||op.state=="cancelled"?QtInfoMsg:QtWarningMsg,"Operation finished",fields);
   releaseActive(op.id);
  });
+}
+namespace {
+Error textSourceUnsupported(){return {"source_unsupported","Text recognition reads an image, or one PNG or JPEG file",{}};}
+// A PNG is decoded here by the built-in reader; a JPEG goes to the image worker.
+QImage decodeTextImage(const QByteArray& bytes,const ResourceLimits& limits,Error& error) {
+ if(imageFormatHint(bytes)=="png") {
+  // Detection off: Qt 6.4.2 and 6.8.2 load every image plugin otherwise.
+  auto copy=bytes;QBuffer buffer(&copy);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
+  const auto size=reader.size();
+  if(!size.isValid()){error=textSourceUnsupported();return {};}
+  if(qint64(size.width())*size.height()>textjob::maximumInputPixels){error=textjob::failure("input_excessive");return {};}
+  auto image=reader.read();if(image.isNull())error=textSourceUnsupported();
+  return image;
+ }
+ if(!bytes.startsWith("\xff\xd8\xff")){error=textSourceUnsupported();return {};}
+ auto bounded=limits;bounded.imagePixels=std::min<qint64>(limits.imagePixels,textjob::maximumInputPixels);
+ return ImageJob().decode(bytes,bounded,error);
+}
+// One local regular file, opened once and never followed through a link.
+QByteArray readTextImageFile(const QString& path,const ResourceLimits& limits,Error& error) {
+ const Error unreadable{"source_unavailable","Cannot read this image file",{}};
+#ifdef Q_OS_UNIX
+ const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC|O_NONBLOCK|O_NOFOLLOW);struct stat identity{};
+ if(fd<0||::fstat(fd,&identity)||!S_ISREG(identity.st_mode)){if(fd>=0)::close(fd);error=unreadable;return {};}
+ QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);error=unreadable;return {};}
+#else
+ QFile file(path);if(!QFileInfo(file).isFile()||!file.open(QIODevice::ReadOnly)){error=unreadable;return {};}
+#endif
+ if(file.size()<1){error=textSourceUnsupported();return {};}
+ if(file.size()>limits.imageBytes){error=textjob::failure("input_excessive");return {};}
+ const auto bytes=file.read(limits.imageBytes+1);
+ if(bytes.size()!=file.size()){error=unreadable;return {};}
+ return bytes;
+}
+// What a source delivered, as pixels: a capture's image, or exactly one image file.
+TextService::Load textPayloadLoader(ClipboardPayload delivered,ResourceLimits limits) {
+ auto payload=std::make_shared<ClipboardPayload>(std::move(delivered));
+ return [payload,limits](Error& error)->QImage {
+  if(payload->kind=="image"&&!payload->image.isNull())return std::exchange(payload->image,{});
+  if(!payload->bytes.isEmpty()&&payload->mime.startsWith("image/"))return decodeTextImage(std::exchange(payload->bytes,{}),limits,error);
+  if(payload->kind=="files"&&payload->files.size()==1&&QDir::isAbsolutePath(payload->files.first())) {
+   const auto bytes=readTextImageFile(payload->files.first(),limits,error);
+   return error?QImage{}:decodeTextImage(bytes,limits,error);
+  }
+  error=textSourceUnsupported();return {};
+ };
+}
+Error adapterSourceError(const QJsonObject& entry) {
+ const auto reported=entry["error"];const auto object=reported.toObject();
+ const auto code=entry["code"].toString(object["code"].toString("source_unavailable"));
+ const auto message=reported.isString()?reported.toString():object["message"].toString();
+ return {code,message.isEmpty()?QStringLiteral("This desktop cannot read this source"):message,{}};
+}
+}
+QHash<QString,Error> OperationService::textSourceErrors() const {
+ QHash<QString,Error> errors;const auto report=source_.capabilities();
+ // An adapter that reports no capture table is asked at acquisition instead.
+ if(report["capture"].isObject()) {
+  const auto capture=report["capture"].toObject();
+  // A region for text is the adapter's own `text` action; one that has not
+  // learned it yet has no entry.
+  const auto region=capture[Settings::textActionName()];
+  if(!region.isObject())errors.insert("region",{"source_unsupported","Copy text from a region is not available on this desktop yet",{}});
+  else if(!region.toObject()["available"].toBool())errors.insert("region",adapterSourceError(region.toObject()));
+  for(const auto* source:{"window","monitor","desktop"}){const auto entry=capture[QLatin1String(source)].toObject();if(!entry["available"].toBool())errors.insert(QLatin1String(source),adapterSourceError(entry));}
+ }
+ if(report["clipboard"].isObject()&&!report["clipboard"].toObject()["available"].toBool())errors.insert("clipboard",adapterSourceError(report["clipboard"].toObject()));
+ return errors;
+}
+void OperationService::recognizeText(const QJsonObject& params,JsonReply reply) {
+ emit explicitRequest();
+ const auto source=params["source"].toString();const bool screen=QStringList{"region","window","monitor","desktop"}.contains(source);
+ if(screen&&scroll_->active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}},{});return;}
+ // A source this desktop cannot read answers with its adapter's error; nothing else is read in its place.
+ if(const auto unavailable=textSourceErrors();unavailable.contains(source)){reply(unavailable.value(source),{});return;}
+ const auto snapshot=settings_.snapshot();const auto limits=snapshot.limits;const int delay=screen?params["delaySeconds"].toInt():0;
+ TextService::Request request;request.source=source;request.copy=params["copy"].toBool();request.keepResult=params["keepResult"].toBool();request.interactive=screen;
+ for(const auto& language:params["languages"].toArray())request.languages.append(language.toString());
+ QPointer<OperationService> owner(this);auto id=std::make_shared<QString>();
+ // Hands what the adapter delivered to the service, on the session thread.
+ const auto handOver=[owner,id,limits](TextService::Deliver deliver){
+  return [owner,id,limits,deliver](PayloadResult result){
+   if(!owner)return;
+   QMetaObject::invokeMethod(owner.data(),[owner,id,limits,deliver,result=std::move(result)]() mutable {
+    if(!owner||owner->stopping_)return;
+    // The selection is over: the next interactive capture may start while this one is read.
+    if(owner->selectingId_==*id&&!owner->preparedOwners_.contains(*id))owner->selectingId_.clear();
+    if(owner->clipboardImports_.remove(*id))owner->pumpCopies();
+    if(result.error)deliver(result.error,{});else deliver({},textPayloadLoader(std::move(result.payload),limits));
+   },Qt::QueuedConnection);
+  };
+ };
+ if(screen) {
+  // A region is the adapter's `text` action: selected as a region is, never remembered for Repeat.
+  const auto action=source=="region"?Settings::textActionName():source;const bool screenshotFirst=snapshot.regionSelectionMode=="screenshot_first";
+  const QString outcome=QStringLiteral("Copies text");
+  auto prepared=std::make_shared<SourceAdapter::PreparedAcquisition>();
+  request.prepare=[this,owner,id,prepared,action,source,delay,screenshotFirst,outcome,limits](const Operation& op,TextService::Deliver deliver) {
+   *id=op.id;
+   const std::function<void(Error)> early=[deliver](Error error){if(error)deliver(std::move(error),{});};
+   // The adapter reports when its prepared helper has drained; the selection slot is held until then.
+   const std::function<void()> released=[owner,id=op.id] {
+    if(!owner)return;
+    auto release=[owner,id] {
+     if(!owner||owner->stopping_||!owner->preparedOwners_.remove(id))return;
+     if(owner->finishedPrepared_.remove(id)){if(owner->selectingId_==id)owner->selectingId_.clear();owner->active_.remove(id);}
+    };
+    if(QThread::currentThread()==owner->thread())release();else QMetaObject::invokeMethod(owner.data(),std::move(release),Qt::QueuedConnection);
+   };
+   source_.setCaptureOutcome(outcome);source_.setRegionScreenshotFirst(screenshotFirst);
+   if(delay>0&&!(source=="region"&&!screenshotFirst)) {
+    // The countdown runs first and the target is frozen when it ends, as for a capture.
+    *prepared=[owner,id=op.id,action,delay,screenshotFirst,outcome,early,released](const ResourceLimits& limits,std::function<void(PayloadResult)> done) {
+     if(!owner){done({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
+     owner->source_.delayed(delay,[owner,id,action,screenshotFirst,outcome,early,released,limits,done=std::move(done)](Error error) mutable {
+      if(!owner||owner->stopping_||!owner->active_.contains(id)){done({{},{"cancelled","Capture cancelled",{}}});return;}
+      if(error){done({{},std::move(error)});return;}
+      owner->source_.setCaptureOutcome(outcome);owner->source_.setRegionScreenshotFirst(screenshotFirst);owner->source_.setCaptureDelay(0);
+      owner->preparedOwners_.insert(id);
+      owner->source_.prepareAcquisition(action,limits,early,released)(limits,std::move(done));
+     });
+    };
+   }else {
+    // A live region is chosen first; its adapter then counts down before the pixels.
+    preparedOwners_.insert(op.id);
+    source_.setCaptureDelay(delay);
+    *prepared=source_.prepareAcquisition(action,limits,early,released);
+    source_.setCaptureDelay(0);
+   }
+  };
+  request.acquire=[prepared,limits,handOver](TextService::Deliver deliver){(*prepared)(limits,handOver(std::move(deliver)));};
+  request.cancelAcquisition=[owner]{if(owner)owner->source_.cancelAcquisition();};
+ }else if(source=="clipboard") {
+  // Reserved as a clipboard import is: no pending copy replaces the clipboard before it is read.
+  auto prepared=std::make_shared<SourceAdapter::PreparedAcquisition>();
+  request.prepare=[this,id,prepared](const Operation& op,TextService::Deliver){*id=op.id;clipboardImports_.insert(op.id);*prepared=source_.prepareAcquisition("clipboard");};
+  request.acquire=[prepared,limits,handOver](TextService::Deliver deliver){(*prepared)(limits,handOver(std::move(deliver)));};
+ }else if(source=="file") {
+  const auto path=params["path"].toString();
+  request.acquire=[path,limits](TextService::Deliver deliver){
+   deliver({},[path,limits](Error& error)->QImage{const auto bytes=readTextImageFile(path,limits,error);return error?QImage{}:decodeTextImage(bytes,limits,error);});
+  };
+ }else {
+  // History: the item's retained local copy, checked against its recorded hash. Nothing is downloaded.
+  const auto database=databasePath();const auto historyId=params["historyId"].toString();
+  request.acquire=[database,historyId,limits](TextService::Deliver deliver){
+   deliver({},[database,historyId,limits](Error& error)->QImage{
+    QJsonObject data;{HistoryStore store(database);data=store.detail(historyId,&error);}
+    if(error)return {};
+    const auto local=data["local"].toObject();
+    if(local["status"]!="saved"||!data["mime"].toString().startsWith("image/")){error={"image_unavailable","Copy text needs the item's retained local copy of an image",{}};return {};}
+    const auto bytes=readTextImageFile(local["path"].toString(),limits,error);
+    if(error){error={"artifact_missing","Cannot read the retained local copy",{}};return {};}
+    if(bytes.size()!=data["bytes"].toInteger()||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=data["sha256"].toString()){error={"artifact_changed","The retained local copy changed",{}};return {};}
+    return decodeTextImage(bytes,limits,error);
+   });
+  };
+ }
+ text_->recognize(std::move(request),std::move(reply));
 }
 void OperationService::textCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
  const auto id=params["id"].toString();
@@ -1307,7 +1468,7 @@ QJsonObject OperationService::capabilities() const {
    {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},
    {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","submit","cancel","raise"}}}},
-  {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()},{"text",text_->capabilities()}};
+  {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()},{"text",text_->capabilities(textSourceErrors())}};
 }
 QJsonObject OperationService::diagnostics() const {
 #ifdef __GLIBC__

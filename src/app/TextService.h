@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace putgd {
 // Text recognition in the resident (#1428): the one interface the Copy text
@@ -56,9 +57,14 @@ public:
   // The desktop locale's name (de_DE), for the default language; optional.
   std::function<QString()> locale;
  };
- // The pixels of a source, in any format, or the error that ended acquisition
- // (cancelled and source_cancelled end the operation as cancelled).
- using Deliver=std::function<void(Error,QImage)>;
+ // Reads the acquired pixels, in any format, on the worker that recognizes
+ // them: a decode never runs on the session thread. An empty error and a null
+ // image is source_unsupported.
+ using Load=std::function<QImage(Error&)>;
+ // What ended acquisition: the pixels' loader, or an error (cancelled and
+ // source_cancelled end the operation as cancelled). Callable from any thread;
+ // only the first call counts.
+ using Deliver=std::function<void(Error,Load)>;
  struct Request {
   QString source="region";
   // Named by the caller: 1 to 3 identifiers that must all load. Empty: the
@@ -71,8 +77,12 @@ public:
   // keepResult). False keeps counts only and asks the helper for no words.
   bool keepResult=false;
   bool interactive=false;
+  // Called on the session thread at acceptance, before anything is journaled:
+  // where an adapter freezes its target or shows its selector. It may deliver
+  // early (Escape in the selector), which ends the operation; optional.
+  std::function<void(const Operation&,Deliver)> prepare;
   // Reads the source. Called on the session thread once the operation is
-  // journaled as acquiring; may deliver from any thread, once.
+  // journaled as acquiring; may deliver from any thread.
   std::function<void(Deliver)> acquire;
   // Ends a running acquisition (Escape, text.cancel), which then delivers; optional.
   std::function<void()> cancelAcquisition;
@@ -106,7 +116,11 @@ signals:
  void finished(const QString& operationId,const QJsonObject& record,const QString& notification);
 private:
  void advance(const QString& id,const QString& state,std::function<void()> next);
- void acquired(const QString& id,Error,QImage);
+ Deliver deliverer(const QString& id);
+ void delivered(const QString& id,Error,Load);
+ // Runs what was delivered while a journal save was pending; true when it ended the step.
+ bool settle(const QString& id);
+ void acquired(const QString& id,Error,Load);
  void recognized(const QString& id,Error,std::shared_ptr<TextResult>);
  void complete(const QString& id,std::shared_ptr<TextResult>,const QString& copyStatus);
  void terminate(Error,bool cancelled);
@@ -121,6 +135,11 @@ private:
  Request request_;
  TextJob::Cancel cancel_;
  bool delivered_=false;
+ // A journal save is in flight: nothing may end the operation until it lands,
+ // or its row could be written after the terminal one.
+ bool persisting_=false;
+ struct Delivery {Error error;Load load;};
+ std::optional<Delivery> waiting_;
  QList<JsonReply> cancelReplies_;
  QHash<QString,QJsonObject> records_;
  QStringList recordOrder_;
