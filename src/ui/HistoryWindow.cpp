@@ -1533,7 +1533,7 @@ void HistoryWindow::pollText(){
   if(copied=="suppressed"){Ui::feedback(g->status_,"Text not copied: the clipboard changed",true);return;}
   if(copied!="copied"){Ui::feedback(g->status_,"Text could not be copied",true);return;}
   QStringList parts;if(characters)parts<<QLocale().toString(characters)+(characters==1?" character":" characters");if(codes)parts<<QString::number(codes)+(codes==1?" code":" codes");
-  Ui::feedback(g->status_,"Copied "+parts.join(" and ")+(record["truncated"].toBool()?". The text was cut at the size limit.":""));
+  Ui::feedback(g->status_,"Copied "+parts.join(" and ")+(record["truncated"].toBool()?". The text was cut at a size or time limit.":""));
  });
 }
 void HistoryWindow::requestQrCode(const QJsonObject& record){

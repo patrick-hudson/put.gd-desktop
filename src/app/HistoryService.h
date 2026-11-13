@@ -28,10 +28,6 @@ public:
  // qr_too_long over 2,331 bytes.
  using QrShow=std::function<void(const QJsonObject& link,JsonReply)>;
  void qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply,QrShow show={});
- // history.copyText (#1428): Copy text from the item's retained local copy, the
- // same rule as Edit again; put.gd never downloads an upload to read it. The
- // text operation is TextService's; keepResult keeps it for text.inspect.
- void copyText(const QString& id,bool keepResult,JsonReply);
  void changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply);
  void inspectSharing(const QString&,JsonReply);
  void prepareDelete(const QStringList&,JsonReply);

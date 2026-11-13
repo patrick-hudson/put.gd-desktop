@@ -1,6 +1,4 @@
 #include "EditorWindow.h"
-#include "EditorText.h"
-#include "editor/QuickRedact.h"
 #include "FileDialog.h"
 #include "Theme.h"
 #include "Ui.h"
@@ -244,7 +242,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   connect(copySelection_,&QPushButton::clicked,this,[this]{copyRecognizedText(false);});connect(copyAllText_,&QPushButton::clicked,this,[this]{copyRecognizedText(true);});
  }
  textFeedback_=new QLabel(copyTextRow_);textFeedback_->setObjectName("editorTextFeedback");textFeedback_->setWordWrap(true);textFeedback_->hide();layout->addWidget(textFeedback_);
- textTruncated_=Ui::label("The text was cut at the size limit.","secondary",copyTextRow_);textTruncated_->setObjectName("editorTextTruncated");textTruncated_->setWordWrap(true);textTruncated_->hide();layout->addWidget(textTruncated_);
+ textTruncated_=Ui::label("The text was cut at a size or time limit.","secondary",copyTextRow_);textTruncated_->setObjectName("editorTextTruncated");textTruncated_->setWordWrap(true);textTruncated_->hide();layout->addWidget(textTruncated_);
  {auto* note=Ui::label("Reads the original image. Marks you added are not included, and Blur does not hide text from it.","secondary",copyTextRow_);note->setObjectName("editorTextNote");note->setWordWrap(true);layout->addWidget(note);}
  codesTitle_=fieldLabel("Codes",copyTextRow_);codesTitle_->setObjectName("editorCodesTitle");layout->addWidget(codesTitle_);
  codeList_=new QWidget(copyTextRow_);codeList_->setObjectName("editorCodes");codeLayout_=new QVBoxLayout(codeList_);codeLayout_->setContentsMargins(0,0,0,0);codeLayout_->setSpacing(Ui::space(Space::s));layout->addWidget(codeList_);

@@ -1,4 +1,4 @@
-#include "EditorText.h"
+#include "EditorWindow.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QLocale>

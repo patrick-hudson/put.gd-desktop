@@ -1,5 +1,4 @@
 #include "HistoryService.h"
-#include "core/ImageJob.h"
 #include "core/QrImage.h"
 #include <QFileInfo>
 #include <QSaveFile>
@@ -94,38 +93,6 @@ void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
     [this,reply,result](Error e,QJsonObject recorded){for(const auto& id:recorded["operations"].toArray())emit operations_.changed(id.toString());reply(e,result);});
   },ticket);
  });
-}
-namespace {
-// Copy text reads what Edit again edits: a retained local PNG or JPEG.
-bool textReadable(const QJsonObject& data){return data["local"].toObject()["status"]=="saved"&&QStringList{"image/png","image/jpeg"}.contains(data["mime"].toString());}
-Error noLocalCopy(){return {"image_unavailable","Copy text needs the item's local copy. Turn on Keep a local copy in Settings → Capture for future captures.",{}};}
-}
-void HistoryService::copyText(const QString& id,bool keepResult,JsonReply reply) {
- if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
- const auto path=operations_.databasePath();
- TextService::Request request;request.source="history";request.copy=true;request.keepResult=keepResult;
- // The retained original, checked against its record, decoded by the image worker.
- request.acquire=[this,path,id](TextService::Deliver deliver){
-  auto image=std::make_shared<QImage>();
-  operations_.background([path,id,image](Error& e) {
-   HistoryStore store(path);const auto data=store.detail(id,&e);if(e)return QJsonObject{};
-   const auto local=data["local"].toObject();
-   if(!textReadable(data)){e=noLocalCopy();return QJsonObject{};}
-   QFile file(local["path"].toString());
-   constexpr qint64 inputLimit=256*1024*1024;
-   if(!QFileInfo(file).isFile()||!file.open(QIODevice::ReadOnly)){e={"artifact_missing","Cannot read the retained original image",{}};return QJsonObject{};}
-   if(file.size()<1||file.size()>inputLimit){e=textjob::failure("input_excessive");return QJsonObject{};}
-   const auto bytes=file.read(inputLimit+1);
-   if(bytes.size()!=data["bytes"].toInteger()||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=data["sha256"].toString()){e={"artifact_changed","The retained original image changed",{}};return QJsonObject{};}
-   // Up to the recognition limit, with room for sixteen bits a channel.
-   ResourceLimits limits;limits.imagePixels=textjob::maximumInputPixels;limits.imageBytes=textjob::maximumInputPixels*8;limits.maxFileBytes=inputLimit+1;
-   *image=ImageJob().decode(bytes,limits,e);
-   return QJsonObject{};
-  },[deliver,image](Error e,QJsonObject){deliver(e,e?QImage():std::move(*image));});
- };
- // An item without a local copy is refused before any operation exists.
- operations_.background([path,id](Error& e){HistoryStore store(path);const auto data=store.detail(id,&e);if(!e&&!textReadable(data))e=noLocalCopy();return QJsonObject{};},
-  [this,request=std::move(request),reply=std::move(reply)](Error e,QJsonObject) mutable {if(e){reply(e,{});return;}operations_.text().recognize(std::move(request),std::move(reply));});
 }
 void HistoryService::qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply reply,QrShow show) {
  if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}

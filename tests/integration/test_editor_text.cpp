@@ -3,7 +3,7 @@
 // revision is never accepted. EditorTextRecognition runs a fake in place of
 // the putgd-ocr helper, on its real worker thread.
 #include "fixtures/Waits.h"
-#include "ui/EditorText.h"
+#include "ui/EditorWindow.h"
 #include <QJsonDocument>
 #include <QtTest>
 #include <atomic>
