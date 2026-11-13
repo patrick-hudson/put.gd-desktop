@@ -260,7 +260,7 @@ QJsonObject probeMedia() {
             : QStringLiteral("session_unsupported");
     // Recording keeps an H.264 working clip, so without a working H.264 encoder
     // or decoder nothing records; say what to install rather than only why.
-    const auto reason = result["reason"].toString();
+    const auto reason = result.value("reason").toString();
     if (reason == "wlr_capture_unavailable") result["message"] = imageCopy.reason.isEmpty() ? QStringLiteral("The compositor does not offer ext-image-copy-capture-v1") : imageCopy.reason;
     if (reason == "live_encoder_missing" || reason == "h264_encoder_unusable" || reason == "h264_decoder_unusable") {
         result["message"] = reason == "h264_decoder_unusable" ? QStringLiteral("Screen recording needs an H.264 decoder, and FFmpeg cannot open one here.")

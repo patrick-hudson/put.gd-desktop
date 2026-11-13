@@ -81,7 +81,7 @@ QByteArray encode(const Record& record) {
  QJsonObject object{{"v",1},{"time",QDateTime::fromMSecsSinceEpoch(record.time).toUTC().toString(Qt::ISODateWithMs)},{"level",levelName(record.type)},
   {"category",record.category.left(64)},{"process",record.process.left(64)},{"pid",record.pid},{"message",redact(record.message).left(4096)}};
  auto fields=redact(QJsonValue(record.fields)).toObject();
- for(const auto* key:{"operationId","itemId"})if(fields[key].isString()){object[key]=fields[key].toString().left(128);fields.remove(key);}
+ for(const auto* key:{"operationId","itemId"})if(fields.value(key).isString()){object[key]=fields.value(key).toString().left(128);fields.remove(key);}
  if(!fields.isEmpty())object["fields"]=fields;
  auto line=QJsonDocument(object).toJson(QJsonDocument::Compact);
  if(line.size()>16384) {object["fields"]=QJsonObject{{"truncated",true}};line=QJsonDocument(object).toJson(QJsonDocument::Compact);}

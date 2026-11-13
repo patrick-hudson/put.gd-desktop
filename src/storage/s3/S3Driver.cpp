@@ -256,7 +256,7 @@ StorageReceipt receipt(const Destination& destination, const QString& key, const
 void signLink(Client& client, StorageReceipt& value) {
     if (value.destination.settings.value("linkMode") != "presigned") return;
     const auto seconds = value.destination.settings.value("linkValidityDays").toInt(7) * 86400;
-    auto version=value.objectReference["versionId"].toString();
+    auto version=value.objectReference.value("versionId").toString();
     if(!version.isEmpty()&&version!="null") {
         Aws::S3::Model::GetBucketVersioningRequest request;request.SetBucket(aws(value.destination.settings["bucket"].toString()));
         const auto status=client.GetBucketVersioning(request);
@@ -1116,8 +1116,8 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     const bool objectPhase = phase.startsWith("object_");
     const bool immutablePhase = phase.startsWith("marker_") || phase.startsWith("version_");
     if ((objectPhase && immutable) || (immutablePhase && !immutable) ||
-        (phase == "marker_done" && progress["markerVersionId"].toString().isEmpty()) ||
-        (phase.startsWith("version_") && !progress.contains("markerVersionId") && !progress["noncurrent"].toBool())) {
+        (phase == "marker_done" && progress.value("markerVersionId").toString().isEmpty()) ||
+        (phase.startsWith("version_") && !progress.contains("markerVersionId") && !progress.value("noncurrent").toBool())) {
         finish("failed", {"delete_progress_unsupported", "Deletion phase does not match the recorded version", {}});
         return;
     }
