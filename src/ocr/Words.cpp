@@ -116,4 +116,14 @@ QString copiedText(const Recognition& job,QList<int>* lineTops){
  }
  return text;
 }
+BandText joinParts(const QList<BandText>& parts){
+ BandText out;int blockBase=0;
+ for(const auto& part:parts){
+  const int lineBase=int(out.lines.size());int blocks=0;
+  for(const auto& line:part.lines){out.lines.append({line.rect,blockBase+line.block});blocks=std::max(blocks,line.block+1);}
+  for(const auto& word:part.words){auto copy=word;copy.line+=lineBase;out.words.append(std::move(copy));}
+  blockBase+=blocks;
+ }
+ return out;
+}
 }

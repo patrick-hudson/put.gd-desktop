@@ -2,6 +2,7 @@
 #include <QCryptographicHash>
 #include <QFile>
 #include <tesseract/baseapi.h>
+#include <tesseract/ocrclass.h>
 #include <tesseract/resultiterator.h>
 #include <algorithm>
 #include <cerrno>
@@ -10,6 +11,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <mutex>
 #include <vector>
 
 namespace putgd::ocr {
@@ -18,15 +20,16 @@ namespace {
 constexpr char dataRoot[]="/putgd-ocr/tessdata/";
 constexpr int lstmEntry=17;  // TESSDATA_LSTM
 
-struct DataFile { QString language,path;qint64 bytes=0;QByteArray sha256; };
+struct DataFile { QString language,path;qint64 bytes=0;QByteArray sha256;std::vector<char> data; };
 struct Resolver {
  QStringList directories;
  QList<DataFile> files;
  qint64 total=0;
  QString overLimit;          // the language that crossed a limit
+ std::mutex lock;            // engines start on several threads
  void reset(){files.clear();total=0;overLimit.clear();}
 };
-// One job per process, and Tesseract's FileReader is a plain function.
+// The job's LanguageData; Tesseract's FileReader is a plain function.
 Resolver* resolver=nullptr;
 
 bool readWhole(const QString& path,qint64 maximum,std::vector<char>& data,bool& tooLarge){
@@ -64,10 +67,9 @@ bool readData(const char* filename,std::vector<char>* data){
  if(!name.startsWith(QLatin1String(dataRoot))||!name.endsWith(QLatin1String(".traineddata")))return false;
  const QString language=name.mid(int(std::strlen(dataRoot))).chopped(12);
  if(!validLanguage(language))return false;
- for(const auto& file:resolver->files)if(file.language==language){
-  // Tesseract asking twice for one language reads the same file again.
-  bool tooLarge=false;return readWhole(file.path,file.bytes,*data,tooLarge);
- }
+ const std::lock_guard<std::mutex> guard(resolver->lock);
+ // A language asked for again, by Tesseract or by another engine, comes from memory.
+ for(const auto& file:resolver->files)if(file.language==language){*data=file.data;return true;}
  if(resolver->files.size()>=maximumLanguages){resolver->overLimit=language;return false;}
  for(const auto& directory:resolver->directories){
   const auto path=directory+QLatin1Char('/')+language+QLatin1String(".traineddata");
@@ -77,31 +79,41 @@ bool readData(const char* filename,std::vector<char>* data){
    continue;
   }
   if(!plausibleData(bytes))continue;  // a broken user file falls back to the next directory
-  DataFile file{language,path,qint64(bytes.size()),QCryptographicHash::hash(QByteArrayView(bytes.data(),qsizetype(bytes.size())),QCryptographicHash::Sha256).toHex()};
-  resolver->total+=file.bytes;resolver->files.append(file);
+  DataFile file{language,path,qint64(bytes.size()),QCryptographicHash::hash(QByteArrayView(bytes.data(),qsizetype(bytes.size())),QCryptographicHash::Sha256).toHex(),bytes};
+  resolver->total+=file.bytes;resolver->files.append(std::move(file));
   *data=std::move(bytes);return true;
  }
  return false;
 }
+// Without the dictionary, none of the word lists is loaded: system and frequent
+// words, punctuation, numbers, unambiguous words and bigrams.
+std::vector<std::string> initNames(const EngineOptions& o){return o.dictionary?std::vector<std::string>{}:std::vector<std::string>{"load_system_dawg","load_freq_dawg","load_punc_dawg","load_number_dawg","load_unambig_dawg","load_bigram_dawg"};}
+std::vector<std::string> initValues(const EngineOptions& o){return o.dictionary?std::vector<std::string>{}:std::vector<std::string>(6,"0");}
 }
-TextEngine::TextEngine()=default;
-TextEngine::~TextEngine(){if(api_)api_->End();delete resolver;resolver=nullptr;}
-QString TextEngine::version(){return QString::fromLatin1(tesseract::TessBaseAPI::Version());}
-QStringList TextEngine::dataFiles()const{
+LanguageData::LanguageData(const QStringList& directories){delete resolver;resolver=new Resolver;resolver->directories=directories;}
+LanguageData::~LanguageData(){delete resolver;resolver=nullptr;}
+void LanguageData::release(){
+ if(!resolver)return;
+ const std::lock_guard<std::mutex> guard(resolver->lock);
+ for(auto& f:resolver->files)std::vector<char>().swap(f.data);
+}
+QStringList LanguageData::files()const{
  QStringList out;if(!resolver)return out;
  for(const auto& f:resolver->files)out.append(f.language+QLatin1String(".traineddata ")+QString::number(f.bytes)+QLatin1Char(' ')+QString::fromLatin1(f.sha256));
  return out;
 }
-QString TextEngine::start(const QStringList& languages,bool strict,const QStringList& directories,const EngineOptions& options,QString& failedLanguage){
+TextEngine::TextEngine()=default;
+TextEngine::~TextEngine(){if(api_)api_->End();}
+QString TextEngine::version(){return QString::fromLatin1(tesseract::TessBaseAPI::Version());}
+QString TextEngine::start(const QStringList& languages,bool strict,const EngineOptions& options,QString& failedLanguage){
  failedLanguage.clear();used_.clear();skipped_.clear();options_=options;
  if(languages.isEmpty()||languages.size()>maximumLanguages){failedLanguage=languages.value(maximumLanguages);return QStringLiteral("language_unavailable");}
  for(const auto& language:languages)if(!validLanguage(language)||languages.count(language)>1){failedLanguage=language;return QStringLiteral("language_unavailable");}
- delete resolver;resolver=new Resolver;resolver->directories=directories;
- std::vector<std::string> names,values;
- if(!options.dictionary){names={"load_system_dawg","load_freq_dawg"};values={"0","0"};}
+ if(!resolver)return QStringLiteral("engine_unavailable");
+ auto names=initNames(options),values=initValues(options);
  QStringList remaining=languages;
  while(!remaining.isEmpty()){
-  resolver->reset();
+  {const std::lock_guard<std::mutex> guard(resolver->lock);resolver->reset();}
   if(api_)api_->End();
   api_=std::make_unique<tesseract::TessBaseAPI>();
   const auto joined=remaining.join(QLatin1Char('+')).toLatin1();
@@ -125,14 +137,50 @@ QString TextEngine::start(const QStringList& languages,bool strict,const QString
  failedLanguage=languages.first();api_.reset();
  return QStringLiteral("language_unavailable");
 }
-BandText TextEngine::recognize(const GreyImage& band,double scale){
- BandText out;if(!api_||band.width<1||band.height<1)return out;
+QString TextEngine::startLike(const TextEngine& first){
+ options_=first.options_;used_=first.used_;skipped_=first.skipped_;
+ if(!resolver||used_.isEmpty())return QStringLiteral("engine_unavailable");
+ auto names=initNames(options_),values=initValues(options_);
+ api_=std::make_unique<tesseract::TessBaseAPI>();
+ const auto joined=used_.join(QLatin1Char('+')).toLatin1();
+ if(api_->Init(dataRoot,0,joined.constData(),tesseract::OEM_LSTM_ONLY,nullptr,0,&names,&values,false,readData)!=0){api_.reset();return QStringLiteral("engine_unavailable");}
+ return {};
+}
+void TextEngine::prepare(const GreyImage& band,double scale){
  api_->SetPageSegMode(tesseract::PageSegMode(options_.pageSegmentation));
  api_->SetVariable("thresholding_method",QByteArray::number(options_.thresholding).constData());
  api_->SetVariable("tessedit_do_invert",options_.invertLines?"1":"0");
  api_->SetImage(reinterpret_cast<const unsigned char*>(band.pixels.constData()),band.width,band.height,1,band.width);
  api_->SetSourceResolution(options_.resolution>0?options_.resolution:std::clamp(int(96*scale),70,600));
- if(api_->Recognize(nullptr)!=0){api_->Clear();return out;}
+}
+QList<QRect> TextEngine::layoutBlocks(const GreyImage& band,double scale){
+ QList<QRect> blocks;if(!api_||band.width<1||band.height<1)return blocks;
+ prepare(band,scale);
+ std::unique_ptr<tesseract::PageIterator> it(api_->AnalyseLayout());
+ if(it){
+  it->Begin();
+  do{
+   if(it->Empty(tesseract::RIL_BLOCK)||!PTIsTextType(it->BlockType()))continue;
+   int l=0,t=0,r=0,b=0;if(!it->BoundingBox(tesseract::RIL_BLOCK,&l,&t,&r,&b))continue;
+   blocks.append(QRect(l,t,std::max(1,r-l),std::max(1,b-t)));
+  }while(it->Next(tesseract::RIL_BLOCK));
+ }
+ api_->Clear();
+ return blocks;
+}
+BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs,bool* cutShort,const QRect& rectangle){
+ BandText out;if(cutShort)*cutShort=false;
+ if(!api_||band.width<1||band.height<1)return out;
+ prepare(band,scale);
+ if(rectangle.isValid())api_->SetRectangle(rectangle.x(),rectangle.y(),rectangle.width(),rectangle.height());
+ // The monitor's deadline stops recognition between words. Tesseract then
+ // returns -1 with the words before the deadline recognized; the iterator
+ // below gives exactly those.
+ tesseract::ETEXT_DESC monitor;if(deadlineMs>0)monitor.set_deadline_msecs(deadlineMs);
+ const int status=api_->Recognize(deadlineMs>0?&monitor:nullptr);
+ const bool late=deadlineMs>0&&monitor.deadline_exceeded();
+ if(cutShort)*cutShort=late;
+ if(status!=0&&!late){api_->Clear();return out;}
  std::unique_ptr<tesseract::ResultIterator> it(api_->GetIterator());
  if(it){
   int block=-1;
@@ -145,6 +193,7 @@ BandText TextEngine::recognize(const GreyImage& band,double scale){
     out.lines.append({QRect(l,t,std::max(1,r-l),std::max(1,b-t)),std::max(0,block)});
    }
    std::unique_ptr<char[]> text(it->GetUTF8Text(tesseract::RIL_WORD));
+   // After a deadline, words it never reached have no text.
    if(!text||!*text.get())continue;
    int l=0,t=0,r=0,b=0;it->BoundingBox(tesseract::RIL_WORD,&l,&t,&r,&b);
    out.words.append({QString::fromUtf8(text.get()),QRect(l,t,std::max(1,r-l),std::max(1,b-t)),it->Confidence(tesseract::RIL_WORD),int(out.lines.size()-1)});

@@ -33,7 +33,13 @@ using namespace putgd::ocr;
 // RLIMIT_DATA is about one and a half times the budget.
 constexpr qint64 mib=1024*1024;
 constexpr qint64 baseBudget=128*mib,largestBudget=192*mib;
-constexpr int cpuSeconds=21;  // just above the parent's 20 s deadline
+// RLIMIT_CPU: just above the parent's 20 s deadline for each recognition thread,
+// since CPU time adds up across threads.
+constexpr int cpuSecondsPerThread=21;
+// Recognition stops this long after the job starts and returns what it read,
+// truncated, leaving the parent's 20 s deadline time for the rest: decoding,
+// the memfd, the result and the copy.
+constexpr int budgetMs=16000;
 // The parent's data path, read before confinement: Landlock may read only
 // these language directories. Relative or dotted entries are not used.
 QStringList dataDirectories(){
@@ -49,13 +55,13 @@ int main(int argc,char** argv){
  ::syscall(SYS_close_range,unsigned(textjob::outputDescriptor+1),~0u,0u);
  const auto directories=dataDirectories();
  Confinement confinement;confinement.readable=readableDirectories(directories);
- confinement.dataBytes=largestBudget*3/2;confinement.cpuSeconds=cpuSeconds;
+ confinement.dataBytes=largestBudget*3/2;confinement.cpuSeconds=cpuSecondsPerThread*workerThreads();
  confinement.fileBytes=textjob::maximumOutputBytes;confinement.descriptors=32;
  QString failed;int abi=0;
  const bool confined=confine(confinement,failed,abi);
  const textjob::Engine engine=[&](const textjob::GreyImage& image,const textjob::Options& options,const QStringList&,TextResult& result)->textjob::ChildFailure {
   JobOptions job;job.languages=options.languages;job.strictLanguages=options.languagesRequired;
-  job.words=options.words;job.candidates=options.candidates;job.directories=directories;
+  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.memoryBudget=job.languages==QStringList{QStringLiteral("eng")}?baseBudget:largestBudget;
   if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(baseBudget*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
   const auto recognized=recognizeImage({image.data,image.width,image.height,image.stride},job);
   if(!recognized.error.isEmpty())return {recognized.error,recognized.failedLanguage};

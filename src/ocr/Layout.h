@@ -41,10 +41,13 @@ struct PlanLimits {
  qint64 scaledPixels=8000000;
  qint64 singlePassPixels=bandPixelLimit; // up to this the image is recognized whole
  // A banded image is cut into bands of about this size, or eight line heights
- // when that is more, never over bandPixelLimit. Tesseract's layout time grows
- // faster than a band's size: on m74 a 24 MP page took 17.5 s in 8 MP bands
- // and 8.8 s in 2 MP bands, with a lower peak.
- qint64 bandPixels=2000000;
+ // when that is more, never over bandPixelLimit. 0 picks it from the threads:
+ // the scaled image over twice the threads, between 1 and 2 MP, so every
+ // thread has bands to take. Tesseract's layout time grows faster than a
+ // band's size: on m74 a 24 MP page took 17.5 s in 8 MP bands and 8.8 s in
+ // 2 MP bands, and a dense 4K page 6.0 s in 2 MP bands and 3.6 s in 1 MP ones.
+ qint64 bandPixels=0;
+ int threads=1;
  int border=0;                  // background pixels added on every side of a band, scaled
  int maximumScale=3;
  double forcedScale=0;           // method comparisons only: this scale, before the cap

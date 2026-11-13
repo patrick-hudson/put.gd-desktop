@@ -1,6 +1,7 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// and the input limit. The contract's own tests cover the character filter.
+// the order parallel parts are joined in, and the input limit. The
+// contract's own tests cover the character filter.
 // Synthetic data only.
 #include "ocr/Layout.h"
 #include "ocr/Words.h"
@@ -54,6 +55,24 @@ private slots:
   mergeBand(job,b,second,&first,firstWord,1,0,1,1000,400);
   QStringList texts;for(const auto& w:job.words)texts.append(w.text);
   QCOMPARE(texts,QStringList({"kept","twice","whole","next"}));
+ }
+ // Parallel recognition: parts (layout blocks) finish in any order but are
+ // stored by index and joined in that order. Every line comes out once, in
+ // layout order, with its words and a distinct block.
+ void joinedPartsKeepEveryLineOnceInOrder(){
+  QList<BandText> parts(3);
+  for(int p=0;p<3;++p)for(int l=0;l<2;++l){
+   parts[p].lines.append({QRect(0,100*p+20*l,500,18),0});
+   parts[p].words.append({QStringLiteral("p%1l%2").arg(p).arg(l),QRect(10,100*p+20*l,40,18),90,l});
+  }
+  const auto joined=joinParts(parts);
+  Recognition job;mergeBand(job,joined,{0,400,false},nullptr,0,1,0,0,500,400);
+  QStringList texts;for(const auto& w:job.words)texts.append(w.text);
+  QCOMPARE(texts,QStringList({"p0l0","p0l1","p1l0","p1l1","p2l0","p2l1"}));
+  QCOMPARE(job.lines.size(),6);
+  for(int i=0;i<job.words.size();++i)QCOMPARE(job.words[i].line,i);
+  QCOMPARE(job.lines[2].block,1);QCOMPARE(job.lines[4].block,2);
+  QCOMPARE(copiedText(job),QStringLiteral("p0l0\np0l1\n\np1l0\np1l1\n\np2l0\np2l1"));
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

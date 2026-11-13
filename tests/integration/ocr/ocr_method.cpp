@@ -33,6 +33,10 @@ int main(int argc,char** argv){
   else if(a=="--max-scale")options.limits.maximumScale=next().toInt();
   else if(a=="--border")options.limits.border=next().toInt();
   else if(a=="--dpi")options.engine.resolution=next().toInt();
+  else if(a=="--threads")options.threads=next().toInt();
+  else if(a=="--parallel-mp")options.parallelPixels=qint64(next().toDouble()*1000000);
+  else if(a=="--dump")options.dumpBand=next();
+  else if(a=="--budget")options.budgetMs=next().toInt();
   else if(a=="--band")options.limits.bandPixels=qint64(next().toDouble()*1000000);
   else if(a=="--single")options.limits.singlePassPixels=qint64(next().toDouble()*1000000);
   else if(a=="--cap")options.limits.scaledPixels=qint64(next().toDouble()*1000000);
@@ -58,7 +62,7 @@ int main(int argc,char** argv){
   QJsonObject line{{"image",path},{"peakKiB",qint64(peak)},{"error",result.error},{"text",result.text},{"scale",result.recognition.scale},{"bands",result.recognition.bands},
                    {"lineHeight",result.profile.lineHeight},{"dark",result.profile.dark},{"codesMs",result.timings.codesMs},
                    {"engineStartMs",result.timings.engineStartMs},{"recognitionMs",result.timings.recognitionMs},{"totalMs",result.timings.totalMs},
-                   {"codes",result.recognition.codes.size()},{"words",result.recognition.words.size()}};
+                   {"codes",result.recognition.codes.size()},{"words",result.recognition.words.size()},{"truncated",result.truncated},{"parts",result.recognition.parts},{"threads",result.recognition.threads}};
   if(words){
    QJsonArray list;for(const auto& w:result.recognition.words)list.append(QJsonObject{{"t",w.text},{"c",int(w.confidence)},{"k",w.kept},{"r",QJsonArray{w.rect.x(),w.rect.y(),w.rect.width(),w.rect.height()}}});
    line["wordList"]=list;

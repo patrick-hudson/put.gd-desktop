@@ -8,6 +8,10 @@
 
 // One recognition job, from the grey input to the result JSON (#1428 decisions 3 and 4).
 namespace putgd::ocr {
+// Recognition runs on at most this many threads, each with its own engine.
+inline constexpr int maximumWorkerThreads=4;
+// The threads a job uses: requested, or one per core, at most maximumWorkerThreads.
+int workerThreads(int requested=0);
 
 struct JobOptions {
  QStringList languages{QStringLiteral("eng")};
@@ -19,6 +23,21 @@ struct JobOptions {
  PlanLimits limits;
  CopyFilter filter;
  bool invertDark=true;      // put.gd's own polarity: a dark page is inverted
+ // Recognition stops when this much time has passed since the job started and
+ // returns what it has, truncated; the parent's deadline and RLIMIT_CPU stay
+ // behind it. 0: no budget (method comparisons).
+ int budgetMs=0;
+ QString dumpBand;          // method comparisons only: write the first band here
+ // Threads for recognition (0: one per core, at most maximumWorkerThreads).
+ // Bands run in parallel; a single pass of at least parallelPixels (scaled) is
+ // laid out once and its blocks run in parallel. Results join in layout order.
+ int threads=0;
+ qint64 parallelPixels=500000;
+ // The job's resident memory budget. An extra engine starts, and an extra
+ // worker takes a task, only while the resident set plus what one engine or
+ // one task has added so far stays under it; the first worker always goes on.
+ // 0: no gate (method comparisons).
+ qint64 memoryBudget=0;
 };
 struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,totalMs=0; };
 struct JobResult {
