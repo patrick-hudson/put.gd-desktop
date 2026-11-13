@@ -4,9 +4,10 @@
 // scored quickly; the helper itself runs the same recognizeImage.
 //   bench_ocr_method [--data DIR] [--lang L] [--psm N] [--threshold N] [--no-dict]
 //     [--no-invert-lines] [--no-invert] [--scale S] [--max-scale N] [--border N]
-//     [--dpi N] [--cap MP] [--confidence F] [--contrast N] [--words] IMAGE...
+//     [--dpi N] [--cap MP] [--band MP] [--confidence F] [--contrast N] [--words] IMAGE...
 #include "ocr/Recognize.h"
 #include <QGuiApplication>
+#include <QFile>
 #include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -32,6 +33,8 @@ int main(int argc,char** argv){
   else if(a=="--max-scale")options.limits.maximumScale=next().toInt();
   else if(a=="--border")options.limits.border=next().toInt();
   else if(a=="--dpi")options.engine.resolution=next().toInt();
+  else if(a=="--band")options.limits.bandPixels=qint64(next().toDouble()*1000000);
+  else if(a=="--single")options.limits.singlePassPixels=qint64(next().toDouble()*1000000);
   else if(a=="--cap")options.limits.scaledPixels=qint64(next().toDouble()*1000000);
   else if(a=="--confidence")options.filter.confidence=next().toFloat();
   else if(a=="--contrast")options.filter.contrast=next().toInt();
@@ -46,9 +49,13 @@ int main(int argc,char** argv){
   if(image.isNull()){std::fprintf(stderr,"cannot read %s\n",qPrintable(path));continue;}
   QImage flat(image.size(),QImage::Format_RGB32);flat.fill(Qt::white);{QPainter p(&flat);p.drawImage(0,0,image);}
   const auto grey=flat.convertToFormat(QImage::Format_Grayscale8);
+  flat=QImage();
+  // Peak RSS from here on only: the decode above is the parent's, not the helper's.
+  {QFile clear(QStringLiteral("/proc/self/clear_refs"));if(clear.open(QIODevice::WriteOnly))clear.write("5");}
   const putgd::ocr::GreyView view{grey.constBits(),grey.width(),grey.height(),int(grey.bytesPerLine())};
   const auto result=putgd::ocr::recognizeImage(view,options);
-  QJsonObject line{{"image",path},{"error",result.error},{"text",result.text},{"scale",result.recognition.scale},{"bands",result.recognition.bands},
+  long peak=0;{QFile status(QStringLiteral("/proc/self/status"));if(status.open(QIODevice::ReadOnly))for(const auto& l:status.readAll().split('\n'))if(l.startsWith("VmHWM:"))peak=l.mid(6).trimmed().split(' ').value(0).toLong();}
+  QJsonObject line{{"image",path},{"peakKiB",qint64(peak)},{"error",result.error},{"text",result.text},{"scale",result.recognition.scale},{"bands",result.recognition.bands},
                    {"lineHeight",result.profile.lineHeight},{"dark",result.profile.dark},{"codesMs",result.timings.codesMs},
                    {"engineStartMs",result.timings.engineStartMs},{"recognitionMs",result.timings.recognitionMs},{"totalMs",result.timings.totalMs},
                    {"codes",result.recognition.codes.size()},{"words",result.recognition.words.size()}};

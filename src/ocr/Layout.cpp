@@ -109,10 +109,11 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
   const qint64 scaledWidth=qint64(std::ceil(width*scale))+2*limits.border;
   const qint64 scaledHeight=qint64(std::ceil(height*scale))+2*limits.border;
   result.scale=scale;result.bands.clear();
-  if(scaledWidth*scaledHeight<=limits.bandPixels){result.bands.append({0,height,false});return result;}
-  const qint64 scaledRows=limits.bandPixels/scaledWidth-2*limits.border;
-  const int bandRows=scaledRows>0?int(std::floor(scaledRows/scale)):0;
-  if(bandRows<4*lineRows){
+  if(scaledWidth*scaledHeight<=limits.singlePassPixels){result.bands.append({0,height,false});return result;}
+  const auto sourceRows=[&](qint64 pixels){const qint64 rows=pixels/scaledWidth-2*limits.border;return rows>0?int(std::floor(rows/scale)):0;};
+  const int largestRows=sourceRows(bandPixelLimit);
+  const int bandRows=std::min(largestRows,std::max(sourceRows(limits.bandPixels),8*lineRows));
+  if(largestRows<4*lineRows){
    if(scale>1){scale=1;continue;}
    result.error="input_excessive";result.bands.clear();return result;
   }

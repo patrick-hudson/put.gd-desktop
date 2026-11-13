@@ -46,7 +46,7 @@ int main(int argc,char** argv){
  if(recognition){
   JobOptions options;options.directories=directories;
   const int width=1200,height=recognition==2?2400:300;
-  if(recognition==2){options.limits.bandPixels=1000000;options.limits.forcedScale=1;}
+  if(recognition==2){options.limits.singlePassPixels=1000000;options.limits.bandPixels=1000000;options.limits.forcedScale=1;}
   const auto grey=stripes(width,height);
   const auto result=recognizeImage({reinterpret_cast<const uint8_t*>(grey.constData()),width,height,width},options);
   std::printf("recognized error=%s bands=%d words=%d\n",qPrintable(result.error),result.recognition.bands,int(result.recognition.words.size()));std::fflush(stdout);

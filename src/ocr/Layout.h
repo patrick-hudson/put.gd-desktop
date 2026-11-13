@@ -34,8 +34,16 @@ struct Plan {
  bool banded()const{return bands.size()>1;}
 };
 struct PlanLimits {
- qint64 scaledPixels=32000000;  // the whole job's scaled pixels
- qint64 bandPixels=bandPixelLimit;
+ // The whole job's scaled pixels. Measured on m74 (i5-6500T, Tesseract 5.3.4):
+ // above this a scale over 1x costs more than the deadline and the speed bars
+ // allow (a 4K UI page took 20 s at 1.7x and 3 s at 1x).
+ qint64 scaledPixels=8000000;
+ qint64 singlePassPixels=bandPixelLimit; // up to this the image is recognized whole
+ // A banded image is cut into bands of about this size, or eight line heights
+ // when that is more, never over bandPixelLimit. Tesseract's layout time grows
+ // faster than a band's size: on m74 a 24 MP page took 17.5 s in 8 MP bands
+ // and 8.8 s in 2 MP bands, with a lower peak.
+ qint64 bandPixels=2000000;
  int border=0;                  // background pixels added on every side of a band, scaled
  int maximumScale=3;
  double forcedScale=0;           // method comparisons only: this scale, before the cap
