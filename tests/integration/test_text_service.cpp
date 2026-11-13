@@ -113,6 +113,16 @@ private slots:
   const auto record=resident.inspect(id);QCOMPARE(record["state"].toString(),QString("completed"));QCOMPARE(record["copyStatus"].toString(),QString("suppressed"));
   QCOMPARE(resident.source.copies,0);
  }
+ // A QR request reserves its revision before receipt refresh, not at dispatch.
+ void newerUserCopySuppressesQrDispatch() {
+  Resident resident;QVERIFY(resident.start());
+  const auto ticket=resident.operations->invalidateCopyEligibility();
+  const auto revision=resident.operations->clipboardRevision();
+  ++resident.source.revision;
+  Error error;bool answered=false;
+  resident.operations->copyHistoryQr(QByteArray("synthetic PNG"),[&](Error e,QJsonObject){error=e;answered=true;},ticket,revision);
+  QVERIFY(answered);QCOMPARE(error.code,QString("copy_suppressed"));QCOMPARE(resident.source.copies,0);
+ }
  // A source this desktop cannot read must answer with the desktop's own reason.
  // Reading another source in its place would copy text the user never pointed at.
  void unavailableSourceReportsItsAdaptersError() {

@@ -115,7 +115,8 @@ public:
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
  // History's QR code image (#1428): an explicit copy of a PNG the caller made,
  // superseded like copyHistoryUrl when a newer explicit copy took the ticket.
- void copyHistoryQr(QByteArray png,JsonReply,quint64 ticket);
+ quint64 clipboardRevision() const {return source_.clipboardRevision();}
+ void copyHistoryQr(QByteArray png,JsonReply,quint64 ticket,quint64 revision);
  // A history item's missing preview (#190): an image's or a video's that was
  // never made, failed or was removed by cleanup, made from the retained
  // artifact or a verified local copy through the one-at-a-time poster queue.
