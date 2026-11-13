@@ -14,9 +14,11 @@
 #include <QPointer>
 #include <QThread>
 namespace putgd {
+struct CaptureSequence;
 // Also the window list for window recordings (KWin window UUIDs).
 class KdeSourceAdapter final:public QObject,public SourceAdapter,public RecordingWindows {
  Q_OBJECT
+ friend struct CaptureSequence;
 public:
  explicit KdeSourceAdapter(QObject* parent=nullptr);
  ~KdeSourceAdapter() override;
