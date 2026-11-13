@@ -116,6 +116,12 @@ def exercise(a,name,mode,expected,patterns,canary):
     if mode=='landlock':
         cmd=['systemd-run','--user','--pipe','--wait','--collect','--quiet','--unit=text-fault-'+str(os.getpid()),'-p','SystemCallFilter=~landlock_create_ruleset landlock_add_rule landlock_restrict_self',
              '-p','UnsetEnvironment=DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS AT_SPI_BUS_ADDRESS','-p','RuntimeMaxSec=35','--setenv=XDG_RUNTIME_DIR='+str(runtime),'--setenv=TMPDIR='+str(temp),'--setenv=QT_QPA_PLATFORM=offscreen',*cmd]
+    # systemd-run connects to the real user's service manager; its unit receives
+    # the private runtime above. Pointing the launcher at that private bus would
+    # prevent the Landlock refusal from being exercised at all.
+    if mode=='landlock':
+        control_runtime=Path('/run/user')/str(os.getuid())
+        env=env|dict(XDG_RUNTIME_DIR=str(control_runtime),DBUS_SESSION_BUS_ADDRESS='unix:path='+str(control_runtime/'bus'))
     row.update(command=cmd,method=mode if isinstance(mode,str) else mode['mode'])
     roots=[Path('/tmp'),runtime,temp];before,opaque=inventory(roots);child=None;fd=None;parentfd=None;p=None;started=time.monotonic()
     try:
