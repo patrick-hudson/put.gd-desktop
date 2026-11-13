@@ -120,6 +120,18 @@ export function classifyNode(node: JsonObject, ref: JsonObject, publicationId: s
     if (!marker || marker.publicationId !== publicationId || marker.sha256 !== ref.sha256) return 'foreign';
     return 'own';
 }
+// The receipt's own file and revision, read without any of the metadata that revision was uploaded
+// with: the service answered before it had the revision's extended attributes. A revision's
+// metadata never changes, so such a read says nothing either way; it is not another file.
+// `classifyNode` still calls it foreign, and only a file this process has just uploaded is read
+// again on it (see the helper's sharing).
+export function revisionWithoutMetadata(node: JsonObject, ref: JsonObject): boolean {
+    const revision = node.activeRevision;
+    return node.name?.ok === true && node.keyAuthor?.ok === true && node.nameAuthor?.ok === true &&
+        revision?.contentAuthor?.ok === true && !node.errors?.length && node.uid === ref.nodeUid &&
+        node.parentUid === ref.folderUid && node.name.value === ref.name && node.type === 'file' && !node.trashTime &&
+        revision.uid === ref.revisionUid && revision.claimedAdditionalMetadata === undefined && revision.claimedSize === undefined;
+}
 // A fresh check after sharing prevents returning a capability for a changed revision.
 export function shareOutcome(proof: JsonObject, action: string, directUrl: string, ownership: string,
     expirationTime?: Date, now = Date.now()): JsonObject {

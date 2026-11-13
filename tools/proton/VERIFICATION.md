@@ -548,3 +548,81 @@ native relink proof and the desktop/resource acceptance remain open gates
 Not shown here: the failure rate in the application with this helper. Two
 fresh helpers both answered with nothing would be about one start in 65,000 at
 the rate measured.
+
+## A link after upload reported `changed` for put.gd's own file (#1399, 2026-11-13)
+
+The desktop acceptance of #1399 on m74 (Cinnamon X11, nightly 26.1113.4757,
+helper `d4bea9c8a1cd`) had one 64 KiB upload end `uploaded` with its link
+`changed` and no link
+([record](https://github.com/patrick-hudson/put.gd-evidence/tree/1c5cd560aba11e20758ee317da29256db610a87e/records/2026-11-13-proton-relink-1399),
+operation `1eb49f84`). Nothing had touched the file; the same case repeated at
+once passed, and a later inspection answered `private`.
+
+What happened, from the record and the code:
+- Inspection found no link on the file, and a link the helper makes is never
+  taken back, so the link was never made: the read before it said the file was
+  not put.gd's own, as `missing` or `foreign` (both become `changed`).
+- The resident logged 2.558 s from the upload's end to the link's; the seven
+  other 64 KiB links in those m74 runs took 0.94 to 1.63 s. One first read
+  of `foreign` would have answered in about 0.3 s. 2.56 s fits four reads that
+  each had to list the folder (the `missing` path) with the three 0.3 s pauses
+  of the earlier fix: the file was not returned for at least 2.2 s after its
+  upload.
+- The pinned SDK leaves a file the service returns without its active revision
+  out of a batch read, as a draft, so that read is `missing` too. A revision
+  returned without its extended attributes is read with no metadata and a valid
+  author, which `classifyNode` calls `foreign`; the earlier fix did not read
+  that again, so it would have become `changed` at once.
+
+Live on d69, the helper from source with a preload that recorded, for the file
+just uploaded, whether each read returned it, with its revision and its
+metadata (no ids, names or bodies), 196 synthetic uploads, all removed after:
+- 120 publishes of 64 KiB, alternating a link and six reads back to back: 600
+  reads, every one whole; the first came 183 to 371 ms after the upload, on the
+  upload's own connection every time.
+- 40 more with six new connections reading the file as well: 200 reads of the
+  helper and 373 on new connections (answered 0.45 to 0.96 s after the upload),
+  every one whole.
+- 24 publishes of 200 KB (block upload and commit): 120 reads, every one whole.
+- 10 publishes with the fixed helper: 5 links in 0.95 to 0.99 s, one read
+  before and one after each, as before.
+
+The early read was not reproduced (two sightings in desktop acceptance, the
+other #1414's on k72, none in these 196), so the patience is sized from the
+record: at least 2.2 s on m74.
+
+The fix: for the file this process uploaded within thirty seconds, a read the
+service answered without an error that did not return the file, could not tell
+whose it is, or returned its own revision with no metadata at all
+(`revisionWithoutMetadata`), is made again up to five times, 0.25, 0.5, 1, 2
+and 4 s apart: about ten seconds of reads, 4.5 times the longest seen. A read
+that shows another revision, name, folder or trash is believed at once, and
+any read with a service error is not repeated. A link is still returned only
+after a read after the link that proves the file's revision and marker are
+put.gd's. A file that still reads early gets no link and is `unknown`.
+
+Why `unknown` and not `changed`, from the application: `changed` shows
+**Share link changed** in History, disables Share, clears the link intent and
+leaves Retry with nothing to do, so the user needed Inspect link and then
+Share. `unknown` shows **Sharing outcome unknown** and keeps the intent; Retry
+inspects the file and, finding it private, the next Retry makes the link, and
+Inspect link then Share works too. Both leave the operation partial, and the
+notification reads "Completed with a problem" and "Upload failed." with
+nothing copied.
+
+`runtime.test.ts` keeps one test for this, rewritten: a just-uploaded file read
+first not returned, without its revision, or with its revision and no
+metadata, is read again and ends `shared` with its link; another revision ends
+`changed` with no link after one read and no change; a file that stays early is
+`unknown` after six reads with no change; a file uploaded earlier is believed
+on its first read. It failed on the nightly helper (`changed` for the revision
+without metadata). 77 helper tests pass in provisioning with the 12 stdio and
+3 session cases.
+
+The rebuilt helper is
+`34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b`, reproduced
+by two provisions on d69. `SOURCES.json` binds it and its overlay sources; the
+native relink proof and the desktop/resource acceptance remain open gates for it.
+
+Not shown here: the fix against a real early read, which was not seen in these
+runs. The test drives each early shape through the SDK double.

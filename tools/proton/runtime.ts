@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
 import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, keychain, openAccount, openClient, privateDataDirectory } from './account';
 import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, configured, days, failure, hash, makeReceipt,
-    name, object, parseRequest, publicationClientUid, receipt, reference, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
+    name, object, parseRequest, publicationClientUid, receipt, reference, revisionWithoutMetadata, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
 import { AccountApiError } from 'proton-drive-sdk-account';
 import { writeJson } from './stdout';
 import { createProgressReporter } from './progress';
@@ -146,20 +146,25 @@ export async function checkName(ctx: Context, request: JsonObject) {
             objectReference: reference(request), concurrencyToken: '' });
     } catch (error) { return status('inconclusive', { error: serviceFailure(error, 'operation_failed', ctx.auth.isLoggedIn()) }); }
 }
-export async function stat(ctx: Context, request: JsonObject) {
+// One read of the file a receipt names. `early` marks an answer the service gave without an error
+// that may only predate the upload: the file not returned at all, or returned with its own
+// revision and none of that revision's metadata (`revisionWithoutMetadata`).
+async function readFile(ctx: Context, request: JsonObject): Promise<{ checked: JsonObject; early: boolean }> {
     const proof = receipt(request), ref = proof.objectReference;
     try {
         const node = (await readDestination(ctx, request, [ref.nodeUid])).nodes.get(ref.nodeUid);
         if (!node) {
             // An unanswered lookup is not absence. Only a complete folder list proves missing here.
             for await (const uid of ctx.sdk.iterateFolderChildrenNodeUids(ref.folderUid, undefined, controller.signal))
-                if (uid === ref.nodeUid) return status('unknown');
-            return status('missing');
+                if (uid === ref.nodeUid) return { checked: status('unknown'), early: true };
+            return { checked: status('missing'), early: true };
         }
         const ownership = classifyNode(node, ref, proof.publicationId);
-        return status(ownership, ownership === 'own' ? { receipt: proof } : {});
-    } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
+        return { checked: status(ownership, ownership === 'own' ? { receipt: proof } : {}),
+            early: ownership === 'unknown' || (ownership === 'foreign' && revisionWithoutMetadata(node, ref)) };
+    } catch (error) { return { checked: status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }), early: false }; }
 }
+export async function stat(ctx: Context, request: JsonObject) { return (await readFile(ctx, request)).checked; }
 async function reconcile(ctx: Context, request: JsonObject) {
     hash(request.artifact?.sha256); text(request.publicationId);
     try {
@@ -178,22 +183,33 @@ async function nameStillFree(ctx: Context, folderUid: string, candidate: string)
     catch { return false; }
 }
 const API_HOST = 'drive-api.proton.me';
-// A file this process uploaded moments ago was once read back, straight after its upload, as
-// not known to be its own, with no error from the service; minutes later the same read said
-// it was (desktop acceptance of #1414, one publish in about four hundred). What made that
-// first read incomplete was not established. Such a read is made again, three times at most,
-// before it is believed: only for the file this process has just uploaded, and only when the
-// service answered without an error. A file that stays incomplete still gets no link.
+// A file this process has just uploaded can read back as not yet there, with no error from the
+// service. Seen twice in desktop acceptance, about one publish in four hundred: in #1414 a read
+// 0.4 s after the upload came back `unknown`; in #1399 (m74, nightly 26.1113.4757) the reads
+// before the link took 2.6 s, the three reads again included, which fits four reads that each
+// had to list the folder, and so ended `missing`: the link was reported `changed` and never
+// made, and an inspection later found the file put.gd's own. On d69 none of 196 uploads read
+// back that way, on the kept connection or on six new ones each. The pinned SDK leaves a file
+// the service returns without its active revision out of a batch read as a draft (missing), and
+// reads a revision returned without its extended attributes as having no metadata, which
+// `classifyNode` calls foreign without a read again. Neither is another file. So for the file
+// this process has just uploaded, and only while the service answers without an error, such a
+// read is made again, with pauses that double, for about ten seconds at most. A read that shows
+// another revision, name, folder or trash is believed at once. A file that stays unread gets no
+// link and is reported `unknown`, which the application inspects again on Retry, never
+// `changed`, which says the file was replaced and ends the link step.
 let uploadedHere: { key: string; nodeUid: string; revisionUid: string; publicationId: string; at: number } | undefined;
-const REREADS = 3, REREAD_AFTER_MS = 300, JUST_UPLOADED_MS = 30000;
+export const REREAD_PAUSES_MS = [250, 500, 1000, 2000, 4000];
+const JUST_UPLOADED_MS = 30000;
 async function ownershipAfterUpload(ctx: Context, request: JsonObject, justUploaded: boolean) {
-    let checked = await stat(ctx, request);
-    for (let again = 0; justUploaded && again < REREADS && !controller.signal.aborted &&
-        (checked.status === 'unknown' || checked.status === 'missing') && !Object.keys(checked.error ?? {}).length; again++) {
-        await new Promise(resolve => setTimeout(resolve, REREAD_AFTER_MS));
-        checked = await stat(ctx, request);
+    let { checked, early } = await readFile(ctx, request);
+    if (!justUploaded) return checked;
+    for (const pause of REREAD_PAUSES_MS) {
+        if (!early || controller.signal.aborted) break;
+        await new Promise(resolve => setTimeout(resolve, pause));
+        ({ checked, early } = await readFile(ctx, request));
     }
-    return checked;
+    return early ? status('unknown') : checked;
 }
 // A file over the single-request limit goes to a storage host named only by the request
 // before its bytes. The application remembers the host its last upload used and names it in
