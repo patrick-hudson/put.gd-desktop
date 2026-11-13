@@ -461,7 +461,7 @@ void TrayController::retintMenu() {
  const auto tint=Theme::trayTints(panel_.light()).idle;
  // Menu entry IDs name actions, not glyphs: map each one, so an ID without its
  // own IconArt glyph never falls back to the generic file.
- static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"scroll","scroll"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
+ static const QHash<QString,QString> glyphs{{"region","region"},{"edit","edit"},{"edit-sources","edit"},{"window","window"},{"desktop","desktop"},{"scroll","scroll"},{"text","copy-text"},{"record","record"},{"clipboard","clipboard"},{"preferences","preferences"},{"history","history"},{"destinations","destinations"},{"update","download"}};
  for(auto* action:menu_->actions())if(const auto glyph=glyphs.value(action->data().toString());!glyph.isEmpty())action->setIcon(Ui::icon(glyph,tint));
 }
 QJsonObject TrayController::trayTint()const {

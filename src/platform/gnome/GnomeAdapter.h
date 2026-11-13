@@ -97,7 +97,7 @@ private:
  struct RegionMemory {QJsonArray area;QString layoutKey;};
  std::optional<RegionMemory> lastRegion_;
  QString countdownId_;
- struct Transfer {QString id,outcome,action;int delaySeconds=0;QJsonArray area;QString layoutKey;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
+ struct Transfer {QString id,outcome,action;int delaySeconds=0;QJsonArray area;QString layoutKey;bool screenshotFirst=false,remember=true;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
  void followOwner(const QString&);
  void helperUnavailable(const Error&);
@@ -105,7 +105,7 @@ private:
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
  QJsonObject sync(const QString& method,const QVariantList&,Error&,int timeout=1000);
- void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delaySeconds=0,const std::optional<RegionMemory>& repeat={});
+ void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delaySeconds=0,const std::optional<RegionMemory>& repeat={},bool remember=true);
  void requestTransfer(const std::shared_ptr<Transfer>&,const QJsonArray& imageMimes);
  void read(const std::shared_ptr<Transfer>&);
  void decode(const std::shared_ptr<Transfer>&);

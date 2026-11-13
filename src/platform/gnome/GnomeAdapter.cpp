@@ -193,11 +193,17 @@ QJsonObject GnomeAdapter::capabilities()const{
  auto monitor=capture;const auto versionError=ready_?captureVersionError():Error{};
  if(versionError){monitor["available"]=false;monitor["error"]=versionError.toJson();}
  auto repeat=monitor;repeat["remembered"]=lastRegion_.has_value();
+ // Copy text selects a region with the packaged extension only: one loaded before it asks for the login.
+ auto text=capture;if(ready_&&outdated()){text["available"]=false;text["error"]=recordingShellError().toJson();}
  QJsonObject delay{{"available",monitor["available"].toBool()},{"seconds",QJsonArray{3,5,10}},{"indicator","shell-actor"}};if(!monitor["available"].toBool())delay["error"]=monitor["error"];
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"captureVersion",helper_["captureVersion"].toInt(1)},{"error",helperError.toJson()},{"setup",currentSetup().toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture},{"monitor",monitor},{"repeat",repeat}}},{"delay",delay},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"packagedExtensionVersion",gnome::extensionVersion},{"outdated",outdated()},{"recordingVersion",helper_["recordingVersion"].toInt()},{"captureVersion",helper_["captureVersion"].toInt(1)},{"error",helperError.toJson()},{"setup",currentSetup().toJson()}}},{"capture",QJsonObject{{"region",capture},{"text",text},{"window",window},{"desktop",capture},{"monitor",monitor},{"repeat",repeat}}},{"delay",delay},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
-SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
- QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
+SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& requested){
+ // Copy text (#1428) selects exactly as a region does, from its own hotkey
+ // ticket; only Repeat's memory is left alone. An extension loaded before it
+ // is refused below with the region's "log out once" step.
+ const bool text=requested==QLatin1String("text");const QString action=text?QStringLiteral("region"):requested;
+ QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[requested].isEmpty();const auto id=hotkey?hotkeyPrepared_[requested].takeFirst():uuid();Error error;
  if(!ready_)error=helperAvailabilityError(true);
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
  // Both region modes require the packaged appearance protocol; an older
@@ -222,7 +228,7 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
    QMetaObject::invokeMethod(guard,[guard,id]{if(guard&&guard->prepared_.removeOne(id))guard->release(id);},Qt::QueuedConnection);
   });
  }
- return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview,delay=action=="region"&&!regionScreenshotFirst_?captureDelay_:0,repeat=action=="repeat"?lastRegion_:std::optional<RegionMemory>{}](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot,delay,repeat);};
+ return [guard,id,action,error,text,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview,delay=action=="region"&&!regionScreenshotFirst_?captureDelay_:0,repeat=action=="repeat"?lastRegion_:std::optional<RegionMemory>{}](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot,delay,repeat,!text);};
 }
 Error GnomeAdapter::captureVersionError()const{
  if(!ready_)return helperAvailabilityError(true);
@@ -257,11 +263,11 @@ void GnomeAdapter::lockAware(Error error,std::function<void(Error)> reply,int at
 }
 void GnomeAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
-void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst,int delaySeconds,const std::optional<RegionMemory>& repeat){
+void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst,int delaySeconds,const std::optional<RegionMemory>& repeat,bool remember){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
  // A delayed live region counts down inside Acquire: the same lock question as countdown().
  if(delaySeconds>0){auto inner=std::move(reply);reply=[this,inner=std::move(inner)](PayloadResult result){if(!result.error){inner(std::move(result));return;}lockAware(std::move(result.error),[inner](Error error){inner({{},std::move(error)});});};}
- auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->action=action;transfer->delaySeconds=delaySeconds;if(repeat){transfer->area=repeat->area;transfer->layoutKey=repeat->layoutKey;}transfer->screenshotFirst=screenshotFirst;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
+ auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->action=action;transfer->delaySeconds=delaySeconds;if(repeat){transfer->area=repeat->area;transfer->layoutKey=repeat->layoutKey;}transfer->screenshotFirst=screenshotFirst;transfer->remember=remember;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
  // Only clipboard imports choose among image types; screen captures are PNG.
  // Listing Qt's readers instantiates every installed image plugin (30 plugins,
  // 12 MiB with KDE's kimageformats), so the transient image job lists them,
@@ -312,7 +318,7 @@ void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
  connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_){reply({{},{"cancelled","GNOME acquisition cancelled",{}}});return;}
   // Repeat last region remembers a region that was captured, here in memory only.
   const auto selection=transfer->metadata["selection"].toArray();const auto key=transfer->metadata["layoutKey"].toString();
-  if(!result->error&&transfer->action=="region"&&selection.size()==4&&!key.isEmpty())lastRegion_=RegionMemory{selection,key};
+  if(!result->error&&transfer->remember&&transfer->action=="region"&&selection.size()==4&&!key.isEmpty())lastRegion_=RegionMemory{selection,key};
   reply(std::move(*result));});worker->start();
 }
 // Recording protocol 1 adds SelectArea, ShowRecordingFrame and HideRecordingFrame.
@@ -451,8 +457,11 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
    for(const auto& action:Settings::invocableActionNames()){
     auto entry=bindings_[action].toObject();entry["requested"]=requested_.value(action);
     if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all of put.gd's hotkeys.",{}};}
-    if(!recording_&&reply&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};
+    // An extension loaded before Copy text (#1428, version 23) does not know its key; that is the login step's to fix, not a failed restore.
+    const bool textUnknown=action==Settings::textActionName()&&helper_["extensionVersion"].toInt()<23;
+    if(!recording_&&reply&&!textUnknown&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved hotkey could not be restored.",{}};
     if(action=="scroll"&&helper_["extensionVersion"].toInt()<22&&!recording_){entry["bound"]=false;entry["error"]="helper_outdated";}
+    if(textUnknown&&!recording_){entry["bound"]=false;entry["error"]=requested_.value(action).isEmpty()?"disabled":"helper_outdated";}
     bindings_[action]=entry;
    }
   }else for(const auto& action:Settings::invocableActionNames()){auto entry=bindings_[action].toObject();if(!entry.contains("error"))entry["error"]=error.code;bindings_[action]=entry;}
