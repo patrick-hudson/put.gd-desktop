@@ -19,9 +19,7 @@ bool X11EscapeWatch::start(std::function<void()> pressed) {
     int screenNumber = 0;
     connection_ = xcb_connect(nullptr, &screenNumber);
     auto fail = [&] { stop(); return false; };
-    xcb_window_t root = XCB_WINDOW_NONE;
-    const auto reason = setupXInput(connection_, screenNumber, XCB_INPUT_XI_EVENT_MASK_RAW_KEY_PRESS, opcode_, root, QStringLiteral("the X server refused raw key events"));
-    if (!reason.isEmpty()) return fail();
+    if (!connection_ || xcb_connection_has_error(connection_)) return fail();
     // Every keycode the keyboard map gives Escape.
     if (xcb_key_symbols_t* symbols = xcb_key_symbols_alloc(connection_)) {
         if (xcb_keycode_t* codes = xcb_key_symbols_get_keycode(symbols, escapeKeysym)) {
@@ -31,6 +29,10 @@ bool X11EscapeWatch::start(std::function<void()> pressed) {
         xcb_key_symbols_free(symbols);
     }
     if (keycodes_.empty()) return fail();
+    // Resolve Escape before subscribing, as before the shared setup.
+    xcb_window_t root = XCB_WINDOW_NONE;
+    const auto reason = setupXInput(connection_, screenNumber, XCB_INPUT_XI_EVENT_MASK_RAW_KEY_PRESS, opcode_, root, QStringLiteral("the X server refused raw key events"));
+    if (!reason.isEmpty()) return fail();
     pressed_ = std::move(pressed);
     notifier_ = new QSocketNotifier(xcb_get_file_descriptor(connection_), QSocketNotifier::Read, this);
     connect(notifier_, &QSocketNotifier::activated, this, [this] { read(); });
