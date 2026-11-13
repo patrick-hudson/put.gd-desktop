@@ -16,6 +16,8 @@
 #include "ui/CustomUploaderPanel.h"
 #include "ui/Ui.h"
 #include "ui/EditorWindow.h"
+#include "ui/QrCodeWindow.h"
+#include "core/QrImage.h"
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
 #include <QApplication>
@@ -233,7 +235,7 @@ private:
 };
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Ui::font(Ui::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
@@ -256,7 +258,7 @@ QImage iconSpecimen(){
 QImage editorIcons(){
  const auto& t=Theme::current();const int rowHeight=Ui::scaled(20)+16;QImage image(2400,112+3*(3*rowHeight+32),QImage::Format_RGB32);image.fill(t.surface);QPainter p(&image);
  QFont small=p.font();small.setPixelSize(11);p.setFont(small);p.setPen(t.textMuted);
- const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy"};
+ const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","line","rectangle","ellipse","pen","highlight","text","step","undo","redo","remove","save","copy","copy-text"};
  for(int i=0;i<names.size();++i){const int x=12+i*86;Ui::icon(names[i]).paint(&p,QRect(x+23,14,40,40));p.drawText(QRect(x,60,86,20),Qt::AlignCenter,names[i]);}
  auto row=[&](const QStringList& icons,int step){
   const int glyph=Ui::scaled(20);step=std::max(step,glyph+12);QImage strip(16+icons.size()*step,glyph+16,QImage::Format_RGB32);strip.fill(t.bg);QPainter q(&strip);
@@ -744,6 +746,37 @@ int main(int argc,char** argv){
   editor.selectTool(editor::Tool::Line);editor.resize(900,620);if(!grab("30j-editor-compact-toolbar"))return 2;
   editor.resize(editor.minimumSizeHint().width(),620);if(!grab("30k-editor-minimum-width"))return 2;
   editor.allowClose();editor.close();
+ }
+ {
+  // #1428: Copy text over a synthetic page with a QR code, and Quick redact.
+  // A fake stands in for the putgd-ocr helper: it returns the drawn words.
+  QImage page(1100,640,QImage::Format_RGB32);page.fill(Qt::white);
+  QList<TextWord> words;QList<int> tops;
+  {
+   QPainter painter(&page);QFont font(Ui::uiFamily());font.setPixelSize(24);painter.setFont(font);painter.setPen(QColor("#1f2328"));const QFontMetrics metrics(font);
+   const QStringList lines{"Release checklist for the November build","Send the signed notes to jane.doe@example.com today","Support line: +1 202 555 0143 between 9 and 5","Staging host 10.20.30.40 stays up until Friday"};
+   int y=70;
+   for(const auto& line:lines){int x=60;tops.append(y-metrics.ascent());for(const auto& word:line.split(' ')){painter.drawText(x,y,word);words.append({word,QRect(x,y-metrics.ascent(),metrics.horizontalAdvance(word),metrics.height()),94});x+=metrics.horizontalAdvance(word+' ');}y+=56;}
+   qr::Matrix matrix;qr::encode("https://example.com/notes/november",matrix);painter.drawImage(QPoint(780,320),qr::image(matrix,6));
+  }
+  TextResult fake;fake.lineTops=tops;fake.words=words;fake.candidates=words;
+  {QStringList text;int line=-1;for(const auto& word:words){const int index=int(tops.indexOf(word.rect.top()));if(index!=line){if(line>=0)text.append("\n");line=index;}else text.append(" ");text.append(word.text);}fake.text=text.join("");}
+  TextCode code;code.format="QRCode";code.text="https://example.com/notes/november";code.length=code.text.size();code.quad={QPoint(780,320),QPoint(1010,320),QPoint(1010,550),QPoint(780,550)};fake.codes={code};
+  editor::EditDocument doc(page);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive");editor.resize(1180,820);
+  editor.text().setRunner([fake](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){return fake;});
+  editor.show();
+  auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  editor.selectTool(editor::Tool::CopyText);if(!waitUntil([&]{return editor.text().state()=="done";}))return 2;
+  editor.text().layer().select(8,14);editor.textSelectionEdited();if(!grab("30l-editor-copy-text"))return 2;
+  editor.selectTool(editor::Tool::Redact);bool redacted=false;editor.quickRedact({"email","phone","ip"},[&](Error error,QJsonObject){redacted=!error;});if(!waitUntil([&]{return redacted;}))return 2;
+  editor.canvas().select(0);if(!grab("30m-editor-quick-redact"))return 2;
+  editor.allowClose();editor.close();
+ }
+ {
+  // #1428: History's Show QR code window, black on white in both themes.
+  QrCodeWindow window("item","screenshot.png","https://example.com/i/Kx7Qm2Zp.png",{});window.show();putgd::test::settle(300);app.processEvents();
+  const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath("69-history-qr-code.png")))return 2;
+  captures.append(QJsonObject{{"file","69-history-qr-code.png"},{"width",image.width()},{"height",image.height()}});window.close();
  }
  {
   // Dark app content must keep a visible image boundary in either scheme.
