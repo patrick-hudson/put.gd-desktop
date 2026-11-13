@@ -28,6 +28,11 @@ private slots:
   QTest::addColumn<QString>("action");QTest::addColumn<QString>("argument");
   QTest::addColumn<int>("errorOrSignal");  // a positive errno, or minus the signal that killed it
   QVERIFY(home_.isValid());
+  {
+   // The Landlock ABI of this kernel, for the record kept per target.
+   QProcess abi;abi.start(qEnvironmentVariable("PUTGD_OCR_PROBE"),{QStringLiteral("none")});
+   if(abi.waitForFinished(30000))qInfo("%s",abi.readAllStandardOutput().split('\n').value(0).constData());
+  }
   const auto secret=home_.filePath(QStringLiteral("secret.txt"));
   QFile file(secret);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");file.close();
   const QString parent=QString::number(::getpid());
