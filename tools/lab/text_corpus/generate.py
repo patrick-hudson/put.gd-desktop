@@ -100,19 +100,19 @@ def generate(out):
     hostile = 'prefix\x01\x7f\x85\u202eevil\u202c\u200b\u200c\u200d\u2066suffix\u2069'
     page('hostile', [('sanitized', hostile)])
     (out/'hostile.expected.json').write_text(json.dumps(dict(raw=hostile, text='prefixevil\u200c\u200dsuffix', code='prefixevilsuffix')))
-    # Dense limit fixtures have exact line truth. A vertical ink rail guarantees
-    # no entirely blank row, including the final quarter of every possible band.
+    # The narrow no-gap page forces bands instead of being split into panels.
+    # Its three-pixel rail exceeds Profile::blank's noise threshold at this width.
     for name, dims in [('limit-24mp', (6000,4000)), ('limit-over', (6000,4001)),
-                       ('limit-wide', (240000,100)), ('limit-no-gap',(4000,5000)), ('limit-columns',(1200,18000))]:
+                       ('limit-wide', (240000,100)), ('limit-no-gap',(256,32700)), ('limit-columns',(1200,18000))]:
         image = Image.new('RGB', dims, 'white'); draw = ImageDraw.Draw(image)
         face = ImageFont.truetype(str(font_paths[FONTS[2]]), 14)
         truth = []
         for y in range(8, dims[1]-24, 20):
-            for x in range(8, dims[0]-440, 440 if name != 'limit-columns' else 600):
-                text = f'Row {y:05d} column {x:06d} synthetic text.'
+            for x in ([12] if name == 'limit-no-gap' else range(8, dims[0]-440, 440 if name != 'limit-columns' else 600)):
+                text = 'ALPHA BRAVO' if name == 'limit-no-gap' else f'Row {y:05d} column {x:06d} synthetic text.'
                 draw.text((x,y), text, font=face, fill='black')
                 truth.append(dict(text=text, box=list(draw.textbbox((x,y),text,font=face))))
-        if name == 'limit-no-gap': draw.line((0,0,0,dims[1]-1), fill='black')
+        if name == 'limit-no-gap': draw.rectangle((0,0,2,dims[1]-1), fill='black')
         image.save(out/(name+'.png'))
         (out/(name+'.truth.json')).write_text(json.dumps(dict(dimensions=dims, words=truth,
                               expected='input_excessive' if name in ('limit-over','limit-wide') else 'banded')))
