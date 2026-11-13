@@ -13,6 +13,11 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def quality_summary(rows,expected):
+    complete=bool(rows) and len(rows)==expected
+    return ('measured',aggregate(rows)) if complete else ('blocked',{})
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('manifest',type=Path)
@@ -28,6 +33,11 @@ def main():
     if not data:raise ValueError('language data files missing')
     receipt=dict(engine=a.engine_label,build_id=a.build_id,identities=identities,language_data=data,captures=[],status='blocked')
     receipt['linked_libraries']=subprocess.check_output(['ldd',str(a.helper.resolve())],text=True)
+    for line in receipt['linked_libraries'].splitlines():
+        if '=>' in line and any(n in line for n in ('libtesseract','liblept','libZXing')):
+            library=Path(line.split('=>',1)[1].split()[0]).resolve(strict=True)
+            identities[str(library)]=digest(library)
+    identities[str(Path(__file__).resolve())]=digest(Path(__file__))
     results={};rows=[]
     for c in json.loads(a.manifest.read_text())['captures']:
         image=(a.manifest.parent/c['image']).resolve();ref=read_transcript(a.manifest.parent,c)
@@ -53,9 +63,8 @@ def main():
         receipt['captures'].append(row)
         (a.output/'receipt.json').write_text(json.dumps(receipt,indent=2))
     if any(digest(Path(f))!=h for f,h in (identities|data).items()):raise RuntimeError('measurement input changed')
-    receipt['classes']=aggregate(rows)
-    complete=len(rows)==len(receipt['captures']) and bool(rows)
-    receipt['status']='measured' if complete else 'blocked'
+    receipt['status'],receipt['classes']=quality_summary(rows,len(receipt['captures']))
+    complete=receipt['status']=='measured'
     (a.output/'results.json').write_text(json.dumps(results))
     (a.output/'scores.json').write_text(json.dumps(rows,indent=2))
     (a.output/'receipt.json').write_text(json.dumps(receipt,indent=2))

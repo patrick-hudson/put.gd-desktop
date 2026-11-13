@@ -2,8 +2,9 @@
 """Measure file-source recognition and clipboard acknowledgement on a private resident.
 Manual lab receipt, no automatic acceptance verdict. Run under a held desktop
 lease with synthetic/public images; this explicitly copies to that clipboard.
+Export PUTGD_TEXT_LAB_SESSION to match the owned, freshly heartbeating lease.
 """
-import argparse,hashlib,json,math,time,os
+import argparse,hashlib,json,math,time,os,subprocess
 from datetime import datetime,timezone
 from pathlib import Path
 from workload import validate_socket,identity,call
@@ -20,6 +21,8 @@ def main():
     receipt=dict(status='blocked',source='file',image_sha256=hashlib.sha256(image.read_bytes()).hexdigest(),rows=[],assessment='Manual comparison with issue bars; file dispatch replaces selection end.')
     with a.output.open('x') as out:
         try:
+            receipt['resident']=dict(pid=original[0],startTicks=original[1],exe_sha256=hashlib.sha256((Path('/proc')/str(a.pid)/'exe').read_bytes()).hexdigest())
+            receipt['cli_build']=json.loads(subprocess.check_output([a.cli,'--version-json'],text=True,timeout=5))
             for i in range(a.runs):
                 fields=dict(line.split(': ',1) for line in (Path.home()/'putgd-lab/locks/desktop.lock').read_text().splitlines() if ': ' in line)
                 now=datetime.now(timezone.utc)
@@ -40,6 +43,8 @@ def main():
                     if type(timings.get(key))!=int or timings[key]<0:raise RuntimeError('missing phase '+key)
                 receipt['rows'].append(dict(operationId=op,timings=timings,dispatch_to_observed_ack_ms=(time.monotonic_ns()-start)/1e6,characterCount=v['characterCount'],truncated=v['truncated']))
             receipt['p95']={key:sorted(r['timings'][key] for r in receipt['rows'])[math.ceil(.95*a.runs)-1] for key in receipt['rows'][0]['timings']}
+            receipt['observed_ack_p95_ms']=sorted(r['dispatch_to_observed_ack_ms'] for r in receipt['rows'])[math.ceil(.95*a.runs)-1]
+            receipt['observation_note']='Client duration includes CLI calls and up to50ms polling; server timings carry the actual clipboard acknowledgement.'
             receipt['status']='measured'
         except Exception as e:receipt['reason']=str(e)
         json.dump(receipt,out,indent=2)
