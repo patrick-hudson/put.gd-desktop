@@ -85,6 +85,27 @@ private slots:
   QCOMPARE(copiedText(job),expected.join(QLatin1Char('\n')));
   QCOMPARE(job.lines.size(),qsizetype(expected.size()));
  }
+ // Whole screens: two windows side by side are two panels, read left then
+ // right, each holding every one of its lines once; a single column of the
+ // same text is one panel, the whole image, read as before.
+ void panelsSplitWindowsNotColumnsOfText(){
+  const int width=1200,height=400;
+  // Fake glyphs: 6 px wide marks with 3 px gaps, 12 px lines, 8 px apart.
+  const auto page=[&](const QList<QRect>& columns){
+   QByteArray grey(width*height,char(255));
+   for(const auto& c:columns)for(int y=c.top();y+12<=c.bottom();y+=20)for(int x=c.left();x+6<=c.right();x+=9)
+    for(int dy=0;dy<12;++dy)for(int dx=0;dx<6;++dx)grey[(y+dy)*width+x+dx]=char(20);
+   return grey;
+  };
+  const QRect left(20,20,500,360),right(680,20,500,360);
+  const auto two=page({left,right});
+  const auto found=panels({reinterpret_cast<const uint8_t*>(two.constData()),width,height,width},{},12);
+  QCOMPARE(found.size(),2);
+  QVERIFY(found[0].contains(left.adjusted(0,0,-6,-6)));QVERIFY(found[1].contains(right.adjusted(0,0,-6,-6)));
+  QVERIFY(found[0].right()<found[1].left());
+  const auto one=page({QRect(20,20,1160,360)});
+  QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12),QList<QRect>{QRect(0,0,width,height)});
+ }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));
   QVERIFY(plan(4898,4898,lines(4898,4898,12,4),{}).error.isEmpty());

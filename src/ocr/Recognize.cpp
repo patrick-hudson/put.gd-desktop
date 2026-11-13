@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <sched.h>
@@ -42,9 +43,41 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.timings.codesMs=stage.elapsed();
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
- auto limits=options.limits;limits.threads=threads;
- const auto plan=putgd::ocr::plan(image.width,image.height,result.profile,limits);
- if(!plan.error.isEmpty()){result.error=plan.error;return result;}
+
+ // Panels: a whole screen of windows is read window by window, column by
+ // column; anything else is one panel, the whole image, read as before.
+ struct Panel { QRect rect;GreyView view;QList<Quad> codes;Profile profile;Plan plan;bool invert=false;QList<Band> tasks;bool split=false; };
+ QList<Panel> panelList;
+ for(const auto& rect:options.panels?panels(image,areas,result.profile.lineHeight):QList<QRect>{QRect(0,0,image.width,image.height)}){
+  Panel p;p.rect=rect;
+  p.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
+  for(const auto& q:areas){
+   Quad moved;bool inside=false;
+   for(int i=0;i<4;++i){moved[i]=q[i]-rect.topLeft();inside|=rect.contains(q[i]);}
+   if(inside)p.codes.append(moved);
+  }
+  p.profile=rect.size()==QSize(image.width,image.height)?result.profile:measure(p.view,p.codes);
+  p.invert=options.invertDark&&p.profile.dark;
+  panelList.append(std::move(p));
+ }
+ // The scale: each panel the one its text asks for, within the job's scaled
+ // pixels, all lowered together towards 1x when they do not fit.
+ const bool large=qint64(image.width)*image.height>=options.limits.largeInputPixels;
+ const qint64 cap=large?options.limits.largeScaledPixels:options.limits.scaledPixels;
+ double wantedPixels=0;
+ for(const auto& p:panelList){
+  const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);
+  wantedPixels+=double(p.rect.width())*p.rect.height()*s*s;
+ }
+ const double lower=wantedPixels>double(cap)?std::sqrt(double(cap)/wantedPixels):1.0;
+ for(auto& p:panelList){
+  auto limits=options.limits;limits.threads=threads;limits.scaledPixels=std::numeric_limits<qint64>::max();
+  const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);
+  limits.forcedScale=std::max(1.0,s*lower);
+  p.plan=putgd::ocr::plan(p.rect.width(),p.rect.height(),p.profile,limits);
+  if(!p.plan.error.isEmpty()){result.error=p.plan.error;return result;}
+  p.tasks=p.plan.bands;
+ }
  stage.restart();
  LanguageData data(options.directories);
  TextEngine first;
@@ -61,23 +94,36 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // measurement (a sparse 24 MP page reached 131 MiB with four engines without it).
  const qint64 gateBudget=memoryBudget>0?memoryBudget-8*1024*1024:0;
  stage.restart();
- const bool invert=options.invertDark&&result.profile.dark;
  const auto left=[&]{return options.budgetMs>0?int(options.budgetMs-total.elapsed()):0;};
 
- // The tasks: the plan's bands, or, for a single pass large enough to share,
- // strips cut at blank row gaps only. A strip boundary splits no line and
- // needs no seam, and the order stays the page's own, top to bottom, which is
- // what page segmentation 6 reads. Every task is its own band copy: inside a
- // SetRectangle of one shared copy, Tesseract 5.3.4 read the wrong rows.
- QList<Band> tasks=plan.bands;bool split=false;
- const qint64 scaledPixels=qint64(std::ceil(image.width*plan.scale))*qint64(std::ceil(image.height*plan.scale));
- if(!plan.banded()&&threads>1&&scaledPixels>=options.parallelPixels){
-  const auto cut=strips(result.profile,image.width,image.height,threads*2);
-  if(cut.size()>1){tasks=cut;split=true;}
+ // The tasks: each panel's bands, or, for a panel read in a single pass and
+ // large enough to share, strips cut at blank row gaps only. A strip boundary
+ // splits no line and needs no seam, and the order stays the panel's own, top
+ // to bottom, which is what page segmentation 6 reads. Every task is its own
+ // band copy: inside a SetRectangle of one shared copy, Tesseract 5.3.4 read
+ // the wrong rows.
+ struct Task { int panel=0,index=0;qint64 pixels=0; };
+ QList<Task> tasks;bool anyBanded=false;qint64 largestTask=0;
+ for(int i=0;i<panelList.size();++i){
+  auto& p=panelList[i];
+  const qint64 scaled=qint64(std::ceil(p.rect.width()*p.plan.scale))*qint64(std::ceil(p.rect.height()*p.plan.scale));
+  if(!p.plan.banded()&&threads>1&&scaled>=options.parallelPixels){
+   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),threads*2);
+   if(cut.size()>1){p.tasks=cut;p.split=true;}
+  }
+  anyBanded|=p.plan.banded();
+  for(int j=0;j<p.tasks.size();++j){
+   const qint64 pixels=qint64(std::ceil(p.rect.width()*p.plan.scale))*qint64(std::ceil((p.tasks[j].bottom-p.tasks[j].top)*p.plan.scale));
+   tasks.append({i,j,pixels});largestTask=std::max(largestTask,pixels);
+  }
  }
+ const auto copyOf=[&](const Task& t){
+  const auto& p=panelList[t.panel];
+  return bandImage(p.view,p.tasks[t.index],p.plan.scale,options.limits.border,p.codes,p.profile.background,p.invert);
+ };
  if(!options.dumpBand.isEmpty()){
   // Method comparisons only: the first task as Tesseract gets it (PGM).
-  const auto copy=bandImage(image,tasks.first(),plan.scale,options.limits.border,areas,result.profile.background,invert);
+  const auto copy=copyOf(tasks.first());
   QFile dump(options.dumpBand);
   if(dump.open(QIODevice::WriteOnly)){dump.write("P5\n"+QByteArray::number(copy.width)+' '+QByteArray::number(copy.height)+"\n255\n");dump.write(copy.pixels);}
  }
@@ -116,43 +162,54 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    if(options.budgetMs>0){const int remaining=left();if(remaining<=0||(slowest.load()>0&&remaining<slowest.load())){stop=true;return;}}
    QElapsedTimer clock;clock.start();
    Outcome outcome;
-   const auto copy=bandImage(image,tasks[task],plan.scale,options.limits.border,areas,result.profile.background,invert);
+   const auto copy=copyOf(tasks[task]);
    // The deadline, read once after the copy: spent means stop, never "none".
    const int deadline=options.budgetMs>0?left():0;
    if(options.budgetMs>0&&deadline<=0){stop=true;return;}
-   outcome.text=engine.recognize(copy,plan.scale,deadline,&outcome.cutShort,&outcome.failed);
+   outcome.text=engine.recognize(copy,panelList[tasks[task].panel].plan.scale,deadline,&outcome.cutShort,&outcome.failed);
    if(outcome.failed)stop=true;
    outcome.done=true;
    qint64 seen=slowest.load();while(clock.elapsed()>seen&&!slowest.compare_exchange_weak(seen,clock.elapsed())){}
    if(outcome.cutShort)stop=true;
    raise(taskGrowth,residentBytes()-before);
    {std::lock_guard<std::mutex> guard(lock);outcomes[task]=std::move(outcome);}
-   // A banded image measures before it shares: once the first band is done,
-   // as many engines start as fit in the budget at what that band cost.
-   if(!extraWorker&&!split&&extra.empty()&&wanted>1&&!stop.load())startExtras(fitting(engineCost+2*taskGrowth.load()));
+   // A banded image measures before it shares: once the first task is done,
+   // as many engines start as fit in the budget at what that task cost.
+   if(!extraWorker&&anyBanded&&extra.empty()&&wanted>1&&!stop.load())startExtras(fitting(engineCost+2*taskGrowth.load()));
   }
  };
- // A single pass shares at once: each extra engine is reserved its own cost
- // and four bytes a pixel of a strip (measured: four engines on a 1 MP region
- // at 2x peaked at 101 to 123 MiB).
- if(split)startExtras(fitting(engineCost+4*scaledPixels/taskCount));
+ // Strips and panels read in one pass share at once: each extra engine is
+ // reserved its own cost and four bytes a pixel of the largest task
+ // (measured: four engines on a 1 MP region at 2x peaked at 101 to 123 MiB).
+ if(!anyBanded&&wanted>1)startExtras(fitting(engineCost+4*largestTask));
  work(first,false);
  for(auto& thread:pool)thread.join();
  data.release();
- result.recognition.parts=taskCount;result.recognition.threads=1+int(extra.size());
+ result.recognition.parts=taskCount;result.recognition.threads=1+int(extra.size());result.recognition.panels=int(panelList.size());
 
  // An engine that failed on a task fails the job: no text is not success.
  for(const auto& outcome:outcomes)if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}
- // Joined in task order, never in the order the tasks finished: Tesseract's
- // reading order inside a band or strip, band by band, strip by strip.
- int previousFirst=0;
- for(int i=0;i<taskCount;++i){
-  if(!outcomes[i].done){result.truncated=true;break;}
-  previousFirst=mergeBand(result.recognition,outcomes[i].text,tasks[i],i>0?&tasks[i-1]:nullptr,previousFirst,plan.scale,options.limits.border,i,image.width,image.height);
-  if(outcomes[i].cutShort){result.truncated=true;break;}
+ // Joined in task order, never in the order the tasks finished: panel by
+ // panel, and inside a panel band by band or strip by strip, each in
+ // Tesseract's reading order. The first task missing or cut short ends it.
+ bool ended=false;int t=0;
+ for(int i=0;i<panelList.size()&&!ended;++i){
+  const auto& p=panelList[i];
+  Recognition part;int previousFirst=0;
+  for(int j=0;j<p.tasks.size();++j,++t){
+   if(!outcomes[t].done){result.truncated=true;ended=true;break;}
+   previousFirst=mergeBand(part,outcomes[t].text,p.tasks[j],j>0?&p.tasks[j-1]:nullptr,previousFirst,p.plan.scale,options.limits.border,j,p.rect.width(),p.rect.height());
+   if(outcomes[t].cutShort){result.truncated=true;ended=true;break;}
+  }
+  // Into the image's pixels; a new panel starts a new block.
+  const int lineBase=int(result.recognition.lines.size());
+  const int blockBase=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
+  for(auto line:part.lines){line.rect.translate(p.rect.topLeft());line.block+=blockBase;result.recognition.lines.append(line);}
+  for(auto word:part.words){word.rect.translate(p.rect.topLeft());word.line+=lineBase;result.recognition.words.append(std::move(word));}
+  result.recognition.banded|=p.plan.banded();
+  result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }
  result.timings.recognitionMs=stage.elapsed();
- result.recognition.banded=plan.banded();result.recognition.scale=plan.scale;result.recognition.bands=int(plan.bands.size());
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  result.text=copiedText(result.recognition,&result.lineTops);

@@ -39,6 +39,10 @@ struct PlanLimits {
  // above this a scale over 1x costs more than the deadline and the speed bars
  // allow (a 4K UI page took 20 s at 1.7x and 3 s at 1x).
  qint64 scaledPixels=8000000;
+ // The same for an input of at least largeInputPixels (a whole screen of 4K or
+ // more), where each panel gets the scale its text asks for within this.
+ qint64 largeScaledPixels=16000000;
+ qint64 largeInputPixels=4000000;
  qint64 singlePassPixels=bandPixelLimit; // up to this the image is recognized whole
  // A banded image is cut into bands of about this size, or eight line heights
  // when that is more, never over bandPixelLimit. 0 picks it from the threads:
@@ -64,6 +68,18 @@ int preferredScale(int lineHeight,int maximumScale);
 // half a share either way; with no gap there, that cut is skipped. Strips are
 // at least four line heights. One strip means no cut was possible.
 QList<Band> strips(const Profile& profile,int width,int height,int parts);
+
+// The panels of a screen: windows, columns and bars, each read on its own and
+// in reading order (a cut across the page reads the top part first, a cut
+// down it the left part first). A classic XY-cut on text-like activity: grey
+// steps of at least 32 levels, kept on a 4x4 px grid, with long straight runs
+// (window borders, rules, underlines) left out so a border inside a gap does
+// not hide the gap. A cut down the page needs a gutter of at least three line
+// heights with activity on both sides, which a word gap never is; a cut across
+// it is kept only when one of its parts is then cut down. A single-window or
+// single-column image is exactly one panel, the whole image. With several,
+// each is trimmed to its activity plus a margin, and an empty one is dropped.
+QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight);
 
 // A band of the source, scaled, with every code polygon filled with the
 // background, inverted when the page is dark, and with the border added.

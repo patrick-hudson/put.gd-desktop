@@ -40,6 +40,7 @@ struct JobOptions {
  // 0: no gate (method comparisons). It grows by the language data beyond
  // English, up to memoryCeiling.
  qint64 memoryBudget=0;
+ bool panels=true;          // method comparisons only: false reads the image as one panel
  qint64 memoryCeiling=0;
 };
 struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,totalMs=0; };
