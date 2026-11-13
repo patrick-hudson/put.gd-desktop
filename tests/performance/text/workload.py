@@ -5,8 +5,9 @@ Requires an owned private XDG runtime, a synthetic covering desktop, a held
 lab lease, and an external region driver (argv program, no shell). The driver
 receives operationId and must visibly select a region. Helper lifecycle events
 must come from the exact candidate's observer as JSONL: {pid,startTicks,event,
-exitCode?}; event is spawn or exit. Missing lifecycle evidence blocks a pass.
-No recognized payload is retained in this receipt.
+exitCode?}; event is spawn or exit. Missing lifecycle evidence blocks completion
+of the measurement. A person assesses the receipt against the plan's bars.
+No recognized payload is retained in this receipt; there is no acceptance verdict.
 """
 import argparse
 import json
@@ -129,11 +130,19 @@ def main():
     p.add_argument('--helper-events',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     a=p.parse_args()
-    receipt=dict(schemaVersion=1,status='blocked',jobs=[])
+    receipt=dict(schemaVersion=1,status='blocked',jobs=[],
+                 assessment='Manual measurement receipt; no acceptance verdict.')
     # Reserve before any actions; never overwrite an earlier attempt.
     with a.output.open('x') as out:
         try: run(a,receipt)
         except Exception as error: receipt['reason']=str(error)
+        if a.helper_events.is_file():
+            try:
+                events=[json.loads(line) for line in a.helper_events.read_text().splitlines() if line.strip()]
+                receipt['helper_events']=[{k:e[k] for k in ('pid','startTicks','event','exitCode') if k in e}
+                                          for e in events]
+            except (OSError, ValueError):
+                receipt['helper_events_error']='Lifecycle observations could not be read.'
         json.dump(receipt,out,indent=2); out.write('\n')
     return 0 if receipt['status']=='measured' else 2
 
