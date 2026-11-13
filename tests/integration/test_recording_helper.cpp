@@ -46,14 +46,15 @@ private slots:
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
  }
  void lateAnswerAfterATimeoutKeepsTheRecording(){
-  // #1443: the caller gets the timeout, and the helper's late answer is dropped: it holds the only copy of the clip.
+  // #1443: the caller gets the timeout, the helper's late answer does not end the session (it holds the only copy
+  // of the clip), and the session follows the pause the helper finished late (#1434).
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","late-pause");
   const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
   QVERIFY(!h.rec("start",{{"id",id}}).error);
   QCOMPARE(h.rec("pause",{{"id",id}}).error.code,QString("recording_helper_timeout"));
   // The fixture's event follows its late answer on the same pipe.
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["lateAnswered"].toBool(),10000);
-  QCOMPARE(h.state(id),QString("recording"));QVERIFY(h.backend->diagnostics()["active"].toBool());
+  QCOMPARE(h.state(id),QString("paused"));QVERIFY(h.backend->diagnostics()["active"].toBool());
   QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
  }
  void capabilitiesBeforeTheFirstProbeAnswerSayPending(){

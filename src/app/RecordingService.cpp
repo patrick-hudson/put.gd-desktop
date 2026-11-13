@@ -355,6 +355,21 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         transition(s, RecordingState::Recording);
     } else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
+    else if (kind == "lateResult" && event["ok"].toBool()) {
+        // The helper finished a pause or resume after its deadline (#1443): its
+        // caller had recording_helper_timeout, and the clip is now where the
+        // helper took it. Followed like the bar's own events, from the state the
+        // command was sent in; a command still in flight keeps its place.
+        const auto command = event["command"].toString();
+        std::optional<RecordingState> to;
+        if (command == "pause" && s.state == RecordingState::Recording) to = RecordingState::Paused;
+        else if (command == "resume" && s.state == RecordingState::Paused) to = RecordingState::Recording;
+        if (to) {
+            const auto pending = s.pending;
+            transition(s, *to);
+            s.pending = pending;
+        }
+    }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
     else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();
