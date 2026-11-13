@@ -59,5 +59,6 @@ struct Recognition {
  int parts=0;         // recognition tasks: bands, or a single pass's strips
  int panels=1;        // windows or columns read one after another
  int threads=0;       // engine instances that ran
+ QList<int> engineTasks;  // tasks each engine read, the first engine's first
 };
 }

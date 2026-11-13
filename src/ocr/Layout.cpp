@@ -61,6 +61,24 @@ void fill(GreyImage& image,const std::array<QPointF,4>& corners,uint8_t value){
  }
 }
 }
+namespace {
+// Where to cut inside a run of rows [first, last] that a blank test passed:
+// the middle of its longest stretch of least-inked rows. A "blank" row may
+// still hold a few pixels of a descender or an ascender (up to width/256), and
+// a cut through it clips that glyph in the strip on each side ("sample" read
+// as "samnle", "beside" as "heside").
+int quietestRow(const Profile& profile,int first,int last){
+ int least=profile.rowInk.at(first);for(int y=first+1;y<=last;++y)least=std::min(least,profile.rowInk.at(y));
+ int best=first,bestLength=0;
+ for(int y=first;y<=last;){
+  if(profile.rowInk.at(y)!=least){++y;continue;}
+  int end=y;while(end+1<=last&&profile.rowInk.at(end+1)==least)++end;
+  if(end-y+1>bestLength){bestLength=end-y+1;best=(y+end+1)/2;}
+  y=end+1;
+ }
+ return best;
+}
+}
 Profile measure(const GreyView& image,const QList<Quad>& codes){
  Profile profile;profile.rowInk.fill(0,image.height);
  QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)).intersected(QRect(0,0,image.width,image.height)));
@@ -135,7 +153,7 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
    for(int y=limit-1;y>=start+bandRows*3/4;--y)if(profile.blank(y,width)){gap=y;break;}
    if(gap>=0){
     int first=gap;while(first-1>=start+bandRows*3/4&&profile.blank(first-1,width))--first;
-    const int cut=(first+gap+1)/2;
+    const int cut=quietestRow(profile,first,gap);
     result.bands.append({start,cut,seam});start=cut;seam=false;
    }else{
     result.bands.append({start,limit,seam});
@@ -196,7 +214,7 @@ QList<Band> strips(const Profile& profile,int width,int height,int parts){
   int cut=-1;
   if(found>=0){
    int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
-   cut=(first+last+1)/2;
+   cut=quietestRow(profile,first,last);
   }else cut=betweenLines(target);
   if(cut<0)continue;
   const int shortest=4*(profile.lineHeight>0?lineRows:std::max(lineRows,pitch));

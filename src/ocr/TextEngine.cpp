@@ -148,6 +148,11 @@ qint64 LanguageData::bytesBeyondEnglish()const{
  for(const auto& f:resolver->files)if(f.language!=QLatin1String("eng"))total+=f.kept;
  return total;
 }
+qint64 LanguageData::bytesHanded()const{
+ qint64 total=0;if(!resolver)return 0;
+ for(const auto& f:resolver->files)total+=f.kept;
+ return total;
+}
 QStringList LanguageData::files()const{
  QStringList out;if(!resolver)return out;
  for(const auto& f:resolver->files)out.append(f.language+QLatin1String(".traineddata ")+QString::number(f.bytes)+QLatin1Char(' ')+QString::fromLatin1(f.sha256));

@@ -50,6 +50,9 @@ public:
  // The bytes handed to Tesseract for every data file other than English's
  // (its LSTM entries): what the job's memory budget grows by.
  qint64 bytesBeyondEnglish()const;
+ // The bytes handed to Tesseract for every data file: what a second engine
+ // shares with the first rather than reading again.
+ qint64 bytesHanded()const;
  // Frees the kept file contents once no engine will start any more.
  void release();
 };

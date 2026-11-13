@@ -34,6 +34,12 @@ struct JobOptions {
  // page order, by task index.
  int threads=0;
  qint64 parallelPixels=500000;
+ // A single pass is cut into about this many strips a thread. Smaller
+ // strips use less memory (a dense 1 MP terminal at 2x: four engines peaked at
+ // 133 MiB on 8 strips, 123 on 16), but Tesseract reads a strip of three or
+ // four lines less well than a longer one (editor code 1.27% whole, 1.48% in
+ // 8 strips, 1.55% in 16; Tesseract 5.3.4 garbled a chat line in 16).
+ int stripsPerThread=2;
  // The job's resident memory budget. An extra engine starts, and an extra
  // worker takes a task, only while the resident set plus what one engine or
  // one task has added so far stays under it; the first worker always goes on.
