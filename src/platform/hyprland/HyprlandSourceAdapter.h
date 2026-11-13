@@ -71,11 +71,12 @@ signals:
 private:
  QList<CaptureFrame> layout()const{return outputs_.layout();}
  bool unchanged(const QList<CaptureFrame>&,quint64)const;
- void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delay=0);
+ // remember=false for a text capture (#1428): Repeat last region keeps its rectangle.
+ void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delay=0,bool remember=true);
  // Capture monitor and Repeat last region (#1363): a known logical rectangle, no selector.
  void captureArea(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  // Remembers a region once it was captured, for Repeat last region.
- std::function<void(PayloadResult)> remembering(QRectF,QList<CaptureFrame>,std::function<void(PayloadResult)>);
+ std::function<void(PayloadResult)> remembering(QRectF,QList<CaptureFrame>,std::function<void(PayloadResult)>,bool remember=true);
  // After a delayed live selection: a locked screen captures nothing.
  void lockGate(int delay,std::function<void(Error)>);
  std::optional<RegionMemory> lastRegion_;
@@ -83,7 +84,7 @@ private:
  void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  // frames: the outputs to read; frozen: the whole layout, which must not change.
  void captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64,ResourceLimits,std::function<void(QList<CaptureFrame>,Error)>);
- void selectFrozen(QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome);
+ void selectFrozen(QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool remember=true);
  void compose(QList<CaptureFrame>,QList<CaptureFrame>,quint64,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  ResourceLimits limits_;
  qint64 uiProcess_=0;

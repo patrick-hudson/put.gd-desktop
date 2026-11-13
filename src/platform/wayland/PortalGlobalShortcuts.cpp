@@ -15,7 +15,7 @@ namespace {
 const QString portal=QStringLiteral("org.freedesktop.portal.Desktop");
 const QString portalPath=QStringLiteral("/org/freedesktop/portal/desktop");
 const QString interface=QStringLiteral("org.freedesktop.portal.GlobalShortcuts");
-const QHash<QString,QString> descriptions{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"monitor","Capture monitor"},{"repeat","Repeat last region"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+const QHash<QString,QString> descriptions{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"monitor","Capture monitor"},{"repeat","Repeat last region"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
 struct Shortcut {QString id;QVariantMap properties;};
 QDBusArgument& operator<<(QDBusArgument& argument,const Shortcut& shortcut){argument.beginStructure();argument<<shortcut.id<<shortcut.properties;argument.endStructure();return argument;}
 const QDBusArgument& operator>>(const QDBusArgument& argument,Shortcut& shortcut){argument.beginStructure();argument>>shortcut.id>>shortcut.properties;argument.endStructure();return argument;}

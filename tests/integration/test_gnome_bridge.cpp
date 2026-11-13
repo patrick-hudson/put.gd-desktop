@@ -375,6 +375,11 @@ private slots:
   source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
   source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
   QCOMPARE(live.error.code,QString("helper_outdated"));QVERIFY(live.error.message.contains("log out and back in"));QCOMPARE(state()["acquires"].toInt(),before);
+  // Copy text (#1428) selects a region too. An extension loaded before it must give
+  // the same step; capturing with selector code that predates the action is not an answer.
+  PayloadResult text;bool textDone=false;source.acquire("text",{},[&](PayloadResult value){text=std::move(value);textDone=true;});PUTGD_TRY_VERIFY(textDone);
+  QCOMPARE(text.error.code,QString("helper_outdated"));QCOMPARE(state()["acquires"].toInt(),before);
+  QVERIFY(!source.capabilities()["capture"].toObject()["text"].toObject()["available"].toBool());
   PayloadResult desktop;bool desktopDone=false;source.acquire("desktop",{},[&](PayloadResult value){desktop=std::move(value);desktopDone=true;});PUTGD_TRY_VERIFY(desktopDone);
   QVERIFY2(!desktop.error,qPrintable(desktop.error.code+": "+desktop.error.message));QCOMPARE(desktop.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);
   stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());

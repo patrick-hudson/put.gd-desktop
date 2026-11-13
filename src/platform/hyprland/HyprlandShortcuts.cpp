@@ -14,7 +14,7 @@ namespace putgd {
 namespace {
 const QString ownPrefix=QStringLiteral("put.gd: ");
 const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"monitor","Monitor capture"},{"repeat","Repeat last region"},
- {"edit","Region capture and edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+ {"edit","Region capture and edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
 // Qt keys whose xkb keysym name is not the character itself.
 const QHash<int,QString> namedKeys{{Qt::Key_Print,"Print"},{Qt::Key_Escape,"Escape"},{Qt::Key_Tab,"Tab"},{Qt::Key_Backspace,"BackSpace"},
  {Qt::Key_Return,"Return"},{Qt::Key_Enter,"KP_Enter"},{Qt::Key_Insert,"Insert"},{Qt::Key_Delete,"Delete"},{Qt::Key_Pause,"Pause"},
