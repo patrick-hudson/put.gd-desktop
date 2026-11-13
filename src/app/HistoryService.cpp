@@ -1,4 +1,8 @@
 #include "HistoryService.h"
+#include "core/ImageJob.h"
+#include "core/QrImage.h"
+#include <QFileInfo>
+#include <QSaveFile>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QJsonDocument>
@@ -89,6 +93,70 @@ void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
    operations_.background([path,ids](Error& e){HistoryStore store(path);QJsonArray changed;for(const auto& id:ids){QString operationId;if((e=store.recordCopiedLink(id,operationId)))break;if(!operationId.isEmpty())changed.append(operationId);}return QJsonObject{{"operations",changed}};},
     [this,reply,result](Error e,QJsonObject recorded){for(const auto& id:recorded["operations"].toArray())emit operations_.changed(id.toString());reply(e,result);});
   },ticket);
+ });
+}
+namespace {
+// Copy text reads what Edit again edits: a retained local PNG or JPEG.
+bool textReadable(const QJsonObject& data){return data["local"].toObject()["status"]=="saved"&&QStringList{"image/png","image/jpeg"}.contains(data["mime"].toString());}
+Error noLocalCopy(){return {"image_unavailable","Copy text needs the item's local copy. Turn on Keep a local copy in Settings → Capture for future captures.",{}};}
+}
+void HistoryService::copyText(const QString& id,bool keepResult,JsonReply reply) {
+ if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ const auto path=operations_.databasePath();
+ TextService::Request request;request.source="history";request.copy=true;request.keepResult=keepResult;
+ // The retained original, checked against its record, decoded by the image worker.
+ request.acquire=[this,path,id](TextService::Deliver deliver){
+  auto image=std::make_shared<QImage>();
+  operations_.background([path,id,image](Error& e) {
+   HistoryStore store(path);const auto data=store.detail(id,&e);if(e)return QJsonObject{};
+   const auto local=data["local"].toObject();
+   if(!textReadable(data)){e=noLocalCopy();return QJsonObject{};}
+   QFile file(local["path"].toString());
+   constexpr qint64 inputLimit=256*1024*1024;
+   if(!QFileInfo(file).isFile()||!file.open(QIODevice::ReadOnly)){e={"artifact_missing","Cannot read the retained original image",{}};return QJsonObject{};}
+   if(file.size()<1||file.size()>inputLimit){e=textjob::failure("input_excessive");return QJsonObject{};}
+   const auto bytes=file.read(inputLimit+1);
+   if(bytes.size()!=data["bytes"].toInteger()||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=data["sha256"].toString()){e={"artifact_changed","The retained original image changed",{}};return QJsonObject{};}
+   // Up to the recognition limit, with room for sixteen bits a channel.
+   ResourceLimits limits;limits.imagePixels=textjob::maximumInputPixels;limits.imageBytes=textjob::maximumInputPixels*8;limits.maxFileBytes=inputLimit+1;
+   *image=ImageJob().decode(bytes,limits,e);
+   return QJsonObject{};
+  },[deliver,image](Error e,QJsonObject){deliver(e,e?QImage():std::move(*image));});
+ };
+ // An item without a local copy is refused before any operation exists.
+ operations_.background([path,id](Error& e){HistoryStore store(path);const auto data=store.detail(id,&e);if(!e&&!textReadable(data))e=noLocalCopy();return QJsonObject{};},
+  [this,request=std::move(request),reply=std::move(reply)](Error e,QJsonObject) mutable {if(e){reply(e,{});return;}operations_.text().recognize(std::move(request),std::move(reply));});
+}
+void HistoryService::qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply reply,QrShow show) {
+ if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(mode=="save"&&!path.endsWith(".png",Qt::CaseInsensitive)){reply({"invalid_request","Save a QR code to an absolute .png path",{}},{});return;}
+ if(mode=="show"&&!show){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+ // Copy image is an explicit copy from the moment it is asked for, as Copy link is.
+ const auto ticket=mode=="copy"?operations_.invalidateCopyEligibility():0;
+ operations_.background([this,id,mode,path,overwrite](Error& e) {
+  const auto data=copyableLink(id,e);if(e)return QJsonObject{};
+  if(!data["linkAvailable"].toBool()){e=qr::unavailable(data);return QJsonObject{};}
+  const auto url=data["receipt"].toObject()["directUrl"].toString();
+  qr::Matrix matrix;if((e=qr::encode(url.toUtf8(),matrix)))return QJsonObject{};
+  QJsonObject result{{"historyId",id},{"modules",matrix.size}};
+  if(mode=="show"){result["url"]=url;return result;}
+  const auto png=qr::png(matrix);const auto scale=qr::exportScale(matrix);
+  result["width"]=matrix.edge()*scale;result["height"]=matrix.edge()*scale;result["bytes"]=double(png.size());
+  result["sha256"]=QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex());
+  if(mode=="copy"){result["png"]=QString::fromLatin1(png.toBase64());return result;}
+  // Save never replaces a file without overwrite, nor anything but a regular file.
+  const QFileInfo target(path);
+  if(target.exists()&&(!overwrite||!target.isFile())){e={"file_exists","The file exists; pass overwrite to replace it",{{"path",path}}};return QJsonObject{};}
+  QSaveFile file(path);
+  if(!file.open(QIODevice::WriteOnly)||file.write(png)!=png.size()||!file.commit()){e={"save_failed","The QR code could not be saved",{{"path",path}}};return QJsonObject{};}
+  result["saved"]=true;result["path"]=path;return result;
+ },[this,mode,reply,ticket,show](Error e,QJsonObject result) {
+  if(e){reply(e,{});return;}
+  notifyChanged();
+  if(mode=="show"){show(result,reply);return;}
+  if(mode=="save"){reply({},result);return;}
+  const auto png=QByteArray::fromBase64(result.take("png").toString().toLatin1());
+  operations_.copyHistoryQr(png,[reply,result](Error e,QJsonObject copied){auto answer=result;answer["copied"]=copied["copied"].toBool();answer["copyStatus"]=e.code=="copy_suppressed"?"suppressed":e?"failed":"copied";reply(e.code=="copy_suppressed"?Error{}:e,answer);},ticket);
  });
 }
 QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {

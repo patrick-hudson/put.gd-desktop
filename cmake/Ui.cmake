@@ -99,7 +99,7 @@ add_library(putgd_preview_reader STATIC src/ui/PreviewReader.cpp)
 target_include_directories(putgd_preview_reader PUBLIC src)
 target_link_libraries(putgd_preview_reader PUBLIC Qt6::Gui putgd_build_options)
 add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/UiWindow.cpp src/ui/WindowActivation.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/CustomUploaderPanel.cpp src/ui/ShortcutEditor.cpp
-  src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
+  src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp src/ui/QrCodeWindow.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard putgd_preview_reader)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp src/editor/HighlightFilter.cpp)

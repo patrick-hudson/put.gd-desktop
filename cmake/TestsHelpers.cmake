@@ -54,6 +54,12 @@
     add_dependencies(test_ui_process test_ui_helper_fixture)
     add_test(NAME ui_process_integration COMMAND test_ui_process)
   endif()
+  # History's Show QR code (#1428): a written code reads back as the known-good matrix.
+  add_executable(test_qr_code tests/unit/test_qr_code.cpp)
+  target_link_libraries(test_qr_code PRIVATE putgd_core Qt6::Test)
+  target_compile_definitions(test_qr_code PRIVATE PUTGD_TEST_FIXTURES="${PROJECT_SOURCE_DIR}/tests/fixtures")
+  add_test(NAME qr_code_contract COMMAND test_qr_code)
+  set_tests_properties(qr_code_contract PROPERTIES TIMEOUT 30)
   add_executable(test_editor tests/unit/test_editor.cpp)
   target_link_libraries(test_editor PRIVATE putgd_editor putgd_core Qt6::Test)
   target_compile_definitions(test_editor PRIVATE PUTGD_TEST_FIXTURES="${PROJECT_SOURCE_DIR}/tests/fixtures")
