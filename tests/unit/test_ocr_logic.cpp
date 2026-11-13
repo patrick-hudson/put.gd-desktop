@@ -1,15 +1,14 @@
-// putgd-ocr's engine-free rules (#1428) whose failure would be silent: the
-// untrusted-character filter, code areas blanked before recognition, band
-// seams that lose or double no line, and the input limit. Synthetic data only.
+// putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
+// areas blanked before recognition, band seams that lose or double no line,
+// and the input limit. The contract's own tests cover the character filter.
+// Synthetic data only.
 #include "ocr/Layout.h"
-#include "ocr/Sanitize.h"
 #include "ocr/Words.h"
 #include <QTest>
 #include <iterator>
 
 using namespace putgd::ocr;
 namespace {
-QString points(std::initializer_list<char32_t> list){return QString::fromUcs4(std::data(list),qsizetype(list.size()));}
 Profile lines(int width,int height,int lineHeight,int gap){
  Profile p;p.lineHeight=lineHeight;p.rowInk.fill(0,height);
  for(int y=0;y<height;++y)if(gap==0||(y%(lineHeight+gap))<lineHeight)p.rowInk[y]=width/4;
@@ -19,25 +18,6 @@ Profile lines(int width,int height,int lineHeight,int gap){
 class OcrLogic final:public QObject {
  Q_OBJECT
 private slots:
- // Decision 4a. Built from code points, so this source holds no control itself.
- void filtersUntrustedCharacters_data(){
-  QTest::addColumn<QString>("input");QTest::addColumn<bool>("code");QTest::addColumn<QString>("expected");
-  QTest::newRow("c0-and-del")<<points({'a',0x01,'b',0x1b,'c',0x7f,'d','\r'})<<false<<QStringLiteral("abcd");
-  QTest::newRow("tab-newline-kept")<<points({'a','\t','b','\n','c'})<<true<<points({'a','\t','b','\n','c'});
-  QTest::newRow("c1")<<points({'a',0x85,'b',0x9b,'c'})<<false<<QStringLiteral("abc");
-  QTest::newRow("bidi-override")<<points({'s','a','f','e',0x202e,'l','i','v','e'})<<true<<QStringLiteral("safelive");
-  QTest::newRow("bidi-embedding-isolate")<<points({'a',0x202a,'b',0x202c,'c',0x2066,'d',0x2069,'e',0x200f})<<false<<QStringLiteral("abcde");
-  QTest::newRow("zero-width-and-bom")<<points({'a',0x200b,'b',0xfeff,'c',0x2060,'d'})<<false<<QStringLiteral("abcd");
-  QTest::newRow("tag-characters")<<points({'a',0xe0041,0xe007f,'b'})<<true<<QStringLiteral("ab");
-  QTest::newRow("line-separators")<<points({'a',0x2028,'b',0x2029,'c'})<<false<<QStringLiteral("a\nb\nc");
-  QTest::newRow("joiners-kept-in-text")<<points({0x645,0x200c,0x6cc,0x200d})<<false<<points({0x645,0x200c,0x6cc,0x200d});
-  QTest::newRow("joiners-removed-from-codes")<<points({0x645,0x200c,0x6cc,0x200d})<<true<<points({0x645,0x6cc});
-  QTest::newRow("nfc")<<points({'e',0x301})<<true<<points({0xe9});
- }
- void filtersUntrustedCharacters(){
-  QFETCH(QString,input);QFETCH(bool,code);QFETCH(QString,expected);
-  QCOMPARE(sanitizeUntrusted(input,code?Untrusted::CodeContent:Untrusted::RecognizedText),expected);
- }
  // A code's area is filled with the background in every band copy, so no word
  // can come from its modules. Here the "code" is a checkerboard on white.
  void codeAreasAreBlank(){

@@ -36,6 +36,8 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
 // under half the line height.
 void joinUrls(Recognition& job);
 void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& filter);
-// Kept words joined by spaces, lines by newlines, with a blank line between blocks.
-QString copiedText(const Recognition& job);
+// Kept words joined by spaces, lines by newlines, with a blank line between
+// blocks. lineTops gets the top edge of each line of the text, a blank line
+// taking the top of the line after it.
+QString copiedText(const Recognition& job,QList<int>* lineTops=nullptr);
 }

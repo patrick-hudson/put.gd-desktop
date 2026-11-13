@@ -37,35 +37,29 @@ if(putgd_ocr_missing)
   return()
 endif()
 
-# The engine-free parts: sanitizing, scale and bands, words, the result JSON.
-add_library(putgd_ocr_logic STATIC src/ocr/Sanitize.cpp src/ocr/Layout.cpp src/ocr/Words.cpp src/ocr/Result.cpp)
+# The engine-free parts: scale and bands, band copies, words and the copied
+# text. The contract (putgd_text_protocol) owns the sanitizers and the result.
+add_library(putgd_ocr_logic STATIC src/ocr/Layout.cpp src/ocr/Words.cpp)
 target_include_directories(putgd_ocr_logic PUBLIC src)
-target_link_libraries(putgd_ocr_logic PUBLIC Qt6::Core putgd_build_options)
-# The engines, confinement and the memfd transfer.
-add_library(putgd_ocr_engine STATIC src/ocr/TextEngine.cpp src/ocr/CodeReader.cpp src/ocr/Recognize.cpp src/ocr/Confinement.cpp src/ocr/Descriptors.cpp)
+target_link_libraries(putgd_ocr_logic PUBLIC putgd_text_protocol Qt6::Core putgd_build_options)
+# The engines and the confinement.
+add_library(putgd_ocr_engine STATIC src/ocr/TextEngine.cpp src/ocr/CodeReader.cpp src/ocr/Recognize.cpp src/ocr/Confinement.cpp)
 target_link_libraries(putgd_ocr_engine PUBLIC putgd_ocr_logic PRIVATE PkgConfig::PUTGD_TESSERACT PkgConfig::PUTGD_ZXING)
 add_executable(putgd-ocr src/ocr/main.cpp)
-target_link_libraries(putgd-ocr PRIVATE putgd_ocr_engine putgd_ui_control putgd_build_identity Qt6::Core)
+target_link_libraries(putgd-ocr PRIVATE putgd_ocr_engine putgd_text_child Qt6::Core)
 # Some distributions' tesseract.pc lists libcurl and libarchive among its own
 # Libs; the helper needs neither directly.
 target_link_options(putgd-ocr PRIVATE "LINKER:--as-needed")
 install(TARGETS putgd-ocr RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(BUILD_TESTING)
-  # The character filter, blanked code areas, band seams and the input limit.
+  # Blanked code areas, band seams and the input limit.
   add_executable(test_ocr_logic tests/unit/test_ocr_logic.cpp)
   target_link_libraries(test_ocr_logic PRIVATE putgd_ocr_logic Qt6::Test)
   add_test(NAME ocr_logic_contract COMMAND test_ocr_logic)
-  # A parent for the real helper: sealed memfd in, memfd out, the control
-  # protocol, stage timings and the child's peak RSS. Also a command-line
-  # driver for measurements (test_ocr_run IMAGE.png).
-  add_library(test_ocr_parent STATIC tests/integration/ocr/OcrParent.cpp)
-  target_include_directories(test_ocr_parent PUBLIC src tests)
-  target_link_libraries(test_ocr_parent PUBLIC putgd_ui_control putgd_build_identity Qt6::Gui)
-  add_executable(test_ocr_run tests/integration/ocr/ocr_run.cpp)
-  target_link_libraries(test_ocr_run PRIVATE test_ocr_parent)
+  # The real helper driven by the contract's TextJob: one smoke test.
   add_executable(test_ocr_helper tests/integration/test_ocr_helper.cpp)
-  target_link_libraries(test_ocr_helper PRIVATE test_ocr_parent Qt6::Test)
+  target_link_libraries(test_ocr_helper PRIVATE putgd_core Qt6::Gui Qt6::Test)
   target_compile_definitions(test_ocr_helper PRIVATE "PUTGD_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
   add_dependencies(test_ocr_helper putgd-ocr)
   add_test(NAME ocr_helper_integration COMMAND test_ocr_helper)
@@ -78,7 +72,11 @@ if(BUILD_TESTING)
   add_dependencies(test_ocr_confinement test_ocr_confinement_probe)
   add_test(NAME ocr_confinement_integration COMMAND test_ocr_confinement)
   set_tests_properties(ocr_confinement_integration PROPERTIES TIMEOUT 120 ENVIRONMENT "PUTGD_OCR_PROBE=$<TARGET_FILE:test_ocr_confinement_probe>")
-  # The method comparisons of decision 4, in process: bench_ocr_method --help.
+  # Measurement tools, not tests: test_ocr_run drives the real helper through
+  # TextJob (stage times, the helper's peak RSS); bench_ocr_method runs the
+  # method comparisons of decision 4 in process.
+  add_executable(test_ocr_run tests/integration/ocr/ocr_run.cpp)
+  target_link_libraries(test_ocr_run PRIVATE putgd_core Qt6::Gui)
   add_executable(bench_ocr_method tests/integration/ocr/ocr_method.cpp)
   target_link_libraries(bench_ocr_method PRIVATE putgd_ocr_engine Qt6::Gui)
 endif()

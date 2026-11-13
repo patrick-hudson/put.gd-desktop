@@ -1,7 +1,6 @@
 #include "TextEngine.h"
 #include <QCryptographicHash>
 #include <QFile>
-#include <QRegularExpression>
 #include <tesseract/baseapi.h>
 #include <tesseract/resultiterator.h>
 #include <algorithm>
@@ -84,10 +83,6 @@ bool readData(const char* filename,std::vector<char>* data){
  }
  return false;
 }
-}
-bool validLanguage(const QString& identifier){
- static const QRegularExpression pattern(QStringLiteral("^[a-z]{3,4}(_[a-z0-9]+){0,2}$"));
- return identifier.size()<=64&&pattern.match(identifier).hasMatch();
 }
 TextEngine::TextEngine()=default;
 TextEngine::~TextEngine(){if(api_)api_->End();delete resolver;resolver=nullptr;}

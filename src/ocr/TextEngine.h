@@ -1,5 +1,6 @@
 #pragma once
 #include "OcrImage.h"
+#include "core/TextJobProtocol.h"
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -7,10 +8,9 @@
 
 namespace tesseract { class TessBaseAPI; }
 namespace putgd::ocr {
-inline constexpr int maximumLanguages=3;
-inline constexpr qint64 maximumLanguageBytes=64*1024*1024;
-// A language identifier as decision 6 allows it.
-bool validLanguage(const QString& identifier);
+using textjob::maximumLanguages;
+inline constexpr qint64 maximumLanguageBytes=textjob::maximumLanguageDataBytes;
+using textjob::validLanguage;
 
 struct EngineOptions {
  int pageSegmentation=3;      // tesseract::PageSegMode; 3 is automatic layout

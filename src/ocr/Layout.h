@@ -1,5 +1,6 @@
 #pragma once
 #include "OcrImage.h"
+#include "core/TextJobProtocol.h"
 #include <QList>
 #include <QString>
 #include <algorithm>
@@ -8,7 +9,7 @@
 // Pure image arithmetic: no engine, no allocation beyond one band at a time.
 namespace putgd::ocr {
 // Admission: the editor's own limit.
-inline constexpr qint64 maximumInputPixels=24000000;
+using textjob::maximumInputPixels;
 // One pass or one band never exceeds this after scaling, overlap included.
 inline constexpr qint64 bandPixelLimit=8000000;
 

@@ -48,7 +48,7 @@ private slots:
   QFETCH(QString,action);QFETCH(QString,argument);QFETCH(int,errorOrSignal);
   QStringList arguments;if(!dataDirectory().isEmpty())arguments<<QStringLiteral("--bands");
   arguments<<action;if(!argument.isEmpty())arguments<<argument;
-  QProcess process;QProcessEnvironment environment;environment.insert("PUTGD_OCR_DATA",dataDirectory());environment.insert("OMP_THREAD_LIMIT","1");
+  QProcess process;QProcessEnvironment environment;environment.insert("PUTGD_TEXT_DATA",dataDirectory());environment.insert("OMP_THREAD_LIMIT","1");
   process.setProcessEnvironment(environment);
   process.start(qEnvironmentVariable("PUTGD_OCR_PROBE"),arguments);
   QVERIFY(process.waitForFinished(60000));

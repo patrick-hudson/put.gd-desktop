@@ -1,5 +1,5 @@
 #include "Words.h"
-#include "Sanitize.h"
+#include "core/TextJobProtocol.h"
 #include <QRegularExpression>
 #include <algorithm>
 #include <array>
@@ -35,7 +35,7 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
  }
  const int firstNew=int(job.words.size());
  for(const auto& item:band.words){
-  Word word;word.text=sanitizeUntrusted(item.text,Untrusted::RecognizedText).trimmed();
+  Word word;word.text=textjob::sanitizeText(item.text).trimmed();
   if(word.text.isEmpty())continue;
   word.rect=toSource(item.rect,placement,scale,border,imageWidth,imageHeight);
   word.confidence=item.confidence;word.line=lineBase+item.line;
@@ -102,13 +102,14 @@ void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& f
   if(strong<std::max<qint64>(3,area/200))word.kept=false;
  }
 }
-QString copiedText(const Recognition& job){
+QString copiedText(const Recognition& job,QList<int>* lineTops){
  QString text;int line=-1,block=-1;
  for(const auto& word:job.words){
   if(!word.kept)continue;
   if(word.line!=line){
-   const int wordBlock=job.lines.value(word.line).block;
-   if(line>=0)text+=wordBlock!=block?QStringLiteral("\n\n"):QStringLiteral("\n");
+   const int wordBlock=job.lines.value(word.line).block,top=job.lines.value(word.line).rect.top();
+   if(line>=0){text+=wordBlock!=block?QStringLiteral("\n\n"):QStringLiteral("\n");if(wordBlock!=block&&lineTops)lineTops->append(top);}
+   if(lineTops)lineTops->append(top);
    line=word.line;block=wordBlock;
   }else text+=QLatin1Char(' ');
   text+=word.text;

@@ -8,10 +8,6 @@
 
 // One recognition job, from the grey input to the result JSON (#1428 decisions 3 and 4).
 namespace putgd::ocr {
-inline constexpr qint64 maximumOutputBytes=8*1024*1024;
-inline constexpr qsizetype maximumTextBytes=1024*1024;
-inline constexpr int maximumWords=20000;
-inline constexpr qsizetype maximumWordBytes=256;
 
 struct JobOptions {
  QStringList languages{QStringLiteral("eng")};
@@ -30,14 +26,15 @@ struct JobResult {
  QString failedLanguage;
  Recognition recognition;
  QString text;
+ QList<int> lineTops;       // one per line of text, source pixels
  bool truncated=false;
  QStringList used,skipped,dataFiles;
  JobTimings timings;
  Profile profile;
 };
 JobResult recognizeImage(const GreyView& image,const JobOptions& options);
-// The result as compact JSON, within the bounds: text at most 1 MiB, 20,000
-// words of at most 256 bytes, 64 codes of at most 8 KiB, and the whole at
-// most outputLimit, cutting candidates first, then words, then codes, then text.
-QByteArray encodeResult(const JobResult& result,const JobOptions& options,qint64 outputLimit=maximumOutputBytes);
+// The contract's result: text with its line tops, the filtered words when
+// asked, every word as candidates when asked, codes and timings. The
+// contract's encoder applies the bounds.
+TextResult toTextResult(const JobResult& result,const JobOptions& options);
 }

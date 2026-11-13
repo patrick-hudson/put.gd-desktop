@@ -1,7 +1,7 @@
 #include "Recognize.h"
 #include "CodeReader.h"
-#include "Sanitize.h"
 #include <QElapsedTimer>
+#include <cmath>
 
 namespace putgd::ocr {
 JobResult recognizeImage(const GreyView& image,const JobOptions& options){
@@ -9,8 +9,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  if(!image.valid()||qint64(image.width)*image.height>maximumInputPixels){result.error=QStringLiteral("input_excessive");return result;}
  // Codes first, from the full image; their areas are filled in every band copy.
  QElapsedTimer stage;stage.start();
- bool truncated=false;
- result.recognition.codes=readCodes(image,truncated);
+ result.recognition.codes=readCodes(image);
  QList<Quad> areas;for(const auto& code:result.recognition.codes)areas.append(code.quad);
  result.timings.codesMs=stage.elapsed();
  result.profile=measure(image,areas);
@@ -35,9 +34,23 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.recognition.banded=plan.banded();result.recognition.scale=plan.scale;result.recognition.bands=int(plan.bands.size());
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
- bool cut=false;result.text=clampUtf8(copiedText(result.recognition),maximumTextBytes,cut);
- result.truncated=truncated||cut;
+ result.text=copiedText(result.recognition,&result.lineTops);
  result.timings.totalMs=total.elapsed();
  return result;
+}
+TextResult toTextResult(const JobResult& job,const JobOptions& options){
+ TextResult out;out.text=job.text;out.lineTops=job.lineTops;out.truncated=job.truncated;out.banded=job.recognition.banded;
+ out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
+ out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs;
+ const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence))};};
+ for(const auto& w:job.recognition.words){
+  if(options.words&&w.kept)out.words.append(word(w));
+  if(options.candidates)out.candidates.append(word(w));
+ }
+ for(const auto& c:job.recognition.codes){
+  TextCode code;code.format=c.format;code.binary=!c.text;code.text=c.text?c.content:QString();code.length=c.length;
+  code.quad={c.quad[0],c.quad[1],c.quad[2],c.quad[3]};out.codes.append(code);
+ }
+ return out;
 }
 }

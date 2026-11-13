@@ -38,8 +38,8 @@ int main(int argc,char** argv){
  if(i>=argc){std::fprintf(stderr,"usage: test_ocr_confinement_probe [--recognize|--bands] ACTION [ARG]\n");return 2;}
  const QString action=QString::fromLatin1(argv[i]);const char* argument=i+1<argc?argv[i+1]:"";
  if(sanitizedBuild()){std::printf("sanitized\n");return 0;}
- QStringList directories;for(const auto& d:qEnvironmentVariable("PUTGD_OCR_DATA").split(QLatin1Char(':'),Qt::SkipEmptyParts))directories.append(d);
- Confinement c;c.readable=readableDirectories(directories);c.dataBytes=288ll*1024*1024;c.cpuSeconds=21;c.fileBytes=maximumOutputBytes;c.descriptors=32;
+ QStringList directories;for(const auto& d:qEnvironmentVariable("PUTGD_TEXT_DATA").split(QLatin1Char(':'),Qt::SkipEmptyParts))directories.append(d);
+ Confinement c;c.readable=readableDirectories(directories);c.dataBytes=288ll*1024*1024;c.cpuSeconds=21;c.fileBytes=putgd::textjob::maximumOutputBytes;c.descriptors=32;
  QString failed;int abi=0;
  if(!confine(c,failed,abi)){std::printf("confine failed: %s abi=%d\n",qPrintable(failed),abi);return 3;}
  std::printf("abi=%d\n",abi);std::fflush(stdout);

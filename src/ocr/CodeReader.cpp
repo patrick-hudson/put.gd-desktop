@@ -1,5 +1,6 @@
 #include "CodeReader.h"
-#include "Sanitize.h"
+#include "core/TextJobProtocol.h"
+#include <QStringDecoder>
 #include <ZXing/ReadBarcode.h>
 #include <algorithm>
 #include <string>
@@ -18,8 +19,15 @@ QString formatName(const std::string& name){
  if(name=="Aztec"||name=="Aztec Code"||name=="Aztec Rune")return QStringLiteral("Aztec");
  return {};
 }
+// Strict UTF-8: false for any malformed sequence, overlong form or surrogate.
+bool decodeUtf8(const QByteArray& bytes,QString& text){
+ QStringDecoder decoder(QStringDecoder::Utf8,QStringDecoder::Flag::Stateless);
+ QString decoded=decoder.decode(bytes);
+ if(decoder.hasError())return false;
+ text=std::move(decoded);return true;
 }
-QList<Code> readCodes(const GreyView& image,bool& truncated){
+}
+QList<Code> readCodes(const GreyView& image){
  QList<Code> codes;
  if(!image.valid())return codes;
  ZXing::ImageView view(image.data,image.width,image.height,ZXing::ImageFormat::Lum,image.stride);
@@ -42,8 +50,7 @@ QList<Code> readCodes(const GreyView& image,bool& truncated){
   if(type==ZXing::ContentType::Text||type==ZXing::ContentType::GS1||type==ZXing::ContentType::ISO15434){
    const auto text=result.text();QString decoded;
    if(decodeUtf8(QByteArray(text.data(),qsizetype(text.size())),decoded)){
-    bool cut=false;code.content=clampUtf8(sanitizeUntrusted(decoded,Untrusted::CodeContent),maximumCodeBytes,cut);
-    truncated|=cut;code.text=!code.content.isEmpty();
+    code.content=textjob::sanitizeCodeContent(decoded);code.text=!code.content.isEmpty();
    }
   }
   codes.append(std::move(code));
@@ -51,7 +58,6 @@ QList<Code> readCodes(const GreyView& image,bool& truncated){
  std::stable_sort(codes.begin(),codes.end(),[](const Code& a,const Code& b){
   const auto ca=a.centre(),cb=b.centre();return ca.y()!=cb.y()?ca.y()<cb.y():ca.x()<cb.x();
  });
- if(codes.size()>maximumCodes){codes.resize(maximumCodes);truncated=true;}
  return codes;
 }
 }
