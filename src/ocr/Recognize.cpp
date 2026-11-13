@@ -57,6 +57,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // Decision 3: the budget grows by the size of the data files beyond English.
  qint64 memoryBudget=options.memoryBudget;
  if(memoryBudget>0)memoryBudget=std::min(std::max(options.memoryCeiling,memoryBudget),memoryBudget+data.bytesBeyondEnglish());
+ // The gates keep 8 MiB in reserve: what an engine allocates after its first
+ // measurement (a sparse 24 MP page reached 131 MiB with four engines without it).
+ const qint64 gateBudget=memoryBudget>0?memoryBudget-8*1024*1024:0;
  stage.restart();
  const bool invert=options.invertDark&&result.profile.dark;
  const auto left=[&]{return options.budgetMs>0?int(options.budgetMs-total.elapsed()):0;};
@@ -84,7 +87,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  QList<Outcome> outcomes;outcomes.resize(taskCount);
  std::atomic<int> next{0};std::atomic<qint64> slowest{0},taskGrowth{0};std::atomic<bool> stop{false};
  std::function<void(TextEngine&,bool)> work;
- const auto roomFor=[&](qint64 bytes){return memoryBudget<=0||residentBytes()+bytes<=memoryBudget;};
+ const auto roomFor=[&](qint64 bytes){return gateBudget<=0||residentBytes()+bytes<=gateBudget;};
  std::vector<std::unique_ptr<TextEngine>> extra;std::vector<std::thread> pool;
  // Extra engines, each on its own thread; started at most once, from this thread.
  const std::function<void(int)> startExtras=[&](int count){
@@ -95,14 +98,16 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  };
  // How many extra engines fit in the memory budget when each costs this much.
  const auto fitting=[&](qint64 each){
-  if(memoryBudget<=0)return wanted-1;
-  const qint64 room=memoryBudget-residentBytes();
+  if(gateBudget<=0)return wanted-1;
+  const qint64 room=gateBudget-residentBytes();
   return std::clamp(int(room/std::max<qint64>(1,each)),0,wanted-1);
  };
  work=[&](TextEngine& engine,bool extraWorker){
   for(;;){
-   // The memory budget: an extra worker leaves its tasks to the others.
-   if(extraWorker&&!roomFor(taskGrowth.load()))return;
+   // The memory budget: an extra worker leaves its tasks to the others unless
+   // twice the largest growth a task has shown still fits; on dense pages a
+   // later band grows more than the first (139 MiB on m74 with one times).
+   if(extraWorker&&!roomFor(2*taskGrowth.load()))return;
    const int task=next.fetch_add(1);
    if(task>=taskCount||stop.load())return;
    const qint64 before=residentBytes();
@@ -124,7 +129,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    {std::lock_guard<std::mutex> guard(lock);outcomes[task]=std::move(outcome);}
    // A banded image measures before it shares: once the first band is done,
    // as many engines start as fit in the budget at what that band cost.
-   if(!extraWorker&&!split&&extra.empty()&&wanted>1&&!stop.load())startExtras(fitting(engineCost+taskGrowth.load()));
+   if(!extraWorker&&!split&&extra.empty()&&wanted>1&&!stop.load())startExtras(fitting(engineCost+2*taskGrowth.load()));
   }
  };
  // A single pass shares at once: each extra engine is reserved its own cost

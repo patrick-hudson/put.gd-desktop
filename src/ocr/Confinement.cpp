@@ -152,22 +152,68 @@ QString executablePrefix(){
  for(int i=0;i<2;++i){const auto slash=path.lastIndexOf(QLatin1Char('/'));if(slash<=0)return {};path.truncate(slash);}
  return path;
 }
-// The directories under the helper's installation prefix it needs: libraries
-// (the AppImage's bundled engines) and put.gd's own data. Never the prefix
-// itself, whose tree may be a home directory: a helper run from
-// /home/alice/bin would otherwise read all of /home/alice. Nothing from a
-// prefix that is / or a home directory or above one.
-QStringList prefixDirectories(){
- const auto prefix=executablePrefix();
- if(prefix.isEmpty()||prefix==QLatin1String("/"))return {};
- if(const auto* user=::getpwuid(::getuid());user&&user->pw_dir&&*user->pw_dir){
-  QString home=QFile::decodeName(user->pw_dir);
-  char resolved[PATH_MAX+1]{};if(::realpath(user->pw_dir,resolved))home=QFile::decodeName(resolved);
-  while(home.size()>1&&home.endsWith(QLatin1Char('/')))home.chop(1);
-  if(prefix==home||home.startsWith(prefix+QLatin1Char('/')))return {};
- }
- return {prefix+QLatin1String("/lib"),prefix+QLatin1String("/lib64"),prefix+QLatin1String("/share/putgd")};
+// The fully resolved path, or empty when it does not exist.
+QString resolvedPath(const QString& path){
+ char buffer[PATH_MAX+1]{};
+ if(!::realpath(QFile::encodeName(path).constData(),buffer))return {};
+ return QFile::decodeName(buffer);
 }
+QString trimmed(QString path){while(path.size()>1&&path.endsWith(QLatin1Char('/')))path.chop(1);return path;}
+// The user's home directory as written in the password database, and resolved.
+struct Home { QString written,real; };
+Home homeDirectory(){
+ Home home;
+ if(const auto* user=::getpwuid(::getuid());user&&user->pw_dir&&*user->pw_dir){
+  home.written=trimmed(QFile::decodeName(user->pw_dir));home.real=trimmed(resolvedPath(home.written));
+ }
+ return home;
+}
+// A grant of r would reach / or the whole home directory.
+bool coversHome(const QString& r,const Home& home){
+ return r==QLatin1String("/")||(!home.real.isEmpty()&&(r==home.real||home.real.startsWith(r+QLatin1Char('/'))));
+}
+}
+// Landlock grants the directory a rule's path resolves to, symlinks followed,
+// so every path a rule names is resolved here first and refused when that
+// lands somewhere it must not: /, the home directory or above it.
+static QStringList prefixDirectories(){
+ // The libraries (the AppImage's bundled engines) and put.gd's own data under
+ // the helper's installation prefix. Never the prefix itself, whose tree may
+ // be a home directory: a helper run from /home/alice/bin would otherwise read
+ // all of /home/alice. Each directory must resolve to exactly itself under the
+ // real prefix: a symlinked lib pointing at the home directory grants nothing.
+ const auto home=homeDirectory();
+ const auto prefix=resolvedPath(executablePrefix());
+ if(prefix.isEmpty()||coversHome(prefix,home))return {};
+ QStringList out;
+ for(const auto* sub:{"lib","lib64","share/putgd"}){
+  const auto candidate=prefix+QLatin1Char('/')+QLatin1String(sub);
+  const auto real=resolvedPath(candidate);
+  if(real.isEmpty()||real!=candidate||coversHome(real,home))continue;
+  out.append(real);
+ }
+ return out;
+}
+QStringList safeLanguageDirectories(const QStringList& directories){
+ // Absolute, no "..", resolved. One that resolves into the home directory must
+ // get there without a symlink below the home directory, so a user tessdata
+ // that is a symlink to somewhere else grants nothing; a home directory that
+ // is itself reached through a symlink (/home -> /var/home) is fine.
+ const auto home=homeDirectory();QStringList out;
+ for(const auto& d:directories){
+  if(!d.startsWith(QLatin1Char('/'))||d.split(QLatin1Char('/')).contains(QLatin1String("..")))continue;
+  const auto real=resolvedPath(d);
+  if(real.isEmpty()||coversHome(real,home)||out.contains(real))continue;
+  if(!home.real.isEmpty()&&real.startsWith(home.real+QLatin1Char('/'))){
+   const auto path=trimmed(d);QString below;
+   if(!home.written.isEmpty()&&path.startsWith(home.written+QLatin1Char('/')))below=path.mid(home.written.size());
+   else if(path.startsWith(home.real+QLatin1Char('/')))below=path.mid(home.real.size());
+   else continue;  // into the home directory from outside it
+   if(real!=home.real+below)continue;
+  }
+  out.append(real);
+ }
+ return out;
 }
 int landlockAbi(){
  const long abi=::syscall(SYS_landlock_create_ruleset,nullptr,0,createRulesetVersion);
@@ -184,7 +230,7 @@ QStringList readableDirectories(const QStringList& languageDirectories){
  QStringList out{QStringLiteral("/usr/lib"),QStringLiteral("/usr/lib64"),QStringLiteral("/lib"),QStringLiteral("/lib64"),
                  QStringLiteral("/proc/self"),QStringLiteral("/sys/devices/system/cpu")};
  for(const auto& d:prefixDirectories())if(!out.contains(d))out.append(d);
- for(const auto& d:languageDirectories)if(d.startsWith(QLatin1Char('/'))&&!out.contains(d))out.append(d);
+ for(const auto& d:safeLanguageDirectories(languageDirectories))if(!out.contains(d))out.append(d);
  return out;
 }
 bool confine(const Confinement& c,QString& failed,int& abi){

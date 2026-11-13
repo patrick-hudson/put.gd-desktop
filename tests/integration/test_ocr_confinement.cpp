@@ -46,16 +46,19 @@ private slots:
   QTest::newRow("other-process-memory")<<"vm-read"<<parent<<-SIGSYS<<false;
   // Below Landlock ABI 6 only the seccomp filter stops this.
   QTest::newRow("signal-parent")<<"signal"<<parent<<EPERM<<false;
-  // Installed at <home-like>/bin, the helper's prefix is <home-like>: a file
-  // beside its bin directory must stay unreadable.
+  // Installed at <home-like>/install/bin with install/lib a symlink to
+  // <home-like>: the prefix and its lib are granted only as themselves, so a
+  // file in the home-like directory must stay unreadable.
   QTest::newRow("read-beside-prefix")<<"read"<<secret<<EACCES<<true;
  }
  void forbidden(){
   QFETCH(QString,action);QFETCH(QString,argument);QFETCH(int,errorOrSignal);QFETCH(bool,fromHome);
   QString probe=qEnvironmentVariable("PUTGD_OCR_PROBE");
   if(fromHome){
-   QDir().mkpath(home_.filePath(QStringLiteral("bin")));
-   const auto copy=home_.filePath(QStringLiteral("bin/putgd-ocr-probe"));
+   QDir().mkpath(home_.filePath(QStringLiteral("install/bin")));
+   QFile::remove(home_.filePath(QStringLiteral("install/lib")));
+   QVERIFY(QFile::link(home_.path(),home_.filePath(QStringLiteral("install/lib"))));
+   const auto copy=home_.filePath(QStringLiteral("install/bin/putgd-ocr-probe"));
    QFile::remove(copy);QVERIFY(QFile::copy(probe,copy));
    QVERIFY(QFile::setPermissions(copy,QFileDevice::ReadOwner|QFileDevice::ExeOwner));
    probe=copy;

@@ -22,6 +22,11 @@ bool sanitizedBuild();
 // never the prefix itself, nor one that is / or a home directory),
 // /proc/self, the CPU entries OpenMP reads, plus the language data directories.
 QStringList readableDirectories(const QStringList& languageDirectories);
+// The language directories Landlock may grant, each resolved: none that
+// resolves to / or the home directory or above it, and none that reaches into
+// the home directory through a symlink below it (a user tessdata symlinked
+// elsewhere). The engine reads only these.
+QStringList safeLanguageDirectories(const QStringList& directories);
 // No new privileges, not dumpable, the resource limits, Landlock (ABI 3 or
 // later; at ABI 4 TCP is denied, at ABI 6 signals to and abstract sockets of
 // other processes are scoped out) and the seccomp deny-list on every thread.
