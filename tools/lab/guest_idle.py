@@ -73,7 +73,10 @@ def desktop_environment(process, user, proc=Path('/proc')):
     if not matches:
         raise DesktopNotReady('Actual desktop shell is not ready')
     if len(matches) != 1:
-        raise PolicyError('Need exactly one actual desktop shell')
+        # A session that is still starting can show a second process under the
+        # shell's name for a moment. The first application waits for it to
+        # settle; boundary checks have no wait and still refuse at once.
+        raise DesktopNotReady('Need exactly one actual desktop shell')
     session = matches[0]
     env = dict(os.environ, HOME=account.pw_dir, LC_ALL='C')
     # Unset inherited app sandbox homes when absent from the desktop environment.
