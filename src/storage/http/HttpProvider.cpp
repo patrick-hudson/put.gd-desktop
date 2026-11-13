@@ -1,14 +1,12 @@
 #include "HttpProvider.h"
 #include <functional>
 #include "HttpTemplate.h"
+#include "storage/worker/ProviderExchange.h"
 #include <QCoreApplication>
 #include <QDir>
-#include <QElapsedTimer>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QProcess>
 #include <QUuid>
-#include <future>
 namespace putgd {
 namespace {
 Error parseError(const QJsonObject& value) { return {value["code"].toString("http_failed"), value["message"].toString("The custom uploader request failed"), value["details"].toObject()}; }
@@ -146,95 +144,16 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
     params["destination"] = destination.toJson();
     params["secrets"] = secrets;
     secrets = {};
-    QProcess process;
-    process.setProcessChannelMode(QProcess::SeparateChannels);
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
-    process.start(workerPath(), {"--stdio"});
-    if (!process.waitForStarted(10000)) { error = {"http_worker_start", "The custom uploader helper could not start; reinstall put.gd", {}}; return {}; }
-    auto bytes = QJsonDocument(params).toJson(QJsonDocument::Compact);
-    params = {};
-    bytes.append('\n');
-    // Stored values travel only on this pipe. Once request bytes are delivered, a lost
-    // or malformed completion cannot establish whether the server stored anything.
-    const auto delivered = process.write(bytes);
-    bytes.fill('\0');
-    bytes.clear();
-    if (uncertain) *uncertain = delivered > 0;
-    if (!process.waitForBytesWritten(10000)) { process.kill(); process.waitForFinished(5000); error = {"http_outcome_unknown", "The custom uploader helper did not accept its request", {}}; return {}; }
-    const qint64 perRequest = destination.settings["requestTimeoutMs"].toInt(600000);
-    QElapsedTimer silence;
-    silence.start();
-    QByteArray pending;
-    QJsonObject final;
-    bool got = false, cancelSent = false;
-    QElapsedTimer cancelClock;
-    const auto handle = [&](const QJsonObject& value) -> bool {
-        if (value["event"] == "progress") {
-            auto fields = value;
-            fields.remove("event");
-            const auto report = UploadProgress::fromJson(fields);
-            if (!report) { error = {"http_protocol", "Invalid upload progress from the custom uploader helper", {}}; return false; }
-            if (progress && method == "upload") progress(*report);
-            return true;
-        }
-        if (value["event"] == "checkpoint") {
-            if (!value["journal"].isObject() || !QStringList{"remove", "testDestination"}.contains(method)) { error = {"http_protocol", "Unexpected checkpoint from the custom uploader helper", {}}; return false; }
-            Error saved;
-            if (checkpoint) {
-                auto promise = std::make_shared<std::promise<Error>>();
-                auto future = promise->get_future();
-                checkpoint(value["journal"].toObject(), [promise](Error e) { promise->set_value(e); });
-                saved = future.get();
-            }
-            QJsonObject ack{{"ack", !saved}};
-            if (saved) ack["error"] = QJsonObject{{"code", saved.code}, {"message", saved.message}};
-            process.write(QJsonDocument(ack).toJson(QJsonDocument::Compact) + '\n');
-            return true;
-        }
-        if (got || !value["ok"].isBool()) { error = {"http_protocol", "Invalid completion from the custom uploader helper", {}}; return false; }
-        final = value;
-        got = true;
-        return true;
-    };
-    while (process.state() != QProcess::NotRunning || process.bytesAvailable()) {
-        process.waitForReadyRead(100);
-        process.readAllStandardError();
-        process.setReadChannel(QProcess::StandardOutput);
-        const auto chunk = process.readAll();
-        if (!chunk.isEmpty()) silence.restart();
-        pending += chunk;
-        if (pending.size() > 8 * 1024 * 1024) { error = {"http_protocol", "Custom uploader helper output exceeded its bound", {}}; break; }
-        bool failed = false;
-        while (pending.contains('\n')) {
-            const auto line = pending.left(pending.indexOf('\n'));
-            pending.remove(0, line.size() + 1);
-            QJsonParseError parse;
-            const auto document = QJsonDocument::fromJson(line, &parse);
-            if (parse.error != QJsonParseError::NoError || !document.isObject() || !handle(document.object())) {
-                if (!error) error = {"http_protocol", "Malformed custom uploader helper output", {}};
-                failed = true;
-                break;
-            }
-        }
-        if (failed || got) break;
-        if (!cancelSent && (stopping_.load() || (cancellation && cancellation->load()))) {
-            process.write("{\"cancel\":true}\n");
-            cancelSent = true;
-            cancelClock.start();
-        }
-        // Stuck work: no output for several request deadlines, or a cancellation the
-        // worker did not finish within a grace period.
-        if ((cancelSent && cancelClock.elapsed() > 30000) || silence.elapsed() > 3 * perRequest + 60000) {
-            error = {"http_outcome_unknown", "The custom uploader helper stopped responding; the upload may or may not be stored on the server", {{"reason", cancelSent ? "cancelled" : "deadline"}}};
-            break;
-        }
-        if (process.state() == QProcess::NotRunning && !process.bytesAvailable()) break;
-    }
-    process.closeWriteChannel();
-    if (!process.waitForFinished(got ? 5000 : 100)) { process.kill(); process.waitForFinished(5000); }
+    const worker::ExchangePolicy policy{"http", "custom uploader", "Custom uploader", "http_outcome_unknown",
+        "The custom uploader helper could not start; reinstall put.gd",
+        "The custom uploader helper stopped responding; the upload may or may not be stored on the server",
+        "The custom uploader helper ended without a result; the upload may or may not be stored on the server",
+        {"remove", "testDestination"}};
+    const auto final = worker::exchange(workerPath(), method, std::move(params), destination.settings["requestTimeoutMs"].toInt(600000),
+                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint);
     if (error) return {};
-    if (!got) { error = {"http_outcome_unknown", "The custom uploader helper ended without a result; the upload may or may not be stored on the server", {}}; return {}; }
     if (uncertain) *uncertain = final["uncertain"].toBool();
     if (!final["ok"].toBool()) error = parseError(final["error"].toObject());
     return final["result"].toObject();
