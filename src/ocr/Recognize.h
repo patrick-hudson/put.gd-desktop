@@ -37,8 +37,10 @@ struct JobOptions {
  // The job's resident memory budget. An extra engine starts, and an extra
  // worker takes a task, only while the resident set plus what one engine or
  // one task has added so far stays under it; the first worker always goes on.
- // 0: no gate (method comparisons).
+ // 0: no gate (method comparisons). It grows by the language data beyond
+ // English, up to memoryCeiling.
  qint64 memoryBudget=0;
+ qint64 memoryCeiling=0;
 };
 struct JobTimings { qint64 codesMs=0,engineStartMs=0,recognitionMs=0,totalMs=0; };
 struct JobResult {

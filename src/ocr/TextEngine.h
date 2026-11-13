@@ -46,6 +46,9 @@ public:
  LanguageData& operator=(const LanguageData&)=delete;
  // Data files read, as name, size, SHA-256, for quality receipts.
  QStringList files()const;
+ // The bytes of every data file read other than English's: what the job's
+ // memory budget grows by.
+ qint64 bytesBeyondEnglish()const;
  // Frees the kept file contents once no engine will start any more.
  void release();
 };

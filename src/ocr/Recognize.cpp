@@ -54,6 +54,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.timings.engineStartMs=stage.elapsed();
  if(!result.error.isEmpty())return result;
  result.used=first.used();result.skipped=first.skipped();result.dataFiles=data.files();
+ // Decision 3: the budget grows by the size of the data files beyond English.
+ qint64 memoryBudget=options.memoryBudget;
+ if(memoryBudget>0)memoryBudget=std::min(std::max(options.memoryCeiling,memoryBudget),memoryBudget+data.bytesBeyondEnglish());
  stage.restart();
  const bool invert=options.invertDark&&result.profile.dark;
  const auto left=[&]{return options.budgetMs>0?int(options.budgetMs-total.elapsed()):0;};
@@ -81,7 +84,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  QList<Outcome> outcomes;outcomes.resize(taskCount);
  std::atomic<int> next{0};std::atomic<qint64> slowest{0},taskGrowth{0};std::atomic<bool> stop{false};
  std::function<void(TextEngine&,bool)> work;
- const auto roomFor=[&](qint64 bytes){return options.memoryBudget<=0||residentBytes()+bytes<=options.memoryBudget;};
+ const auto roomFor=[&](qint64 bytes){return memoryBudget<=0||residentBytes()+bytes<=memoryBudget;};
  std::vector<std::unique_ptr<TextEngine>> extra;std::vector<std::thread> pool;
  // Extra engines, each on its own thread; started at most once, from this thread.
  const std::function<void(int)> startExtras=[&](int count){
@@ -92,8 +95,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  };
  // How many extra engines fit in the memory budget when each costs this much.
  const auto fitting=[&](qint64 each){
-  if(options.memoryBudget<=0)return wanted-1;
-  const qint64 room=options.memoryBudget-residentBytes();
+  if(memoryBudget<=0)return wanted-1;
+  const qint64 room=memoryBudget-residentBytes();
   return std::clamp(int(room/std::max<qint64>(1,each)),0,wanted-1);
  };
  work=[&](TextEngine& engine,bool extraWorker){
