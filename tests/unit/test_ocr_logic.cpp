@@ -45,19 +45,26 @@ private slots:
     QCOMPARE(p.bands[i].seamAbove,gap==0);
    }
   }
-  Recognition job;const Band first{0,200,false},second{176,400,true};
-  BandText a;a.lines={{QRect(0,100,1000,20),0},{QRect(0,185,1000,15),0},{QRect(0,178,1000,18),0}};
-  a.words={{"kept",QRect(10,100,40,18),90,0},{"partial",QRect(10,185,40,15),40,1},{"twice",QRect(300,178,40,18),70,2}};
-  // In the second band, row 4 is source row 180: the line the first band cut through.
-  BandText b;b.lines={{QRect(0,2,1000,20),0},{QRect(0,40,1000,20),0}};
-  b.words={{"twice",QRect(300,2,40,18),95,0},{"whole",QRect(10,4,40,18),88,0},{"next",QRect(10,40,40,18),91,1}};
-  const int firstWord=mergeBand(job,a,first,nullptr,0,1,0,0,1000,400);
-  mergeBand(job,b,second,&first,firstWord,1,0,1,1000,400);
-  QStringList texts;for(const auto& w:job.words)texts.append(w.text);
-  QCOMPARE(texts,QStringList({"kept","whole","twice","next"}));
-  // The line the seam crossed is one line, left to right, and the band
-  // boundary is not a paragraph break.
-  QCOMPARE(copiedText(job),QStringLiteral("kept\nwhole twice\nnext"));
+  const Band first{0,200,false},second{176,400,true};
+  // The second band lists the seam line's words in the engine's logical
+  // order: left to right, or right to left as for Arabic or Hebrew.
+  const auto merged=[&](bool rightToLeft){
+   Recognition job;
+   BandText a;a.lines={{QRect(0,100,1000,20),0},{QRect(0,185,1000,15),0},{QRect(0,178,1000,18),0}};
+   a.words={{"kept",QRect(10,100,40,18),90,0},{"partial",QRect(10,185,40,15),40,1},{"twice",QRect(300,178,40,18),70,2}};
+   // In the second band, row 4 is source row 180: the line the first band cut through.
+   BandText b;b.lines={{QRect(0,2,1000,20),0},{QRect(0,40,1000,20),0}};
+   const BandText::Item twice{"twice",QRect(300,2,40,18),95,0},whole{"whole",QRect(10,4,40,18),88,0};
+   b.words=rightToLeft?QList<BandText::Item>{twice,whole}:QList<BandText::Item>{whole,twice};
+   b.words.append({"next",QRect(10,40,40,18),91,1});
+   const int firstWord=mergeBand(job,a,first,nullptr,0,1,0,0,1000,400);
+   mergeBand(job,b,second,&first,firstWord,1,0,1,1000,400);
+   return copiedText(job);
+  };
+  // The line the seam crossed is one line, in the engine's order, and the
+  // band boundary is not a paragraph break.
+  QCOMPARE(merged(false),QStringLiteral("kept\nwhole twice\nnext"));
+  QCOMPARE(merged(true),QStringLiteral("kept\ntwice whole\nnext"));
  }
  // Parallel recognition: a single pass is cut into strips at blank row gaps,
  // each recognized on its own and merged by its index, whatever order the

@@ -138,7 +138,11 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  const auto roomFor=[&](qint64 bytes){return gateBudget<=0||residentBytes()+bytes<=gateBudget;};
  std::vector<std::unique_ptr<TextEngine>> extra;std::vector<std::thread> pool;
  // Extra engines, each on its own thread; started at most once, from this thread.
+ // Starting one is a synchronous Init that cannot be interrupted, and the
+ // join waits for it: only while the time left covers twice the first
+ // engine's start and the slowest task so far, so it never outlives the budget.
  const std::function<void(int)> startExtras=[&](int count){
+  if(options.budgetMs>0&&left()<2*result.timings.engineStartMs+slowest.load()+250)return;
   for(int w=0;w<count;++w){
    extra.push_back(std::make_unique<TextEngine>());auto* engine=extra.back().get();
    pool.emplace_back([&,engine]{if(engine->startLike(first).isEmpty())work(*engine,true);});

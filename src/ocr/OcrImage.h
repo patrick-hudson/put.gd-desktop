@@ -31,6 +31,7 @@ struct Word {
  int line=0;          // index of its line in reading order
  int lineHeight=0;    // its line's box height in source pixels
  bool kept=true;      // passes the copy filters
+ double seamOrder=-1; // while merging a seam: the word's place in the engine's logical order
 };
 struct Line {
  QRect rect;          // source pixels
