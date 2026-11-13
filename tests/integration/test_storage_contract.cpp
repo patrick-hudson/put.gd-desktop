@@ -19,8 +19,18 @@ private slots:
   QFETCH(QString,mode);
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]=mode;doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));
   Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"first.txt","first synthetic file"),fixture(d.path(),"second.txt","second synthetic file")};OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);PUTGD_TRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(provider->completions.size(),1);
-  HistoryStore ledger(ops.databasePath());auto first=ledger.operation(id).items.first();QCOMPARE(first.uploadStatus,QString("uploaded"));QJsonObject prepared;history.prepareDelete({first.artifact.id},[&](Error e,QJsonObject result){QVERIFY(!e);prepared=result;});PUTGD_TRY_VERIFY(!prepared.isEmpty());history.deleteConfirmed({first.artifact.id},prepared["acknowledgement"].toString(),[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(ledger.detail(first.artifact.id)["remoteStatus"].toString(),QString("removed"));provider->completions.takeFirst()();
-  PUTGD_TRY_COMPARE(source.copies,mode=="list"?1:2);PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);auto completed=ledger.operation(id);QCOMPARE(source.copied.text,completed.items.last().receipt.directUrl);QCOMPARE(provider->uploads.load(),2);QCOMPARE(provider->deletes.load(),1);
+  HistoryStore ledger(ops.databasePath());auto first=ledger.operation(id).items.first();QCOMPARE(first.uploadStatus,QString("uploaded"));QJsonObject prepared;history.prepareDelete({first.artifact.id},[&](Error e,QJsonObject result){QVERIFY(!e);prepared=result;});PUTGD_TRY_VERIFY(!prepared.isEmpty());history.deleteConfirmed({first.artifact.id},prepared["acknowledgement"].toString(),[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(ledger.detail(first.artifact.id)["remoteStatus"].toString(),QString("removed"));
+  // each_link may have copied the first URL before deletion, or its queued
+  // durable lookup may already see the deletion and skip it. Both are valid.
+  const auto copiesBeforeCompletion=source.copiedTexts.size();
+  provider->completions.takeFirst()();
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);auto completed=ledger.operation(id);
+  QVERIFY(!first.receipt.directUrl.isEmpty());
+  QVERIFY(!completed.items.last().receipt.directUrl.isEmpty());
+  QCOMPARE(source.copied.text,completed.items.last().receipt.directUrl);
+  for(const auto& text:source.copiedTexts.mid(copiesBeforeCompletion))
+   QVERIFY(!text.split('\n').contains(first.receipt.directUrl));
+  QCOMPARE(provider->uploads.load(),2);QCOMPARE(provider->deletes.load(),1);
  }
  void knownRemovedHistoryNeverWritesClipboard() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;
