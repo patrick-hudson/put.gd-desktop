@@ -7,9 +7,9 @@ set_target_properties(putgd_http_rules PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_http_rules PUBLIC src)
 target_link_libraries(putgd_http_rules PUBLIC putgd_build_options Qt6::Core)
 add_library(putgd_http STATIC src/storage/http/HttpProvider.cpp src/storage/http/HttpImport.cpp)
-target_link_libraries(putgd_http PUBLIC putgd_http_rules putgd_core putgd_credentials PRIVATE Qt6::Core)
+target_link_libraries(putgd_http PRIVATE putgd_provider_exchange PUBLIC putgd_http_rules putgd_core putgd_credentials PRIVATE Qt6::Core)
 add_executable(putgd-http-worker src/storage/http/HttpWorkerMain.cpp)
-target_link_libraries(putgd-http-worker PRIVATE putgd_http_rules putgd_core putgd_build_identity Qt6::Network Threads::Threads)
+target_link_libraries(putgd-http-worker PRIVATE putgd_worker_stdio putgd_http_rules putgd_core putgd_build_identity Qt6::Network Threads::Threads)
 target_compile_definitions(putgd_http PRIVATE
   PUTGD_HTTP_BUILD_APP_DIR="${CMAKE_CURRENT_BINARY_DIR}"
   PUTGD_HTTP_WORKER_PATH="$<TARGET_FILE:putgd-http-worker>")

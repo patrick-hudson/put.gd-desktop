@@ -41,6 +41,7 @@ namespace {
 bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
+constexpr int finishingBoundMs=5000;
 const QString idleTooltip = "put.gd";
 const QString seasonalTooltip = "put.gd - Happy Holidays!";
 // Which way a link or folder opened on the host (#326), never the target itself.
@@ -163,6 +164,54 @@ QString activityText(const QJsonArray& observations) {
  if(observations.size()>3)lines.append(QString("%1 more active operations").arg(observations.size()-3));
  return lines.join('\n');
 }
+// The tooltip's title, its text, the icon's colour and its ring each switch on the
+// one Activity, with no default: a new value fails to compile until all four say what it shows.
+using Activity=TrayController::Activity;
+QString activityTitle(Activity activity,const QString& identity) {
+ switch(activity) {
+ case Activity::NeedsAttention: return "Needs attention";
+ case Activity::Complete: return "Upload complete";
+ case Activity::Starting: case Activity::Uploading: case Activity::Finishing: return "Uploading";
+ case Activity::Idle: return identity;
+ }
+ return identity;
+}
+QString activityStatus(Activity activity,const QString& attentionLabel,const QString& lines) {
+ switch(activity) {
+ case Activity::NeedsAttention: return attentionLabel+QString(" — open the tray menu to review")+(lines.isEmpty()?QString{}:"\n"+lines);
+ case Activity::Complete: return "Upload complete";
+ case Activity::Finishing: return "Finishing upload";
+ case Activity::Starting: case Activity::Uploading: case Activity::Idle: return lines;
+ }
+ return lines;
+}
+// Active work keeps the idle glyph; only a confirmed completion turns green.
+QColor activityColor(Activity activity,const Theme::TrayTints& tints) {
+ switch(activity) {
+ case Activity::NeedsAttention: return tints.error;
+ case Activity::Complete: return tints.upload;
+ case Activity::Starting: case Activity::Uploading: case Activity::Finishing: case Activity::Idle: return tints.idle;
+ }
+ return tints.idle;
+}
+// -2 is the attention badge, -1 no ring. Finishing keeps the ring where it stood;
+// so does an upload no storage request is moving at the moment.
+int activityPercent(Activity activity,bool storageActive,const QJsonArray& observations,int shown) {
+ switch(activity) {
+ case Activity::NeedsAttention: return -2;
+ case Activity::Complete: case Activity::Starting: case Activity::Idle: return -1;
+ case Activity::Uploading: return storageActive?uploadPercent(observations):shown;
+ case Activity::Finishing: return shown;
+ }
+ return -1;
+}
+}
+
+TrayController::Activity TrayController::activityFor(const ActivityInputs& in) {
+ if(in.errorPending)return Activity::NeedsAttention;
+ if(in.uploadCompleted)return Activity::Complete;
+ if(in.uploadVisible)return in.storageActive||in.uploadsTracked?Activity::Uploading:Activity::Finishing;
+ return in.storageActive?Activity::Starting:Activity::Idle;
 }
 
 TrayController::TrayController(OperationService& operations,
@@ -524,7 +573,7 @@ void TrayController::refreshActivity() {
   ++pendingUploadFinishes_;
   operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
    if(!guard)return;
-   --guard->pendingUploadFinishes_;
+   if(--guard->pendingUploadFinishes_==0)guard->uploadCompleteTimer_.stop();
    if(!error&&operation["state"]=="completed"&&guard->uploadVisible_&&!guard->errorPending_&&
       !guard->operations_.storageActive()&&guard->operations_.activeObservations().isEmpty()) {
     for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
@@ -534,28 +583,22 @@ void TrayController::refreshActivity() {
    guard->refreshActivity();
   });
  }
- if(uploadVisible_&&!working&&pendingUploadFinishes_==0&&!uploadCompleteTimer_.isActive())
-  uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
+ // "Finishing upload" ends when the finished operations have been inspected. An
+ // inspection that never answers (a journal read stuck on a worker) must not leave it
+ // showing: the same timer ends it after finishingBoundMs. Each answer restarts the timer.
+ if(uploadVisible_&&!working&&!uploadCompleteTimer_.isActive())
+  uploadCompleteTimer_.start(pendingUploadFinishes_==0?int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())):finishingBoundMs);
  QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused"&&!recording)recording=2;}}
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
- auto text=errorPending_?attentionLabel_+QString(" — open the tray menu to review")+(activity.isEmpty()?QString{}:"\n"+activity):
-                 uploadCompleted_?QString("Upload complete"):
-                 uploadVisible_&&!working?QString("Finishing upload"):activity;
- // Active work keeps the idle glyph; only a confirmed completion turns green.
- const auto& tints=Theme::trayTints(panel_.light());
- const auto color=errorPending_?tints.error:
-                  uploadCompleted_?tints.upload:tints.idle;
- int percent=errorPending_?-2:-1;
- if(uploadVisible_&&!errorPending_) {
-  if(uploadCompleted_)percent=-1;
-  else if(operations_.storageActive())percent=uploadPercent(observations);
-  else percent=iconPercent_;
- }
+ const auto shown=activityFor({errorPending_,uploadCompleted_,uploadVisible_,operations_.storageActive(),!activeUploads_.isEmpty()});
+ auto text=activityStatus(shown,attentionLabel_,activity);
+ const auto color=activityColor(shown,Theme::trayTints(panel_.light()));
+ const int percent=activityPercent(shown,operations_.storageActive(),observations,iconPercent_);
  const auto glyph=calendar_.glyph();const bool seasonal=glyph!=IconArt::TrayGlyph::Mark;
  // Only an idle tray makes the greeting its title. Preparation, recording,
  // review and local saving keep their ordinary title above the activity rows.
  const auto& identity=seasonal&&text.isEmpty()?seasonalTooltip:idleTooltip;
- const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):identity;
+ const auto tooltipTitle=activityTitle(shown,identity);
  // Status keeps the title; the greeting stays on as the last line, so the season doesn't hide it.
  if(seasonal&&tooltipTitle!=seasonalTooltip)text=text.isEmpty()||text==tooltipTitle?seasonalTooltip:text+"\n"+seasonalTooltip;
  if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_)return;

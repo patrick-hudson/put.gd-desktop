@@ -43,6 +43,7 @@ include(cmake/Recording.cmake)
 # The putgd-ocr text recognition helper.
 include(cmake/Ocr.cmake)
 # The Backblaze B2 destination.
+include(cmake/WorkerExchange.cmake)
 include(cmake/B2.cmake)
 # The custom HTTP uploader destination.
 include(cmake/Http.cmake)

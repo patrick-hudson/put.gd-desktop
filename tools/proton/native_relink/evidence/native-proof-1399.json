@@ -1,0 +1,89 @@
+{
+  "host": "aurora-amd",
+  "environment": "putgd-build Toolbx",
+  "startedUtc": "2026-11-13T21:02:52.307830+00:00",
+  "sourceBuiltRuntimeReused": false,
+  "sourceBuildCompleted": true,
+  "sourceBuildCommit": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+  "scope": "Fresh native source build and current overlay helper relink; no Proton account or external-service calls. Synthetic local transport fixtures only.",
+  "temporaryDirectory": "/tmp/pg1399p2",
+  "socketPreflight": {
+    "exampleSessionPath": "/tmp/pg1399p2/putgd/session.sock",
+    "utf8Bytes": 32,
+    "sessionSocketCreated": false
+  },
+  "priorAttempt": "native-proof-execution.json",
+  "correction": "Use canonical private TMPDIR; /p3 is a Toolbx-local symlink and the helper correctly rejects symlinked data directories.",
+  "finishedUtc": "2026-11-13T21:03:07.743049+00:00",
+  "exitCode": 0,
+  "passed": true,
+  "result": {
+    "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
+    "proofHelperSha256": "8872758f1d3e07eb2d3d25f312176efbaca7257b2a00bd7adbd9db8069150f91",
+    "nativeCryptoProofSha256": "0e29133c684f087011897bd6ba52d276cc12904f0fdbcb8e79b996ac2b0ec4cf",
+    "markers": [
+      "putgd-bun-native-proof putgd-jsc-source-proof putgd-tinycc-source-proof",
+      "1.4.4-canary.1+38afee6c8"
+    ],
+    "nativeVersion": "1.4.4",
+    "tinyccCompileAndExecute": true,
+    "compiledHelperCallsNativeSourceMarkers": true,
+    "compiledHelperTinyccCompileAndExecute": true,
+    "helperTests": 77,
+    "compiledStdioCases": 12,
+    "compiledSessionCases": 3,
+    "stdoutBytes": 1048337,
+    "crypto": {
+      "argon2Packet": true,
+      "rebuildRoundtrip": true,
+      "publishedDecryptsRebuilt": true,
+      "rebuiltDecryptsPublished": true,
+      "modifiedWasmMarker": true,
+      "markedInstantiations": 1
+    },
+    "productionHelperChanged": false,
+    "productionHelperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "applicationSourceOverlayVerified": true,
+    "accountsOrServicesUsed": false,
+    "nativeBitIdentityClaimed": false
+  },
+  "controlsSha256": {
+    "run_helper_proof.py": "b152d8b6149a9f5fa8ac3dde938b5f9d4981bf8bc956d5eefbf98a3392bc390f",
+    "proof_command.py": "c3cb37fcd4136212ee2e1990c2b2870fb4d684110ea78911e181a429e2dc85d5",
+    "SOURCES.json": "0e98e8175381c121470656607f2d03aa1ebac1aa01de02b3c883ad0a68ffa0fc"
+  },
+  "retention": {
+    "archive": "/var/home/patrick/archives/proton-native-relink-1399/native-proof-evidence-complete.tar.gz",
+    "sha256": "a53943e961911f2959c74d5a486820c55a3f87ccdc84a37b15de6ff3bcd372a4",
+    "restoreIndex": "/var/home/patrick/archives/proton-native-relink-1399/restore-index.json",
+    "restoreIndexSha256": "6e03973fe7a1254f038c31aca80de4cc411045ad5007b97e3e4bc91a8bed536f",
+    "verifiedArchiveMemberCount": 118,
+    "verifiedReadback": true
+  },
+  "originalRetentionLost": {
+    "archive": "/home/patrick/work/b1071/native-proof-evidence-complete.tar.gz",
+    "sha256": "e573bacaee51fa1e0b88cbe501fcb8ce6ebb9e40d66bf4d57bf6820a4720f1dc",
+    "deletedBy": "2026-11-07 builder cleanup: scratch older than three days and not on keep list",
+    "recoverable": false,
+    "lost": [
+      "complete raw logs",
+      "native proof executables",
+      "restore index",
+      "Docker image"
+    ],
+    "unaffected": [
+      "committed historical receipts",
+      "committed selected logs and source patch"
+    ],
+    "replacementArchiveLocationApprovedByUser": true
+  }
+}

@@ -1,4 +1,5 @@
 #include "EditorJob.h"
+#include "HelperFiles.h"
 #include "Log.h"
 #include "BuildInfo.h"
 #include "SanitizedPng.h"
@@ -83,15 +84,7 @@ bool number(const QJsonValue& value,qint64& out){bool ok=false;if(!value.isStrin
 bool privateFile(const struct stat& s,mode_t mode){return S_ISREG(s.st_mode)&&s.st_uid==getuid()&&(s.st_mode&0777)==mode&&s.st_nlink==1;}
 bool sameFile(const struct stat& a,const struct stat& b){return a.st_dev==b.st_dev&&a.st_ino==b.st_ino;}
 bool ownedDirectory(const QString& path,struct stat& s){return !::lstat(QFile::encodeName(path).constData(),&s)&&S_ISDIR(s.st_mode)&&s.st_uid==getuid()&&(s.st_mode&0777)==0700;}
-QJsonObject descriptor(const QString& path,const struct stat& s,const QString& hash){
- return {{"path",path},{"device",QString::number(qulonglong(s.st_dev))},{"inode",QString::number(qulonglong(s.st_ino))},{"bytes",QString::number(s.st_size)},{"sha256",hash}};
-}
-QString digest(QFile& file,qint64 size){
- if(!file.seek(0))return {};
- QCryptographicHash hash(QCryptographicHash::Sha256);qint64 total=0;
- while(total<size){const auto chunk=file.read(std::min<qint64>(1024*1024,size-total));if(chunk.isEmpty())return {};hash.addData(chunk);total+=chunk.size();}
- return QString::fromLatin1(hash.result().toHex());
-}
+using helperfiles::descriptor;using helperfiles::digest;
 #endif
 }
 
@@ -170,7 +163,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["textLanguages"]=QJsonArray::fromStringList(textjob::validLanguages(textLanguages_)?textLanguages_:QStringList{});
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;qint64 stderrBytes=0;QSet<QString> textCopies;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -204,11 +197,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  QElapsedTimer clock,phaseClock;clock.start();phaseClock.start();
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
  HelperOutput helperOutput("putgd-ui --edit-image",logUi());
- QObject::connect(&process,&QProcess::readyReadStandardError,&process,[&]{
-  process.setReadChannel(QProcess::StandardError);
-  while(process.bytesAvailable()>0){const auto bytes=process.read(16384);stderrBytes+=bytes.size();helperOutput.append(bytes);if(stderrBytes>1024*1024){protocolFailed=true;break;}}
-  process.setReadChannel(QProcess::StandardOutput);
- });
+ helperfiles::captureStandardError(process,protocolFailed,[&helperOutput](const QByteArray& bytes){helperOutput.append(bytes);});
  QObject::connect(&control,&UiControl::frame,&process,[&](const QString& type,const QString&,const QJsonObject& payload){
   if(protocolFailed||!validEnvelope(payload,nonce)){protocolFailed=true;return;}
   if(type=="ready"&&!ready&&payload.size()==4&&payload["build"].toObject()==build()){ready=true;if(control.send("activate",envelope(nonce)).isEmpty())protocolFailed=true;return;}
