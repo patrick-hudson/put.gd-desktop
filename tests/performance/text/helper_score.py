@@ -26,12 +26,14 @@ def main():
     p.add_argument('--data',action='append',required=True)
     p.add_argument('--build-id',required=True)
     p.add_argument('--engine-label',required=True)
+    p.add_argument('--language',action='append',help='repeat for explicit languages; defaults to eng')
     p.add_argument('--output',type=Path,required=True)
     a=p.parse_args();a.output.mkdir(mode=0o700)
     identities={str(f.resolve()):digest(f) for f in (a.runner,a.helper,a.manifest)}
     data={str(f.resolve()):digest(f) for d in a.data for f in Path(d).glob('*.traineddata')}
     if not data:raise ValueError('language data files missing')
-    receipt=dict(engine=a.engine_label,build_id=a.build_id,identities=identities,language_data=data,captures=[],status='blocked')
+    languages=a.language or ['eng']
+    receipt=dict(engine=a.engine_label,languages=languages,build_id=a.build_id,identities=identities,language_data=data,captures=[],status='blocked')
     receipt['linked_libraries']=subprocess.check_output(['ldd',str(a.helper.resolve())],text=True)
     for line in receipt['linked_libraries'].splitlines():
         if '=>' in line and any(n in line for n in ('libtesseract','liblept','libZXing')):
@@ -42,7 +44,8 @@ def main():
     for c in json.loads(a.manifest.read_text())['captures']:
         image=(a.manifest.parent/c['image']).resolve();ref=read_transcript(a.manifest.parent,c)
         row=dict(id=c['id'],image_sha256=digest(image),transcript_sha256=hashlib.sha256(ref.encode()).hexdigest())
-        cmd=[str(a.runner.resolve()),'--helper',str(a.helper.resolve()),'--text']
+        cmd=[str(a.runner.resolve()),'--helper',str(a.helper.resolve()),'--text','--required']
+        for language in languages:cmd+=['--lang',language]
         for d in a.data:cmd+=['--data',str(Path(d).resolve())]
         cmd.append(str(image))
         try:

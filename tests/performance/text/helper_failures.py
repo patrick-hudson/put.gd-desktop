@@ -20,11 +20,11 @@ CASES=[('fixture-control',{'mode':'result'},['']),('real-control','none',['']),
  ('hang-deadline',{'mode':'stall'},['text_job_timeout']),
  ('child-error',{'mode':'child-error','code':'engine_unavailable'},['engine_unavailable']),
  ('crash','kill',['text_job_failed']),('cancel-by-signal','term',['text_job_failed']),
- ('limit-data','data',FAILED),('limit-cpu','cpu',FAILED),('limit-file-size','fsize',FAILED),
+ ('limit-data','data',FAILED),('limit-cpu','cpu',['text_job_failed']),('limit-file-size','fsize',FAILED),
  ('limit-descriptors','nofile',FAILED),('corrupt-data','corrupt',['language_unavailable','engine_unavailable']),
  ('missing-data','missing',['language_unavailable']),
  ('confinement-refused','landlock',['helper_sandbox_unavailable']),('parent-killed','parent',[])]
-WRAPPER='''#!/usr/bin/python3
+WRAPPER='''#!/usr/bin/python3 -I
 import json,os,time
 from pathlib import Path
 c=json.loads(Path(__file__).with_suffix('.json').read_text())
@@ -137,7 +137,8 @@ def exercise(a,name,mode,expected,patterns,canary):
                 return v if n>base_filters else None
             v=wait_until(confined,4)
             if mode not in ('data','nofile'):
-                v=wait_until(lambda: (v if (v:=identity(child['pid'])) and v['cpuTicks']>=os.sysconf('SC_CLK_TCK')//4 else None),4)
+                required_ticks=int(os.sysconf('SC_CLK_TCK')*1.1) if mode=='cpu' else os.sysconf('SC_CLK_TCK')//4
+                v=wait_until(lambda: (v if (v:=identity(child['pid'])) and v['cpuTicks']>=required_ticks else None),4)
             row['atInjection']=v;row['threadsAtInjection']=[identity(int(t.name)) for t in (Path('/proc')/str(child['pid'])/'task').iterdir()]
             if mode in ('kill','term'):signal.pidfd_send_signal(fd,signal.SIGKILL if mode=='kill' else signal.SIGTERM)
             elif mode=='parent':signal.pidfd_send_signal(parentfd,signal.SIGKILL)
