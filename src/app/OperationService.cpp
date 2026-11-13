@@ -529,7 +529,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  op.state="editing";op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
- const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;
+ const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
  const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
@@ -564,11 +564,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
