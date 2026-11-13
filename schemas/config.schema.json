@@ -545,6 +545,18 @@
             }
           },
           "description": "Repeat last region: a hotkey only. It captures the rectangle of the last region capture again, with the region action's output. Optional; when absent it has no hotkey."
+        },
+        "text": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["shortcut"],
+          "properties": {
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "description": "Copy text from region: a hotkey only. It copies the text and QR codes in a selected region and stores nothing, so it has no destination, archive or naming. Optional; when absent it has no hotkey."
         }
       }
     },
@@ -1124,6 +1136,19 @@
             "pattern": "^#[0-9a-f]{6}$"
           },
           "description": "Custom colors recently picked in the editor, most recent first. Written by put.gd."
+        },
+        "textRecognitionLanguages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[a-z]{3,4}(_[a-z0-9]+){0,2}$",
+            "not": {"enum": ["osd", "equ"]}
+          },
+          "description": "Languages Copy text reads, as Tesseract language identifiers (eng, deu, chi_sim), in order. A language whose data is not installed is skipped when another loads. Omitted means the desktop locale's language when its data is installed, then English."
         },
         "appearance": {
           "type": "object",

@@ -31,8 +31,8 @@ bool appearanceDraft(const QJsonValue& value){
  return true;
 }
 bool preferencesDraft(const QJsonValue& value){
- auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");
- return value.isObject()&&scalars(object,{"scrollCaptureMaxHeight","scrollCaptureFromTop","notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","captureDelaySeconds","captureDelayShortcuts","recordingFrameRate","recordingMicrophone","recordingMicrophoneDevice","recordingClickHighlights","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
+ auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");const auto languages=object.take("textRecognitionLanguages");
+ return value.isObject()&&(languages.isUndefined()||stringArray(languages,3))&&scalars(object,{"scrollCaptureMaxHeight","scrollCaptureFromTop","notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","captureDelaySeconds","captureDelayShortcuts","recordingFrameRate","recordingMicrophone","recordingMicrophoneDevice","recordingClickHighlights","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
   &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
@@ -85,7 +85,7 @@ bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;
  const auto d=value.toObject();
  if(d.contains("captureDefaults")&&!scalars(d["captureDefaults"],{"destination","profileId","publicationMode"}))return false;
- if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard","edit","scroll","record","monitor","repeat"}))return false;
+ if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard","edit","scroll","record","monitor","repeat","text"}))return false;
  for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
  for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;

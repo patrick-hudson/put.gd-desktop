@@ -1,6 +1,7 @@
 #include "core/ByteSize.h"
 #include "Settings.h"
 #include "RecordingModel.h"
+#include "TextJobProtocol.h"
 #include "UploadNaming.h"
 #include <QDir>
 #include <QJsonArray>
@@ -56,11 +57,12 @@ QStringList Settings::actionNames() { return {"region", "window", "desktop", "cl
 QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
 QString Settings::repeatActionName() { return QStringLiteral("repeat"); }
-QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName() << repeatActionName(); }
+QString Settings::textActionName() { return QStringLiteral("text"); }
+QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName() << repeatActionName() << textActionName(); }
 QStringList Settings::presentationOrder() { return {"region", "window", "monitor", "desktop", "edit", "record", "scroll", "clipboard"}; }
-QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "scroll", "clipboard"}; }
+QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "scroll", "text", "clipboard"}; }
 QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
-bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit"}.contains(action); }
+bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit", "text"}.contains(action); }
 bool Settings::delayableEditSource(const QString& source) { return QStringList{"region", "window", "desktop"}.contains(source); }
 
 QJsonObject Settings::normalized(const QJsonObject& original) {
@@ -104,6 +106,11 @@ QJsonObject Settings::normalized(const QJsonObject& original) {
         actions[repeatActionName()] = QJsonObject{{"shortcut", QString{}}};
         changed = true;
     }
+    // Copy text (#1428) has no route at all: a hotkey, unassigned until the user sets one.
+    if (!actions.contains(textActionName())) {
+        actions[textActionName()] = QJsonObject{{"shortcut", QString{}}};
+        changed = true;
+    }
     if (!changed) return doc;
     auto result = doc;
     result["actions"] = actions;
@@ -122,6 +129,7 @@ QJsonObject Settings::defaults() {
     // Recording keeps following the region route; only its key is its own.
     actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
     actions[repeatActionName()] = QJsonObject{{"shortcut", QString{}}};
+    actions[textActionName()] = QJsonObject{{"shortcut", QString{}}};
     auto documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (documents.isEmpty()) documents = QDir::homePath();
     return {{"schemaVersion", 1}, {"actions", actions}, {"profiles", QJsonArray{}},
@@ -193,11 +201,13 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     const bool hasRecord = definedActions.contains(recordingActionName());
     definedActions.remove(recordingActionName());
     definedActions.remove(repeatActionName());
+    definedActions.remove(textActionName());
     if (!doc["actions"].isObject() || !keys(definedActions, actionNames()))
-        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit, monitor, record and repeat actions.");
+        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit, monitor, record, repeat and text actions.");
     auto validatedActions = actionNames();
     if (hasRecord) validatedActions.append(recordingActionName());
     validatedActions.append(repeatActionName());
+    validatedActions.append(textActionName());
     for (const auto& name : validatedActions) {
         // A copy: operator[] on the temporary object would return a reference into it.
         const QJsonValue value = doc["actions"].toObject().value(name);
@@ -205,8 +215,11 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         // Repeat last region is a key only: it always uses the region route.
         if (name == repeatActionName() && !(value.isObject() && keys(action, {"shortcut"})))
             return invalid("/actions/" + name, "Repeat last region holds only a hotkey; it uses the region capture's output.");
+        // Copy text has no route: nothing but its hotkey is accepted.
+        if (name == textActionName() && !(value.isObject() && keys(action, {"shortcut"})))
+            return invalid("/actions/" + name, "Copy text holds only a hotkey; it has no output.");
         // A shortcut-only record entry follows the region route.
-        const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName()) && value.isObject() && keys(action, {"shortcut"});
+        const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName() || name == textActionName()) && value.isObject() && keys(action, {"shortcut"});
         if (inheritedRecord) {
             if (!text(action["shortcut"], 0, 128)) return invalid("/actions/" + name, "Action fields or profile references are invalid.");
         } else if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
@@ -287,7 +300,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -354,6 +367,15 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/fileManagerFolders", "Choose zip or files for folders uploaded from a file manager.");
     if (preferences.contains("fileManagerMenu") && !preferences["fileManagerMenu"].isBool())
         return invalid("/preferences/fileManagerMenu", "The file manager menu setting must be true or false.");
+    if (preferences.contains("textRecognitionLanguages")) {
+        // Identifiers only: whether a language's data is installed is checked when a job loads it.
+        const auto languages = preferences["textRecognitionLanguages"];
+        QStringList identifiers;
+        bool valid = languages.isArray();
+        if (valid) for (const auto& language : languages.toArray()) { valid = valid && language.isString(); identifiers.append(language.toString()); }
+        if (!valid || !textjob::validLanguages(identifiers))
+            return invalid("/preferences/textRecognitionLanguages", "Text recognition languages are one to three different Tesseract language identifiers, such as eng or chi_sim.");
+    }
     return {};
 }
 
@@ -386,6 +408,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.actions.insert(recordingActionName(), {record["destination"].toString(), record["profileId"].toString(), record["shortcut"].toString(), record["publicationMode"].toString("default")});
     const auto repeat = effectiveAction(doc, repeatActionName());
     settings.actions.insert(repeatActionName(), {repeat["destination"].toString(), repeat["profileId"].toString(), repeat["shortcut"].toString(), repeat["publicationMode"].toString("default")});
+    // Route-free: no destination or profile, only the hotkey.
+    settings.actions.insert(textActionName(), {QString{}, QString{}, doc["actions"].toObject()[textActionName()].toObject()["shortcut"].toString(), QStringLiteral("default")});
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());
     const auto archive = doc["archive"].toObject();
     settings.archive.keepUploads = archive["keepUploads"].toBool();
@@ -444,6 +468,7 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.fileManagerFolders = doc["preferences"].toObject()["fileManagerFolders"].toString("zip");
     settings.fileManagerMenu = doc["preferences"].toObject()["fileManagerMenu"].toBool(true);
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
+    for (const auto& language : doc["preferences"].toObject()["textRecognitionLanguages"].toArray()) settings.textRecognitionLanguages.append(language.toString());
     return settings;
 }
 Error Settings::reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered) {

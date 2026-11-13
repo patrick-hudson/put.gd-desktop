@@ -126,7 +126,9 @@ constexpr Entry entries[] {
  // radio submenu (33, choices 34 to 37) and Capture monitor's output row (38).
  {"Capture monitor", "monitor", 0}, {"Repeat last region", "repeat", 0},
  {"Capture delay", "", 0}, {"None", "delay-0", 33}, {"3 seconds", "delay-3", 33}, {"5 seconds", "delay-5", 33}, {"10 seconds", "delay-10", 33},
- {"", "", 23}, {"Capture scrolling region", "scroll", 0}, {"", "", 23}
+ {"", "", 23}, {"Capture scrolling region", "scroll", 0}, {"", "", 23},
+ // 41, Copy text (#1428): after Capture scrolling region. It has no output, so no output row.
+ {"Copy text from region", "text", 0}
 };
 constexpr int delayMenuId = 33, firstDelayId = 34, lastDelayId = 37, extraOutputId = 38;
 // Capture output rows: 23 is the summary; 24–29, 38 and 40 are action rows.

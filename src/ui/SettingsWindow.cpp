@@ -14,6 +14,8 @@
 #include "ShortcutEditor.h"
 #include "PreferenceRows.h"
 #include "core/ByteSize.h"
+#include "core/TextJobProtocol.h"
+#include <QLocale>
 #include <QProgressBar>
 #include "Ui.h"
 #include <QApplication>
@@ -118,7 +120,7 @@ QString title(const QString& s){return s.left(1).toUpper()+s.mid(1);}
 constexpr int advancedTab=3;
 const QString themePath=QStringLiteral("/preferences/appearance/theme");
 // The shared command names (main window, menu, tray and shortcuts).
-QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"repeat","Repeat last region"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"record","Record screen"}};return labels.value(action);}
+QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"repeat","Repeat last region"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"}};return labels.value(action);}
 // Sharing and link copying live together under the default capture output.
 QString sharingLabel(const QString& mode){return mode=="share"?QString("Create a share link"):mode=="private"?QString("Keep private"):QString("Destination default");}
 QString storageClassLabel(const QString& value){
@@ -1005,6 +1007,16 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* scrollForm=section(capture,"Scrolling capture","Select scrollable content and capture a tall image.");
  scrollHeight_=new QSpinBox(this);scrollHeight_->setObjectName("scrollCaptureMaxHeight");scrollHeight_->setRange(2000,60000);scrollHeight_->setSingleStep(1000);setting(scrollForm,"Maximum height (px)",scrollHeight_,"/preferences/scrollCaptureMaxHeight");
  scrollFromTop_=new PreferenceCheck("Scroll to the top first");scrollFromTop_->setObjectName("scrollCaptureFromTop");setting(scrollForm,"Start position",scrollFromTop_,"/preferences/scrollCaptureFromTop");
+ // #1428: the languages Copy text reads. Up to three, from the installed
+ // Tesseract data; Automatic is the desktop's language when installed, then English.
+ auto* textForm=section(capture,"Text recognition","Copy text reads the text and QR codes in a region you select. Nothing is saved or uploaded.");
+ for(const auto* caption:{"Language","Second language","Third language"}){
+  auto* language=choices(this,QStringLiteral("textRecognitionLanguage%1").arg(textLanguages_.size()+1),{});textLanguages_.append(language);
+  setting(textForm,caption,language,"/preferences/textRecognitionLanguages");
+ }
+ // A second or third language only follows a chosen first one.
+ connect(textLanguages_.first(),&QComboBox::currentIndexChanged,this,[this]{const bool chosen=!textLanguages_.first()->currentData().toString().isEmpty();for(auto* language:textLanguages_.mid(1))language->setEnabled(chosen);});
+ textRecognitionStatus_=Ui::label({},"body");textRecognitionStatus_->setObjectName("textRecognitionStatus");textRecognitionStatus_->setAccessibleName("Text recognition status");Ui::role(textRecognitionStatus_,"muted");textRecognitionStatus_->setWordWrap(true);textForm->addRow(textRecognitionStatus_);
  auto* recordingForm=section(capture,"Screen recording","Record screen, from the tray, the dashboard or its hotkey.");
  recordingFrameRate_=choices(this,"recordingFrameRate",{});recordingFrameRate_->addItem("30 frames per second",30);recordingFrameRate_->addItem("60 frames per second",60);setting(recordingForm,"Frame rate",recordingFrameRate_,"/preferences/recordingFrameRate");
  // #1364: which input the recording bar's Microphone toggle opens, and rings at clicks.
@@ -1343,8 +1355,33 @@ void SettingsWindow::showClickHighlights(const QJsonObject& capability){
  recordingClicksStatus_->setVisible(!available);
  recordingClicks_->setProperty("clickHighlightsAvailable",available);
 }
+void SettingsWindow::showTextLanguages(){
+ if(textLanguages_.isEmpty())return;
+ textCapabilities_=settings_.diagnostics()["capabilities"].toObject()["text"].toObject();
+ QList<textjob::Language> installed;for(const auto& value:textCapabilities_["languages"].toArray()){const auto language=value.toObject();installed.append({language["id"].toString(),language["kind"].toString(),{},language["bytes"].toInteger()});}
+ // "German (deu)"; the identifier alone when Qt does not know the code.
+ const auto name=[](const QString& id){const auto language=QLocale::codeToLanguage(id.section('_',0,0));return language==QLocale::AnyLanguage||language==QLocale::C?id:QLocale::languageToString(language)+" ("+id+")";};
+ const auto listed=[&installed](const QString& id){return std::any_of(installed.begin(),installed.end(),[&](const textjob::Language& language){return language.id==id;});};
+ QStringList automatic;for(const auto& id:textjob::defaultLanguages({},QLocale::system().name(),installed))automatic<<name(id);
+ const auto saved=Settings::fromValidated(draft_).textRecognitionLanguages;QStringList missing;
+ for(qsizetype i=0;i<textLanguages_.size();++i){
+  auto* combo=textLanguages_[i];const QSignalBlocker block(combo);combo->clear();
+  combo->addItem(i==0?"Automatic: "+automatic.join(", then "):QString("None"),QString());
+  for(const auto& language:installed)combo->addItem(name(language.id),language.id);
+  // A saved language whose data went away stays chosen, and says so.
+  const auto chosen=saved.value(i);if(!chosen.isEmpty()&&!listed(chosen)){combo->addItem(name(chosen)+" (not installed)",chosen);missing<<name(chosen);}
+  combo->setCurrentIndex(qMax(0,combo->findData(chosen)));combo->setEnabled(i==0||!saved.isEmpty());
+ }
+ const bool unavailable=textCapabilities_.contains("available")&&!textCapabilities_["available"].toBool();
+ textRecognitionStatus_->setText(unavailable?"Text recognition is unavailable. "+textCapabilities_["error"].toObject()["message"].toString()
+  :!missing.isEmpty()?missing.join(", ")+(missing.size()==1?" data is not installed, so that language is skipped.":" data is not installed, so those languages are skipped.")
+  :QString("More languages come from your distribution's Tesseract language packages, or from .traineddata files in ~/.local/share/putgd/tessdata."));
+ textRecognitionStatus_->setProperty("textRecognitionUnavailable",unavailable);
+}
 void SettingsWindow::refreshDiagnostics(){
  refreshRecordingInputs();
+ // The installed languages or the engine's state changed while Settings is open.
+ if(!loading_&&settings_.diagnostics()["capabilities"].toObject()["text"].toObject()!=textCapabilities_)showTextLanguages();
  refreshLoggingStatus();refreshUpdateStatus();const auto data=settings_.diagnostics();const auto source=data["capabilities"].toObject()["source"].toObject();const auto capture=source["capture"].toObject();const auto shortcuts=data.contains("shortcuts")?data["shortcuts"].toObject():source["shortcuts"].toObject();
  const auto availability=[](const QJsonValue& value){const auto state=value.isObject()?value.toObject().value("available"):value;return state.isBool()?QString(state.toBool()?"Available":"Unavailable"):QString("Not reported");};
  const auto set=[this](const QString& key,const QString& value){capabilities_->findChild<QLabel*>("desktopSupport"+title(key))->setText(value);};
@@ -1376,7 +1413,7 @@ void SettingsWindow::populate(){
  captureProfile_->setCurrentIndex(captureProfile_->findData(base["destination"]=="local"?QString{}:base["profileId"].toString()));captureSharing_->setCurrentIndex(captureSharing_->findData(base["publicationMode"].toString("default")));
  bool exceptions=false;for(auto* inherit:useCaptureDefault_)exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
  shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());if(auto* toggle=findChild<QToolButton*>("categoryFoldersToggle")){bool overrides=false;for(auto* field:folders_)overrides|=!field->text().isEmpty();toggle->setChecked(overrides);}
- naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));regionSelection_->setCurrentIndex(regionSelection_->findData(effective.regionSelectionMode));captureDelay_->setCurrentIndex(captureDelay_->findData(effective.captureDelaySeconds));captureDelayShortcuts_->setChecked(effective.captureDelayShortcuts);fileManagerFolders_->setCurrentIndex(fileManagerFolders_->findData(effective.fileManagerFolders));fileManagerMenu_->setChecked(effective.fileManagerMenu||!fileManagerMenu_->isEnabled());recordingFrameRate_->setCurrentIndex(recordingFrameRate_->findData(effective.recordingFrameRate));{int chosen=recordingMicrophone_->findData(effective.recordingMicrophoneDevice);if(chosen<0){recordingMicrophone_->addItem(effective.recordingMicrophoneDevice+" (not connected)",effective.recordingMicrophoneDevice);chosen=recordingMicrophone_->count()-1;}recordingMicrophone_->setCurrentIndex(chosen);}scrollHeight_->setValue(effective.scrollCaptureMaxHeight);scrollFromTop_->setChecked(effective.scrollCaptureFromTop);recordingClicks_->setChecked(effective.recordingClickHighlights);appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannelSetting_=effective.updateChannel;updateChannelShown_.clear();showUpdateChannel();
+ naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));showTextLanguages();regionSelection_->setCurrentIndex(regionSelection_->findData(effective.regionSelectionMode));captureDelay_->setCurrentIndex(captureDelay_->findData(effective.captureDelaySeconds));captureDelayShortcuts_->setChecked(effective.captureDelayShortcuts);fileManagerFolders_->setCurrentIndex(fileManagerFolders_->findData(effective.fileManagerFolders));fileManagerMenu_->setChecked(effective.fileManagerMenu||!fileManagerMenu_->isEnabled());recordingFrameRate_->setCurrentIndex(recordingFrameRate_->findData(effective.recordingFrameRate));{int chosen=recordingMicrophone_->findData(effective.recordingMicrophoneDevice);if(chosen<0){recordingMicrophone_->addItem(effective.recordingMicrophoneDevice+" (not connected)",effective.recordingMicrophoneDevice);chosen=recordingMicrophone_->count()-1;}recordingMicrophone_->setCurrentIndex(chosen);}scrollHeight_->setValue(effective.scrollCaptureMaxHeight);scrollFromTop_->setChecked(effective.scrollCaptureFromTop);recordingClicks_->setChecked(effective.recordingClickHighlights);appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannelSetting_=effective.updateChannel;updateChannelShown_.clear();showUpdateChannel();
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;updateResourceLimits();
 }
@@ -1484,6 +1521,9 @@ QJsonObject SettingsWindow::candidate() const {
  // An untouched config keeps no recordingFrameRate; it reads as 30.
  preferences["scrollCaptureMaxHeight"]=scrollHeight_->value();preferences["scrollCaptureFromTop"]=scrollFromTop_->isChecked();
  if(preferences.contains("recordingFrameRate")||recordingFrameRate_->currentData().toInt()!=30)preferences["recordingFrameRate"]=recordingFrameRate_->currentData().toInt();
+ // #1428: Automatic keeps no key; otherwise the chosen languages in order, each once.
+ {QJsonArray languages;for(auto* combo:textLanguages_){const auto id=combo->currentData().toString();if(id.isEmpty()){if(combo==textLanguages_.first())break;continue;}if(!languages.contains(id))languages.append(id);}
+  if(languages.isEmpty())preferences.remove("textRecognitionLanguages");else preferences["textRecognitionLanguages"]=languages;}
  // #1364: both are absent from an untouched config (the system default input, no rings).
  if(preferences.contains("recordingMicrophoneDevice")||!recordingMicrophone_->currentData().toString().isEmpty())preferences["recordingMicrophoneDevice"]=recordingMicrophone_->currentData().toString();
  if(preferences.contains("recordingClickHighlights")||recordingClicks_->isChecked())preferences["recordingClickHighlights"]=recordingClicks_->isChecked();
@@ -2512,7 +2552,7 @@ QStringList SettingsWindow::draftEdits()const{
   if(group=="actions")return "Capture → "+actionLabel(parts.value(1))+" output";
   if(group=="captureDefaults")return QString("Capture → Capture output");
   for(auto prefix=path;!prefix.isEmpty();prefix=prefix.left(qMax(0,int(prefix.lastIndexOf('/'))))){
-   if(names.contains(prefix)){const auto page=group=="limits"||group=="retention"||path.startsWith("/preferences/diagnostics")?QString("Advanced"):group=="archive"||group=="naming"||path=="/preferences/uploadClipboardBehavior"||path=="/preferences/regionSelectionMode"||path=="/preferences/captureDelaySeconds"||path=="/preferences/captureDelayShortcuts"||path=="/preferences/recordingFrameRate"||path=="/preferences/recordingMicrophoneDevice"||path=="/preferences/recordingClickHighlights"?QString("Capture"):QString("General");return page+" → "+names.value(prefix);}
+   if(names.contains(prefix)){const auto page=group=="limits"||group=="retention"||path.startsWith("/preferences/diagnostics")?QString("Advanced"):group=="archive"||group=="naming"||path=="/preferences/uploadClipboardBehavior"||path=="/preferences/regionSelectionMode"||path=="/preferences/captureDelaySeconds"||path=="/preferences/captureDelayShortcuts"||path=="/preferences/recordingFrameRate"||path=="/preferences/recordingMicrophoneDevice"||path=="/preferences/recordingClickHighlights"||path=="/preferences/textRecognitionLanguages"?QString("Capture"):QString("General");return page+" → "+names.value(prefix);}
   }
   return "Settings → "+parts.join(" › ");
  };

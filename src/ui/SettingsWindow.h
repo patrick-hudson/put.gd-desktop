@@ -174,6 +174,10 @@ private:
  // force: ask now (the page was just shown, or the device choice changed); otherwise at most every
  // recordingInputsEveryMs and only while the page is showing, because each ask starts the recording helper.
  void refreshRecordingInputs(bool force=false);
+ // Settings → Capture → Text recognition (#1428): the installed languages from
+ // the resident's capabilities, the saved choice, and why recognition is off.
+ void showTextLanguages();
+ QList<QComboBox*> textLanguages_;QLabel* textRecognitionStatus_=nullptr;QJsonObject textCapabilities_;
 public:
  // What `recording.microphones` and the capability's `clickHighlights` answered; public for the UI catalog.
  void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);

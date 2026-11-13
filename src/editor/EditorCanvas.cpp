@@ -144,7 +144,7 @@ void EditorCanvas::setTool(Tool tool){
  if(tool_==Tool::Crop){cropDraft_=doc_.crop();selected_=0;emit selectionChanged();}
  else if(deselect){selected_=0;emit selectionChanged();}
  drag_=Drag::None;
- setCursor(tool_==Tool::Select?Qt::ArrowCursor:Qt::CrossCursor);
+ setCursor(tool_==Tool::Select?Qt::ArrowCursor:tool_==Tool::CopyText?Qt::IBeamCursor:Qt::CrossCursor);
  if(fitted_)fit();else update();
  announce();
 }
@@ -252,6 +252,7 @@ void EditorCanvas::updateHoverCursor(const QPointF& position,Qt::KeyboardModifie
  if(drag_!=Drag::None)return;
  if(space_){setCursor(Qt::OpenHandCursor);return;}
  if(tool_==Tool::Crop){const int h=handleAt(cropDraft_,position);setCursor(h>=0?resizeCursor(h):QRectF(cropDraft_).contains(toImage(position))?Qt::SizeAllCursor:Qt::CrossCursor);return;}
+ if(tool_==Tool::CopyText){setCursor(textLayer_&&textLayer_->wordAt(toImage(position))>=0?Qt::IBeamCursor:Qt::ArrowCursor);return;}
  const auto fallback=tool_==Tool::Select?Qt::ArrowCursor:Qt::CrossCursor;
  // Ctrl draws a new shape even over existing ones.
  if(drawingTool()&&(modifiers&Qt::ControlModifier)){setCursor(fallback);return;}
@@ -399,6 +400,11 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  for(const auto& shape:doc_.shapes())if(shape.kind==Shape::Kind::Highlight){const auto& tile=highlightTile(shape);const auto area=shape.rect.intersected(doc_.crop());if(!tile.isNull())painter.drawImage(QRectF(area),tile);}
  for(const auto& shape:doc_.shapes())if(shape.kind!=Shape::Kind::Redact&&shape.kind!=Shape::Kind::Blur&&shape.kind!=Shape::Kind::Highlight&&!(textEditor_&&shape.id==textShape_))EditDocument::paintAnnotation(painter,shape);
  // The open field shows the text being typed; painting it here as well showed it twice.
+ // Copy text: the selected words are tinted with the selection colour.
+ if(tool_==Tool::CopyText&&textLayer_&&textLayer_->hasSelection()){
+  auto tint=palette().color(QPalette::Highlight);tint.setAlpha(96);
+  for(int i=textLayer_->first();i<=textLayer_->last();++i)painter.fillRect(QRectF(textLayer_->words().at(i).rect).adjusted(-1,-1,1,1),tint);
+ }
  painter.restore();
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
@@ -445,6 +451,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
   return;
  }
  moved_=false;editOnClick_=0;
+ if(tool_==Tool::CopyText){textPress(event);return;}
  if(tool_==Tool::Text){
   if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Text){
    const int handle=selectionHandleAt(*current,press_);
@@ -503,6 +510,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
 
 void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
  const auto position=event->position();
+ if(selectingText_&&textLayer_){if(const int word=textLayer_->wordAt(toImage(position));word>=0){textLayer_->extendTo(word);update();emit textSelectionChanged();}return;}
  if(drag_==Drag::None){updateHoverCursor(position,event->modifiers());return;}
  // A press that has not travelled the platform drag distance is a click:
  // it selects (or, for text, edits) without nudging the shape.
@@ -568,6 +576,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
 void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
  if(drag_==Drag::Pan){drag_=Drag::None;updateHoverCursor(event->position(),event->modifiers());return;}
  if(event->button()!=Qt::LeftButton)return;
+ if(selectingText_){selectingText_=false;return;}
  const auto kind=drag_;drag_=Drag::None;const auto edit=std::exchange(editOnClick_,0);
  if(kind==Drag::CropNew||kind==Drag::CropMove||kind==Drag::CropResize||kind==Drag::None)return;
  if(kind==Drag::Create){
@@ -590,6 +599,8 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
 }
 
 void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* event){
+ // Copy text: a double-click takes the line under the pointer.
+ if(tool_==Tool::CopyText){if(textLayer_){const int word=textLayer_->wordAt(toImage(event->position()));if(word>=0){textLayer_->selectLine(word);selectingText_=false;update();emit textSelectionChanged();}}return;}
  const auto* shape=doc_.find(shapeAt(toImage(event->position())));
  if(shape&&shape->kind==Shape::Kind::Text){beginText(QPointF(shape->rect.topLeft()),shape);return;}
  // The first click made a word highlight; the double-click grows it to the line.
@@ -612,6 +623,7 @@ bool EditorCanvas::removeSelected(){
 }
 
 void EditorCanvas::keyPressEvent(QKeyEvent* event){
+ if(tool_==Tool::CopyText&&textKey(event))return;
  if(event->key()==Qt::Key_Space&&!event->isAutoRepeat()){space_=true;setCursor(Qt::OpenHandCursor);return;}
  if(event->key()==Qt::Key_Control){updateHoverCursor(mapFromGlobal(QCursor::pos()),Qt::ControlModifier);return;}
  if(tool_==Tool::Crop){
@@ -873,5 +885,25 @@ void EditorCanvas::finishText(bool commit){
   else{selected_=doc_.add(shape);emit changed();}
  }
  textShape_=0;emit selectionChanged();setFocus();update();
+}
+// Copy text: selection works like text in a document. A press on a word starts
+// it and a drag extends it in reading order; Shift+click extends from the anchor.
+bool EditorCanvas::textPress(QMouseEvent* event){
+ if(!textLayer_)return false;
+ const int word=textLayer_->wordAt(toImage(event->position()));
+ if(word<0){if(textLayer_->hasSelection()&&!(event->modifiers()&Qt::ShiftModifier)){textLayer_->clearSelection();update();emit textSelectionChanged();}return true;}
+ if(event->modifiers()&Qt::ShiftModifier)textLayer_->extendTo(word);else textLayer_->select(word,word);
+ selectingText_=true;update();emit textSelectionChanged();return true;
+}
+// Ctrl+A takes every word, Ctrl+C copies while the canvas has focus (a text
+// field keeps its own), Escape clears the selection and then returns to Select.
+bool EditorCanvas::textKey(QKeyEvent* event){
+ if(event->matches(QKeySequence::SelectAll)){if(textLayer_){textLayer_->selectAll();update();emit textSelectionChanged();}return true;}
+ if(event->matches(QKeySequence::Copy)){emit textCopyRequested();return true;}
+ if(event->key()==Qt::Key_Escape){
+  if(textLayer_&&textLayer_->hasSelection()){textLayer_->clearSelection();update();emit textSelectionChanged();return true;}
+  setTool(Tool::Select);emit toolRequested(Tool::Select);return true;
+ }
+ return false;
 }
 }

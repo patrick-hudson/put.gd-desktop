@@ -109,7 +109,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(!storedNothing(r)||r["operation"].toObject().isEmpty())return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
- return action=="edit"?"Edit failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
+ return action=="edit"?"Edit failed":action=="text"?"Text recognition failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
 }
 bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
 bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
