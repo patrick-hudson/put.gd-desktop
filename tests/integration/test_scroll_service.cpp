@@ -39,7 +39,7 @@ private slots:
   }
   QCOMPARE(admissions,0);QVERIFY(!cancelAnswered);
   backend->held.take("cancel")({},{});PUTGD_TRY_VERIFY(cancelAnswered);
-  QCOMPARE(cancelResult["state"].toString(),QString("cancelled"));QVERIFY(!service.active());QCOMPARE(finishes,1);QCOMPARE(ended.state,QString("cancelled"));QVERIFY(ended.cancelled);QVERIFY(ended.error.code.isEmpty());QCOMPARE(admissions,0);
+  QCOMPARE(cancelResult["state"].toString(),QString("cancelled"));QVERIFY(!service.active());QCOMPARE(finishes,1);QCOMPARE(ended.stateName(),QString("cancelled"));QVERIFY(ended.cancelled);QVERIFY(ended.error.code.isEmpty());QCOMPARE(admissions,0);
   QVERIFY(!QFileInfo::exists(backend->directory));
  }
  // A PNG that does not match the helper's descriptor (other bytes, other

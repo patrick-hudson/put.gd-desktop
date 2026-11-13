@@ -63,7 +63,7 @@ int main(int argc,char** argv){
  {HistoryStore ledger(operations.databasePath());for(int i=0;i<items;++i){
   const auto path=data.filePath(QString("synthetic-%1.png").arg(i));if(!capture(i).save(path))return 2;
   const bool failed=i%7==3;
-  Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action=i%3==0?"region":i%3==1?"window":"desktop";op.created=now.addSecs(-60-i*7200).toString(Qt::ISODateWithMs);op.state=failed?"failed":"completed";op.copyStatus="not_requested";op.settings=settings.snapshot();
+  Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action=i%3==0?"region":i%3==1?"window":"desktop";op.created=now.addSecs(-60-i*7200).toString(Qt::ISODateWithMs);op.restore(failed?OperationState::Failed:OperationState::Completed);op.copyStatus="not_requested";op.settings=settings.snapshot();
   OperationItem item;item.artifact.id=QString("synthetic-file-%1").arg(i);item.artifact.name=QString("Screenshot from 2026-10-%1 %2.png").arg(1+i%28,2,10,QChar('0')).arg(i);item.artifact.mime="image/png";item.artifact.category="images";item.artifact.path=path;item.artifact.bytes=QFileInfo(path).size();item.artifact.previewPath=path;item.local.status="saved";item.local.path=path;
   item.uploadStatus=failed?"failed":"local_only";if(failed)item.error={"synthetic_failure","The connection was interrupted while sending the file. Check the destination and retry.",{}};
   op.items.append(item);if(ledger.saveOperation(op))return 2;}}

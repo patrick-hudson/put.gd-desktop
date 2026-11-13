@@ -176,7 +176,7 @@ private slots:
  void realClientHistoryLinkCopyUpdatesPersistedOperationStatus(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;
   OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
-  Operation op;op.id="copy-recovery";op.state="completed";op.copyStatus="suppressed";OperationItem item;item.artifact.id="stored-link";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/stored-link";op.items={item};HistoryStore store(ops.databasePath());QVERIFY(!store.saveOperation(op));
+  Operation op;op.id="copy-recovery";op.restore(OperationState::Completed);op.copyStatus="suppressed";OperationItem item;item.artifact.id="stored-link";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/stored-link";op.items={item};HistoryStore store(ops.databasePath());QVERIFY(!store.saveOperation(op));
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"history.copyLink","{\"id\":\"stored-link\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);
   QCOMPARE(client.exitCode(),0);const auto copied=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QVERIFY(copied["ok"].toBool());QVERIFY(copied["result"].toObject()["copied"].toBool());QCOMPARE(source.copied.text,item.receipt.directUrl);
   client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"operation.inspect","{\"id\":\"copy-recovery\"}"});PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);

@@ -89,7 +89,18 @@ private slots:
   auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=inherit?QJsonValue("default"):output["destination"];action["profileId"]=inherit?QJsonValue(QJsonValue::Null):output["profileId"];actions[name]=action;}doc["actions"]=actions;if(inherit)doc["captureDefaults"]=output;QVERIFY(settings.save(doc,{}));
   Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QString id;Error error;bool replied=false;operations.invoke("clipboard",[&](Error e,QJsonObject result){error=e;id=result["operationId"].toString();replied=true;});PUTGD_TRY_VERIFY(replied);
   if(!destination&&!localCopy){QCOMPARE(error.code,QString("output_required"));QVERIFY(id.isEmpty());QCOMPARE(source.reads,0);QCOMPARE(provider->uploads.load(),0);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);return;}
-  QVERIFY2(!error,qPrintable(error.message));QVERIFY(!id.isEmpty());HistoryStore journal(operations.databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);const auto item=op.items.first();QCOMPARE(provider->uploads.load(),destination?1:0);QCOMPARE(item.uploadStatus,destination?QString("uploaded"):QString("local_only"));QCOMPARE(item.local.status=="saved",localCopy);if(localCopy){QFile file(item.local.path);QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),source.payload.bytes);}
+  QVERIFY2(!error,qPrintable(error.message));QVERIFY(!id.isEmpty());HistoryStore journal(operations.databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);const auto item=op.items.first();QCOMPARE(provider->uploads.load(),destination?1:0);QCOMPARE(item.uploadStatus,destination?QString("uploaded"):QString("local_only"));QCOMPARE(item.local.status=="saved",localCopy);if(localCopy){QFile file(item.local.path);QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),source.payload.bytes);}
+ }
+ // Cancel on a finished upload (#1433) is refused and leaves its row as it was:
+ // a completed upload read as cancelled is hidden in History while its link is live.
+ void cancellingAFinishedOperationKeepsItsOutcome() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  HistoryStore journal(operations.databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  const auto before=journal.operation(id).toJson();QCOMPARE(provider->uploads.load(),1);
+  Error error;bool replied=false;operations.cancel(id,[&](Error e,QJsonObject){error=e;replied=true;});PUTGD_TRY_VERIFY(replied);
+  QCOMPARE(error.code,QString("operation_inactive"));QCOMPARE(journal.operation(id).toJson(),before);
  }
  void cancellingBeforeNativeCommitDoesNotWriteTheLink() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
@@ -99,7 +110,7 @@ private slots:
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QString id;
   operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(source.copies,1);QVERIFY(source.pending);PUTGD_TRY_COMPARE(provider->completions.size(),1);
   operations.cancel(id,[](Error e,QJsonObject){QVERIFY(!e);});if(source.pending)source.acknowledge();provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  QCOMPARE(source.current,QString("synthetic initial clipboard"));QCOMPARE(source.revision,quint64(0));QCOMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(journal.operation(id).copyStatus,QString("no_result"));QVERIFY(journal.operation(id).items.first().linkAvailable());
+  QCOMPARE(source.current,QString("synthetic initial clipboard"));QCOMPARE(source.revision,quint64(0));QCOMPARE(journal.operation(id).stateName(),QString("cancelled"));QCOMPARE(journal.operation(id).copyStatus,QString("no_result"));QVERIFY(journal.operation(id).items.first().linkAvailable());
  }
  void cancelledListMemberIsRemovedFromAnUnsentNativeCommit() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
@@ -119,7 +130,7 @@ private slots:
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);HistoryStore journal(operations.databasePath());
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();for(auto imported:source.imports)imported({textPayload(),{}});source.imports.clear();if(source.pending)source.acknowledge();});QStringList ids;
   for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(source.reads,i+1);ids.append(id);}
-  for(int i=0;i<2;++i){PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();}PUTGD_TRY_COMPARE(source.copies,1);QVERIFY(source.pending);PUTGD_TRY_COMPARE(journal.operation(ids[1]).state,QString("completed"));
+  for(int i=0;i<2;++i){PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();}PUTGD_TRY_COMPARE(source.copies,1);QVERIFY(source.pending);PUTGD_TRY_COMPARE(journal.operation(ids[1]).stateName(),QString("completed"));
   source.holdImports=true;QString third;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);third=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.imports.size(),1);QVERIFY(!source.pending);
   const QStringList removed{journal.operation(ids[0]).items.first().artifact.id};QJsonObject preview;history.prepareDelete(removed,[&](Error e,QJsonObject r){QVERIFY(!e);preview=r;});PUTGD_TRY_VERIFY(!preview.isEmpty());QVERIFY(!preview["acknowledgement"].toString().isEmpty());history.deleteConfirmed(removed,preview["acknowledgement"].toString(),[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(journal.detail(removed.first())["remoteStatus"].toString(),QString("removed"));
   source.imports.takeFirst()({textPayload(),{}});PUTGD_TRY_COMPARE(source.copies,2);QVERIFY(source.pending);QCOMPARE(source.proposed.text,journal.operation(ids[1]).items.first().receipt.directUrl);source.acknowledge();
@@ -142,7 +153,7 @@ private slots:
    QString id;for(const auto& candidate:ids)if(provider->requests.last().artifact.path.contains(candidate))id=candidate;
    QVERIFY(!id.isEmpty());QVERIFY(!finished.contains(id));finished.append(id);provider->completions.takeFirst()();
    if(i==0){PUTGD_TRY_COMPARE(source.copies,1);QVERIFY(source.pending);}
-   else {PUTGD_TRY_COMPARE(journal.operation(id).state,QString("completed"));QCOMPARE(source.copies,1);}
+   else {PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(source.copies,1);}
   }
   source.acknowledge();
   if(userChanged){++source.revision;source.current="synthetic user edit";}
@@ -176,7 +187,7 @@ private slots:
   PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
   source.acquisitions.takeFirst()({{}, {"cancelled","Selection cancelled",{}}});
   HistoryStore journal(operations.databasePath());
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("cancelled"));
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("cancelled"));
   QVERIFY(journal.operation(id).cancelled);
   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,0);
 #ifdef __GLIBC__
@@ -248,7 +259,7 @@ private slots:
   OperationService restarted(root,settings,registry,source);PUTGD_TRY_VERIFY(restarted.ready());QVERIFY(!QFile::exists(staging+"/cad9f544-c88c-4d8e-875b-576db75867dd"));QVERIFY(QFile::exists(staging+"/user-owned-copy.txt"));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }
  void committedAcquisitionRecoversAfterMissingItemCheckpoint() {
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5");Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.state="acquiring";accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));ArtifactStore artifacts(root+"/artifacts");auto acquired=artifacts.acquire(id,textPayload(),ResourceLimits{});QVERIFY(!acquired.error);Source source;source.payload=textPayload();OperationService ops(root,settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());auto recovered=store.operation(id);QCOMPARE(recovered.state,QString("interrupted"));QCOMPARE(recovered.items.size(),1);QCOMPARE(recovered.items[0].artifact.sha256,acquired.artifacts[0].sha256);QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));QVERIFY(!store.operation(id).items[0].candidate.isEmpty());QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,0);
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5");Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));ArtifactStore artifacts(root+"/artifacts");auto acquired=artifacts.acquire(id,textPayload(),ResourceLimits{});QVERIFY(!acquired.error);Source source;source.payload=textPayload();OperationService ops(root,settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);QCOMPARE(recovered.items[0].artifact.sha256,acquired.artifacts[0].sha256);QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));QVERIFY(!store.operation(id).items[0].candidate.isEmpty());QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,0);
  }
  void resumableUploadJournalSurvivesForRetry() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenUnknown=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
@@ -258,7 +269,7 @@ private slots:
   // owner. This forces the ordering that the old inspect/poll occasionally saw
   // under contention, without sleeps or a production scheduling hook.
   const auto connection=connect(&ops,&OperationService::changed,this,[&](const QString& changed){
-   if(earlyAnswered||store.operation(changed).state!="partial")return;
+   if(earlyAnswered||store.operation(changed).stateName()!="partial")return;
    ops.retry(changed,[&](Error error,QJsonObject){earlyError=error;earlyAnswered=true;});
   });
   const auto disconnectEarly=qScopeGuard([&]{disconnect(connection);});
@@ -293,7 +304,7 @@ private slots:
   QCOMPARE(ops.diagnostics()["artifactCleanup"].toObject()["intervalMs"].toInt(),60*60*1000);
   QStringList ids;
   for(int i=0;i<4;++i){QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
-   PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return QStringList({"partial","failed"}).contains(store.operation(id).state);})());PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);ids<<id;}
+   PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return QStringList({"partial","failed"}).contains(store.operation(id).stateName());})());PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);ids<<id;}
   HistoryStore store(ops.databasePath());QStringList spools;for(const auto& id:ids)spools<<store.operation(id).items[0].artifact.path;
   // A preview the user's cache holds is left to Clean artifacts.
   const auto preview=d.filePath("data/previews/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".png");QVERIFY(QDir().mkpath(QFileInfo(preview).path()));
@@ -337,7 +348,7 @@ private slots:
   PUTGD_COMPARE_STEADY(source.copies,0,100);
   provider->shares.takeFirst()();
   PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
-  const auto op=journal.operation(id);QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items[0].shareStatus,QString("shared"));QVERIFY(!op.error);
+  const auto op=journal.operation(id);QCOMPARE(op.stateName(),QString("completed"));QCOMPARE(op.items[0].shareStatus,QString("shared"));QVERIFY(!op.error);
   QCOMPARE(source.copies,1);QVERIFY(op.items[0].receipt.directUrl.startsWith("https://example.invalid/shared#"));QCOMPARE(source.copied.text,op.items[0].receipt.directUrl);
  }
  void zeroRetentionAndActiveRetryPreserveArtifacts() {
