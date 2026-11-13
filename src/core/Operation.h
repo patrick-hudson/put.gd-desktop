@@ -22,8 +22,16 @@ struct OperationItem {
  UploadRequest uploadRequest(const Destination&,std::optional<int> requestTimeoutMs={}) const;
  bool linkAvailable() const;
 };
+// An operation's state (#1433). Its name is the journal's and the wire's string;
+// never rename one. Unknown is a string no build of put.gd writes (a newer
+// build's journal), kept verbatim and never changed by a step.
+enum class OperationState {Accepted,Acquiring,Editing,Recording,Recognizing,Stored,Running,Completed,Partial,Failed,Cancelled,Interrupted,Unknown};
+QString operationStateName(OperationState);
+OperationState operationState(const QString&);
+// The one table of allowed steps. Staying in the same state is not a step.
+bool operationStep(OperationState from,OperationState to);
 struct Operation {
- QString id,action,state="accepted",settingsRevision,created;
+ QString id,action,settingsRevision,created;
  Settings settings; Destination destination;
  QList<OperationItem> items;
  quint64 invocation=0,clipboardRevision=0;
@@ -37,5 +45,16 @@ struct Operation {
  QJsonObject publicJson() const;
  static Operation fromJson(const QJsonObject&);
  static bool activeState(const QString&);
+ OperationState state() const {return state_;}
+ QString stateName() const;
+ bool active() const;
+ // Every state change goes through here. A step the table does not allow
+ // is refused and logged with its from and to; the state stays as it was.
+ bool advance(OperationState to);
+ // A state read from elsewhere, unchecked: a journal row or a test fixture.
+ void restore(OperationState state) {state_=state;unknownState_.clear();}
+private:
+ OperationState state_=OperationState::Accepted;
+ QString unknownState_;
 };
 }

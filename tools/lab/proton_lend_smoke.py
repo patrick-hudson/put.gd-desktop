@@ -31,8 +31,9 @@ _spec.loader.exec_module(lab)
 PROFILE_ID = 'proton-lent'
 DEADLINE = 300
 SECRET_KEYS = ('url', 'link', 'shareUrl', 'publicUrl', 'directUrl')
-# Operation::activeState in src/core/Operation.cpp, plus the older 'queued'.
-ACTIVE_STATES = ('accepted', 'acquiring', 'editing', 'recording', 'recognizing', 'stored', 'running', 'queued')
+# The states an operation ends in. The wait stops only on one of these, so a
+# state added later keeps it waiting to its deadline instead of passing early.
+FINISHED_STATES = ('completed', 'partial', 'failed', 'cancelled', 'interrupted')
 
 
 def scrub(value):
@@ -148,7 +149,7 @@ PY
         operation = opened['operationId']
         self.cli('editor.submit', {'id': operation})
         final = self.wait(lambda: self.cli('operation.inspect', {'id': operation}),
-                          lambda value: value.get('state') not in ACTIVE_STATES,
+                          lambda value: value.get('state') in FINISHED_STATES,
                           'upload')
         self.result['operationId'] = operation
         self.step('uploaded', operationId=operation, state=final.get('state'), file=Path(path).name)

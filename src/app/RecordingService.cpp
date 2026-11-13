@@ -275,8 +275,8 @@ void RecordingService::fail(Error error) {
          {"selector", s.selector}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.op.error = error;
     s.op.cancelled = cancelled;
-    s.op.state = cancelled ? "cancelled" : "failed";
-    s.op.phase = s.op.state;
+    s.op.advance(cancelled ? OperationState::Cancelled : OperationState::Failed);
+    s.op.phase = s.op.stateName();
     host_.finish(s.op);
     emit changed(s.op.id);
 }
@@ -289,7 +289,7 @@ void RecordingService::cancelActive(JsonReply reply) {
     backend_->discard(s.op.id);
     QDir(s.staging).removeRecursively();
     s.op.cancelled = true;
-    s.op.state = "cancelled";
+    s.op.advance(OperationState::Cancelled);
     s.op.phase = "cancelled";
     s.op.error = {"cancelled", "Recording cancelled; nothing was uploaded", {}};
     host_.finish(s.op);
@@ -607,12 +607,12 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
             s.config.budgetBytes = disk->available() / 3;
             s.budgetLimit = "disk_space";
         }
-        s.op.state = "recording";
+        s.op.advance(OperationState::Recording);
         s.op.phase = "preparing";
         s.staging = stagingRoot_ + "/" + s.op.id;
         if (!QDir().mkpath(s.staging) || !QFile::setPermissions(s.staging, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner)) {
             s.op.error = {"recording_io", "Cannot create private recording staging", {}};
-            s.op.state = "failed";
+            s.op.advance(OperationState::Failed);
             host_.finish(s.op);
             reply(s.op.error, {});
             return;
@@ -979,7 +979,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         payload.files = {output};
         payload.mime = config.mime();
         auto op = finished.op;
-        op.state = "acquiring";
+        op.advance(OperationState::Acquiring);
         op.phase = "queued";
         const auto staging = finished.staging;
         host_.admit(op, std::move(payload), [staging] { QDir(staging).removeRecursively(); });

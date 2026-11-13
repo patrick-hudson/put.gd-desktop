@@ -92,7 +92,7 @@ private slots:
   resident.backend->error=textjob::failure("text_job_failed");
   const auto failed=resident.recognize(request(true,false));QVERIFY(!failed.isEmpty());PUTGD_TRY_VERIFY(resident.ended(failed));
   PUTGD_TRY_VERIFY(resident.operations->activeObservations().isEmpty());
-  {HistoryStore store(resident.operations->databasePath());const auto kept=store.operation(failed);QCOMPARE(kept.state,QString("failed"));QCOMPARE(kept.error.code,QString("text_job_failed"));QVERIFY(kept.items.isEmpty());}
+  {HistoryStore store(resident.operations->databasePath());const auto kept=store.operation(failed);QCOMPARE(kept.stateName(),QString("failed"));QCOMPARE(kept.error.code,QString("text_job_failed"));QVERIFY(kept.items.isEmpty());}
   // Journal, History database, logs (debug on), diagnostics and the saved configuration.
   logging::flush();
   const auto diagnostics=QJsonDocument(resident.operations->diagnostics()).toJson();
@@ -116,7 +116,7 @@ private slots:
  // A QR request reserves its revision before background receipt lookup.
  void newerUserCopySuppressesQrDispatch() {
   Resident resident;QVERIFY(resident.start());HistoryService history(*resident.operations);
-  Operation operation;operation.id="qr-operation";operation.state="completed";
+  Operation operation;operation.id="qr-operation";operation.restore(OperationState::Completed);
   operation.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
   operation.settings=Settings::fromValidated(Settings::defaults());
   OperationItem item;item.artifact.id="qr-item";item.artifact.name="synthetic.png";
