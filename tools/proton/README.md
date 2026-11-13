@@ -107,11 +107,20 @@ lost connection is. File blocks go to Proton's storage hosts through the
 ordinary client as before. An idle kept connection is pinged every 20 seconds.
 
 Sharing reads the file before and after the link is made. For a file this
-process uploaded within the last thirty seconds, a read that comes back as not
-known to be its own, with no error from the service, is made again, three
-times at most and 0.3 s apart, before it is believed. One such read was seen in
-about four hundred publishes; its cause is not known. A file that stays
-incomplete gets no link.
+process uploaded within the last thirty seconds, a read that may predate the
+upload is made again before it is believed: one the service answered without
+an error and that either did not return the file (the pinned SDK also leaves
+out a file returned without its active revision, as a draft), could not tell
+whose it is, or returned the file's own revision with none of the metadata it
+was uploaded with. Revisions never change, so that last read is not another
+file, although the ownership check alone calls it foreign. The reads are made
+again up to five times, 0.25, 0.5, 1, 2 and 4 s apart. A read that shows
+another revision, name, folder or trash is believed at once and the link
+step reports `changed`. A file that still reads that way gets no link and is
+reported `unknown`, which the application inspects again on Retry. Before
+#1399 such a file was reported `changed` after three reads 0.3 s apart, or at
+once for a revision without metadata, which told the user the file had been
+replaced and ended the link step.
 
 A token refresh makes the account code forget the user and address keys it
 loaded. The helper puts a load that was under way back for the same session,

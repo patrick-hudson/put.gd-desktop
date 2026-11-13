@@ -4,7 +4,7 @@
   "distributionReady": true,
   "published": true,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
-  "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+  "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
   "sourcePins": {
     "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
     "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -26,8 +26,8 @@
     "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Fresh Bun 1.4.4 native modification/relink verification for this helper; the retained receipt describes helper 9fd4d72f8635",
-    "Fresh final-helper desktop functional/resource and actual package acceptance (P6); the retained receipt describes helper 9fd4d72f8635"
+    "Fresh Bun 1.4.4 native modification/relink verification for this helper (34dda9fa8550); the retained receipt describes helper 9fd4d72f8635",
+    "Fresh final-helper desktop functional/resource and actual package acceptance (P6) for this helper (34dda9fa8550), including the Cinnamon link after upload (#1399); the retained receipt describes helper 9fd4d72f8635"
   ],
   "artifacts": [
     {
@@ -113,17 +113,17 @@
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "4493391a688cc511739d1f3914b22998228ad5e5497db869f243834200f16c25"
+        "sha256": "07322de445d7073ae3b3bfdba8f07bec13a8c4ce9863afa95f3b53cbd15d0207"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "7e4b41c7395b6f14945fe745cdc079bf6541a7cbdda16d3ef7d9d8c1ff9282a1"
+        "sha256": "6b01e0e34d7550395cdbbb13ef9de3765d437e339bd88ea0b1f0dcf7a5854487"
       },
       {
         "source": "tools/proton/protocol.ts",
         "destination": "build-source/protocol.ts",
-        "sha256": "e55ef56d79fe84eec9a67b12fa845dfc243e0e197f65f70f4d68bdf93ca9ecf8"
+        "sha256": "45b2d48c952cbc9fc9808e8caf4025330bd7bab39ba15877f759ebf456ad9014"
       },
       {
         "source": "tools/proton/protocol.test.ts",

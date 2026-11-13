@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, RevisionState, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity } from '@protontech/drive-sdk';
-import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, sessionUnread, stat, upload, share, serviceFailure, transferHost } from './runtime';
+import { checkName, createFolder, destinationFolder, readDestination, inspectAccount, sessionUnread, stat, upload, share, serviceFailure, transferHost, REREAD_PAUSES_MS } from './runtime';
 import { ProtocolError, makeReceipt, type JsonObject } from './protocol';
 import { LINK_AHEAD_MS, LinkAhead, LinkOpenPGP, SLOW_ANSWER_MS, SharedAccountReads, fastestConnectionFetch, keepUserDataAcrossRefresh, keychain, linkPasswordAhead, linkPreparation, saveToKeychain } from './account';
 import { initSharingModule } from '@protontech/drive-sdk/internal/sharing';
@@ -1096,22 +1096,33 @@ test('a connection is not replaced once the caller is about to change something'
     await answered; await settle(SLOW_ANSWER_MS + 250);
     expect(untouched.sessions.length).toBe(2);
 });
-test('a file this process just uploaded is read again before an incomplete read of it is believed', async () => {
+test('a file this process just uploaded is read again until the service shows it, and another revision is believed at once', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'putgd-reread-'));
     const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
     await writeFile(path, data, { mode: 0o600 });
     const sha256 = createHash('sha256').update(data).digest('hex');
-    const prepared = (incompleteReads: number) => {
+    // The service's early answers for a file it has just created (#1399): not returned at all, returned
+    // without its active revision, or with its revision and none of that revision's metadata. And
+    // a read that shows another revision of the file, which is a real change.
+    type Shape = 'missing' | 'no-revision' | 'no-metadata' | 'other-revision';
+    const prepared = (earlyReads: number, shape: Shape) => {
         const stub = sharingContext();
         const whole = (stub.ctx.sdk as any).getNode;
         let fileReads = 0;
-        // The file is read back without its revision for the first reads, then whole.
         (stub.ctx.sdk as any).getNode = async (uid: string) => {
             const node = await whole(uid);
             if (uid === 'folder') return node;
-            if (++fileReads <= incompleteReads) return { ...node, activeRevision: undefined };
-            return { ...node, activeRevision: { ...node.activeRevision, claimedAdditionalMetadata: { putgd: { publicationId: 'publication', sha256 } } } };
+            if (++fileReads <= earlyReads) {
+                if (shape === 'missing') throw new Error('Synthetic node the batch does not return');
+                if (shape === 'no-revision') return { ...node, activeRevision: undefined };
+                const bare = { uid: node.activeRevision.uid, state: node.activeRevision.state, contentAuthor: node.activeRevision.contentAuthor };
+                return { ...node, activeRevision: shape === 'no-metadata' ? bare : { ...bare, uid: 'someone-elses-revision' } };
+            }
+            return { ...node, activeRevision: { ...node.activeRevision, claimedSize: data.length,
+                claimedAdditionalMetadata: { putgd: { publicationId: 'publication', sha256 } } } };
         };
+        // A complete listing of the folder, without the file.
+        (stub.ctx.sdk as any).iterateFolderChildrenNodeUids = async function* () {};
         (stub.ctx.sdk as any).getFileUploader = async () => ({ uploadFromStream: async (stream: ReadableStream) => {
             const reader = stream.getReader(); while (!(await reader.read()).done) {}
             return { completion: async () => ({ nodeUid: 'file-node', nodeRevisionUid: 'file-revision' }) };
@@ -1121,34 +1132,44 @@ test('a file this process just uploaded is read again before an incomplete read 
             artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256 } });
         return { stub, request, uploaded, fileReads: () => fileReads };
     };
+    const pauses = [...REREAD_PAUSES_MS];
+    REREAD_PAUSES_MS.fill(1);
     try {
-        // The last file this process uploaded was another: the first incomplete read stands, and nothing is changed.
-        let run = prepared(1);
-        expect((await run.uploaded('an-earlier-publication')).status).toBe('uploaded');
-        expect(run.stub.settledBeforeChange()).toBe(1);
-        expect((await share(run.stub.ctx, run.request)).status).toBe('unknown');
+        // Just uploaded here: each early answer is read again, the link is made, and the read after it is whole too.
+        for (const shape of ['missing', 'no-revision', 'no-metadata'] as const) {
+            const run = prepared(2, shape);
+            expect((await run.uploaded()).status).toBe('uploaded');
+            const shared = await share(run.stub.ctx, run.request);
+            expect(shared.status).toBe('shared'); expect(shared.receipt.directUrl).toContain('#capability');
+            expect(run.fileReads()).toBe(4); expect(run.stub.mutations()).toBe(1);
+            // The upload and the link each settled the connection before changing anything.
+            expect(run.stub.settledBeforeChange()).toBe(2);
+        }
+        // Another revision of the file is a change, believed at once: no link, nothing changed.
+        let run = prepared(1, 'other-revision');
+        expect((await run.uploaded()).status).toBe('uploaded');
+        let result = await share(run.stub.ctx, run.request);
+        expect(result.status).toBe('changed'); expect(result.linkAvailable).toBe(false); expect(result.receipt.directUrl).toBe('');
         expect(run.fileReads()).toBe(1); expect(run.stub.mutations()).toBe(0);
-        // Just uploaded here: the read is made again, the link is made, and the read after it too.
-        run = prepared(1);
+        // A file that stays unread gets no link, and is unknown rather than changed: six reads, no change.
+        run = prepared(99, 'no-metadata');
         expect((await run.uploaded()).status).toBe('uploaded');
-        const shared = await share(run.stub.ctx, run.request);
-        expect(shared.status).toBe('shared'); expect(run.fileReads()).toBe(3); expect(run.stub.mutations()).toBe(1);
-        // The upload and the link each settled the connection before changing anything.
-        expect(run.stub.settledBeforeChange()).toBe(2);
-        // A file that stays incomplete gets no link: four reads, no change.
-        run = prepared(99);
-        expect((await run.uploaded()).status).toBe('uploaded');
-        expect((await share(run.stub.ctx, run.request)).status).toBe('unknown');
-        expect(run.fileReads()).toBe(4); expect(run.stub.mutations()).toBe(0);
-        // Another file's link, and a link asked for after another request, are read once.
-        run = prepared(1);
+        result = await share(run.stub.ctx, run.request);
+        expect(result.status).toBe('unknown'); expect(result.linkAvailable).toBe(false); expect(result.receipt.directUrl).toBe('');
+        expect(run.fileReads()).toBe(1 + REREAD_PAUSES_MS.length); expect(run.stub.mutations()).toBe(0);
+        // The last file this process uploaded was another: the first read stands, as for any older file.
+        run = prepared(1, 'no-metadata');
+        expect((await run.uploaded('an-earlier-publication')).status).toBe('uploaded');
+        expect((await share(run.stub.ctx, run.request)).status).toBe('changed');
+        expect(run.fileReads()).toBe(1); expect(run.stub.mutations()).toBe(0);
+        // Another file's link is read once.
+        run = prepared(1, 'missing');
         expect((await run.uploaded()).status).toBe('uploaded');
         const other = { ...run.request, receipt: { ...run.request.receipt, publicationId: 'another-publication' } };
         expect((await share(run.stub.ctx, other)).status).not.toBe('shared');
         expect(run.fileReads()).toBe(1);
-    } finally { await rm(directory, { recursive: true, force: true }); }
+    } finally { REREAD_PAUSES_MS.splice(0, REREAD_PAUSES_MS.length, ...pauses); await rm(directory, { recursive: true, force: true }); }
 });
-
 test('a keychain exchange the service refused is made again before the refusal is believed (#1418)', async () => {
     const pauses = [1, 1, 1];
     const script = (outcomes: (string | null | Error)[]) => { let calls = 0;
