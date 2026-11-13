@@ -17,9 +17,10 @@ int landlockAbi();
 // Sanitizer builds skip the memory limit, the dumpable setting and the ptrace
 // kill, which the sanitizers need; confinement tests run on unsanitized builds.
 bool sanitizedBuild();
-// The read-only set every job gets: system libraries and data, the helper's
-// own installation prefix (the AppImage mount), /proc/self, the CPU entries
-// OpenMP reads, plus the language data directories.
+// The read-only set every job gets: system libraries, the lib and share/putgd
+// directories under the helper's own installation prefix (the AppImage mount;
+// never the prefix itself, nor one that is / or a home directory),
+// /proc/self, the CPU entries OpenMP reads, plus the language data directories.
 QStringList readableDirectories(const QStringList& languageDirectories);
 // No new privileges, not dumpable, the resource limits, Landlock (ABI 3 or
 // later; at ABI 4 TCP is denied, at ABI 6 signals to and abstract sockets of

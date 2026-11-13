@@ -54,7 +54,10 @@ private slots:
   const int firstWord=mergeBand(job,a,first,nullptr,0,1,0,0,1000,400);
   mergeBand(job,b,second,&first,firstWord,1,0,1,1000,400);
   QStringList texts;for(const auto& w:job.words)texts.append(w.text);
-  QCOMPARE(texts,QStringList({"kept","twice","whole","next"}));
+  QCOMPARE(texts,QStringList({"kept","whole","twice","next"}));
+  // The line the seam crossed is one line, left to right, and the band
+  // boundary is not a paragraph break.
+  QCOMPARE(copiedText(job),QStringLiteral("kept\nwhole twice\nnext"));
  }
  // Parallel recognition: parts (layout blocks) finish in any order but are
  // stored by index and joined in that order. Every line comes out once, in

@@ -49,11 +49,15 @@ int main(int argc,char** argv){
  if(options.directories.isEmpty())for(const auto& d:{"/usr/share/tesseract-ocr/5/tessdata","/usr/share/tesseract/tessdata","/usr/share/tessdata"})options.directories.append(QString::fromLatin1(d));
  options.words=words;
  for(const auto& path:images){
-  QImageReader reader(path);reader.setAllocationLimit(0);const auto image=reader.read();
-  if(image.isNull()){std::fprintf(stderr,"cannot read %s\n",qPrintable(path));continue;}
-  QImage flat(image.size(),QImage::Format_RGB32);flat.fill(Qt::white);{QPainter p(&flat);p.drawImage(0,0,image);}
-  const auto grey=flat.convertToFormat(QImage::Format_Grayscale8);
-  flat=QImage();
+  // Decoded and converted in a scope of their own, so only the grey copy is
+  // alive when the peak is reset below.
+  QImage grey;
+  {
+   QImageReader reader(path);reader.setAllocationLimit(0);const auto image=reader.read();
+   if(image.isNull()){std::fprintf(stderr,"cannot read %s\n",qPrintable(path));continue;}
+   QImage flat(image.size(),QImage::Format_RGB32);flat.fill(Qt::white);{QPainter p(&flat);p.drawImage(0,0,image);}
+   grey=flat.convertToFormat(QImage::Format_Grayscale8);
+  }
   // Peak RSS from here on only: the decode above is the parent's, not the helper's.
   {QFile clear(QStringLiteral("/proc/self/clear_refs"));if(clear.open(QIODevice::WriteOnly))clear.write("5");}
   const putgd::ocr::GreyView view{grey.constBits(),grey.width(),grey.height(),int(grey.bytesPerLine())};

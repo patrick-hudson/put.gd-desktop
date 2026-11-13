@@ -16,7 +16,7 @@
 namespace putgd::ocr {
 namespace {
 // One recognition task: a band (a banded image) or a layout block (a single pass).
-struct Outcome { BandText text;bool done=false,cutShort=false; };
+struct Outcome { BandText text;bool done=false,cutShort=false,failed=false; };
 // The resident set now, from /proc/self/statm (readable under Landlock).
 qint64 residentBytes(){
  QFile statm(QStringLiteral("/proc/self/statm"));
@@ -107,10 +107,14 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    if(options.budgetMs>0){const int remaining=left();if(remaining<=0||(slowest.load()>0&&remaining<slowest.load())){stop=true;return;}}
    QElapsedTimer clock;clock.start();
    Outcome outcome;
-   if(plan.banded()){
-    const auto copy=bandImage(image,plan.bands[task],plan.scale,options.limits.border,areas,result.profile.background,invert);
-    outcome.text=engine.recognize(copy,plan.scale,left(),&outcome.cutShort);
-   }else outcome.text=engine.recognize(whole,plan.scale,left(),&outcome.cutShort,blocks.isEmpty()?QRect():blocks[task]);
+   GreyImage copy;
+   if(plan.banded())copy=bandImage(image,plan.bands[task],plan.scale,options.limits.border,areas,result.profile.background,invert);
+   // The deadline, read once after the copy: spent means stop, never "none".
+   const int deadline=options.budgetMs>0?left():0;
+   if(options.budgetMs>0&&deadline<=0){stop=true;return;}
+   if(plan.banded())outcome.text=engine.recognize(copy,plan.scale,deadline,&outcome.cutShort,{},&outcome.failed);
+   else outcome.text=engine.recognize(whole,plan.scale,deadline,&outcome.cutShort,blocks.isEmpty()?QRect():blocks[task],&outcome.failed);
+   if(outcome.failed)stop=true;
    outcome.done=true;
    qint64 seen=slowest.load();while(clock.elapsed()>seen&&!slowest.compare_exchange_weak(seen,clock.elapsed())){}
    if(outcome.cutShort)stop=true;
@@ -137,6 +141,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  data.release();
  result.recognition.parts=taskCount;result.recognition.threads=1+int(extra.size());
 
+ // An engine that failed on a task fails the job: no text is not success.
+ for(const auto& outcome:outcomes)if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}
  // Joined in task order, never in the order the tasks finished: Tesseract's
  // reading order inside a band, band by band, block by block.
  if(plan.banded()){

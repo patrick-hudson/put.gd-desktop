@@ -27,6 +27,7 @@ private slots:
  void forbidden_data(){
   QTest::addColumn<QString>("action");QTest::addColumn<QString>("argument");
   QTest::addColumn<int>("errorOrSignal");  // a positive errno, or minus the signal that killed it
+  QTest::addColumn<bool>("fromHome");      // run a copy of the probe installed under the home-like directory
   QVERIFY(home_.isValid());
   {
    // The Landlock ABI of this kernel, for the record kept per target.
@@ -36,21 +37,34 @@ private slots:
   const auto secret=home_.filePath(QStringLiteral("secret.txt"));
   QFile file(secret);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic");file.close();
   const QString parent=QString::number(::getpid());
-  QTest::newRow("socket")<<"socket-inet"<<""<<EPERM;
-  QTest::newRow("unix-socket")<<"socket-unix"<<""<<EPERM;
-  QTest::newRow("exec")<<"exec"<<""<<-SIGSYS;
-  QTest::newRow("child-process")<<"fork"<<""<<-SIGSYS;
-  QTest::newRow("write-home")<<"write"<<home_.filePath(QStringLiteral("written"))<<EACCES;
-  QTest::newRow("read-outside")<<"read"<<secret<<EACCES;
-  QTest::newRow("other-process-memory")<<"vm-read"<<parent<<-SIGSYS;
+  QTest::newRow("socket")<<"socket-inet"<<""<<EPERM<<false;
+  QTest::newRow("unix-socket")<<"socket-unix"<<""<<EPERM<<false;
+  QTest::newRow("exec")<<"exec"<<""<<-SIGSYS<<false;
+  QTest::newRow("child-process")<<"fork"<<""<<-SIGSYS<<false;
+  QTest::newRow("write-home")<<"write"<<home_.filePath(QStringLiteral("written"))<<EACCES<<false;
+  QTest::newRow("read-outside")<<"read"<<secret<<EACCES<<false;
+  QTest::newRow("other-process-memory")<<"vm-read"<<parent<<-SIGSYS<<false;
+  // Below Landlock ABI 6 only the seccomp filter stops this.
+  QTest::newRow("signal-parent")<<"signal"<<parent<<EPERM<<false;
+  // Installed at <home-like>/bin, the helper's prefix is <home-like>: a file
+  // beside its bin directory must stay unreadable.
+  QTest::newRow("read-beside-prefix")<<"read"<<secret<<EACCES<<true;
  }
  void forbidden(){
-  QFETCH(QString,action);QFETCH(QString,argument);QFETCH(int,errorOrSignal);
+  QFETCH(QString,action);QFETCH(QString,argument);QFETCH(int,errorOrSignal);QFETCH(bool,fromHome);
+  QString probe=qEnvironmentVariable("PUTGD_OCR_PROBE");
+  if(fromHome){
+   QDir().mkpath(home_.filePath(QStringLiteral("bin")));
+   const auto copy=home_.filePath(QStringLiteral("bin/putgd-ocr-probe"));
+   QFile::remove(copy);QVERIFY(QFile::copy(probe,copy));
+   QVERIFY(QFile::setPermissions(copy,QFileDevice::ReadOwner|QFileDevice::ExeOwner));
+   probe=copy;
+  }
   QStringList arguments;if(!dataDirectory().isEmpty())arguments<<QStringLiteral("--bands");
   arguments<<action;if(!argument.isEmpty())arguments<<argument;
   QProcess process;QProcessEnvironment environment;environment.insert("PUTGD_TEXT_DATA",dataDirectory());environment.insert("OMP_THREAD_LIMIT","1");
   process.setProcessEnvironment(environment);
-  process.start(qEnvironmentVariable("PUTGD_OCR_PROBE"),arguments);
+  process.start(probe,arguments);
   QVERIFY(process.waitForFinished(60000));
   const auto output=process.readAllStandardOutput();
   if(output.startsWith("sanitized"))QSKIP("confinement is tested on unsanitized builds only");

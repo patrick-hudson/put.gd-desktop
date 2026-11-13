@@ -63,13 +63,22 @@ void fill(GreyImage& image,const std::array<QPointF,4>& corners,uint8_t value){
 }
 Profile measure(const GreyView& image,const QList<Quad>& codes){
  Profile profile;profile.rowInk.fill(0,image.height);
- QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)));
- const auto inCode=[&](int x,int y){for(const auto& r:excluded)if(r.contains(x,y))return true;return false;};
+ QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)).intersected(QRect(0,0,image.width,image.height)));
+ // Which pixels of a row lie in a code: the rectangles covering that row,
+ // marked once per row, so each pixel costs one lookup however many codes.
+ std::vector<uint8_t> mask(size_t(std::max(0,image.width)));
+ const auto rowMask=[&](int y)->const uint8_t*{
+  bool any=false;
+  for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom()){
+   if(!any){std::fill(mask.begin(),mask.end(),uint8_t(0));any=true;}
+   std::fill(mask.begin()+r.left(),mask.begin()+r.right()+1,uint8_t(1));
+  }
+  return any?mask.data():nullptr;
+ };
  std::array<qint64,256> histogram{};
  for(int y=0;y<image.height;++y){
-  const auto* row=image.row(y);
-  bool rowHasCode=false;for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom())rowHasCode=true;
-  for(int x=0;x<image.width;++x)if(!rowHasCode||!inCode(x,y))++histogram[row[x]];
+  const auto* row=image.row(y);const auto* inCode=rowMask(y);
+  for(int x=0;x<image.width;++x)if(!inCode||!inCode[x])++histogram[row[x]];
  }
  const int threshold=otsu(histogram);
  qint64 dark=0,light=0;double darkSum=0,lightSum=0;
@@ -78,11 +87,10 @@ Profile measure(const GreyView& image,const QList<Quad>& codes){
  profile.background=profile.dark?(dark?int(std::lround(darkSum/dark)):0):(light?int(std::lround(lightSum/light)):255);
  const bool inkIsLight=profile.dark;
  for(int y=0;y<image.height;++y){
-  const auto* row=image.row(y);int ink=0;
-  bool rowHasCode=false;for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom())rowHasCode=true;
+  const auto* row=image.row(y);const auto* inCode=rowMask(y);int ink=0;
   for(int x=0;x<image.width;++x){
    const int p=row[x];
-   if((inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=inkContrast&&(!rowHasCode||!inCode(x,y)))++ink;
+   if((inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=inkContrast&&(!inCode||!inCode[x]))++ink;
   }
   profile.rowInk[y]=ink;
  }

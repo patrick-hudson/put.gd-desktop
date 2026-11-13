@@ -2,7 +2,7 @@
 // helper's own settings, optionally a first recognition or a banded one with
 // the distribution's Tesseract and OpenMP, then one forbidden action. It prints
 // "errno=N" when the action returns, or dies by the seccomp filter (SIGSYS).
-//   test_ocr_confinement_probe [--recognize | --bands] none|socket-inet|socket-unix|exec|fork|write PATH|read PATH|vm-read PID
+//   test_ocr_confinement_probe [--recognize | --bands] none|socket-inet|socket-unix|exec|fork|write PATH|read PATH|signal PID|vm-read PID
 // "none" prints the Landlock ABI, for the per-host record.
 #include "ocr/Confinement.h"
 #include "ocr/Recognize.h"
@@ -59,6 +59,7 @@ int main(int argc,char** argv){
  if(action=="fork"){const auto pid=::fork();if(pid==0)::_exit(0);if(pid>0)::waitpid(pid,nullptr,0);return report(pid);}
  if(action=="write")return report(::open(argument,O_WRONLY|O_CREAT|O_CLOEXEC,0600));
  if(action=="read")return report(::open(argument,O_RDONLY|O_CLOEXEC));
+ if(action=="signal")return report(::kill(pid_t(std::atoi(argument)),0));
  if(action=="vm-read"){char buffer[16];iovec local{buffer,sizeof buffer},remote{reinterpret_cast<void*>(0x400000),sizeof buffer};return report(::process_vm_readv(pid_t(std::atoi(argument)),&local,1,&remote,1,0));}
  std::fprintf(stderr,"unknown action\n");return 2;
 }

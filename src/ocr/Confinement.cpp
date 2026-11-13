@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <fcntl.h>
+#include <pwd.h>
+#include <cstdlib>
 #include <linux/audit.h>
 #include <linux/filter.h>
 #include <linux/seccomp.h>
@@ -81,6 +83,9 @@ bool landlock(const QStringList& readable,int abi){
 #define SYS_io_uring_enter 426
 #define SYS_io_uring_register 427
 #endif
+#ifndef SYS_pidfd_send_signal
+#define SYS_pidfd_send_signal 424
+#endif
 #ifndef SYS_clone3
 #define SYS_clone3 435
 #endif
@@ -110,6 +115,22 @@ bool seccomp(){
 #ifndef PUTGD_OCR_SANITIZED
  rule(SYS_ptrace,kill);
 #endif
+ // Signals reach only this process's own thread group: below Landlock ABI 6
+ // there is no signal scope, and a helper could otherwise kill its parent.
+ // kill, tgkill and the two queueinfo calls name the target process first;
+ // tkill and pidfd_send_signal name a thread or a descriptor a filter cannot
+ // check, and glibc's raise and pthread_kill use tgkill.
+ const uint32_t self=uint32_t(::getpid());
+ const uint32_t denied=SECCOMP_RET_ERRNO|(EPERM&SECCOMP_RET_DATA);
+ for(const long nr:{long(SYS_kill),long(SYS_tgkill),long(SYS_rt_sigqueueinfo),long(SYS_rt_tgsigqueueinfo)}){
+  jump(BPF_JMP|BPF_JEQ|BPF_K,uint32_t(nr),0,4);
+  stmt(BPF_LD|BPF_W|BPF_ABS,offsetof(seccomp_data,args));  // the target, a pid_t in the low 32 bits
+  jump(BPF_JMP|BPF_JEQ|BPF_K,self,0,1);
+  stmt(BPF_RET|BPF_K,allow);
+  stmt(BPF_RET|BPF_K,denied);
+ }
+ rule(SYS_tkill,denied);
+ rule(SYS_pidfd_send_signal,denied);
  // clone: a thread (CLONE_THREAD, which the kernel only accepts with a shared
  // address space and signal handlers) and no new namespace. Anything else
  // would be a process.
@@ -131,6 +152,22 @@ QString executablePrefix(){
  for(int i=0;i<2;++i){const auto slash=path.lastIndexOf(QLatin1Char('/'));if(slash<=0)return {};path.truncate(slash);}
  return path;
 }
+// The directories under the helper's installation prefix it needs: libraries
+// (the AppImage's bundled engines) and put.gd's own data. Never the prefix
+// itself, whose tree may be a home directory: a helper run from
+// /home/alice/bin would otherwise read all of /home/alice. Nothing from a
+// prefix that is / or a home directory or above one.
+QStringList prefixDirectories(){
+ const auto prefix=executablePrefix();
+ if(prefix.isEmpty()||prefix==QLatin1String("/"))return {};
+ if(const auto* user=::getpwuid(::getuid());user&&user->pw_dir&&*user->pw_dir){
+  QString home=QFile::decodeName(user->pw_dir);
+  char resolved[PATH_MAX+1]{};if(::realpath(user->pw_dir,resolved))home=QFile::decodeName(resolved);
+  while(home.size()>1&&home.endsWith(QLatin1Char('/')))home.chop(1);
+  if(prefix==home||home.startsWith(prefix+QLatin1Char('/')))return {};
+ }
+ return {prefix+QLatin1String("/lib"),prefix+QLatin1String("/lib64"),prefix+QLatin1String("/share/putgd")};
+}
 }
 int landlockAbi(){
  const long abi=::syscall(SYS_landlock_create_ruleset,nullptr,0,createRulesetVersion);
@@ -146,7 +183,7 @@ bool sanitizedBuild(){
 QStringList readableDirectories(const QStringList& languageDirectories){
  QStringList out{QStringLiteral("/usr/lib"),QStringLiteral("/usr/lib64"),QStringLiteral("/lib"),QStringLiteral("/lib64"),
                  QStringLiteral("/proc/self"),QStringLiteral("/sys/devices/system/cpu")};
- const auto prefix=executablePrefix();if(!prefix.isEmpty())out.append(prefix);
+ for(const auto& d:prefixDirectories())if(!out.contains(d))out.append(d);
  for(const auto& d:languageDirectories)if(d.startsWith(QLatin1Char('/'))&&!out.contains(d))out.append(d);
  return out;
 }

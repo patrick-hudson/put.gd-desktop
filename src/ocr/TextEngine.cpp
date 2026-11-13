@@ -33,7 +33,8 @@ struct Resolver {
 Resolver* resolver=nullptr;
 
 bool readWhole(const QString& path,qint64 maximum,std::vector<char>& data,bool& tooLarge){
- const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
+ // O_NONBLOCK: a FIFO named like a data file must not hang the helper in open.
+ const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);
  if(fd<0)return false;
  struct stat s{};
  if(::fstat(fd,&s)||!S_ISREG(s.st_mode)||s.st_size<1){::close(fd);return false;}
@@ -55,7 +56,16 @@ bool plausibleData(const std::vector<char>& data){
  if(entries<=uint32_t(lstmEntry)||entries>1000)return false;
  const size_t header=4+size_t(entries)*8;if(header>data.size())return false;
  std::vector<int64_t> offsets(entries);std::memcpy(offsets.data(),data.data()+4,size_t(entries)*8);
- for(auto offset:offsets)if(offset!=-1&&(offset<int64_t(header)||offset>int64_t(data.size())))return false;
+ // Tesseract's loader reads the present entries one after another from the
+ // end of the table, each up to the next present one: the first must start
+ // there and none may go backwards.
+ int64_t previous=-1;
+ for(auto offset:offsets){
+  if(offset==-1)continue;
+  if(offset<int64_t(header)||offset>int64_t(data.size()))return false;
+  if(previous<0?offset!=int64_t(header):offset<previous)return false;
+  previous=offset;
+ }
  const auto lstm=offsets[lstmEntry];if(lstm<0)return false;
  int64_t end=int64_t(data.size());
  for(uint32_t i=lstmEntry+1;i<entries;++i)if(offsets[i]>=0){end=offsets[i];break;}
@@ -168,9 +178,10 @@ QList<QRect> TextEngine::layoutBlocks(const GreyImage& band,double scale){
  api_->Clear();
  return blocks;
 }
-BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs,bool* cutShort,const QRect& rectangle){
- BandText out;if(cutShort)*cutShort=false;
- if(!api_||band.width<1||band.height<1)return out;
+BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs,bool* cutShort,const QRect& rectangle,bool* failed){
+ BandText out;if(cutShort)*cutShort=false;if(failed)*failed=false;
+ if(!api_){if(failed)*failed=true;return out;}
+ if(band.width<1||band.height<1)return out;
  prepare(band,scale);
  if(rectangle.isValid())api_->SetRectangle(rectangle.x(),rectangle.y(),rectangle.width(),rectangle.height());
  // The monitor's deadline stops recognition between words. Tesseract then
@@ -180,7 +191,7 @@ BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs
  const int status=api_->Recognize(deadlineMs>0?&monitor:nullptr);
  const bool late=deadlineMs>0&&monitor.deadline_exceeded();
  if(cutShort)*cutShort=late;
- if(status!=0&&!late){api_->Clear();return out;}
+ if(status!=0&&!late){api_->Clear();if(failed)*failed=true;return out;}
  std::unique_ptr<tesseract::ResultIterator> it(api_->GetIterator());
  if(it){
   int block=-1;

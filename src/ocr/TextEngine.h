@@ -72,8 +72,9 @@ public:
  // Stops at the deadline (milliseconds from now; 0 means none) and returns the
  // words read until then, in reading order, with cutShort set. With a
  // rectangle, only that part of the band is laid out and recognized; boxes stay
- // in the band's pixels.
- BandText recognize(const GreyImage& band,double scale,int deadlineMs=0,bool* cutShort=nullptr,const QRect& rectangle={});
+ // in the band's pixels. failed is set when Tesseract failed, which is not the
+ // same as a band with no text.
+ BandText recognize(const GreyImage& band,double scale,int deadlineMs=0,bool* cutShort=nullptr,const QRect& rectangle={},bool* failed=nullptr);
  static QString version();
 private:
  void prepare(const GreyImage& band,double scale);
