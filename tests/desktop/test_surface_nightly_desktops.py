@@ -442,7 +442,8 @@ class NightlyTests(unittest.TestCase):
                 lock.return_value.release.return_value = {}
                 lock.return_value.heartbeat.return_value = {}
                 lock.return_value.status.return_value = dict(state='free')
-                records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity, artifacts, root/'output', 10**6)
+                records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity, artifacts, root/'output',
+                                             nightly.time.monotonic() + 10**6)
             return records[0], cells, retire, (root/'putgd-lab/locks/tier1-guest.lock.d').exists()
 
     def test_lost_session_stops_the_row_with_the_first_failure(self):
