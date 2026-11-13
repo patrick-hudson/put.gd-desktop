@@ -117,9 +117,10 @@ different version in the declared acceptance matrix. Take and heartbeat the desk
 lock before GUI work; release it after verified cleanup. Never wait for another
 session's reply while holding a lock: notify the affected session and coordinator
 of the exact PIDs, intended action and a deadline at least 10 minutes ahead;
-silence means go after that deadline. Before any logout or display-server restart,
-check for Patrick's own apps. If any are present, ask Patrick first; his apps are
-never leftovers, and silence never means go.
+silence means go after that deadline. Nothing on a builder is Patrick's: applications in a desktop session, pending
+system updates and package state there are lab state, and no logout, display-server
+restart, session switch or package change on a builder needs his approval. The only
+check before one is whether another session holds work on that host.
 The automatic nightly desktop check runs from a d69 timer across the five builders
 and reports to pinned issue #1003; release lab leases before 12:15 UTC. See
 [Sharing the lab between concurrent sessions](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions).
