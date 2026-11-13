@@ -118,7 +118,7 @@ void ScrollCaptureService::placeShellBar(){
   },Qt::QueuedConnection);
  });
 }
-void ScrollCaptureService::event(QJsonObject e){if(e["id"]!=id_||id_.isEmpty()||cancelling_)return;const auto type=e.take("event").toString();if(type=="finished")complete(e);else if(type=="cancelled")terminate({},true);else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");maybeStartHelper();}else if(type=="progress"){for(auto i=e.begin();i!=e.end();++i)view_[i.key()]=i.value();update("capturing");}}
+void ScrollCaptureService::event(QJsonObject e){if(e.value("id")!=id_||id_.isEmpty()||cancelling_)return;const auto type=e.take("event").toString();if(type=="finished")complete(e);else if(type=="cancelled")terminate({},true);else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");maybeStartHelper();}else if(type=="progress"){for(auto i=e.begin();i!=e.end();++i)view_[i.key()]=i.value();update("capturing");}}
 void ScrollCaptureService::complete(QJsonObject r){
  const auto path=r["path"].toString();const auto bytes=r["bytes"].toInteger();const int w=r["width"].toInt(),h=r["height"].toInt();const auto reason=r["endReason"].toString();const int cap=r["appliedMaxHeight"].toInt();
  Error bad{"scroll_output_invalid","Scrolling capture output failed validation",{}};
@@ -127,7 +127,7 @@ void ScrollCaptureService::complete(QJsonObject r){
  if(fd<0){terminate(bad);return;}QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);terminate(bad);return;}
  if(fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid()||st.st_size!=bytes){terminate(bad);return;}
  const auto png=file.read(bytes+1);if(png.size()!=bytes||!png.startsWith(QByteArray::fromHex("89504e470d0a1a0a0000000d49484452"))||qFromBigEndian<quint32>(png.constData()+16)!=quint32(w)||qFromBigEndian<quint32>(png.constData()+20)!=quint32(h)||QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())!=r["sha256"].toString()){terminate(bad);return;}
- r.remove("path");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r["stats"];const auto stats=r["stats"].toObject();for(auto i=stats.begin();i!=stats.end();++i)view_[i.key()]=i.value();
+ r.remove("path");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();for(auto i=stats.begin();i!=stats.end();++i)view_[i.key()]=i.value();
  // The scroll-to-top step did not prove the top: said with every end reason, and the image is kept.
  if(r.contains("topReached"))view_["topReached"]=r.value("topReached");
  update("done");

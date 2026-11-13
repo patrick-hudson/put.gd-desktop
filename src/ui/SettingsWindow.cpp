@@ -2362,7 +2362,7 @@ bool SettingsWindow::applyProtonAccountResult(const QString& id,const QJsonObjec
   if(uid==selected){selectedIndex=folders.size();settings["folderName"]=name;}
   folders.append(QJsonObject{{"uid",uid},{"name",name},{"label",name.isEmpty()?QString("Saved Proton folder"):name}});
  }
- if(!selected.isEmpty()&&selectedIndex==0){selectedIndex=folders.size();const auto name=settings["folderName"].toString();folders.append(QJsonObject{{"uid",selected},{"name",name},{"label",name.isEmpty()?QString("Saved Proton folder"):name}});}
+ if(!selected.isEmpty()&&selectedIndex==0){selectedIndex=folders.size();const auto name=settings.value("folderName").toString();folders.append(QJsonObject{{"uid",selected},{"name",name},{"label",name.isEmpty()?QString("Saved Proton folder"):name}});}
  auto proton=previous;proton["accountRootUid"]=root;proton["accountEmail"]=email;proton["folders"]=folders;proton["folderIndex"]=selectedIndex;editor["proton"]=proton;
  auto providers=editor["providers"].toObject();auto retained=providers["proton-drive"].toObject();auto providerEditor=retained["editor"].toObject();providerEditor["proton"]=proton;retained["editor"]=providerEditor;retained["settings"]=settings;providers["proton-drive"]=retained;editor["providers"]=providers;profileEditors_[index]=editor;
  profile["settings"]=settings;profiles[index]=profile;draft_["profiles"]=profiles;

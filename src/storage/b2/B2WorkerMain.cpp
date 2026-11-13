@@ -705,7 +705,7 @@ private:
         if (progress.contains("target") && progress["target"].toObject() != target) return {{"status", "changed"}, {"progress", progress}};
         progress["schemaVersion"] = 1;
         progress["target"] = target;
-        const auto phase = progress["phase"].toString();
+        const auto phase = progress.value("phase").toString();
         if (phase == "done") return {{"status", "removed"}, {"progress", progress}};
         const auto finish = [&](const QString& status) {
             progress["phase"] = "done";

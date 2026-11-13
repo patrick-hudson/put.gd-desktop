@@ -69,15 +69,15 @@ QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;
     // Before "auto" existed every configuration saved the 2 GiB default
     // explicitly; that exact value now means "auto".
-    if (doc["limits"].isObject()) {
-        auto limits = doc["limits"].toObject();
+    if (doc.value("limits").isObject()) {
+        auto limits = doc.value("limits").toObject();
         bool migrated = false;
         for (const auto& key : artifactByteLimitKeys())
             if (limits.value(key).isDouble() && limits.value(key).toDouble() == double(formerArtifactDefault)) { limits[key] = QStringLiteral("auto"); migrated = true; }
         if (migrated) doc["limits"] = limits;
     }
-    auto actions = doc["actions"].toObject();
-    if (!doc["actions"].isObject() || !actions["region"].isObject()) return doc;
+    auto actions = doc.value("actions").toObject();
+    if (!doc.value("actions").isObject() || !actions.value("region").isObject()) return doc;
     // Edit & upload and screen recording were added after schema 1 shipped.
     // Older documents inherit the region output route with no shortcut; the
     // user assigns a key explicitly. Edit copies the route; record keeps

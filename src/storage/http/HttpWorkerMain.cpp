@@ -936,7 +936,7 @@ private:
         if (progress.contains("target") && progress["target"].toObject() != target) return {{"status", "changed"}, {"progress", progress}};
         progress["schemaVersion"] = 1;
         progress["target"] = target;
-        const auto phase = progress["phase"].toString();
+        const auto phase = progress.value("phase").toString();
         if (phase == "done") return {{"status", "removed"}, {"progress", progress}};
         // The recorded deletion URL may name stored values; they are filled in only here.
         const auto recorded = expected.objectReference["deletionUrl"].toString();
