@@ -44,11 +44,14 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
 
- // Panels: a whole screen of windows is read window by window, column by
- // column; anything else is one panel, the whole image, read as before.
+ // Panels: a whole screen of windows (an input of largeInputPixels or more)
+ // is read window by window, column by column; anything smaller is one
+ // panel, the whole image, read as before. On small windows panels hurt: a
+ // chat window cut into its message list read 2.0 to 2.2% against 0.4%.
+ const bool screen=qint64(image.width)*image.height>=options.limits.largeInputPixels;
  struct Panel { QRect rect;GreyView view;QList<Quad> codes;Profile profile;Plan plan;bool invert=false;QList<Band> tasks;bool split=false; };
  QList<Panel> panelList;
- for(const auto& rect:options.panels?panels(image,areas,result.profile.lineHeight):QList<QRect>{QRect(0,0,image.width,image.height)}){
+ for(const auto& rect:options.panels&&screen?panels(image,areas,result.profile.lineHeight):QList<QRect>{QRect(0,0,image.width,image.height)}){
   Panel p;p.rect=rect;
   p.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
   for(const auto& q:areas){
@@ -62,8 +65,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  // The scale: each panel the one its text asks for, within the job's scaled
  // pixels, all lowered together towards 1x when they do not fit.
- const bool large=qint64(image.width)*image.height>=options.limits.largeInputPixels;
- const qint64 cap=large?options.limits.largeScaledPixels:options.limits.scaledPixels;
+ const qint64 cap=screen?options.limits.largeScaledPixels:options.limits.scaledPixels;
  double wantedPixels=0;
  for(const auto& p:panelList){
   const double s=options.limits.forcedScale>0?options.limits.forcedScale:preferredScale(p.profile.lineHeight,options.limits.maximumScale);

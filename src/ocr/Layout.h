@@ -40,7 +40,8 @@ struct PlanLimits {
  // allow (a 4K UI page took 20 s at 1.7x and 3 s at 1x).
  qint64 scaledPixels=8000000;
  // The same for an input of at least largeInputPixels (a whole screen of 4K or
- // more), where each panel gets the scale its text asks for within this.
+ // more), which is also the only input cut into panels; each panel gets the
+ // scale its text asks for within this.
  qint64 largeScaledPixels=16000000;
  qint64 largeInputPixels=4000000;
  qint64 singlePassPixels=bandPixelLimit; // up to this the image is recognized whole
