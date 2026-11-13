@@ -19,6 +19,9 @@ public:
  Error saveOperation(const Operation&,const ProviderRegistry* = nullptr); // operation and item ledger in one transaction
  // Persist the full operation snapshot atomically with only changed ledger items.
  Error checkpointOperation(const Operation&,const QSet<QString>& changedItems,const ProviderRegistry* = nullptr);
+ // A completed or cancelled text operation leaves no journal row (#1428), so a
+ // much-used action does not grow the journal. Failed and interrupted ones stay.
+ Error removeTextOperation(const QString& id);
  Operation operation(const QString&,Error* = nullptr) const;
  QList<Operation> recover(Error* = nullptr);
  Error indexPublications(const ProviderRegistry&);

@@ -249,7 +249,7 @@ TrayController::TrayController(OperationService& operations,
   entry->setData(action);entry->setProperty("commandLabel",label);
   connect(entry, &QAction::triggered, this, [this, action] { invokeAction(action); });
  };
- const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"edit","Capture region && edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
  for(const auto& action:Settings::shortcutOrder()){
   capture(action,labels.value(action));
   if(action!="desktop")continue;

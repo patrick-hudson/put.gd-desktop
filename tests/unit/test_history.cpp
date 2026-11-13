@@ -109,6 +109,16 @@ private slots:
  void expiryIsExplicitAndRecentActivityIsBounded() {
   QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="operation";op.created="2000-01-01T00:00:00.000Z";op.settings=Settings::fromValidated(Settings::defaults());op.destination.profileId="test";OperationItem item;item.artifact.id="item";item.artifact.name="fixture.txt";item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="uploaded";op.items={item};QVERIFY(!store.saveOperation(op));QCOMPARE(store.list({}).total,1);QCOMPARE(store.recent(1).size(),1);QVERIFY(!store.expireBefore("2026-10-07T00:00:00.000Z"));QCOMPARE(store.list({}).total,0);QCOMPARE(store.recent(1).size(),1);QVERIFY(!store.saveOperation(op));QCOMPARE(store.list({}).total,0);
  }
+ // A text recognition (#1428) found mid-job after a crash is marked interrupted
+ // and stays so: nothing reads the screen or runs the helper again on its own.
+ void interruptedTextRecognitionIsNeverRerun() {
+  QTemporaryDir d;const auto path=d.filePath("history.sqlite");
+  {HistoryStore store(path);Operation op;op.id="text-op";op.action="text";op.state="recognizing";op.phase="recognizing";op.settings=Settings::fromValidated(Settings::defaults());QVERIFY(!store.saveOperation(op));}
+  HistoryStore reopened(path);Error error;QCOMPARE(reopened.recover(&error).size(),1);QVERIFY(!error);
+  const auto saved=reopened.operation("text-op");QCOMPARE(saved.state,QString("interrupted"));QCOMPARE(saved.error.code,QString("text_interrupted"));QCOMPARE(saved.copyStatus,QString("no_result"));
+  QVERIFY(!Operation::activeState(saved.state));
+  reopened.recover(&error);QVERIFY(!error);QCOMPARE(reopened.operation("text-op").toJson(),saved.toJson());
+ }
  void interruptedStatesNeverPublish() {QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));Operation op;op.id="op";op.state="running";op.phase="uploading";op.settings=Settings::fromValidated(Settings::defaults());OperationItem item;item.artifact.id="item";item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress=UploadProgress{"uploading",1024,{}};item.candidate="fixed";item.publicationId="marker";op.items={item};QVERIFY(!store.saveOperation(op));auto recovered=store.recover();QCOMPARE(recovered.size(),1);auto saved=store.operation("op");QCOMPARE(saved.state,QString("interrupted"));QCOMPARE(saved.phase,QString("interrupted"));QCOMPARE(saved.copyStatus,QString("no_result"));QCOMPARE(saved.items[0].phase,QString("unknown"));QCOMPARE(saved.items[0].uploadProgress->bytesTransferred.value(),1024);QCOMPARE(saved.items[0].uploadStatus,QString("unknown"));QCOMPARE(saved.items[0].candidate,QString("fixed"));QCOMPARE(saved.items[0].publicationId,QString("marker"));}
  void recoveredInterruptedCopiesSettleWithoutChangingConfirmedReceipts_data() {
   QTest::addColumn<QString>("state");QTest::addColumn<QString>("copy");

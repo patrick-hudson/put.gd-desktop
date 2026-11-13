@@ -118,7 +118,7 @@ QString title(const QString& s){return s.left(1).toUpper()+s.mid(1);}
 constexpr int advancedTab=3;
 const QString themePath=QStringLiteral("/preferences/appearance/theme");
 // The shared command names (main window, menu, tray and shortcuts).
-QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"repeat","Repeat last region"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"record","Record screen"}};return labels.value(action);}
+QString actionLabel(const QString& action){static const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"monitor","Capture monitor"},{"repeat","Repeat last region"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"}};return labels.value(action);}
 // Sharing and link copying live together under the default capture output.
 QString sharingLabel(const QString& mode){return mode=="share"?QString("Create a share link"):mode=="private"?QString("Keep private"):QString("Destination default");}
 QString storageClassLabel(const QString& value){
