@@ -82,6 +82,16 @@ def generate(out):
         for dark in (False, True):
             for size in (11, 14, 20):
                 page(f'redact-{font}-{size}-{dark}', sensitive(), size, font, dark)
+    german=('Am frühen Morgen öffnet die Gruppe das Fenster und prüft die neue Anzeige. '
+            'Größe, Farbe und Abstand helfen beim Lesen der Wörter. Über dem ruhigen Fluss '
+            'ziehen Vögel nach Süden, während die Kinder draußen spielen. ')
+    page('german-prose', [('body', line) for line in textwrap.wrap(german * 8, 110)])
+    confusions=[('phone','+l 2O2 555 Ol42'),('address','l92.O.2.42'),('address','2OOl:db8::42'),
+                ('card',card().replace('0','O').replace('1','I').replace('5','S').replace('8','B'))]
+    page('redact-confusions',confusions)
+    (out/'redact-confusions.expected.json').write_text(json.dumps(dict(
+        pairs=[dict(raw_codepoints=list(map(ord,a)),normalized=b) for (_,a),b in zip(confusions,
+            ['+1 202 555 0142','192.0.2.42','2001:db8::42',card()])]),indent=2))
     page('clean-prose', [('clean', line) for line in textwrap.wrap(PROSE * 8, 120)])
     page('clean-code', [('clean', line) for line in ('def total(values):\n    result = 0\n    for value in values:\n        result += value\n    return result\n' * 8).splitlines()])
     page('hashes', [('token', hashlib.sha256(f'synthetic {i}'.encode()).hexdigest()) for i in range(30)])
@@ -135,7 +145,13 @@ def generate(out):
                         manifest['codes'].append(variant)
     qr_images=[out/c['image'] for c in manifest['codes'] if c['format']=='qr'][:4]
     busy=page('codes-busy', [('body',line) for line in textwrap.wrap(PROSE*8,120)])
-    for i,path in enumerate(qr_images): busy.paste(Image.open(path).convert('RGB'), (100+i*300,300))
+    placed=[]
+    for i,path in enumerate(qr_images):
+        code=Image.open(path).convert('RGB'); x,y=100+i*300,300
+        busy.paste(code, (x,y))
+        original=next(c for c in manifest['codes'] if c['image']==path.name)
+        placed.append(dict(original,box=[x,y,x+code.width,y+code.height]))
+    (out/'codes-multiple-busy.truth.json').write_text(json.dumps(dict(codes=placed),indent=2))
     busy.save(out/'codes-multiple-busy.png')
     (out/'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
 
