@@ -1,6 +1,6 @@
 # The application library and the files it compiles in.
 add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/UploadSlots.cpp src/app/ScrollCaptureService.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/ResidentSession.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp src/app/UpdateService.cpp src/app/AppImageInstall.cpp src/app/FileUploads.cpp src/app/FileManagerIntegration.cpp)
-target_sources(putgd_app PRIVATE src/app/ScrollHelperBackend.cpp)
+target_sources(putgd_app PRIVATE src/app/ScrollHelperBackend.cpp src/app/HelperSupervisor.cpp)
 # Text recognition (#1428): the resident's interface to the putgd-ocr helper.
 target_sources(putgd_app PRIVATE src/app/TextService.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core PRIVATE putgd_credentials putgd_ui_control ${CMAKE_DL_LIBS})
