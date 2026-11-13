@@ -1135,6 +1135,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done){
  quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
  text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done](Error error){
   if(!g)return;g->quickRedacting_=false;
+  if(g->busy_){g->quickRedactResult_->setText("Quick redact added nothing: the edit was already submitted.");Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done({"editor_finalizing","The edit was already submitted or discarded",{}},{});return;}
   if(error){g->quickRedactResult_->setText(error.code=="edit_stale"?QStringLiteral("A redaction or the crop changed, so nothing was added. Try again."):error.message);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(error,{});return;}
   // Every match is ordinary Redact marks, all added as one undo step.
   const auto& candidates=g->text_->candidates();const auto matches=editor::quickRedact::find(candidates,categories);
