@@ -378,7 +378,8 @@ def build(receipt_path, output, timestamp, cache, runtime_lock, *, git=git_sourc
         # release commit; never scrape arbitrary worktree files or payloads.
         recipes = ['tools/releases/provision-appimage.py', 'tools/releases/build-appimage.sh',
                    'packaging/appimage/tools.lock.json', 'packaging/appimage/media.json',
-                   'packaging/appimage/components.json', 'cmake/dependency-lock.json']
+                   'packaging/appimage/components.json', 'packaging/appimage/BSD-3-Clause.txt',
+                   'cmake/dependency-lock.json']
         for name in recipes:
             data = _run('git', '-C', str(ROOT), 'show', receipt['build']['gitCommit'] + ':' + name).stdout
             path = stage / 'build-recipes' / name

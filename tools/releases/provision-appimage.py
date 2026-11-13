@@ -5,6 +5,7 @@ import hashlib
 import shutil
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -32,6 +33,27 @@ def checkout(item, destination, license_only=False):
     actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != item['commit']:
         raise ValueError('Dependency checkout differs from locked commit')
+
+
+def zxing_notices(root: Path, source: Path):
+    """Retain the reader library's embedded BSD and MIT notices from its pin."""
+    embedded = next(c for c in json.loads((root / 'packaging/appimage/components.json').read_text())['components'] if c['id'] == 'zxing')['embedded'][0]
+    zueci = source / 'core/src/libzueci'
+    version = re.search(r'/\* Version:\s*([0-9.]+)\s*\*/', (zueci / 'zueci.h').read_text())
+    if version is None or version[1] != embedded['version']:
+        raise ValueError('Refresh the embedded libzueci identity and notices for this ZXing release')
+    copyrights = sorted({line.strip().strip('/* ').rstrip(' */')
+                          for path in zueci.iterdir() if path.suffix in ('.c', '.h')
+                          for line in path.read_text().splitlines()[:12] if 'Copyright' in line})
+    mit = [text for text in re.findall(r'/\*.*?\*/', (zueci / 'zueci.c').read_text(), re.S)
+           if 'Permission is hereby granted' in text]
+    if not copyrights or len(mit) != 1:
+        raise ValueError('Pinned libzueci lost its expected copyright or inline MIT notice')
+    notice = ('libzueci ' + version[1] + ', embedded in ZXing-cpp\n\n' +
+              '\n'.join(copyrights) + '\n\n' +
+              (root / 'packaging/appimage/BSD-3-Clause.txt').read_text() +
+              '\nInline UTF-8 decoder notice from zueci.c:\n' + mit[0] + '\n')
+    (source / 'PUTGD-THIRD-PARTY-NOTICES.txt').write_text(notice)
 
 
 def main():
@@ -92,6 +114,8 @@ def main():
         item = lock[name]
         source = sources / name
         checkout(item, source)
+        if name == 'zxing':
+            zxing_notices(root, source)
         options = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=ON',
                    '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_INSTALL_LIBDIR=lib',
                    '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_INSTALL_RPATH=$ORIGIN',

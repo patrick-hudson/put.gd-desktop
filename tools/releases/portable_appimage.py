@@ -556,13 +556,14 @@ def ocr_library_paths(appdir: Path, path: Path) -> dict:
     if "not found" in output:
         raise ValueError("Unresolved empty-environment OCR dependency: " + path.name)
     resolved = {}
-    host_runtime = {"libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0",
-                    "librt.so.1", "libresolv.so.2", "libstdc++.so.6", "libgcc_s.so.1"}
+    image_owned = ("libQt6", *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES)
     for name, target in re.findall(r"^\s*(\S+)\s+=>\s+(\S+)", output, re.M):
         location = Path(target).resolve()
         bundled = appdir / "usr/lib" / name
         # A host copy with the same SONAME must never mask a broken RUNPATH.
-        if bundled.exists() or name not in host_runtime:
+        # Match the existing AppImage policy: ordinary system libraries that
+        # linuxdeploy excludes (including libz) remain host-provided.
+        if bundled.exists() or bundled.is_symlink() or name.startswith(image_owned):
             if not location.is_relative_to(appdir.resolve()):
                 raise ValueError("OCR dependency resolves outside AppDir: " + name + " -> " + str(location))
         resolved[name] = str(location)

@@ -207,13 +207,18 @@
         "from": "lock",
         "key": "zxing"
       },
-      "license": "Apache-2.0",
+      "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
       "licenseTexts": {
-        "Apache-2.0": "LICENSE"
+        "Apache-2.0": "LICENSE",
+        "BSD-3-Clause": "PUTGD-THIRD-PARTY-NOTICES.txt",
+        "MIT": "PUTGD-THIRD-PARTY-NOTICES.txt"
       },
       "licenseFiles": [
-        "LICENSE"
+        "LICENSE",
+        "PUTGD-THIRD-PARTY-NOTICES.txt"
       ],
+      "embedded": [{"name": "libzueci", "version": "1.0.1", "license": "BSD-3-Clause AND MIT",
+                    "licenseText": "usr/share/doc/putgd/bundled-licenses/zxing/PUTGD-THIRD-PARTY-NOTICES.txt"}],
       "files": [
         "usr/lib/libZXing.so*"
       ]

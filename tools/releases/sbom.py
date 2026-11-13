@@ -316,6 +316,12 @@ def appimage_components(root):
         found.append(component(name, version, generic_purl(name, version), 'bundled', cpes=cpes_for(key, version),
                                license=item.get('license'), repository=(source.get('repository') or '').removesuffix('.git') or None,
                                commit=source.get('commit'), properties=appimage_scope_properties(root, item)))
+        if identifier == 'zxing':
+            for embedded in item.get('embedded', []):
+                found.append(component(embedded['name'], embedded['version'],
+                                       generic_purl(embedded['name'], embedded['version']), 'bundled',
+                                       license=embedded['license'], repository=source['repository'].removesuffix('.git'),
+                                       commit=source['commit'], properties=[('putgd:embeddedIn', 'zxing-cpp')]))
         if key == 'qt':
             found += [entry for entry in (qt_embedded(identifier, embedded, embedded_scope_properties(root, item, embedded))
                                           for embedded in item.get('embedded', [])) if entry]
