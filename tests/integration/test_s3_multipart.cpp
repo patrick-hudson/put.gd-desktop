@@ -265,7 +265,7 @@ private slots:
         PUTGD_TRY_VERIFY(operations.ready());
         QString id;
         operations.invoke("clipboard", [&](Error error, QJsonObject result) { QVERIFY(!error); id = result["operationId"].toString(); });
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!id.isEmpty() && HistoryStore(operations.databasePath()).operation(id).state == "completed", 30000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!id.isEmpty() && HistoryStore(operations.databasePath()).operation(id).stateName() == "completed", 30000);
         operations.shutdown();
         logging::flush();
         const auto bytes = readLogs(dir.filePath("logs"));

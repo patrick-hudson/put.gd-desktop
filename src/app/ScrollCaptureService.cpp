@@ -66,7 +66,7 @@ void ScrollCaptureService::prepareProbed(QJsonObject p,bool edit,bool autoStart,
  // A command an earlier session's hold still keeps back is answered now: its session has ended.
  notBefore_=0;holdTimer_.stop();releaseHeld();
  shownFrame_={};edit_=edit;id_=op_.id;held_=false;cancelling_=false;emit preparing();directory_=root_+"/"+id_;QDir().mkpath(directory_);QFile::setPermissions(directory_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
- op_.state="acquiring";view_={{"id",id_},{"operationId",id_},{"state","preparing"},{"height",0},{"steps",0},{"pixelsPerNotch",0}};
+ op_.advance(OperationState::Acquiring);view_={{"id",id_},{"operationId",id_},{"state","preparing"},{"height",0},{"steps",0},{"pixelsPerNotch",0}};
  const auto settings=op_.settings;p["maxHeight"]=p["maxHeight"].toInt(settings.scrollCaptureMaxHeight);p["fromTop"]=settings.scrollCaptureFromTop;p["autoStart"]=autoStart;
  p["maxPixels"]=double(std::min<qint64>({settings.limits.imagePixels,settings.limits.imageBytes/4,edit?EditorJob::admissionPixels:settings.limits.imagePixels}));
  shellAutoStart_=shell_&&autoStart;helperAutoStart_=!shell_&&autoStart;shellPlacing_=false;
@@ -138,7 +138,7 @@ void ScrollCaptureService::complete(QJsonObject r){
  ClipboardPayload payload;if(edit_){payload.kind="files";payload.files={path};}else{payload.kind="png";payload.bytes=png;payload.mime="image/png";}
  QPointer<ScrollCaptureService> g(this);host_.admit(op,std::move(payload),[g,id,path]{if(g)QMetaObject::invokeMethod(g,[g,id,path]{if(g){QFile::remove(path);QDir(g->root_+"/"+id).removeRecursively();}},Qt::QueuedConnection);});
 }
-void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";update(op_.state);rememberResult();id_.clear();pending_.clear();cancelling_=false;shellSelecting_=false;shellPlacing_=false;held_=false;if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);
+void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.advance(cancelled?OperationState::Cancelled:OperationState::Failed);update(op_.stateName());rememberResult();id_.clear();pending_.clear();cancelling_=false;shellSelecting_=false;shellPlacing_=false;held_=false;if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);
  // A start that was waiting for the bar's placement ends with the session.
  if(auto waiting=std::exchange(startWaiting_,{}))waiting(e?e:Error{"cancelled","Scrolling capture ended",{}},{});
  emit ended();}

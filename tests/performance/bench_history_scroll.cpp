@@ -88,7 +88,7 @@ int main(int argc,char** argv){
  const auto now=QDateTime::currentDateTimeUtc();QElapsedTimer seed;seed.start();
  {HistoryStore ledger(operations.databasePath());for(int i=0;i<items;++i){
   const bool video=i%2;Operation op;op.id=QString("synthetic-operation-%1").arg(i);op.action=video?"record":i%4==0?"region":"window";
-  op.created=now.addSecs(-60-i*600).toString(Qt::ISODateWithMs);op.state="completed";op.copyStatus="copied";op.settings=settings.snapshot();
+  op.created=now.addSecs(-60-i*600).toString(Qt::ISODateWithMs);op.restore(OperationState::Completed);op.copyStatus="copied";op.settings=settings.snapshot();
   OperationItem item;item.artifact.id=QString("synthetic-file-%1").arg(i);item.artifact.name=video?QString("Recording %1.webm").arg(i):QString("Screenshot %1.png").arg(i);
   item.artifact.mime=video?"video/webm":"image/png";item.artifact.category=video?"videos":"images";item.artifact.path=originals.at(i%6);item.artifact.bytes=QFileInfo(originals.at(i%6)).size();
   item.artifact.previewPath=previews+"/"+item.artifact.id+".png";if(i<200&&!picture(i,{960,540}).save(item.artifact.previewPath))return 2;
