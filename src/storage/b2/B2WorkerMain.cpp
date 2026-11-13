@@ -705,7 +705,8 @@ private:
         if (progress.contains("target") && progress["target"].toObject() != target) return {{"status", "changed"}, {"progress", progress}};
         progress["schemaVersion"] = 1;
         progress["target"] = target;
-        const auto phase = progress.value("phase").toString();
+        const auto previousPhase = progress.value("phase");
+        const auto phase = previousPhase.toString();
         if (phase == "done") return {{"status", "removed"}, {"progress", progress}};
         const auto finish = [&](const QString& status) {
             progress["phase"] = "done";
@@ -718,7 +719,7 @@ private:
         if (status != "own") return {{"status", "unknown"}, {"progress", progress}};
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         progress["phase"] = "delete_intent";
-        if (auto e = checkpoint(progress)) { error = e; progress["phase"] = phase; return {{"status", "failed"}, {"progress", progress}}; }
+        if (auto e = checkpoint(progress)) { error = e; progress["phase"] = previousPhase; return {{"status", "failed"}, {"progress", progress}}; }
         const auto r = client_.call("b2_delete_file_version", {{"fileName", expected.objectReference["key"].toString()}, {"fileId", expected.objectReference["fileId"].toString()}}, false);
         if (r.ok()) return finish("removed");
         Error again;
