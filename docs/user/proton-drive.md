@@ -137,6 +137,17 @@ and marker. SDK link mutations have no atomic revision precondition, so an
 external revision change can race the mutation; a fresh post-check suppresses
 an unconfirmed URL. Do not treat a link as an immutable revision URL.
 
+Proton can answer a read made straight after an upload as if the new file were
+not there yet, or without the details put.gd stored with it. For the file the
+helper has just uploaded, it reads the file again for about ten seconds before
+it believes such an answer; a read that shows another version of the file, or
+the file renamed, moved or in the trash, is believed at once. If the file still
+does not read as put.gd's own, no link is made and History shows **Sharing
+outcome unknown** rather than **Share link changed**. Nothing is uploaded again:
+Inspect link in History reads the file again and Share then makes the link, or
+Retry inspects it the same way and the next Retry makes the link, as for any
+uncertain link (#1399).
+
 Safe remote deletion is unavailable because the SDK does not expose atomic
 revision-guarded deletion. The app rejects deletion of a recorded Proton file;
 use link revocation or manage deletion in Proton. The helper never empties Trash.
