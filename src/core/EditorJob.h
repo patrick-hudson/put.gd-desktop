@@ -39,10 +39,18 @@ public:
  CopyHandler copyHandler() const;
  void finishCopy(Error);
  std::optional<Error> takeCopyResult();
+ // Copy text (#1428): the editor's recognized text or a code's content, which
+ // the resident copies as an explicit copy; `done` once, from any thread.
+ using TextCopyHandler=std::function<void(QString text,std::function<void(Error)> done)>;
+ void setTextCopyHandler(TextCopyHandler);
+ TextCopyHandler textCopyHandler() const;
+ void finishTextCopy(const QString& copyId,Error);
+ QList<std::pair<QString,Error>> takeTextCopyResults();
 private:
  mutable std::mutex mutex_;
  QList<Pending> queue_;
  CopyHandler copyHandler_;std::optional<Error> copyResult_;
+ TextCopyHandler textCopyHandler_;QList<std::pair<QString,Error>> textCopyResults_;
  QString phase_="starting",pendingAppearance_;
  std::atomic_bool cancelled_{false};
 };
@@ -58,6 +66,9 @@ public:
  static constexpr int maximumQueuedCommands=16;
  // The largest edited PNG the editor hands to the clipboard.
  static constexpr qint64 maximumCopyBytes=128LL*1024*1024;
+ // The longest text the editor hands to the clipboard, and how many such copies may wait.
+ static constexpr qsizetype maximumTextCopyCharacters=4*1024*1024;
+ static constexpr int maximumTextCopies=4;
  EditorJob(QString stagingRoot,QString helperPath={},int startupTimeoutMs=20000,int finalizeTimeoutMs=120000,int commandTimeoutMs=8000);
  // Custom colors the editor offers as quick picks; it reports them back.
  EditorJob& withRecentColors(QStringList colors){recentColors_=std::move(colors);return *this;}

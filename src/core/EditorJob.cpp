@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "BuildInfo.h"
 #include "SanitizedPng.h"
+#include "TextJobProtocol.h"
 #include "Settings.h"
 #include "ipc/UiControl.h"
 #include <QCoreApplication>
@@ -48,6 +49,10 @@ void EditorSession::setCopyHandler(CopyHandler handler){std::lock_guard lock(mut
 EditorSession::CopyHandler EditorSession::copyHandler() const {std::lock_guard lock(mutex_);return copyHandler_;}
 void EditorSession::finishCopy(Error error){std::lock_guard lock(mutex_);copyResult_=std::move(error);}
 std::optional<Error> EditorSession::takeCopyResult(){std::lock_guard lock(mutex_);return std::exchange(copyResult_,std::nullopt);}
+void EditorSession::setTextCopyHandler(TextCopyHandler handler){std::lock_guard lock(mutex_);textCopyHandler_=std::move(handler);}
+EditorSession::TextCopyHandler EditorSession::textCopyHandler() const {std::lock_guard lock(mutex_);return textCopyHandler_;}
+void EditorSession::finishTextCopy(const QString& copyId,Error error){std::lock_guard lock(mutex_);textCopyResults_.append({copyId,std::move(error)});}
+QList<std::pair<QString,Error>> EditorSession::takeTextCopyResults(){std::lock_guard lock(mutex_);return std::exchange(textCopyResults_,{});}
 
 namespace {
 // At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
@@ -164,7 +169,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;qint64 stderrBytes=0;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;qint64 stderrBytes=0;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -237,6 +242,16 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    handler(std::move(bytes),[session](Error result){session->finishCopy(std::move(result));});
    return;
   }
+  // Copy text (#1428): plain text, answered with copyResult for its copyId.
+  if(type=="copyText"&&editing&&!finalizing&&!checkpoint){
+   if(payload.size()!=5||!payload["copyId"].isString()||payload["copyId"].toString().isEmpty()||payload["copyId"].toString().size()>64||!payload["text"].isString()||payload["text"].toString().size()>maximumTextCopyCharacters){protocolFailed=true;return;}
+   const auto id=payload["copyId"].toString();const auto handler=session->textCopyHandler();
+   if(textCopies.contains(id)){protocolFailed=true;return;}
+   if(!handler||textCopies.size()>=maximumTextCopies){auto frame=envelope(nonce);frame["copyId"]=id;frame["ok"]=false;frame["code"]=handler?"editor_busy":"clipboard_unavailable";frame["message"]=handler?"Earlier copies are still being delivered to the clipboard":"The clipboard is not available";if(control.send("copyResult",frame).isEmpty())protocolFailed=true;return;}
+   textCopies.insert(id);
+   handler(payload["text"].toString(),[session,id](Error result){session->finishTextCopy(id,std::move(result));});
+   return;
+  }
   if(type=="checkpoint"&&ready&&!checkpoint&&payload["ok"].isBool()){
    QStringList colors;
    if(!recentColorList(payload["recentColors"],colors)){protocolFailed=true;return;}
@@ -277,12 +292,21 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(*copied){frame["code"]=copied->code.left(64);frame["message"]=copied->message.left(256);}
    if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
   }
+  for(const auto& [id,copied]:session->takeTextCopyResults()){
+   if(!textCopies.remove(id))continue;
+   auto frame=envelope(nonce);frame["copyId"]=id;frame["ok"]=!copied;
+   if(copied){frame["code"]=copied.code.left(64);frame["message"]=copied.message.left(256);}
+   if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
+  }
   for(auto& pending:session->take()){
    if(!editing||finalizing||checkpoint){pending.reply(failure("editor_finalizing"),{});continue;}
    const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
    auto frame=envelope(nonce);frame["requestId"]=id;frame["command"]=pending.command;frame["params"]=pending.params;
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
-   outstanding.insert(id,{std::move(pending.reply),clock.elapsed()+commandTimeoutMs_});
+   // Quick redact (#1428) answers when recognition is done, under the recognition deadline.
+   bool recognizing=false;for(const auto& entry:pending.params["commands"].toArray())recognizing=recognizing||entry.toObject()["op"]=="redactText";
+   const qint64 limit=pending.command=="apply"&&recognizing?qMax<qint64>(commandTimeoutMs_,textjob::maximumDeadlineMs+5000):commandTimeoutMs_;
+   outstanding.insert(id,{std::move(pending.reply),clock.elapsed()+limit});
   }
   for(auto it=outstanding.begin();it!=outstanding.end();){if(clock.elapsed()>it->deadline){it->reply({"editor_timeout","The editor did not answer this command in time",{}},{});if(expired.size()<256)expired.insert(it.key());it=outstanding.erase(it);}else ++it;}
   process.waitForReadyRead(50);
