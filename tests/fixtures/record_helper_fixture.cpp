@@ -139,6 +139,11 @@ int main(int argc, char** argv) {
             result(requestId, {{"bytes", double(bytes.size())}, {"durationUs", 6000000.0}});
             return;
         }
+        if (command == "pause" && mode == "late-pause") {
+            // Answers well after the resident's 1.5 s test deadline, then says so with a progress event.
+            QTimer::singleShot(4000, &app, [&, requestId] { result(requestId, {}); event("progress", {{"durationUs", 2000000.0}, {"lateAnswered", true}}); });
+            return;
+        }
         if (QStringList{"pause", "resume", "cancel", "raise", "overlay", "notice", "savedCopy"}.contains(command)) { result(requestId, {}); return; }
         if (command == "review") { result(requestId, {{"action", params["action"]}, {"visible", true}}); return; }
         auto frame = envelope;

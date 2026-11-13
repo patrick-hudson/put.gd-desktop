@@ -45,6 +45,24 @@ private slots:
   PUTGD_TRY_COMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
  }
+ void lateAnswerAfterATimeoutKeepsTheRecording(){
+  // #1443: the caller gets the timeout, and the helper's late answer is dropped: it holds the only copy of the clip.
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());qputenv("PUTGD_TEST_RECORD_MODE","late-pause");
+  const auto id=h.prepare();QVERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(h.state(id),QString("ready"));
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  QCOMPARE(h.rec("pause",{{"id",id}}).error.code,QString("recording_helper_timeout"));
+  // The fixture's event follows its late answer on the same pipe.
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["lateAnswered"].toBool(),10000);
+  QCOMPARE(h.state(id),QString("recording"));QVERIFY(h.backend->diagnostics()["active"].toBool());
+  QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+ }
+ void capabilitiesBeforeTheFirstProbeAnswerSayPending(){
+  // #1455: reading the empty cache must not fill it with nulls that replace the pending reason.
+  RecordingHelperBackend backend(PUTGD_RECORD_FIXTURE);bool probed=false;
+  backend.refreshCapabilities([&]{probed=true;});QVERIFY(!probed);
+  QCOMPARE(backend.capabilities()["reason"].toString(),QString("recording_probe_pending"));
+  PUTGD_TRY_VERIFY(probed);QVERIFY(backend.capabilities()["available"].toBool());
+ }
  void protocolFaultsStillFailTheHelper_data(){
   QTest::addColumn<QString>("mode");
   QTest::newRow("unknown request")<<QString("unknown-result");

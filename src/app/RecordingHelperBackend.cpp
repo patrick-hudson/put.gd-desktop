@@ -69,8 +69,9 @@ QJsonObject RecordingHelperBackend::capabilities() const {
 void RecordingHelperBackend::refreshCapabilities(std::function<void()> done) {
     const auto now = QDateTime::currentMSecsSinceEpoch();
     // On the image-copy route the targets follow the outputs connected right now.
-    const bool followsOutputs = cached_["acquisition"].toString() == "wlr-capture";
-    if (!cached_.isEmpty() && !followsOutputs && (cached_["available"].toBool() || now - cachedAt_ < failedProbeCacheMs)) { done(); return; }
+    // value(), not []: [] on an empty cache inserts null members, and capabilities() would return those (#1455).
+    const bool followsOutputs = cached_.value("acquisition").toString() == "wlr-capture";
+    if (!cached_.isEmpty() && !followsOutputs && (cached_.value("available").toBool() || now - cachedAt_ < failedProbeCacheMs)) { done(); return; }
     if (!QFileInfo(helperPath_).isExecutable()) { cached_ = unavailable("recording_helper_missing"); cachedAt_ = now; done(); return; }
     probeWaiters_.append(std::move(done));
     if (probe_) return;
@@ -90,7 +91,7 @@ void RecordingHelperBackend::finishProbe() {
     probeDeadline_.stop();
     QJsonObject result = unavailable("recording_probe_failed");
     // A failed re-probe mustn't drop the route that decides how soon the next one runs.
-    const auto route = cached_["acquisition"];
+    const auto route = cached_.value("acquisition");
     if (route.isString()) result["acquisition"] = route;
     if (process) {
         const auto output = process->readAllStandardOutput();
@@ -106,7 +107,7 @@ void RecordingHelperBackend::finishProbe() {
             probeOutput_.append(process->readAllStandardError());
             probeOutput_.finished(process->exitCode(), process->exitStatus(), running);
         }
-        if (result["reason"].isString()) logging::warning(logRecording(), "Screen recording is unavailable", {{"reason", result["reason"]}});
+        if (result.value("reason").isString()) logging::warning(logRecording(), "Screen recording is unavailable", {{"reason", result["reason"]}});
         process->deleteLater();
     }
     cached_ = result;
@@ -217,6 +218,9 @@ void RecordingHelperBackend::send(const QString& command, const QJsonObject& par
         if (found == guard->child_->outstanding.end()) return;
         auto reply = std::move(found->reply);
         guard->child_->outstanding.erase(found);
+        // The helper is kept: a recording cannot be taken again, and the service
+        // ends the session itself where a timeout means that (prepare, start, stop).
+        guard->child_->timedOut.insert(requestId, command);
         // The step that timed out, for the log and the operation's error (#250).
         logging::warning(logRecording(), "Recording helper command timed out", {{"operationId", guard->child_->id}, {"command", command}, {"timeoutMs", timeoutMs}});
         auto error = helperError("recording_helper_timeout", QStringLiteral("The recording helper did not answer %1 in time").arg(command));
@@ -242,6 +246,12 @@ void RecordingHelperBackend::receive(quint64 generation, const QString& type, co
         // still answer cancel (or an earlier command) while it tears down.
         if (child_->shuttingDown) return;
         const auto requestId = payload["requestId"].toString();
+        // The caller already has recording_helper_timeout for this request.
+        if (const auto late = child_->timedOut.constFind(requestId); late != child_->timedOut.cend()) {
+            logging::info(logRecording(), "Recording helper answered after its deadline", {{"operationId", child_->id}, {"command", late.value()}});
+            child_->timedOut.erase(late);
+            return;
+        }
         auto found = child_->outstanding.find(requestId);
         if (found == child_->outstanding.end() || !payload["ok"].isBool()) { failChild(generation, helperError("recording_helper_protocol", "The recording helper answered an unknown request")); return; }
         auto reply = std::move(found->reply);

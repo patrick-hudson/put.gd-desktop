@@ -49,6 +49,10 @@ private:
         quint64 generation = 0;
         bool ready = false, shuttingDown = false, exited = false;
         QHash<QString, Outstanding> outstanding;
+        // Requests answered with recording_helper_timeout, by id, with their
+        // command. The helper may still hold the clip, so it is kept, and its late
+        // answer to one of these is dropped (#1443).
+        QHash<QString, QString> timedOut;
         qint64 stderrBytes = 0;
     };
     void send(const QString& command, const QJsonObject& params, int timeoutMs, Reply);
