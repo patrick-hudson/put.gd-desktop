@@ -197,6 +197,22 @@ that goes back and forth over more than a hundred pixels several times a second 
 shakes to find it, and blows it up to many times its size.
 `record_identity_contract` pins the entry's list and its first `Exec` token.
 
+## Copy text
+
+Copy text ([design](../design/text-recognition.md)) selects a region exactly as **Capture region**
+does: the `putgd-region` selector, its cleanup and the transparent-frame fence before ScreenShot2.
+A text capture never changes the rectangle that **Repeat last region** remembers. The adapter
+reports `text` in its `capture` capabilities with the same value as `region`, so it is available
+exactly when region capture is. On the Ubuntu 24.04 DEB, which has no region selector, **Copy
+text from region** is unavailable for the same reason as Capture region, and the other sources
+(`text.recognize` from a window, monitor, desktop, the clipboard, a file or History, History's
+Copy text and the editor's tools) still work. The `text` hotkey is registered with KGlobalAccel
+like the other actions and is unassigned by default. If Copy text from a freshly installed package returns `capture_permission` although the capabilities say
+capture is available, the session's KDE application menu cache may be wrong. On d69 it was rebuilt in the
+session's own environment, which has `XDG_MENU_PREFIX=plasma-`, with a fresh login and a restart of the KDE
+portal services, and capture then worked. Which of those steps was needed was not isolated.
+Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+
 ## Clipboard and hotkeys
 
 Data control imports `text/uri-list`, supported image MIME types, and UTF-8 plain

@@ -271,6 +271,83 @@ A result that is not `end_of_content` is an honest partial only if its image is 
 not a pass for a case that must complete. Hyprland shows the pointer in every frame, and
 Omarchy keeps closed notification cards on screen: both are why those two cases exist.
 
+## Text recognition and QR code rows
+
+Copy text, the editor's text tools and History's QR code (#1428,
+[design](../design/text-recognition.md)) are accepted once, on one complete candidate that is a
+manually dispatched CI run of the integration branch at a recorded commit, with receipts. The final candidate
+was 357210d2f1cb7b65f77166e34eb535d42e497fd0 (CI run 43448444706). Some rows were observed on the earlier
+candidates fe838a950 (CI run 43394391197) or 8a3294c3c (CI run 43423721988) and are labelled below. This
+section is a checklist run with scripts, not a list of tests to add to CI. Nothing in it enters CI as a
+timing, latency or desktop test. A cell is one desktop with one package kind: Mint Cinnamon/X11
+(m74), Fedora GNOME/Wayland (f44), Ubuntu GNOME/Wayland, Kubuntu Plasma/Wayland (k72), Debian
+Plasma/Wayland (d69), Aurora, Budgie on labwc and Hyprland, each with its native package and with
+the AppImage where this matrix has an AppImage row. The matrix's GNOME/X11 and KDE/X11 rows get the
+pipeline check only: the hotkey, an independent paste and the helper's exit.
+
+Quality is scored per engine build, not per desktop, because on fixed images the result depends on the
+Tesseract build and its data. The stored corpus (174 real captures from six desktops, two real
+GNOME 4K screens and two 24 px pages, with transcripts) is scored offline against each engine build put.gd ships with: Ubuntu 24.04 and Mint 22,
+Ubuntu 26.04, Debian 13, Fedora 44 and 45, Arch, and the AppImage's own. The desktop cells then prove
+the pipeline: the hotkey, an independent paste, memory, the helper's peak and its exit.
+
+| Case | Passes when |
+| --- | --- |
+| Every desktop, through the real hotkey, tray entry and window button | The selector opens, and an independent second application pastes the text |
+| Text bars, per engine build and per target class, never pooled | Median character error rate at most 2 percent for body text of 11 px and larger and at most 5 percent for smaller interface text, after NFC and collapsed whitespace, case-sensitively. URLs and email addresses of 11 px and larger match exactly at least 90 percent of the time. A second language (German, from the distribution's package) meets the body bar on one engine build |
+| Hidden and hostile content | Near-white text on white and 3 px glyphs are not copied. Control, bidirectional-override and zero-width characters are removed. A small code inside a page image is read |
+| Limits and bands | A 24-megapixel image, the same with three languages loaded, a very wide image, an image over the limit, a dense image with no blank row at any cut (no line lost or doubled), a tall two-column page (one column at a time at 4 megapixels or more) and a code larger than a band, with `truncated` true where the time budget stops it |
+| Quick redact | A synthetic page of fake emails, phone numbers, addresses, card numbers and tokens at 11 px and larger in four fonts, light and dark: every item is covered (all 17 items on each of the 24 pages and 30 of 30 hashes in #1463's measurement). A page of ordinary prose and a page of code with no item of any category: at most one redaction each. A page of hashes: each is redacted. The exported PNG holds no original pixel under a mark |
+| Editor privacy | A word under a Redact mark added, moved or restored by redo after recognition cannot be selected, copied or returned by `editor.inspect`, and a late result for an old revision is rejected |
+| Codes | QR from 3 px per module to full screen, light and dark, versions 1 to 10 and one version 40, rotated, on a busy background, several in one region. Micro QR, Data Matrix and Aztec. URL, Wi-Fi, contact, plain and binary payloads. Show QR code and its saved PNG are read back by two independent decoders (ZXing's and zbar's command-line tools) for a short link, a long presigned link and the longest allowed link |
+| Privacy | With debug logging on, canary strings recognized in a capture appear nowhere in the journal, the History database, logs, notifications, UI checkpoints, a diagnostics package or any file under `/tmp` and the runtime directory, and pixels of a screen capture appear in no file either. A completed text operation leaves no journal row |
+| Clipboard | A user copy made during recognition is not overwritten. A pending upload link does not overwrite the text. A later explicit copy supersedes it. `copy: false` leaves the clipboard alone. Multi-line Unicode text pastes intact, PRIMARY is untouched, and the text still pastes after the editor closes, after the resident quits (through the clipboard keeper on Budgie and Hyprland) and after an AppImage is unmounted |
+| Helper failures | Crash, hang past the deadline, each resource limit reached, cancel, wrong build, wrong protocol, corrupt or missing data, confinement refused and the parent killed mid-job each end in the fixed error, with the exact child and any thread of it gone and no recognized text or screen pixels on disk |
+| Confinement | From a test build of the helper, opening a socket, executing a program, starting a child process, writing a file in the home directory, reading a file outside the allowed directories and reading another process's memory each fail, on a first recognition and on later bands, with the distribution's OpenMP build. The Landlock ABI is recorded for every target |
+| Unavailable paths | Helper or data missing. GNOME extension version 22 loaded with 23 installed. Each source on each desktop against that adapter's capability report. A locked screen. A History item with no local copy |
+| Packages | A clean install of each target with recommended and weak dependencies off still has the engine and English data. An upgrade from the previous nightly through the signed apt, dnf and pacman repositories. A rebuild from the extracted source archive. The recording Recommends are unchanged. The native audit and the AppImage audit cover the helper and the vendored generator's notice |
+| Window sizes | The command band at the window's minimum width and at enlarged text, in the UI catalog and on one desktop |
+| Memory | The resident's `/proc/<pid>/maps` after 20 `text.recognize` monitor jobs, 5 driven region actions and a 180 second wait holds none of the idle forbidden libraries, Tesseract, Leptonica, ZXing-cpp, libcurl or libarchive (`libgomp` is allowed). Idle RSS and PSS stay under the 40 MiB target. The result cache grows the resident by under 8 MiB after 60 seconds and is gone after 120. The helper's peak stays within its budget of 128 MiB with English data plus the size of any other language's data, including a dense 24-megapixel input and three languages |
+| Latency | From the end of the selection to the clipboard acknowledgement over 30 runs on m74 for the native package and the AppImage and 5 runs in every other cell, with spawn, engine start, recognition and copy recorded separately. The times are recorded, not gated: Patrick withdrew the 1 second and 3 second bars on 2026-11-13. The hotkey-to-selector time of the other captures does not change |
+
+### What was observed
+
+The numbers are in [text recognition](../design/text-recognition.md). Receipts are in the
+put.gd-evidence records for each candidate. A row says "met" only where the report of the run says so.
+
+| Row | Observed |
+| --- | --- |
+| Every desktop, through the real hotkey, tray entry and window button | On 357210d2f, a real hotkey pasted the exact three-line fixture from an independent reader with the helper exiting 0 on 12 cells: f44 GNOME Wayland (RPM and AppImage), k72 Plasma Wayland (DEB and AppImage), Aurora Plasma Wayland (AppImage), d69 Plasma Wayland (DEB and AppImage), an Ubuntu 26.04 GNOME Wayland guest (DEB), a Fedora 44 Budgie guest (AppImage), an Omarchy Hyprland guest (AppImage), a Kubuntu 26.04 Plasma X11 guest (DEB) and an Ubuntu 24.04 GNOME 46 X11 guest (DEB). On m74 (Cinnamon X11) the hotkey, tray entry and window button each pasted the exact 55-character fixture for the native package and the AppImage, with all six helpers exiting 0. The tray rows activate the registered menu entry and are not a pointer click on the panel. On fe838a950 and 8a3294c3c the tray entry and window button also pasted on f44, k72, an Ubuntu GNOME guest, Budgie and Hyprland and, on 8a3294c3c, on both X11 guests, where a text capture left Repeat last region's rectangle alone |
+| Text bars, URL and email exact match, German | Met on every engine build (Mint 22 and Ubuntu 24.04, Ubuntu 26.04, Debian 13, Fedora 44, Arch's 23 MB model and the AppImage), 178 images each. Arch's URL rate is 50 of 52 (96.15 percent) and every other rate 52 of 52. German: 12 captures, 816 words, median 0 percent |
+| Hidden and hostile content | Met |
+| Limits and bands | Met for a dense 24-megapixel image with English and with three languages on all six engine builds, and a tall two-column page (90 of 90 lines). The other limit cases carried forward from fe838a950 |
+| Quick redact | On 357210d2f, 431 of 439 items, with the synthetic GitHub token missed on all eight 14 px pages. After #1465, measured offscreen through the real editor and helper on k72 and not on a live desktop, every item on all 24 pages, 30 of 30 hashes, 0 marks on the clean and negative pages, 456 of 456 realistic tokens and 303 of 304 held-out items. On all 12 final cells, the email category made exactly one mark on the email and the saved PNG was opaque, driven through the production editor action rather than a pointer click on the menu |
+| Editor privacy | Met on the native package and the AppImage: the redacted word was excluded from inspect, select and copy, and old result IDs returned `edit_stale`. A forced obsolete result after a revision change was not driven on a live desktop. A test in CI covers it |
+| Codes | 182 of 183 contract-safe fixtures decoded. A rotated 3 px Micro QR is unread, and the busy page read 3 of 4 codes, 4 of 4 with a black frame. Show QR code and its readback by two decoders (short, long and maximum links) were observed on fe838a950 and not rerun |
+| Privacy | Met on m74 for the native package and the AppImage, with a debug-on canary absent from every checked place |
+| Clipboard | Met on m74 for both package kinds, including a 50-character two-line German paste, after the editor closed, after the resident quit and after the AppImage unmounted. The keeper kept the text after the resident quit and exited when another application copied, on Budgie and Hyprland (8a3294c3c) |
+| Helper failures | 18 of 18 rows including two controls, on 357210d2f |
+| Confinement | 16 of 16 rows including two recognition controls, on an unsanitized native build with Landlock ABI 6 |
+| Unavailable paths | With extension 22 loaded and 23 installed without a logout (8a3294c3c): the window button showed the log-out dialog, region actions returned `helper_outdated`, other hotkey recording worked, and window, monitor, desktop, clipboard and file sources worked. After a logout and login the text hotkey pasted the exact text. A History item whose retained copy was withheld returned `artifact_missing` and left the clipboard alone (fe838a950) |
+| Packages | Clean installs of a DEB, an RPM and a pacman package, the source-archive rebuild, the stable CVE rehearsal and the notices were met on bcb868f9a and carried forward. The recording Recommends are unchanged |
+| Window sizes | The command band at 1060 px at normal and 150 percent text was checked on f44 on fe838a950 and not rerun |
+| Memory | After the workload, none of the forbidden libraries was mapped and the frozen Gate C evaluator was met on m74 (357210d2f) and nine other cells (8a3294c3c). The helper's highest peak was 126,064 KiB |
+| Latency | Recorded, not gated. 30 runs per batch on m74, and five runs on each other cell |
+| Other captures' hotkey-to-selector | A first A/B measured a p95 of 215.17 ms against 199.35 ms. A larger study measured -0.21 ms warm and +6.65 ms after 40 s of quiet, with both intervals including zero. It neither confirms nor rules out a difference |
+
+**Not run.**
+
+- The upgrade through the signed apt, dnf and pacman repositories. It is run after the nightly is
+  published.
+- Aurora with a layered native RPM. Aurora ran the AppImage, because layering and rebooting would have
+  changed the host's session.
+- A forced late editor result on a live desktop. A test in CI covers it.
+- A physical k72 Plasma X11 session. Two fresh X11 guests ran instead.
+- A final-build rerun of the broader tray, window, QR, History, word-selection, command-band and
+  unavailable-path checks, which were observed on fe838a950, and of the Ubuntu Wayland AppImage smoke on
+  357210d2f.
+- A retest of the selector's visible hint. The generic hint was accepted.
+
 ## AppImage full-acceptance profile
 
 One pass of the exact published AppImage on every desktop below, with every item

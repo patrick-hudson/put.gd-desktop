@@ -331,6 +331,126 @@ is not a claim that the official runtime or Qt binaries rebuild byte for byte.
 The runtime also embeds mimalloc 2.1.7; its original MIT notice is now included
 in the image's notice inventory.
 
+### Text recognition dependencies (#1428)
+
+Copy text and the editor's text tools ([design](../design/text-recognition.md)) run in the
+temporary `putgd-ocr` helper, which links Tesseract 5 (LSTM engine only), Leptonica and ZXing-cpp.
+These are hard dependencies of every package, because one complete package is the house rule:
+
+| Package kind | English data and libraries it requires | Build packages |
+| --- | --- | --- |
+| DEB | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF dependency scan | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
+| RPM | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF dependency scan | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
+| pacman and the AUR recipe | `tesseract`, `tesseract-data-eng`, `zxing-cpp` | The same |
+
+- `PUTGD_OCR` is `AUTO` for developer builds and `ON` in every package configure, the extracted-source
+  rebuild included. A package build without the libraries fails. Recording's Recommends are unchanged.
+- The distributions ship ZXing-cpp 2.2.1 (Ubuntu 24.04, Mint 22, Fedora), 2.3.0 (Ubuntu 26.04, Debian
+  13) and 3.1.1 (Arch). The helper uses only `ReadBarcodes(ImageView, ReaderOptions)`, which all three
+  have, so every package build proves it compiles and links. Fedora 45 and Aurora install the Fedora 44
+  RPM, as they do today. Mint's names come from its Ubuntu base and are confirmed in package acceptance.
+- Languages other than English come from the distribution's Tesseract language packages or from
+  `~/.local/share/putgd/tessdata/`. put.gd downloads none.
+- The vendored QR code generator is compiled into the core library, so it needs no package. It is Nayuki's
+  QR Code generator, unmodified at tag v1.8.0 (tag commit `720f62bddb7226106071d4728c292cb1df519ceb`), in
+  `src/core/qrcodegen/`. The dependency lock records the SHA-256 of `qrcodegen.cpp`
+  (`1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461acedc70be4a77d3757`) and `qrcodegen.hpp`
+  (`b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793`), and the dependency verifier
+  rejects a changed, missing or unsafe file. Every package gets its MIT notice, a `qrcodegen` SBOM
+  component, and a line in `THIRD_PARTY_NOTICES.md`. The RPM carries it in its `%license` metadata.
+
+**The AppImage** builds Leptonica (with no image-format libraries at all), Tesseract (LSTM only, no curl,
+no archive, no OpenMP, no training tools) and ZXing-cpp (readers only) from pinned sources, and carries
+English `tessdata_fast`. Everything starts at the newest upstream release on the day it is pinned. The pins
+are in `packaging/appimage/tools.lock.json` beside FFmpeg and QtKeychain, and their commits are derived by
+`tools/maintenance/refresh_pins.py`:
+
+| Component | Version | Commit |
+| --- | --- | --- |
+| Tesseract | 5.5.4 | `7e548e6eff172f38f97664afe7f7ce40db36c8d6` |
+| Leptonica | 1.87.0 | `13275a278eb55b5746e33f95fbf5a2c8f604b3ab` |
+| ZXing-cpp | 3.1.1 | `287c85df6f961c8efbfb5ffd736cd9457b8b890e` |
+| English `tessdata_fast` | the repository head | `87416418657359cb625c412a48b6e1d6d41c29bd`, `eng.traineddata` SHA-256 `7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2` |
+
+Each is built with upstream's CMake as shared libraries in Release, `libdir=lib`, `CMAKE_INSTALL_RPATH=$ORIGIN`
+and the pinned prefix first in the CMake and pkg-config paths. The recipes are in the lock and in the
+complete-source asset:
+
+- Leptonica: `-DBUILD_PROG=OFF -DSW_BUILD=OFF -DENABLE_ZLIB=OFF -DENABLE_PNG=OFF -DENABLE_GIF=OFF
+  -DENABLE_JPEG=OFF -DENABLE_TIFF=OFF -DENABLE_WEBP=OFF -DENABLE_OPENJPEG=OFF`
+- Tesseract: `-DDISABLED_LEGACY_ENGINE=ON -DDISABLE_CURL=ON -DDISABLE_ARCHIVE=ON -DDISABLE_TIFF=ON
+  -DOPENMP_BUILD=OFF -DBUILD_TRAINING_TOOLS=OFF -DBUILD_TESTS=OFF -DGRAPHICS_DISABLED=ON
+  -DINSTALL_CONFIGS=OFF -DENABLE_NATIVE=OFF`
+- ZXing-cpp: `-DZXING_READERS=ON -DZXING_WRITERS=OFF -DZXING_EXAMPLES=OFF -DZXING_C_API=OFF
+  -DZXING_UNIT_TESTS=OFF -DZXING_BLACKBOX_TESTS=OFF -DZXING_DEPENDENCIES=LOCAL`
+
+The engine libraries go under `usr/lib` and the English data under `usr/share/putgd/tessdata`, which is
+the layout the helper's Landlock rules allow it to read. The RUNPATH matters: a Tesseract built without
+`$ORIGIN` resolves `libleptonica` to the host's copy, because the helper's RUNPATH does not cover
+transitive dependencies, and on a host with Leptonica installed that brings back every image-format
+library. The helper gets `$ORIGIN/../lib` after deployment and before the final notice hashes. A built
+image is checked from an empty environment: the identity probe and `ldd` keep every resolved path, so
+every image-owned library must resolve inside the image, and a host copy cannot satisfy it.
+
+Measured on k72 (Kubuntu 26.04, GCC 15.2.0), the three minimal builds link only libc, libm and the C++
+runtime, plus put.gd's own Leptonica for Tesseract. No codec, curl, archive, OpenMP or writer library is in
+their closures. The libraries total 8,071,312 bytes unstripped and the English data is 4,113,088 bytes.
+These are standalone inputs, not a measured change in the AppImage or in a native install.
+
+**Audits.** `tools/releases/audit_native.py` and the AppImage audit require `putgd-ocr`. They refuse
+Tesseract, Leptonica or ZXing-cpp in any other product ELF, so the resident and `putgd-ui` can never need
+them, and they refuse QtGui, QtSql, QtNetwork and QtDBus in the helper. `libgomp` is allowed everywhere,
+because Qt Core already brings it into every resident through `libb2`. The helper's identity is its
+`--version-json` output, which needs no control pipe, no data and no confinement, and the audit requires
+the full manifest as it does for the storage workers. The AppImage audit also verifies the English data
+against its SHA-256.
+
+**SBOM, notices and the CVE gate.** The three engines and the English data join `bundled-components.json`
+with their package identities and commits, SBOM components, complete-source collection with the
+configure recipes, and notices. Tesseract carries two CPEs, the current `tesseract-ocr:tesseract_ocr` and
+the deprecated `tesseract_project:tesseract`, and Leptonica `leptonica:leptonica`. No NVD product mapping
+was verified for ZXing-cpp or `tessdata_fast`, so they keep their package and commit identities without a
+CPE. The engines do not bypass the CVE gate. Grype matches Leptonica and Tesseract by name whatever is
+compiled in, so a finding in code that is not built gets an acceptance in `packaging/sbom/policy.json`
+with the configure recipe as the evidence, as FFmpeg's do. A fixed critical or high finding in bundled
+code warns on a nightly and blocks a stable release, as above. Pull-request CI skips the stable policy,
+so the exact-asset scan is rehearsed on d69 before the text recognition branch merges.
+
+**Measured on the integration branch at bcb868f9a** (CI run 43380438975, all six package builds, the SBOM
+job and source collection green):
+
+- **Size.** The whole AppImage grew from 158,030,328 bytes (nightly head `466449a4c`, run 43355658846) to
+  164,518,392 bytes, which is 6,488,064 bytes, below the 12,000,000 byte target. A no-Recommends DEB install
+  adds 13,537,280 bytes (13,220 KiB, with putgd's own 2,388 KiB) over the exact nightly head, and the
+  recording Recommends are byte for byte unchanged. The named engine and data packages install at 11,283,456
+  bytes on Ubuntu 24.04 and 12,387,251 on Fedora 44. On Arch they are 35,214,737 bytes, of which 23,466,654
+  is `tesseract-data-eng`, a larger English model than the other distributions ship, so the roughly 12 MB
+  native estimate does not hold there. put.gd loads only the part of that model the LSTM engine reads.
+- **Clean installs.** A DEB with `apt-get install --no-install-recommends`, an RPM with
+  `dnf install --setopt=install_weak_deps=False` and a pacman package with required dependencies only each
+  started with no Tesseract, Leptonica, ZXing-cpp or English data, and each ended with `putgd-ocr
+  --version-json` answering under an empty environment, every linked library resolved, the English data
+  present and Nayuki's MIT notice installed. These cover one fresh container for each package kind, not a
+  graphical session or a signed-repository upgrade.
+- **The mounted AppImage.** The exact image passed an independent read-only FUSE mount audit on k72. With
+  an empty environment, the helper and each engine resolved `libtesseract.so.5.5`, `libleptonica.so.6` and
+  `libZXing.so.4` below the image's `usr/lib`, the helper's RUNPATH was `$ORIGIN/../lib`, and the English
+  data matched its pinned SHA-256.
+- **The stable CVE policy**, rehearsed on d69 with Grype 0.121.2, Syft 1.57.0 and a database built
+  2026-11-12, against all six SBOMs: exit 0 with zero flagged findings. The AppImage has 176 bundled
+  components and 163 findings (9 high, 138 medium, 16 low), none flagged, and the others have 25 components
+  and none. No finding names Tesseract, Leptonica, ZXing-cpp, libzueci, `tessdata_fast` or `qrcodegen`, so no
+  policy acceptance was added.
+- **The source archive.** The Ubuntu 24.04 job configured, compiled and linked the extracted curated source
+  archive (24,463,898 bytes, 687 members, no `.git`) with `PUTGD_OCR=ON` in 541 seconds, and all ten product
+  binaries, `putgd-ocr` included, returned the build identity.
+
+**Renovate.** `.github/renovate.json` watches the three source tags (the pull requests are labelled
+`dependencies` and `area: packaging`, and a new minor or major version waits for approval on the dependency
+dashboard) and, through a git-refs manager, the digest of `tessdata_fast`'s `main` branch. A lookup run
+listed Tesseract 5.5.4, Leptonica 1.87.0, ZXing-cpp 3.1.1 and the data digest without warnings, and a
+disposable fixture with a wrong digest produced a digest update proposal.
+
 ### Codec distribution decision (#419)
 
 Patrick delegated the distribution choice on 2026-10-23. Retain the software

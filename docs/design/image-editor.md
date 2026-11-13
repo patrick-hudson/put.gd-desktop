@@ -53,6 +53,7 @@ written before this feature inherit the region output route with no hotkey.
 | Highlight | H | Marker paper: the box becomes a band of the marker colour and the text keeps the contrast it had, as dark lettering on the band, on light and dark pages alike; photos get a luminance-keeping wash; snaps to text lines (Alt for a free box); click a word, double-click a line, Shift-click adds a word |
 | Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 | Step number | N | Click to drop a numbered disc (40 image pixels across by default, 16–256). Numbers count up from 1; **Next number** sets the next one, and following clicks count on from it. Deleting a step leaves the others as they are; undo, redo and agent edits count on from the highest step left. The disc takes the palette colour with a white label and rim, or a near-black one where white would fall under 3:1 (yellow, orange, green, white). Dragging a corner resizes it and keeps it round; a selected step's field edits its number |
+| Copy text | G | Reads the text in the image so it can be selected and copied, and lists the QR codes it finds. It is the last tool, after Blur and behind its own separator, and it adds no mark. See [Copy text and Quick redact](#copy-text-and-quick-redact) |
 
 You don't need Select to adjust a mark:
 
@@ -351,6 +352,41 @@ The cost is owning selection handles, text entry, coordinate mapping and
 accessibility, so the tool set stays deliberately small. Greenshot, ShareX and
 Flameshot informed the interaction design; no code was copied from them.
 
+## Copy text and Quick redact
+
+The Copy text tool (G) reads the text and QR codes in the image and lets the user select and
+copy them. Quick redact, a menu in the Redact tool's panel, adds Redact marks over text of five
+kinds. Both are specified in [text recognition](text-recognition.md#the-editor). This section is
+what the editor itself guarantees.
+
+- Choosing the tool starts recognition for the current revision. Nothing is recognized before
+  that, and the editor never recognizes in the background. While the tool is active a new
+  recognition revision starts recognition again by itself. With any other tool active it does not.
+- Recognition reads the source pixels inside the current crop with every Redact mark already
+  painted opaque black. Arrows, text, blur and highlight are not part of its input. **Blur does not
+  hide text from it.** The panel says "Reads the original image. Marks you added are not included,
+  and Blur does not hide text from it."
+- The recognition revision changes only when a Redact mark or the crop changes, including by
+  undo and redo. A new revision cancels a running job, clears the result, the selection and the
+  code list, and rejects a result that arrives late. A word or code that touches a Redact mark is
+  dropped from the result before it can be shown, selected, copied or returned by
+  `editor.inspect`.
+- Selection works like text in a document: press and drag, Shift+click, double-click for a
+  line, Ctrl+A, and Ctrl+C while the canvas has focus. Escape clears the selection, and a second
+  Escape returns to Select. Copy selection and Copy all text (codes included) write one plain-text
+  clipboard copy through the resident, so a copy survives the editor closing, and a newer clipboard
+  change by the user is not overwritten.
+- The panel lists each code found with Copy, and Open link for a valid http or https URL. A
+  URL's row shows the whole URL so it is in view before Open link is pressed, and Open link opens it
+  at once with no dialog. A binary code shows its kind and length only.
+- **Quick redact** adds ordinary Redact marks as one undo step and says "Added 3 suggested
+  redactions" or "No matches found. Text can still be there.". It always carries "Suggestions only.
+  Recognition can miss text.". It never says a page is safe. **Redact is what removes pixels.** If a
+  Redact mark or the crop changes while Quick redact waits for recognition, it ends with
+  `edit_stale` and adds nothing.
+- Recognition runs in `putgd-ocr`, started by `putgd-ui --edit-image` as its own child. The
+  editor process does not link Tesseract, Leptonica or ZXing-cpp.
+
 ## Agent and MCP control
 
 Every editor capability is available through session methods, the production
@@ -366,10 +402,19 @@ Every editor capability is available through session methods, the production
 | `editor.copy` | `copy_editor_image` | `id`; Copy image: the sanitized PNG on the clipboard; returns `copied`, `bytes`, `sha256`, `width`, `height` |
 | `editor.submit` | `submit_editor` | `id`; same as Upload |
 | `editor.cancel` | `cancel_editor` | `id`; discard without confirmation |
+| `editor.recognize` | `recognize_editor_text` | `id`; starts recognition for the current revision, as choosing Copy text does. Returns `state` and `result`. `editor.inspect` then has a `text` member: `state`, `result` (the identity of this recognition result), `words`, `codes`, `truncated` and `selection`, in source pixels |
+| `editor.selectText` | `select_editor_text` | `id`, `result`, and `from` with `to` (word indexes in reading order), or `all`, or `none` |
+| `editor.copyText` | `copy_editor_text` | `id`, `result`, optional `all` (default: the current selection); returns `copyStatus` and the character count |
+| `editor.copyCode`, `editor.openCode` | `copy_editor_code`, `open_editor_code` | `id`, `result`, `index` into the codes. Open is refused for anything but a valid http or https URL |
 | `editor.raise` | `raise_editor` | `id`, optional `activationToken`; asks the desktop to bring the window to front and answers what it did: `raised: true` once the window is active, otherwise after 1.5 s `raised: false` with `reason: activation_refused` and a message (#911) |
 
 Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
-`crop {rect}`, `resetCrop`, `undo`, `redo`. Rectangles are `[x, y, width, height]`.
+`crop {rect}`, `resetCrop`, `undo`, `redo`, `redactText {categories}`. Rectangles are `[x, y, width, height]`.
+`redactText` is Quick redact: `categories` is 1 to 5 of `email`, `phone`, `ip`, `card` and `key`. It
+must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any
+recognition. It answers when it is done, not at once, and returns the created shape IDs and counts per
+category. A `result` that is no longer current is refused with `edit_stale` by every method that takes
+one, before anything is copied.
 `editor.view` also takes `blurStyle {style: blur|pixelate}` (the Blur tool's
 Style buttons; it restyles a selected blur) and `stepNumber {number}` (Next
 number, or the selected step's Number); its state reports `nextStepNumber`,

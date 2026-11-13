@@ -248,6 +248,16 @@ appended rows at least 48 px below the parked pointer and holds it outside the r
 way to the top is scrolled. The `scroll` shortcut goes through the labwc bridge or the
 GlobalShortcuts portal like the other actions, with no default key.
 
+## Copy text
+
+Copy text ([design](../design/text-recognition.md)) selects a region exactly as **Capture region**
+does: the same selector, cleanup and presentation-based lock witness. A text capture never changes
+the rectangle that **Repeat last region** remembers. The `text` hotkey goes through the labwc bridge
+or the GlobalShortcuts portal like the other actions, with no default key, and its label is "Copy
+text from region". The text lands on the clipboard through the clipboard keeper like any
+other result ([clipboard keeper](../design/clipboard-keeper.md)), so it still pastes after the
+resident quits and the keeper exits when another application copies. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+
 ## Budgie 11
 
 Budgie 11 has no release and no installable session. The adapter works from
