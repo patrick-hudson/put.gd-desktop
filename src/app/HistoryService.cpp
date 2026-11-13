@@ -3,7 +3,6 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QTemporaryFile>
-#include <QDir>
 #include <unistd.h>
 #include <cerrno>
 #include <QCryptographicHash>
