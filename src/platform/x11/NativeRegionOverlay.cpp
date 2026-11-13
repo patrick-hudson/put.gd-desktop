@@ -36,7 +36,7 @@ public:
  QString text(QAccessible::Text type)const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());
   if(type==QAccessible::Name)return QStringLiteral("Capture region");
-  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,QStringLiteral("Display %1").arg(std::max(0,overlay->keyboardScreen_)+1),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect,overlay->frames_,overlay->dragging_,overlay->outcome_);
+  if(type==QAccessible::Description)return regionDescription(overlay->selection_,false,QStringLiteral("Display %1").arg(std::max(0,overlay->keyboardScreen_)+1),overlay->frames_[std::max(0,overlay->keyboardScreen_)].logicalRect,overlay->frames_,overlay->phase_==NativeRegionOverlay::Phase::Dragging,overlay->outcome_);
   return {};
  }
  QRect rect()const override{
@@ -47,7 +47,7 @@ public:
  QAccessible::Role role()const override{return QAccessible::Pane;}
  QAccessible::State state()const override{
   const auto* overlay=static_cast<NativeRegionOverlay*>(object());QAccessible::State state;
-  state.focusable=true;state.focused=overlay->keyboardGrabbed_&&!overlay->finished_;state.invisible=!overlay->started_||overlay->finished_;return state;
+  state.focusable=true;state.focused=overlay->grabs_.keyboard()&&overlay->phase_!=NativeRegionOverlay::Phase::Finished;state.invisible=overlay->phase_==NativeRegionOverlay::Phase::Idle||overlay->phase_==NativeRegionOverlay::Phase::Finished;return state;
  }
 };
 namespace {
@@ -87,8 +87,8 @@ void NativeRegionOverlay::setPointerHandoff(xcb_cursor_t cursor,std::function<vo
 void NativeRegionOverlay::setCursorObserver(std::function<void(int,int,int,int,const uint32_t*)> observer){cursorObserver_=std::move(observer);}
 bool NativeRegionOverlay::checked(xcb_void_cookie_t cookie){auto* error=xcb_request_check(connection_,cookie);const bool ok=!error;std::free(error);return ok;}
 void NativeRegionOverlay::start(){
- if(started_||finished_)return;
- started_=true;
+ if(phase_!=Phase::Idle)return;
+ phase_=Phase::Starting;
  if(!supportsLayout(frames_)){cancel(unavailable());return;}
  if(frozen_)for(const auto& frame:frames_)if(frame.pixels.isNull()||frame.pixels.size()!=frame.nativeRect.size()){cancel({"capture_geometry","Frozen frame dimensions disagree with monitor geometry",{{"stage","select"},{"check","frozen_frame"}}});return;}
  connection_=xcb_connect(nullptr,nullptr);
@@ -120,11 +120,11 @@ void NativeRegionOverlay::start(){
  }
  // Defer once without pumping events, so cancellation or display changes
  // queued by the caller can release the unmapped Qt resource first.
- QTimer::singleShot(0,this,[this]{if(!finished_)initializeSurfaces();});
+ QTimer::singleShot(0,this,[this]{if(phase_!=Phase::Finished)initializeSurfaces();});
 }
 void NativeRegionOverlay::initializeSurfaces(){
- if(finished_||initialized_)return;
- initialized_=true;
+ if(phase_!=Phase::Idle&&phase_!=Phase::Starting)return;
+ phase_=Phase::Armed;
  const auto input=xcb_window_t(cursorWindow_->winId());
  // Flush Qt's cursor/window creation on its own public native connection.
  auto* qtFence=xcb_get_input_focus_reply(qtConnection_,xcb_get_input_focus(qtConnection_),nullptr);std::free(qtFence);
@@ -198,23 +198,23 @@ void NativeRegionOverlay::initializeSurfaces(){
   // The maps must have taken effect before the resident lets go: the server
   // replays what it held at that moment, onto whatever is under the pointer.
   auto* fence=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);std::free(fence);
-  awaitingPointer_=true;std::exchange(releasePointer_,{})();
+  phase_=Phase::AwaitingPointer;std::exchange(releasePointer_,{})();
   return;
  }
  grabClock_.start();
  grabInput();
 }
 void NativeRegionOverlay::pointerReleased(QList<HeldButton> buttons){
- if(finished_||!awaitingPointer_)return;
- awaitingPointer_=false;heldButtons_=std::move(buttons);grabClock_.start();grabInput();
+ if(phase_!=Phase::AwaitingPointer)return;
+ phase_=Phase::Armed;heldButtons_=std::move(buttons);grabClock_.start();grabInput();
 }
 bool NativeRegionOverlay::button(bool press,int button,QPoint native){
  QPointer<NativeRegionOverlay> guard(this);
  if(press){
   if(button==3){cancel();return false;}
-  if(button==1){keyboardScreen_=-1;anchor_=logicalPoint(native);selection_=QRectF(anchor_,QSizeF{});dragging_=true;move(anchor_);}
- }else if(button==1){release(logicalPoint(native));if(!guard||finished_)return false;}
- return guard&&!finished_;
+  if(button==1){keyboardScreen_=-1;anchor_=logicalPoint(native);selection_=QRectF(anchor_,QSizeF{});phase_=Phase::Dragging;move(anchor_);}
+ }else if(button==1){release(logicalPoint(native));if(!guard||phase_==Phase::Finished)return false;}
+ return guard&&phase_!=Phase::Finished;
 }
 void NativeRegionOverlay::observeCursor(){
  if(!cursorObserver_)return;
@@ -227,7 +227,7 @@ void NativeRegionOverlay::observeCursor(){
  std::free(image);
 }
 void NativeRegionOverlay::grabInput(){
- if(finished_)return;
+ if(phase_==Phase::Finished)return;
  ++grabAttempts_;
  const auto input=xcb_window_t(cursorWindow_->winId());
  const auto pointerCookie=xcb_grab_pointer(connection_,false,input,XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|XCB_EVENT_MASK_POINTER_MOTION,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,residentCursor_,XCB_CURRENT_TIME);
@@ -237,13 +237,11 @@ void NativeRegionOverlay::grabInput(){
  const uint8_t pointerStatus=pointer?pointer->status:uint8_t(XCB_GRAB_STATUS_INVALID_TIME);std::free(pointer);
  auto* keyboard=xcb_grab_keyboard_reply(connection_,keyboardCookie,nullptr);
  const uint8_t keyboardStatus=keyboard?keyboard->status:uint8_t(XCB_GRAB_STATUS_INVALID_TIME);std::free(keyboard);
- pointerGrabbed_=pointerStatus==XCB_GRAB_STATUS_SUCCESS;keyboardGrabbed_=keyboardStatus==XCB_GRAB_STATUS_SUCCESS;
- if(!pointerGrabbed_||!keyboardGrabbed_){
+ grabs_.adopt(connection_,pointerStatus==XCB_GRAB_STATUS_SUCCESS,keyboardStatus==XCB_GRAB_STATUS_SUCCESS);
+ if(!grabs_.pointer()||!grabs_.keyboard()){
   // An open menu holds both grabs. Release a partial grab so a click or Esc
   // still reaches the menu and closes it, then retry for a bounded time.
-  if(pointerGrabbed_)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);
-  if(keyboardGrabbed_)xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
-  pointerGrabbed_=keyboardGrabbed_=false;xcb_flush(connection_);
+  grabs_.release();xcb_flush(connection_);
   const bool busy=(pointerStatus==XCB_GRAB_STATUS_SUCCESS||held(pointerStatus))&&(keyboardStatus==XCB_GRAB_STATUS_SUCCESS||held(keyboardStatus));
   if(!busy){cancel(unavailable());return;}
   const int waited=int(grabClock_.elapsed());
@@ -265,7 +263,7 @@ void NativeRegionOverlay::grabInput(){
  for(const auto& held:std::exchange(heldButtons_,{})){if(!button(held.press,held.button,held.native)){if(guard)draining_=false;return;}}
  draining_=false;
  // A drag still in progress continues from where the pointer is now.
- if(dragging_){auto* pointer=xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr);if(pointer)move(logicalPoint({pointer->root_x,pointer->root_y}));std::free(pointer);}
+ if(phase_==Phase::Dragging){auto* pointer=xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr);if(pointer)move(logicalPoint({pointer->root_x,pointer->root_y}));std::free(pointer);}
  // Replies above may already have buffered events; do not depend on another
  // socket wakeup to consume an initial button/key event.
  events();
@@ -284,7 +282,7 @@ void NativeRegionOverlay::events(){
 }
 void NativeRegionOverlay::drain(){
  QPointer<NativeRegionOverlay> guard(this);
- while(connection_&&!finished_){
+ while(connection_&&phase_!=Phase::Finished){
   auto* raw=xcb_poll_for_event(connection_);if(!raw)break;
   const auto type=raw->response_type&127;
   if(type==XCB_BUTTON_PRESS||type==XCB_BUTTON_RELEASE){const auto event=*reinterpret_cast<xcb_button_press_event_t*>(raw);std::free(raw);if(!button(type==XCB_BUTTON_PRESS,event.detail,{event.root_x,event.root_y}))return;}
@@ -294,12 +292,12 @@ void NativeRegionOverlay::drain(){
    case XK_Left:case XK_KP_Left:qtKey=Qt::Key_Left;break;case XK_Right:case XK_KP_Right:qtKey=Qt::Key_Right;break;
    case XK_Up:case XK_KP_Up:qtKey=Qt::Key_Up;break;case XK_Down:case XK_KP_Down:qtKey=Qt::Key_Down;break;default:break;}
    Qt::KeyboardModifiers modifiers;if(event.state&XCB_MOD_MASK_CONTROL)modifiers|=Qt::ControlModifier;if(event.state&XCB_MOD_MASK_SHIFT)modifiers|=Qt::ShiftModifier;
-   key(qtKey,modifiers,{event.root_x,event.root_y});if(!guard||finished_)return;}
+   key(qtKey,modifiers,{event.root_x,event.root_y});if(!guard||phase_==Phase::Finished)return;}
   else if(type==XCB_EXPOSE){const auto event=*reinterpret_cast<xcb_expose_event_t*>(raw);std::free(raw);for(auto& surface:surfaces_)if(surface.window==event.window){prepareBadges(surface);draw(surface,true);break;}}
   else {std::free(raw);if(type==0){cancel(unavailable());return;}}
   if(!guard)return;
  }
- if(connection_&&!finished_){if(xcb_connection_has_error(connection_)){cancel(unavailable());return;}xcb_flush(connection_);}
+ if(connection_&&phase_!=Phase::Finished){if(xcb_connection_has_error(connection_)){cancel(unavailable());return;}xcb_flush(connection_);}
 }
 int NativeRegionOverlay::screenAt(QPoint native)const{
  int chosen=0;qreal nearest=std::numeric_limits<qreal>::max();
@@ -319,7 +317,7 @@ void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint nat
  case RegionKeyAction::Cancel:cancel();break;
  case RegionKeyAction::Accept:{const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);break;}
  case RegionKeyAction::Change:
-  keyboardScreen_=screen;dragging_=false;schedulePresent();
+  keyboardScreen_=screen;phase_=Phase::Armed;schedulePresent();
   break;
  case RegionKeyAction::Ignore:break;
  }
@@ -331,7 +329,7 @@ bool NativeRegionOverlay::eventFilter(QObject* object,QEvent* event){
  return RegionSelector::eventFilter(object,event);
 }
 void NativeRegionOverlay::startAccessibility(){
- if(accessible_||finished_)return;
+ if(accessible_||phase_==Phase::Finished)return;
  accessible_=true;
  // The activation QWindow raises on FocusIn, which AT-SPI reports as window:activate.
  if(cursorWindow_&&QGuiApplication::focusWindow()==cursorWindow_){QAccessible::State active;active.active=true;QAccessibleStateChangeEvent activated(cursorWindow_,active);QAccessible::updateAccessibility(&activated);}
@@ -358,8 +356,8 @@ std::thread NativeRegionOverlay::preloadFonts(){
  });
 }
 void NativeRegionOverlay::fontsLoaded(){
- if(finished_||!initialized_||!connection_)return;
- if(pointerGrabbed_){schedulePresent();return;}
+ if(phase_==Phase::Idle||phase_==Phase::Starting||phase_==Phase::Finished||!connection_)return;
+ if(grabs_.pointer()){schedulePresent();return;}
  for(auto& surface:surfaces_){prepareBadges(surface);draw(surface,false);}
  xcb_flush(connection_);
 }
@@ -447,7 +445,7 @@ int NativeRegionOverlay::frameIntervalMs()const{
  return std::clamp(qRound(1000.0/rate),4,33);
 }
 void NativeRegionOverlay::schedulePresent(){
- if(finished_||!connection_||!pointerGrabbed_)return;
+ if(phase_==Phase::Finished||!connection_||!grabs_.pointer())return;
  if(!pending_){pending_=true;pendingSince_.start();}
  if(draining_)return;
  // Pacing spaces outline frames. A press, or a hint frame, shows no outline,
@@ -460,7 +458,7 @@ void NativeRegionOverlay::schedulePresent(){
  presentTimer_.start(int(interval-since));
 }
 void NativeRegionOverlay::present(){
- if(finished_||!connection_){pending_=false;return;}
+ if(phase_==Phase::Finished||!connection_){pending_=false;return;}
  QElapsedTimer work;work.start();
  describe();
  for(auto& surface:surfaces_){prepareBadges(surface);draw(surface,false);}
@@ -477,11 +475,11 @@ void NativeRegionOverlay::present(){
  pending_=false;
 }
 void NativeRegionOverlay::move(QPointF point){
- pointer_=point;if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();++stats_.motions;schedulePresent();}
-void NativeRegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);}
+ pointer_=point;if(phase_!=Phase::Dragging)return;selection_=QRectF(anchor_,point).normalized();++stats_.motions;schedulePresent();}
+void NativeRegionOverlay::release(QPointF point){if(phase_!=Phase::Dragging)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);}
 void NativeRegionOverlay::finish(){
- if(finished_)return;
- finished_=true;hint_.stop();presentTimer_.stop();pending_=false;
+ if(phase_==Phase::Finished)return;
+ phase_=Phase::Finished;hint_.stop();presentTimer_.stop();pending_=false;
  if(stats_.presents)regionDebugLog(QStringLiteral("native region: %1 motions, %2 presents, %3 full redraws, frame interval %4 ms, wait %5/%6 ms, present %7/%8 ms (avg/max)")
   .arg(stats_.motions).arg(stats_.presents).arg(stats_.fullRedraws).arg(stats_.frameIntervalMs)
   .arg(stats_.waits?stats_.waitSumMs/stats_.waits:0,0,'f',1).arg(stats_.waitMaxMs,0,'f',1).arg(stats_.presentSumMs/stats_.presents,0,'f',2).arg(stats_.presentMaxMs,0,'f',2));
@@ -492,8 +490,7 @@ void NativeRegionOverlay::finish(){
  delete foreignParent_;foreignParent_=nullptr;
  if(qtConnection_){auto* fence=xcb_get_input_focus_reply(qtConnection_,xcb_get_input_focus(qtConnection_),nullptr);std::free(fence);qtConnection_=nullptr;}
  if(connection_){
-  if(pointerGrabbed_)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);
-  if(keyboardGrabbed_)xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
+  grabs_.release();
   for(const auto& surface:surfaces_){xcb_unmap_window(connection_,surface.window);xcb_destroy_window(connection_,surface.window);if(surface.background)xcb_free_pixmap(connection_,surface.background);}
   surfaces_.clear();
   if(gc_)xcb_free_gc(connection_,gc_);
@@ -504,5 +501,5 @@ void NativeRegionOverlay::finish(){
   xcb_disconnect(connection_);connection_=nullptr;keys_=nullptr;
  }
 }
-void NativeRegionOverlay::cancel(Error error){if(finished_)return;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit cancelled(error);}
+void NativeRegionOverlay::cancel(Error error){if(phase_==Phase::Finished)return;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit cancelled(error);}
 }

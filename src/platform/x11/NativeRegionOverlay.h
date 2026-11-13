@@ -101,6 +101,26 @@ private:
  bool outlined()const{return std::any_of(surfaces_.begin(),surfaces_.end(),[](const Surface& surface){return !surface.outline.isEmpty();});}
  void finish();
  bool checked(xcb_void_cookie_t);
+ // The selection's lifecycle (#1436). Starting: between start() and the
+ // native surfaces. AwaitingPointer: surfaces mapped, the resident still holds
+ // the pointer. Armed: surfaces up, grabbing or holding input, no drag.
+ // Dragging: the first button is down. Finished: everything released.
+ enum class Phase {Idle,Starting,AwaitingPointer,Armed,Dragging,Finished};
+ Phase phase_=Phase::Idle;
+ // The pointer and keyboard grabs taken on connection_. release() is the one
+ // way they end, pointer first; the destructor releases whatever is left.
+ class InputGrabs {
+ public:
+  InputGrabs()=default;InputGrabs(const InputGrabs&)=delete;InputGrabs& operator=(const InputGrabs&)=delete;
+  ~InputGrabs(){release();}
+  // What the server granted on connection.
+  void adopt(xcb_connection_t* connection,bool pointer,bool keyboard){connection_=connection;pointer_=pointer;keyboard_=keyboard;}
+  bool pointer()const{return pointer_;}bool keyboard()const{return keyboard_;}
+  // Queues the ungrabs; the caller flushes or fences.
+  void release(){if(connection_){if(pointer_)xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);if(keyboard_)xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);}connection_=nullptr;pointer_=keyboard_=false;}
+ private:
+  xcb_connection_t* connection_=nullptr;bool pointer_=false,keyboard_=false;
+ };
  QList<CaptureFrame> frames_;
  QString outcome_;
  QList<Surface> surfaces_;
@@ -109,7 +129,6 @@ private:
  xcb_cursor_t residentCursor_=XCB_CURSOR_NONE,handoffCursor_=XCB_CURSOR_NONE;
  std::function<void()> releasePointer_;
  std::function<void(int,int,int,int,const uint32_t*)> cursorObserver_;
- bool awaitingPointer_=false;
  QList<HeldButton> heldButtons_;
  xcb_colormap_t colormap_=XCB_COLORMAP_NONE;
  xcb_gcontext_t gc_=XCB_NONE;
@@ -120,9 +139,8 @@ private:
  xcb_connection_t* qtConnection_=nullptr;
  QRectF selection_;
  QPointF anchor_, pointer_;
- bool dragging_=false,started_=false,finished_=false;
- bool pointerGrabbed_=false,keyboardGrabbed_=false;
- bool initialized_=false,accessible_=false;
+ InputGrabs grabs_;
+ bool accessible_=false;
  QElapsedTimer grabClock_;
  int grabAttempts_=0,keyboardScreen_=-1,hintScreen_=0;
  bool frozen_=false,frozenShown_=false;
