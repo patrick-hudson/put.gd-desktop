@@ -12,6 +12,7 @@ import argparse
 from collections import Counter, defaultdict
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import statistics
@@ -119,11 +120,13 @@ def main():
     p.add_argument('--timeout-seconds', type=float, default=60)
     p.add_argument('--output', type=Path, required=True)
     a = p.parse_args()
+    # Match the helper contract and avoid OpenMP oversubscription on lab hosts.
+    os.environ['OMP_THREAD_LIMIT'] = '1'
     if a.timeout_seconds <= 0: p.error('--timeout-seconds must be positive')
     manifest = json.loads(a.manifest.read_text())
     supplied = json.loads(a.results.read_text()) if a.results else {}
     receipt = dict(schemaVersion=1, normalization='NFC; collapse whitespace; case sensitive',
-                   scale=a.scale, captures=[], inputs={})
+                   scale=a.scale, omp_thread_limit=1, captures=[], inputs={})
     if a.tesseract:
         receipt['engine'] = subprocess.check_output(['tesseract', '--version'], text=True).splitlines()[0]
         receipt.update(language=a.language, psm=a.psm)
