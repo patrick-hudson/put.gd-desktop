@@ -68,15 +68,16 @@ bool wrapEvidence(const QString& left,const QString& right,const QString& catego
  static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/_=.-]+$"));
  return alphabet.match(left).hasMatch()&&alphabet.match(right).hasMatch();
 }
-// Every character keeps its word owner. Only the wrapped view may remove a
-// line boundary, and only with character or wrapping-column evidence.
+// Every character keeps its word owner. Both views retain an unsupported
+// line boundary; only the wrapped view removes a supported boundary entirely.
 struct Joined {QString text;QList<int> owner;};
 Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full) {
  Joined joined;
  for(int i=0;i<words.size();++i){
   const bool boundary=i>0&&candidates.at(i).line!=candidates.at(i-1).line;
-  const bool wrap=wrapped&&boundary&&wrapEvidence(words.at(i-1),words.at(i),category,full.contains(candidates.at(i-1).line));
-  if(i>0&&!wrap){joined.text+=wrapped&&boundary?'\n':' ';joined.owner.append(-1);}
+  const bool evidence=boundary&&wrapEvidence(words.at(i-1),words.at(i),category,full.contains(candidates.at(i-1).line));
+  const bool wrap=wrapped&&evidence;
+  if(i>0&&!wrap){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
   joined.text+=words.at(i);for(int k=0;k<words.at(i).size();++k)joined.owner.append(i);
  }
  return joined;
