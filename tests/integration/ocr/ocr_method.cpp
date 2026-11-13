@@ -39,6 +39,7 @@ int main(int argc,char** argv){
   else if(a=="--budget")options.budgetMs=next().toInt();
   else if(a=="--band")options.limits.bandPixels=qint64(next().toDouble()*1000000);
   else if(a=="--single")options.limits.singlePassPixels=qint64(next().toDouble()*1000000);
+  else if(a=="--memory")options.memoryBudget=qint64(next().toDouble()*1024*1024);
   else if(a=="--no-panels")options.panels=false;
   else if(a=="--large-cap")options.limits.largeScaledPixels=qint64(next().toDouble()*1000000);
   else if(a=="--cap")options.limits.scaledPixels=qint64(next().toDouble()*1000000);

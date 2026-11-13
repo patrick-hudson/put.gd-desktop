@@ -98,7 +98,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   bool closed=false;                // under lock: nothing is handed over after this
   std::atomic<bool> closing{false}; // read without the lock before a band copy
   std::atomic<int> next{0},copying{0},running{0},busy{0};
-  std::atomic<qint64> slowest{0},taskGrowth{0};
+  std::atomic<qint64> slowest{0},taskGrowth{0},reserved{0};
+  std::vector<qint64> taskPixels;   // scaled pixels of each task
   std::atomic<bool> stop{false};
   qint64 gateBudget=0;int budgetMs=0;int taskCount=0;
   std::chrono::steady_clock::time_point end;
@@ -109,7 +110,11 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  shared->budgetMs=options.budgetMs;shared->end=start+std::chrono::milliseconds(options.budgetMs);
  const qint64 beforeEngine=residentBytes();
  result.error=shared->first.start(options.languages,options.strictLanguages,options.engine,result.failedLanguage);
- const qint64 engineCost=std::max<qint64>(0,residentBytes()-beforeEngine);
+ // What an engine costs: what the resident set rose by over its start, but
+ // never under 16 MiB (English's engine measured 16 to 17 MiB on a fresh heap):
+ // an engine starting in heap the job freed shows less (3 MiB in the helper on
+ // a 24 MP screen of panels, whose analysis had just been freed).
+ const qint64 engineCost=std::max<qint64>(16*1024*1024,residentBytes()-beforeEngine);
  result.timings.engineStartMs=stage.elapsed();
  if(!result.error.isEmpty()){delete shared;return result;}
  result.used=shared->first.used();result.skipped=shared->first.skipped();result.dataFiles=shared->data.files();
@@ -158,16 +163,27 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  const int taskCount=int(tasks.size());
  const int wanted=taskCount>1?std::min(threads,taskCount):1;
+ // A banded image or a whole screen of panels measures what its first task
+ // costs before it shares: their tasks can be dense in ways a reservation by
+ // size does not see (a 24 MP screen in panels reached 136 MiB sharing at once).
+ const bool measureFirst=anyBanded||panelList.size()>1;
  shared->taskCount=taskCount;shared->outcomes.resize(taskCount);
+ for(const auto& t:tasks)shared->taskPixels.push_back(t.pixels);
  // One worker: takes tasks until there are none, the budget or memory says
  // stop, or the job is closing. Touches only shared and its own copies.
  const auto work=[shared,copyOf](TextEngine* engine,bool extraWorker,const std::function<void()>& afterFirstTask){
   for(;;){
    if(shared->stop.load()||shared->closing.load())return;
-   // The memory budget: an extra worker leaves its tasks to the others unless
-   // twice the largest growth a task has shown still fits; on dense pages a
-   // later band grows more than the first (139 MiB on m74 with one times).
-   if(extraWorker&&!shared->roomFor(2*shared->taskGrowth.load()))return;
+   // The memory budget: an extra worker takes the next task only when what
+   // it may grow by still fits beside what the other workers have reserved:
+   // twice the largest growth a task has shown, or 12 bytes a scaled pixel of
+   // that task, whichever is more (dense bands grew 15 to 20 bytes a pixel; a
+   // whole screen's first panel can be tiny and its later ones large).
+   const auto need=[&](int index){
+    const qint64 pixels=index<shared->taskCount?shared->taskPixels[size_t(index)]:0;
+    return std::max<qint64>(2*shared->taskGrowth.load(),12*pixels);
+   };
+   if(extraWorker&&!shared->roomFor(shared->reserved.load()+need(shared->next.load())))return;
    // Holding a task: the end of the job waits for it (within the budget).
    // Counted before the task is taken, so the end never sees every task
    // taken and none held while one is being picked up.
@@ -175,6 +191,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    struct Release { Shared* s; ~Release(){std::lock_guard<std::mutex> g(s->lock);s->busy.fetch_sub(1);s->idle.notify_all();} } release{shared};
    const int task=shared->next.fetch_add(1);
    if(task>=shared->taskCount)return;
+   const qint64 reservation=need(task);shared->reserved.fetch_add(reservation);
+   struct Unreserve { Shared* s;qint64 n; ~Unreserve(){s->reserved.fetch_sub(n);} } unreserve{shared,reservation};
    const qint64 before=residentBytes();
    // The time budget: never start a task that cannot finish, and give every
    // pass a deadline, so a pass that overruns returns its partial result.
@@ -220,15 +238,22 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   const qint64 room=shared->gateBudget-residentBytes();
   return std::clamp(int(room/std::max<qint64>(1,each)),0,wanted-1);
  };
- // A banded image measures before it shares: once the first task is done,
- // as many engines start as fit in the budget at what that task cost.
+ // A banded image or a screen of panels measures before it shares: once the
+ // first task is done, as many engines start as fit in the budget.
  const std::function<void()> afterFirstTask=[&]{
-  if(anyBanded&&!startedExtras&&wanted>1&&!shared->stop.load())startExtras(fitting(engineCost+2*shared->taskGrowth.load()));
+  // An engine with a task costs what the first one has come to since it
+  // started, engine and working memory together, plus room for a task: that
+  // task's growth again, and at least 8 bytes a pixel of the largest task,
+  // since an engine keeps working memory sized to the largest it has read (on
+  // a 24 MP screen of 104 panels, whose first was tiny, each extra engine came
+  // to about 25 MiB, not 18, and three engines reached 136 MiB).
+  if(measureFirst&&!startedExtras&&wanted>1&&!shared->stop.load())
+   startExtras(fitting(std::max(engineCost,residentBytes()-beforeEngine)+std::max<qint64>(shared->taskGrowth.load(),8*largestTask)));
  };
  // Strips and panels read in one pass share at once: each extra engine is
  // reserved its own cost and four bytes a pixel of the largest task
  // (measured: four engines on a 1 MP region at 2x peaked at 101 to 123 MiB).
- if(!anyBanded&&wanted>1)startExtras(fitting(engineCost+4*largestTask));
+ if(!measureFirst&&wanted>1)startExtras(fitting(engineCost+4*largestTask));
  work(&shared->first,false,afterFirstTask);
  // Wait for the extra workers, never past the budget (and a second's grace
  // for a pass ending on its monitor deadline). Then close the handover: a
