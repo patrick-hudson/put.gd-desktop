@@ -131,6 +131,47 @@ bool seccomp(){
  }
  rule(SYS_tkill,denied);
  rule(SYS_pidfd_send_signal,denied);
+ // Calls that change something outside the process without opening a file
+ // for writing. Landlock refuses the path-based ones that create, link,
+ // rename, remove or truncate (all its rights are handled and only reading is
+ // granted), but not the ones that change modes, owners, extended attributes
+ // or times, nor any call on a descriptor already open: the helper may hold a
+ // user-owned language file open for reading. All of them are refused here.
+ for(const long nr:{
+   // modes and owners
+   long(SYS_chmod),long(SYS_fchmod),long(SYS_fchmodat),452L/*fchmodat2*/,
+   long(SYS_chown),long(SYS_fchown),long(SYS_lchown),long(SYS_fchownat),
+   // extended attributes (ACLs, security labels)
+   long(SYS_setxattr),long(SYS_lsetxattr),long(SYS_fsetxattr),long(SYS_removexattr),long(SYS_lremovexattr),long(SYS_fremovexattr),
+   463L/*setxattrat*/,466L/*removexattrat*/,
+   // times
+   long(SYS_utime),long(SYS_utimes),long(SYS_utimensat),long(SYS_futimesat),
+   // nodes, links, renames, removal and truncation by path (Landlock refuses these as well)
+   long(SYS_mknod),long(SYS_mknodat),long(SYS_link),long(SYS_linkat),long(SYS_symlink),long(SYS_symlinkat),
+   long(SYS_rename),long(SYS_renameat),long(SYS_renameat2),long(SYS_unlink),long(SYS_unlinkat),long(SYS_rmdir),
+   long(SYS_mkdir),long(SYS_mkdirat),long(SYS_truncate),
+   // other processes: priorities, I/O priorities, memory and comparisons
+   long(SYS_setpriority),long(SYS_ioprio_set),long(SYS_kcmp),440L/*process_madvise*/,448L/*process_mrelease*/,
+   // shared IPC objects other processes of the same user can use
+   long(SYS_shmget),long(SYS_shmat),long(SYS_shmctl),long(SYS_semget),long(SYS_semop),long(SYS_semtimedop),long(SYS_semctl),
+   long(SYS_msgget),long(SYS_msgsnd),long(SYS_msgrcv),long(SYS_msgctl),long(SYS_mq_open),long(SYS_mq_unlink),
+   // keyrings (keyctl kills, above)
+   long(SYS_add_key),long(SYS_request_key),
+   // the new mount API, beside mount (which kills)
+   428L/*open_tree*/,429L/*move_mount*/,430L/*fsopen*/,431L/*fsconfig*/,432L/*fsmount*/,433L/*fspick*/,442L/*mount_setattr*/})rule(nr,denied);
+ // Calls that name a process take only this one (0 or its pid): with matching
+ // credentials prlimit64 could otherwise set the parent's hard RLIMIT_CPU to
+ // zero, and the scheduling and page-migration calls move other processes.
+ // glibc's setrlimit is prlimit64 on pid 0, so lowerDataLimit still works.
+ for(const long nr:{long(SYS_prlimit64),long(SYS_sched_setaffinity),long(SYS_sched_setscheduler),long(SYS_sched_setparam),
+                    long(SYS_sched_setattr),long(SYS_migrate_pages),long(SYS_move_pages)}){
+  jump(BPF_JMP|BPF_JEQ|BPF_K,uint32_t(nr),0,5);
+  stmt(BPF_LD|BPF_W|BPF_ABS,offsetof(seccomp_data,args));
+  jump(BPF_JMP|BPF_JEQ|BPF_K,0,1,0);
+  jump(BPF_JMP|BPF_JEQ|BPF_K,self,0,1);
+  stmt(BPF_RET|BPF_K,allow);
+  stmt(BPF_RET|BPF_K,denied);
+ }
  // clone: a thread (CLONE_THREAD, which the kernel only accepts with a shared
  // address space and signal handlers) and no new namespace. Anything else
  // would be a process.

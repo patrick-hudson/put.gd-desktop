@@ -41,12 +41,16 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
  // First the duplicates: a word this band shares with the previous one stays
  // once, in the earlier band's place, and the line it sits on in this band
  // becomes that earlier line, so the rest of the physical line joins it.
+ // Each word of a joined line keeps its place in Tesseract's logical order
+ // (seamOrder: its index in this band's sequence), never its x, so a
+ // right-to-left or mixed line is not reversed.
  QList<Word> incoming;QList<int> bandLines;QHash<int,int> sameLine;
- for(const auto& item:band.words){
+ for(int k=0;k<band.words.size();++k){
+  const auto& item=band.words[k];
   Word word;word.text=textjob::sanitizeText(item.text).trimmed();
   if(word.text.isEmpty())continue;
   word.rect=toSource(item.rect,placement,scale,border,imageWidth,imageHeight);
-  word.confidence=item.confidence;word.line=lineBase+item.line;
+  word.confidence=item.confidence;word.line=lineBase+item.line;word.seamOrder=k;
   if(seam){
    if(word.rect.top()<=placement.top+1)continue;
    bool duplicate=false;
@@ -55,6 +59,7 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
      auto& earlier=job.words[i];if(earlier.text.isEmpty()||overlap(earlier.rect,word.rect)<=0.5)continue;
      duplicate=true;
      if(!sameLine.contains(item.line))sameLine.insert(item.line,earlier.line);
+     earlier.seamOrder=k;
      if(word.confidence>earlier.confidence){earlier.text=word.text;earlier.rect=word.rect;earlier.confidence=word.confidence;}
      break;
     }
@@ -72,16 +77,28 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
  int removed=0;for(int i=previousFirstWord;i<firstNew;++i)if(job.words[i].text.isEmpty())++removed;
  job.words.erase(std::remove_if(job.words.begin()+std::min<qsizetype>(previousFirstWord,job.words.size()),job.words.end(),[](const Word& w){return w.text.isEmpty();}),job.words.end());
  if(!sameLine.isEmpty()){
-  // Keep each line's words together, lines in the order they first appear,
-  // and the words of a line that spans the seam left to right.
   QSet<int> joined;for(const auto line:sameLine)joined.insert(line);
+  // An earlier word with no partner in this band sits beside its neighbours:
+  // just before the next earlier word that has one, or after the last.
+  const int start=std::min<int>(previousFirstWord,int(job.words.size()));
+  for(int i=start;i<job.words.size();++i){
+   auto& w=job.words[i];
+   if(!joined.contains(w.line)||w.seamOrder>=0||i>=firstNew-removed)continue;
+   double order=-1;bool found=false;
+   for(int j=i+1;j<firstNew-removed&&!found;++j)if(job.words[j].line==w.line&&job.words[j].seamOrder>=0){order=job.words[j].seamOrder-0.5;found=true;}
+   for(int j=i-1;j>=start&&!found;--j)if(job.words[j].line==w.line&&job.words[j].seamOrder>=0){order=job.words[j].seamOrder+0.5;found=true;}
+   w.seamOrder=order;
+  }
+  // Each line's words together, lines in the order they first appear, and
+  // the words of a joined line in the engine's logical order.
   QHash<int,int> firstSeen;
-  for(int i=previousFirstWord;i<job.words.size();++i)if(!firstSeen.contains(job.words[i].line))firstSeen.insert(job.words[i].line,i);
-  std::stable_sort(job.words.begin()+previousFirstWord,job.words.end(),[&](const Word& a,const Word& b){
+  for(int i=start;i<job.words.size();++i)if(!firstSeen.contains(job.words[i].line))firstSeen.insert(job.words[i].line,i);
+  std::stable_sort(job.words.begin()+start,job.words.end(),[&](const Word& a,const Word& b){
    if(a.line!=b.line)return firstSeen.value(a.line)<firstSeen.value(b.line);
-   return joined.contains(a.line)&&a.rect.left()<b.rect.left();
+   return joined.contains(a.line)&&a.seamOrder<b.seamOrder;
   });
  }
+ for(int i=std::min<int>(previousFirstWord,int(job.words.size()));i<job.words.size();++i)job.words[i].seamOrder=-1;
  return firstNew-removed;
 }
 void joinUrls(Recognition& job){

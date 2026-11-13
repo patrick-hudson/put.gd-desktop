@@ -46,6 +46,9 @@ private slots:
   QTest::newRow("other-process-memory")<<"vm-read"<<parent<<-SIGSYS<<false;
   // Below Landlock ABI 6 only the seccomp filter stops this.
   QTest::newRow("signal-parent")<<"signal"<<parent<<EPERM<<false;
+  // Metadata a write ban does not cover, and another process's limits.
+  QTest::newRow("chmod-home")<<"chmod"<<secret<<EPERM<<false;
+  QTest::newRow("parent-limit")<<"prlimit"<<parent<<EPERM<<false;
   // Installed at <home-like>/install/bin with install/lib a symlink to
   // <home-like>: the prefix and its lib are granted only as themselves, so a
   // file in the home-like directory must stay unreadable.

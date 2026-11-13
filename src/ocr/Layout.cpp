@@ -162,6 +162,113 @@ QList<Band> strips(const Profile& profile,int width,int height,int parts){
  out.append({start,height,false});
  return out;
 }
+namespace {
+// The activity grid of panels(): two counts per 4x4 cell, one from horizontal
+// steps (for gutters down the page) and one from vertical steps (across it).
+struct Activity {
+ static constexpr int cell=4;
+ int columns=0,rows=0;
+ std::vector<uint16_t> down,across;
+ uint16_t& at(std::vector<uint16_t>& grid,int x,int y){return grid[size_t(y)*size_t(columns)+size_t(x)];}
+ qint64 sum(const std::vector<uint16_t>& grid,int x0,int y0,int x1,int y1)const{
+  qint64 n=0;for(int y=y0;y<y1;++y){const auto* row=grid.data()+size_t(y)*size_t(columns);for(int x=x0;x<x1;++x)n+=row[x];}return n;
+ }
+};
+Activity activity(const GreyView& image,const QList<Quad>& codes,int longRun){
+ Activity a;a.columns=(image.width+Activity::cell-1)/Activity::cell;a.rows=(image.height+Activity::cell-1)/Activity::cell;
+ a.down.assign(size_t(a.columns)*size_t(a.rows),0);a.across.assign(a.down.size(),0);
+ QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)).intersected(QRect(0,0,image.width,image.height)));
+ constexpr int step=32;
+ // Vertical runs of horizontal steps: a run as long as longRun is a straight
+ // edge (a window border), not text, and is not counted.
+ std::vector<int> run(size_t(std::max(0,image.width)),0);
+ const auto flushDown=[&](int x,int end){
+  const int length=run[size_t(x)];run[size_t(x)]=0;
+  if(length<=0||length>=longRun)return;
+  for(int y=end-length;y<end;++y){auto& c=a.at(a.down,x/Activity::cell,y/Activity::cell);if(c<65535)++c;}
+ };
+ std::vector<uint8_t> mask(size_t(std::max(0,image.width)));
+ for(int y=0;y+1<image.height;++y){
+  bool masked=false;
+  for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom()){if(!masked){std::fill(mask.begin(),mask.end(),uint8_t(0));masked=true;}std::fill(mask.begin()+r.left(),mask.begin()+r.right()+1,uint8_t(1));}
+  const auto* p=image.row(y);const auto* q=image.row(y+1);int horizontal=0;
+  for(int x=0;x+1<image.width;++x){
+   const bool skip=masked&&mask[size_t(x)];
+   if(!skip&&std::abs(int(p[x+1])-int(p[x]))>=step)++run[size_t(x)];else flushDown(x,y);
+   // Horizontal runs of vertical steps: a long one is a rule or an underline.
+   if(!skip&&std::abs(int(q[x])-int(p[x]))>=step){++horizontal;continue;}
+   if(horizontal>0&&horizontal<longRun)for(int i=x-horizontal;i<x;++i){auto& c=a.at(a.across,i/Activity::cell,y/Activity::cell);if(c<65535)++c;}
+   horizontal=0;
+  }
+  if(horizontal>0&&horizontal<longRun)for(int i=image.width-1-horizontal;i<image.width-1;++i){auto& c=a.at(a.across,i/Activity::cell,y/Activity::cell);if(c<65535)++c;}
+ }
+ for(int x=0;x<image.width;++x)flushDown(x,image.height-1);
+ return a;
+}
+struct CellRect { int x0=0,y0=0,x1=0,y1=0; int width()const{return x1-x0;} int height()const{return y1-y0;} };
+// The widest run of empty projection entries strictly inside [0, size), at
+// least minimum long, with activity on both sides. Returns its middle or -1.
+int gutter(const std::vector<qint64>& projection,int minimum,qint64 noise){
+ const int size=int(projection.size());int best=-1,bestLength=0;
+ int first=0;while(first<size&&projection[size_t(first)]<=noise)++first;
+ int last=size-1;while(last>=0&&projection[size_t(last)]<=noise)--last;
+ for(int i=first;i<=last;){
+  if(projection[size_t(i)]>noise){++i;continue;}
+  int j=i;while(j<=last&&projection[size_t(j)]<=noise)++j;
+  if(j-i>=minimum&&j-i>bestLength){bestLength=j-i;best=(i+j)/2;}
+  i=j;
+ }
+ return best;
+}
+void cut(const Activity& a,const CellRect& r,int down,int across,int minimumSide,int depth,QList<CellRect>& out){
+ if(depth<10&&r.width()>=2*minimumSide){
+  std::vector<qint64> columns(size_t(r.width()));
+  for(int x=r.x0;x<r.x1;++x)columns[size_t(x-r.x0)]=a.sum(a.down,x,r.y0,x+1,r.y1);
+  const int at=gutter(columns,down,r.height()/16);
+  if(at>=minimumSide&&r.width()-at>=minimumSide){
+   cut(a,{r.x0,r.y0,r.x0+at,r.y1},down,across,minimumSide,depth+1,out);
+   cut(a,{r.x0+at,r.y0,r.x1,r.y1},down,across,minimumSide,depth+1,out);
+   return;
+  }
+ }
+ if(depth<10&&r.height()>=2*minimumSide){
+  std::vector<qint64> rows(size_t(r.height()));
+  for(int y=r.y0;y<r.y1;++y)rows[size_t(y-r.y0)]=a.sum(a.across,r.x0,y,r.x1,y+1);
+  const int at=gutter(rows,across,r.width()/16);
+  if(at>=minimumSide&&r.height()-at>=minimumSide){
+   QList<CellRect> top,bottom;
+   cut(a,{r.x0,r.y0,r.x1,r.y0+at},down,across,minimumSide,depth+1,top);
+   cut(a,{r.x0,r.y0+at,r.x1,r.y1},down,across,minimumSide,depth+1,bottom);
+   // Kept only when it lets a part be cut down the page.
+   if(top.size()>1||bottom.size()>1){out.append(top);out.append(bottom);return;}
+  }
+ }
+ out.append(r);
+}
+}
+QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeight){
+ const QRect whole(0,0,image.width,image.height);
+ if(!image.valid())return {whole};
+ const int line=lineHeight>0?lineHeight:16;
+ const auto a=activity(image,codes,std::max(48,4*line));
+ const int cell=Activity::cell;
+ const int down=std::max(6,(3*line+cell-1)/cell),across=std::max(3,(3*line/2+cell-1)/cell),minimumSide=std::max(4,(4*line+cell-1)/cell);
+ QList<CellRect> leaves;cut(a,{0,0,a.columns,a.rows},down,across,minimumSide,0,leaves);
+ if(leaves.size()<2)return {whole};
+ QList<QRect> out;const int margin=std::max(4,line/2);
+ for(const auto& r:leaves){
+  // Trimmed to its activity; a panel with less than one short line of it is empty.
+  int x0=r.x1,y0=r.y1,x1=r.x0,y1=r.y0;qint64 total=0;
+  for(int y=r.y0;y<r.y1;++y)for(int x=r.x0;x<r.x1;++x){
+   const qint64 n=qint64(a.down[size_t(y)*size_t(a.columns)+size_t(x)])+a.across[size_t(y)*size_t(a.columns)+size_t(x)];
+   if(n>0){total+=n;x0=std::min(x0,x);y0=std::min(y0,y);x1=std::max(x1,x+1);y1=std::max(y1,y+1);}
+  }
+  if(total<qint64(line)*4)continue;
+  out.append(QRect(QPoint(std::max(0,x0*cell-margin),std::max(0,y0*cell-margin)),QPoint(std::min(image.width-1,x1*cell+margin-1),std::min(image.height-1,y1*cell+margin-1))));
+ }
+ if(out.size()<2)return {whole};
+ return out;
+}
 GreyImage bandImage(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes,int background,bool invert){
  GreyImage out;
  const int innerWidth=int(std::ceil(source.width*scale)),innerHeight=int(std::ceil((band.bottom-band.top)*scale));

@@ -2,7 +2,7 @@
 // helper's own settings, optionally a first recognition or a banded one with
 // the distribution's Tesseract and OpenMP, then one forbidden action. It prints
 // "errno=N" when the action returns, or dies by the seccomp filter (SIGSYS).
-//   test_ocr_confinement_probe [--recognize | --bands] none|socket-inet|socket-unix|exec|fork|write PATH|read PATH|signal PID|vm-read PID
+//   test_ocr_confinement_probe [--recognize | --bands] none|socket-inet|socket-unix|exec|fork|write PATH|read PATH|signal PID|chmod PATH|prlimit PID|vm-read PID
 // "none" prints the Landlock ABI, for the per-host record.
 #include "ocr/Confinement.h"
 #include "ocr/Recognize.h"
@@ -12,7 +12,9 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
@@ -60,6 +62,8 @@ int main(int argc,char** argv){
  if(action=="write")return report(::open(argument,O_WRONLY|O_CREAT|O_CLOEXEC,0600));
  if(action=="read")return report(::open(argument,O_RDONLY|O_CLOEXEC));
  if(action=="signal")return report(::kill(pid_t(std::atoi(argument)),0));
+ if(action=="chmod")return report(::chmod(argument,0777));
+ if(action=="prlimit"){const rlimit none{0,0};return report(::prlimit(pid_t(std::atoi(argument)),RLIMIT_CPU,&none,nullptr));}
  if(action=="vm-read"){char buffer[16];iovec local{buffer,sizeof buffer},remote{reinterpret_cast<void*>(0x400000),sizeof buffer};return report(::process_vm_readv(pid_t(std::atoi(argument)),&local,1,&remote,1,0));}
  std::fprintf(stderr,"unknown action\n");return 2;
 }
