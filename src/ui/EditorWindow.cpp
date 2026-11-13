@@ -1066,12 +1066,12 @@ void EditorWindow::syncText(){
  QString line;
  if(state=="recognizing")line=QStringLiteral("Recognizing…");
  else if(state=="failed")line=text_->error().message;
- else if(state=="done")line=words?QLocale().toString(words)+(words==1?" word":" words"):QStringLiteral("No text found");
+ else if(state=="completed")line=words?QLocale().toString(words)+(words==1?" word":" words"):QStringLiteral("No text found");
  textState_->setText(line);textState_->setVisible(!line.isEmpty());
  copySelection_->setEnabled(!busy_&&layer.hasSelection());
  bool codeText=false;for(const auto& code:layer.codes())codeText=codeText||!code.binary;
  copyAllText_->setEnabled(!busy_&&(words>0||codeText));
- textTruncated_->setVisible(state=="done"&&text_->truncated());
+ textTruncated_->setVisible(state=="completed"&&text_->truncated());
  if(codesShown_!=layer.identity())rebuildCodes();
 }
 // One row a code: its kind, its content on one elided line (a link whole and
@@ -1135,6 +1135,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done){
  quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
  text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done](Error error){
   if(!g)return;g->quickRedacting_=false;
+  if(g->busy_){g->quickRedactResult_->setText("Quick redact added nothing: the edit was already submitted.");Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done({"editor_finalizing","The edit was already submitted or discarded",{}},{});return;}
   if(error){g->quickRedactResult_->setText(error.code=="edit_stale"?QStringLiteral("A redaction or the crop changed, so nothing was added. Try again."):error.message);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(error,{});return;}
   // Every match is ordinary Redact marks, all added as one undo step.
   const auto& candidates=g->text_->candidates();const auto matches=editor::quickRedact::find(candidates,categories);

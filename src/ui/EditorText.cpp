@@ -67,13 +67,13 @@ void EditorTextRecognition::documentChanged() {
 }
 void EditorTextRecognition::start() {
  // A result stands for its revision; a failure can be tried again.
- if(state_=="done")return;
+ if(state_=="completed")return;
  // One job at a time: a cancelled job is reaped before the next one starts.
  if(worker_){if(jobRevision_!=revision_)restart_=true;return;}
  run();
 }
 void EditorTextRecognition::whenRecognized(std::function<void(Error)> done) {
- if(state_=="done"){done({});return;}
+ if(state_=="completed"){done({});return;}
  waiting_.append(std::move(done));start();
 }
 void EditorTextRecognition::run() {
@@ -112,7 +112,7 @@ void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_pt
  editor::TextLayer::exclude(found,codes,redactions);editor::TextLayer::exclude(every,none,redactions);
  layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;
  lineTops_.clear();for(const auto& word:layer_.words()){if(word.line>=lineTops_.size())lineTops_.append(word.rect.top());else lineTops_[word.line]=qMin(lineTops_[word.line],word.rect.top());}
- state_="done";error_={};
+ state_="completed";error_={};
  for(auto& done:std::exchange(waiting_,{}))done({});
  emit changed();
 }

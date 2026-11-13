@@ -25,6 +25,9 @@ class QuickRedactTest final:public QObject {
 private slots:
  void categoriesMatchTheirShapes_data() {
   QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<QStringList>("expected");
+  QTest::newRow("two phones on one line")<<"2125550100 4155550100"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: 4155550100"};
+  const auto prefix=QString("gh")+"p_"+QString(36,'A'),tail=QString(10,'B');
+  QTest::newRow("wrapped token with valid prefix")<<prefix+" | "+tail<<all<<QStringList{"key: "+prefix+" "+tail};
   QTest::newRow("email")<<"Write to jane.doe+invoices@example.co.uk today"<<all<<QStringList{"email: jane.doe+invoices@example.co.uk"};
   QTest::newRow("email wrapped across lines")<<"Contact jane.doe@exam | ple.com for access"<<all<<QStringList{"email: jane.doe@exam ple.com"};
   QTest::newRow("international phone across words")<<"Call +44 20 7946 0958 now"<<all<<QStringList{"phone: +44 20 7946 0958"};

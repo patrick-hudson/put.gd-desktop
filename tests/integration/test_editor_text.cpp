@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QtTest>
 #include <atomic>
+#include <QSemaphore>
+#include <QScopeGuard>
 using namespace putgd;
 namespace {
 using editor::Shape;
@@ -21,7 +23,7 @@ TextResult found() {
 }
 QImage capture() {QImage image(400,200,QImage::Format_ARGB32);image.fill(Qt::white);return image;}
 Shape redaction(const QRect& rect) {Shape shape;shape.kind=Shape::Kind::Redact;shape.rect=rect;return shape;}
-bool done(const EditorTextRecognition& text) {return text.state()=="done";}
+bool done(const EditorTextRecognition& text) {return text.state()=="completed";}
 // Nothing the result may show, copy or return mentions the covered word or code.
 void verifyCovered(EditorTextRecognition& text) {
  text.layer().selectAll();
@@ -35,6 +37,19 @@ void verifyCovered(EditorTextRecognition& text) {
 class EditorTextTest final:public QObject {
  Q_OBJECT
 private slots:
+ void quickRedactCannotChangeSubmittedDocument() {
+  QSemaphore gate;std::atomic_bool started=false;
+  editor::EditDocument doc(capture());EditorWindow window(doc);
+  window.text().setRunner([&](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){
+   started=true;gate.acquire();auto result=found();result.candidates={{"jane@example.test",QRect(10,10,100,20),95}};return result;
+  });
+  const auto release=qScopeGuard([&]{gate.release();});
+  Error error;bool answered=false;
+  window.quickRedact({"email"},[&](Error e,QJsonObject){error=e;answered=true;});
+  PUTGD_TRY_VERIFY(started.load());window.setBusy("Preparing upload…");
+  gate.release();PUTGD_TRY_VERIFY(answered);
+  QCOMPARE(error.code,QString("editor_finalizing"));QVERIFY(doc.shapes().isEmpty());
+ }
  void wordUnderRedactMarkIsNeverReturned_data() {
   QTest::addColumn<QString>("change");
   QTest::newRow("mark added after recognition")<<"added";
@@ -81,8 +96,8 @@ private slots:
   release=true;PUTGD_TRY_VERIFY(returned.load());
   // The late result arrives and is rejected: nothing is shown or kept.
   PUTGD_COMPARE_STEADY(text.layer().words().size(),qsizetype(0),200);
-  QCOMPARE(text.identity(),quint64(0));QVERIFY(text.state()!="done");QVERIFY(text.candidates().isEmpty());
+  QCOMPARE(text.identity(),quint64(0));QVERIFY(text.state()!="completed");QVERIFY(text.candidates().isEmpty());
  }
 };
-QTEST_GUILESS_MAIN(EditorTextTest)
+QTEST_MAIN(EditorTextTest)
 #include "test_editor_text.moc"

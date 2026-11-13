@@ -1363,14 +1363,17 @@ void SettingsWindow::showTextLanguages(){
  const auto name=[](const QString& id){const auto language=QLocale::codeToLanguage(id.section('_',0,0));return language==QLocale::AnyLanguage||language==QLocale::C?id:QLocale::languageToString(language)+" ("+id+")";};
  const auto listed=[&installed](const QString& id){return std::any_of(installed.begin(),installed.end(),[&](const textjob::Language& language){return language.id==id;});};
  QStringList automatic;for(const auto& id:textjob::defaultLanguages({},QLocale::system().name(),installed))automatic<<name(id);
- const auto saved=Settings::fromValidated(draft_).textRecognitionLanguages;QStringList missing;
+ QStringList saved;
+ if(loading_)saved=Settings::fromValidated(draft_).textRecognitionLanguages;
+ else for(auto* combo:textLanguages_)saved.append(combo->currentData().toString());
+ QStringList missing;
  for(qsizetype i=0;i<textLanguages_.size();++i){
   auto* combo=textLanguages_[i];const QSignalBlocker block(combo);combo->clear();
   combo->addItem(i==0?"Automatic: "+automatic.join(", then "):QString("None"),QString());
   for(const auto& language:installed)combo->addItem(name(language.id),language.id);
   // A saved language whose data went away stays chosen, and says so.
   const auto chosen=saved.value(i);if(!chosen.isEmpty()&&!listed(chosen)){combo->addItem(name(chosen)+" (not installed)",chosen);missing<<name(chosen);}
-  combo->setCurrentIndex(qMax(0,combo->findData(chosen)));combo->setEnabled(i==0||!saved.isEmpty());
+  combo->setCurrentIndex(qMax(0,combo->findData(chosen)));combo->setEnabled(i==0||!saved.value(0).isEmpty());
  }
  const bool unavailable=textCapabilities_.contains("available")&&!textCapabilities_["available"].toBool();
  textRecognitionStatus_->setText(unavailable?"Text recognition is unavailable. "+textCapabilities_["error"].toObject()["message"].toString()

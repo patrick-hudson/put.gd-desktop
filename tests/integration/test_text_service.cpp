@@ -113,6 +113,21 @@ private slots:
   const auto record=resident.inspect(id);QCOMPARE(record["state"].toString(),QString("completed"));QCOMPARE(record["copyStatus"].toString(),QString("suppressed"));
   QCOMPARE(resident.source.copies,0);
  }
+ // A QR request reserves its revision before background receipt lookup.
+ void newerUserCopySuppressesQrDispatch() {
+  Resident resident;QVERIFY(resident.start());HistoryService history(*resident.operations);
+  Operation operation;operation.id="qr-operation";operation.state="completed";
+  operation.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+  operation.settings=Settings::fromValidated(Settings::defaults());
+  OperationItem item;item.artifact.id="qr-item";item.artifact.name="synthetic.png";
+  item.uploadStatus="uploaded";item.receipt.directUrl="https://example.test/synthetic.png";operation.items={item};
+  {HistoryStore store(resident.operations->databasePath());QVERIFY(!store.saveOperation(operation));}
+  Error error;QJsonObject answer;bool answered=false;
+  history.qr("qr-item","copy",{},false,[&](Error e,QJsonObject value){error=e;answer=value;answered=true;});
+  ++resident.source.revision; // before the background receipt lookup is dispatched back
+  PUTGD_TRY_VERIFY(answered);QVERIFY(!error);
+  QCOMPARE(answer["copyStatus"].toString(),QString("suppressed"));QCOMPARE(resident.source.copies,0);
+ }
  // A source this desktop cannot read must answer with the desktop's own reason.
  // Reading another source in its place would copy text the user never pointed at.
  void unavailableSourceReportsItsAdaptersError() {

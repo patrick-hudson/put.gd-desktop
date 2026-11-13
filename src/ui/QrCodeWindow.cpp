@@ -1,4 +1,5 @@
 #include "QrCodeWindow.h"
+#include <QFileInfo>
 #include "FileDialog.h"
 #include "Ui.h"
 #include <QHBoxLayout>
@@ -71,11 +72,16 @@ void QrCodeWindow::copyImage() {
 void QrCodeWindow::saveImage() {
  if(!actions_.save||chooser_->isOpen())return;
  auto file=name_;const auto dot=file.lastIndexOf('.');if(dot>0)file.truncate(dot);if(file.isEmpty())file="link";
- chooser_->open({FileDialog::Mode::Save,"Save QR code",{},file+" QR code.png",{{"PNG image",{"*.png"}}}},[g=QPointer<QrCodeWindow>(this)](const FileDialog::Result& chosen){
+ chooseSave(file+" QR code.png");
+}
+void QrCodeWindow::chooseSave(const QString& path){
+ const QFileInfo target(path);
+ chooser_->open({FileDialog::Mode::Save,"Save QR code",target.absolutePath(),target.fileName(),{{"PNG image",{"*.png"}}}},[g=QPointer<QrCodeWindow>(this)](const FileDialog::Result& chosen){
   if(!g)return;
   if(chosen.failed()){Ui::feedback(g->status_,chosen.error,true);return;}
   if(!chosen.chosen())return;
   auto path=chosen.path;const bool confirmed=path.endsWith(".png",Qt::CaseInsensitive);if(!confirmed)path+=".png";
+  if(!confirmed&&(QFileInfo::exists(path)||QFileInfo(path).isSymLink())){g->chooseSave(path);return;}
   g->save_->setEnabled(false);
   g->actions_.save(path,confirmed,[g](Error e,QJsonObject result){
    if(!g)return;g->save_->setEnabled(true);g->last_={{"action","save"},{"saved",!e}};if(e)g->last_["error"]=e.code;else g->last_["path"]=result["path"];

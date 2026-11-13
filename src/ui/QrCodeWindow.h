@@ -31,7 +31,7 @@ public:
  // The pixels per module the code area draws now.
  int modulePixels() const;
 private:
- void copyImage();void saveImage();
+ void copyImage();void saveImage();void chooseSave(const QString& path);
  QString historyId_,name_;qr::Matrix matrix_;Actions actions_;
  QWidget* code_=nullptr;QLabel* status_=nullptr;QPushButton *copy_=nullptr,*save_=nullptr;
  FileDialog* chooser_=nullptr;QJsonObject last_;

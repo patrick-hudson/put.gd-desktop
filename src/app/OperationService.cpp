@@ -681,8 +681,9 @@ QImage decodeTextImage(const QByteArray& bytes,const ResourceLimits& limits,Erro
   auto copy=bytes;QBuffer buffer(&copy);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
   const auto size=reader.size();
   if(!size.isValid()){error=textSourceUnsupported();return {};}
-  if(qint64(size.width())*size.height()>textjob::maximumInputPixels){error=textjob::failure("input_excessive");return {};}
-  auto image=reader.read();if(image.isNull())error=textSourceUnsupported();
+  if(qint64(size.width())*size.height()>std::min<qint64>(limits.imagePixels,textjob::maximumInputPixels)||qint64(size.width())*size.height()>limits.imageBytes/4){error=textjob::failure("input_excessive");return {};}
+  auto image=reader.read();if(image.isNull()){error=textSourceUnsupported();return {};}
+  if(image.sizeInBytes()>limits.imageBytes){error=textjob::failure("input_excessive");return {};}
   return image;
  }
  if(!bytes.startsWith("\xff\xd8\xff")){error=textSourceUnsupported();return {};}
@@ -1471,10 +1472,10 @@ void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
  },{},preparation);
 }
 void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});}
-void OperationService::copyHistoryQr(QByteArray png,JsonReply reply,quint64 ticket) {
- if(ticket!=invocation_){reply({"copy_suppressed","A newer clipboard action superseded this copy",{}},{});return;}
+void OperationService::copyHistoryQr(QByteArray png,JsonReply reply,quint64 ticket,quint64 revision) {
+ if(ticket!=invocation_||revision!=source_.clipboardRevision()){reply({"copy_suppressed","A newer clipboard action superseded this copy",{}},{});return;}
  CopyPayload payload;payload.kind="image";payload.encodedImage=std::move(png);
- deliverCopy(payload,[reply](Error e){reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});
+ deliverCopy(payload,[reply](Error e){reply(e,{{"copied",!e}});},[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
 }
 QJsonObject OperationService::capabilities() const {
 #ifdef Q_OS_UNIX

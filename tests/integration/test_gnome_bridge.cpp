@@ -107,7 +107,7 @@ public slots:
  }
  QString Bind(const QString& encoded){
   ++binds_;lastBindings_=QJsonDocument::fromJson(encoded.toUtf8()).object();QJsonObject bindings;
-  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
+  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){if(i.key()=="text"&&qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")>0&&qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")<23)continue;const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
   return json({{"bindings",bindings}});
  }
  QString BeginCopy(const QString& id,const QString& mime,qulonglong size){copyId_=id;copyMime_=mime;copySize_=size;copyBytes_.clear();return json({});}
@@ -356,6 +356,12 @@ private slots:
   PUTGD_TRY_COMPARE(source.capabilities()["helper"].toObject()["setup"].toObject()["state"].toString(),QString("login_required"));
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
+  // An old Shell omits text from Bind; recording existing shortcuts still works.
+  bool recorded=false;Error recordingError;
+  source.setShortcutRecording(true,[&](Error e){recordingError=e;recorded=true;});
+  PUTGD_TRY_VERIFY(recorded);QVERIFY2(!recordingError,qPrintable(recordingError.code));
+  recorded=false;source.setShortcutRecording(false,[&](Error e){recordingError=e;recorded=true;});
+  PUTGD_TRY_VERIFY(recorded);QVERIFY2(!recordingError,qPrintable(recordingError.code));
   QVERIFY(!source.selectsRegions());
   QCOMPARE(source.scrollShell()->selectsRegions(),loadedVersion>=22);
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
