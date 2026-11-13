@@ -405,7 +405,6 @@ TrayController::TrayController(OperationService& operations,
  });
 }
 
-QString TrayController::describeActivity(const QJsonArray& observations) {return activityText(observations);}
 // What went wrong, in plain words, from an operation or item error code (#152).
 QString TrayController::failureReason(const QJsonObject& error) {
  const auto code=error["code"].toString();

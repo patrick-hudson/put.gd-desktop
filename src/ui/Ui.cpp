@@ -419,7 +419,6 @@ void setLocked(QWidget* widget, bool locked) {
     widget->update();
 }
 bool isLocked(const QWidget* widget) { return widget && widget->property("uiLocked").toBool(); }
-int sidebarWidth(int baseline, int natural) { return std::clamp(natural, baseline, Metric::sidebarMax); }
 QPalette palette() {
     const auto& p = t();
     QPalette palette;
@@ -785,6 +784,14 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
     }
 }
 
+namespace {
+// Accelerator ampersands ("&File"); "&&" is a literal ampersand.
+const QRegularExpression& accelerator() {
+    static const QRegularExpression value(QStringLiteral("&(?!&)"));
+    return value;
+}
+}
+
 QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, const QSize& contents, const QWidget* widget) const {
     const bool compact = compactControl(widget);
     const int height = scaled(compact ? Metric::controlCompact : Metric::control);
@@ -805,7 +812,7 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         int w = contents.width() + 2 * 14;
         if (button && !button->text.isEmpty()) {
             const QFont f = buttonFont(widget, option);
-            const int text = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(button->text).remove(QRegularExpression(QStringLiteral("&(?!&)"))))));
+            const int text = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(button->text).remove(accelerator()))));
             const int icon = button->icon.isNull() ? 0 : button->iconSize.width() + 8;
             w = text + icon + 2 * 14 + 2;
         }
@@ -840,11 +847,11 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
         }
         const QFont f = buttonFont(widget, option);
         const QFontMetrics metrics(f);
-        int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
+        int w = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(accelerator())))) + 2 * 14 + 2 + (icon ? tool->iconSize.width() + 8 : 0);
         if (widget && widget->property("uiTight").toBool()) w -= 2 * (int(Space::m) - int(Space::xs));
         if (split) {
             const int inset = name == "link" || name == "version" || (widget && widget->property("uiTight").toBool()) ? int(Space::xs) : int(Space::m);
-            const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(QRegularExpression(QStringLiteral("&(?!&)")))))) + (icon ? tool->iconSize.width() + 8 : 0);
+            const int label = int(std::ceil(QFontMetricsF(f).horizontalAdvance(QString(tool->text).remove(accelerator())))) + (icon ? tool->iconSize.width() + 8 : 0);
             w = label + (flushButton(widget) ? 0 : inset) + std::max(inset, space(Space::s)) + scaled(Metric::splitArrow) + 2;
         }
         else if (menu) w += scaled(Metric::splitZone) - scaled(6);
@@ -1165,7 +1172,7 @@ void Style::drawButtonLabel(const QStyleOption* option, const QString& rawText, 
     const QFontMetricsF metrics(f);
     const bool hasIcon = !icon.isNull() && iconSize.isValid() && iconSize.width() > 0;
     const int iconWidth = hasIcon ? iconSize.width() : 0;
-    const QString plain = QString(rawText).remove(QRegularExpression(QStringLiteral("&(?!&)")));
+    const QString plain = QString(rawText).remove(accelerator());
     const qreal available = std::max<qreal>(0, body.width() - iconWidth - (hasIcon && !plain.isEmpty() ? 8 : 0));
     const QString shown = metrics.elidedText(plain, Qt::ElideRight, available);
     const qreal textWidth = shown.isEmpty() ? 0 : metrics.horizontalAdvance(shown);
@@ -2053,7 +2060,7 @@ void Banner::paintEvent(QPaintEvent*) {
     const QColor tone = tone_ == Tone::Warning ? colors.warning : tone_ == Tone::Error ? colors.danger : tone_ == Tone::Success ? colors.success : colors.textMuted;
     QPainter painter(this);
     painter.fillRect(rect(), colors.bg);
-    const bool fillOnly = fillOnly_ || tone_ == Tone::Error;
+    const bool fillOnly = tone_ == Tone::Error;
     const QColor fill = fillOnly ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
     rounded(&painter, rect(), fill, {}, Metric::containerRadius);
     const int side = scaled(Metric::icon);
@@ -2987,28 +2994,6 @@ void paintIndicators(const QString& folder, const Theme::Palette& p)
         }
     }
 }
-// Fit the name column when the viewport changes, never while dragging a section.
-// Stretch mode would steal the drag distance from the first column instead.
-class ColumnSizer final:public QObject {
-public:
- explicit ColumnSizer(QHeaderView* header):QObject(header),header_(header){
-  header_->setSectionResizeMode(QHeaderView::Interactive);header_->setStretchLastSection(false);
-  header_->viewport()->installEventFilter(this);
- }
-protected:
- bool eventFilter(QObject* watched,QEvent* event)override {
-  if(event->type()==QEvent::Resize){
-   const auto* resize=static_cast<QResizeEvent*>(event);
-   if(resize->size().width()!=resize->oldSize().width()&&header_->count()>0){
-    int remaining=resize->size().width();
-    for(int column=1;column<header_->count();++column)if(!header_->isSectionHidden(column))remaining-=header_->sectionSize(column);
-    header_->resizeSection(0,qMax(header_->minimumSectionSize(),remaining));
-   }
-  }
-  return QObject::eventFilter(watched,event);
- }
-private:QHeaderView* header_;
-};
 class ChoiceBox final:public QComboBox {
 public:explicit ChoiceBox(QWidget* parent):QComboBox(parent){setSizeAdjustPolicy(QComboBox::AdjustToContents);}
  QSize naturalSizeHint()const{return QComboBox::sizeHint();}
@@ -3017,26 +3002,7 @@ protected:
  // Leave wheel input to the containing pane. The open popup handles its own scrolling.
  void wheelEvent(QWheelEvent* event)override {event->ignore();}
 };
-class StateDelegate final:public QStyledItemDelegate {
-public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(parent),columns_(std::move(columns)){}
- void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index)const override {
-  if(!columns_.contains(index.column())||index.data().toString().isEmpty()){QStyledItemDelegate::paint(painter,option,index);return;}
-  auto value=index.data().toString();
-  // A local-save cell can contain a path; keep that evidence as ordinary text.
-  if(value.contains(' ')||value.contains('/')){QStyledItemDelegate::paint(painter,option,index);return;}
-  QStyleOptionViewItem base(option);initStyleOption(&base,index);base.text.clear();base.widget->style()->drawControl(QStyle::CE_ItemViewItem,&base,painter,base.widget);
-  const auto& p=Theme::current();QColor foreground=p.textSecondary,background=p.surfaceRaised;
-  if(QStringList{"completed","uploaded","copied","saved","removed"}.contains(value)){foreground=p.success;background=p.successSurface;}
-  else if(QStringList{"failed","denied","interrupted"}.contains(value)){foreground=p.danger;background=p.dangerSurface;}
-  else if(QStringList{"partial","uncertain","accepted","superseded","version_retained"}.contains(value)){foreground=p.textSecondary;background=p.warningSurface;}
-  value.replace('_',' ');value=value.left(1).toUpper()+value.mid(1);
-  painter->save();painter->setRenderHint(QPainter::Antialiasing);auto bounds=option.rect.adjusted(8,5,-8,-5);bounds.setWidth(qMin(bounds.width(),option.fontMetrics.horizontalAdvance(value)+22));painter->setPen(Qt::NoPen);painter->setBrush(background);painter->drawRoundedRect(bounds,5,5);painter->setPen(foreground);painter->drawText(bounds.adjusted(10,0,-8,0),Qt::AlignVCenter|Qt::AlignLeft,option.fontMetrics.elidedText(value,Qt::ElideRight,qMax(0,bounds.width()-18)));painter->restore();
- }
- QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override {auto size=QStyledItemDelegate::sizeHint(option,index);size.setHeight(qMax(36,size.height()));if(columns_.contains(index.column()))size.setWidth(size.width()+26);return size;}
-private:QList<int> columns_;
-};
 }
-void configureColumns(QHeaderView* header){new ColumnSizer(header);}
 QComboBox* choiceBox(QWidget* parent){return new ChoiceBox(parent);}
 void role(QWidget* widget,const char* value){widget->setProperty("visualRole",value);widget->style()->unpolish(widget);widget->style()->polish(widget);}
 namespace {
@@ -3223,7 +3189,6 @@ void alignChoices(QWidget* owner,const QList<QFormLayout*>& family){
  };
  new ChoiceFamily(owner,family);
 }
-void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 QString indicators(Theme::Scheme scheme){
     static std::unique_ptr<QTemporaryDir> folder;
     static QHash<QString, QString> painted;

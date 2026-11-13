@@ -130,8 +130,6 @@ struct Settings {
     // the sharing actions plus the screen-recording, repeat and Copy text actions.
     static QStringList invocableActionNames();
     static QStringList presentationOrder();
-    // Actions a schema-1 document must define; "edit" may be absent.
-    static QStringList requiredActionNames();
     // The optional recording route; absent documents inherit the region route.
     static QString recordingActionName();
     // Repeat last region (#1363): a shortcut only, always on the region route.

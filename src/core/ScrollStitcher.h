@@ -128,8 +128,6 @@ class FrameSignatures {
   std::vector<uint32_t> flatColor;         // colour of a flat row
   std::vector<uint8_t> rowFlat;            // whole compared row is one colour
   std::vector<uint8_t> sideFlat;           // bit 0: the left margin is one colour (or empty); bit 1: the right
-
-  size_t bytes() const;
 };
 
 // Same-y comparison used for settle, NoMovement and fixed header/footer runs:
@@ -210,7 +208,6 @@ class ScrollStitcher {
   // A new scroll target before any body was emitted: discard only the pending viewport.
   void restartBeforeMovement();
 
-  int outputWidth() const { return width_; }
   int outputHeight() const;  // rows emitted so far + held + pending + footer
   // Moving band of the reference frame, [top, bottom) in frame rows.
   int movingBandTop() const { return estTop_ > 0 ? estTop_ : 0; }
@@ -220,7 +217,6 @@ class ScrollStitcher {
   // the reference frame inside the overlap, or -1 when the reference has fewer
   // (a blind, hint-only step is then unavoidable).
   int maxEvidenceStep() const;
-  bool limitReached() const { return limited_; }
   // The pointer rests in the rectangle while frames are read (it has no place
   // outside): rows of a frame above this one may show what the page does
   // under it and are not taken in place of rows that wait (the edge guard).
@@ -233,9 +229,6 @@ class ScrollStitcher {
   // Internal-buffer mode only (no sink): the image, valid after finish().
   const std::vector<uint8_t>& image() const { return image_; }
   std::vector<uint8_t> takeImage() { return std::move(image_); }
-
-  // Peak bytes held by the stitcher right now (excluding the caller's frames).
-  size_t memoryBytes() const;
 
  private:
   struct Search {

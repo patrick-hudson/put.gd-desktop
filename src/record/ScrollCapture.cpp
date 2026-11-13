@@ -174,18 +174,6 @@ ScrollCapture::~ScrollCapture() {
     delete layerSelection_;
 #endif
 }
-QString ScrollCapture::stateName() const {
-    switch (state_) {
-        case State::Idle: return QStringLiteral("idle");
-        case State::Selecting: return QStringLiteral("selecting");
-        case State::Ready: case State::Starting: return QStringLiteral("ready");
-        case State::Capturing: return QStringLiteral("capturing");
-        case State::Done: return QStringLiteral("done");
-        case State::Cancelled: return QStringLiteral("cancelled");
-        case State::Failed: return QStringLiteral("failed");
-    }
-    return {};
-}
 void ScrollCapture::abandon() {
     if (job_) {
         job_->gate.armed.store(false);

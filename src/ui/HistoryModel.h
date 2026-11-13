@@ -36,24 +36,20 @@ public:
  // known; and the stored files of each day on the page within the query.
  QJsonObject categoryTotals()const{return categoryTotals_;}
  QJsonArray dayCounts()const;
- // The day the page starts with continues from the previous page.
- bool continuedDay()const{return continued_.isValid();}
  // One long date form for the details pane and tooltips; the time column's text.
  static QString longTimestamp(const QDateTime&);
  static QString timeColumn(const QDateTime&,bool withDate);
- void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
+ void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}
  QJsonArray activeOperations()const;static int operationProgress(const QJsonObject&);
  void releaseThumbnails();
  // KB to hold a page's largest thumbnails, 32 bits a pixel once loaded. A view repaints
  // every visible tile in order, and an LRU cache smaller than that misses on all of them.
  static int thumbnailCacheCost(int rows){return qMax(8192,rows*(360*220*4/1024+1));}
- bool multipleDestinations()const;QString commonDestination()const;
  // Reads a preview again once it has been made (#190) at a path whose earlier read failed.
  void reloadThumbnail(const QString& path);
  // A video poster's length (#112): the PNG text key the helper writes, and m:ss.
  static constexpr const char* durationKey="putgd-duration-ms";
  static QString duration(qint64 milliseconds);
- static QString relativeTime(const QJsonObject&);
  static QString fileSize(qint64);static QString friendlyAction(const QString&);static QString statusText(const QJsonObject&);
  static QString remoteStateText(const QJsonObject&);
  static bool localCopyUnavailable(const QJsonObject&);
@@ -81,7 +77,7 @@ private:
  // every paint asks for many times (#1064).
  UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QList<QDateTime> createdAt_;QList<RowFacts> facts_;mutable QStringList dayLabels_;mutable QDate dayLabelsFor_;bool multipleDestinations_=false;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;
  QJsonObject categoryTotals_;QHash<QDate,qint64> dayCounts_;QDate continued_;QString countsKey_;QElapsedTimer countsAge_;quint64 countsRequest_=0;
- bool queryBusy_=false,loadInFlight_=false,loadPending_=false,showCancelled_=false;int hiddenCancelled_=0;
+ bool queryBusy_=false,loadInFlight_=false,loadPending_=false,showCancelled_=false;
  mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable bool thumbnailLoading_=false;mutable quint64 thumbnailGeneration_=0;qint64 timesMinute_=0;
 };
 }

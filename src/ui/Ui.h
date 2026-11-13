@@ -34,8 +34,6 @@ constexpr int header = 56, commandBand = 60, statusBand = 40, icon = 20, splitZo
 constexpr int splitArrow = 32;
 constexpr int navRow = 38, destinationRow = 68, historyRow = 76, thumbWidth = 80, thumbHeight = 50;
 constexpr int sidebar = 216, historySidebar = sidebar, settingsSidebar = sidebar, destinationSidebar = sidebar, inspector = 340;
-// Text enlarges inside a measured rail; horizontal space stays bounded.
-constexpr int sidebarMax = 240;
 // Each form family measures its labels up to this bound.
 constexpr int labelGutter = 220;
 }
@@ -102,8 +100,6 @@ int scaled(int pixels);
 int railWidth();
 // Top inset above every rail page's header row; the row is Metric::control tall so headings share one centre line across tabs.
 inline int pageHeaderTop() { return space(Space::l); }
-// Label and icon measurements include text enlargement; the cap is logical pixels.
-int sidebarWidth(int baseline, int natural);
 // Text vertically centred on its ink, elided to the rectangle.
 void paintText(QPainter&, const QRectF&, const QString&, const QColor&, const QFont&, Qt::Alignment = Qt::AlignLeft | Qt::AlignVCenter, Qt::TextElideMode = Qt::ElideRight);
 
@@ -159,7 +155,6 @@ public:
     enum class Tone { Info, Warning, Error, Success };
     explicit Banner(Tone tone, const QString& text = {}, QWidget* parent = nullptr);
     void setTone(Tone);
-    void setFillOnly(bool on) { fillOnly_ = on; update(); }
     Tone tone() const { return tone_; }
     void setText(const QString&);
     void setIcon(const QIcon&); // Null restores the tone's glyph.
@@ -178,7 +173,6 @@ private:
     void styleContent();
     void placeAction();
     Tone tone_;
-    bool fillOnly_ = false;
     QIcon icon_;
     QGridLayout* row_;
     QLabel* text_;
@@ -404,7 +398,6 @@ void apply(QApplication&);
 // palettes); a hidden one catches up just before it is shown.
 QString schemeScoped(const std::function<QString(Theme::Scheme)>& render);
 void followScheme(QApplication&,std::function<void()> beforeRepolish={});
-void configureColumns(QHeaderView* header);
 QComboBox* choiceBox(QWidget* parent);
 // A glyph in the active scheme's icon colours. QIcon users repaint it in the
 // new colours after a scheme switch (#60); a pixmap taken from it does not.
@@ -422,7 +415,6 @@ QFrame* card(const QString& title,const QString& subtitle,QWidget* parent);
 void styleForm(QFormLayout*);
 void alignChoices(QWidget* owner,const QList<QFormLayout*>& family);
 void alignFormValue(QLabel* caption,QLabel* value);
-void decorateView(QAbstractItemView*,const QList<int>& statusColumns);
 void role(QWidget*,const char*);
 void feedback(QLabel*,const QString&,bool error=false);
 void success(QLabel*,const QString&);

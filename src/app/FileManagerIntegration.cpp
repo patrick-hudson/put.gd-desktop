@@ -410,7 +410,8 @@ bool cosmicFilesInstalled(const FileManagerContext& c) {
 
 QString substitute(const QString& source,const QHash<QString,QString>& values) {
  QString text;qsizetype position=0;
- auto matches=QRegularExpression("__PUTGD_([A-Z_]+)__").globalMatch(source);
+ static const QRegularExpression placeholder("__PUTGD_([A-Z_]+)__");
+ auto matches=placeholder.globalMatch(source);
  while(matches.hasNext()) {
   const auto match=matches.next();
   text+=source.mid(position,match.capturedStart()-position)+values.value(match.captured(1),match.captured(0));

@@ -276,7 +276,8 @@ Error ProtonProvider::validateSettings(const QJsonObject& s) const {
  if(!s["accountRootUid"].isString()||!s["folderUid"].isString()||(!root.isEmpty()&&!nodeUid(root))||(!folder.isEmpty()&&!nodeUid(folder))||(root.isEmpty()&&!folder.isEmpty()))return {"config_invalid","Proton account and folder identifiers are invalid",{}};
  // The optional name is a display hint; storage identity remains the folder UID.
  const auto name=s["folderName"];
- if(!name.isUndefined()&&(!name.isString()||name.toString().isEmpty()||name.toString().toUtf8().size()>255||name.toString().contains(QRegularExpression("[\\x00-\\x1f\\x7f]"))||folder.isEmpty()))return {"config_invalid","Proton folder display name is invalid",{}};
+ static const QRegularExpression controlCharacter("[\\x00-\\x1f\\x7f]");
+ if(!name.isUndefined()&&(!name.isString()||name.toString().isEmpty()||name.toString().toUtf8().size()>255||name.toString().contains(controlCharacter)||folder.isEmpty()))return {"config_invalid","Proton folder display name is invalid",{}};
  const auto days=s["linkExpirationDays"].toDouble(-1),timeout=s["requestTimeoutMs"].toDouble(-1);
  if(!s["shareByDefault"].isBool()||days<0||days>365||days!=int(days)||timeout<1000||timeout>MaximumRequestTimeoutMs||timeout!=int(timeout))return {"config_invalid","Proton sharing or timeout settings are invalid",{}};
  const auto password=s["sharePasswordReference"];

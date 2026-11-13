@@ -109,9 +109,6 @@ public:
     // to leak because conversion or encoding fell behind the frame rate.
     qint64 framesEncoded() const;
     qint64 framesDropped() const;
-    // The rate frames are kept at now: the configured one until the adaptive
-    // rate lowers it. The clip keeps the configured rate (videorate repeats).
-    int frameRate() const { return rate_.current(); }
     QJsonObject status() const;
 signals:
     void failed(putgd::Error);

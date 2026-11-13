@@ -30,8 +30,6 @@ QString templateProblem(const QString& text, TemplateUse use);
 QString migrateOldSyntax(const QString& text, const QStringList& regexList = {});
 // True when the text holds an old-syntax placeholder such as $json:url$.
 bool usesOldSyntax(const QString& text);
-// Whether a request template reads {input}, the text being uploaded.
-bool readsInput(const QString& text);
 // The credential-store keys a template names with {secret:key}, put.gd's own placeholder
 // for a stored value used outside its own row, such as a token inside a deletion URL.
 QStringList secretReferences(const QString& text);

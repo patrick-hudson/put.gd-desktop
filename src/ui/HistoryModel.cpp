@@ -14,8 +14,6 @@
 namespace putgd {
 namespace {
 QDateTime created(const QJsonObject& r){auto d=QDateTime::fromString(r["created"].toString(),Qt::ISODateWithMs);if(!d.isValid())d=QDateTime::fromString(r["created"].toString(),Qt::ISODate);return d.toLocalTime();}
-QString relative(const QDateTime& d){if(!d.isValid())return {};const auto s=d.secsTo(QDateTime::currentDateTime());if(s<60)return "Just now";if(s<3600)return QString("%1 min ago").arg(s/60);if(d.date()==QDate::currentDate())return d.toString("HH:mm");if(d.date()==QDate::currentDate().addDays(-1))return "Yesterday";return d.toString("MMM d, yyyy");}
-QString relative(const QJsonObject& r){return relative(created(r));}
 // A day section's heading, in sentence case: the year only when it is not this one.
 QString day(const QDateTime& created){const auto date=created.date();const auto today=QDate::currentDate();if(date==today)return QStringLiteral("Today");if(date==today.addDays(-1))return QStringLiteral("Yesterday");return date.isValid()?QLocale().toString(date,date.year()==today.year()?QStringLiteral("dddd, MMMM d"):QStringLiteral("dddd, MMMM d, yyyy")):QStringLiteral("Earlier");}
 QString itemCount(qint64 count){return QStringLiteral("%1 %2").arg(QLocale().toString(count),count==1?QStringLiteral("item"):QStringLiteral("items"));}
@@ -39,7 +37,6 @@ bool localSaveFailed(const QJsonObject& r){
 }
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
-QString HistoryModel::relativeTime(const QJsonObject& r){return relative(r);}
 // The locale's short time of day, never with seconds (the C locale's short form has them).
 static QString shortTime(const QTime& time){auto format=QLocale().timeFormat(QLocale::ShortFormat);format.remove(QStringLiteral(":ss"));format.remove(QStringLiteral(".ss"));return QLocale().toString(time,format);}
 QString HistoryModel::longTimestamp(const QDateTime& when){if(!when.isValid())return {};const auto local=when.toLocalTime();return QLocale().toString(local.date(),QStringLiteral("MMMM d, yyyy"))+QStringLiteral(", ")+shortTime(local.time());}
@@ -96,13 +93,11 @@ QJsonObject HistoryModel::record(int row)const{return row>=0&&row<rows_.size()?r
 QJsonArray HistoryModel::activeOperations()const{QJsonArray result;for(const auto& v:operations_)if(Operation::activeState(v.toObject()["state"].toString()))result.append(v);return result;}
 int HistoryModel::operationProgress(const QJsonObject& operation){return aggregateProgress(operation).percent();}
 bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable"].toBool();}
-bool HistoryModel::multipleDestinations()const{return multipleDestinations_;}
 bool HistoryModel::scanDestinations()const{
  QSet<QString> destinations;
  for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:files){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();id=file["uploadStatus"]=="local_only"?QString("local:"):!id.isEmpty()?"profile:"+id:"receipt:"+QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
  return false;
 }
-QString HistoryModel::commonDestination()const{return rows_.isEmpty()||multipleDestinations()?QString{}:data(index(0),OutputRole).toString();}
 QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="monitor")return "Monitor";if(action=="clipboard")return "Clipboard";if(action=="files")return "File manager";if(action=="edit")return "Region & edit";if(action=="scroll")return "Scrolling region";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
 QString HistoryModel::failureLabel(const QJsonObject& r){
@@ -256,8 +251,8 @@ void HistoryModel::rebuild(){
   groups.append(group);
  }
  std::stable_sort(groups.begin(),groups.end(),[](const auto& a,const auto& b){if(active(a)!=active(b))return active(a);return a["created"].toString()>b["created"].toString();});
- QList<QJsonObject> rows;QList<QDateTime> createdAt;QList<RowFacts> facts;int hidden=0;
- for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hidden;continue;}rows.append(group);createdAt.append(created(group));facts.append(rowFacts(group));}
+ QList<QJsonObject> rows;QList<QDateTime> createdAt;QList<RowFacts> facts;
+ for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_)continue;rows.append(group);createdAt.append(created(group));facts.append(rowFacts(group));}
  // A live operation republishes up to four times a second, usually without
  // moving anything a row is laid out from. Update such rows where they are: a
  // reset repaints every visible tile and drops a press, for one row's facts.
@@ -267,7 +262,7 @@ void HistoryModel::rebuild(){
  const bool destinations=keep?scanDestinations():false;
  const qint64 minute=QDateTime::currentSecsSinceEpoch()/60;const bool timesMoved=std::exchange(timesMinute_,minute)!=minute;
  if(keep&&destinations==multipleDestinations_&&(!dayLabelsFor_.isValid()||dayLabelsFor_==QDate::currentDate())){
-  hiddenCancelled_=hidden;for(int row:changed)emit dataChanged(index(row),index(row),{RecordRole,SubtitleRole,ThumbnailRole,ProgressRole,OutputRole,Qt::ToolTipRole,Qt::AccessibleTextRole});
+  for(int row:changed)emit dataChanged(index(row),index(row),{RecordRole,SubtitleRole,ThumbnailRole,ProgressRole,OutputRole,Qt::ToolTipRole,Qt::AccessibleTextRole});
   // Nothing else repaints the rows that didn't change, so their ages would stop.
   if(timesMoved&&!rows_.isEmpty())emit dataChanged(index(0),index(rows_.size()-1),{CreatedRole});
   emit loaded();requestCounts();return;
@@ -275,7 +270,7 @@ void HistoryModel::rebuild(){
  // Paths queued for the old rows mustn't crowd out the ones the new rows ask for.
  for(const auto& path:std::as_const(thumbnailQueue_))thumbnailRequested_.remove(path);thumbnailQueue_.clear();
  thumbnails_.setMaxCost(thumbnailCacheCost(rows.size()));
- beginResetModel();rows_=rows;createdAt_=createdAt;facts_=facts;dayLabelsFor_={};hiddenCancelled_=hidden;
+ beginResetModel();rows_=rows;createdAt_=createdAt;facts_=facts;dayLabelsFor_={};
  multipleDestinations_=scanDestinations();endResetModel();emit loaded();requestCounts();
 }
 void HistoryModel::requestCounts(){

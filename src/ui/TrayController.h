@@ -46,8 +46,6 @@ public:
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
  // A provider or operation error as a short lower-case phrase.
  static QString failureReason(const QJsonObject& error);
- // The tooltip's activity lines for OperationService::activeObservations().
- static QString describeActivity(const QJsonArray& observations);
  // What the tray icon and tooltip are showing, as one value. The tooltip's title
  // and text, the icon's colour and its progress ring each switch on it.
  // Starting: storage work has begun but has not yet lasted long enough to show
