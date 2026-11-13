@@ -33,7 +33,9 @@ public:
     }
     // Makes capabilities() current (a lazy helper probe); never starts capture.
     virtual void refreshCapabilities(std::function<void()> done) { done(); }
-    // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}.
+    // Unsolicited events: {"id", "event": "stopped"|"failed"|"progress", ...}; from
+    // the helper backend also "lateResult" {command, ok}: a command answered after
+    // its deadline, whose caller already had recording_helper_timeout (#1443).
     virtual void setEventSink(Event) = 0;
     // Shows ready bounds/controls and asks for any consent. Result: {canvas:[w,h]}.
     virtual void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) = 0;

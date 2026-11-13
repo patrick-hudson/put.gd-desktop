@@ -54,8 +54,10 @@ struct HelperPolicy {
     // A recording keeps its helper when a command misses its deadline: the helper
     // may hold the only copy of the clip, and RecordingService ends the session
     // itself where a timeout means that. The late answer to that request is then
-    // dropped. A scroll capture ends its helper: one that stopped answering may
-    // still be turning the wheel, and the capture has nothing to lose.
+    // dropped, and the sink gets {id, event: "lateResult", command, ok} so the
+    // service can follow what the helper did. A scroll capture ends its helper:
+    // one that stopped answering may still be turning the wheel, and the capture
+    // has nothing to lose.
     bool timeoutEndsHelper = false;
     // The code and details the caller sees; the message already names the helper.
     std::function<Error(HelperFault, const QString& message, const QJsonObject& details)> error;

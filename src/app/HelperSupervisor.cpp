@@ -222,23 +222,26 @@ void HelperSupervisor::receive(quint64 generation, const QString& type, const QJ
         // still answer cancel (or an earlier command) while it tears down.
         if (child_->shuttingDown) return;
         const auto requestId = payload["requestId"].toString();
-        // The caller already has the timeout for this request (#1443).
+        // The caller already has the timeout for this request (#1443). What the
+        // helper did is still the session's business: a late pause or resume
+        // changed the clip's state, so the service hears of it as an event.
         if (const auto late = child_->timedOut.constFind(requestId); late != child_->timedOut.cend()) {
-            logging::info(logRecording(), policy_.noun.left(1).toUpper() + policy_.noun.mid(1) + " answered after its deadline", {{"operationId", child_->id}, {"command", late.value()}});
+            const auto command = late.value();
             child_->timedOut.erase(late);
+            logging::info(logRecording(), policy_.noun.left(1).toUpper() + policy_.noun.mid(1) + " answered after its deadline", {{"operationId", child_->id}, {"command", command}});
+            if (sink_) sink_({{"id", child_->id}, {"event", "lateResult"}, {"command", command}, {"ok", payload["ok"].toBool()}});
             return;
         }
         auto found = child_->outstanding.find(requestId);
         if (found == child_->outstanding.end() || !payload["ok"].isBool()) { failChild(generation, fault(HelperFault::Protocol, the() + " answered an unknown request")); return; }
+        // Checked while the request is still outstanding, so failChild() answers its caller.
+        const bool ok = payload["ok"].toBool();
+        if (ok && (payload.size() != 6 || !payload["result"].isObject())) { failChild(generation, fault(HelperFault::Protocol, "Malformed helper result")); return; }
+        if (!ok && (payload.size() != 8 || !payload["code"].isString() || !payload["message"].isString() || !payload["details"].isObject())) { failChild(generation, fault(HelperFault::Protocol, "Malformed helper error")); return; }
         auto reply = std::move(*found);
         child_->outstanding.erase(found);
-        if (payload["ok"].toBool()) {
-            if (payload.size() != 6 || !payload["result"].isObject()) { failChild(generation, fault(HelperFault::Protocol, "Malformed helper result")); return; }
-            reply({}, payload["result"].toObject());
-        } else {
-            if (payload.size() != 8 || !payload["code"].isString() || !payload["message"].isString() || !payload["details"].isObject()) { failChild(generation, fault(HelperFault::Protocol, "Malformed helper error")); return; }
-            reply({payload["code"].toString().left(64), payload["message"].toString().left(512), payload["details"].toObject()}, {});
-        }
+        if (ok) reply({}, payload["result"].toObject());
+        else reply({payload["code"].toString().left(64), payload["message"].toString().left(512), payload["details"].toObject()}, {});
         return;
     }
     if (type == "event") {

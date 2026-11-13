@@ -103,7 +103,8 @@ int main(int argc, char** argv) {
         if (command == "start") {
             started = true;
             if (mode == "unknown-result") { result("not-outstanding", {}); return; }
-            if (mode == "malformed-result") { auto frame = envelope; frame["requestId"] = requestId; frame["ok"] = "yes"; frame["result"] = QJsonObject{}; control.send("commandResult", frame); return; }
+            // A well-formed `ok` with a result that is not an object: the caller must still get the protocol error.
+            if (mode == "malformed-result") { auto frame = envelope; frame["requestId"] = requestId; frame["ok"] = true; frame["result"] = "not an object"; control.send("commandResult", frame); return; }
             result(requestId, {});
             if (mode == "crash-after-start") { QTimer::singleShot(100, &app, [] { std::abort(); }); return; }
             event("progress", {{"durationUs", 1000000.0}, {"bytes", 4321.0}, {"droppedFrames", 0}});
