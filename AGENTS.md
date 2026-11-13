@@ -17,7 +17,7 @@ servers for builds, VM hosting and graphical acceptance.
 Connection pins, host selection, visual evidence and
 golden-image transfer rules are in `docs/lab/remote-builders.md`. On these five servers,
 the user authorizes dependency/tool setup and testing with passwordless
-`sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
+`sudo -n`; preserve other sessions' projects and desktop work. Keep the SSH private key
 on the workstation.
 
 Aurora's Toolbx build, native session, Proton lab session, Atomic home and KWallet
@@ -31,9 +31,11 @@ of the exact PIDs, intended action and a deadline at least 10 minutes ahead;
 silence means go after that deadline. Nothing on these five machines is Patrick's:
 applications in a desktop session, pending system updates and package state there
 are lab state, and no logout, display-server restart, session switch or package
-change on a builder needs his approval. The only check before one is whether
-another session holds work on that host. His workstation is the one machine that
-is his.
+change on a builder needs his approval. Before one, check that no other session
+holds work on that host. The lab's own package rules still apply: read every
+`apt` or `dnf` transaction before confirming it, and never install, upgrade or
+downgrade a compositor or desktop package, which would change the desktop under
+test. His workstation is the one machine that is his.
 SSH builds and VMs on the builders are shared; heavy work stays off the workstation.
 The full rules, including one coordinator per session family, are in
 `docs/lab/remote-builders.md` under "Sharing the lab between concurrent sessions".

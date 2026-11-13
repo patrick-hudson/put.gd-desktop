@@ -110,7 +110,7 @@ Prefer the [Fedora, Debian, Kubuntu, Mint and Aurora physical servers](../lab/re
 for builds, VMs and native graphical acceptance on their GNOME/Plasma/Cinnamon
 desktops; use local VMs only when the required remote host/profile
 is unavailable or unsuitable, and record why. Passwordless `sudo -n` setup is
-authorized on all five servers. Preserve their existing projects and desktops;
+authorized on all five servers. Preserve other sessions' projects and desktop work there;
 keep the workstation SSH key local. Check KVM, capacity and ports on the actual
 VM host before launch. A physical host's OS/desktop is not a substitute for a
 different version in the declared acceptance matrix. Take and heartbeat the desktop
@@ -119,8 +119,10 @@ session's reply while holding a lock: notify the affected session and coordinato
 of the exact PIDs, intended action and a deadline at least 10 minutes ahead;
 silence means go after that deadline. Nothing on a builder is Patrick's: applications in a desktop session, pending
 system updates and package state there are lab state, and no logout, display-server
-restart, session switch or package change on a builder needs his approval. The only
-check before one is whether another session holds work on that host.
+restart, session switch or package change on a builder needs his approval. Before
+one, check that no other session holds work on that host. The lab's package rules
+still apply: read every transaction first, and never change a compositor or desktop
+package.
 The automatic nightly desktop check runs from a d69 timer across the five builders
 and reports to pinned issue #1003; release lab leases before 12:15 UTC. See
 [Sharing the lab between concurrent sessions](../lab/remote-builders.md#sharing-the-lab-between-concurrent-sessions).

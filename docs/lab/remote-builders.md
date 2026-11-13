@@ -621,8 +621,10 @@ the host, with the old lock and the cleanup check.
   (browsers, terminals, btop), a pending system update and the installed package
   state are lab state. A logout, display-server restart, session switch or
   package change on a builder needs no approval from him; say in your report
-  what you did. The check before one is for other sessions' work, as above. His
-  workstation is the one machine that is his, and it stays hands-off.
+  what you did. The check before one is for other sessions' work, as above, and
+  the package rules below still hold (read every transaction; never change the
+  desktop under test). His workstation is the one machine that is his, and it
+  stays hands-off.
 - A relayed approval with a condition, such as "Yes, coordinate first", means
   "notify the affected sessions with a deadline", not "wait for their reply".
   If your own permission check blocks a relayed approval, ask Patrick in your
