@@ -60,7 +60,12 @@ def score(capture, reference, actual):
                   cer=edits / len(ref) if ref else (0.0 if not out else None),
                   reference_words=len(ref.split()), font_pixels=capture['font_pixels'])
     for kind in ('urls', 'emails'):
-        expected = Counter(normalize(s) for s in capture.get(kind, []))
+        expected = Counter()
+        for item in capture.get(kind, []):
+            text = item['text'] if isinstance(item, dict) else item
+            pixels = item.get('font_pixels', capture['font_pixels']) if isinstance(item, dict) else capture['font_pixels']
+            if pixels >= 11:
+                expected[normalize(text)] += 1
         found = entities(out, kind)
         hits = sum((expected & found).values())
         total = sum(expected.values())
@@ -86,7 +91,7 @@ def aggregate(rows):
     for name, group in sorted(groups.items()):
         chars = sum(r['characters'] for r in group)
         result[name] = dict(captures=len(group), reference_words=sum(r['reference_words'] for r in group),
-                            median_cer=statistics.median(r['cer'] for r in group if r['cer'] is not None),
+                            median_cer=statistics.median([r['cer'] for r in group if r['cer'] is not None]) if any(r['cer'] is not None for r in group) else None,
                             micro_cer=sum(r['edits'] for r in group) / chars if chars else None)
         for kind in ('urls', 'emails'):
             hits = sum(r[kind]['exact'] for r in group)

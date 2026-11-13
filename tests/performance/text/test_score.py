@@ -20,6 +20,10 @@ class Scoring(unittest.TestCase):
             for b in strings:
                 self.assertEqual(distance(a, b), oracle(a, b))
 
+    def test_small_entities_are_outside_exact_match_bar(self):
+        capture=dict(id='tiny', **{'class':'interface'}, font_pixels=10, urls=['https://example.invalid'])
+        self.assertEqual(score(capture,'sample','sample')['urls']['total'],0)
+
     def test_normalization_and_case(self):
         self.assertEqual(normalize(' e\u0301\n\t A  '), 'é A')
         self.assertEqual(distance(normalize('A'), normalize('a')), 1)
