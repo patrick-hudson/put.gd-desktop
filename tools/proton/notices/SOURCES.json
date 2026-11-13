@@ -19,15 +19,15 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": false,
+    "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
     "finalPackageAcceptanceVerified": false,
-    "nativeCompiledHelperSourceSelectionVerified": false,
+    "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Fresh Bun 1.4.4 native modification/relink verification for this helper; the retained receipt describes helper 9fd4d72f8635",
-    "Fresh final-helper desktop functional/resource and actual package acceptance (P6); the retained receipt describes helper 9fd4d72f8635"
+    "P6: investigate Cinnamon uploaded-but-no-link sharing result (changed) for current helper d4bea9c8a1cd; original publication later inspected private. Reproduce/assess or fix, then retest every declared desktop.",
+    "P6: repeat Cinnamon post-use resource windows after 180 seconds settling in a new exclusive m74 slot; retained two quiet 301-second windows used a 35-second settle."
   ],
   "artifacts": [
     {
@@ -72,7 +72,7 @@
     "rustNightly": "2026-09-15",
     "rustSource": "574ff7d98bd6d037e5236a8453029173b32631fd",
     "cargoSource": "7941be6fb416b4cd9666aef7b858dfea25587a8c",
-    "profile": "release-local with local JSC and system ICU 74.2",
+    "profile": "release-local with local JSC and system ICU 78.3 (Aurora Fedora 45 putgd-build Toolbx)",
     "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
     "nativeOrWasmByteIdentityClaimed": false
   },
@@ -178,7 +178,7 @@
     "preferredRustSourceClaimed": false
   },
   "nativeRelinkProof": {
-    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
       "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -188,16 +188,17 @@
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "receipt": "tools/proton/native_relink/evidence/native-proof.json",
-    "receiptSha256": "9d47aba1ec3674404f7905fad27999ac589efde49e08b5c1c9f12b643f624985",
-    "nativeBunSha256": "e2501fe8a1f12058166923347657d1a0732eac06d9361beff21b26f5870ef401",
-    "proofHelperSha256": "872e0637c2ca790132364509e2680d1553121518be8f894eacf014cab7e282d6",
-    "scope": "Offline modification/relink of the final helper using source-built Bun/JavaScriptCore/TinyCC; no native byte identity, account or desktop/resource acceptance claim."
+    "receipt": "tools/proton/native_relink/evidence/native-proof-1399.json",
+    "receiptSha256": "dec84dd99e91dee06b3cf9219c18846f358cb61900e458d9ebfa6c676fa9036f",
+    "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
+    "proofHelperSha256": "8872758f1d3e07eb2d3d25f312176efbaca7257b2a00bd7adbd9db8069150f91",
+    "scope": "Fresh Aurora Toolbx source-built Bun/JavaScriptCore/TinyCC modification and current-overlay helper relink. Native byte identity is not claimed. Retained archive verified by full readback; old 2026-10-31 private archive was lost in the 2026-11-07 cleanup."
   },
   "desktopResourceAcceptance": {
-    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
-    "status": "passed",
-    "receipt": "tools/proton/native_relink/evidence/desktop-resource-current.json",
+    "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+    "status": "failed",
+    "receipt": "tools/proton/native_relink/evidence/desktop-resource-1399.json",
+    "receiptSha256": "6caae7a1f6e85355c0498a1c45d075672666f7844aed78110a4f06128ecd2587",
     "historicalProofTransferred": false,
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
@@ -208,7 +209,6 @@
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "receiptSha256": "2b4ab58ed44a851e59b8538ddceb8f7525a6c23a2bd6de72de9c590e91e2f455",
-    "scope": "Current-helper guest acceptance on #1080 CI DEBs, plus all five final-head installer Proton audits; exact tested package/build identities and build-time catalog flags remain in the receipt."
+    "scope": "Current-helper published nightly installed-package native desktop checks and five installer Proton audits. Cinnamon sharing finding remains unresolved; its native 180-second-settle repeat is pending. See the receipt for actual per-run results and package identities."
   }
 }
