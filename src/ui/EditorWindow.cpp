@@ -235,10 +235,11 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  copyTextRow_=column(panel,layout);copyTextRow_->setObjectName("editorCopyText");
  textState_=new QLabel(copyTextRow_);textState_->setObjectName("editorTextState");Ui::role(textState_,"body");textState_->setWordWrap(true);layout->addWidget(textState_);
  {
-  auto* buttons=new QHBoxLayout;buttons->setContentsMargins(0,0,0,0);buttons->setSpacing(Ui::space(Space::s));
+  // One above the other: side by side they are wider than the panel.
+  auto* buttons=new QVBoxLayout;buttons->setContentsMargins(0,0,0,0);buttons->setSpacing(Ui::space(Space::xs));
   copySelection_=new QPushButton("Copy selection",copyTextRow_);copySelection_->setObjectName("editorCopySelection");copySelection_->setToolTip("Copy the selected words (Ctrl+C)");Ui::role(copySelection_,"primary");
   copyAllText_=new QPushButton("Copy all text",copyTextRow_);copyAllText_->setObjectName("editorCopyAllText");copyAllText_->setToolTip("Copy every word, and the content of each code on a line of its own");Ui::role(copyAllText_,"quiet");
-  buttons->addWidget(copySelection_);buttons->addWidget(copyAllText_);buttons->addStretch(1);layout->addLayout(buttons);
+  buttons->addWidget(copySelection_,0,Qt::AlignLeft);buttons->addWidget(copyAllText_,0,Qt::AlignLeft);layout->addLayout(buttons);
   connect(copySelection_,&QPushButton::clicked,this,[this]{copyRecognizedText(false);});connect(copyAllText_,&QPushButton::clicked,this,[this]{copyRecognizedText(true);});
  }
  textFeedback_=new QLabel(copyTextRow_);textFeedback_->setObjectName("editorTextFeedback");textFeedback_->setWordWrap(true);textFeedback_->hide();layout->addWidget(textFeedback_);
