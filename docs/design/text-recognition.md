@@ -494,11 +494,16 @@ other tool active it does not. The user's side is in the
     BEGIN line to an END line, with dashes read as `~` or a long dash. Shape guards keep ordinary
     interface text from looking like base64: at least 20 percent capitals, at most 40 percent
     digits, under 30 percent of the letters in lowercase runs of five or more, and at most one dot,
-    colon or comma in 80 characters. A prefix never fires inside a word ("ghosts", "they").
+    colon or comma in 80 characters. A prefix never fires inside a word ("ghosts", "they"). A token
+    collapsed into repeated letters is a token shape too: a segment of 24 or more letters or digits whose
+    three commonest characters, ignoring case, are at least 85 percent of them and the commonest alone half.
+    Prose never repeats so few letters for so long, and a masked secret shown as a run of `x` has the same
+    shape.
   - Where a kind's shape fixes the alphabet, the usual confusions are allowed: `O` for `0`, `l` and
     `I` for `1`, `S` for `5` and `B` for `8` inside numbers, and a misread character or two inside
     a token. A number separated by dots alone is a phone number only as 3-3-4 or in pairs, so a
-    version such as 26.1112.4660 is not suggested.
+    version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
+    phone number only with a leading `+`, so the tail of a UUID is not taken for one.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
     (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid) and `key`. Keys and
     tokens means these shapes, listed in the tool's help: AWS access key IDs, GitHub, GitLab, Slack
@@ -749,18 +754,89 @@ capture shows where it went. **There is no speed bar.** The 1 second bar for a r
 megapixel and the 3 second bar for a full 4K screen are withdrawn. Patrick decided on 2026-11-13 that the
 times are recorded, not gated, and that very long text is returned cut at the time budget.
 
-Measured on candidate fe838a950 (CI run 43394391197), 20 monitor jobs and 5 driven region jobs and a
-180 second wait, with every helper's exit recorded (25 of 25), none of the forbidden libraries mapped
-and the frozen Gate C evaluator met: on m74 the native package left the resident at 10,040 KiB RSS and
-5,795 KiB PSS, and the AppImage at 10,816 KiB and 8,967 KiB. The same workload on candidate 8a3294c3c (CI run 43423721988) passed too: on k72 the native package left
-the resident at 10,812 KiB RSS and 5,182 KiB PSS and the AppImage at 11,108 and 7,484 KiB, on f44 the
-AppImage at 9,968 and 6,111 KiB, and on an Ubuntu GNOME guest the native package at 9,116 and 5,872 KiB
-and the AppImage at 9,596 and 7,658 KiB.
+**Memory after the workload, measured on candidate 357210d2f** (CI run 43448444706) on m74, with the
+workload of 20 monitor jobs and 5 driven region jobs and a 180 second wait. All 25 helpers exited 0 and
+none remained, and the lists of forbidden libraries were empty in the resident's maps (`libgomp` is
+allowed). Both packages passed the unchanged frozen Gate C evaluator:
 
-TO CONFIRM before merge: the final end-to-end figures (selection to clipboard, helper peak and the
-resident's memory after the workload) on the final candidate, commit 357210d2f1cb7b65f77166e34eb535d42e497fd0
-(CI run 43448444706), from the final acceptance comment on #1428. Replace the candidate fe838a950
-numbers above and in the user guide with them.
+| Package on m74 | Resident RSS | Resident PSS |
+| --- | --- | --- |
+| Native DEB | 10,112 KiB | 6,990 KiB |
+| AppImage | 10,804 KiB | 8,973 KiB |
+
+The same workload on nine other cells, run on the earlier candidate 8a3294c3c (CI run 43423721988) and
+carried forward, also saw 25 of 25 helpers exit 0, none of `libtesseract`, `libleptonica`, `libZXing`,
+`libcurl` or `libarchive` mapped in the resident, and passed the same evaluator. Their resident RSS ranged
+from 8,980 to 11,580 KiB and PSS from 4,703 to 7,751 KiB (f44 RPM and AppImage, k72 DEB and AppImage,
+Aurora AppImage, an Ubuntu GNOME DEB and AppImage, and d69 DEB and AppImage). They are not a new
+180 second run on the final build.
+
+**Helper peak.** Every recorded peak is below 131,072 KiB (128 MiB), before the allowance for extra
+languages, with English and with three languages, on every engine build. The highest corpus peak was
+126,064 KiB (Ubuntu 26.04). Arch's original 23 MB model is measured separately, and its corpus value is a
+conservative upper bound from a fresh child's rusage. Everything else is the kernel's VmHWM after exec.
+Peaks in KiB:
+
+| Engine build | Corpus | Dense 24 MP, English | Dense 24 MP, three languages | Editor output, English | Editor output, three languages |
+| --- | --- | --- | --- | --- | --- |
+| Mint 22 and Ubuntu 24.04 | 123,404 | 104,776 | 102,756 | 105,272 | 102,836 |
+| Ubuntu 26.04 | 126,064 | 106,680 | 105,552 | 108,108 | 105,180 |
+| Debian 13 | 125,304 | 106,200 | 104,740 | 106,824 | 104,644 |
+| Fedora 44 | 106,812 | 91,240 | 105,512 | 91,148 | 105,008 |
+| Arch, original model | 113,552 | 102,432 | 111,456 | 101,640 | 111,600 |
+| AppImage | 81,740 | 89,364 | 111,512 | 95,988 | 112,228 |
+
+**Latency, recorded and not gated.** On m74, each batch is 30 runs with separate spawn, engine-start,
+recognition and copy clocks. A region run starts at the release of the selection and a file run at its
+dispatch. The host was a quiet four-CPU machine (95.74 to 99.25 percent idle before timing). p95 in
+milliseconds:
+
+| m74 batch | Native package | AppImage |
+| --- | --- | --- |
+| Paragraph | 658.8 | 520.2 |
+| Dense region (8,739 characters) | 3,167.5 | 2,033.3 |
+| 4K capture, light | 6,383.2 | 4,128.7 |
+| 4K capture, dark | 7,939.2 | 2,749.5 |
+
+The desktop pass recorded five runs of the dense region (994,976 pixels) and of a paragraph on each
+cell, as end of selection to the observed clipboard acknowledgement, which includes the client's
+polling. The range of the five runs in milliseconds, with the host and the candidate:
+
+| Cell | Candidate | Dense region | Paragraph |
+| --- | --- | --- | --- |
+| f44 GNOME, RPM | 357210d2f | 2,441.8 to 2,525.6 | 368.5 to 372.8 |
+| f44 GNOME, AppImage | 8a3294c3c | 2,926.9 to 3,464.0 | 296.5 to 300.4 |
+| k72 Plasma, DEB | 8a3294c3c | 4,814.4 to 6,175.2 | 496.5 to 543.9 |
+| k72 Plasma, AppImage | 8a3294c3c | 4,203.9 to 4,842.1 | 458.5 to 528.2 |
+| Aurora Plasma, AppImage | 357210d2f | 856.6 to 941.8 | 141.2 to 147.5 |
+| Ubuntu GNOME, DEB | 357210d2f | 5,481.5 to 5,588.7 | 496.6 to 552.2 |
+| Ubuntu GNOME, AppImage | 8a3294c3c | 4,612.2 to 4,776.0 | 390.8 to 428.1 |
+| d69 Plasma, DEB | 357210d2f | 3,038.6 to 3,258.6 | 398.7 to 454.5 |
+| d69 Plasma, AppImage | 357210d2f | 1,829.4 to 1,910.7 | 292.0 to 296.7 |
+
+The k72 AppImage rows ran beside another worker's four-CPU build and are qualified. Those hosts differ
+in processor and core count, so the rows do not compare packages across hosts.
+
+**Other captures' hotkey-to-selector time.** An A/B of the nightly code baseline (466449a4c) against the
+candidate on m74, native, with the frozen probe unchanged, gave two results. The first run, 30 presses
+each, measured an on-screen p50 of 181.01 ms against 179.27 ms and a p95 of 199.35 ms against
+215.17 ms, which is 15.82 ms (7.94 percent) more. The larger study (A and B in alternating blocks, each
+a fresh resident, five warmups, 3 seconds between presses) measured:
+
+| Condition and build | Presses | p50 | p95 | p99 (ms) |
+| --- | --- | --- | --- | --- |
+| Warm, baseline | 180 | 142.08 | 158.09 | 175.54 |
+| Warm, candidate | 180 | 142.01 | 157.87 | 176.97 |
+| After 40 s of quiet, baseline | 30 | 137.16 | 158.84 | 168.76 |
+| After 40 s of quiet, candidate | 30 | 144.95 | 165.49 | 166.14 |
+
+The difference at p95, candidate minus baseline, is -0.21 ms warm (95 percent bootstrap interval -11.46
+to +5.56 ms) and +6.65 ms after quiet (interval -13.66 to +15.46 ms). Both intervals include zero. The study
+does not reproduce the first run's +15.82 ms, and it does not show the two builds are equal. After quiet the
+candidate's resident took five more minor faults at the median, with no major faults, and its executable is 567,184
+bytes larger (11,827,296 against 11,260,112). The study did not resolve a tail shift to one stage. It used an owned
+override-redirect X11 window as the canvas because the managed one failed pixel admission, so its absolute times
+are not comparable with the first run's.
 
 ### Measurements
 
@@ -789,15 +865,10 @@ Tesseract 5.5.4 built from source.
   3.51 s (87 MiB), 3 2.52 s (104 MiB) and 4 2.55 s (120 MiB). Four take no less time than three
   because 8 strips do not divide evenly. With four engines about 3,400 characters are read a
   second on m74 and 6,600 on k72.
-- End to end on m74 on candidate fe838a950, before the last engine change: 30 actual selections of
-  that dense terminal (8,739 characters each), each independently pasted exactly, took p95 5.7 s
-  with the native package and 3.6 s with the AppImage. Whole 4K screens took 5 to 9 s (30 file
-  runs on d69: 9.1 s light, 8.0 s dark at p95). A short paragraph took about half a second end to end.
+- End to end on m74 on the final candidate: see the latency table above.
 - Engine start takes 115 to 153 milliseconds on m74 and d69, which is the model load.
-- With three languages (eng, deu and fra, 2.6 MB beyond English) on m74, measured on the code of #1452:
-  a 1 MP region 1.55 s at 116 MiB, a 4K UI page 9.8 s at 90 MiB, a 24 MP UI page 13.1 s, cut, at 111 MiB
-  and a dense 24 MP page 8.8 s, cut, at 133 MiB with one engine. English alone peaks at 106 MiB of
-  `RLIMIT_DATA`'s data against its 192 MiB limit.
+- With three languages (eng, deu and fra, 2.6 MB beyond English) the final peaks are in the table above.
+  English alone peaks at 106 MiB of `RLIMIT_DATA`'s data against its 192 MiB limit (m74, measured on the code of #1452).
 - On Arch's model, before and after the trim, on m74: English 112 to 54 MiB for a paragraph and 137 to
   120 MiB for a dense 24 MP page, and three languages (53,117,539 bytes) 155 to 81 MiB and 180 to 115
   MiB.
@@ -815,54 +886,84 @@ character error rate of at most 2 percent for body text of 11 pixels and larger 
 for smaller interface text, and an exact match for at least 90 percent of URLs and email addresses
 of 11 pixels and larger. A second language (German) must meet the body bar on one engine build.
 
-Median character error rate through the real helper after the panel work (#1458, #1462), per class:
+Final result: candidate 357210d2f (CI run 43448444706), all 178 images through the real `putgd-ocr` of each
+packaged engine build, in containers and on the native Mint package and the AppImage on m74. Median character
+error rate per class, with the bar in brackets:
 
-| Class and size (bar) | Captures | Tesseract 5.3.4, Mint 22 on m74 | Tesseract 5.5.4, built on k72 |
-| --- | --- | --- | --- |
-| browser-github, body (2%) | 24 | 0.147% | 0.147% |
-| browser-local, body (2%) | 24 | 0.000% | 0.000% |
-| browser-wikipedia, body (2%) | 24 | 2.573% | 2.573% |
-| editor-code, body (2%) | 24 | 1.481% | 1.545% |
-| monitor, body (2%) | 26 | 0.000% | 0.000% |
-| small-ui, body (2%) | 8 | 0.421% | 0.417% |
-| small-ui, small (5%) | 16 | 0.089% | 0.067% |
-| terminal, body (2%) | 30 | 0.000% | 0.000% |
-| 24 px pages (2%) | 2 | 0.000% | 0.000% |
-| URLs exact (90%), emails exact (90%) | | 52 of 52, 52 of 52 | 52 of 52, 52 of 52 |
+| Class and size (bar) | Captures | Mint 22, Ubuntu 24.04 | Ubuntu 26.04 | Debian 13 | Fedora 44 | Arch, 23 MB model | AppImage |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| browser-github, body (2%) | 24 | 0.147% | 0.147% | 0.147% | 0.147% | 0.147% | 0.147% |
+| browser-local, body (2%) | 24 | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% |
+| browser-wikipedia, body (2%) | 24 | 1.874% | 1.874% | 1.874% | 1.874% | 1.533% | 1.874% |
+| editor-code, body (2%) | 24 | 1.481% | 1.374% | 1.374% | 1.545% | 1.270% | 1.182% |
+| monitor, body (2%) | 26 | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% |
+| small-ui, body (2%) | 8 | 0.421% | 0.443% | 0.443% | 0.417% | 0.088% | 0.399% |
+| small-ui, small (5%) | 16 | 0.089% | 0.089% | 0.089% | 0.067% | 0.067% | 0.067% |
+| 24 px pages (2%) | 2 | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% |
+| terminal, body (2%) | 30 | 0.000% | 0.000% | 0.000% | 0.000% | 0.262% | 0.000% |
+| URLs exact (90%) | | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 | 50 of 52 (96.15%) | 52 of 52 |
+| Emails exact (90%) | | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 |
+
+Fedora 45 and Aurora use Fedora 44's build. Every class median is within its bar on every engine build.
 
 - **Wikipedia.** All 24 Wikipedia transcripts said "squares in a square grid" where the captured pixels
-  say "squares within a square grid". With the transcripts corrected, candidate fe838a950 scored
-  1.874% on every engine build but Arch's (1.533%). The 2.573% above is against the old transcripts.
-  The citation markers are not the cause: left out of transcript and output, the score barely moved.
-- **Whole 4K screens.** The two GNOME 4K captures went from 63 to 64 percent error to 9.2 to 9.3
+  say "squares within a square grid". The transcripts were corrected before this scoring, and the
+  citation markers are not the cause. Against the old transcripts the class scored 2.573%.
+- **Whole 4K screens.** The two GNOME 4K captures went from 63 to 64 percent error to about 9.2 to 9.3
   percent once screens were read panel by panel. What remains is words run together in small
   navigation text, a dropped `#` and the order of panels inside the Wikipedia window. The monitor
   class median hides these two, which are 2 of its 26 captures.
 - **Before the method changed.** Page segmentation 3 with layout blocks, the first method, scored
   terminal 54.4%, browser-local 31.0%, editor-code 13.6% and Wikipedia 2.6%, and read 24 of 48 URLs and
   34 of 48 emails exactly, on the 174 real captures.
-- **German.** On 12 synthetic pages (14, 16 and 20 px, DejaVu Sans and Serif, light and dark, with
-  umlauts and ß; there is no real German capture), `deu` scored 0.00% and `eng+deu` 0.43%, and English
-  alone 5.7%, with `tesseract-ocr-deu` 4.1.0 on m74.
+- **German.** On 12 captures (816 words), with Mint's distribution model, the median error was 0%. An
+  earlier run of 12 synthetic pages (14, 16 and 20 px, DejaVu Sans and Serif, light and dark, with
+  umlauts and ß) scored `deu` 0.00%, `eng+deu` 0.43% and English alone 5.7%.
+- **Hidden and hostile content.** Near-white text and 3 px text each returned zero characters, hostile
+  prose had no forbidden code points, and eighteen hostile code fixtures returned only a binary format
+  and a 41-byte length.
+- **A tall two-column page** read with all 90 lines intact, no truncation and the accepted column order.
 - **English models.** `tessdata_best` meets every bar at about 3.3 times the time and 15.4 MB, and
   put.gd ships `tessdata_fast`.
-- **Engine builds.** Candidate fe838a950 scored all six engine builds separately (Mint 22 and
-  Ubuntu 24.04, Ubuntu 26.04, Debian 13, Fedora 44, Arch and the AppImage's own). Every class median
-  and URL and email rate was inside its bar, with Arch's URL rate 50 of 52 (96.15%).
 
-TO CONFIRM before merge: the per-class error rates for each engine build on the final candidate, which
-include the strip and panel changes of #1462 that came after fe838a950, from the final acceptance
-comment.
+Quick redact was scored separately. On candidate 357210d2f it covered 431 of 439 acceptance items: all
+eight 14 px pages covered 16 of 17, missing the synthetic GitHub token. The hashes page covered 30 of 30, the
+clean pages got no marks, and all 736 marks across the acceptance and held-out pages were opaque black in the
+exported PNG. Pull request #1465, which came after that candidate, makes a long run of two or three repeated
+characters count as a token and requires a leading "+" for a group of more than ten unbroken digits to count as
+a phone number. With it, through the real editor and helper on k72 (Tesseract 5.5.0, offscreen, not a
+desktop), every one of the 24 item pages covered 17 of 17, the hashes page 30 of 30, the clean pages and the
+24 negative pages got 0 marks, the realistic random tokens 456 of 456, and the held-out pages 303 of 304.
 
 ## Known limits
 
 - Recognition can misread. Small, unusual or low-contrast type, superscripts and a busy background
   produce errors. Check what you paste.
 - A capture with a lot of text is returned cut at the 16 second budget and marked as cut.
-- A rotated Micro QR code at 3 pixels a module, and a code with no quiet zone, are not read.
-- Quick redact suggests only, and a number of repeated digits can be miscounted.
+- A rotated Micro QR code at 3 pixels a module is not read. The same code unrotated at 3 pixels, or rotated at
+  5 pixels, is read.
+- A code with no quiet zone, such as a dark one that a white page touches, is not read. The same
+  code with a black frame is. On the busy multi-code page the original read 3 of 4 codes and the framed
+  page 4 of 4. Of 183 contract-safe code fixtures, 182 decoded.
+- Quick redact suggests only. A number made of repeated digits is miscounted by recognition (a
+  16-digit card number of repeated digits at 13 px was counted wrong at every scale tried), and a card
+  number read with one digit too many fails the Luhn check, so those can be missed. Held-out pages
+  covered 303 of 304 items.
 - A tall two-column page below 4 megapixels is read as one block, and a banded image has no global
   multi-column order.
+- One extra timing run of the AppImage on k72 had a selector that did not finish within 40 seconds before
+  any helper started. No frame was kept and the cause is unresolved, product or selector readiness. It did
+  not recur in a repeat of five paragraph runs with selector frames kept, which completed in 273.7 to 440.2
+  ms.
+- The hotkey-to-selector time of the other captures was measured twice with different results (see
+  [performance and memory](#performance-and-memory)), and the larger study does not resolve a difference.
+- On d69, Copy text from the first KDE session after installing the package returned `capture_permission`
+  until the session was set up again: a fresh login and a refresh of the KDE application menu cache in the
+  session's own environment (`XDG_MENU_PREFIX=plasma-`), and a restart of the KDE portal services. The driver
+  had omitted that variable and generated the wrong `applications.menu` cache. Which of the steps was needed
+  was not isolated.
+- Forced delivery of an obsolete editor result, one that arrives after the revision changed, was not
+  driven on a live desktop. A test in CI covers it.
 - `history.qr` with `show` has no agent close for the window. A second show replaces it, and
   closing History closes it.
 - Searching History by recognized text, recognition in the background, in-app language downloads,

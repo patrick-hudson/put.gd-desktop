@@ -207,7 +207,11 @@ exactly when region capture is. On the Ubuntu 24.04 DEB, which has no region sel
 text from region** is unavailable for the same reason as Capture region, and the other sources
 (`text.recognize` from a window, monitor, desktop, the clipboard, a file or History, History's
 Copy text and the editor's tools) still work. The `text` hotkey is registered with KGlobalAccel
-like the other actions and is unassigned by default. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+like the other actions and is unassigned by default. If Copy text from a freshly installed package returns `capture_permission` although the capabilities say
+capture is available, the session's KDE application menu cache may be wrong. On d69 it was rebuilt in the
+session's own environment, which has `XDG_MENU_PREFIX=plasma-`, with a fresh login and a restart of the KDE
+portal services, and capture then worked. Which of those steps was needed was not isolated.
+Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
 
 ## Clipboard and hotkeys
 
