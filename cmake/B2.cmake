@@ -1,9 +1,9 @@
 # Backblaze B2 native destination (#282). The resident links putgd_b2 (Qt Core only);
 # every B2 request runs in putgd-b2-worker, the only target with Qt Network for it.
 add_library(putgd_b2 STATIC src/storage/b2/B2Common.cpp src/storage/b2/B2Provider.cpp)
-target_link_libraries(putgd_b2 PUBLIC putgd_core putgd_credentials PRIVATE Qt6::Core)
+target_link_libraries(putgd_b2 PRIVATE putgd_provider_exchange PUBLIC putgd_core putgd_credentials PRIVATE Qt6::Core)
 add_executable(putgd-b2-worker src/storage/b2/B2WorkerMain.cpp src/storage/b2/B2Common.cpp)
-target_link_libraries(putgd-b2-worker PRIVATE putgd_core putgd_build_identity Qt6::Network Threads::Threads)
+target_link_libraries(putgd-b2-worker PRIVATE putgd_worker_stdio putgd_core putgd_build_identity Qt6::Network Threads::Threads)
 target_compile_definitions(putgd_b2 PRIVATE
   PUTGD_B2_BUILD_APP_DIR="${CMAKE_CURRENT_BINARY_DIR}"
   PUTGD_B2_WORKER_PATH="$<TARGET_FILE:putgd-b2-worker>")

@@ -1,5 +1,6 @@
 #include "storage/s3/S3WorkerProtocol.h"
 #include "storage/s3/PublicUrl.h"
+#include "storage/s3/S3Journal.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTest>
@@ -367,6 +368,29 @@ private slots:
             modified["multipart"] = probe;
             QVERIFY(!wire::decodeTestDestinationResult(modified));
         }
+    }
+    // Every saved stage and phase string reads back as itself (#1435): a journal one
+    // build writes resumes on the next, and a value no build writes is unreadable,
+    // never taken for another one on the way to a DELETE.
+    void savedStagesAndPhasesRoundTripAndAnUnknownOneIsUnreadable() {
+        auto check = [](const QStringList& expected, const auto& names, auto parse, auto name) {
+            QCOMPARE(qsizetype(std::size(names)), expected.size());
+            for (const auto& text : expected) {
+                const auto value = parse(QJsonValue(text));
+                QVERIFY2(value && name(*value) == text, qPrintable(text));
+            }
+            QVERIFY(!parse(QJsonValue("completed_later")));
+            QVERIFY(!parse(QJsonValue(1)));
+        };
+        check({"name_head", "object_head", "current_head", "upload_put", "upload_create", "upload_part", "upload_list_parts", "upload_complete",
+               "upload_abort", "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object"},
+              s3StageNames, s3Stage, s3StageName);
+        check({"parts", "completing"}, s3UploadPhaseNames, s3UploadPhase, s3UploadPhaseName);
+        check({"", "marker_intent", "marker_unknown", "marker_failed", "marker_cancelled", "marker_done", "version_ready", "version_intent",
+               "version_unknown", "version_failed", "version_cancelled", "object_intent", "object_unknown", "object_failed", "object_cancelled", "done"},
+              s3DeletePhaseNames, s3DeletePhase, s3DeletePhaseName);
+        QCOMPARE(s3DeletePhase(QJsonValue(QJsonValue::Undefined)), std::optional(S3DeletePhase::None));
+        QVERIFY(!s3DeletePhase(QJsonValue(QJsonValue::Null)));
     }
     void multipartJournalRoundTripsAndStaysStrict() {
         auto original = upload();

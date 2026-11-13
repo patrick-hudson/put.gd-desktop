@@ -73,7 +73,7 @@ class StorageLocationsTest:public QObject {
   if(!QDir().mkpath(legacyData(base)+"/previews")||fixture(legacyData(base)+"/previews",profile.item+".png","synthetic preview").isEmpty())return {};
   op.items[0].artifact.previewPath=profile.preview;if(store.saveOperation(op))return {};
   profile.interrupted="2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5";
-  Operation accepted;accepted.id=profile.interrupted;accepted.action="clipboard";accepted.state="acquiring";accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};
+  Operation accepted;accepted.id=profile.interrupted;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};
   if(store.saveOperation(accepted))return {};
   if(ArtifactStore(legacyData(base)+"/artifacts").acquire(profile.interrupted,textPayload(),ResourceLimits{}).error)return {};
   if(!staleLock(legacyData(base)+"/resident.lock"))return {};
@@ -131,7 +131,7 @@ private slots:
   QCOMPARE(store.detail(template_.item)["previewPath"].toString(),failed.items[0].artifact.previewPath);
   const auto page=store.list({});QCOMPARE(page.records.size(),2);
   for(const auto& record:page.records)if(record.toObject()["id"]==template_.item)QCOMPARE(record.toObject()["previewPath"].toString(),failed.items[0].artifact.previewPath);
-  const auto recovered=store.operation(template_.interrupted);QCOMPARE(recovered.state,QString("interrupted"));QCOMPARE(recovered.items.size(),1);
+  const auto recovered=store.operation(template_.interrupted);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);
   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);
   for(const auto& id:{template_.failed,template_.interrupted}) {
    bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));retried=true;});PUTGD_TRY_VERIFY(retried);

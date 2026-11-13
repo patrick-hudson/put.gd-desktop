@@ -46,6 +46,13 @@ def prepare(assets, bootstrap, output):
     supplement = output / 'p3-rebuild-supplement'
     shutil.copyfile(assets / names[1], stage / 'helper-rebuild.tar.gz')
     shutil.copyfile(PROTON / 'notices/SOURCES.json', stage / 'SOURCES.json')
+    for item in catalog['applicationSourceOverlay']['files']:
+        source = PROTON.parents[1] / item['source']
+        if digest(source) != item['sha256']:
+            raise ValueError('Application overlay checksum mismatch: ' + item['source'])
+        target = stage / 'application-source-overlay' / item['destination']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
     shutil.copy2(bootstrap, stage / 'bootstrap-bun')
     for name in ('apply_proof.py', 'run_build.py', 'run_helper_proof.py', 'resume_build.py', 'proof_command.py'):
         shutil.copyfile(HERE / name, stage / name)

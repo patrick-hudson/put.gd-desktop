@@ -3,6 +3,7 @@
 #include "ui/UiApplicationController.h"
 #include "ui/MainWindow.h"
 #include "ui/AboutWindow.h"
+#include "fixtures/ControlDevice.h"
 #include "fixtures/UiSessionFixture.h"
 #include <QAction>
 #include <QApplication>
@@ -15,17 +16,6 @@
 #include <QtTest>
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
-class ControlDevice:public QIODevice {
-public:
- QByteArray input,output;quint64 sequence=0;
- ControlDevice(){open(ReadWrite|Unbuffered);}
- bool isSequential()const override{return true;}
- qint64 bytesAvailable()const override{return input.size();}
- qint64 readData(char* data,qint64 max)override{const auto n=qMin(max,qint64(input.size()));memcpy(data,input.constData(),n);input.remove(0,n);return n;}
- qint64 writeData(const char* data,qint64 n)override{output.append(data,n);return n;}
- void send(const QString& type,QJsonObject payload={}){input+=QJsonDocument(QJsonObject{{"version",1},{"type",type},{"sequence",QString::number(++sequence)},{"payload",payload}}).toJson(QJsonDocument::Compact)+'\n';emit readyRead();}
- QJsonObject last(const QString& type){QJsonObject result;for(const auto& line:output.split('\n')){const auto frame=QJsonDocument::fromJson(line).object();if(frame["type"]==type)result=frame;}return result;}
-};
 static MainWindow* mainWindow(){MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;return window;}
 static QToolButton* railButton(MainWindow* window,const QString& action){for(auto* candidate:window->findChildren<QToolButton*>("captureActionButton"))if(candidate->property("captureAction")==action)return candidate;return nullptr;}
 class UiApplicationTest:public QObject {

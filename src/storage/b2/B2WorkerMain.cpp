@@ -11,6 +11,7 @@
 // the resident links none of it.
 #include "B2Common.h"
 #include "core/BuildInfo.h"
+#include "storage/worker/WorkerStdio.h"
 #include "core/CaBundle.h"
 #include "core/StorageProvider.h"
 #include <QCoreApplication>
@@ -29,79 +30,14 @@
 #include <QUrl>
 #include <QUuid>
 #include <atomic>
-#include <condition_variable>
-#include <cstdio>
-#include <cstring>
-#include <deque>
-#include <mutex>
 #include <optional>
-#include <thread>
-#include <cstdlib>
 #include <memory>
 namespace putgd::b2 {
 namespace {
 constexpr qint64 maximumLine = 256 * 1024;
-std::atomic_bool cancelled{false};
-std::mutex controlMutex;
-std::condition_variable controlChanged;
-std::deque<QJsonObject> acks;
-bool parentGone = false;
-
-// One bounded, newline-terminated line from stdin.
-QByteArray readLine(bool& eof) {
-    QByteArray line;
-    while (true) {
-        const int c = std::fgetc(stdin);
-        if (c == EOF) { eof = true; return line; }
-        if (c == '\n') return line;
-        if (line.size() >= maximumLine) { eof = true; return {}; }
-        line.append(char(c));
-    }
-}
-std::mutex outputMutex;
-void emitLine(const QJsonObject& value) {
-    auto bytes = QJsonDocument(value).toJson(QJsonDocument::Compact);
-    bytes.append('\n');
-    std::lock_guard lock(outputMutex);
-    std::fwrite(bytes.constData(), 1, size_t(bytes.size()), stdout);
-    std::fflush(stdout);
-}
-// Control lines after the request: acknowledgements and cancellation.
-void readControl() {
-    while (true) {
-        bool eof = false;
-        const auto line = readLine(eof);
-        if (!line.isEmpty()) {
-            const auto value = QJsonDocument::fromJson(line).object();
-            if (value["cancel"].toBool()) cancelled = true;
-            else if (value.contains("ack")) {
-                std::lock_guard lock(controlMutex);
-                acks.push_back(value);
-                controlChanged.notify_all();
-            }
-        }
-        if (eof) {
-            cancelled = true;
-            std::lock_guard lock(controlMutex);
-            parentGone = true;
-            controlChanged.notify_all();
-            return;
-        }
-    }
-}
-// Durable acknowledgement from the resident, bounded like the S3 worker's five minutes.
-Error checkpoint(const QJsonObject& journal) {
-    emitLine({{"event", "checkpoint"}, {"journal", journal}});
-    std::unique_lock lock(controlMutex);
-    if (!controlChanged.wait_for(lock, std::chrono::minutes(5), [] { return !acks.empty() || parentGone; }))
-        return {"b2_checkpoint_timeout", "The resident did not save the upload journal in time", {}};
-    if (acks.empty()) return {"cancelled", "The resident stopped this request", {}};
-    const auto ack = acks.front();
-    acks.pop_front();
-    if (ack["ack"].toBool()) return {};
-    const auto e = ack["error"].toObject();
-    return {e["code"].toString("checkpoint_failed"), e["message"].toString("The upload journal could not be saved"), {}};
-}
+worker::Stdio stdio{maximumLine, "b2", "upload"};
+auto& cancelled = stdio.cancelled;
+Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
 Error stoppedError() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
 
 // A request body that can be read exactly once. Qt Network silently sends a request
@@ -384,18 +320,7 @@ private:
     Client client_;
     QJsonObject settings() const { return destination_.settings; }
 
-    void progress(const QString& phase, qint64 sent, qint64 total) {
-        static QElapsedTimer last;
-        if (phase == "uploading" && last.isValid() && last.elapsed() < 250 && sent < total) return;
-        last.start();
-        UploadProgress value;
-        value.phase = phase;
-        value.bytesTransferred = sent;
-        value.bytesTotal = total;
-        auto line = value.toJson();
-        line["event"] = "progress";
-        emitLine(line);
-    }
+    void progress(const QString& phase, qint64 sent, qint64 total) { stdio.progress(phase, sent, total); }
     QJsonObject checkName(Error& error) {
         const auto name = fileName(settings(), request_["candidate"].toString());
         if (name.toUtf8().size() > maximumNameBytes) { error = {"b2_name_invalid", "The file name is too long for Backblaze B2", {}}; return {}; }
@@ -806,32 +731,10 @@ private:
 }
 
 int main(int argc, char** argv) {
-    if (argc == 2 && std::strcmp(argv[1], "--version-json") == 0) { std::printf("%s\n", putgd::buildManifestJson()); return 0; }
-    if (argc != 2 || std::strcmp(argv[1], "--stdio") != 0) return 2;
-    QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName("putgd-b2-worker");
-    putgd::useHostCaBundle();
-    bool eof = false;
-    auto line = putgd::b2::readLine(eof);
-    auto request = QJsonDocument::fromJson(line).object();
-    line.fill('\0');
-    if (request["schemaVersion"].toInt() != 1 || !request["method"].isString()) {
-        putgd::b2::emitLine({{"ok", false}, {"error", QJsonObject{{"code", "b2_protocol"}, {"message", "Invalid worker request"}}}, {"uncertain", false}});
-        return 0;
-    }
-    std::thread control(putgd::b2::readControl);
-    control.detach();
-    putgd::Error error;
-    bool uncertain = false;
-    QJsonObject result;
-    {
-        putgd::b2::Worker worker(request);
-        request = {};
-        result = worker.run(error, uncertain);
-    }
-    if (error)
-        putgd::b2::emitLine({{"ok", false}, {"error", QJsonObject{{"code", error.code}, {"message", error.message}, {"details", error.details}}},
-                             {"uncertain", uncertain}, {"result", result}});
-    else putgd::b2::emitLine({{"ok", true}, {"result", result}});
-    std::_Exit(0);
+    return putgd::b2::stdio.run(argc, argv, "putgd-b2-worker", putgd::buildManifestJson(), putgd::useHostCaBundle,
+        [](QJsonObject& request, putgd::Error& error, bool& uncertain) {
+            putgd::b2::Worker worker(request);
+            request = {};
+            return worker.run(error, uncertain);
+        });
 }
