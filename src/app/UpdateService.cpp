@@ -71,8 +71,8 @@ void UpdateService::start() {
    // The saved result compared the feed with the version that ran then. After
    // an update (put.gd's own install or another updater's), compare it with
    // this one, so Settings doesn't offer the version that is running (#293).
-   if(result_["latest"].isString()){
-    const auto order=update::compareVersions(result_["latest"].toString(),build_.version);
+   if(result_.value("latest").isString()){
+    const auto order=update::compareVersions(result_.value("latest").toString(),build_.version);
     result_["current"]=build_.version;result_["updateAvailable"]=order&&*order>0;
    }
   }
@@ -316,7 +316,7 @@ void UpdateService::finished(bool manual,const QByteArray& output,const Error& f
  refreshSystemAction();
  // The first result after the channel was changed shows in Settings, where it
  // was changed: it counts as seen, like a manual check (#344).
- const auto shown=result_["channel"].toString();const bool channelChanged=!shown.isEmpty()&&shown!=channel();
+ const auto shown=result_.value("channel").toString();const bool channelChanged=!shown.isEmpty()&&shown!=channel();
  manualRunning_=false;attemptedAt_=now();attemptedChannel_=channel();jitter_=random(-jitterMs,jitterMs);
  const auto reply=QJsonDocument::fromJson(output.trimmed()).object();
  Error error=failure;QJsonObject result;

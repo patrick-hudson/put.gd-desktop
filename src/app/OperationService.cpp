@@ -1641,7 +1641,7 @@ QJsonObject OperationService::cleanArtifacts(const CleanupPass& pass,Error& e) {
  // An automatic pass that found nothing to do stays out of the log.
  if(!pass.automatic||removed>0||outcome["abortedUploads"].toInt()>0||incomplete>0)
   logging::info(logOperation(),"Artifact cleanup finished",{{"trigger",trigger},{"removedOperations",removed},{"abortedUploads",outcome["abortedUploads"].toInt()},{"incompleteUploads",incomplete},
-   {"more",outcome["more"].toBool()},{"stopped",outcome["stopped"].toBool()},{"elapsedMs",outcome["elapsedMs"].toInteger()}});
+   {"more",outcome.value("more").toBool()},{"stopped",outcome.value("stopped").toBool()},{"elapsedMs",outcome["elapsedMs"].toInteger()}});
  return outcome;
 }
 }

@@ -134,7 +134,7 @@ void RecordingService::stoppedOnBudget(Session& s, const QJsonObject& observed) 
     const auto maxFile = s.op.settings.limits.maxFileBytes;
     auto disk = ArtifactStore::diskBudget(stagingRoot_);
     // A disk that filled up during the capture ends it on the disk, whatever the prepare-time bound was.
-    const bool liveDiskStop = observed["reason"].toString() == "disk_space";
+    const bool liveDiskStop = observed.value("reason").toString() == "disk_space";
     const bool diskFull = liveDiskStop || s.budgetLimit == "disk_space" || (disk.freeBytes >= 0 && disk.available() < 2 * minimumBudgetBytes);
     QJsonObject details{{"reason", diskFull ? "disk_space" : "max_file_bytes"}, {"budgetBytes", double(s.config.budgetBytes)}, {"maxFileBytes", double(maxFile)},
         {"durationUs", double(s.duration)}};
@@ -154,10 +154,10 @@ void RecordingService::stoppedOnBudget(Session& s, const QJsonObject& observed) 
             // Keep the triggering sample, even if another writer releases space
             // while EOS drains. It is the reason we stopped, not the byte cap.
             for (const auto* key : {"freeBytes", "reserveBytes", "availableBytes", "requiredBytes", "finalizationReserveBytes", "clipBytes"})
-                if (observed[key].isDouble()) details[key] = observed[key];
+                if (observed.value(key).isDouble()) details[key] = observed.value(key);
             details["hint"] = "Free up space in put.gd's data folder before exporting or recording again";
             details["message"] = QStringLiteral("Recording stopped at %1 because free disk space fell: %2 was free, with %3 kept for the system and %4 needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.")
-                .arg(at, ArtifactStore::sizeText(details["freeBytes"].toInteger()), ArtifactStore::sizeText(details["reserveBytes"].toInteger()), ArtifactStore::sizeText(details["requiredBytes"].toInteger()));
+                .arg(at, ArtifactStore::sizeText(details.value("freeBytes").toInteger()), ArtifactStore::sizeText(details.value("reserveBytes").toInteger()), ArtifactStore::sizeText(details.value("requiredBytes").toInteger()));
         }
     } else {
         details["hint"] = "Raise Largest file in Settings > Uploads to record longer";
@@ -899,7 +899,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
 }
 void RecordingService::retryExport(JsonReply reply, JsonReply done) {
     auto& s = *session_;
-    if (s.state != "reviewing" || s.lastExport["status"] != "failed" || s.lastExportRequest.isEmpty()) {
+    if (s.state != "reviewing" || s.lastExport.value("status") != "failed" || s.lastExportRequest.isEmpty()) {
         reply({"recording_state", "There is no failed export to retry", {}}, {});
         return;
     }

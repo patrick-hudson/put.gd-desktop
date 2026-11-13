@@ -864,7 +864,8 @@ private:
         if (progress.contains("target") && progress["target"].toObject() != target) return {{"status", "changed"}, {"progress", progress}};
         progress["schemaVersion"] = 1;
         progress["target"] = target;
-        const auto phase = progress["phase"].toString();
+        const auto previousPhase = progress.value("phase");
+        const auto phase = previousPhase.toString();
         if (phase == "done") return {{"status", "removed"}, {"progress", progress}};
         // The recorded deletion URL may name stored values; they are filled in only here.
         const auto recorded = expected.objectReference["deletionUrl"].toString();
@@ -900,7 +901,7 @@ private:
         }
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         progress["phase"] = "delete_intent";
-        if (auto e = checkpoint(progress)) { error = e; progress["phase"] = phase; return {{"status", "failed"}, {"progress", progress}}; }
+        if (auto e = checkpoint(progress)) { error = e; progress["phase"] = previousPhase; return {{"status", "failed"}, {"progress", progress}}; }
         const auto finish = [&](const QString& status) {
             progress["phase"] = "done";
             if (auto e = checkpoint(progress)) { error = e; return QJsonObject{{"status", "unknown"}, {"progress", progress}}; }
