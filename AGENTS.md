@@ -28,9 +28,12 @@ one, take its lock with `python3 tools/lab/desktop_lock.py acquire`, heartbeat i
 and release it only after its cleanup check passes. Never wait for another
 session's reply while holding a lock: notify the affected session and coordinator
 of the exact PIDs, intended action and a deadline at least 10 minutes ahead;
-silence means go after that deadline. Before any logout or display-server restart,
-check for Patrick's own apps. If any are present, ask Patrick first; his apps are
-never leftovers, and silence never means go.
+silence means go after that deadline. Nothing on these five machines is Patrick's:
+applications in a desktop session, pending system updates and package state there
+are lab state, and no logout, display-server restart, session switch or package
+change on a builder needs his approval. The only check before one is whether
+another session holds work on that host. His workstation is the one machine that
+is his.
 SSH builds and VMs on the builders are shared; heavy work stays off the workstation.
 The full rules, including one coordinator per session family, are in
 `docs/lab/remote-builders.md` under "Sharing the lab between concurrent sessions".

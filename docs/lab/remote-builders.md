@@ -279,8 +279,8 @@ desktop's screen-sharing consent once. On k72 the two servers share port 5900,
 one per session type, so the wall tile works in either login. Since 2026-10-20
 k72's default session is Plasma Wayland (`Session=plasma.desktop` in SDDM's
 autologin, `/etc/sddm.conf`). Switch it to `plasmax11.desktop` only when a check
-needs KDE/X11, then switch it back. Each switch restarts `sddm` and logs
-Patrick out, so the coordinator checks for his apps first.
+needs KDE/X11, then switch it back. Each switch restarts `sddm` and ends the
+desktop session, so check first that no other session holds work on k72.
 
 k72 has two outputs. HDMI-A-1 is forced on with the headless EDID
 (`drm.edid_firmware=HDMI-A-1:edid/patrick-headless.bin`). Since the 2026-10-20
@@ -570,8 +570,8 @@ python3 tools/lab/desktop_lock.py break f44 --session ID --reason TEXT
   coordinator, do other work and try again later. Between session families, the
   lock goes to whoever takes it first.
 - `acquire` lists what's already on the host, such as an earlier holder's
-  processes or Patrick's apps. Those aren't yours: leave them and tell your
-  coordinator. `status` shows who released or broke the lock last.
+  processes. Those aren't yours: leave them and tell your coordinator. `status`
+  shows who released or broke the lock last.
 
 ### Release only after a full cleanup check
 
@@ -617,10 +617,12 @@ the host, with the old lock and the cleanup check.
 - Processes left by a session that holds no lock on that host are leftovers, and
   your logout may end them. Never pattern-kill. Kill only the exact PIDs you
   started; other sessions' PIDs need the coordinator's OK.
-- Patrick's own apps in a desktop session (browsers, terminals, btop, other
-  agents such as Codex) are never leftovers. Before any logout or display-server
-  restart, check the session for them. If any are there, ask Patrick, and here
-  silence never means go.
+- Nothing on a builder is Patrick's. Applications left open in a desktop session
+  (browsers, terminals, btop), a pending system update and the installed package
+  state are lab state. A logout, display-server restart, session switch or
+  package change on a builder needs no approval from him; say in your report
+  what you did. The check before one is for other sessions' work, as above. His
+  workstation is the one machine that is his, and it stays hands-off.
 - A relayed approval with a condition, such as "Yes, coordinate first", means
   "notify the affected sessions with a deadline", not "wait for their reply".
   If your own permission check blocks a relayed approval, ask Patrick in your
