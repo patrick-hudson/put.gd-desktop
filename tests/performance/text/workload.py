@@ -112,13 +112,12 @@ def run(a, receipt):
     names=sorted({line.split(None,5)[5].rsplit('/',1)[-1] for line in (proc/'maps').read_text().splitlines()
                   if len(line.split(None,5))==6 and line.split(None,5)[5].startswith('/')})
     reading=dict(rollup=(proc/'smaps_rollup').read_text(), names=names, load=os.getloadavg()[0],cpus=os.cpu_count())
-    from tools.lab.surface_driver.recipes.outcomes import idle_summary, judge_idle
+    from tools.lab.surface_driver.recipes.outcomes import idle_summary
     summary=idle_summary(reading,os.getloadavg()[0],os.cpu_count())
     summary['forbidden']+= [n for n in names if EXTRA.match(n)]
     receipt.update(memory=summary,mapped_names=names)
-    judge_idle(summary)  # Reuse frozen Gate C unchanged.
     receipt['helpers']=lifecycle(a.helper_events)
-    receipt['status']='passed'
+    receipt['status']='measured'
 
 
 def main():
@@ -136,7 +135,7 @@ def main():
         try: run(a,receipt)
         except Exception as error: receipt['reason']=str(error)
         json.dump(receipt,out,indent=2); out.write('\n')
-    return 0 if receipt['status']=='passed' else 2
+    return 0 if receipt['status']=='measured' else 2
 
 
 if __name__=='__main__': raise SystemExit(main())

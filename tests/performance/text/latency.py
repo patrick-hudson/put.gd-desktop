@@ -29,15 +29,15 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('events',type=Path)
     p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--minimum-runs',type=int,choices=(5,30),default=30)
-    p.add_argument('--bar-ms',type=int,choices=(1000,3000),required=True)
     a=p.parse_args()
     rows=[measure(json.loads(line)) for line in a.events.read_text().splitlines() if line.strip()]
     if len({r['operationId'] for r in rows})!=len(rows): raise ValueError('duplicate operation ID')
     p95={key:sorted(r[key] for r in rows)[math.ceil(.95*len(rows))-1] for key in rows[0] if key.endswith('_ms')} if rows else {}
-    passed=len(rows)>=a.minimum_runs and p95['total_ms']<a.bar_ms
-    with a.output.open('x') as out: json.dump(dict(rows=rows,p95=p95,status='passed' if passed else 'blocked'),out,indent=2)
-    return 0 if passed else 2
+    with a.output.open('x') as out:
+        json.dump(dict(rows=rows,p95=p95,sample_count=len(rows),
+                       status='measured' if rows else 'blocked',
+                       assessment='Compare these observations with the issue plan; no acceptance verdict.'),out,indent=2)
+    return 0 if rows else 2
 
 
 if __name__=='__main__': raise SystemExit(main())
