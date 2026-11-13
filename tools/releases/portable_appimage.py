@@ -589,6 +589,9 @@ def audit_ocr_runtime(appdir: Path) -> dict:
         paths[path.name] = resolved
         libraries[path.name] = digest(path)
     paths["putgd-ocr"] = ocr_library_paths(appdir, appdir / "usr/bin/putgd-ocr")
+    for prefix in OCR_LIBRARIES:
+        if not any(name.startswith(prefix) for name in paths["putgd-ocr"]):
+            raise ValueError("AppImage helper does not map its OCR engine: " + prefix)
     return {"libraries": libraries, "resolvedEmptyEnvironment": paths, "englishSha256": digest(data)}
 
 

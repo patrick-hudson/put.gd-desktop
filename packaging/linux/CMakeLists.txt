@@ -175,6 +175,7 @@ foreach(embedded IN ITEMS "src/aws-cpp-sdk-core/source/external/cjson/cJSON.cpp|
     "From ${embedded_source} in the AWS SDK for C++ source:\n\n${embedded_text}\n")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/aws/${embedded_name}" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 endforeach()
+putgd_install_snapshot(qrcodegen-LICENSE "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 foreach(font_notice IN ITEMS OFL-sans.txt OFL-mono.txt SOURCE.md)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ui/fonts/${font_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/fonts")

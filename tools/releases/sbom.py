@@ -220,6 +220,16 @@ def aws_components(lock):
     return found
 
 
+def qr_components(lock):
+    pin = lock.get('qrCodeGenerator')
+    if pin is None:
+        return []
+    return [component('qrcodegen', pin['release'],
+                      'pkg:github/nayuki/QR-Code-generator@' + pin['release'], 'bundled',
+                      license='MIT', repository=pin['repository'].removesuffix('.git'),
+                      commit=pin['commit'])]
+
+
 def proton_components(notices):
     """The packages the shipped helper's notices classify as bundled or embedded."""
     found = []
@@ -299,7 +309,7 @@ def appimage_components(root):
                                    'bundled-distro', license=item.get('license'),
                                    properties=[('putgd:sourcePackage', source.get('sourcePackage', ''))]))
             continue
-        if identifier in ('aws-sdk-cpp', 'proton-helper'):
+        if identifier in ('aws-sdk-cpp', 'proton-helper', 'qrcodegen'):
             continue  # Itemized below from their own locks.
         key = 'qt' if identifier.startswith('qt') and identifier != 'qtkeychain' else identifier
         name = 'zxing-cpp' if identifier == 'zxing' else identifier
@@ -310,12 +320,14 @@ def appimage_components(root):
             found += [entry for entry in (qt_embedded(identifier, embedded, embedded_scope_properties(root, item, embedded))
                                           for embedded in item.get('embedded', [])) if entry]
     found += aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
+    found += qr_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
 
 
 def native_components(root):
     found = aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
+    found += qr_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
 

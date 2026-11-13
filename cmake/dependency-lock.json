@@ -75,5 +75,20 @@
     "minimum": "0.14.2",
     "sourceRepository": "https://github.com/frankosterfeld/qtkeychain.git",
     "sourceCommit": "8eac9889775ca45c106d077bb0d3744754a1570a"
+  },
+  "qrCodeGenerator": {
+    "repository": "https://github.com/nayuki/QR-Code-generator.git",
+    "release": "1.8.0",
+    "commit": "720f62bddb7226106071d4728c292cb1df519ceb",
+    "files": [
+      {
+        "path": "src/core/qrcodegen/qrcodegen.cpp",
+        "sha256": "1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461acedc70be4a77d3757"
+      },
+      {
+        "path": "src/core/qrcodegen/qrcodegen.hpp",
+        "sha256": "b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793"
+      }
+    ]
   }
 }

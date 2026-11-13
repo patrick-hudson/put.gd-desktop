@@ -25,6 +25,7 @@ class NativeInventoryTests(unittest.TestCase):
         for license_name in audit.SDK_LICENSES:
             self.write("usr/share/doc/putgd/" + license_name, "license")
         self.write("usr/share/doc/putgd/runtime-notices.txt", "notice")
+        self.write("usr/share/doc/putgd/qrcodegen-LICENSE", "MIT notice")
         self.write("usr/share/doc/putgd/copyright", "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n")
         path = self.root / "usr/share/doc/putgd/changelog.gz"
         path.write_bytes(gzip.compress(b"putgd (0.1.2-rc.1) unstable; urgency=medium\n"))

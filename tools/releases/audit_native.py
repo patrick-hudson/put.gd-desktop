@@ -85,7 +85,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     required += ["usr/share/putgd/" + name for name in
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]
     required += ["usr/share/doc/putgd/" + name for name in
-                 ("LICENSE", "runtime-notices.txt", "copyright", "changelog.gz", "wayland-ext-data-control-v1.xml",
+                 ("LICENSE", "qrcodegen-LICENSE", "runtime-notices.txt", "copyright", "changelog.gz", "wayland-ext-data-control-v1.xml",
                   "wayland-wlr-data-control-unstable-v1.xml", "wayland-ext-image-copy-capture-v1.xml",
                   "wayland-ext-image-capture-source-v1.xml", "wayland-ext-foreign-toplevel-list-v1.xml",
                   "wayland-wlr-foreign-toplevel-management-unstable-v1.xml", "wayland-hyprland-global-shortcuts-v1.xml",

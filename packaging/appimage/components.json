@@ -239,6 +239,27 @@
       "files": [
         "usr/share/putgd/tessdata/eng.traineddata"
       ]
+    },
+    {
+      "id": "qrcodegen",
+      "name": "Nayuki QR Code generator",
+      "version": {
+        "from": "dependencyLock",
+        "key": "qrCodeGenerator"
+      },
+      "source": {
+        "from": "dependencyLock",
+        "key": "qrCodeGenerator"
+      },
+      "license": "MIT",
+      "licenseTexts": {
+        "MIT": "usr/share/doc/putgd/qrcodegen-LICENSE"
+      },
+      "files": [],
+      "noticeFiles": [
+        "usr/share/doc/putgd/qrcodegen-LICENSE"
+      ],
+      "note": "Vendored into the core library; commit and source file hashes are pinned in dependency-lock.json."
     }
   ]
 }

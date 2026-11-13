@@ -426,6 +426,21 @@ class DeploymentRejectionTest(unittest.TestCase):
         with patch.object(portable.subprocess, "run", side_effect=command):
             return portable.audit_deployed(self.app, self.inventory)
 
+    def test_ocr_closure_cannot_fall_back_to_host_libraries(self):
+        # A successful start with host Leptonica would silently restore codecs.
+        library = self.app / "usr/lib/libleptonica.so.6"
+        library.parent.mkdir(parents=True)
+        library.write_bytes(b"synthetic")
+        for target in ("/usr/lib/libleptonica.so.6", str(library)):
+            output = "libleptonica.so.6 => " + target + " (0x1234)\nlibc.so.6 => /lib/libc.so.6 (0x5678)"
+            with patch.object(portable.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout=output)) as run:
+                if target == str(library):
+                    self.assertEqual(portable.ocr_library_paths(self.app, self.app / "usr/bin/putgd")["libleptonica.so.6"], target)
+                else:
+                    with self.assertRaisesRegex(ValueError, "OCR dependency resolves outside AppDir"):
+                        portable.ocr_library_paths(self.app, self.app / "usr/bin/putgd")
+                self.assertEqual(run.call_args.kwargs["env"], {})
+
     def test_same_version_helper_from_different_commit_is_rejected(self):
         wrong = {**self.manifest, "gitCommit": "b" * 40}
         with self.assertRaisesRegex(ValueError, "identity mismatch"):

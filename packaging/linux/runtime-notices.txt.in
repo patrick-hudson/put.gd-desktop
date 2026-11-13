@@ -5,6 +5,7 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
 (Proton's crypto). This file lists every licence of the code the package contains:
 
   put.gd                                    MIT                 LICENSE
+  Nayuki QR Code generator v1.8.0          MIT                 qrcodegen-LICENSE
   IBM Plex Sans Regular, Medium, SemiBold    OFL-1.1             fonts/OFL-sans.txt
   IBM Plex Mono Regular                     OFL-1.1             fonts/OFL-mono.txt
   zkde-screencast-unstable-v1 bindings      LGPL-2.1-or-later   wayland-zkde-screencast-unstable-v1.xml
@@ -78,3 +79,26 @@ alone do not certify compositor support or install/upgrade/removal behavior; con
 https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/verification.md
 and https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/release.md
 for tested versions and remaining gates, including the complete release license audit.
+
+Nayuki QR Code generator, vendored in src/core/qrcodegen:
+
+QR Code generator library (C++)
+
+Copyright (c) Project Nayuki. (MIT License)
+https://www.nayuki.io/page/qr-code-generator-library
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+- The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+- The Software is provided "as is", without warranty of any kind, express or
+  implied, including but not limited to the warranties of merchantability,
+  fitness for a particular purpose and noninfringement. In no event shall the
+  authors or copyright holders be liable for any claim, damages or other
+  liability, whether in an action of contract, tort or otherwise, arising from,
+  out of or in connection with the Software or the use or other dealings in the
+  Software.
