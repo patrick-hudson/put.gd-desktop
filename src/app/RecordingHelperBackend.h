@@ -1,85 +1,42 @@
 #pragma once
 #include "RecordingBackend.h"
-#include "ipc/UiControl.h"
-#include "core/Log.h"
-#include <QHash>
+#include "HelperSupervisor.h"
 #include <QObject>
-#include <QPointer>
-#include <QProcess>
-#include <QTimer>
-#include <memory>
-#include <optional>
 
 namespace putgd {
-// Supervises one transient `putgd-record` process per recording session over
-// private UiControl pipes: build-identity handshake, request/result commands,
+// Supervises one transient `putgd-record` process per recording session
+// (HelperSupervisor): build-identity handshake, request/result commands,
 // unsolicited events, bounded deadlines and a required normal exit. The
 // capability inventory comes from a separate `putgd-record --capabilities`
 // run, cached until the resident exits. Media never crosses these pipes.
+// A command that misses its deadline is answered recording_helper_timeout and
+// the helper is kept: it may hold the only copy of the clip (#1443).
 class RecordingHelperBackend final : public QObject, public RecordingBackend {
     Q_OBJECT
 public:
     explicit RecordingHelperBackend(QString helperPath = {}, QObject* parent = nullptr);
-    ~RecordingHelperBackend() override;
     // Tests shorten these; production keeps the defaults.
     void setTimeouts(int startupMs, int commandMs, int prepareMs, int exportMs);
-    QJsonObject capabilities() const override;
-    void refreshCapabilities(std::function<void()> done) override;
+    QJsonObject capabilities() const override { return helper_.capabilities(); }
+    void refreshCapabilities(std::function<void()> done) override { helper_.refreshCapabilities(std::move(done)); }
     // A transient `putgd-record --microphones [device]` run, never cached: inputs come and go.
     void microphones(const QString& device, Reply reply) override;
-    void setEventSink(Event sink) override { sink_ = std::move(sink); }
+    void setEventSink(Event sink) override { helper_.setEventSink(std::move(sink)); }
     void prepare(const QString& id, const RecordingTarget&, const RecordingConfig&, const QString& stagingDirectory, Reply, const QJsonObject& reviewOptions = {}) override;
     void control(const QString& id, const QString& command, const QJsonObject& params, Reply) override;
     void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) override;
     void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) override;
     void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) override;
-    void discard(const QString& id) override;
-    qint64 processId(const QString& id) const override;
-    QJsonObject diagnostics() const;
+    void discard(const QString& id) override { helper_.discard(id); }
+    qint64 processId(const QString& id) const override { return helper_.processId(id); }
+    QJsonObject diagnostics() const { return helper_.diagnostics(); }
     // The resolved interface scheme, "dark" or "light" (#198): the helper's
     // overlays, control bar and review window use its tokens. It goes in the
     // bootstrap frame, and a running helper gets an `appearance` frame.
-    void setAppearance(const QString& scheme);
+    void setAppearance(const QString& scheme) { helper_.setAppearance(scheme); }
 private:
-    struct Outstanding { Reply reply; };
-    struct Child {
-        QProcess* process = nullptr;
-        UiControl* control = nullptr;
-        QString id, nonce;
-        quint64 generation = 0;
-        bool ready = false, shuttingDown = false, exited = false;
-        QHash<QString, Outstanding> outstanding;
-        // Requests answered with recording_helper_timeout, by id, with their
-        // command. The helper may still hold the clip, so it is kept, and its late
-        // answer to one of these is dropped (#1443).
-        QHash<QString, QString> timedOut;
-        qint64 stderrBytes = 0;
-    };
-    void send(const QString& command, const QJsonObject& params, int timeoutMs, Reply);
-    void receive(quint64 generation, const QString& type, const QJsonObject& payload);
-    void failChild(quint64 generation, const Error&);
-    void exited(quint64 generation, int code, QProcess::ExitStatus);
-    void finishProbe();
-    void launchQueued();
-    QJsonObject envelope() const;
-    QString helperPath_, scheme_ = QStringLiteral("dark");
-    Event sink_;
-    std::unique_ptr<Child> child_;
-    // A prepare that arrived while the previous session's helper was still
-    // shutting down (#1296): the resident had already ended that session, so
-    // it starts as soon as the old helper exits, which stopDeadline_ bounds.
-    struct Queued { QString id; RecordingTarget target; RecordingConfig config; QString staging; Reply reply; QJsonObject reviewOptions; };
-    std::optional<Queued> queued_;
-    quint64 generation_ = 0;
-    QTimer startup_, stopDeadline_;
+    HelperSupervisor helper_;
     // prepare covers a hands-on drag selection and OS consent; the overlay stays visible and Escape cancels.
-    int startupMs_ = recording::helperStartupMs, commandMs_ = recording::helperCommandMs, prepareMs_ = recording::helperPrepareMs, exportMs_ = recording::helperExportMs;
-    QJsonObject cached_, lastExit_;
-    qint64 cachedAt_ = 0;
-    QProcess* probe_ = nullptr;
-    QTimer probeDeadline_;
-    QList<std::function<void()>> probeWaiters_;
-    // Helper stderr and exits go to the resident log, bounded per generation.
-    HelperOutput output_{"putgd-record", logRecording()}, probeOutput_{"putgd-record --capabilities", logRecording(), true};
+    int commandMs_ = recording::helperCommandMs, prepareMs_ = recording::helperPrepareMs, exportMs_ = recording::helperExportMs;
 };
 }
