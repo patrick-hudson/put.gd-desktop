@@ -14,9 +14,11 @@
 #include <QPointer>
 #include <QThread>
 namespace putgd {
+struct CaptureSequence;
 // Also the window list for window recordings (KWin window UUIDs).
 class KdeSourceAdapter final:public QObject,public SourceAdapter,public RecordingWindows {
  Q_OBJECT
+ friend struct CaptureSequence;
 public:
  explicit KdeSourceAdapter(QObject* parent=nullptr);
  ~KdeSourceAdapter() override;
@@ -50,8 +52,8 @@ private:
  bool unchanged(const QList<CaptureFrame>&,quint64)const;
  // remember=false for a text capture (#1428): Repeat last region keeps its rectangle.
  void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool screenshotFirst=false,int delay=0,bool remember=true);
- // onlyTouched: read just the outputs the selection lies on (one monitor, a repeat).
- void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>,bool onlyTouched=false);
+ // Reads just the outputs the selection lies on.
+ void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  // Capture monitor and Repeat last region (#1363): a known logical rectangle, no selector.
  void captureArea(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  // Remembers a region once it was captured, for Repeat last region.
@@ -60,7 +62,7 @@ private:
  void lockGate(int delay,std::function<void(Error)>);
  std::optional<RegionMemory> lastRegion_;
  CountdownProcess countdown_{QStringLiteral("putgd-region")};
- // Reads every frozen output through ScreenShot2, in layout order.
+ // Reads the given outputs through ScreenShot2, in layout order.
  void captureFrames(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64,ResourceLimits,std::function<void(QList<CaptureFrame>,Error)>);
  // Screenshot first (#629): select over frames already read, then cut from them.
  void selectFrozen(QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>,const QString& outcome,bool remember=true);

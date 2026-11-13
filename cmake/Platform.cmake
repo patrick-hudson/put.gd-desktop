@@ -102,6 +102,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
   target_include_directories(putgd_wayland PRIVATE "${protocol_dir}")
   target_link_libraries(putgd_wayland PUBLIC putgd_app putgd_wayland_region putgd_session_lock putgd_keyboard_map Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  # The capture sequence Budgie and Hyprland share (#1446).
+  target_sources(putgd_wayland PRIVATE src/platform/wayland/WaylandCaptureAdapter.cpp)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp src/platform/kde/KWinClickEffect.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
     src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KWinWindows.cpp)
