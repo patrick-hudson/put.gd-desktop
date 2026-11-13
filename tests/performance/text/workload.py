@@ -23,7 +23,8 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-EXTRA = re.compile(r'lib(?:tesseract|lept(?:onica)?|ZXing|gomp|curl|archive)(?:\.|-)')
+# libgomp is legitimate through Qt Core -> libb2 on several targets (#1428).
+EXTRA = re.compile(r'lib(?:tesseract|lept(?:onica)?|ZXing|curl|archive)(?:\.|-)')
 
 
 def identity(pid):
@@ -96,13 +97,13 @@ def run(a, receipt):
             subprocess.run([a.region_driver,op],check=True,timeout=20)
         deadline=time.monotonic()+25
         while True:
-            state=call(a.cli,path,'text.inspect',dict(operationId=op))
+            state=call(a.cli,path,'text.inspect',dict(id=op))
             record['state']=state['state']
             if state['state'] in ('completed','failed','cancelled'):
                 if state['state']!='completed': raise RuntimeError('text job did not complete')
                 break
             if time.monotonic()>deadline:
-                call(a.cli,path,'text.cancel',dict(operationId=op))
+                call(a.cli,path,'text.cancel',dict(id=op))
                 raise RuntimeError('text job timed out')
             time.sleep(.1)
     # Standalone CLI can wait here; the interactive caller should run asynchronously.
