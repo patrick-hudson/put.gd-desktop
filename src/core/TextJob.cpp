@@ -1,4 +1,5 @@
 #include "TextJob.h"
+#include "HelperFiles.h"
 #include "BuildInfo.h"
 #include "ParentDeath.h"
 #include "ipc/UiControl.h"
@@ -100,14 +101,11 @@ TextResult TextJob::recognize(const QImage& image,const Options& options,Error& 
  if(::fcntl(input.fd,F_ADD_SEALS,textjob::requiredSeals|F_SEAL_SEAL)!=0){error=textjob::failure("text_job_failed");return {};}
  const auto nonce=QUuid::createUuid().toString(QUuid::WithoutBraces);
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
- UiControl control(process);bool ready=false,result=false,protocolFailed=false,flooded=false;Error childError;qint64 bytes=0,stderrBytes=0,spawnMs=0;QString sha256;
+ UiControl control(process);bool ready=false,result=false,protocolFailed=false,flooded=false;Error childError;qint64 bytes=0,spawnMs=0;QString sha256;
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
- // Descriptor 2 stays a capped, discarded pipe, as for the image worker.
- QObject::connect(&process,&QProcess::readyReadStandardError,&process,[&]{
-  process.setReadChannel(QProcess::StandardError);
-  while(process.bytesAvailable()>0){stderrBytes+=process.read(16384).size();if(stderrBytes>1024*1024){flooded=true;break;}}
-  process.setReadChannel(QProcess::StandardOutput);
- });
+ // Descriptor 2 stays a capped, discarded pipe, as for the image worker: no sink,
+ // so nothing the helper writes there is logged or kept.
+ helperfiles::captureStandardError(process,flooded);
  QObject::connect(&control,&UiControl::frame,&process,[&](const QString& type,const QString&,const QJsonObject& payload){
   if(protocolFailed)return;
   if(type=="ready"&&!ready&&!result&&textjob::validReady(payload,nonce,build())){

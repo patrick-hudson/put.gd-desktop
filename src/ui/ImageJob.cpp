@@ -1,4 +1,5 @@
 #include "ImageJob.h"
+#include "StagingDirectory.h"
 #include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
@@ -25,22 +26,7 @@ namespace putgd {
 namespace {
 constexpr qint64 maximumBytes=1099511627776LL;
 constexpr qint64 discoveryBudget=32*1024*1024;
-bool number(const QJsonValue& value,qint64& result){
- bool ok=false;if(!value.isString())return false;
- result=value.toString().toLongLong(&ok);
- return ok&&result>=0&&QString::number(result)==value.toString();
-}
-bool hashText(const QString& value){return value.size()==64&&QByteArray::fromHex(value.toLatin1()).toHex()==value.toLatin1();}
-bool privateFile(const struct stat& s,mode_t mode){return S_ISREG(s.st_mode)&&s.st_uid==getuid()&&(s.st_mode&0777)==mode&&s.st_nlink==1;}
-bool sameFile(const struct stat& a,const struct stat& b){return a.st_dev==b.st_dev&&a.st_ino==b.st_ino;}
-bool sameModificationTime(const struct stat& a,const struct stat& b){
-#ifdef Q_OS_DARWIN
- return a.st_mtimespec.tv_sec==b.st_mtimespec.tv_sec&&a.st_mtimespec.tv_nsec==b.st_mtimespec.tv_nsec;
-#else
- return a.st_mtim.tv_sec==b.st_mtim.tv_sec&&a.st_mtim.tv_nsec==b.st_mtim.tv_nsec;
-#endif
-}
-bool sameInput(const struct stat& a,const struct stat& b){return sameFile(a,b)&&a.st_size==b.st_size&&sameModificationTime(a,b);}
+using staging::number;
 QJsonObject envelope(const QString& nonce){return {{"role","image-job"},{"nonce",nonce},{"generation","1"}};}
 bool validEnvelope(const QJsonObject& object,const QString& nonce){return object["role"]=="image-job"&&object["nonce"]==nonce&&object["generation"]=="1";}
 class LimitedFile final:public QFile {
@@ -54,34 +40,24 @@ protected:
 };
 class PrivateFiles final {
 public:
- ~PrivateFiles(){if(directoryFd>=0)::close(directoryFd);}
  bool open(const QJsonValue& inputValue,const QJsonObject& outputValue,bool discovery,qint64 inputMaximum,qint64 outputMaximum){
   if(outputValue.size()!=5||!outputValue["path"].isString())return false;
-  outputPath=outputValue["path"].toString();directory=QFileInfo(outputPath).absolutePath();
+  const auto outputPath=outputValue["path"].toString();const auto directory=QFileInfo(outputPath).absolutePath();
   static const QRegularExpression pattern(QStringLiteral("^/tmp/pgi-[A-Za-z0-9]{6}$"));
   if(!pattern.match(directory).hasMatch()||outputPath!=directory+"/output.bin")return false;
-  directoryFd=::open(QFile::encodeName(directory).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_DIRECTORY);
-  if(directoryFd<0||::fstat(directoryFd,&directoryIdentity)||!validDirectory(directoryIdentity))return false;
-  if(!openFile(output,outputValue,"output.bin",0600,outputIdentity)||outputIdentity.st_size!=0||outputValue["sha256"]!="")return false;
+  if(!staging_.open(directory))return false;
+  if(!staging_.openFile(output,outputValue,"output.bin",0600,outputIdentity)||outputIdentity.st_size!=0||outputValue["sha256"]!="")return false;
   output.maximum=outputMaximum;
   if(discovery)return inputValue.isNull()&&namesIntact(false);
   if(!inputValue.isObject())return false;
-  const auto object=inputValue.toObject();inputPath=object["path"].toString();inputHash=object["sha256"].toString();
-  if(inputPath!=directory+"/input.bin"||!hashText(inputHash)||!openFile(input,object,"input.bin",0400,inputIdentity)||inputIdentity.st_size<1||inputIdentity.st_size>inputMaximum)return false;
+  const auto object=inputValue.toObject();inputHash=object["sha256"].toString();
+  if(object["path"].toString()!=directory+"/input.bin"||!staging::hashText(inputHash)||!staging_.openFile(input,object,"input.bin",0400,inputIdentity)||inputIdentity.st_size<1||inputIdentity.st_size>inputMaximum)return false;
   return namesIntact(true)&&checkInput();
  }
  bool namesIntact(bool hasInput){
-  struct stat directoryNow{},outputNow{},outputNamed{},inputNow{},inputNamed{};
-  if(::lstat(QFile::encodeName(directory).constData(),&directoryNow)||!sameFile(directoryIdentity,directoryNow)||!validDirectory(directoryNow))return false;
-  if(::fstat(output.handle(),&outputNow)||!sameFile(outputIdentity,outputNow)||!privateFile(outputNow,0600)||::fstatat(directoryFd,"output.bin",&outputNamed,AT_SYMLINK_NOFOLLOW)||!sameFile(outputIdentity,outputNamed)||!privateFile(outputNamed,0600))return false;
-  return !hasInput||(!::fstat(input.handle(),&inputNow)&&sameInput(inputIdentity,inputNow)&&privateFile(inputNow,0400)&&!::fstatat(directoryFd,"input.bin",&inputNamed,AT_SYMLINK_NOFOLLOW)&&sameInput(inputIdentity,inputNamed)&&privateFile(inputNamed,0400));
+  return staging_.intact()&&staging_.outputIntact(output,"output.bin",outputIdentity)&&(!hasInput||staging_.inputIntact(input,"input.bin",inputIdentity));
  }
- bool checkInput(){
-  if(!input.seek(0))return false;
-  QCryptographicHash hash(QCryptographicHash::Sha256);qint64 total=0;
-  while(total<inputIdentity.st_size){const auto chunk=input.read(std::min<qint64>(1024*1024,inputIdentity.st_size-total));if(chunk.isEmpty())return false;hash.addData(chunk);total+=chunk.size();}
-  return QString::fromLatin1(hash.result().toHex())==inputHash&&input.seek(0);
- }
+ bool checkInput(){return staging::hashMatches(input,inputIdentity.st_size,inputHash);}
  QByteArray outputHash(){
   if(!output.seek(0))return {};
   QCryptographicHash hash(QCryptographicHash::Sha256);qint64 total=0;const auto size=output.size();
@@ -90,18 +66,8 @@ public:
  }
  QFile input;LimitedFile output;
 private:
- bool validDirectory(const struct stat& s)const{return S_ISDIR(s.st_mode)&&s.st_uid==getuid()&&(s.st_mode&0777)==0700;}
- bool openFile(QFile& file,const QJsonObject& object,const char* name,mode_t mode,struct stat& identity){
-  qint64 device=0,inode=0,size=0;
-  if(object.size()!=5||!object["path"].isString()||!object["sha256"].isString()||!number(object["device"],device)||!number(object["inode"],inode)||!number(object["bytes"],size))return false;
-  const int fd=::openat(directoryFd,name,(mode==0400?O_RDONLY:O_RDWR)|O_CLOEXEC|O_NOFOLLOW);
-  if(fd<0)return false;
-  if(::fstat(fd,&identity)||!privateFile(identity,mode)||qulonglong(identity.st_dev)!=qulonglong(device)||qulonglong(identity.st_ino)!=qulonglong(inode)||identity.st_size!=size){::close(fd);return false;}
-  if(!file.open(fd,(mode==0400?QIODevice::ReadOnly:QIODevice::ReadWrite)|QIODevice::Unbuffered,QFileDevice::AutoCloseHandle)){::close(fd);return false;}
-  return true;
- }
- int directoryFd=-1;struct stat directoryIdentity{},inputIdentity{},outputIdentity{};
- QString directory,inputPath,outputPath,inputHash;
+ staging::Directory staging_;struct stat inputIdentity{},outputIdentity{};
+ QString inputHash;
 };
 QString execute(const QString& task,PrivateFiles& files,qint64 maxPixels,qint64 imageBytes,int& width,int& height){
  if(task=="discover"){

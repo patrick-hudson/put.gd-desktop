@@ -1,4 +1,5 @@
 #include "ImageJob.h"
+#include "HelperFiles.h"
 #include "ImageFormat.h"
 #include "BuildInfo.h"
 #include "ipc/UiControl.h"
@@ -47,9 +48,7 @@ bool sameModificationTime(const struct stat& a,const struct stat& b){
  return a.st_mtim.tv_sec==b.st_mtim.tv_sec&&a.st_mtim.tv_nsec==b.st_mtim.tv_nsec;
 #endif
 }
-QJsonObject descriptor(const QString& path,const struct stat& s,const QString& hash={}){
- return {{"path",path},{"device",QString::number(qulonglong(s.st_dev))},{"inode",QString::number(qulonglong(s.st_ino))},{"bytes",QString::number(s.st_size)},{"sha256",hash}};
-}
+using helperfiles::descriptor;
 bool snapshot(QFile& file,struct stat& s){return file.handle()>=0&&!::fstat(file.handle(),&s);}
 struct DirectoryGuard {
  QTemporaryDir& directory;struct stat original{};
@@ -104,13 +103,9 @@ QByteArray ImageJob::run(const QString& task,const QByteArray* bytes,const QStri
  request["input"]=task=="discover"?QJsonValue(QJsonValue::Null):QJsonValue(descriptor(inputPath,inputIdentity,inputHash));request["output"]=descriptor(outputPath,outputIdentity);
  request["limits"]=QJsonObject{{"imagePixels",QString::number(maxPixels)},{"imageBytes",QString::number(imageBytes)},{"outputBytes",QString::number(outputBytes)}};
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
- UiControl control(process);bool ready=false,result=false,protocolFailed=false;QJsonObject reply;qint64 stderrBytes=0;
+ UiControl control(process);bool ready=false,result=false,protocolFailed=false;QJsonObject reply;
  QObject::connect(&control,&UiControl::failed,&process,[&](Error){protocolFailed=true;});
- QObject::connect(&process,&QProcess::readyReadStandardError,&process,[&]{
-  process.setReadChannel(QProcess::StandardError);
-  while(process.bytesAvailable()>0){const auto discarded=process.read(16384);stderrBytes+=discarded.size();if(stderrBytes>1024*1024){protocolFailed=true;break;}}
-  process.setReadChannel(QProcess::StandardOutput);
- });
+ helperfiles::captureStandardError(process,protocolFailed);
  QObject::connect(&control,&UiControl::frame,&process,[&](const QString& type,const QString&,const QJsonObject& payload){
   if(protocolFailed||!validEnvelope(payload,nonce)){protocolFailed=true;return;}
   if(type=="ready"&&!ready&&!result&&payload.size()==4&&payload["build"].toObject()==build()){
@@ -153,10 +148,9 @@ QByteArray ImageJob::run(const QString& task,const QByteArray* bytes,const QStri
  if(::lstat(QFile::encodeName(directory.path()).constData(),&namedDirectory)||!sameFile(directoryGuard.original,namedDirectory)||!S_ISDIR(namedDirectory.st_mode)||namedDirectory.st_uid!=getuid()||(namedDirectory.st_mode&0777)!=0700){error=failure("image_job_io");return {};}
  if(!snapshot(output,finalOutput)||!privateFile(finalOutput,0600)||!sameFile(outputIdentity,finalOutput)||::lstat(QFile::encodeName(outputPath).constData(),&namedOutput)||!sameFile(finalOutput,namedOutput)||!privateFile(namedOutput,0600)||finalOutput.st_size!=reply["bytes"].toString().toLongLong()||finalOutput.st_size>outputBytes){error=failure("image_job_io");return {};}
  if(task!="discover"){
-  if(!snapshot(input,finalInput)||!privateFile(finalInput,0400)||!sameFile(inputIdentity,finalInput)||finalInput.st_size!=inputIdentity.st_size||!sameModificationTime(finalInput,inputIdentity)||::lstat(QFile::encodeName(inputPath).constData(),&namedInput)||!sameFile(inputIdentity,namedInput)||!privateFile(namedInput,0400)||!input.seek(0)){error=failure("image_job_io");return {};}
-  QCryptographicHash check(QCryptographicHash::Sha256);qint64 checked=0;
-  while(checked<inputIdentity.st_size){if(stopped())return {};const auto chunk=input.read(std::min<qint64>(1024*1024,inputIdentity.st_size-checked));if(chunk.isEmpty()){error=failure("image_job_io");return {};}check.addData(chunk);checked+=chunk.size();}
-  if(QString::fromLatin1(check.result().toHex())!=inputHash){error=failure("image_job_io");return {};}
+  if(!snapshot(input,finalInput)||!privateFile(finalInput,0400)||!sameFile(inputIdentity,finalInput)||finalInput.st_size!=inputIdentity.st_size||!sameModificationTime(finalInput,inputIdentity)||::lstat(QFile::encodeName(inputPath).constData(),&namedInput)||!sameFile(inputIdentity,namedInput)||!privateFile(namedInput,0400)){error=failure("image_job_io");return {};}
+  const auto checked=helperfiles::digest(input,inputIdentity.st_size,stopped);if(error)return {};
+  if(checked!=inputHash){error=failure("image_job_io");return {};}
  }
  if(!output.seek(0)){error=failure("image_job_io");return {};}auto encoded=output.read(finalOutput.st_size+1);
  if(encoded.size()!=finalOutput.st_size||QString::fromLatin1(QCryptographicHash::hash(encoded,QCryptographicHash::Sha256).toHex())!=reply["sha256"].toString()){error=failure("image_job_io");return {};}
