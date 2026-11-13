@@ -28,8 +28,11 @@ private slots:
   QTest::newRow("two phones on one line")<<"2125550100 4155550100"<<QStringList{"phone"}<<QStringList{"phone: 2125550100","phone: 4155550100"};
   const auto prefix=QString("gh")+"p_"+QString(36,'A'),tail=QString(10,'B');
   QTest::newRow("wrapped token with valid prefix")<<prefix+" | "+tail<<all<<QStringList{"key: "+prefix+" "+tail};
+  QTest::newRow("email after unrelated numeric line")<<"ALPHA BRAVO CHARLIE | SYNTHETIC TEXT 1428 | hello@example.test"<<QStringList{"email"}<<QStringList{"email: hello@example.test"};
+  QTest::newRow("email after prose line")<<"Please email | john@example.com"<<QStringList{"email"}<<QStringList{"email: john@example.com"};
+  QTest::newRow("email hard wrapped at terminal column")<<"ABCDEFGHIJKLMNO | PQRSTUVWXYZABCD | Contact john.sm | ith@example.com"<<QStringList{"email"}<<QStringList{"email: john.sm ith@example.com"};
   QTest::newRow("email")<<"Write to jane.doe+invoices@example.co.uk today"<<all<<QStringList{"email: jane.doe+invoices@example.co.uk"};
-  QTest::newRow("email wrapped across lines")<<"Contact jane.doe@exam | ple.com for access"<<all<<QStringList{"email: jane.doe@exam ple.com"};
+  QTest::newRow("email wrapped across lines")<<"Contact jane.doe@ | example.com for access"<<all<<QStringList{"email: jane.doe@ example.com"};
   QTest::newRow("international phone across words")<<"Call +44 20 7946 0958 now"<<all<<QStringList{"phone: +44 20 7946 0958"};
   QTest::newRow("national phone with parentheses")<<"Office (555) 123-4567 ext"<<all<<QStringList{"phone: (555) 123-4567"};
   QTest::newRow("phone with O and l confused")<<"Mobile 555 O12 34l7"<<all<<QStringList{"phone: 555 O12 34l7"};

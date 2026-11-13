@@ -5,6 +5,8 @@
 #include <QSet>
 #include <algorithm>
 #include <functional>
+#include <cmath>
+#include <iterator>
 
 namespace putgd::editor::quickRedact {
 namespace {
@@ -30,15 +32,52 @@ QString hexView(const QString& word) {
  for(const auto c:word)if(c.isLetter()&&!confused.contains(c)&&!QStringLiteral("abcdefABCDEF").contains(c))return word;
  QString out=word;for(auto& c:out)c=confused.value(c,c);return out;
 }
-// The candidates joined in reading order, with the word each character came
-// from (-1 for a separator). Words are joined by one space; `wrapped` joins
-// the last word of a line to the first of the next with none, for a token the
-// line wrapped.
+// OCR supplies line identities and word rectangles, not block identities. Treat
+// aligned, vertically adjacent lines as one block; a paragraph gap starts another.
+struct Line {QRect box;int characters=0;int width=0;int block=0;};
+QSet<int> wrappingLines(const QList<RecognizedWord>& candidates) {
+ QMap<int,Line> lines;
+ for(const auto& word:candidates){auto& line=lines[word.line];line.box=line.box.united(word.rect);line.characters+=word.text.size();line.width+=word.rect.width();}
+ int block=0;const Line* previous=nullptr;
+ for(auto& line:lines){
+  const auto average=double(line.width)/qMax(1,line.characters);
+  if(previous&&(line.box.top()<=previous->box.top()||line.box.top()-previous->box.top()>2*qMax(line.box.height(),previous->box.height())||std::abs(line.box.left()-previous->box.left())>1.5*average))++block;
+  line.block=block;previous=&line;
+ }
+ QMap<int,Line> blocks;
+ for(const auto& line:lines){auto& group=blocks[line.block];group.box=group.box.united(line.box);group.characters+=line.characters;group.width+=line.width;}
+ QMap<int,int> peers;
+ for(const auto& line:lines){const auto& group=blocks[line.block];const double character=double(group.width)/qMax(1,group.characters);if(group.box.right()-line.box.right()<=0.5*character)++peers[line.block];}
+ QSet<int> full;
+ for(auto it=lines.cbegin();it!=lines.cend();++it){
+  const auto& line=it.value();const auto& group=blocks[line.block];const double character=double(group.width)/qMax(1,group.characters);
+  const auto next=std::next(it);if(next==lines.cend()||next->block!=line.block)continue;
+  const int otherPeers=peers[line.block]-(group.box.right()-line.box.right()<=0.5*character?1:0);
+  // A candidate may fall 1.5 characters short. Supporting lines must actually
+  // reach the column (within half a character), so short prose is not evidence.
+  if(otherPeers>=2&&group.box.right()-line.box.right()<=1.5*character)full.insert(it.key());
+ }
+ return full;
+}
+bool wrapEvidence(const QString& left,const QString& right,const QString& category,bool full) {
+ if(left.isEmpty()||right.isEmpty())return false;
+ if(full)return true;
+ const QString punctuation=category=="email"?QStringLiteral("@.-_+"):category=="ip"?QStringLiteral(".:"):category=="phone"||category=="card"?QStringLiteral(" .-()"):QString();
+ if(punctuation.contains(left.back())||punctuation.contains(right.front()))return true;
+ if(category!="key")return false;
+ static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/_=.-]+$"));
+ return alphabet.match(left).hasMatch()&&alphabet.match(right).hasMatch();
+}
+// Every character keeps its word owner. Both views retain an unsupported
+// line boundary; only the wrapped view removes a supported boundary entirely.
 struct Joined {QString text;QList<int> owner;};
-Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped) {
+Joined join(const QList<QString>& words,const QList<RecognizedWord>& candidates,bool wrapped,const QString& category,const QSet<int>& full) {
  Joined joined;
  for(int i=0;i<words.size();++i){
-  if(i>0&&!(wrapped&&candidates.at(i).line!=candidates.at(i-1).line)){joined.text+=' ';joined.owner.append(-1);}
+  const bool boundary=i>0&&candidates.at(i).line!=candidates.at(i-1).line;
+  const bool evidence=boundary&&wrapEvidence(words.at(i-1),words.at(i),category,full.contains(candidates.at(i-1).line));
+  const bool wrap=wrapped&&evidence;
+  if(i>0&&!wrap){joined.text+=boundary&&!evidence?'\n':' ';joined.owner.append(-1);}
   joined.text+=words.at(i);for(int k=0;k<words.at(i).size();++k)joined.owner.append(i);
  }
  return joined;
@@ -106,13 +145,14 @@ QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& cho
  QList<QString> plain,numbers,hex;
  for(const auto& word:candidates){const auto text=normalized(word.text);plain.append(text);numbers.append(digitView(text));hex.append(hexView(text));}
  const QList<QString>* views[3]={&plain,&numbers,&hex};
+ const auto full=wrappingLines(candidates);
  QSet<int> taken;QList<Match> matches;
  // The rules run in order of specificity; a word belongs to the first match.
  for(const auto& rule:rules()){
   if(!chosen.contains(rule.category))continue;
   QList<QList<int>> pending;
   for(const bool wrapped:{false,true}){
-   const auto joined=join(*views[rule.view],candidates,wrapped);
+   const auto joined=join(*views[rule.view],candidates,wrapped,rule.category,full);
    qsizetype offset=0;
    while(offset<joined.text.size()){
     auto found=rule.pattern.match(joined.text,offset);if(!found.hasMatch())break;
