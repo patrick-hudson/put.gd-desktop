@@ -656,7 +656,7 @@ void OperationService::finishText(Operation op) {
  });
 }
 void OperationService::textCommand(const QString& command,const QJsonObject& params,JsonReply reply) {
- const auto id=params["operationId"].toString();
+ const auto id=params["id"].toString();
  if(command=="inspect"){QJsonObject result;const auto error=text_->inspect(id,result);reply(error,result);}
  else if(command=="cancel")text_->cancel(id,std::move(reply));
  else reply({"not_implemented","This text recognition method is not built yet",{}},{});

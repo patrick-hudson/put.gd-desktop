@@ -194,27 +194,27 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   unbuilt();return;
  }
  if(method=="text.inspect"||method=="text.cancel") {
-  if(!fields(p,{"operationId"})||!string(p,"operationId")){reply(invalid(),{});return;}
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
   operations_.textCommand(method.mid(5),p,reply);return;
  }
  if(method=="editor.recognize") {
-  if(!fields(p,{"operationId"})||!string(p,"operationId")){reply(invalid(),{});return;}
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
   unbuilt();return;
  }
  // `result` is the recognition result's identity from editor.inspect; one that
  // is no longer current is refused by the editor with edit_stale.
  if(method=="editor.selectText") {
   const bool range=p.contains("from")||p.contains("to");
-  if(!fields(p,{"operationId","result"},{"from","to","all","none"})||!string(p,"operationId")||!wholeNumber("result",1,2147483647)||(range?1:0)+(p.contains("all")?1:0)+(p.contains("none")?1:0)!=1
+  if(!fields(p,{"id","result"},{"from","to","all","none"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||(range?1:0)+(p.contains("all")?1:0)+(p.contains("none")?1:0)!=1
      ||(range&&(!wholeNumber("from",0,textjob::maximumWords-1)||!wholeNumber("to",0,textjob::maximumWords-1)))||(p.contains("all")&&p["all"]!=true)||(p.contains("none")&&p["none"]!=true)){reply(invalid(),{});return;}
   unbuilt();return;
  }
  if(method=="editor.copyText") {
-  if(!fields(p,{"operationId","result"},{"all"})||!string(p,"operationId")||!wholeNumber("result",1,2147483647)||(p.contains("all")&&!p["all"].isBool())){reply(invalid(),{});return;}
+  if(!fields(p,{"id","result"},{"all"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||(p.contains("all")&&!p["all"].isBool())){reply(invalid(),{});return;}
   unbuilt();return;
  }
  if(method=="editor.copyCode"||method=="editor.openCode") {
-  if(!fields(p,{"operationId","result","index"})||!string(p,"operationId")||!wholeNumber("result",1,2147483647)||!wholeNumber("index",0,textjob::maximumCodes-1)){reply(invalid(),{});return;}
+  if(!fields(p,{"id","result","index"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||!wholeNumber("index",0,textjob::maximumCodes-1)){reply(invalid(),{});return;}
   unbuilt();return;
  }
  if(method=="history.copyText") {
