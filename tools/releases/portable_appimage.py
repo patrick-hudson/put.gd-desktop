@@ -27,6 +27,9 @@ WINDOW_ICON = "usr/share/icons/hicolor/scalable/apps/putgd.svg"
 # The pinned FFmpeg build (media.json) installs these; their notices come from its source.
 FFMPEG_LIBRARIES = ("libavcodec", "libavformat", "libavfilter", "libavutil", "libswscale", "libswresample")
 SECRET_SERVICE_LIBRARIES = ("libsecret-", "libglib-", "libgio-", "libgobject-", "libgmodule-", "libgthread-")
+# One ownership policy for every helper, including empty-environment OCR probes.
+BUNDLED_DEPENDENCY_PREFIXES = ("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES)
+OCR_NONMINIMAL_LIBRARIES = re.compile(r"^lib(?:curl|ssl|crypto|archive|gomp|omp|png|jpeg|tiff|webp|gif|openjp|zint)")
 # The scrolling capture's wheel steps on X11 (#1376). A host need not have it.
 SCROLL_INPUT_LIBRARY = "libxcb-xtest.so.0"
 
@@ -556,16 +559,17 @@ def ocr_library_paths(appdir: Path, path: Path) -> dict:
     if "not found" in output:
         raise ValueError("Unresolved empty-environment OCR dependency: " + path.name)
     resolved = {}
-    image_owned = ("libQt6", *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES)
     for name, target in re.findall(r"^\s*(\S+)\s+=>\s+(\S+)", output, re.M):
         location = Path(target).resolve()
         bundled = appdir / "usr/lib" / name
         # A host copy with the same SONAME must never mask a broken RUNPATH.
         # Match the existing AppImage policy: ordinary system libraries that
         # linuxdeploy excludes (including libz) remain host-provided.
-        if bundled.exists() or bundled.is_symlink() or name.startswith(image_owned):
+        if bundled.exists() or bundled.is_symlink() or name.startswith(BUNDLED_DEPENDENCY_PREFIXES):
             if not location.is_relative_to(appdir.resolve()):
                 raise ValueError("OCR dependency resolves outside AppDir: " + name + " -> " + str(location))
+        if OCR_NONMINIMAL_LIBRARIES.match(name) and not location.is_relative_to(appdir.resolve()):
+            raise ValueError("Nonminimal OCR dependency resolves outside AppDir: " + name)
         resolved[name] = str(location)
     return resolved
 
@@ -578,14 +582,13 @@ def audit_ocr_runtime(appdir: Path) -> dict:
         raise ValueError("AppImage English tessdata_fast missing or changed")
     libraries = {}
     paths = {}
-    forbidden = re.compile(r"^lib(?:curl|archive|gomp|omp|png|jpeg|tiff|webp|gif|openjp|zint)")
     for prefix in OCR_LIBRARIES:
         files = [p for p in (appdir / "usr/lib").glob(prefix + "*.so*") if not p.is_symlink()]
         if len(files) != 1:
             raise ValueError("Expected one bundled OCR engine: " + prefix)
         path = files[0]
         resolved = ocr_library_paths(appdir, path)
-        if any(forbidden.match(name) for name in resolved):
+        if any(OCR_NONMINIMAL_LIBRARIES.match(name) for name in resolved):
             raise ValueError("Nonminimal OCR engine: " + path.name)
         paths[path.name] = resolved
         libraries[path.name] = digest(path)
@@ -643,14 +646,14 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             if "=>" not in line:
                 continue
             library, target = line.split("=>", 1)
-            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
+            if library.strip().startswith(BUNDLED_DEPENDENCY_PREFIXES):
                 resolved = Path(target.strip().split()[0]).resolve()
                 if not resolved.is_relative_to(appdir):
                     raise ValueError("Bundled dependency resolves outside AppDir: " + library.strip())
         checked += 1
     result = {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
               "bundledDependenciesResolvedInsideImage": True,
-              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", "libxcb-xtest", *FFMPEG_LIBRARIES, *OCR_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
+              "checkedDependencyPrefixes": list(BUNDLED_DEPENDENCY_PREFIXES),
               "secretService": audit_secret_service(appdir),
               "ocr": audit_ocr_runtime(appdir)}
     if media_audit:

@@ -432,7 +432,7 @@ class DeploymentRejectionTest(unittest.TestCase):
         library.parent.mkdir(parents=True)
         library.write_bytes(b"synthetic")
         for target in ("/usr/lib/libleptonica.so.6", str(library)):
-            output = "libleptonica.so.6 => " + target + " (0x1234)\nlibc.so.6 => /lib/libc.so.6 (0x5678)"
+            output = "libleptonica.so.6 => " + target + " (0x1234)\nlibc.so.6 => /lib/libc.so.6 (0x5678)\nlibz.so.1 => /lib/libz.so.1 (0x7890)"
             with patch.object(portable.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, stdout=output)) as run:
                 if target == str(library):
                     self.assertEqual(portable.ocr_library_paths(self.app, self.app / "usr/bin/putgd")["libleptonica.so.6"], target)
