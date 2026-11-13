@@ -143,6 +143,10 @@ import threading
 import time
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import lab_resident  # noqa: E402
+
+RunError = lab_resident.RunError
 FRAME_MS = 1000 / 30
 # How long before each scripted press the pointer is moved to its place.
 CLICK_LEAD_S = 2.5
@@ -150,10 +154,6 @@ ANIMATIONS = ('gif', 'webp')
 SESSION_VARIABLES = ('DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP',
                      'WAYLAND_DISPLAY', 'XDG_SESSION_DESKTOP', 'DESKTOP_SESSION', 'KDE_FULL_SESSION', 'KDE_SESSION_VERSION',
                      'XDG_DATA_HOME', 'HYPRLAND_INSTANCE_SIGNATURE')
-
-
-class RunError(RuntimeError):
-    pass
 
 
 def log(message):
@@ -322,16 +322,7 @@ class Driver:
 
     # -- helpers -------------------------------------------------------------
     def cli(self, build, method, params=None, timeout=60):
-        result = subprocess.run([build.cli, method, json.dumps(params or {})], env=self.env, capture_output=True,
-                                text=True, timeout=timeout)
-        try:
-            reply = json.loads(result.stdout)
-        except ValueError:
-            raise RunError('%s: no JSON reply (exit %d): %s' % (method, result.returncode, result.stderr.strip()[-300:]))
-        if not reply.get('ok'):
-            error = reply.get('error') or {}
-            raise RunError('%s failed: %s %s' % (method, error.get('code'), error.get('message')))
-        return reply.get('result') or {}
+        return lab_resident.cli(self, build, method, params, timeout)
 
     def helper(self, *arguments, timeout=300):
         env = dict(os.environ, APPDIR=str(self.analyzer))
@@ -707,50 +698,10 @@ class Driver:
 
     # -- resident ------------------------------------------------------------
     def start_resident(self, build):
-        if self.socket.exists():
-            raise RunError('%s exists: another put.gd resident owns this session' % self.socket)
-        self.resident = subprocess.Popen(build.launcher, env=self.env, stdin=subprocess.DEVNULL,
-                                         stdout=open(self.run / 'logs' / ('resident-%s.log' % build.label), 'a'),
-                                         stderr=subprocess.STDOUT, start_new_session=True)
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            try:
-                caps = self.cli(build, 'recording.capabilities', timeout=40)
-                break
-            except (RunError, subprocess.TimeoutExpired):
-                time.sleep(0.5)
-        else:
-            raise RunError('resident did not answer')
-        # A fresh configuration has no output; keep local copies inside the run, never in the user's Documents.
-        settings = self.cli(build, 'settings.get')
-        archive = (settings.get('document') or {}).get('archive') or {}
-        root = str(self.run / 'archive')
-        if not archive.get('keepUploads') or archive.get('root') != root:
-            self.cli(build, 'settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': root}},
-                                               'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
-        if self.args.no_notifications and ((settings.get('document') or {}).get('preferences') or {}).get('notifications'):
-            # A resident that warns at every start (a missing GNOME extension) would put its banner over the cover.
-            settings = self.cli(build, 'settings.get')
-            self.cli(build, 'settings.patch', {'patch': {'preferences': {'notifications': False}},
-                                               'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
-        return caps
+        return lab_resident.start_resident(self, build, no_notifications=self.args.no_notifications)
 
     def stop_resident(self, build):
-        if self.resident is None:
-            return
-        try:
-            self.cli(build, 'ui.quit', timeout=15)
-        except (RunError, subprocess.TimeoutExpired):
-            pass
-        try:
-            self.resident.wait(20)
-        except subprocess.TimeoutExpired:
-            os.killpg(self.resident.pid, signal.SIGTERM)
-            self.resident.wait(10)
-        deadline = time.monotonic() + 10
-        while self.socket.exists() and time.monotonic() < deadline:
-            time.sleep(0.2)
-        self.resident = None
+        lab_resident.stop_resident(self, build)
 
     # -- one recording -------------------------------------------------------
     def record(self, build, number, fmt):

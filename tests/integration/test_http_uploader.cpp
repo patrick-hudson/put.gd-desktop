@@ -2,6 +2,7 @@
 // scripted loopback receiver, and the journal, retry and unknown-outcome behaviour through
 // the real operation and history services. Synthetic token and payloads only.
 #include "fixtures/U2Fixtures.h"
+#include "fixtures/HttpControl.h"
 #include "fixtures/Waits.h"
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
@@ -54,30 +55,7 @@ public:
         value.values = values;
         credentials.setSession(destination.profileId, value);
     }
-    QJsonObject control(const QString& path, const QJsonObject& value = {}, bool post = false) {
-        QTcpSocket socket;
-        const QUrl address(base);
-        socket.connectToHost(address.host(), quint16(address.port()));
-        if (!socket.waitForConnected(5000)) qFatal("fixture control connection failed");
-        const auto body = post ? QJsonDocument(value).toJson(QJsonDocument::Compact) : QByteArray{};
-        socket.write((post ? QByteArray("POST ") : QByteArray("GET ")) + path.toUtf8() + " HTTP/1.1\r\nHost: " + address.authority().toUtf8() +
-                     "\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\n\r\n" + body);
-        QByteArray response;
-        QElapsedTimer deadline;
-        deadline.start();
-        while (deadline.elapsed() < 5000) {
-            if (!socket.bytesAvailable()) socket.waitForReadyRead(100);
-            response += socket.readAll();
-            const auto boundary = response.indexOf("\r\n\r\n");
-            if (boundary < 0) continue;
-            qint64 length = -1;
-            for (auto header : response.left(boundary).split('\n'))
-                if (header.trimmed().toLower().startsWith("content-length:")) length = header.trimmed().mid(15).trimmed().toLongLong();
-            if (length >= 0 && response.size() - boundary - 4 >= length) return QJsonDocument::fromJson(response.mid(boundary + 4, length)).object();
-        }
-        qFatal("fixture control response timed out");
-        return {};
-    }
+    QJsonObject control(const QString& path, const QJsonObject& value = {}, bool post = false) { return test::httpControl(base, path, value, post); }
     void reset(const QJsonObject& value = {}) { control("/__reset", value, true); }
     void rules(std::initializer_list<QJsonObject> list) { QJsonArray out; for (const auto& rule : list) out.append(rule); control("/__rules", {{"rules", out}}, true); }
     QJsonObject state() { return control("/__state"); }
