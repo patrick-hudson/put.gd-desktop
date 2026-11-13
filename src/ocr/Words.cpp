@@ -1,5 +1,6 @@
 #include "Words.h"
 #include "Sanitize.h"
+#include <QRegularExpression>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -58,12 +59,38 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
  job.words.erase(std::remove_if(job.words.begin()+std::min<qsizetype>(previousFirstWord,job.words.size()),job.words.end(),[](const Word& w){return w.text.isEmpty();}),job.words.end());
  return firstNew-removed;
 }
+void joinUrls(Recognition& job){
+ static const QRegularExpression scheme(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,15}:$")),url(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,15}://"));
+ static const QString joints=QStringLiteral("./?=&#-_");
+ QList<Word> out;out.reserve(job.words.size());
+ for(auto& word:job.words){
+  if(!out.isEmpty()){
+   auto& last=out.last();
+   const int gap=word.rect.left()-(last.rect.right()+1);
+   const bool sameLine=last.line==word.line&&gap>=0&&gap<std::max(2,last.lineHeight/2);
+   const bool start=scheme.match(last.text).hasMatch()&&word.text.startsWith(QLatin1String("//"));
+   const QChar next=word.text.isEmpty()?QChar():word.text.front();
+   const bool continues=url.match(last.text).hasMatch()&&!last.text.isEmpty();
+   const bool more=continues&&((joints.contains(last.text.back())&&(next.isDigit()||next.isLower()))||QStringLiteral("/?#&=").contains(next));
+   if(sameLine&&(start||more)){
+    last.text+=word.text;last.rect=last.rect.united(word.rect);last.confidence=std::min(last.confidence,word.confidence);
+    continue;
+   }
+  }
+  out.append(std::move(word));
+ }
+ job.words=std::move(out);
+}
 void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& filter){
  for(auto& word:job.words){
   word.kept=true;
-  if(word.confidence<filter.confidence||word.lineHeight<filter.minimumLineHeight){word.kept=false;continue;}
+  if(word.lineHeight<filter.minimumLineHeight){word.kept=false;continue;}
   const auto points=word.text.toUcs4();
+  if(points.size()<=2&&word.confidence<filter.confidence){word.kept=false;continue;}
   if(points.size()==1&&!QChar::isLetterOrNumber(points[0])&&(!codeSymbol(points[0])||word.confidence<filter.symbolConfidence)){word.kept=false;continue;}
+  bool alphanumeric=false,foreign=false;
+  for(const auto c:points){if(QChar::isLetterOrNumber(c))alphanumeric=true;else if(!codeSymbol(c))foreign=true;}
+  if(!alphanumeric&&foreign){word.kept=false;continue;}
   // Contrast against the word's own background: the median of its box.
   const QRect r=word.rect.intersected(QRect(0,0,source.width,source.height));
   if(r.isEmpty()){word.kept=false;continue;}

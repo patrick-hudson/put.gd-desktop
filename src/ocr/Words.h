@@ -10,8 +10,15 @@ namespace putgd::ocr {
 // produced, glyphs under a minimum height and text whose contrast against its
 // own background is under a floor. The candidates keep every word.
 struct CopyFilter {
- float confidence=50;         // Tesseract's word confidence, 0..100
- float symbolConfidence=85;   // a word of one symbol needs this, and must be a code symbol
+ // Tesseract's word confidence (0..100) does not separate icons from text:
+ // on put.gd's own captures real words scored 13 to 35 and every URL 0, while
+ // icon noise ("O1", "(A", "a)") scored 0 to 38. Shape does. So only words of
+ // one or two characters need this confidence...
+ float confidence=40;
+ // ...a lone symbol must be a code symbol with this confidence...
+ float symbolConfidence=85;
+ // ...and a word of symbols alone must hold only code symbols ("&&", "+=", "{"),
+ // never a dash, quote or sign an icon produced ("——", "(®)").
  int minimumLineHeight=5;     // its line's box, source pixels
  int contrast=32;             // grey levels a glyph pixel differs from the word's background
 };
@@ -22,6 +29,12 @@ struct CopyFilter {
 // band's first word.
 int mergeBand(Recognition& job,const BandText& band,const Band& placement,const Band* previous,int previousFirstWord,
                double scale,int border,int bandIndex,int imageWidth,int imageHeight);
+// Tesseract splits URLs after the scheme and at dots ("https: //example. test"):
+// joins "scheme:" with a following "//...", then continues a URL across a split
+// after . / ? = & # - _ when the next word on the line starts with a lowercase
+// letter or digit, or when the next word starts with / ? # & =, and the gap is
+// under half the line height.
+void joinUrls(Recognition& job);
 void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& filter);
 // Kept words joined by spaces, lines by newlines, with a blank line between blocks.
 QString copiedText(const Recognition& job);

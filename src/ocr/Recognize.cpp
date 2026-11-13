@@ -33,6 +33,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  }
  result.timings.recognitionMs=stage.elapsed();
  result.recognition.banded=plan.banded();result.recognition.scale=plan.scale;result.recognition.bands=int(plan.bands.size());
+ joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  bool cut=false;result.text=clampUtf8(copiedText(result.recognition),maximumTextBytes,cut);
  result.truncated=truncated||cut;
