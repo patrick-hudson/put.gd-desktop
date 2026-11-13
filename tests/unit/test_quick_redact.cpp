@@ -82,6 +82,11 @@ private slots:
   QTest::newRow("IPv6 split at the double colon")<<"Peer 2001:db8: :42 up"<<all<<QStringList{"ip: 2001:db8: :42"};
   QTest::newRow("IPv6 with a dash read beside the double colon")<<"Route 2001:db8::-4? up"<<all<<QStringList{"ip: 2001:db8::-4?"};
   QTest::newRow("email with its last dot lost")<<"Write corpus@example invalid"<<all<<QStringList{"email: corpus@example invalid"};
+  // On the final candidate (#1462) with the page cut into eight strips, the
+  // 36-letter GitHub fixture at 14 px came back with its prefix gone.
+  QTest::newRow("token collapsed into repeated letters, prefix lost")<<"oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"<<all<<QStringList{"key: oho aeaaaaaaeae aad ad aaa ae aa aaa aa aaaaaaaad"};
+  QTest::newRow("token collapsed into two letters, prefix misread")<<"APC CCEEEECEEEECEEECEEEECEEECEEEECEEETT"<<all<<QStringList{"key: APC CCEEEECEEEECEEECEEEECEEECEEEECEEETT"};
+  QTest::newRow("a UUID split before its last group is no phone")<<"UUID 550e8400-e29b-41d4-a7 16-446655440000 assigned to device VM-07."<<all<<QStringList{};
   // Ordinary lines that resembled tokens or numbers once words were joined.
   QTest::newRow("a version is not a phone")<<"Release 26.1112.4660 for Ubuntu 24.04"<<all<<QStringList{};
   QTest::newRow("capitalized words with numbers are no token")<<"Scores: Team Alpha 3, Team Bravo 2, Team Charlie 0 after 90 minutes"<<all<<QStringList{};
