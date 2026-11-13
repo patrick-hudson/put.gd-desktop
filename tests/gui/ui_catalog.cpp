@@ -775,7 +775,7 @@ int main(int argc,char** argv){
   editor.text().setRunner([fake](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){return fake;});
   editor.show();
   auto grab=[&](const QString& name){putgd::test::settle(450);app.processEvents();if(!checkSteppers(editor))return false;const auto image=steadyGrab(editor);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(editor,name)||!writeInventory(output,name,editor))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
-  editor.selectTool(editor::Tool::CopyText);if(!waitUntil([&]{return editor.text().state()=="done";}))return 2;
+  editor.selectTool(editor::Tool::CopyText);if(!waitUntil([&]{return editor.text().state()=="completed";}))return 2;
   editor.text().layer().select(8,14);editor.textSelectionEdited();if(!grab("30l-editor-copy-text"))return 2;
   editor.selectTool(editor::Tool::Redact);bool redacted=false;editor.quickRedact({"email","phone","ip"},[&](Error error,QJsonObject){redacted=!error;});if(!waitUntil([&]{return redacted;}))return 2;
   editor.canvas().select(0);if(!grab("30m-editor-quick-redact"))return 2;
