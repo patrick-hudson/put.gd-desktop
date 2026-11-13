@@ -83,7 +83,7 @@ void TextService::recognize(Request request,JsonReply reply){
  if(auto error=host_.accept(op,{request.interactive,request.copy})){reply(error,{});return;}
  // A kept result lasts until the next recognition is accepted.
  dropCache();
- op.state="accepted";op.phase="accepted";op.copyStatus=request.copy?"pending":"not_requested";
+ op.phase="accepted";op.copyStatus=request.copy?"pending":"not_requested";
  id_=op.id;op_=op;request_=std::move(request);cancel_=std::make_shared<std::atomic_bool>(false);delivered_=false;waiting_.reset();copyMs_=0;
  const auto id=id_;QPointer<TextService> guard(this);
  // The adapter freezes its target, or shows its selector, before the journal yields.
@@ -99,7 +99,7 @@ void TextService::recognize(Request request,JsonReply reply){
    if(!guard||guard->id_!=id)return;
    if(guard->cancel_->load()){guard->terminate({},true);return;}
    if(guard->settle(id))return;
-   guard->advance(id,"acquiring",[guard,id]{guard->request_.acquire(guard->deliverer(id));});
+   guard->advance(id,OperationState::Acquiring,[guard,id]{guard->request_.acquire(guard->deliverer(id));});
   });
  });
 }
@@ -113,15 +113,15 @@ void TextService::delivered(const QString& id,Error error,Load load){
  if(id_!=id||delivered_)return;
  delivered_=true;waiting_=Delivery{std::move(error),std::move(load)};
  // Before the operation is journaled as acquiring, the step that is running picks it up.
- if(!persisting_&&op_.state=="acquiring")settle(id);
+ if(!persisting_&&op_.state()==OperationState::Acquiring)settle(id);
 }
 bool TextService::settle(const QString& id){
  if(!waiting_)return false;
  auto delivery=*std::exchange(waiting_,std::nullopt);
  acquired(id,std::move(delivery.error),std::move(delivery.load));return true;
 }
-void TextService::advance(const QString& id,const QString& state,std::function<void()> next){
- op_.state=state;op_.phase=state;persisting_=true;QPointer<TextService> guard(this);
+void TextService::advance(const QString& id,OperationState state,std::function<void()> next){
+ op_.advance(state);op_.phase=op_.stateName();persisting_=true;QPointer<TextService> guard(this);
  host_.persist(op_,[guard,id,next=std::move(next)](Error error){
   if(!guard||guard->id_!=id)return;
   guard->persisting_=false;
@@ -137,10 +137,10 @@ void TextService::acquired(const QString& id,Error error,Load load){
  if(cancel_->load()||error.code=="cancelled"||error.code=="source_cancelled"){terminate({},true);return;}
  if(error){terminate(error,false);return;}
  if(!load){terminate({"source_unsupported","This source holds no image to read",{}},false);return;}
- if(op_.state!="acquiring"){terminate({"source_unavailable","The source answered before it was asked",{}},false);return;}
+ if(op_.state()!=OperationState::Acquiring){terminate({"source_unavailable","The source answered before it was asked",{}},false);return;}
  QPointer<TextService> guard(this);
  // Recognition never starts before the journal says so.
- advance(id,"recognizing",[guard,id,load]{
+ advance(id,OperationState::Recognizing,[guard,id,load]{
   textjob::Options options;options.words=guard->request_.keepResult;options.languagesRequired=!guard->request_.languages.isEmpty();
   options.languages=options.languagesRequired?guard->request_.languages
    :textjob::defaultLanguages(guard->host_.settings().textRecognitionLanguages,guard->host_.locale?guard->host_.locale():QLocale::system().name(),guard->backend_->languages());
@@ -175,7 +175,7 @@ void TextService::recognized(const QString& id,Error error,std::shared_ptr<TextR
  });
 }
 void TextService::complete(const QString& id,std::shared_ptr<TextResult> result,const QString& copyStatus){
- op_.state="completed";op_.phase="completed";op_.copyStatus=copyStatus;
+ op_.advance(OperationState::Completed);op_.phase="completed";op_.copyStatus=copyStatus;
  QJsonObject record{{"operationId",id},{"state","completed"},{"source",request_.source},{"characterCount",double(result->text.toUcs4().size())},{"codeCount",result->textCodes()},{"copyStatus",copyStatus},
   {"truncated",result->truncated},{"banded",result->banded},{"languagesUsed",strings(result->languagesUsed)},{"languagesSkipped",strings(result->languagesSkipped)},
   {"timings",QJsonObject{{"spawnMs",double(result->spawnMs)},{"engineStartMs",double(result->engineStartMs)},{"recognizeMs",double(result->recognizeMs)},{"copyMs",double(copyMs_)},{"totalMs",double(result->totalMs)}}}};
@@ -187,9 +187,9 @@ void TextService::complete(const QString& id,std::shared_ptr<TextResult> result,
 void TextService::terminate(Error error,bool cancelled){
  if(!active())return;
  // A selector that is still up, or a capture still running, ends with the operation.
- if(!delivered_&&request_.cancelAcquisition&&(request_.prepare||op_.state=="acquiring")){delivered_=true;request_.cancelAcquisition();}
- op_.error=cancelled?Error{}:error;op_.cancelled=cancelled;op_.state=cancelled?"cancelled":"failed";op_.phase=op_.state;op_.copyStatus=request_.copy?"no_result":"not_requested";
- QJsonObject record{{"operationId",id_},{"state",op_.state},{"source",request_.source},{"copyStatus",op_.copyStatus}};
+ if(!delivered_&&request_.cancelAcquisition&&(request_.prepare||op_.state()==OperationState::Acquiring)){delivered_=true;request_.cancelAcquisition();}
+ op_.error=cancelled?Error{}:error;op_.cancelled=cancelled;op_.advance(cancelled?OperationState::Cancelled:OperationState::Failed);op_.phase=op_.stateName();op_.copyStatus=request_.copy?"no_result":"not_requested";
+ QJsonObject record{{"operationId",id_},{"state",op_.stateName()},{"source",request_.source},{"copyStatus",op_.copyStatus}};
  if(!cancelled)record["error"]=error.toJson();
  end(std::move(record),{});
 }
@@ -220,7 +220,7 @@ void TextService::dropCache(){
 }
 Error TextService::inspect(const QString& id,QJsonObject& result) const {
  result={};
- if(active()&&id==id_){result={{"operationId",id},{"state",op_.state},{"source",request_.source}};return {};}
+ if(active()&&id==id_){result={{"operationId",id},{"state",op_.stateName()},{"source",request_.source}};return {};}
  const auto record=records_.constFind(id);if(record==records_.cend())return notFound();
  result=*record;
  if(result["state"]!=QLatin1String("completed"))return {};
@@ -232,7 +232,7 @@ Error TextService::inspect(const QString& id,QJsonObject& result) const {
 void TextService::cancel(const QString& id,JsonReply reply){
  if(!active()||id!=id_){QJsonObject record;const auto error=inspect(id,record);reply(error,record);return;}
  cancel_->store(true);cancelReplies_.append(std::move(reply));
- if(persisting_||op_.state!="acquiring"||delivered_)return; // the step that is running ends it
+ if(persisting_||op_.state()!=OperationState::Acquiring||delivered_)return; // the step that is running ends it
  if(request_.cancelAcquisition)request_.cancelAcquisition();
  // An acquisition that cannot be told to stop is left behind; what it delivers later is dropped.
  else terminate({},true);

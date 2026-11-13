@@ -163,7 +163,7 @@ class HttpUploaderTest : public QObject {
         const bool terminal = waitFor([&] {
             HistoryStore store(operations.databasePath());
             result = store.operation(id);
-            return QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.state);
+            return QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.stateName());
         }, 20000);
         if (!terminal) QTest::qFail("Operation did not reach a terminal state", __FILE__, __LINE__);
         return result;
@@ -718,7 +718,7 @@ private slots:
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
         PUTGD_TRY_VERIFY(!id.isEmpty());
         auto operation = waitOperation(operations, id);
-        QCOMPARE(operation.state, QString("partial"));
+        QCOMPARE(operation.stateName(), QString("partial"));
         QCOMPARE(operation.items[0].uploadStatus, QString("unknown"));
         QCOMPARE(operation.items[0].error.code, QString("http_outcome_unknown"));
         QCOMPARE(f.stored(), 1);
@@ -734,7 +734,7 @@ private slots:
         bool accepted = false;
         operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); accepted = true; });
         PUTGD_TRY_VERIFY(accepted);
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(HistoryStore(operations.databasePath()).operation(id).state == "completed", 20000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(HistoryStore(operations.databasePath()).operation(id).stateName() == "completed", 20000);
         operation = HistoryStore(operations.databasePath()).operation(id);
         QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
         QCOMPARE(f.events("upload").size(), 2);
@@ -763,7 +763,7 @@ private slots:
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
         PUTGD_TRY_VERIFY(!id.isEmpty());
         const auto operation = waitOperation(operations, id);
-        QCOMPARE(operation.state, QString("completed"));
+        QCOMPARE(operation.stateName(), QString("completed"));
         QCOMPARE(operation.items.size(), 2);
         for (const auto& item : operation.items) QCOMPARE(item.uploadStatus, QString("uploaded"));
         QVERIFY(operation.items[0].receipt.directUrl != operation.items[1].receipt.directUrl);

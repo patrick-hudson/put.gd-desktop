@@ -251,7 +251,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
   if(error||!last||last->destination.settings!=settings||last->destination.credentialReference!=credentials)return QJsonObject{};
   // The newest upload to this destination: an item or operation error, if any.
   Error failure=last->error;for(const auto& item:last->items)if(item.uploadStatus=="failed"&&item.error)failure=item.error;
-  return QJsonObject{{"operationId",last->id},{"state",last->state},{"created",last->created},{"error",failure.toJson()}};
+  return QJsonObject{{"operationId",last->id},{"state",last->stateName()},{"created",last->created},{"error",failure.toJson()}};
  },[guarded,profileId,revision,target,done](Error error,QJsonObject last) {
   if(!guarded)return;
   if(error){done(error,{});return;}
@@ -304,12 +304,12 @@ void DiagnosticsBundles::upload(QJsonObject result,const BundleRequest& request,
    if(accepted)settle(result,accepted);
   },[guarded,result,settle,copyLink](const Operation& op) mutable {
    if(!guarded)return;
-   auto upload=result["upload"].toObject();upload["operationId"]=op.id;upload["state"]=op.state;
+   auto upload=result["upload"].toObject();upload["operationId"]=op.id;upload["state"]=op.stateName();
    const auto item=op.items.value(0);
    if(!item.candidate.isEmpty())upload["name"]=item.candidate;
    if(item.artifact.id.size())upload["historyId"]=item.artifact.id;
    result["upload"]=upload;
-   if(op.state!="completed"||item.uploadStatus!="uploaded") {
+   if(op.state()!=OperationState::Completed||item.uploadStatus!="uploaded") {
     auto error=item.error?item.error:op.error?op.error:Error{"diagnostics_upload_failed","The package was not uploaded",{}};
     error.details["operationId"]=op.id;settle(result,error);return;
    }
@@ -471,7 +471,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  }
  for(const auto& op:operations) {
   QJsonArray items;for(const auto& item:op.items)items.append(itemSummary(item,attempts.value(item.artifact.id)));
-  QJsonObject summary{{"id",op.id},{"action",op.action},{"state",op.state},{"phase",op.phase},{"created",op.created},{"cancelled",op.cancelled},
+  QJsonObject summary{{"id",op.id},{"action",op.action},{"state",op.stateName()},{"phase",op.phase},{"created",op.created},{"cancelled",op.cancelled},
    {"copyStatus",op.copyStatus},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",items}};
   if(op.error)summary["error"]=op.error.toJson();
   operationList.append(summary);
