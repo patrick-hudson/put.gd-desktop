@@ -69,7 +69,10 @@ signals:
 private:
     struct Session {
         Operation op;
-        QString state = "preparing", pending;
+        RecordingState state = RecordingState::Preparing;
+        QString pending;
+        // A step outside recording::allowedStep was logged for this session (#1434).
+        bool offTableStep = false;
         RecordingTarget target;
         RecordingConfig config;
         QSize canvas;
@@ -110,7 +113,9 @@ private:
     };
     QJsonObject publicJson(const Session&) const;
     // The phase defaults to the state; Upload's export reports as `encoding`.
-    void transition(Session&, const QString& state, const QString& phase = {});
+    void transition(Session&, RecordingState, const QString& phase = {});
+    // Logs, once per session, a step outside the from/to table; the step is taken all the same.
+    void checkStep(Session&, RecordingState to);
     QJsonObject limitsJson(const Session&) const;
     void fail(Error);
     void cancelActive(JsonReply);
@@ -144,7 +149,7 @@ private:
     void resolveWindow(quint64 generation);
     void prepareBackend(quint64 generation);
     void prepared(Error, const QJsonObject& result);
-    QJsonObject shellFrame(const Session&, const QString& state) const;
+    QJsonObject shellFrame(const Session&, RecordingState) const;
     void closeShell(Session&);
     void commandSession(const QString& command, const QJsonObject& params, JsonReply);
     // `reply` answers once the export starts (or is refused); `done`, when

@@ -67,7 +67,7 @@ private slots:
     }
     void stoppedBarCannotReappearOverReview() {
         QTemporaryDir dir; RecordSession session; setup(session, dir);
-        session.prepared_ = true;
+        session.phase_ = HelperPhase::Ready;
         session.bar_ = new ControlBar({}, session.config_);
         session.barHidden_ = false;
         session.pipeline_.storageProbe_ = [] { return healthy(); };
@@ -84,11 +84,12 @@ private slots:
         QCOMPARE(busy,QString("recording_busy"));QCOMPARE(session.portalFd_,share[0]);QVERIFY(!readerClosed(share[1]));
         PUTGD_TRY_COMPARE(replies,1);QVERIFY2(!stopError,qPrintable(stopError.message));
         QCOMPARE(session.portalFd_,-1);QVERIFY(readerClosed(share[1]));
-        QVERIFY(session.recorded_);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
+        QVERIFY(session.phase_==HelperPhase::Recorded);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
         session.review_->hide();
         session.command("raise",{},[&](Error error,QJsonObject){QVERIFY(!error);++replies;});
         QCOMPARE(replies,2);QVERIFY(session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
-        session.command("overlay",{{"visible",true}},[](Error error,QJsonObject result){QVERIFY(!error);QVERIFY(!result["visible"].toBool());});
+        // The bar's overlay command belongs to the capture: over review it is refused and the bar stays hidden.
+        session.command("overlay",{{"visible",true}},[](Error error,QJsonObject){QCOMPARE(error.code,QString("recording_state"));});QVERIFY(!session.bar_->isVisible());
         session.showBar("paused");QVERIFY(!session.bar_->isVisible());
     }
     void pipelineFailureEndsTheShare() {
@@ -154,7 +155,7 @@ private slots:
         QCOMPARE(stopped["stopDetails"].toObject(), diskLow ? expected : QJsonObject{});
         QCOMPARE(budgets.count(), 1);
         QVERIFY(!pipeline.running()); QVERIFY(!pipeline.bus_.isActive());
-        QVERIFY(session.recorded_); QVERIFY(session.review_); QVERIFY(session.review_->isVisible());
+        QVERIFY(session.phase_ == HelperPhase::Recorded); QVERIFY(session.review_); QVERIFY(session.review_->isVisible());
         QVERIFY(QFileInfo(session.workingClip_).size() > 0);
         QImage frame;
         QVERIFY(!previewFrame(session.workingClip_, {}, session.config_, 0, 64, session.resolved_.canvas, frame));

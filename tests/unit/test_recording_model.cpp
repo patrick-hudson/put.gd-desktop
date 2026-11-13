@@ -15,6 +15,23 @@ class RecordingModelContract final : public QObject {
         return {{"kind", kind}, {"rect", QJsonArray{x, y, w, h}}, {"start", start}, {"end", end}};
     }
 private slots:
+    void helperAcceptsExactlyWhatTheResidentTableAllows() {
+        // #1434: a helper that refuses a command the resident's table allows (or the
+        // reverse) strands the session, holding the clip, the bar or the dimming.
+        const QList<std::pair<QString, QString>> commands{{"start", "start"}, {"pause", "pause"}, {"resume", "resume"}, {"stop", "stop"}, {"cancel", "cancel"},
+            {"select", "select"}, {"audio", "audio"}, {"raise", "raise"}, {"overlay", "overlay"}, {"review", "review"}, {"preview", "preview"},
+            {"edit", "setEdit"}, {"saveCopy", "export"}, {"upload", "export"}};
+        for (int value = int(HelperPhase::Idle); value <= int(HelperPhase::Failed); ++value) {
+            const auto phase = HelperPhase(value);
+            const auto state = recording::residentState(phase);
+            for (const auto& [resident, helper] : commands) {
+                const bool helperAccepts = !recording::checkHelperCommand(phase, helper);
+                const bool residentAllows = state && !recording::checkTransition(*state, resident);
+                QVERIFY2(helperAccepts == residentAllows, qPrintable(QStringLiteral("%1 in phase %2: helper %3, resident %4").arg(helper, recording::phaseName(phase), helperAccepts ? "accepts" : "refuses", residentAllows ? "allows" : "refuses")));
+            }
+            QCOMPARE(!recording::checkHelperCommand(phase, "prepare"), phase == HelperPhase::Idle);
+        }
+    }
     void liveDiskBudgetLeavesFinalizationAndCopies() {
         using record::RecordingStorage;
         constexpr qint64 mib = 1LL << 20, gib = 1LL << 30;

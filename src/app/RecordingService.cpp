@@ -113,8 +113,8 @@ QJsonObject RecordingService::capabilities() const {
     return result;
 }
 QJsonObject RecordingService::publicJson(const Session& s) const {
-    const auto retained = s.state == "reviewing" || s.state == "exporting" ? s.edit.exportDuration(s.duration) : 0;
-    QJsonObject o{{"recordingId", s.op.id}, {"operationId", s.op.id}, {"state", s.state}, {"pending", s.pending.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.pending)},
+    const auto retained = s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting ? s.edit.exportDuration(s.duration) : 0;
+    QJsonObject o{{"recordingId", s.op.id}, {"operationId", s.op.id}, {"state", recording::stateName(s.state)}, {"pending", s.pending.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.pending)},
         {"target", s.target.toJson()}, {"config", s.config.toJson()}, {"canvas", sizeJson(s.canvas)}, {"durationUs", double(s.duration)},
         {"retainedUs", double(retained)}, {"edit", s.edit.toJson()}, {"progress", s.progress}, {"exports", s.exports},
         {"lastExport", s.lastExport.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(s.lastExport)}, {"error", s.op.error.toJson()}};
@@ -205,8 +205,8 @@ QJsonObject RecordingService::withMicrophone(QJsonObject capabilities, const QJs
 void RecordingService::invoke(const QString& mode, JsonReply reply) {
     QString step = "raise";
     if (!session_) step = "prepare";
-    else if (mode == "toggle" && session_->state == "ready") step = "start";
-    else if (mode == "toggle" && (session_->state == "recording" || session_->state == "paused")) step = "stop";
+    else if (mode == "toggle" && session_->state == RecordingState::Ready) step = "start";
+    else if (mode == "toggle" && (session_->state == RecordingState::Recording || session_->state == RecordingState::Paused)) step = "stop";
     QJsonObject prepare{{"target", QJsonObject{{"kind", "region"}}}, {"format", "mp4"}};
     if (step == "prepare") {
         // The bar's microphone toggle and the click highlights are remembered (#1364).
@@ -221,17 +221,26 @@ void RecordingService::invoke(const QString& mode, JsonReply reply) {
         reply(error, result);
     });
 }
-void RecordingService::transition(Session& s, const QString& state, const QString& phase) {
-    logging::info(logRecording(), "Recording step", {{"operationId", s.op.id}, {"from", s.state}, {"state", state}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
+void RecordingService::checkStep(Session& s, RecordingState to) {
+    if (recording::allowedStep(s.state, to) || std::exchange(s.offTableStep, true)) return;
+    logging::warning(logRecording(), "Recording step outside the state table", {{"operationId", s.op.id}, {"from", recording::stateName(s.state)}, {"state", recording::stateName(to)}});
+}
+void RecordingService::transition(Session& s, RecordingState state, const QString& phase) {
+    // A step the table does not list is still taken: refusing it would leave the
+    // session where it is with nothing to move it on, holding the clip, the bar
+    // or the dimming. checkStep() makes it visible in the log instead.
+    checkStep(s, state);
+    const auto name = recording::stateName(state);
+    logging::info(logRecording(), "Recording step", {{"operationId", s.op.id}, {"from", recording::stateName(s.state)}, {"state", name}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.state = state;
     s.pending.clear();
-    s.op.phase = phase.isEmpty() ? state : phase;
+    s.op.phase = phase.isEmpty() ? name : phase;
     // Click highlights (#1364) follow the capture: on at Record, kept across a pause, off once it stops.
-    if (state == "recording") watchClicks(s);
-    else if (state != "paused") unwatchClicks();
+    if (state == RecordingState::Recording) watchClicks(s);
+    else if (state != RecordingState::Paused) unwatchClicks();
     // The shell's ring stays through start; dimming covers recording, pause and the stop.
-    if (s.shellFrame && shell_ && (state == "recording" || state == "paused")) shell_->showFrame(shellFrame(s, state), [](Error, QJsonObject) {});
-    else if (s.shellFrame && state != "ready" && state != "starting" && state != "stopping") closeShell(s);
+    if (s.shellFrame && shell_ && (state == RecordingState::Recording || state == RecordingState::Paused)) shell_->showFrame(shellFrame(s, state), [](Error, QJsonObject) {});
+    else if (s.shellFrame && state != RecordingState::Ready && state != RecordingState::Starting && state != RecordingState::Stopping) closeShell(s);
     host_.observe(s.op);
     emit changed(s.op.id);
 }
@@ -249,8 +258,8 @@ RecordingBackend::Reply RecordingService::marshal(quint64 generation, std::funct
         QMetaObject::invokeMethod(guard, std::move(deliver), Qt::QueuedConnection);
     };
 }
-QJsonObject RecordingService::shellFrame(const Session& s, const QString& state) const {
-    return {{"rect", rectJson(s.recorded)}, {"kind", s.target.kind}, {"state", state}, {"pid", double(backend_->processId(s.op.id))}};
+QJsonObject RecordingService::shellFrame(const Session& s, RecordingState state) const {
+    return {{"rect", rectJson(s.recorded)}, {"kind", s.target.kind}, {"state", recording::stateName(state)}, {"pid", double(backend_->processId(s.op.id))}};
 }
 void RecordingService::closeShell(Session& s) {
     if (!shell_) return;
@@ -259,19 +268,20 @@ void RecordingService::closeShell(Session& s) {
 }
 void RecordingService::fail(Error error) {
     if (!session_) return;
+    // A user cancellation reported by the helper (Escape during selection,
+    // Cancel on the bar) ends as cancelled, not as a failure.
+    const bool cancelled = error.code == "cancelled" || error.code == "source_cancelled";
+    checkStep(*session_, cancelled ? RecordingState::Cancelled : RecordingState::Failed);
     unwatchClicks();
     closeShell(*session_);
     auto s = std::move(*session_);
     session_.reset();
     backend_->discard(s.op.id);
     QDir(s.staging).removeRecursively();
-    // A user cancellation reported by the helper (Escape during selection,
-    // Cancel on the bar) ends as cancelled, not as a failure.
-    const bool cancelled = error.code == "cancelled" || error.code == "source_cancelled";
     // Which step ended it and how long in (#250): a timeout names its step,
     // otherwise the state the session was in.
     logging::write(logRecording(), cancelled ? QtInfoMsg : QtWarningMsg, cancelled ? "Recording cancelled" : "Recording failed",
-        {{"operationId", s.op.id}, {"error", logging::errorFields(error)}, {"step", error.details["step"].toString(s.state)}, {"state", s.state}, {"phase", s.op.phase},
+        {{"operationId", s.op.id}, {"error", logging::errorFields(error)}, {"step", error.details["step"].toString(recording::stateName(s.state))}, {"state", recording::stateName(s.state)}, {"phase", s.op.phase},
          {"selector", s.selector}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.op.error = error;
     s.op.cancelled = cancelled;
@@ -281,6 +291,7 @@ void RecordingService::fail(Error error) {
     emit changed(s.op.id);
 }
 void RecordingService::cancelActive(JsonReply reply) {
+    checkStep(*session_, RecordingState::Cancelled);
     unwatchClicks();
     closeShell(*session_);
     auto s = std::move(*session_);
@@ -313,7 +324,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         qint64 duration = 0;
         if (integer(event["durationUs"], 0, recording::maximumClipUs, &duration)) s.duration = duration;
         host_.observe(s.op);
-    } else if (kind == "stopped" && (s.state == "recording" || s.state == "paused" || s.state == "stopping")) {
+    } else if (kind == "stopped" && (s.state == RecordingState::Recording || s.state == RecordingState::Paused || s.state == RecordingState::Stopping)) {
         // The helper stopped on its own (budget, source loss) with a reviewable clip.
         qint64 duration = 0;
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
@@ -327,8 +338,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         updateCanvas(s.canvas, event["canvas"]);
         recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
         if (s.stopReason == "budget") stoppedOnBudget(s, event["stopDetails"].toObject());
-        transition(s, "reviewing");
-    } else if (kind == "selecting" && s.state == "preparing") {
+        transition(s, RecordingState::Reviewing);
+    } else if (kind == "selecting" && s.state == RecordingState::Preparing) {
         // The helper's own selector is open (X11, KDE): recording.select can drive it.
         s.selector = "helper";
         logging::info(logRecording(), "Recording selector open", {{"operationId", s.op.id}, {"selector", s.selector}, {"elapsedMs", s.clock.elapsed()}});
@@ -337,18 +348,33 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     } else if (kind == "failed") {
         auto error = event["error"].toObject();
         fail({error["code"].toString("recording_failed"), error["message"].toString("The recording helper failed"), error["details"].toObject()});
-    } else if (kind == "started" && (s.state == "ready" || s.state == "starting")) {
+    } else if (kind == "started" && (s.state == RecordingState::Ready || s.state == RecordingState::Starting)) {
         // The user pressed Record on the helper's control bar.
         noteCaptured(s, event, true);
         for (auto it = event.begin(); it != event.end(); ++it) if (it.key() != "id" && it.key() != "event") s.progress[it.key()] = it.value();
-        transition(s, "recording");
-    } else if (kind == "paused" && s.state == "recording") transition(s, "paused");
-    else if (kind == "resumed" && s.state == "paused") transition(s, "recording");
+        transition(s, RecordingState::Recording);
+    } else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
+    else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
+    else if (kind == "lateResult" && event["ok"].toBool()) {
+        // The helper finished a pause or resume after its deadline (#1443): its
+        // caller had recording_helper_timeout, and the clip is now where the
+        // helper took it. Followed like the bar's own events, from the state the
+        // command was sent in; a command still in flight keeps its place.
+        const auto command = event["command"].toString();
+        std::optional<RecordingState> to;
+        if (command == "pause" && s.state == RecordingState::Recording) to = RecordingState::Paused;
+        else if (command == "resume" && s.state == RecordingState::Paused) to = RecordingState::Recording;
+        if (to) {
+            const auto pending = s.pending;
+            transition(s, *to);
+            s.pending = pending;
+        }
+    }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
-    else if (kind == "configChanged" && (s.state == "ready" || s.state == "reviewing")) {
+    else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();
         for (const auto* key : {"mime", "budgetBytes"}) json.remove(key);
-        if (s.state == "reviewing") {
+        if (s.state == RecordingState::Reviewing) {
             // After the clip exists only the output can change: the capture rate is
             // fixed and audio cannot appear (and is dropped for silent formats).
             const auto format = json["format"].toString();
@@ -357,27 +383,27 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             json["audio"] = QJsonObject{{"system", s.capturedSystemAudio && sound}, {"microphone", s.capturedMicrophone && sound}};
         }
         // The bar's microphone toggle is remembered for the next recording (#1364).
-        if (s.state == "ready" && event["microphoneRequested"].isBool() && host_.remember && event["microphoneRequested"].toBool() != host_.settings().recordingMicrophone)
+        if (s.state == RecordingState::Ready && event["microphoneRequested"].isBool() && host_.remember && event["microphoneRequested"].toBool() != host_.settings().recordingMicrophone)
             host_.remember({{"recordingMicrophone", event["microphoneRequested"].toBool()}});
         RecordingConfig config;
         if (!recording::parseConfig(json, config)) {
             config.budgetBytes = s.config.budgetBytes;
-            if (s.state == "reviewing") config.fps = s.config.fps;
+            if (s.state == RecordingState::Reviewing) config.fps = s.config.fps;
             // Choosing GIF or WebP is a format choice: fit the output to the animation limit.
             const bool clamped = recording::clampAnimationSize(config, s.canvas, limits(s.op.settings));
             s.config = config;
-            if (clamped && s.state == "reviewing") backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
+            if (clamped && s.state == RecordingState::Reviewing) backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
             host_.observe(s.op);
             emit changed(s.op.id);
         }
-    } else if (kind == "edit" && s.state == "reviewing") {
+    } else if (kind == "edit" && s.state == RecordingState::Reviewing) {
         // The review window proposes commands at the revision it showed; the
         // resident's answer (setEdit) is what it displays, accepted or not.
         qint64 revision = 0;
         if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
             if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { host_.observe(s.op); emit changed(s.op.id); }
         backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
-    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && s.state == "reviewing") {
+    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && s.state == RecordingState::Reviewing) {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
         // The helper learns the outcome from its own export command; a refused
@@ -477,10 +503,14 @@ void RecordingService::startCapture(const QString& id, JsonReply reply) {
     auto& s = *session_;
     backend_->control(s.op.id, "start", {}, marshal(s.generation, [this, reply](Error error, QJsonObject result) {
         auto& s = *session_;
+        // Record on the bar won the race: its `started` event, queued ahead of this
+        // reply, already moved the session on, and the helper refused this second
+        // start. The recording runs; failing the session would discard it (#1434).
+        if (s.state != RecordingState::Starting) { reply({}, publicJson(s)); return; }
         if (error) { fail(error); reply(error, {}); return; }
         for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
         noteCaptured(s, result, true);
-        transition(s, "recording");
+        transition(s, RecordingState::Recording);
         reply({}, publicJson(s));
     }));
 }
@@ -526,7 +556,7 @@ void RecordingService::watchClicks(Session& s, std::function<void()> then) {
         if (!click.contains("atUs")) click["atUs"] = double(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
         QMetaObject::invokeMethod(guard, [guard, current, click] {
             // Presses while paused are not part of the clip.
-            if (!current() || guard->session_->state != "recording") return;
+            if (!current() || guard->session_->state != RecordingState::Recording) return;
             guard->backend_->control(guard->session_->op.id, "click", click, [guard, current](Error error, QJsonObject) {
                 // The helper could not place the press (no pointer position): say so once; the recording goes on.
                 if (guard && error && current() && !guard->session_->progress.contains("clickHighlightsError")) guard->session_->progress["clickHighlightsError"] = error.message;
@@ -636,7 +666,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
 void RecordingService::resolveWindow(quint64 generation) {
     windows_->listWindows(marshal(generation, [this](Error error, QJsonObject result) {
         auto& s = *session_;
-        if (s.state != "preparing") return;
+        if (s.state != RecordingState::Preparing) return;
         if (error) {
             // An integration loaded before an upgrade must be reloaded (#131); one
             // that is off or missing leaves the window to the portal's picker.
@@ -685,7 +715,7 @@ void RecordingService::beginPrepare(quint64 generation) {
         emit changed(s.op.id);
         shell_->selectRegion(marshal(generation, [this, token](Error error, QJsonObject result) {
             auto& s = *session_;
-            if (s.state != "preparing" || s.selector != "shell" || s.selection != token) return;
+            if (s.state != RecordingState::Preparing || s.selector != "shell" || s.selection != token) return;
             s.selector.clear();
             QRect rect;
             if (!error && !rectFrom(result["rect"], rect)) error = {"capture_geometry", "The desktop shell returned an invalid selection", {}};
@@ -703,7 +733,7 @@ void RecordingService::prepareBackend(quint64 generation) {
 }
 void RecordingService::prepared(Error error, const QJsonObject& result) {
     auto& s = *session_;
-    if (s.state != "preparing") return;
+    if (s.state != RecordingState::Preparing) return;
     // fail() logs whether a selector was still open.
     if (error) { fail(error); return; }
     s.selector.clear();
@@ -723,9 +753,9 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
     // area and moves the bar; overlayExcluded follows where the bar really went.
     if (s.overlayPlacement == "compositor" && shell_ && hasRect && s.target.kind != "window" && backend_->processId(s.op.id) > 0) {
         s.shellFrame = true;
-        shell_->showFrame(shellFrame(s, "ready"), marshal(s.generation, [this](Error error, QJsonObject result) {
+        shell_->showFrame(shellFrame(s, RecordingState::Ready), marshal(s.generation, [this](Error error, QJsonObject result) {
             auto& s = *session_;
-            if (s.state != "preparing") return;
+            if (s.state != RecordingState::Preparing) return;
             const auto bar = result["bar"].toObject();
             if (!error && bar["placed"].toBool()) {
                 // With no room outside, the Shell keeps the bar in the corner and
@@ -735,11 +765,11 @@ void RecordingService::prepared(Error error, const QJsonObject& result) {
                 s.overlayPlacement = outside ? QStringLiteral("outside") : QStringLiteral("handle");
                 if (!outside) backend_->control(s.op.id, "overlay", {{"handle", true}}, [](Error, QJsonObject) {});
             }
-            transition(s, "ready");
+            transition(s, RecordingState::Ready);
         }));
         return;
     }
-    transition(s, "ready");
+    transition(s, RecordingState::Ready);
 }
 void RecordingService::commandSession(const QString& command, const QJsonObject& params, JsonReply reply) {
     if (!session_) { reply({"recording_unavailable", "No recording is active", {}}, {}); return; }
@@ -749,14 +779,14 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
     if (command == "inspect") { reply({}, publicJson(s)); return; }
     // A stop after the recording already stopped itself (its budget, #213) is
     // acknowledged like a duplicate stop, with the review state and the reason.
-    if (command == "stop" && s.state == "reviewing") { reply({}, publicJson(s)); return; }
+    if (command == "stop" && s.state == RecordingState::Reviewing) { reply({}, publicJson(s)); return; }
     if (auto error = recording::checkTransition(s.state, command)) { reply(error, {}); return; }
     if (command == "cancel") { cancelActive(reply); return; }
     if (command == "select") {
         // Drives the open selector as a drag would: the rectangle is the region.
         QRect rect;
         if (!rectFrom(params["rect"], rect)) { reply(invalid("select takes rect [x, y, width, height] with a positive size"), {}); return; }
-        if (s.selector.isEmpty()) { reply({"recording_state", "No region selection is open", {{"state", s.state}}}, {}); return; }
+        if (s.selector.isEmpty()) { reply({"recording_state", "No region selection is open", {{"state", recording::stateName(s.state)}}}, {}); return; }
         if (s.selector == "shell") {
             ++s.selection;
             s.selector.clear();
@@ -775,7 +805,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         // The bar's audio toggles, for an agent: only while the bar offers them. The helper answers with
         // what it will record; its configChanged and progress events have brought the session up to date
         // by then.
-        if (s.state != "ready") { reply({"recording_state", "The audio sources can be changed only while the recording is ready", {{"state", s.state}}}, {}); return; }
+        if (s.state != RecordingState::Ready) { reply({"recording_state", "The audio sources can be changed only while the recording is ready", {{"state", recording::stateName(s.state)}}}, {}); return; }
         QJsonObject forwarded;
         for (const auto* key : {"system", "microphone"}) if (params[key].isBool()) forwarded[key] = params[key].toBool();
         backend_->control(s.op.id, "audio", forwarded, marshal(s.generation, [this, reply](Error error, QJsonObject) { reply(error, error ? QJsonObject{} : publicJson(*session_)); }));
@@ -793,8 +823,8 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (s.pending == command) { reply({}, publicJson(s)); return; }
         if (!s.pending.isEmpty()) { reply({"recording_busy", "Another recording command is still being acknowledged", {{"pending", s.pending}}}, {}); return; }
         s.pending = command;
-        if (command == "start") transition(s, "starting"), s.pending = command;
-        if (command == "stop") transition(s, "stopping"), s.pending = command;
+        if (command == "start") transition(s, RecordingState::Starting), s.pending = command;
+        if (command == "stop") transition(s, RecordingState::Stopping), s.pending = command;
         // Where starting the click watch shows on screen (labwc reads its configuration again),
         // it is started first and the capture only once the desktop has answered.
         if (command == "start" && clicks_ && s.config.clickHighlights && clicks_->clickCapability()["beforeCapture"].toBool()) {
@@ -817,10 +847,10 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
             for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
             if (command == "start") {
                 noteCaptured(s, result, true);
-                transition(s, "recording");
+                transition(s, RecordingState::Recording);
             }
-            else if (command == "pause") transition(s, "paused");
-            else if (command == "resume") transition(s, "recording");
+            else if (command == "pause") transition(s, RecordingState::Paused);
+            else if (command == "resume") transition(s, RecordingState::Recording);
             else {
                 qint64 duration = 0;
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
@@ -833,7 +863,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 s.stopReason = "user";
                 updateCanvas(s.canvas, result["canvas"]);
                 recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
-                transition(s, "reviewing");
+                transition(s, RecordingState::Reviewing);
             }
             reply({}, publicJson(s));
         }));
@@ -877,11 +907,11 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         auto forwarded = params;
         forwarded.remove("id");
         const bool inspect = forwarded["action"].toString() == "inspect";
-        if (s.state == "exporting" && !inspect) { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", s.state}}}, {}); return; }
+        if (s.state == RecordingState::Exporting && !inspect) { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", recording::stateName(s.state)}}}, {}); return; }
         const auto generation = s.generation;
         auto answer = [this, reply, generation](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
-            result["state"] = session_->state;
+            result["state"] = recording::stateName(session_->state);
             result["edit"] = session_->edit.toJson();
             reply({}, result);
         };
@@ -899,7 +929,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
 }
 void RecordingService::retryExport(JsonReply reply, JsonReply done) {
     auto& s = *session_;
-    if (s.state != "reviewing" || s.lastExport.value("status") != "failed" || s.lastExportRequest.isEmpty()) {
+    if (s.state != RecordingState::Reviewing || s.lastExport.value("status") != "failed" || s.lastExportRequest.isEmpty()) {
         reply({"recording_state", "There is no failed export to retry", {}}, {});
         return;
     }
@@ -935,7 +965,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     const auto edit = s.edit;
     const auto config = s.config;
     const auto generation = s.generation;
-    transition(s, "exporting", command == "upload" ? QStringLiteral("encoding") : QString());
+    transition(s, RecordingState::Exporting, command == "upload" ? QStringLiteral("encoding") : QString());
     s.pending = command;
     // An export may take minutes (the helper allows 600 s), longer than a client
     // waits, so the request is answered once it starts, like prepare. Callers
@@ -950,7 +980,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
             QFile::remove(output);
             s.lastExport["status"] = "failed";
             s.lastExport["error"] = cause.toJson();
-            transition(s, "reviewing");
+            transition(s, RecordingState::Reviewing);
             if (done) done(cause, {});
         };
         if (!error && (!file.isFile() || file.size() < 1)) error = {"recording_export_failed", "The export produced no file", {}};
@@ -966,11 +996,12 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
             s.lastExport["durationUs"] = result.value("durationUs");
             // Only the completed local copy is a saved result; output is disposable staging.
             backend_->control(s.op.id, "savedCopy", {{"path", destination}, {"revision", double(edit.revision)}, {"config", config.toJson()}}, [](Error, QJsonObject) {});
-            transition(s, "reviewing");
+            transition(s, RecordingState::Reviewing);
             if (done) done({}, publicJson(s));
             return;
         }
         // Explicit Upload: these exact validated bytes become the operation's only artifact.
+        checkStep(s, RecordingState::Submitted);
         auto finished = std::move(*session_);
         session_.reset();
         backend_->discard(finished.op.id);
