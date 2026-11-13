@@ -19,8 +19,11 @@ namespace {
 // Tesseract only ever sees this name: every file is resolved by readData.
 constexpr char dataRoot[]="/putgd-ocr/tessdata/";
 constexpr int lstmEntry=17;  // TESSDATA_LSTM
+constexpr uint32_t knownEntries=24;  // TESSDATA_NUM_ENTRIES in Tesseract 5
 
-struct DataFile { QString language,path;qint64 bytes=0;QByteArray sha256;std::vector<char> data; };
+// bytes and sha256 are the file's; data is what Tesseract is handed, the
+// entries the LSTM engine reads (lstmImage).
+struct DataFile { QString language,path;qint64 bytes=0;QByteArray sha256;std::vector<char> data;qint64 kept=0; };
 struct Resolver {
  QStringList directories;
  QList<DataFile> files;
@@ -71,6 +74,38 @@ bool plausibleData(const std::vector<char>& data){
  for(uint32_t i=lstmEntry+1;i<entries;++i)if(offsets[i]>=0){end=offsets[i];break;}
  return end>lstm;
 }
+// The entries Tesseract 5.3 and 5.5 read for OEM_LSTM_ONLY (tessedit.cpp
+// init_tesseract_lang_data, LSTMRecognizer::Load, Dict::LoadLSTM): the
+// language config, the ambiguities and the params model, which a build with
+// the legacy engine still loads, and the LSTM model, its dictionaries,
+// unicharset and recoder, and the version. The legacy classifier's templates,
+// unicharset, shape table and dictionaries are read only with the legacy
+// engine (program_editup is given no data for LSTM only).
+constexpr int lstmReads[]={0/*LANG_CONFIG*/,2/*AMBIGS*/,16/*PARAMS_MODEL*/,17/*LSTM*/,18/*LSTM_PUNC_DAWG*/,
+                           19/*LSTM_SYSTEM_DAWG*/,20/*LSTM_NUMBER_DAWG*/,21/*LSTM_UNICHARSET*/,22/*LSTM_RECODER*/,23/*VERSION*/};
+// A traineddata image of plausible data (plausibleData) with only those
+// entries, and the offset table rewritten: a model that also holds the legacy
+// engine's data (Arch's English, 23 MB against the 4 MB LSTM-only file) costs
+// no more memory than its LSTM part, in this cache and in every engine's copy.
+std::vector<char> lstmImage(const std::vector<char>& data){
+ uint32_t entries=0;std::memcpy(&entries,data.data(),4);
+ std::vector<int64_t> offsets(entries);std::memcpy(offsets.data(),data.data()+4,size_t(entries)*8);
+ const auto size=[&](uint32_t i)->int64_t{
+  if(offsets[i]<0)return -1;
+  for(uint32_t j=i+1;j<entries;++j)if(offsets[j]>=0)return offsets[j]-offsets[i];
+  return int64_t(data.size())-offsets[i];
+ };
+ const uint32_t count=std::min(entries,knownEntries);
+ std::vector<int64_t> table(count,-1);
+ int64_t at=4+int64_t(count)*8,total=at;
+ for(const int i:lstmReads)if(uint32_t(i)<count&&size(uint32_t(i))>=0){table[size_t(i)]=total;total+=size(uint32_t(i));}
+ std::vector<char> out(static_cast<size_t>(total),char(0));
+ std::memcpy(out.data(),&count,4);std::memcpy(out.data()+4,table.data(),size_t(count)*8);
+ for(const int i:lstmReads)if(table.size()>size_t(i)&&table[size_t(i)]>=0){
+  const auto n=size(uint32_t(i));std::memcpy(out.data()+at,data.data()+offsets[size_t(i)],size_t(n));at+=n;
+ }
+ return out;
+}
 bool readData(const char* filename,std::vector<char>* data){
  if(!resolver||!filename||!data)return false;
  const QString name=QFile::decodeName(filename);
@@ -89,9 +124,10 @@ bool readData(const char* filename,std::vector<char>* data){
    continue;
   }
   if(!plausibleData(bytes))continue;  // a broken user file falls back to the next directory
-  DataFile file{language,path,qint64(bytes.size()),QCryptographicHash::hash(QByteArrayView(bytes.data(),qsizetype(bytes.size())),QCryptographicHash::Sha256).toHex(),bytes};
-  resolver->total+=file.bytes;resolver->files.append(std::move(file));
-  *data=std::move(bytes);return true;
+  DataFile file{language,path,qint64(bytes.size()),QCryptographicHash::hash(QByteArrayView(bytes.data(),qsizetype(bytes.size())),QCryptographicHash::Sha256).toHex(),lstmImage(bytes)};
+  resolver->total+=file.bytes;file.kept=qint64(file.data.size());
+  *data=file.data;resolver->files.append(std::move(file));
+  return true;
  }
  return false;
 }
@@ -109,7 +145,7 @@ void LanguageData::release(){
 }
 qint64 LanguageData::bytesBeyondEnglish()const{
  qint64 total=0;if(!resolver)return 0;
- for(const auto& f:resolver->files)if(f.language!=QLatin1String("eng"))total+=f.bytes;
+ for(const auto& f:resolver->files)if(f.language!=QLatin1String("eng"))total+=f.kept;
  return total;
 }
 QStringList LanguageData::files()const{
