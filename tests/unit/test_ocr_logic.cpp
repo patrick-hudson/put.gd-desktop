@@ -1,6 +1,6 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips joined in page order, and the input limit. The
+// strips cut between lines and joined in page order, and the input limit. The
 // contract's own tests cover the character filter.
 // Synthetic data only.
 #include "ocr/Layout.h"
@@ -70,13 +70,26 @@ private slots:
  // each recognized on its own and merged by its index, whatever order the
  // strips finished in. Every line comes out once, in page order, and a strip
  // boundary is not a paragraph break.
+ // A dense block whose rows are all inked (a border down its side, and
+ // descenders and ascenders meeting between lines) is cut between lines too.
+ void stripsKeepEveryLineOnceInOrder_data(){
+  QTest::addColumn<bool>("blankGaps");
+  QTest::newRow("blank-gaps")<<true;
+  QTest::newRow("no-blank-row")<<false;
+ }
  void stripsKeepEveryLineOnceInOrder(){
-  const int width=1000,height=600;const auto profile=lines(width,height,12,8);
+  QFETCH(bool,blankGaps);
+  const int width=1000,height=600;auto profile=lines(width,height,12,8);
+  if(!blankGaps){
+   profile.lineHeight=0;  // no blank row, so no line height either
+   for(int y=0;y<height;++y){const int r=y%20;profile.rowInk[y]=r<12?width/4:r==12||r==19?40:8;}
+   for(int y=0;y<height;++y)QVERIFY(!profile.blank(y,width));
+  }
   const auto cut=strips(profile,width,height,4);
   QVERIFY(cut.size()>1);QCOMPARE(cut.first().top,0);QCOMPARE(cut.last().bottom,height);
   for(int i=0;i<cut.size();++i){
    QVERIFY(!cut[i].seamAbove);if(i)QCOMPARE(cut[i].top,cut[i-1].bottom);
-   if(i)QVERIFY(profile.blank(cut[i].top,width));  // never through a line
+   if(i)QVERIFY2(cut[i].top%20>=12,qPrintable(QString::number(cut[i].top)));  // never through a line
   }
   // One word per text line, in each strip's own pixels.
   QList<BandText> parts(cut.size());QStringList expected;

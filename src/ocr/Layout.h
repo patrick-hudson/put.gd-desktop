@@ -64,10 +64,12 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits);
 // The integer scale the text height asks for, before the cap.
 int preferredScale(int lineHeight,int maximumScale);
 
-// Cuts rows [0, height) into about `parts` strips at blank row gaps only: each
-// cut is the middle of the blank run nearest its even share, searched within
-// half a share either way; with no gap there, that cut is skipped. Strips are
-// at least four line heights. One strip means no cut was possible.
+// Cuts rows [0, height) into about `parts` strips between text lines only:
+// each cut is the middle of the blank run nearest its even share, searched
+// within half a share either way; with no blank row there, the row with the
+// least ink within one line pitch (the profile's period) of the share, when it
+// holds at most a quarter of the ink around it; otherwise that cut is skipped.
+// Strips are at least four line heights. One strip means no cut was possible.
 QList<Band> strips(const Profile& profile,int width,int height,int parts);
 
 // The panels of a screen: windows, columns and bars, each read on its own and

@@ -145,18 +145,62 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
   return result;
  }
 }
+namespace {
+// The line pitch of a row profile: its period, the first peak of its
+// autocorrelation after it has fallen below a third of its height. 0 when the
+// profile has no clear period (no text lines, or too few).
+int linePitch(const QList<int>& ink,int height){
+ const int longest=std::min(200,height/4);
+ if(longest<6)return 0;
+ double mean=0;for(int y=0;y<height;++y)mean+=ink.at(y);mean/=height;
+ std::vector<double> d(size_t(height),0.0);for(int y=0;y<height;++y)d[size_t(y)]=ink.at(y)-mean;
+ const auto at=[&](int lag){double c=0;for(int y=0;y+lag<height;++y)c+=d[size_t(y)]*d[size_t(y+lag)];return c/(height-lag);};
+ const double zero=at(0);if(zero<=0)return 0;
+ bool fell=false;int best=0;double peak=0;
+ for(int lag=3;lag<=longest;++lag){
+  const double c=at(lag);
+  if(!fell){fell=c<zero/3;continue;}
+  if(c>=zero/3&&c>peak){peak=c;best=lag;}
+  else if(best>0)break;
+ }
+ return best;
+}
+}
 QList<Band> strips(const Profile& profile,int width,int height,int parts){
- QList<Band> out;const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
+ QList<Band> out;
  const auto blank=[&](int y){return y>=0&&y<height&&y<profile.rowInk.size()&&profile.blank(y,width);};
+ const auto ink=[&](int y){return profile.rowInk.at(y);};
+ // Between two lines with no blank row (a window border or a rule down the
+ // page, or lines set without leading, inks every row): within one line pitch
+ // of the target, the row with the least ink is between two lines, where only
+ // descenders and ascenders reach; taken when it holds at most a quarter of
+ // the ink of the rows around it, so a strip never starts inside a line.
+ int pitch=-1;
+ const auto betweenLines=[&](int target){
+  if(pitch<0)pitch=height<=profile.rowInk.size()?linePitch(profile.rowInk,height):0;
+  if(pitch<6)return -1;
+  const int from=std::max(1,target-pitch/2-1),to=std::min(height-2,target+pitch/2+1);
+  int low=-1;for(int y=from;y<=to;++y)if(low<0||ink(y)<ink(low))low=y;
+  if(low<0)return -1;
+  int last=low;while(last+1<=to&&ink(last+1)==ink(low))++last;
+  QList<int> around;for(int y=std::max(0,target-2*pitch);y<std::min(height,target+2*pitch);++y)around.append(ink(y));
+  std::nth_element(around.begin(),around.begin()+around.size()/2,around.end());
+  return 4*ink(low)<=around.at(around.size()/2)?(low+last)/2:-1;
+ };
+ const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
  int start=0;
  for(int k=1;k<parts&&height>0;++k){
   const int target=int(qint64(height)*k/parts),reach=std::max(1,height/(2*parts));
   int found=-1;
   for(int d=0;d<=reach&&found<0;++d){if(blank(target-d))found=target-d;else if(blank(target+d))found=target+d;}
-  if(found<0)continue;
-  int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
-  const int cut=(first+last+1)/2;
-  if(cut-start<4*lineRows||height-cut<4*lineRows)continue;
+  int cut=-1;
+  if(found>=0){
+   int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
+   cut=(first+last+1)/2;
+  }else cut=betweenLines(target);
+  if(cut<0)continue;
+  const int shortest=4*(profile.lineHeight>0?lineRows:std::max(lineRows,pitch));
+  if(cut-start<shortest||height-cut<shortest)continue;
   out.append({start,cut,false});start=cut;
  }
  out.append({start,height,false});

@@ -127,7 +127,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  stage.restart();
 
  // The tasks: each panel's bands, or, for a panel read in a single pass and
- // large enough to share, strips cut at blank row gaps only. A strip boundary
+ // large enough to share, strips cut between text lines only (at blank row
+ // gaps, or at the least-inked row between two lines). A strip boundary
  // splits no line and needs no seam, and the order stays the panel's own, top
  // to bottom, which is what page segmentation 6 reads. Every task is its own
  // band copy: inside a SetRectangle of one shared copy, Tesseract 5.3.4 read
