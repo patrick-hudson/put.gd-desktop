@@ -77,7 +77,27 @@ QJsonObject RecordingEdit::toJson() const {
 }
 
 namespace recording {
-QStringList states() { return {"preparing", "ready", "starting", "recording", "paused", "stopping", "reviewing", "exporting", "submitted", "cancelled", "failed"}; }
+QString stateName(RecordingState state) {
+    switch (state) {
+    case RecordingState::Preparing: return QStringLiteral("preparing");
+    case RecordingState::Ready: return QStringLiteral("ready");
+    case RecordingState::Starting: return QStringLiteral("starting");
+    case RecordingState::Recording: return QStringLiteral("recording");
+    case RecordingState::Paused: return QStringLiteral("paused");
+    case RecordingState::Stopping: return QStringLiteral("stopping");
+    case RecordingState::Reviewing: return QStringLiteral("reviewing");
+    case RecordingState::Exporting: return QStringLiteral("exporting");
+    case RecordingState::Submitted: return QStringLiteral("submitted");
+    case RecordingState::Cancelled: return QStringLiteral("cancelled");
+    case RecordingState::Failed: return QStringLiteral("failed");
+    }
+    return {};
+}
+QStringList states() {
+    QStringList names;
+    for (int state = int(RecordingState::Preparing); state <= int(RecordingState::Failed); ++state) names.append(stateName(RecordingState(state)));
+    return names;
+}
 QStringList targetKinds() { return {"monitor", "desktop", "region", "window"}; }
 QStringList formats() { return {"mp4", "webm", "gif", "webp"}; }
 QStringList codecs(const QString& format) {
@@ -85,30 +105,115 @@ QStringList codecs(const QString& format) {
     if (format == "webm") return {"vp9"};
     return {};
 }
-bool terminal(const QString& state) { return state == "submitted" || state == "cancelled" || state == "failed"; }
-Error checkTransition(const QString& state, const QString& command) {
-    static const QHash<QString, QStringList> allowed{
-        {"start", {"ready"}},
-        {"pause", {"recording"}},
-        {"resume", {"paused"}},
-        {"stop", {"recording", "paused"}},
-        {"cancel", {"preparing", "ready", "starting", "recording", "paused", "stopping", "reviewing", "exporting"}},
+bool terminal(RecordingState state) { return state == RecordingState::Submitted || state == RecordingState::Cancelled || state == RecordingState::Failed; }
+bool allowedStep(RecordingState from, RecordingState to) {
+    using S = RecordingState;
+    if (terminal(from)) return false;
+    // fail() and cancelActive() end the session from any state.
+    if (to == S::Failed || to == S::Cancelled) return true;
+    switch (from) {
+    // prepared(): the helper's prepare result, or the shell placed the bar.
+    case S::Preparing: return to == S::Ready;
+    // recording.start; or Record on the helper's bar (the `started` event).
+    case S::Ready: return to == S::Starting || to == S::Recording;
+    // The start reply, or the bar's `started` event while the start is in flight.
+    case S::Starting: return to == S::Recording;
+    // Pause; recording.stop; the helper's `stopped` event (its budget, a lost source, Stop on the bar).
+    case S::Recording: return to == S::Paused || to == S::Stopping || to == S::Reviewing;
+    case S::Paused: return to == S::Recording || to == S::Stopping || to == S::Reviewing;
+    // The stop reply or the `stopped` event.
+    case S::Stopping: return to == S::Reviewing;
+    // saveCopy, upload or a retried export.
+    case S::Reviewing: return to == S::Exporting;
+    // A saved copy or a failed export goes back to review; an upload hands the clip over.
+    case S::Exporting: return to == S::Reviewing || to == S::Submitted;
+    default: return false;
+    }
+}
+Error checkTransition(RecordingState state, const QString& command) {
+    using S = RecordingState;
+    static const QList<S> live{S::Preparing, S::Ready, S::Starting, S::Recording, S::Paused, S::Stopping, S::Reviewing, S::Exporting};
+    static const QHash<QString, QList<S>> allowed{
+        {"start", {S::Ready}},
+        {"pause", {S::Recording}},
+        {"resume", {S::Paused}},
+        {"stop", {S::Recording, S::Paused}},
+        {"cancel", live},
         // Completes an open region selection with a rectangle, as a drag would.
-        {"select", {"preparing"}},
-        {"edit", {"reviewing"}},
-        {"preview", {"reviewing"}},
+        {"select", {S::Preparing}},
+        {"edit", {S::Reviewing}},
+        {"preview", {S::Reviewing}},
         // Drives the review window's controls (#283); inspect also while exporting.
-        {"review", {"reviewing", "exporting"}},
-        {"saveCopy", {"reviewing"}},
-        {"upload", {"reviewing"}},
-        {"inspect", states()},
-        {"raise", {"ready", "starting", "recording", "paused", "stopping", "reviewing", "exporting"}},
-        {"overlay", {"ready", "starting", "recording", "paused"}},
+        {"review", {S::Reviewing, S::Exporting}},
+        {"saveCopy", {S::Reviewing}},
+        {"upload", {S::Reviewing}},
+        {"inspect", live + QList<S>{S::Submitted, S::Cancelled, S::Failed}},
+        {"raise", {S::Ready, S::Starting, S::Recording, S::Paused, S::Stopping, S::Reviewing, S::Exporting}},
+        {"overlay", {S::Ready, S::Starting, S::Recording, S::Paused}},
         // The ready bar's audio toggles (#1364): what the clip records is fixed at Record.
-        {"audio", {"ready"}}};
+        {"audio", {S::Ready}}};
     if (!allowed.contains(command)) return {"unknown_method", "Unknown recording command", {}};
-    if (!allowed[command].contains(state)) return {"recording_state", command == QLatin1String("audio") ? QStringLiteral("The audio sources can be changed only while the recording is ready; it is %1").arg(state)
-                                                                                                         : QStringLiteral("Cannot %1 a recording that is %2").arg(command, state), {{"state", state}, {"command", command}}};
+    const auto name = stateName(state);
+    if (!allowed[command].contains(state)) return {"recording_state", command == QLatin1String("audio") ? QStringLiteral("The audio sources can be changed only while the recording is ready; it is %1").arg(name)
+                                                                                                         : QStringLiteral("Cannot %1 a recording that is %2").arg(command, name), {{"state", name}, {"command", command}}};
+    return {};
+}
+QString phaseName(HelperPhase phase) {
+    switch (phase) {
+    case HelperPhase::Idle: return QStringLiteral("idle");
+    case HelperPhase::Preparing: return QStringLiteral("preparing");
+    case HelperPhase::Ready: return QStringLiteral("ready");
+    case HelperPhase::Starting: return QStringLiteral("starting");
+    case HelperPhase::Recording: return QStringLiteral("recording");
+    case HelperPhase::Paused: return QStringLiteral("paused");
+    case HelperPhase::Stopping: return QStringLiteral("stopping");
+    case HelperPhase::Recorded: return QStringLiteral("recorded");
+    case HelperPhase::Exporting: return QStringLiteral("exporting");
+    case HelperPhase::Cancelled: return QStringLiteral("cancelled");
+    case HelperPhase::Failed: return QStringLiteral("failed");
+    }
+    return {};
+}
+std::optional<RecordingState> residentState(HelperPhase phase) {
+    switch (phase) {
+    case HelperPhase::Idle: return std::nullopt;
+    case HelperPhase::Preparing: return RecordingState::Preparing;
+    case HelperPhase::Ready: return RecordingState::Ready;
+    case HelperPhase::Starting: return RecordingState::Starting;
+    case HelperPhase::Recording: return RecordingState::Recording;
+    case HelperPhase::Paused: return RecordingState::Paused;
+    case HelperPhase::Stopping: return RecordingState::Stopping;
+    case HelperPhase::Recorded: return RecordingState::Reviewing;
+    case HelperPhase::Exporting: return RecordingState::Exporting;
+    case HelperPhase::Cancelled: return RecordingState::Cancelled;
+    case HelperPhase::Failed: return RecordingState::Failed;
+    }
+    return std::nullopt;
+}
+Error checkHelperCommand(HelperPhase phase, const QString& command) {
+    using P = HelperPhase;
+    static const QList<P> prepared{P::Ready, P::Starting, P::Recording, P::Paused, P::Stopping, P::Recorded, P::Exporting, P::Cancelled, P::Failed};
+    static const QHash<QString, QList<P>> accepted{
+        {"prepare", {P::Idle}},
+        {"select", {P::Preparing}},
+        {"start", {P::Ready}},
+        {"pause", {P::Recording}},
+        {"resume", {P::Paused}},
+        {"stop", {P::Recording, P::Paused}},
+        {"cancel", {P::Preparing, P::Ready, P::Starting, P::Recording, P::Paused, P::Stopping, P::Recorded, P::Exporting}},
+        {"audio", {P::Ready}},
+        {"raise", {P::Ready, P::Starting, P::Recording, P::Paused, P::Stopping, P::Recorded, P::Exporting}},
+        {"overlay", {P::Ready, P::Starting, P::Recording, P::Paused}},
+        {"review", {P::Recorded, P::Exporting}},
+        {"preview", {P::Recorded}},
+        // The resident's edit, saveCopy and upload.
+        {"setEdit", {P::Recorded}},
+        {"export", {P::Recorded}},
+        {"savedCopy", prepared},
+        {"notice", prepared},
+        {"click", prepared}};
+    if (!accepted.contains(command)) return {"unknown_method", "Unknown recording helper command", {}};
+    if (!accepted[command].contains(phase)) return {"recording_state", QStringLiteral("The recording helper cannot %1 while %2").arg(command, phaseName(phase)), {{"phase", phaseName(phase)}, {"command", command}}};
     return {};
 }
 Error parseTarget(const QJsonValue& value, RecordingTarget& out) {

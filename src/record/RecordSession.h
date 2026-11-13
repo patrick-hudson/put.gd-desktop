@@ -116,7 +116,15 @@ private:
     // Reads what the finished capture recorded.
     void noteCaptured();
     QJsonObject audioSources() const { return {{"system", capturedSystem_}, {"microphone", capturedMicrophone_}}; }
-    bool prepared_ = false, recorded_ = false, overlayExcluded_ = true, cancelled_ = false, starting_ = false;
+    // Where the session is (#1434): the one lifecycle state the command table
+    // (recording::checkHelperCommand) and every guard here read.
+    HelperPhase phase_ = HelperPhase::Idle;
+    // Cancelled is final, and Failed gives way only to Cancelled: a late callback
+    // never brings a session back.
+    void enterPhase(HelperPhase);
+    // The clip is in review, with or without an export running.
+    bool reviewing() const { return phase_ == HelperPhase::Recorded || phase_ == HelperPhase::Exporting; }
+    bool overlayExcluded_ = true;
     // recording.overlay {visible: false} keeps the bar hidden across state changes until raise.
     bool barHidden_ = false;
     QString overlayPlacement_;

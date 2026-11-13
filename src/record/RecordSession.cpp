@@ -84,6 +84,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
     barTimer_.setInterval(200);
     connect(&barTimer_, &QTimer::timeout, this, [this] { if (bar_ && pipeline_.running()) bar_->setRetained(pipeline_.retainedUs()); });
     connect(&pipeline_, &RecordingPipeline::failed, this, [this](Error error) {
+        enterPhase(HelperPhase::Failed);
         progress_.stop();
         barTimer_.stop();
         closeMicrophone();
@@ -105,6 +106,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
 #endif
     connect(&pipeline_, &RecordingPipeline::budgetReached, this, [this](QJsonObject details) {
         // The admitted byte budget is nearly spent: finish the clip and open review.
+        enterPhase(HelperPhase::Stopping);
         showBar("stopping");
         pipeline_.stop([this, details](Error error, qint64 durationUs) {
             progress_.stop();
@@ -127,10 +129,11 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
                     error.details["stopDetails"] = details;
                     error.details["finalized"] = false;
                 }
+                enterPhase(HelperPhase::Failed);
                 emit event({{"event", "failed"}, {"error", error.toJson()}}); return;
             }
             durationUs_ = durationUs;
-            recorded_ = true;
+            enterPhase(HelperPhase::Recorded);
             noteCaptured();
             openReview();
             emit event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(resolved_.canvas)}, {"audioEncoder", pipeline_.audioEncoder()}, {"audioSources", audioSources()}, {"reason", "budget"}, {"stopDetails", details}});
@@ -138,14 +141,14 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
     });
 }
 void RecordSession::targetLost() {
-    if (target_.kind != "window" || targetClosed_ || cancelled_) return;
+    if (target_.kind != "window" || targetClosed_ || phase_ == HelperPhase::Cancelled) return;
     targetClosed_ = true;
     debugLog("window: the compositor ended the stream (the window closed)");
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
     kde_.close();  // the protocol's destructor for the stream KWin closed
 #endif
     if (pipeline_.running()) { if (!pipeline_.stopping()) endCapture(QStringLiteral("target_closed")); return; }
-    if (recorded_ || !prepared_) return;
+    if (phase_ != HelperPhase::Ready && phase_ != HelperPhase::Starting) return;
     // Ready, nothing recorded yet: nothing is left to record.
     cancelLocal();
     emit event({{"event", "failed"}, {"error", Error{"recording_target_closed", "The window closed before recording started", {}}.toJson()}});
@@ -162,6 +165,7 @@ void RecordSession::sourceLost(const Error& error) {
     });
 }
 void RecordSession::endCapture(const QString& reason) {
+    enterPhase(HelperPhase::Stopping);
     showBar("stopping");
     QPointer<RecordSession> guard(this);
     pipeline_.stop([guard, reason](Error error, qint64 durationUs) {
@@ -173,9 +177,9 @@ void RecordSession::endCapture(const QString& reason) {
         if (guard->bar_) guard->bar_->hide();
         guard->releaseAcquisition();
         if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "The recording produced no retained frames", {}};
-        if (error) { error.details["stopReason"] = reason; emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
+        if (error) { error.details["stopReason"] = reason; guard->enterPhase(HelperPhase::Failed); emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
         guard->durationUs_ = durationUs;
-        guard->recorded_ = true;
+        guard->enterPhase(HelperPhase::Recorded);
         guard->noteCaptured();
         guard->openReview();
         emit guard->event({{"event", "stopped"}, {"durationUs", double(durationUs)}, {"canvas", sizeJson(guard->resolved_.canvas)}, {"audioEncoder", guard->pipeline_.audioEncoder()}, {"audioSources", guard->audioSources()}, {"reason", reason}});
@@ -198,26 +202,33 @@ QString RecordSession::targetLabel() const {
     if (target_.kind == "window") return QStringLiteral("Window %1×%2").arg(resolved_.canvas.width()).arg(resolved_.canvas.height());
     return QStringLiteral("Whole desktop");
 }
+void RecordSession::enterPhase(HelperPhase phase) {
+    if (phase_ == phase || phase_ == HelperPhase::Cancelled || (phase_ == HelperPhase::Failed && phase != HelperPhase::Cancelled)) return;
+    debugLog("session: " + recording::phaseName(phase_) + " -> " + recording::phaseName(phase));
+    phase_ = phase;
+}
 void RecordSession::showBar(const QString& state) {
     if (!bar_) return;
-    if (recorded_) { bar_->hide(); return; }
+    // Over review, or once the session ended, the bar never comes back.
+    if (reviewing() || phase_ == HelperPhase::Cancelled || phase_ == HelperPhase::Failed) { bar_->hide(); return; }
     bar_->setState(state);
     if (barHidden_) return;
     bar_->show();
     bar_->raise();
 }
 void RecordSession::command(const QString& command, const QJsonObject& params, Reply reply) {
+    // The same command table as the resident's, by phase (#1434).
+    if (auto error = recording::checkHelperCommand(phase_, command)) { reply(error, {}); return; }
     if (command == "prepare") { prepare(params, std::move(reply)); return; }
     if (command == "select") { completeSelection(params, std::move(reply)); return; }
-    if (!prepared_) { reply({"recording_state", "The helper has no prepared session", {}}, {}); return; }
     if (command == "start") { start(std::move(reply)); return; }
-    if (command == "pause") { if (auto e = pipeline_.pause()) reply(e, {}); else { showBar("paused"); emitProgress(); reply({}, pipeline_.status()); } return; }
-    if (command == "resume") { if (auto e = pipeline_.resume()) reply(e, {}); else { showBar("recording"); emitProgress(); reply({}, pipeline_.status()); } return; }
+    if (command == "pause") { if (auto e = pipeline_.pause()) reply(e, {}); else { enterPhase(HelperPhase::Paused); showBar("paused"); emitProgress(); reply({}, pipeline_.status()); } return; }
+    if (command == "resume") { if (auto e = pipeline_.resume()) reply(e, {}); else { enterPhase(HelperPhase::Recording); showBar("recording"); emitProgress(); reply({}, pipeline_.status()); } return; }
     if (command == "stop") { stop(std::move(reply)); return; }
     if (command == "cancel") { cancelLocal(); reply({}, {}); return; }
     if (command == "audio") {
         // recording.audio: the bar's two toggles, set as a click sets them, while the bar is at Ready.
-        if (!bar_ || pipeline_.running() || recorded_ || starting_ || cancelled_) { reply({"recording_state", "The audio sources can be changed only before Record", {}}, {}); return; }
+        if (!bar_) { reply({"recording_state", "The audio sources can be changed only before Record", {}}, {}); return; }
         const bool system = params["system"].toBool(false), microphone = params["microphone"].toBool(false);
         if ((system || microphone) && config_.silent()) { reply({"recording_unsupported", "GIF and WebP are silent", {{"field", "audio"}, {"reason", "silent_format"}}}, {}); return; }
         if (system && !capabilities_["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio cannot be recorded here", {{"field", "audio.system"}}}, {}); return; }
@@ -249,7 +260,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
     }
     if (command == "raise") {
         barHidden_ = false;
-        if (bar_) { if (recorded_) bar_->hide(); else { bar_->show(); bar_->raise(); } }
+        if (bar_) { if (reviewing()) bar_->hide(); else { bar_->show(); bar_->raise(); } }
         if (review_) review_->reopen(params["error"].toString());
         reply({}, {});
         return;
@@ -277,7 +288,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         // {visible} hides or shows the bar; {handle} (from the resident, when the
         // GNOME Shell had to leave the bar inside the area) collapses it from Record on.
         if (params["handle"].isBool() && bar_) bar_->setHandleWhileRecording(params["handle"].toBool());
-        if (params.contains("visible")) { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_ && !recorded_); }
+        if (params.contains("visible")) { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_ && !reviewing()); }
         reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
         return;
     }
@@ -366,8 +377,8 @@ void RecordSession::click(QPointF desktop, int button, const QRectF& window, qin
 }
 void RecordSession::followMicrophones() {
     // Only at Ready: from Record on the device is the one the pipeline opened, and its loss is the pipeline's to report.
-    if (!bar_ || recorded_ || cancelled_) { microphoneWatch_.stop(); return; }
-    if (pipeline_.running() || starting_ || microphone_.reason == QLatin1String("microphone_elements_missing")) return;
+    if (!bar_ || reviewing() || phase_ == HelperPhase::Cancelled || phase_ == HelperPhase::Failed) { microphoneWatch_.stop(); return; }
+    if (pipeline_.running() || phase_ == HelperPhase::Starting || microphone_.reason == QLatin1String("microphone_elements_missing")) return;
     const auto now = chooseMicrophone(listMicrophones_(), config_.audio.microphoneDevice);
     if (now.device.id == microphone_.device.id && now.device.label == microphone_.device.label && now.reason == microphone_.reason) return;
     debugLog(now.available() ? "microphone: now " + now.device.id : "microphone: now unavailable (" + now.reason + ")");
@@ -384,14 +395,14 @@ void RecordSession::followMicrophones() {
 void RecordSession::updateMicrophoneMonitor() {
     // The input is open for the meter only while the toggle is on and nothing
     // records yet; the recording pipeline opens its own from Record to Stop.
-    const bool wanted = bar_ && !recorded_ && !cancelled_ && !pipeline_.running() && bar_->effectiveMicrophone() && microphone_.available();
+    const bool wanted = bar_ && (phase_ == HelperPhase::Ready || phase_ == HelperPhase::Starting) && !pipeline_.running() && bar_->effectiveMicrophone() && microphone_.available();
     if (!wanted) { if (!pipeline_.running()) closeMicrophone(); return; }
     QString failure;
     if (!monitor_.open(microphone_.device.id, &failure)) { debugLog("microphone: the meter could not open it: " + failure); return; }
     levelTimer_.start();
 }
 void RecordSession::cancelLocal() {
-    cancelled_ = true;
+    enterPhase(HelperPhase::Cancelled);
     if (exportCancel_) exportCancel_->store(true);
     progress_.stop();
     barTimer_.stop();
@@ -420,7 +431,6 @@ void RecordSession::releaseAcquisition() {
     if (portalFd_ >= 0) { ::close(portalFd_); portalFd_ = -1; }
 }
 void RecordSession::prepare(const QJsonObject& params, Reply reply) {
-    if (prepared_ || selection_ || kdeSelection_) { reply({"recording_state", "The helper already has a session", {}}, {}); return; }
     RecordingTarget target;
     RecordingConfig config;
     if (auto e = recording::parseTarget(params["target"], target)) { reply(e, {}); return; }
@@ -432,6 +442,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     config.budgetBytes = budget;
     const auto staging = params["staging"].toString();
     if (staging.isEmpty() || !QFileInfo(staging).isDir()) { reply({"recording_io", "The staging directory is missing", {}}, {}); return; }
+    enterPhase(HelperPhase::Preparing);
     id_ = params["id"].toString();
     target_ = target;
     reviewOptions_ = params["reviewOptions"].toObject();
@@ -453,7 +464,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
 }
 void RecordSession::acquire(Reply reply) {
     // A cancel that arrived while the selector was closing opens nothing.
-    if (cancelled_) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
+    if (phase_ == HelperPhase::Cancelled) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "wlr-capture") { prepareImageCopy(std::move(reply)); return; }
@@ -693,7 +704,7 @@ void RecordSession::prepareImageCopy(Reply reply) {
     resolved.layout = QJsonObject{{"acquisition", "wlr-capture"}, {"identity", identity}, {"stream", sizeJson(size)}, {"shared", rectJson(shared.isEmpty() ? QRect(QPoint(), size) : shared)}};
     if (!appId.isEmpty()) resolved.layout["appId"] = appId;
     resolved_ = resolved;
-    prepared_ = true;
+    enterPhase(HelperPhase::Ready);
     finishPrepare(std::move(reply));
 }
 // `shared` is the monitor or area the stream covers; `streamRect` is what the
@@ -725,15 +736,17 @@ void RecordSession::finishWayland(quint32 node, int fd, const QRect& shared, con
     resolved.layout = QJsonObject{{"acquisition", source}, {"node", double(node)}, {"shared", rectJson(shared)}};
     if (target_.kind == "window") resolved.layout["window"] = QJsonObject{{"identity", target_.identity}, {"title", window_["title"].toString()}};
     resolved_ = resolved;
-    prepared_ = true;
+    enterPhase(HelperPhase::Ready);
     finishPrepare(reply);
 }
 void RecordSession::finishPrepare(Reply reply) {
+    // A stream that opened after a cancel shows no ring and no bar.
+    if (phase_ == HelperPhase::Cancelled) { releaseAcquisition(); reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
     if (!portalTarget_) {
         ResolvedTarget resolved;
         if (auto e = resolveX11Target(target_, resolved)) { reply(e, {}); return; }
         resolved_ = resolved;
-        prepared_ = true;
+        enterPhase(HelperPhase::Ready);
     }
     // X11 and KDE Wayland draw the ready ring themselves; on other Wayland
     // desktops the resident's shell (the GNOME extension) draws it.
@@ -755,7 +768,7 @@ void RecordSession::finishPrepare(Reply reply) {
     config_.audio.microphone = bar_->effectiveMicrophone();
     QPointer<RecordSession> guard(this);
     connect(bar_, &ControlBar::configChanged, this, [guard](const RecordingConfig& config) {
-        if (!guard || guard->pipeline_.running() || guard->recorded_) return;
+        if (!guard || (guard->phase_ != HelperPhase::Ready && guard->phase_ != HelperPhase::Starting)) return;
         const auto budget = guard->config_.budgetBytes;
         guard->config_ = config;
         guard->config_.budgetBytes = budget;
@@ -767,7 +780,7 @@ void RecordSession::finishPrepare(Reply reply) {
         emit guard->event({{"event", "progress"}, {"recordingAudio", guard->bar_->audioState()}, {"recordingMicrophone", guard->bar_->microphoneState()}});
     });
     connect(bar_, &ControlBar::recordRequested, this, [guard] {
-        if (!guard || guard->pipeline_.running() || guard->recorded_) return;
+        if (!guard || guard->phase_ != HelperPhase::Ready) return;
         guard->start([guard](Error error, QJsonObject status) {
             if (!guard) return;
             if (error) { emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
@@ -775,10 +788,11 @@ void RecordSession::finishPrepare(Reply reply) {
             emit guard->event(status);
         });
     });
-    connect(bar_, &ControlBar::pauseRequested, this, [guard] { if (guard && !guard->pipeline_.pause()) { guard->showBar("paused"); auto s = guard->pipeline_.status(); s["event"] = "paused"; emit guard->event(s); } });
-    connect(bar_, &ControlBar::resumeRequested, this, [guard] { if (guard && !guard->pipeline_.resume()) { guard->showBar("recording"); auto s = guard->pipeline_.status(); s["event"] = "resumed"; emit guard->event(s); } });
+    connect(bar_, &ControlBar::pauseRequested, this, [guard] { if (guard && guard->phase_ == HelperPhase::Recording && !guard->pipeline_.pause()) { guard->enterPhase(HelperPhase::Paused); guard->showBar("paused"); auto s = guard->pipeline_.status(); s["event"] = "paused"; emit guard->event(s); } });
+    connect(bar_, &ControlBar::resumeRequested, this, [guard] { if (guard && guard->phase_ == HelperPhase::Paused && !guard->pipeline_.resume()) { guard->enterPhase(HelperPhase::Recording); guard->showBar("recording"); auto s = guard->pipeline_.status(); s["event"] = "resumed"; emit guard->event(s); } });
     connect(bar_, &ControlBar::stopRequested, this, [guard] {
-        if (!guard || !guard->pipeline_.running()) return;
+        // A Stop while the clip is already being finished is not a second stop.
+        if (!guard || (guard->phase_ != HelperPhase::Recording && guard->phase_ != HelperPhase::Paused)) return;
         guard->stop([guard](Error error, QJsonObject result) {
             if (!guard) return;
             if (error) { emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
@@ -821,20 +835,19 @@ void RecordSession::finishPrepare(Reply reply) {
                {"audio", config_.audio.toJson()}, {"microphone", bar_->microphoneState()}});
 }
 void RecordSession::start(Reply reply) {
-    if (starting_) { reply({"recording_state", "Recording is already starting", {}}, {}); return; }
-    if (pipeline_.running() || recorded_) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
+    if (phase_ == HelperPhase::Starting) { reply({"recording_state", "Recording is already starting", {}}, {}); return; }
+    if (phase_ != HelperPhase::Ready) { reply({"recording_state", "The session already recorded", {}}, {}); return; }
     if (!bar_ || !bar_->handleWhileRecording()) { begin(std::move(reply)); return; }
     // The ready bar sits inside the area: shrink it to its handle (a hidden bar
     // stays hidden) and give the X server or compositor a moment to repaint, so
     // the first frame never shows the full bar. KWin applies even a hide from
     // just before Record a frame later.
-    starting_ = true;
+    enterPhase(HelperPhase::Starting);
     bar_->setState("recording");
     QPointer<RecordSession> guard(this);
     QTimer::singleShot(handleSettleMs, this, [guard, reply = std::move(reply)]() mutable {
         if (!guard) return;
-        guard->starting_ = false;
-        if (guard->cancelled_) { reply({"cancelled", "Recording canceled before it started", {}}, {}); return; }
+        if (guard->phase_ == HelperPhase::Cancelled) { reply({"cancelled", "Recording canceled before it started", {}}, {}); return; }
         guard->begin(std::move(reply));
     });
 }
@@ -869,8 +882,9 @@ void RecordSession::begin(Reply reply) {
     options.budgetBytes = config_.budgetBytes;
     options.encoders = available(videoEncoders);
     options.audioEncoders = available(audioEncoders);
-    if (options.encoders.isEmpty()) { showBar("ready"); reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
-    if (auto e = pipeline_.start(options)) { showBar("ready"); updateMicrophoneMonitor(); reply(e, {}); return; }
+    if (options.encoders.isEmpty()) { enterPhase(HelperPhase::Ready); showBar("ready"); reply({"recording_unsupported", "No H.264 encoder is installed", {}}, {}); return; }
+    if (auto e = pipeline_.start(options)) { enterPhase(HelperPhase::Ready); showBar("ready"); updateMicrophoneMonitor(); reply(e, {}); return; }
+    enterPhase(HelperPhase::Recording);
     // From here the device is the pipeline's; the bar no longer follows the sound server's inputs.
     microphoneWatch_.stop();
     if (options.microphone) levelTimer_.start();
@@ -884,6 +898,7 @@ void RecordSession::begin(Reply reply) {
 }
 void RecordSession::stop(Reply reply) {
     if (!pipeline_.running()) { reply({"recording_state", "Nothing is recording", {}}, {}); return; }
+    enterPhase(HelperPhase::Stopping);
     showBar("stopping");
     QPointer<RecordSession> guard(this);
     pipeline_.stop([guard, reply](Error error, qint64 durationUs) {
@@ -894,10 +909,11 @@ void RecordSession::stop(Reply reply) {
         guard->bounds_.hideAll();
         if (guard->bar_) guard->bar_->hide();
         guard->releaseAcquisition();
-        if (error) { reply(error, {}); return; }
-        if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
+        // A second Stop refused while the first drains leaves the capture running.
+        if (error) { if (!guard->pipeline_.running()) guard->enterPhase(HelperPhase::Failed); reply(error, {}); return; }
+        if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { guard->enterPhase(HelperPhase::Failed); reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
         guard->durationUs_ = durationUs;
-        guard->recorded_ = true;
+        guard->enterPhase(HelperPhase::Recorded);
         guard->noteCaptured();
         // Lab diagnostics only: keep a private copy of the working clip for inspection.
         if (const auto keep = qEnvironmentVariable("PUTGD_RECORD_KEEP_WORKING"); !keep.isEmpty()) QFile::copy(guard->workingClip_, keep + "/" + guard->id_ + ".mkv");
@@ -974,7 +990,7 @@ bool RecordSession::parseEdit(const QJsonObject& json, RecordingEdit& edit) cons
     return true;
 }
 void RecordSession::preview(const QJsonObject& params, Reply reply) {
-    if (!recorded_) { reply({"recording_state", "Nothing to preview before stop", {}}, {}); return; }
+    if (phase_ != HelperPhase::Recorded) { reply({"recording_state", "Nothing to preview before stop", {}}, {}); return; }
     RecordingEdit edit;
     qint64 time = 0, maxEdge = 1024;
     if (!parseEdit(params["edit"].toObject(), edit) || !integer(params["time"], 0, std::max<qint64>(0, durationUs_), &time) || !integer(params["maxEdge"], 16, 8192, &maxEdge)) { reply({"invalid_request", "Invalid preview request", {}}, {}); return; }
@@ -988,7 +1004,7 @@ void RecordSession::preview(const QJsonObject& params, Reply reply) {
     reply({}, {{"png", QString::fromLatin1(png.toBase64())}, {"frameTimeUs", double(actual)}, {"width", image.width()}, {"height", image.height()}});
 }
 void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
-    if (!recorded_) { reply({"recording_state", "Nothing to export before stop", {}}, {}); return; }
+    if (!reviewing()) { reply({"recording_state", "Nothing to export before stop", {}}, {}); return; }
     if (exportThread_) { reply({"recording_busy", "An export is already running", {}}, {}); return; }
     ExportRequest request;
     request.input = workingClip_;
@@ -1019,11 +1035,13 @@ void RecordSession::exportClip(const QJsonObject& params, Reply reply) {
         });
     });
     exportThread_ = thread;
+    enterPhase(HelperPhase::Exporting);
     if (review_) review_->setExporting(true, QStringLiteral("Exporting %1…").arg(request.config.format.toUpper()));
     connect(thread, &QThread::finished, this, [this, thread, result, error, request, reply] {
         thread->deleteLater();
         if (exportThread_ == thread) exportThread_ = nullptr;
         exportCancel_.reset();
+        if (phase_ == HelperPhase::Exporting) enterPhase(HelperPhase::Recorded);
         // A failure is an error in the review's status row, kept until dismissed.
         if (review_) review_->setExporting(false, {});
         if (review_ && *error) review_->showError(QStringLiteral("Export failed: %1").arg(error->message));

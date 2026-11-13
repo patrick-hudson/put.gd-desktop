@@ -74,17 +74,37 @@ struct RecordingLimits {
     qint64 animationMaxUs = 60000000;  // retained duration allowed for GIF/WebP
     int animationMaxEdge = 1280;       // output long edge allowed for GIF/WebP
 };
+// The resident's session states (#1434). recording::stateName() is the string
+// in session replies, the capabilities' `states` and the log.
+enum class RecordingState { Preparing, Ready, Starting, Recording, Paused, Stopping, Reviewing, Exporting, Submitted, Cancelled, Failed };
+// The helper's phase of its one session (putgd-record's RecordSession): Idle
+// before prepare, Recorded once the clip is in review, Exporting while an export
+// runs. Each phase stands for one resident state (recording::residentState).
+enum class HelperPhase { Idle, Preparing, Ready, Starting, Recording, Paused, Stopping, Recorded, Exporting, Cancelled, Failed };
 namespace recording {
 constexpr int maximumMasks = 64;
 constexpr int maximumEditCommands = 100;
 constexpr qint64 maximumClipUs = 24LL * 3600 * 1000000;
 QStringList states();
+QString stateName(RecordingState);
 QStringList targetKinds();
 QStringList formats();
 QStringList codecs(const QString& format);
-bool terminal(const QString& state);
+bool terminal(RecordingState);
+// Which steps a session takes (#1434): the from/to table that
+// RecordingService::transition() checks. Failed and Cancelled are reached from
+// every state that is not terminal, Submitted only from Exporting (Upload).
+bool allowedStep(RecordingState from, RecordingState to);
 // Which session states accept which command; an invalid pair is recording_state.
-Error checkTransition(const QString& state, const QString& command);
+Error checkTransition(RecordingState, const QString& command);
+QString phaseName(HelperPhase);
+// The resident state a helper phase stands for; Idle has none.
+std::optional<RecordingState> residentState(HelperPhase);
+// Which commands the helper accepts in each phase: for every command the
+// resident's table also names, exactly the phases whose resident state it
+// allows. savedCopy, notice and click, which the resident sends on its own
+// account, are accepted from Ready on. A refusal is recording_state.
+Error checkHelperCommand(HelperPhase, const QString& command);
 Error parseTarget(const QJsonValue&, RecordingTarget&);
 // Accepts {format, codec?, fps?, adaptiveFps?, audio?: {system?, microphone?, microphoneDevice?}, clickHighlights?, maxEdge?}.
 Error parseConfig(const QJsonObject&, RecordingConfig&);
