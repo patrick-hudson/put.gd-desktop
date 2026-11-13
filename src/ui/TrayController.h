@@ -48,6 +48,17 @@ public:
  static QString failureReason(const QJsonObject& error);
  // The tooltip's activity lines for OperationService::activeObservations().
  static QString describeActivity(const QJsonArray& observations);
+ // What the tray icon and tooltip are showing, as one value. The tooltip's title
+ // and text, the icon's colour and its progress ring each switch on it.
+ // Starting: storage work has begun but has not yet lasted long enough to show
+ // (a short upload must not flash the ring), so only the tooltip title says so.
+ enum class Activity {Idle,Starting,Uploading,Finishing,Complete,NeedsAttention};
+ struct ActivityInputs {
+  bool errorPending=false,uploadCompleted=false,uploadVisible=false,storageActive=false;
+  // An upload operation is still active, though storage may not be working on it.
+  bool uploadsTracked=false;
+ };
+ static Activity activityFor(const ActivityInputs&);
  void invokeShortcut(const QString&);
  // Builds a diagnostics package for one operation (#122); main wires it to
  // DiagnosticsBundles. Failure notifications offer it when it is set.
