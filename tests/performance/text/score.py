@@ -95,6 +95,12 @@ def aggregate(rows):
     return result
 
 
+def read_transcript(root, capture):
+    if 'transcript_codepoints' in capture:
+        return ''.join(map(chr, json.loads((root / capture['transcript_codepoints']).read_text())))
+    return (root / capture['transcript']).read_text()
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('manifest', type=Path)
@@ -121,7 +127,7 @@ def main():
             receipt['language_data'] = dict(path=str(data), bytes=data.stat().st_size,
                                             sha256=hashlib.sha256(data.read_bytes()).hexdigest())
     for capture in manifest['captures']:
-        reference = (a.manifest.parent / capture['transcript']).read_text()
+        reference = read_transcript(a.manifest.parent, capture)
         image = a.manifest.parent / capture['image']
         receipt['inputs'][capture['id']] = dict(image_sha256=hashlib.sha256(image.read_bytes()).hexdigest(),
                                                transcript_sha256=hashlib.sha256(reference.encode()).hexdigest())
