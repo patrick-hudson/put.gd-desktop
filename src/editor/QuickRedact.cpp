@@ -155,6 +155,22 @@ bool hexRun(const QString& run) {
 }
 // Base64 or base64url of random bytes: upper and lower case and digits, and a
 // change of character class at least every third character on average.
+// A token whose recognition collapsed into a run of two or three repeated
+// letters: on the final candidate, with the page cut into eight strips, a
+// GitHub token of 36 identical letters came back as "oho aeaaaaaaeae aad …"
+// and "APC CCEEEECEEEEC…", the prefix gone. A masked or placeholder secret
+// ("xxxxxxxxxxxxxxxx") has the same shape. At least 24 letters or digits, the
+// three commonest characters (ignoring case) at least 85 % of them and the
+// commonest alone half; prose never repeats so few letters for so long, and
+// rules of dashes or dots are not letters.
+bool repeatedRun(const QString& run) {
+ QHash<QChar,int> counts;int characters=0;
+ for(const auto c:run)if(c.isLetterOrNumber()){++counts[c.toLower()];++characters;}
+ if(characters<24||characters*10<int(run.size())*9)return false;
+ QList<int> sizes=counts.values();std::sort(sizes.begin(),sizes.end(),std::greater<int>());
+ int top=0;for(int i=0;i<qMin(3,int(sizes.size()));++i)top+=sizes.at(i);
+ return top*100>=characters*85&&sizes.first()*2>=characters;
+}
 bool base64Run(const QString& run) {
  if(run.size()<32)return false;
  int noise=0,changes=0,previous=-1;bool upper=false,lower=false,digit=false;
@@ -250,7 +266,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<QPair<int,in
   if(to-from>256&&j>i)continue;
   if(to-from<=bestLength)break;
   const auto run=segment.text.mid(from,to-from);
-  if(hexRun(run)||base64Run(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
+  if(hexRun(run)||base64Run(run)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
  }
  if(bestFirst<0)return;
  segmentMatches(segment,first,bestFirst-1,found);found.append({bestFirst,bestLast});segmentMatches(segment,bestLast+1,last,found);
@@ -330,6 +346,9 @@ const QList<Rule>& rules() {
     // pairs (01.23.45.67.89); 26.1112.4660 is a version.
     static const QRegularExpression dots(R"(^\d+(?:\.\d+)+$)"),grouped(R"(^(?:\d{3}\.\d{3}\.\d{4}|\d{2}(?:\.\d{2}){3,})$)");
     if(dots.match(m).hasMatch()&&!grouped.match(m).hasMatch())return false;
+    // More than ten digits unbroken is written only after a "+" (16-446655440000 was a UUID's tail).
+    static const QRegularExpression longGroup(R"(\d{11,})");
+    if(!m.startsWith('+')&&longGroup.match(m).hasMatch())return false;
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
