@@ -1,3 +1,4 @@
+#include "LabwcSession.h"
 #include "LabwcBridgeBackend.h"
 #include "core/HostEnvironment.h"
 #include <QDir>
@@ -33,25 +34,7 @@ const QHash<int,QString> namedKeys{{Qt::Key_Print,"Print"},{Qt::Key_Escape,"Esca
 // whose dconf database gsettings must read. A resident started with another
 // XDG_CONFIG_HOME would otherwise read an empty database and drop the user's
 // own custom keybindings when it rewrites the list.
-struct LabwcSession {QString configDir,xdgConfigHome;};
-std::optional<LabwcSession> runningLabwc(){
- const auto uid=getuid();
- for(const auto& entry:QDir("/proc").entryList(QDir::Dirs|QDir::NoDotAndDotDot)){
-  bool numeric=false;entry.toInt(&numeric);if(!numeric)continue;
-  QFile comm("/proc/"+entry+"/comm");if(!comm.open(QIODevice::ReadOnly)||comm.readAll().trimmed()!="labwc")continue;
-  if(QFileInfo("/proc/"+entry).ownerId()!=uid)continue;
-  QFile cmdline("/proc/"+entry+"/cmdline");QFile environ("/proc/"+entry+"/environ");
-  if(!cmdline.open(QIODevice::ReadOnly)||!environ.open(QIODevice::ReadOnly))continue;
-  LabwcSession session;
-  const auto args=cmdline.read(65536).split('\0');
-  for(qsizetype i=0;i+1<args.size();++i)if(args[i]=="--config-dir"||args[i]=="-C")session.configDir=QString::fromLocal8Bit(args[i+1]);
-  QString home;
-  for(const auto& line:environ.read(1<<20).split('\0')){if(line.startsWith("XDG_CONFIG_HOME="))session.xdgConfigHome=QString::fromLocal8Bit(line.mid(16));else if(line.startsWith("HOME="))home=QString::fromLocal8Bit(line.mid(5));}
-  if(session.xdgConfigHome.isEmpty()&&!home.isEmpty())session.xdgConfigHome=home+"/.config";
-  return session;
- }
- return {};
-}
+
 bool validAction(const QString& action){static const QRegularExpression pattern("^[a-z]{1,32}$");return pattern.match(action).hasMatch();}
 QString quoted(const QString& value){QString out=value;out.replace('\\',"\\\\").replace('\'',"\\'");return "'"+out+"'";}
 }

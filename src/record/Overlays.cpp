@@ -37,6 +37,12 @@
 #endif
 
 namespace putgd::record {
+namespace {
+// Keep the recording selector's original small-drag cancellation threshold;
+// video selection has never promised single-pixel still-image precision.
+constexpr int minimumSelectionSize=4;
+}
+
 SurfaceMode surfaceMode() {
     static const SurfaceMode mode = [] {
         if (!QGuiApplication::platformName().startsWith("wayland")) return SurfaceMode::X11;
@@ -273,7 +279,7 @@ void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return
 void SelectionOverlay::release(QPointF point) {
     if (!dragging_ || finished_) return;
     move(point);
-    if (selection_.width() < 4 || selection_.height() < 4) { cancel(); return; }
+    if (selection_.width()<minimumSelectionSize||selection_.height()<minimumSelectionSize) { cancel(); return; }
     const auto root = toRoot(selection_);
     finish();
     emit selected(root);

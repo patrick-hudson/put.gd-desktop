@@ -1,3 +1,4 @@
+#include "platform/ProcessStat.h"
 #include "KdeSourceAdapter.h"
 #include "platform/wayland/CaptureCompose.h"
 #include "platform/SessionLock.h"
@@ -182,11 +183,10 @@ void KdeSourceAdapter::verifyExternalWindow(const QString& windowId,std::functio
 }
 void KdeSourceAdapter::listWindows(RecordingWindows::Reply reply){
  const qint64 resident=QCoreApplication::applicationPid(),ui=uiProcess_;
- const auto parent=[](qint64 pid)->qint64{
-  QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));if(pid<=0||!stat.open(QIODevice::ReadOnly))return 0;
-  // "pid (comm) state ppid ...": comm may hold spaces and parentheses.
-  const auto text=QString::fromUtf8(stat.read(4096));const auto fields=text.mid(text.lastIndexOf(')')+2).split(' ');return fields.size()>1?fields[1].toLongLong():0;
- };
+ // KWin lists the native helper PID: UI/editor/recorder are direct QProcess
+ // children (#1278), so preserve the direct-child rule shared with X11.
+ constexpr int residentAncestorDepth=1;
+ const auto parent=[residentAncestorDepth](qint64 pid)->qint64{return ancestorProcess(pid,residentAncestorDepth);};
  windows_.list([resident,ui,parent](const QJsonObject& w){
   const auto pid=qint64(w["pid"].toDouble());
   if(w["resourceClass"].toString()=="putgd-ui"||w["desktopFile"].toString()=="putgd-ui")return true;
