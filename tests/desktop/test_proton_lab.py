@@ -485,22 +485,37 @@ class SmokeCheck(unittest.TestCase):
             test.check()
 
 
+def standin_process(path, **kwargs):
+    """A live process whose executable is `path` and whose name is its basename.
+
+    Not a copy of `sleep`: where coreutils is one multicall binary (uutils, the default on
+    Ubuntu 26.04) a copy under another name exits with "unknown program", and the test would
+    then inspect a dead process. A copy of the shell blocks on its stdin and ignores argv[0].
+    """
+    shutil.copy(shutil.which('sh'), path)
+    process = subprocess.Popen([str(path), '-c', 'read line'], stdin=subprocess.PIPE, **kwargs)
+    deadline = time.monotonic() + 5
+    while Path(f'/proc/{process.pid}/exe').resolve() != Path(path).resolve() and time.monotonic() < deadline:
+        time.sleep(.01)
+    if process.poll() is not None or Path(f'/proc/{process.pid}/exe').resolve() != Path(path).resolve():
+        process.kill()
+        process.wait()
+        raise AssertionError('stand-in process did not start as ' + str(path))
+    return process
+
+
 class QuitResidents(unittest.TestCase):
     def test_collection_waits_for_provider_processes_but_not_a_clipboard_keeper(self):
         """A resident or provider helper delays collection; a keeper does not."""
         for name, remains in [('putgd', True), ('putgd-proton', True), ('putgd-clipboard-keeper', False)]:
             with self.subTest(name=name), tempfile.TemporaryDirectory(prefix='pg-w-') as temp:
                 root = Path(temp)
-                shutil.copy(shutil.which('sleep'), root/name)
-                child = subprocess.Popen([str(root/name), '30'])
+                child = standin_process(root/name)
                 try:
                     (root/'pid').write_text(str(child.pid))
                     # Restrict real pgrep to our child, preserving its actual name matching.
                     (root/'pgrep').write_text('#!/bin/sh\nexec '+shutil.which('pgrep')+' "$@" -F "$FIXTURE_PID"\n')
                     (root/'pgrep').chmod(0o755)
-                    deadline = time.monotonic() + 5
-                    while Path(f'/proc/{child.pid}/exe').resolve() != (root/name).resolve() and time.monotonic() < deadline:
-                        time.sleep(.01)
                     def ssh(run, command):
                         """Execute process probes against this fixture PID only."""
                         if command == proton.QUIT_RESIDENTS:
@@ -517,23 +532,21 @@ class QuitResidents(unittest.TestCase):
                 finally:
                     child.kill()
                     child.wait()
+                    child.stdin.close()
 
     def test_a_private_resident_is_quit_with_its_own_environment(self):
         with tempfile.TemporaryDirectory(prefix='pg-q-') as temp:
             root = Path(temp)
             (root/'bin').mkdir()
-            shutil.copy(shutil.which('sleep'), root/'bin/putgd')
             (root/'bin/putgd-cli').write_text('#!/bin/sh\necho "$XDG_RUNTIME_DIR $1" > "$MARK"\n')
             (root/'bin/putgd-cli').chmod(0o755)
-            resident = subprocess.Popen([str(root/'bin/putgd'), '30'], env={'XDG_RUNTIME_DIR': str(root/'private dir')})
+            resident = standin_process(root/'bin/putgd', env={'XDG_RUNTIME_DIR': str(root/'private dir')})
+            self.addCleanup(resident.stdin.close)
             self.addCleanup(resident.wait)
             self.addCleanup(resident.kill)
             # A stand-in pgrep: only this test's process, never a real resident on this machine.
             (root/'pgrep').write_text(f'#!/bin/sh\necho {resident.pid}\n')
             (root/'pgrep').chmod(0o755)
-            deadline = time.monotonic() + 5
-            while Path(f'/proc/{resident.pid}/exe').resolve() != (root/'bin/putgd').resolve() and time.monotonic() < deadline:
-                time.sleep(.01)
             subprocess.run(['sh', '-c', proton.QUIT_RESIDENTS], check=True,
                            env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", MARK=str(root/'mark')))
             self.assertEqual((root/'mark').read_text().strip(), f"{root/'private dir'} ui.quit")

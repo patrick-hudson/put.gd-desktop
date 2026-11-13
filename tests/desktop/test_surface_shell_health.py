@@ -21,6 +21,11 @@ try:
     from PIL import Image
 except ImportError:
     Image=None
+try:
+    import dbus
+except ImportError:
+    dbus=None
+REQUIRES_DBUS=unittest.skipUnless(dbus,'requires the system python3-dbus module (probe.bus_pid uses dbus.Interface; a venv or uv environment cannot see it)')
 
 
 class FakeTarget:
@@ -100,17 +105,20 @@ class RawAccessibility(unittest.TestCase):
         for p in self.patches:p.stop()
         probe._A11Y.clear()
 
+    @REQUIRES_DBUS
     def test_owned_walk_never_contacts_the_shell(self):
         rows=probe.accessible({'owned':True,'name':'Upload','visible':True})
         self.assertEqual([(r['name'],r['window'],r['rect']) for r in rows],[('Upload','put.gd',[10,20,80,30])])
         self.assertFalse([c for c in self.bus.calls if c[0]==':1.9'])
         self.assertFalse([c for c in self.bus.calls if c[2]=='org.a11y.atspi.Cache'])
 
+    @REQUIRES_DBUS
     def test_matching_shell_observation_failure_still_refuses(self):
         self.bus.nodes[(':1.9', ROOT_PATH)]['name_error'] = True
         with self.assertRaisesRegex(RuntimeError, 'shell cover observation unavailable'):
             probe.shell_cover((900, 40), 'cinnamon*')
 
+    @REQUIRES_DBUS
     def test_missing_shell_does_not_authorize_input(self):
         self.bus.nodes[(probe.REGISTRY, ROOT_PATH)]['children'] = [(':1.5', ROOT_PATH)]
         with self.assertRaisesRegex(RuntimeError, 'compositor stage was not observed'):
