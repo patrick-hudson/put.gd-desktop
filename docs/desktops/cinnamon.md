@@ -117,6 +117,18 @@ image under the bar's columns. `scroll_capture_x11` drives the real helper on Xv
 reads the X server's raw input to show that nothing is injected before capturing or after Stop,
 Cancel or the end of the control pipe; it does not establish Cinnamon behaviour.
 
+## Copy text
+
+Copy text ([design](../design/text-recognition.md)) selects a region with the same early crosshair
+as **Capture region** (`X11CoreSourceAdapter`), live or screenshot-first as configured, and then
+reads it. A text capture never changes the rectangle that **Repeat last region** remembers. The
+hotkey needs nothing more than the other actions' (it is unassigned by default). It needs no
+compositor protocol beyond what region capture already uses, and the clipboard write is an
+ordinary one that never touches PRIMARY. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+
+TO CONFIRM before merge: no acceptance of Copy text has run on Cinnamon. The settled evidence goes
+here when item 8 of #1428 has run on m74.
+
 ## Evidence boundary
 
 The automated X11 tests run in a disposable Xvfb display with synthetic clipboard ownership and pixels. They do not establish Cinnamon focus behavior, a physical monitor layout, real global keys, clipboard paste into an independent desktop app, live S3 public links, or release timing.

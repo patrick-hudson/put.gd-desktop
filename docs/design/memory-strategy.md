@@ -31,6 +31,7 @@ The resident keeps these costs in temporary helpers:
 | Cinnamon graphical acquisition | `putgd-capture` |
 | KDE region surfaces | `putgd-region`; authorized KWin capture stays resident |
 | Recording, review, GStreamer and FFmpeg | `putgd-record` |
+| Text and QR code recognition: Tesseract, Leptonica and ZXing-cpp | `putgd-ocr`, one job then exit ([text recognition](text-recognition.md#bounds-and-budgets)) |
 | AWS SDK/module and TLS | `putgd-s3-worker`, per Linux driver call |
 | Native B2 HTTP; custom uploader HTTP; Proton SDK/account work | `putgd-b2-worker`; `putgd-http-worker`; `putgd-proton-runtime` |
 | Update network checks and AppImage installation | short-lived `putgd-cli` |
@@ -66,6 +67,22 @@ read-only and code pages of its libraries (see [architecture](architecture.md)),
 which lowers the reported RSS and PSS well below the idle target without
 returning memory beyond the trim's; a press or query maps them back from the
 page cache.
+
+## Text recognition keeps its memory out of the resident
+
+Recognition loads Tesseract and its language data, about 4 MiB for English alone, and
+needs working memory in proportion to the image. All of that lives in `putgd-ocr`, which
+exits after one job. The resident hands it pixels through a sealed memory file and
+reads the result back through another. The resident's own cost is one grey copy of the
+image for the length of the job, and an optional result for an agent. That result is one byte array of at most 4 MiB, never a parsed tree, kept at most
+120 seconds, after which the resident asks for heap reclamation. No other binary may
+need Tesseract, Leptonica or ZXing-cpp, and the package audits check it. The helper's
+budget is 128 MiB of resident memory for the whole job with English data. The
+measurements and the unsettled numbers are in
+[text recognition](text-recognition.md#performance-and-memory).
+
+TO CONFIRM before merge: the resident's idle RSS and PSS after the text workload, and the
+result cache's growth, which item 8 of #1428 measures on a candidate build.
 
 ## Measure the complete workload
 

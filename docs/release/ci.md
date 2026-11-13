@@ -235,6 +235,8 @@ usual acceptance like any other change.
 | LayerShellQt, extra-cmake-modules | `packaging/appimage/tools.lock.json` | `KDE/*` tags | one group |
 | QtKeychain (AppImage) | `packaging/appimage/tools.lock.json` | tags | one each |
 | FFmpeg (AppImage recorder) | `packaging/appimage/tools.lock.json` | `n*` tags | patch releases at once; a new minor or major waits for approval (its sonames change) |
+| Tesseract, Leptonica, ZXing-cpp (AppImage text engines) | `packaging/appimage/tools.lock.json` | tags | patch releases at once; a new minor or major waits for approval, as FFmpeg's do (TO CONFIRM before merge) |
+| English `tessdata_fast` (AppImage) | `packaging/appimage/tools.lock.json` | the repository's `main` branch digest | one each |
 | linuxdeploy, its Qt plugin, appimagetool, the type2 runtime | `packaging/appimage/tools.lock.json` | GitHub releases | one group |
 | Syft, Grype | `packaging/sbom/tools.lock.json` | GitHub releases | one group |
 | AWS SDK for C++ | `cmake/dependency-lock.json`, `cmake/Dependencies.cmake` | tags | one group |
@@ -854,6 +856,32 @@ compiled one-request smoke checks and the large stdout-drain fixture. Native and
 AppImage audits require the exact provisioned manifest and source/notices files;
 collection also verifies the corresponding-source transport. Hosted contracts do not replace
 authenticated packaged desktop and resource acceptance.
+
+## Text recognition packaging
+
+Copy text ([design](../design/text-recognition.md), [dependencies](release.md#text-recognition-dependencies-1428))
+adds Tesseract, Leptonica and ZXing-cpp to what CI builds against.
+
+- The Linux and sanitizer jobs install `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` and
+  `tesseract-ocr-eng`, or the RPM and pacman equivalents.
+  Every package configure sets `PUTGD_OCR=ON`, so a package job without the libraries fails, and the
+  extracted-source rebuild does too.
+- The helper's confinement test runs in CI's `ubuntu:24.04` container as the unprivileged `putgd-ci` user,
+  so a runner that cannot provide Landlock or seccomp fails there. The runners' Landlock ABI is logged and
+  has been 8. No sanitizer build tests confinement, because the sanitizers need what the confinement
+  forbids.
+- The release contracts check that a package missing the helper fails its audit, that a resident needing an
+  engine library fails it, that a changed vendored QR generator source is rejected, and that the helper's
+  library closure cannot fall back to host libraries.
+- Editing `packaging/appimage/*.json` changes the AppImage source cache key and rebuilds the 224 MB source
+  cache. The engines' prefixes reuse the cache keyed by source, configuration and toolchain.
+- Pull-request CI skips the stable CVE policy and the draft audit. The exact-asset scan of the AppImage
+  with the three engines is rehearsed on d69 before the text recognition branch merges.
+
+TO CONFIRM before merge: this section follows the packaging pull request (#1438), which is not merged.
+Its final CI run, the Renovate rules (a lookup artifact lists Tesseract 5.5.4, Leptonica 1.87.0, ZXing-cpp
+3.1.1 and the `tessdata_fast` digest, and the rules' grouping and approval settings were still being
+adjusted) and the stable-policy rehearsal settle the rest.
 
 ## Earlier measurements
 

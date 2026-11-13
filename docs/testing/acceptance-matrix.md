@@ -271,6 +271,47 @@ A result that is not `end_of_content` is an honest partial only if its image is 
 not a pass for a case that must complete. Hyprland shows the pointer in every frame, and
 Omarchy keeps closed notification cards on screen: both are why those two cases exist.
 
+## Text recognition and QR code rows
+
+Copy text, the editor's text tools and History's QR code (#1428,
+[design](../design/text-recognition.md)) are accepted once, on one complete candidate that is a
+manually dispatched CI run of the integration branch at a recorded commit, with receipts. This
+section is a checklist run with scripts, not a list of tests to add to CI. Nothing in it enters CI as a
+timing, latency or desktop test. A cell is one desktop with one package kind: Mint Cinnamon/X11
+(m74), Fedora GNOME/Wayland (f44), Ubuntu GNOME/Wayland, Kubuntu Plasma/Wayland (k72), Debian
+Plasma/Wayland (d69), Aurora, Budgie on labwc and Hyprland, each with its native package and with
+the AppImage where this matrix has an AppImage row. The matrix's GNOME/X11 and KDE/X11 rows get the
+pipeline check only: the hotkey, an independent paste and the helper's exit.
+
+Quality is scored per engine build, not per desktop, because on fixed images the result depends on the
+Tesseract build and its data. The stored corpus (174 real captures from six desktops, with
+transcripts) is scored offline against each engine build put.gd ships with: Ubuntu 24.04 and Mint 22,
+Ubuntu 26.04, Debian 13, Fedora 44 and 45, Arch, and the AppImage's own. The desktop cells then prove
+the pipeline: the hotkey, an independent paste, memory, the helper's peak and its exit.
+
+| Case | Passes when |
+| --- | --- |
+| Every desktop, through the real hotkey, tray entry and window button | The selector opens, and an independent second application pastes the text |
+| Text bars, per engine build and per target class, never pooled | Median character error rate at most 2 percent for body text of 11 px and larger and at most 5 percent for smaller interface text, after NFC and collapsed whitespace, case-sensitively. URLs and email addresses of 11 px and larger match exactly at least 90 percent of the time. A second language (German, from the distribution's package) meets the body bar on one engine build |
+| Hidden and hostile content | Near-white text on white and 3 px glyphs are not copied. Control, bidirectional-override and zero-width characters are removed. A small code inside a page image is read |
+| Limits and bands | A 24-megapixel image, the same with three languages loaded, a very wide image, an image over the limit, a dense image with no blank row at any cut (no line lost or doubled), a tall two-column page (band by band) and a code larger than a band, with `truncated` true where the time budget stops it |
+| Quick redact | A synthetic page of fake emails, phone numbers, addresses, card numbers and tokens at 11 px and larger in four fonts, light and dark: every item is covered. A page of ordinary prose and a page of code with no item of any category: at most one redaction each. A page of hashes: each is redacted. The exported PNG holds no original pixel under a mark |
+| Editor privacy | A word under a Redact mark added, moved or restored by redo after recognition cannot be selected, copied or returned by `editor.inspect`, and a late result for an old revision is rejected |
+| Codes | QR from 3 px per module to full screen, light and dark, versions 1 to 10 and one version 40, rotated, on a busy background, several in one region. Micro QR, Data Matrix and Aztec. URL, Wi-Fi, contact, plain and binary payloads. Show QR code and its saved PNG are read back by two independent decoders (ZXing's and zbar's command-line tools) for a short link, a long presigned link and the longest allowed link |
+| Privacy | With debug logging on, canary strings recognized in a capture appear nowhere in the journal, the History database, logs, notifications, UI checkpoints, a diagnostics package or any file under `/tmp` and the runtime directory, and pixels of a screen capture appear in no file either. A completed text operation leaves no journal row |
+| Clipboard | A user copy made during recognition is not overwritten. A pending upload link does not overwrite the text. A later explicit copy supersedes it. `copy: false` leaves the clipboard alone. Multi-line Unicode text pastes intact, PRIMARY is untouched, and the text still pastes after the editor closes, after the resident quits (through the clipboard keeper on Budgie and Hyprland) and after an AppImage is unmounted |
+| Helper failures | Crash, hang past the deadline, each resource limit reached, cancel, wrong build, wrong protocol, corrupt or missing data, confinement refused and the parent killed mid-job each end in the fixed error, with the exact child and any thread of it gone and no recognized text or screen pixels on disk |
+| Confinement | From a test build of the helper, opening a socket, executing a program, starting a child process, writing a file in the home directory, reading a file outside the allowed directories and reading another process's memory each fail, on a first recognition and on later bands, with the distribution's OpenMP build. The Landlock ABI is recorded for every target |
+| Unavailable paths | Helper or data missing. GNOME extension version 22 loaded with 23 installed. Each source on each desktop against that adapter's capability report. A locked screen. A History item with no local copy |
+| Packages | A clean install of each target with recommended and weak dependencies off still has the engine and English data. An upgrade from the previous nightly through the signed apt, dnf and pacman repositories. A rebuild from the extracted source archive. The recording Recommends are unchanged. The native audit and the AppImage audit cover the helper and the vendored generator's notice |
+| Window sizes | The command band at the window's minimum width and at enlarged text, in the UI catalog and on one desktop |
+| Memory | The resident's `/proc/<pid>/maps` after 20 `text.recognize` monitor jobs, 5 driven region actions and a 180 second wait holds none of the idle forbidden libraries, Tesseract, Leptonica, ZXing-cpp, libcurl or libarchive (`libgomp` is allowed). Idle RSS and PSS stay under the 40 MiB target. The result cache grows the resident by under 8 MiB after 60 seconds and is gone after 120. The helper's peak stays within its budget, including a dense 24-megapixel input |
+| Latency | From the end of the selection to the clipboard acknowledgement, p95 under 1 second for a region up to 1 megapixel and under 3 seconds for a full 4K monitor capture, over 30 runs on m74 and d69 for the native package and the AppImage and 5 runs in every other cell. The hotkey-to-selector time of the other captures does not change |
+
+TO CONFIRM before merge: none of these rows has run on a candidate. The text bars, the latency bars
+and the helper's memory budget are targets until the engine follow-up (#1452) and item 8 of #1428 settle
+them, and unmet settled numbers go to the owner before anything merges.
+
 ## AppImage full-acceptance profile
 
 One pass of the exact published AppImage on every desktop below, with every item

@@ -283,6 +283,21 @@ Two Omarchy 4.5 facts shape the capture, both measured in the lab VM:
   process's `XDG_RUNTIME_DIR`. A quickshell configuration without that target refuses the call at no
   cost, and a card of another application with the same summary goes too.
 
+## Copy text
+
+Copy text ([design](../design/text-recognition.md)) selects a region exactly as **Capture region**
+does, with Hyprland's early press catcher (`HyprlandSourceAdapter`) armed for `text` as it is for a
+region. A text capture never changes the rectangle that **Repeat last region** remembers. The bind
+is `putgd:text`, a runtime Lua bind through the adapter's action table like the other actions, with
+no default key, and its label is "Copy text from region". The text lands on the clipboard through
+the clipboard keeper like any other result ([clipboard keeper](../design/clipboard-keeper.md)). The
+adapter never writes the user's Hyprland configuration and uses no `hl.unbind` or bind handle's
+`:remove()` for it. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+
+TO CONFIRM before merge: this section describes the desktops pull request (#1442), which is not
+merged, and the Omarchy guest has not been driven with it. No acceptance of Copy text has run on
+Hyprland.
+
 ## Clipboard, tray, notifications and files
 
 - Clipboard import works while put.gd is unfocused; results copy as

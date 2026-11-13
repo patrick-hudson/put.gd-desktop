@@ -3,6 +3,7 @@
 put.gd is a Linux desktop capture and sharing app. It captures a region, window
 or desktop, uploads clipboard images, text and local files, and accepts files or
 folders from a file manager. It can capture a scrolling region as one tall image,
+copy the text and QR codes out of a region of the screen,
 edit a still image or record the screen,
 review the result privately, then upload only after an explicit action. Output
 can stay local, go to S3-compatible storage, Backblaze B2, Proton Drive or a
@@ -11,7 +12,7 @@ appear in searchable local history with the resulting link copied to the
 clipboard. Hotkeys and the tray keep these actions available while
 the main window is closed. See the [user guide](../user/user-guide.md) for everyday use.
 
-Windows and Flatpak are out of scope. Text recognition and QR codes are approved and in progress (issue #1428). Nothing has shipped. Packages are DEB, RPM and AppImage. Retired experiments and implementation checkpoints live
+Windows and Flatpak are out of scope. Packages are DEB, RPM and AppImage. Retired experiments and implementation checkpoints live
 in [history](../history/README.md).
 
 ## Processes and ownership
@@ -31,6 +32,7 @@ packages use dynamically linked distribution Qt. See
 | `putgd-region` | Wayland region selector (layer-shell), shared by Plasma and Budgie | Private control pipes; geometry out, optional frozen background in | Temporary native helper on the Plasma and Budgie Wayland routes |
 | `putgd-clipboard-keeper` | Holds the last clipboard result after the resident quits, on Budgie and Hyprland | The content on an anonymous memory file on standard input; Wayland data control | Detached and short-lived: exits once anything else owns the clipboard |
 | `putgd-record` | Recording, overlays, private review, previews and export; also the scrolling-capture session (frame tap, wheel injector, stitcher) | Resident control pipes; X11 or Wayland/PipeWire acquisition; wheel injection per desktop; private media files | Temporary recording or scroll session; also bounded poster jobs |
+| `putgd-ocr` | Text and QR code recognition: reads one image from sealed memory under Landlock and seccomp and returns text, words and codes in memory. The only binary that links Tesseract, Leptonica and ZXing-cpp | Two private memfds and the control pipes, with no display, socket, configuration or file write | New process per recognition, from the resident or from the editor ([text recognition](text-recognition.md)) |
 | `putgd-s3-worker` | Official AWS C++ SDK requests and private S3 module | Private framed pipes, durable-checkpoint acknowledgements and credential requests; S3 HTTPS | New Linux process per driver call |
 | `putgd-b2-worker` | Native B2 HTTP and transfer work | Private newline JSON input, progress, checkpoints and result; B2 HTTPS | New process per request |
 | `putgd-http-worker` | The one request of a custom HTTP uploader: upload, deletion or Test connection | Private newline JSON input carrying the stored values, progress, a deletion checkpoint and result; HTTPS, or HTTP where the destination allows it | New process per request |
@@ -65,6 +67,8 @@ Clipboard input prefers local file URLs, then image MIME, then text; a text URL
 is uploaded as text, never fetched. File-manager selections use the same engine,
 with folder ZIP or individual-file handling described in [file-manager upload](file-manager-upload.md). Upload concurrency and retained
 artifact limits come from the accepted configuration.
+
+[Text recognition](text-recognition.md) is outside this pipeline. The Copy text action, the editor's Copy text tool and History's Copy text read an image in `putgd-ocr`, write one plain-text clipboard copy and store, upload and journal nothing they read.
 
 The [image editor](image-editor.md) keeps its source private and submits only a sanitized PNG. [Recording](recording.md) keeps its working clip private through
 Stop, trim, masks, preview and Save a copy; only Upload admits an export to the
@@ -243,6 +247,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Remote displays](../lab/remote-vm-displays.md) | Loopback VNC tunnels and display-wall exposure. |
 | [S3](../user/s3.md) | SDK transport, compatible services and safe object operations. |
 | [Scrolling capture](scroll-capture.md) | A region scrolled with injected wheel events and stitched into one tall image: frames, injectors, control loop, proof rules and limits. |
+| [Text recognition](text-recognition.md) | Copy text, the editor's text tools, QR codes, the `putgd-ocr` helper, untrusted content and the agent contract. |
 | [Storage providers](storage-providers.md) | Provider-neutral capabilities, receipts and checkpoints. |
 | [Surface prerequisites](../testing/surface-driver-prerequisites.md) | Probe setup, admission and restoration rules. |
 | [Testing](../testing/testing.md) | Test suites and verification entry points. |

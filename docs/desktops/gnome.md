@@ -337,6 +337,31 @@ ignores `beat` and has no `scroll` in its `ACTIONS`: the `scroll` shortcut repor
 error (`helper_outdated`, else `region_unavailable`) instead of a capture. Log out and back in once,
 as for any extension update ([Setup](#setup)).
 
+## Copy text
+
+Copy text ([design](../design/text-recognition.md)) adds the `text` action to the extension's hotkey
+list, so the packaged extension is **version 23**. The extension prepares a native region selection
+for `text` as it does for `edit`, and the adapter keeps the prepared hotkey tickets for it by action.
+A text capture never changes the rectangle that **Repeat last region** remembers.
+
+As with every extension update, a session that still has version 22 loaded must log out and in
+once ([Setup](#setup)). Until then:
+
+- `GnomeAdapter` refuses region preparation for `text` with the existing "log out once" step
+  (`helper_outdated`), so **Copy text from region** reports it, as Capture region and region
+  recording do, and `capture.text` in capabilities says the same.
+- The `text` hotkey reads `helper_outdated`, and a saved `text` hotkey that version 22 does not
+  know is not counted as a failed restore.
+- `text.recognize` from `window`, `monitor`, `desktop`, `clipboard`, `file` and `history`, the
+  editor's text tools and History's actions work, because they need nothing new from the extension.
+- Every existing gate keeps its version rule. A scrolling capture is still available from version
+  22. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
+
+TO CONFIRM before merge: this section describes the desktops pull request (#1442), which is not
+merged, and GNOME on f44 has not been driven with it. No acceptance of Copy text has run on GNOME.
+Version 22 loaded with 23 installed, and the restore of every shortcut after login, are among the
+cases item 8 of #1428 covers.
+
 ## UI ownership recovery test
 
 When the final UI process exits, the adapter clears its registered PID. If that
