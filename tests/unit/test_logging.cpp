@@ -110,6 +110,13 @@ private slots:
   QVERIFY(status["available"].toBool());QCOMPARE(status["files"].toInt(),1);QVERIFY(status["bytes"].toInteger()>0);QVERIFY(!status["degraded"].toBool());
   QCOMPARE(status["oldestRecord"].toString(),first["time"].toString());
  }
+ void emptyFieldsDoNotInsertNullIdentifiers() {
+  QTemporaryDir dir;logging::open(dir.path());
+  logging::info(logApp(),"No fields");logging::flush();
+  const auto lines=records(readLogs(dir.path()));QCOMPARE(lines.size(),1);
+  QVERIFY(!lines[0].contains("operationId"));QVERIFY(!lines[0].contains("itemId"));
+  QVERIFY(!lines[0].contains("fields"));
+ }
  void debugLoggingIsOptInAndRulesStillApply() {
   QTemporaryDir dir;logging::open(dir.path());
   logging::debug(logOperation(),"hidden");

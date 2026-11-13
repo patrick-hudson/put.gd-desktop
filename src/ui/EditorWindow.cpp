@@ -320,7 +320,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  saveFeedback_=new Ui::Banner(Ui::Banner::Tone::Info,{},canvasViewport_);saveFeedback_->setObjectName("editorSaveFeedback");saveFeedback_->hide();saveFeedback_->installEventFilter(this);
  saveFeedbackTimer_=new QTimer(this);saveFeedbackTimer_->setObjectName("editorSaveFeedbackTimer");saveFeedbackTimer_->setSingleShot(true);
  connect(saveFeedbackTimer_,&QTimer::timeout,this,[this]{
-  if(!saveFeedbackVisible_||lastSave_["status"]!="saved"||(!lastShowInFolder_.isEmpty()&&!lastShowInFolder_["opened"].toBool()))return;
+  if(!saveFeedbackVisible_||lastSave_.value("status")!="saved"||(!lastShowInFolder_.isEmpty()&&!lastShowInFolder_.value("opened").toBool()))return;
   auto* focus=QApplication::focusWidget();bool hovered=saveFeedback_->underMouse();for(auto* child:saveFeedback_->findChildren<QWidget*>())hovered=hovered||child->underMouse();
   if(hovered||(focus&&(focus==saveFeedback_||saveFeedback_->isAncestorOf(focus)))){saveFeedbackTimer_->start(500);return;}
   dismissSavedCopy();
@@ -496,14 +496,14 @@ void EditorWindow::placeDestination(){
  saveFeedback_->setVisible(feedback||!message_->isHidden());
  auto* result=findChild<QWidget*>("editorSaveResult");auto* actions=findChild<QWidget*>("editorSaveActions");
  result->setVisible(feedback||!message_->isHidden());actions->setVisible(feedback);
- const bool folderFailed=lastSave_["status"]=="saved"&&!lastShowInFolder_.isEmpty()&&!lastShowInFolder_["opened"].toBool();
- savedLabel_->setVisible(feedback&&lastSave_["status"]=="saved"&&!folderFailed);
- saveError_->setVisible(feedback&&lastSave_["status"]=="failed");saveTarget_->hide();folderError_->setVisible(feedback&&folderFailed);
- chooseAnother_->setVisible(feedback&&lastSave_["status"]=="failed");
- findChild<QToolButton*>("editorSaveDetails")->setVisible(feedback&&(lastSave_["status"]=="failed"||(!lastShowInFolder_.isEmpty()&&!lastShowInFolder_["opened"].toBool())));
- const auto tone=!message_->isHidden()?(message_->property("visualRole")=="error"?Ui::Banner::Tone::Error:Ui::Banner::Tone::Info):folderFailed||lastSave_["status"]=="failed"?Ui::Banner::Tone::Error:lastSave_["status"]=="saved"&&savedGeneration_==doc_.generation()?Ui::Banner::Tone::Success:Ui::Banner::Tone::Info;
+ const bool folderFailed=lastSave_.value("status")=="saved"&&!lastShowInFolder_.isEmpty()&&!lastShowInFolder_.value("opened").toBool();
+ savedLabel_->setVisible(feedback&&lastSave_.value("status")=="saved"&&!folderFailed);
+ saveError_->setVisible(feedback&&lastSave_.value("status")=="failed");saveTarget_->hide();folderError_->setVisible(feedback&&folderFailed);
+ chooseAnother_->setVisible(feedback&&lastSave_.value("status")=="failed");
+ findChild<QToolButton*>("editorSaveDetails")->setVisible(feedback&&(lastSave_.value("status")=="failed"||(!lastShowInFolder_.isEmpty()&&!lastShowInFolder_.value("opened").toBool())));
+ const auto tone=!message_->isHidden()?(message_->property("visualRole")=="error"?Ui::Banner::Tone::Error:Ui::Banner::Tone::Info):folderFailed||lastSave_.value("status")=="failed"?Ui::Banner::Tone::Error:lastSave_.value("status")=="saved"&&savedGeneration_==doc_.generation()?Ui::Banner::Tone::Success:Ui::Banner::Tone::Info;
  saveFeedback_->setTone(tone);
- saveFeedback_->setAccessibleName(!message_->isHidden()?message_->text():folderFailed?folderError_->text():lastSave_["status"]=="failed"?saveError_->accessibleDescription():savedLabel_->text());
+ saveFeedback_->setAccessibleName(!message_->isHidden()?message_->text():folderFailed?folderError_->text():lastSave_.value("status")=="failed"?saveError_->accessibleDescription():savedLabel_->text());
  saveFeedback_->dismissButton()->setVisible(feedback||(!message_->isHidden()&&!busy_&&!savingCopy_));
  placeSaveFeedback();
 }
@@ -541,7 +541,7 @@ void EditorWindow::placeSaveFeedback(){
  auto* result=findChild<QWidget*>("editorSaveResult");auto* actions=findChild<QWidget*>("editorSaveActions");
  auto* grid=qobject_cast<QGridLayout*>(result->parentWidget()->layout());
  const int room=w-saveFeedback_->layout()->contentsMargins().left()-saveFeedback_->layout()->contentsMargins().right()-(saveFeedback_->dismissButton()->isHidden()?0:saveFeedback_->dismissButton()->width()+Ui::space(Space::s));
- const bool saved=lastSave_["status"]=="saved"&&saveFeedbackVisible_;
+ const bool saved=lastSave_.value("status")=="saved"&&saveFeedbackVisible_;
  const int savedWidth=std::max(savedLabel_->minimumSizeHint().width(),std::min(savedLabel_->fontMetrics().horizontalAdvance(savedLabel_->text()),Ui::scaled(320)));
  const bool overflow=saved&&!savedLabel_->isHidden()&&savedWidth+showFolder_->sizeHint().width()+copyPath_->sizeHint().width()+2*Ui::space(Space::s)>room;
  showFolder_->setVisible(saved&&!overflow);copyPath_->setVisible(saved&&!overflow);savedMore_->setVisible(overflow);
@@ -825,13 +825,13 @@ void EditorWindow::showSaved(const QString& path){
  saveFeedbackVisible_=true;syncSaved();placeDestination();saveFeedbackTimer_->start(6000);
 }
 void EditorWindow::syncSaved(){
- if(lastSave_["status"]!="saved")return;
+ if(lastSave_.value("status")!="saved")return;
  // The copy holds the draft as it was then; after another edit it is an earlier copy.
  const bool current=savedGeneration_==doc_.generation();const auto name=lastSave_["name"].toString();
  savedLabel_->setText(current?"Saved "+name:"Earlier copy saved: "+name);Ui::role(savedLabel_,current?"success":"secondary");
  savedLabel_->setToolTip(lastSave_["path"].toString());
  savedLabel_->setAccessibleName(current?"Saved a copy":"Saved an earlier copy");
- if(lastShowInFolder_.isEmpty()||lastShowInFolder_["opened"].toBool())saveFeedback_->setAccessibleName(savedLabel_->text());
+ if(lastShowInFolder_.isEmpty()||lastShowInFolder_.value("opened").toBool())saveFeedback_->setAccessibleName(savedLabel_->text());
  header_->setDocument("Edit image","Not uploaded");
 }
 void EditorWindow::showSaveFailed(const QString& path,const QString& reason){
@@ -855,7 +855,7 @@ void EditorWindow::showSaveFailed(const QString& path,const QString& reason){
  header_->setDocument("Edit image","Not uploaded");saveFeedbackVisible_=true;placeDestination();saveFeedback_->announce(saveError_->accessibleDescription());
 }
 bool EditorWindow::copySavedPath(){
- if(lastSave_["status"]!="saved")return false;
+ if(lastSave_.value("status")!="saved")return false;
  lastCopiedPath_=lastSave_["path"].toString();QGuiApplication::clipboard()->setText(lastCopiedPath_);
  // Brief confirmation on the button itself; its width holds still.
  const int before=copyPath_->sizeHint().width();copyPath_->setText("Path copied");copyPath_->setMinimumWidth(std::max(before,copyPath_->sizeHint().width()));
@@ -863,7 +863,7 @@ bool EditorWindow::copySavedPath(){
  return true;
 }
 bool EditorWindow::showSavedCopy(){
- if(lastSave_["status"]!="saved")return false;
+ if(lastSave_.value("status")!="saved")return false;
  QPointer<EditorWindow> self(this);
  saveFeedbackTimer_->stop();
  const auto path=lastSave_["path"].toString();const auto request=++folderRequest_;
@@ -913,7 +913,7 @@ void EditorWindow::setNotice(const QString& reason){
 QJsonObject EditorWindow::viewState() const {
  const auto& style=canvas_->style();const auto selected=canvas_->selected();
  QJsonObject message;if(!message_->isHidden())message={{"text",message_->text()},{"tone",message_->property("visualRole").toString()}};
- auto save=lastSave_;if(save["status"]=="saved")save["current"]=savedGeneration_==doc_.generation();
+ auto save=lastSave_;if(save.value("status")=="saved")save["current"]=savedGeneration_==doc_.generation();
  return {{"scheme",Theme::name(Theme::scheme())},{"tool",toolNames.value(int(canvas_->tool()))},{"selectedShapeId",selected?QJsonValue(double(selected)):QJsonValue()},
   {"geometryDetails",QJsonObject{{"open",geometryDisclosure_->isChecked()},{"visible",geometryFields_->isVisibleTo(this)}}},
   {"geometry",rectValue(canvas_->selectionGeometry())},{"cropPending",canvas_->cropPending()},{"selection",canvas_->selectionSummary()},
@@ -1032,7 +1032,7 @@ void EditorWindow::requestCancel(){
  if(busy_||savingCopy_||copying_)return;
  if(discard_){discard_->raise();discard_->activateWindow();return;}
  if(!doc_.modified()){emit cancelRequested();return;}
- const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop will be lost%1.").arg(lastSave_["status"]=="saved"?"; copies you saved stay":"");
+ const auto text=QString("Discard your edits and close the editor?\nNothing has been uploaded. Your marks and crop will be lost%1.").arg(lastSave_.value("status")=="saved"?"; copies you saved stay":"");
  auto* box=Ui::confirm(this,"Discard edits?",text,"Discard edits",QStringLiteral("Keep editing"),true);
  auto* keep=box->button(QMessageBox::Cancel);keep->setObjectName("keepEditingConfirm");
  box->setWindowModality(Qt::WindowModal);box->setAttribute(Qt::WA_DeleteOnClose);
