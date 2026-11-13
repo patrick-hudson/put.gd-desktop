@@ -1,3 +1,4 @@
+#include "EventPump.h"
 #include "CursorOutputProbe.h"
 #include "ext-image-capture-source-v1-client-protocol.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
@@ -25,7 +26,7 @@ struct CursorOutputProbe::Run:QObject {
  }
  void finish(QList<Position> positions,Error error){
   if(finished)return;
-  finished=true;deadline.stop();
+  finished=true;deadline.stop();if(writeNotifier)writeNotifier->setEnabled(false);
   auto answer=std::exchange(reply,{});
   // Outside the Wayland dispatch that may have called this.
   QTimer::singleShot(0,this,[this]{delete this;});
@@ -54,6 +55,8 @@ struct CursorOutputProbe::Run:QObject {
   },[](void*,wl_registry*,uint32_t){}};
   wl_registry_add_listener(registry,&listener,this);
   auto* notifier=new QSocketNotifier(wl_display_get_fd(display),QSocketNotifier::Read,this);
+  writeNotifier=new QSocketNotifier(wl_display_get_fd(display),QSocketNotifier::Write,this);writeNotifier->setEnabled(false);
+  connect(writeNotifier,&QSocketNotifier::activated,this,[this]{flush();});
   connect(notifier,&QSocketNotifier::activated,this,[this]{read();});
   deadline.setSingleShot(true);connect(&deadline,&QTimer::timeout,this,[this]{finish({},unavailable("timeout"));});deadline.start(timeoutMs);
   advance();
@@ -100,14 +103,14 @@ struct CursorOutputProbe::Run:QObject {
   if(stage<6){advance();return;}
   finish({},unavailable("no output reported the cursor"));
  }
- void flush(){if(wl_display_flush(display)<0&&errno!=EAGAIN)finish({},unavailable("connection lost"));}
+ QSocketNotifier* writeNotifier=nullptr;
+ void flush(){if(finished)return;bool pending=false;if(!wayland::flush(display,pending)){finish({},unavailable("connection lost"));return;}if(writeNotifier)writeNotifier->setEnabled(pending);}
  void read(){
   if(finished)return;
-  while(wl_display_prepare_read(display)!=0)if(wl_display_dispatch_pending(display)<0){finish({},unavailable("connection lost"));return;}
-  if(finished){wl_display_cancel_read(display);return;}
-  if(wl_display_read_events(display)<0||wl_display_dispatch_pending(display)<0){finish({},unavailable("connection lost"));return;}
+  if(!wayland::pump(display)){finish({},unavailable("connection lost"));return;}
   if(!finished)flush();
  }
+
 };
 CursorOutputProbe::CursorOutputProbe(QObject* parent):QObject(parent){}
 CursorOutputProbe::~CursorOutputProbe(){if(run_){run_->reply={};delete run_;}}

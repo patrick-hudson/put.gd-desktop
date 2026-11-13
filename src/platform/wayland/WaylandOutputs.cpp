@@ -1,3 +1,4 @@
+#include "EventPump.h"
 #include "WaylandOutputs.h"
 #include "platform/NativeSession.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
@@ -240,20 +241,16 @@ struct WaylandOutputs::Impl:QObject {
   initialSync=wl_display_sync(display);static const wl_callback_listener synced={[](void* data,wl_callback* callback,uint32_t){auto* self=static_cast<Impl*>(data);wl_callback_destroy(callback);self->initialSync=nullptr;self->publish();}};
   wl_callback_add_listener(initialSync,&synced,this);flush();
  }
- void flush(){if(!display)return;if(wl_display_flush(display)<0){if(errno==EAGAIN){if(writeNotifier)writeNotifier->setEnabled(true);}else lost();}else if(writeNotifier)writeNotifier->setEnabled(false);}
+ void flush(){if(!display)return;bool pending=false;if(!wayland::flush(display,pending)){lost();return;}if(writeNotifier)writeNotifier->setEnabled(pending);}
  void events(){
   if(!display||dispatching)return;
   dispatching=true;
-  if(wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-  pollfd readiness{wl_display_get_fd(display),POLLIN,0};const int ready=poll(&readiness,1,0);
-  if(ready<0&&errno!=EINTR){dispatching=false;lost();return;}
-  if(ready>0){
-   while(wl_display_prepare_read(display)!=0)if(wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-   // Only this connection is read; no Qt/QPA event queue is dispatched.
-   if(wl_display_read_events(display)<0||wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-  }
-  dispatching=false;flush();
+  const bool ok=wayland::pump(display);
+  dispatching=false;
+  if(!ok){lost();return;}
+  flush();
  }
+
  void reset(){
   // Loss can occur inside activated(). Disable and detach immediately, but
   // retire QObject senders after their current event dispatch returns.
