@@ -104,6 +104,10 @@ struct Settings {
     // preferences.fileManagerMenu (#1105): the AppImage's per-user menu entries;
     // DEB and RPM entries are system files and always on.
     bool fileManagerMenu = true;
+    // preferences.textRecognitionLanguages (#1428): up to three Tesseract language
+    // identifiers for Copy text, in order. Empty: the desktop locale's language
+    // when its data is installed, then English.
+    QStringList textRecognitionLanguages;
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;
@@ -123,7 +127,7 @@ struct Settings {
     // Every output-routed sharing action, including the later optional "edit" action.
     static QStringList actionNames();
     // Everything the tray, the dashboard rail and a global shortcut can start:
-    // the sharing actions plus the screen-recording action.
+    // the sharing actions plus the screen-recording, repeat and Copy text actions.
     static QStringList invocableActionNames();
     static QStringList presentationOrder();
     // Actions a schema-1 document must define; "edit" may be absent.
@@ -132,17 +136,21 @@ struct Settings {
     static QString recordingActionName();
     // Repeat last region (#1363): a shortcut only, always on the region route.
     static QString repeatActionName();
-    // Shortcut rows and tray entries: presentationOrder() plus Repeat last region.
+    // Copy text (#1428): route-free. It has a hotkey and no destination, archive,
+    // naming or publication, so it is in no output list and never output_required.
+    static QString textActionName();
+    // Shortcut rows and tray entries: presentationOrder() plus Repeat last region
+    // and Copy text, which has no output and so is not in presentationOrder().
     static QStringList shortcutOrder();
     // Delays a capture can start after, in seconds; 0 is immediate.
     static QList<int> captureDelayChoices();
-    // Captures that take delaySeconds: region, window, monitor, desktop, repeat
-    // and edit. An edit is delayed only when it captures the screen
+    // Captures that take delaySeconds: region, window, monitor, desktop, repeat,
+    // edit and text. An edit is delayed only when it captures the screen
     // (delayableEditSource): the clipboard and a file have nothing to wait for.
     static bool delayableAction(const QString& action);
     static bool delayableEditSource(const QString& source);
     // Adds absent edit and record actions inheriting the region route without a shortcut,
-    // an absent monitor action copying the desktop route, and an absent repeat key.
+    // an absent monitor action copying the desktop route, and absent repeat and text keys.
     static QJsonObject normalized(const QJsonObject&);
     // The document with its profiles in the given ID order. The order must name
     // every profile exactly once; nothing else in the document changes.

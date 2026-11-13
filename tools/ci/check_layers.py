@@ -25,7 +25,7 @@ NON_CODE = re.compile(r'''//[^\n]*|/\*.*?(?:\*/|\Z)|\b(?:u8|[uUL])?R"([^()\\\s]*
 # One subdirectory per desktop or provider; each is its own module.
 SPLIT_MODULES = ('platform', 'storage')
 
-# Lower layers first. main, the helpers (capture, record) and the CLI are leaves.
+# Lower layers first. main, the helpers (capture, record, ocr) and the CLI are leaves.
 ALLOWED = {
     'core': {'ipc'},
     'secrets': {'core'},
@@ -45,6 +45,7 @@ ALLOWED = {
     'ui': {'client', 'core', 'ipc', 'platform'},
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},
     'record': {'core', 'ipc', 'platform', 'platform/wayland', 'platform/x11', 'ui'},
+    'ocr': {'core', 'ipc'},
     'cli': {'core'},
     'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/hyprland', 'platform/kde', 'platform/wayland', 'platform/x11',
              'storage/b2', 'storage/http', 'storage/proton', 'storage/s3', 'ui'},
