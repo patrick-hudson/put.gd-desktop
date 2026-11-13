@@ -18,6 +18,8 @@ struct X11Target {
  // Region screenshots in Screenshot first mode (#629): every monitor is read
  // before selection, and the result is cut from those frames.
  bool screenshotFirst=false;
+ // Copy text uses region selection without replacing Repeat last region.
+ bool rememberRegion=true;
 };
 // The monitors a region was chosen on, for Repeat last region (#1363): one
 // {identity, logical, native, rotation} per monitor, in layout order.
