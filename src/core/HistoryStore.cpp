@@ -241,18 +241,19 @@ QList<Operation> HistoryStore::recover(Error* error) {
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
  auto q=forwardQuery(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
  while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);bool changed=false;
-  if(op.state=="accepted"||op.state=="acquiring") {op.state="interrupted";op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};changed=true;}
+  const auto state=op.state();
+  if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};}
   // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
-  else if(op.state=="editing") {op.state="interrupted";op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};changed=true;}
+  else if(state==OperationState::Editing) {op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};}
   // A recording that never reached explicit Upload is discarded with its private clip.
-  else if(op.state=="recording") {op.state="interrupted";op.error={"recording_interrupted","Recording was interrupted before upload; nothing was uploaded",{}};changed=true;}
+  else if(state==OperationState::Recording) {op.error={"recording_interrupted","Recording was interrupted before upload; nothing was uploaded",{}};}
   // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
-  else if(op.state=="recognizing") {op.state="interrupted";op.error={"text_interrupted","Text recognition was interrupted; nothing was copied",{}};changed=true;}
-  else if(op.state=="running"||op.state=="stored"||op.state=="queued") {op.state="interrupted";changed=true;}
+  else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted; nothing was copied",{}};}
+  if(op.active()) {op.advance(OperationState::Interrupted);changed=true;}
   for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
-  if(op.state=="interrupted"&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
-  if(changed){op.phase=op.state;for(auto& item:op.items)item.phase=item.uploadStatus;}
-  if(changed||(op.state=="interrupted"&&op.items.isEmpty())) result.append(op);
+  if(op.state()==OperationState::Interrupted&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
+  if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
+  if(changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty())) result.append(op);
  }
  q.finish();for(const auto& op:result) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
  // Sharing intent survives a crash; revoke/create are never automatically replayed.
@@ -329,7 +330,7 @@ QList<Operation> HistoryStore::operationsSince(const QString& from,const QString
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
  auto q=forwardQuery(db_);q.prepare("SELECT data FROM operations WHERE json_extract(data,'$.created')>=? ORDER BY json_extract(data,'$.created') DESC,id");q.addBindValue(from);
  if(!q.exec()){if(error)*error=sqlError();return result;}
- while(result.size()<limit&&q.next()){auto op=Operation::fromJson(decode(q.value(0)));if(!states.contains(op.state))continue;relocate(op);result.append(std::move(op));}
+ while(result.size()<limit&&q.next()){auto op=Operation::fromJson(decode(q.value(0)));if(!states.contains(op.stateName()))continue;relocate(op);result.append(std::move(op));}
  return result;
 }
 std::optional<Operation> HistoryStore::lastUpload(const QString& profileId,Error* error) const {

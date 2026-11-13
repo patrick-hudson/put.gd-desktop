@@ -31,7 +31,7 @@ class CollisionTest : public QObject {
         const bool terminal = putgd::test::waitFor([&] {
             HistoryStore store(operations.databasePath());
             result = store.operation(id);
-            return QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.state);
+            return QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.stateName());
         }, 15000);
         if (terminal) {
             qInfo("collision_fixture_terminal_ms=%lld",elapsed.elapsed());
@@ -111,7 +111,7 @@ private slots:
         operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
         PUTGD_TRY_VERIFY(!id.isEmpty());
         auto operation = waitOperation(operations, id);
-        QCOMPARE(operation.state, QString("partial"));
+        QCOMPARE(operation.stateName(), QString("partial"));
         QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
         QCOMPARE(operation.items[1].uploadStatus, QString("failed"));
         QCOMPARE(operation.items[0].candidate,QString("Upload-a.txt"));
@@ -319,7 +319,7 @@ private slots:
         PUTGD_TRY_COMPARE(f.events("PUT").size(), 1);
         operations.cancel(id, [](auto error, auto) { QVERIFY(!error); });
         const auto operation = waitOperation(operations, id);
-        QCOMPARE(operation.state, QString("cancelled"));
+        QCOMPARE(operation.stateName(), QString("cancelled"));
         QCOMPARE(f.events("PUT").size(), 1);
         QCOMPARE(source.copies, 0);
         for (const auto& item : operation.items) {

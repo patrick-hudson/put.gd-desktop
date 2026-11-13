@@ -1,5 +1,6 @@
 #include "app/AppImageInstall.h"
 #include "cli/UpdateInstall.h"
+#include "fixtures/ElfImage.h"
 #include "fixtures/MinisignFixture.h"
 #include <QCryptographicHash>
 #include <QDir>
@@ -18,20 +19,7 @@ using namespace putgd;
 namespace {
 const QString nightly="zsync|https://app.put.gd/dl/nightly/appimage.zsync",stable="zsync|https://app.put.gd/dl/stable/appimage.zsync";
 const QString tag="v0.1.1-nightly.801",name="putgd-0.1.1-nightly.801-x86_64.AppImage";
-QByteArray elfImage(const QByteArray& payload,const QString& updateInformation=nightly) {
- const QByteArray names("\0.shstrtab\0.upd_info\0",21);
- auto info=updateInformation.toUtf8();info.append(QByteArray(1024-info.size(),'\0'));
- QByteArray header(64,'\0');
- header.replace(0,4,"\x7f""ELF");header[4]=2;header[5]=1;header[6]=1;header[8]='A';header[9]='I';header[10]=2;
- qToLittleEndian<quint64>(64+names.size()+info.size(),header.data()+0x28);
- qToLittleEndian<quint16>(64,header.data()+0x3A);qToLittleEndian<quint16>(3,header.data()+0x3C);qToLittleEndian<quint16>(1,header.data()+0x3E);
- QByteArray table(3*64,'\0');
- const auto section=[&](int index,quint32 nameOffset,quint64 offset,quint64 size){
-  qToLittleEndian<quint32>(nameOffset,table.data()+index*64);qToLittleEndian<quint64>(offset,table.data()+index*64+24);qToLittleEndian<quint64>(size,table.data()+index*64+32);
- };
- section(1,1,64,names.size());section(2,11,64+names.size(),info.size());
- return header+names+info+table+payload;
-}
+QByteArray elfImage(const QByteArray& payload,const QString& updateInformation=nightly) {return putgd::test::elfImage(updateInformation.toUtf8(),payload);}
 QString hex(const QByteArray& bytes) {return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());}
 void write(const QString& path,const QByteArray& bytes,QFile::Permissions permissions=QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner) {
  QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly|QIODevice::Truncate));file.write(bytes);file.close();QVERIFY(file.setPermissions(permissions));

@@ -1,5 +1,6 @@
 #include "platform/wayland/DataControlClipboard.h"
 #include "../fixtures/ImagePluginMappings.h"
+#include "../fixtures/WaylandTestServer.h"
 #include <QtTest>
 #include <QSocketNotifier>
 #include <QTemporaryDir>
@@ -12,11 +13,9 @@ using namespace putgd;
 using test::loadedImagePlugins;
 // A private in-process compositor that owns one clipboard selection. It proves
 // only the data-control import path, not Plasma integration.
-class DataControlFixture final:public QObject {
- QTemporaryDir directory_{"/tmp/pgk-XXXXXX"};wl_display* display_=nullptr;QSocketNotifier* notifier_=nullptr;
+class DataControlFixture final:public putgd::test::WaylandTestServer {
  QList<QPair<QByteArray,QByteArray>> formats_;
  static DataControlFixture* self(wl_resource* resource){return static_cast<DataControlFixture*>(wl_resource_get_user_data(resource));}
- static void destroyRequest(wl_client*,wl_resource* resource){wl_resource_destroy(resource);}
  static void receive(wl_client*,wl_resource* offer,const char* mime,int32_t fd){
   auto* fixture=self(offer);fixture->requested.append(mime);
   for(const auto& [type,bytes]:fixture->formats_)if(type==mime){for(qsizetype offset=0;offset<bytes.size();){const auto n=::write(fd,bytes.constData()+offset,size_t(bytes.size()-offset));if(n<=0)break;offset+=n;}break;}
@@ -44,25 +43,13 @@ class DataControlFixture final:public QObject {
   static const struct ext_data_control_manager_v1_interface implementation={createSource,getDevice,destroyRequest};
   wl_resource_set_implementation(manager,&implementation,data,nullptr);
  }
- static void bindSeat(wl_client* client,void*,uint32_t version,uint32_t id){
-  auto* seat=wl_resource_create(client,&wl_seat_interface,int(version),id);
-  static const struct wl_seat_interface implementation={nullptr,nullptr,nullptr,destroyRequest};
-  wl_resource_set_implementation(seat,&implementation,nullptr,nullptr);wl_seat_send_capabilities(seat,0);
- }
 public:
- QString error;QList<QByteArray> requested;
- explicit DataControlFixture(QList<QPair<QByteArray,QByteArray>> formats):formats_(std::move(formats)){
-  struct stat metadata{};
-  if(!directory_.isValid()||lstat(directory_.path().toUtf8().constData(),&metadata)<0||!S_ISDIR(metadata.st_mode)||metadata.st_uid!=geteuid()||(metadata.st_mode&077)!=0){error="Fixture runtime directory is not private and owned";return;}
-  if(directory_.filePath("wayland-test").toUtf8().size()>107){error="Fixture Unix socket exceeds Linux byte limit";return;}
-  qputenv("XDG_RUNTIME_DIR",directory_.path().toUtf8());qputenv("WAYLAND_DISPLAY","wayland-test");
-  display_=wl_display_create();if(!display_||wl_display_add_socket(display_,"wayland-test")<0){error="Cannot bind private data-control fixture socket";return;}
-  wl_global_create(display_,&wl_seat_interface,5,this,bindSeat);
+ QList<QByteArray> requested;
+ explicit DataControlFixture(QList<QPair<QByteArray,QByteArray>> formats):WaylandTestServer("/tmp/pgk-XXXXXX"),formats_(std::move(formats)){
+  if(!error.isEmpty())return;
   wl_global_create(display_,&ext_data_control_manager_v1_interface,1,this,bindManager);
-  auto* loop=wl_display_get_event_loop(display_);notifier_=new QSocketNotifier(wl_event_loop_get_fd(loop),QSocketNotifier::Read,this);
-  connect(notifier_,&QSocketNotifier::activated,this,[this,loop]{wl_event_loop_dispatch(loop,0);wl_display_flush_clients(display_);});
  }
- ~DataControlFixture() override{if(notifier_){notifier_->setEnabled(false);delete notifier_;}if(display_){wl_display_destroy_clients(display_);wl_display_destroy(display_);}}
+ ~DataControlFixture() override{stop();}
 };
 // The KDE Core resident decodes PNG offers in process with format detection
 // off; other images use the transient image job. Qt 6.4.2 and 6.8.2 load

@@ -69,13 +69,13 @@ private slots:
   HistoryStore journal(f.operations->databasePath());
   auto state=command(*f.operations,id,"inspect");QVERIFY2(!state.error,qPrintable(state.error.code));QCOMPARE(state.result["operationId"].toString(),id);
   QCOMPARE(state.result["destination"].toString(),QString("Upload to Synthetic opaque provider · Shared link"));
-  PUTGD_TRY_COMPARE(journal.operation(id).state,QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   // One editor per resident: a second request raises it and names the open edit.
   auto second=call([&](JsonReply r){f.operations->invoke("edit",r);});QCOMPARE(second.error.code,QString("editor_active"));QCOMPARE(second.error.details["operationId"].toString(),id);
   QCOMPARE(command(*f.operations,"another-id","inspect").error.code,QString("editor_unavailable"));
   QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);
   QVERIFY(!command(*f.operations,id,"submit").error);
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString("completed"),20000);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).stateName(),QString("completed"),20000);
   PUTGD_TRY_COMPARE(f.operations->editingOperation(),QString());
   const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);QCOMPARE(f.provider->uploads.load(),1);
   const auto item=op.items.first();QCOMPARE(item.artifact.mime,QString("image/png"));QCOMPARE(item.uploadStatus,QString("uploaded"));QCOMPARE(item.local.status,QString("saved"));
@@ -93,7 +93,7 @@ private slots:
   Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());
   QVERIFY(f.operations->capabilities()["editor"].toObject()["commands"].toArray().contains("copy"));
   const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
-  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("editing"));
+  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("editing"));
   QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);
   const auto before=f.source.copies;
   auto copied=command(*f.operations,id,"copy");QVERIFY2(!copied.error,qPrintable(copied.error.code+": "+copied.error.message));
@@ -104,9 +104,9 @@ private slots:
   {const auto pasted=QImage::fromData(png,"PNG").convertToFormat(QImage::Format_RGB32);
    for(int y=secret.top();y<=secret.bottom();++y)for(int x=secret.left();x<=secret.right();++x)QCOMPARE(pasted.pixel(x,y),qRgb(0,0,0));}
   // Still editing: no item, no artifact, no upload.
-  QCOMPARE(journal.operation(id).state,QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
+  QCOMPARE(journal.operation(id).stateName(),QString("editing"));QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   {QDirIterator it(f.dir.filePath("data/artifacts"),QDir::Files,QDirIterator::Subdirectories);QVERIFY(!it.hasNext());}
-  QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString("cancelled"),20000);
+  QVERIFY(!command(*f.operations,id,"cancel").error);PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).stateName(),QString("cancelled"),20000);
   QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   QCOMPARE(QDir(f.dir.filePath("data/editing")).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).size(),0);
  }
@@ -114,16 +114,16 @@ private slots:
   // Retry binds to the finalized digest: it never reacquires or reopens the source.
   Fixture f;PUTGD_TRY_VERIFY(f.operations->ready());f.provider->failUpload=true;
   const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
-  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).state,QString("editing"));
+  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("editing"));
   QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);QVERIFY(!command(*f.operations,id,"submit").error);
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QStringList({"failed","partial"}).contains(journal.operation(id).state),20000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QStringList({"failed","partial"}).contains(journal.operation(id).stateName()),20000);
   const auto failed=journal.operation(id);QCOMPARE(failed.items.size(),1);QCOMPARE(failed.items.first().uploadStatus,QString("failed"));
   const auto digest=failed.items.first().artifact.sha256;QVERIFY(!digest.isEmpty());QCOMPARE(f.source.reads,1);PUTGD_TRY_COMPARE(f.operations->editingOperation(),QString());
   f.provider->failUpload=false;
   // Retry is offered once the failed operation has finished its follow-up steps.
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.operations->diagnostics()["activeOperations"].toInt(),0,10000);
   auto retried=call([&](JsonReply r){f.operations->retry(id,r);});QVERIFY2(!retried.error,qPrintable(retried.error.code));
-  PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString("completed"),20000);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).stateName(),QString("completed"),20000);
   const auto done=journal.operation(id);QCOMPARE(done.items.size(),1);QCOMPARE(done.items.first().uploadStatus,QString("uploaded"));
   QCOMPARE(done.items.first().artifact.sha256,digest);QCOMPARE(f.source.reads,1);QCOMPARE(f.operations->editingOperation(),QString());
   QFile artifact(done.items.first().artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));
@@ -136,24 +136,24 @@ private slots:
   QVERIFY(!command(*f.operations,id,"inspect").error);
   QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);
   QVERIFY(!call([&](JsonReply r){f.operations->cancel(id,r);}).error);
-  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString("cancelled"),20000);
+  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(id).stateName(),QString("cancelled"),20000);
   QVERIFY(journal.operation(id).items.isEmpty());QCOMPARE(f.provider->uploads.load(),0);
   PUTGD_TRY_COMPARE(f.operations->editingOperation(),QString());
   QVERIFY(!QDir(f.dir.filePath("archive")).exists()||QDir(f.dir.filePath("archive")).isEmpty());
   QDirIterator it(f.dir.filePath("data/artifacts"),QDir::Files,QDirIterator::Subdirectories);QVERIFY(!it.hasNext());
   // The editor's own discard reaches the same outcome.
   const auto next=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!next.isEmpty());
-  QVERIFY(!command(*f.operations,next,"cancel").error);PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(next).state,QString("cancelled"),20000);
+  QVERIFY(!command(*f.operations,next,"cancel").error);PUTGD_TRY_COMPARE_WITH_TIMEOUT(journal.operation(next).stateName(),QString("cancelled"),20000);
   QCOMPARE(journal.operation(next).error.code,QString("cancelled"));QCOMPARE(f.provider->uploads.load(),0);
  }
  void interruptedEditRecoversWithoutUploading(){
   QTemporaryDir dir;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
   SettingsService settings(dir.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(dir.path()),{}));
   QVERIFY(QDir().mkpath(dir.filePath("data/editing/pge-abcdef")));QFile staged(dir.filePath("data/editing/pge-abcdef/input.png"));QVERIFY(staged.open(QIODevice::WriteOnly));staged.write("synthetic");staged.close();
-  {HistoryStore journal(dir.filePath("data/history.sqlite"));Operation op;op.id="interrupted-edit";op.action="edit";op.state="editing";op.phase="editing";QVERIFY(!journal.saveOperation(op));}
+  {HistoryStore journal(dir.filePath("data/history.sqlite"));Operation op;op.id="interrupted-edit";op.action="edit";op.restore(OperationState::Editing);op.phase="editing";QVERIFY(!journal.saveOperation(op));}
   Source source;OperationService operations(dir.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   HistoryStore journal(operations.databasePath());const auto op=journal.operation("interrupted-edit");
-  QCOMPARE(op.state,QString("interrupted"));QCOMPARE(op.error.code,QString("edit_interrupted"));QVERIFY(op.items.isEmpty());
+  QCOMPARE(op.stateName(),QString("interrupted"));QCOMPARE(op.error.code,QString("edit_interrupted"));QVERIFY(op.items.isEmpty());
   QVERIFY(!QDir(dir.filePath("data/editing")).exists());QCOMPARE(provider->uploads.load(),0);
   QCOMPARE(call([&](JsonReply r){operations.retry("interrupted-edit",r);}).error.code,QString("artifact_missing"));
  }

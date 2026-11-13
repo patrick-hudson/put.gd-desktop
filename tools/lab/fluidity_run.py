@@ -34,6 +34,9 @@ the session process like record_run.py, then:
 PATH is an AppImage or a directory holding putgd, putgd-cli and putgd-record (a
 build tree or /usr/bin). --real-data-home lets an AppImage register KWin's
 screencast entry in the user's data directory (see record_run.py).
+--no-notifications turns the run's own put.gd notifications off in its private
+configuration, so a banner from the resident (a missing GNOME extension, say)
+cannot cover the fixture or the selection.
 --kwin-entry LABEL writes a temporary putgd-record desktop entry naming that
 build's helper, so KWin offers its screencast protocol to a build tree, and
 removes it afterwards.
@@ -43,7 +46,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import signal
 import socket
 import subprocess
 import sys
@@ -51,11 +53,12 @@ import time
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import lab_resident  # noqa: E402
 import record_run  # noqa: E402
 import fluidity  # noqa: E402
 
 log = record_run.log
-RunError = record_run.RunError
+RunError = lab_resident.RunError
 
 
 class Agent:
@@ -163,57 +166,15 @@ class Driver:
 
     # -- resident -----------------------------------------------------------
     def cli(self, build, method, params=None, timeout=60):
-        result = subprocess.run([build.cli, method, json.dumps(params or {})], env=self.env, capture_output=True, text=True, timeout=timeout)
-        try:
-            reply = json.loads(result.stdout)
-        except ValueError:
-            raise RunError('%s: no JSON reply (exit %d): %s' % (method, result.returncode, result.stderr.strip()[-300:]))
-        if not reply.get('ok'):
-            error = reply.get('error') or {}
-            raise RunError('%s failed: %s %s' % (method, error.get('code'), error.get('message')))
-        return reply.get('result') or {}
+        return lab_resident.cli(self, build, method, params, timeout)
 
     def start_resident(self, build, label):
-        if self.socket.exists():
-            raise RunError('%s exists: another put.gd resident owns this session' % self.socket)
         env = dict(self.env, PUTGD_RECORD_DEBUG_LOG=str(self.run / 'logs' / ('record-%s.log' % label)),
                    PUTGD_REGION_DEBUG_LOG=str(self.run / 'logs' / ('region-%s.log' % label)))
-        self.resident = subprocess.Popen(build.launcher, env=env, stdin=subprocess.DEVNULL,
-                                         stdout=open(self.run / 'logs' / ('resident-%s.log' % label), 'a'),
-                                         stderr=subprocess.STDOUT, start_new_session=True)
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            try:
-                caps = self.cli(build, 'recording.capabilities', timeout=40)
-                break
-            except (RunError, subprocess.TimeoutExpired):
-                time.sleep(0.5)
-        else:
-            raise RunError('resident did not answer')
-        settings = self.cli(build, 'settings.get')
-        archive = (settings.get('document') or {}).get('archive') or {}
-        root = str(self.run / 'archive')
-        if not archive.get('keepUploads') or archive.get('root') != root:
-            self.cli(build, 'settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': root}},
-                                               'expectedRevision': (settings.get('metadata') or {}).get('observedRevision')})
-        return caps
+        return lab_resident.start_resident(self, build, label=label, env=env, no_notifications=self.args.no_notifications)
 
     def stop_resident(self, build):
-        if self.resident is None:
-            return
-        try:
-            self.cli(build, 'ui.quit', timeout=15)
-        except (RunError, subprocess.TimeoutExpired):
-            pass
-        try:
-            self.resident.wait(20)
-        except subprocess.TimeoutExpired:
-            os.killpg(self.resident.pid, signal.SIGTERM)
-            self.resident.wait(10)
-        deadline = time.monotonic() + 10
-        while self.socket.exists() and time.monotonic() < deadline:
-            time.sleep(0.2)
-        self.resident = None
+        lab_resident.stop_resident(self, build)
 
     def kwin_entry(self, build):
         """A temporary desktop entry so KWin offers zkde_screencast to this build's helper."""
@@ -572,6 +533,7 @@ def main(argv=None):
         p.add_argument('--runtime-dir', help='private XDG_RUNTIME_DIR for the resident (short path)')
         p.add_argument('--frames', action='store_true', help='keep one VNC tile frame per round as evidence')
         p.add_argument('--vnc-port', type=int, default=5900)
+        p.add_argument('--no-notifications', action='store_true', help="turn the run's own put.gd notifications off (private config), so none covers the run")
         if name == 'record':
             p.add_argument('--fps', type=int, default=60)
             p.add_argument('--seconds', type=float, default=10)

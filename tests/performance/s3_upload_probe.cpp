@@ -6,6 +6,7 @@
 //   s3_upload_probe ENDPOINT BUCKET FILE MODE [THRESHOLD_BYTES [EXTRA_LANES]]
 //   MODE: upload | single | cancel | interrupt | collision | probe
 //   EXTRA_LANES: idle upload slots lent to a multipart upload (0-3, default 0, #174)
+#include "../fixtures/LiveProbe.h"
 #include "storage/s3/S3Provider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -24,13 +25,7 @@
 using namespace putgd;
 namespace {
 struct Peak { qint64 rssKiB = 0, hwmKiB = 0; QList<qint64> pids; };
-qint64 statusField(const QString& path, const QByteArray& name) {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) return 0;
-    for (const auto& line : file.readAll().split('\n'))
-        if (line.startsWith(name)) return line.mid(name.size()).trimmed().split(' ').first().toLongLong();
-    return 0;
-}
+using test::probe::statusKiB;
 // Samples every putgd-s3-worker child of this process every 50 ms.
 class Sampler {
 public:
@@ -49,8 +44,8 @@ public:
                     if (!fields.mid(0, close).contains("(putgd-s3-worke")) continue;
                     if (fields.mid(close + 2).split(' ').value(1).toLongLong() != getpid()) continue;
                     std::lock_guard lock(mutex_);
-                    peak_.rssKiB = qMax(peak_.rssKiB, statusField("/proc/" + entry + "/status", "VmRSS:"));
-                    peak_.hwmKiB = qMax(peak_.hwmKiB, statusField("/proc/" + entry + "/status", "VmHWM:"));
+                    peak_.rssKiB = qMax(peak_.rssKiB, statusKiB("/proc/" + entry + "/status", "VmRSS:"));
+                    peak_.hwmKiB = qMax(peak_.hwmKiB, statusKiB("/proc/" + entry + "/status", "VmHWM:"));
                     if (!peak_.pids.contains(pid)) peak_.pids.append(pid);
                 }
                 QThread::msleep(50);
@@ -203,7 +198,7 @@ int main(int argc, char** argv) {
         line["secondErrorCode"] = second.error.code;
     }
     if (result.status == "uploaded") line["etag"] = result.receipt.concurrencyToken;
-    line["probeHwmKiB"] = statusField("/proc/self/status", "VmHWM:");
+    line["probeHwmKiB"] = statusKiB("/proc/self/status", "VmHWM:");
     printf("%s\n", QJsonDocument(line).toJson(QJsonDocument::Compact).constData());
     return 0;
 }
