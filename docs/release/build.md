@@ -5,7 +5,8 @@ Install normal distribution development packages (Ubuntu/Mint/Debian 13):
 
 ```sh
 sudo apt-get update
-sudo apt-get install build-essential git cmake ninja-build pkg-config \
+sudo apt-get install libtesseract-dev libleptonica-dev libzxing-dev tesseract-ocr-eng \
+  build-essential git cmake ninja-build pkg-config \
   qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev \
   qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev \
   libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
