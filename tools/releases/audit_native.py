@@ -192,7 +192,7 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         identity = json.loads(command([str(path), "--version-json"], env=env))
         if identity != result["manifest"]:
             raise ValueError(f"Compiled build manifest mismatch: {name}")
-        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker"):
+        if name not in ("putgd-s3-worker", "putgd-b2-worker", "putgd-http-worker", "putgd-ocr"):
             version = command([str(path), "--version"], env=env)
             if version != name + " " + result["manifest"]["version"]:
                 raise ValueError(f"Compiled version mismatch: {name}")

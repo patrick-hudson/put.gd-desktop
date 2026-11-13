@@ -50,6 +50,22 @@ target_link_libraries(putgd-ocr PRIVATE putgd_ocr_engine putgd_text_child Qt6::C
 # Some distributions' tesseract.pc lists libcurl and libarchive among its own
 # Libs; the helper needs neither directly.
 target_link_options(putgd-ocr PRIVATE "LINKER:--as-needed")
+set(ocr_worker_identity_check [=[
+  file(READ "@PUTGD_BUILD_IDENTITY_DIR@/build-info.json" expected_ocr_manifest)
+  execute_process(COMMAND "$<TARGET_FILE:putgd-ocr>" --version-json
+    RESULT_VARIABLE ocr_identity_result OUTPUT_VARIABLE ocr_manifest
+    ERROR_VARIABLE ocr_identity_error OUTPUT_STRIP_TRAILING_WHITESPACE TIMEOUT 15)
+  if(NOT ocr_identity_result EQUAL 0)
+    message(FATAL_ERROR "Build the OCR worker before installation or packaging")
+  endif()
+  string(JSON expected_ocr_identity GET "${expected_ocr_manifest}")
+  string(JSON actual_ocr_identity GET "${ocr_manifest}")
+  if(NOT actual_ocr_identity STREQUAL expected_ocr_identity)
+    message(FATAL_ERROR "OCR worker does not match the compiled build manifest; build all product executables")
+  endif()
+]=])
+string(CONFIGURE "${ocr_worker_identity_check}" ocr_worker_identity_check @ONLY)
+install(CODE "${ocr_worker_identity_check}")
 install(TARGETS putgd-ocr RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(BUILD_TESTING)

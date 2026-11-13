@@ -6,6 +6,9 @@
 #include "Confinement.h"
 #include "Recognize.h"
 #include "TextJobChild.h"
+#include "core/BuildInfo.h"
+#include <cstdio>
+#include <cstring>
 #include <QString>
 #include <QStringList>
 #include <cstdlib>
@@ -51,6 +54,7 @@ QStringList dataDirectories(){
 }
 
 int main(int argc,char** argv){
+ if(argc==2&&std::strcmp(argv[1],"--version-json")==0){std::printf("%s\n",putgd::buildManifestJson());return 0;}
  // Only the control pipes, stderr and the two memfds stay open.
  ::syscall(SYS_close_range,unsigned(textjob::outputDescriptor+1),~0u,0u);
  const auto directories=dataDirectories();
