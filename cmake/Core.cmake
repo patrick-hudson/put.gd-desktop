@@ -22,8 +22,11 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
   src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp src/core/FolderZip.cpp
-  src/core/HostEnvironment.cpp)
+  src/core/HostEnvironment.cpp src/core/QrImage.cpp src/core/qrcodegen/qrcodegen.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# Nayuki's QR Code generator v1.8.0 (MIT), vendored unmodified for History's
+# Show QR code (#1428): the resident and putgd-ui share it through this library.
+set_source_files_properties(src/core/qrcodegen/qrcodegen.cpp PROPERTIES COMPILE_OPTIONS "-w")
 # Which published package this build becomes, and whether it may check for a
 # newer version once a day (#293). The package jobs set the target; a build
 # without one (development, source archive) never checks. A distribution

@@ -7,7 +7,7 @@
 #include <QPointer>
 class QTextDocument;class QGridLayout;class QCheckBox;class QDialog;class QSplitter;class QListWidget;class QVBoxLayout;class QScrollArea;class QStackedWidget;class QResizeEvent;class QListView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;class QLineEdit;class QComboBox;class QProgressBar;class QToolButton;
 namespace putgd {
-class FileDialog;namespace Ui { class ElidedLabel; }
+class FileDialog;class QrCodeWindow;namespace Ui { class ElidedLabel; }
 class HistoryWindow final:public RetainedWindow {
  Q_OBJECT
 public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&);void releasePreview();
@@ -31,6 +31,13 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // savedCopyVisible alongside the page state (historyState).
  void command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  QJsonObject historyState()const;
+ // history.qr show (#1428): the resident refreshed the link and asks for its
+ // window; params historyId, url. The reply is the window's state.
+ void showQrCode(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ // Why Copy text (a retained local PNG or JPEG, as Edit again) or Show QR code
+ // (the link Copy link would copy) cannot apply to this record; empty when it can.
+ static QString copyTextUnavailable(const QJsonObject& record);
+ static QString qrUnavailable(const QJsonObject& record);
  void confirmUploads(const QStringList& ids);void showFailedUploads();
  // The remote-deletion confirmation for a delete.prepare reply: each exact
  // target by file name, then the full preparation under Technical details.
@@ -69,6 +76,9 @@ private:
  void updateHeading();bool previewRetry_=false;Ui::ElidedLabel* heading_=nullptr;
  UiSession& session_;HistoryModel* model_=nullptr;QListView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_,*title_,*outcome_,*activeLabel_;QPlainTextEdit *details_;QWidget* summary_;QLabel* capabilityHint_;QPushButton* changeLocalCopies_;QLineEdit* link_;QLabel* linkExpiry_=nullptr;QLabel* browserFeedback_=nullptr;QWidget* previousLink_=nullptr;QLineEdit* previousUrl_=nullptr;QComboBox* items_;QProgressBar* progress_;QWidget* activeBanner_=nullptr;QToolButton *grid_;QCheckBox* showCancelled_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_,*retry_,*cancel_,*copyImage_,*saveAs_,*editAgain_,*saveDiagnostics_;
  QString unlockLinkItemId_;
+ // Copy text and Show QR code (#1428), beside Edit again and Copy link.
+ QPushButton *copyText_=nullptr,*showQr_=nullptr;QPointer<QrCodeWindow> qrWindow_;QTimer* textPoll_=nullptr;QString textOperation_;
+ void copyText(const QJsonObject& record);void requestQrCode(const QJsonObject& record);void pollText();
  QStringList restoreSelection_;QString selectedItemId_,sharingId_,sharingFeedback_,deletionId_,activeId_;QJsonObject currentDetail_;bool restoringSelection_=false,deleteAccepting_=false,sharingFeedbackError_=false,sharingStopped_=false,sharingAccepting_=false,sharingPollActive_=false,deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
  QTimer *sharingTimer_=nullptr,*deletionTimer_=nullptr,*searchTimer_=nullptr,*previewRequestTimer_=nullptr;QString previewRequestId_,previewCandidate_;QSet<QString> previewRefused_;quint64 selectionRequest_=0;std::shared_ptr<std::atomic_bool> previewCancelled_;QString pendingPreviewPath_,pixelDimensions_;
  // The item and preview file the inspector shows now, kept across reloads.

@@ -191,6 +191,16 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   if(name!="edit"){corners.moveTo(16,21);corners.lineTo(21,21);corners.lineTo(21,16);}p.drawPath(corners);
   if(name=="edit"){QPainterPath pencil;pencil.moveTo(18,10);pencil.lineTo(21,13);pencil.lineTo(13,21);pencil.lineTo(9,21);pencil.lineTo(10,18);pencil.closeSubpath();p.drawPath(pencil);p.drawLine(16,12,19,15);}
   else{p.drawLine(8,12,16,12);p.drawLine(12,8,12,16);}
+ } else if(name=="copy-text") {
+  // Copy text (#1428): a letter T inside the region's selection corners.
+  QPainterPath corners;corners.moveTo(8,3);corners.lineTo(3,3);corners.lineTo(3,8);corners.moveTo(3,16);corners.lineTo(3,21);corners.lineTo(8,21);
+  corners.moveTo(16,3);corners.lineTo(21,3);corners.lineTo(21,8);corners.moveTo(16,21);corners.lineTo(21,21);corners.lineTo(21,16);p.drawPath(corners);
+  p.drawLine(QPointF(8,8),QPointF(16,8));p.drawLine(QPointF(12,8),QPointF(12,17));
+ } else if(name=="qr-code") {
+  // Show QR code (#1428): three finder squares and a few modules.
+  rounded(3,3,7,7,1.5);rounded(14,3,7,7,1.5);rounded(3,14,7,7,1.5);
+  fill(color);p.drawRect(QRectF(5.6,5.6,1.8,1.8));p.drawRect(QRectF(16.6,5.6,1.8,1.8));p.drawRect(QRectF(5.6,16.6,1.8,1.8));
+  p.drawRect(QRectF(14,14,2.6,2.6));p.drawRect(QRectF(18.4,14,2.6,2.6));p.drawRect(QRectF(14,18.4,2.6,2.6));fill(secondary);p.drawRect(QRectF(18.4,18.4,2.6,2.6));
  } else if(name=="window") {
   rounded(3,4,18,16);p.drawLine(3,9,21,9);p.drawLine(7,6.5,9,6.5);
  } else if(name=="desktop") {

@@ -203,7 +203,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="editor.recognize") {
   if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
-  unbuilt();return;
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
  }
  // `result` is the recognition result's identity from editor.inspect; one that
  // is no longer current is refused by the editor with edit_stale.
@@ -211,15 +211,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   const bool range=p.contains("from")||p.contains("to");
   if(!fields(p,{"id","result"},{"from","to","all","none"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||(range?1:0)+(p.contains("all")?1:0)+(p.contains("none")?1:0)!=1
      ||(range&&(!wholeNumber("from",0,textjob::maximumWords-1)||!wholeNumber("to",0,textjob::maximumWords-1)))||(p.contains("all")&&p["all"]!=true)||(p.contains("none")&&p["none"]!=true)){reply(invalid(),{});return;}
-  unbuilt();return;
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
  }
  if(method=="editor.copyText") {
   if(!fields(p,{"id","result"},{"all"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||(p.contains("all")&&!p["all"].isBool())){reply(invalid(),{});return;}
-  unbuilt();return;
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
  }
  if(method=="editor.copyCode"||method=="editor.openCode") {
   if(!fields(p,{"id","result","index"})||!string(p,"id")||!wholeNumber("result",1,2147483647)||!wholeNumber("index",0,textjob::maximumCodes-1)){reply(invalid(),{});return;}
-  unbuilt();return;
+  {auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);}return;
  }
  if(method=="history.copyText") {
   if(!fields(p,{"id"},{"keepResult"})||!string(p,"id")||(p.contains("keepResult")&&!p["keepResult"].isBool())){reply(invalid(),{});return;}
@@ -231,7 +231,10 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   const auto mode=p["mode"].toString();const bool save=mode=="save";
   if(!fields(p,{"id","mode"},{"path","overwrite"})||!string(p,"id")||!p["mode"].isString()||!QStringList{"copy","save","show"}.contains(mode)||save!=p.contains("path")
      ||(save&&(!string(p,"path",4096)||!QDir::isAbsolutePath(p["path"].toString())))||(p.contains("overwrite")&&(!save||!p["overwrite"].isBool()))){reply(invalid(),{});return;}
-  unbuilt();return;
+  // show opens the code in the History window, which the user (or ui.show) opened.
+  QPointer<LocalServer> guarded(this);
+  const auto show=[guarded](const QJsonObject& link,JsonReply done){if(!guarded||!guarded->uiCommand_){done({"ui_unavailable","This resident has no graphical interface",{}},{});return;}guarded->uiCommand_("historyQr",link,std::move(done));};
+  history_.qr(p["id"].toString(),mode,p["path"].toString(),p["overwrite"].toBool(),reply,uiCommand_?HistoryService::QrShow(show):HistoryService::QrShow{});return;
  }
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}

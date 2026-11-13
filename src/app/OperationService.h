@@ -113,6 +113,9 @@ public:
  void copyResult(const QString& id,JsonReply);
  void copyHistoryImage(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
+ // History's QR code image (#1428): an explicit copy of a PNG the caller made,
+ // superseded like copyHistoryUrl when a newer explicit copy took the ticket.
+ void copyHistoryQr(QByteArray png,JsonReply,quint64 ticket);
  // A history item's missing preview (#190): an image's or a video's that was
  // never made, failed or was removed by cleanup, made from the retained
  // artifact or a verified local copy through the one-at-a-time poster queue.
@@ -261,6 +264,8 @@ private:
  void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken);
  QString editorDestination(const Operation&) const;
  void copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done);
+ // The editor's Copy text (#1428): recognized text or a code's content, as an explicit copy.
+ void copyEditedText(const QString& id,QString text,std::function<void(Error)> done);
  void abandonUploadCopies(const QString&);
  // A batch item finished its upload stage, with or without a link (each_link ordering).
  void uploadItemSettled(const QString&,int);

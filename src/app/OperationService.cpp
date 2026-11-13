@@ -529,7 +529,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  op.state="editing";op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
- const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;
+ const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
  const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
@@ -541,6 +541,12 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,png=std::move(png),done=std::move(done)]() mutable {
    if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the image was copied",{}});return;}
    owner->copyEditedImage(id,std::move(png),std::move(done));
+  },Qt::QueuedConnection);
+ });
+ session->setTextCopyHandler([owner=QPointer<OperationService>(this),id=op.id](QString text,std::function<void(Error)> done){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,text=std::move(text),done=std::move(done)]() mutable {
+   if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the text was copied",{}});return;}
+   owner->copyEditedText(id,std::move(text),std::move(done));
   },Qt::QueuedConnection);
  });
  background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[=,this](Error e,QJsonObject) mutable {
@@ -558,11 +564,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -581,6 +587,15 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     });
   });
  });
+}
+void OperationService::copyEditedText(const QString& id,QString text,std::function<void(Error)> done) {
+ if(editingId_!=id){done({"editor_closed","The editor closed before the text was copied",{}});return;}
+ // An explicit copy from the moment it is asked for: a later explicit copy, or
+ // the user changing the clipboard before it lands, suppresses it.
+ const auto ticket=invalidateCopyEligibility();const auto revision=source_.clipboardRevision();
+ CopyPayload payload;payload.kind="text";payload.text=std::move(text);
+ // Never the text itself in a log: only that one was copied.
+ deliverCopy(payload,[id,done=std::move(done)](Error error){if(!error)logging::info(logOperation(),"Recognized text copied",{{"operationId",id}});done(error);},[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
 }
 void OperationService::copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done) {
  if(editingId_!=id){done({"editor_closed","The editor closed before the image was copied",{}});return;}
@@ -1456,6 +1471,11 @@ void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
  },{},preparation);
 }
 void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});}
+void OperationService::copyHistoryQr(QByteArray png,JsonReply reply,quint64 ticket) {
+ if(ticket!=invocation_){reply({"copy_suppressed","A newer clipboard action superseded this copy",{}},{});return;}
+ CopyPayload payload;payload.kind="image";payload.encodedImage=std::move(png);
+ deliverCopy(payload,[reply](Error e){reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});
+}
 QJsonObject OperationService::capabilities() const {
 #ifdef Q_OS_UNIX
  const bool editor=QFileInfo(editorHelper_.isEmpty()?QCoreApplication::applicationDirPath()+"/putgd-ui":editorHelper_).isExecutable();

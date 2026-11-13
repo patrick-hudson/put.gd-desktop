@@ -1,5 +1,6 @@
 #pragma once
 #include "EditDocument.h"
+#include "TextLayer.h"
 #include <QHash>
 #include <QPointer>
 #include <QWidget>
@@ -7,7 +8,7 @@
 #include <optional>
 
 namespace putgd::editor {
-enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line};
+enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text,Step,Pen,Ellipse,Line,CopyText};
 struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;bool pixelate=false;int fontPixels=28;QString fontFamily;int stepPixels=defaultStepPixels;};
 
 // Interactive view of one EditDocument. The base stays in the document; only
@@ -69,7 +70,14 @@ public:
  // number set here. Undo, redo and agent edits recount from the highest step.
  int nextStepNumber() const {return nextStep_;}
  void setNextStepNumber(int);
+ // Copy text (#1428): the recognized words this canvas selects and tints while
+ // the tool is active. The window owns the layer and the recognition.
+ void setTextLayer(TextLayer* layer) {textLayer_=layer;update();}
+ TextLayer* textLayer() const {return textLayer_;}
 signals:
+ // Copy text: the selection changed, Ctrl+C on the canvas, Escape with nothing selected.
+ void textSelectionChanged();
+ void textCopyRequested();
  void changed();
  void viewChanged();
  void selectionChanged();
@@ -130,5 +138,7 @@ private:
  QWidget* textWarning_=nullptr;
  QPointer<QLineEdit> textEditor_;QPointF textAnchor_;quint64 textShape_=0;
  int nextStep_=1,stepStart_=1;
+ TextLayer* textLayer_=nullptr;bool selectingText_=false;
+ bool textPress(QMouseEvent*);bool textKey(QKeyEvent*);
 };
 }
