@@ -681,8 +681,9 @@ QImage decodeTextImage(const QByteArray& bytes,const ResourceLimits& limits,Erro
   auto copy=bytes;QBuffer buffer(&copy);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
   const auto size=reader.size();
   if(!size.isValid()){error=textSourceUnsupported();return {};}
-  if(qint64(size.width())*size.height()>textjob::maximumInputPixels){error=textjob::failure("input_excessive");return {};}
-  auto image=reader.read();if(image.isNull())error=textSourceUnsupported();
+  if(qint64(size.width())*size.height()>std::min<qint64>(limits.imagePixels,textjob::maximumInputPixels)||qint64(size.width())*size.height()>limits.imageBytes/4){error=textjob::failure("input_excessive");return {};}
+  auto image=reader.read();if(image.isNull()){error=textSourceUnsupported();return {};}
+  if(image.sizeInBytes()>limits.imageBytes){error=textjob::failure("input_excessive");return {};}
   return image;
  }
  if(!bytes.startsWith("\xff\xd8\xff")){error=textSourceUnsupported();return {};}
