@@ -89,7 +89,7 @@
         "/^packaging/appimage/tools\\.lock\\.json$/"
       ],
       "matchStrings": [
-        "\"repository\": \"https://github\\.com/(?<depName>tesseract-ocr/tessdata_fast)\\.git\",\\s*\"ref\": \"(?<currentValue>[^\"]+)\",\\s*\"commit\": \"(?<currentDigest>[a-f0-9]{40})\""
+        "\"repository\": \"(?<depName>https://github\\.com/tesseract-ocr/tessdata_fast)\\.git\",\\s*\"ref\": \"(?<currentValue>[^\"]+)\",\\s*\"commit\": \"(?<currentDigest>[a-f0-9]{40})\""
       ],
       "datasourceTemplate": "git-refs",
       "versioningTemplate": "git"

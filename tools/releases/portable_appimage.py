@@ -549,6 +549,26 @@ def audit_root_desktop_entry(appdir: Path) -> str:
     return ROOT_DESKTOP_ENTRY
 
 
+def ocr_library_paths(appdir: Path, path: Path) -> dict:
+    """Check resolution without loader variables, including transitive engines."""
+    output = subprocess.run(["ldd", str(path)], check=True, env={},
+                            capture_output=True, text=True).stdout
+    if "not found" in output:
+        raise ValueError("Unresolved empty-environment OCR dependency: " + path.name)
+    resolved = {}
+    host_runtime = {"libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0",
+                    "librt.so.1", "libresolv.so.2", "libstdc++.so.6", "libgcc_s.so.1"}
+    for name, target in re.findall(r"^\s*(\S+)\s+=>\s+(\S+)", output, re.M):
+        location = Path(target).resolve()
+        bundled = appdir / "usr/lib" / name
+        # A host copy with the same SONAME must never mask a broken RUNPATH.
+        if bundled.exists() or name not in host_runtime:
+            if not location.is_relative_to(appdir.resolve()):
+                raise ValueError("OCR dependency resolves outside AppDir: " + name + " -> " + str(location))
+        resolved[name] = str(location)
+    return resolved
+
+
 def audit_ocr_runtime(appdir: Path) -> dict:
     """Check the minimal engine closure and exact English data in a packed tree."""
     lock = json.loads(LOCK.read_text())["buildInputs"]
@@ -556,18 +576,20 @@ def audit_ocr_runtime(appdir: Path) -> dict:
     if not data.is_file() or digest(data) != lock["tessdata_fast"]["sha256"]:
         raise ValueError("AppImage English tessdata_fast missing or changed")
     libraries = {}
+    paths = {}
     forbidden = re.compile(r"^lib(?:curl|archive|gomp|omp|png|jpeg|tiff|webp|gif|openjp|zint)")
     for prefix in OCR_LIBRARIES:
         files = [p for p in (appdir / "usr/lib").glob(prefix + "*.so*") if not p.is_symlink()]
         if len(files) != 1:
             raise ValueError("Expected one bundled OCR engine: " + prefix)
         path = files[0]
-        resolved = subprocess.run(["ldd", str(path)], check=True, env={}, capture_output=True, text=True).stdout
-        if "not found" in resolved or any(forbidden.match(line.strip().split()[0])
-                                          for line in resolved.splitlines() if line.strip()):
-            raise ValueError("Nonminimal or unresolved OCR engine: " + path.name)
+        resolved = ocr_library_paths(appdir, path)
+        if any(forbidden.match(name) for name in resolved):
+            raise ValueError("Nonminimal OCR engine: " + path.name)
+        paths[path.name] = resolved
         libraries[path.name] = digest(path)
-    return {"libraries": libraries, "englishSha256": digest(data)}
+    paths["putgd-ocr"] = ocr_library_paths(appdir, appdir / "usr/bin/putgd-ocr")
+    return {"libraries": libraries, "resolvedEmptyEnvironment": paths, "englishSha256": digest(data)}
 
 
 def audit_deployed(appdir: Path, inventory: dict) -> dict:
