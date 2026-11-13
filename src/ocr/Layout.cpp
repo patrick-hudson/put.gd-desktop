@@ -61,6 +61,24 @@ void fill(GreyImage& image,const std::array<QPointF,4>& corners,uint8_t value){
  }
 }
 }
+namespace {
+// Where to cut inside a run of rows [first, last] that a blank test passed:
+// the middle of its longest stretch of least-inked rows. A "blank" row may
+// still hold a few pixels of a descender or an ascender (up to width/256), and
+// a cut through it clips that glyph in the strip on each side ("sample" read
+// as "samnle", "beside" as "heside").
+int quietestRow(const Profile& profile,int first,int last){
+ int least=profile.rowInk.at(first);for(int y=first+1;y<=last;++y)least=std::min(least,profile.rowInk.at(y));
+ int best=first,bestLength=0;
+ for(int y=first;y<=last;){
+  if(profile.rowInk.at(y)!=least){++y;continue;}
+  int end=y;while(end+1<=last&&profile.rowInk.at(end+1)==least)++end;
+  if(end-y+1>bestLength){bestLength=end-y+1;best=(y+end+1)/2;}
+  y=end+1;
+ }
+ return best;
+}
+}
 Profile measure(const GreyView& image,const QList<Quad>& codes){
  Profile profile;profile.rowInk.fill(0,image.height);
  QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)).intersected(QRect(0,0,image.width,image.height)));
@@ -135,7 +153,7 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
    for(int y=limit-1;y>=start+bandRows*3/4;--y)if(profile.blank(y,width)){gap=y;break;}
    if(gap>=0){
     int first=gap;while(first-1>=start+bandRows*3/4&&profile.blank(first-1,width))--first;
-    const int cut=(first+gap+1)/2;
+    const int cut=quietestRow(profile,first,gap);
     result.bands.append({start,cut,seam});start=cut;seam=false;
    }else{
     result.bands.append({start,limit,seam});
@@ -145,18 +163,62 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
   return result;
  }
 }
+namespace {
+// The line pitch of a row profile: its period, the first peak of its
+// autocorrelation after it has fallen below a third of its height. 0 when the
+// profile has no clear period (no text lines, or too few).
+int linePitch(const QList<int>& ink,int height){
+ const int longest=std::min(200,height/4);
+ if(longest<6)return 0;
+ double mean=0;for(int y=0;y<height;++y)mean+=ink.at(y);mean/=height;
+ std::vector<double> d(size_t(height),0.0);for(int y=0;y<height;++y)d[size_t(y)]=ink.at(y)-mean;
+ const auto at=[&](int lag){double c=0;for(int y=0;y+lag<height;++y)c+=d[size_t(y)]*d[size_t(y+lag)];return c/(height-lag);};
+ const double zero=at(0);if(zero<=0)return 0;
+ bool fell=false;int best=0;double peak=0;
+ for(int lag=3;lag<=longest;++lag){
+  const double c=at(lag);
+  if(!fell){fell=c<zero/3;continue;}
+  if(c>=zero/3&&c>peak){peak=c;best=lag;}
+  else if(best>0)break;
+ }
+ return best;
+}
+}
 QList<Band> strips(const Profile& profile,int width,int height,int parts){
- QList<Band> out;const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
+ QList<Band> out;
  const auto blank=[&](int y){return y>=0&&y<height&&y<profile.rowInk.size()&&profile.blank(y,width);};
+ const auto ink=[&](int y){return profile.rowInk.at(y);};
+ // Between two lines with no blank row (a window border or a rule down the
+ // page, or lines set without leading, inks every row): within one line pitch
+ // of the target, the row with the least ink is between two lines, where only
+ // descenders and ascenders reach; taken when it holds at most a quarter of
+ // the ink of the rows around it, so a strip never starts inside a line.
+ int pitch=-1;
+ const auto betweenLines=[&](int target){
+  if(pitch<0)pitch=height<=profile.rowInk.size()?linePitch(profile.rowInk,height):0;
+  if(pitch<6)return -1;
+  const int from=std::max(1,target-pitch/2-1),to=std::min(height-2,target+pitch/2+1);
+  int low=-1;for(int y=from;y<=to;++y)if(low<0||ink(y)<ink(low))low=y;
+  if(low<0)return -1;
+  int last=low;while(last+1<=to&&ink(last+1)==ink(low))++last;
+  QList<int> around;for(int y=std::max(0,target-2*pitch);y<std::min(height,target+2*pitch);++y)around.append(ink(y));
+  std::nth_element(around.begin(),around.begin()+around.size()/2,around.end());
+  return 4*ink(low)<=around.at(around.size()/2)?(low+last)/2:-1;
+ };
+ const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
  int start=0;
  for(int k=1;k<parts&&height>0;++k){
   const int target=int(qint64(height)*k/parts),reach=std::max(1,height/(2*parts));
   int found=-1;
   for(int d=0;d<=reach&&found<0;++d){if(blank(target-d))found=target-d;else if(blank(target+d))found=target+d;}
-  if(found<0)continue;
-  int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
-  const int cut=(first+last+1)/2;
-  if(cut-start<4*lineRows||height-cut<4*lineRows)continue;
+  int cut=-1;
+  if(found>=0){
+   int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
+   cut=quietestRow(profile,first,last);
+  }else cut=betweenLines(target);
+  if(cut<0)continue;
+  const int shortest=4*(profile.lineHeight>0?lineRows:std::max(lineRows,pitch));
+  if(cut-start<shortest||height-cut<shortest)continue;
   out.append({start,cut,false});start=cut;
  }
  out.append({start,height,false});
@@ -170,6 +232,7 @@ struct Activity {
  int columns=0,rows=0;
  std::vector<uint16_t> down,across;
  uint16_t& at(std::vector<uint16_t>& grid,int x,int y){return grid[size_t(y)*size_t(columns)+size_t(x)];}
+ uint16_t at(const std::vector<uint16_t>& grid,int x,int y)const{return grid[size_t(y)*size_t(columns)+size_t(x)];}
  qint64 sum(const std::vector<uint16_t>& grid,int x0,int y0,int x1,int y1)const{
   qint64 n=0;for(int y=y0;y<y1;++y){const auto* row=grid.data()+size_t(y)*size_t(columns);for(int x=x0;x<x1;++x)n+=row[x];}return n;
  }
@@ -208,14 +271,14 @@ Activity activity(const GreyView& image,const QList<Quad>& codes,int longRun){
 struct CellRect { int x0=0,y0=0,x1=0,y1=0; int width()const{return x1-x0;} int height()const{return y1-y0;} };
 // The widest run of empty projection entries strictly inside [0, size), at
 // least minimum long, with activity on both sides. Returns its middle or -1.
-int gutter(const std::vector<qint64>& projection,int minimum,qint64 noise){
+int gutter(const std::vector<qint64>& projection,int minimum,qint64 noise,int* from=nullptr,int* to=nullptr){
  const int size=int(projection.size());int best=-1,bestLength=0;
  int first=0;while(first<size&&projection[size_t(first)]<=noise)++first;
  int last=size-1;while(last>=0&&projection[size_t(last)]<=noise)--last;
  for(int i=first;i<=last;){
   if(projection[size_t(i)]>noise){++i;continue;}
   int j=i;while(j<=last&&projection[size_t(j)]<=noise)++j;
-  if(j-i>=minimum&&j-i>bestLength){bestLength=j-i;best=(i+j)/2;}
+  if(j-i>=minimum&&j-i>bestLength){bestLength=j-i;best=(i+j)/2;if(from)*from=i;if(to)*to=j;}
   i=j;
  }
  return best;
@@ -224,7 +287,20 @@ void cut(const Activity& a,const CellRect& r,int down,int across,int minimumSide
  if(depth<10&&r.width()>=2*minimumSide){
   std::vector<qint64> columns(size_t(r.width()));
   for(int x=r.x0;x<r.x1;++x)columns[size_t(x-r.x0)]=a.sum(a.down,x,r.y0,x+1,r.y1);
-  const int at=gutter(columns,down,r.height()/16);
+  int from=0,to=0;int at=gutter(columns,down,r.height()/16,&from,&to);
+  // Not a gutter where a text line runs straight across it: on a tall page a
+  // single long line past the others is under the noise floor, and its tail
+  // was cut into panels at its word spaces. Two rows of cells in a row, each
+  // active over nine tenths of the gutter's width, are such a line; a bar of
+  // icons or a title across a screen has gaps and is not.
+  if(at>=0){
+   int run=0;
+   for(int y=r.y0;y<r.y1&&at>=0;++y){
+    int active=0;for(int x=r.x0+from;x<r.x0+to;++x)if(a.at(a.down,x,y)||a.at(a.across,x,y))++active;
+    run=10*active>=9*(to-from)?run+1:0;
+    if(run>=2)at=-1;
+   }
+  }
   if(at>=minimumSide&&r.width()-at>=minimumSide){
    cut(a,{r.x0,r.y0,r.x0+at,r.y1},down,across,minimumSide,depth+1,out);
    cut(a,{r.x0+at,r.y0,r.x1,r.y1},down,across,minimumSide,depth+1,out);

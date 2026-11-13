@@ -18,7 +18,7 @@
 namespace putgd::ocr {
 namespace {
 // One recognition task: a band (a banded image) or a layout block (a single pass).
-struct Outcome { BandText text;bool done=false,cutShort=false,failed=false; };
+struct Outcome { BandText text;bool done=false,cutShort=false,failed=false;int engine=0; };
 // The resident set now, from /proc/self/statm (readable under Landlock).
 qint64 residentBytes(){
  QFile statm(QStringLiteral("/proc/self/statm"));
@@ -127,7 +127,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  stage.restart();
 
  // The tasks: each panel's bands, or, for a panel read in a single pass and
- // large enough to share, strips cut at blank row gaps only. A strip boundary
+ // large enough to share, strips cut between text lines only (at blank row
+ // gaps, or at the least-inked row between two lines). A strip boundary
  // splits no line and needs no seam, and the order stays the panel's own, top
  // to bottom, which is what page segmentation 6 reads. Every task is its own
  // band copy: inside a SetRectangle of one shared copy, Tesseract 5.3.4 read
@@ -138,7 +139,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   auto& p=panelList[i];
   const qint64 scaled=qint64(std::ceil(p.rect.width()*p.plan.scale))*qint64(std::ceil(p.rect.height()*p.plan.scale));
   if(!p.plan.banded()&&threads>1&&scaled>=options.parallelPixels){
-   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),threads*2);
+   const auto cut=strips(p.profile,p.rect.width(),p.rect.height(),threads*options.stripsPerThread);
    if(cut.size()>1){p.tasks=cut;p.split=true;}
   }
   anyBanded|=p.plan.banded();
@@ -171,19 +172,28 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  for(const auto& t:tasks)shared->taskPixels.push_back(t.pixels);
  // One worker: takes tasks until there are none, the budget or memory says
  // stop, or the job is closing. Touches only shared and its own copies.
- const auto work=[shared,copyOf](TextEngine* engine,bool extraWorker,const std::function<void()>& afterFirstTask){
+ const auto work=[shared,copyOf](TextEngine* engine,int worker,const std::function<void()>& afterFirstTask){
+  const bool extraWorker=worker>0;
+  qint64 largestRead=0;  // the scaled pixels of the largest task this worker has read
   for(;;){
    if(shared->stop.load()||shared->closing.load())return;
    // The memory budget: an extra worker takes the next task only when what
    // it may grow by still fits beside what the other workers have reserved:
    // twice the largest growth a task has shown, or 12 bytes a scaled pixel of
    // that task, whichever is more (dense bands grew 15 to 20 bytes a pixel; a
-   // whole screen's first panel can be tiny and its later ones large).
+   // whole screen's first panel can be tiny and its later ones large). Once
+   // this worker has read a task, only the pixels beyond the largest it has
+   // read count, at 12 bytes: the working memory of a task is freed into this
+   // thread's own heap and reused by the next. (Counting it again left a dense
+   // 1 MP terminal to one engine: 6 of its 8 strips.)
    const auto need=[&](int index){
     const qint64 pixels=index<shared->taskCount?shared->taskPixels[size_t(index)]:0;
+    if(largestRead>0)return 12*std::max<qint64>(0,pixels-largestRead);
     return std::max<qint64>(2*shared->taskGrowth.load(),12*pixels);
    };
-   if(extraWorker&&!shared->roomFor(shared->reserved.load()+need(shared->next.load())))return;
+   // A worker whose next task needs nothing new adds no memory by going on,
+   // whatever the resident set of the job has come to.
+   if(extraWorker){const qint64 more=need(shared->next.load());if(more>0&&!shared->roomFor(shared->reserved.load()+more))return;}
    // Holding a task: the end of the job waits for it (within the budget).
    // Counted before the task is taken, so the end never sees every task
    // taken and none held while one is being picked up.
@@ -192,6 +202,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    const int task=shared->next.fetch_add(1);
    if(task>=shared->taskCount)return;
    const qint64 reservation=need(task);shared->reserved.fetch_add(reservation);
+   largestRead=std::max(largestRead,shared->taskPixels[size_t(task)]);
    struct Unreserve { Shared* s;qint64 n; ~Unreserve(){s->reserved.fetch_sub(n);} } unreserve{shared,reservation};
    const qint64 before=residentBytes();
    // The time budget: never start a task that cannot finish, and give every
@@ -205,7 +216,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    // The deadline, read once after the copy: spent means stop, never "none".
    const int deadline=shared->budgetMs>0?shared->left():0;
    if(shared->budgetMs>0&&deadline<=0){shared->stop=true;return;}
-   Outcome outcome;
+   Outcome outcome;outcome.engine=worker;
    outcome.text=engine->recognize(copy,scale,deadline,&outcome.cutShort,&outcome.failed);
    outcome.done=true;
    if(outcome.failed||outcome.cutShort)shared->stop=true;
@@ -226,8 +237,9 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   for(int w=0;w<count;++w){
    shared->extra.push_back(std::make_unique<TextEngine>());auto* engine=shared->extra.back().get();
    shared->running.fetch_add(1);
-   pool.emplace_back([shared,engine,work]{
-    if(engine->startLike(shared->first).isEmpty())work(engine,true,{});
+   const int worker=int(shared->extra.size());
+   pool.emplace_back([shared,engine,work,worker]{
+    if(engine->startLike(shared->first).isEmpty())work(engine,worker,{});
     std::lock_guard<std::mutex> guard(shared->lock);shared->running.fetch_sub(1);shared->idle.notify_all();
    });
   }
@@ -253,8 +265,13 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // Strips and panels read in one pass share at once: each extra engine is
  // reserved its own cost and four bytes a pixel of the largest task
  // (measured: four engines on a 1 MP region at 2x peaked at 101 to 123 MiB).
- if(!measureFirst&&wanted>1)startExtras(fitting(engineCost+4*largestTask));
- work(&shared->first,false,afterFirstTask);
+ // An extra engine shares the language data the first one read, so it costs
+ // the first one's start less those bytes (on m74 the first took 24 MiB with
+ // English, each extra about 15; counting 24 each left one core of four idle
+ // on a dense 1 MP terminal).
+ const qint64 extraEngineCost=std::max<qint64>(16*1024*1024,engineCost-shared->data.bytesHanded());
+ if(!measureFirst&&wanted>1)startExtras(fitting(extraEngineCost+4*largestTask));
+ work(&shared->first,0,afterFirstTask);
  // Wait for the extra workers, never past the budget (and a second's grace
  // for a pass ending on its monitor deadline). Then close the handover: a
  // late worker's result is dropped, and once no band copy is running nothing
@@ -283,6 +300,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  const int extraEngines=int(shared->extra.size());
  if(!late)delete shared;
  result.recognition.parts=taskCount;result.recognition.threads=1+extraEngines;result.recognition.panels=int(panelList.size());
+ result.recognition.engineTasks.fill(0,1+extraEngines);
+ for(const auto& outcome:outcomes)if(outcome.done&&outcome.engine<=extraEngines)++result.recognition.engineTasks[outcome.engine];
 
  // An engine that failed on a task fails the job: no text is not success.
  for(const auto& outcome:outcomes)if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}

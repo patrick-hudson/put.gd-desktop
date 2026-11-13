@@ -37,7 +37,8 @@ struct BandText {
 // valid data). Every file Tesseract asks for, including those a data file pulls
 // in by itself, counts against maximumLanguages and maximumLanguageBytes. A file
 // is read from disk once and kept in memory, so a second engine starts without
-// touching the disk.
+// touching the disk. Only the entries the LSTM engine reads are kept and handed
+// to Tesseract, so a model that also carries the legacy engine costs no more.
 class LanguageData final {
 public:
  explicit LanguageData(const QStringList& directories);
@@ -46,9 +47,12 @@ public:
  LanguageData& operator=(const LanguageData&)=delete;
  // Data files read, as name, size, SHA-256, for quality receipts.
  QStringList files()const;
- // The bytes of every data file read other than English's: what the job's
- // memory budget grows by.
+ // The bytes handed to Tesseract for every data file other than English's
+ // (its LSTM entries): what the job's memory budget grows by.
  qint64 bytesBeyondEnglish()const;
+ // The bytes handed to Tesseract for every data file: what a second engine
+ // shares with the first rather than reading again.
+ qint64 bytesHanded()const;
  // Frees the kept file contents once no engine will start any more.
  void release();
 };

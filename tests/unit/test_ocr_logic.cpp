@@ -1,6 +1,6 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// strips joined in page order, and the input limit. The
+// strips cut between lines and joined in page order, and the input limit. The
 // contract's own tests cover the character filter.
 // Synthetic data only.
 #include "ocr/Layout.h"
@@ -70,13 +70,26 @@ private slots:
  // each recognized on its own and merged by its index, whatever order the
  // strips finished in. Every line comes out once, in page order, and a strip
  // boundary is not a paragraph break.
+ // A dense block whose rows are all inked (a border down its side, and
+ // descenders and ascenders meeting between lines) is cut between lines too.
+ void stripsKeepEveryLineOnceInOrder_data(){
+  QTest::addColumn<bool>("blankGaps");
+  QTest::newRow("blank-gaps")<<true;
+  QTest::newRow("no-blank-row")<<false;
+ }
  void stripsKeepEveryLineOnceInOrder(){
-  const int width=1000,height=600;const auto profile=lines(width,height,12,8);
+  QFETCH(bool,blankGaps);
+  const int width=1000,height=600;auto profile=lines(width,height,12,8);
+  if(!blankGaps){
+   profile.lineHeight=0;  // no blank row, so no line height either
+   for(int y=0;y<height;++y){const int r=y%20;profile.rowInk[y]=r<12?width/4:r==12||r==19?40:8;}
+   for(int y=0;y<height;++y)QVERIFY(!profile.blank(y,width));
+  }
   const auto cut=strips(profile,width,height,4);
   QVERIFY(cut.size()>1);QCOMPARE(cut.first().top,0);QCOMPARE(cut.last().bottom,height);
   for(int i=0;i<cut.size();++i){
    QVERIFY(!cut[i].seamAbove);if(i)QCOMPARE(cut[i].top,cut[i-1].bottom);
-   if(i)QVERIFY(profile.blank(cut[i].top,width));  // never through a line
+   if(i)QVERIFY2(cut[i].top%20>=12,qPrintable(QString::number(cut[i].top)));  // never through a line
   }
   // One word per text line, in each strip's own pixels.
   QList<BandText> parts(cut.size());QStringList expected;
@@ -94,7 +107,8 @@ private slots:
  }
  // Whole screens: two windows side by side are two panels, read left then
  // right, each holding every one of its lines once; a single column of the
- // same text is one panel, the whole image, read as before.
+ // same text is one panel, the whole image, read as before, also when one of
+ // its lines runs far past the others.
  void panelsSplitWindowsNotColumnsOfText(){
   const int width=1200,height=400;
   // Fake glyphs: 6 px wide marks with 3 px gaps, 12 px lines, 8 px apart.
@@ -112,6 +126,21 @@ private slots:
   QVERIFY(found[0].right()<found[1].left());
   const auto one=page({QRect(20,20,1160,360)});
   QCOMPARE(panels({reinterpret_cast<const uint8_t*>(one.constData()),width,height,width},{},12),QList<QRect>{QRect(0,0,width,height)});
+  // On a tall page, one long line (a token) past the others of its column
+  // is not cut off into panels of its own.
+  const int tallWidth=2400,tall=1500;
+  QByteArray tallPage(tallWidth*tall,char(255));
+  for(int y=20;y+12<=tall-20;y+=20){
+   for(int x=20;x+6<=620;x+=9)for(int dy=0;dy<12;++dy)for(int dx=0;dx<6;++dx)tallPage[(y+dy)*tallWidth+x+dx]=char(20);
+   // The long line's tail: dense thin strokes, too little activity a column
+   // for the noise floor of a tall page, and two groups of tall glyphs
+   // (brackets) that stand above it, as a token's tail had.
+   if(y==700){
+    for(int x=620;x<2300;x+=4)for(int dy=2;dy<10;++dy)tallPage[(y+dy)*tallWidth+x]=char(20);
+    for(const int group:{1500,2200})for(int x=group;x<group+12;x+=4)for(int dy=-10;dy<20;++dy)tallPage[(y+dy)*tallWidth+x]=char(20);
+   }
+  }
+  QCOMPARE(panels({reinterpret_cast<const uint8_t*>(tallPage.constData()),tallWidth,tall,tallWidth},{},12),QList<QRect>{QRect(0,0,tallWidth,tall)});
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));
