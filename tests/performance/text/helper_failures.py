@@ -115,7 +115,7 @@ def exercise(a,name,mode,expected,patterns,canary):
     for key in ('DISPLAY','WAYLAND_DISPLAY','DBUS_SESSION_BUS_ADDRESS','AT_SPI_BUS_ADDRESS'):env.pop(key,None)
     if mode=='landlock':
         cmd=['systemd-run','--user','--pipe','--wait','--collect','--quiet','--unit=text-fault-'+str(os.getpid()),'-p','SystemCallFilter=~landlock_create_ruleset landlock_add_rule landlock_restrict_self',
-             '-p','UnsetEnvironment=DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS AT_SPI_BUS_ADDRESS','-p','RuntimeMaxSec=35','--setenv=XDG_RUNTIME_DIR='+str(runtime),'--setenv=TMPDIR='+str(temp),'--setenv=QT_QPA_PLATFORM=offscreen',*cmd]
+             '-p','SystemCallErrorNumber=EPERM','-p','UnsetEnvironment=DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS AT_SPI_BUS_ADDRESS','-p','RuntimeMaxSec=35','--setenv=XDG_RUNTIME_DIR='+str(runtime),'--setenv=TMPDIR='+str(temp),'--setenv=QT_QPA_PLATFORM=offscreen',*cmd]
     # systemd-run connects to the real user's service manager; its unit receives
     # the private runtime above. Pointing the launcher at that private bus would
     # prevent the Landlock refusal from being exercised at all.
