@@ -37,6 +37,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter = CliAdapter('/does/not/exist')
         server = create_server(adapter)
         for name, args in [
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email']}, {'op': 'undo'}]}),
             ('perform_action', {'action': 'shell'}),
             ('delete_history_uploads', {'ids': [], 'acknowledgement': ''}),
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),

@@ -110,6 +110,7 @@ def safe_recording_target(target: Any) -> bool:
 
 def safe_recording_commands(commands: Any) -> bool:
     return (isinstance(commands, list) and 0 < len(commands) <= 100 and
+            (len(commands) == 1 or not any(isinstance(c, dict) and c.get('op') == 'redactText' for c in commands)) and
             all(isinstance(command, dict) and command.get('op') in RECORDING_EDIT_OPS and
                 safe_patch(command) for command in commands))
 
@@ -136,6 +137,7 @@ def safe_commands(commands: Any) -> bool:
     # Shape semantics and bounds are validated by the editor; this keeps the
     # forwarded argument a bounded list of plain JSON command objects.
     return (isinstance(commands, list) and 0 < len(commands) <= 100 and
+            (len(commands) == 1 or not any(isinstance(c, dict) and c.get('op') == 'redactText' for c in commands)) and
             all(isinstance(command, dict) and command.get('op') in EDITOR_OPS and
                 safe_patch(command) and (command.get('op') != 'redactText' or safe_redact_text(command))
                 for command in commands))
