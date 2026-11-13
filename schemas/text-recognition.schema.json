@@ -355,7 +355,7 @@
      "additionalProperties": false,
      "required": ["state", "result", "words", "codes", "selection"],
      "properties": {
-      "state": {"enum": ["idle", "recognizing", "ready", "failed"]},
+      "state": {"enum": ["idle", "recognizing", "completed", "failed"]},
       "result": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 2147483647}, {"type": "null"}]},
       "words": {"type": "array", "maxItems": 20000, "items": {"$ref": "#/$defs/word"}},
       "codes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/code"}},

@@ -21,7 +21,7 @@ TextResult found() {
 }
 QImage capture() {QImage image(400,200,QImage::Format_ARGB32);image.fill(Qt::white);return image;}
 Shape redaction(const QRect& rect) {Shape shape;shape.kind=Shape::Kind::Redact;shape.rect=rect;return shape;}
-bool done(const EditorTextRecognition& text) {return text.state()=="done";}
+bool done(const EditorTextRecognition& text) {return text.state()=="completed";}
 // Nothing the result may show, copy or return mentions the covered word or code.
 void verifyCovered(EditorTextRecognition& text) {
  text.layer().selectAll();
@@ -81,7 +81,7 @@ private slots:
   release=true;PUTGD_TRY_VERIFY(returned.load());
   // The late result arrives and is rejected: nothing is shown or kept.
   PUTGD_COMPARE_STEADY(text.layer().words().size(),qsizetype(0),200);
-  QCOMPARE(text.identity(),quint64(0));QVERIFY(text.state()!="done");QVERIFY(text.candidates().isEmpty());
+  QCOMPARE(text.identity(),quint64(0));QVERIFY(text.state()!="completed");QVERIFY(text.candidates().isEmpty());
  }
 };
 QTEST_GUILESS_MAIN(EditorTextTest)

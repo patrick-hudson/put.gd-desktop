@@ -1066,12 +1066,12 @@ void EditorWindow::syncText(){
  QString line;
  if(state=="recognizing")line=QStringLiteral("Recognizing…");
  else if(state=="failed")line=text_->error().message;
- else if(state=="done")line=words?QLocale().toString(words)+(words==1?" word":" words"):QStringLiteral("No text found");
+ else if(state=="completed")line=words?QLocale().toString(words)+(words==1?" word":" words"):QStringLiteral("No text found");
  textState_->setText(line);textState_->setVisible(!line.isEmpty());
  copySelection_->setEnabled(!busy_&&layer.hasSelection());
  bool codeText=false;for(const auto& code:layer.codes())codeText=codeText||!code.binary;
  copyAllText_->setEnabled(!busy_&&(words>0||codeText));
- textTruncated_->setVisible(state=="done"&&text_->truncated());
+ textTruncated_->setVisible(state=="completed"&&text_->truncated());
  if(codesShown_!=layer.identity())rebuildCodes();
 }
 // One row a code: its kind, its content on one elided line (a link whole and
