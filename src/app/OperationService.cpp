@@ -543,6 +543,12 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
    owner->copyEditedImage(id,std::move(png),std::move(done));
   },Qt::QueuedConnection);
  });
+ session->setTextCopyHandler([owner=QPointer<OperationService>(this),id=op.id](QString text,std::function<void(Error)> done){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,text=std::move(text),done=std::move(done)]() mutable {
+   if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the text was copied",{}});return;}
+   owner->copyEditedText(id,std::move(text),std::move(done));
+  },Qt::QueuedConnection);
+ });
  background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[=,this](Error e,QJsonObject) mutable {
   if(e){op.error=e;op.state="failed";finish(op);return;}
   observe(op.publicJson());emit changed(op.id);emit observationsChanged();
@@ -581,6 +587,15 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     });
   });
  });
+}
+void OperationService::copyEditedText(const QString& id,QString text,std::function<void(Error)> done) {
+ if(editingId_!=id){done({"editor_closed","The editor closed before the text was copied",{}});return;}
+ // An explicit copy from the moment it is asked for: a later explicit copy, or
+ // the user changing the clipboard before it lands, suppresses it.
+ const auto ticket=invalidateCopyEligibility();const auto revision=source_.clipboardRevision();
+ CopyPayload payload;payload.kind="text";payload.text=std::move(text);
+ // Never the text itself in a log: only that one was copied.
+ deliverCopy(payload,[id,done=std::move(done)](Error error){if(!error)logging::info(logOperation(),"Recognized text copied",{{"operationId",id}});done(error);},[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
 }
 void OperationService::copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done) {
  if(editingId_!=id){done({"editor_closed","The editor closed before the image was copied",{}});return;}

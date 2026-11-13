@@ -264,6 +264,8 @@ private:
  void invokeCapture(const QString& action,JsonReply,const QJsonObject& options,const QString& activationToken);
  QString editorDestination(const Operation&) const;
  void copyEditedImage(const QString& id,QByteArray png,std::function<void(Error)> done);
+ // The editor's Copy text (#1428): recognized text or a code's content, as an explicit copy.
+ void copyEditedText(const QString& id,QString text,std::function<void(Error)> done);
  void abandonUploadCopies(const QString&);
  // A batch item finished its upload stage, with or without a link (each_link ordering).
  void uploadItemSettled(const QString&,int);
