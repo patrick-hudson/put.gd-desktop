@@ -335,7 +335,7 @@ memory window and the coordinator's OK for each logout.
   - **Updates** shows **Channel** on *Nightly*, the build's own (*Stable* and *Nightly* are the only choices since #344), with a status from the live app.put.gd feed.
   - **Check now** works, and the nightly channel shows no notification.
 - **I. Start at login:** turn on **Launch at login**, then do a real logout and login. Put.gd must start from the AppImage.
-  - Physical desktops: only with the coordinator's OK, and only after checking that none of Patrick's apps are open.
+  - Physical desktops: with the coordinator's OK, after checking that no other session holds work on the host.
   - VMs: through their autologin.
 - **J. Update check:** `appimageupdatetool --check-for-update` against the published zsync gives the correct answer for the feed at that moment. The full N→N+1 update is #296's check.
 - **K. Clean exit and cleanup:** quit from the tray, and nothing of put.gd keeps running.
@@ -490,8 +490,8 @@ Each resident runs with private `XDG_CONFIG_HOME`,
 - **U11. Start at login after an update.** Turn on **Launch at login** on N. Update in-app without a
   restart (and, on a second run, with appimageupdatetool). Then a real logout and login. Login starts
   N+1 from the same folder.
-  - Physical desktops: only with the coordinator's OK, after checking that none of Patrick's apps are
-    open. VMs: through their autologin.
+  - Physical desktops: with the coordinator's OK, after checking that no other session holds work on
+    the host. VMs: through their autologin.
 - **U12. Refusals.** Each reason is shown in Settings and in `update.status`, and the image is unchanged:
   - the AppImage's folder isn't writable;
   - the file belongs to another user;
@@ -643,7 +643,7 @@ On the accepted nightly, installed by item L.
 - **I. Start at login:** turn on **Launch at login** on the default profile.
   - `~/.config/autostart/putgd.desktop` is written with `Exec="/usr/bin/putgd-launcher" --background` and `X-putgd-Managed=true` (record its bytes).
   - After a real logout and login, the resident runs from `/usr/bin/putgd`.
-  - Physical desktops: only with the coordinator's OK, and only after checking that none of Patrick's apps are open. VMs: through their autologin.
+  - Physical desktops: with the coordinator's OK, after checking that no other session holds work on the host. VMs: through their autologin.
 - **J. Package manager view:**
   - `apt update` verifies the live `InRelease`, and `apt-cache policy putgd` shows the installed version as pkg.put.gd nightly's candidate. On Fedora, `dnf check-update putgd` verifies `repomd.xml` and lists nothing newer.
   - Settings says *Up to date*.
