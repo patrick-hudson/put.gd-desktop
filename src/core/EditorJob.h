@@ -76,6 +76,8 @@ public:
  EditorJob& withSubmissionError(Error error){submissionError_=std::move(error);return *this;}
  // "dark" or "light": the helper's scheme, the interface's resolved one.
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}
+ // The saved text recognition languages (#1428) for Copy text and Quick redact.
+ EditorJob& withTextLanguages(QStringList languages){textLanguages_=std::move(languages);return *this;}
  // Writes `image` to private staging, then releases it before the helper
  // starts. Returns only bytes that pass identity and sanitized-PNG checks.
  EditorResult run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
@@ -85,7 +87,7 @@ public:
  static void discardStaging(const QString& stagingRoot);
 private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
- QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_;
+ QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_;
  Error submissionError_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };

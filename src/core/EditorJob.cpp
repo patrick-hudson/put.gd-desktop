@@ -167,6 +167,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["destination"]=destination.left(200).isEmpty()?QStringLiteral("Upload"):destination.left(200);
  request["recentColors"]=QJsonArray::fromStringList(recentColors_.mid(0,Settings::maximumRecentColors));
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
+ request["textLanguages"]=QJsonArray::fromStringList(textjob::validLanguages(textLanguages_)?textLanguages_:QStringList{});
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
  bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false;QString copyId;QJsonObject reply;qint64 stderrBytes=0;QSet<QString> textCopies;

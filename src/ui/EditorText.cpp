@@ -80,11 +80,8 @@ void EditorTextRecognition::run() {
  restart_=false;jobRevision_=revision_;state_="recognizing";error_={};
  const auto base=doc_.base();const auto crop=doc_.crop();const auto redactions=doc_.redactionRects();
  textjob::Options options;options.words=true;options.candidates=true;
- if(!languages_.isEmpty())options.languages=languages_;
- else{
-  QList<textjob::DataDirectory> directories=textjob::dataDirectories(QDir::homePath(),QCoreApplication::applicationDirPath());
-  options.languages=textjob::defaultLanguages({},QLocale::system().name(),textjob::installedLanguages(directories));
- }
+ // The saved preference, else the locale's language and English; installed ones only.
+ options.languages=textjob::defaultLanguages(languages_,QLocale::system().name(),textjob::installedLanguages(textjob::dataDirectories(QDir::homePath(),QCoreApplication::applicationDirPath())));
  cancel_=std::make_shared<std::atomic_bool>(false);
  auto result=std::make_shared<TextResult>();auto error=std::make_shared<Error>();
  const auto revision=revision_;const auto runner=runner_;const auto cancel=cancel_;
