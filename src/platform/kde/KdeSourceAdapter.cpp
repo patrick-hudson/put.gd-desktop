@@ -112,7 +112,7 @@ void KdeSourceAdapter::captureArea(QList<CaptureFrame> frozen,quint64 revision,Q
  if(core_&&region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});return;}
  if(overlay_||region_.busy()){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
  if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
- captureScreens(std::move(frozen),revision,selection,limits,std::move(cb),true);
+ captureScreens(std::move(frozen),revision,selection,limits,std::move(cb));
 }
 std::function<void(PayloadResult)> KdeSourceAdapter::remembering(QRectF selection,QList<CaptureFrame> layout,std::function<void(PayloadResult)> cb,bool remember){
  if(!remember)return cb;
@@ -239,14 +239,12 @@ void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64
  }
  QRectF bounds;for(const auto& frame:frozen)bounds=bounds.united(frame.logicalRect);captureScreens(std::move(frozen),revision,bounds,limits,std::move(cb));
 }
-void KdeSourceAdapter::captureScreens(QList<CaptureFrame> frozen,quint64 revision,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb,bool onlyTouched){
+void KdeSourceAdapter::captureScreens(QList<CaptureFrame> frozen,quint64 revision,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb){
  QPointer<KdeSourceAdapter> guard(this);auto layout=frozen;
- if(onlyTouched){
-  QList<CaptureFrame> needed;for(const auto& frame:frozen)if(frame.logicalRect.intersects(selection))needed.append(frame);
-  if(needed.isEmpty()){cb({{},{"capture_geometry","The selection lies outside every output",{}}});return;}
-  frozen=std::move(needed);
- }
- captureFrames(std::move(frozen),layout,revision,limits,[guard,layout,revision,selection,limits,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
+ // Only the outputs the selection touches are read; a desktop capture's selection is all of them.
+ QList<CaptureFrame> needed;for(const auto& frame:frozen)if(frame.logicalRect.intersects(selection))needed.append(frame);
+ if(needed.isEmpty()){cb({{},{"capture_geometry","The selection lies outside every output",{}}});return;}
+ captureFrames(std::move(needed),layout,revision,limits,[guard,layout,revision,selection,limits,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
   if(error){cb({{},error});return;}
   if(!guard){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
   guard->compose(std::move(frames),std::move(layout),revision,selection,limits,std::move(cb));
@@ -285,7 +283,10 @@ void KdeSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFra
   auto fail=[batch](Error error){auto cb=std::move(batch->reply);batch->next={};if(cb)cb({},error);};
   if(!guard||generation!=guard->generation_){fail({"cancelled","Desktop capture cancelled",{}});return;}if(!guard->unchanged(batch->frozenLayout,revision)){fail({"display_changed","Display layout changed during acquisition",{}});return;}
   if(batch->index==batch->frames.size()){auto frames=std::move(batch->frames);auto reply=std::move(batch->reply);batch->next={};reply(std::move(frames),{});return;}
-  const auto index=batch->index;guard->capture_.request("CaptureScreen",{batch->frames[index].identity},limits,[guard,batch,index,revision,limits,generation](QImage image,QVariantMap metadata,Error error){
+  const auto index=batch->index;
+  // Each output's budget is what the earlier outputs left.
+  ResourceLimits remaining=limits;remaining.imagePixels=limits.imagePixels-batch->pixels;remaining.imageBytes=limits.imageBytes-batch->bytes;
+  guard->capture_.request("CaptureScreen",{batch->frames[index].identity},remaining,[guard,batch,index,revision,limits,generation](QImage image,QVariantMap metadata,Error error){
    const auto reject=[batch](Error failure){auto cb=std::move(batch->reply);batch->next={};if(cb)cb({},failure);};
    if(!guard||generation!=guard->generation_){reject({"cancelled","Desktop capture cancelled",{}});return;}
    if(error){reject(error);return;}
