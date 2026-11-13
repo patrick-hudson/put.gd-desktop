@@ -15,7 +15,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - Update checks install nothing without the user.
 - The idle target is 40 MiB RSS for the resident and any surviving product helpers after work drains.
 - The synthetic UI catalog and widget tests establish design and widget behavior only.
-- Windows, Flatpak and OCR are out of scope.
+- Windows and Flatpak are out of scope. Text recognition and QR codes are approved and in progress (issue #1428). Nothing has shipped.
 
 ## Documents
 
