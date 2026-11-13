@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
-#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -16,7 +15,7 @@
 namespace putgd::ocr {
 namespace {
 // One recognition task: a band (a banded image) or a layout block (a single pass).
-struct Outcome { BandText text;bool done=false,cutShort=false; };
+struct Outcome { BandText text;bool done=false,cutShort=false,failed=false; };
 // The resident set now, from /proc/self/statm (readable under Landlock).
 qint64 residentBytes(){
  QFile statm(QStringLiteral("/proc/self/statm"));
@@ -55,31 +54,40 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.timings.engineStartMs=stage.elapsed();
  if(!result.error.isEmpty())return result;
  result.used=first.used();result.skipped=first.skipped();result.dataFiles=data.files();
+ // Decision 3: the budget grows by the size of the data files beyond English.
+ qint64 memoryBudget=options.memoryBudget;
+ if(memoryBudget>0)memoryBudget=std::min(std::max(options.memoryCeiling,memoryBudget),memoryBudget+data.bytesBeyondEnglish());
+ // The gates keep 8 MiB in reserve: what an engine allocates after its first
+ // measurement (a sparse 24 MP page reached 131 MiB with four engines without it).
+ const qint64 gateBudget=memoryBudget>0?memoryBudget-8*1024*1024:0;
  stage.restart();
  const bool invert=options.invertDark&&result.profile.dark;
  const auto left=[&]{return options.budgetMs>0?int(options.budgetMs-total.elapsed()):0;};
 
- // A single pass is one band copy; a banded image makes a copy per task.
- GreyImage whole;QList<QRect> blocks;
- if(!plan.banded())whole=bandImage(image,plan.bands.first(),plan.scale,options.limits.border,areas,result.profile.background,invert);
+ // The tasks: the plan's bands, or, for a single pass large enough to share,
+ // strips cut at blank row gaps only. A strip boundary splits no line and
+ // needs no seam, and the order stays the page's own, top to bottom, which is
+ // what page segmentation 6 reads. Every task is its own band copy: inside a
+ // SetRectangle of one shared copy, Tesseract 5.3.4 read the wrong rows.
+ QList<Band> tasks=plan.bands;bool split=false;
+ const qint64 scaledPixels=qint64(std::ceil(image.width*plan.scale))*qint64(std::ceil(image.height*plan.scale));
+ if(!plan.banded()&&threads>1&&scaledPixels>=options.parallelPixels){
+  const auto cut=strips(result.profile,image.width,image.height,threads*2);
+  if(cut.size()>1){tasks=cut;split=true;}
+ }
  if(!options.dumpBand.isEmpty()){
-  // Method comparisons only: the first band as Tesseract gets it (PGM).
-  const auto copy=plan.banded()?bandImage(image,plan.bands.first(),plan.scale,options.limits.border,areas,result.profile.background,invert):whole;
+  // Method comparisons only: the first task as Tesseract gets it (PGM).
+  const auto copy=bandImage(image,tasks.first(),plan.scale,options.limits.border,areas,result.profile.background,invert);
   QFile dump(options.dumpBand);
   if(dump.open(QIODevice::WriteOnly)){dump.write("P5\n"+QByteArray::number(copy.width)+' '+QByteArray::number(copy.height)+"\n255\n");dump.write(copy.pixels);}
  }
- // Parallel only where there is enough to share: several bands, or a single
- // pass large enough that its blocks outweigh starting another engine.
- const bool blockParallel=!plan.banded()&&threads>1&&qint64(whole.width)*whole.height>=options.parallelPixels;
- const int wanted=plan.banded()?std::min<int>(threads,int(plan.bands.size())):(blockParallel?threads:1);
-
- // The task list: bands are known now; blocks once the first engine has laid
- // the page out, while the other engines start.
- std::mutex lock;std::condition_variable ready;bool tasksKnown=plan.banded()||!blockParallel;int taskCount=plan.banded()?int(plan.bands.size()):1;
- QList<Outcome> outcomes;outcomes.resize(plan.banded()?plan.bands.size():1);
+ const int taskCount=int(tasks.size());
+ const int wanted=taskCount>1?std::min(threads,taskCount):1;
+ std::mutex lock;
+ QList<Outcome> outcomes;outcomes.resize(taskCount);
  std::atomic<int> next{0};std::atomic<qint64> slowest{0},taskGrowth{0};std::atomic<bool> stop{false};
  std::function<void(TextEngine&,bool)> work;
- const auto roomFor=[&](qint64 bytes){return options.memoryBudget<=0||residentBytes()+bytes<=options.memoryBudget;};
+ const auto roomFor=[&](qint64 bytes){return gateBudget<=0||residentBytes()+bytes<=gateBudget;};
  std::vector<std::unique_ptr<TextEngine>> extra;std::vector<std::thread> pool;
  // Extra engines, each on its own thread; started at most once, from this thread.
  const std::function<void(int)> startExtras=[&](int count){
@@ -90,15 +98,16 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  };
  // How many extra engines fit in the memory budget when each costs this much.
  const auto fitting=[&](qint64 each){
-  if(options.memoryBudget<=0)return wanted-1;
-  const qint64 room=options.memoryBudget-residentBytes();
+  if(gateBudget<=0)return wanted-1;
+  const qint64 room=gateBudget-residentBytes();
   return std::clamp(int(room/std::max<qint64>(1,each)),0,wanted-1);
  };
  work=[&](TextEngine& engine,bool extraWorker){
-  {std::unique_lock<std::mutex> wait(lock);ready.wait(wait,[&]{return tasksKnown;});}
   for(;;){
-   // The memory budget: an extra worker leaves its tasks to the others.
-   if(extraWorker&&!roomFor(taskGrowth.load()))return;
+   // The memory budget: an extra worker leaves its tasks to the others unless
+   // twice the largest growth a task has shown still fits; on dense pages a
+   // later band grows more than the first (139 MiB on m74 with one times).
+   if(extraWorker&&!roomFor(2*taskGrowth.load()))return;
    const int task=next.fetch_add(1);
    if(task>=taskCount||stop.load())return;
    const qint64 before=residentBytes();
@@ -107,10 +116,12 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    if(options.budgetMs>0){const int remaining=left();if(remaining<=0||(slowest.load()>0&&remaining<slowest.load())){stop=true;return;}}
    QElapsedTimer clock;clock.start();
    Outcome outcome;
-   if(plan.banded()){
-    const auto copy=bandImage(image,plan.bands[task],plan.scale,options.limits.border,areas,result.profile.background,invert);
-    outcome.text=engine.recognize(copy,plan.scale,left(),&outcome.cutShort);
-   }else outcome.text=engine.recognize(whole,plan.scale,left(),&outcome.cutShort,blocks.isEmpty()?QRect():blocks[task]);
+   const auto copy=bandImage(image,tasks[task],plan.scale,options.limits.border,areas,result.profile.background,invert);
+   // The deadline, read once after the copy: spent means stop, never "none".
+   const int deadline=options.budgetMs>0?left():0;
+   if(options.budgetMs>0&&deadline<=0){stop=true;return;}
+   outcome.text=engine.recognize(copy,plan.scale,deadline,&outcome.cutShort,&outcome.failed);
+   if(outcome.failed)stop=true;
    outcome.done=true;
    qint64 seen=slowest.load();while(clock.elapsed()>seen&&!slowest.compare_exchange_weak(seen,clock.elapsed())){}
    if(outcome.cutShort)stop=true;
@@ -118,42 +129,27 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
    {std::lock_guard<std::mutex> guard(lock);outcomes[task]=std::move(outcome);}
    // A banded image measures before it shares: once the first band is done,
    // as many engines start as fit in the budget at what that band cost.
-   if(!extraWorker&&plan.banded()&&extra.empty()&&wanted>1&&!stop.load())startExtras(fitting(engineCost+taskGrowth.load()));
+   if(!extraWorker&&!split&&extra.empty()&&wanted>1&&!stop.load())startExtras(fitting(engineCost+2*taskGrowth.load()));
   }
  };
- if(blockParallel){
-  // A single pass shares at once, while the first engine lays the page out:
-  // each extra engine is reserved its own cost and two bytes a pixel of the
-  // pass (measured: four engines on a 1 MP region at 2x peaked at 123 MiB).
-  startExtras(fitting(engineCost+2*qint64(whole.width)*whole.height));
-  blocks=first.layoutBlocks(whole,plan.scale);
-  {std::lock_guard<std::mutex> guard(lock);
-   if(blocks.size()<2)blocks.clear();
-   taskCount=blocks.isEmpty()?1:int(blocks.size());outcomes.resize(taskCount);tasksKnown=true;}
-  ready.notify_all();
- }
+ // A single pass shares at once: each extra engine is reserved its own cost
+ // and four bytes a pixel of a strip (measured: four engines on a 1 MP region
+ // at 2x peaked at 101 to 123 MiB).
+ if(split)startExtras(fitting(engineCost+4*scaledPixels/taskCount));
  work(first,false);
  for(auto& thread:pool)thread.join();
  data.release();
  result.recognition.parts=taskCount;result.recognition.threads=1+int(extra.size());
 
+ // An engine that failed on a task fails the job: no text is not success.
+ for(const auto& outcome:outcomes)if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}
  // Joined in task order, never in the order the tasks finished: Tesseract's
- // reading order inside a band, band by band, block by block.
- if(plan.banded()){
-  int previousFirst=0;
-  for(int i=0;i<outcomes.size();++i){
-   if(!outcomes[i].done){result.truncated=true;break;}
-   previousFirst=mergeBand(result.recognition,outcomes[i].text,plan.bands[i],i>0?&plan.bands[i-1]:nullptr,previousFirst,plan.scale,options.limits.border,i,image.width,image.height);
-   if(outcomes[i].cutShort){result.truncated=true;break;}
-  }
- }else{
-  QList<BandText> parts;
-  for(const auto& outcome:outcomes){
-   if(!outcome.done){result.truncated=true;break;}
-   parts.append(outcome.text);
-   if(outcome.cutShort){result.truncated=true;break;}
-  }
-  mergeBand(result.recognition,joinParts(parts),plan.bands.first(),nullptr,0,plan.scale,options.limits.border,0,image.width,image.height);
+ // reading order inside a band or strip, band by band, strip by strip.
+ int previousFirst=0;
+ for(int i=0;i<taskCount;++i){
+  if(!outcomes[i].done){result.truncated=true;break;}
+  previousFirst=mergeBand(result.recognition,outcomes[i].text,tasks[i],i>0?&tasks[i-1]:nullptr,previousFirst,plan.scale,options.limits.border,i,image.width,image.height);
+  if(outcomes[i].cutShort){result.truncated=true;break;}
  }
  result.timings.recognitionMs=stage.elapsed();
  result.recognition.banded=plan.banded();result.recognition.scale=plan.scale;result.recognition.bands=int(plan.bands.size());

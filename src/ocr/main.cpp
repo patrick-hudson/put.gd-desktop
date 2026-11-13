@@ -57,7 +57,7 @@ int main(int argc,char** argv){
  if(argc==2&&std::strcmp(argv[1],"--version-json")==0){std::printf("%s\n",putgd::buildManifestJson());return 0;}
  // Only the control pipes, stderr and the two memfds stay open.
  ::syscall(SYS_close_range,unsigned(textjob::outputDescriptor+1),~0u,0u);
- const auto directories=dataDirectories();
+ const auto directories=safeLanguageDirectories(dataDirectories());
  Confinement confinement;confinement.readable=readableDirectories(directories);
  confinement.dataBytes=largestBudget*3/2;confinement.cpuSeconds=cpuSecondsPerThread*workerThreads();
  confinement.fileBytes=textjob::maximumOutputBytes;confinement.descriptors=32;
@@ -65,7 +65,7 @@ int main(int argc,char** argv){
  const bool confined=confine(confinement,failed,abi);
  const textjob::Engine engine=[&](const textjob::GreyImage& image,const textjob::Options& options,const QStringList&,TextResult& result)->textjob::ChildFailure {
   JobOptions job;job.languages=options.languages;job.strictLanguages=options.languagesRequired;
-  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.memoryBudget=job.languages==QStringList{QStringLiteral("eng")}?baseBudget:largestBudget;
+  job.words=options.words;job.candidates=options.candidates;job.directories=directories;job.budgetMs=budgetMs;job.memoryBudget=baseBudget;job.memoryCeiling=largestBudget;
   if(job.languages==QStringList{QStringLiteral("eng")}&&!lowerDataLimit(baseBudget*3/2))return {QStringLiteral("helper_sandbox_unavailable"),{}};
   const auto recognized=recognizeImage({image.data,image.width,image.height,image.stride},job);
   if(!recognized.error.isEmpty())return {recognized.error,recognized.failedLanguage};

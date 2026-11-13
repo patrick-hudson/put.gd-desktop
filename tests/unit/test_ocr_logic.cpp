@@ -1,6 +1,6 @@
 // putgd-ocr's engine-free rules (#1428) whose failure would be silent: code
 // areas blanked before recognition, band seams that lose or double no line,
-// the order parallel parts are joined in, and the input limit. The
+// strips joined in page order, and the input limit. The
 // contract's own tests cover the character filter.
 // Synthetic data only.
 #include "ocr/Layout.h"
@@ -54,25 +54,36 @@ private slots:
   const int firstWord=mergeBand(job,a,first,nullptr,0,1,0,0,1000,400);
   mergeBand(job,b,second,&first,firstWord,1,0,1,1000,400);
   QStringList texts;for(const auto& w:job.words)texts.append(w.text);
-  QCOMPARE(texts,QStringList({"kept","twice","whole","next"}));
+  QCOMPARE(texts,QStringList({"kept","whole","twice","next"}));
+  // The line the seam crossed is one line, left to right, and the band
+  // boundary is not a paragraph break.
+  QCOMPARE(copiedText(job),QStringLiteral("kept\nwhole twice\nnext"));
  }
- // Parallel recognition: parts (layout blocks) finish in any order but are
- // stored by index and joined in that order. Every line comes out once, in
- // layout order, with its words and a distinct block.
- void joinedPartsKeepEveryLineOnceInOrder(){
-  QList<BandText> parts(3);
-  for(int p=0;p<3;++p)for(int l=0;l<2;++l){
-   parts[p].lines.append({QRect(0,100*p+20*l,500,18),0});
-   parts[p].words.append({QStringLiteral("p%1l%2").arg(p).arg(l),QRect(10,100*p+20*l,40,18),90,l});
+ // Parallel recognition: a single pass is cut into strips at blank row gaps,
+ // each recognized on its own and merged by its index, whatever order the
+ // strips finished in. Every line comes out once, in page order, and a strip
+ // boundary is not a paragraph break.
+ void stripsKeepEveryLineOnceInOrder(){
+  const int width=1000,height=600;const auto profile=lines(width,height,12,8);
+  const auto cut=strips(profile,width,height,4);
+  QVERIFY(cut.size()>1);QCOMPARE(cut.first().top,0);QCOMPARE(cut.last().bottom,height);
+  for(int i=0;i<cut.size();++i){
+   QVERIFY(!cut[i].seamAbove);if(i)QCOMPARE(cut[i].top,cut[i-1].bottom);
+   if(i)QVERIFY(profile.blank(cut[i].top,width));  // never through a line
   }
-  const auto joined=joinParts(parts);
-  Recognition job;mergeBand(job,joined,{0,400,false},nullptr,0,1,0,0,500,400);
-  QStringList texts;for(const auto& w:job.words)texts.append(w.text);
-  QCOMPARE(texts,QStringList({"p0l0","p0l1","p1l0","p1l1","p2l0","p2l1"}));
-  QCOMPARE(job.lines.size(),6);
-  for(int i=0;i<job.words.size();++i)QCOMPARE(job.words[i].line,i);
-  QCOMPARE(job.lines[2].block,1);QCOMPARE(job.lines[4].block,2);
-  QCOMPARE(copiedText(job),QStringLiteral("p0l0\np0l1\n\np1l0\np1l1\n\np2l0\np2l1"));
+  // One word per text line, in each strip's own pixels.
+  QList<BandText> parts(cut.size());QStringList expected;
+  for(int y=0,n=0;y<height;y+=20,++n){
+   int s=0;while(s+1<cut.size()&&y>=cut[s].bottom)++s;
+   const int local=y-cut[s].top;
+   parts[s].lines.append({QRect(0,local,width,12),0});
+   parts[s].words.append({QStringLiteral("w%1").arg(n),QRect(10,local,40,12),90,int(parts[s].lines.size()-1)});
+   expected.append(QStringLiteral("w%1").arg(n));
+  }
+  Recognition job;int first=0;
+  for(int i=0;i<cut.size();++i)first=mergeBand(job,parts[i],cut[i],i?&cut[i-1]:nullptr,first,1,0,i,width,height);
+  QCOMPARE(copiedText(job),expected.join(QLatin1Char('\n')));
+  QCOMPARE(job.lines.size(),qsizetype(expected.size()));
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

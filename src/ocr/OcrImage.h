@@ -55,7 +55,7 @@ struct Recognition {
  bool banded=false;
  double scale=1;
  int bands=0;
- int parts=0;         // recognition tasks: bands, or a single pass's blocks
+ int parts=0;         // recognition tasks: bands, or a single pass's strips
  int threads=0;       // engine instances that ran
 };
 }

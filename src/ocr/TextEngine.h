@@ -13,7 +13,10 @@ inline constexpr qint64 maximumLanguageBytes=textjob::maximumLanguageDataBytes;
 using textjob::validLanguage;
 
 struct EngineOptions {
- int pageSegmentation=3;      // tesseract::PageSegMode; 3 is automatic layout
+ // tesseract::PageSegMode. 6, one uniform block of text: on the real capture
+ // sets, 3 (automatic layout) read aligned terminal and page text as columns
+ // and lost 30 to 56% of it; 6 lost nothing there and tied 3 elsewhere.
+ int pageSegmentation=6;
  int thresholding=0;          // thresholding_method: 0 Otsu, 1 Leptonica adaptive Otsu, 2 Sauvola
  bool dictionary=true;        // the word lists (system and frequent words)
  bool invertLines=true;       // Tesseract's own retry of a line as inverted
@@ -26,9 +29,6 @@ struct BandText {
  QList<LineBox> lines;
  QList<Item> words;
 };
-// The parts of one band recognized separately (its layout blocks), joined in
-// the order given: every line once, block numbers and line indexes renumbered.
-BandText joinParts(const QList<BandText>& parts);
 
 // The language data of one job. Tesseract's FileReader is a plain function,
 // so the data lives in one object for the job's lifetime, shared by every
@@ -46,6 +46,9 @@ public:
  LanguageData& operator=(const LanguageData&)=delete;
  // Data files read, as name, size, SHA-256, for quality receipts.
  QStringList files()const;
+ // The bytes of every data file read other than English's: what the job's
+ // memory budget grows by.
+ qint64 bytesBeyondEnglish()const;
  // Frees the kept file contents once no engine will start any more.
  void release();
 };
@@ -66,14 +69,10 @@ public:
  QString startLike(const TextEngine& first);
  QStringList used()const{return used_;}
  QStringList skipped()const{return skipped_;}
- // Tesseract's layout of the band: its text blocks in reading order, in the
- // band's pixels. Nothing is recognized.
- QList<QRect> layoutBlocks(const GreyImage& band,double scale);
  // Stops at the deadline (milliseconds from now; 0 means none) and returns the
- // words read until then, in reading order, with cutShort set. With a
- // rectangle, only that part of the band is laid out and recognized; boxes stay
- // in the band's pixels.
- BandText recognize(const GreyImage& band,double scale,int deadlineMs=0,bool* cutShort=nullptr,const QRect& rectangle={});
+ // words read until then, in reading order, with cutShort set. failed is set
+ // when Tesseract failed, which is not the same as a band with no text.
+ BandText recognize(const GreyImage& band,double scale,int deadlineMs=0,bool* cutShort=nullptr,bool* failed=nullptr);
  static QString version();
 private:
  void prepare(const GreyImage& band,double scale);

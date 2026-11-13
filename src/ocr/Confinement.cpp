@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <fcntl.h>
+#include <pwd.h>
+#include <cstdlib>
 #include <linux/audit.h>
 #include <linux/filter.h>
 #include <linux/seccomp.h>
@@ -81,6 +83,9 @@ bool landlock(const QStringList& readable,int abi){
 #define SYS_io_uring_enter 426
 #define SYS_io_uring_register 427
 #endif
+#ifndef SYS_pidfd_send_signal
+#define SYS_pidfd_send_signal 424
+#endif
 #ifndef SYS_clone3
 #define SYS_clone3 435
 #endif
@@ -110,6 +115,22 @@ bool seccomp(){
 #ifndef PUTGD_OCR_SANITIZED
  rule(SYS_ptrace,kill);
 #endif
+ // Signals reach only this process's own thread group: below Landlock ABI 6
+ // there is no signal scope, and a helper could otherwise kill its parent.
+ // kill, tgkill and the two queueinfo calls name the target process first;
+ // tkill and pidfd_send_signal name a thread or a descriptor a filter cannot
+ // check, and glibc's raise and pthread_kill use tgkill.
+ const uint32_t self=uint32_t(::getpid());
+ const uint32_t denied=SECCOMP_RET_ERRNO|(EPERM&SECCOMP_RET_DATA);
+ for(const long nr:{long(SYS_kill),long(SYS_tgkill),long(SYS_rt_sigqueueinfo),long(SYS_rt_tgsigqueueinfo)}){
+  jump(BPF_JMP|BPF_JEQ|BPF_K,uint32_t(nr),0,4);
+  stmt(BPF_LD|BPF_W|BPF_ABS,offsetof(seccomp_data,args));  // the target, a pid_t in the low 32 bits
+  jump(BPF_JMP|BPF_JEQ|BPF_K,self,0,1);
+  stmt(BPF_RET|BPF_K,allow);
+  stmt(BPF_RET|BPF_K,denied);
+ }
+ rule(SYS_tkill,denied);
+ rule(SYS_pidfd_send_signal,denied);
  // clone: a thread (CLONE_THREAD, which the kernel only accepts with a shared
  // address space and signal handlers) and no new namespace. Anything else
  // would be a process.
@@ -131,6 +152,68 @@ QString executablePrefix(){
  for(int i=0;i<2;++i){const auto slash=path.lastIndexOf(QLatin1Char('/'));if(slash<=0)return {};path.truncate(slash);}
  return path;
 }
+// The fully resolved path, or empty when it does not exist.
+QString resolvedPath(const QString& path){
+ char buffer[PATH_MAX+1]{};
+ if(!::realpath(QFile::encodeName(path).constData(),buffer))return {};
+ return QFile::decodeName(buffer);
+}
+QString trimmed(QString path){while(path.size()>1&&path.endsWith(QLatin1Char('/')))path.chop(1);return path;}
+// The user's home directory as written in the password database, and resolved.
+struct Home { QString written,real; };
+Home homeDirectory(){
+ Home home;
+ if(const auto* user=::getpwuid(::getuid());user&&user->pw_dir&&*user->pw_dir){
+  home.written=trimmed(QFile::decodeName(user->pw_dir));home.real=trimmed(resolvedPath(home.written));
+ }
+ return home;
+}
+// A grant of r would reach / or the whole home directory.
+bool coversHome(const QString& r,const Home& home){
+ return r==QLatin1String("/")||(!home.real.isEmpty()&&(r==home.real||home.real.startsWith(r+QLatin1Char('/'))));
+}
+}
+// Landlock grants the directory a rule's path resolves to, symlinks followed,
+// so every path a rule names is resolved here first and refused when that
+// lands somewhere it must not: /, the home directory or above it.
+static QStringList prefixDirectories(){
+ // The libraries (the AppImage's bundled engines) and put.gd's own data under
+ // the helper's installation prefix. Never the prefix itself, whose tree may
+ // be a home directory: a helper run from /home/alice/bin would otherwise read
+ // all of /home/alice. Each directory must resolve to exactly itself under the
+ // real prefix: a symlinked lib pointing at the home directory grants nothing.
+ const auto home=homeDirectory();
+ const auto prefix=resolvedPath(executablePrefix());
+ if(prefix.isEmpty()||coversHome(prefix,home))return {};
+ QStringList out;
+ for(const auto* sub:{"lib","lib64","share/putgd"}){
+  const auto candidate=prefix+QLatin1Char('/')+QLatin1String(sub);
+  const auto real=resolvedPath(candidate);
+  if(real.isEmpty()||real!=candidate||coversHome(real,home))continue;
+  out.append(real);
+ }
+ return out;
+}
+QStringList safeLanguageDirectories(const QStringList& directories){
+ // Absolute, no "..", resolved. One that resolves into the home directory must
+ // get there without a symlink below the home directory, so a user tessdata
+ // that is a symlink to somewhere else grants nothing; a home directory that
+ // is itself reached through a symlink (/home -> /var/home) is fine.
+ const auto home=homeDirectory();QStringList out;
+ for(const auto& d:directories){
+  if(!d.startsWith(QLatin1Char('/'))||d.split(QLatin1Char('/')).contains(QLatin1String("..")))continue;
+  const auto real=resolvedPath(d);
+  if(real.isEmpty()||coversHome(real,home)||out.contains(real))continue;
+  if(!home.real.isEmpty()&&real.startsWith(home.real+QLatin1Char('/'))){
+   const auto path=trimmed(d);QString below;
+   if(!home.written.isEmpty()&&path.startsWith(home.written+QLatin1Char('/')))below=path.mid(home.written.size());
+   else if(path.startsWith(home.real+QLatin1Char('/')))below=path.mid(home.real.size());
+   else continue;  // into the home directory from outside it
+   if(real!=home.real+below)continue;
+  }
+  out.append(real);
+ }
+ return out;
 }
 int landlockAbi(){
  const long abi=::syscall(SYS_landlock_create_ruleset,nullptr,0,createRulesetVersion);
@@ -146,8 +229,8 @@ bool sanitizedBuild(){
 QStringList readableDirectories(const QStringList& languageDirectories){
  QStringList out{QStringLiteral("/usr/lib"),QStringLiteral("/usr/lib64"),QStringLiteral("/lib"),QStringLiteral("/lib64"),
                  QStringLiteral("/proc/self"),QStringLiteral("/sys/devices/system/cpu")};
- const auto prefix=executablePrefix();if(!prefix.isEmpty())out.append(prefix);
- for(const auto& d:languageDirectories)if(d.startsWith(QLatin1Char('/'))&&!out.contains(d))out.append(d);
+ for(const auto& d:prefixDirectories())if(!out.contains(d))out.append(d);
+ for(const auto& d:safeLanguageDirectories(languageDirectories))if(!out.contains(d))out.append(d);
  return out;
 }
 bool confine(const Confinement& c,QString& failed,int& abi){

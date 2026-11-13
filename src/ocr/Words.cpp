@@ -1,6 +1,8 @@
 #include "Words.h"
 #include "core/TextJobProtocol.h"
+#include <QHash>
 #include <QRegularExpression>
+#include <QSet>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -26,7 +28,9 @@ bool codeSymbol(char32_t c){
 int mergeBand(Recognition& job,const BandText& band,const Band& placement,const Band* previous,int previousFirstWord,
                double scale,int border,int bandIndex,int imageWidth,int imageHeight){
  const int lineBase=int(job.lines.size());
- const int blockBase=job.lines.isEmpty()?0:job.lines.last().block+1;
+ // A band's first block continues the block the previous band ended in: a
+ // band boundary is not a paragraph break.
+ const int blockBase=job.lines.isEmpty()?0:job.lines.last().block;
  for(const auto& line:band.lines)job.lines.append({toSource(line.rect,placement,scale,border,imageWidth,imageHeight),blockBase+line.block,bandIndex});
  const bool seam=placement.seamAbove&&previous;
  if(seam){
@@ -34,12 +38,15 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
   for(int i=previousFirstWord;i<job.words.size();++i)if(job.words[i].rect.bottom()>=previous->bottom-1)job.words[i].text.clear();
  }
  const int firstNew=int(job.words.size());
+ // First the duplicates: a word this band shares with the previous one stays
+ // once, in the earlier band's place, and the line it sits on in this band
+ // becomes that earlier line, so the rest of the physical line joins it.
+ QList<Word> incoming;QList<int> bandLines;QHash<int,int> sameLine;
  for(const auto& item:band.words){
   Word word;word.text=textjob::sanitizeText(item.text).trimmed();
   if(word.text.isEmpty())continue;
   word.rect=toSource(item.rect,placement,scale,border,imageWidth,imageHeight);
   word.confidence=item.confidence;word.line=lineBase+item.line;
-  word.lineHeight=job.lines.value(word.line).rect.height();
   if(seam){
    if(word.rect.top()<=placement.top+1)continue;
    bool duplicate=false;
@@ -47,20 +54,40 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
     for(int i=previousFirstWord;i<firstNew;++i){
      auto& earlier=job.words[i];if(earlier.text.isEmpty()||overlap(earlier.rect,word.rect)<=0.5)continue;
      duplicate=true;
+     if(!sameLine.contains(item.line))sameLine.insert(item.line,earlier.line);
      if(word.confidence>earlier.confidence){earlier.text=word.text;earlier.rect=word.rect;earlier.confidence=word.confidence;}
      break;
     }
    }
    if(duplicate)continue;
   }
+  incoming.append(std::move(word));bandLines.append(item.line);
+ }
+ for(int i=0;i<incoming.size();++i){
+  auto& word=incoming[i];
+  if(sameLine.contains(bandLines[i]))word.line=sameLine.value(bandLines[i]);
+  word.lineHeight=job.lines.value(word.line).rect.height();
   job.words.append(std::move(word));
  }
  int removed=0;for(int i=previousFirstWord;i<firstNew;++i)if(job.words[i].text.isEmpty())++removed;
  job.words.erase(std::remove_if(job.words.begin()+std::min<qsizetype>(previousFirstWord,job.words.size()),job.words.end(),[](const Word& w){return w.text.isEmpty();}),job.words.end());
+ if(!sameLine.isEmpty()){
+  // Keep each line's words together, lines in the order they first appear,
+  // and the words of a line that spans the seam left to right.
+  QSet<int> joined;for(const auto line:sameLine)joined.insert(line);
+  QHash<int,int> firstSeen;
+  for(int i=previousFirstWord;i<job.words.size();++i)if(!firstSeen.contains(job.words[i].line))firstSeen.insert(job.words[i].line,i);
+  std::stable_sort(job.words.begin()+previousFirstWord,job.words.end(),[&](const Word& a,const Word& b){
+   if(a.line!=b.line)return firstSeen.value(a.line)<firstSeen.value(b.line);
+   return joined.contains(a.line)&&a.rect.left()<b.rect.left();
+  });
+ }
  return firstNew-removed;
 }
 void joinUrls(Recognition& job){
  static const QRegularExpression scheme(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,15}:$")),url(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]{1,15}://"));
+ // An address split at a dot of its domain: "corpus@example. invalid".
+ static const QRegularExpression address(QStringLiteral("^[\\w.+%-]+@[\\w-]+(\\.[\\w-]+)*\\.$"));
  static const QString joints=QStringLiteral("./?=&#-_");
  QList<Word> out;out.reserve(job.words.size());
  for(auto& word:job.words){
@@ -72,7 +99,8 @@ void joinUrls(Recognition& job){
    const QChar next=word.text.isEmpty()?QChar():word.text.front();
    const bool continues=url.match(last.text).hasMatch()&&!last.text.isEmpty();
    const bool more=continues&&((joints.contains(last.text.back())&&(next.isDigit()||next.isLower()))||QStringLiteral("/?#&=").contains(next));
-   if(sameLine&&(start||more)){
+   const bool domain=address.match(last.text).hasMatch()&&(next.isDigit()||next.isLower());
+   if(sameLine&&(start||more||domain)){
     last.text+=word.text;last.rect=last.rect.united(word.rect);last.confidence=std::min(last.confidence,word.confidence);
     continue;
    }
@@ -115,15 +143,5 @@ QString copiedText(const Recognition& job,QList<int>* lineTops){
   text+=word.text;
  }
  return text;
-}
-BandText joinParts(const QList<BandText>& parts){
- BandText out;int blockBase=0;
- for(const auto& part:parts){
-  const int lineBase=int(out.lines.size());int blocks=0;
-  for(const auto& line:part.lines){out.lines.append({line.rect,blockBase+line.block});blocks=std::max(blocks,line.block+1);}
-  for(const auto& word:part.words){auto copy=word;copy.line+=lineBase;out.words.append(std::move(copy));}
-  blockBase+=blocks;
- }
- return out;
 }
 }

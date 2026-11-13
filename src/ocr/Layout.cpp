@@ -63,13 +63,22 @@ void fill(GreyImage& image,const std::array<QPointF,4>& corners,uint8_t value){
 }
 Profile measure(const GreyView& image,const QList<Quad>& codes){
  Profile profile;profile.rowInk.fill(0,image.height);
- QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)));
- const auto inCode=[&](int x,int y){for(const auto& r:excluded)if(r.contains(x,y))return true;return false;};
+ QList<QRect> excluded;for(const auto& q:codes)excluded.append(bounds(grown(q)).intersected(QRect(0,0,image.width,image.height)));
+ // Which pixels of a row lie in a code: the rectangles covering that row,
+ // marked once per row, so each pixel costs one lookup however many codes.
+ std::vector<uint8_t> mask(size_t(std::max(0,image.width)));
+ const auto rowMask=[&](int y)->const uint8_t*{
+  bool any=false;
+  for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom()){
+   if(!any){std::fill(mask.begin(),mask.end(),uint8_t(0));any=true;}
+   std::fill(mask.begin()+r.left(),mask.begin()+r.right()+1,uint8_t(1));
+  }
+  return any?mask.data():nullptr;
+ };
  std::array<qint64,256> histogram{};
  for(int y=0;y<image.height;++y){
-  const auto* row=image.row(y);
-  bool rowHasCode=false;for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom())rowHasCode=true;
-  for(int x=0;x<image.width;++x)if(!rowHasCode||!inCode(x,y))++histogram[row[x]];
+  const auto* row=image.row(y);const auto* inCode=rowMask(y);
+  for(int x=0;x<image.width;++x)if(!inCode||!inCode[x])++histogram[row[x]];
  }
  const int threshold=otsu(histogram);
  qint64 dark=0,light=0;double darkSum=0,lightSum=0;
@@ -78,11 +87,10 @@ Profile measure(const GreyView& image,const QList<Quad>& codes){
  profile.background=profile.dark?(dark?int(std::lround(darkSum/dark)):0):(light?int(std::lround(lightSum/light)):255);
  const bool inkIsLight=profile.dark;
  for(int y=0;y<image.height;++y){
-  const auto* row=image.row(y);int ink=0;
-  bool rowHasCode=false;for(const auto& r:excluded)if(y>=r.top()&&y<=r.bottom())rowHasCode=true;
+  const auto* row=image.row(y);const auto* inCode=rowMask(y);int ink=0;
   for(int x=0;x<image.width;++x){
    const int p=row[x];
-   if((inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=inkContrast&&(!rowHasCode||!inCode(x,y)))++ink;
+   if((inkIsLight?p>threshold:p<=threshold)&&std::abs(p-profile.background)>=inkContrast&&(!inCode||!inCode[x]))++ink;
   }
   profile.rowInk[y]=ink;
  }
@@ -136,6 +144,23 @@ Plan plan(int width,int height,const Profile& profile,const PlanLimits& limits){
   }
   return result;
  }
+}
+QList<Band> strips(const Profile& profile,int width,int height,int parts){
+ QList<Band> out;const int lineRows=profile.lineHeight>0?profile.lineHeight:16;
+ const auto blank=[&](int y){return y>=0&&y<height&&y<profile.rowInk.size()&&profile.blank(y,width);};
+ int start=0;
+ for(int k=1;k<parts&&height>0;++k){
+  const int target=int(qint64(height)*k/parts),reach=std::max(1,height/(2*parts));
+  int found=-1;
+  for(int d=0;d<=reach&&found<0;++d){if(blank(target-d))found=target-d;else if(blank(target+d))found=target+d;}
+  if(found<0)continue;
+  int first=found,last=found;while(blank(first-1))--first;while(blank(last+1))++last;
+  const int cut=(first+last+1)/2;
+  if(cut-start<4*lineRows||height-cut<4*lineRows)continue;
+  out.append({start,cut,false});start=cut;
+ }
+ out.append({start,height,false});
+ return out;
 }
 GreyImage bandImage(const GreyView& source,const Band& band,double scale,int border,const QList<Quad>& codes,int background,bool invert){
  GreyImage out;
