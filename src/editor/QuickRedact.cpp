@@ -110,15 +110,39 @@ QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& cho
  // The rules run in order of specificity; a word belongs to the first match.
  for(const auto& rule:rules()){
   if(!chosen.contains(rule.category))continue;
+  QList<QList<int>> pending;
   for(const bool wrapped:{false,true}){
    const auto joined=join(*views[rule.view],candidates,wrapped);
-   for(auto it=rule.pattern.globalMatch(joined.text);it.hasNext();){
-    const auto found=it.next();if(rule.valid&&!rule.valid(found.captured()))continue;
-    const auto words=owners(joined,found.capturedStart(),found.capturedLength());
-    if(words.isEmpty()||std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
-    for(const int w:words)taken.insert(w);
-    matches.append({rule.category,words});
+   qsizetype offset=0;
+   while(offset<joined.text.size()){
+    auto found=rule.pattern.match(joined.text,offset);if(!found.hasMatch())break;
+    auto length=found.capturedLength();
+    // A greedy phone span may contain two separate numbers. Retry prefixes at
+    // word boundaries, then resume at the accepted prefix's end.
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15){
+     for(qsizetype end=found.capturedEnd()-1;end>found.capturedStart();--end){
+      if(!joined.text.at(end).isSpace())continue;
+      const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
+      const auto shorter=rule.pattern.match(prefix);
+      if(shorter.hasMatch()&&shorter.capturedStart()==0&&shorter.capturedLength()==prefix.size()&&rule.valid(prefix)){length=prefix.size();break;}
+     }
+    }
+    offset=found.capturedStart()+length;
+    if(rule.valid&&!rule.valid(joined.text.mid(found.capturedStart(),length)))continue;
+    auto words=owners(joined,found.capturedStart(),length);
+    if(words.isEmpty())continue;
+    // Merge both views before reserving any word, so a wrapped continuation
+    // cannot be discarded merely because its prefix matched the plain view.
+    for(qsizetype i=0;i<pending.size();){
+     const auto& prior=pending.at(i);
+     if(std::any_of(prior.cbegin(),prior.cend(),[&](int w){return words.contains(w);})){for(int w:prior)if(!words.contains(w))words.append(w);pending.removeAt(i);i=0;}else ++i;
+    }
+    std::sort(words.begin(),words.end());pending.append(words);
    }
+  }
+  for(const auto& words:pending){
+   if(std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
+   for(int w:words)taken.insert(w);matches.append({rule.category,words});
   }
  }
  std::sort(matches.begin(),matches.end(),[](const Match& a,const Match& b){return a.words.first()<b.words.first();});
