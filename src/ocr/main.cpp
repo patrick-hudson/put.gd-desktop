@@ -72,5 +72,11 @@ int main(int argc,char** argv){
   result=toTextResult(recognized,job);
   return {};
  };
- return textjob::runChild(argc,argv,engine,confined?QString():QStringLiteral("helper_sandbox_unavailable"));
+ const int status=textjob::runChild(argc,argv,engine,confined?QString():QStringLiteral("helper_sandbox_unavailable"));
+ // One job, then out, without exit's destructors and without waiting for an
+ // engine thread the job left behind at its time budget (still in an Init or
+ // a recognition that overran): the result and checkpoint are already sent
+ // and accepted, and nothing such a thread does can reach them.
+ std::fflush(nullptr);
+ ::_exit(status);
 }
