@@ -9,6 +9,7 @@
 //   GROUP: comma-separated absolute file paths, started 200 ms after the previous group,
 //          or PUTGD_PROBE_GROUP_GAP_MS after it when that is set
 #include "app/OperationService.h"
+#include "../fixtures/LiveProbe.h"
 #include "storage/s3/S3Provider.h"
 #include <QCoreApplication>
 #include <QDir>
@@ -24,13 +25,7 @@
 #include <unistd.h>
 using namespace putgd;
 namespace {
-qint64 statusKiB(const QString& path, const QByteArray& name) {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) return 0;
-    for (const auto& line : file.readAll().split('\n'))
-        if (line.startsWith(name)) return line.mid(name.size()).trimmed().split(' ').first().toLongLong();
-    return 0;
-}
+using test::probe::statusKiB;
 class Files final : public SourceAdapter {
 public:
     QStringList next;

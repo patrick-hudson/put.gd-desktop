@@ -15,6 +15,7 @@
 // SMALL set to --publish uploads CANCEL alone and keeps it, printing its link;
 // SMALL set to --delete DATA_DIR removes what an earlier --publish left, through History.
 #include "app/HistoryService.h"
+#include "../fixtures/LiveProbe.h"
 #include "storage/b2/B2Provider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -35,43 +36,12 @@
 #include <unistd.h>
 using namespace putgd;
 namespace {
-void report(const QJsonObject& line) { printf("%s\n", QJsonDocument(line).toJson(QJsonDocument::Compact).constData()); fflush(stdout); }
-bool spin(const std::function<bool()>& done, qint64 timeoutMs) {
-    QElapsedTimer clock;
-    clock.start();
-    while (!done()) {
-        if (clock.elapsed() > timeoutMs) return false;
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-        QThread::msleep(20);
-    }
-    return true;
-}
-std::pair<Error, QJsonObject> call(const std::function<void(JsonReply)>& start, qint64 timeoutMs = 600000) {
-    bool done = false;
-    Error error;
-    QJsonObject result;
-    start([&](Error e, QJsonObject r) { error = e; result = r; done = true; });
-    if (!spin([&] { return done; }, timeoutMs)) return {{"probe_timeout", "No reply in time", {}}, {}};
-    return {error, result};
-}
-QList<qint64> workers() {
-    QList<qint64> found;
-    for (const auto& entry : QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        QFile stat("/proc/" + entry + "/stat");
-        if (!stat.open(QIODevice::ReadOnly)) continue;
-        const auto fields = stat.readAll();
-        const auto close = fields.lastIndexOf(')');
-        if (fields.left(close).contains("(putgd-b2-worke") && fields.mid(close + 2).split(' ').value(1).toLongLong() == getpid()) found.append(entry.toLongLong());
-    }
-    return found;
-}
-qint64 rssKiB(qint64 pid) {
-    QFile file(QString("/proc/%1/status").arg(pid));
-    if (!file.open(QIODevice::ReadOnly)) return 0;
-    for (const auto& line : file.readAll().split('\n'))
-        if (line.startsWith("VmRSS:")) return line.mid(6).trimmed().split(' ').first().toLongLong();
-    return 0;
-}
+constexpr qint64 callTimeoutMs = 600000;
+using test::probe::report;
+using test::probe::spin;
+using test::probe::rssKiB;
+std::pair<Error, QJsonObject> call(const std::function<void(JsonReply)>& start, qint64 timeoutMs = callTimeoutMs) { return test::probe::call(start, timeoutMs); }
+QList<qint64> workers() { return test::probe::workers("putgd-b2-worke"); }
 class Files final : public SourceAdapter {
 public:
     QStringList next;
