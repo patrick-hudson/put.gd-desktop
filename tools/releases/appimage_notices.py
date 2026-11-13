@@ -562,6 +562,8 @@ def upstream_component(appdir: Path, spec: dict, lock: dict, build: dict, source
     embedded = []
     for item in spec.get("embedded", []):
         record = {"name": item["name"], "license": item["license"]}
+        if item.get("version"):
+            record["version"] = item["version"]
         if item.get("licenseText"):
             record["licenseText"] = item["licenseText"]  # audit() checks it is in the image
         embedded.append(record)

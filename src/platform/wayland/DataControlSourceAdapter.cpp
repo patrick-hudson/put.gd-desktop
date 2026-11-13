@@ -23,7 +23,7 @@ std::optional<quint64> DataControlSourceAdapter::lastCopyRevision()const {
 }
 QJsonObject DataControlSourceAdapter::capabilities()const {
  const QJsonObject capture{{"available",false},{"error",captureUnavailable}};
- return {{"adapter","wayland-data-control"},{"capture",QJsonObject{{"region",capture},{"window",capture},{"desktop",capture}}},{"clipboard",clipboard_.status()},{"shortcuts",QJsonObject{{"available",false}}}};
+ return {{"adapter","wayland-data-control"},{"capture",QJsonObject{{"region",capture},{"text",capture},{"window",capture},{"desktop",capture}}},{"clipboard",clipboard_.status()},{"shortcuts",QJsonObject{{"available",false}}}};
 }
 Error DataControlSourceAdapter::unavailable()const {
  return {"source_unsupported",clipboard_.status()["error"].toString(),{}};

@@ -175,6 +175,7 @@ foreach(embedded IN ITEMS "src/aws-cpp-sdk-core/source/external/cjson/cJSON.cpp|
     "From ${embedded_source} in the AWS SDK for C++ source:\n\n${embedded_text}\n")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/aws/${embedded_name}" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 endforeach()
+putgd_install_snapshot(qrcodegen-LICENSE "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 foreach(font_notice IN ITEMS OFL-sans.txt OFL-mono.txt SOURCE.md)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/ui/fonts/${font_notice}" "${CMAKE_INSTALL_DATADIR}/doc/putgd/fonts")
@@ -306,6 +307,10 @@ set(putgd_rpm_private_dirs "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putg
 list(JOIN putgd_rpm_private_dirs "|" putgd_rpm_private_dirs)
 set(CPACK_RPM_SPEC_MORE_DEFINE
   "%global __provides_exclude_from ^(${putgd_rpm_private_dirs})/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n|libnautilus-extension|libcaja-extension)[.]so.*$\n%define __spec_install_post /bin/true")
+if(TARGET putgd-ocr)
+  string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", tesseract-ocr-eng")
+  string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", tesseract-langpack-eng")
+endif()
 if(TARGET putgd-record)
   # The helper links the distro GStreamer/FFmpeg libraries (shlibdeps/RPM find
   # those); element plugins are separate packages that must be present.

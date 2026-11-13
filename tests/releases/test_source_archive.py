@@ -13,9 +13,25 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import quiet_git  # noqa: F401  (disables git background maintenance, #99)
 import source_archive
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+import verify_dependencies
 
 
 class SourceArchive(unittest.TestCase):
+    def test_changed_vendored_qr_source_is_rejected(self):
+        # Otherwise an edited vendored dependency silently retains a trusted pin.
+        with tempfile.TemporaryDirectory(prefix="pgqrpin-") as directory:
+            root = Path(directory)
+            source = root / "qrcodegen.cpp"
+            source.write_bytes(b"original source")
+            lock = root / "dependency-lock.json"
+            lock.write_text(json.dumps({"qrCodeGenerator": {"files": [{
+                "path": source.name, "sha256": hashlib.sha256(source.read_bytes()).hexdigest()}]}}))
+            verify_dependencies.verify_vendored(root, lock)
+            source.write_bytes(b"changed source")
+            with self.assertRaisesRegex(ValueError, "Vendored QR generator differs"):
+                verify_dependencies.verify_vendored(root, lock)
+
     def test_appimage_build_script_and_local_import_closure_are_exported(self):
         root = Path(__file__).resolve().parents[2]
         script = root / 'tools/releases/build-appimage.sh'

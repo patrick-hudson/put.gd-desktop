@@ -369,7 +369,9 @@ def audit(args):
                 raise ValueError('Direct OpenPGP web-stream-tools dependency missing from notices')
             bun_versions.setdefault(proton['manifest']['bunVersion'], []).append(label)
             if appimage:
+                from portable_appimage import audit_ocr_runtime
                 observed = appimage_notices.audit(root)
+                observed["ocr"] = audit_ocr_runtime(root)
                 actual_files = {p.relative_to(root).as_posix(): sha256(p) for p in root.rglob('*') if p.is_file()}
                 if actual_files != {i['path']: i['sha256'] for i in receipt['inventory']}:
                     raise ValueError('AppImage file hashes differ from deployed CI audit')
@@ -378,7 +380,7 @@ def audit(args):
                 environment = {**os.environ, 'LD_LIBRARY_PATH': str(root / 'usr/lib') + ':' + str(root / 'usr/lib/putgd')}
                 observed['compiledIdentities'] = {}
                 for program in receipt['postDeploymentAudit']['identityMatchedPrograms']:
-                    identity = json.loads(run(root / 'usr/bin' / program, '--version-json', env=environment, timeout=30))
+                    identity = json.loads(run(root / 'usr/bin' / program, '--version-json', env={} if program == 'putgd-ocr' else environment, timeout=30))
                     if identity != expected:
                         raise ValueError('AppImage compiled identity differs from release: ' + program)
                     observed['compiledIdentities'][program] = identity

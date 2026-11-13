@@ -37,6 +37,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter = CliAdapter('/does/not/exist')
         server = create_server(adapter)
         for name, args in [
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email']}, {'op': 'undo'}]}),
             ('perform_action', {'action': 'shell'}),
             ('delete_history_uploads', {'ids': [], 'acknowledgement': ''}),
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
@@ -133,6 +134,26 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'},
                      'delete.confirm', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}),
                     ('install_update', {'confirm': True}, 'update.install', {'confirm': True}),
+                    # Text recognition and QR codes (#1428): each tool forwards its one method.
+                    ('perform_action', {'action': 'text', 'delay_seconds': 3}, 'action.invoke', {'action': 'text', 'delaySeconds': 3}),
+                    ('recognize_text', {'source': 'file', 'path': '/tmp/synthetic.png', 'languages': ['eng', 'deu'], 'copy': True},
+                     'text.recognize', {'source': 'file', 'path': '/tmp/synthetic.png', 'languages': ['eng', 'deu'], 'copy': True}),
+                    ('get_text_recognition', {'id': 'synthetic-operation'}, 'text.inspect', {'id': 'synthetic-operation'}),
+                    ('cancel_text_recognition', {'id': 'synthetic-operation'}, 'text.cancel', {'id': 'synthetic-operation'}),
+                    ('recognize_editor_text', {'id': 'synthetic-operation'}, 'editor.recognize', {'id': 'synthetic-operation'}),
+                    ('select_editor_text', {'id': 'synthetic-operation', 'result': 3, 'from_word': 0, 'to_word': 12},
+                     'editor.selectText', {'id': 'synthetic-operation', 'result': 3, 'from': 0, 'to': 12}),
+                    ('copy_editor_text', {'id': 'synthetic-operation', 'result': 3, 'all': True},
+                     'editor.copyText', {'id': 'synthetic-operation', 'result': 3, 'all': True}),
+                    ('copy_editor_code', {'id': 'synthetic-operation', 'result': 3, 'index': 0},
+                     'editor.copyCode', {'id': 'synthetic-operation', 'result': 3, 'index': 0}),
+                    ('open_editor_code', {'id': 'synthetic-operation', 'result': 3, 'index': 0},
+                     'editor.openCode', {'id': 'synthetic-operation', 'result': 3, 'index': 0}),
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]}),
+                    ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
+                    ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
+                     'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
                 ]:
                     await call(name, args)
                     self.assertEqual(self.calls[-1]['method'], method)

@@ -4,14 +4,29 @@ add_library(putgd_log STATIC src/core/Log.cpp src/core/RunMarker.cpp src/core/Cr
 set_target_properties(putgd_log PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_log PUBLIC src)
 target_link_libraries(putgd_log PUBLIC Qt6::Core putgd_build_options)
+# The text-job contract (#1428): Qt Core only, so the putgd-ocr helper links it
+# without putgd_core, which brings Qt GUI and Qt SQL.
+add_library(putgd_text_protocol STATIC src/core/TextJobProtocol.cpp)
+set_target_properties(putgd_text_protocol PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(putgd_text_protocol PUBLIC src)
+target_link_libraries(putgd_text_protocol PUBLIC Qt6::Core putgd_build_options)
+# The child half of that contract: the handshake and the two memfds for one job.
+# putgd-ocr and the test fixture helper link it; it runs no engine.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_library(putgd_text_child STATIC src/ocr/TextJobChild.cpp)
+  target_link_libraries(putgd_text_child PUBLIC putgd_text_protocol putgd_ui_control putgd_build_identity)
+endif()
 add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
   src/platform/Geometry.cpp
-  src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/LocalArchive.cpp
+  src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/TextJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
   src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp src/core/FolderZip.cpp
-  src/core/HostEnvironment.cpp)
+  src/core/HostEnvironment.cpp src/core/QrImage.cpp src/core/qrcodegen/qrcodegen.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# Nayuki's QR Code generator v1.8.0 (MIT), vendored unmodified for History's
+# Show QR code (#1428): the resident and putgd-ui share it through this library.
+set_source_files_properties(src/core/qrcodegen/qrcodegen.cpp PROPERTIES COMPILE_OPTIONS "-w")
 # Which published package this build becomes, and whether it may check for a
 # newer version once a day (#293). The package jobs set the target; a build
 # without one (development, source archive) never checks. A distribution
@@ -37,7 +52,7 @@ endif()
 set_source_files_properties(src/core/Distribution.cpp PROPERTIES COMPILE_DEFINITIONS
   "PUTGD_PACKAGE_TARGET_NAME=\"${PUTGD_PACKAGE_TARGET}\";PUTGD_UPDATE_CHECK_BUILT=${putgd_update_check_built};PUTGD_PACKAGE_REPOSITORY=\"${PUTGD_PACKAGE_REPOSITORY_URL}\"")
 target_include_directories(putgd_core PUBLIC src)
-target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
+target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log putgd_text_protocol Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
 # The streaming folder zip writer (#1105) deflates through zlib directly.
 find_package(ZLIB REQUIRED)
 target_link_libraries(putgd_core PRIVATE ZLIB::ZLIB)

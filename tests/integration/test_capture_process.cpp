@@ -153,6 +153,20 @@ private slots:
   PUTGD_TRY_COMPARE(released,1);
   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
  }
+ // Copy text (#1428) selects as a region capture does, and Repeat last region
+ // must still mean the last region capture: a text selection that replaced the
+ // remembered rectangle would make the next Repeat capture and upload another area.
+ void textCaptureLeavesTheRememberedRegionAlone(){
+  putgd::X11CoreSourceAdapter adapter(nullptr,PUTGD_CAPTURE_FIXTURE);const putgd::ResourceLimits limits;
+  const auto remembered=[&]{return adapter.capabilities()["capture"].toObject()["repeat"].toObject()["remembered"].toBool();};
+  qputenv("PUTGD_TEST_CAPTURE_MODE",cacheExpected()?"cursor-seed":"observe-cursor");
+  int completed=0;putgd::Error error;const auto finished=[&](putgd::PayloadResult result){error=result.error;++completed;};
+  adapter.prepareAcquisition("text",limits,[](putgd::Error){},[]{})(limits,finished);
+  PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));QVERIFY(!remembered());
+  // The same selection as a region capture is remembered: the row above is not vacuous.
+  adapter.prepareAcquisition("region",limits,[](putgd::Error){},[]{})(limits,finished);
+  PUTGD_TRY_COMPARE(completed,2);QVERIFY2(!error,qPrintable(error.code));QVERIFY(remembered());
+ }
  void screenshotFirstAndOtherSourcesHoldNothing(){
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);

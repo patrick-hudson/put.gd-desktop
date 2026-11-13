@@ -11,7 +11,7 @@ X11CoreSourceAdapter::X11CoreSourceAdapter(QObject* parent,QString helperPath):Q
   if(helper_.crosshairHeld())helper_.cancel();
  });connect(&shortcuts_,&X11Shortcuts::pressed,this,[this](const QString& action){
   // First thing at the press, before logging, settings, freezing or the helper's load.
-  crosshairHeld_=(action=="region"||action=="edit")&&!regionScreenshotFirst_&&helper_.holdCrosshair();
+  crosshairHeld_=(action=="region"||action=="edit"||action=="text")&&!regionScreenshotFirst_&&helper_.holdCrosshair();
  });connect(&shortcuts_,&X11Shortcuts::activated,this,[this](const QString& action){
   emit actionRequested(action);
   if(std::exchange(crosshairHeld_,false))helper_.releaseUnclaimedCrosshair();
@@ -26,8 +26,8 @@ QJsonObject X11CoreSourceAdapter::freeze(const QString& action,Error& error){
  if(!capture_.sameNativeOutputs(lastRegion_->layout,error)){if(!error)error=lastRegionLayoutChanged();return {};}
  return capture_.freeze(action,excluded,error,lastRegion_->selection,lastRegion_->layout);
 }
-std::function<void(PayloadResult)> X11CoreSourceAdapter::remembering(const QJsonObject& frozen,std::function<void(PayloadResult)> callback){
- if(frozen["action"]!="region")return callback;
+std::function<void(PayloadResult)> X11CoreSourceAdapter::remembering(const QJsonObject& frozen,std::function<void(PayloadResult)> callback,bool remember){
+ if(!remember||frozen["action"]!="region")return callback;
  QPointer<X11CoreSourceAdapter> guard(this);
  return [guard,callback=std::move(callback)](PayloadResult result)mutable{
   if(guard&&!result.error)if(const auto selected=guard->helper_.selection())guard->lastRegion_=RegionMemory{QJsonArray{selected->x(),selected->y(),selected->width(),selected->height()},guard->helper_.selectionLayout()};
@@ -43,14 +43,16 @@ quint64 X11CoreSourceAdapter::clipboardRevision()const{return clipboard_.revisio
 QJsonObject X11CoreSourceAdapter::capabilities()const{
  const QJsonObject capture{{"available",capture_.available()},{"mode","visible-pixels"},{"consent","none"},{"helper",helper_.diagnostics()}};
  auto repeat=capture;repeat["remembered"]=lastRegion_.has_value();
- return {{"adapter","cinnamon-core-x11"},{"capture",QJsonObject{{"region",capture},{"window",capture},{"desktop",capture},{"monitor",capture},{"repeat",repeat}}},{"delay",QJsonObject{{"available",capture_.available()},{"seconds",QJsonArray{3,5,10}},{"indicator","helper-window"}}},{"clipboard",QJsonObject{{"available",clipboard_.available()},{"types",QJsonArray{"files","image","text"}},{"import","asynchronous-x11-selection"},{"result","native-x11-ownership"}}},{"shortcuts",QJsonObject{{"available",shortcuts_.available()},{"bindings",shortcuts_.status()},{"keyPaths",shortcuts_.keyPaths()}}}};
+ return {{"adapter","cinnamon-core-x11"},{"capture",QJsonObject{{"region",capture},{"text",capture},{"window",capture},{"desktop",capture},{"monitor",capture},{"repeat",repeat}}},{"delay",QJsonObject{{"available",capture_.available()},{"seconds",QJsonArray{3,5,10}},{"indicator","helper-window"}}},{"clipboard",QJsonObject{{"available",clipboard_.available()},{"types",QJsonArray{"files","image","text"}},{"import","asynchronous-x11-selection"},{"result","native-x11-ownership"}}},{"shortcuts",QJsonObject{{"available",shortcuts_.available()},{"bindings",shortcuts_.status()},{"keyPaths",shortcuts_.keyPaths()}}}};
 }
-SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(const QString& action){
+SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(const QString& requested){
+ // Copy text (#1428) selects exactly as a region does; only Repeat's memory is left alone.
+ const bool text=requested==QLatin1String("text");const QString action=text?QStringLiteral("region"):requested;
  QPointer<X11CoreSourceAdapter> guard(this);
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> callback){if(guard)guard->clipboard_.acquire(limits,std::move(callback),revision);else callback({{},{"source_unavailable","Desktop adapter closed",{}}});};}
  if(helper_.busy())return [](const ResourceLimits&,std::function<void(PayloadResult)> callback){callback({{},{"busy_selecting","Region selection is already active",{}}});};
  Error error;const auto frozen=freeze(action,error);
- return [guard,frozen,error,outcome=captureOutcome_,appearance=captureAppearance_,screenshot=action=="region"&&regionScreenshotFirst_,delay=captureDelay_](const ResourceLimits& limits,std::function<void(PayloadResult)> callback){if(error){callback({{},error});return;}if(!guard){callback({{},{"source_unavailable","Desktop adapter closed",{}}});return;}Error changed;if(!guard->capture_.unchanged(frozen,changed)){callback({{},changed});return;}guard->helper_.start(frozen,limits,guard->remembering(frozen,std::move(callback)),outcome,screenshot,appearance,delay);};
+ return [guard,frozen,error,text,outcome=captureOutcome_,appearance=captureAppearance_,screenshot=action=="region"&&regionScreenshotFirst_,delay=captureDelay_](const ResourceLimits& limits,std::function<void(PayloadResult)> callback){if(error){callback({{},error});return;}if(!guard){callback({{},{"source_unavailable","Desktop adapter closed",{}}});return;}Error changed;if(!guard->capture_.unchanged(frozen,changed)){callback({{},changed});return;}guard->helper_.start(frozen,limits,guard->remembering(frozen,std::move(callback),!text),outcome,screenshot,appearance,delay);};
 }
 SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits){
  return prepareAcquisition(action,acceptedLimits,{});
@@ -58,19 +60,20 @@ SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(cons
 SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> earlyTerminal){
  return prepareAcquisition(action,acceptedLimits,std::move(earlyTerminal),{});
 }
-SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> earlyTerminal,std::function<void()> earlyReleased){
+SourceAdapter::PreparedAcquisition X11CoreSourceAdapter::prepareAcquisition(const QString& requested,const ResourceLimits& acceptedLimits,std::function<void(Error)> earlyTerminal,std::function<void()> earlyReleased){
+ const bool text=requested==QLatin1String("text");const QString action=text?QStringLiteral("region"):requested;
  if(action=="clipboard"){auto acquisition=prepareAcquisition(action);if(earlyReleased)earlyReleased();return acquisition;}
  QPointer<X11CoreSourceAdapter> guard(this);
  if(helper_.busy()){if(earlyReleased)earlyReleased();return [](const ResourceLimits&,std::function<void(PayloadResult)> callback){callback({{},{"busy_selecting","Region selection is already active",{}}});};}
  Error error;const auto frozen=freeze(action,error);
  if(error&&earlyReleased)earlyReleased();
  auto ticket=error?CaptureProcessController::Ticket{}:helper_.prepare(frozen,acceptedLimits,std::move(earlyTerminal),std::move(earlyReleased),captureOutcome_,action=="region"&&regionScreenshotFirst_,captureAppearance_,captureDelay_);
- return [guard,frozen,error,acceptedLimits,ticket](const ResourceLimits& limits,std::function<void(PayloadResult)> callback){
+ return [guard,frozen,error,acceptedLimits,ticket,text](const ResourceLimits& limits,std::function<void(PayloadResult)> callback){
   if(error){callback({{},error});return;}
   if(!guard){callback({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
   if(limits.imagePixels!=acceptedLimits.imagePixels||limits.imageBytes!=acceptedLimits.imageBytes||limits.maxFileBytes!=acceptedLimits.maxFileBytes){guard->helper_.discard(ticket);callback({{},{"input_excessive","Prepared capture limits changed",{}}});return;}
   Error changed;if(!guard->capture_.unchanged(frozen,changed)){guard->helper_.discard(ticket);callback({{},changed});return;}
-  guard->helper_.begin(ticket,guard->remembering(frozen,std::move(callback)));
+  guard->helper_.begin(ticket,guard->remembering(frozen,std::move(callback),!text));
  };
 }
 void X11CoreSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> callback){prepareAcquisition(action,limits)(limits,std::move(callback));}

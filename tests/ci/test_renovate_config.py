@@ -50,7 +50,7 @@ class RenovateConfig(unittest.TestCase):
             self.assertEqual(seen, {tool['name'] for tool in lock['tools']}, name)
         lock = json.loads((ROOT / 'packaging/appimage/tools.lock.json').read_text())['buildInputs']
         pinned = {item['repository'].removeprefix('https://github.com/').removesuffix('.git')
-                  for item in [*lock['qtLicenseSources'], *(value for value in lock.values() if isinstance(value, dict))]}
+                  for item in [*lock['qtLicenseSources'], *(value for value in lock.values() if isinstance(value, dict) and 'release' in value)]}
         text = (ROOT / 'packaging/appimage/tools.lock.json').read_text()
         seen = {match['depName'] for match in python_pattern(managers[1]['matchStrings'][0]).finditer(text)}
         self.assertEqual(seen, pinned)

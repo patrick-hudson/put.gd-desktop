@@ -88,7 +88,7 @@ private:
 QLabel* fieldLabel(const QString& text,QWidget* parent){auto* label=new QLabel(text,parent);Ui::role(label,"caption");return label;}
 QWidget* column(QWidget* parent,QVBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(Ui::space(Space::s));return widget;}
 // Tool names in editor.view, in Tool order.
-const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text","step","pen","ellipse","line"};
+const QStringList toolNames{"select","redact","blur","crop","arrow","rectangle","highlight","text","step","pen","ellipse","line","copyText"};
 QJsonValue rectValue(const std::optional<QRect>& r){if(!r)return QJsonValue();return QJsonArray{r->x(),r->y(),r->width(),r->height()};}
 bool integerIn(const QJsonValue& value,double minimum,double maximum,int& out){
  if(!value.isDouble())return false;const double number=value.toDouble();
@@ -102,6 +102,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  setObjectName("putgdWindow");setWindowTitle("Edit image — put.gd");setWindowIcon(Ui::icon("brand"));
  setAttribute(Qt::WA_DeleteOnClose,false);
  chooser_=new FileDialog(this);
+ text_=new EditorTextRecognition(doc_,this);
  auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
  // The document header: the truthful draft state, not a claim about the source.
  header_=Ui::WindowHeader::install(this,root);header_->setDocument("Edit image","Not uploaded");
@@ -120,9 +121,11 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  const Entry entries[]={{Tool::Select,"select","Select and move","V",""},{Tool::Crop,"crop","Crop","C",""},
   {Tool::Arrow,"annotate-arrow","Arrow","A",""},{Tool::Line,"line","Line","L",""},{Tool::Rectangle,"rectangle","Rectangle","R",""},{Tool::Ellipse,"ellipse","Ellipse","E",""},
   {Tool::Pen,"pen","Pen","P",""},{Tool::Highlight,"highlight","Highlight","H",""},{Tool::Text,"text","Text","T",""},{Tool::Step,"step","Step number","N",""},
-  {Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"}};
+  {Tool::Redact,"redact","Redact","X","covers with an opaque redaction"},{Tool::Blur,"blur","Blur","B","a visual effect only"},
+  // #1428: Copy text, after Blur behind its own separator.
+  {Tool::CopyText,"copy-text","Copy text","G","reads the text in the image"}};
  for(const auto& entry:entries){
-  if(entry.tool==Tool::Redact){tools->addSpacing(Ui::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Ui::space(Space::xs));}
+  if(entry.tool==Tool::Redact||entry.tool==Tool::CopyText){tools->addSpacing(Ui::space(Space::xs));tools->addWidget(separator(toolbar));tools->addSpacing(Ui::space(Space::xs));}
   auto* button=new QToolButton(toolbar);button->setCheckable(true);button->setIcon(Ui::icon(entry.icon));button->setProperty("uiIconBase",QSize(20,20));button->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));button->setFixedHeight(Ui::scaled(36));button->setFocusPolicy(Qt::StrongFocus);
   const auto label=QString::fromUtf8(entry.label),detail=QString::fromUtf8(entry.detail);
   button->setText(entry.tool==Tool::Select?QStringLiteral("Select"):label);button->setToolButtonStyle(Qt::ToolButtonIconOnly);button->setFixedWidth(Ui::scaled(36));
@@ -154,7 +157,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  // whatever the tool, so the canvas never moves under the pointer.
  splitter_=new QSplitter(Qt::Horizontal,this);splitter_->setObjectName("editorSplitter");splitter_->setChildrenCollapsible(false);splitter_->setHandleWidth(1);
  canvasViewport_=new QWidget(splitter_);canvasViewport_->setObjectName("editorCanvasViewport");auto* canvasLayout=new QVBoxLayout(canvasViewport_);canvasLayout->setContentsMargins(0,0,0,0);canvasLayout->setSpacing(0);
- canvas_=new editor::EditorCanvas(doc_,canvasViewport_);canvasLayout->addWidget(canvas_);splitter_->addWidget(canvasViewport_);canvas_->installEventFilter(this);
+ canvas_=new editor::EditorCanvas(doc_,canvasViewport_);canvasLayout->addWidget(canvas_);splitter_->addWidget(canvasViewport_);canvas_->installEventFilter(this);canvas_->setTextLayer(&text_->layer());
  // Properties scroll independently; document metadata stays in the footer.
  auto* side=new Ui::Surface("surface",{},splitter_);side->setObjectName("editorSide");side->setMinimumWidth(std::max(240,Ui::scaled(180)));
  propertiesWidth_=std::max(240,Ui::scaled(180));
@@ -228,6 +231,41 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  textSize_=new QSpinBox(textRow_);textSize_->setObjectName("textSize");textSize_->setRange(editor::minimumFontPixels,editor::maximumFontPixels);textSize_->setValue(28);textSize_->setSuffix(" px");
  textSize_->setKeyboardTracking(false);textSize_->setAccessibleName("Text size in image pixels");layout->addWidget(textSize_);
  properties->addWidget(textRow_);
+ // Copy text (#1428): what recognition found, the two copies, what it reads, codes.
+ copyTextRow_=column(panel,layout);copyTextRow_->setObjectName("editorCopyText");
+ textState_=new QLabel(copyTextRow_);textState_->setObjectName("editorTextState");Ui::role(textState_,"body");textState_->setWordWrap(true);layout->addWidget(textState_);
+ {
+  // One above the other: side by side they are wider than the panel.
+  auto* buttons=new QVBoxLayout;buttons->setContentsMargins(0,0,0,0);buttons->setSpacing(Ui::space(Space::xs));
+  copySelection_=new QPushButton("Copy selection",copyTextRow_);copySelection_->setObjectName("editorCopySelection");copySelection_->setToolTip("Copy the selected words (Ctrl+C)");Ui::role(copySelection_,"primary");
+  copyAllText_=new QPushButton("Copy all text",copyTextRow_);copyAllText_->setObjectName("editorCopyAllText");copyAllText_->setToolTip("Copy every word, and the content of each code on a line of its own");Ui::role(copyAllText_,"quiet");
+  buttons->addWidget(copySelection_,0,Qt::AlignLeft);buttons->addWidget(copyAllText_,0,Qt::AlignLeft);layout->addLayout(buttons);
+  connect(copySelection_,&QPushButton::clicked,this,[this]{copyRecognizedText(false);});connect(copyAllText_,&QPushButton::clicked,this,[this]{copyRecognizedText(true);});
+ }
+ textFeedback_=new QLabel(copyTextRow_);textFeedback_->setObjectName("editorTextFeedback");textFeedback_->setWordWrap(true);textFeedback_->hide();layout->addWidget(textFeedback_);
+ textTruncated_=Ui::label("The text was cut at a size or time limit.","secondary",copyTextRow_);textTruncated_->setObjectName("editorTextTruncated");textTruncated_->setWordWrap(true);textTruncated_->hide();layout->addWidget(textTruncated_);
+ {auto* note=Ui::label("Reads the original image. Marks you added are not included, and Blur does not hide text from it.","secondary",copyTextRow_);note->setObjectName("editorTextNote");note->setWordWrap(true);layout->addWidget(note);}
+ codesTitle_=fieldLabel("Codes",copyTextRow_);codesTitle_->setObjectName("editorCodesTitle");layout->addWidget(codesTitle_);
+ codeList_=new QWidget(copyTextRow_);codeList_->setObjectName("editorCodes");codeLayout_=new QVBoxLayout(codeList_);codeLayout_->setContentsMargins(0,0,0,0);codeLayout_->setSpacing(Ui::space(Space::s));layout->addWidget(codeList_);
+ properties->addWidget(copyTextRow_);
+ // Quick redact (#1428) in the Redact tool's panel: suggestions, never a verdict.
+ quickRedactRow_=column(panel,layout);quickRedactRow_->setObjectName("editorQuickRedact");
+ {
+  quickRedact_=new QToolButton(quickRedactRow_);quickRedact_->setObjectName("quickRedact");quickRedact_->setText("Quick redact");quickRedact_->setIcon(Ui::icon("redact"));quickRedact_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  quickRedact_->setPopupMode(QToolButton::InstantPopup);quickRedact_->setAccessibleName("Quick redact");quickRedact_->setToolTip("Add Redact marks over recognized text of one kind");Ui::role(quickRedact_,"quiet");
+  auto* menu=new QMenu(quickRedact_);menu->setObjectName("quickRedactMenu");menu->setToolTipsVisible(true);
+  const QList<QPair<QString,QString>> kinds{{"email","Email addresses"},{"phone","Phone numbers"},{"ip","IP addresses"},{"card","Card numbers"},{"key","Keys and tokens"}};
+  for(const auto& [category,label]:kinds){auto* action=menu->addAction(label);action->setObjectName("quickRedact_"+category);if(category=="key")action->setToolTip(editor::quickRedact::keyShapes().join("\n"));connect(action,&QAction::triggered,this,[this,category]{quickRedact({category});});}
+  menu->addSeparator();auto* every=menu->addAction("All of these");every->setObjectName("quickRedact_all");connect(every,&QAction::triggered,this,[this]{quickRedact(editor::quickRedact::categories());});
+  quickRedact_->setMenu(menu);
+  auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(quickRedact_);row->addStretch(1);layout->addLayout(row);
+  auto* caution=Ui::label("Suggestions only. Recognition can miss text.","secondary",quickRedactRow_);caution->setObjectName("quickRedactCaution");caution->setWordWrap(true);layout->addWidget(caution);
+  quickRedactResult_=new QLabel(quickRedactRow_);quickRedactResult_->setObjectName("quickRedactResult");quickRedactResult_->setWordWrap(true);Ui::role(quickRedactResult_,"body");quickRedactResult_->hide();layout->addWidget(quickRedactResult_);
+ }
+ properties->addWidget(quickRedactRow_);
+ connect(text_,&EditorTextRecognition::changed,this,[this]{canvas_->update();refresh();});
+ connect(canvas_,&editor::EditorCanvas::textSelectionChanged,this,[this]{refresh();});
+ connect(canvas_,&editor::EditorCanvas::textCopyRequested,this,[this]{copyRecognizedText(false);});
  cropRow_=new QWidget(panel);auto* cropButtons=new QHBoxLayout(cropRow_);cropButtons->setContentsMargins(0,0,0,0);cropButtons->setSpacing(Ui::space(Space::s));
  auto* applyCrop=new QPushButton("Apply crop",cropRow_);applyCrop->setObjectName("applyCrop");applyCrop->setToolTip("Apply crop (Enter)");Ui::role(applyCrop,"primary");cropButtons->addWidget(applyCrop);
  auto* cancelCrop=new QPushButton("Cancel crop",cropRow_);cancelCrop->setObjectName("cancelCrop");cancelCrop->setToolTip("Cancel crop (Esc)");Ui::role(cancelCrop,"quiet");cropButtons->addWidget(cancelCrop);
@@ -570,6 +608,8 @@ void EditorWindow::syncStyle(bool applyToSelection){
 }
 
 void EditorWindow::refresh(){
+ // Every edit passes here: a Redact or crop change is a new recognition revision.
+ text_->documentChanged();text_->setActive(canvas_->tool()==Tool::CopyText);
  const auto tool=canvas_->tool();const auto* shape=doc_.find(canvas_->selected());
  auto kind=[&](editor::Shape::Kind k){return shape&&shape->kind==k;};
  using Kind=editor::Shape::Kind;
@@ -594,15 +634,18 @@ void EditorWindow::refresh(){
   syncingStep_=true;stepNumber_->setValue(selectedStep?shape->number:canvas_->nextStepNumber());syncingStep_=false;
  }
  textRow_->setVisible(tool!=Tool::Crop&&(tool==Tool::Text||kind(editor::Shape::Kind::Text)));
+ copyTextRow_->setVisible(tool==Tool::CopyText);if(tool==Tool::CopyText)syncText();
+ quickRedactRow_->setVisible(tool==Tool::Redact);quickRedact_->setEnabled(!busy_&&!quickRedacting_);
  cropRow_->setVisible(tool==Tool::Crop);
  blurWarning_->setVisible(tool!=Tool::Crop&&(tool==Tool::Blur||kind(editor::Shape::Kind::Blur)));
  hint_->setText(tool==Tool::Redact&&!shape?QStringLiteral("The covered pixels are removed from saved and uploaded images."):QString{});
  hint_->setVisible(!hint_->text().isEmpty());
  {
   // The panel names the tool (or the selected mark) and how to use it.
-  static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text","Step number","Pen","Ellipse","Line"};
+  static const QStringList titles{"Select","Redact","Blur","Crop","Arrow","Rectangle","Highlight","Text","Step number","Pen","Ellipse","Line","Copy text"};
   static const QStringList help{"Click a mark to select it.","Drag over private information to cover it with a redaction, an opaque black box.","Drag over an area to blur it.","Drag to choose the area to keep, or set it below, then apply the crop.","Drag from the tail to the point of the arrow.","Drag to frame a detail with an outline.","Drag across text to highlight it; the box snaps to the lines. Click a word, double-click a line, Shift-click to add a word. Hold Alt for a free box.","Click the image to place a label. Enter finishes the text.",
-   "Click to drop the next numbered step. Numbers count up; set the next one below.","Drag to draw freehand.","Drag to circle a detail with an outline. Hold Shift for a circle.","Drag to draw a straight line. Hold Shift to keep it at 45°."};
+   "Click to drop the next numbered step. Numbers count up; set the next one below.","Drag to draw freehand.","Drag to circle a detail with an outline. Hold Shift for a circle.","Drag to draw a straight line. Hold Shift to keep it at 45°.",
+   "Drag across words to select them. Shift+click extends, double-click takes the line, Ctrl+A takes everything, Ctrl+C copies."};
   int index=int(tool);QString title=titles.value(index);
   if(tool==Tool::Blur&&pixelate)title=QStringLiteral("Pixelate");
   // A selected mark names itself, whichever tool picked it up.
@@ -620,7 +663,7 @@ void EditorWindow::refresh(){
   if(entry.first){place_->setText(QString::fromUtf8(entry.first));place_->setIcon(Ui::icon(entry.second));place_->setToolTip(QString("%1 in the middle of the image, without the pointer (Insert)").arg(QString::fromUtf8(entry.first)));}
  }
  syncGeometry();syncSaved();remove_->setVisible(shape&&tool!=Tool::Crop);
- bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_,stepRow_})options=options||!row->isHidden();
+ bool options=false;for(auto* row:{colorRow_,widthRow_,blurRow_,textRow_,cropRow_,geometryRow_,stepRow_,copyTextRow_,quickRedactRow_})options=options||!row->isHidden();
  optionsRule_->setVisible(options);
  undo_->setEnabled(!busy_&&doc_.canUndo());redo_->setEnabled(!busy_&&doc_.canRedo());
  // Cancel asks about discarding edits once there are any; it says so.
@@ -911,7 +954,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   if(!only({}))return fail("invalid_request","geometryDetails has no other parameters");
   geometryDisclosure_->toggle();
  }else if(action=="tool"){
-  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, line, rectangle, ellipse, pen, highlight, text or step");
+  if(!only({"tool"})||!toolNames.contains(params["tool"].toString()))return fail("invalid_request","tool must be select, redact, blur, crop, arrow, line, rectangle, ellipse, pen, highlight, text, step or copyText");
   selectTool(Tool(toolNames.indexOf(params["tool"].toString())));
  }else if(action=="select"){
   if(!only({"shapeId"})||!params.contains("shapeId"))return fail("invalid_request","select needs shapeId, or null to clear the selection");
@@ -1011,4 +1054,102 @@ void EditorWindow::showEvent(QShowEvent* event){
  QWidget::showEvent(event);if(!shown_){shown_=true;placeProperties();canvas_->fit();canvas_->setFocus();}
 }
 EditorWindow::~EditorWindow(){if(copyThread_)copyThread_->wait();}
+namespace {
+QString codeKind(const QString& format){
+ static const QHash<QString,QString> names{{"QRCode","QR code"},{"MicroQRCode","Micro QR code"},{"DataMatrix","Data Matrix"},{"Aztec","Aztec code"}};
+ return names.value(format,format);
+}
+}
+void EditorWindow::textSelectionEdited(){canvas_->update();refresh();}
+void EditorWindow::syncText(){
+ const auto& layer=text_->layer();const auto state=text_->state();const int words=int(layer.words().size());
+ QString line;
+ if(state=="recognizing")line=QStringLiteral("Recognizing…");
+ else if(state=="failed")line=text_->error().message;
+ else if(state=="completed")line=words?QLocale().toString(words)+(words==1?" word":" words"):QStringLiteral("No text found");
+ textState_->setText(line);textState_->setVisible(!line.isEmpty());
+ copySelection_->setEnabled(!busy_&&layer.hasSelection());
+ bool codeText=false;for(const auto& code:layer.codes())codeText=codeText||!code.binary;
+ copyAllText_->setEnabled(!busy_&&(words>0||codeText));
+ textTruncated_->setVisible(state=="completed"&&text_->truncated());
+ if(codesShown_!=layer.identity())rebuildCodes();
+}
+// One row a code: its kind, its content on one elided line (a link whole and
+// wrapped, its host in ASCII, so it is in view before Open link), Copy, and
+// Open link for an http or https link. A binary code shows its kind and length.
+void EditorWindow::rebuildCodes(){
+ codesShown_=text_->layer().identity();
+ while(auto* item=codeLayout_->takeAt(0)){if(auto* widget=item->widget())widget->deleteLater();delete item;}
+ const auto& codes=text_->layer().codes();codesTitle_->setVisible(!codes.isEmpty());codeList_->setVisible(!codes.isEmpty());
+ for(int index=0;index<codes.size();++index){
+  const auto& code=codes.at(index);const auto link=EditorTextRecognition::openableLink(code.binary?QString():code.text);
+  auto* row=new QWidget(codeList_);row->setObjectName(QString("editorCode%1").arg(index));auto* box=new QVBoxLayout(row);box->setContentsMargins(0,0,0,0);box->setSpacing(Ui::space(Space::xs));
+  auto* kind=fieldLabel(codeKind(code.format)+(code.binary?QString(" · binary, %1 bytes").arg(code.length):QString()),row);box->addWidget(kind);
+  if(!code.binary){
+   if(link.isValid()){auto* content=Ui::label(link.toString(QUrl::FullyEncoded),"body",row);content->setObjectName("editorCodeLink");content->setWordWrap(true);content->setTextFormat(Qt::PlainText);content->setTextInteractionFlags(Qt::TextSelectableByMouse);box->addWidget(content);}
+   else{auto* content=new Ui::ElidedLabel(row);content->setObjectName("editorCodeContent");content->setTextFormat(Qt::PlainText);content->setElideMode(Qt::ElideRight);content->setText(EditorTextRecognition::shown(code.text));Ui::role(content,"body");box->addWidget(content);}
+  }
+  auto* buttons=new QHBoxLayout;buttons->setContentsMargins(0,0,0,0);buttons->setSpacing(Ui::space(Space::s));
+  auto* copy=new QPushButton("Copy",row);copy->setObjectName("editorCopyCode");copy->setEnabled(!code.binary);Ui::role(copy,"quiet");copy->setProperty("uiDensity","compact");buttons->addWidget(copy);
+  connect(copy,&QPushButton::clicked,this,[this,index]{copyCode(index);});
+  if(link.isValid()||code.binary){auto* open=new QPushButton(Ui::icon("open-external"),"Open link",row);open->setObjectName("editorOpenCode");open->setEnabled(link.isValid());Ui::role(open,"quiet");open->setProperty("uiDensity","compact");buttons->addWidget(open);connect(open,&QPushButton::clicked,this,[this,index]{openCode(index);});}
+  buttons->addStretch(1);box->addLayout(buttons);codeLayout_->addWidget(row);
+ }
+}
+void EditorWindow::textOutcome(const QString& what,Error error,int characters,TextDone done){
+ const auto status=!error?QStringLiteral("copied"):error.code=="copy_suppressed"?QStringLiteral("suppressed"):QStringLiteral("failed");
+ textFeedback_->setText(status=="copied"?QString("Copied %1").arg(what):status=="suppressed"?QStringLiteral("Text not copied: the clipboard changed"):"Text could not be copied: "+error.message);
+ Ui::role(textFeedback_,status=="copied"?"secondary":"danger");textFeedback_->show();
+ if(done){if(status=="failed")done(error,{});else done({},{{"copyStatus",status},{"characters",characters}});}
+}
+void EditorWindow::copyRecognizedText(bool all,TextDone done){
+ const auto identity=text_->identity();
+ if(!identity){if(done)done({"text_unavailable","There is no recognized text to copy",{}},{});return;}
+ const auto text=all?text_->allText():text_->layer().selectedText();
+ if(text.isEmpty()){if(done)done({"text_unavailable",all?"No text was found":"Select words to copy",{}},{});return;}
+ if(!textCopier_){textOutcome({},{"clipboard_unavailable","The clipboard is not available",{}},0,done);return;}
+ const int characters=int(text.size());const auto what=QLocale().toString(characters)+(characters==1?" character":" characters");
+ textCopier_(text,[g=QPointer<EditorWindow>(this),what,characters,done](Error error){if(g)g->textOutcome(what,error,characters,done);else if(done)done(error,{});});
+}
+void EditorWindow::copyCode(int index,TextDone done){
+ const auto& codes=text_->layer().codes();
+ if(index<0||index>=codes.size()){if(done)done({"invalid_request","There is no code with that index",{}},{});return;}
+ if(codes.at(index).binary){if(done)done({"code_binary","A binary code is neither copied nor shown",{}},{});return;}
+ if(!textCopier_){textOutcome({},{"clipboard_unavailable","The clipboard is not available",{}},0,done);return;}
+ const auto text=codes.at(index).text;const int characters=int(text.size());
+ textCopier_(text,[g=QPointer<EditorWindow>(this),characters,done](Error error){if(g)g->textOutcome("the code",error,characters,done);else if(done)done(error,{});});
+}
+void EditorWindow::openCode(int index,TextDone done){
+ const auto& codes=text_->layer().codes();
+ if(index<0||index>=codes.size()){if(done)done({"invalid_request","There is no code with that index",{}},{});return;}
+ const auto link=EditorTextRecognition::openableLink(codes.at(index).binary?QString():codes.at(index).text);
+ if(!link.isValid()){if(done)done({"link_unsupported","Only an http or https link opens",{}},{});return;}
+ // At once, with no dialog: the whole link is already in the code's row.
+ host::openLink(link,[g=QPointer<EditorWindow>(this),done](const QJsonObject& result){
+  if(g&&!result["opened"].toBool()){g->textFeedback_->setText("The link could not be opened");Ui::role(g->textFeedback_,"danger");g->textFeedback_->show();}
+  if(done){if(result["opened"].toBool())done({},result);else done({"link_not_opened","The link could not be opened on this desktop",result},{});}
+ });
+}
+void EditorWindow::quickRedact(const QStringList& categories,TextDone done){
+ if(quickRedacting_){if(done)done({"editor_busy","Quick redact is already waiting for recognition",{}},{});return;}
+ quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
+ text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done](Error error){
+  if(!g)return;g->quickRedacting_=false;
+  if(g->busy_){g->quickRedactResult_->setText("Quick redact added nothing: the edit was already submitted.");Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done({"editor_finalizing","The edit was already submitted or discarded",{}},{});return;}
+  if(error){g->quickRedactResult_->setText(error.code=="edit_stale"?QStringLiteral("A redaction or the crop changed, so nothing was added. Try again."):error.message);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(error,{});return;}
+  // Every match is ordinary Redact marks, all added as one undo step.
+  const auto& candidates=g->text_->candidates();const auto matches=editor::quickRedact::find(candidates,categories);
+  QJsonObject counts;for(const auto& category:categories)counts[category]=0;QJsonArray created;
+  g->doc_.beginGesture();
+  for(const auto& match:matches){
+   counts[match.category]=counts[match.category].toInt()+1;
+   for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;created.append(double(g->doc_.add(shape)));}
+  }
+  g->doc_.commitGesture();
+  const auto added=created.size();
+  g->quickRedactResult_->setText(added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there."));Ui::role(g->quickRedactResult_,"body");
+  g->documentEdited();
+  if(done)done({},{{"created",created},{"counts",counts}});
+ });
+}
 }

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Provision pinned AppImage dependencies with their upstream builds (CMake, FFmpeg configure)."""
 import argparse
+import hashlib
+import shutil
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -30,6 +33,27 @@ def checkout(item, destination, license_only=False):
     actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
     if actual != item['commit']:
         raise ValueError('Dependency checkout differs from locked commit')
+
+
+def zxing_notices(root: Path, source: Path):
+    """Retain the reader library's embedded BSD and MIT notices from its pin."""
+    embedded = next(c for c in json.loads((root / 'packaging/appimage/components.json').read_text())['components'] if c['id'] == 'zxing')['embedded'][0]
+    zueci = source / 'core/src/libzueci'
+    version = re.search(r'/\* Version:\s*([0-9.]+)\s*\*/', (zueci / 'zueci.h').read_text())
+    if version is None or version[1] != embedded['version']:
+        raise ValueError('Refresh the embedded libzueci identity and notices for this ZXing release')
+    copyrights = sorted({line.strip().strip('/* ').rstrip(' */')
+                          for path in zueci.iterdir() if path.suffix in ('.c', '.h')
+                          for line in path.read_text().splitlines()[:12] if 'Copyright' in line})
+    mit = [text for text in re.findall(r'/\*.*?\*/', (zueci / 'zueci.c').read_text(), re.S)
+           if 'Permission is hereby granted' in text]
+    if not copyrights or len(mit) != 1:
+        raise ValueError('Pinned libzueci lost its expected copyright or inline MIT notice')
+    notice = ('libzueci ' + version[1] + ', embedded in ZXing-cpp\n\n' +
+              '\n'.join(copyrights) + '\n\n' +
+              (root / 'packaging/appimage/BSD-3-Clause.txt').read_text() +
+              '\nInline UTF-8 decoder notice from zueci.c:\n' + mit[0] + '\n')
+    (source / 'PUTGD-THIRD-PARTY-NOTICES.txt').write_text(notice)
 
 
 def main():
@@ -84,6 +108,35 @@ def main():
         run('make', '-C', str(build), '-j' + str(os.cpu_count() or 2))
         run('make', '-C', str(build), 'install')
     records.append({'name': 'ffmpeg', 'commit': item['commit'], 'source': str(source), 'configure': configure})
+    # OCR libraries use the same sealed prefix cache as FFmpeg. sdk_cache.py
+    # keys this script, the lock (including configure recipes), and toolchain.
+    for name in ('leptonica', 'tesseract', 'zxing'):
+        item = lock[name]
+        source = sources / name
+        checkout(item, source)
+        if name == 'zxing':
+            zxing_notices(root, source)
+        options = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=ON',
+                   '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_INSTALL_LIBDIR=lib',
+                   '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_INSTALL_RPATH=$ORIGIN',
+                   *item['configure']]
+        if not args.skip_build:
+            build = root / 'build' / ('appimage-' + name)
+            run('cmake', '-S', str(source), '-B', str(build), '-G', 'Ninja', *options)
+            run('cmake', '--build', str(build), '--parallel', '2')
+            run('cmake', '--install', str(build))
+        records.append({'name': name, 'commit': item['commit'], 'source': str(source), 'configure': options})
+    item = lock['tessdata_fast']
+    source = sources / 'tessdata_fast'
+    checkout(item, source)
+    data = source / item['file']
+    if hashlib.file_digest(data.open('rb'), 'sha256').hexdigest() != item['sha256']:
+        raise ValueError('English tessdata_fast digest differs from lock')
+    if not args.skip_build:
+        destination = prefix / 'share/putgd/tessdata'
+        destination.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(data, destination / item['file'])
+    records.append({'name': 'tessdata_fast', **item})
     # Licence texts only: the Qt modules the image bundles and the ICU build
     # shipped with Qt (tools/releases/appimage_notices.py).
     for item in [*lock['qtLicenseSources'], lock['icu'], lock['mimalloc']]:

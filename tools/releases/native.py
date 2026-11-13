@@ -62,7 +62,8 @@ def package_metadata(package: Path, kind: str) -> dict:
 # Qt loads image plugins by name, so neither dpkg-shlibdeps nor RPM's
 # dependency generator sees them: History reads WebP recordings and images
 # through the WebP plugin (#189), which the distros package apart from Qt GUI.
-RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins",), "RPM": ("qt6-qtimageformats",)}
+RUNTIME_PACKAGES = {"DEB": ("qt6-image-formats-plugins", "tesseract-ocr-eng"),
+                    "RPM": ("qt6-qtimageformats", "tesseract-langpack-eng")}
 
 
 def require_runtime_packages(metadata: dict) -> None:

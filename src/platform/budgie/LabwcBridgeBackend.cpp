@@ -22,7 +22,7 @@ constexpr qint64 maximumRcBytes=4*1024*1024;
 constexpr int gsettingsTimeoutMs=5000;
 // The bridge starts 10 s after login and rewrites rc.xml within ~120 ms.
 constexpr int patienceMs=30000;
-const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"monitor","Monitor capture"},{"repeat","Repeat last region"},{"edit","Region capture and edit"},{"scroll","Capture scrolling region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
+const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"monitor","Monitor capture"},{"repeat","Repeat last region"},{"edit","Region capture and edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"},{"clipboard","Upload clipboard"}};
 // Qt key names whose GTK keysym name differs.
 const QHash<int,QString> namedKeys{{Qt::Key_Print,"Print"},{Qt::Key_Escape,"Escape"},{Qt::Key_Tab,"Tab"},{Qt::Key_Backspace,"BackSpace"},
  {Qt::Key_Return,"Return"},{Qt::Key_Enter,"KP_Enter"},{Qt::Key_Insert,"Insert"},{Qt::Key_Delete,"Delete"},{Qt::Key_Pause,"Pause"},

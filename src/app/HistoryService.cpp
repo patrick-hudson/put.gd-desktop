@@ -1,4 +1,10 @@
 #include "HistoryService.h"
+#include "core/QrImage.h"
+#include <QFileInfo>
+#include <QSaveFile>
+#include <QTemporaryFile>
+#include <unistd.h>
+#include <cerrno>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QJsonDocument>
@@ -89,6 +95,50 @@ void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
    operations_.background([path,ids](Error& e){HistoryStore store(path);QJsonArray changed;for(const auto& id:ids){QString operationId;if((e=store.recordCopiedLink(id,operationId)))break;if(!operationId.isEmpty())changed.append(operationId);}return QJsonObject{{"operations",changed}};},
     [this,reply,result](Error e,QJsonObject recorded){for(const auto& id:recorded["operations"].toArray())emit operations_.changed(id.toString());reply(e,result);});
   },ticket);
+ });
+}
+void HistoryService::qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply reply,QrShow show) {
+ if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(mode=="save"&&!path.endsWith(".png",Qt::CaseInsensitive)){reply({"invalid_request","Save a QR code to an absolute .png path",{}},{});return;}
+ if(mode=="show"&&!show){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+ // Copy image is an explicit copy from the moment it is asked for, as Copy link is.
+ const auto ticket=mode=="copy"?operations_.invalidateCopyEligibility():0;
+ const auto revision=operations_.clipboardRevision();
+ operations_.background([this,id,mode,path,overwrite](Error& e) {
+  const auto data=copyableLink(id,e);if(e)return QJsonObject{};
+  if(!data["linkAvailable"].toBool()){e=qr::unavailable(data);return QJsonObject{};}
+  const auto url=data["receipt"].toObject()["directUrl"].toString();
+  qr::Matrix matrix;if((e=qr::encode(url.toUtf8(),matrix)))return QJsonObject{};
+  QJsonObject result{{"historyId",id},{"modules",matrix.size}};
+  if(mode=="show"){result["url"]=url;return result;}
+  const auto png=qr::png(matrix);if(png.isEmpty()){e={"save_failed","The QR code could not be encoded",{}};return QJsonObject{};}const auto scale=qr::exportScale(matrix);
+  result["width"]=matrix.edge()*scale;result["height"]=matrix.edge()*scale;result["bytes"]=double(png.size());
+  result["sha256"]=QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex());
+  if(mode=="copy"){result["png"]=QString::fromLatin1(png.toBase64());return result;}
+  // Save never replaces a file without overwrite, nor anything but a regular file.
+  const QFileInfo target(path);
+  if((target.exists()||target.isSymLink())&&(!overwrite||!target.isFile())){e={"file_exists","The file exists; pass overwrite to replace it",{{"path",path}}};return QJsonObject{};}
+  bool saved=false;
+  if(overwrite){
+   QSaveFile file(path);file.setDirectWriteFallback(false);
+   saved=file.open(QIODevice::WriteOnly)&&file.write(png)==png.size()&&file.commit();
+  }else{
+   // link publishes a complete private file only if the destination is absent.
+   QTemporaryFile file(target.absolutePath()+"/.putgd-qr-XXXXXX");
+   if(file.open()&&file.write(png)==png.size()&&file.flush()){
+    saved=::link(QFile::encodeName(file.fileName()).constData(),QFile::encodeName(path).constData())==0;
+    if(!saved&&errno==EEXIST){e={"file_exists","The file exists; pass overwrite to replace it",{{"path",path}}};return QJsonObject{};}
+   }
+  }
+  if(!saved){e={"save_failed","The QR code could not be saved",{{"path",path}}};return QJsonObject{};}
+  result["saved"]=true;result["path"]=path;return result;
+ },[this,mode,reply,ticket,revision,show](Error e,QJsonObject result) {
+  if(e){reply(e,{});return;}
+  notifyChanged();
+  if(mode=="show"){show(result,reply);return;}
+  if(mode=="save"){reply({},result);return;}
+  const auto png=QByteArray::fromBase64(result.take("png").toString().toLatin1());
+  operations_.copyHistoryQr(png,[reply,result](Error e,QJsonObject copied){auto answer=result;answer["copied"]=copied["copied"].toBool();answer["copyStatus"]=e.code=="copy_suppressed"?"suppressed":e?"failed":"copied";reply(e.code=="copy_suppressed"?Error{}:e,answer);},ticket,revision);
  });
 }
 QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {

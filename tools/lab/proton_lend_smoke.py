@@ -32,7 +32,7 @@ PROFILE_ID = 'proton-lent'
 DEADLINE = 300
 SECRET_KEYS = ('url', 'link', 'shareUrl', 'publicUrl', 'directUrl')
 # Operation::activeState in src/core/Operation.cpp, plus the older 'queued'.
-ACTIVE_STATES = ('accepted', 'acquiring', 'editing', 'recording', 'stored', 'running', 'queued')
+ACTIVE_STATES = ('accepted', 'acquiring', 'editing', 'recording', 'recognizing', 'stored', 'running', 'queued')
 
 
 def scrub(value):
