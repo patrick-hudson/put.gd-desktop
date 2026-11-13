@@ -4,7 +4,7 @@
 # at link time, before the install step hashes the S3 module or the AppImage
 # inventories its files; tools/releases/debug_symbols.py collects the .debug
 # files by GNU build ID for the release's debug asset.
-foreach(product putgd putgd-ui putgd-capture putgd-region putgd-record putgd-s3-worker putgd-b2-worker putgd-http-worker putgd-cli putgd_s3_module)
+foreach(product putgd putgd-ui putgd-capture putgd-region putgd-record putgd-ocr putgd-s3-worker putgd-b2-worker putgd-http-worker putgd-cli putgd_s3_module)
   if(NOT TARGET ${product})
     continue()
   endif()
