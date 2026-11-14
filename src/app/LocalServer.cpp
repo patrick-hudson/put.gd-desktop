@@ -181,8 +181,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method.startsWith("scroll.")){operations_.scrollCommand(method.mid(7),p,reply);return;}
  // Text recognition and QR codes (#1428). Every method of the agent contract is
  // registered and its fields are checked here (schemas/text-recognition.schema.json
- // states the same shapes); one whose owner has not built it yet answers not_implemented.
- const auto unbuilt=[&reply]{reply({"not_implemented","This method is part of text recognition (#1428) and is not built yet",{}},{});};
+ // states the same shapes).
  const auto wholeNumber=[&p](const QString& key,qint64 minimum,qint64 maximum){const auto value=p[key];return value.isDouble()&&value.toDouble()==double(value.toInteger())&&value.toInteger()>=minimum&&value.toInteger()<=maximum;};
  if(method=="text.recognize") {
   const auto source=p["source"].toString();const bool screen=QStringList{"region","window","monitor","desktop"}.contains(source);QStringList languages;

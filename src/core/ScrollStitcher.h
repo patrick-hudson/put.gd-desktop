@@ -242,7 +242,7 @@ class ScrollStitcher {
   };
   Search search(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
   Search locate(const FrameSignatures& cur, int top, int bottom, int hint, int unc) const;
-  Search columnSearch(const FrameSignatures& cur, int top, int bottom) const;
+  Search columnSearch(int top, int bottom) const;
   bool contradicted(int top, int bottom, int d) const;
   int marginVerdict(const FrameSignatures& cur, int top, int bottom, const std::vector<int>& candidates, bool exact) const;
   bool columnsChanged(const FrameSignatures& cur, int top, int bottom, int d, uint32_t& steady, uint32_t own) const;

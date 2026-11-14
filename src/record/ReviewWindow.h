@@ -120,8 +120,6 @@ public:
     void showPreviousMasks();
     int firstLane() const;
     QString laneSummary() const;
-    // Embeds playback above the time axis.
-    void setTransport(QWidget* transport);
     void setLaneHeader(QWidget* header);
     qint64 playhead() const { return playhead_; }
     qint64 duration() const { return duration_; }
@@ -162,10 +160,6 @@ private:
     void placeNavigation();
     QRect laneRect(int lane) const;
     int lanesBottom() const;
-    bool transportAbove(int width) const;
-    bool transportAbove() const { return transportAbove(width()); }
-    int timelineTop() const;
-    int inlineTransportWidth_ = 0, inlineTransportHeight_ = 0, rowTransportHeight_ = 0;
     void seek(qint64 us);
     qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
     qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start
@@ -178,7 +172,6 @@ private:
     QToolButton* moreMasks_ = nullptr;
     QToolButton* previousMasks_ = nullptr;
     QLabel* laneSummary_ = nullptr;
-    QWidget* transport_ = nullptr;
     QWidget* laneHeader_ = nullptr;
     Ui::ElidedLabel* clipLabel_ = nullptr;
     QString selected_;

@@ -310,8 +310,6 @@ private:
  bool heapReclamationPending_=false;
  quint64 heapReclamationCount_=0;
  qint64 lastHeapReclamationUsec_=0;
- // Clean library pages leave this process once it has been quiet for this long.
- int imagePageDelayMs_=30*1000;
  bool imagePagesPending_=false;
  quint64 imagePageReleaseCount_=0;
  qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0;
@@ -319,7 +317,7 @@ private:
  quint64 invocation_=0;
  QString selectingId_;
  // At most one editor session exists; it holds no pixels on the session thread.
- QString editingId_,editorHelper_,editorAppearance_=QStringLiteral("dark");std::shared_ptr<EditorSession> editor_;
+ QString editingId_,editorAppearance_=QStringLiteral("dark");std::shared_ptr<EditorSession> editor_;
  Error acceptScroll(Operation&);
  QHash<QString,std::function<void()>> scrollEditorReleases_;
  std::unique_ptr<ScrollCaptureService> scroll_;

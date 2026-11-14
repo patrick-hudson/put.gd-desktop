@@ -103,7 +103,7 @@ bool removeCopyFiles(const QString& userDir,const QStringList& files){
 }
 // The files a stale directory's own marker lists and still match: a retired copy
 // can be an older version with files this AppImage doesn't carry.
-QStringList verifiedMarkerFiles(const QDir& directory,const QFileInfoList& contents){
+QStringList verifiedMarkerFiles(const QFileInfoList& contents){
  const auto plain=[](const QFileInfo& entry){return entry.isFile()&&!entry.isSymLink();};
  const auto markerEntry=std::find_if(contents.begin(),contents.end(),[](const QFileInfo& entry){return entry.fileName()==QLatin1String(copyMarkerName);});
  if(markerEntry==contents.end()||!plain(*markerEntry))return {};
@@ -126,7 +126,7 @@ void removeStaleStaging(const QString& parent,QStringList bundled){
   if(!ownName.match(directory.fileName()).hasMatch())continue;
   const QDir stale(directory.filePath());
   const auto contents=stale.entryInfoList(QDir::AllEntries|QDir::Hidden|QDir::System|QDir::NoDotAndDotDot);
-  const auto expected=bundled+verifiedMarkerFiles(stale,contents);
+  const auto expected=bundled+verifiedMarkerFiles(contents);
   const bool ours=std::all_of(contents.begin(),contents.end(),[&](const QFileInfo& entry){
    return entry.isFile()&&!entry.isSymLink()&&expected.contains(entry.fileName());
   });

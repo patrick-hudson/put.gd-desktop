@@ -176,7 +176,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    auto frame=envelope(nonce);frame["copyId"]=copyId;frame["bytes"]=QString::number(png.size());frame["sha256"]=digest;frame["width"]=size.width();frame["height"]=size.height();
    if(control.send("copyImage",frame).isEmpty()){fail();return;}
    copyDeadline.start();
-  },[&files,copyBytes](const QByteArray& png){return png.size()>copyBytes?QString():files.writeCopy(png);});
+  },[&files](const QByteArray& png){return png.size()>copyBytes?QString():files.writeCopy(png);});
   if(started){copyPending=true;copyReply=std::move(reply);}
   return started;
  };

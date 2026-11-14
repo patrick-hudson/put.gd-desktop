@@ -1003,7 +1003,7 @@ ScrollStitcher::Search ScrollStitcher::locate(const FrameSignatures& cur, int to
   const bool offset = found.status == StepStatus::Appended && found.d != 0;
   if (offset && !contradicted(top, bottom, found.d)) return found;
   if (found.status != StepStatus::NoMatch && found.status != StepStatus::Ambiguous && !inPlace && !offset) return found;
-  Search byColumns = columnSearch(cur, top, bottom);
+  Search byColumns = columnSearch(top, bottom);
   if (byColumns.status == StepStatus::Appended) {
     if (offset && std::abs(byColumns.d - found.d) <= 1) return found;  // the quarters say the same
     byColumns.evaluated += found.evaluated;
@@ -1082,7 +1082,7 @@ bool ScrollStitcher::contradicted(int top, int bottom, int d) const {
 // line is not: one row off, a quarter of the rows had more than a quarter of
 // their quarters further apart than that. Rows equal bit for bit must still
 // be there, different ones, for a column to count and for an offset to pass.
-ScrollStitcher::Search ScrollStitcher::columnSearch(const FrameSignatures& cur, int top, int bottom) const {
+ScrollStitcher::Search ScrollStitcher::columnSearch(int top, int bottom) const {
   Search out;
   const int F = ref_.bands * kFinePerBand, M = bottom - top;
   if (refFine_.size() != size_t(height_) * F || curFine_.size() != refFine_.size()) return out;

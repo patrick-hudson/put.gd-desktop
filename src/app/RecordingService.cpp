@@ -886,7 +886,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         const auto edit = s.edit;
         const auto end = s.edit.exportEnd(s.duration);
         const bool retained = time >= s.edit.trimStart && time < end;
-        backend_->preview(s.op.id, s.edit, s.config, time, int(maxEdge), marshal(s.generation, [this, reply, edit, time, retained](Error error, QJsonObject result) {
+        backend_->preview(s.op.id, s.edit, s.config, time, int(maxEdge), marshal(s.generation, [reply, edit, time, retained](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
             result["timeUs"] = double(time);
             result["retained"] = retained;
@@ -909,7 +909,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         const bool inspect = forwarded["action"].toString() == "inspect";
         if (s.state == RecordingState::Exporting && !inspect) { reply({"recording_state", "The review controls are disabled while an export runs", {{"state", recording::stateName(s.state)}}}, {}); return; }
         const auto generation = s.generation;
-        auto answer = [this, reply, generation](Error error, QJsonObject result) {
+        auto answer = [this, reply](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
             result["state"] = recording::stateName(session_->state);
             result["edit"] = session_->edit.toJson();
