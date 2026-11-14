@@ -158,6 +158,63 @@ Image Renderer::expected(int docRows) const {
   return e;
 }
 
+// ---------------------------------------------------------------- scene
+
+Scene::Scene(const Image& doc, SceneSpec spec) : doc_(doc), spec_(std::move(spec)) {
+  for (const PinnedPart& p : spec_.pinned) {
+    Image part(p.w, p.h, p.background);
+    Rng rng(p.seed);
+    for (int x = 0; x < p.w; ++x) {
+      part.at(x, 0) = 0x9097A6;
+      part.at(x, p.h - 1) = 0x9097A6;
+    }
+    for (int y = 0; y < p.h; ++y) {
+      part.at(0, y) = 0x9097A6;
+      part.at(p.w - 1, y) = 0x9097A6;
+    }
+    for (int y = 10; y + 12 < p.h; y += 22) drawTextLine(part, y, 10, std::max(12, p.w - 14), rng, p.ink);
+    parts_.push_back(std::move(part));
+  }
+}
+
+Image Scene::frame(int pos, int frame) const {
+  const int W = spec_.width, H = spec_.height;
+  Image out(W, H, kBg);
+  for (int y = 0; y < H; ++y) {
+    const int dr = pos + y;
+    if (dr >= 0 && dr < doc_.h) std::memcpy(&out.px[size_t(y) * W], doc_.row(dr), size_t(std::min(W, doc_.w)) * 4);
+  }
+  if (spec_.antialias > 0) {
+    // Edge pixels of the ink (next to the background) brighter or darker by a
+    // little, differently in every frame: the same text drawn again.
+    for (int y = 0; y < H; ++y)
+      for (int x = 1; x + 1 < W; ++x) {
+        const uint32_t v = out.at(x, y);
+        if (v == kBg || (out.at(x - 1, y) != kBg && out.at(x + 1, y) != kBg)) continue;
+        uint64_t hsh = uint64_t(pos + y) * 0x9E3779B97F4A7C15ull ^ uint64_t(x) * 0xC2B2AE3D27D4EB4Full ^ uint64_t(frame) * 0x165667B19E3779F9ull;
+        hsh ^= hsh >> 29;
+        const int delta = int(hsh % uint64_t(2 * spec_.antialias + 1)) - spec_.antialias;
+        auto ch = [&](int shift) { return std::clamp(int((v >> shift) & 255) + delta, 0, 255); };
+        out.at(x, y) = (uint32_t(ch(16)) << 16) | (uint32_t(ch(8)) << 8) | uint32_t(ch(0));
+      }
+  }
+  if (spec_.changingX >= 0) {
+    for (int y = 0; y < H; ++y) {
+      const int dr = pos + y;
+      if (dr < spec_.changingY || dr >= spec_.changingY + spec_.changingH) continue;
+      for (int x = spec_.changingX; x < std::min(W, spec_.changingX + spec_.changingW); ++x)
+        out.at(x, y) = rgb((frame * 29 + x) & 255, (dr * 3 + frame * 17) & 255, (x ^ dr ^ frame * 5) & 255);
+    }
+  }
+  for (size_t i = 0; i < spec_.pinned.size(); ++i) {
+    const PinnedPart& p = spec_.pinned[i];
+    if (pos < p.fromPos) continue;
+    for (int y = 0; y < p.h && p.y + y < H; ++y)
+      std::memcpy(&out.px[size_t(p.y + y) * W + p.x], parts_[i].row(y), size_t(std::min(p.w, W - p.x)) * 4);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- fake app
 
 FakeApp::FakeApp(const Image& doc, ViewportSpec vs, FakeAppSpec spec, FakeClock& clock)

@@ -10,6 +10,22 @@ if(BUILD_TESTING)
   target_compile_options(test_scroll_stitcher PRIVATE -O2)
   add_test(NAME scroll_stitcher_contract COMMAND test_scroll_stitcher)
   set_tests_properties(scroll_stitcher_contract PROPERTIES TIMEOUT 120)
+  # The tracker (#1515) on synthetic scenes: a wrong offset, a pinned part
+  # repeated, a row lost at a seam.
+  add_executable(test_scroll_tracker tests/unit/test_scroll_tracker.cpp tests/fixtures/ScrollSynthetic.cpp
+    src/core/ScrollTracker.cpp src/core/ScrollStitcher.cpp src/record/ScrollRun.cpp)
+  target_include_directories(test_scroll_tracker PRIVATE src)
+  target_link_libraries(test_scroll_tracker PRIVATE putgd_build_options)
+  target_compile_options(test_scroll_tracker PRIVATE -O2)
+  add_test(NAME scroll_tracker_contract COMMAND test_scroll_tracker)
+  set_tests_properties(scroll_tracker_contract PROPERTIES TIMEOUT 120)
+  # A lab tool: replays recorded frames through the tracker or the stitcher
+  # (tools/lab/scroll_tracker_score.py). Not a test by itself.
+  add_executable(test_scroll_tracker_replay tests/fixtures/scroll_tracker_replay.cpp src/core/ScrollTracker.cpp
+    src/core/ScrollStitcher.cpp)
+  target_include_directories(test_scroll_tracker_replay PRIVATE src)
+  target_link_libraries(test_scroll_tracker_replay PRIVATE putgd_build_options Qt6::Gui)
+  target_compile_options(test_scroll_tracker_replay PRIVATE -O2)
 endif()
 
 # The real helper session on a private Xvfb display against the fixture
