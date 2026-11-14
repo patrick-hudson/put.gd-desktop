@@ -376,11 +376,11 @@ void testLostAndFound() {
 
 // A page that jumps under auto-scroll (GitHub in Chrome lays itself out anew
 // near 20,000 px). Into the page's end: the steps back find it, and the image
-// is exact to the end. Far past the image: auto-scroll does not step on for
-// ever; after five ways back that did not grow the image it hands the page
-// back, says lost, and injects nothing more. (What the image holds after
-// such a jump is the tracker's: a frame with no candidate at all is taken for
-// a blank stretch and placed on the hint, reported for its round 3.)
+// is exact to the end. Far past the image, on a page of text and on one with
+// plain stretches (where a frame with nothing in common with the last was
+// once placed on the hint, #1534): auto-scroll hands the page back and says
+// lost; the user scrolls back, it says found; Auto-scroll again carries on to
+// the end, and the image is exact.
 void testAutoJump() {
   std::printf("A page that jumps under auto-scroll\n");
   DocSpec ds;
@@ -393,31 +393,47 @@ void testAutoJump() {
   ds.gradientFactor = 0;
   ds.blankFactor = 0;
   ds.paragraphsPerGap = 12;
-  const Document doc = makeDocument(ds);
-  for (const bool intoEnd : {true, false}) {
+  const Document text = makeDocument(ds);
+  ds.flatFactor = 0.2;
+  ds.gradientFactor = 0.3;
+  ds.blankFactor = 0.3;
+  ds.noiseFactor = 0.3;
+  const Document plain = makeDocument(ds);
+  struct Case { const char* name; const Document* doc; bool intoEnd; };
+  for (const Case& c : {Case{"a jump into the page's end", &text, true}, Case{"a jump far past the image, a page of text", &text, false},
+                        Case{"a jump far past the image, plain stretches", &plain, false}}) {
+    const Image& doc = c.doc->img;
     Harness h;
     FakeAppSpec as;
     as.pxPerNotch = 40;
-    const int jumpAt = intoEnd ? doc.img.h - 2 * H - 300 : 1500, jump = intoEnd ? 1500 : 2000;
+    const int jumpAt = c.intoEnd ? doc.h - 2 * H - 300 : 1500, jump = c.intoEnd ? 1500 : 2000;
     int before = -1;
-    int64_t jumpedAt = -1, handedAt = -1;
+    int64_t jumpedAt = -1, handedAt = -1, foundAt = -1, againAt = -1;
     h.script = [&](Harness& x, int64_t t) {
       if (before < 0 && x.app->positionNow() >= jumpAt) { before = x.app->positionNow(); jumpedAt = t; x.play({{t, jump, 0}}); }
-      if (handedAt < 0 && !x.seen.empty() && x.seen.back().second.driver == Driver::User && x.seen.back().second.pausedBy == HandBack::Lost) handedAt = t;
-      if (handedAt >= 0 && t >= handedAt + 5000) x.stop.store(true);
-      if (t >= 180000) x.stop.store(true);
+      if (handedAt < 0 && !x.seen.empty() && x.seen.back().second.driver == Driver::User && x.seen.back().second.pausedBy == HandBack::Lost) {
+        handedAt = t;
+        // A person, seeing it stop, scrolls back up to where it was.
+        x.play({{t + 1000, before - x.app->positionNow(), 400}});
+      }
+      if (handedAt >= 0 && foundAt < 0 && x.last() == SessionState::Paused) foundAt = t;
+      if (foundAt >= 0 && againAt < 0 && t >= foundAt + 1000) { againAt = t; x.setAuto(true); }
+      if (t >= 240000) x.stop.store(true);
     };
-    h.run(doc.img, as, options(true));
-    if (intoEnd) {
-      const std::string wrong = h.exact(doc.img, 0);
-      report("a jump into the page's end: the steps back find it, one exact image to the end", h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.img.h,
-             (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, jump at %d", doc.img.h, before));
+    h.run(doc, as, options(true));
+    const std::string wrong = h.exact(doc, 0);
+    if (c.intoEnd) {
+      report(fmt("%s: the steps back find it, one exact image to the end", c.name), h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h,
+             (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, jump at %d", doc.h, before));
       continue;
     }
-    report("a jump far past the image: auto-scroll hands the page back and says lost", handedAt >= 0 && h.saw(SessionState::Lost, HandBack::Lost) && handedAt - jumpedAt < 60000,
+    report(fmt("%s: handed back, lost", c.name), handedAt >= 0 && h.saw(SessionState::Lost, HandBack::Lost),
            handedAt < 0 ? std::string("it never handed the page back") : fmt("%lld ms after the jump, %d steps back", (long long)(handedAt - jumpedAt), h.stats.stepsBack));
-    report("a jump far past the image: nothing injected after the hand-back", handedAt >= 0 && h.injectedBetween(handedAt + 1, handedAt + 5000) == 0,
-           fmt("%d", handedAt >= 0 ? h.injectedBetween(handedAt + 1, handedAt + 5000) : -1));
+    report(fmt("%s: scrolled back, found, nothing injected until Auto-scroll", c.name),
+           foundAt >= 0 && h.saw(SessionState::Paused, HandBack::Lost) && againAt >= 0 && h.injectedBetween(handedAt + 1, againAt) == 0,
+           foundAt < 0 ? std::string("never found") : fmt("found %lld ms after the hand-back, %d injected", (long long)(foundAt - handedAt), againAt >= 0 ? h.injectedBetween(handedAt + 1, againAt) : -1));
+    report(fmt("%s: Auto-scroll again, one exact image to the end", c.name), againAt >= 0 && h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h,
+           (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows", doc.h));
   }
 }
 
@@ -490,6 +506,58 @@ void testReviewCases() {
     report("a pause during a visit with the pointer in the frames: the image grows after it", pausedAt >= 0 && wrong.empty() && h.stats.bottom - h.stats.top > heightAtPause + 600 && h.stats.movedByUser > 0,
            pausedAt < 0 ? std::string("no pause during a visit") : (wrong.empty() ? counts(h) : wrong) + fmt(", %lld rows at the pause", heightAtPause));
   }
+}
+
+// #1534's live runs: KWin's stream sent the same picture 92 times while
+// Chrome went on scrolling, and a person's Done missed the last rows. Done
+// takes a fresh frame of the screen first: the image ends where the page is.
+void testStaleStreamAtDone() {
+  std::printf("A stream gone stale before Done\n");
+  const Document doc = page(97);
+  Harness h;
+  FakeAppSpec as;
+  as.staleFromMs = 2200;
+  std::vector<FakeApp::UserScroll> script;
+  for (int i = 0; i < 12; ++i) script.push_back({1500 + 150 * i, 30, 100});  // the last 300 px after the stream went stale
+  h.script = [script](Harness& x, int64_t t) {
+    if (x.app->script.empty()) x.play(script);
+    if (t >= 4500) x.stop.store(true);
+  };
+  h.run(doc.img, as, options(false));
+  const int end = h.app->positionNow() + H;
+  const std::string wrong = h.exact(doc.img, 0);
+  report("Done after the stream went stale keeps the rows the person scrolled to", h.end == SessionEnd::Finished && wrong.empty() && h.stats.bottom == end && h.stats.rowsAtDone > 0,
+         (wrong.empty() ? counts(h) : wrong) + fmt(", image to %lld, page shows to %d, Done's frame added %lld", h.stats.bottom, end, h.stats.rowsAtDone));
+}
+
+// A blank stretch taller than the region under auto-scroll: no frame shows
+// anything move while it fills the region, the tracker reports such frames
+// still under any hint, and two still steps there look like the end. The
+// session does not call that the end of the page (end_of_content would claim
+// the whole page).
+void testBlankStretch() {
+  std::printf("A blank stretch taller than the region\n");
+  DocSpec ds;
+  ds.seed = 99;
+  ds.width = W;
+  ds.viewport = H;
+  ds.flatFactor = 0;
+  ds.tableFactor = 0;
+  ds.noiseFactor = 0;
+  ds.gradientFactor = 0;
+  ds.blankFactor = 2.5;
+  ds.paragraphsPerGap = 6;
+  const Document doc = makeDocument(ds);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  // It cannot be followed (frames that show nothing show no movement), so it
+  // stops there; it is not called the end of the page, and what it has is exact.
+  report("auto-scroll at a blank stretch taller than the region: stops, not called the end, exact so far",
+         h.end == SessionEnd::PageEnd && h.stats.endBlank && !h.stats.reachedEnd && wrong.empty() && h.stats.bottom < doc.img.h,
+         (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, blank end %d", doc.img.h, int(h.stats.endBlank)));
 }
 
 // ------------------------------------------------------------------- limits
@@ -578,6 +646,8 @@ int main() {
   testLostAndFound();
   testAutoJump();
   testReviewCases();
+  testStaleStreamAtDone();
+  testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);

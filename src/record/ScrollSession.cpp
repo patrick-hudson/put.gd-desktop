@@ -154,6 +154,7 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         if (stop.load()) {
             // Done on the way to the top: the image is the screen as it is now.
             if (phase_ == Phase::ToTop) endToTop(false, "the capture was finished on the way to the top");
+            else takeScreenAtDone();
             return done(SessionEnd::Finished);
         }
         applyRequests();
@@ -180,6 +181,20 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         if (clock_.nowMs() - lastActivity_ >= opts_.idleLimitMs) return done(SessionEnd::Idle);
         progress();
     }
+}
+
+// Done: the screen as it is now, not only what the stream last sent. KWin's
+// region stream once sent 92 frames identical to the pixel while Chrome went
+// on scrolling for 220 px (#1534's live runs), and a person's Done then
+// missed those rows; a fresh frame (the stream linked again, or the next grab)
+// brings them.
+void ScrollSession::takeScreenAtDone() {
+    if (opts_.freshAtDoneMs <= 0 || source_.lost() || tracker_->totals().placed == 0) return;
+    const long long before = tracker_->height();
+    auto fresh = source_.freshFrame(opts_.freshAtDoneMs);
+    if (!fresh) return;
+    feed(*fresh);
+    stats_.rowsAtDone = tracker_->height() - before;
 }
 
 void ScrollSession::finishTracker() {
@@ -230,8 +245,19 @@ void ScrollSession::feed(const RunFrame& frame) {
     feedTracker(view, frame.timestampMs);
 }
 
+// A frame with nothing on it: no sampled pixel differs much from the first.
+static bool plainFrame(const FrameView& v) {
+    const auto luma = [&](int x, int y) { const uint8_t* p = v.row(y) + std::ptrdiff_t(x) * 4; return int(p[0]) + 2 * int(p[1]) + int(p[2]); };
+    const int first = luma(0, 0);
+    for (int y = 0; y < v.height; y += 8)
+        for (int x = 0; x < v.width; x += 8)
+            if (std::abs(luma(x, y) - first) > 24) return false;
+    return true;
+}
+
 void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
+    lastFrameBlank_ = auto_ && plainFrame(view);
     lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
     const TrackResult r = tracker_->addFrame(view, hint);
@@ -251,6 +277,17 @@ void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
 // what is owed is corrected by the difference. A person's scrolling, and the
 // first step (the distance per notch is not known yet), give no hint.
 TrackerHint ScrollSession::hintFor(int64_t t) {
+    if (auto_ && phase_ == Phase::Settle && stats_.pxPerNotch <= 0 && stepSentAt_ >= 0 && lastStepMove_ > 0) {
+        // The step that measures the distance per notch: how far it goes is
+        // not known yet, but a smooth scroll only slows down, so the frame
+        // after one that moved d moves 0 to d. Without it, a page that
+        // repeats (the ruler fixture's 40 px rows) was ambiguous from the
+        // step's last few pixels on: the tracker's own guess, the last
+        // frame's speed times the frames since, only grew (#1534's engine).
+        chainHinted_ = false;
+        lastHintAt_ = t;
+        return {true, int(lastStepMove_ / 2), int(lastStepMove_ / 2) + 4};
+    }
     if (!auto_ || phase_ == Phase::Off || stats_.pxPerNotch <= 0) {
         chainHinted_ = false;
         lastHintAt_ = t;
@@ -297,6 +334,7 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
                 else ++stats_.movedByUser;
                 if (auto_ && phase_ != Phase::Off) {
                     stepMoved_ += d;
+                    lastStepMove_ = std::abs(d);
                     lastMoveAt_ = t;
                     if (stepFirstMoveAt_ < 0 && stepSentAt_ >= 0) stepFirstMoveAt_ = t;
                     if (d > 0) movedDown_ = true;
@@ -506,6 +544,7 @@ void ScrollSession::autoTick() {
         stepFromRest_ = restedBefore_;
         stepNotches_ = notches;
         stepMoved_ = 0;
+        lastStepMove_ = 0;
         stepFirstMoveAt_ = lastMoveAt_ = -1;
         framesAfterWait_ = 0;
         upSinceStep_ = 0;
@@ -560,6 +599,7 @@ void ScrollSession::startRecover() {
     stepSentAt_ = clock_.nowMs();
     stepNotches_ = notches;
     stepMoved_ = 0;
+    lastStepMove_ = 0;
     stepFirstMoveAt_ = lastMoveAt_ = -1;
     framesAfterWait_ = 0;
     lastStill_ = false;
@@ -663,7 +703,12 @@ void ScrollSession::stillStep(int64_t now) {
                 return;
             }
         }
-        stats_.reachedEnd = true;
+        // Frames that show nothing move nothing either: a blank stretch taller
+        // than the region looks like the end, and the wheel may still be moving
+        // the page under it. Not called the end of the page then (the capture
+        // stops, as it cannot follow), and the result says so.
+        if (lastFrameBlank_) stats_.endBlank = true;
+        else stats_.reachedEnd = true;
         pageEnd_ = true;
         phase_ = Phase::Off;
         return;

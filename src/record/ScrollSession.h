@@ -133,9 +133,13 @@ struct SessionStats {
     int64_t readMs = 0;
     // Auto-scroll.
     int steps = 0, notches = 0, autoRuns = 0, handBacks = 0, stepsBack = 0;
+    long long rowsAtDone = 0;     // what Done's fresh frame added to the image
     double pxPerNotch = 0;
     int maxResponseMs = 0;
     bool reachedEnd = false;   // auto-scroll proved the end of the page
+    // The end was found where the page showed nothing: a blank stretch taller
+    // than the region looks the same (reachedEnd is false then).
+    bool endBlank = false;
     bool endedLost = false;    // the session ended while the tracker was lost
     bool capReached = false;
     bool topAsked = false, topReached = false;
@@ -181,6 +185,8 @@ struct SessionOptions {
     double nextAtShare = 0;
     int restFrames = 1;
     int restQuietMs = 100;
+    // Done takes a fresh frame of the screen (waiting at most this long) before it finishes.
+    int freshAtDoneMs = 1500;
     // Lost: up to this many steps back, each judged on three frames and at
     // least recoverWaitMs, before auto-scroll hands the page back; and no
     // more than this many ways back in a row that the image did not grow after.
@@ -279,6 +285,7 @@ private:
     bool pausedNow() const { return opts_.paused && opts_.paused(); }
     bool stopping() const { return (stop_ && stop_->load()) || (discard_ && discard_->load()); }
     void finishTracker();
+    void takeScreenAtDone();
 
     RunInjector& injector_;
     RunFrames& source_;
@@ -313,9 +320,11 @@ private:
     int animationMs_ = 0;        // the longest recent step animation seen
     bool restedBefore_ = true, stepFromRest_ = true;
     long long stepMoved_ = 0;
+    long long lastStepMove_ = 0;  // how far the last placed frame of this step moved
     double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
     bool lastStill_ = false;
-    bool lastShowedStill_ = false;  // the last frame showed the page where the last placed one had it
+    bool lastShowedStill_ = false;
+    bool lastFrameBlank_ = false;   // the last frame (under auto-scroll) showed nothing  // the last frame showed the page where the last placed one had it
     int stillRun_ = 0;           // frames in a row that showed the page still
     int64_t lastFrameAt_ = -1;   // when the last frame went to the tracker
     int framesAfterWait_ = 0;    // frames placed or still that arrived after the step's response time

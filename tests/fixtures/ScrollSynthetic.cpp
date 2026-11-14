@@ -290,6 +290,7 @@ std::optional<putgd::record::RunFrame> FakeApp::freshFrame(int timeoutMs) {
   ++freshFrames;
   quiet_ = false;  // a new link: the stream sends again
   forceNext_ = true;  // and its first frame comes whether or not the picture changed
+  if (stale_) { stale_ = false; staleDone_ = true; }  // and shows the screen as it is
   return nextFrame(timeoutMs);
 }
 
@@ -326,6 +327,13 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     if (spec_.damageOnly && !forceNext_ && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
     forceNext_ = false;
     break;
+  }
+  if (firstFrameT_ < 0) firstFrameT_ = t;
+  if (spec_.staleFromMs >= 0 && !staleDone_ && !stale_ && t - firstFrameT_ >= spec_.staleFromMs) stale_ = true;
+  if (stale_ && !framePositions.empty()) {
+    // The same picture again, whatever the page did since.
+    framePositions.push_back(framePositions.back());
+    return putgd::record::RunFrame{delivered_.view(), t};
   }
   renderer_.render(pos, scratch_);
   for (int y = spec_.barY; y < std::min(scratch_.h, spec_.barY + spec_.barH); ++y)

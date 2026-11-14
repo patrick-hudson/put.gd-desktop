@@ -1502,7 +1502,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     // as far as they scrolled, unless it ended lost or at the cap.
     QString reason;
     if (end == SessionEnd::Capped || stats.capReached) reason = QStringLiteral("height_cap");
-    else if (end == SessionEnd::PageEnd && stats.skipped == 0) reason = stats.topAsked && !stats.topReached ? QStringLiteral("top_not_reached") : QStringLiteral("end_of_content");
+    else if (end == SessionEnd::PageEnd && stats.skipped == 0 && !stats.endBlank) reason = stats.topAsked && !stats.topReached ? QStringLiteral("top_not_reached") : QStringLiteral("end_of_content");
     else if (stats.endedLost) reason = QStringLiteral("lost_track");
     else reason = QStringLiteral("done");
     const bool truncated = reason == "height_cap" || reason == "lost_track" || reason == "top_not_reached";
@@ -1551,6 +1551,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                 if (stats.hiddenCells > 0) { outcome->descriptor["hiddenCells"] = double(stats.hiddenCells); outcome->descriptor["hiddenRows"] = double(stats.hiddenRows); }
                 if (end == SessionEnd::Idle) outcome->descriptor["note"] = QStringLiteral("nobody scrolled or used the bar for %1 minutes, so the capture ended there").arg(SessionOptions{}.idleLimitMs / 60000);
                 else if (reason == "lost_track") outcome->descriptor["note"] = QStringLiteral("the capture was finished while put.gd could not find its place on the page; the image ends where it last could");
+                else if (stats.endBlank) outcome->descriptor["note"] = QStringLiteral("auto-scroll stopped where the page showed nothing: a blank stretch taller than the region looks like the end of the page; if the page goes on, scroll past it yourself");
                 if (stats.topAsked && !stats.topReached) {
                     // Whatever ended the capture: its first row is not the page's.
                     outcome->descriptor["topReached"] = false;
