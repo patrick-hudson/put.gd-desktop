@@ -24,34 +24,39 @@
 
 namespace putgd { class LayerShellRegionOverlay; }
 namespace putgd::record {
-// The helper's scroll-capture session (#1376), the second session kind of
-// putgd-record. It reuses the recording session's region selectors, ready ring
-// and bar placement and the same live sources, with the cursor hidden; the
-// frames go to a stitcher instead of an encoder. After the rectangle is known
-// it puts the pointer in the region, turns the wheel through the desktop's
-// injector and stitches until the content stops moving, on a worker thread.
-// Rows are spooled to a private file in the staging directory and written as
-// one PNG at the end; only its descriptor crosses the control pipe.
+// The helper's scroll-capture session (#1376, rebuilt on the tracker for
+// #1515), the second session kind of putgd-record. It reuses the recording
+// session's region selectors, ready ring and bar placement and the same live
+// sources, with the cursor hidden; every frame goes to the tracker
+// (ScrollSession) on a worker thread, whoever scrolls. The image is spooled to
+// a private file in the staging directory with room at both ends and written
+// as one PNG at the end; only its descriptor crosses the control pipe.
 //
 // Commands: prepare {id, staging, rect?, maxHeight, maxPixels?, fromTop,
-// autoStart, selection}, select {rect}, start, pause, resume, stop, cancel,
-// overlay {visible, rect?}. Events: selected, progress, finished, cancelled,
-// failed (ScrollBackend.h).
-// Only wheel steps and pointer motion are injected, only while capturing, and
-// nothing after stop, cancel or the end of the control pipe. Stop is the bar's
-// button, the `stop` command and, on X11, Escape.
+// autoStart, selection, driver: "user"|"putgd", finishKey?}, select {rect},
+// start, autoScroll {on}, pause and resume (auto-scroll off and on, the names
+// of #1514), stop (Done), cancel, overlay {visible, rect?, inside?}. Events:
+// selected, progress, finished, cancelled, failed (ScrollBackend.h).
 //
-// The pointer is the user's the moment they touch it (#1514). Between wheel
-// steps it rests on a surface of the helper's own, outside the rectangle: the
-// bar where it is beside the rectangle, else a small clear pad at the rest
-// spot (not on GNOME, where only the Shell places windows). The helper knows
-// where it last put the pointer; that surface reporting it anywhere else, or
-// leaving when no visit into the rectangle was sent, is the user, and so is
-// (X11) a pointer that is not where XTest left it, and (layer shell) the
-// pointer anywhere on a clear surface over the output that leaves only the
-// wheel points to the page. Then nothing more is
-// injected until Resume: the bar's button, after the mouse has been still for
-// a moment, or the `resume` command.
+// Drivers. The user's: nothing is injected and no surface of the helper's
+// lies over the page but the ring outside it (and the bar where it has to sit
+// inside, #1519). Auto-scroll: wheel steps and pointer motion only, only while
+// it is on, and nothing after stop, cancel or the end of the control pipe.
+// Done is the bar's button, the `stop` command, the resident's `scroll`
+// hotkey and, on X11, Escape.
+//
+// While auto-scroll is on the pointer is the user's the moment they touch it
+// (#1514). Between wheel steps it rests on a surface of the helper's own,
+// outside the rectangle: the bar where it is beside the rectangle, else a
+// small clear pad at the rest spot (not on GNOME, where only the Shell places
+// windows). The helper knows where it last put the pointer; that surface
+// reporting it anywhere else, or leaving when no visit into the rectangle was
+// sent, is the user, and so is (X11) a pointer that is not where XTest left it,
+// and (layer shell) the pointer anywhere on a clear surface over the output
+// that leaves only the wheel points to the page. Then nothing more is
+// injected: auto-scroll is paused and the capture follows the user, until the
+// bar's Auto-scroll (after the mouse has been still for a moment) or the
+// `autoScroll` command turns it on again.
 class ScrollCapture final : public QObject {
     Q_OBJECT
 public:
@@ -81,11 +86,21 @@ private:
     void begin(const FrameTap::Source&, Reply);
     void stop(Reply);
     void cancel(Reply);
-    // by: "pointer" (the user moved the mouse) or "request" (the pause command).
+    // The user moved the mouse while auto-scroll was on (#1514).
     void pause(const QString& by);
-    // quiet: from the bar, once the mouse has been still for resumeQuietMs.
+    // Auto-scroll on (quiet: from the bar, once the mouse has been still for
+    // resumeQuietMs) or off.
+    void setAutoScroll(bool on, bool quiet);
     void resume(bool quiet);
     void resumeNow();
+    void autoOff();
+    // On the main thread, before auto-scroll's first wheel step of a run: the
+    // rest and (layer shell) the watch with holes at the wheel points.
+    void prepareAuto();
+    // Auto-scroll is off: no rest pad, no watch.
+    void dropAutoSurfaces();
+    // The session's progress, on the main thread.
+    void sessionProgress(const QJsonObject&);
     QJsonObject pauseView() const;
     void emitProgress();
     // Where the pointer rests between wheel steps, and the surface that sees it.
@@ -110,7 +125,12 @@ private:
     QString screenName_;
     int maxHeight_ = 0;
     qint64 maxPixels_ = 0;
-    bool fromTop_ = true, autoStart_ = true, barHidden_ = false, barOutside_ = false;
+    bool fromTop_ = false, autoStart_ = true, barHidden_ = false, barOutside_ = false;
+    // The driver at the start (auto-scroll on), auto-scroll as the session has
+    // it, and the bar inside the rectangle (#1519; its desktop rectangle).
+    bool autoAtStart_ = false, autoOn_ = false, barInside_ = false;
+    QRect insideBar_;
+    QString finishKey_;
     bool stopRequested_ = false, cancelRequested_ = false;
     Reply selectReply_, stopReply_, cancelReply_;
     QJsonObject finished_;
@@ -134,6 +154,7 @@ private:
     bool haveSeen_ = false, lastWasArrival_ = false;
     // GNOME: where the Shell put the bar (the resident's `overlay` rect).
     QRect shellBar_;
+    // Why auto-scroll handed the wheel back: pointer, scrolled, lost, no_movement.
     QString pausedBy_, progressState_;
     QJsonObject lastProgress_;
     QTimer resumeQuiet_;

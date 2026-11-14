@@ -1,15 +1,17 @@
-// Scroll capture on X11 (#1376): the production backend starts the real
+// Scroll capture on X11 (#1376, #1515): the production backend starts the real
 // putgd-record as a scroll session on a private Xvfb display against the
 // fixture window, and the X server's raw input (XInput2) shows what the helper
-// injects and when: wheel steps and pointer motion only, only while capturing,
-// nothing after Stop, Cancel or the end of its control pipe, and nothing while
-// paused because another client moved the pointer (#1514).
+// injects and when: nothing at all while the user scrolls; under auto-scroll
+// wheel steps and pointer motion only, nothing after Done, Cancel or the end of
+// its control pipe, and nothing once another client moved the pointer (#1514).
 #include "app/ScrollHelperBackend.h"
 #include "core/BuildInfo.h"
+#include "fixtures/ScrollRuler.h"
 #include "fixtures/Waits.h"
 #include "ipc/UiControl.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
@@ -21,6 +23,7 @@
 #include <xcb/xinput.h>
 
 using namespace putgd;
+namespace ruler = putgd::test::ruler;
 
 namespace {
 const QRect page(100, 60, 640, 600);
@@ -29,13 +32,15 @@ QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height(
 // The fixture window, at `page`.
 struct Fixture {
     QProcess process;
+    QByteArray seen;
     bool start(QStringList arguments) {
         arguments.prepend(QStringLiteral("--geometry=%1,%2,%3,%4").arg(page.x()).arg(page.y()).arg(page.width()).arg(page.height()));
         process.setProcessChannelMode(QProcess::ForwardedErrorChannel);
         process.start(PUTGD_SCROLL_FIXTURE, arguments);
-        QByteArray seen;
         return putgd::test::waitFor([&] { seen += process.readAllStandardOutput(); return seen.contains("ready "); }, 10000);
     }
+    // The page has settled at this scroll position.
+    bool reached(int position) { seen += process.readAllStandardOutput(); return seen.contains(QByteArray("position ") + QByteArray::number(position) + "\n"); }
     ~Fixture() { process.kill(); process.waitForFinished(3000); }
 };
 
@@ -141,9 +146,9 @@ private:
 class ScrollCaptureX11 : public QObject {
     Q_OBJECT
 private slots:
-    // What is injected, and when: wheel steps and pointer motion only, only
-    // while capturing, nothing after the stop or cancel reply, and the pointer
-    // back where it was.
+    // Auto-scroll: what is injected, and when: wheel steps and pointer motion
+    // only, only while capturing, nothing after the Done or Cancel reply, and
+    // the pointer back where it was.
     void onlyWheelAndMotionAndOnlyWhileCapturing() {
         RawInput raw;
         QVERIFY2(raw.open(), "the X server offers no XInput 2.1 raw events");
@@ -152,7 +157,7 @@ private slots:
         QVERIFY(fixture.start({"--rows=600", "--notch=100"}));
         raw.warp(home);
         Capture capture;
-        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", false}});
+        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", true}, {"autoStart", false}, {"driver", "putgd"}});
         QVERIFY(putgd::test::waitFor([&] { return capture.answered; }, 20000));
         QVERIFY2(!capture.prepareError, qPrintable(capture.prepareError.message));
         QCOMPARE(capture.prepared["state"].toString(), QString("ready"));
@@ -165,20 +170,22 @@ private slots:
         raw.read();
         QVERIFY(raw.wheel > 0);
         QVERIFY(raw.motions > 0);
-        // #1514: another client moves the pointer, as a user's mouse does. The
-        // capture pauses, says why, and sends nothing until Resume; the
-        // pointer stays where the user put it.
+        // #1514: another client moves the pointer, as a user's mouse does.
+        // Auto-scroll pauses, says why, hands the page to the user and sends
+        // nothing until it is turned on again; the pointer stays where the
+        // user put it.
         QVERIFY(!capture.ended());
         {
             const QPoint user(1000, 300);
             raw.warp(user);
             QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["state"].toString() == "paused"; }, 3000));
             QCOMPARE(capture.last("progress")["pausedBy"].toString(), QString("pointer"));
+            QCOMPARE(capture.last("progress")["driver"].toString(), QString("user"));
             const int atPause = raw.total();
             QVERIFY(atPause <= 1);
             PUTGD_COMPARE_STEADY(raw.total(), atPause, 1000);
             QCOMPARE(raw.pointer(), user);
-            const auto resumed = capture.control("resume");
+            const auto resumed = capture.control("autoScroll", {{"on", true}});
             QVERIFY2(!resumed.error, qPrintable(resumed.error.message));
             QVERIFY(putgd::test::waitFor([&] { return raw.total() > atPause + 2; }, 10000));
             QVERIFY(!capture.ended());
@@ -196,7 +203,7 @@ private slots:
 
         // Cancel: the same bound.
         Capture second;
-        second.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}});
+        second.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}, {"driver", "putgd"}});
         QVERIFY(putgd::test::waitFor([&] { return second.last("progress")["height"].toInt() > 1000 || second.ended(); }, 60000));
         QVERIFY2(!second.control("cancel").error, "cancel failed");
         const int afterCancel = raw.total();
@@ -204,6 +211,61 @@ private slots:
         PUTGD_COMPARE_STEADY(raw.total(), afterCancel, 800);
         QCOMPARE(raw.pointer(), home);
         QVERIFY(second.leave());
+    }
+    // #1515: the user scrolls (the page moves by itself here, as under a
+    // person's wheel): not one event is injected for the whole capture, the
+    // image follows the page, and Done keeps it whole and exact.
+    void theUserScrollsAndNothingIsInjected() {
+        RawInput raw;
+        QVERIFY(raw.open());
+        const QPoint home(900, 700);
+        Fixture fixture;
+        QVERIFY(fixture.start({"--rows=60", "--self-scroll=37,60,1500"}));
+        raw.warp(home);
+        Capture capture;
+        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"autoStart", true}, {"driver", "user"}});
+        QVERIFY(putgd::test::waitFor([&] { return capture.answered; }, 20000));
+        QVERIFY2(!capture.prepareError, qPrintable(capture.prepareError.message));
+        // To the page's end: 60 rows of 40 lines in a 600-line window.
+        QVERIFY(putgd::test::waitFor([&] { return fixture.reached(60 * ruler::rowHeight - page.height()) || capture.ended(); }, 30000));
+        QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["height"].toInt() >= 60 * ruler::rowHeight || capture.ended(); }, 5000));
+        QCOMPARE(capture.last("progress")["driver"].toString(), QString("user"));
+        const auto done = capture.control("stop");
+        QVERIFY2(!done.error, qPrintable(done.error.message));
+        QCOMPARE(raw.total(), 0);
+        QCOMPARE(raw.pointer(), home);
+        QCOMPARE(done.result["endReason"].toString(), QString("done"));
+        QCOMPARE(done.result["truncated"].toBool(true), false);
+        QCOMPARE(done.result["scrolledBy"].toString(), QString("user"));
+        QCOMPARE(done.result["framesSkipped"].toInt(), 0);
+        const QImage image(done.result["path"].toString());
+        const auto verdict = ruler::verify(image, 0, 0, 0, 59);
+        QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem));
+        QVERIFY(capture.leave());
+    }
+    // Auto-scroll left alone: it turns the page to its end and ends the
+    // capture there by itself, end_of_content with every row exact.
+    void autoScrollRunsToTheEnd() {
+        RawInput raw;
+        QVERIFY(raw.open());
+        Fixture fixture;
+        QVERIFY(fixture.start({"--rows=60", "--notch=100", "--smooth"}));
+        raw.warp(QPoint(900, 700));
+        Capture capture;
+        capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"autoStart", true}, {"driver", "putgd"}});
+        QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 90000));
+        const auto finished = capture.last("finished");
+        QVERIFY2(!finished.isEmpty(), qPrintable(QJsonDocument(capture.last("failed")).toJson(QJsonDocument::Compact)));
+        QCOMPARE(finished["endReason"].toString(), QString("end_of_content"));
+        QCOMPARE(finished["reachedEnd"].toBool(), true);
+        QCOMPARE(finished["scrolledBy"].toString(), QString("putgd"));
+        const QImage image(finished["path"].toString());
+        const auto verdict = ruler::verify(image, 0, 0, 0, 59);
+        QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem));
+        raw.read();
+        QCOMPARE(raw.otherButtons, 0);
+        QCOMPARE(raw.keys, 0);
+        QVERIFY(capture.leave());
     }
     // The control pipe closes while the helper captures: it stops injecting at
     // once, does not even put the pointer back, removes its files and leaves.
@@ -237,7 +299,7 @@ private slots:
         auto prepare = envelope;
         prepare["requestId"] = "prepare";
         prepare["command"] = "prepare";
-        prepare["params"] = QJsonObject{{"id", "eof"}, {"staging", staging.path()}, {"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}, {"selection", "helper"}};
+        prepare["params"] = QJsonObject{{"id", "eof"}, {"staging", staging.path()}, {"rect", rectJson(page)}, {"maxHeight", 30000}, {"fromTop", false}, {"autoStart", true}, {"selection", "helper"}, {"driver", "putgd"}};
         control.send("command", prepare);
         QVERIFY(putgd::test::waitFor([&] { return capturing && height > 1000; }, 60000));
         QVERIFY(raw.pointer() != home);

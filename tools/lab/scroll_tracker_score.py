@@ -16,7 +16,7 @@ scrollY read before and after the picture; where the two differ the frame was
 taken while the page moved and any position in between is right. One row per
 sequence:
 
-  scroll_tracker_score.py --corpus DIR --replay PATH --out DIR [--engine tracker|stitcher]
+  scroll_tracker_score.py --corpus DIR --replay PATH --out DIR [--engine tracker]
       [--pages a,b] [--styles notch,burst,continuous] [--derived] [--json FILE]
 
 Needs numpy and Pillow (the builders have both).
@@ -310,7 +310,7 @@ def main():
     parser.add_argument('--corpus', required=True, type=Path, help='the corpus root (holds chrome/, firefox/)')
     parser.add_argument('--replay', required=True, help='test_scroll_tracker_replay')
     parser.add_argument('--out', required=True, type=Path)
-    parser.add_argument('--engine', default='tracker', choices=('tracker', 'stitcher'))
+    parser.add_argument('--engine', default='tracker', choices=('tracker',))
     parser.add_argument('--browsers', default='chrome,firefox')
     parser.add_argument('--pages', default=PRIMARY, help='page directories (default: the primary pages)')
     parser.add_argument('--styles', default='notch,burst,continuous')

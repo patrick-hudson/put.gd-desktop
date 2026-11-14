@@ -301,6 +301,17 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
   clock_.set(t);
   lastFrameT_ = t;
   ++frameIndex_;
+  // What the person did up to this frame.
+  for (; scriptAt_ < script.size() && script[scriptAt_].at <= t; ++scriptAt_) {
+    const UserScroll& u = script[scriptAt_];
+    const double from = posAt(u.at);
+    const double nt = std::clamp(target_ + u.px, 0.0, double(maxScroll()));
+    // Kept in time order: a wheel step sent just before may not have begun to move yet.
+    const auto at = std::upper_bound(segs_.begin(), segs_.end(), u.at, [](int64_t v, const Seg& g) { return v < g.t0; });
+    segs_.insert(at, {u.at, std::max(1, u.durMs), from, nt});
+    target_ = nt;
+    ++scrolledByUser;
+  }
   const int pos = int(std::lround(posAt(t)));
   renderer_.render(pos, scratch_);
   for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)

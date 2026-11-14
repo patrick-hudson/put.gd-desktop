@@ -227,7 +227,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
         'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
-        'Scrolling capture: prepare_scroll_capture and control_scroll_capture select/start/pause/resume/stop/cancel; Stop keeps the PNG and Cancel discards it. A capture pauses when the user moves the mouse (paused, pausedBy). Inspect get_scroll_capture endReason and truncated; only end_of_content means a complete capture, top to bottom. top_not_reached means the image is kept but starts partway down the page, and topReached false says the same of a capture that ended for another reason. '
+        'Scrolling capture: prepare_scroll_capture (driver user waits for the user to scroll, putgd turns the page itself), then control_scroll_capture select/start, auto_scroll on/off, stop (Done, keeps the PNG) or cancel (discards it). Moving the mouse pauses auto-scroll and the capture follows the user (paused, pausedBy pointer). get_scroll_capture shows activity, driver, placed and skipped, and at the end endReason and truncated: end_of_content means put.gd scrolled to the end and skipped no frame; done is a capture the user or agent finished, whole as far as it was scrolled; lost_track and height_cap are partial; top_not_reached starts partway down. '
         'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording, or work the review window itself with drive_recording_review; only upload_recording or retryExport after a failed Upload publishes. '
         'save_recording_copy and upload_recording return once the export starts; poll get_recording until state leaves exporting. '
         'Supply only non-secret configuration and credential references.'))
@@ -486,32 +486,39 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('editor.openCode', {'id': id, 'result': result, 'index': index})
 
     @server.tool(annotations=effect)
-    async def prepare_scroll_capture(rect: list[int] | None = None, max_height: int | None = None) -> Json:
-        """Prepare a scrolling region. Start explicitly after selection."""
+    async def prepare_scroll_capture(rect: list[int] | None = None, max_height: int | None = None, driver: str | None = None) -> Json:
+        """Prepare a scrolling region. Start explicitly after selection. driver: user (the capture waits for the user to scroll; put.gd injects nothing) or putgd (auto-scroll: put.gd turns the page with wheel steps and finishes at the end of the page); omitted: the user's Start with auto-scroll setting. Auto-scroll sends real input to whatever is under the region: point it only at a window opened for the purpose."""
         if rect is not None and (len(rect) != 4 or any(type(n) is not int for n in rect) or rect[2] < 64 or rect[3] < 64):
             return invalid()
         if max_height is not None and (type(max_height) is not int or not 2000 <= max_height <= 60000):
+            return invalid()
+        if driver is not None and driver not in {'user', 'putgd'}:
             return invalid()
         params: Json = {}
         if rect is not None:
             params['rect'] = rect
         if max_height is not None:
             params['maxHeight'] = max_height
+        if driver is not None:
+            params['driver'] = driver
         return await adapter.call('scroll.prepare', params)
 
     @server.tool(annotations=effect)
-    async def control_scroll_capture(id: str, command: str, rect: list[int] | None = None) -> Json:
-        """Select, start, pause, resume, stop (keep image), or cancel (discard) a scroll capture. Moving the mouse pauses a capture by itself; get_scroll_capture then shows paused true and pausedBy pointer (request after pause). Resume looks at the screen again and goes on, or ends lost_track with the exact image so far."""
-        if not identifier(id) or command not in {'select', 'start', 'pause', 'resume', 'stop', 'cancel'} or (command == 'select') != (rect is not None):
+    async def control_scroll_capture(id: str, command: str, rect: list[int] | None = None, on: bool | None = None) -> Json:
+        """select (rect), start, auto_scroll (on true: put.gd turns the page; false: the user does), stop (Done: keeps the image) or cancel (discards it). pause and resume are auto_scroll off and on. Moving the mouse pauses auto-scroll by itself and the capture follows the user; get_scroll_capture then shows driver user, paused true and pausedBy pointer. Switching keeps the image."""
+        if not identifier(id) or command not in {'select', 'start', 'auto_scroll', 'pause', 'resume', 'stop', 'cancel'} or (command == 'select') != (rect is not None) or (command == 'auto_scroll') != (type(on) is bool):
             return invalid()
         params: Json = {'id': id}
         if rect is not None:
             params['rect'] = rect
+        if command == 'auto_scroll':
+            params['on'] = on
+            return await adapter.call('scroll.autoScroll', params)
         return await adapter.call('scroll.' + command, params)
 
     @server.tool(annotations=read)
     async def get_scroll_capture(id: str) -> Json:
-        """Inspect progress and endReason/truncated: end_of_content, height_cap, stopped, lost_track, time_limit or top_not_reached. Only end_of_content means complete, top to bottom. top_not_reached: scroll-to-top could not prove the top, so the kept image starts partway down; topReached false marks the same on a capture that ended for another reason."""
+        """Inspect a scroll capture: while it runs activity (waiting, following, lost, scrollingToTop, autoScrolling, paused, resuming), driver (user or putgd), paused/pausedBy, height, placed and skipped; at the end endReason, truncated, scrolledBy (user, putgd, both, none), framesPlaced, framesSkipped, endedLost and reachedEnd. end_of_content: put.gd scrolled to the end of the page and skipped no frame. done: finished by the user or an agent (or auto-scroll at the end after skipped frames), whole as far as it was scrolled. lost_track: finished while put.gd had lost the page; height_cap: the cap; top_not_reached: auto-scroll reached the end but could not prove the top. truncated is true for the last three."""
         return await adapter.call('scroll.inspect', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=read)

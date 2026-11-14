@@ -1,15 +1,15 @@
 // Replay tool for the scroll tracker (#1515): feeds a recorded sequence of
-// frames through ScrollTracker (or, for a before and after, through today's
-// ScrollStitcher) and writes the image and every frame's result as JSON. Lab
+// frames through ScrollTracker and writes the image and every frame's result
+// as JSON. (The stitcher it was once compared with is gone; its numbers are in
+// PR #1527.) Lab
 // input, never desktop proof; tools/lab/scroll_tracker_score.py compares the
 // output with the browser's own full-page picture and the true scroll position.
 //
-//   test_scroll_tracker_replay --list FILE --out DIR [--engine tracker|stitcher]
+//   test_scroll_tracker_replay --list FILE --out DIR [--engine tracker]
 //       [--repeat N] [--max-height N]
 //
 // FILE has one frame per line: a PNG path, optionally followed by a hint
 // (expected offset since the line before, and its uncertainty).
-#include "core/ScrollStitcher.h"
 #include "core/ScrollTracker.h"
 
 #include <QCommandLineParser>
@@ -86,12 +86,12 @@ int main(int argc, char** argv) {
   QCommandLineParser parser;
   parser.addOptions({{"list", "frames, one PNG path per line [hint uncertainty]", "file"},
                      {"out", "an existing directory for image.png and results.json", "dir"},
-                     {"engine", "tracker or stitcher", "name", "tracker"},
+                     {"engine", "tracker (the only engine)", "name", "tracker"},
                      {"repeat", "run the sequence this many times for timing (the image is the first run's)", "n", "1"},
                      {"max-height", "height cap", "rows", "32000"}});
   parser.process(app);
   if (!parser.isSet("list") || !parser.isSet("out")) {
-    std::fprintf(stderr, "usage: --list FILE --out DIR [--engine tracker|stitcher]\n");
+    std::fprintf(stderr, "usage: --list FILE --out DIR [--engine tracker]\n");
     return 2;
   }
   QFile listFile(parser.value("list"));
@@ -115,14 +115,17 @@ int main(int argc, char** argv) {
     }
   }
   const QString out = parser.value("out");
-  const bool stitcher = parser.value("engine") == "stitcher";
+  if (parser.value("engine") != "tracker") {
+    std::fprintf(stderr, "the only engine is tracker\n");
+    return 2;
+  }
   const int repeat = std::max(1, parser.value("repeat").toInt());
   QJsonArray results;
   QJsonObject summary;
   std::vector<double> ms, engineMs;
   using Clock = std::chrono::steady_clock;
 
-  if (!stitcher) {
+  {
     for (int run = 0; run < repeat; ++run) {
       TimedCanvas canvas(frames[0].width());
       TrackerOptions opts;
@@ -184,51 +187,6 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "cannot write the image\n");
         return 4;
       }
-    }
-  } else {
-    // Today's stitcher, fed as the control loop would: the hint is the last
-    // proved step (the loop's notches times its measured pixels per notch),
-    // and the capture ends at the first step it cannot match, as the loop
-    // does after its retry and its way back show the same picture.
-    StitchOptions so;
-    so.maxOutputRows = parser.value("max-height").toInt();
-    ScrollStitcher st(so);
-    int refPos = 0, lastStep = kNoHint;
-    QString ended;
-    for (size_t i = 0; i < frames.size(); ++i) {
-      const auto t0 = Clock::now();
-      const StepResult r = st.addFrame(viewOf(frames[i]), lastStep);
-      const double t = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
-      ms.push_back(t);
-      const bool moved = r.status == StepStatus::Appended || r.status == StepStatus::Reversed || r.status == StepStatus::LimitReached;
-      if (moved) {
-        refPos += r.offset;
-        if (r.offset > 0) lastStep = r.offset;
-      }
-      const char* status = r.status == StepStatus::First || moved ? "placed"
-                           : r.status == StepStatus::NoMovement   ? "no_movement"
-                                                                  : "skipped";
-      results.append(QJsonObject{{"file", lines[i].path},
-                                 {"status", status},
-                                 {"reason", toString(r.status)},
-                                 {"offset", r.offset},
-                                 {"position", refPos},
-                                 {"addedBottom", r.appendedRows},
-                                 {"confidence", r.score},
-                                 {"ms", t}});
-      if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous || r.status == StepStatus::LayoutChanged ||
-          r.status == StepStatus::LimitReached) {
-        ended = toString(r.status);
-        break;
-      }
-    }
-    st.finish();
-    const int h = st.outputHeight();
-    summary = QJsonObject{{"engine", "stitcher"}, {"frames", int(frames.size())}, {"fed", int(results.size())}, {"endedOn", ended},
-                          {"top", 0}, {"bottom", h}};
-    if (!save(st.takeImage(), frames[0].width(), h, out + "/image.png")) {
-      std::fprintf(stderr, "cannot write the image\n");
-      return 4;
     }
   }
   double sum = 0;

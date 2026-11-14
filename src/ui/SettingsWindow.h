@@ -163,7 +163,7 @@ private:
  QUrl pendingProtonUrl_;QString pendingProtonSetup_;QPushButton* protonBrowserRetry_=nullptr;bool protonBrowserOpening_=false;
  QString protonAccountUid_,protonAccountEmail_;QSet<QString> folderRequests_;bool protonBrowserOpened_=false;
  std::function<void()> updateProviderVisibility_;
- QSpinBox* scrollHeight_; QCheckBox* scrollFromTop_;
+ QSpinBox* scrollHeight_; QCheckBox* scrollFromTop_; QCheckBox* scrollAutoScroll_;
  QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*regionSelection_,*captureDelay_,*recordingFrameRate_,*recordingMicrophone_,*uploadClipboard_,*appearance_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_,*unlockAtStartup_,*fileManagerMenu_,*recordingClicks_,*captureDelayShortcuts_;
  // #1364: Capture → Screen recording's microphone choice and click highlights
  // ask the resident what the sound server and the desktop offer right now.

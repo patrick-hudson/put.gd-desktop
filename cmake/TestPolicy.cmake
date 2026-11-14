@@ -26,7 +26,7 @@ set(PUTGD_UNIT_TESTS
   export_av_sync_contract fonts_contract geometry_contract gnome_image_decode history_contract http_uploader_rules ip_address_contract
   json_ref_lifetime_contract ocr_logic_contract wayland_keyboard_map kde_shortcut_normalization login_startup_contract
   pause_timeline_contract payload_contract portal_streams_contract poster_contract public_url qr_code_contract quick_redact_contract
-  region_selection_contract record_identity_contract record_runtime_contract recording_model_contract release_link_contract scroll_stitcher_contract scroll_tracker_contract shortcut_keyboard
+  region_selection_contract record_identity_contract record_runtime_contract recording_model_contract release_link_contract scroll_session_contract scroll_tracker_contract shortcut_keyboard
   text_protocol_contract
   update_appimage_install_child update_check_request update_feed_contract update_minisign_verify
   update_system_repository upload_naming_contract x11_raw_key_matcher)
@@ -68,7 +68,7 @@ endif()
 foreach(test b2_integration collision_policy_integration diagnostics_bundle_contract
     edit_operations_integration editor_contract history_contract image_job_integration
     poster_job_integration s3_delete_integration s3_integration s3_multipart_integration
-    scroll_stitcher_contract ui_catalog_render ui_native_lifecycle_integration version_contract)
+    scroll_session_contract ui_catalog_render ui_native_lifecycle_integration version_contract)
   if(TEST ${test})
     set_tests_properties(${test} PROPERTIES RESOURCE_GROUPS "cpu:1")
   endif()

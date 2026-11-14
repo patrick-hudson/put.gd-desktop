@@ -58,9 +58,16 @@
 #include <memory>
 #include <vector>
 
-#include "core/ScrollStitcher.h"  // FrameView
-
 namespace putgd::scroll {
+
+// One frame of the captured region: BGRx rows, top to bottom.
+struct FrameView {
+  const uint8_t* data = nullptr;
+  int width = 0;
+  int height = 0;
+  std::ptrdiff_t stride = 0;  // bytes per row, >= 4 * width
+  const uint8_t* row(int y) const { return data + static_cast<std::ptrdiff_t>(y) * stride; }
+};
 
 struct TrackerOptions {
   // Columns left out of the vote at each side (scrollbars, shadows). They are
@@ -144,7 +151,7 @@ struct TrackerOptions {
   double closeFraction = 0.34;
   // ... and gaps across up to this share of the frame width.
   double closeWidthFraction = 0.15;
-  // Height cap of the image, all rows (as StitchOptions::maxOutputRows).
+  // Height cap of the image, all rows.
   long long maxOutputRows = 32000;
   // After this many frames in a row that could not be placed the state is Lost.
   int lostAfterSkips = 2;

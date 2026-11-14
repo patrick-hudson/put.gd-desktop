@@ -78,7 +78,8 @@ row signature by brightness in column bands from 4% to 96% of the width compared
 tolerance, the order of candidates by their distance from the expected offset, the motion
 mask that keeps what does not move out of the vote, the fixed header and footer kept once,
 the lookup of a frame inside the image already built and the growth at both ends. Both files
-carry the two copyright lines and the MIT permission notice.
+carry the two copyright lines and the MIT permission notice. `putgd-record` links the tracker,
+so every package's `runtime-notices.txt` carries the same lines and notice.
 
 Nayuki's QR Code generator v1.8.0 is vendored unmodified as
 `src/core/qrcodegen/qrcodegen.cpp` and `qrcodegen.hpp`, from tag commit
