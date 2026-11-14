@@ -50,10 +50,10 @@ bool setScheme(Scheme);
 inline QColor mediaScrim(){return QColor(0,0,0,150);}
 inline QColor onMedia(){return QColor(255,255,255);}
 // The brand glyph's own colours (window and app icons): identity, not theme.
-inline QColor brandAccent(){return QColor("#E8B66D");}
-inline QColor brandTray(){return QColor("#F0C887");}
-inline QColor brandTile(){return QColor("#222222");}
-inline QColor trayOutline(){return QColor("#182126");}
+inline QColor brandAccent(){return QColor(0xE8B66D);}
+inline QColor brandTray(){return QColor(0xF0C887);}
+inline QColor brandTile(){return QColor(0x222222);}
+inline QColor trayOutline(){return QColor(0x182126);}
 // Tray glyph tints (#60 item 5). The panel's colour, not the app theme,
 // decides which set is readable: a light app on a dark panel, or the
 // reverse, keeps a visible icon. Each meets 3:1 on its kind of panel.

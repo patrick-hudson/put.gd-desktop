@@ -16,7 +16,7 @@
 #include <atomic>
 namespace putgd {
 namespace {
-const QString service="org.kde.KWin.ScreenShot2",path="/org/kde/KWin/ScreenShot2",iface=service;
+const QString service=QStringLiteral("org.kde.KWin.ScreenShot2"),path=QStringLiteral("/org/kde/KWin/ScreenShot2"),iface=service;
 bool installedEntryMatches(){
  auto entries=QStandardPaths::locateAll(QStandardPaths::GenericDataLocation,"applications/putgd.desktop");
  // AppImage mounts vary by launch. AppRun registers a private, temporary

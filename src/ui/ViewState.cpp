@@ -6,16 +6,16 @@
 #include <cmath>
 namespace putgd {
 namespace {
-const QStringList s3Keys{"linkMode","linkValidityDays","bucket","region","endpoint","objectPrefix","storageClass","aclMode","publicUrlBase","addressing","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};
-const QStringList protonKeys{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};
-const QStringList b2Keys{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};
-const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys:provider=="backblaze-b2"?b2Keys:protonKeys;}
+const QStringList& s3Keys() {static const QStringList value{"linkMode","linkValidityDays","bucket","region","endpoint","objectPrefix","storageClass","aclMode","publicUrlBase","addressing","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};return value;}
+const QStringList& protonKeys() {static const QStringList value{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};return value;}
+const QStringList& b2Keys() {static const QStringList value{"apiUrl","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};return value;}
+const QStringList& providerKeys(const QString& provider){return provider=="s3"?s3Keys():provider=="backblaze-b2"?b2Keys():protonKeys();}
 // A custom HTTP uploader (#1361) keeps lists of rows. A row marked secret may carry
 // its name only, so a typed or imported token can never ride in a checkpoint.
-const QStringList uploaderScalars{"allowInsecureHttp","body","connectTimeoutMs","data","dataSecret","deletionUrl","errorMessage","fileFormName","requestMethod","requestTimeoutMs","requestUrl","responseUrl","thumbnailUrl"};
-const QStringList limitKeys{"maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","pendingImageBytes","clipboardTextBytes","imagePixels","imageBytes","recordingAnimationSeconds","recordingAnimationEdge"};
-const QStringList retentionKeys{"failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays"};
-const QStringList filterKeys{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};
+const QStringList& uploaderScalars() {static const QStringList value{"allowInsecureHttp","body","connectTimeoutMs","data","dataSecret","deletionUrl","errorMessage","fileFormName","requestMethod","requestTimeoutMs","requestUrl","responseUrl","thumbnailUrl"};return value;}
+const QStringList& limitKeys() {static const QStringList value{"maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","pendingImageBytes","clipboardTextBytes","imagePixels","imageBytes","recordingAnimationSeconds","recordingAnimationEdge"};return value;}
+const QStringList& retentionKeys() {static const QStringList value{"failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays"};return value;}
+const QStringList& filterKeys() {static const QStringList value{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};return value;}
 bool fields(const QJsonValue& value,const QStringList& allowed){if(!value.isObject())return false;const auto object=value.toObject();for(auto it=object.begin();it!=object.end();++it)if(!allowed.contains(it.key()))return false;return true;}
 bool scalars(const QJsonValue& value,const QStringList& allowed,bool strings=false){if(!fields(value,allowed))return false;const auto object=value.toObject();for(auto v:object)if(strings?!v.isString():(v.isArray()||v.isObject()||v.isUndefined()))return false;return true;}
 bool stringArray(const QJsonValue& value,int maximum=1000);
@@ -45,7 +45,7 @@ bool rawS3(const QString& text){
  int i=0;auto space=[&]{while(i<text.size()&&text[i].isSpace())++i;};
  auto quoted=[&](QString& decoded){if(i>=text.size()||text[i]!='"')return false;const int start=i++;bool escaped=false;while(i<text.size()){const auto c=text[i++];if(!escaped&&c=='"'){auto array=QJsonDocument::fromJson(("["+text.mid(start,i-start)+"]").toUtf8());if(!array.isArray())return false;decoded=array.array().first().toString();return true;}if(!escaped&&c=='\\')escaped=true;else escaped=false;}return false;};
  space();if(i==text.size())return true;if(text[i++]!='{')return false;
- while(true){space();if(i==text.size())return true;if(text[i]=='}'){++i;space();return i==text.size();}QString key;if(!quoted(key)||!s3Keys.contains(key))return false;space();if(i==text.size())return true;if(text[i++]!=':')return false;space();if(i==text.size())return true;
+ while(true){space();if(i==text.size())return true;if(text[i]=='}'){++i;space();return i==text.size();}QString key;if(!quoted(key)||!s3Keys().contains(key))return false;space();if(i==text.size())return true;if(text[i++]!=':')return false;space();if(i==text.size())return true;
   if(text[i]=='"'){QString ignored;if(!quoted(ignored))return true;}else{while(i<text.size()&&text[i]!=','&&text[i]!='}'){if(text[i]=='{'||text[i]=='['||text[i]==']'||text[i]=='"'||text[i]==':')return false;++i;}}
   space();if(i==text.size())return true;if(text[i]=='}'){++i;space();return i==text.size();}if(text[i++]!=',')return false;
  }
@@ -72,7 +72,7 @@ bool uploaderSettings(const QJsonValue& value){
  }
  // A secret request body has no text in settings.
  if(settings["dataSecret"].toBool()&&!settings["data"].toString().isEmpty())return false;
- return scalars(settings,uploaderScalars);
+ return scalars(settings,uploaderScalars());
 }
 bool providerSettings(const QString& provider,const QJsonValue& settings){return provider=="custom-http"?uploaderSettings(settings):scalars(settings,providerKeys(provider));}
 bool safeProfile(const QJsonValue& value){
@@ -91,7 +91,7 @@ bool safeDocument(const QJsonValue& value){
  for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;
  if(!fields(d["archive"],{"root","keepUploads","folders"}))return false;
  const auto archive=d["archive"].toObject();if(!archive["root"].isString()||!archive["keepUploads"].isBool()||!scalars(archive["folders"],{"images","videos","text","other"}))return false;
- return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate","recordingTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&preferencesDraft(d["preferences"]);
+ return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate","recordingTemplate"})&&scalars(d["limits"],limitKeys())&&scalars(d["retention"],retentionKeys())&&preferencesDraft(d["preferences"]);
 }
 bool protonEditor(const QJsonValue& value){
  if(!fields(value,{"accountRootUid","accountEmail","folders","folderIndex","share","expiration","timeout"}))return false;
@@ -109,7 +109,7 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
  if(!fields(value,allowed))return false;
  const auto editor=value.toObject();
  for(const auto& key:QStringList{"id","label","credentialMode","reference","acl","addressing","providerJson"})if(!editor[key].isString())return false;
- if(!scalars(editor["s3"],s3Keys,true)||!rawS3(editor["providerJson"].toString()))return false;
+ if(!scalars(editor["s3"],s3Keys(),true)||!rawS3(editor["providerJson"].toString()))return false;
  if(editor.contains("proton")&&!protonEditor(editor["proton"]))return false;
  if(!editor.contains("providers"))return true;
  if(!fields(editor["providers"],{"s3","proton-drive","backblaze-b2","custom-http"}))return false;
@@ -144,7 +144,7 @@ bool settingsState(const QJsonObject& s){
  if(s.contains("resourceLimits")&&!s["resourceLimits"].isBool())return false;
  if(s.contains("desktopSupportDetails")&&!s["desktopSupportDetails"].isBool())return false;
  if(s.contains("captureRouting")&&!captureRouting(s["captureRouting"]))return false;
- if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys+retentionKeys,true)||!geometry(s["geometry"]))return false;
+ if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys()+retentionKeys(),true)||!geometry(s["geometry"]))return false;
  for(const auto& key:QStringList{"dirty","conflict","initialProfile","advanced"})if(!s[key].isBool())return false;
  for(const auto& key:QStringList{"baseRevision","observedRevision"})if(!s[key].isString())return false;
  if(!s["profileIndex"].isDouble()||!s["section"].isDouble()||!s["profileEditors"].isArray()||s["profileEditors"].toArray().size()>32)return false;
@@ -158,7 +158,7 @@ bool settingsState(const QJsonObject& s){
  for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
  return true;
 }
-bool historyState(const QJsonObject& s){if(s.contains("savedPath")&&(!s["savedPath"].isString()||s["savedPath"].toString().contains(QChar(0))||(!s["savedPath"].toString().isEmpty()&&!QDir::isAbsolutePath(s["savedPath"].toString()))))return false;for(const auto& key:QStringList{"gridMode","showCancelled","detailsOpen","detailsFromGallery","detailsWanted"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId","detailsOpen","detailsFromGallery","detailsWanted","galleryScroll","listScroll","savedPath"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;for(const auto& key:QStringList{"galleryScroll","listScroll"})if(s.contains(key)&&(!s[key].isDouble()||s[key].toDouble()<0||s[key].toDouble()>2147483647||std::floor(s[key].toDouble())!=s[key].toDouble()))return false;return true;}
+bool historyState(const QJsonObject& s){if(s.contains("savedPath")&&(!s["savedPath"].isString()||s["savedPath"].toString().contains(QChar(0))||(!s["savedPath"].toString().isEmpty()&&!QDir::isAbsolutePath(s["savedPath"].toString()))))return false;for(const auto& key:QStringList{"gridMode","showCancelled","detailsOpen","detailsFromGallery","detailsWanted"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId","detailsOpen","detailsFromGallery","detailsWanted","galleryScroll","listScroll","savedPath"})||!fields(s["query"],filterKeys()+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys(),true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;for(const auto& key:QStringList{"galleryScroll","listScroll"})if(s.contains(key)&&(!s[key].isDouble()||s[key].toDouble()<0||s[key].toDouble()>2147483647||std::floor(s[key].toDouble())!=s[key].toDouble()))return false;return true;}
 }
 // The resolved appearance (#60), reported read-only for CLI/MCP readers.
 bool appearanceState(const QJsonValue& value){

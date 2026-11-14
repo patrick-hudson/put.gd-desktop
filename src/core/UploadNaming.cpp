@@ -5,7 +5,7 @@
 
 namespace putgd {
 namespace {
-const QStringList tokens{"name", "ext", "yyyy", "MM", "dd", "HH", "mm", "ss", "uuid"};
+const QStringList& tokens() {static const QStringList value{"name", "ext", "yyyy", "MM", "dd", "HH", "mm", "ss", "uuid"};return value;}
 
 bool safeCharacter(QChar character) {
  return character != '/' && character != '\\' && character.category() != QChar::Other_Control;
@@ -59,7 +59,7 @@ Error UploadNaming::validateTemplate(const QString& format) {
   if (format[index] == '}') return {"filename_template_invalid", "A filename template contains an unmatched closing brace", {}};
   if (format[index] != '{') continue;
   const auto end = format.indexOf('}', index + 1);
-  if (end < 0 || !tokens.contains(format.mid(index + 1, end - index - 1)))
+  if (end < 0 || !tokens().contains(format.mid(index + 1, end - index - 1)))
    return {"filename_template_invalid", "A filename template contains an unknown or unclosed token", {}};
   index = end;
  }
