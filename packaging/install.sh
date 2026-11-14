@@ -57,7 +57,7 @@ HELP
                 ubuntu:24.04|kubuntu:24.04|linuxmint:22|linuxmint:22.*) package=ubuntu24.04 ;;
                 ubuntu:26.04|kubuntu:26.04) package=ubuntu26.04 ;;
                 debian:13|debian:13.*) package=debian13 ;;
-                fedora:44) package=fedora44 ;;
+                fedora:44|fedora:45) package=fedora44 ;;
                 arch:*) package=archlinux ;;
                 *)
                     case " $ID_LIKE " in *' arch '*) package=archlinux ;; esac

@@ -119,7 +119,7 @@ else:
             ('ubuntu:24.04', 'ubuntu24.04'), ('linuxmint:22.3', 'ubuntu24.04'),
             ('ubuntu:26.04', 'ubuntu26.04'), ('kubuntu:26.04', 'ubuntu26.04'),
             ('debian:13', 'debian13'), ('debian:13.1', 'debian13'),
-            ('fedora:44', 'fedora44'), ('fedora:45', 'appimage'),
+            ('fedora:44', 'fedora44'), ('fedora:45', 'fedora44'), ('fedora:46', 'appimage'),
             ('arch:rolling', 'archlinux'), ('ubuntu:22.04', 'appimage')):
             with self.subTest(fields=fields):
                 distro, version = fields.split(':')
@@ -132,8 +132,9 @@ else:
 
     def test_atomic_overrides_fedora_and_derivatives(self):
         (self.root / 'ostree-booted').touch()
-        for distro in ('fedora', 'aurora', 'bazzite', 'silverblue'):
-            self.os_release.write_text(f'ID={distro}\nVERSION_ID=44\n')
+        for distro, version in (('fedora', '44'), ('fedora', '45'), ('aurora', '45'),
+                                ('bazzite', '45'), ('silverblue', '45')):
+            self.os_release.write_text(f'ID={distro}\nVERSION_ID={version}\n')
             out = self.run_script('--dry-run')
             self.assertIn('Atomic', out)
             self.assertIn('stable / appimage', out)
@@ -293,10 +294,12 @@ else:
         self.assertIn('stable / appimage', self.run_script('--appimage', '--dry-run'))
 
     def test_native_uses_only_one_sudo_step(self):
-        for distro, package, manager, extension in (
-                ('ubuntu', 'ubuntu24.04', 'apt', 'deb'), ('fedora', 'fedora44', 'dnf', 'rpm')):
+        for distro, version, package, manager, extension in (
+                ('ubuntu', '24.04', 'ubuntu24.04', 'apt', 'deb'),
+                ('fedora', '44', 'fedora44', 'dnf', 'rpm'),
+                ('fedora', '45', 'fedora44', 'dnf', 'rpm')):
             self.log.unlink(missing_ok=True)
-            self.os_release.write_text(f'ID={distro}\nVERSION_ID={"24.04" if distro == "ubuntu" else "44"}\n')
+            self.os_release.write_text(f'ID={distro}\nVERSION_ID={version}\n')
             self.env['SUFFIX'] = f'-{package}-x86_64.{extension}'
             self.run_script()
             sudo = [call for call in self.calls() if Path(call[0]).name == 'sudo']
