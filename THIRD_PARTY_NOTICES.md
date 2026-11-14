@@ -69,6 +69,17 @@ every bundled component with its version, licence, source and files, and
 This inventory records build and package inputs. Actual installed-package notice
 inspection, lifecycle checks and the complete release matrix remain release gates.
 
+The scrolling capture's tracker, `src/core/ScrollTracker.cpp` and `ScrollTracker.h`, ports
+the band matcher of wayscrollshot (`https://github.com/jswysnemc/wayscrollshot`,
+`src/stitch/band/`, commit `703474ad7b94a504306d7a93d21668ee162ebf1c`, MIT, Copyright (c) 2025)
+and of mark-shot's `crates/shot-stitch` (`https://github.com/jswysnemc/mark-shot`, commit
+`4cf891014f584e9199e41a182c13f6f478435115`, MIT, Copyright (c) 2026 Dhahbi Fadi) to C++: the
+row signature by brightness in column bands from 4% to 96% of the width compared with a
+tolerance, the order of candidates by their distance from the expected offset, the motion
+mask that keeps what does not move out of the vote, the fixed header and footer kept once,
+the lookup of a frame inside the image already built and the growth at both ends. Both files
+carry the two copyright lines and the MIT permission notice.
+
 Nayuki's QR Code generator v1.8.0 is vendored unmodified as
 `src/core/qrcodegen/qrcodegen.cpp` and `qrcodegen.hpp`, from tag commit
 `720f62bddb7226106071d4728c292cb1df519ceb`, under the MIT licence.

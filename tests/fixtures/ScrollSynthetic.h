@@ -1,5 +1,8 @@
 // Deterministic synthetic document, viewport renderer and fake scrolling app
-// used by test_scroll_stitcher.cpp (#1376). Not part of the product code.
+// used by test_scroll_stitcher.cpp (#1376), and the scenes of
+// test_scroll_tracker.cpp (#1515): parts pinned over the page, a header that
+// shows up late, a block that changes in place, text drawn again with other
+// antialiasing. Not part of the product code.
 #pragma once
 
 #include <algorithm>
@@ -82,6 +85,43 @@ class Renderer {
   const Image& doc_;
   ViewportSpec vs_;
   Image header_, footer_;
+};
+
+// A part pinned over the page, in viewport coordinates: a flat box with a
+// border and a few lines of text.
+struct PinnedPart {
+  int x = 0, y = 0, w = 0, h = 0;
+  uint32_t background = 0x2B2F3A;
+  uint32_t ink = 0xE6E6E6;
+  int fromPos = 0;  // shows once the page is scrolled at least this far (a header that comes late)
+  uint64_t seed = 11;
+};
+
+struct SceneSpec {
+  int width = 480, height = 400;
+  std::vector<PinnedPart> pinned;
+  // A block of the page (document coordinates) that changes with every frame.
+  int changingX = -1, changingY = 0, changingW = 0, changingH = 0;
+  // Text drawn again with other antialiasing: the ink's edge pixels shift in
+  // brightness by up to this much from frame to frame.
+  int antialias = 0;
+};
+
+class Scene {
+ public:
+  Scene(const Image& doc, SceneSpec spec);
+  // The viewport at scroll position pos; frame numbers the picture (what
+  // changes in place, and the antialiasing, change with it).
+  Image frame(int pos, int frame) const;
+  const SceneSpec& spec() const { return spec_; }
+  const Image& doc() const { return doc_; }
+  // A pinned part as drawn (its own pixels, w x h).
+  const Image& part(size_t i) const { return parts_[i]; }
+
+ private:
+  const Image& doc_;
+  SceneSpec spec_;
+  std::vector<Image> parts_;
 };
 
 class FakeClock : public putgd::record::RunClock {
