@@ -7,6 +7,20 @@
 #include <QJsonDocument>
 #include <utility>
 using namespace putgd;using namespace putgd::test;
+namespace {
+// The Shell on GNOME, as far as a scroll capture uses it (#1531: its pointer watch).
+struct FakeShell final:RecordingShell {
+ bool capable=true,watching=false;int watches=0,unwatches=0;std::function<void(QJsonObject)> sink;
+ bool selectsRegions()const override{return true;}
+ void selectRegion(Reply reply)override{reply({},{{"rect",QJsonArray{0,0,64,64}}});}
+ void cancelSelection()override{}
+ void showFrame(const QJsonObject&,Reply reply)override{reply({},{{"bar",QJsonObject{{"placed",true},{"outside",true},{"rect",QJsonArray{0,70,64,20}}}}});}
+ void hideFrame()override{}
+ bool watchesPointer()const override{return capable;}
+ void watchPointer(std::function<void(QJsonObject)> s)override{sink=std::move(s);watching=true;++watches;}
+ void unwatchPointer()override{if(watching)++unwatches;watching=false;sink={};}
+};
+}
 class ScrollTest:public QObject {
  Q_OBJECT
 private slots:
@@ -116,6 +130,33 @@ private slots:
   QJsonObject view;service.command("inspect",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);view=r;});PUTGD_TRY_VERIFY(!view.isEmpty());
   QCOMPARE(view["state"].toString(),QString("capturing"));QVERIFY(view["paused"].toBool());QCOMPARE(view["pausedBy"].toString(),QString("pointer"));
   bool cancelled=false;service.command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+ }
+ // GNOME (#1531): an extension that can watch the pointer is announced to the
+ // helper; its watch is on exactly while the helper asks, every position goes
+ // to the helper as `pointer`, and the end of the capture gives it up. An older
+ // extension is not asked.
+ void theShellWatchesThePointerWhileAsked(){
+  for(const bool capable:{true,false}){
+   QTemporaryDir dir("/tmp/sw-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+   ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="watching";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};
+   host.finish=[](Operation){};host.admit=[](Operation,ClipboardPayload,auto){};
+   ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+   FakeShell shell;shell.capable=capable;service.setShell(&shell);
+   QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}},{"driver","putgd"}},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.code));id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+   QCOMPARE(backend->preparedParams.value("shellPointer").toBool(false),capable);
+   bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));started=true;});PUTGD_TRY_VERIFY(started);
+   backend->sink({{"id",id},{"event","pointerWatch"},{"on",true}});
+   PUTGD_TRY_VERIFY(shell.watching==capable);
+   if(!capable){QCOMPARE(shell.watches,0);bool cancelled=false;service.command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);continue;}
+   shell.sink({{"at",QJsonArray{10,20}},{"t",123.0}});
+   PUTGD_TRY_VERIFY(backend->pointers.size()==1);QCOMPARE(backend->pointers[0]["at"].toArray(),(QJsonArray{10,20}));QCOMPARE(backend->pointers[0]["t"].toDouble(),123.0);
+   backend->sink({{"id",id},{"event","pointerWatch"},{"on",false}});
+   PUTGD_TRY_VERIFY(!shell.watching);QCOMPARE(shell.unwatches,1);
+   // On again, then the capture ends: given up.
+   backend->sink({{"id",id},{"event","pointerWatch"},{"on",true}});PUTGD_TRY_VERIFY(shell.watching);
+   bool done=false;service.command("stop",{{"id",id}},[&](Error,QJsonObject){done=true;});PUTGD_TRY_VERIFY(done);
+   PUTGD_TRY_VERIFY(!shell.watching);QCOMPARE(shell.watches,2);
+  }
  }
  void endReasons_data(){
   QTest::addColumn<QString>("reason");QTest::addColumn<bool>("missed");QTest::addColumn<QJsonObject>("overrides");QTest::addColumn<bool>("admitted");QTest::addColumn<QString>("note");

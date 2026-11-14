@@ -89,6 +89,12 @@ public:
     // kept out of the image; the pointer rests on it between auto-scroll's
     // wheel steps), or overlay {visible: false} when it placed none, then
     // `start`. With autoStart true there the bar stays hidden for the whole capture.
+    // GNOME pointer watch (#1531): prepared with shellPointer true (the Shell
+    // can watch), the helper sends {event: "pointerWatch", on} when an
+    // auto-scroll begins (or Resume waits for the mouse to be still) and a
+    // moment after it ends; while on, the resident sends pointer {at: [x, y],
+    // t} for every position the Shell reports (logical desktop pixels,
+    // CLOCK_MONOTONIC ms). The helper tells its own motions from the user's.
     virtual void control(const QString& id, const QString& command, const QJsonObject& params, Reply) = 0;
     // A finished PNG survives helper exit. The resident validates and admits it,
     // routes it, then removes it. Releases helper ownership for the id.

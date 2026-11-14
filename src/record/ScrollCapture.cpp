@@ -309,6 +309,9 @@ struct ScrollCapture::Job {
     // never blocks on it otherwise, as abandon() joins the worker.
     std::function<void(unsigned)> prepareAuto;
     std::atomic<unsigned> prepared{0};
+    // GNOME: the Shell's pointer watch is on (its first report has come).
+    bool shellPointer = false;
+    std::atomic<bool> pointerArmed{false};
     // Auto-scroll as the main thread wants it: the wish, and a serial that
     // changes with every request; and the commands, which count against the
     // idle bound.
@@ -450,6 +453,15 @@ void ScrollCapture::command(const QString& command, const QJsonObject& params, R
     }
     if (command == "stop") { stop(std::move(reply)); return; }
     if (command == "cancel") { cancel(std::move(reply)); return; }
+    if (command == "pointer") {
+        // GNOME (#1531): where the Shell saw the pointer, {at: [x, y], t}
+        // in logical desktop pixels and CLOCK_MONOTONIC milliseconds.
+        const QJsonArray at = params["at"].toArray();
+        if (at.size() != 2 || !at[0].isDouble() || !at[1].isDouble() || !params["t"].isDouble() || params["t"].toDouble() < 0) { reply({"invalid_request", "pointer takes at: [x, y] and t", {}}, {}); return; }
+        shellPointerSeen(QPointF(at[0].toDouble(), at[1].toDouble()), quint64(params["t"].toDouble()));
+        reply({}, {});
+        return;
+    }
     if (command == "overlay") {
         // GNOME: the Shell placed no bar at all.
         if (params.contains("visible")) barHidden_ = !params["visible"].toBool(true);
@@ -458,6 +470,13 @@ void ScrollCapture::command(const QString& command, const QJsonObject& params, R
         if (params.contains("rect")) shellBar_ = rectFromJson(params["rect"]);
         barInside_ = params["inside"].toBool(false) && !shellBar_.isEmpty();
         insideBar_ = barInside_ ? shellBar_ : QRect();
+        // Where the bar's buttons are on the desktop, for lab runs that press them.
+        if (debugLogEnabled() && !shellBar_.isEmpty() && bar_)
+            if (auto* done = bar_->findChild<QWidget*>(QStringLiteral("done"))) {
+                const QPoint p = shellBar_.topLeft() + done->mapTo(bar_, QPoint());
+                debugLog(QStringLiteral("scroll: the Shell put the bar at %1,%2 %3x%4%5; done %6,%7 %8x%9").arg(shellBar_.x()).arg(shellBar_.y()).arg(shellBar_.width()).arg(shellBar_.height())
+                             .arg(barInside_ ? QStringLiteral(" inside") : QString()).arg(p.x()).arg(p.y()).arg(done->width()).arg(done->height()));
+            }
         showBar();
         reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
         return;
@@ -474,7 +493,7 @@ void ScrollCapture::prepare(const QJsonObject& params, Reply reply) {
     const QString selection = params["selection"].toString(QStringLiteral("helper"));
     const double maxHeight = params["maxHeight"].toDouble(scrollDefaultHeight), maxPixels = params["maxPixels"].toDouble(0);
     const QString driver = params["driver"].toString(QStringLiteral("user"));
-    if ((selection != "helper" && selection != "shell") || (driver != "user" && driver != "putgd") || (params.contains("finishKey") && !params["finishKey"].isString()) || (params.contains("rect") && rectFromJson(params["rect"]).isEmpty()) || !std::isfinite(maxHeight) || maxHeight < 1 || !std::isfinite(maxPixels) || maxPixels < 0) {
+    if ((selection != "helper" && selection != "shell") || (driver != "user" && driver != "putgd") || (params.contains("finishKey") && !params["finishKey"].isString()) || (params.contains("shellPointer") && !params["shellPointer"].isBool()) || (params.contains("rect") && rectFromJson(params["rect"]).isEmpty()) || !std::isfinite(maxHeight) || maxHeight < 1 || !std::isfinite(maxPixels) || maxPixels < 0) {
         reply({"invalid_request", "Invalid scroll capture request", {}}, {}); return;
     }
     id_ = params["id"].toString();
@@ -486,6 +505,7 @@ void ScrollCapture::prepare(const QJsonObject& params, Reply reply) {
     fromTop_ = params["fromTop"].toBool(false);
     autoStart_ = params["autoStart"].toBool(true);
     autoAtStart_ = driver == "putgd";
+    shellPointer_ = params["shellPointer"].toBool(false);
     // The key that finishes the capture here, named on the bar: Esc on X11,
     // else the resident's `scroll` hotkey where one is bound.
     finishKey_ = surfaceMode() == SurfaceMode::X11 ? QStringLiteral("Esc") : params["finishKey"].toString().left(40);
@@ -735,6 +755,7 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     job_->paintedPointer = frames_ == "image-copy";
     job_->endedByDesktop = [this] { return mutter_.closedByCompositor(); };
     job_->autoStart = autoAtStart_;
+    job_->shellPointer = shellPointer_ && surfaceMode() == SurfaceMode::Compositor;
     job_->wantAuto.store(autoAtStart_);
     job_->insideBar = barInside_ ? insideBar_ : QRect();
     // Nothing is injected while the user drives.
@@ -928,6 +949,13 @@ void ScrollCapture::prepareAuto() {
 void ScrollCapture::raiseAutoSurfaces() {
     if (!job_ || state_ != State::Capturing) return;
     if (!restWindow_) placeRest();
+    // GNOME: the Shell watches the pointer everywhere for the length of the
+    // auto-scroll (the bar's window sees it only on the bar, #1531).
+    if (job_->shellPointer && !shellWatchOn_) {
+        shellWatchOn_ = true;
+        job_->pointerArmed.store(false);
+        emit event(QJsonObject{{"event", "pointerWatch"}, {"on", true}});
+    }
     // PUTGD_SCROLL_WATCH=0 leaves the watch out (lab diagnostics: what the
     // watch costs a compositor; the user's motion during a wheel step is then
     // seen as on GNOME).
@@ -952,6 +980,10 @@ void ScrollCapture::raiseAutoSurfaces() {
     }
 }
 void ScrollCapture::dropAutoSurfaces() {
+    if (shellWatchOn_) {
+        shellWatchOn_ = false;
+        emit event(QJsonObject{{"event", "pointerWatch"}, {"on", false}});
+    }
     delete pad_;
     pad_ = nullptr;
     delete watch_;
@@ -1226,6 +1258,23 @@ void ScrollCapture::startCorrectionLocked(QPointF base, QPointF anchor, quint64 
     debugLog(QStringLiteral("scroll: the pointer was moved from under the hand; it goes back by %1,%2").arg(base.x() - anchor.x(), 0, 'f', 0).arg(base.y() - anchor.y(), 0, 'f', 0));
 }
 
+// GNOME (#1531): a position the Shell saw the pointer at. The capture's own
+// motions (to a wheel point, back to the rest) are seen too and are not the
+// user; any other position is the hand, decided as on a watch surface.
+void ScrollCapture::shellPointerSeen(QPointF global, quint64 stamp) {
+    if (!job_ || !shellWatchOn_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    auto& gate = job_->gate;
+    // The worker's first wheel step waits for the watch: it is marked on only
+    // once this report (the first is where the pointer was when the watch
+    // began) has been decided, before any motion of the capture's.
+    struct Armed { Job& job; ~Armed() { if (!job.pointerArmed.exchange(true)) debugLog(QStringLiteral("scroll: the Shell watches the pointer from t=%1").arg(FrameTap::nowMs() % 1000000)); } } armed{*job_};
+    const auto sent = gate.lastSent();
+    if (sent.ms >= 0 && QLineF(global, sent.at).length() <= restTolerance) return;
+    // job_->rest is the main thread's own (written here, under restMutex for the worker).
+    if (job_->rest && QLineF(global, QPointF(*job_->rest)).length() <= restTolerance) return;
+    pointerSeen(true, global - QPointF(screen_.topLeft()), stamp);
+}
+
 void ScrollCapture::showWatch(const QList<QPointF>& holes) {
     if (!job_ || state_ != State::Capturing || watch_) return;
     QScreen* on = nullptr;
@@ -1378,6 +1427,12 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             const bool answered = job->prepared.load() == serial;
             // Mapped by the compositor before the first injection.
             if (answered && surfaceMode() == SurfaceMode::LayerShell) std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            // GNOME: the Shell's pointer watch is on before the first visit;
+            // an extension that never answers leaves the bar's own detection.
+            if (answered && job->shellPointer) {
+                const int64_t asked = FrameTap::nowMs();
+                while (!job->pointerArmed.load() && !job->stop.load() && FrameTap::nowMs() - asked < 500) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
             const auto stream = [&](const QPoint& p) { return RunPoint{int(std::lround((p.x() - r.left()) * sx)), int(std::lround((p.y() - r.top()) * sy))}; };
             std::optional<QPoint> rest;
             if (answered) {

@@ -133,6 +133,10 @@ private:
     // The driver at the start (auto-scroll on), auto-scroll as the session has
     // it, and the bar inside the rectangle (#1519; its desktop rectangle).
     bool autoAtStart_ = false, autoOn_ = false, barInside_ = false;
+    // GNOME (#1531): the resident forwards the Shell's pointer positions
+    // (`pointer`) while this capture has asked for them (`pointerWatch`).
+    bool shellPointer_ = false, shellWatchOn_ = false;
+    void shellPointerSeen(QPointF global, quint64 stamp);
     QRect insideBar_;
     QString finishKey_;
     bool stopRequested_ = false, cancelRequested_ = false;

@@ -2,6 +2,7 @@
 #include "platform/SessionLock.h"
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <memory>
 #include "GnomeProtocol.h"
 #include "GnomeExtensionSetup.h"
@@ -114,8 +115,10 @@ void GnomeAdapter::followOwner(const QString& owner){
  // Signals stay subscribed while the Shell keeps its connection, so none can be
  // lost between an extension disable and the next enable.
  if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));bus_.disconnect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));}
- // A Shell that went away took its click watch with it.
+ if(!owner_.isEmpty()&&pointerSink_)bus_.disconnect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
+ // A Shell that went away took its click and pointer watches with it.
  clickSink_={};
+ pointerSink_={};
  owner_=owner;
  if(!owner_.isEmpty()){bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
 }
@@ -398,6 +401,29 @@ void GnomeAdapter::unwatchClicks(){
  if(owner_.isEmpty())return;
  bus_.disconnect(owner_,path,interface,"Click",this,SLOT(helperClick(QString)));
  if(ready_&&!stopping_)call("UnwatchClicks",{},[](Error,QJsonObject){});
+}
+void GnomeAdapter::watchPointerImpl(std::function<void(QJsonObject)> sink){
+ if(owner_.isEmpty()||!ready_)return;
+ const bool connected=static_cast<bool>(pointerSink_);
+ pointerSink_=std::move(sink);
+ if(!connected)bus_.connect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
+ call("WatchPointer",{},[this](Error error,QJsonObject){if(error)unwatchPointerImpl();});
+}
+void GnomeAdapter::unwatchPointerImpl(){
+ if(!pointerSink_)return;
+ pointerSink_={};
+ if(owner_.isEmpty())return;
+ bus_.disconnect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
+ if(ready_&&!stopping_)call("UnwatchPointer",{},[](Error,QJsonObject){});
+}
+void GnomeAdapter::helperPointer(const QString& json){
+ // From the Shell's own connection; bounded and typed before use.
+ if(!pointerSink_||json.size()>256)return;
+ const auto at=QJsonDocument::fromJson(json.toUtf8()).object();
+ if(!at["x"].isDouble()||!at["y"].isDouble()||!at["t"].isDouble())return;
+ const double x=at["x"].toDouble(),y=at["y"].toDouble(),t=at["t"].toDouble();
+ if(std::abs(x)>1e6||std::abs(y)>1e6||t<0||t>9e15)return;
+ pointerSink_(QJsonObject{{"at",QJsonArray{x,y}},{"t",t}});
 }
 void GnomeAdapter::helperClick(const QString& json){
  // From the Shell's own connection (the signal match names it); bounded and typed before use.

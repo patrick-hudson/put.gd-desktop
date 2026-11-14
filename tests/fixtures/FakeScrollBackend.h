@@ -7,6 +7,8 @@
 namespace putgd::test {
 struct FakeScrollBackend final:ScrollBackend {
  QStringList commands;QJsonObject preparedParams;bool probed=false;
+ // Positions forwarded from the Shell's pointer watch (#1531).
+ QList<QJsonObject> pointers;
  void refreshCapabilities(std::function<void()> done)override{probed=true;done();}
  Event sink;QString directory;QString corruption;
  // Several commands kept back at once, each answered when the test says so
@@ -26,6 +28,7 @@ struct FakeScrollBackend final:ScrollBackend {
   commands.append(cmd);
   if(holdCommands.contains(cmd)){held[cmd]=std::move(reply);return;}
   if(cmd=="stop"){reply({},finished());return;}
+  if(cmd=="pointer"){pointers.append(p);reply({},{});return;}
   if(cmd=="start")started=true;
   if((cmd=="autoScroll"||cmd=="pause"||cmd=="resume")&&refuseToggle){reply({"scroll_state","The capture is stopping",{}},{});return;}
   if(cmd=="autoScroll"||cmd=="pause"||cmd=="resume"){const bool on=cmd=="autoScroll"?p["on"].toBool():cmd=="resume";reply({},{{"state","capturing"},{"driver",on?"putgd":"user"},{"paused",false}});return;}
