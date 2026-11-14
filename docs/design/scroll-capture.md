@@ -367,9 +367,9 @@ helper exit until the resident has admitted them.
 | `endedLost` | The capture ended while the tracker was lost |
 | `reachedEnd` | Auto-scroll proved the end of the page |
 | `topReached` | `false` when the way to the top was asked for and could not prove the top; absent otherwise |
-| `note` | Why, for `lost_track`, `top_not_reached` and the idle bound |
+| `note` | Why, for `lost_track`, `top_not_reached`, the idle bound and auto-scroll stopped at a blank stretch |
 | `hiddenCells`, `hiddenRows` | Only when the bar sat inside the region: cells of the page that only the bar ever covered (filled with their column's plain colour), and the rows that hold them |
-| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond` |
+| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added) |
 
 | `endReason` | `truncated` | Meaning |
 | --- | --- | --- |
@@ -414,9 +414,10 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
 - **A blank stretch taller than the region** shows nothing that moves. Auto-scroll stops
   there: frames with nothing on them show no movement, so its steps look still, though the
   wheel may still be moving the page. It does not call that the end of the page: the capture
-  ends `done` with `reachedEnd: false` and the note "auto-scroll stopped where the page showed
-  nothing". Your own scrolling past it leaves the page where the tracker cannot place it
-  (lost) until you scroll back. Including the scrollbar does not help: the tracker leaves the
+  ends `done` with `reachedEnd: false`, and the resident shows the note "Auto-scroll stopped
+  where the page showed nothing" in a notice, in History and in the result. Your own
+  scrolling past it leaves the page where the tracker cannot place it (lost) until you
+  scroll back. Including the scrollbar does not help: the tracker leaves the
   side margins out of its vote.
 - **The bar inside the corner** hides the page beside its place at the very end of the page:
   those cells are plain, and `hiddenCells` counts them.

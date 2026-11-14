@@ -338,7 +338,7 @@ its wheel). After `pausedBy: lost`, `activity` is `lost` until the user scrolls 
 the image finds the page, then `paused`; `scroll.autoScroll {on: true}` then carries on. After the end the view also carries what the helper reported: `state: "done"`,
 `endReason`, `truncated`, `scrolledBy` (`user`, `putgd`, `both`, `none`), `framesPlaced`,
 `framesSkipped`, `endedLost`, `reachedEnd`, `height`, `bytes`, `stats {steps, pixelsPerNotch,
-lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond}` (also flat),
+lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond, rowsAtDone}` (also flat),
 `result` (the helper's descriptor without its path), `note` where there is one, and
 `hiddenCells` and `hiddenRows` when the bar sat inside the region and hid part of the page's
 end. With
@@ -349,7 +349,7 @@ carries `topReached: false`; the field is absent otherwise.
 | --- | --- | --- |
 | `end_of_content` | false | Auto-scroll proved the end of the page and no frame was skipped |
 | `top_not_reached` | true | The same, but the way to the top could not prove the top: the image starts partway down |
-| `done` | false | Finished by Done, the hotkey, Esc, `scroll.stop` or the idle bound, or by auto-scroll at the end after skipped frames (`reachedEnd` true): the page as far as it was scrolled |
+| `done` | false | Finished by Done, the hotkey, Esc, `scroll.stop` or the idle bound, or by auto-scroll at the end after skipped frames (`reachedEnd` true) or at a blank stretch (`reachedEnd` false, a `note`): the page as far as it was scrolled |
 | `lost_track` | true | Finished while put.gd had lost the page: the image ends where it last found it |
 | `height_cap` | true | The cap was reached |
 
