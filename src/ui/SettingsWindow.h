@@ -53,7 +53,7 @@ public:
  void fileDialogCommand(const QString& dialog,const QString& action,const QString& field,std::function<void(Error,QJsonObject)> reply);
  // #1361: drives the custom uploader form the way a user does: action inspect,
  // import (path: the .sxcu file is read into the form; its secrets wait there
- // until stored), store (the Store credentials button) or test.
+ // until stored), store (the Save to keychain button) or test.
  void uploaderCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
  // used, a cancel changes nothing, a failure shows its reason beside the

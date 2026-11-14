@@ -6,7 +6,7 @@
 #include <QJsonDocument>
 namespace putgd {
 namespace {
-Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter and Store the B2 application key for this session.", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter the B2 application key and choose Save to keychain or Use for this session.", {}}; }
 Error parseError(const QJsonObject& value) { return {value["code"].toString("b2_failed"), value["message"].toString("Backblaze B2 request failed"), value["details"].toObject()}; }
 // Errors the worker reports before any request that could change B2.
 bool definite(const QString& code) {

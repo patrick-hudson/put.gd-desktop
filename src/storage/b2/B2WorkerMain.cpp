@@ -223,7 +223,7 @@ public:
         }
         const auto code = r.code();
         if (stage == "authorize" && r.status == 401)
-            return {"b2_authentication_failed", "Backblaze B2 did not accept the application key ID and key. Check both, and that the key is still active; then Store credentials again.", details};
+            return {"b2_authentication_failed", "Backblaze B2 did not accept the application key ID and key. Check both, and that the key is still active; then choose Save to keychain or Use for this session.", details};
         if (r.status == 401 && code == "unauthorized")
             return {"b2_permission_denied", "The application key lacks a capability this step needs (" + stage + "). Give the key listBuckets, listFiles, readFiles, writeFiles and deleteFiles, plus shareFiles for authorized links.", details};
         if (r.status == 403 || code.endsWith("cap_exceeded"))

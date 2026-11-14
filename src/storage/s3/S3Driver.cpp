@@ -63,7 +63,7 @@ bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && t
 Error cancelled() {
     return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}};
 }
-Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter and Store credentials for this session.", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter them and choose Save to keychain or Use for this session.", {}}; }
 // Which request was denied decides what to check. Every stage is named, so a new one cannot fall through.
 QString deniedGuidance(S3Stage stage) {
     switch (stage) {
@@ -107,9 +107,9 @@ bool conditionalWrite(S3Stage stage) {
     return false;
 }
 QString requestGuidance(const QString& name, int status, S3Stage stage, int curlCode) {
-    if (name == "InvalidAccessKeyId") return "S3 does not recognize the access key ID. Check that it is correct, active, and belongs to the selected storage service; then Store credentials again.";
+    if (name == "InvalidAccessKeyId") return "S3 does not recognize the access key ID. Check that it is correct, active, and belongs to the selected storage service; then choose Save to keychain or Use for this session.";
     if (name == "SignatureDoesNotMatch") return "S3 could not verify the request signature. Check that the secret access key matches the access key ID, then check the region, endpoint and system clock.";
-    if (name == "ExpiredToken" || name == "InvalidToken" || name == "TokenRefreshRequired") return "The temporary session token is expired or invalid. Renew and Store the complete access key, secret key and session token together.";
+    if (name == "ExpiredToken" || name == "InvalidToken" || name == "TokenRefreshRequired") return "The temporary session token is expired or invalid. Renew them, then enter the access key, secret key and session token together and choose Save to keychain or Use for this session.";
     if (name == "RequestTimeTooSkewed" || name == "RequestExpired") return "S3 rejected the request time. Synchronize the system clock and try again.";
     if (name == "NoSuchBucket") return "S3 could not find the bucket. Check the bucket name, region and endpoint; the bucket must already exist.";
     if (name == "InvalidBucketName") return "S3 rejected the bucket name. Enter only the existing bucket name, without a URL or folder path.";
