@@ -15,6 +15,11 @@
   <a href="https://app.put.gd/">Downloads</a>
 </p>
 
+> [!NOTE]
+> put.gd is under heavy development. It's heavily tested, but it's one person and a lot
+> of LLMs. It works for my use case, and maybe it'll work for yours. Fork it, steal it,
+> change it, contribute, do whatever you want with it.
+
 Press a hotkey, drag over what you want to show, and a link is on your clipboard, ready
 to paste into a chat, a ticket or a pull request. put.gd takes screenshots, scrolling
 pages and screen recordings, lets you annotate and redact an image or trim and blur a
