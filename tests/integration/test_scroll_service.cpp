@@ -90,12 +90,12 @@ private slots:
   }
   backend->refuseToggle=false;
   // A helper that sends more statistics than it should: only the known ones, as numbers, reach the view.
-  backend->extraStats={{"steps",7},{"pixelsPerNotch",53.0},{"lowConfidenceSteps",0},{"elapsedMs",1234.0},{"id","forged"},{"bogus",1},{"frames","many"}};
+  backend->extraStats={{"steps",7},{"pixelsPerNotch",53.0},{"lowConfidenceSteps",0},{"elapsedMs",1234.0},{"rowsAtDone",12.0},{"id","forged"},{"bogus",1},{"frames","many"}};
   backend->overrides={{"hiddenCells",96},{"hiddenRows","x"}};
   bool done=false;Error error;service.command(end,{{"id",id}},[&](Error e,QJsonObject){error=e;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
   QVERIFY(!service.active());QVERIFY(inspect());QVERIFY(!view.contains("paused")&&!view.contains("pausedBy")&&!view.contains("activity"));
   if(end=="stop"){QCOMPARE(view["state"].toString(),QString("done"));QCOMPARE(view["endReason"].toString(),QString("done"));QCOMPARE(view["truncated"].toBool(true),false);QCOMPARE(view["scrolledBy"].toString(),QString("user"));PUTGD_TRY_VERIFY(admissions==1);
-   QCOMPARE(view["id"].toString(),id);QCOMPARE(view["steps"].toInt(),7);QVERIFY(!view.contains("bogus"));QVERIFY(!view.contains("frames"));QCOMPARE(view["hiddenCells"].toInt(),96);QVERIFY(!view.contains("hiddenRows"));}
+   QCOMPARE(view["id"].toString(),id);QCOMPARE(view["steps"].toInt(),7);QCOMPARE(view["rowsAtDone"].toInt(),12);QVERIFY(!view.contains("bogus"));QVERIFY(!view.contains("frames"));QCOMPARE(view["hiddenCells"].toInt(),96);QVERIFY(!view.contains("hiddenRows"));}
   else{QCOMPARE(view["state"].toString(),QString("cancelled"));QVERIFY(ended.cancelled);PUTGD_COMPARE_STEADY(admissions,0,200);QVERIFY(!QFileInfo::exists(backend->directory));}
  }
  // A PNG that does not match the helper's descriptor (other bytes, other
@@ -163,6 +163,8 @@ private slots:
   const QJsonObject none;
   QTest::newRow("done")<<"done"<<false<<none<<true<<"";
   QTest::newRow("done, auto-scroll at the end after skipped frames")<<"done"<<false<<QJsonObject{{"reachedEnd",true},{"framesSkipped",3},{"scrolledBy","putgd"}}<<true<<"";
+  // A blank stretch taller than the region: the end not claimed, and the person told (#1528 round 4).
+  QTest::newRow("done, auto-scroll at a blank stretch")<<"done"<<false<<QJsonObject{{"reachedEnd",false},{"scrolledBy","putgd"},{"note","auto-scroll stopped where the page showed nothing: a blank stretch taller than the region looks like the end of the page; if the page goes on, scroll past it yourself"}}<<true<<"Auto-scroll stopped where the page showed nothing. If the page goes on, scroll past the blank part yourself.";
   QTest::newRow("end of content")<<"end_of_content"<<false<<QJsonObject{{"scrolledBy","putgd"}}<<true<<"";
   QTest::newRow("end of content with a skipped frame")<<"end_of_content"<<false<<QJsonObject{{"framesSkipped",1}}<<false<<"";
   QTest::newRow("end of content, end not reached")<<"end_of_content"<<false<<QJsonObject{{"reachedEnd",false}}<<false<<"";

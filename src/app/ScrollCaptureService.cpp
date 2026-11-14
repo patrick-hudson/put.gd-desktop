@@ -157,7 +157,7 @@ void ScrollCaptureService::complete(QJsonObject r){
  r.remove("path");view_.remove("paused");view_.remove("pausedBy");view_.remove("activity");view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=r["truncated"];view_["height"]=h;
  for(const auto* key:{"scrolledBy","framesPlaced","framesSkipped","endedLost","reachedEnd"})view_[key]=r[key];view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();
  // Only the known statistics, and only numbers: the helper's output is not trusted to name view keys.
- for(const char* key:{"steps","pixelsPerNotch","lowConfidenceSteps","elapsedMs","frames","recovered","pinnedRegions","framesPerSecond"})if(stats.value(key).isDouble())view_[key]=stats.value(key);
+ for(const char* key:{"steps","pixelsPerNotch","lowConfidenceSteps","elapsedMs","frames","recovered","pinnedRegions","framesPerSecond","rowsAtDone"})if(stats.value(key).isDouble())view_[key]=stats.value(key);
  for(const char* key:{"hiddenCells","hiddenRows"})if(r.value(key).isDouble()&&r.value(key).toDouble()>=0)view_[key]=r.value(key);
  // The scroll-to-top step did not prove the top: said with every end reason, and the image is kept.
  if(r.contains("topReached"))view_["topReached"]=r.value("topReached");
@@ -166,6 +166,8 @@ void ScrollCaptureService::complete(QJsonObject r){
  else if(reason=="top_not_reached"){const auto note=QString("Could not reach the top of the page. The image starts partway down.");op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
  else if(reason=="lost_track"){const auto note=QString("Finished while put.gd had lost its place. The image ends where it last found the page.");op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
  else if(r["note"].toString().startsWith("nobody scrolled")){const auto note=QString("Finished by itself after 10 minutes without scrolling.");op_.note=note;view_["note"]=note;}
+ // Auto-scroll stopped at a blank stretch it cannot tell from the end: said, as the page may go on.
+ else if(reason=="done"&&!r["reachedEnd"].toBool()&&r["note"].toString().startsWith("auto-scroll stopped where the page showed nothing")){const auto note=QString("Auto-scroll stopped where the page showed nothing. If the page goes on, scroll past the blank part yourself.");op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
  backend_->discard(id_);
  rememberResult();auto op=op_;const auto id=id_;id_.clear();pending_.clear();if(shell_){shell_->unwatchPointer();shell_->hideFrame();}emit ended();
  ClipboardPayload payload;if(edit_){payload.kind="files";payload.files={path};}else{payload.kind="png";payload.bytes=png;payload.mime="image/png";}
