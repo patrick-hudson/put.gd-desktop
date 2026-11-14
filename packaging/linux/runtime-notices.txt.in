@@ -6,7 +6,7 @@ Apache-2.0 (the AWS SDK for C++) and, with the Proton Drive helper, GPL-3.0-or-l
 
   put.gd                                    MIT                 LICENSE
   Nayuki QR Code generator v1.8.0          MIT                 qrcodegen-LICENSE
-  wayscrollshot and mark-shot band matcher  MIT                 this file, below
+  wayscrollshot and mark-shot band matcher  MIT                 scroll-tracker-LICENSE, and below
     (ported, in putgd-record)
   IBM Plex Sans Regular, Medium, SemiBold    OFL-1.1             fonts/OFL-sans.txt
   IBM Plex Mono Regular                     OFL-1.1             fonts/OFL-mono.txt

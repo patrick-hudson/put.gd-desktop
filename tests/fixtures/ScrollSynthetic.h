@@ -152,6 +152,9 @@ struct FakeAppSpec {
   // has no fresh frame to give.
   int quietFromInjection = -1;
   bool quietHasFresh = true;
+  // A stream that sends a frame only when the picture changed (KWin, Mutter,
+  // image copy): none while the page stands still. A fresh frame always comes.
+  bool damageOnly = false;
   // This many rows at the top of the viewport change with every frame (a
   // video in a fixed player): the picture never comes to rest.
   int restlessRows = 0;
@@ -227,6 +230,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   Image scratch_, delivered_;
   size_t scriptAt_ = 0;
   bool quiet_ = false;
+  bool forceNext_ = false;
   int64_t busyUntil_ = 0;
   int pointerX_ = -1, pointerY_ = -1;
 };

@@ -254,6 +254,7 @@ private:
     void account(const scroll::TrackResult&, int64_t t);
     scroll::TrackerHint hintFor(int64_t t);
     void observeToTop(const scroll::FrameView&, int64_t t);
+    void keepScreen(const scroll::FrameView& view);
     // Waits up to ms, feeding whatever frames come.
     bool pump(int ms);
     void applyRequests();

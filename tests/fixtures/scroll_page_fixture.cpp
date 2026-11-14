@@ -4,7 +4,8 @@
 // scrolling, pixels per notch, a starting row, a tail that loads late, and an
 // application that answers the wheel late (`--answer-ms`), and a page that
 // a person scrolls (`--self-scroll PX,MS,WAIT`: PX every MS after WAIT ms,
-// down to the end, with no input event at all).
+// down to the end, with no input event at all; WAIT -1: once a line "go"
+// arrives on standard input, so a test starts it when its capture is ready).
 // It prints `ready X Y W H` once it has painted, then `position N` whenever
 // the scroll position settles. On a Wayland desktop a client cannot place its
 // own window, so `--fullscreen` fills one output instead and the capture takes
@@ -14,7 +15,9 @@
 #include <QCommandLineParser>
 #include <QFont>
 #include <QPainter>
+#include <QSocketNotifier>
 #include <QTimer>
+#include <unistd.h>
 #include <QVariantAnimation>
 #include <QWheelEvent>
 #include <QWidget>
@@ -50,7 +53,17 @@ public:
             settled();
             if (target_ >= maxScroll()) self_.stop();
         });
-        QTimer::singleShot(wait, this, [this, ms] { self_.start(ms); });
+        if (wait >= 0) {
+            QTimer::singleShot(wait, this, [this, ms] { self_.start(ms); });
+            return;
+        }
+        auto* in = new QSocketNotifier(STDIN_FILENO, QSocketNotifier::Read, this);
+        connect(in, &QSocketNotifier::activated, this, [this, in, ms] {
+            char buffer[64];
+            const ssize_t n = ::read(STDIN_FILENO, buffer, sizeof buffer);
+            if (n <= 0) { in->setEnabled(false); return; }
+            if (QByteArray(buffer, int(n)).contains("go") && !self_.isActive()) self_.start(ms);
+        });
     }
 protected:
     void wheelEvent(QWheelEvent* event) override {

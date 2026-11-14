@@ -79,7 +79,8 @@ tolerance, the order of candidates by their distance from the expected offset, t
 mask that keeps what does not move out of the vote, the fixed header and footer kept once,
 the lookup of a frame inside the image already built and the growth at both ends. Both files
 carry the two copyright lines and the MIT permission notice. `putgd-record` links the tracker,
-so every package's `runtime-notices.txt` carries the same lines and notice.
+so every package carries the same lines and notice in `scroll-tracker-LICENSE` (the AppImage's
+notices list it as a component embedded in put.gd), and the DEB and RPM packages' `runtime-notices.txt` too.
 
 Nayuki's QR Code generator v1.8.0 is vendored unmodified as
 `src/core/qrcodegen/qrcodegen.cpp` and `qrcodegen.hpp`, from tag commit

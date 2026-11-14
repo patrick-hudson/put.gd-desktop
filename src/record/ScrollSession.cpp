@@ -125,7 +125,14 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
     start_ = clock_.nowMs();
     lastActivity_ = start_;
     if (opts_.activity) seenActivity_ = opts_.activity();
-    if (opts_.request) seenSerial_ = opts_.request().first;
+    // An Auto-scroll asked for before the loop began (the request is read
+    // here once) is acted on, not taken as already applied (CodeRabbit on #1528).
+    bool autoAtStart = opts_.autoScroll;
+    if (opts_.request) {
+        const auto [serial, on] = opts_.request();
+        seenSerial_ = serial;
+        autoAtStart = on;
+    }
     const auto done = [&](SessionEnd end) {
         stats_.elapsedMs = clock_.nowMs() - start_;
         if (end != SessionEnd::Discarded) finishTracker();
@@ -140,7 +147,7 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         return source_.lost() ? SessionEnd::SourceLost : SessionEnd::NoFrames;
     }
     feed(*first);
-    if (opts_.autoScroll) startAuto();
+    if (autoAtStart) startAuto();
     progress(true);
     for (;;) {
         if (discard.load()) return done(SessionEnd::Discarded);
@@ -215,6 +222,11 @@ void ScrollSession::feed(const RunFrame& frame) {
         observeToTop(view, frame.timestampMs);
         return;
     }
+    // While a way to the top may still begin, the latest screen is kept: it is
+    // that way's first look and, should it end before another frame comes (a
+    // stream that sends nothing while the page stands still), the screen the
+    // image starts again with (CodeRabbit on #1528).
+    if (opts_.fromTop && !toTopDone_ && !movedYet_) keepScreen(view);
     feedTracker(view, frame.timestampMs);
 }
 
@@ -401,7 +413,9 @@ void ScrollSession::startAuto() {
         toTopNotchesNow_ = opts_.toTopNotches;
         toTopStill_ = 0;
         checkDigest_.clear();
-        digest_.clear();
+        // The screen as it is now is the way's first look.
+        if (!lastPixels_.empty()) digestRows(FrameView{lastPixels_.data(), lastPixelsW_, lastPixelsH_, std::ptrdiff_t(lastPixelsW_) * 4}, digest_);
+        else digest_.clear();
         nextStepAt_ = now;
     } else {
         phase_ = Phase::Step;
@@ -456,16 +470,23 @@ bool ScrollSession::visit(int notches) {
         if (opts_.pointer && away_ && !pausedNow()) injector_.movePointer(away_->x, away_->y);
         if (opts_.blindVisits) blindUntil_ = clock_.nowMs() + 60;
     };
+    // Every way out of a visit ends the blind interval, also one that sends
+    // nothing more (a pause by the mouse, a refused injection): frames after
+    // it are the page's again (CodeRabbit on #1528).
+    const auto cutShort = [&] {
+        if (opts_.blindVisits) blindUntil_ = clock_.nowMs() + 60;
+        return false;
+    };
     if (opts_.blindVisits) blindUntil_ = INT64_MAX;
     if (opts_.pointer) {
-        if (!injected(injector_.movePointer(at.x, at.y))) return false;
+        if (!injected(injector_.movePointer(at.x, at.y))) return cutShort();
         pump(opts_.pointerSettleMs);
         if (!auto_ || stopping()) { leave(); return false; }
-        if (pausedNow()) { handBack(HandBack::Pointer); return false; }
-        if (!injected(injector_.movePointer(at.x, at.y))) return false;
+        if (pausedNow()) { handBack(HandBack::Pointer); return cutShort(); }
+        if (!injected(injector_.movePointer(at.x, at.y))) return cutShort();
     }
     if (!auto_ || stopping()) { leave(); return false; }
-    if (!injected(injector_.scroll(notches))) return false;
+    if (!injected(injector_.scroll(notches))) return cutShort();
     ++stats_.steps;
     stats_.notches += std::abs(notches);
     if (opts_.onStep) opts_.onStep(notches, at);
@@ -663,6 +684,10 @@ void ScrollSession::observeToTop(const FrameView& view, int64_t t) {
         toTopChangedAt_ = t;
     }
     std::swap(digest_, scratchDigest_);
+    keepScreen(view);
+}
+
+void ScrollSession::keepScreen(const FrameView& view) {
     lastPixelsW_ = view.width;
     lastPixelsH_ = view.height;
     lastPixels_.resize(size_t(view.width) * view.height * 4);

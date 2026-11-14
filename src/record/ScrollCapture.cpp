@@ -206,7 +206,10 @@ struct ScrollCapture::Gate final : RunInjector {
     // X11: the pointer is not where XTest left it. Called on the worker.
     std::function<void()> tookPointer;
     bool userHasIt() {
-        if (!restAt || skipCheck.load() || !injector->userHasPointer()) return false;
+        // X11 asks the server where the pointer is, which needs no rest surface:
+        // a region that fills its output with the bar hidden has none (CodeRabbit
+        // on #1528). skipCheck exempts the capture's own first motion after Resume.
+        if (skipCheck.load() || !injector->userHasPointer()) return false;
         paused.store(true);
         if (tookPointer) tookPointer();
         return true;
@@ -294,9 +297,12 @@ struct ScrollCapture::Job {
     // Desktop coordinates: the captured rectangle, its output, and the bar when it shows.
     QRect rect, screen, bar;
     // Where the pointer rests between wheel steps, on the bar or the rest pad
-    // (desktop coordinates); unset where it has no such place (#1514). Set by
-    // the main thread in prepareAuto, read by the worker once `prepared` says so.
+    // (desktop coordinates); unset where it has no such place (#1514). Written
+    // by the main thread under restMutex (placeRest, dropAutoSurfaces); the
+    // worker copies it under restMutex once `prepared` says so, and never after
+    // an unanswered wait.
     std::optional<QPoint> rest;
+    std::mutex restMutex;
     // Called on the worker before auto-scroll's first wheel step of a run:
     // the main thread puts up the rest and the watch and then sets `prepared`
     // to the serial it was asked with. The worker waits a bounded time and
@@ -952,7 +958,10 @@ void ScrollCapture::dropAutoSurfaces() {
     watch_ = nullptr;
     restWindow_.clear();
     watchWindow_.clear();
-    if (job_) job_->rest.reset();
+    if (job_) {
+        std::lock_guard lock(job_->restMutex);
+        job_->rest.reset();
+    }
 }
 // The session's progress (worker thread, queued here). A hand-back the
 // session made by itself (it lost the page, the user scrolled, nothing
@@ -1076,7 +1085,10 @@ void ScrollCapture::placeRest() {
     restLocal_ = QPointF(*rest - place.topLeft());
     restOrigin_ = QPointF(place.topLeft());
     restWindow_ = surface->windowHandle();
-    job_->rest = mode == SurfaceMode::X11 ? barRootPoint(QPointF(*rest)) : *rest;
+    {
+        std::lock_guard lock(job_->restMutex);
+        job_->rest = mode == SurfaceMode::X11 ? barRootPoint(QPointF(*rest)) : *rest;
+    }
     // Fixed before the worker starts; the main thread reads it, the worker never writes it.
     job_->gate.restPoint = QPointF(*job_->rest);
     debugLog(QStringLiteral("scroll: rest on the %1 at %2,%3 (local %4,%5)").arg(surface == bar_ ? QStringLiteral("bar") : QStringLiteral("pad")).arg(job_->rest->x()).arg(job_->rest->y()).arg(restLocal_.x()).arg(restLocal_.y()));
@@ -1361,11 +1373,19 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             job->prepareAuto(serial);
             const int64_t since = FrameTap::nowMs();
             while (job->prepared.load() != serial && !job->stop.load() && FrameTap::nowMs() - since < 1000) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            // The main thread did not answer: no rest of its is taken as placed
+            // (CodeRabbit on #1528); the pointer goes to a place outside all the same.
+            const bool answered = job->prepared.load() == serial;
             // Mapped by the compositor before the first injection.
-            if (surfaceMode() == SurfaceMode::LayerShell) std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            if (answered && surfaceMode() == SurfaceMode::LayerShell) std::this_thread::sleep_for(std::chrono::milliseconds(150));
             const auto stream = [&](const QPoint& p) { return RunPoint{int(std::lround((p.x() - r.left()) * sx)), int(std::lround((p.y() - r.top()) * sy))}; };
-            if (job->rest) {
-                const RunPoint away = stream(*job->rest);
+            std::optional<QPoint> rest;
+            if (answered) {
+                std::lock_guard lock(job->restMutex);
+                rest = job->rest;
+            }
+            if (rest) {
+                const RunPoint away = stream(*rest);
                 job->gate.restAt = QPoint(away.x, away.y);
                 return away;
             }

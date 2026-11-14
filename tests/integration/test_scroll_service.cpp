@@ -101,6 +101,22 @@ private slots:
  // top proved where asked; lost_track only for a capture that ended lost;
  // truncated exactly for height_cap, lost_track and top_not_reached. A helper
  // that breaks a promise is refused; a kept partial image is marked and noted.
+ // A hand-back the helper reports before its reply to start arrives (replies
+ // and events may come from any thread) is kept: the reply does not clear
+ // paused while pausedBy stays (CodeRabbit on #1528).
+ void aPauseBeforeTheStartReplyStays(){
+  QTemporaryDir dir("/tmp/sq-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="early";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};
+  host.finish=[](Operation){};host.admit=[](Operation,ClipboardPayload,auto){};
+  ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+  QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}},{"driver","putgd"}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  backend->holdCommands={"start"};bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});PUTGD_TRY_VERIFY(backend->held.contains("start"));
+  backend->sink({{"id",id},{"event","progress"},{"state","paused"},{"driver","user"},{"paused",true},{"pausedBy","pointer"},{"height",400},{"placed",3},{"skipped",0},{"steps",1},{"pixelsPerNotch",0}});
+  backend->held.take("start")({},{{"state","capturing"}});PUTGD_TRY_VERIFY(started);
+  QJsonObject view;service.command("inspect",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);view=r;});PUTGD_TRY_VERIFY(!view.isEmpty());
+  QCOMPARE(view["state"].toString(),QString("capturing"));QVERIFY(view["paused"].toBool());QCOMPARE(view["pausedBy"].toString(),QString("pointer"));
+  bool cancelled=false;service.command("cancel",{{"id",id}},[&](Error,QJsonObject){cancelled=true;});PUTGD_TRY_VERIFY(cancelled);
+ }
  void endReasons_data(){
   QTest::addColumn<QString>("reason");QTest::addColumn<bool>("missed");QTest::addColumn<QJsonObject>("overrides");QTest::addColumn<bool>("admitted");QTest::addColumn<QString>("note");
   const QJsonObject none;
@@ -112,6 +128,9 @@ private slots:
   QTest::newRow("end of content, top unproved")<<"end_of_content"<<true<<none<<false<<"";
   QTest::newRow("top not reached")<<"top_not_reached"<<true<<none<<true<<"Could not reach the top of the page. The image starts partway down.";
   QTest::newRow("top not reached, flag missing")<<"top_not_reached"<<false<<none<<false<<"";
+  // The end of the page with the top unproved: the same promise as end_of_content (CodeRabbit on #1528).
+  QTest::newRow("top not reached with a skipped frame")<<"top_not_reached"<<true<<QJsonObject{{"framesSkipped",1}}<<false<<"";
+  QTest::newRow("top not reached, ended lost")<<"top_not_reached"<<true<<QJsonObject{{"endedLost",true}}<<false<<"";
   QTest::newRow("lost track")<<"lost_track"<<false<<none<<true<<"Finished while put.gd had lost its place. The image ends where it last found the page.";
   QTest::newRow("lost track, not lost")<<"lost_track"<<false<<QJsonObject{{"endedLost",false}}<<false<<"";
   QTest::newRow("height cap")<<"height_cap"<<false<<none<<true<<"Stopped at 30,000 px. The page continues below.";

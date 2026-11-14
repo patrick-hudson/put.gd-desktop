@@ -123,6 +123,8 @@ struct Harness {
   std::unique_ptr<Spool> spool;
   std::atomic<bool> stop{false}, discard{false};
   bool wantAuto = false, paused = false;
+  // Auto-scroll asked for after the session was set up but before its loop read the request.
+  bool autoBeforeRun = false;
   unsigned serial = 0, activity = 0;
   std::vector<std::pair<int64_t, SessionProgress>> seen;
   std::function<void(Harness&, int64_t)> script;
@@ -140,6 +142,7 @@ struct Harness {
     app = std::make_unique<FakeApp>(doc, ViewportSpec{W, H, 0, 0, 7}, as, clock);
     spool = std::make_unique<Spool>(so.tracker.maxOutputRows + 2LL * H);
     wantAuto = so.autoScroll;
+    if (autoBeforeRun) setAuto(true);
     so.request = [this] {
       if (script) script(*this, clock.nowMs() - t0);
       return std::pair<unsigned, bool>(serial, wantAuto);
@@ -418,6 +421,77 @@ void testAutoJump() {
   }
 }
 
+// From CodeRabbit's review of #1528: an Auto-scroll asked for before the loop
+// began is acted on; the way to the top on a stream that sends only changes
+// starts from the screen as it is, and Done on it keeps that screen; a pause in
+// the middle of a visit whose frames show the pointer leaves the frames after
+// it to the page.
+void testReviewCases() {
+  std::printf("Review cases\n");
+  const Document doc = page(91);
+  {
+    Harness h;
+    h.autoBeforeRun = true;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    h.run(doc.img, as, options(false));
+    report("Auto-scroll asked for before the loop began runs to the end", h.end == SessionEnd::PageEnd && h.stats.movedByPutgd > 0 && h.exact(doc.img, 0).empty(), counts(h));
+  }
+  {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.startPos = 1800;
+    as.damageOnly = true;
+    SessionOptions so = options(true);
+    so.fromTop = true;
+    h.run(doc.img, as, so);
+    const std::string wrong = h.exact(doc.img, 0);
+    report("the way to the top on a stream that sends only changes", h.stats.topReached && h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.top == 0 && h.stats.bottom == doc.img.h,
+           (wrong.empty() ? counts(h) : wrong) + fmt(", top %s", h.stats.topReached ? "proved" : h.stats.toTopGaveUp.c_str()));
+  }
+  {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.startPos = 1800;
+    as.damageOnly = true;
+    as.reactionDelayMs = 2000;  // nothing moves before Done
+    SessionOptions so = options(true);
+    so.fromTop = true;
+    h.script = [](Harness& x, int64_t t) { if (t >= 300) x.stop.store(true); };
+    h.run(doc.img, as, so);
+    const std::string wrong = h.exact(doc.img, 1800);
+    report("Done on the way to the top, before another frame came, keeps the screen", h.end == SessionEnd::Finished && wrong.empty() && h.stats.bottom - h.stats.top == H,
+           wrong.empty() ? counts(h) : wrong);
+  }
+  {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    SessionOptions so = options(true);
+    so.blindVisits = true;
+    int64_t pausedAt = -1;
+    long long heightAtPause = 0;
+    h.script = [&](Harness& x, int64_t t) {
+      // The mouse moves while the pointer is in the page for a visit.
+      if (pausedAt < 0 && t >= 2000 && !x.app->events.empty() && x.app->events.back().kind == 'm' && x.app->events.back().a >= 0 && x.app->events.back().a < W) {
+        x.paused = true;
+        pausedAt = t;
+        heightAtPause = x.seen.empty() ? 0 : x.seen.back().second.height;
+        std::vector<FakeApp::UserScroll> moves;
+        for (int i = 0; i < 6; ++i) moves.push_back({t + 500 + 300 * i, 150, 120});
+        x.play(moves);
+      }
+      if (pausedAt >= 0 && t >= pausedAt + 3500) x.stop.store(true);
+    };
+    h.run(doc.img, as, so);
+    const std::string wrong = h.exact(doc.img, 0);
+    report("a pause during a visit with the pointer in the frames: the image grows after it", pausedAt >= 0 && wrong.empty() && h.stats.bottom - h.stats.top > heightAtPause + 600 && h.stats.movedByUser > 0,
+           pausedAt < 0 ? std::string("no pause during a visit") : (wrong.empty() ? counts(h) : wrong) + fmt(", %lld rows at the pause", heightAtPause));
+  }
+}
+
 // ------------------------------------------------------------------- limits
 
 void testCapAndIdle() {
@@ -503,6 +577,7 @@ int main() {
   testSwitchAndPause();
   testLostAndFound();
   testAutoJump();
+  testReviewCases();
   testCapAndIdle();
   testDoneAndCancel();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);

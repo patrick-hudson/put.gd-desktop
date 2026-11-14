@@ -39,6 +39,8 @@ struct Fixture {
         process.start(PUTGD_SCROLL_FIXTURE, arguments);
         return putgd::test::waitFor([&] { seen += process.readAllStandardOutput(); return seen.contains("ready "); }, 10000);
     }
+    // A fixture started with --self-scroll=PX,MS,-1 begins scrolling now.
+    void go() { process.write("go\n"); }
     // The page has settled at this scroll position.
     bool reached(int position) { seen += process.readAllStandardOutput(); return seen.contains(QByteArray("position ") + QByteArray::number(position) + "\n"); }
     ~Fixture() { process.kill(); process.waitForFinished(3000); }
@@ -220,12 +222,16 @@ private slots:
         QVERIFY(raw.open());
         const QPoint home(900, 700);
         Fixture fixture;
-        QVERIFY(fixture.start({"--rows=60", "--self-scroll=37,60,1500"}));
+        QVERIFY(fixture.start({"--rows=60", "--self-scroll=37,60,-1"}));
         raw.warp(home);
         Capture capture;
         capture.prepare({{"rect", rectJson(page)}, {"maxHeight", 30000}, {"autoStart", true}, {"driver", "user"}});
         QVERIFY(putgd::test::waitFor([&] { return capture.answered; }, 20000));
         QVERIFY2(!capture.prepareError, qPrintable(capture.prepareError.message));
+        // The page starts to move only once the capture has its first frame,
+        // however long the helper took to start (CodeRabbit on #1528).
+        QVERIFY(putgd::test::waitFor([&] { return capture.has("progress") || capture.ended(); }, 20000));
+        fixture.go();
         // To the page's end: 60 rows of 40 lines in a 600-line window.
         QVERIFY(putgd::test::waitFor([&] { return fixture.reached(60 * ruler::rowHeight - page.height()) || capture.ended(); }, 30000));
         QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["height"].toInt() >= 60 * ruler::rowHeight || capture.ended(); }, 5000));

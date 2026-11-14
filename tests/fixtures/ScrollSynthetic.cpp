@@ -289,6 +289,7 @@ std::optional<putgd::record::RunFrame> FakeApp::freshFrame(int timeoutMs) {
   if (!spec_.quietHasFresh) return std::nullopt;
   ++freshFrames;
   quiet_ = false;  // a new link: the stream sends again
+  forceNext_ = true;  // and its first frame comes whether or not the picture changed
   return nextFrame(timeoutMs);
 }
 
@@ -298,26 +299,34 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     clock_.set(limit);
     return std::nullopt;
   }
-  const int64_t t = lastFrameT_ < 0 ? clock_.nowMs() : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs());
-  if (t > limit) {
-    clock_.set(limit);
-    return std::nullopt;
+  int64_t t = 0;
+  int pos = 0;
+  for (;;) {
+    t = lastFrameT_ < 0 ? clock_.nowMs() : std::max(lastFrameT_ + spec_.frameIntervalMs, clock_.nowMs());
+    if (t > limit) {
+      clock_.set(limit);
+      return std::nullopt;
+    }
+    clock_.set(t);
+    lastFrameT_ = t;
+    ++frameIndex_;
+    // What the person did up to this frame.
+    for (; scriptAt_ < script.size() && script[scriptAt_].at <= t; ++scriptAt_) {
+      const UserScroll& u = script[scriptAt_];
+      const double from = posAt(u.at);
+      const double nt = std::clamp(target_ + u.px, 0.0, double(maxScroll()));
+      // Kept in time order: a wheel step sent just before may not have begun to move yet.
+      const auto at = std::upper_bound(segs_.begin(), segs_.end(), u.at, [](int64_t v, const Seg& g) { return v < g.t0; });
+      segs_.insert(at, {u.at, std::max(1, u.durMs), from, nt});
+      target_ = nt;
+      ++scrolledByUser;
+    }
+    pos = int(std::lround(posAt(t)));
+    // Damage-driven: nothing to send while the picture stands still.
+    if (spec_.damageOnly && !forceNext_ && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
+    forceNext_ = false;
+    break;
   }
-  clock_.set(t);
-  lastFrameT_ = t;
-  ++frameIndex_;
-  // What the person did up to this frame.
-  for (; scriptAt_ < script.size() && script[scriptAt_].at <= t; ++scriptAt_) {
-    const UserScroll& u = script[scriptAt_];
-    const double from = posAt(u.at);
-    const double nt = std::clamp(target_ + u.px, 0.0, double(maxScroll()));
-    // Kept in time order: a wheel step sent just before may not have begun to move yet.
-    const auto at = std::upper_bound(segs_.begin(), segs_.end(), u.at, [](int64_t v, const Seg& g) { return v < g.t0; });
-    segs_.insert(at, {u.at, std::max(1, u.durMs), from, nt});
-    target_ = nt;
-    ++scrolledByUser;
-  }
-  const int pos = int(std::lround(posAt(t)));
   renderer_.render(pos, scratch_);
   for (int y = spec_.barY; y < std::min(scratch_.h, spec_.barY + spec_.barH); ++y)
     for (int x = spec_.barX; x < std::min(scratch_.w, spec_.barX + spec_.barW); ++x)
