@@ -24,7 +24,9 @@ There is no put.gd account and no put.gd cloud.
 
 If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea, built for Linux.
 
-![The put.gd editor: a box, an arrow, a label, a highlight, a redaction and a blur on a screenshot, with Upload at the bottom right](docs/readme/editor.png)
+<p align="center">
+  <img src="docs/readme/hero.png" width="900" alt="The put.gd editor on a screenshot of a deploy-keys page: two keys redacted, the error highlighted, numbered steps, and an arrow labelled 'Rotate this key first' pointing at a Rotate button, with Upload at the bottom right">
+</p>
 
 ## Install
 
