@@ -73,6 +73,13 @@ bool KdeFakeInput::movePointer(QPoint streamPixel) {
     org_kde_kwin_fake_input_pointer_motion_absolute(d_->fake, wl_fixed_from_double(x), wl_fixed_from_double(y));
     return d_->sync();
 }
+bool KdeFakeInput::movePointerBy(QPointF logicalDelta) {
+    if (!d_->reason.isEmpty()) return false;
+    std::lock_guard lock(d_->mutex);
+    if (!d_->authenticate()) return false;
+    org_kde_kwin_fake_input_pointer_motion(d_->fake, wl_fixed_from_double(logicalDelta.x()), wl_fixed_from_double(logicalDelta.y()));
+    return d_->sync();
+}
 bool KdeFakeInput::scroll(int units) {
     if (!d_->reason.isEmpty() || units == 0) return false;
     std::lock_guard lock(d_->mutex);

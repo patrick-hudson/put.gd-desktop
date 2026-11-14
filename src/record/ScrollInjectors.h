@@ -15,6 +15,7 @@ public:
     QString unavailableReason() const override { return reason_; }
     void setArea(const QRect&, const QSize&) override {}
     bool movePointer(QPoint streamPixel) override;
+    bool movePointerBy(QPointF logicalDelta) override;
     bool scroll(int units) override;
 private:
     MutterScreenCast& cast_;
@@ -33,6 +34,7 @@ public:
     void setOutput(const QString& name, const QSize& stream, const QRect& crop);
     void setArea(const QRect&, const QSize&) override {}
     bool movePointer(QPoint streamPixel) override;
+    bool movePointerBy(QPointF logicalDelta) override;
     bool scroll(int units) override;
 private:
     bool open();

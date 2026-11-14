@@ -81,7 +81,7 @@ void ScrollCaptureService::prepareProbed(QJsonObject p,bool edit,bool autoStart,
 void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonReply reply){
  if(cmd=="capabilities"){if(!p.isEmpty()){reply(invalid(),{});return;}QPointer<ScrollCaptureService> g(this);backend_->refreshCapabilities([g,reply]{if(g)QMetaObject::invokeMethod(g,[g,reply]{if(g)reply({},g->capabilities());},Qt::QueuedConnection);});return;}
  if(cmd=="prepare"){prepare(p,false,false,reply);return;}
- if(!QStringList{"select","start","stop","cancel","inspect"}.contains(cmd)||!fields(p,cmd=="select"?QStringList{"id","rect"}:QStringList{"id"})||!p["id"].isString()||p["id"].toString().isEmpty()||(cmd=="select"&&!rect(p["rect"]))){reply(invalid(),{});return;}
+ if(!QStringList{"select","start","pause","resume","stop","cancel","inspect"}.contains(cmd)||!fields(p,cmd=="select"?QStringList{"id","rect"}:QStringList{"id"})||!p["id"].isString()||p["id"].toString().isEmpty()||(cmd=="select"&&!rect(p["rect"]))){reply(invalid(),{});return;}
  const auto id=p["id"].toString();if(cmd=="inspect"&&results_.contains(id)){reply({},results_[id]);return;}
  if(id!=id_){reply({"scroll_not_found","No scrolling capture has this ID",{}},{});return;}
  if(cmd=="inspect"){reply({},view_);return;}
@@ -97,14 +97,14 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  // that arrives meanwhile waits for the placement; it is not refused.
  if(cmd=="start"&&shellPlacing_&&pending_.isEmpty()&&!startWaiting_&&view_["state"].toString()=="ready"){startWaiting_=std::move(reply);return;}
  if(((!pending_.isEmpty()||cancelling_)&&cmd!="cancel")||(cmd=="start"&&shellPlacing_)){reply({"scroll_busy","A scroll command is pending",{}},{});return;}
- const auto state=view_["state"].toString();if((cmd=="start"&&state!="ready")||(cmd=="select"&&state!="selecting")||(cmd=="stop"&&state!="capturing")){reply({"scroll_state","Command is unavailable in this state",{}},{});return;}
+ const auto state=view_["state"].toString();if((cmd=="start"&&state!="ready")||(cmd=="select"&&state!="selecting")||((cmd=="stop"||cmd=="pause"||cmd=="resume")&&state!="capturing")){reply({"scroll_state","Command is unavailable in this state",{}},{});return;}
  if(cmd=="select"&&shellSelecting_){shellSelecting_=false;shell_->cancelSelection();}
  if(cmd!="cancel")pending_=cmd;else cancelling_=true;if(cmd=="stop")update("finishing");QPointer<ScrollCaptureService> g(this);
  auto controlParams=p;controlParams.remove("id");
  backend_->control(id,cmd,controlParams,[g,id,cmd,p,reply](Error e,QJsonObject r){if(!g)return;QMetaObject::invokeMethod(g,[g,id,cmd,p,e,r,reply]{if(!g)return;if(g->id_!=id){if(g->results_.contains(id))reply({},g->results_[id]);else reply({"scroll_not_found","Session ended",{}},{});return;}
   // The Cancel that is on its way decides (see cancelling_), not this answer.
   if(g->cancelling_&&cmd!="cancel"){reply({"cancelled","Scrolling capture canceled",{}},{});return;}
-  g->pending_.clear();if(e){g->terminate(e,e.code=="cancelled");reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop"){if(r["state"]=="cancelled")g->terminate({},true);else g->complete(r);}else {if(cmd=="select")g->view_["rect"]=p["rect"];g->update(r["state"].toString(cmd=="start"?"capturing":"ready"));if(cmd=="select"&&g->shell_)g->placeShellBar();g->maybeStartHelper();}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
+  g->pending_.clear();if(e){g->terminate(e,e.code=="cancelled");reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop"){if(r["state"]=="cancelled")g->terminate({},true);else g->complete(r);}else {if(cmd=="select")g->view_["rect"]=p["rect"];if(cmd=="pause"||cmd=="resume")g->paused(r);if(cmd=="start")g->view_["paused"]=false;g->update(r["state"].toString(cmd=="start"||cmd=="pause"||cmd=="resume"?"capturing":"ready"));if(cmd=="select"&&g->shell_)g->placeShellBar();g->maybeStartHelper();}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
 }
 void ScrollCaptureService::placeShellBar(){
  shellPlacing_=true;
@@ -114,11 +114,17 @@ void ScrollCaptureService::placeShellBar(){
    auto start=[g,id](Error error,QJsonObject){if(!g)return;QMetaObject::invokeMethod(g,[g,id,error]{if(!g||g->id_!=id)return;if(error){g->terminate(error);return;}g->shellPlacing_=false;
     if(auto waiting=std::exchange(g->startWaiting_,{}))g->command("start",{{"id",id}},waiting);
     else if(g->shellAutoStart_)g->command("start",{{"id",id}},[](Error,QJsonObject){});},Qt::QueuedConnection);};
-   if(e||!r["bar"].toObject()["outside"].toBool())g->backend_->control(id,"overlay",{{"visible",false}},start);else start({},{});
+   // Outside: the helper rests the pointer on the bar between wheel steps, where it sees the user's motion (#1514).
+   const auto bar=r["bar"].toObject();
+   if(e||!bar["outside"].toBool())g->backend_->control(id,"overlay",{{"visible",false}},start);
+   else if(bar["rect"].isArray()&&bar["rect"].toArray().size()==4)g->backend_->control(id,"overlay",{{"visible",true},{"rect",bar["rect"]}},start);
+   else start({},{});
   },Qt::QueuedConnection);
  });
 }
-void ScrollCaptureService::event(QJsonObject e){if(e.value("id")!=id_||id_.isEmpty()||cancelling_)return;const auto type=e.take("event").toString();if(type=="finished")complete(e);else if(type=="cancelled")terminate({},true);else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");maybeStartHelper();}else if(type=="progress"){for(auto i=e.begin();i!=e.end();++i)view_[i.key()]=i.value();update("capturing");}}
+void ScrollCaptureService::event(QJsonObject e){if(e.value("id")!=id_||id_.isEmpty()||cancelling_)return;const auto type=e.take("event").toString();if(type=="finished")complete(e);else if(type=="cancelled")terminate({},true);else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");maybeStartHelper();}else if(type=="progress"){for(auto i=e.begin();i!=e.end();++i)if(i.key()!="paused"&&i.key()!="pausedBy")view_[i.key()]=i.value();paused(e);update("capturing");}}
+// #1514: paused, and by what ("pointer": the user moved the mouse; "request": scroll.pause).
+void ScrollCaptureService::paused(const QJsonObject& r){view_["paused"]=r["paused"].toBool();if(view_["paused"].toBool()&&r["pausedBy"].isString())view_["pausedBy"]=r["pausedBy"];else view_.remove("pausedBy");}
 void ScrollCaptureService::complete(QJsonObject r){
  const auto path=r["path"].toString();const auto bytes=r["bytes"].toInteger();const int w=r["width"].toInt(),h=r["height"].toInt();const auto reason=r["endReason"].toString();const int cap=r["appliedMaxHeight"].toInt();
  Error bad{"scroll_output_invalid","Scrolling capture output failed validation",{}};
@@ -127,7 +133,7 @@ void ScrollCaptureService::complete(QJsonObject r){
  if(fd<0){terminate(bad);return;}QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);terminate(bad);return;}
  if(fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid()||st.st_size!=bytes){terminate(bad);return;}
  const auto png=file.read(bytes+1);if(png.size()!=bytes||!png.startsWith(QByteArray::fromHex("89504e470d0a1a0a0000000d49484452"))||qFromBigEndian<quint32>(png.constData()+16)!=quint32(w)||qFromBigEndian<quint32>(png.constData()+20)!=quint32(h)||QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())!=r["sha256"].toString()){terminate(bad);return;}
- r.remove("path");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();for(auto i=stats.begin();i!=stats.end();++i)view_[i.key()]=i.value();
+ r.remove("path");view_.remove("paused");view_.remove("pausedBy");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();for(auto i=stats.begin();i!=stats.end();++i)view_[i.key()]=i.value();
  // The scroll-to-top step did not prove the top: said with every end reason, and the image is kept.
  if(r.contains("topReached"))view_["topReached"]=r.value("topReached");
  update("done");
@@ -138,7 +144,7 @@ void ScrollCaptureService::complete(QJsonObject r){
  ClipboardPayload payload;if(edit_){payload.kind="files";payload.files={path};}else{payload.kind="png";payload.bytes=png;payload.mime="image/png";}
  QPointer<ScrollCaptureService> g(this);host_.admit(op,std::move(payload),[g,id,path]{if(g)QMetaObject::invokeMethod(g,[g,id,path]{if(g){QFile::remove(path);QDir(g->root_+"/"+id).removeRecursively();}},Qt::QueuedConnection);});
 }
-void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.advance(cancelled?OperationState::Cancelled:OperationState::Failed);update(op_.stateName());rememberResult();id_.clear();pending_.clear();cancelling_=false;shellSelecting_=false;shellPlacing_=false;held_=false;if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);
+void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return;const auto id=id_;view_.remove("paused");view_.remove("pausedBy");op_.error=e;view_["error"]=e.toJson();op_.cancelled=cancelled;op_.advance(cancelled?OperationState::Cancelled:OperationState::Failed);update(op_.stateName());rememberResult();id_.clear();pending_.clear();cancelling_=false;shellSelecting_=false;shellPlacing_=false;held_=false;if(shell_){shell_->cancelSelection();shell_->hideFrame();}backend_->discard(id);QDir(directory_).removeRecursively();host_.finish(op_);
  // A start that was waiting for the bar's placement ends with the session.
  if(auto waiting=std::exchange(startWaiting_,{}))waiting(e?e:Error{"cancelled","Scrolling capture ended",{}},{});
  emit ended();}

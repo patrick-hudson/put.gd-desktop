@@ -27,6 +27,7 @@ public:
     QString unavailableReason() const override;
     void setArea(const QRect& desktop, const QSize& frame) override;
     bool movePointer(QPoint streamPixel) override;
+    bool movePointerBy(QPointF logicalDelta) override;
     bool scroll(int units) override;
     // An axis request of 0, which KWin forwards as wl_pointer.axis_stop.
     bool rest() override;

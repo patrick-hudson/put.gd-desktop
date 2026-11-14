@@ -29,6 +29,8 @@ public:
     bool isOpen() const;
     // A position within the output: x of extentWidth, y of extentHeight.
     bool moveTo(uint32_t x, uint32_t y, uint32_t extentWidth, uint32_t extentHeight);
+    // Relative motion in logical pixels, as a mouse moves (no acceleration).
+    bool moveBy(double dx, double dy);
     // Positive scrolls the content down, one frame per notch.
     bool wheel(int notches);
     // What one notch carries.

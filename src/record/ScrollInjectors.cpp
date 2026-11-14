@@ -19,6 +19,7 @@ MutterScrollInjector::MutterScrollInjector(MutterScreenCast& cast) : cast_(cast)
     if (!MutterScreenCast::remoteDesktopAvailable(&why)) reason_ = QStringLiteral("Mutter's RemoteDesktop service is not on the session bus (%1)").arg(why);
 }
 bool MutterScrollInjector::movePointer(QPoint streamPixel) { return cast_.pointerMotion(streamPixel.x(), streamPixel.y()); }
+bool MutterScrollInjector::movePointerBy(QPointF logicalDelta) { return cast_.pointerMotionBy(logicalDelta.x(), logicalDelta.y()); }
 bool MutterScrollInjector::scroll(int units) { return cast_.pointerAxis(units); }
 
 WlrScrollInjector::WlrScrollInjector() {
@@ -43,6 +44,10 @@ bool WlrScrollInjector::movePointer(QPoint streamPixel) {
     if (stream_.isEmpty() || !open()) return false;
     const int x = std::clamp(crop_.x() + streamPixel.x(), 0, stream_.width() - 1), y = std::clamp(crop_.y() + streamPixel.y(), 0, stream_.height() - 1);
     return pointer_.moveTo(uint32_t(x), uint32_t(y), uint32_t(stream_.width()), uint32_t(stream_.height()));
+}
+bool WlrScrollInjector::movePointerBy(QPointF logicalDelta) {
+    std::lock_guard lock(mutex_);
+    return !stream_.isEmpty() && open() && pointer_.moveBy(logicalDelta.x(), logicalDelta.y());
 }
 bool WlrScrollInjector::scroll(int units) {
     std::lock_guard lock(mutex_);

@@ -19,6 +19,7 @@ public:
     bool movePointer(QPoint streamPixel) override;
     bool scroll(int units) override;
     void restorePointer() override;
+    bool userHasPointer() override;
     bool waitReady(const std::atomic<bool>& stop) override;
     // How long waitReady waits for the modifier keys.
     static constexpr int modifierWaitMs = 10000;
@@ -30,7 +31,9 @@ private:
     QString reason_;
     std::mutex mutex_;
     QRect area_;
-    bool saved_ = false;
-    int savedX_ = 0, savedY_ = 0;
+    bool saved_ = false, placed_ = false, taken_ = false;
+    int savedX_ = 0, savedY_ = 0, placedX_ = 0, placedY_ = 0;
+    // Under mutex_: the pointer is not where movePointer left it.
+    bool movedByUser();
 };
 }
