@@ -91,7 +91,8 @@ private:
     // Where the pointer rests between wheel steps, and the surface that sees it.
     void placeRest();
     void pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp);
-    void userMoved(bool pulledBack, std::optional<QPointF> at, bool atIsBase, std::optional<QPointF> anchor, quint64 stamp = 0, qint64 anchorMs = 0);
+    void startCorrection(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs);
+    void startCorrectionLocked(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs, QPointF latest);
     // Layer-shell desktops: a clear surface over the rectangle's output that
     // takes the pointer everywhere but at the wheel points (desktop logical
     // coordinates), the bar and the pad, so that the user's motion is seen
@@ -132,6 +133,11 @@ private:
     quint64 seenSeq_ = 0, watchSeqBase_ = 0, arrivalStamp_ = 0;
     qint64 arrivedMs_ = -1;
     bool haveSeen_ = false, lastWasArrival_ = false;
+    // A pause from an event without a time: the next motion event says
+    // whether the hand had moved before the capture's last motion.
+    bool decisionPending_ = false;
+    qint64 decisionUntil_ = 0, decisionMoveMs_ = 0;
+    QPointF decisionTarget_;
     // GNOME: where the Shell put the bar (the resident's `overlay` rect).
     QRect shellBar_;
     QString pausedBy_, progressState_;
