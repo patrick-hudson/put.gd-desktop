@@ -133,7 +133,7 @@ uses it, and release builds stay on distro Qt. `json_ref_lifetime_contract` stil
 rejects the #76 pattern in source.
 
 **packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
-Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM, Arch pacman package and the AppImage. Outside pull requests to `nightly`, it also compiles the curated source
+Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 and 45 RPMs, Arch pacman package and the AppImage. Outside pull requests to `nightly`, it also compiles the curated source
 export on Ubuntu 24.04. `native.py` also audits the file-manager plugins
 (`tools/releases/audit_file_manager_plugins.py`, #1105): `readelf -d` NEEDED
 entries, `nm -D` symbol sources for Peony, the RPM's co-owned directories and

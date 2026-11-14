@@ -490,7 +490,7 @@ Each resident runs with private `XDG_CONFIG_HOME`,
     nightly key, with the trusted comment naming N+1. `stable.json` verifies too and names the real stable
     release, or `release: null`.
   - `/dl/nightly/<target>` resolves to N+1's asset for `appimage`, `appimage.zsync`, `ubuntu24.04`,
-    `ubuntu26.04`, `debian13` and `fedora44`.
+    `ubuntu26.04`, `debian13`, `fedora44` and `fedora45`.
   - The `pkg.put.gd/releases/<tag>/` mirror holds the AppImage, its `.zsync`, `SHA256SUMS` and
     `SHA256SUMS.minisig`, with the same SHA-256 as the GitHub release. The `.zsync` names the mirror's
     image and its SHA-1.

@@ -405,7 +405,7 @@ when they need to be retained longer.
    stderr all work.
 2. Get the debug files for the build in the record (`version`, and each module's
    build ID): use the exact producer run linked in the release notes, selecting
-   the package label (`appimage`, `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44`).
+   the package label (`appimage`, `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44`, `fedora45`, `archlinux`).
 
    ```sh
    gh run download RUN_ID --name debug-symbols-appimage --dir debug-artifact

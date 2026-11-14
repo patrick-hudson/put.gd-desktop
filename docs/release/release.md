@@ -267,6 +267,7 @@ and nightly coverage classes continue to apply.
 | Ubuntu 26.04 / Kubuntu DEB | pinned Ubuntu 26.04 container | distro Qt and LayerShellQt |
 | Debian 13 DEB | pinned Debian 13 container | distro Qt 6.8, LayerShellQt and FFmpeg 7.1 |
 | Fedora 44 RPM | pinned Fedora 44 container | distro Qt and LayerShellQt |
+| Fedora 45 RPM | pinned Fedora 45 container | distro Qt and LayerShellQt; its own build because Fedora 45's FFmpeg 9 has other sonames than Fedora 44's 8.1 |
 | Arch Linux pacman | pinned Arch container, rolling repositories | distro Qt and LayerShellQt |
 | x86_64 AppImage | Ubuntu 24.04, official Qt 6.12.0, locked ECM/LayerShellQt | dynamically bundled Qt/plugins |
 
@@ -347,8 +348,8 @@ These are hard dependencies of every package, because one complete package is th
   rebuild included. A package build without the libraries fails. Recording's Recommends are unchanged.
 - The distributions ship ZXing-cpp 2.2.1 (Ubuntu 24.04, Mint 22, Fedora), 2.3.0 (Ubuntu 26.04, Debian
   13) and 3.1.1 (Arch). The helper uses only `ReadBarcodes(ImageView, ReaderOptions)`, which all three
-  have, so every package build proves it compiles and links. Fedora 45 installs the Fedora 44
-  RPM. On Aurora and other Atomic systems the one-line installer installs the AppImage, so the
+  have, so every package build proves it compiles and links. Fedora 45 has its own RPM
+  ([#1509](https://github.com/patrick-hudson/put.gd-desktop/pull/1509)). On Aurora and other Atomic systems the one-line installer installs the AppImage, so the
   system image is not changed. Mint's names come from its Ubuntu base and are confirmed in package acceptance.
 - Languages other than English come from the distribution's Tesseract language packages or from
   `~/.local/share/putgd/tessdata/`. put.gd downloads none.

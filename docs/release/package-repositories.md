@@ -17,7 +17,7 @@ nothing.
 | Package | File | Notes |
 | --- | --- | --- |
 | DEB (`ubuntu24.04`, `ubuntu26.04`, `debian13`) | `/etc/apt/sources.list.d/putgd.sources` | A dpkg conffile. `Signed-By` holds the channel's public key inline, so a removed but not purged package still leaves a source apt can verify. The key is also at `/usr/share/keyrings/putgd-archive-keyring.gpg`. Both channels' files are in `/usr/share/putgd/repo/putgd-{nightly,stable}.sources` ([switching](#switching-channels)). |
-| RPM (`fedora44`) | `/etc/yum.repos.d/putgd.repo` | Copied in on the first install only, from `/usr/share/putgd/repo/putgd.repo`, and declared `%ghost %config(noreplace)`. Both channels' files are in `/usr/share/putgd/repo/putgd-{nightly,stable}.repo`, and each names its own key, `/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-{nightly,stable}`. `RPM-GPG-KEY-putgd` holds the package's own channel key, for files written before [#386](https://github.com/patrick-hudson/put.gd-desktop/issues/386). |
+| RPM (`fedora44`, `fedora45`) | `/etc/yum.repos.d/putgd.repo` | Copied in on the first install only, from `/usr/share/putgd/repo/putgd.repo`, and declared `%ghost %config(noreplace)`. Both RPMs ship the same file: its `baseurl` names `$releasever`, so dnf reads the repository of the running Fedora release and `dnf system-upgrade` moves put.gd to the next release's build (`1.fc45` sorts after `1.fc44`). `skip_if_unavailable=1` turns a release with no put.gd repository yet into a warning. Files written before [#1509](https://github.com/patrick-hudson/put.gd-desktop/pull/1509) name `/44/`; on upgrade, the RPM's post-install script rewrites only that `baseurl` line to `$releasever` and leaves any other edit alone. That rewrite runs only when put.gd itself upgrades, so update put.gd on Fedora 44 (`sudo dnf upgrade --refresh putgd`) before `dnf system-upgrade`. Otherwise the system upgrade still reads `/44/`, finds no Fedora 45 build and stops on put.gd's FFmpeg 8 dependencies. If it already ran, set that `baseurl` to `$releasever` by hand, then run `sudo dnf distro-sync --refresh putgd`. Both channels' files are in `/usr/share/putgd/repo/putgd-{nightly,stable}.repo`, and each names its own key, `/etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-{nightly,stable}`. `RPM-GPG-KEY-putgd` holds the package's own channel key, for files written before [#386](https://github.com/patrick-hudson/put.gd-desktop/issues/386). |
 
 ```ini
 # /etc/apt/sources.list.d/putgd.sources (nightly, Ubuntu 24.04 and Mint 22)
@@ -35,12 +35,13 @@ Signed-By:
 # /etc/yum.repos.d/putgd.repo (nightly)
 [putgd-nightly]
 name=put.gd (nightly)
-baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/nightly
+baseurl=https://pkg.put.gd/rpm/fedora/$releasever/x86_64/nightly
 enabled=1
 gpgcheck=1
 repo_gpgcheck=0
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-nightly
 metadata_expire=6h
+skip_if_unavailable=1
 ```
 
 **Turning it off:**
@@ -143,7 +144,7 @@ The installed metainfo only lets a software centre show put.gd once it's install
 | --- | --- | --- |
 | `apt/<label>/dists/<channel>/` | `InRelease`, `Release`, `Release.gpg`, `main/binary-amd64/Packages*`, `main/dep11/*` (the AppStream catalog) | the channel key (`InRelease`, `Release.gpg`) |
 | `apt/<label>/pool/main/p/putgd/` | the DEBs, byte-identical to the GitHub assets | through `InRelease` |
-| `rpm/fedora/44/x86_64/<channel>/` | `Packages/*.rpm` and `repodata/`, including `appstream` and `appstream-icons` | each RPM, with `rpmsign` and the channel key |
+| `rpm/fedora/44/x86_64/<channel>/`, `rpm/fedora/45/x86_64/<channel>/` | one repository per Fedora release: `Packages/*.rpm` and `repodata/`, including `appstream` and `appstream-icons` | each RPM, with `rpmsign` and the channel key |
 | `releases/<tag>/` | `SHA256SUMS` and `SHA256SUMS.minisig`; for the newest two releases per channel also `putgd-VERSION-x86_64.AppImage` and its `.zsync` (#293 phase 3) | the channel's minisign key (`SHA256SUMS`, which lists the image and `.zsync`) |
 | `dl/<channel>/appimage.zsync` | the newest mirrored `.zsync`, served at `https://app.put.gd/dl/<channel>/appimage.zsync` | through `SHA256SUMS` |
 | `update/v1/<channel>.json` | the update feed and its `.minisig` | the channel's minisign key |
@@ -234,7 +235,7 @@ python3 tools/releases/sign_stable.py --tag vYY.MDD.N
 The script:
 - fetches the staged `Release` files, `Packages`, `SHA256SUMS` and the feed (a few KiB) over the pinned SSH connection to d69;
 - checks every package hash in them against the tag's `SHA256SUMS` from GitHub;
-- downloads the fedora44 RPM from GitHub, checks it, and signs it with `rpmsign`;
+- downloads each Fedora RPM the stage names (`fedora44`, and `fedora45` for releases that have it) from GitHub, checks it, and signs it with `rpmsign`;
 - signs `InRelease`, `Release.gpg` and the minisign signatures. gpg-agent and minisign ask for their passphrases.
 - copies only the signatures and the signed RPM back.
 
