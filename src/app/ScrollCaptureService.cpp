@@ -104,7 +104,10 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  backend_->control(id,cmd,controlParams,[g,id,cmd,p,reply](Error e,QJsonObject r){if(!g)return;QMetaObject::invokeMethod(g,[g,id,cmd,p,e,r,reply]{if(!g)return;if(g->id_!=id){if(g->results_.contains(id))reply({},g->results_[id]);else reply({"scroll_not_found","Session ended",{}},{});return;}
   // The Cancel that is on its way decides (see cancelling_), not this answer.
   if(g->cancelling_&&cmd!="cancel"){reply({"cancelled","Scrolling capture canceled",{}},{});return;}
-  g->pending_.clear();if(e){g->terminate(e,e.code=="cancelled");reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop"){if(r["state"]=="cancelled")g->terminate({},true);else g->complete(r);}else {if(cmd=="select")g->view_["rect"]=p["rect"];if(cmd=="pause"||cmd=="resume")g->paused(r);if(cmd=="start")g->view_["paused"]=false;g->update(r["state"].toString(cmd=="start"||cmd=="pause"||cmd=="resume"?"capturing":"ready"));if(cmd=="select"&&g->shell_)g->placeShellBar();g->maybeStartHelper();}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
+  g->pending_.clear();
+  // A pause or resume the helper refuses (resume with nothing paused, a pause while it stops) leaves the capture as it is.
+  if(e&&(cmd=="pause"||cmd=="resume")&&e.code=="scroll_state"){reply(e,{});return;}
+  if(e){g->terminate(e,e.code=="cancelled");reply(e,{});return;}if(cmd=="cancel")g->terminate({},true);else if(cmd=="stop"){if(r["state"]=="cancelled")g->terminate({},true);else g->complete(r);}else {if(cmd=="select")g->view_["rect"]=p["rect"];if(cmd=="pause"||cmd=="resume")g->paused(r);if(cmd=="start")g->view_["paused"]=false;g->update(r["state"].toString(cmd=="start"||cmd=="pause"||cmd=="resume"?"capturing":"ready"));if(cmd=="select"&&g->shell_)g->placeShellBar();g->maybeStartHelper();}reply({},g->results_.contains(id)?g->results_[id]:g->view_);},Qt::QueuedConnection);});
 }
 void ScrollCaptureService::placeShellBar(){
  shellPlacing_=true;
@@ -133,7 +136,9 @@ void ScrollCaptureService::complete(QJsonObject r){
  if(fd<0){terminate(bad);return;}QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);terminate(bad);return;}
  if(fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid()||st.st_size!=bytes){terminate(bad);return;}
  const auto png=file.read(bytes+1);if(png.size()!=bytes||!png.startsWith(QByteArray::fromHex("89504e470d0a1a0a0000000d49484452"))||qFromBigEndian<quint32>(png.constData()+16)!=quint32(w)||qFromBigEndian<quint32>(png.constData()+20)!=quint32(h)||QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())!=r["sha256"].toString()){terminate(bad);return;}
- r.remove("path");view_.remove("paused");view_.remove("pausedBy");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();for(auto i=stats.begin();i!=stats.end();++i)view_[i.key()]=i.value();
+ r.remove("path");view_.remove("paused");view_.remove("pausedBy");r["truncated"]=reason!="end_of_content";view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=reason!="end_of_content";view_["height"]=h;view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();
+ // Only the known statistics, and only numbers: the helper's output is not trusted to name view keys.
+ for(const char* key:{"steps","pixelsPerNotch","lowConfidenceSteps","elapsedMs"})if(stats.value(key).isDouble())view_[key]=stats.value(key);
  // The scroll-to-top step did not prove the top: said with every end reason, and the image is kept.
  if(r.contains("topReached"))view_["topReached"]=r.value("topReached");
  update("done");

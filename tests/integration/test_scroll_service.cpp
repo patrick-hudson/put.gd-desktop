@@ -57,11 +57,18 @@ private slots:
   QVERIFY(inspect());QCOMPARE(view["paused"].toBool(true),false);
   backend->sink({{"id",id},{"event","progress"},{"state","paused"},{"paused",true},{"pausedBy","pointer"},{"height",640},{"steps",3},{"pixelsPerNotch",53}});
   PUTGD_TRY_VERIFY(inspect()&&view["paused"].toBool());QCOMPARE(view["pausedBy"].toString(),QString("pointer"));QCOMPARE(view["state"].toString(),QString("capturing"));QCOMPARE(view["height"].toInt(),640);
+  backend->paused=true;
   bool answered=false;service.command("resume",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.code));QCOMPARE(r["paused"].toBool(true),false);QVERIFY(!r.contains("pausedBy"));answered=true;});PUTGD_TRY_VERIFY(answered);
+  // A second resume is refused, and the capture goes on (before, the refusal ended it and discarded its image).
+  Error again;answered=false;service.command("resume",{{"id",id}},[&](Error e,QJsonObject){again=e;answered=true;});PUTGD_TRY_VERIFY(answered);
+  QCOMPARE(again.code,QString("scroll_state"));QVERIFY(service.active());QVERIFY(inspect());QCOMPARE(view["state"].toString(),QString("capturing"));QVERIFY(QFileInfo::exists(backend->directory));
   answered=false;service.command("pause",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.code));QCOMPARE(r["pausedBy"].toString(),QString("request"));answered=true;});PUTGD_TRY_VERIFY(answered);
+  backend->extraStats={{"steps",7},{"pixelsPerNotch",53.0},{"lowConfidenceSteps",0},{"elapsedMs",1234.0},{"id","forged"},{"bogus",1}};
   bool done=false;Error error;service.command(end,{{"id",id}},[&](Error e,QJsonObject){error=e;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
   QVERIFY(!service.active());QVERIFY(inspect());QVERIFY(!view.contains("paused")&&!view.contains("pausedBy"));
-  if(end=="stop"){QCOMPARE(view["state"].toString(),QString("done"));QCOMPARE(view["endReason"].toString(),QString("stopped"));PUTGD_TRY_VERIFY(admissions==1);}
+  if(end=="stop"){QCOMPARE(view["state"].toString(),QString("done"));QCOMPARE(view["endReason"].toString(),QString("stopped"));PUTGD_TRY_VERIFY(admissions==1);
+   // Statistics never overwrite the view's own keys.
+   QCOMPARE(view["id"].toString(),id);QCOMPARE(view["steps"].toInt(),7);QVERIFY(!view.contains("bogus"));}
   else{QCOMPARE(view["state"].toString(),QString("cancelled"));QVERIFY(ended.cancelled);PUTGD_COMPARE_STEADY(admissions,0,200);QVERIFY(!QFileInfo::exists(backend->directory));}
  }
  // A PNG that does not match the helper's descriptor (other bytes, other

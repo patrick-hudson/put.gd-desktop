@@ -13,7 +13,9 @@ struct FakeScrollBackend final:ScrollBackend {
  // (the real helper answers a cancel only when its worker has ended).
  QStringList holdCommands;QHash<QString,Reply> held;
  // The finished object of the next stop: its endReason when set, and topReached: false with it.
- QString endReason;bool topMissed=false;bool started=false;
+ QString endReason;bool topMissed=false;bool started=false;bool paused=false;
+ // Extra keys in the finished object's stats (a helper that sends more than it should).
+ QJsonObject extraStats;
  QJsonObject capabilities()const override{return {{"available",probed},{"injector","fake"},{"frames","fake"}};}
  void setEventSink(Event s)override{sink=std::move(s);}
  void prepare(const QString&,const QJsonObject& p,const QString& d,Reply reply)override{preparedParams=p;directory=d;reply({},{{"state",p.contains("rect")?"ready":"selecting"}});}
@@ -22,13 +24,13 @@ struct FakeScrollBackend final:ScrollBackend {
   if(holdCommands.contains(cmd)){held[cmd]=std::move(reply);return;}
   if(cmd=="stop"){reply({},finished());return;}
   if(cmd=="start")started=true;
-  if(cmd=="pause"){reply({},{{"state","capturing"},{"paused",true},{"pausedBy","request"}});return;}
-  if(cmd=="resume"){reply({},{{"state","capturing"},{"paused",false}});return;}
+  if(cmd=="pause"){paused=true;reply({},{{"state","capturing"},{"paused",true},{"pausedBy","request"}});return;}
+  if(cmd=="resume"){if(!paused){reply({"scroll_state","The capture is not paused",{}},{});return;}paused=false;reply({},{{"state","capturing"},{"paused",false}});return;}
   reply({},{{"state",cmd=="start"?"capturing":"ready"}});
  }
  // What a stop that kept its image answers, and the finished event carries.
  QJsonObject finished(){
-  {QImage image(64,64,QImage::Format_RGB32);image.fill(Qt::blue);const auto path=directory+"/result.png";image.save(path);QFile f(path);f.open(QIODevice::ReadOnly);auto png=f.readAll();QJsonObject finished{{"path",path},{"bytes",png.size()},{"sha256",corruption=="hash"?QString("bad"):QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())},{"width",corruption=="ihdr"?65:64},{"height",64},{"endReason",!endReason.isEmpty()?endReason:QString("stopped")},{"appliedMaxHeight",30000},{"truncated",true}};if(topMissed)finished["topReached"]=false;return finished;}
+  {QImage image(64,64,QImage::Format_RGB32);image.fill(Qt::blue);const auto path=directory+"/result.png";image.save(path);QFile f(path);f.open(QIODevice::ReadOnly);auto png=f.readAll();QJsonObject finished{{"path",path},{"bytes",png.size()},{"sha256",corruption=="hash"?QString("bad"):QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())},{"width",corruption=="ihdr"?65:64},{"height",64},{"endReason",!endReason.isEmpty()?endReason:QString("stopped")},{"appliedMaxHeight",30000},{"truncated",true}};if(topMissed)finished["topReached"]=false;if(!extraStats.isEmpty())finished["stats"]=extraStats;return finished;}
  }
  void discard(const QString&)override{}
 };

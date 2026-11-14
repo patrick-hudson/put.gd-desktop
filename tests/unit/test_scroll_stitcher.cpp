@@ -607,6 +607,46 @@ void testPause() {
            fmt("side %s in %d steps, below %s in %d steps", toString(side.first), side.second, toString(below.first), below.second));
   }
   {
+    // Paused after the top was proved and before the first viewport, and the
+    // page scrolled far down meanwhile: Resume must prove the top again, within
+    // what is left of the way up's time. A capture that keeps the old proof
+    // calls an image that starts partway down "end of content".
+    const int W = 480, V = 600;
+    DocSpec ds;
+    ds.viewport = V;
+    ds.width = W;
+    const Document doc = makeDocument(ds);
+    ViewportSpec vs;
+    vs.width = W;
+    vs.height = V;
+    FakeAppSpec as;
+    as.pxPerNotch = 20;
+    FakeClock clock;
+    FakeApp app(doc.img, vs, as, clock);
+    RunOptions so;
+    so.pointer = true;
+    so.away = RunPoint{-12, V / 3};
+    so.restAway = true;
+    so.fromTop = true;
+    so.toTopLimitMs = 4000;
+    int64_t begins = -1;
+    bool moved = false;
+    so.paused = [&] {
+      const auto& e = app.events;
+      // The way up is over when the pointer is sent to its rest twice in a row (start(): rule 1).
+      const bool restTwice = e.size() >= 2 && e[e.size() - 1].kind == 'm' && e[e.size() - 2].kind == 'm' && e.back().a == -12 && e[e.size() - 2].a == -12;
+      if (begins < 0 && app.injections >= 2 && restTwice) begins = clock.nowMs();
+      const bool on = begins >= 0 && clock.nowMs() < begins + 2000;
+      if (on && !moved) { app.userScroll(2400); moved = true; }
+      return on;
+    };
+    ScrollRun run(app, app, clock, so);
+    const RunResult res = run.run();
+    const RunStats& st = run.stats();
+    report("pause after the top was proved: the top is proved again or not claimed", begins >= 0 && res != RunResult::EndOfContent && !st.reachedTop && st.toTopMs <= so.toTopLimitMs + 2500,
+           fmt("%s, paused %d, reachedTop %d, way up %lld ms [%s]", toString(res), begins >= 0, st.reachedTop, (long long)st.toTopMs, st.toTopGaveUp.c_str()));
+  }
+  {
     // Stop while paused keeps the image; so does a pause nobody ends, at its limit.
     const PauseRun stopped = pausedRun(6, 70, -1, 0, false, 1500);
     report("stop while paused keeps the image", stopped.result == RunResult::Stopped && stopped.stats.outputRows > 600 && stopped.exactPrefix && stopped.sentWhilePaused == 0,

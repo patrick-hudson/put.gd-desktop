@@ -433,10 +433,10 @@ std::optional<RunResult> ScrollRun::scrollToTop(bool resumed) {
         ~Done() { run.stats_.toTopMs = before + run.clock_.nowMs() - begin; run.toTop_ = false; }
     } done{*this, clock_.nowMs(), resumed ? stats_.toTopMs : 0};
     toTop_ = true;
-    return wayToTop();
+    return wayToTop(done.before);
 }
 
-std::optional<RunResult> ScrollRun::wayToTop() {
+std::optional<RunResult> ScrollRun::wayToTop(int64_t spentMs) {
     if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return f;
     settledSig_ = lastSig_;
     progress(true);
@@ -457,7 +457,8 @@ std::optional<RunResult> ScrollRun::wayToTop() {
         // from here: decided right after a check, when the picture has had
         // its time to answer the last step and to settle.
         const int64_t now = clock_.nowMs();
-        if (unchecked == 0 && now - begin >= limit) {
+        // The budget is for the whole way up, a way resumed after a pause included.
+        if (unchecked == 0 && now - begin + spentMs >= limit) {
             stats_.toTopGaveUp = "the page was still scrolling up when the time for the way to the top was over";
             break;
         }
@@ -603,8 +604,7 @@ std::optional<RunResult> ScrollRun::holdPaused() {
 // Where it cannot be placed and the pause came after one plain wheel step,
 // that step is scrolled back and the last stitched frame looked for where it
 // was; otherwise the capture ends as lost track with the exact image so far.
-std::optional<RunResult> ScrollRun::resync(StepResult& seen) {
-    const int inFlight = stepInjections_ == 1 ? stepNotches_ : 0;
+std::optional<RunResult> ScrollRun::resync(StepResult& seen, int& rollback) {
     stepNotches_ = stepInjections_ = 0;
     if (opts_.pointer && opts_.away) {
         holdOff();
@@ -630,12 +630,15 @@ std::optional<RunResult> ScrollRun::resync(StepResult& seen) {
         // A hover effect that had not gone yet: once more.
         if (auto f = look(kNoHint)) return f;
     }
-    if (!placed() && inFlight != 0 && (seen.status == StepStatus::NoMatch || seen.status == StepStatus::Ambiguous)) {
-        if (!inject(-inFlight)) {
+    if (!placed() && rollback != 0 && (seen.status == StepStatus::NoMatch || seen.status == StepStatus::Ambiguous)) {
+        // A pause inside this wheel step leaves stepInjections_ set: the caller
+        // then knows the rollback went out and does not send it again.
+        if (!inject(-rollback)) {
             stats_.lastError = "injector refused the scroll-back event";
             return RunResult::InjectorFailed;
         }
         ++stats_.scrollBacks;
+        rollback = 0;
         stepNotches_ = stepInjections_ = 0;
         if (auto f = look(0)) return f;
     }
@@ -681,8 +684,14 @@ std::optional<RunResult> ScrollRun::start(bool toTop) {
             // Nothing is stitched yet: Stop keeps the viewport as on the way up,
             // and Resume goes up again from wherever the user left the page.
             if (auto end = holdPaused()) return *end == RunResult::Stopped ? viewportAfterStop() : *end;
-            resumed = toTop;
+            // The user may have scrolled away from a top already proved: the
+            // retry has to prove it again, or the image does not start there.
+            resumed = resumed || toTop;
             toTop = opts_.fromTop;
+            if (toTop) {
+                stats_.reachedTop = false;
+                stats_.toTopGaveUp.clear();
+            }
         }
     }
 }
@@ -1009,10 +1018,15 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
             // Paused (#1514). What this step had sent is looked at again on Resume.
             StepResult seen;
             std::optional<RunResult> end;
+            // The one wheel step a rollback may undo, kept until it is sent:
+            // a second pause inside resync() must not lose it.
+            int rollback = stepInjections_ == 1 ? stepNotches_ : 0;
+            stepNotches_ = stepInjections_ = 0;
             for (bool waiting = true; waiting;) {
                 try {
                     end = holdPaused();
-                    if (!end && stitcher_.hasFrame()) end = resync(seen);
+                    if (stepInjections_ > 0) rollback = 0;  // sent before the second pause
+                    if (!end && stitcher_.hasFrame()) end = resync(seen, rollback);
                     waiting = false;
                 } catch (const Interrupted&) {}
             }

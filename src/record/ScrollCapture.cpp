@@ -158,16 +158,26 @@ struct ScrollCapture::Gate final : RunInjector {
     // Every pointer motion sent counts: the main thread tells a pointer that
     // moved with nothing sent in between (the user) from one the capture moved.
     std::atomic<quint64> seq{0};
-    // Desktop logical coordinates of the rectangle's corner and the stream's
-    // scale (set by the worker before the first injection), the last point
-    // the wheel was turned at, and where the rest is.
-    QPointF origin;
+    // Desktop logical coordinates of the rectangle's corner (set before the
+    // worker starts) and the stream's scale (set by the worker before its
+    // first injection; the worker alone reads it), and the rest (set before
+    // the worker starts; the main thread reads it).
+    QPointF origin, restPoint;
     double sx = 1, sy = 1;
-    std::atomic<double> visitX{0}, visitY{0};
-    // Where and when (FrameTap::nowMs, the monotonic clock) the last motion was sent.
-    std::atomic<double> lastX{0}, lastY{0};
-    std::atomic<qint64> lastMoveMs{-1};
-    QPointF restGlobal() const { return restAt ? origin + QPointF(restAt->x() / sx, restAt->y() / sy) : QPointF(); }
+    // The last motion sent, as one record: when (FrameTap::nowMs, the
+    // monotonic clock), where (desktop logical), its count, and the last
+    // point the wheel was turned at.
+    struct Sent { qint64 ms = -1; QPointF at, visit; quint64 seq = 0; };
+    mutable std::mutex sentMutex;
+    Sent sentLast;
+    Sent lastSent() const { std::lock_guard lock(sentMutex); return sentLast; }
+    void recordSent(QPointF at, bool visit) {
+        std::lock_guard lock(sentMutex);
+        sentLast.ms = FrameTap::nowMs();
+        sentLast.at = at;
+        if (visit) sentLast.visit = at;
+        sentLast.seq = seq.load();
+    }
     // A pointer pulled back from under the user's moving hand (#1514): the
     // main thread knows where the hand had it (base) and follows its motion
     // from the rest since (latest); held() puts it back there, once.
@@ -190,6 +200,9 @@ struct ScrollCapture::Gate final : RunInjector {
     bool seenValid = false;
     QPointF seenAt;
     quint64 seenSeq = 0;
+    // At most one correction per pause: held() and a decision that comes
+    // with a later motion event must not both apply the same displacement.
+    bool correctionTaken = false;
     bool desktopCorrects = false;
     // X11: the pointer is not where XTest left it. Called on the worker.
     std::function<void()> tookPointer;
@@ -211,12 +224,9 @@ struct ScrollCapture::Gate final : RunInjector {
         const bool toRest = restAt && *restAt == QPoint(x, y);
         // Counted before it is sent: the leave event may come before this returns.
         if (restAt && !toRest && resting.load()) { visitAt.store(FrameTap::nowMs()); visits.fetch_add(1); }
-        if (!toRest) { visitX.store(origin.x() + x / sx); visitY.store(origin.y() + y / sy); }
-        lastX.store(origin.x() + x / sx);
-        lastY.store(origin.y() + y / sy);
-        lastMoveMs.store(FrameTap::nowMs());
         resting.store(toRest);
         seq.fetch_add(1);
+        recordSent(origin + QPointF(x / sx, y / sy), !toRest);
         const bool sent = injector->movePointer(QPoint(x, y));
         if (debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 pointer %2,%3 %4").arg(FrameTap::nowMs() % 1000000).arg(x).arg(y).arg(sent ? "sent" : "refused"));
         return sent;
@@ -237,11 +247,13 @@ struct ScrollCapture::Gate final : RunInjector {
             const qint64 now = FrameTap::nowMs();
             if (seenValid) {
                 seenValid = false;
-                if (desktopCorrects && seq.load() > seenSeq) {
+                const Sent sent = lastSent();
+                if (desktopCorrects && sent.seq > seenSeq) {
                     // Sent after the hand was seen: the pointer goes back by that motion too.
-                    const QPointF latestTarget(lastX.load(), lastY.load());
+                    const QPointF latestTarget = sent.at;
                     if (correctionPending) correctionAnchor = latestTarget;
-                    else {
+                    else if (!correctionTaken) {
+                        correctionTaken = true;
                         correctionBase = seenAt;
                         correctionAnchor = correctionLatest = latestTarget;
                         correctionStamped = false;
@@ -260,7 +272,7 @@ struct ScrollCapture::Gate final : RunInjector {
         if (!armed.load()) return;
         seq.fetch_add(1);
         resting.store(false);
-        lastMoveMs.store(FrameTap::nowMs());
+        recordSent(target, false);
         if (injector->movePointerBy(delta)) {
             debugLog(QStringLiteral("scroll inject: t=%1 pointer put back by %2,%3 sent").arg(FrameTap::nowMs() % 1000000).arg(delta.x(), 0, 'f', 0).arg(delta.y(), 0, 'f', 0));
             return;
@@ -712,6 +724,9 @@ void ScrollCapture::stop(Reply reply) {
     if (stopReply_) { reply(stateError("The capture is already stopping"), {}); return; }
     stopRequested_ = true;
     stopReply_ = std::move(reply);
+    // A Resume waiting for the mouse to be still does not go on after Stop.
+    resumePending_ = false;
+    resumeQuiet_.stop();
     job_->stop.store(true);
     if (bar_) bar_->setState(QStringLiteral("finishing"));
 }
@@ -722,6 +737,8 @@ void ScrollCapture::cancel(Reply reply) {
         if (cancelReply_) { reply({}, {}); return; }
         cancelRequested_ = true;
         cancelReply_ = std::move(reply);
+        resumePending_ = false;
+        resumeQuiet_.stop();
         job_->discard.store(true);
         job_->stop.store(true);
         if (bar_) bar_->hide();
@@ -759,10 +776,14 @@ void ScrollCapture::resume(bool quiet) {
     if (!quiet) { resumeNow(); return; }
     resumePending_ = true;
     if (bar_) bar_->setState(QStringLiteral("resuming"));
+    // The watch sees whether the hand is still moving over the page, with
+    // the gate still closed (pointerSeen restarts the quiet period).
+    if (watch_) { watch_->show(); watchWindow_ = watch_->windowHandle(); }
     resumeQuiet_.start(resumeQuietMs);
 }
 void ScrollCapture::resumeNow() {
-    if (!job_ || !job_->gate.paused.load()) return;
+    // Never after Stop or Cancel: the quiet period's timer can still fire.
+    if (!job_ || !job_->gate.paused.load() || stopRequested_ || cancelRequested_) return;
     resumePending_ = false;
     resumeQuiet_.stop();
     pausedBy_.clear();
@@ -776,6 +797,9 @@ void ScrollCapture::resumeNow() {
         std::lock_guard lock(job_->gate.correctionMutex);
         job_->gate.correctionPending = false;
         job_->gate.correctionStamped = false;
+        // This pause's record and its one correction end with it.
+        job_->gate.seenValid = false;
+        job_->gate.correctionTaken = false;
     }
     watchSeqBase_ = job_->gate.seq.load();
     haveSeen_ = lastWasArrival_ = decisionPending_ = false;
@@ -877,6 +901,8 @@ void ScrollCapture::placeRest() {
     restOrigin_ = QPointF(place.topLeft());
     restWindow_ = surface->windowHandle();
     job_->rest = mode == SurfaceMode::X11 ? barRootPoint(QPointF(*rest)) : *rest;
+    // Fixed before the worker starts; the main thread reads it, the worker never writes it.
+    job_->gate.restPoint = QPointF(*job_->rest);
     debugLog(QStringLiteral("scroll: rest on the %1 at %2,%3 (local %4,%5)").arg(surface == bar_ ? QStringLiteral("bar") : QStringLiteral("pad")).arg(job_->rest->x()).arg(job_->rest->y()).arg(restLocal_.x()).arg(restLocal_.y()));
 }
 
@@ -951,16 +977,9 @@ void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint6
     if (why.isEmpty()) return;
     // The gate closes first, before a line is logged: a motion the worker was
     // about to send went out 2 ms after the hand was seen (k72, 2026-11-14).
-    const qint64 lastMoveSeen = gate.lastMoveMs.load();
-    const QPointF lastTargetSeen(gate.lastX.load(), gate.lastY.load());
+    // The capture's last motion is read as one record just before.
+    const auto sent = gate.lastSent();
     gate.paused.store(true);
-    {
-        std::lock_guard lock(gate.correctionMutex);
-        gate.seenValid = true;
-        gate.seenAt = *global;
-        gate.seenSeq = seq;
-    }
-    debugLog(QStringLiteral("scroll: pointer at %1,%2 %3 (%4)").arg(global->x()).arg(global->y()).arg(watch ? QStringLiteral("on the watch") : QStringLiteral("on the rest surface")).arg(why));
     // The capture moved the pointer after the hand had moved it, told by the
     // event's own time (the compositor's monotonic milliseconds, as the
     // capture's clock, used only where the two agree within a second): a
@@ -971,19 +990,26 @@ void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint6
     // motion event decides. Without a watch (GNOME), whose rest surface sees
     // the hand only after the move back, a motion within 12 ms of the
     // pointer's arrival at rest was under way when it arrived.
-    const qint64 lastMove = lastMoveSeen;
-    const QPointF lastTarget = lastTargetSeen;
-    if (clocksAgree && lastMove >= 0 && qint32(quint32(lastMove) - quint32(stamp)) > 0) {
-        startCorrection(*global, lastTarget, stamp, lastMove);
-    } else if (!clocksAgree && lastMove >= 0 && now - lastMove < 400) {
-        decisionPending_ = true;
-        decisionUntil_ = now + 400;
-        decisionMoveMs_ = lastMove;
-        decisionTarget_ = lastTarget;
-    } else if (!watch && !watch_ && afterArrival) {
+    // The record held() reads (where the hand was seen, the motion count
+    // then) and the decision are published together, so held() cannot
+    // start a correction of its own for the same displacement.
+    {
         std::lock_guard lock(gate.correctionMutex);
-        startCorrectionLocked(QPointF(gate.visitX.load(), gate.visitY.load()), gate.restGlobal(), 0, 0, *global);
+        gate.seenValid = true;
+        gate.seenAt = *global;
+        gate.seenSeq = sent.seq;
+        if (clocksAgree && sent.ms >= 0 && qint32(quint32(sent.ms) - quint32(stamp)) > 0) {
+            startCorrectionLocked(*global, sent.at, stamp, sent.ms, sent.at);
+        } else if (!clocksAgree && sent.ms >= 0 && now - sent.ms < 400) {
+            decisionPending_ = true;
+            decisionUntil_ = now + 400;
+            decisionMoveMs_ = sent.ms;
+            decisionTarget_ = sent.at;
+        } else if (!watch && !watch_ && afterArrival) {
+            startCorrectionLocked(sent.visit, gate.restPoint, 0, 0, *global);
+        }
     }
+    debugLog(QStringLiteral("scroll: pointer at %1,%2 %3 (%4)").arg(global->x()).arg(global->y()).arg(watch ? QStringLiteral("on the watch") : QStringLiteral("on the rest surface")).arg(why));
     pause(QStringLiteral("pointer"));
 }
 
@@ -996,7 +1022,8 @@ void ScrollCapture::startCorrection(QPointF base, QPointF anchor, quint64 stamp,
 }
 void ScrollCapture::startCorrectionLocked(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs, QPointF latest) {
     auto& gate = job_->gate;
-    if (!gate.desktopCorrects) return;
+    if (!gate.desktopCorrects || gate.correctionTaken) return;
+    gate.correctionTaken = true;
     gate.correctionAnchor = anchor;
     gate.correctionBase = base;
     gate.correctionLatest = latest;
@@ -1024,9 +1051,15 @@ void ScrollCapture::showWatch(const QList<QPointF>& holes) {
     if (pad_) input -= pad_->geometry().translated(-screen_.topLeft());
     w->setMask(input);
     barToLayer(w, on, screen_, false);
-    w->show();
     watch_ = w;
-    watchWindow_ = w->windowHandle();
+    // Made while paused (the pause came before the first frame): kept hidden,
+    // since the desktop is the user's until Resume, which shows it.
+    if (job_->gate.paused.load() && !resumePending_) {
+        debugLog(QStringLiteral("scroll: watch made while paused, shown on Resume"));
+    } else {
+        w->show();
+        watchWindow_ = w->windowHandle();
+    }
     QStringList where;
     for (const QPointF& hole : holes) where << QStringLiteral("%1,%2").arg(hole.x(), 0, 'f', 1).arg(hole.y(), 0, 'f', 1);
     debugLog(QStringLiteral("scroll: watch over %1 with holes at %2").arg(screenName_, where.join(' ')));

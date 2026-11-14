@@ -272,7 +272,7 @@ private:
     // Waits while paused: Stopped for Stop, Cancel or a pause that lasted pauseLimitMs.
     std::optional<RunResult> holdPaused();
     // After a pause: where the page is now, against the last stitched frame.
-    std::optional<RunResult> resync(scroll::StepResult& seen);
+    std::optional<RunResult> resync(scroll::StepResult& seen, int& rollback);
     // The way to the top (toTop) and the first viewport; after a pause there,
     // both again. The result is final (Stop on the way up already kept its viewport).
     std::optional<RunResult> start(bool toTop);
@@ -303,7 +303,7 @@ private:
     enum class EndProof { Proved, Moved, Unproved };
     EndProof proveEnd(scroll::StepResult& found, std::optional<RunResult>& fail);
     std::optional<RunResult> scrollToTop(bool resumed = false);
-    std::optional<RunResult> wayToTop();
+    std::optional<RunResult> wayToTop(int64_t spentMs = 0);
     RunResult viewportAfterStop();
     void progress(bool toTop);
     RunResult finishWith(RunResult);
