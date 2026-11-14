@@ -334,7 +334,8 @@ skipped, steps, pixelsPerNotch}` while running, with `state` `preparing`, `selec
 turns the page now; `paused` is true when auto-scroll handed the wheel back by itself, and
 `pausedBy` says why: `pointer` (the user moved the mouse), `scrolled` (the user scrolled during
 it), `lost` (it lost the page and could not find it again), `no_movement` (nothing scrolled under
-its wheel). After the end the view also carries what the helper reported: `state: "done"`,
+its wheel). After `pausedBy: lost`, `activity` is `lost` until the user scrolls back to where
+the image finds the page, then `paused`; `scroll.autoScroll {on: true}` then carries on. After the end the view also carries what the helper reported: `state: "done"`,
 `endReason`, `truncated`, `scrolledBy` (`user`, `putgd`, `both`, `none`), `framesPlaced`,
 `framesSkipped`, `endedLost`, `reachedEnd`, `height`, `bytes`, `stats {steps, pixelsPerNotch,
 lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond}` (also flat),

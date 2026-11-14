@@ -259,6 +259,8 @@ with no cursor, ring, bar or notification pixel.
 | Auto-scroll from halfway down with scroll to the top first on | row 0 first, every row once, `end_of_content` |
 | Auto-scroll on mid-capture, then the mouse moved, then Auto-scroll again | one exact image, `scrolledBy: both`; nothing injected from the first motion until Auto-scroll |
 | A jump past the screen with the scrollbar, then back | **Lost the page**, then found again; the image exact |
+| Auto-scroll on a page that rearranges itself (a GitHub pull request in Chrome) | **Auto-scroll lost the page**; scrolled back, **Found the page again**; **Auto-scroll** carries on |
+| Auto-scroll in Chrome on a long page (Python's `stdtypes`, dark) | no cell of the image left unwritten (pure black on the 8-column grid) |
 | Page taller than the cap | exact prefix at the cap height, `height_cap`, the warning shown and uploaded |
 | The next capture right after the cap warning or an upload notice | exact: no put.gd notification in the image |
 | Done halfway, in each state of the bar | exact prefix, `done` (`lost_track` when lost), uploaded |

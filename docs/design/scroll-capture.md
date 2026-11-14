@@ -204,10 +204,20 @@ set. The AppImage also carries `libxcb-xtest.so.0` for the X11 route.
 **Pace.** The first step is one notch: what the page moved, once it rests, is the distance
 per notch (only a step that began with the page at rest measures it). Every later step is
 40% of the frame's height (at least one notch, at most 12), so the frames of its animation
-overlap well: the tracker places small steps where 600 px bursts sometimes do not. The next
-step goes once the page has moved 85% of what the step asked, or has not moved for 150 ms
-(3 s at most, for a page that never rests): a browser's smooth scroll eases out for half a
-second and more, and the frames of its tail and of the next step overlap as well as any.
+overlap well: the tracker places small steps where 600 px bursts sometimes do not.
+
+The next step goes only once the page has been seen at rest, as it is when a person
+scrolls: a frame that shows what the last placed frame showed, at least 150 ms after the
+page last moved, or no frame at all for 100 ms after the last one that moved. The second
+rule is for streams that send a frame only when the picture changes (KWin, Mutter, image
+copy). A page that never rests gets 3 s per step.
+
+Why: Chrome draws parts of the page late while a scroll runs on. When the next step went at
+85% of the last one's way, Python's documentation came out with 126,284 cells that no frame
+had shown drawn. They were black, on the tracker's 8-column grid, from row 17,150. At rest,
+it has none. Per 10,000 px on Plasma 6.8.2, steps from rest cost 22.4 s against 16.7 s. A
+still frame alone costs 71.6 s, because KWin sends the next frame about a second later. A
+step at 100% of the way, not at rest, leaves more cells unwritten (189,952).
 
 **The pointer's visit** (#1514). Between wheel steps the pointer rests on a surface of the
 helper's own, outside the rectangle: the bar where it is beside the rectangle (or inside
@@ -234,9 +244,14 @@ capture follows the user. **Auto-scroll** (once the mouse has been still for 500
 `scroll.autoScroll {on: true}` turns it on again from wherever the page is.
 
 **It hands the wheel back by itself** when the page moves up while it turns it down (you
-scrolled: **Paused: you scrolled**), when the tracker is lost and two steps back up do not
-find the page again (**Lost the page**), and when nothing scrolls at any of its wheel
-points (**Nothing scrolled here**). The capture goes on following you each time.
+scrolled: **Paused: you scrolled**), and when nothing scrolls at any of its wheel points
+(**Nothing scrolled here**). It also hands it back when the tracker is lost and five steps
+back do not find the page. Each step back is judged on at least three frames and 2.5 s,
+because a lost tracker takes about a second per frame. It does the same after more than
+five ways back in a row that did not make the image grow. The bar then says **Auto-scroll
+lost the page** and **Scroll back a little**. Once you have scrolled back to where the image
+finds the page, it says **Found the page again** (`paused`, `pausedBy: lost`), and
+**Auto-scroll** carries on from there. The capture goes on following you each time.
 
 **The end of the page.** A step that moved nothing for its response time (600 ms, or three
 times the slowest answer seen, at most 3 s) is still. A second one, of one notch with
@@ -275,10 +290,10 @@ region** (which is Done during a capture) are the controls.
 | --- | --- | --- |
 | `waiting` | Scroll the page | Done (or the key) when you reach the end |
 | `following` | Following | Done (or the key) when you reach the end |
-| `lost` | Lost the page | Scroll back a little |
+| `lost` | Lost the page (Auto-scroll lost the page, after it gave up) | Scroll back a little |
 | `scrollingToTop` | Scrolling to the top… | Move the mouse to pause |
 | `autoScrolling` | Auto-scrolling | Move the mouse to pause |
-| `paused` | Paused: you moved the mouse / Paused: you scrolled / Nothing scrolled here | Scroll on, or Auto-scroll to go on / Scroll the page yourself |
+| `paused` | Paused: you moved the mouse / Paused: you scrolled / Found the page again / Nothing scrolled here | Scroll on, or Auto-scroll to go on / Scroll the page yourself |
 | `resuming` | Auto-scroll in a moment… | Let go of the mouse |
 | `finishing` | Saving… | |
 

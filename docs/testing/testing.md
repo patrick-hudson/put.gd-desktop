@@ -262,6 +262,8 @@ design is in [scrolling capture](../design/scroll-capture.md).
   the frame; a switch from the user to auto-scroll, a pause by the mouse and auto-scroll again give
   one exact image with nothing injected while the user drives or has the mouse; a jump past the screen
   is lost and found again on the way back, and Done while lost keeps the image and says it ended lost;
+  under auto-scroll, a jump into the page's end is found by the steps back with the image exact, and
+  a jump far past the image ends in a hand-back (`pausedBy: lost`) with nothing injected after it;
   the cap and the idle bound end it with the image kept; Done keeps an exact image and Cancel discards
   it in every state. It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
