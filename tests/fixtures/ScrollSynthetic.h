@@ -163,6 +163,12 @@ struct FakeAppSpec {
   // With busyMsPerNotch: the first notch of a step that finds it idle is
   // painted as soon as it is worked through, the rest only once none waits.
   bool busyShowsFirst = false;
+  // A part of the page that takes the wheel for itself (a side bar that
+  // sticks and scrolls its own list): from this injection on, a wheel step
+  // whose pointer is inside the rectangle (viewport pixels) does not move
+  // the page. -1: off.
+  int deadAfterInjection = -1;
+  int deadX = 0, deadY = 0, deadW = 0, deadH = 0;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -219,6 +225,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   size_t scriptAt_ = 0;
   bool quiet_ = false;
   int64_t busyUntil_ = 0;
+  int pointerX_ = -1, pointerY_ = -1;
 };
 
 }  // namespace synth

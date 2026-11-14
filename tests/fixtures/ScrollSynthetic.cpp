@@ -224,6 +224,8 @@ FakeApp::FakeApp(const Image& doc, ViewportSpec vs, FakeAppSpec spec, FakeClock&
 
 bool FakeApp::movePointer(int x, int y) {
   events.push_back({'m', x, y, clock_.nowMs()});
+  pointerX_ = x;
+  pointerY_ = y;
   return true;
 }
 
@@ -254,6 +256,9 @@ bool FakeApp::scroll(int n) {
   if (spec_.quietFromInjection >= 0 && idx == spec_.quietFromInjection) quiet_ = true;
   if (spec_.cancelFlag && spec_.cancelAfterInjections >= 0 && idx >= spec_.cancelAfterInjections)
     spec_.cancelFlag->store(true);
+  if (spec_.deadAfterInjection >= 0 && idx >= spec_.deadAfterInjection && pointerX_ >= spec_.deadX && pointerX_ < spec_.deadX + spec_.deadW &&
+      pointerY_ >= spec_.deadY && pointerY_ < spec_.deadY + spec_.deadH)
+    return true;  // the part under the pointer scrolled, the page did not
   if (spec_.busyMsPerNotch > 0) {
     // What it has not painted yet it paints when it has worked through all it was sent.
     const int64_t now = clock_.nowMs();

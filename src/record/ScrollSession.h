@@ -248,6 +248,7 @@ private:
     bool visit(int notches);
     bool injected(bool sent);
     RunPoint wheelPoint() const;
+    int centreIndex() const;
     int planNotches() const;
     int responseWaitMs() const;
     void settled(int64_t t);
@@ -291,6 +292,7 @@ private:
     int animationMs_ = 0;        // the longest recent step animation seen
     bool restedBefore_ = true, stepFromRest_ = true;
     long long stepMoved_ = 0;
+    double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
     bool lastStill_ = false;
     int framesAfterWait_ = 0;    // frames placed or still that arrived after the step's response time
     // The hint's model of what auto-scroll's steps still owe in movement.

@@ -258,6 +258,22 @@ void testAutoScroll() {
   }
 }
 
+// A side bar that takes the wheel at the left edge once the page has moved:
+// still steps there are not the end of the page.
+void testWheelTakenByAPart() {
+  std::printf("A part that takes the wheel\n");
+  const Document doc = page(71);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.deadAfterInjection = 1;
+  as.deadX = 0, as.deadY = 0, as.deadW = 120, as.deadH = H;
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a part that scrolls by itself under the wheel is no end of the page", h.end == SessionEnd::PageEnd && h.stats.bottom == doc.img.h && wrong.empty(),
+         wrong.empty() ? counts(h) : wrong);
+}
+
 // A switch to auto-scroll and back, and the mouse that pauses it.
 void testSwitchAndPause() {
   std::printf("Switching, and the mouse\n");
@@ -393,6 +409,7 @@ void testDoneAndCancel() {
 int main() {
   testUserScrolls();
   testAutoScroll();
+  testWheelTakenByAPart();
   testSwitchAndPause();
   testLostAndFound();
   testCapAndIdle();

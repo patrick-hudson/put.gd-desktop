@@ -107,6 +107,10 @@ std::vector<RunPoint> ScrollSession::wheelPoints(int width, int height) const {
     for (int position = 0; position < 3; ++position) points.push_back(parkPoint(position, width, rows));
     return points;
 }
+int ScrollSession::centreIndex() const {
+    // wheelPoints: the entry point first where the rest is outside the frame, then parkPoint(0).
+    return int(wheelPoints(frameW_, frameRowsFull()).size()) - 3;
+}
 RunPoint ScrollSession::wheelPoint() const {
     const auto points = wheelPoints(frameW_, frameRowsFull());
     return points[size_t(std::clamp(wheelAt_, 0, int(points.size()) - 1))];
@@ -271,8 +275,12 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
                     if (stepFirstMoveAt_ < 0 && stepSentAt_ >= 0) stepFirstMoveAt_ = t;
                     if (d > 0) movedDown_ = true;
                     // The page went up while auto-scroll turns it down: the user scrolled.
-                    // (A frame found again after skipped ones went wherever the user had taken it.)
-                    if (phase_ != Phase::Recover && d < -24 && !r.recovered) handBack(HandBack::Scrolled);
+                    // A person's wheel takes the page up over several frames and by a
+                    // few notches; one jump back of a page that lays itself out anew
+                    // (a header that shrinks, a banner) is not that. A frame found again
+                    // after skipped ones went wherever the user had taken it.
+                    if (d < 0 && phase_ != Phase::Recover && !r.recovered) upSinceStep_ -= d;
+                    if (upSinceStep_ >= std::max(height_ / 4.0, 2 * stats_.pxPerNotch) && phase_ != Phase::Recover) handBack(HandBack::Scrolled);
                 }
                 lastStill_ = false;
             } else {
@@ -457,6 +465,7 @@ void ScrollSession::autoTick() {
         stepMoved_ = 0;
         stepFirstMoveAt_ = lastMoveAt_ = -1;
         framesAfterWait_ = 0;
+        upSinceStep_ = 0;
         lastStill_ = false;
         if (stats_.pxPerNotch > 0) pending_ += notches * stats_.pxPerNotch;
         phase_ = Phase::Settle;
@@ -550,7 +559,20 @@ void ScrollSession::stillStep(int64_t now) {
         nextStepAt_ = now;
         return;
     }
-    if (++stillSteps_ >= 2) {
+    if (++stillSteps_ >= 2 && wheelAt_ != centreIndex()) {
+        // Still twice, but not at the centre: the wheel may be over a part
+        // that scrolls by itself once the page has moved (Python's
+        // documentation has a side bar that sticks and then takes the wheel
+        // at the left edge; a false end at 1,071 of 110,440 px, 2026-11-14).
+        // The end is proved at the centre, which keeps the wheel from here on.
+        wheelAt_ = centreIndex();
+        stillSteps_ = 0;
+        patience_ = 1;
+        phase_ = Phase::Step;
+        nextStepAt_ = now + opts_.stepGapMs;
+        return;
+    }
+    if (stillSteps_ >= 2) {
         // The end of the page: twice the page was where it was in frames from
         // after the step's response time. A stream that sent nothing then
         // (damage-driven, the screen still) is asked for a frame of the screen.
