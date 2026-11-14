@@ -12,7 +12,7 @@ AppImage, start put.gd and log out and back in once when it asks, then start put
 again unless you turned on Launch at login. There is nothing to run or download. If
 something else is in the way, put.gd says what in plain words.
 
-Copy text needs the extension at version 23, which is the one these packages carry. After an update, log out and back in once. Until you do, Copy text from a region reports the same log-out step, and every other way of using it keeps working: History's **Copy text**, the editor's tools and the CLI's `text.recognize` from a window, a monitor, the desktop, the clipboard or a file.
+Copy text needs the extension at version 23 or later; these packages carry version 24, which also lets auto-scroll in a scrolling capture pause the moment you move the mouse. After an update, log out and back in once. Until you do, Copy text from a region reports the same log-out step, and every other way of using it keeps working: History's **Copy text**, the editor's tools and the CLI's `text.recognize` from a window, a monitor, the desktop, the clipboard or a file.
 
 To remove the extension copy put.gd installed for an AppImage, quit put.gd and run
 the AppImage with `--remove-gnome-extension` (the installer puts it at

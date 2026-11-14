@@ -237,9 +237,12 @@ by what the page really did. A person's scrolling gives no hint.
 
 **Moving the mouse pauses it** (#1514). The helper knows where it last put the pointer.
 Its rest surface reporting the pointer anywhere else, or leaving with no visit sent, is the
-user; so is (X11) a pointer that is not where XTest left it, and (Plasma, Hyprland,
-Budgie) the pointer anywhere on a clear watch surface over the output that leaves holes
-only at the wheel points, the bar and the pad. The gate closes at once: nothing more is
+user. So is a pointer that is not where XTest left it (X11; the server is asked, so this also
+works with no rest surface, as when the region fills its output and the bar is hidden). On
+Plasma, Hyprland and Budgie, so is the pointer anywhere on a clear watch surface over the output
+that leaves holes only at the wheel points, the bar and the pad. On GNOME, so is any position
+the Shell extension reports other than the helper's own targets (extension 24, `pointerWatch`;
+see [GNOME](../desktops/gnome.md#scrolling-capture)). The gate closes at once: nothing more is
 injected, the watch and the pad go, the bar says **Paused: you moved the mouse**, and the
 capture follows the user. **Auto-scroll** (once the mouse has been still for 500 ms) or
 `scroll.autoScroll {on: true}` turns it on again from wherever the page is.
