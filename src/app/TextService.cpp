@@ -77,7 +77,7 @@ void TextService::recognize(Request request,JsonReply reply){
  // A language a caller names has to be installed; one from Settings may be skipped.
  if(!request.languages.isEmpty()){
   const auto installed=backend_->languages();
-  for(const auto& language:request.languages)if(std::none_of(installed.begin(),installed.end(),[&](const textjob::Language& entry){return entry.id==language;})){reply(textjob::failure("language_unavailable",language),{});return;}
+  for(const auto& language:std::as_const(request.languages))if(std::none_of(installed.begin(),installed.end(),[&](const textjob::Language& entry){return entry.id==language;})){reply(textjob::failure("language_unavailable",language),{});return;}
  }
  Operation op;op.action=Settings::textActionName();
  if(auto error=host_.accept(op,{request.interactive,request.copy})){reply(error,{});return;}

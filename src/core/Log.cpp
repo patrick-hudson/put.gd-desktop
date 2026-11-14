@@ -238,7 +238,7 @@ private:
    if(kept[index].first!=current&&QFile::remove(dir.filePath(kept[index].first))){total-=kept[index].second;kept.removeAt(index);}
    else ++index;
   }
-  QStringList names;for(const auto& entry:kept)names.append(entry.first);
+  QStringList names;for(const auto& entry:std::as_const(kept))names.append(entry.first);
   const auto oldest=names.isEmpty()?QString():timeOf(dir.filePath(names.first()));
   std::lock_guard lock(mutex_);names_=names;files_=int(names.size());total_=total;oldest_=oldest;
  }

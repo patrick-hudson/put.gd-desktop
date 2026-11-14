@@ -247,7 +247,7 @@ QList<int> filter(const XmlTree& tree, QList<int> group, const XPathPredicate& p
     if (predicate.kind == XPathPredicate::Position) return predicate.position <= group.size() ? QList<int>{group[predicate.position - 1]} : QList<int>{};
     if (predicate.kind == XPathPredicate::Last) return group.isEmpty() ? group : QList<int>{group.last()};
     QList<int> kept;
-    for (const int index : group) {
+    for (const int index : std::as_const(group)) {
         const auto& node = tree.nodes[index];
         bool match = false;
         if (predicate.kind == XPathPredicate::Attribute) {
@@ -528,7 +528,7 @@ QString jsonPathValue(const QString& json, const QString& path) {
     const auto document = QJsonDocument::fromJson(json.toUtf8());
     QJsonValue value = document.isArray() ? QJsonValue(document.array()) : QJsonValue(document.object());
     if (document.isNull()) return {};
-    for (const auto& step : steps) {
+    for (const auto& step : std::as_const(steps)) {
         if (step.index) {
             if (!value.isArray() || step.position >= value.toArray().size()) return {};
             value = value.toArray().at(step.position);
@@ -549,12 +549,12 @@ QString xpathValue(const QString& xml, const QString& path) {
     const auto tree = readXml(xml);
     if (!tree.ok) return {};
     QList<int> context{0};
-    for (const auto& step : steps) {
+    for (const auto& step : std::as_const(steps)) {
         if (step.kind != XPathStep::Element) {
             // The parents of the attribute or text: every context node, or its descendants after "//".
             QList<int> owners;
             for (const int index : context) { if (step.descendant) descendants(tree, index, owners); else owners.append(index); }
-            for (const int owner : owners) {
+            for (const int owner : std::as_const(owners)) {
                 const auto& node = tree.nodes[owner];
                 if (step.kind == XPathStep::Text) {
                     for (const auto& [child, text] : node.content) if (child < 0 && !text.trimmed().isEmpty()) return text;
@@ -570,11 +570,11 @@ QString xpathValue(const QString& xml, const QString& path) {
         for (const int index : context) {
             QList<int> parents;
             if (step.descendant) descendants(tree, index, parents); else parents.append(index);
-            for (const int parent : parents) {
+            for (const int parent : std::as_const(parents)) {
                 QList<int> group;
                 for (const int child : tree.nodes[parent].children) if (nameMatches(tree.nodes[child], step.name)) group.append(child);
                 for (const auto& predicate : step.predicates) group = filter(tree, group, predicate);
-                for (const int child : group) if (!seen.contains(child)) { seen.insert(child); next.append(child); }
+                for (const int child : std::as_const(group)) if (!seen.contains(child)) { seen.insert(child); next.append(child); }
             }
         }
         if (next.isEmpty()) return {};

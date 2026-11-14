@@ -107,7 +107,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     auto profiles = document["profiles"].toArray();
     if (profiles.size() >= 32) { reply({"config_invalid", "There are already 32 destinations; remove one first", {}}, {}); return; }
     QStringList ids;
-    for (const auto& value : profiles) ids.append(value.toObject()["id"].toString());
+    for (const auto& value : std::as_const(profiles)) ids.append(value.toObject()["id"].toString());
     // Nothing to store means nothing to unlock later: no keychain entry is named.
     const bool keychain = mode == "keychain" && !imported.secrets.isEmpty();
     // The keychain entry of an ID is the import's to write, and to remove again when the
@@ -117,7 +117,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
     const auto entry = [](const QString& candidate) { return "putgd/http/" + candidate; };
     const auto taken = [&](const QString& candidate) {
         if (!keychain) return false;
-        for (const auto& value : profiles) if (value.toObject()["credentials"].toObject()["reference"].toString() == entry(candidate)) return true;
+        for (const auto& value : std::as_const(profiles)) if (value.toObject()["credentials"].toObject()["reference"].toString() == entry(candidate)) return true;
         return unsettled().contains(entry(candidate));
     };
     auto id = params["profileId"].toString();

@@ -207,7 +207,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (hasRecord) validatedActions.append(recordingActionName());
     validatedActions.append(repeatActionName());
     validatedActions.append(textActionName());
-    for (const auto& name : validatedActions) {
+    for (const auto& name : std::as_const(validatedActions)) {
         // A copy: operator[] on the temporary object would return a reference into it.
         const QJsonValue value = doc["actions"].toObject().value(name);
         const auto action = value.toObject();

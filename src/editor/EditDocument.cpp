@@ -419,7 +419,7 @@ void EditDocument::paintPreviewSource(QPainter& painter,const QRectF& target,con
  // Restrict work to edge bands. The interior is opaque black; only pixels
  // near a mask edge can mix a covered source sample into a neighbour.
  painter.save();painter.setClipRect(target,Qt::IntersectClip);
- for(const auto& mask:masks)painter.fillRect(logical.mapRect(QRectF(mask)),Qt::black);
+ for(const auto& mask:std::as_const(masks))painter.fillRect(logical.mapRect(QRectF(mask)),Qt::black);
  const int stepX=std::clamp(int(1020*std::abs(device.m11())),1,64);
  const int stepY=std::clamp(int(1020*std::abs(device.m22())),1,64);
  for(const auto& mask:masks){
@@ -436,7 +436,7 @@ void EditDocument::paintPreviewSource(QPainter& painter,const QRectF& target,con
               QRect(outer.x(),inner.y()+inner.height(),outer.width(),outer.y()+outer.height()-inner.y()-inner.height()),
               QRect(outer.x(),inner.y(),inner.x()-outer.x(),inner.height()),
               QRect(inner.x()+inner.width(),inner.y(),outer.x()+outer.width()-inner.x()-inner.width(),inner.height())};
-  for(auto band:bands){
+  for(auto band:std::as_const(bands)){
    band=band.intersected(viewport);
    for(int y=band.y();y<band.y()+band.height();y+=stepY)for(int x=band.x();x<band.x()+band.width();x+=stepX){
     const int left=viewport.x()+((x-viewport.x())/4)*4;
@@ -452,7 +452,7 @@ void EditDocument::paintPreviewSource(QPainter& painter,const QRectF& target,con
     const QImage raw(base_.constScanLine(position.y())+qsizetype(position.x())*sizeof(QRgb),area.width(),area.height(),base_.bytesPerLine(),base_.format());
     auto patch=raw.copy();
     {QPainter cover(&patch);cover.setCompositionMode(QPainter::CompositionMode_Source);
-     for(const auto& other:masks)cover.fillRect(other.intersected(area).translated(-area.topLeft()),Qt::black);}
+     for(const auto& other:std::as_const(masks))cover.fillRect(other.intersected(area).translated(-area.topLeft()),Qt::black);}
     const auto clip=deviceToLogical.mapRect(QRectF(pixels));
     painter.save();painter.setClipRect(clip,Qt::IntersectClip);
     // Restore the backdrop before replacing a filtered alpha edge, rather

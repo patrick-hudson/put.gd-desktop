@@ -193,7 +193,7 @@ public:
         QJsonArray restricted = session.allowed["buckets"].toArray();
         if (restricted.isEmpty() && session.allowed["bucketId"].isString())
             restricted.append(QJsonObject{{"id", session.allowed["bucketId"]}, {"name", session.allowed["bucketName"]}});
-        for (const auto& value : restricted)
+        for (const auto& value : std::as_const(restricted))
             if (value.toObject()["name"].toString() == name) session.bucketId = value.toObject()["id"].toString();
         if (!restricted.isEmpty() && session.bucketId.isEmpty())
             return {"b2_key_restricted", "This application key is restricted to another bucket. Create a key for bucket " + name + ".", {{"requestStage", "bucket"}}};
@@ -667,7 +667,7 @@ private:
         QStringList missing;
         QStringList needed{"listFiles", "readFiles", "writeFiles", "deleteFiles"};
         if (settings()["linkMode"].toString() == "authorized") needed << "shareFiles";
-        for (const auto& capability : needed) if (!client_.session.capabilities.contains(capability)) missing << capability;
+        for (const auto& capability : std::as_const(needed)) if (!client_.session.capabilities.contains(capability)) missing << capability;
         if (!missing.isEmpty()) { error = {"b2_permission_denied", "The application key lacks: " + missing.join(", ") + ". Create a key with those capabilities for this bucket.", {{"requestStage", "capabilities"}}}; return {}; }
         QJsonObject out{{"bucketType", client_.session.bucketType}, {"linkMode", settings()["linkMode"]}};
         if (settings()["linkMode"].toString() == "public" && client_.session.bucketType == "allPrivate") {

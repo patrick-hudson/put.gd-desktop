@@ -41,7 +41,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // Codes first, from the full image; their areas are filled in every band copy.
  QElapsedTimer stage;stage.start();
  result.recognition.codes=readCodes(image);
- QList<Quad> areas;for(const auto& code:result.recognition.codes)areas.append(code.quad);
+ QList<Quad> areas;for(const auto& code:std::as_const(result.recognition.codes))areas.append(code.quad);
  result.timings.codesMs=stage.elapsed();
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
@@ -56,7 +56,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  for(const auto& rect:options.panels&&screen?panels(image,areas,result.profile.lineHeight):QList<QRect>{QRect(0,0,image.width,image.height)}){
   Panel p;p.rect=rect;
   p.view={image.row(rect.y())+rect.x(),rect.width(),rect.height(),image.stride};
-  for(const auto& q:areas){
+  for(const auto& q:std::as_const(areas)){
    Quad moved;bool inside=false;
    for(int i=0;i<4;++i){moved[i]=q[i]-rect.topLeft();inside|=rect.contains(q[i]);}
    if(inside)p.codes.append(moved);
@@ -169,7 +169,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  // size does not see (a 24 MP screen in panels reached 136 MiB sharing at once).
  const bool measureFirst=anyBanded||panelList.size()>1;
  shared->taskCount=taskCount;shared->outcomes.resize(taskCount);
- for(const auto& t:tasks)shared->taskPixels.push_back(t.pixels);
+ for(const auto& t:std::as_const(tasks))shared->taskPixels.push_back(t.pixels);
  // One worker: takes tasks until there are none, the budget or memory says
  // stop, or the job is closing. Touches only shared and its own copies.
  const auto work=[shared,copyOf](TextEngine* engine,int worker,const std::function<void()>& afterFirstTask){
@@ -301,10 +301,10 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  if(!late)delete shared;
  result.recognition.parts=taskCount;result.recognition.threads=1+extraEngines;result.recognition.panels=int(panelList.size());
  result.recognition.engineTasks.fill(0,1+extraEngines);
- for(const auto& outcome:outcomes)if(outcome.done&&outcome.engine<=extraEngines)++result.recognition.engineTasks[outcome.engine];
+ for(const auto& outcome:std::as_const(outcomes))if(outcome.done&&outcome.engine<=extraEngines)++result.recognition.engineTasks[outcome.engine];
 
  // An engine that failed on a task fails the job: no text is not success.
- for(const auto& outcome:outcomes)if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}
+ for(const auto& outcome:std::as_const(outcomes))if(outcome.failed){result.error=QStringLiteral("engine_unavailable");return result;}
  // Joined in task order, never in the order the tasks finished: panel by
  // panel, and inside a panel band by band or strip by strip, each in
  // Tesseract's reading order. The first task missing or cut short ends it.
@@ -320,8 +320,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   // Into the image's pixels; a new panel starts a new block.
   const int lineBase=int(result.recognition.lines.size());
   const int blockBase=result.recognition.lines.isEmpty()?0:result.recognition.lines.last().block+1;
-  for(auto line:part.lines){line.rect.translate(p.rect.topLeft());line.block+=blockBase;result.recognition.lines.append(line);}
-  for(auto word:part.words){word.rect.translate(p.rect.topLeft());word.line+=lineBase;result.recognition.words.append(std::move(word));}
+  for(auto line:std::as_const(part.lines)){line.rect.translate(p.rect.topLeft());line.block+=blockBase;result.recognition.lines.append(line);}
+  for(auto word:std::as_const(part.words)){word.rect.translate(p.rect.topLeft());word.line+=lineBase;result.recognition.words.append(std::move(word));}
   result.recognition.banded|=p.plan.banded();
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }

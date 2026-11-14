@@ -47,7 +47,7 @@ QJsonObject OperationService::nativeCopyGuard(const Error& error) {return {{"gua
 quint64 OperationService::invalidateCopyEligibility() {
  ++uploadCopyEpoch_;
  if(currentCopy_&&currentCopy_->preparationState)currentCopy_->preparationState->cancelled->store(true);
- for(const auto& copy:copies_)if(copy->preparationState)copy->preparationState->cancelled->store(true);
+ for(const auto& copy:std::as_const(copies_))if(copy->preparationState)copy->preparationState->cancelled->store(true);
  source_.invalidateCopyEligibility();
  return ++invocation_;
 }
@@ -176,7 +176,7 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
   CopyPayload payload;payload.kind="text";QStringList urls;included->clear();
   for(const auto& state:members)if(!state->cancellation->load()&&!state->links.isEmpty()) {
    included->insert(state->operation.id);
-   for(const auto& url:state->links)urls.append(url);
+   for(const auto& url:std::as_const(state->links))urls.append(url);
   }
   payload.text=urls.join('\n');return payload;
  },[this,members,included,group](Error error) {
@@ -248,7 +248,7 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
 void OperationService::acknowledgeCopyRevision(quint64 before,quint64 after) {
  // Advance only snapshots that still expected the overwritten revision. A
  // manual change, even one received before the queued callback, stays distinct.
- for(const auto& state:uploadCopies_) {
+ for(const auto& state:std::as_const(uploadCopies_)) {
   if(state->revision==before)state->revision=after;
   if(state->group&&state->group->revision==before)state->group->revision=after;
  }

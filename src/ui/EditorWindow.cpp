@@ -447,7 +447,7 @@ void EditorWindow::pickCustomColor(){
  const auto color=QColorDialog::getColor(highlight?highlightColor_:annotationColor_,this,"Custom color");
  if(!color.isValid())return;
  // Palette colors are already one click away; only custom colors are remembered.
- bool palette=false;for(auto* swatch:swatches_)palette=palette||swatch->property("swatchColor").value<QColor>()==color;
+ bool palette=false;for(auto* swatch:std::as_const(swatches_))palette=palette||swatch->property("swatchColor").value<QColor>()==color;
  if(!palette){recentColors_.removeAll(color.name());recentColors_.prepend(color.name());while(recentColors_.size()>Settings::maximumRecentColors)recentColors_.removeLast();rebuildRecentColors();}
  useColor(color);
 }

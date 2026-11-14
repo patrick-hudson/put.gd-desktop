@@ -539,7 +539,7 @@ void FrameView::resizeEvent(QResizeEvent* e) { QWidget::resizeEvent(e); placeErr
 void FrameView::setMasks(const QList<RecordingMask>& masks, const QString& selected) {
     // A keyboard nudge not yet proposed keeps its place over the last answer.
     QRect pending;
-    if (nudging_) for (const auto& m : masks_) if (m.id == selected_ && m.id == selected) pending = m.rect;
+    if (nudging_) for (const auto& m : std::as_const(masks_)) if (m.id == selected_ && m.id == selected) pending = m.rect;
     if (selected != selected_) commitNudge();
     maskNames_->observe(masks);
     masks_ = masks;
@@ -1867,12 +1867,12 @@ void ReviewWindow::useSolidCover() {
 void ReviewWindow::setEdit(const RecordingEdit& edit) {
     // A mask the user just added becomes the selection; a removed one leaves none.
     QStringList before;
-    for (const auto& mask : edit_.masks) before.append(mask.id);
+    for (const auto& mask : std::as_const(edit_.masks)) before.append(mask.id);
     // An accepted edit answers a refusal or an earlier result in the status row.
     if (edit.revision != edit_.revision && !exporting_) { message_ = {}; errorInFooter_ = false; }
     maskNames_->observe(edit.masks);
     edit_ = edit;
-    for (const auto& mask : edit_.masks) if (!before.contains(mask.id)) selectedMask_ = mask.id;
+    for (const auto& mask : std::as_const(edit_.masks)) if (!before.contains(mask.id)) selectedMask_ = mask.id;
     if (!selectedMask()) selectedMask_.clear();
     refreshMaskList();
     view_->setMasks(edit_.masks, selectedMask_);

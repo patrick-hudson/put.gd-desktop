@@ -65,9 +65,9 @@ QSet<int> wrappingLines(const QList<RecognizedWord>& candidates) {
   line.block=block;previous=&line;
  }
  QMap<int,Line> blocks;
- for(const auto& line:lines){auto& group=blocks[line.block];group.box=group.box.united(line.box);group.characters+=line.characters;group.width+=line.width;}
+ for(const auto& line:std::as_const(lines)){auto& group=blocks[line.block];group.box=group.box.united(line.box);group.characters+=line.characters;group.width+=line.width;}
  QMap<int,int> peers;
- for(const auto& line:lines){const auto& group=blocks[line.block];const double character=double(group.width)/qMax(1,group.characters);if(group.box.right()-line.box.right()<=0.5*character)++peers[line.block];}
+ for(const auto& line:std::as_const(lines)){const auto& group=blocks[line.block];const double character=double(group.width)/qMax(1,group.characters);if(group.box.right()-line.box.right()<=0.5*character)++peers[line.block];}
  QSet<int> full;
  for(auto it=lines.cbegin();it!=lines.cend();++it){
   const auto& line=it.value();const auto& group=blocks[line.block];const double character=double(group.width)/qMax(1,group.characters);
@@ -307,7 +307,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      for(qsizetype i=0;i<letters.size();++i)if(letters.at(i).isDigit()||(i>0&&letters.at(i).isUpper()))return false;
      return true;
     };
-    int core=int(segment.words.size()),coreEnd=-1;for(const auto& [from,to]:found){core=qMin(core,from);coreEnd=qMax(coreEnd,to);}
+    int core=int(segment.words.size()),coreEnd=-1;for(const auto& [from,to]:std::as_const(found)){core=qMin(core,from);coreEnd=qMax(coreEnd,to);}
     int a=0,b=int(segment.words.size())-1;
     while(a<core&&plainWord(a))++a;
     while(b>coreEnd&&plainWord(b))--b;

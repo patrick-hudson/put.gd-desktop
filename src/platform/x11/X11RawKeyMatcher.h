@@ -20,7 +20,7 @@ public:
  std::optional<QString> press(uint8_t code){
   if(pressed_[code]){return std::nullopt;}
   const auto state=held();pressed_[code]=true;
-  for(const auto& binding:bindings_)if(binding.code==code&&uint16_t(binding.modifiers&~locks_)==state&&!(binding.modifiers&locks_))return binding.action;
+  for(const auto& binding:std::as_const(bindings_))if(binding.code==code&&uint16_t(binding.modifiers&~locks_)==state&&!(binding.modifiers&locks_))return binding.action;
   return std::nullopt;
  }
  void release(uint8_t code){pressed_[code]=false;}

@@ -688,11 +688,11 @@ QLabel* plain(QLabel* label){label->setProperty("errorCode",{});label->setToolTi
 // so an empty row leaves no gap in the page's spacing.
 class VisibleWithParts final:public QObject {
 public:
- VisibleWithParts(QWidget* row,QList<QWidget*> parts):QObject(row),row_(row),parts_(std::move(parts)){for(auto* part:parts_)part->installEventFilter(this);update();}
+ VisibleWithParts(QWidget* row,QList<QWidget*> parts):QObject(row),row_(row),parts_(std::move(parts)){for(auto* part:std::as_const(parts_))part->installEventFilter(this);update();}
 protected:
  bool eventFilter(QObject* watched,QEvent* event)override{if(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent)update();return QObject::eventFilter(watched,event);}
 private:
- void update(){bool shown=false;for(auto* part:parts_)shown|=part->isVisibleTo(row_);row_->setVisible(shown);}
+ void update(){bool shown=false;for(auto* part:std::as_const(parts_))shown|=part->isVisibleTo(row_);row_->setVisible(shown);}
  QWidget* row_;QList<QWidget*> parts_;
 };
 QString settingHelp(const QString& path,const QString& objectName){
@@ -966,7 +966,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // config, view-state and agent paths.
  auto* exceptionBody=new QWidget;exceptionBody->setObjectName("captureExceptions");exceptionBody->setMaximumWidth(Ui::scaled(760));auto* exceptionBox=new QVBoxLayout(exceptionBody);exceptionBox->setContentsMargins(0,0,0,0);exceptionBox->setSpacing(space(Space::m));qobject_cast<QVBoxLayout*>(PreferenceRows::sectionFor(captureDefaults)->layout())->addWidget(exceptionBody);exceptionBox->setContentsMargins(0,space(Space::xs),0,0);exceptionBody->hide();
  auto* exceptionRows=captureExceptionRows_=new QGridLayout;exceptionRows->setContentsMargins(0,0,0,0);exceptionRows->setHorizontalSpacing(space(Space::m));exceptionRows->setVerticalSpacing(space(Space::s));exceptionBox->addLayout(exceptionRows);auto* addException=new QToolButton;addException->setObjectName("addCaptureException");addException->setText("Add an exception…");addException->setIcon(Ui::icon("add"));addException->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);Ui::role(addException,"quiet");addException->setProperty("uiFlush",true);addException->setProperty("preferenceAddRow",true);addException->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);addException->setProperty("alignLeft",true);addException->setProperty("noChevron",true);addException->setPopupMode(QToolButton::InstantPopup);auto* exceptionMenu=new QMenu(addException);addException->setMenu(exceptionMenu);captureDefaults->addRow(addException);addException->hide();
- connect(captureExceptions_,&QToolButton::toggled,this,[=,this](bool open){bool overrides=false;for(auto* inherit:useCaptureDefault_)overrides|=!inherit->isChecked();exceptionBody->setVisible(open&&overrides);addException->setVisible(open);emit viewStateChanged();});
+ connect(captureExceptions_,&QToolButton::toggled,this,[=,this](bool open){bool overrides=false;for(auto* inherit:std::as_const(useCaptureDefault_))overrides|=!inherit->isChecked();exceptionBody->setVisible(open&&overrides);addException->setVisible(open);emit viewStateChanged();});
  for(const auto& action:Settings::presentationOrder()){
   auto* inherit=useCaptureDefault_[action]=new QCheckBox(action=="record"?"Use Capture region output":"Use default",exceptionBody);inherit->setObjectName("useDefault"+title(action));inherit->setAccessibleName(actionLabel(action)+(action=="record"?": use Capture region output":": use default output"));inherit->hide();
   auto* line=new QWidget;line->setObjectName("captureRow"+title(action));auto* lineLayout=new QHBoxLayout(line);lineLayout->setContentsMargins(0,0,0,0);lineLayout->setSpacing(space(Space::m));
@@ -1065,7 +1065,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* images=section(left,"Images and clipboard");number(images,"imageBytes","Largest image","MB");number(images,"imagePixels","Largest image size","megapixels");number(images,"clipboardTextBytes","Clipboard text limit","MB");
  auto* memory=section(left,"Memory and cache");number(memory,"pendingImageBytes","Memory for queued images","MB");number(memory,"previewCacheBytes","Thumbnail cache","MB");
  auto* retention=section(right,"History");number(retention,"historyRetentionDays","Keep history for","days");number(retention,"failedArtifactDays","Keep files for retry","days");auto* retryConsequence=PreferenceRows::caption("After this period, local retry files may be removed. Uploaded files aren't affected.");retryConsequence->setObjectName("failedArtifactConsequence");qobject_cast<QVBoxLayout*>(errors_[numbers_["failedArtifactDays"]]->parentWidget()->layout())->addWidget(retryConsequence);number(retention,"recentActivityLimit","Items in recent list",{});retention->addRow(resourceLimitsToggle_);retention->addRow(resourceLimits_);
- resources->addWidget(resetAll,0,Qt::AlignRight);connect(resetAll,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Reset limits to defaults","Reset the limits on this page to their defaults: uploads, images and clipboard, memory and cache, and history retention?\n\nDebug logging, diagnostics, the config file and every other setting stay as they are.","Reset limits"))return;for(auto* field:numbers_){field->setText(field->property("defaultText").toString());queueEdit(field);}});
+ resources->addWidget(resetAll,0,Qt::AlignRight);connect(resetAll,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Reset limits to defaults","Reset the limits on this page to their defaults: uploads, images and clipboard, memory and cache, and history retention?\n\nDebug logging, diagnostics, the config file and every other setting stay as they are.","Reset limits"))return;for(auto* field:std::as_const(numbers_)){field->setText(field->property("defaultText").toString());queueEdit(field);}});
  // Diagnostics (#122): what the persistent log holds and the package a maintainer needs.
  // Advanced, above Config file (#238); Reset limits to defaults leaves it alone.
  auto* diagnosticsForm=section(right,"Diagnostics","Logs and diagnostics packages stay on this computer.");
@@ -1201,7 +1201,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));text->addWidget(i?destinationStatus_:status_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
  // Council 22: a conflict is a warning, not a failure: a banner with Reload from file…, not red text.
  for(int i=0;i<2;++i){auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,conflictMessage());banner->setObjectName(i?"destinationConflictBanner":"settingsConflictBanner");banner->setAction("Reload from file…");auto* reload=banner->actionButton();reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();banner->hide();reloadConflict_.insert(i,reload);conflictBanners_.insert(i,banner);feedbackRows[i]->addBanner(banner);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
- for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
+ for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
  for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,conflictBanners_[i],retryAutosave_[i]});
  auto* testSection=new FormRow;testSection->setObjectName("destinationTestSection");auto* testBox=new QVBoxLayout(testSection);testBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));testBox->setSpacing(space(Space::s));auto* testLine=new QHBoxLayout;testLine->setSpacing(space(Space::l));auto* testText=new QVBoxLayout;testText->setSpacing(space(Space::xs));testText->setAlignment(Qt::AlignVCenter);testText->addWidget(Ui::label("Connection test","body"));testText->addWidget(testScope);testLine->addLayout(testText,1);testLine->addWidget(test,0,Qt::AlignRight|Qt::AlignVCenter);testBox->addLayout(testLine);new ConnectionTestSizer(testSection,testLine,testScope,test);credentialForm->addRow(testSection);testSection->setProperty("preferenceRow",true);testSection->setProperty("preferenceRowInset",true);testSection->setProperty("preferenceNaturalHeight",true);
  connect(scrollHeight_,&QSpinBox::valueChanged,this,[this]{queueEdit(scrollHeight_);});
@@ -1360,12 +1360,12 @@ void SettingsWindow::showTextLanguages(){
  QStringList automatic;for(const auto& id:textjob::defaultLanguages({},QLocale::system().name(),installed))automatic<<name(id);
  QStringList saved;
  if(loading_)saved=Settings::fromValidated(draft_).textRecognitionLanguages;
- else for(auto* combo:textLanguages_)saved.append(combo->currentData().toString());
+ else for(auto* combo:std::as_const(textLanguages_))saved.append(combo->currentData().toString());
  QStringList missing;
  for(qsizetype i=0;i<textLanguages_.size();++i){
   auto* combo=textLanguages_[i];const QSignalBlocker block(combo);combo->clear();
   combo->addItem(i==0?"Automatic: "+automatic.join(", then "):QString("None"),QString());
-  for(const auto& language:installed)combo->addItem(name(language.id),language.id);
+  for(const auto& language:std::as_const(installed))combo->addItem(name(language.id),language.id);
   // A saved language whose data went away stays chosen, and says so.
   const auto chosen=saved.value(i);if(!chosen.isEmpty()&&!listed(chosen)){combo->addItem(name(chosen)+" (not installed)",chosen);missing<<name(chosen);}
   combo->setCurrentIndex(qMax(0,combo->findData(chosen)));combo->setEnabled(i==0||!saved.value(0).isEmpty());
@@ -1389,7 +1389,7 @@ void SettingsWindow::refreshDiagnostics(){
 
 void SettingsWindow::refresh(bool preserveDrafts){
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
- autosaveBlocked_=false;for(auto* button:retryAutosave_)button->hide();reorderBaseline_.clear();
+ autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();reorderBaseline_.clear();
  loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseDocument_=draft_;baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
  Ui::feedback(plain(status_),{});plain(destinationStatus_);showConflictActions();
  // Destinations are created only by an explicit Add action. Keep the legacy
@@ -1409,8 +1409,8 @@ void SettingsWindow::populate(){
   publicationModes_[name]->setCurrentIndex(publicationModes_[name]->findData(effective["publicationMode"].toString("default")));auto* c=actionProfiles_[name];c->clear();c->addItem("No destination",QString{});for(auto p:profiles)c->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());c->setCurrentIndex(c->findData(effective["destination"]=="local"?QString{}:effective["profileId"].toString()));
  }
  captureProfile_->setCurrentIndex(captureProfile_->findData(base["destination"]=="local"?QString{}:base["profileId"].toString()));captureSharing_->setCurrentIndex(captureSharing_->findData(base["publicationMode"].toString("default")));
- bool exceptions=false;for(auto* inherit:useCaptureDefault_)exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
- shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());if(auto* toggle=findChild<QToolButton*>("categoryFoldersToggle")){bool overrides=false;for(auto* field:folders_)overrides|=!field->text().isEmpty();toggle->setChecked(overrides);}
+ bool exceptions=false;for(auto* inherit:std::as_const(useCaptureDefault_))exceptions|=!inherit->isChecked();captureExceptions_->setChecked(exceptions);
+ shortcuts_->setActions(actions);auto archive=draft_["archive"].toObject();root_->setText(archive["root"].toString());keep_->setChecked(archive["keepUploads"].toBool());for(auto it=folders_.begin();it!=folders_.end();++it)it.value()->setText(archive["folders"].toObject()[it.key()].toString());if(auto* toggle=findChild<QToolButton*>("categoryFoldersToggle")){bool overrides=false;for(auto* field:std::as_const(folders_))overrides|=!field->text().isEmpty();toggle->setChecked(overrides);}
  naming_->setCurrentIndex(naming_->findData(draft_["naming"].toObject()["mode"].toString()));const auto effective=Settings::fromValidated(draft_);const QHash<QString,QString> formats{{"fileTemplate",effective.fileTemplate},{"captureTemplate",effective.captureTemplate},{"imageTemplate",effective.imageTemplate},{"textTemplate",effective.textTemplate}};for(auto it=templates_.begin();it!=templates_.end();++it)it.value()->setText(formats.value(it.key()));collision_->setCurrentIndex(collision_->findData(draft_["naming"].toObject()["collisionPolicy"].toString()));auto prefs=draft_["preferences"].toObject();uploadClipboard_->setCurrentIndex(uploadClipboard_->findData(effective.uploadClipboardBehavior));showTextLanguages();regionSelection_->setCurrentIndex(regionSelection_->findData(effective.regionSelectionMode));captureDelay_->setCurrentIndex(captureDelay_->findData(effective.captureDelaySeconds));captureDelayShortcuts_->setChecked(effective.captureDelayShortcuts);fileManagerFolders_->setCurrentIndex(fileManagerFolders_->findData(effective.fileManagerFolders));fileManagerMenu_->setChecked(effective.fileManagerMenu||!fileManagerMenu_->isEnabled());recordingFrameRate_->setCurrentIndex(recordingFrameRate_->findData(effective.recordingFrameRate));{int chosen=recordingMicrophone_->findData(effective.recordingMicrophoneDevice);if(chosen<0){recordingMicrophone_->addItem(effective.recordingMicrophoneDevice+" (not connected)",effective.recordingMicrophoneDevice);chosen=recordingMicrophone_->count()-1;}recordingMicrophone_->setCurrentIndex(chosen);}scrollHeight_->setValue(effective.scrollCaptureMaxHeight);scrollFromTop_->setChecked(effective.scrollCaptureFromTop);recordingClicks_->setChecked(effective.recordingClickHighlights);appearance_->setCurrentIndex(appearance_->findData(effective.appearanceTheme));notifications_->setChecked(prefs["notifications"].toBool());login_->setChecked(prefs["launchAtLogin"].toBool());debugLogging_->setChecked(prefs["diagnostics"].toObject()["debugLogging"].toBool());unlockAtStartup_->setChecked(effective.unlockCredentialsAtStartup);checkUpdates_->setChecked(effective.checkForUpdates);updateChannelSetting_=effective.updateChannel;updateChannelShown_.clear();showUpdateChannel();
  for(auto it=numbers_.begin();it!=numbers_.end();++it){QJsonValue value=draft_["limits"].toObject().contains(it.key())?draft_["limits"].toObject().value(it.key()):draft_["retention"].toObject().value(it.key());if(it.key()=="pendingImageBytes"&&value.isUndefined())value=effective.limits.pendingImageBytes;it.value()->setText(value.isNull()?QString{}:value.isString()?QStringLiteral("Auto"):ByteSize::exact(value.toInteger(),displayUnit(it.key())));}
  updateCaptureInheritance();loading_=false;updateResourceLimits();
@@ -1481,7 +1481,7 @@ void SettingsWindow::storeProfile(){
  while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
  rememberCredentialInputs();profileEditors_[profileIndex_]=retainedProfileEditor();
  const auto p=editedProfile();
- for(auto* combo:actionProfiles_){const int index=profileIndex_+1;if(index<combo->count()){combo->setItemData(index,p["id"].toString());combo->setItemText(index,p["label"].toString());}}
+ for(auto* combo:std::as_const(actionProfiles_)){const int index=profileIndex_+1;if(index<combo->count()){combo->setItemData(index,p["id"].toString());combo->setItemText(index,p["label"].toString());}}
  profile_->setItemText(profileIndex_,p["label"].toString());profile_->setItemData(profileIndex_,p["id"].toString());
  profiles[profileIndex_]=p;draft_["profiles"]=profiles;
 }
@@ -1626,7 +1626,7 @@ void SettingsWindow::refreshUpdateStatus(){
  // The choice shows this build's channel until it is changed (#344).
  showUpdateChannel();
  // A build that never checks has nothing to choose: only the reason shows.
- const bool development=settings_.build()["version"].toString().contains("-dev");for(auto* row:updateRows_)updatesForm_->setRowVisible(row,supported||(update.isEmpty()&&!development));
+ const bool development=settings_.build()["version"].toString().contains("-dev");for(auto* row:std::as_const(updateRows_))updatesForm_->setRowVisible(row,supported||(update.isEmpty()&&!development));
  // The status keeps the row's width beside Check now, so it never folds into a narrow column.
  if(auto* row=qobject_cast<QHBoxLayout*>(updateStatus_->parentWidget()->layout())){row->setStretch(0,1);row->setStretch(2,0);}
  checkNow_->setVisible(supported);checkNow_->setEnabled(supported&&!update["checking"].toBool());
@@ -1965,7 +1965,7 @@ void SettingsWindow::updateCaptureInheritance(){
   // An exception with no output is a warning, as under Destination: the glyph carries the tone, the words stay neutral.
   Ui::feedback(captureSummary_[name],inherit?(name=="record"?outputSummary(profile,sharing):fails?QString("Nothing is saved or uploaded"):QString("Same as above")):outputSummary(profile,sharing));Ui::role(captureSummary_[name],!inherit&&fails?"warning":"secondary");
  }
- int overrides=0;for(auto* inherit:useCaptureDefault_)overrides+=!inherit->isChecked();const auto summary=overrides?QString("%1 %2").arg(overrides).arg(overrides==1?"exception":"exceptions"):QString("None");findChild<QLabel*>("captureExceptionsSummary")->setText(summary);captureExceptions_->setAccessibleDescription(summary);findChild<QToolButton*>("addCaptureException")->setEnabled(overrides<Settings::presentationOrder().size());findChild<QLabel*>("recordingOutputInheritance")->setVisible(useCaptureDefault_["record"]->isChecked()&&(actionProfiles_["region"]->currentData()!=captureProfile_->currentData()||outputSummary(actionProfiles_["region"],publicationModes_["region"])!=outputSummary(captureProfile_,captureSharing_)));
+ int overrides=0;for(auto* inherit:std::as_const(useCaptureDefault_))overrides+=!inherit->isChecked();const auto summary=overrides?QString("%1 %2").arg(overrides).arg(overrides==1?"exception":"exceptions"):QString("None");findChild<QLabel*>("captureExceptionsSummary")->setText(summary);captureExceptions_->setAccessibleDescription(summary);findChild<QToolButton*>("addCaptureException")->setEnabled(overrides<Settings::presentationOrder().size());findChild<QLabel*>("recordingOutputInheritance")->setVisible(useCaptureDefault_["record"]->isChecked()&&(actionProfiles_["region"]->currentData()!=captureProfile_->currentData()||outputSummary(actionProfiles_["region"],publicationModes_["region"])!=outputSummary(captureProfile_,captureSharing_)));
  findChild<QWidget*>("captureExceptions")->setVisible(captureExceptions_->isChecked()&&overrides>0);captureExceptionRows_->invalidate();captureExceptionRows_->parentWidget()->layout()->invalidate();captureExceptionRows_->parentWidget()->updateGeometry();
 }
 // The output a capture gets, in the status band's words: Shared link or Private
@@ -2041,7 +2041,7 @@ void SettingsWindow::showCaptureSettings(const QStringList& affectedActions){
  tabs_->setCurrentIndex(1);if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(1)))scroll->verticalScrollBar()->setValue(0);
  QStringList targets=affectedActions;if(targets.isEmpty())for(const auto& action:Settings::presentationOrder())if(!useCaptureDefault_[action]->isChecked())targets<<action;
  QWidget* target=captureProfile_;bool overriding=false;
- for(const auto& action:targets)if(actionProfiles_.contains(action)&&!useCaptureDefault_[action]->isChecked()){target=actionProfiles_[action];overriding=true;break;}
+ for(const auto& action:std::as_const(targets))if(actionProfiles_.contains(action)&&!useCaptureDefault_[action]->isChecked()){target=actionProfiles_[action];overriding=true;break;}
  captureExceptions_->setChecked(overriding);
  revealAndFocus(target);
 }
@@ -2070,7 +2070,7 @@ void SettingsWindow::save(){
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){g->autosaveFailure(result.error);return;}g->persistNextEdit();return;}
   // The whole draft was accepted: nothing in the custom uploader form is refused any more.
   if(g->uploader_)g->uploader_->showProblem({},{});
-  g->saving_=false;g->autosaveBlocked_=false;for(auto* button:g->retryAutosave_)button->hide();g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
+  g->saving_=false;g->autosaveBlocked_=false;for(auto* button:std::as_const(g->retryAutosave_))button->hide();g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
   for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
   g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();if(!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();
   if(!g->pendingEdits_.contains(themePath))g->endAppearancePreview();
@@ -2090,7 +2090,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
  // A conflicting reorder is not kept: the list goes back to the saved order.
  const bool reordered=conflict_&&!reorderBaseline_.isEmpty();if(reordered)restoreReorderBaseline();
  auto message=error;if(conflict_)message.message=conflictMessage()+QString(reordered?" The previous destination order is restored.":"");else message.message+=" Your edits remain in this window. Retry saving when ready; the request won't repeat automatically.";status(message);
- for(auto* button:retryAutosave_)button->setVisible(!conflict_);showConflictActions();
+ for(auto* button:std::as_const(retryAutosave_))button->setVisible(!conflict_);showConflictActions();
  emit viewStateChanged();
 }
 void SettingsWindow::persistNextEdit(){
@@ -2182,7 +2182,7 @@ bool SettingsWindow::restoreViewState(const QJsonObject& state){
  QSignalBlocker stateSignals(this);protonBrowserOpened_=false;pendingProtonUrl_.clear();pendingProtonSetup_.clear();protonBrowserOpening_=false;protonBrowserRetry_->hide();clearCredentialInputs();loading_=true;draft_=state["draft"].toObject();profileEditors_=state["profileEditors"].toArray();provisionalProfile_=state["provisionalProfile"].toObject();baseRevision_=state["baseRevision"].toString();observed_=state["observedRevision"].toString();initialProfile_=state["initialProfile"].toBool();
  populate();loading_=true;profile_->setCurrentIndex(state["profileIndex"].toInt(-1));loadProfile();const auto numbers=state["numbers"].toObject();for(auto it=numbers_.begin();it!=numbers_.end();++it)it.value()->setText(numbers[it.key()].toString());
  findChild<QToolButton*>("desktopSupportDetailsToggle")->setChecked(state["desktopSupportDetails"].toBool());resourceLimitsToggle_->setChecked(state["resourceLimits"].toBool());findControl<QToolButton*>("advancedSettings")->setChecked(state["advanced"].toBool());tabs_->setCurrentIndex(state["section"].toInt());const auto box=state["geometry"].toArray();setGeometry(box[0].toInt(),box[1].toInt(),box[2].toInt(),box[3].toInt());
- dirty_=state["dirty"].toBool();autosaveBlocked_=state["autosaveBlocked"].toBool();for(auto* button:retryAutosave_)button->setVisible(autosaveBlocked_&&!state["conflict"].toBool());conflict_=state["conflict"].toBool();baseDocument_=settings_.document();showConflictActions();loading_=false;updateResourceLimits();setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
+ dirty_=state["dirty"].toBool();autosaveBlocked_=state["autosaveBlocked"].toBool();for(auto* button:std::as_const(retryAutosave_))button->setVisible(autosaveBlocked_&&!state["conflict"].toBool());conflict_=state["conflict"].toBool();baseDocument_=settings_.document();showConflictActions();loading_=false;updateResourceLimits();setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
  configurationChanged();stateSignals.unblock();emit viewStateChanged();return true;
 }
 
@@ -2274,7 +2274,7 @@ void SettingsWindow::clearCurrentCredentialInputs(){
 }
 void SettingsWindow::importDevelopmentProfile(){
  if(initialProfile_&&s3_["bucket"]->text().isEmpty()){
-  draft_["profiles"]=QJsonArray{};profileEditors_={};credentialDrafts_.clear();profileIndex_=-1;for(auto* combo:actionProfiles_)combo->setCurrentIndex(0);
+  draft_["profiles"]=QJsonArray{};profileEditors_={};credentialDrafts_.clear();profileIndex_=-1;for(auto* combo:std::as_const(actionProfiles_))combo->setCurrentIndex(0);
  }else storeProfile();
  draft_=candidate();auto profiles=draft_["profiles"].toArray();const auto development=Settings::developmentTemplate()["profiles"].toArray().first();
  int index=-1;for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]=="development-s3")index=i;
@@ -2448,7 +2448,7 @@ void SettingsWindow::uploaderCommand(const QJsonObject& params,std::function<voi
 void SettingsWindow::allowControl(QWidget* control,bool allowed){control->setProperty("providerEnabled",allowed);control->setEnabled(allowed&&!setupBusy_);}
 void SettingsWindow::updateSetupButton(){
  const auto id=profileId_->text();bool foldersLoading=folderRequests_.contains(id);
- for(const auto& value:setupJobs_){const auto job=value.toObject();if(job["profileId"]==id&&(job["kind"]=="connectAccount"||job["kind"]=="inspectAccount"))foldersLoading=true;}
+ for(const auto& value:std::as_const(setupJobs_)){const auto job=value.toObject();if(job["profileId"]==id&&(job["kind"]=="connectAccount"||job["kind"]=="inspectAccount"))foldersLoading=true;}
  protonFolderStatus_->setText(foldersLoading?(pendingProtonUrl_.isEmpty()?QString("Loading folders…"):QString("Waiting for Proton sign-in…")):QString{});protonFolderStatus_->setVisible(foldersLoading&&providerType_->currentData()=="proton-drive");
  const bool busy=setupAccepting_||!setupJobs_.isEmpty();
  // While setup runs only its actionable controls are disabled: names, account
@@ -2542,7 +2542,7 @@ QStringList SettingsWindow::draftEdits()const{
  const auto draft=candidate();auto base=baseDocument_.isEmpty()?settings_.document():baseDocument_;if(base.isEmpty())base=Settings::defaults();
  // Settings controls by their bound path; their accessible names are the visible labels.
  QHash<QString,QString> names;QList<QWidget*> controls=findChildren<QWidget*>();if(destinationPage_)controls+=destinationPage_->findChildren<QWidget*>();
- for(auto* control:controls){const auto path=control->property("configPath").toString();if(path.isEmpty()||path.contains("{profile}")||names.contains(path)||(qobject_cast<QLineEdit*>(control)&&qobject_cast<QComboBox*>(control->parentWidget())))continue;auto name=qobject_cast<QAbstractButton*>(control)?qobject_cast<QAbstractButton*>(control)->text():control->accessibleName();name=name.section(':',0,0);if(!name.isEmpty())names.insert(path,name);}
+ for(auto* control:std::as_const(controls)){const auto path=control->property("configPath").toString();if(path.isEmpty()||path.contains("{profile}")||names.contains(path)||(qobject_cast<QLineEdit*>(control)&&qobject_cast<QComboBox*>(control->parentWidget())))continue;auto name=qobject_cast<QAbstractButton*>(control)?qobject_cast<QAbstractButton*>(control)->text():control->accessibleName();name=name.section(':',0,0);if(!name.isEmpty())names.insert(path,name);}
  const auto describe=[&](const QString& path)->QString{
   const auto parts=path.split('/',Qt::SkipEmptyParts);const auto group=parts.value(0);
   if(group=="actions"&&parts.size()>2&&parts[2]=="shortcut")return "Hotkeys → "+actionLabel(parts[1]);
@@ -2556,7 +2556,7 @@ QStringList SettingsWindow::draftEdits()const{
  // Leaf differences, outside the destination list.
  std::function<void(const QJsonValue&,const QJsonValue&,const QString&)> compare=[&](const QJsonValue& now,const QJsonValue& before,const QString& path){
   if(now==before)return;
-  if(now.isObject()&&before.isObject()){const auto a=now.toObject(),b=before.toObject();auto keys=a.keys();for(const auto& key:b.keys())if(!a.contains(key))keys.append(key);for(const auto& key:keys)compare(a.value(key),b.value(key),path+"/"+key);return;}
+  if(now.isObject()&&before.isObject()){const auto a=now.toObject(),b=before.toObject();auto keys=a.keys();for(const auto& key:b.keys())if(!a.contains(key))keys.append(key);for(const auto& key:std::as_const(keys))compare(a.value(key),b.value(key),path+"/"+key);return;}
   add(describe(path));
  };
  for(const auto& key:draft.keys())if(key!="profiles")compare(draft.value(key),base.value(key),"/"+key);

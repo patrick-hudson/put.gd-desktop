@@ -770,7 +770,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   if (ids.size() > 64 || !validNames(names)) return error();
   if (ids.isEmpty()) for (int id = 0; id <= entryCount; ++id) ids.append(id);
   NativePropertyList values;
-  for (int id : ids) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs(),owner_->delay())});
+  for (int id : std::as_const(ids)) if (knownId(id)) values.append({id, menuProperties(id, names, owner_->updateLabel(),owner_->shortcuts(),owner_->uploadStatus(),owner_->uploadCount(),owner_->failed(),owner_->recordingText(),owner_->attentionLabel(),owner_->outputs(),owner_->delay())});
   return reply({QVariant::fromValue(values)});
  }
  if (member == "GetProperty" && sig == "is") {

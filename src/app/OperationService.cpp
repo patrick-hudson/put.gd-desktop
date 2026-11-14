@@ -171,7 +171,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   EditorJob::discardStaging(root_+"/editing");
   RecordingService::discardStaging(root_+"/recording");
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
-  for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:batch.artifacts) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
+  for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:std::as_const(batch.artifacts)) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
  },[this](Error e,QJsonObject) {
   startupError_=e;ready_=!e;
@@ -183,7 +183,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(text_)text_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:std::as_const(active_)) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:std::as_const(itemCancels_))for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(scroll_)scroll_->shutdown();if(text_)text_->shutdown();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
@@ -908,8 +908,8 @@ Operation OperationService::run(Job job) {
    if(index>=0&&index<job.origins.size()){const auto origin=job.origins[index];acquired.error.details["path"]=origin;acquired.error.message=QFileInfo(origin).fileName()+": "+acquired.error.message;}
   }
   if(acquired.error) {op.error=acquired.error;op.advance(OperationState::Failed);save();logging::warning(logOperation(),"Acquisition failed",{{"operationId",op.id},{"error",logging::errorFields(op.error)}});return op;}
-  for(const auto& a:acquired.artifacts) {OperationItem item;item.phase="stored";item.artifact=a;item.artifact.previewPath=artifacts.preview(a,op.settings.previewCacheBytes,op.settings.limits.imagePixels);item.publicationId=uuid();op.items.append(item);}op.advance(OperationState::Stored);if(!save())return op;
-  QJsonArray mimes;for(const auto& item:op.items)if(!mimes.contains(item.artifact.mime))mimes.append(item.artifact.mime);
+  for(const auto& a:std::as_const(acquired.artifacts)) {OperationItem item;item.phase="stored";item.artifact=a;item.artifact.previewPath=artifacts.preview(a,op.settings.previewCacheBytes,op.settings.limits.imagePixels);item.publicationId=uuid();op.items.append(item);}op.advance(OperationState::Stored);if(!save())return op;
+  QJsonArray mimes;for(const auto& item:std::as_const(op.items))if(!mimes.contains(item.artifact.mime))mimes.append(item.artifact.mime);
   logging::info(logOperation(),"Artifacts acquired",{{"operationId",op.id},{"items",op.items.size()},{"byteCount",artifactBytes(op)},{"mimeTypes",mimes}});
  }
  // Archive every acquired item before any item in this batch is published.
@@ -917,7 +917,7 @@ Operation OperationService::run(Job job) {
  const auto route=routeOf(op);
  const bool local=route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
- if(local) {for(auto& item:op.items) item.uploadStatus="local_only";bool saved=true;for(const auto& item:op.items) if(item.local.status!="saved")saved=false;op.advance(saved?OperationState::Completed:OperationState::Failed);save();return op;}
+ if(local) {for(auto& item:op.items) item.uploadStatus="local_only";bool saved=true;for(const auto& item:std::as_const(op.items)) if(item.local.status!="saved")saved=false;op.advance(saved?OperationState::Completed:OperationState::Failed);save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.advance(OperationState::Failed);save();return op;}
  const auto capabilities=provider->capabilities(op.destination);
  auto publicationMode=routeOf(op).publicationMode;
@@ -925,8 +925,8 @@ Operation OperationService::run(Job job) {
  if(publicationMode=="private"&&!capabilities.privateUploads){op.error={"unsupported_capability","This provider cannot perform a private upload",{}};op.advance(OperationState::Failed);save();return op;}
  // A server that names its own objects has no name to collide with: the policy does not apply (#1361).
  if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","Provider cannot enforce this collision policy",{}};op.advance(OperationState::Failed);save();return op;}
- bool needsNames=job.acquire;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
- if(needsNames) {QList<Artifact> list;for(const auto& item:op.items)list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes);QJsonArray chosen;
+ bool needsNames=job.acquire;for(const auto& item:std::as_const(op.items))if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
+ if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes);QJsonArray chosen;
   for(int i=0;i<op.items.size();++i) {
    if(!op.items[i].candidate.isEmpty())continue;
    // A diagnostics package ignores naming templates: an unguessable name.
@@ -971,7 +971,7 @@ Operation OperationService::run(Job job) {
   else if(!checked&&item.uploadStatus=="stored") {item.uploadStatus="failed";item.error={"collision_exhausted","No available candidate after 32 checks",{}};}
   if(!saveItem(item))return op;
  }
- for(const auto& group:targets) if(group.size()>1) {if(op.settings.collisionPolicy=="overwrite") {for(int i:group)op.items[i].uploadStatus="conflict";}else if(op.settings.collisionPolicy=="skip") {for(int n=1;n<group.size();++n)op.items[group[n]].uploadStatus="skipped";}else {for(int n=1;n<group.size();++n) {auto& item=op.items[group[n]];item.uploadStatus="failed";item.error={"name_alias_conflict","Provider candidates resolve to one target",{}};}}}
+ for(const auto& group:std::as_const(targets)) if(group.size()>1) {if(op.settings.collisionPolicy=="overwrite") {for(int i:group)op.items[i].uploadStatus="conflict";}else if(op.settings.collisionPolicy=="skip") {for(int n=1;n<group.size();++n)op.items[group[n]].uploadStatus="skipped";}else {for(int n=1;n<group.size();++n) {auto& item=op.items[group[n]];item.uploadStatus="failed";item.error={"name_alias_conflict","Provider candidates resolve to one target",{}};}}}
  if(!save())return op;
  // Files upload in parallel up to "Uploads at once", shared fairly by every
  // operation (#28). Each file holds one slot for its whole transfer, so a large
@@ -1093,7 +1093,7 @@ Operation OperationService::run(Job job) {
   if(job.cancelled->load()) {op.cancelled=true;break;}
   const auto cancel=itemCancellation(op.id,item.artifact.id);
   // Waiting for a slot: the operation reads as queued until one of its files transfers.
-  {std::lock_guard lock(itemsMutex);item.phase="queued";op.items[index]=item;bool transferring=false;for(const auto& other:op.items)transferring=transferring||QStringList{"uploading","finalizing","preparing"}.contains(other.phase);if(!transferring)op.phase="queued";observe(op.publicJson());}
+  {std::lock_guard lock(itemsMutex);item.phase="queued";op.items[index]=item;bool transferring=false;for(const auto& other:std::as_const(op.items))transferring=transferring||QStringList{"uploading","finalizing","preparing"}.contains(other.phase);if(!transferring)op.phase="queued";observe(op.publicJson());}
   const bool admitted=uploadSlots_.acquire(op.id,[&job,cancel]{return job.cancelled->load()||cancel->load();});
   {std::lock_guard lock(itemsMutex);op.phase="uploading";}
   if(!admitted) {
@@ -1158,7 +1158,7 @@ Operation OperationService::run(Job job) {
   }
  }
  op.cancelled=op.cancelled||job.cancelled->load();
- bool partial=false;for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.uploadStatus=="cancelled"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")partial=true;
+ bool partial=false;for(const auto& item:std::as_const(op.items)) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.uploadStatus=="cancelled"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")partial=true;
  op.advance(op.cancelled?OperationState::Cancelled:partial?OperationState::Partial:OperationState::Completed);
  op.phase=op.stateName();save();return op;
 }
@@ -1334,7 +1334,7 @@ void OperationService::retry(const QString& id,JsonReply reply) {
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
-  bool pending=false;for(const auto& i:op.items)if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
+  bool pending=false;for(const auto& i:std::as_const(op.items))if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);
   if(!op.advance(OperationState::Stored)){active_.remove(id);reply({"operation_busy","Operation is already active",{}},{});return;}
@@ -1396,7 +1396,7 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
   record(op,{{"suppression",explicitCopy?copyGuard(false,false,"superseded",ticket,invocation_,0,0):copyGuard(false,false,"newer_action",op.invocation,invocation_,op.clipboardRevision,source_.clipboardRevision())}});return;
  }
  QStringList urls,files;QString localKind;
- for(const auto& item:op.items) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
+ for(const auto& item:std::as_const(op.items)) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
  if(urls.isEmpty()&&files.isEmpty()) {op.copyStatus="no_result";record(op);return;}
  CopyPayload payload;
  if(!urls.isEmpty()) {payload.kind="text";payload.text=urls.join('\n');}
@@ -1576,7 +1576,7 @@ void OperationService::startCleanup(bool automatic,JsonReply reply) {
   if(reply)reply(e,result);
   // More expired operations than one pass takes: the next pass follows shortly.
   if(automatic&&!e&&result["more"].toBool()&&!stopping_)QTimer::singleShot(cleanupSchedule_.followUpMs,this,&OperationService::cleanupExpired);
-  auto pending=std::exchange(afterCleanup_,{});for(const auto& next:pending)next();
+  auto pending=std::exchange(afterCleanup_,{});for(const auto& next:std::as_const(pending))next();
  });
 }
 void OperationService::announceIncompleteUploads(QJsonObject& outcome,bool automatic) {
@@ -1626,10 +1626,10 @@ QJsonObject OperationService::cleanArtifacts(const CleanupPass& pass,Error& e) {
   if(pass.automatic&&removed>=pass.batch) {outcome["more"]=true;break;}
   if(pass.activeIds.contains(name))continue;
   Error error;auto op=store.operation(name,&error);if(error)continue;
-  bool successful=true;for(const auto& item:op.items)if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;
+  bool successful=true;for(const auto& item:std::as_const(op.items))if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;
   const bool finished=op.state()==OperationState::Completed||op.state()==OperationState::Partial||op.state()==OperationState::Failed||op.state()==OperationState::Cancelled||op.state()==OperationState::Interrupted;
-  bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;
-  bool archivePending=false;for(const auto& item:op.items)if(item.local.status=="failed")archivePending=true;
+  bool uploaded=true;for(const auto& item:std::as_const(op.items))if(!terminalUpload(item.uploadStatus))uploaded=false;
+  bool archivePending=false;for(const auto& item:std::as_const(op.items))if(item.local.status=="failed")archivePending=true;
   const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);
   const qint64 age=date.isValid()?date.daysTo(pass.now):-1;
   const bool expired=pass.failedArtifactDays>0&&age>=pass.failedArtifactDays;
