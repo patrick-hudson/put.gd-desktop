@@ -267,6 +267,8 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
         chainHinted_ = true;
     };
     const bool afterWait = stepSentAt_ >= 0 && t - stepSentAt_ >= responseWaitMs() * patience_;
+    // Whether this frame showed the page where the last placed frame had it.
+    lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);
     switch (r.status) {
         case TrackStatus::Placed: {
             const long long d = r.offset;
@@ -552,8 +554,11 @@ void ScrollSession::settled(int64_t now) {
     restedBefore_ = true;
     if (phase_ == Phase::Settle && measure && stepNotches_ > 0 && stepMoved_ > 0) {
         const double sample = double(stepMoved_) / stepNotches_;
-        // A short step (the last, partial one at the end) keeps the distance per notch.
-        if (stats_.pxPerNotch <= 0 || sample >= 0.7 * stats_.pxPerNotch) stats_.pxPerNotch = sample;
+        // A short step (the last, partial one at the end) keeps the distance per
+        // notch, and so does one that moved far more than a notch can: a page
+        // that laid itself out anew during the step (GitHub in Chrome gave
+        // 540 px for a notch of 180, and every later step was one notch).
+        if (stats_.pxPerNotch <= 0 || (sample >= 0.7 * stats_.pxPerNotch && sample <= 1.5 * stats_.pxPerNotch)) stats_.pxPerNotch = sample;
         if (lastMoveAt_ >= 0) animationMs_ = std::clamp(std::max(int(0.7 * animationMs_), int(lastMoveAt_ - stepSentAt_)), 120, 1500);
     }
     stillSteps_ = 0;
@@ -624,6 +629,18 @@ void ScrollSession::stillStep(int64_t now) {
             }
             feed(*fresh);
             if (stepFirstMoveAt_ >= 0) { stillSteps_ = 0; return; }  // it had moved after all: settle as usual
+            // Only a frame that shows the page where it was proves the end. A
+            // stream that went quiet while the page moved (KWin resent its last
+            // picture every second, and the restarted stream's first frame came
+            // 56 s later showing the page elsewhere: a GitHub pull request in
+            // Chrome ended at 37,096 of 44,491 px, 2026-11-14) proves nothing.
+            if (!lastShowedStill_) {
+                stillSteps_ = 0;
+                patience_ = 1;
+                if (tracker_->state() == TrackState::Lost) startRecover();
+                else { phase_ = Phase::Step; nextStepAt_ = now; }
+                return;
+            }
         }
         stats_.reachedEnd = true;
         pageEnd_ = true;

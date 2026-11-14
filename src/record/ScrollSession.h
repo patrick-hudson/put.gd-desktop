@@ -314,6 +314,7 @@ private:
     long long stepMoved_ = 0;
     double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
     bool lastStill_ = false;
+    bool lastShowedStill_ = false;  // the last frame showed the page where the last placed one had it
     int stillRun_ = 0;           // frames in a row that showed the page still
     int64_t lastFrameAt_ = -1;   // when the last frame went to the tracker
     int framesAfterWait_ = 0;    // frames placed or still that arrived after the step's response time
