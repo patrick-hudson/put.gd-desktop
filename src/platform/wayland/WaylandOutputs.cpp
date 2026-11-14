@@ -87,7 +87,7 @@ struct WaylandOutputs::Impl:QObject {
   else if(!unsupportedOutputs.isEmpty())nextError="Compositor output protocol lacks wl_output v2 batch completion";
   else if((!overflowOutputs.isEmpty()||overflowUntracked))nextError="Compositor output count exceeds supported bounds";
   else if(outputs.isEmpty())nextError="Waiting for compositor outputs";
-  else for(const auto* output:outputs){
+  else for(const auto* output:std::as_const(outputs)){
    if(output->invalid){nextError="Compositor output metadata is invalid";break;}
    if(!output->coherent){nextError=managerVersion<3?"Waiting for fresh native and logical output completion (xdg-output v2)":"Waiting for a completed compositor output batch";break;}
    complete.append(output->pending);
@@ -257,7 +257,7 @@ struct WaylandOutputs::Impl:QObject {
   if(readNotifier){auto* retired=readNotifier;readNotifier=nullptr;retired->setEnabled(false);retired->disconnect(this);retired->deleteLater();}
   if(writeNotifier){auto* retired=writeNotifier;writeNotifier=nullptr;retired->setEnabled(false);retired->disconnect(this);retired->deleteLater();}
   if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}
-  for(auto* output:outputs)destroyOutput(output);
+  for(auto* output:std::as_const(outputs))destroyOutput(output);
   outputs.clear();overflowOutputs.clear();unsupportedOutputs.clear();overflowUntracked=false;
   if(manager){zxdg_output_manager_v1_destroy(manager);manager=nullptr;}
   if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}

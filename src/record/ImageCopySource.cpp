@@ -30,7 +30,6 @@ namespace {
 constexpr int ringSize=4;
 constexpr qint64 keepaliveNs=1'000'000'000;
 constexpr int openTimeoutMs=3000;
-constexpr qint64 cursorIntervalNs=ImageCopySource::cursorIntervalNs;
 constexpr int cursorSettleMs=400;
 qint64 monotonicNs(){timespec t{};clock_gettime(CLOCK_MONOTONIC,&t);return qint64(t.tv_sec)*1'000'000'000+t.tv_nsec;}
 QString text(const char* value){return QString::fromUtf8(value,int(strnlen(value,4096)));}
@@ -290,7 +289,7 @@ struct ImageCopySource::Impl {
   static const ext_image_copy_capture_cursor_session_v1_listener listener={
    [](void* d,ext_image_copy_capture_cursor_session_v1*){static_cast<Probe*>(d)->in=true;},[](void* d,ext_image_copy_capture_cursor_session_v1*){static_cast<Probe*>(d)->in=false;},
    [](void*,ext_image_copy_capture_cursor_session_v1*,int32_t,int32_t){},[](void*,ext_image_copy_capture_cursor_session_v1*,int32_t,int32_t){}};
-  for(const auto& o:outputs){
+  for(const auto& o:std::as_const(outputs)){
    if(o.native==recorded)continue;
    auto probe=std::make_unique<Probe>();
    probe->source=ext_output_image_capture_source_manager_v1_create_source(outputSources,o.native);
@@ -516,20 +515,20 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
  if(!reason.isEmpty())return {target.window?"recording_unsupported":"recording_unavailable",reason,{{"protocol","ext-image-copy-capture-v1"}}};
  wl_output* recorded=nullptr;
  if(target.window){
-  QList<WaylandToplevel> ext,wlr;for(auto* w:d_->extWindows)if(w->done)ext.append(w->current);for(auto* w:d_->wlrWindows)if(w->done)wlr.append(w->current);
+  QList<WaylandToplevel> ext,wlr;for(auto* w:std::as_const(d_->extWindows))if(w->done)ext.append(w->current);for(auto* w:std::as_const(d_->wlrWindows))if(w->done)wlr.append(w->current);
   WaylandToplevel chosen;
   if(target.identity.isEmpty()){Error error;const auto active=matchActiveToplevel(ext,wlr,error);if(!active)return {"recording_target",error.message,error.details};chosen=*active;}
-  else{bool found=false;for(const auto& w:ext)if(w.identifier==target.identity){chosen=w;found=true;}if(!found)return {"recording_target","No window has this identity; list them with capture.windows",{}};}
+  else{bool found=false;for(const auto& w:std::as_const(ext))if(w.identifier==target.identity){chosen=w;found=true;}if(!found)return {"recording_target","No window has this identity; list them with capture.windows",{}};}
   if(putgdAppId(chosen.appId))return {"recording_target","put.gd does not record its own windows",{}};
-  for(auto* w:d_->extWindows)if(w->done&&w->current.identifier==chosen.identifier)d_->source=ext_foreign_toplevel_image_capture_source_manager_v1_create_source(d_->windowSources,static_cast<ext_foreign_toplevel_handle_v1*>(w->native));
+  for(auto* w:std::as_const(d_->extWindows))if(w->done&&w->current.identifier==chosen.identifier)d_->source=ext_foreign_toplevel_image_capture_source_manager_v1_create_source(d_->windowSources,static_cast<ext_foreign_toplevel_handle_v1*>(w->native));
   if(identity)*identity=chosen.identifier;if(appId)*appId=chosen.appId;
  }else{
   wl_output* output=nullptr;QString name=target.identity;
   if(name.isEmpty()&&d_->outputs.size()==1)name=d_->outputs.first().name;
-  for(const auto& o:d_->outputs)if(o.name==name)output=o.native;
+  for(const auto& o:std::as_const(d_->outputs))if(o.name==name)output=o.native;
   if(!output)return {"recording_target","No output has this name",{{"identity",target.identity}}};
   d_->source=ext_output_image_capture_source_manager_v1_create_source(d_->outputSources,output);
-  for(const auto& o:d_->outputs)if(o.native==output)d_->transform=o.transform;
+  for(const auto& o:std::as_const(d_->outputs))if(o.native==output)d_->transform=o.transform;
   recorded=output;
   if(identity)*identity=name;
  }

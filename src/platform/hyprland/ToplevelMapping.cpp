@@ -65,7 +65,7 @@ QString ToplevelMapping::resolve(const QString& identifier,Error& error,int time
  wl_registry_add_listener(registry,&registryListener,&state);
  const auto cleanup=[&]{
   for(auto* handle:state.handles){ext_foreign_toplevel_handle_v1_destroy(handle->native);delete handle;}state.handles.clear();
-  for(auto* native:state.unlisted)ext_foreign_toplevel_handle_v1_destroy(native);state.unlisted.clear();
+  for(auto* native:std::as_const(state.unlisted))ext_foreign_toplevel_handle_v1_destroy(native);state.unlisted.clear();
   if(state.list)ext_foreign_toplevel_list_v1_destroy(state.list);
   if(state.mapping)hyprland_toplevel_mapping_manager_v1_destroy(state.mapping);
   wl_registry_destroy(registry);
@@ -80,7 +80,7 @@ QString ToplevelMapping::resolve(const QString& identifier,Error& error,int time
   error={"capture_target",QStringLiteral("The compositor does not offer %1").arg(!state.list?"ext-foreign-toplevel-list-v1":"hyprland-toplevel-mapping-v1"),{}};return {};
  }
  Handle* match=nullptr;
- for(auto* handle:state.handles)if(handle->identifier==identifier){match=handle;break;}
+ for(auto* handle:std::as_const(state.handles))if(handle->identifier==identifier){match=handle;break;}
  if(!match){
   cleanup();
   error={"capture_target","The active window is not in the compositor's window list",{{"identity",identifier},{"listed",int(state.handles.size())},{"truncated",state.overflow}}};return {};

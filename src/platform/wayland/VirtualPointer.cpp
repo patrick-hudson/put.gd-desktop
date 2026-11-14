@@ -88,7 +88,7 @@ bool VirtualPointer::open(const QString& outputName, QString* reason) {
     if (d_->pointer) return true;
     QString why = d_->connect();
     wl_output* output = nullptr;
-    for (const auto& o : d_->outputs) if (!outputName.isEmpty() && o.name == outputName) output = o.native;
+    for (const auto& o : std::as_const(d_->outputs)) if (!outputName.isEmpty() && o.name == outputName) output = o.native;
     if (why.isEmpty() && !output && d_->outputs.size() > 1) why = QStringLiteral("The compositor has several outputs and none is named %1").arg(outputName);
     if (why.isEmpty() && d_->version < 2 && d_->outputs.size() > 1) why = QStringLiteral("zwlr_virtual_pointer_manager_v1 version 1 cannot map a pointer to one of several outputs");
     if (!why.isEmpty()) { if (reason) *reason = why; return false; }

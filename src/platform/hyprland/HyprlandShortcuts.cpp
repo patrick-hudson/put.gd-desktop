@@ -349,7 +349,7 @@ void HyprlandShortcuts::readBinds(std::function<void(QJsonArray,Error)> reply){
   if(error){reply({},std::move(error));return;}
   auto binds=document.array();
   // Only code: binds need the text reply; skip it when there are none.
-  bool unnamed=false;for(const auto& value:binds)if(value.toObject()["key"].toString().isEmpty())unnamed=true;
+  bool unnamed=false;for(const auto& value:std::as_const(binds))if(value.toObject()["key"].toString().isEmpty())unnamed=true;
   if(!unnamed){reply(std::move(binds),{});return;}
   ipc_->request("binds",[binds,reply](QByteArray text,Error error)mutable{
    // Without the text the code: binds stay unchecked; the JSON is still right.

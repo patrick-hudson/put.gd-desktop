@@ -213,7 +213,7 @@ struct ImageCopyCapture::Impl:QObject {
   cancelling=true;
   const auto pending=requests.values();for(auto* request:pending)finish(request,{},reason);
   // Frames being turned upright answer with this reason (cancelled, or a lost connection) when their worker ends.
-  for(const auto id:turning)turnedAway.insert(id,reason);turning.clear();
+  for(const auto id:std::as_const(turning))turnedAway.insert(id,reason);turning.clear();
   cancelling=false;
   for(auto* freeze:freezes){if(freeze->callback)wl_callback_destroy(freeze->callback);auto reply=std::move(freeze->reply);delete freeze;if(reply)reply({},reason);}freezes.clear();
  }
@@ -237,11 +237,11 @@ struct ImageCopyCapture::Impl:QObject {
   if(!reason.isEmpty()){reply({},{window?"window_unavailable":"capture_unavailable",reason,{}});return;}
   ext_image_capture_source_v1* source=nullptr;
   if(window){
-   ExtWindow* found=nullptr;for(auto* w:extWindows)if(w->done&&w->current.identifier==target)found=w;
+   ExtWindow* found=nullptr;for(auto* w:std::as_const(extWindows))if(w->done&&w->current.identifier==target)found=w;
    if(!found){reply({},{"target_unavailable","The window closed or is no longer listed",{}});return;}
    source=ext_foreign_toplevel_image_capture_source_manager_v1_create_source(windowSources,found->native);
   }else{
-   Output* found=nullptr;for(auto* o:outputs)if(o->name==target)found=o;
+   Output* found=nullptr;for(auto* o:std::as_const(outputs))if(o->name==target)found=o;
    if(!found){reply({},{"display_changed","The output is no longer present",{}});return;}
    source=ext_output_image_capture_source_manager_v1_create_source(outputSources,found->native);
   }

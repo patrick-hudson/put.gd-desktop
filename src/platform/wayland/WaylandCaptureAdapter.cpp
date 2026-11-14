@@ -148,12 +148,12 @@ void WaylandCaptureAdapter::capture(QString action,QList<CaptureFrame> frozen,qu
   selectorStarted();
   return;
  }
- QRectF bounds;for(const auto& frame:frozen)bounds=bounds.united(frame.logicalRect);captureScreens(std::move(frozen),revision,bounds,limits,std::move(cb));
+ QRectF bounds;for(const auto& frame:std::as_const(frozen))bounds=bounds.united(frame.logicalRect);captureScreens(std::move(frozen),revision,bounds,limits,std::move(cb));
 }
 void WaylandCaptureAdapter::captureScreens(QList<CaptureFrame> frozen,quint64 revision,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb){
  QPointer<WaylandCaptureAdapter> guard(this);auto layout=frozen;
  // Only the outputs the selection touches are read.
- QList<CaptureFrame> needed;for(const auto& frame:frozen)if(frame.logicalRect.intersects(selection))needed.append(frame);
+ QList<CaptureFrame> needed;for(const auto& frame:std::as_const(frozen))if(frame.logicalRect.intersects(selection))needed.append(frame);
  if(needed.isEmpty()){cb({{},{"capture_geometry","The selection lies outside every output",{}}});return;}
  captureFrames(std::move(needed),layout,revision,limits,[guard,layout,revision,selection,limits,cb=std::move(cb)](QList<CaptureFrame> frames,Error error)mutable{
   if(error){cb({{},error});return;}
