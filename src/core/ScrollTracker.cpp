@@ -277,7 +277,10 @@ void votes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint1
     // blocks that do count toward pinning only, not toward this pair.
     const __m128i coloured = _mm_andnot_si128(le(absd(va, _mm_set1_epi16(short(page))), t), _mm_cmpeq_epi16(zero, zero));
     const __m128i away = _mm_andnot_si128(_mm_or_si128(here, there), exact);
-    const __m128i s = _mm_and_si128(away, tex);
+    // Stays only where both frames show something: a blank cell beside a
+    // line of text over a blank part of the frame before stood nowhere.
+    const __m128i both = _mm_cmpeq_epi16(_mm_and_si128(ld(ta + k), ld(tb + k)), one);
+    const __m128i s = _mm_and_si128(away, both);
     const __m128i sf = _mm_andnot_si128(tex, _mm_and_si128(away, coloured));
     const __m128i m = _mm_andnot_si128(same, _mm_and_si128(here, _mm_cmpeq_epi16(ld(ta + k), one)));
     // Neither where it was nor where the page moved it, where that can be
@@ -295,8 +298,9 @@ void votes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint1
     const bool coloured = absDiff(a[k], page) > tol;
     const bool here = bd && absDiff(a[k], bd[k]) <= tol;
     const bool there = ad && absDiff(b[k], ad[k]) <= tol;
-    if (tex && diff <= strict && !here && !there) ++stay[k];
-    else if (coloured && diff <= strict && !here && !there) ++stayFlat[k];
+    const bool away = diff <= strict && !here && !there;
+    if (away && (ta[k] & tb[k])) ++stay[k];
+    else if (away && !tex && coloured) ++stayFlat[k];
     else if (diff > tol && here && ta[k]) ++move[k];
     else if (bd && tex && diff > tol && !here && !there) ++astray[k];
   }
@@ -1311,7 +1315,11 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
     const unsigned all = s + stayFlat[i];
     if (all >= 3 && all >= 3 * m) {
       stayed_[i] = uint8_t(std::min(255, stayed_[i] + 1));
-      if (stayed_[i] >= opts_.pinAfterSteps && !pinned_[i]) {
+      // A block that stays only flat (the plain inside of a banner) pins
+      // after twice the steps: two plain boxes of a page that meet at one
+      // place by chance do so for a step or two, a banner for every step.
+      const int need = s >= 3 ? opts_.pinAfterSteps : 2 * opts_.pinAfterSteps;
+      if (stayed_[i] >= need && !pinned_[i]) {
         pinned_[i] = 1;
         changed = true;
       }
@@ -1323,8 +1331,12 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
         pinned_[i] = 0;
         changed = true;
       }
-    } else if (s >= 2 && s > m) {
-      stillNow_[i] = 1;
+    } else {
+      // Stays count in consecutive moving steps: look-alike parts of a page
+      // that happen to meet at one place now and then (rows only the frame
+      // before can test, where that test lands on a header) never add up.
+      if (!pinned_[i]) stayed_[i] = 0;
+      if (s >= 2 && s > m) stillNow_[i] = 1;
     }
   }
   if (changed) closeMask();
