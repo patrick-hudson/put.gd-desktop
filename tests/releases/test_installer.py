@@ -119,7 +119,7 @@ else:
             ('ubuntu:24.04', 'ubuntu24.04'), ('linuxmint:22.3', 'ubuntu24.04'),
             ('ubuntu:26.04', 'ubuntu26.04'), ('kubuntu:26.04', 'ubuntu26.04'),
             ('debian:13', 'debian13'), ('debian:13.1', 'debian13'),
-            ('fedora:44', 'fedora44'), ('fedora:45', 'fedora44'), ('fedora:46', 'appimage'),
+            ('fedora:44', 'fedora44'), ('fedora:45', 'appimage'), ('fedora:46', 'appimage'),
             ('arch:rolling', 'archlinux'), ('ubuntu:22.04', 'appimage')):
             with self.subTest(fields=fields):
                 distro, version = fields.split(':')
@@ -296,8 +296,7 @@ else:
     def test_native_uses_only_one_sudo_step(self):
         for distro, version, package, manager, extension in (
                 ('ubuntu', '24.04', 'ubuntu24.04', 'apt', 'deb'),
-                ('fedora', '44', 'fedora44', 'dnf', 'rpm'),
-                ('fedora', '45', 'fedora44', 'dnf', 'rpm')):
+                ('fedora', '44', 'fedora44', 'dnf', 'rpm')):
             self.log.unlink(missing_ok=True)
             self.os_release.write_text(f'ID={distro}\nVERSION_ID={version}\n')
             self.env['SUFFIX'] = f'-{package}-x86_64.{extension}'
