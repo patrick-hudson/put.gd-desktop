@@ -693,7 +693,7 @@ the house rule.
 | --- | --- | --- |
 | DEB (Ubuntu 24.04, Mint 22, Ubuntu 26.04, Debian 13) | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF scan | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
 | RPM (Fedora 44 and 45) | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF scan | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
-| pacman | `tesseract`, `tesseract-data-eng`, `zxing-cpp` | The same |
+| pacman | `tesseract-data-eng`, `tesseract`, `zxing-cpp`, the data first so that pacman does not ask for a `tessdata` provider ([release](../release/release.md#text-recognition-dependencies-1428)) | The same |
 
 - `PUTGD_OCR` is `AUTO` for developer builds, like `PUTGD_RECORDING`, and `ON` in every package
   build. A package build without the libraries fails. At run time a missing helper or
