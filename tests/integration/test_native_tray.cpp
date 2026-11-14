@@ -394,13 +394,24 @@ private slots:
   tray.setActivity(Theme::trayTints(false).idle,"Recording paused",50,2);QVERIFY(recording!=pixels());const auto paused=pixels();tray.setActivity(Theme::trayTints(false).idle,"Recording paused",75,2);QVERIFY(paused!=pixels());
   tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2,2);const auto failed=pixels();// Paused stays in the badge; failure tints the glyph.
   tray.setActivity(Theme::trayTints(false).error,"Failed uploads\nRecording paused",-2);QVERIFY(pixels()!=failed);QVERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Recording paused"));
-  tray.setCommands({},"Uploading a file",1,true,"Recording paused");
+  // The live block shows the recording's phase, the upload and the failure together;
+  // Record screen keeps its label and Show recording raises the session.
+  traymenu::State state;state.upload="Uploading a file";state.uploads=1;state.attention=true;state.recording="Recording paused";state.attentionLabel="Local save needs attention";tray.setMenu(state);
   auto property=[&](int id,const QString& name){return qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{id,name}).arguments().first()).variant();};
-  tray.setCommands({},"Uploading a file",1,true,"Recording paused","Local save needs attention");QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QVERIFY(property(16,"label").toString().contains("Recording paused"));QVERIFY(property(22,"visible").toBool());QVERIFY(property(19,"visible").toBool());
-  const auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});const auto layout=qdbus_cast<WireLayout>(reply.arguments().at(1));bool found=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==16){found=true;QVERIFY(item.props["label"].toString().contains("Recording paused"));}}QVERIFY(found);
+  QCOMPARE(property(22,"label").toString(),QString("Local save needs attention"));QCOMPARE(property(16,"label").toString(),QString("Record screen"));QCOMPARE(property(42,"label").toString(),QString("Recording paused"));QVERIFY(!property(42,"enabled").toBool());
+  for(const int id:{42,43,19,20,22,21})QVERIFY2(property(id,"visible").toBool(),qPrintable(QString::number(id)));
+  QSignalSpy actions(&tray,&NativeTray::actionActivated);click(42);PUTGD_VERIFY_STEADY(actions.isEmpty(),30);click(43);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("show-recording"));
+  tray.setMenu({});for(const int id:{42,43,19,20,22,21})QVERIFY(!property(id,"visible").toBool());click(43);PUTGD_COMPARE_STEADY(actions.size(),1,30);
  }
  void outputSummaryExportsPerActionDetailsAndRecovery(){
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);QStringList details;for(const auto& action:Settings::presentationOrder())details<<action+": synthetic output";tray.setOutput("Mixed outputs",details);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{23,-1,QStringList{}});const auto output=qdbus_cast<WireLayout>(reply.arguments().at(1));QCOMPARE(output.props["label"].toString(),QString("Mixed outputs"));QCOMPARE(output.children.size(),Settings::presentationOrder().size());for(int i=0;i<details.size();++i){const auto row=qdbus_cast<WireLayout>(output.children[i].variant());QCOMPARE(row.props["label"].toString(),details[i]);QVERIFY(!row.props["enabled"].toBool());click(row.id);}QVERIFY(actions.isEmpty());click(30);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("capture-settings"));
+  // Up to nine detail rows (the default and every routed action), then Change output… in the same submenu.
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);traymenu::State state;state.output="Capture output: mixed";state.outputRows<<"Default: synthetic";for(const auto& action:Settings::presentationOrder())state.outputRows<<action+": synthetic output";tray.setMenu(state);
+  auto output=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{23,-1,QStringList{}}).arguments().at(1));QCOMPARE(output.props["label"].toString(),QString("Capture output: mixed"));QCOMPARE(output.children.size(),11);
+  for(int i=0;i<state.outputRows.size();++i){const auto row=qdbus_cast<WireLayout>(output.children[i].variant());QCOMPARE(row.props["label"].toString(),state.outputRows[i]);QVERIFY(!row.props["enabled"].toBool());QVERIFY(row.props["visible"].toBool());click(row.id);}
+  QCOMPARE(qdbus_cast<WireLayout>(output.children[9].variant()).props["type"].toString(),QString("separator"));const auto change=qdbus_cast<WireLayout>(output.children[10].variant());QCOMPARE(change.id,30);QCOMPARE(change.props["label"].toString(),QString("Change output…"));
+  PUTGD_VERIFY_STEADY(actions.isEmpty(),30);click(30);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("capture-settings"));
+  // Fewer rows hide the rest rather than show empty ones.
+  state.outputRows=QStringList{"All actions: synthetic"};tray.setMenu(state);output=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{23,-1,QStringList{}}).arguments().at(1));for(int i=1;i<9;++i)QVERIFY(!qdbus_cast<WireLayout>(output.children[i].variant()).props["visible"].toBool());
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
   NativeTray tray; QVERIFY(!tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.availabilityKnown()); PUTGD_TRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);
@@ -422,33 +433,38 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 26);for(int i=0;i<3;++i){QVERIFY(!qdbus_cast<WireLayout>(layout.children[i].variant()).props["visible"].toBool());}layout.children.erase(layout.children.begin(),layout.children.begin()+5);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 28);
+  // The live block leads and stays hidden while nothing happens.
+  for(int i=0;i<6;++i){const auto item=qdbus_cast<WireLayout>(layout.children[i].variant());QCOMPARE(item.id,QList<int>({42,43,19,20,22,21})[i]);QVERIFY(!item.props["visible"].toBool());}
+  layout.children.erase(layout.children.begin(),layout.children.begin()+6);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
-  bool quitLabel=false;for(const auto& child:layout.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==12){QCOMPARE(item.props["label"].toString(),QString("Quit put.gd"));quitLabel=true;}}QVERIFY(quitLabel);
-  // Capture entries first: the screenshots with Repeat last region and the capture
-  // delay (#1363), then region & edit with the editor sources, screen recording and the clipboard upload.
-  const QStringList order{"Capture region", "Repeat last region", "Capture window", "Capture monitor", "Capture desktop", "Capture delay: none", "Capture region & edit", "Edit image", "Record screen", "Capture scrolling region", "Copy text from region", "Upload clipboard"};
-  for (int i = 0; i < order.size(); ++i) QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(i).variant()).props["label"].toString(), order[i]);
-  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(8).variant()).id, 16);
-  for(int i=0;i<3;++i)QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(14+i).variant()).props["label"].toString(),QStringList({"History","Destinations","Settings"})[i]);
+  // The agreed order (2026-11-14), each group closed by a separator; "-" is a separator.
+  const QStringList order{"Capture region","Repeat last region","Capture window","Capture monitor","Capture desktop","Capture scrolling region","-","Capture region & edit","Edit image","Record screen","-","Copy text from region","Upload clipboard","-","Capture delay: none","Capture output","-","Open put.gd","Settings","Update available","-","Quit put.gd"};
+  const QList<int> ids{1,32,2,31,3,39,6,5,13,16,10,41,4,47,33,23,48,8,7,17,49,12};
+  QCOMPARE(layout.children.size(),order.size());
+  for (int i = 0; i < order.size(); ++i) {const auto item=qdbus_cast<WireLayout>(layout.children.at(i).variant());QCOMPARE(item.id,ids[i]);if(order[i]=="-")QCOMPARE(item.props["type"].toString(),QString("separator"));else QCOMPARE(item.props["label"].toString(),order[i]);}
+  QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(19).variant()).props["visible"].toBool());
   // The capture delay is a radio group one level down, None chosen until told otherwise.
-  const auto delay = qdbus_cast<WireLayout>(layout.children.at(5).variant());
-  QCOMPARE(delay.id, 33); QCOMPARE(delay.props["children-display"].toString(), QString("submenu")); QCOMPARE(delay.children.size(), 4);
+  const auto delay = qdbus_cast<WireLayout>(layout.children.at(14).variant());
+  QCOMPARE(delay.id, 33); QCOMPARE(delay.props["children-display"].toString(), QString("submenu")); QCOMPARE(delay.children.size(), 5);
   for (int i = 0; i < 4; ++i) {
    const auto choice = qdbus_cast<WireLayout>(delay.children.at(i).variant());
    QCOMPARE(choice.id, 34 + i); QCOMPARE(choice.props["label"].toString(), QStringList({"None", "3 seconds", "5 seconds", "10 seconds"})[i]);
    QCOMPARE(choice.props["toggle-type"].toString(), QString("radio")); QCOMPARE(choice.props["toggle-state"].toInt(), i == 0 ? 1 : 0);
   }
+  // "Hotkeys capture at once" only while a delay is set and hotkeys skip it.
+  const auto hotkeys=qdbus_cast<WireLayout>(delay.children.at(4).variant());QCOMPARE(hotkeys.id,44);QVERIFY(!hotkeys.props["visible"].toBool());
+  {traymenu::State state;state.delay=5;tray.setMenu(state);const auto set=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{33,-1,QStringList{}}).arguments().at(1));QCOMPARE(set.props["label"].toString(),QString("Capture delay: 5 seconds"));QCOMPARE(qdbus_cast<WireLayout>(set.children.at(2).variant()).props["toggle-state"].toInt(),1);const auto row=qdbus_cast<WireLayout>(set.children.at(4).variant());QCOMPARE(row.props["label"].toString(),QString("Hotkeys capture at once"));QVERIFY(row.props["visible"].toBool());QVERIFY(!row.props["enabled"].toBool());
+   state.hotkeysDelay=true;tray.setMenu(state);QVERIFY(!qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{44,QString("visible")}).arguments().first()).variant().toBool());tray.setMenu({});}
   // Other editor sources sit in one submenu.
-  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(7).variant());
+  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(8).variant());
   QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(editImage.children.size(), 2);
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("Edit clipboard image"));
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("Edit an image file…"));
-  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(12).variant()).props["type"].toString(), QString("separator"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));
-  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(9).variant()).children.isEmpty());
+  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(6+8).variant()).children.isEmpty());
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).arguments().at(0).toBool(), false);
@@ -459,15 +475,17 @@ private slots:
  }
  void everyActionAndActivationUsesFixedIds() {
   NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
-  const QList<int> ids{1,2,3,4,5,7,8,11,12,14,15,18};
-  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","about","quit","edit-clipboard","edit-file","destinations"};
+  const QList<int> ids{1,2,3,4,5,7,8,12,14,15,31,32,39,41};
+  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","quit","edit-clipboard","edit-file","monitor","repeat","scroll","text"};
   for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
   // Separators and the submenu header dispatch nothing.
   QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(13).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(1, "hovered").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(99).type(), QDBusMessage::ErrorMessage);
-  // 9 was "Recent activity": its ID stays retired rather than shifting the others.
-  QCOMPARE(click(9).type(), QDBusMessage::ErrorMessage);
-  QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {9, QString("label")}).type(), QDBusMessage::ErrorMessage);
+  // Retired rows keep their IDs rather than shifting the others: 9 was "Recent
+  // activity", 11 "About put.gd" and 18 "Destinations".
+  for(const int id:{9,11,18}){QCOMPARE(click(id).type(), QDBusMessage::ErrorMessage);QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "GetProperty", {id, QString("label")}).type(), QDBusMessage::ErrorMessage);}
+  // Show recording does nothing while no recording shows it.
+  QCOMPARE(click(43).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(actions.size(), ids.size());
   // Left-click opens History.
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
@@ -492,13 +510,13 @@ private slots:
   PUTGD_TRY_COMPARE(actions.size(), 3); QCOMPARE(actions.at(2).at(0).toString(), QString("history")); QCOMPARE(actions.at(2).at(1).toString(), QString("kwin-0123456789abcdef"));
   // A click that dispatches nothing still uses up its token.
   QCOMPARE(provide("unused-token").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage);
-  QCOMPARE(click(11).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 4); QVERIFY(actions.at(3).at(1).toString().isEmpty());
+  QCOMPARE(click(2).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 4); QVERIFY(actions.at(3).at(1).toString().isEmpty());
   for (const auto& bad : {QString(), QString("has space"), QString("tab\there"), QString(513, 'a')}) QCOMPARE(provide(bad).type(), QDBusMessage::ErrorMessage);
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "ProvideXdgActivationToken", {42}).type(), QDBusMessage::ErrorMessage);
   QCOMPARE(click(7).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 5); QVERIFY(actions.at(4).at(1).toString().isEmpty());
  }
  void shortcutsAndLiveUploadEntriesUseStableIds(){
-  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);tray.setCommands({{"region","Ctrl+Shift+R"}},"Uploading 2 files…",2,true);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});auto root=qdbus_cast<WireLayout>(reply.arguments().at(1));auto status=qdbus_cast<WireLayout>(root.children[0].variant());QCOMPARE(status.id,19);QCOMPARE(status.props["label"].toString(),QString("Uploading 2 files…"));QVERIFY(status.props["visible"].toBool());QVERIFY(!status.props["enabled"].toBool());auto cancel=qdbus_cast<WireLayout>(root.children[1].variant());QCOMPARE(cancel.id,20);QVERIFY(cancel.props["enabled"].toBool());QCOMPARE(cancel.props["label"].toString(),QString("Cancel all uploads…"));QCOMPARE(call("/Menu","com.canonical.dbusmenu","GetProperty",{22,QString("visible")}).arguments().first().value<QDBusVariant>().variant().toBool(),true);auto region=qdbus_cast<WireLayout>(root.children[5].variant());QCOMPARE(region.id,1);QCOMPARE(qdbus_cast<QList<QStringList>>(region.props["shortcut"]),QList<QStringList>({{"Control","Shift","R"}}));for(const auto& child:root.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id!=1)QVERIFY2(!item.props.contains("shortcut"),qPrintable(QString("item %1 sends an empty shortcut (#1294)").arg(item.id)));}click(19);PUTGD_VERIFY_STEADY(actions.isEmpty(),30);click(20);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("cancel-upload"));tray.setCommands({},{});click(20);PUTGD_COMPARE_STEADY(actions.size(),1,30);
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);traymenu::State state;state.shortcuts={{"region","Ctrl+Shift+R"}};state.upload="Uploading 2 files…";state.uploads=2;state.attention=true;tray.setMenu(state);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});auto root=qdbus_cast<WireLayout>(reply.arguments().at(1));auto status=qdbus_cast<WireLayout>(root.children[2].variant());QCOMPARE(status.id,19);QCOMPARE(status.props["label"].toString(),QString("Uploading 2 files…"));QVERIFY(status.props["visible"].toBool());QVERIFY(!status.props["enabled"].toBool());auto cancel=qdbus_cast<WireLayout>(root.children[3].variant());QCOMPARE(cancel.id,20);QVERIFY(cancel.props["enabled"].toBool());QCOMPARE(cancel.props["label"].toString(),QString("Cancel all uploads…"));QCOMPARE(call("/Menu","com.canonical.dbusmenu","GetProperty",{22,QString("visible")}).arguments().first().value<QDBusVariant>().variant().toBool(),true);auto region=qdbus_cast<WireLayout>(root.children[6].variant());QCOMPARE(region.id,1);QCOMPARE(qdbus_cast<QList<QStringList>>(region.props["shortcut"]),QList<QStringList>({{"Control","Shift","R"}}));for(const auto& child:root.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id!=1)QVERIFY2(!item.props.contains("shortcut"),qPrintable(QString("item %1 sends an empty shortcut (#1294)").arg(item.id)));}click(19);PUTGD_VERIFY_STEADY(actions.isEmpty(),30);click(20);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("cancel-upload"));tray.setMenu({});click(20);PUTGD_COMPARE_STEADY(actions.size(),1,30);
  }
  void updateEntryShowsItsVersionAndBumpsTheLayout() {
   // #293: hidden until a stable update is available, then labelled with it.
@@ -760,8 +778,8 @@ private slots:
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "ProvideXdgActivationToken", {QString("kwin-42")}).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(7).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(views.size(), 1);
   QCOMPARE(views.at(0), QStringList({"settings", "kwin-42"}));
-  QCOMPARE(click(18).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(views.size(), 2);
-  QCOMPARE(views.at(1), QStringList({"destinations", ""}));
+  QCOMPARE(click(8).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(views.size(), 2);
+  QCOMPARE(views.at(1), QStringList({"history", ""}));
  }
  void coreControllerDelegatesViewsAndPreservesCopyPendingAndNotificationSetting() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;
@@ -771,8 +789,8 @@ private slots:
   QStringList views; int quits = 0;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [&] { ++quits; });
   auto* native = controller.findChild<NativeTray*>(); QVERIFY(native); PUTGD_TRY_VERIFY(native->available());
-  for (int id : {7,8,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
-  PUTGD_TRY_COMPARE(views, QStringList({"settings","history","about"}));
+  for (int id : {7,8}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
+  PUTGD_TRY_COMPARE(views, QStringList({"settings","history"}));
   QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(source.copies, 1); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   QCOMPARE(notifications.values.first()["summary"].toString(),QString("Saved locally"));
   QVERIFY(notifications.values.first()["body"].toString().contains("copied"));

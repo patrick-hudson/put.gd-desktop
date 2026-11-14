@@ -7,6 +7,7 @@
 #include <QColor>
 #include <QTimer>
 #include <QSet>
+#include <QHash>
 #include <QUrl>
 #include <functional>
 #include <memory>
@@ -155,10 +156,11 @@ private:
  TrayCalendar calendar_;
  IconArt::TrayGlyph iconGlyph_=IconArt::TrayGlyph::Mark;
  QString activityText_,activityTitle_="put.gd";
- QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
  QSet<QString> activeUploads_,failedItems_;
- QAction* outputSummary_=nullptr;QMenu* outputMenu_=nullptr;QMenu* delayMenu_=nullptr;
- void showAbout();
+ // The fallback QMenu's rows by native menu ID (TrayMenu), for refreshMenu.
+ QHash<int,QAction*> menuRows_;
+ // A tray row's command, from either tray: an action ID or a TrayMenu command.
+ void runCommand(const QString& action);
  void showView(const QString&);
  OperationService& operations_;
  ViewOpener openView_;
@@ -170,7 +172,6 @@ private:
  std::unique_ptr<NativeTray> native_;
 #endif
  std::unique_ptr<QMenu> menu_;
- QAction* updateAction_ = nullptr;
  QString updateLabel_;
 };
 }

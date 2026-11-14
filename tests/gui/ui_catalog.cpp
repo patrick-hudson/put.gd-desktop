@@ -6,6 +6,9 @@
 #include "ui/HistoryModel.h"
 #include "ui/FileDialog.h"
 #include "ui/TrayController.h"
+#include "ui/TrayMenu.h"
+#include "core/CommandText.h"
+#include <QProcess>
 #include <QFileDialog>
 #include "fixtures/TrayCatalog.h"
 #include "fixtures/CatalogLabels.h"
@@ -289,7 +292,34 @@ QJsonObject catalogConfig(const QString& root){
  auto doc=Settings::developmentTemplate();auto s3=doc["profiles"].toArray().first().toObject();s3["id"]="synthetic-archive";s3["label"]="Project archive";auto s=s3["settings"].toObject();s["bucket"]="design-captures";s["region"]="us-east-1";s["endpoint"]="https://s3.us-east-1.amazonaws.com";s["objectPrefix"]="screenshots/";s["aclMode"]="omit";s["publicUrlBase"]="https://captures.example.invalid";s3["settings"]=s;s3["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};
  QJsonObject proton{{"id","synthetic-proton"},{"label","Proton Drive"},{"provider","proton-drive"},{"settings",QJsonObject{{"accountRootUid","synthetic-root"},{"folderUid","synthetic-folder"},{"folderName","put.gd"},{"shareByDefault",true},{"linkExpirationDays",0},{"sharePasswordReference",QJsonValue::Null},{"requestTimeoutMs",120000}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};doc["profiles"]=QJsonArray{proton,s3};auto actions=doc["actions"].toObject();int index=1;for(const auto& name:Settings::actionNames()){auto a=actions[name].toObject();a["profileId"]="synthetic-proton";a["shortcut"]="Ctrl+"+QString::number(index++);actions[name]=a;}doc["actions"]=actions;auto archive=doc["archive"].toObject();archive["root"]=root+"/local-copies";archive["keepUploads"]=true;doc["archive"]=archive;auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;return doc;
 }
+// The native (dbusmenu) tray menu as text, one state after another: what a
+// tray host shows, from the table both trays read (ui/TrayMenu). Hidden rows
+// are left out; "[…]" rows are disabled; "#n" is the row's native ID.
+bool writeTrayLayouts(const QString& output){
+ const auto document=Settings::normalized(catalogConfig(QDir::tempPath()));
+ traymenu::State idle;int index=1;for(const auto& name:Settings::actionNames())idle.shortcuts.insert(name,"Ctrl+"+QString::number(index++));
+ const auto summary=commandtext::outputSummary(document);idle.output=summary.tray;idle.outputRows=summary.rows;
+ // Mixed outputs: two screenshots and the recording save locally, and the
+ // default goes to a destination with a long name.
+ auto mixed=document;{auto profiles=mixed["profiles"].toArray();auto proton=profiles[0].toObject();proton["label"]="Proton Drive — Design team quarterly review archive";profiles[0]=proton;mixed["profiles"]=profiles;auto actions=mixed["actions"].toObject();for(const auto& name:{"window","monitor","record"}){auto action=actions[name].toObject();action["destination"]="local";action["profileId"]=QJsonValue::Null;actions[name]=action;}mixed["actions"]=actions;}
+ const auto mixedSummary=commandtext::outputSummary(Settings::normalized(mixed));
+ QList<std::pair<QString,traymenu::State>> states;
+ states.append({"idle",idle});
+ {auto s=idle;s.upload="Uploading 1 file…";s.uploads=1;states.append({"uploading",s});}
+ {auto s=idle;s.upload="Uploading 3 files…";s.uploads=2;states.append({"several uploads",s});}
+ {auto s=idle;s.attention=true;s.attentionLabel="Failed uploads (2)";states.append({"failure",s});}
+ {auto s=idle;s.recording="Recording paused";states.append({"recording",s});}
+ {auto s=idle;s.update="Update available: 26.1231.1";states.append({"update",s});}
+ {auto s=idle;s.output=mixedSummary.tray;s.outputRows=mixedSummary.rows;states.append({"mixed outputs, long destination name",s});}
+ {auto s=idle;s.delay=5;states.append({"delay set, hotkeys capture at once",s});}
+ {auto s=idle;s.delay=5;s.hotkeysDelay=true;states.append({"delay set, hotkeys wait too",s});}
+ {auto s=idle;s.recording="Recording";s.upload="Uploading 2 files…";s.uploads=2;s.attention=true;s.attentionLabel="Failed uploads (1)";s.update="Update available: 26.1231.1";s.delay=3;s.output=mixedSummary.tray;s.outputRows=mixedSummary.rows;states.append({"everything at once",s});}
+ QString text;for(const auto& [name,state]:states)text+="## "+name+"\n\n"+traymenu::text(state)+"\n";
+ QSaveFile file(QDir(output).filePath("tray-native-layout.txt"));
+ return file.open(QIODevice::WriteOnly)&&file.write(text.toUtf8())>0&&file.commit();
+}
 bool captureTrayMenus(const QString& output,QJsonArray& captures){
+ if(!writeTrayLayouts(output))return false;
  DataDir data("pgt");if(!data.isValid())return false;
  SettingsService settings(data.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});
  auto config=catalogConfig(data.path());auto preferences=config["preferences"].toObject();preferences["notifications"]=false;config["preferences"]=preferences;if(!settings.save(config,{}))return false;
@@ -394,7 +424,28 @@ int main(int argc,char** argv){
  QJsonArray captures,skippedCaptures;auto save=[&](const QString& name,const std::function<void()>& prepare={}){putgd::test::settle(450);app.processEvents();if(name=="01a-history-preview-focus"||name=="10a-history-compact-preview-focus"){window.activateWindow();auto* focusedPreview=window.findChild<QLabel*>("historyPreview");if(QGuiApplication::platformName()=="offscreen"&&!focusedPreview->isVisible()){skippedCaptures.append(QJsonObject{{"state",name},{"reason","inspector_hidden"}});return true;}focusedPreview->setFocus(Qt::TabFocusReason);app.processEvents();if(!focusedPreview->hasFocus())return false;}if(name=="01-history-list"||name=="10-history-compact"){auto* selectedPreview=window.findChild<QLabel*>("historyPreview");if(!selectedPreview||!waitUntil([&]{return !selectedPreview->pixmap().isNull();}))return false;}
   // The selected preview's arrival relayouts the inspector; steadyGrab waits for the list's thumbnails.
   putgd::test::settle(100);app.processEvents();
-  if(!checkSteppers(window))return false;if(name=="10-history-compact"){QJsonArray commands;auto* band=window.findChild<QWidget*>("commandBand");for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"labelVisible",button->toolButtonStyle()!=Qt::ToolButtonIconOnly},{"width",button->width()},{"sizeHint",button->sizeHint().width()}});QFile measurements(QDir(output).filePath("command-band-measurements.json"));if(!measurements.open(QIODevice::WriteOnly))return false;measurements.write(QJsonDocument(QJsonObject{{"windowWidth",window.width()},{"bandWidth",band->width()},{"requiredWidth",band->layout()->sizeHint().width()},{"gap",qobject_cast<QGridLayout*>(band->layout())->horizontalSpacing()},{"commands",commands}}).toJson());}const auto image=steadyGrab(window,prepare);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name)||!writeInventory(output,name,window))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  if(!checkSteppers(window))return false;const auto image=steadyGrab(window,prepare);const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;if(!native.step(window,name)||!writeInventory(output,name,window))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+ // The command band (council 2026-11-14): its renders at 1,320 px, at the
+ // default 1,440 px window and at 1,060 px, and what fitBand measured. The enlarged-text pair
+ // comes from a second run of this catalog (PUTGD_CATALOG_BAR_ONLY, below).
+ const auto commandBand=[&](const QList<std::pair<QString,QSize>>& states,const QString& report)->bool{
+  QJsonArray sizes;auto* band=window.findChild<QWidget*>("commandBand");
+  const auto measure=[&](const QString& state){
+   QJsonArray commands;for(auto* button:band->findChildren<QToolButton*>("captureActionButton"))commands.append(QJsonObject{{"action",button->property("captureAction").toString()},{"label",button->text()},{"accessibleName",button->accessibleName()},{"rect",QJsonArray{button->x(),button->y(),button->width(),button->height()}},{"sizeHint",button->sizeHint().width()}});
+   // History rows the list shows whole: the minimum height keeps four.
+   int rows=0;auto* history=window.findChild<QListView*>("historyList");for(int row=0;row<history->model()->rowCount();++row){const auto rect=history->visualRect(history->model()->index(row,0));if(rect.isValid()&&history->viewport()->rect().contains(rect))++rows;}
+   sizes.append(QJsonObject{{"state",state},{"textScale",Ui::textScale()},{"window",QJsonArray{window.width(),window.height()}},{"minimum",QJsonArray{window.minimumWidth(),window.minimumHeight()}},{"band",QJsonArray{band->width(),band->height()}},{"wrapped",band->property("wrapped").toBool()},{"widths",QJsonObject::fromVariantMap(band->property("bandWidths").toMap())},{"historyRowsVisible",rows},{"commands",commands}});
+  };
+  const auto before=window.size();window.navigate("history");
+  for(const auto& [name,size]:states){window.resize(size);if(!save(name))return false;measure(name);}
+  window.resize(before);putgd::test::settle(100);
+  QSaveFile file(QDir(output).filePath(report));return file.open(QIODevice::WriteOnly)&&file.write(QJsonDocument(sizes).toJson())>0&&file.commit();
+ };
+ if(qEnvironmentVariableIsSet("PUTGD_CATALOG_BAR_ONLY")){
+  if(!commandBand({{"82-command-band-large-text",{1440,880}},{"83-command-band-large-text-narrow",{1060,680}}},"command-band-measurements-large-text.json"))return 2;
+  QSaveFile file(QDir(output).filePath("large-text-captures.json"));if(!file.open(QIODevice::WriteOnly)||file.write(QJsonDocument(captures).toJson())<=0||!file.commit())return 2;
+  return source.reads==0?0:2;
+ }
  const bool recordOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_RECORD_ONLY");
  const bool editorOnly=qEnvironmentVariableIsSet("PUTGD_CATALOG_EDITOR_ONLY");
  if(!recordOnly){
@@ -406,6 +457,18 @@ int main(int argc,char** argv){
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Nothing is saved or uploaded")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=steadyGrab(menu);if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png"))||!writeInventory(output,"00-output-menu-literal-ampersand",menu))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"controls","00-output-menu-literal-ampersand.controls.json"},{"width",image.width()},{"height",image.height()}});menu.close();
  }
  if(!save("01-history-list"))return 2;
+ if(!commandBand({{"80-command-band-1320",{1320,880}},{"80a-command-band-1440",{1440,880}},{"81-command-band-1060",{1060,680}}},"command-band-measurements.json"))return 2;
+ // The split buttons' ▾ menus and the status band's capture delay, set and open.
+ if(QGuiApplication::platformName()=="offscreen"){
+  const auto popup=[&](QMenu* menu,QWidget* anchor,const QString& name){if(!menu||!anchor)return false;menu->popup(anchor->mapToGlobal(anchor->rect().bottomLeft()));putgd::test::settle(100);const auto image=steadyGrab(*menu);const auto rows=catalogMenuRows(*menu);QSaveFile controls(QDir(output).filePath(name+".controls.json"));if(!rows||!image.save(QDir(output).filePath(name+".png"))||!controls.open(QIODevice::WriteOnly)||controls.write(QJsonDocument(QJsonObject{{"width",menu->width()},{"height",menu->height()},{"class","QMenu"},{"controls",*rows},{"keys",QJsonArray{}}}).toJson())<=0||!controls.commit())return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});menu->close();return true;};
+  QToolButton* region=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="region")region=button;
+  if(!popup(window.findChild<QMenu*>("captureRegionMenu"),region,"84-capture-region-menu"))return 2;
+  const auto delay=[&](int seconds){auto doc=settings.document();auto prefs=doc["preferences"].toObject();prefs["captureDelaySeconds"]=seconds;doc["preferences"]=prefs;if(!settings.save(doc,settings.revision()))return false;auto* control=window.findChild<QToolButton*>("captureDelayControl");return control&&waitUntil([&]{return control->text()==commandtext::delayTitle(seconds);});};
+  const auto before=window.size();window.resize(1440,880);
+  if(!delay(5)||!save("85-command-band-delay-set"))return 2;
+  if(!popup(window.findChild<QMenu*>("captureDelayMenu"),window.findChild<QToolButton*>("captureDelayControl"),"86-capture-delay-menu"))return 2;
+  if(!delay(0))return 2;window.resize(before);putgd::test::settle(100);
+ }
  if(QGuiApplication::platformName()=="offscreen"){
   auto* header=window.findChild<Ui::WindowHeader*>("windowHeader");header->setButtonLayout(WindowButtons::fromGSettings("close,minimize,maximize:"));if(!save("01b-history-left-window-buttons"))return 2;header->setButtonLayout(WindowButtons::instance().layout());
  }
@@ -939,6 +1002,16 @@ int main(int argc,char** argv){
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
+ // The command band at enlarged text: a second run of this catalog, since the
+ // text scale is read once per process (Ui::textScale).
+ if(QGuiApplication::platformName()=="offscreen"&&!recordOnly&&!editorOnly){
+  auto environment=QProcessEnvironment::systemEnvironment();environment.insert("PUTGD_TEXT_SCALE","1.5");environment.insert("PUTGD_CATALOG_BAR_ONLY","1");
+  if(const auto root=environment.value("PUTGD_CATALOG_DATA_DIR");!root.isEmpty())environment.insert("PUTGD_CATALOG_DATA_DIR",QDir(root).filePath("large-text"));
+  QProcess child;child.setProcessEnvironment(environment);child.setProcessChannelMode(QProcess::ForwardedChannels);const auto large=QDir(output).filePath("large-text");child.start(QCoreApplication::applicationFilePath(),{large});
+  if(!child.waitForFinished(180000)||child.exitStatus()!=QProcess::NormalExit||child.exitCode()!=0){qCritical("The enlarged-text command band render failed");return 2;}
+  QFile listed(QDir(large).filePath("large-text-captures.json"));if(!listed.open(QIODevice::ReadOnly))return 2;for(const auto& value:QJsonDocument::fromJson(listed.readAll()).array()){// Images only: inventories are read from the catalog's own folder, and these repeat the default ones.
+  auto capture=value.toObject();capture.remove("controls");capture["file"]="large-text/"+capture["file"].toString();captures.append(capture);}
+ }
  QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"build",sourceBuild()},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures},
   // What this run covered, and every image it wrote (not all are captures),
   // so a partial render cannot pass for a complete one.
