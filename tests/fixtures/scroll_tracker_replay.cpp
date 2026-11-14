@@ -112,19 +112,18 @@ int main(int argc, char** argv) {
     if (parts.size() >= 3) l.hint = {true, parts[1].toInt(), parts[2].toInt()};
     lines.push_back(l);
   }
-  std::vector<QImage> frames;
+  // Frames are read as they are fed: a live run has thousands.
   const QStringList ex = parser.value("exclude").split(',');
   const bool paint = parser.isSet("paint") && ex.size() == 4;
-  for (const Line& l : lines) {
-    frames.push_back(load(l.path));
-    if (frames.back().isNull()) {
-      std::fprintf(stderr, "cannot read %s\n", qPrintable(l.path));
-      return 3;
+  const auto frameAt = [&](size_t i) {
+    QImage f = load(lines[i].path);
+    if (f.isNull()) {
+      std::fprintf(stderr, "cannot read %s\n", qPrintable(lines[i].path));
+      return f;
     }
-    if (!paint) continue;
+    if (!paint) return f;
     // A dark bar with a counter-like pattern of the frame's number.
-    QImage& f = frames.back();
-    const int n = int(frames.size());
+    const int n = int(i) + 1;
     const int x0 = std::max(0, ex[0].toInt()), y0 = std::max(0, ex[1].toInt());
     const int x1 = std::min(f.width(), x0 + ex[2].toInt()), y1 = std::min(f.height(), y0 + ex[3].toInt());
     for (int y = y0; y < y1; ++y) {
@@ -135,7 +134,11 @@ int main(int argc, char** argv) {
         row[x] = ink ? qRgb(240, 192, 96) : qRgb(30, 34, 48);
       }
     }
-  }
+    return f;
+  };
+  if (lines.empty()) return 2;
+  const QImage first = frameAt(0);
+  if (first.isNull()) return 3;
   const QString out = parser.value("out");
   const bool stitcher = parser.value("engine") == "stitcher";
   const int repeat = std::max(1, parser.value("repeat").toInt());
@@ -146,15 +149,17 @@ int main(int argc, char** argv) {
 
   if (!stitcher) {
     for (int run = 0; run < repeat; ++run) {
-      TimedCanvas canvas(frames[0].width());
+      TimedCanvas canvas(first.width());
       TrackerOptions opts;
       opts.maxOutputRows = parser.value("max-height").toLongLong();
       ScrollTracker tracker(canvas, opts);
       if (ex.size() == 4) tracker.setExcluded({ex[0].toInt(), ex[1].toInt(), ex[2].toInt(), ex[3].toInt()});
-      for (size_t i = 0; i < frames.size(); ++i) {
+      for (size_t i = 0; i < lines.size(); ++i) {
+        const QImage frame = frameAt(i);
+        if (frame.isNull()) return 3;
         const double canvasBefore = canvas.ms;
         const auto t0 = Clock::now();
-        const TrackResult r = tracker.addFrame(viewOf(frames[i]), lines[i].hint);
+        const TrackResult r = tracker.addFrame(viewOf(frame), lines[i].hint);
         const double t = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
         ms.push_back(t);
         engineMs.push_back(t - (canvas.ms - canvasBefore));
@@ -220,9 +225,11 @@ int main(int argc, char** argv) {
     ScrollStitcher st(so);
     int refPos = 0, lastStep = kNoHint;
     QString ended;
-    for (size_t i = 0; i < frames.size(); ++i) {
+    for (size_t i = 0; i < lines.size(); ++i) {
+      const QImage frame = frameAt(i);
+      if (frame.isNull()) return 3;
       const auto t0 = Clock::now();
-      const StepResult r = st.addFrame(viewOf(frames[i]), lastStep);
+      const StepResult r = st.addFrame(viewOf(frame), lastStep);
       const double t = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
       ms.push_back(t);
       const bool moved = r.status == StepStatus::Appended || r.status == StepStatus::Reversed || r.status == StepStatus::LimitReached;
@@ -249,9 +256,9 @@ int main(int argc, char** argv) {
     }
     st.finish();
     const int h = st.outputHeight();
-    summary = QJsonObject{{"engine", "stitcher"}, {"frames", int(frames.size())}, {"fed", int(results.size())}, {"endedOn", ended},
+    summary = QJsonObject{{"engine", "stitcher"}, {"frames", int(lines.size())}, {"fed", int(results.size())}, {"endedOn", ended},
                           {"top", 0}, {"bottom", h}};
-    if (!save(st.takeImage(), frames[0].width(), h, out + "/image.png")) {
+    if (!save(st.takeImage(), first.width(), h, out + "/image.png")) {
       std::fprintf(stderr, "cannot write the image\n");
       return 4;
     }
@@ -270,8 +277,8 @@ int main(int argc, char** argv) {
     summary["engineMsP95"] = percentile(engineMs, 0.95);
     summary["engineMsMax"] = *std::max_element(engineMs.begin(), engineMs.end());
   }
-  summary["width"] = frames[0].width();
-  summary["height"] = frames[0].height();
+  summary["width"] = first.width();
+  summary["height"] = first.height();
   QFile f(out + "/results.json");
   if (!f.open(QIODevice::WriteOnly)) return 4;
   f.write(QJsonDocument(QJsonObject{{"summary", summary}, {"frames", results}}).toJson(QJsonDocument::Indented));

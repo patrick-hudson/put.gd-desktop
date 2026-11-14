@@ -447,11 +447,111 @@ void testExcluded() {
   }
 }
 
+// ------------------------------------------------------------------ live failures
+
+// A sticky header and a cookie banner with a flat inside, a border down its
+// edges and a button of the page's own colour, over a narrow band of the
+// page, scrolled as a person does (small steps, pauses, a way back up): the
+// banner never reaches the page's rows, no frame is misplaced. A capture
+// that starts at the page's end, on a footer of another light colour, under
+// a header of the page's colour: the page's colour stays the page's. And
+// auto-scroll's hint across a jump far past the image places nothing.
+void testLive() {
+  std::printf("\n[live] a narrow band under a banner; a footer first; a jump under auto-scroll\n");
+  const int W = 480, V = 400;
+  const Document doc = plainPage(3, W, V);
+  const int end = doc.img.h - V;
+  {
+    int wrong = 0;
+    long long banner = 0;
+    std::string detail;
+    for (const auto& [page, stepSeed] : {std::pair<uint64_t, uint64_t>{3, 41}, {8, 57}, {10, 71}}) {
+      const Document d = plainPage(page, W, V);
+      const int e = d.img.h - V;
+      SceneSpec ss;
+      ss.width = W;
+      ss.height = V;
+      ss.pinned.push_back({0, 0, W, 40, 0xF0F0F2, 0x202024, 0, 5});
+      ss.pinned.push_back({0, 290, W, 110, 0x1E2266, 0xF0F0FF, 0, 9});
+      ss.pinned.push_back({300, 330, 140, 34, kBg, 0x1E2266, 0, 21});  // a button on it
+      const Scene scene(d.img, ss);
+      Rng rng(stepSeed);
+      std::vector<int> pos{0};
+      bool up = false;
+      while (pos.back() < e) {
+        const int r = rng.range(0, 100);
+        if (!up && pos.back() > e / 2) {
+          for (int k = 0; k < 20; ++k) pos.push_back(std::max(0, pos.back() - rng.range(5, 25)));
+          up = true;
+          continue;
+        }
+        pos.push_back(std::min(e, pos.back() + (r < 15 ? 0 : r < 70 ? rng.range(2, 18) : rng.range(18, 60))));
+      }
+      const Played r = play(scene, pos);
+      long long n = 0;
+      for (long long y = 0; y < r.totals.bottom - r.totals.top; ++y) {
+        if (r.totals.top + y >= e + 290) continue;  // the banner once, at the end
+        for (int x = 0; x < W; ++x) {
+          const uint8_t* q = &r.image[(size_t(y) * W + x) * 4];
+          n += q[0] == 0x66 && q[1] == 0x22 && q[2] == 0x1E;
+        }
+      }
+      wrong += r.wrong;
+      banner += n;
+      detail += fmt("%s%d placed, %d wrong%s, %lld banner pixels", detail.empty() ? "" : "; ", r.placed, r.wrong,
+                    r.firstWrong.c_str(), n);
+    }
+    report("a banner over a narrow band, a person's steps: none of it in the page", wrong == 0 && banner == 0, detail);
+  }
+  {
+    Document d = plainPage(5, W, V);
+    const int h = d.img.h;
+    fillRows(d.img, h - 300, h, 0xEBEBEE);
+    Rng ink(9);
+    for (int y = h - 280; y + 12 < h; y += 40) drawTextLine(d.img, y, 30, W - 30, ink);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, kBg, 0x202024, 0, 5});
+    const Scene scene(d.img, ss);
+    const Played r = play(scene, steps(h - V, 0, [] { return 60; }));
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(d.img, 0, h, W), {{0, 0, W, 40}}, 0, &firstBad);
+    report("from the end, a footer filling the first screen: the page exact", r.wrong == 0 && bad == 0,
+           counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+  }
+  {
+    // Auto-scroll's frames say how far the page will move; a jump of 2,000
+    // rows is not where the hint says, and nothing there is blank.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc.img, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int wrong = 0, placed = 0;
+    std::vector<int> pos;
+    for (int p = 0; p <= 800; p += 40) pos.push_back(p);
+    const int jump = std::max(800 + 2 * V, end - 240);  // far past the image's end (1,200)
+    for (int p = jump; p <= end; p += 40) pos.push_back(p);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      const TrackResult t = tracker.addFrame(f.view(), i ? TrackerHint{true, 40, 6} : TrackerHint{});
+      if (t.status != TrackStatus::Placed) continue;
+      ++placed;
+      wrong += t.position != pos[i];
+    }
+    report("a jump far past the image under the hint is never placed on it", wrong == 0 && placed >= 21 && pos.size() > 21,
+           fmt("%zu frames, %d placed, %d wrong, %d on the hint", pos.size(), placed, wrong, tracker.totals().onHint));
+  }
+}
+
 int main() {
   testOffsets();
   testPinned();
   testChangesAndRecovery();
   testExcluded();
+  testLive();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }
