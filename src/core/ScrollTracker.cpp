@@ -1998,15 +1998,40 @@ TrackTotals ScrollTracker::finish() {
   for (size_t i = 0; i < parts.size(); ++i) groupTop[size_t(find(int(i)))] = std::min(groupTop[size_t(find(int(i)))], parts[i].r0);
   std::vector<uint8_t> topAnchored(parts.size());
   for (size_t i = 0; i < parts.size(); ++i) topAnchored[i] = groupTop[size_t(find(int(i)))] * BR * 2 < height_;
+  // A pinned thing is in the image as a rectangle: its group's bounding
+  // box of blocks, so that the ragged edge of a side bar's list (an item's
+  // text a block longer than the mask) comes with it. Inside the screen that
+  // shows it once, the rest of the box is what that screen showed there.
+  std::vector<int> boxOf(size_t(R) * C, -1);
+  {
+    std::vector<Part> box(parts.size());
+    for (size_t i = 0; i < parts.size(); ++i) {
+      Part& b = box[size_t(find(int(i)))];
+      b.r0 = std::min(b.r0, parts[i].r0);
+      b.r1 = std::max(b.r1, parts[i].r1);
+      b.c0 = std::min(b.c0, parts[i].c0);
+      b.c1 = std::max(b.c1, parts[i].c1);
+    }
+    for (size_t i = 0; i < parts.size(); ++i)
+      for (int r = parts[i].r0; r <= parts[i].r1; ++r)
+        for (int c = parts[i].c0; c <= parts[i].c1; ++c)
+          if (label[size_t(r) * C + c] == int(i)) boxOf[size_t(r) * C + c] = find(int(i));
+    // Widened by a block, as the mask is: the last item's descenders.
+    for (size_t g = 0; g < box.size(); ++g)
+      if (find(int(g)) == int(g))
+        for (int r = std::max(0, box[g].r0 - 1); r <= std::min(R - 1, box[g].r1 + 1); ++r)
+          for (int c = std::max(0, box[g].c0 - 1); c <= std::min(C - 1, box[g].c1 + 1); ++c)
+            if (boxOf[size_t(r) * C + c] < 0) boxOf[size_t(r) * C + c] = int(g);
+  }
   std::vector<uint8_t> overlaid(size_t(R) * C, 0);
   auto overlay = [&](const FrameCopy& copy, bool topSide) {
     const long long pos = copy.pos;
     for (int r = 0; r < R; ++r)
       for (int c = 0; c < C;) {
         auto take = [&](int cc) {
-          const int l = label[size_t(r) * C + cc];
-          if (l < 0 || copy.tag[size_t(r) * C + cc] != copy.serial) return false;
-          return bool(topAnchored[size_t(l)]) == topSide;
+          const int g = boxOf[size_t(r) * C + cc];
+          if (g < 0 || copy.tag[size_t(r) * C + cc] != copy.serial) return false;
+          return bool(topAnchored[size_t(g)]) == topSide;
         };
         if (!take(c)) {
           ++c;
