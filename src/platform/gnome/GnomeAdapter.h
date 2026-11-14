@@ -93,6 +93,8 @@ private:
  void emitSetupNotice(const gnome::SetupStatus&);
  RecordingClicks::Sink clickSink_;
  std::function<void(QJsonObject)> pointerSink_;
+ // Each WatchPointer request's generation: a failed reply undoes only its own watch.
+ quint64 pointerGeneration_=0;
  void watchPointerImpl(std::function<void(QJsonObject)>);
  void unwatchPointerImpl();
  using Reply=std::function<void(Error,QJsonObject)>;

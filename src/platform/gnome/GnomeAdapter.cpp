@@ -119,6 +119,7 @@ void GnomeAdapter::followOwner(const QString& owner){
  // A Shell that went away took its click and pointer watches with it.
  clickSink_={};
  pointerSink_={};
+ ++pointerGeneration_;
  owner_=owner;
  if(!owner_.isEmpty()){bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
 }
@@ -407,9 +408,12 @@ void GnomeAdapter::watchPointerImpl(std::function<void(QJsonObject)> sink){
  const bool connected=static_cast<bool>(pointerSink_);
  pointerSink_=std::move(sink);
  if(!connected)bus_.connect(owner_,path,interface,"Pointer",this,SLOT(helperPointer(QString)));
- call("WatchPointer",{},[this](Error error,QJsonObject){if(error)unwatchPointerImpl();});
+ // A refusal that comes after a newer request (or an unwatch) is not this watch's.
+ const quint64 generation=++pointerGeneration_;
+ call("WatchPointer",{},[this,generation](Error error,QJsonObject){if(error&&generation==pointerGeneration_)unwatchPointerImpl();});
 }
 void GnomeAdapter::unwatchPointerImpl(){
+ ++pointerGeneration_;
  if(!pointerSink_)return;
  pointerSink_={};
  if(owner_.isEmpty())return;
