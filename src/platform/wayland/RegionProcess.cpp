@@ -1,3 +1,4 @@
+#include "platform/ProcessStat.h"
 #include "RegionProcess.h"
 #include "platform/SessionLock.h"
 #include "core/BuildInfo.h"
@@ -14,15 +15,7 @@ namespace putgd {
 namespace {
 QJsonObject build() { return QJsonDocument::fromJson(buildManifestJson()).object(); }
 Error unavailable(const QString& code) { return {code,"The region helper could not complete selection",{}}; }
-QString processStartTicks(qint64 pid) {
- QFile file(QString("/proc/%1/stat").arg(pid));
- if(pid<=0 || !file.open(QIODevice::ReadOnly)) return {};
- const auto bytes=file.read(4097); if(bytes.size()>4096) return {};
- const auto end=bytes.lastIndexOf(')'); if(end<0) return {};
- const auto fields=bytes.mid(end+2).simplified().split(' '); if(fields.size()<20) return {};
- bool ok=false; const auto ticks=fields[19].toULongLong(&ok);
- return ok && ticks>0?QString::number(ticks):QString{};
-}
+
 }
 struct WaylandRegionProcess::Prepared {
  bool settled=false; QRectF selection; Error error;

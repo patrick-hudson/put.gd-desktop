@@ -18,6 +18,11 @@
 #endif
 namespace putgd {
 namespace {
+// Still captures retain single logical-pixel selections (original X11 selector).
+constexpr int minimumSelectionSize=1;
+}
+
+namespace {
 // KWin/X11 otherwise fades a closed selector out over several hundred
 // milliseconds, and region capture waits for the compositor to stop repainting.
 void skipCloseAnimation(QWidget* surface){
@@ -96,7 +101,7 @@ void RegionOverlay::start(){
 }
 void RegionOverlay::press(QPointF point){if(finished_)return;keyboardScreen_=-1;anchor_=point;dragging_=true;selection_=QRectF(point,QSizeF{});for(auto* s:surfaces_)s->updateSelection({});}
 void RegionOverlay::move(QPointF point){if(!dragging_||finished_)return;const auto previous=selection_;selection_=QRectF(anchor_,point).normalized();++stats_.moves;for(auto* s:surfaces_)s->updateSelection(previous);}
-void RegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}finish();emit selected(selection_);}
+void RegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<minimumSelectionSize||selection_.height()<minimumSelectionSize){cancel();return;}finish();emit selected(selection_);}
 void RegionOverlay::finish(){if(!finished_&&stats_.paints)regionDebugLog(stats_.summary(QStringLiteral("qt region")));finished_=true;hint_.stop();for(auto* s:surfaces_){s->releaseKeyboard();s->releaseMouse();s->hide();}}
 void RegionOverlay::cancel(Error error){if(finished_)return;finish();emit cancelled(error);}
 }

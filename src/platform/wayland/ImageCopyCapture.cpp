@@ -1,3 +1,4 @@
+#include "EventPump.h"
 #include "ImageCopyCapture.h"
 #include "CaptureConnection.h"
 #include "WaylandTransform.h"
@@ -84,19 +85,16 @@ struct ImageCopyCapture::Impl:QObject {
   static const wl_callback_listener synced={[](void* data,wl_callback* callback,uint32_t){auto* self=static_cast<Impl*>(data);wl_callback_destroy(callback);self->initialSync=nullptr;self->connected=true;self->error.clear();self->notify();}};
   wl_callback_add_listener(initialSync,&synced,this);flush();
  }
- void flush(){if(!display)return;if(wl_display_flush(display)<0){if(errno==EAGAIN){if(writeNotifier)writeNotifier->setEnabled(true);}else lost();}else if(writeNotifier)writeNotifier->setEnabled(false);}
+ void flush(){if(!display)return;bool pending=false;if(!wayland::flush(display,pending)){lost();return;}if(writeNotifier)writeNotifier->setEnabled(pending);}
  void events(){
   if(!display||dispatching)return;
   dispatching=true;
-  if(wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-  pollfd readiness{wl_display_get_fd(display),POLLIN,0};const int count=poll(&readiness,1,0);
-  if(count<0&&errno!=EINTR){dispatching=false;lost();return;}
-  if(count>0){
-   while(wl_display_prepare_read(display)!=0)if(wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-   if(wl_display_read_events(display)<0||wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-  }
-  dispatching=false;flush();
+  const bool ok=wayland::pump(display);
+  dispatching=false;
+  if(!ok){lost();return;}
+  flush();
  }
+
  void lost(){
   // Never inside dispatch or cancelAll(): both walk objects that a nested cancel would delete.
   if(dispatching||cancelling){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}

@@ -1,3 +1,4 @@
+#include "XInputSetup.h"
 #include "X11Clicks.h"
 #include <QSocketNotifier>
 #include <cstdlib>
@@ -27,25 +28,10 @@ bool X11ClickSource::start(unsigned long window, std::function<void(QPointF, int
     int screenNumber = 0;
     connection_ = xcb_connect(nullptr, &screenNumber);
     auto fail = [&](const QString& why) { if (failure) *failure = why; stop(); return false; };
-    if (!connection_ || xcb_connection_has_error(connection_)) return fail(QStringLiteral("no X server connection"));
-    const auto* extension = xcb_get_extension_data(connection_, &xcb_input_id);
-    if (!extension || !extension->present) return fail(QStringLiteral("the X server has no XInput extension"));
-    opcode_ = extension->major_opcode;
-    auto* version = xcb_input_xi_query_version_reply(connection_, xcb_input_xi_query_version(connection_, 2, 1), nullptr);
-    const bool raw = version && (version->major_version > 2 || (version->major_version == 2 && version->minor_version >= 1));
-    std::free(version);
-    if (!raw) return fail(QStringLiteral("the X server has no XInput 2.1"));
-    auto iterator = xcb_setup_roots_iterator(xcb_get_setup(connection_));
-    for (int i = 0; i < screenNumber && iterator.rem; ++i) xcb_screen_next(&iterator);
-    if (!iterator.data) return fail(QStringLiteral("no X screen"));
-    root_ = iterator.data->root;
-    struct { xcb_input_event_mask_t head; std::uint32_t mask; } select{};
-    select.head.deviceid = XCB_INPUT_DEVICE_ALL_MASTER;
-    select.head.mask_len = 1;
-    select.mask = XCB_INPUT_XI_EVENT_MASK_RAW_BUTTON_PRESS;
-    auto* error = xcb_request_check(connection_, xcb_input_xi_select_events_checked(connection_, root_, 1, &select.head));
-    if (error) { std::free(error); return fail(QStringLiteral("the X server refused raw button events")); }
-    xcb_flush(connection_);
+    xcb_window_t root = XCB_WINDOW_NONE;
+    const auto reason = setupXInput(connection_, screenNumber, XCB_INPUT_XI_EVENT_MASK_RAW_BUTTON_PRESS, opcode_, root, QStringLiteral("the X server refused raw button events"));
+    if (!reason.isEmpty()) return fail(reason);
+    root_ = root;
     window_ = window;
     press_ = std::move(press);
     notifier_ = new QSocketNotifier(xcb_get_file_descriptor(connection_), QSocketNotifier::Read, this);

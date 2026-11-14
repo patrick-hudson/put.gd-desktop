@@ -1,3 +1,4 @@
+#include "platform/ProcessStat.h"
 #include "HyprlandSourceAdapter.h"
 #include "platform/SessionLock.h"
 #include "platform/wayland/CaptureCompose.h"
@@ -12,14 +13,7 @@ namespace putgd {
 namespace {
 const QString focusMessage="Focus an external window and invoke the window hotkey or CLI";
 // The parent of a process, from /proc/<pid>/stat (the field after the command's closing parenthesis).
-qint64 parentOf(qint64 pid){
- QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
- if(!stat.open(QIODevice::ReadOnly))return 0;
- const QByteArray text=stat.read(4096);const auto close=text.lastIndexOf(')');
- if(close<0)return 0;
- const auto fields=text.mid(close+2).split(' ');
- return fields.size()>1?fields[1].toLongLong():0;
-}
+qint64 parentOf(qint64 pid){return parentProcess(pid);}
 }
 HyprlandSourceAdapter::HyprlandSourceAdapter(QObject* parent):WaylandCaptureAdapter(parent),shortcuts_(&ipc_){
  connect(&shortcuts_,&ShortcutBackend::changed,this,&HyprlandSourceAdapter::capabilitiesChanged);
@@ -56,9 +50,11 @@ bool HyprlandSourceAdapter::ownWindow(qint64 pid,const QString& appId)const{
  if(pid<=0)return false;
  const qint64 self=QCoreApplication::applicationPid();
  if(pid==self||(uiProcess_&&pid==uiProcess_))return true;
- // putgd-ui, putgd-record and putgd-region run below the resident.
+ // Keep Hyprland's original bounded descendant rule (#1275). Native helpers
+ // are direct QProcess children; this also covers intermediate launchers.
+ constexpr int residentAncestorDepth=8;
  qint64 current=pid;
- for(int depth=0;depth<8&&current>1;++depth){current=parentOf(current);if(current==self)return true;}
+ for(int depth=0;depth<residentAncestorDepth&&current>1;++depth){current=parentOf(current);if(current==self)return true;}
  return false;
 }
 bool HyprlandSourceAdapter::refusedFrame(const QImage& image){

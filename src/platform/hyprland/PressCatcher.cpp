@@ -1,3 +1,4 @@
+#include "platform/wayland/EventPump.h"
 #include "PressCatcher.h"
 // The generated header names a parameter "namespace".
 #define namespace namespace_
@@ -44,7 +45,7 @@ struct PressCatcher::Impl {
  PressCatcher& q;
  wl_display* display=nullptr;wl_registry* registry=nullptr;wl_compositor* compositor=nullptr;wl_shm* shm=nullptr;zwlr_layer_shell_v1* shell=nullptr;
  wl_seat* seat=nullptr;wl_pointer* pointer=nullptr;wl_keyboard* keyboard=nullptr;
- QHash<uint32_t,OutputEntry*> outputs;QList<Layer*> layers;QSocketNotifier* notifier=nullptr;QTimer retry;
+ QHash<uint32_t,OutputEntry*> outputs;QList<Layer*> layers;QSocketNotifier* notifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer retry;
  Layer* over=nullptr;QPointF at;bool down=false,dispatching=false;uint32_t modifiers=0;
  explicit Impl(PressCatcher& owner):q(owner){retry.setSingleShot(true);QObject::connect(&retry,&QTimer::timeout,&q,[this]{open();});open();}
  ~Impl(){reset();}
@@ -56,10 +57,13 @@ struct PressCatcher::Impl {
   static const wl_registry_listener listener{global,removed};
   wl_registry_add_listener(registry,&listener,this);
   notifier=new QSocketNotifier(wl_display_get_fd(display),QSocketNotifier::Read,&q);
+  writeNotifier=new QSocketNotifier(wl_display_get_fd(display),QSocketNotifier::Write,&q);writeNotifier->setEnabled(false);
+  QObject::connect(writeNotifier,&QSocketNotifier::activated,&q,[this]{flush();});
   QObject::connect(notifier,&QSocketNotifier::activated,&q,[this]{events();});
   flush();
  }
  void reset(){
+  if(writeNotifier){writeNotifier->setEnabled(false);writeNotifier->deleteLater();writeNotifier=nullptr;}
   clearLayers();
   if(notifier){notifier->setEnabled(false);notifier->deleteLater();notifier=nullptr;}
   if(pointer)wl_pointer_destroy(pointer);if(keyboard)wl_keyboard_destroy(keyboard);if(seat)wl_seat_destroy(seat);
@@ -70,21 +74,15 @@ struct PressCatcher::Impl {
   if(display){wl_display_flush(display);wl_display_disconnect(display);display=nullptr;}
  }
  void lost(){reset();retry.start(5000);}
- void flush(){if(display&&wl_display_flush(display)<0&&errno!=EAGAIN)lost();}
+ void flush(){if(!display)return;bool pending=false;if(!wayland::flush(display,pending)){lost();return;}if(writeNotifier)writeNotifier->setEnabled(pending);}
  void events(){
   if(!display||dispatching)return;dispatching=true;
-  bool ok=wl_display_dispatch_pending(display)>=0;
-  if(ok){
-   pollfd ready{wl_display_get_fd(display),POLLIN,0};
-   if(::poll(&ready,1,0)>0){
-    while(ok&&wl_display_prepare_read(display)!=0)ok=wl_display_dispatch_pending(display)>=0;
-    if(ok)ok=wl_display_read_events(display)>=0&&wl_display_dispatch_pending(display)>=0;
-   }
-  }
+  const bool ok=wayland::pump(display);
   dispatching=false;
   if(!ok){lost();return;}
   flush();
  }
+
  bool start(const QList<Area>& areas){
   if(!layers.isEmpty())return true;
   if(!display||!compositor||!shm||!shell)return false;

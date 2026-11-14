@@ -1,3 +1,4 @@
+#include "LabwcSession.h"
 #include "BudgieClicks.h"
 #include "core/Log.h"
 #include <QDBusConnection>
@@ -29,34 +30,7 @@ constexpr Button buttons[] = {{"Left", 1}, {"Middle", 2}, {"Right", 3}};
 // click is commonly made with has its own bind.
 constexpr const char* clientModifiers[] = {"", "S-", "C-", "A-", "W-", "C-S-"};
 
-struct Labwc { qint64 pid = 0; QString configDir, xdgConfigHome; };
-// The session's labwc, as LabwcBridgeBackend finds it: Budgie starts it with
-// --config-dir $XDG_CONFIG_HOME/budgie-desktop/labwc.
-Labwc runningLabwc() {
-    const auto uid = getuid();
-    for (const auto& entry : QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        bool numeric = false;
-        const qint64 pid = entry.toLongLong(&numeric);
-        if (!numeric) continue;
-        QFile comm("/proc/" + entry + "/comm");
-        if (!comm.open(QIODevice::ReadOnly) || comm.readAll().trimmed() != "labwc") continue;
-        if (QFileInfo("/proc/" + entry).ownerId() != uid) continue;
-        QFile cmdline("/proc/" + entry + "/cmdline"), environ("/proc/" + entry + "/environ");
-        if (!cmdline.open(QIODevice::ReadOnly) || !environ.open(QIODevice::ReadOnly)) continue;
-        Labwc found;
-        found.pid = pid;
-        const auto args = cmdline.read(65536).split('\0');
-        for (qsizetype i = 0; i + 1 < args.size(); ++i) if (args[i] == "--config-dir" || args[i] == "-C") found.configDir = QString::fromLocal8Bit(args[i + 1]);
-        QString home;
-        for (const auto& line : environ.read(1 << 20).split('\0')) {
-            if (line.startsWith("XDG_CONFIG_HOME=")) found.xdgConfigHome = QString::fromLocal8Bit(line.mid(16));
-            else if (line.startsWith("HOME=")) home = QString::fromLocal8Bit(line.mid(5));
-        }
-        if (found.xdgConfigHome.isEmpty() && !home.isEmpty()) found.xdgConfigHome = home + "/.config";
-        return found;
-    }
-    return {};
-}
+
 bool isLabwc(qint64 pid) {
     QFile comm(QStringLiteral("/proc/%1/comm").arg(pid));
     return pid > 0 && comm.open(QIODevice::ReadOnly) && comm.readAll().trimmed() == "labwc" && QFileInfo(QStringLiteral("/proc/%1").arg(pid)).ownerId() == getuid();
@@ -215,7 +189,7 @@ QString BudgieClicks::withBinds(const QString& rc, QString* error) {
 }
 BudgieClicks::BudgieClicks(QObject* parent, QString rcPath) : QObject(parent), rcPath_(std::move(rcPath)), fixedPath_(!rcPath_.isEmpty()) {
     if (!fixedPath_) {
-        const auto labwc = runningLabwc();
+        const auto labwc = runningLabwc().value_or(LabwcSession{});
         labwc_ = labwc.pid;
         const QString config = labwc.xdgConfigHome.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) : labwc.xdgConfigHome;
         rcPath_ = !labwc.configDir.isEmpty() ? labwc.configDir + "/rc.xml" : config + "/budgie-desktop/labwc/rc.xml";
@@ -251,7 +225,7 @@ QJsonObject BudgieClicks::clickCapability() const {
     else if (!bus.interface() || bus.interface()->serviceOwner(service).value() != bus.baseService()) { reason = "budgie_service_unavailable"; message = "This put.gd does not own org.putgd.App.Budgie on the session bus, so labwc's mouse binds cannot reach it."; }
     else if (!rc.isFile()) { reason = "labwc_config_missing"; message = "labwc's configuration " + rcPath_ + " does not exist, so put.gd cannot add the mouse binds that report clicks."; }
     else if (!rc.isWritable() || !QFileInfo(rc.absolutePath()).isWritable()) { reason = "labwc_config_read_only"; message = "labwc's configuration " + rcPath_ + " cannot be written, so put.gd cannot add the mouse binds that report clicks."; }
-    else if (!fixedPath_ && !isLabwc(labwc_) && !runningLabwc().pid) { reason = "labwc_not_running"; message = "labwc is not running in this session."; }
+    else if (!fixedPath_ && !isLabwc(labwc_) && !runningLabwc().value_or(LabwcSession{}).pid) { reason = "labwc_not_running"; message = "labwc is not running in this session."; }
     capability["available"] = reason.isEmpty();
     capability["targets"] = reason.isEmpty() ? QJsonArray{"monitor", "desktop", "region"} : QJsonArray{};
     if (!reason.isEmpty()) { capability["reason"] = reason; capability["message"] = message; }
@@ -271,7 +245,7 @@ Error BudgieClicks::sync() {
     if (!out.open(QIODevice::WriteOnly) || out.write(wanted.toUtf8()) < 0 || !out.commit()) return {"labwc_config_read_only", "Cannot write labwc's configuration " + rcPath_, {}};
     // What `labwc --reconfigure` does: SIGHUP has labwc read rc.xml again.
     if (!fixedPath_) {
-        if (!isLabwc(labwc_)) labwc_ = runningLabwc().pid;
+        if (!isLabwc(labwc_)) labwc_ = runningLabwc().value_or(LabwcSession{}).pid;
         if (!isLabwc(labwc_) || ::kill(pid_t(labwc_), SIGHUP) != 0) return {"labwc_not_running", "labwc could not be told to read its configuration again", {}};
     }
     logging::info(logRecording(), watching_ ? "labwc mouse binds for click highlights added" : "labwc mouse binds for click highlights removed", {});

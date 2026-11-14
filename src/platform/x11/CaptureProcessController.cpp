@@ -1,3 +1,4 @@
+#include "platform/ProcessStat.h"
 #include "CaptureProcessController.h"
 #include <cmath>
 #include "CaptureCursorPolicy.h"
@@ -19,16 +20,7 @@
 namespace putgd {
 namespace {
 QJsonObject build(){return QJsonDocument::fromJson(buildManifestJson()).object();}
-QString processStartTicks(qint64 pid){
- QFile file(QString("/proc/%1/stat").arg(pid));
- if(pid<=0||!file.open(QIODevice::ReadOnly))return {};
- const auto bytes=file.read(4097);if(bytes.size()>4096)return {};
- const auto end=bytes.lastIndexOf(')');if(end<0)return {};
- const auto fields=bytes.mid(end+2).simplified().split(' ');
- if(fields.size()<20)return {};
- bool ok=false;const auto ticks=fields[19].toULongLong(&ok);
- return ok&&ticks>0?QString::number(ticks):QString{};
-}
+
 const QString genericReason=QStringLiteral("The capture helper could not complete source acquisition");
 // Resident-side failures name their check; helper failures arrive with theirs.
 Error unavailable(const QString& code,const QString& check={},QJsonObject details={}){
