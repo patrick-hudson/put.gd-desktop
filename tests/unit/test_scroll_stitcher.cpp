@@ -580,6 +580,33 @@ void testPause() {
            fmt("%s, rows %d, exact prefix %d, sent %d [%s]", toString(far.result), far.stats.outputRows, far.exactPrefix, far.sentWhilePaused, far.stats.lastError.c_str()));
   }
   {
+    // Where the pointer rests decides where the wheel is turned, not how far a
+    // step may go: with the rest below the rectangle (on the bar) every step
+    // was one notch, three times the steps, and a Hyprland guest ran into the
+    // time limit (acceptance of 2026-11-14).
+    const auto steps = [](RunPoint away) {
+      DocSpec ds;
+      ds.viewport = 600;
+      const Document doc = makeDocument(ds);
+      ViewportSpec vs;
+      vs.height = 600;
+      FakeAppSpec as;
+      as.pxPerNotch = 53;
+      FakeClock clock;
+      FakeApp app(doc.img, vs, as, clock);
+      RunOptions so;
+      so.pointer = true;
+      so.away = away;
+      so.restAway = true;
+      ScrollRun run(app, app, clock, so);
+      const RunResult res = run.run();
+      return std::make_pair(res, run.stats().steps);
+    };
+    const auto side = steps(RunPoint{-12, 200}), below = steps(RunPoint{6, 613});
+    report("rest below the rectangle: no smaller steps", side.first == RunResult::EndOfContent && below.first == RunResult::EndOfContent && below.second <= side.second * 5 / 4,
+           fmt("side %s in %d steps, below %s in %d steps", toString(side.first), side.second, toString(below.first), below.second));
+  }
+  {
     // Stop while paused keeps the image; so does a pause nobody ends, at its limit.
     const PauseRun stopped = pausedRun(6, 70, -1, 0, false, 1500);
     report("stop while paused keeps the image", stopped.result == RunResult::Stopped && stopped.stats.outputRows > 600 && stopped.exactPrefix && stopped.sentWhilePaused == 0,

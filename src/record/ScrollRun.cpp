@@ -370,9 +370,14 @@ int ScrollRun::planNotches() const {
     const int band = stitcher_.movingBandBottom() - stitcher_.movingBandTop();
     double maxPx = opts_.maxStepFraction * band;
     double targetPx = opts_.targetStepFraction * band;
-    if (opts_.pointer) {
-        // Rule 4: the appended rows are the frame's last rows; keep them below
-        // the parked pointer so a hover effect under it never reaches the image.
+    // Rule 4: the appended rows are the frame's last rows; keep them below a
+    // pointer parked on the page so a hover effect under it never reaches the
+    // image. A pointer that only visits for the wheel step (restAway) is
+    // outside while frames are read and limits nothing: with its rest below
+    // the rectangle (on the bar, #1514) the wheel point is near the bottom
+    // edge, and the margin made every step one notch, three times the steps
+    // of the nightly and past the time limit on a Hyprland guest.
+    if (opts_.pointer && !(opts_.restAway && opts_.away)) {
         const RunPoint at = wheelPoint();
         maxPx = std::min(maxPx, double(std::max(0, stitcher_.movingBandBottom() - at.y - opts_.hoverMarginRows)));
         targetPx = std::min(targetPx, maxPx);
@@ -576,7 +581,11 @@ std::optional<RunResult> ScrollRun::holdPaused() {
         else if (clock_.nowMs() - began >= opts_.pauseLimitMs) {
             stats_.pauseExpired = true;
             end = RunResult::Stopped;
-        } else clock_.sleepMs(50);
+        } else {
+            // The desktop may owe the user a pointer put back (ScrollCapture::Gate::held).
+            injector_.held();
+            clock_.sleepMs(10);
+        }
     }
     const int64_t held = clock_.nowMs() - began;
     pausedMs_ += held;

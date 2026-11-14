@@ -90,7 +90,8 @@ private:
     void emitProgress();
     // Where the pointer rests between wheel steps, and the surface that sees it.
     void placeRest();
-    void pointerSeen(std::optional<QPointF> at);
+    void pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp);
+    void userMoved(bool pulledBack, std::optional<QPointF> at, bool atIsBase = false);
     // Layer-shell desktops: a clear surface over the rectangle's output that
     // takes the pointer everywhere but at the wheel points (desktop logical
     // coordinates), the bar and the pad, so that the user's motion is seen
@@ -124,7 +125,13 @@ private:
     QWidget* pad_ = nullptr;
     QWidget* watch_ = nullptr;
     QPointer<QWindow> restWindow_, watchWindow_;
-    QPointF restLocal_;
+    QPointF restLocal_, restOrigin_;
+    // The last pointer event seen on a surface of the helper's (desktop
+    // logical), the motion count then, and the pointer's last arrival at rest.
+    QPointF seen_;
+    quint64 seenSeq_ = 0, watchSeqBase_ = 0, arrivalStamp_ = 0;
+    qint64 arrivedMs_ = -1;
+    bool haveSeen_ = false, lastWasArrival_ = false;
     // GNOME: where the Shell put the bar (the resident's `overlay` rect).
     QRect shellBar_;
     QString pausedBy_, progressState_;

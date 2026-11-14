@@ -30,6 +30,10 @@ struct RunInjector {
     // Before the first injection. X11 waits here until the modifier keys are up
     // (Ctrl plus wheel zooms); false when they never were, or `stop` was set.
     virtual bool waitReady(const std::atomic<bool>& stop) { (void)stop; return true; }
+    // Called while the loop waits in a pause, every 10 ms. The only injection
+    // allowed then is the helper's own one-time correction of a pointer it
+    // pulled back from under the user's hand (#1514).
+    virtual void held() {}
 };
 struct RunFrame {
     scroll::FrameView view;    // valid until the next nextFrame() that returns a frame
