@@ -46,7 +46,8 @@ struct PressCatcher::Impl {
  wl_display* display=nullptr;wl_registry* registry=nullptr;wl_compositor* compositor=nullptr;wl_shm* shm=nullptr;zwlr_layer_shell_v1* shell=nullptr;
  wl_seat* seat=nullptr;wl_pointer* pointer=nullptr;wl_keyboard* keyboard=nullptr;
  QHash<uint32_t,OutputEntry*> outputs;QList<Layer*> layers;QSocketNotifier* notifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer retry;
- Layer* over=nullptr;QPointF at;bool down=false,dispatching=false;uint32_t modifiers=0;
+ // placed: at holds a position the compositor reported reliably during this catch.
+ Layer* over=nullptr;QPointF at;bool placed=false,down=false,dispatching=false;uint32_t modifiers=0;
  explicit Impl(PressCatcher& owner):q(owner){retry.setSingleShot(true);QObject::connect(&retry,&QTimer::timeout,&q,[this]{open();});open();}
  ~Impl(){reset();}
  void open(){
@@ -86,7 +87,7 @@ struct PressCatcher::Impl {
  bool start(const QList<Area>& areas){
   if(!layers.isEmpty())return true;
   if(!display||!compositor||!shm||!shell)return false;
-  over=nullptr;down=false;
+  over=nullptr;placed=false;down=false;
   for(const auto& area:areas)for(auto* output:outputs)if(output->name==area.output){
    auto* entry=new Layer{this,wl_compositor_create_surface(compositor),nullptr,nullptr,area.logical};
    entry->layer=zwlr_layer_shell_v1_get_layer_surface(shell,entry->surface,output->native,ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,"putgd-region-catcher");
@@ -102,7 +103,7 @@ struct PressCatcher::Impl {
  }
  void clearLayers(){
   for(auto* layer:layers){if(layer->layer)zwlr_layer_surface_v1_destroy(layer->layer);if(layer->surface)wl_surface_destroy(layer->surface);if(layer->buffer)wl_buffer_destroy(layer->buffer);delete layer;}
-  layers.clear();over=nullptr;down=false;
+  layers.clear();over=nullptr;placed=false;down=false;
  }
  // From inside a listener the objects being dispatched must outlive it.
  void finishLater(){QTimer::singleShot(0,&q,[this]{clearLayers();flush();});}
@@ -119,13 +120,22 @@ struct PressCatcher::Impl {
  static void entered(void* data,wl_pointer*,uint32_t,wl_surface* surface,wl_fixed_t x,wl_fixed_t y){
   auto& self=*static_cast<Impl*>(data);if(!surface)return;
   for(auto* layer:self.layers)if(layer->surface==surface)self.over=layer;
-  self.place(x,y);
+  // As the surfaces map, Hyprland enters the one under the pointer, then moves
+  // the focus to another output's surface with a position that lies outside it
+  // (#1487, measured on 0.56: the output's offset taken twice). A position
+  // outside the entered surface is not where the pointer is: keep the last one
+  // reported. Motion positions are right on any surface.
+  if(!self.over)return;
+  const QPointF local(wl_fixed_to_double(x),wl_fixed_to_double(y));
+  if(local.x()>=0&&local.y()>=0&&local.x()<self.over->logical.width()&&local.y()<self.over->logical.height()){self.place(x,y);self.placed=true;}
  }
  static void left(void* data,wl_pointer*,uint32_t,wl_surface*){auto& self=*static_cast<Impl*>(data);if(!self.down)self.over=nullptr;}
- static void moved(void* data,wl_pointer*,uint32_t,wl_fixed_t x,wl_fixed_t y){auto& self=*static_cast<Impl*>(data);self.place(x,y);if(self.down)emit self.q.pointer(PressCatcher::Move,self.at);}
+ static void moved(void* data,wl_pointer*,uint32_t,wl_fixed_t x,wl_fixed_t y){auto& self=*static_cast<Impl*>(data);self.place(x,y);if(self.over)self.placed=true;if(self.down)emit self.q.pointer(PressCatcher::Move,self.at);}
  static void clicked(void* data,wl_pointer*,uint32_t,uint32_t,uint32_t button,uint32_t state){
   auto& self=*static_cast<Impl*>(data);if(!self.over)return;
-  if(button==BTN_LEFT&&state==WL_POINTER_BUTTON_STATE_PRESSED&&!self.down){self.down=true;emit self.q.pointer(PressCatcher::Press,self.at);}
+  // A press at no known position starts no drag: it would anchor the selection
+  // somewhere the user did not press. The selector opens as usual instead.
+  if(button==BTN_LEFT&&state==WL_POINTER_BUTTON_STATE_PRESSED&&!self.down){if(!self.placed)return;self.down=true;emit self.q.pointer(PressCatcher::Press,self.at);}
   else if(button==BTN_LEFT&&state==WL_POINTER_BUTTON_STATE_RELEASED&&self.down){self.down=false;emit self.q.pointer(PressCatcher::Release,self.at);self.finishLater();}
   else if(button==BTN_RIGHT&&state==WL_POINTER_BUTTON_STATE_PRESSED&&!self.down){emit self.q.pointer(PressCatcher::Cancel,self.at);self.finishLater();}
  }
