@@ -88,7 +88,7 @@ struct CursorOutputProbe::Run:QObject {
     [](void* data,ext_image_copy_capture_cursor_session_v1*){auto* output=static_cast<Output*>(data);output->entered=false;output->positioned=false;},
     [](void* data,ext_image_copy_capture_cursor_session_v1*,int32_t x,int32_t y){auto* output=static_cast<Output*>(data);output->positioned=true;output->position=QPoint(x,y);},
     [](void*,ext_image_copy_capture_cursor_session_v1*,int32_t,int32_t){}};
-   for(auto* output:outputs){
+   for(auto* output:std::as_const(outputs)){
     output->source=ext_output_image_capture_source_manager_v1_create_source(sources,output->native);
     output->session=ext_image_copy_capture_manager_v1_create_pointer_cursor_session(copy,output->source,pointer);
     ext_image_copy_capture_cursor_session_v1_add_listener(output->session,&listener,output);

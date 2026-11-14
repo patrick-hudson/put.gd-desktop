@@ -293,7 +293,7 @@ void SelectionOverlay::finish() {
     if (!finished_ && stats_.paints) regionDebugLog(stats_.summary(QStringLiteral("record selection")));
     finished_ = true;
     hint_.stop();
-    for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); }
+    for (auto* s : std::as_const(surfaces_)) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); }
 }
 void SelectionOverlay::cancel(Error error) { if (finished_) return; finish(); emit cancelled(error); }
 

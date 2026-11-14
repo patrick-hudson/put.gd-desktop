@@ -107,7 +107,7 @@ QString portableFromLabwc(const QString& labwc){
  }
  // Qt's order: Ctrl, Alt, Shift, Meta.
  QStringList ordered;for(const char* m:{"Ctrl","Alt","Shift","Meta"})if(out.contains(QString::fromLatin1(m)))ordered<<QString::fromLatin1(m);
- for(const auto& m:out)if(!ordered.contains(m))ordered<<m;
+ for(const auto& m:std::as_const(out))if(!ordered.contains(m))ordered<<m;
  ordered<<key;return ordered.join('+');
 }
 }
@@ -197,7 +197,7 @@ void LabwcBridgeBackend::apply(){
   QStringList ours;QStringList removed;
   for(const auto& path:current)if(path.startsWith(basePath+ownPrefix))removed.append(path);
   auto actions=requested_.keys();std::sort(actions.begin(),actions.end());
-  for(const auto& action:actions){
+  for(const auto& action:std::as_const(actions)){
    const auto requested=requested_.value(action);const auto path=pathFor(action);
    if(requested.isEmpty()){written_.remove(action);pending_.remove(action);continue;}
    QString error;const auto gtk=gtkAccelerator(requested,&error);

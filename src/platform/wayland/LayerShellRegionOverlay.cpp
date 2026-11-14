@@ -58,7 +58,7 @@ public:
  // commits that region, not a monitor-sized buffer, per pointer event (#6).
  void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_);const auto next=chromeArea();update(painted_|next);painted_=next;}
  // The outline never waits for the fonts, only the pills do.
- QRegion chromeArea()const{if(!pillsReady())return selectionOutlineArea(owner_.selection_.translated(-logicalRect_.topLeft())).intersected(rect());const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
+ QRegion chromeArea()const{if(!pillsReady())return selectionOutlineArea(owner_.selection_.translated(-logicalRect_.topLeft())).intersected(rect());const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:std::as_const(owner_.frames_))displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
 protected:
  void paintEvent(QPaintEvent* e) override{
   QElapsedTimer work;work.start();
@@ -69,7 +69,7 @@ protected:
   // No scrim on any display (#629): the outline, a fading hint and the size.
   const auto clipped=owner_.selection_.intersected(logicalRect_);
   if(!clipped.isEmpty())paintSelectionOutline(p,clipped.translated(-logicalRect_.topLeft()));
-  QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);
+  QList<QRectF> displays;for(const auto& frame:std::as_const(owner_.frames_))displays.append(frame.logicalRect);
   if(!pillsReady()){if(!fontWaiters.contains(&owner_))fontWaiters.append(&owner_);}
   else paintRegionChrome(p,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
   owner_.stats_.painted(work.nsecsElapsed()/1e6);
@@ -84,7 +84,7 @@ protected:
  void keyPressEvent(QKeyEvent* e) override {
   if(owner_.finished_)return;
   const auto previous=owner_.selection_;Q_UNUSED(previous);
-  int screen=activeScreen();QList<QRectF> screens;for(const auto& frame:owner_.frames_)screens.append(frame.logicalRect);
+  int screen=activeScreen();QList<QRectF> screens;for(const auto& frame:std::as_const(owner_.frames_))screens.append(frame.logicalRect);
   const bool switched=switchRegionDisplay(owner_.selection_,screens,screen,e->key(),e->modifiers());
   const auto action=switched?RegionKeyAction::Change:regionKey(owner_.selection_,screens[screen],e->key(),e->modifiers());
   switch(action){
@@ -142,7 +142,7 @@ void LayerShellRegionOverlay::surfacePainted(const void* surface){
  // Not yet: this first paint is still to be committed, and a commit that maps the
  // surface with the keyboard is what ends a held button. Qt Wayland holds
  // requestUpdate() until the compositor has rendered the committed buffer.
- for(auto* each:surfaces_)if(auto* window=each->windowHandle()){awaitingMapped_.insert(window);window->installEventFilter(this);window->requestUpdate();}
+ for(auto* each:std::as_const(surfaces_))if(auto* window=each->windowHandle()){awaitingMapped_.insert(window);window->installEventFilter(this);window->requestUpdate();}
 }
 void LayerShellRegionOverlay::acceptKeyboardOnDemand(){
 #ifdef PUTGD_NATIVE_REGION
@@ -169,7 +169,7 @@ void LayerShellRegionOverlay::accept(){
  dragging_=false;
  // A software cursor is a separate compositor surface: clearing the widget
  // does not clear it. Hide it before the transparent frame and its fence.
- for(auto* surface:surfaces_)surface->setCursor(Qt::BlankCursor);
+ for(auto* surface:std::as_const(surfaces_))surface->setCursor(Qt::BlankCursor);
 #ifdef PUTGD_NATIVE_REGION
  // KWin animates closing surfaces on real GPUs, starting from the last frame it
  // rendered for them, and ScreenShot2 renders that animation. So first commit
@@ -207,7 +207,7 @@ void LayerShellRegionOverlay::dismiss(){
  wl_callback_add_listener(dismissal_,&listener,this);wl_display_flush(native->display());
 #endif
 }
-void LayerShellRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("wayland region")));}finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
+void LayerShellRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("wayland region")));}finished_=true;hint_.stop();for(auto* surface:std::as_const(surfaces_))surface->hide();}
 void LayerShellRegionOverlay::cancel(Error error){
  if(finished_){
 #ifdef PUTGD_NATIVE_REGION

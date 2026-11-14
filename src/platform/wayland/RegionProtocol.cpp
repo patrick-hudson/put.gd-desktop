@@ -147,7 +147,7 @@ bool waylandFrozenPixels(int fd,const QJsonArray& frames,QList<CaptureFrame>& la
   offset+=qint64(sizes[i].width())*sizes[i].height()*4;
  }
  ::munmap(mapped,size_t(total));
- for(const auto& frame:layout) if(frame.pixels.isNull()) { error=frozenInvalid(); return false; }
+ for(const auto& frame:std::as_const(layout)) if(frame.pixels.isNull()) { error=frozenInvalid(); return false; }
  return true;
 }
 }

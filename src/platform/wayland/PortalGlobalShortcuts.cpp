@@ -78,7 +78,7 @@ void PortalGlobalShortcuts::request(const QString& method,const QList<QVariant>&
 }
 void PortalGlobalShortcuts::open(){
  if(!session_.isEmpty()||paused_)return;
- bool any=false;for(const auto& value:requested_)any|=!value.isEmpty();
+ bool any=false;for(const auto& value:std::as_const(requested_))any|=!value.isEmpty();
  if(!any){emit changed();return;}
  stage_="create";bound_=false;triggers_.clear();
  // An unsandboxed caller names its app ID first, or xdg-desktop-portal-hyprland

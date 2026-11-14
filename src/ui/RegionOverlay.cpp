@@ -49,7 +49,7 @@ public:
  // backing store flushes just that region, so each pointer event costs a few
  // strips rather than a monitor-sized repaint and upload (#6).
  void updateSelection(const QRectF& previous){describeRegion(this,owner_.selection_,false,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_);Q_UNUSED(previous);const auto next=chromeArea();update(painted_|next);painted_=next;}
- QRegion chromeArea()const{const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
+ QRegion chromeArea()const{const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:std::as_const(owner_.frames_))displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
 protected:
  void paintEvent(QPaintEvent* e) override {
   QElapsedTimer work;work.start();
@@ -59,7 +59,7 @@ protected:
   if(owner_.frozen_&&!owner_.frames_[own].pixels.isNull())painter.drawImage(rect(),owner_.frames_[own].pixels);
   const auto clipped=owner_.selection_.intersected(logicalRect_);
   if(!clipped.isEmpty())paintSelectionOutline(painter,clipped.translated(-logicalRect_.topLeft()));
-  QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);
+  QList<QRectF> displays;for(const auto& frame:std::as_const(owner_.frames_))displays.append(frame.logicalRect);
   paintRegionChrome(painter,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
   owner_.stats_.painted(work.nsecsElapsed()/1e6);
  }
@@ -72,7 +72,7 @@ protected:
  void keyPressEvent(QKeyEvent* e) override {
   if(owner_.finished_)return;
   const auto previous=owner_.selection_;Q_UNUSED(previous);
-  int screen=activeScreen();QList<QRectF> screens;for(const auto& frame:owner_.frames_)screens.append(frame.logicalRect);
+  int screen=activeScreen();QList<QRectF> screens;for(const auto& frame:std::as_const(owner_.frames_))screens.append(frame.logicalRect);
   const bool switched=switchRegionDisplay(owner_.selection_,screens,screen,e->key(),e->modifiers());
   const auto action=switched?RegionKeyAction::Change:regionKey(owner_.selection_,screens[screen],e->key(),e->modifiers());
   switch(action){
@@ -102,6 +102,6 @@ void RegionOverlay::start(){
 void RegionOverlay::press(QPointF point){if(finished_)return;keyboardScreen_=-1;anchor_=point;dragging_=true;selection_=QRectF(point,QSizeF{});for(auto* s:surfaces_)s->updateSelection({});}
 void RegionOverlay::move(QPointF point){if(!dragging_||finished_)return;const auto previous=selection_;selection_=QRectF(anchor_,point).normalized();++stats_.moves;for(auto* s:surfaces_)s->updateSelection(previous);}
 void RegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<minimumSelectionSize||selection_.height()<minimumSelectionSize){cancel();return;}finish();emit selected(selection_);}
-void RegionOverlay::finish(){if(!finished_&&stats_.paints)regionDebugLog(stats_.summary(QStringLiteral("qt region")));finished_=true;hint_.stop();for(auto* s:surfaces_){s->releaseKeyboard();s->releaseMouse();s->hide();}}
+void RegionOverlay::finish(){if(!finished_&&stats_.paints)regionDebugLog(stats_.summary(QStringLiteral("qt region")));finished_=true;hint_.stop();for(auto* s:std::as_const(surfaces_)){s->releaseKeyboard();s->releaseMouse();s->hide();}}
 void RegionOverlay::cancel(Error error){if(finished_)return;finish();emit cancelled(error);}
 }

@@ -23,7 +23,7 @@ inline QStringList dataControlImportFormats(const QStringList& offered,
   }
   if(!standardOnly) {
    auto imageTypes=discover();imageTypes.removeAll("image/png");imageTypes.prepend("image/png");
-   for(const auto& mime:imageTypes)if(offered.contains(QString::fromLatin1(mime)))formats.append(QString::fromLatin1(mime));
+   for(const auto& mime:std::as_const(imageTypes))if(offered.contains(QString::fromLatin1(mime)))formats.append(QString::fromLatin1(mime));
   }
  }
  for(const char* mime:{"text/plain;charset=utf-8","text/plain","UTF8_STRING"})
