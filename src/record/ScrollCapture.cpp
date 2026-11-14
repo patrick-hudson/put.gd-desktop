@@ -924,7 +924,15 @@ void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint6
     const qint32 age = qint32(quint32(now) - quint32(stamp));
     const bool clocksAgree = stamp != 0 && age >= 0 && age < 1000;
     const qint64 lastMove = gate.lastMoveMs.load();
-    if (clocksAgree && lastMove >= 0 && qint32(quint32(lastMove) - quint32(stamp)) > 0) userMoved(true, global, true, QPointF(gate.lastX.load(), gate.lastY.load()), stamp, lastMove);
+    const QPointF lastTarget(gate.lastX.load(), gate.lastY.load());
+    // wl_pointer.enter carries no time. A hand's first event on the watch out
+    // of a hole is within a few pixels of it, so an enter far from where the
+    // capture last put the pointer, soon after, is from before that motion
+    // (the Omarchy guest's late events again); later events, which have
+    // times, then say where the hand was.
+    const bool unstampedEnterBefore = watch && !clocksAgree && lastMove >= 0 && now - lastMove < 400 && QLineF(*global, lastTarget).length() > 12;
+    if (clocksAgree && lastMove >= 0 && qint32(quint32(lastMove) - quint32(stamp)) > 0) userMoved(true, global, true, lastTarget, stamp, lastMove);
+    else if (unstampedEnterBefore) userMoved(true, global, true, lastTarget, 1, lastMove);
     else if (watch && gate.resting.load()) userMoved(true, global, true, gate.restGlobal());
     else userMoved(!watch && afterArrival, global, false, gate.restGlobal());
 }
