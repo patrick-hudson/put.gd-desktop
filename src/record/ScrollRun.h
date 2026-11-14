@@ -254,6 +254,8 @@ public:
     scroll::ScrollStitcher& stitcher() { return stitcher_; }
     // The park positions of rule 2 and rule 7 for a frame of this size.
     static RunPoint parkPoint(int position, int width, int height);
+    // Rule 3's point just inside the edge the pointer waits beyond (restAway).
+    static RunPoint entryPoint(RunPoint away, int entryInset, int width, int height);
 private:
     // Thrown from wherever the loop is when it finds itself paused, and caught
     // where the loop can wait and look again (start(), run()): the pause takes

@@ -22,6 +22,9 @@
 #include <QEnterEvent>
 #include <QLineF>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QRegion>
+#include <chrono>
 #include <QScreen>
 #include <QTimer>
 #include <algorithm>
@@ -101,6 +104,22 @@ struct Primed final : RunFrames {
         return frame;
     }
 };
+// A clear surface that takes the pointer (#1514): the rest pad and the watch.
+class ClearSurface final : public QWidget {
+public:
+    explicit ClearSurface(const char* name) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus) {
+        setObjectName(QString::fromLatin1(name));
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+        setAttribute(Qt::WA_NoSystemBackground);
+    }
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.fillRect(rect(), Qt::transparent);
+    }
+};
 const char* endReason(RunResult result) {
     switch (result) {
         case RunResult::EndOfContent: return "end_of_content";
@@ -176,6 +195,12 @@ struct ScrollCapture::Job {
     // Where the pointer rests between wheel steps, on the bar or the rest pad
     // (desktop coordinates); unset where it has no such place (#1514).
     std::optional<QPoint> rest;
+    // Called on the worker once the frame size is known: the wheel points,
+    // desktop logical coordinates, for the watch (layer shell). The main
+    // thread sets watchShown once it has put it up (or decided not to); the
+    // worker never blocks on it, as abandon() joins the worker.
+    std::function<void(QList<QPointF>)> watchHoles;
+    std::atomic<bool> watchShown{false};
     int maxHeight = 0;
     qint64 maxPixels = 0;
     bool fromTop = false;
@@ -211,6 +236,7 @@ ScrollCapture::~ScrollCapture() {
     abandon();
     delete bar_;
     delete pad_;
+    delete watch_;
     delete selection_;
 #ifdef PUTGD_RECORD_LAYER_SHELL
     delete layerSelection_;
@@ -251,7 +277,10 @@ void ScrollCapture::release() {
     if (bar_) bar_->hide();
     delete pad_;
     pad_ = nullptr;
+    delete watch_;
+    watch_ = nullptr;
     restWindow_.clear();
+    watchWindow_.clear();
     resumeQuiet_.stop();
     resumePending_ = false;
 }
@@ -556,6 +585,8 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     job_->paintedPointer = frames_ == "image-copy";
     job_->endedByDesktop = [this] { return mutter_.closedByCompositor(); };
     QPointer<ScrollCapture> guard(this);
+    if (surfaceMode() == SurfaceMode::LayerShell)
+        job_->watchHoles = [guard](QList<QPointF> holes) { QMetaObject::invokeMethod(guard, [guard, holes] { if (guard) guard->showWatch(holes); }, Qt::QueuedConnection); };
     job_->gate.tookPointer = [guard] { QMetaObject::invokeMethod(guard, [guard] { if (guard) guard->pause(QStringLiteral("pointer")); }, Qt::QueuedConnection); };
     state_ = State::Capturing;
     pausedBy_.clear();
@@ -619,6 +650,8 @@ void ScrollCapture::pause(const QString& by) {
     // Paused already: it keeps the reason it was paused for.
     if (!pausedBy_.isEmpty()) { if (bar_) bar_->setPaused(pausedBy_); return; }
     pausedBy_ = by;
+    // The desktop is the user's again while paused.
+    if (watch_) watch_->hide();
     debugLog(QStringLiteral("scroll: paused by %1 at t=%2").arg(by).arg(FrameTap::nowMs() % 1000000));
     if (bar_) bar_->setPaused(by);
     emitProgress();
@@ -643,6 +676,7 @@ void ScrollCapture::resumeNow() {
     job_->gate.resting.store(false);
     job_->gate.visits.store(0);
     job_->gate.skipCheck.store(true);
+    if (watch_) { watch_->show(); watchWindow_ = watch_->windowHandle(); }
     job_->gate.paused.store(false);
     debugLog(QStringLiteral("scroll: resumed at t=%1").arg(FrameTap::nowMs() % 1000000));
     if (bar_) bar_->setState(progressState_);
@@ -709,12 +743,7 @@ void ScrollCapture::placeRest() {
             else if (candidate.y() < r.top()) pad.moveBottom(std::min(pad.bottom(), r.top() - 1));
             else pad.moveTop(std::max(pad.top(), r.bottom() + 1));
             if (!output.contains(pad) || pad.intersects(capture) || (barShown && bar.intersects(pad)) || !pad.contains(candidate) || !clear(candidate)) continue;
-            auto* w = new QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus);
-            w->setObjectName("putgd-scroll-rest");
-            w->setAttribute(Qt::WA_TranslucentBackground);
-            w->setAttribute(Qt::WA_ShowWithoutActivating);
-            w->setAttribute(Qt::WA_NoSystemBackground);
-            w->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+            auto* w = new ClearSurface("putgd-scroll-rest");
             const auto screens = QGuiApplication::screens();
             QScreen* on = nullptr;
             for (QScreen* each : screens) if (each->geometry().contains(pad)) on = each;
@@ -765,7 +794,39 @@ void ScrollCapture::pointerSeen(std::optional<QPointF> at) {
     debugLog(QStringLiteral("scroll: pointer left the rest surface with no visit sent"));
     pause(QStringLiteral("pointer"));
 }
+void ScrollCapture::showWatch(const QList<QPointF>& holes) {
+    if (!job_) return;
+    struct Shown { std::atomic<bool>& flag; ~Shown() { flag.store(true); } } shown{job_->watchShown};
+    if (state_ != State::Capturing || watch_) return;
+    QScreen* on = nullptr;
+    for (QScreen* each : QGuiApplication::screens()) if (each->geometry() == screen_) on = each;
+    if (!on) return;
+    auto* w = new ClearSurface("putgd-scroll-watch");
+    QRegion input(QRect(QPoint(), screen_.size()));
+    // A wheel step goes to the page only through these holes, 8 px across.
+    for (const QPointF& hole : holes) input -= QRect((hole - QPointF(4, 4)).toPoint() - screen_.topLeft(), QSize(8, 8));
+    if (bar_ && bar_->isVisible()) input -= bar_->geometry().translated(-screen_.topLeft());
+    if (pad_) input -= pad_->geometry().translated(-screen_.topLeft());
+    w->setMask(input);
+    barToLayer(w, on, screen_, false);
+    w->show();
+    watch_ = w;
+    watchWindow_ = w->windowHandle();
+    QStringList where;
+    for (const QPointF& hole : holes) where << QStringLiteral("%1,%2").arg(hole.x(), 0, 'f', 1).arg(hole.y(), 0, 'f', 1);
+    debugLog(QStringLiteral("scroll: watch over %1 with holes at %2").arg(screenName_, where.join(' ')));
+}
 bool ScrollCapture::eventFilter(QObject* object, QEvent* e) {
+    // Anything on the watch is the user: the capture's pointer is only ever
+    // at its rest (on the bar or the pad, cut out of it) or in a hole.
+    if (watchWindow_ && object == watchWindow_.data() && (e->type() == QEvent::MouseMove || e->type() == QEvent::Enter) && job_ && job_->gate.detecting.load()) {
+        if (resumePending_) resumeQuiet_.start(resumeQuietMs);
+        else if (!job_->gate.paused.load() && state_ == State::Capturing && !stopRequested_ && !cancelRequested_) {
+            const QPointF at = e->type() == QEvent::MouseMove ? static_cast<QMouseEvent*>(e)->position() : static_cast<QEnterEvent*>(e)->position();
+            debugLog(QStringLiteral("scroll: pointer at %1,%2 on the watch").arg(at.x() + screen_.x()).arg(at.y() + screen_.y()));
+            pause(QStringLiteral("pointer"));
+        }
+    }
     if (restWindow_ && object == restWindow_.data()) {
         switch (e->type()) {
             case QEvent::MouseMove: pointerSeen(static_cast<QMouseEvent*>(e)->position()); break;
@@ -907,6 +968,18 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                          .arg(step.score, 0, 'f', 2).arg(step.evidenceRows).arg(step.appendedRows).arg(step.fixedTop).arg(step.fixedBottom).arg(step.lowConfidence ? QStringLiteral(" low-confidence") : QString()));
         };
         debugLog(QStringLiteral("scroll: frames %1x%2 for %3x%4, cap %5 rows, away %6").arg(width).arg(height).arg(r.width()).arg(r.height()).arg(applied).arg(options.away ? QStringLiteral("%1,%2").arg(options.away->x).arg(options.away->y) : QStringLiteral("none")));
+        // Layer shell: the watch, with a hole at every point the wheel may be turned at.
+        if (job->rest && job->watchHoles && options.away) {
+            QList<QPointF> holes;
+            const auto desktop = [&](RunPoint p) { return QPointF(r.left() + p.x / sx, r.top() + p.y / sy); };
+            holes << desktop(ScrollRun::entryPoint(*options.away, options.entryInset, width, height));
+            for (int position = 0; position < 3; ++position) holes << desktop(ScrollRun::parkPoint(position, width, height));
+            job->watchHoles(holes);
+            const int64_t asked = FrameTap::nowMs();
+            while (!job->watchShown.load() && !job->stop.load() && FrameTap::nowMs() - asked < 1000) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            // Mapped by the compositor before the first injection.
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        }
         Primed frames(*job->tap, *first, job->sourceGone);
         SteadyClock clock;
         const scroll::RowSink sink = [&](const uint8_t* row, int w) {

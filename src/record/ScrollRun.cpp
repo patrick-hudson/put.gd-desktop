@@ -52,10 +52,13 @@ RunPoint ScrollRun::parkPoint(int position, int width, int height) {
 // as that lasts (the capture's own visits did that on a real desktop,
 // 2026-11-12, with the stream's frames coming in bursts 350 ms apart while it
 // was up). Where nothing scrolls at that edge the classic places follow.
+RunPoint ScrollRun::entryPoint(RunPoint away, int entryInset, int width, int height) {
+    const int inset = std::min({entryInset, width / 2, height / 2});
+    return {std::clamp(away.x, inset, std::max(inset, width - 1 - inset)), std::clamp(away.y, inset, std::max(inset, height - 1 - inset))};
+}
 RunPoint ScrollRun::wheelPoint() const {
     if (!atEntry_ || !opts_.away) return parkPoint(stats_.parkPosition, last_.width, last_.height);
-    const int inset = std::min({opts_.entryInset, last_.width / 2, last_.height / 2});
-    return {std::clamp(opts_.away->x, inset, std::max(inset, last_.width - 1 - inset)), std::clamp(opts_.away->y, inset, std::max(inset, last_.height - 1 - inset))};
+    return entryPoint(*opts_.away, opts_.entryInset, last_.width, last_.height);
 }
 
 bool ScrollRun::park() {

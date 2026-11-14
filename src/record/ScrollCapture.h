@@ -47,7 +47,9 @@ namespace putgd::record {
 // spot (not on GNOME, where only the Shell places windows). The helper knows
 // where it last put the pointer; that surface reporting it anywhere else, or
 // leaving when no visit into the rectangle was sent, is the user, and so is
-// (X11) a pointer that is not where XTest left it. Then nothing more is
+// (X11) a pointer that is not where XTest left it, and (layer shell) the
+// pointer anywhere on a clear surface over the output that leaves only the
+// wheel points to the page. Then nothing more is
 // injected until Resume: the bar's button, after the mouse has been still for
 // a moment, or the `resume` command.
 class ScrollCapture final : public QObject {
@@ -89,6 +91,11 @@ private:
     // Where the pointer rests between wheel steps, and the surface that sees it.
     void placeRest();
     void pointerSeen(std::optional<QPointF> at);
+    // Layer-shell desktops: a clear surface over the rectangle's output that
+    // takes the pointer everywhere but at the wheel points (desktop logical
+    // coordinates), the bar and the pad, so that the user's motion is seen
+    // while the pointer is in the rectangle for a wheel step too.
+    void showWatch(const QList<QPointF>& holes);
     bool eventFilter(QObject*, QEvent*) override;
     void finish(std::shared_ptr<Outcome>);
     void fail(const Error&);
@@ -115,7 +122,8 @@ private:
     // The rest pad where the bar is not beside the rectangle, and the window
     // whose pointer events tell the user's motion from the capture's.
     QWidget* pad_ = nullptr;
-    QPointer<QWindow> restWindow_;
+    QWidget* watch_ = nullptr;
+    QPointer<QWindow> restWindow_, watchWindow_;
     QPointF restLocal_;
     // GNOME: where the Shell put the bar (the resident's `overlay` rect).
     QRect shellBar_;
