@@ -52,28 +52,36 @@ RunPoint ScrollRun::parkPoint(int position, int width, int height) {
 // as that lasts (the capture's own visits did that on a real desktop,
 // 2026-11-12, with the stream's frames coming in bursts 350 ms apart while it
 // was up). Where nothing scrolls at that edge the classic places follow.
+RunPoint ScrollRun::entryPoint(RunPoint away, int entryInset, int width, int height) {
+    const int inset = std::min({entryInset, width / 2, height / 2});
+    return {std::clamp(away.x, inset, std::max(inset, width - 1 - inset)), std::clamp(away.y, inset, std::max(inset, height - 1 - inset))};
+}
 RunPoint ScrollRun::wheelPoint() const {
     if (!atEntry_ || !opts_.away) return parkPoint(stats_.parkPosition, last_.width, last_.height);
-    const int inset = std::min({opts_.entryInset, last_.width / 2, last_.height / 2});
-    return {std::clamp(opts_.away->x, inset, std::max(inset, last_.width - 1 - inset)), std::clamp(opts_.away->y, inset, std::max(inset, last_.height - 1 - inset))};
+    return entryPoint(*opts_.away, opts_.entryInset, last_.width, last_.height);
 }
 
 bool ScrollRun::park() {
+    holdOff();
     const RunPoint at = wheelPoint();
-    return injector_.movePointer(at.x, at.y);
+    return sent(injector_.movePointer(at.x, at.y));
 }
 
 // The pointer's place is asserted again before every injection: the user may
 // have moved the mouse, and the wheel goes to whatever is under the pointer.
+// A pause (the user took the pointer) ends the visit wherever it is: no wheel
+// step and no way out follow, because the pointer is the user's now.
 bool ScrollRun::inject(int notches) {
     if (stopped()) return false;
+    holdOff();
     // On the way to the top of a desktop that paints the pointer into the
     // frames, the pointer is in the rectangle only for the wheel step itself.
     const bool visit = (opts_.restAway || (toTop_ && opts_.restAwayToTop)) && opts_.pointer && opts_.away && haveFrame_;
     // Stop found the pointer inside: no wheel step follows, the pointer leaves.
     const auto leave = [&] {
+        if (!stopped()) holdOff();
         parked_ = -1;
-        return injector_.movePointer(opts_.away->x, opts_.away->y);
+        return sent(injector_.movePointer(opts_.away->x, opts_.away->y));
     };
     atEntry_ = atEntry_ && opts_.restAway && opts_.pointer && opts_.away;
     if (opts_.pointer && haveFrame_) {
@@ -91,15 +99,17 @@ bool ScrollRun::inject(int notches) {
         }
     }
     if (stopped()) { if (visit) leave(); return false; }
+    holdOff();
     stats_.notchesInjected += std::abs(notches);
     lastInjectMs_ = clock_.nowMs();
-    const bool sent = injector_.scroll(notches);
-    if (!visit) return sent;
+    const bool wheel = sent(injector_.scroll(notches));
+    if (wheel) { stepNotches_ += notches; ++stepInjections_; }
+    if (!visit) return wheel;
     // The application gets the wheel step with the pointer still on it: a
     // step whose pointer had left before the application came to it was lost
     // or went to what was under the pointer by then.
-    if (sent && opts_.leaveDelayMs > 0) clock_.sleepMs(opts_.leaveDelayMs);
-    return leave() && sent;
+    if (wheel && opts_.leaveDelayMs > 0) clock_.sleepMs(opts_.leaveDelayMs);
+    return leave() && wheel;
 }
 
 ScrollRun::Screen ScrollRun::screenIsAsSeen() {
@@ -195,8 +205,10 @@ ScrollRun::Wait ScrollRun::waitSettled(int timeoutMs, int quietMs) {
     lastFrameMs_ = -1;
     for (;;) {
         if (stopped()) return Wait::Stopped;
+        // Frames read while the user has the pointer may show what it does to the page.
+        if (!afterStop_) holdOff();
         const int64_t now = clock_.nowMs();
-        if (now - startMs_ >= opts_.totalTimeLimitMs) return Wait::TimeLimit;
+        if (activeMs() >= opts_.totalTimeLimitMs) return Wait::TimeLimit;
         const int need = responded ? settleNeedMs() : quiet;
         if (haveFrame_ && now - lastChange >= need) return Wait::Settled;
         if (source_.lost()) return Wait::Lost;
@@ -358,9 +370,14 @@ int ScrollRun::planNotches() const {
     const int band = stitcher_.movingBandBottom() - stitcher_.movingBandTop();
     double maxPx = opts_.maxStepFraction * band;
     double targetPx = opts_.targetStepFraction * band;
-    if (opts_.pointer) {
-        // Rule 4: the appended rows are the frame's last rows; keep them below
-        // the parked pointer so a hover effect under it never reaches the image.
+    // Rule 4: the appended rows are the frame's last rows; keep them below a
+    // pointer parked on the page so a hover effect under it never reaches the
+    // image. A pointer that only visits for the wheel step (restAway) is
+    // outside while frames are read and limits nothing: with its rest below
+    // the rectangle (on the bar, #1514) the wheel point is near the bottom
+    // edge, and the margin made every step one notch, three times the steps
+    // of the nightly and past the time limit on a Hyprland guest.
+    if (opts_.pointer && !(opts_.restAway && opts_.away)) {
         const RunPoint at = wheelPoint();
         maxPx = std::min(maxPx, double(std::max(0, stitcher_.movingBandBottom() - at.y - opts_.hoverMarginRows)));
         targetPx = std::min(targetPx, maxPx);
@@ -391,8 +408,9 @@ ScrollRun::Wait ScrollRun::waitChanged(int quietMs) {
     beforeSig_ = lastSig_;
     for (;;) {
         if (stopped()) return Wait::Stopped;
+        holdOff();
         const int64_t now = clock_.nowMs();
-        if (now - startMs_ >= opts_.totalTimeLimitMs) return Wait::TimeLimit;
+        if (activeMs() >= opts_.totalTimeLimitMs) return Wait::TimeLimit;
         if (source_.lost()) return Wait::Lost;
         if (now >= deadline) return Wait::Settled;
         std::optional<RunFrame> f = source_.nextFrame(int(std::clamp<int64_t>(deadline - now, 1, 100)));
@@ -407,13 +425,15 @@ ScrollRun::Wait ScrollRun::waitChanged(int quietMs) {
 }
 
 // Step 0. No stitching here, only frame comparison: the capture has not begun.
-std::optional<RunResult> ScrollRun::scrollToTop() {
+std::optional<RunResult> ScrollRun::scrollToTop(bool resumed) {
+    // Also when a pause interrupts it: the time is counted and the flag cleared.
+    struct Done {
+        ScrollRun& run;
+        int64_t begin, before;
+        ~Done() { run.stats_.toTopMs = before + run.clock_.nowMs() - begin; run.toTop_ = false; }
+    } done{*this, clock_.nowMs(), resumed ? stats_.toTopMs : 0};
     toTop_ = true;
-    const int64_t begin = clock_.nowMs();
-    const auto result = wayToTop();
-    stats_.toTopMs = clock_.nowMs() - begin;
-    toTop_ = false;
-    return result;
+    return wayToTop();
 }
 
 std::optional<RunResult> ScrollRun::wayToTop() {
@@ -507,7 +527,7 @@ std::optional<RunResult> ScrollRun::wayToTop() {
     // edge effect in the picture and the first steps down spent on it (GTK 4
     // fed a continuous axis). Where the desktop can be told that the wheel has
     // stopped, the view springs back before the first frame is taken.
-    if (stats_.toTopSteps > 0 && !stopped() && injector_.rest()) {
+    if (stats_.toTopSteps > 0 && !stopped() && (holdOff(), injector_.rest())) {
         lastInjectMs_ = clock_.nowMs();
         if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return f;
     }
@@ -548,6 +568,125 @@ RunResult ScrollRun::viewportAfterStop() {
     return RunResult::Stopped;
 }
 
+// A pause: nothing is sent until it ends. Stop and Cancel end it at once; so
+// does a pause that lasts pauseLimitMs (as Stop: the image is kept), so that a
+// capture nobody comes back to does not hold the session for ever.
+std::optional<RunResult> ScrollRun::holdPaused() {
+    const int64_t began = clock_.nowMs();
+    ++stats_.pauses;
+    std::optional<RunResult> end;
+    while (!end) {
+        if (stopped()) end = RunResult::Stopped;
+        else if (!pausedNow()) break;
+        else if (clock_.nowMs() - began >= opts_.pauseLimitMs) {
+            stats_.pauseExpired = true;
+            end = RunResult::Stopped;
+        } else {
+            // The desktop may owe the user a pointer put back (ScrollCapture::Gate::held).
+            injector_.held();
+            clock_.sleepMs(10);
+        }
+    }
+    const int64_t held = clock_.nowMs() - began;
+    pausedMs_ += held;
+    stats_.pausedMs += held;
+    return end;
+}
+
+// Resume looks at the screen before anything more is sent: the user may have
+// scrolled the page, and the step the pause interrupted may have been seen
+// halfway or not at all. The pointer goes back to its place outside, what it
+// did to the page gets its time to go, and the picture at rest is placed
+// against the last stitched frame by its pixels alone (no hint: where the
+// wheel would have taken the page says nothing once the user had it). Where
+// the page is, or one placed frame down or up, the capture goes on from there.
+// Where it cannot be placed and the pause came after one plain wheel step,
+// that step is scrolled back and the last stitched frame looked for where it
+// was; otherwise the capture ends as lost track with the exact image so far.
+std::optional<RunResult> ScrollRun::resync(StepResult& seen) {
+    const int inFlight = stepInjections_ == 1 ? stepNotches_ : 0;
+    stepNotches_ = stepInjections_ = 0;
+    if (opts_.pointer && opts_.away) {
+        holdOff();
+        if (!sent(injector_.movePointer(opts_.away->x, opts_.away->y))) {
+            stats_.lastError = "injector refused the pointer motion";
+            return RunResult::InjectorFailed;
+        }
+        parked_ = -1;
+        if (opts_.awayLingerMs > 0) clock_.sleepMs(opts_.awayLingerMs);
+    }
+    const auto look = [&](int hint) -> std::optional<RunResult> {
+        if (auto f = waitFailure(waitSettled(opts_.stepTimeoutMs, responseWaitMs()))) return f;
+        // The stream may have sent nothing while the loop was not reading.
+        screenIsAsSeen();
+        if (layoutChanged_) return RunResult::LayoutChanged;
+        seen = stitcher_.addFrame(last_, lastSig_, hint);
+        if (opts_.onStep) opts_.onStep(seen, hint, 0);
+        return std::nullopt;
+    };
+    const auto placed = [&] { return seen.status == StepStatus::NoMovement || seen.status == StepStatus::Appended || seen.status == StepStatus::Reversed; };
+    if (auto f = look(kNoHint)) return f;
+    if (!placed() && (seen.status == StepStatus::NoMatch || seen.status == StepStatus::Ambiguous)) {
+        // A hover effect that had not gone yet: once more.
+        if (auto f = look(kNoHint)) return f;
+    }
+    if (!placed() && inFlight != 0 && (seen.status == StepStatus::NoMatch || seen.status == StepStatus::Ambiguous)) {
+        if (!inject(-inFlight)) {
+            stats_.lastError = "injector refused the scroll-back event";
+            return RunResult::InjectorFailed;
+        }
+        ++stats_.scrollBacks;
+        stepNotches_ = stepInjections_ = 0;
+        if (auto f = look(0)) return f;
+    }
+    switch (seen.status) {
+        case StepStatus::NoMovement: case StepStatus::Appended: case StepStatus::Reversed: return std::nullopt;
+        case StepStatus::LimitReached: return RunResult::LimitReached;
+        case StepStatus::InvalidFrame: stats_.lastError = "the frame size changed"; return RunResult::LayoutChanged;
+        case StepStatus::LayoutChanged: stats_.lastError = noteFor(seen); return RunResult::LostTrack;
+        default:
+            stats_.lastError = "the page moved while the capture was paused and its place could not be found again";
+            return RunResult::LostTrack;
+    }
+}
+
+std::optional<RunResult> ScrollRun::start(bool toTop) {
+    bool resumed = false;
+    for (;;) {
+        try {
+            if (toTop)
+                if (auto f = scrollToTop(resumed)) return *f == RunResult::Stopped ? viewportAfterStop() : *f;
+            // Rule 1: the first frame is grabbed with the pointer outside the region.
+            if (opts_.pointer && opts_.away) {
+                if (stopped()) return RunResult::Stopped;
+                holdOff();
+                if (!sent(injector_.movePointer(opts_.away->x, opts_.away->y))) {
+                    stats_.lastError = "injector refused the pointer motion";
+                    return RunResult::InjectorFailed;
+                }
+                parked_ = -1;
+                if (opts_.awayLingerMs > 0) clock_.sleepMs(opts_.awayLingerMs);
+                if (stopped()) return RunResult::Stopped;
+            }
+            if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return f;
+            holdOff();
+            referenceWidth_ = last_.width; referenceHeight_ = last_.height;
+            if (stitcher_.addFrame(last_, lastSig_, kNoHint).status != StepStatus::First) {
+                stats_.lastError = "the first frame was refused";
+                return RunResult::NoFrames;
+            }
+            stepNotches_ = stepInjections_ = 0;
+            return std::nullopt;
+        } catch (const Interrupted&) {
+            // Nothing is stitched yet: Stop keeps the viewport as on the way up,
+            // and Resume goes up again from wherever the user left the page.
+            if (auto end = holdPaused()) return *end == RunResult::Stopped ? viewportAfterStop() : *end;
+            resumed = toTop;
+            toTop = opts_.fromTop;
+        }
+    }
+}
+
 RunResult ScrollRun::run(const std::atomic<bool>* stop) {
     stop_ = stop;
     startMs_ = clock_.nowMs();
@@ -558,26 +697,7 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
         if (!stopped()) stats_.lastError = "the modifier keys were never released";
         return finishWith(stopped() ? RunResult::Stopped : RunResult::NotReady);
     }
-    if (opts_.fromTop)
-        if (auto f = scrollToTop()) return finishWith(*f == RunResult::Stopped ? viewportAfterStop() : *f);
-
-    // Rule 1: the first frame is grabbed with the pointer outside the region.
-    if (opts_.pointer && opts_.away) {
-        if (stopped()) return finishWith(RunResult::Stopped);
-        if (!injector_.movePointer(opts_.away->x, opts_.away->y)) {
-            stats_.lastError = "injector refused the pointer motion";
-            return finishWith(RunResult::InjectorFailed);
-        }
-        parked_ = -1;
-        if (opts_.awayLingerMs > 0) clock_.sleepMs(opts_.awayLingerMs);
-        if (stopped()) return finishWith(RunResult::Stopped);
-    }
-    if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
-    referenceWidth_ = last_.width; referenceHeight_ = last_.height;
-    if (stitcher_.addFrame(last_, lastSig_, kNoHint).status != StepStatus::First) {
-        stats_.lastError = "the first frame was refused";
-        return finishWith(RunResult::NoFrames);
-    }
+    if (auto f = start(opts_.fromTop)) return finishWith(*f);
     progress(false);
 
     int notches = 1;
@@ -602,9 +722,11 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
     int oneNotchFailures = 0, stillAtPark = 0;
 
     for (;;) {
+        try {
         if (stopped()) return finishWith(RunResult::Stopped);
-        if (clock_.nowMs() - startMs_ >= opts_.totalTimeLimitMs) return finishWith(RunResult::TimeLimit);
+        if (activeMs() >= opts_.totalTimeLimitMs) return finishWith(RunResult::TimeLimit);
 
+        stepNotches_ = stepInjections_ = 0;
         if (!inject(notches)) {
             stats_.lastError = "injector refused the scroll event";
             return finishWith(RunResult::InjectorFailed);
@@ -807,19 +929,11 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
                         ++stats_.parkPosition;
                     }
                     if (opts_.fromTop) {
-                        stats_.reachedTop = false;
-                        stitcher_.restartBeforeMovement();
-                        if (auto f = scrollToTop()) return finishWith(*f == RunResult::Stopped ? viewportAfterStop() : *f);
                         // No downward step was committed: replace the pending first
                         // viewport with the top proved at the new pointer target.
-                        if (opts_.away) {
-                            if (stopped()) return finishWith(RunResult::Stopped);
-                            if (!injector_.movePointer(opts_.away->x, opts_.away->y)) return finishWith(RunResult::InjectorFailed);
-                            parked_ = -1;
-                        }
-                        if (auto f = waitFailure(waitSettled(opts_.firstFrameTimeoutMs))) return finishWith(*f);
-                        referenceWidth_ = last_.width; referenceHeight_ = last_.height;
-                        if (stitcher_.addFrame(last_, lastSig_, kNoHint).status != StepStatus::First) return finishWith(RunResult::NoFrames);
+                        stats_.reachedTop = false;
+                        stitcher_.restartBeforeMovement();
+                        if (auto f = start(true)) return finishWith(*f);
                     }
                     break;
                 }
@@ -891,6 +1005,33 @@ RunResult ScrollRun::run(const std::atomic<bool>* stop) {
         }
         }
         progress(false);
+        } catch (const Interrupted&) {
+            // Paused (#1514). What this step had sent is looked at again on Resume.
+            StepResult seen;
+            std::optional<RunResult> end;
+            for (bool waiting = true; waiting;) {
+                try {
+                    end = holdPaused();
+                    if (!end && stitcher_.hasFrame()) end = resync(seen);
+                    waiting = false;
+                } catch (const Interrupted&) {}
+            }
+            if (end) return finishWith(*end);
+            if (!stitcher_.hasFrame()) {
+                // Rule 7 was taking the first viewport again.
+                if (auto f = start(opts_.fromTop)) return finishWith(*f);
+            } else if (seen.status == StepStatus::Appended) {
+                moved = true;
+                if (seen.appendedRows > 0) oneNotchFailures = 0;
+            }
+            // The next step is placed by its pixels and teaches nothing about
+            // one notch; an end that was pending is proved anew.
+            afterStill = true;
+            endPending = false;
+            owed = 0;
+            notches = planNotches();
+            progress(false);
+        }
     }
 }
 }

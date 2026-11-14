@@ -22,6 +22,8 @@ struct FakeScrollBackend final:ScrollBackend {
   if(holdCommands.contains(cmd)){held[cmd]=std::move(reply);return;}
   if(cmd=="stop"){reply({},finished());return;}
   if(cmd=="start")started=true;
+  if(cmd=="pause"){reply({},{{"state","capturing"},{"paused",true},{"pausedBy","request"}});return;}
+  if(cmd=="resume"){reply({},{{"state","capturing"},{"paused",false}});return;}
   reply({},{{"state",cmd=="start"?"capturing":"ready"}});
  }
  // What a stop that kept its image answers, and the finished event carries.

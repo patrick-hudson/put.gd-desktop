@@ -30,6 +30,10 @@ struct RunInjector {
     // Before the first injection. X11 waits here until the modifier keys are up
     // (Ctrl plus wheel zooms); false when they never were, or `stop` was set.
     virtual bool waitReady(const std::atomic<bool>& stop) { (void)stop; return true; }
+    // Called while the loop waits in a pause, every 10 ms. The only injection
+    // allowed then is the helper's own one-time correction of a pointer it
+    // pulled back from under the user's hand (#1514).
+    virtual void held() {}
 };
 struct RunFrame {
     scroll::FrameView view;    // valid until the next nextFrame() that returns a frame
@@ -181,6 +185,17 @@ struct RunOptions {
     // Asked when the stop flag ends the way to the top: true when no image is
     // wanted (Cancel), so the loop does not wait for the viewport to settle.
     std::function<bool()> discarded;
+    // The user has taken the pointer, or an agent asked for a pause (#1514).
+    // While it returns true the loop sends nothing, no pointer motion and no
+    // wheel step, and reads no frame: it stops where it is, between any two
+    // injections, and waits. On Resume it looks at the screen again before it
+    // goes on (ScrollRun::resync): a page that is where it was, or that moved
+    // to where its frame can be placed, goes on; one that cannot be placed
+    // ends the capture as lost track with the exact image so far. A pause is
+    // not counted in totalTimeLimitMs; one that lasts pauseLimitMs ends the
+    // capture as Stop, the image kept.
+    std::function<bool()> paused;
+    int pauseLimitMs = 600000;
     // Every stitch attempt with the hint and notches used (diagnostics, tests).
     std::function<void(const scroll::StepResult&, int hint, int notches)> onStep;
     // After the first frame and after every step; called on the loop's thread.
@@ -218,6 +233,9 @@ struct RunStats {
     bool stoppedAtTop = false;   // Stop arrived while scrolling to the top: the image is the viewport then
     bool stopViewportProven = false;  // that viewport is a fresh frame a second look agreed with
     int toTopSteps = 0;
+    int pauses = 0;              // times the loop stopped for a pause
+    int64_t pausedMs = 0;        // how long it waited in them
+    bool pauseExpired = false;   // a pause lasted RunOptions::pauseLimitMs and ended the capture as Stop
     // reachedTop: the top was proved. With fromTop on and reachedTop false the
     // image does not start at the top of the page, whatever ended the capture
     // (the end of the content is then TopNotReached, never EndOfContent).
@@ -240,7 +258,26 @@ public:
     scroll::ScrollStitcher& stitcher() { return stitcher_; }
     // The park positions of rule 2 and rule 7 for a frame of this size.
     static RunPoint parkPoint(int position, int width, int height);
+    // Rule 3's point just inside the edge the pointer waits beyond (restAway).
+    static RunPoint entryPoint(RunPoint away, int entryInset, int width, int height);
 private:
+    // Thrown from wherever the loop is when it finds itself paused, and caught
+    // where the loop can wait and look again (start(), run()): the pause takes
+    // effect between any two injections, inside a visit and inside a wait.
+    struct Interrupted {};
+    bool pausedNow() const { return opts_.paused && opts_.paused(); }
+    void holdOff() const { if (pausedNow()) throw Interrupted{}; }
+    // An injection the desktop refused because the pause had closed the gate first.
+    bool sent(bool ok) const { if (!ok) holdOff(); return ok; }
+    // Waits while paused: Stopped for Stop, Cancel or a pause that lasted pauseLimitMs.
+    std::optional<RunResult> holdPaused();
+    // After a pause: where the page is now, against the last stitched frame.
+    std::optional<RunResult> resync(scroll::StepResult& seen);
+    // The way to the top (toTop) and the first viewport; after a pause there,
+    // both again. The result is final (Stop on the way up already kept its viewport).
+    std::optional<RunResult> start(bool toTop);
+    // Time the capture ran, its pauses left out.
+    int64_t activeMs() const { return clock_.nowMs() - startMs_ - pausedMs_; }
     enum class Wait { Settled, TimedOut, Stopped, TimeLimit, NoFrame, Lost, Changed, LayoutChanged };
     // quietMs: with no change at all since the call began, this long counts as
     // settled (the response wait after an injection); 0: the settle time.
@@ -265,7 +302,7 @@ private:
     // further down (`found` is that step), or neither. `fail` ends the run.
     enum class EndProof { Proved, Moved, Unproved };
     EndProof proveEnd(scroll::StepResult& found, std::optional<RunResult>& fail);
-    std::optional<RunResult> scrollToTop();
+    std::optional<RunResult> scrollToTop(bool resumed = false);
     std::optional<RunResult> wayToTop();
     RunResult viewportAfterStop();
     void progress(bool toTop);
@@ -296,5 +333,10 @@ private:
     bool afterStop_ = false;   // the viewport is being taken after Stop during scroll-to-top
     bool toTop_ = false;       // the page is on its way to the top (step 0)
     int64_t lastInjectMs_ = -1;  // when the last wheel step was sent
+    int64_t pausedMs_ = 0;
+    // Wheel steps of the current step of the capture, and how many: a pause
+    // that comes after one plain wheel step can scroll that step back to find
+    // the last stitched frame again (resync).
+    int stepNotches_ = 0, stepInjections_ = 0;
 };
 }

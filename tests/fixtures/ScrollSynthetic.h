@@ -181,8 +181,11 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   struct Event {
     char kind;
     int a, b;
+    int64_t t = 0;  // the clock when it was sent
   };
   std::vector<Event> events;
+  // The user turns the wheel while the capture is paused: the page moves by px.
+  void userScroll(int px);
 
  private:
   struct Seg {

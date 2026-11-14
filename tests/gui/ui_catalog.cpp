@@ -887,6 +887,9 @@ int main(int argc,char** argv){
     scroll.setState(state);scroll.setHeight(state=="ready"?0:12340);scroll.show();
     if(!shot(scroll,"scroll-bar-"+state))return 2;
    }
+   // #1514: paused by the user's mouse, and by scroll.pause.
+   scroll.setHeight(12340);
+   for(const auto& by:QStringList{"pointer","request"}){scroll.setPaused(by);if(!shot(scroll,"scroll-bar-paused-"+by))return 2;}
    scroll.hide();
   }
   // #1364: the microphone toggle with its meter, the state without a microphone, and a recording that lost it.

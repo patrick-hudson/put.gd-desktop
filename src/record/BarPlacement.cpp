@@ -20,7 +20,7 @@ int homeScreen(const QRect& rect, const QList<QRect>& screens) {
     for (int i = 0; i < screens.size(); ++i) if (screens[i].contains(rect.center())) return i;
     return screens.isEmpty() ? -1 : 0;
 }
-BarSpot placeBar(const QSize& bar, const QRect& recorded, const QList<QRect>& screens, bool allowOutside, int gap) {
+BarSpot placeBar(const QSize& bar, const QRect& recorded, const QList<QRect>& screens, bool allowOutside, int gap, bool beside) {
     const int home = homeScreen(recorded, screens);
     if (home < 0) return {QRect(recorded.topLeft(), bar), -1, false};
     const QRect area = screens[home];
@@ -30,7 +30,15 @@ BarSpot placeBar(const QSize& bar, const QRect& recorded, const QList<QRect>& sc
         return -1;
     };
     const int left = std::max(area.left(), std::min(recorded.left(), area.left() + area.width() - bar.width()));
-    QList<QRect> candidates{QRect(QPoint(left, recorded.bottom() + 1 + gap), bar), QRect(QPoint(left, recorded.top() - gap - bar.height()), bar)};
+    const int below = recorded.bottom() + 1 + gap, above = recorded.top() - gap - bar.height();
+    QList<QRect> candidates{QRect(QPoint(left, below), bar), QRect(QPoint(left, above), bar)};
+    if (beside) {
+        const int level = std::max(area.top(), std::min(recorded.bottom() + 1 - bar.height(), area.top() + area.height() - bar.height()));
+        const int toLeft = recorded.left() - gap - bar.width(), toRight = recorded.right() + 1 + gap;
+        candidates << QRect(QPoint(toLeft, level), bar) << QRect(QPoint(toRight, level), bar)
+                   << QRect(QPoint(toLeft, below), bar) << QRect(QPoint(toRight, below), bar)
+                   << QRect(QPoint(toLeft, above), bar) << QRect(QPoint(toRight, above), bar);
+    }
     for (int i = 0; i < screens.size(); ++i) {
         if (i == home) continue;
         const int x = screens[i].center().x() - bar.width() / 2;

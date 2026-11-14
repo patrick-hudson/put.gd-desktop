@@ -223,11 +223,18 @@ FakeApp::FakeApp(const Image& doc, ViewportSpec vs, FakeAppSpec spec, FakeClock&
 }
 
 bool FakeApp::movePointer(int x, int y) {
-  events.push_back({'m', x, y});
+  events.push_back({'m', x, y, clock_.nowMs()});
   return true;
 }
 
 int FakeApp::maxScroll() const { return renderer_.maxScroll(); }
+
+void FakeApp::userScroll(int px) {
+  const int64_t now = clock_.nowMs();
+  const double nt = std::clamp(target_ + px, 0.0, double(maxScroll()));
+  segs_.push_back({now, 200, posAt(now), nt});
+  target_ = nt;
+}
 
 double FakeApp::posAt(int64_t t) const {
   if (segs_.empty()) return spec_.startPos;
@@ -243,7 +250,7 @@ double FakeApp::posAt(int64_t t) const {
 
 bool FakeApp::scroll(int n) {
   const int idx = injections++;
-  events.push_back({'s', n, 0});
+  events.push_back({'s', n, 0, clock_.nowMs()});
   if (spec_.quietFromInjection >= 0 && idx == spec_.quietFromInjection) quiet_ = true;
   if (spec_.cancelFlag && spec_.cancelAfterInjections >= 0 && idx >= spec_.cancelAfterInjections)
     spec_.cancelFlag->store(true);

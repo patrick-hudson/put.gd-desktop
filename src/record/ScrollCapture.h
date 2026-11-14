@@ -12,11 +12,14 @@
 #include "core/Error.h"
 #include <QJsonObject>
 #include <QObject>
+#include <QPointer>
+#include <QWindow>
 #include <QRect>
 #include <QTimer>
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <thread>
 
 namespace putgd { class LayerShellRegionOverlay; }
@@ -31,11 +34,24 @@ namespace putgd::record {
 // one PNG at the end; only its descriptor crosses the control pipe.
 //
 // Commands: prepare {id, staging, rect?, maxHeight, maxPixels?, fromTop,
-// autoStart, selection}, select {rect}, start, stop, cancel, overlay {visible}.
-// Events: selected, progress, finished, cancelled, failed (ScrollBackend.h).
+// autoStart, selection}, select {rect}, start, pause, resume, stop, cancel,
+// overlay {visible, rect?}. Events: selected, progress, finished, cancelled,
+// failed (ScrollBackend.h).
 // Only wheel steps and pointer motion are injected, only while capturing, and
 // nothing after stop, cancel or the end of the control pipe. Stop is the bar's
 // button, the `stop` command and, on X11, Escape.
+//
+// The pointer is the user's the moment they touch it (#1514). Between wheel
+// steps it rests on a surface of the helper's own, outside the rectangle: the
+// bar where it is beside the rectangle, else a small clear pad at the rest
+// spot (not on GNOME, where only the Shell places windows). The helper knows
+// where it last put the pointer; that surface reporting it anywhere else, or
+// leaving when no visit into the rectangle was sent, is the user, and so is
+// (X11) a pointer that is not where XTest left it, and (layer shell) the
+// pointer anywhere on a clear surface over the output that leaves only the
+// wheel points to the page. Then nothing more is
+// injected until Resume: the bar's button, after the mouse has been still for
+// a moment, or the `resume` command.
 class ScrollCapture final : public QObject {
     Q_OBJECT
 public:
@@ -65,6 +81,23 @@ private:
     void begin(const FrameTap::Source&, Reply);
     void stop(Reply);
     void cancel(Reply);
+    // by: "pointer" (the user moved the mouse) or "request" (the pause command).
+    void pause(const QString& by);
+    // quiet: from the bar, once the mouse has been still for resumeQuietMs.
+    void resume(bool quiet);
+    void resumeNow();
+    QJsonObject pauseView() const;
+    void emitProgress();
+    // Where the pointer rests between wheel steps, and the surface that sees it.
+    void placeRest();
+    void pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp);
+    void userMoved(bool pulledBack, std::optional<QPointF> at, bool atIsBase = false);
+    // Layer-shell desktops: a clear surface over the rectangle's output that
+    // takes the pointer everywhere but at the wheel points (desktop logical
+    // coordinates), the bar and the pad, so that the user's motion is seen
+    // while the pointer is in the rectangle for a wheel step too.
+    void showWatch(const QList<QPointF>& holes);
+    bool eventFilter(QObject*, QEvent*) override;
     void finish(std::shared_ptr<Outcome>);
     void fail(const Error&);
     void release();
@@ -87,6 +120,24 @@ private:
     // KWin: damage on the region's output every heartbeatMs while frames are read (BoundsOverlay::showHeartbeat).
     QTimer heartbeat_;
     ScrollBar* bar_ = nullptr;
+    // The rest pad where the bar is not beside the rectangle, and the window
+    // whose pointer events tell the user's motion from the capture's.
+    QWidget* pad_ = nullptr;
+    QWidget* watch_ = nullptr;
+    QPointer<QWindow> restWindow_, watchWindow_;
+    QPointF restLocal_, restOrigin_;
+    // The last pointer event seen on a surface of the helper's (desktop
+    // logical), the motion count then, and the pointer's last arrival at rest.
+    QPointF seen_;
+    quint64 seenSeq_ = 0, watchSeqBase_ = 0, arrivalStamp_ = 0;
+    qint64 arrivedMs_ = -1;
+    bool haveSeen_ = false, lastWasArrival_ = false;
+    // GNOME: where the Shell put the bar (the resident's `overlay` rect).
+    QRect shellBar_;
+    QString pausedBy_, progressState_;
+    QJsonObject lastProgress_;
+    QTimer resumeQuiet_;
+    bool resumePending_ = false;
     MutterScreenCast mutter_;
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
     KdeScreencast kde_;

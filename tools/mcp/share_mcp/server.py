@@ -227,7 +227,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
         'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
-        'Scrolling capture: prepare_scroll_capture and control_scroll_capture select/start/stop/cancel; Stop keeps the PNG and Cancel discards it. Inspect get_scroll_capture endReason and truncated; only end_of_content means a complete capture, top to bottom. top_not_reached means the image is kept but starts partway down the page, and topReached false says the same of a capture that ended for another reason. '
+        'Scrolling capture: prepare_scroll_capture and control_scroll_capture select/start/pause/resume/stop/cancel; Stop keeps the PNG and Cancel discards it. A capture pauses when the user moves the mouse (paused, pausedBy). Inspect get_scroll_capture endReason and truncated; only end_of_content means a complete capture, top to bottom. top_not_reached means the image is kept but starts partway down the page, and topReached false says the same of a capture that ended for another reason. '
         'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording, or work the review window itself with drive_recording_review; only upload_recording or retryExport after a failed Upload publishes. '
         'save_recording_copy and upload_recording return once the export starts; poll get_recording until state leaves exporting. '
         'Supply only non-secret configuration and credential references.'))
@@ -501,8 +501,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def control_scroll_capture(id: str, command: str, rect: list[int] | None = None) -> Json:
-        """Select, start, stop (keep image), or cancel (discard) a scroll capture."""
-        if not identifier(id) or command not in {'select', 'start', 'stop', 'cancel'} or (command == 'select') != (rect is not None):
+        """Select, start, pause, resume, stop (keep image), or cancel (discard) a scroll capture. Moving the mouse pauses a capture by itself; get_scroll_capture then shows paused true and pausedBy pointer (request after pause). Resume looks at the screen again and goes on, or ends lost_track with the exact image so far."""
+        if not identifier(id) or command not in {'select', 'start', 'pause', 'resume', 'stop', 'cancel'} or (command == 'select') != (rect is not None):
             return invalid()
         params: Json = {'id': id}
         if rect is not None:
