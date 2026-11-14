@@ -333,7 +333,10 @@ pointer is (Wayland), a hand can start to move while the pointer is in the recta
 wheel step, and the capture can move the pointer before it has heard of the hand (an Omarchy
 guest delivered the hand's events 100 to 200 ms late). The capture knows this from the event's
 own time, the compositor's monotonic milliseconds, against when it last sent a motion (used
-only where the two clocks agree within a second); else from the watch seeing the hand where the
+only where the two clocks agree within a second). A pointer entering the watch carries no time:
+an enter more than 12 px from where the capture last put the pointer, within 400 ms of that
+motion, is from before it, because a hand's first event out of an 8 px hole lands within a few
+pixels of it. Else the capture knows it from the watch seeing the hand where the
 capture believes the pointer at rest, or from the hand's motion on the rest surface within 30 ms
 of the pointer's arrival there. The pointer is then put back once by a relative motion of
 exactly the displacement the capture caused: from where it put the pointer to where the hand had
