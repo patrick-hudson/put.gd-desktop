@@ -17,7 +17,7 @@ taken while the page moved and any position in between is right. One row per
 sequence:
 
   scroll_tracker_score.py --corpus DIR --replay PATH --out DIR [--engine tracker|stitcher]
-      [--pages a,b] [--styles notch,burst,continuous] [--derived] [--json FILE]
+      [--pages a,b] [--styles notch,burst,continuous] [--derived] [--json FILE] [--exclude X,Y,W,H]
 
 Needs numpy and Pillow (the builders have both).
 """
@@ -80,17 +80,22 @@ def derived(frames, kind, foreign=None):
     raise ValueError(kind)
 
 
-def run_replay(replay, frames, out, engine, repeat=1, reuse=False):
+def run_replay(replay, frames, out, engine, repeat=1, reuse=False, exclude=None):
     if reuse and (out / 'results.json').exists() and (out / 'image.png').exists():
         return json.loads((out / 'results.json').read_text())
     out.mkdir(parents=True, exist_ok=True)
     (out / 'list.txt').write_text(''.join(f['path'] + '\n' for f in frames))
     command = [replay, '--list', str(out / 'list.txt'), '--out', str(out), '--engine', engine,
                '--repeat', str(repeat)]
+    if exclude:
+        command += ['--exclude', exclude, '--paint']
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
         raise RuntimeError(f'replay failed ({result.returncode}): {result.stderr.strip()}')
     return json.loads((out / 'results.json').read_text())
+
+
+SHADOW = 12  # rows and columns around a pinned rectangle left out with it
 
 
 def excluded_rects(pinned, viewport_height, reference_height):
@@ -108,8 +113,10 @@ def excluded_rects(pinned, viewport_height, reference_height):
             if y + h >= 0.9 * viewport_height and h >= 0.75 * viewport_height:
                 rects.append((int(x), 0, int(x + w + 0.999), reference_height))
                 continue
+            # With a margin for the element's shadow (a fixed banner's starts
+            # some rows above its box).
             for top in (y, reference_height - viewport_height + y, scroll + y):
-                rects.append((int(x), int(top), int(x + w + 0.999), int(top + h + 0.999)))
+                rects.append((int(x) - SHADOW, int(top) - SHADOW, int(x + w + 0.999) + SHADOW, int(top + h + 0.999) + SHADOW))
     return rects
 
 
@@ -318,6 +325,8 @@ def main():
     parser.add_argument('--repeat', type=int, default=1)
     parser.add_argument('--reuse', action='store_true', help='score the results already in --out instead of replaying')
     parser.add_argument('--json', type=Path)
+    parser.add_argument('--exclude', help='X,Y,W,H: put.gd\'s own bar, drawn into every frame with a pattern that '
+                        'changes from frame to frame and excluded (tracker only)')
     args = parser.parse_args()
     rows = []
     pages = []
@@ -360,7 +369,7 @@ def main():
                 name = f'{browser}/{page_dir.name}/{style}' + (f'+{variant}' if variant else '')
                 out = args.out / name.replace('/', '_').replace('+', '_')
                 try:
-                    results = run_replay(args.replay, sequence, out, args.engine, args.repeat, args.reuse)
+                    results = run_replay(args.replay, sequence, out, args.engine, args.repeat, args.reuse, args.exclude)
                 except RuntimeError as error:
                     rows.append({'sequence': name, 'error': str(error)})
                     print(f'{name}: {error}', file=sys.stderr)
