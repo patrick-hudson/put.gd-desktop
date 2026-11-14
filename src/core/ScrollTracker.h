@@ -87,7 +87,7 @@ struct TrackerOptions {
   int minOverlapRows = 48;
   double minOverlapFraction = 0.08;
   // Rows that hold agreeing textured cells, at the least.
-  int minEvidenceRows = 24;
+  int minEvidenceRows = 16;
   // Within the tiles that move with the offset, the share of informative
   // lanes (textured, not pinned, not standing still) that must agree, by
   // bands and by cells. Cells mainly rank the candidates: between
