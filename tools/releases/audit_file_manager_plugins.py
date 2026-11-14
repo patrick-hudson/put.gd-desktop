@@ -19,7 +19,8 @@ PLUGINS = {"nautilus": ("nautilus/extensions-4", "libputgd-nautilus.so"),
            "peony": ("peony-extensions", "libputgd-peony.so")}
 # Package matrix names in .github/workflows/package.yml.
 REQUIRED = {"ubuntu24.04": ("nautilus", "caja", "peony"), "ubuntu26.04": ("nautilus", "caja", "peony"),
-            "debian13": ("nautilus", "caja", "peony"), "fedora44": ("nautilus", "caja"), "archlinux": ("nautilus", "caja")}
+            "debian13": ("nautilus", "caja", "peony"), "fedora44": ("nautilus", "caja"),
+            "fedora45": ("nautilus", "caja"), "archlinux": ("nautilus", "caja")}
 FORBIDDEN_NEEDED = re.compile(r"^lib(nautilus-extension|caja-extension|peony|Qt\d)")
 FORBIDDEN_DEPENDENCY = re.compile(r"nautilus|caja|peony|qt5", re.IGNORECASE)
 PEONY_SYMBOL_SOURCES = re.compile(r"^lib(Qt\d\w+|stdc\+\+|c|m|gcc_s)[.]so")

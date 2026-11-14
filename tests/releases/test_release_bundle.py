@@ -27,6 +27,7 @@ class Bundle(unittest.TestCase):
             'putgd-0.1.1-rc.1-ubuntu26.04-x86_64.deb',
             'putgd-0.1.1-rc.1-debian13-x86_64.deb',
             'putgd-0.1.1-rc.1-fedora44-x86_64.rpm',
+            'putgd-0.1.1-rc.1-fedora45-x86_64.rpm',
             'putgd-0.1.1-rc.1-archlinux-x86_64.pkg.tar.zst',
             'putgd-0.1.1-rc.1-x86_64.AppImage',
             'putgd-0.1.1-rc.1-x86_64.AppImage.zsync',
@@ -36,6 +37,7 @@ class Bundle(unittest.TestCase):
             'putgd-0.1.1-rc.1-appimage.cdx.json', 'putgd-0.1.1-rc.1-ubuntu24.04.cdx.json',
             'putgd-0.1.1-rc.1-ubuntu26.04.cdx.json', 'putgd-0.1.1-rc.1-debian13.cdx.json',
             'putgd-0.1.1-rc.1-fedora44.cdx.json',
+            'putgd-0.1.1-rc.1-fedora45.cdx.json',
             'putgd-0.1.1-rc.1-archlinux.cdx.json',
         ]
         for name in self.names:

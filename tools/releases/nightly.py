@@ -70,8 +70,8 @@ def ensure_tag(api, root, tag, source_sha):
 
 def public_inventory(tag, layout=None):
     identity = parse_tag(tag)
-    if layout == support_assets.LAYOUT:
-        return support_assets.inventory(identity.version)
+    if layout in support_assets.LAYOUTS:
+        return support_assets.inventory(identity.version, layout)
     if layout is not None:
         raise ValueError('Unknown release asset layout')
     return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES,
@@ -136,7 +136,7 @@ def published_nightly(api, tag, release):
     source = json.loads(downloaded['release-builds.json'])['release']
     if any(source.get(key) != val for key, val in release.items()):
         raise ValueError('Public nightly channel/source receipt differs from pinned source')
-    if manifest.get('assetLayout') == support_assets.LAYOUT:
+    if manifest.get('assetLayout') in support_assets.LAYOUTS:
         linked = {name: download(name) for name in ('source-delivery.json', 'proton-source-catalog.json')}
         if any(hashlib.sha256(data).hexdigest() != expected[name] for name, data in linked.items()):
             raise ValueError('Linked source metadata differs from checksum')

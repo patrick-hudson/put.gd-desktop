@@ -4,8 +4,8 @@
 The signer on the builder stages each stable release (and, once, the empty stable
 repositories) unsigned. This script fetches the few KiB it signs over the
 existing SSH pin and checks every package hash in them against the tag's
-SHA256SUMS, downloaded from GitHub independently. It downloads the fedora44 RPM
-from GitHub, checks it the same way and signs it with rpmsign (dnf checks
+SHA256SUMS, downloaded from GitHub independently. It downloads the Fedora RPMs
+(one per Fedora release) from GitHub, checks them the same way and signs them with rpmsign (dnf checks
 package signatures; the repodata is unsigned, see pkgrepo.py). It signs the
 apt Release files, SHA256SUMS and the feed with the stable GPG and minisign
 keys (gpg-agent and minisign ask for their passphrases), and copies the
@@ -33,6 +33,14 @@ import update_feed  # noqa: E402
 HOSTS = {'d69': ('patrick@192.168.68.69', '/home/patrick/work/put.gd/work/remote-builders/d69/known_hosts')}
 STATE = '.local/state/putgd-signer'
 DEB_ASSET = 'putgd-{version}-{label}-x86_64.deb'
+RPM_ASSET = re.compile(r'^putgd-(?P<version>[0-9][0-9A-Za-z.-]*)-(?P<label>fedora[0-9]+)-x86_64\.rpm$')
+
+
+def staged_rpms(manifest):
+    """RPM label -> the staged RPM; schema 2 stages, from before Fedora 45 had a build, carry one as 'rpm'."""
+    if manifest['schemaVersion'] >= 3:
+        return manifest['rpms']
+    return {'fedora44': manifest['rpm']} if manifest.get('rpm') else {}
 
 
 def ssh_command(host):
@@ -84,10 +92,14 @@ def check_staged(manifest, files, tag, sums):
         raise SystemExit('Staged Arch asset differs from GitHub checksums')
     for relative in manifest['sign'].get('detached', []):
         pacman_repo.check_database(files[relative], pacman['asset'] if pacman else None, pacman['sha256'] if pacman else None)
-    rpm = manifest.get('rpm')
-    if (rpm is None) != (tag is None) or (rpm and (rpm['asset'] != f'putgd-{tag[1:]}-fedora44-x86_64.rpm'
-                                                   or rpm['sha256'] != sums.get(rpm['asset']))):
-        raise SystemExit('The staged RPM is not the tag\'s fedora44 asset')
+    # Exactly the tag's RPM assets, Fedora 44's among them; empty repositories stage none.
+    rpms = staged_rpms(manifest)
+    released = {match['label']: name for name in sums if (match := RPM_ASSET.match(name)) and match['version'] == tag[1:]} if tag else {}
+    if tag and 'fedora44' not in released:
+        raise SystemExit('The tag has no fedora44 RPM')
+    if set(rpms) != set(released) or any(rpm['asset'] != released[label] or rpm['sha256'] != sums[rpm['asset']]
+                                         for label, rpm in rpms.items()):
+        raise SystemExit("The staged RPMs are not the tag's RPM assets")
 
 
 def gpg(arguments, data, fingerprint):
@@ -134,7 +146,7 @@ def main(argv=None):
         raise SystemExit('Only stable tags are signed with the stable key')
     stage = f'{STATE}/stage/{arguments.scope}/stable/{arguments.tag or "empty"}'
     manifest = json.loads(remote_read(arguments.host, stage + '/manifest.json'))
-    if manifest.get('schemaVersion') != 2:
+    if manifest.get('schemaVersion') not in (2, 3):
         raise SystemExit('The stage was made by an older signer')
     if manifest['tag'] != arguments.tag:
         raise SystemExit('The staged manifest names another tag')
@@ -179,9 +191,10 @@ def main(argv=None):
             if hashlib.sha256(data).hexdigest() != pacman['sha256']:
                 raise SystemExit('Downloaded Arch package differs from release checksums')
             signatures[pacman['asset'] + '.sig'] = gpg(['--detach-sign', '--digest-algo', 'SHA512'], data, fingerprint)
-        if manifest['rpm']:
-            rpm = manifest['rpm']
-            signatures[rpm['file']] = sign_rpm(rpm['asset'], rpm['file'], rpm['sha256'], arguments.tag, fingerprint, directory)
+        for label, rpm in staged_rpms(manifest).items():
+            (Path(directory) / label).mkdir()
+            signatures[rpm['file']] = sign_rpm(rpm['asset'], rpm['file'], rpm['sha256'], arguments.tag, fingerprint,
+                                               Path(directory) / label)
         for relative in manifest['sign']['minisign']:
             path = Path(directory) / Path(relative).name
             path.write_bytes(files[relative])

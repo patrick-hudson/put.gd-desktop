@@ -194,7 +194,7 @@ elseif(PUTGD_RELEASE_TAG MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+$")
 endif()
 set(repo_dir "${CMAKE_CURRENT_SOURCE_DIR}/repo")
 include("${PROJECT_SOURCE_DIR}/cmake/PackageRepositoryFiles.cmake")
-if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13|fedora44)$")
+if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13|fedora44|fedora45)$")
   putgd_repository_files("${PUTGD_PACKAGE_TARGET}" "${PUTGD_PACKAGE_REPOSITORY_URL}" "${repo_dir}" "${CMAKE_CURRENT_BINARY_DIR}/repo")
 endif()
 if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26[.]04|debian13)$")
@@ -207,7 +207,7 @@ if(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^(ubuntu24[.]04|ubuntu26
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/repo/conffiles")
   # 0644 whatever the builder's umask, as dpkg and lintian expect.
   set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
-elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET STREQUAL "fedora44")
+elseif(PUTGD_REPO_CHANNEL AND PUTGD_PACKAGE_TARGET MATCHES "^fedora4[45]$")
   # rpm-post.sh copies putgd.repo, this package's own channel, on the first install.
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-${PUTGD_REPO_CHANNEL}.repo" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/repo" RENAME putgd.repo)
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-nightly.repo" "${CMAKE_CURRENT_BINARY_DIR}/repo/putgd-stable.repo"

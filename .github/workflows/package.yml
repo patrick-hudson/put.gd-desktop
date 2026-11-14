@@ -149,6 +149,12 @@ jobs:
             kde: --require-kde
             # Fedora has no Peony.
             plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
+          - name: fedora45
+            # Its own build: Fedora 45's FFmpeg 9 has other sonames than Fedora 44's 8.1.
+            format: RPM
+            image: fedora:45@sha256:a7d72ba2745b100a3351087472e5ee7b2450af7cf331e7673007e3817612839c
+            kde: --require-kde
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
     steps:
       - name: Bootstrap checkout tools
         # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),

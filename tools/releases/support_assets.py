@@ -9,7 +9,9 @@ from urllib.parse import quote, unquote, urlsplit
 from audit_native import sha256
 from github_api import full_sha, remote_tag_commit, tag_exists
 
-LAYOUT = 'installers-v1'
+LAYOUT = 'installers-v2'
+# installers-v1 releases have no Fedora 45 RPM; each published release keeps the layout it was made with.
+LAYOUTS = ('installers-v1', LAYOUT)
 
 
 def source_tag(release):
@@ -18,12 +20,21 @@ def source_tag(release):
     return 'sources-' + release['tag'] + '-files'
 
 
-def inventory(version):
-    return {*(f'putgd-{version}-{distro}-x86_64{suffix}' for distro, suffix in (
-        ('ubuntu24.04', '.deb'), ('ubuntu26.04', '.deb'), ('debian13', '.deb'), ('fedora44', '.rpm'), ('archlinux', '.pkg.tar.zst'))),
+def packages(layout=LAYOUT):
+    """The package labels a release of this layout carries, besides the AppImage."""
+    if layout not in LAYOUTS:
+        raise ValueError('Unknown release asset layout')
+    return ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', *(() if layout == 'installers-v1' else ('fedora45',)),
+            'archlinux')
+
+
+def inventory(version, layout=LAYOUT):
+    suffixes = {'archlinux': '.pkg.tar.zst'}
+    labels = packages(layout)
+    return {*(f'putgd-{version}-{label}-x86_64' + suffixes.get(label, '.rpm' if label.startswith('fedora') else '.deb')
+              for label in labels),
         f'putgd-{version}-x86_64.AppImage', f'putgd-{version}-x86_64.AppImage.zsync',
-        *(f'putgd-{version}-{label}.cdx.json' for label in
-          ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux', 'appimage')),
+        *(f'putgd-{version}-{label}.cdx.json' for label in (*labels, 'appimage')),
         'SHA256SUMS', 'release-builds.json', 'source-delivery.json', 'proton-source-catalog.json'}
 
 

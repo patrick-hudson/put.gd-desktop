@@ -53,12 +53,16 @@ class RepositoryFilesTest(unittest.TestCase):
                 self.assertNotIn(key_lines(other)[2], text)
 
     def test_the_rpm_gets_both_channels_each_naming_its_own_key_file(self):
+        # One file for every Fedora build: $releasever picks the release's repository, so a system
+        # upgrade moves put.gd to the next release's build.
+        self.assertEqual(render('fedora44'), render('fedora45'))
         files = render('fedora44')
         self.assertEqual(sorted(files), ['putgd-nightly.repo', 'putgd-stable.repo'])
         for channel in ('nightly', 'stable'):
             text = files[f'putgd-{channel}.repo']
             self.assertIn(f'[putgd-{channel}]\n', text)
-            self.assertIn(f'baseurl=https://pkg.put.gd/rpm/fedora/44/x86_64/{channel}\n', text)
+            self.assertIn(f'baseurl=https://pkg.put.gd/rpm/fedora/$releasever/x86_64/{channel}\n', text)
+            self.assertIn('skip_if_unavailable=1\n', text)
             self.assertIn(f'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-putgd-{channel}\n', text)
             self.assertIn('gpgcheck=1\nrepo_gpgcheck=0\n', text)
 

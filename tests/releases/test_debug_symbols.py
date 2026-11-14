@@ -14,7 +14,7 @@ from debug_fixture import build_tree, make_elf
 
 IDENTITY = {'schemaVersion': 1, 'version': '0.1.1-rc.1', 'baseVersion': '0.1.1', 'packageVersion': '0.1.1~rc.1',
             'gitCommit': 'c' * 40, 'gitTree': 'd' * 40, 'commitCount': 7, 'dirty': False, 'sourceProvenance': 'git'}
-SEEDS = {'ubuntu24.04': 'a1', 'ubuntu26.04': 'b2', 'debian13': 'c3', 'fedora44': 'd4', 'appimage': 'e5', 'archlinux': 'f6'}
+SEEDS = {'ubuntu24.04': 'a1', 'ubuntu26.04': 'b2', 'debian13': 'c3', 'fedora44': 'd4', 'fedora45': 'd5', 'appimage': 'e5', 'archlinux': 'f6'}
 
 
 @unittest.skipUnless(shutil.which('zstd'), 'zstd is required for the debug asset')

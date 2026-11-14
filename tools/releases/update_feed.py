@@ -15,6 +15,7 @@ ASSET_PATTERNS = {
     'debian13': re.compile(r'^putgd-[^/]+-debian13-x86_64\.deb$'),
     'archlinux': re.compile(r'^putgd-[^/]+-archlinux-x86_64[.]pkg[.]tar[.]zst$'),
     'fedora44': re.compile(r'^putgd-[^/]+-fedora44-x86_64\.rpm$'),
+    'fedora45': re.compile(r'^putgd-[^/]+-fedora45-x86_64\.rpm$'),
     'appimage': re.compile(r'^putgd-[^/]+-x86_64\.AppImage$'),
 }
 ZSYNC_PERMALINK = 'https://app.put.gd/dl/{channel}/appimage.zsync'

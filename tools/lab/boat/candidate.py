@@ -26,7 +26,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[3]
 REPOSITORY = 'https://github.com/patrick-hudson/put.gd-desktop.git'
-TARGETS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44',
+TARGETS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45',
            'ui-catalog', 'lab-fixture')
 CANCEL = threading.Event()
 CREATE_TIMEOUT = 120
@@ -289,7 +289,7 @@ def verify_identity(directory, commit, target):
         raise ValueError('Built source is dirty or does not match the requested SHA')
     if binary.get('gitCommit') != commit or binary.get('version') != identity['version']:
         raise ValueError('Compiled CLI identity does not match build-info.json')
-    expected = '*.AppImage' if target == 'appimage' else '*.rpm' if target == 'fedora44' else '*.deb'
+    expected = '*.AppImage' if target == 'appimage' else '*.rpm' if target.startswith('fedora') else '*.deb'
     if target == 'ui-catalog':
         if not any((directory / 'ui-catalog').rglob('*.png')):
             raise ValueError('UI catalog contains no rendered PNGs')

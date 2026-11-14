@@ -142,9 +142,10 @@ def repository_tags(get=fetch):
         for suite in ('nightly', 'stable'):
             url = MIRROR + f'apt/{distro}/dists/{suite}/main/binary-amd64/Packages'
             indexes[url] = sorted(apt_tags(get(url)))
-    for suite in ('nightly', 'stable'):
-        base = MIRROR + f'rpm/fedora/44/x86_64/{suite}/'
-        indexes[base + 'repodata/repomd.xml'] = sorted(rpm_tags(base, get))
+    for release in ('44', '45'):
+        for suite in ('nightly', 'stable'):
+            base = MIRROR + f'rpm/fedora/{release}/x86_64/{suite}/'
+            indexes[base + 'repodata/repomd.xml'] = sorted(rpm_tags(base, get))
     return indexes
 
 
