@@ -211,6 +211,7 @@ void ScrollSession::feed(const RunFrame& frame) {
 }
 
 void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
+    ++framesSinceStep_;
     const TrackerHint hint = hintFor(t);
     const TrackResult r = tracker_->addFrame(view, hint);
     if (opts_.onFrame) opts_.onFrame(r, hint, t);
@@ -488,14 +489,22 @@ void ScrollSession::autoTick() {
         }
         return;
     }
+    // While lost the tracker looks for the frame in the whole image and may
+    // take a second a frame: a step back is judged on a few frames, not a time.
+    if (phase_ == Phase::Recover && (now - stepSentAt_ < std::max<int64_t>(responseWaitMs(), opts_.recoverWaitMs) || framesSinceStep_ < 3)) {
+        if (now - stepSentAt_ < 4 * int64_t(opts_.recoverWaitMs)) return;
+    }
     if (now - stepSentAt_ >= int64_t(responseWaitMs()) * patience_) stillStep(now);
 }
 
 void ScrollSession::startRecover() {
-    // Back by the last step: the tracker finds that picture in the image.
+    // Back by the last forward step, again at every try: the tracker finds
+    // that picture in the image.
+    if (phase_ != Phase::Recover) backNotches_ = std::max(1, std::abs(stepNotches_));
     phase_ = Phase::Recover;
     ++stats_.stepsBack;
-    const int notches = -std::max(1, std::abs(stepNotches_));
+    const int notches = -backNotches_;
+    framesSinceStep_ = 0;
     stepSentAt_ = clock_.nowMs();
     stepNotches_ = notches;
     stepMoved_ = 0;
@@ -520,7 +529,7 @@ void ScrollSession::settled(int64_t now) {
     stillSteps_ = 0;
     patience_ = 1;
     if (tracker_->state() == TrackState::Lost) {
-        if (phase_ == Phase::Recover && ++recoverTries_ >= 2) { handBack(HandBack::Lost); return; }
+        if (phase_ == Phase::Recover && ++recoverTries_ >= opts_.recoverTries) { handBack(HandBack::Lost); return; }
         startRecover();
         return;
     }
@@ -540,7 +549,7 @@ void ScrollSession::stillStep(int64_t now) {
     pending_ = 0;
     if (phase_ == Phase::Recover) {
         if (tracker_->state() != TrackState::Lost) { recoverTries_ = 0; phase_ = Phase::Step; nextStepAt_ = now; return; }
-        if (++recoverTries_ >= 2) { handBack(HandBack::Lost); return; }
+        if (++recoverTries_ >= opts_.recoverTries) { handBack(HandBack::Lost); return; }
         startRecover();
         return;
     }

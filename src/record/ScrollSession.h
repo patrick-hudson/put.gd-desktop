@@ -167,6 +167,9 @@ struct SessionOptions {
     // The next step goes once the page has moved this share of what the step
     // asked (or has come to rest).
     double nextAtShare = 0.85;
+    // Lost: up to this many steps back, each judged on three frames and at
+    // least recoverWaitMs, before auto-scroll hands the page back.
+    int recoverTries = 5, recoverWaitMs = 2500;
     int settleMs = 150;
     int responseMs = 600;
     double responseFactor = 3.0;
@@ -288,7 +291,7 @@ private:
     bool movedDown_ = false;     // auto-scroll has moved the page in its direction
     int64_t nextStepAt_ = 0, stepSentAt_ = -1, stepFirstMoveAt_ = -1, lastMoveAt_ = -1;
     int stepNotches_ = 0, stillSteps_ = 0, patience_ = 1, wheelAt_ = 0, triesHere_ = 0;
-    int recoverTries_ = 0, stepCap_ = 0, goodSteps_ = 0;
+    int recoverTries_ = 0, stepCap_ = 0, goodSteps_ = 0, backNotches_ = 1, framesSinceStep_ = 0;
     int animationMs_ = 0;        // the longest recent step animation seen
     bool restedBefore_ = true, stepFromRest_ = true;
     long long stepMoved_ = 0;
