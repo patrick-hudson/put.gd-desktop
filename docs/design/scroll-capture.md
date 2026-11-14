@@ -241,8 +241,11 @@ so Stop is seen soon.
 5. **Plan a step.** The first step is one notch, and its distance is the pixels per notch.
    Later steps aim for 60% of the moving band and never more than 75%, never so far that
    fewer than 36 informative rows of the reference stay in the overlap, never so far that
-   the appended rows start less than 24 rows below the parked pointer (48 where the frames
-   show a painted pointer), and at most 64 notches.
+   the appended rows start less than 24 rows below a pointer parked on the page (48 where the
+   frames show a painted pointer), and at most 64 notches. A pointer that waits outside and
+   only visits for the wheel step is not on the page while frames are read and limits
+   nothing: with its rest below the rectangle the wheel point is near the bottom edge, and
+   that margin once made every step one notch.
 6. **Prove stillness before the end.** A step with no movement waits at least 400 ms and is
    repeated, as one notch whose answer gets twice the response time (more notches are only more
    for a busy page to work through before it can answer). Two still steps in a row are the end,
@@ -301,9 +304,11 @@ could not reach Stop: the next wheel step pulled the pointer back.
 **Where the pointer rests.** Between wheel steps the pointer rests on a surface the helper
 owns, outside the rectangle, so that the helper gets the user's motion from the first pixel
 as ordinary pointer events (enter, leave, move). That is the bar when it is beside the
-rectangle: a point in the margin above or below its controls, on the edge nearest the
-rectangle, so the way to the page stays short (Plasma's "shake cursor" effect fires on a
-pointer that travels more than about 100 px back and forth several times a second). Where
+rectangle: a point over its state text, never a button, at least 14 px inside the bar so that
+a hand's first motion event lands on the bar, and as near the rectangle as that allows, so
+the way to the page stays short (Plasma's "shake cursor" effect fires on a pointer that
+travels more than about 100 px back and forth several times a second; where that point is
+more than 60 px from the rectangle the pad is used instead, outside GNOME). Where
 the frames show a painted pointer (Hyprland, labwc), the arrow hangs clear of the rectangle.
 Without the bar beside it, a clear 32 px pad of the helper's own sits at the old rest spot,
 16 px outside the rectangle (an X11 window, or a layer surface on Plasma, Hyprland and
@@ -319,7 +324,19 @@ rectangle's output and takes the pointer everywhere except 8 px holes at the poi
 wheel is turned, the bar and the pad: the capture's own pointer is only ever at its rest or in a
 hole, so any pointer event on the watch is the user's, also while the pointer is in the
 rectangle for a wheel step. The watch is hidden while paused, so the desktop is the user's then.
-The user's motion is watched from the moment the pointer is first seen arriving at its rest.
+The user's motion is watched from the start of the capture: before the pointer first arrives at
+its rest, a pointer that moves on any of these surfaces while the capture sent nothing in between
+is the user.
+
+**A pointer pulled back from under the hand.** Where the desktop cannot be asked where the
+pointer is (Wayland), a hand can start to move while the pointer is in the rectangle for a
+wheel step, and the capture can send it back to its rest before it has heard of it. It knows
+this when the watch saw the hand where the capture believes the pointer at rest, or when the
+hand's motion on the rest surface comes within 30 ms of the pointer's arrival there. The
+pointer is then put back once, where the hand had it (where the watch saw it, else the point
+the wheel was turned at) plus the way the hand has moved since, and the capture pauses. The
+helper's log says `pointer put back at`. X11 asks the server before every motion and needs
+none of this.
 
 **Pause.** On the user's motion the injection gate closes at once, from the event itself,
 before the loop has looked. The loop stops between any two injections, inside a visit and
@@ -622,9 +639,11 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   wheel step sends one pointer motion (out of the rectangle) after Stop.
 - **The user's mouse.** On GNOME a motion that comes while the pointer is inside the
   rectangle for a wheel step (about 100 ms of every step) is seen only when the pointer is
-  back on its rest: the capture moves it there once more, then pauses. GNOME has no watch and
-  no pad, because only the Shell places windows there. X11 and the layer-shell desktops see it
-  at once.
+  back on its rest. The pointer is then put back once at the point the wheel was turned at
+  plus the hand's way since, which can be off by the hand's way during the visit (at most
+  about 60 px at a brisk 600 px/s). GNOME has no watch and no pad, because only the Shell
+  places windows there. On the layer-shell desktops the watch sees where the hand was, and
+  X11 asks the server.
   A region that covers its whole output has no place outside it: the pointer stays parked on
   the page, no bar shows, and moving the mouse does not pause the capture (Esc on X11, the
   hotkey and `scroll.stop` still stop it). The same is true on GNOME when the Shell found no
