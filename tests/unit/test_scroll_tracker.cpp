@@ -68,10 +68,11 @@ struct Played {
 // Plays frames at the given scroll positions (`frameAt` may replace a frame);
 // a placed frame must be where the page is relative to the first frame.
 Played play(const Scene& scene, const std::vector<int>& pos, TrackerOptions o = {},
-            const std::function<bool(size_t, Image&)>& replace = {}) {
+            const std::function<bool(size_t, Image&)>& replace = {}, TrackerRect excluded = {}) {
   Played r;
   MemoryCanvas canvas(scene.spec().width);
   ScrollTracker tracker(canvas, o);
+  tracker.setExcluded(excluded);
   for (size_t i = 0; i < pos.size(); ++i) {
     Image f = scene.frame(pos[i], int(i));
     const bool foreign = replace && replace(i, f);
@@ -381,10 +382,76 @@ void testChangesAndRecovery() {
 
 }  // namespace
 
+// ------------------------------------------------------------------ excluded
+
+// put.gd's own bar inside the region (#1519): a rectangle the tracker is told
+// is not the application. What it shows changes with every frame (a height
+// counter); none of it may reach the image.
+void testExcluded() {
+  std::printf("\n[excluded] a rectangle that is not the application leaves no trace\n");
+  const int W = 480, V = 400;
+  const Document doc = plainPage(29, W, V);
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  const Scene scene(doc.img, ss);
+  const int end = doc.img.h - V;
+  Rng rng(31);
+  const auto pos = steps(0, end, [&] { return rng.range(60, 140); });
+  const auto counter = [](const TrackerRect& e) {
+    return [e](size_t i, Image& f) {
+      for (int y = e.y; y < e.y + e.h; ++y)
+        for (int x = e.x; x < e.x + e.w; ++x) f.at(x, y) = 0x1E2230;
+      Rng digits(1000 + i * 7919);
+      drawTextLine(f, e.y + e.h / 2 - 5, e.x + 6, e.x + e.w - 6, digits, 0xF0C060);
+      return false;
+    };
+  };
+  {
+    // A box over the middle of the frame: the rows under it come from the
+    // frames in which they are clear.
+    const TrackerRect e{280, 160, 150, 40};
+    const Played r = play(scene, pos, {}, counter(e), e);
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {}, 0, &firstBad);
+    report("a changing box excluded: no trace, the page exact", r.wrong == 0 && r.totals.skipped == 0 && bad == 0 &&
+                                                                   r.totals.hiddenCells == 0 && r.totals.pinnedRegions == 0,
+           counts(r) + fmt(", %d wrong, %lld pixels differ (row %d), %lld hidden cells, %d pinned parts", r.wrong, bad, firstBad,
+                           r.totals.hiddenCells, r.totals.pinnedRegions));
+  }
+  {
+    // A bar across the bottom of the region: the image ends above it, also
+    // at the page's end (its last rows were under the bar).
+    const TrackerRect e{0, V - 40, W, 40};
+    const Played r = play(scene, pos, {}, counter(e), e);
+    int firstBad = 0;
+    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h - 40, W), {}, 0, &firstBad);
+    report("a bar across the bottom: the image ends above it, exact", r.wrong == 0 && r.totals.skipped == 0 && bad == 0 &&
+                                                                         r.totals.hiddenCells == 0,
+           counts(r) + fmt(", %d wrong, %lld pixels differ (row %d), %lld hidden cells", r.wrong, bad, firstBad, r.totals.hiddenCells));
+  }
+  {
+    // A bar over half the width at the bottom: at the page's end the rows
+    // under it were never clear. They are the plain colour and counted; the
+    // rest of the image is exact.
+    const TrackerRect e{0, V - 40, W / 2, 40};
+    const Played r = play(scene, pos, {}, counter(e), e);
+    int firstBad = 0;
+    const int h = doc.img.h;
+    const long long bad = differing(r, pageRows(doc.img, 0, h, W), {{0, h - 40, W / 2, h}}, 0, &firstBad);
+    report("half a bar at the page's end: plain and counted, the rest exact",
+           r.wrong == 0 && r.totals.skipped == 0 && bad == 0 && r.totals.hiddenRows == 40 &&
+               r.totals.hiddenCells == 40LL * (W / 2 / 8),
+           counts(r) + fmt(", %lld pixels differ (row %d), %lld hidden cells in %lld rows", bad, firstBad, r.totals.hiddenCells,
+                           r.totals.hiddenRows));
+  }
+}
+
 int main() {
   testOffsets();
   testPinned();
   testChangesAndRecovery();
+  testExcluded();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

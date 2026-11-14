@@ -197,6 +197,13 @@ struct TrackerHint {
   int uncertainty = 0;
 };
 
+// A rectangle of the frame in frame pixels: x, y its top left corner. Empty
+// when w or h is not positive.
+struct TrackerRect {
+  int x = 0, y = 0, w = 0, h = 0;
+  bool empty() const { return w <= 0 || h <= 0; }
+};
+
 enum class TrackStatus {
   Placed,      // the frame's place in the page is proved (the first frame too)
   NoMovement,  // the content did not move (changes in place are ignored)
@@ -245,6 +252,11 @@ struct TrackTotals {
   int pinnedRegions = 0;       // pinned parts found (connected regions of the final mask)
   bool capReached = false;
   long long top = 0, bottom = 0;  // the image's extent in page rows
+  // Under the excluded rectangle (ScrollTracker::setExcluded), in rows of the
+  // image: cells that only the rectangle kept from being seen (every placed
+  // frame that held them had them under it), filled with the plain colour,
+  // and the rows that hold them. 0 when every such cell was shown outside it.
+  long long hiddenCells = 0, hiddenRows = 0;
 };
 
 class ScrollTracker {
@@ -255,6 +267,26 @@ class ScrollTracker {
   ScrollTracker& operator=(const ScrollTracker&) = delete;
 
   TrackResult addFrame(const FrameView& frame, TrackerHint hint = {});
+  // A rectangle of the frame that is not the application (put.gd's own bar
+  // drawn inside the region). Its cells never vote, never count as evidence
+  // or contradiction, are never composed and never drawn as a pinned part:
+  // the page rows under it come from frames in which they are clear, as under
+  // a pinned box. It is rounded out to whole cells (cellPx columns) and block
+  // rows (blockRows rows). Set it before the first frame or between frames;
+  // it applies from the next addFrame(). An empty rectangle clears it.
+  //
+  // What no frame shows clear. When the rectangle spans every cell of the
+  // width and touches the frame's top or bottom edge (a bar across the
+  // bottom of the region), the frame rows it covers there never count for
+  // the extent: the image ends above such a bar, also at the page's end, and
+  // addedTop/addedBottom never include them. Any other cell under it that no
+  // frame showed clear (a bar over part of the width at the page's very end
+  // or start) is filled in finish() like anything else no frame showed
+  // clear, with the plain colour of its column (the most common colour of
+  // the written rows beside it), and counted in TrackTotals::hiddenCells and
+  // hiddenRows.
+  void setExcluded(TrackerRect rect);
+  TrackerRect excluded() const { return excludedRect_; }
   // Writes what is pinned once (at the top as the first screen showed it, at
   // the bottom as the last), fills what no frame showed clear, and returns
   // the extent. No frame is taken after it.
@@ -369,8 +401,19 @@ class ScrollTracker {
   // that vote (not pinned, not standing still since the last placed frame).
   std::vector<int> bandLo_;
   std::vector<uint16_t> bandIncl_, cellIncl_;
-  // The closed mask as 16-bit lanes: per block row, per cell and per band.
+  // The closed mask as 16-bit lanes: per block row, per cell and per band;
+  // the excluded rectangle is in them too.
   std::vector<uint16_t> closed16_, bandPinned16_;
+  // The excluded rectangle: as given, per block, as words per block row, and
+  // the frame rows it leaves [effTop_, effBottom_) (rows it covers across the
+  // whole width at the top and the bottom are not).
+  TrackerRect excludedRect_;
+  std::vector<uint8_t> excl_;
+  std::vector<uint16_t> exclLane16_;
+  std::vector<uint64_t> exclWords_;
+  int effTop_ = 0, effBottom_ = 0;
+  void applyExcluded();
+  void refreshLanes();
   // Rows of the incoming frame [0, y) that show something outside what is pinned.
   std::vector<int> texturedRows_;
   // Per tile of the incoming frame: its textured band lanes outside what is
@@ -384,14 +427,18 @@ class ScrollTracker {
   uint32_t pageColour_ = 0;
   unsigned pageCell_ = 0;  // its cell value
   int learnedSteps_ = 0;
-  // The last placed frame's rows with cells seen once, waiting for the next
-  // pair (their pixels, and their bands and texture), and the rows the cap
-  // allows.
-  long long pendingPos_ = 0;
-  std::vector<int> pendingRows_;
-  std::vector<uint8_t> pendingPixels_;
-  std::vector<uint16_t> pendingBands_;
-  std::vector<uint64_t> pendingOpen_;
+  // Placed frames' rows with cells seen once, waiting (their pixels, their
+  // bands and texture, and which cells): for the next pair, and while the
+  // mask is young for it to learn what is pinned; and the rows the cap allows.
+  struct Pending {
+    long long pos = 0;
+    std::vector<int> rows;
+    std::vector<uint8_t> pixels;
+    std::vector<uint16_t> bands;
+    std::vector<uint64_t> open;
+  };
+  std::vector<Pending> pending_;
+  void narrowPending(Pending& p, const std::vector<uint64_t>& blocked) const;
   long long allowLo_ = 0, allowHi_ = 0;
   uint32_t frameSerial_ = 0;  // placed frames, counted from 1
   std::unique_ptr<Store> store_;
