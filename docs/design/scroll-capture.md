@@ -628,7 +628,7 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   A region that covers its whole output has no place outside it: the pointer stays parked on
   the page, no bar shows, and moving the mouse does not pause the capture (Esc on X11, the
   hotkey and `scroll.stop` still stop it). The same is true on GNOME when the Shell found no
-  spot for the bar. The bar needs about 650 by 56 px beside the rectangle; a region that
+  spot for the bar. The bar needs about 630 by 52 px beside the rectangle; a region that
   leaves less on every side of its screen puts the bar on another screen, or hides it with
   one screen, and the pointer then rests on the pad.
 - **A build with no region selector has no scroll capture, for any caller.** The Ubuntu
