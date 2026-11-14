@@ -330,13 +330,18 @@ is the user.
 
 **A pointer pulled back from under the hand.** Where the desktop cannot be asked where the
 pointer is (Wayland), a hand can start to move while the pointer is in the rectangle for a
-wheel step, and the capture can send it back to its rest before it has heard of it. It knows
-this when the watch saw the hand where the capture believes the pointer at rest, or when the
-hand's motion on the rest surface comes within 30 ms of the pointer's arrival there. The
-pointer is then put back once, where the hand had it (where the watch saw it, else the point
-the wheel was turned at) plus the way the hand has moved since, and the capture pauses. The
-helper's log says `pointer put back at`. X11 asks the server before every motion and needs
-none of this.
+wheel step, and the capture can move the pointer before it has heard of the hand (an Omarchy
+guest delivered the hand's events 100 to 200 ms late). The capture knows this from the event's
+own time, the compositor's monotonic milliseconds, against when it last sent a motion (used
+only where the two clocks agree within a second); else from the watch seeing the hand where the
+capture believes the pointer at rest, or from the hand's motion on the rest surface within 30 ms
+of the pointer's arrival there. The pointer is then put back once by a relative motion of
+exactly the displacement the capture caused: from where it put the pointer to where the hand had
+it (the last event from before that motion, waiting at most 400 ms for one from after it; on
+GNOME, which has no watch, the point the wheel was turned at). A relative motion keeps whatever
+the hand did since, however late its events come; KWin's fake input, the wlroots virtual pointer
+and Mutter's remote desktop do not accelerate it. The capture pauses. The helper's log says
+`pointer put back by`. X11 asks the server before every motion and needs none of this.
 
 **Pause.** On the user's motion the injection gate closes at once, from the event itself,
 before the loop has looked. The loop stops between any two injections, inside a visit and
@@ -639,8 +644,8 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
   wheel step sends one pointer motion (out of the rectangle) after Stop.
 - **The user's mouse.** On GNOME a motion that comes while the pointer is inside the
   rectangle for a wheel step (about 100 ms of every step) is seen only when the pointer is
-  back on its rest. The pointer is then put back once at the point the wheel was turned at
-  plus the hand's way since, which can be off by the hand's way during the visit (at most
+  back on its rest. The pointer is then put back once by the way from its rest to the point
+  the wheel was turned at, which can be off by the hand's way during the visit (at most
   about 60 px at a brisk 600 px/s). GNOME has no watch and no pad, because only the Shell
   places windows there. On the layer-shell desktops the watch sees where the hand was, and
   X11 asks the server.
