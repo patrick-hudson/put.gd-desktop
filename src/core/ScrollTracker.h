@@ -453,6 +453,7 @@ class ScrollTracker {
     std::vector<uint8_t> pixels;
     std::vector<uint16_t> bands;
     std::vector<uint64_t> open;
+    std::vector<uint64_t> agreed;  // of those, the ones the last frame showed the same
   };
   std::vector<Pending> pending_, spare_;  // spare_: flushed, their buffers kept for reuse
   void narrowPending(Pending& p, const std::vector<uint64_t>& blocked) const;
