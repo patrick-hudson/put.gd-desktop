@@ -1,3 +1,4 @@
+#include "EventPump.h"
 #include "DataControlClipboard.h"
 #include "platform/wayland/KeyboardMap.h"
 #include <xkbcommon/xkbcommon.h>
@@ -64,21 +65,20 @@ struct DataControlClipboard::Impl:QObject {
  ~Impl() override{closing=true;reconnect.stop();cancel();finishCopy({"cancelled","Clipboard adapter closed",{}});for(auto* worker:workers){worker->wait();delete worker;}reset();}
  bool available()const{return display&&manager&&seat&&device&&selectionReady;}
  void notify(){emit q.changed();}
- void flush(){if(!display)return;if(wl_display_flush(display)<0){if(errno==EAGAIN){if(writeNotifier)writeNotifier->setEnabled(true);}else lost();}else if(writeNotifier)writeNotifier->setEnabled(false);}
+ void flush(){if(!display)return;bool pending=false;if(!wayland::flush(display,pending)){lost();return;}if(writeNotifier)writeNotifier->setEnabled(pending);}
  void open(){if(closing||display)return;display=wl_display_connect(nullptr);if(!display){error="Cannot connect to the Wayland compositor";return;}registry=wl_display_get_registry(display);
   static const wl_registry_listener listener={global,removed};wl_registry_add_listener(registry,&listener,this);
   const auto fd=wl_display_get_fd(display);readNotifier=new QSocketNotifier(fd,QSocketNotifier::Read,this);writeNotifier=new QSocketNotifier(fd,QSocketNotifier::Write,this);writeNotifier->setEnabled(false);connect(readNotifier,&QSocketNotifier::activated,this,[this]{events();});connect(writeNotifier,&QSocketNotifier::activated,this,[this]{flush();});
   initialSync=wl_display_sync(display);static const wl_callback_listener synced={[](void* data,wl_callback* callback,uint32_t){auto* self=static_cast<Impl*>(data);wl_callback_destroy(callback);self->initialSync=nullptr;self->bindWlr();if(!self->manager||!self->seat)self->error="Compositor lacks ext-data-control-v1, wlr-data-control or a usable seat";else if(!self->selectionReady)self->error="Waiting for compositor clipboard ownership discovery";self->notify();}};wl_callback_add_listener(initialSync,&synced,this);flush();
  }
- void events(){if(!display||dispatching)return;dispatching=true;
-  // This is a private connection. No Qt-owned Wayland queue is ever dispatched.
-  if(wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-  pollfd p{wl_display_get_fd(display),POLLIN,0};if(poll(&p,1,0)>0){
-   while(wl_display_prepare_read(display)!=0)if(wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-   if(wl_display_read_events(display)<0||wl_display_dispatch_pending(display)<0){dispatching=false;lost();return;}
-  }
-  dispatching=false;flush();
+ void events(){
+  if(!display||dispatching)return;dispatching=true;
+  const bool ok=wayland::pump(display);
+  dispatching=false;
+  if(!ok){lost();return;}
+  flush();
  }
+
  void reset(){
   if(readNotifier){readNotifier->setEnabled(false);delete readNotifier;readNotifier=nullptr;}if(writeNotifier){writeNotifier->setEnabled(false);delete writeNotifier;writeNotifier=nullptr;}
   selectionReady=false;assumedEmpty=false;selection=nullptr;for(auto* offer:offers.keys())ext_data_control_offer_v1_destroy(offer);offers.clear();for(auto* source:sources){ext_data_control_source_v1_destroy(source->native);delete source;}sources.clear();

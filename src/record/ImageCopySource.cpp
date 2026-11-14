@@ -1,3 +1,4 @@
+#include "platform/wayland/EventPump.h"
 #include "ImageCopySource.h"
 #include "DebugLog.h"
 #include "platform/wayland/ToplevelMatch.h"
@@ -482,17 +483,15 @@ struct ImageCopySource::Impl {
    }
    if(!frame&&constraints&&!reallocate)if(auto* slot=freeSlot())capture(slot);
    if(last&&monotonicNs()-lastPush>=keepaliveNs)keepalive();
-   if(wl_display_flush(display)<0&&errno!=EAGAIN){fail({"recording_target","The Wayland connection for recording was lost",{}});break;}
-   while(wl_display_prepare_read(display)!=0)if(wl_display_dispatch_pending(display)<0){fail({"recording_target","The Wayland connection for recording was lost",{}});ended=true;break;}
-   if(ended)break;
+   bool pending=false;
+   if(!wayland::flush(display,pending)){fail({"recording_target","The Wayland connection for recording was lost",{}});break;}
    int wake=-1;{std::lock_guard guard(shared->lock);wake=shared->wake;}
-   pollfd fds[2]={{wl_display_get_fd(display),POLLIN,0},{wake,POLLIN,0}};
+   pollfd fds[2]={{wl_display_get_fd(display),short(POLLIN|(pending?POLLOUT:0)),0},{wake,POLLIN,0}};
    // A cursor move waiting for its turn is drawn when the interval is over, not at the next event.
-   const int count=poll(fds,2,ownCursor&&cursorDirty&&clean?int(std::clamp<qint64>((cursorIntervalNs-(monotonicNs()-lastPush))/1'000'000,1,16)):100);
-   if(count>0&&(fds[0].revents&POLLIN)){if(wl_display_read_events(display)<0){fail({"recording_target","The Wayland connection for recording was lost",{}});break;}}
-   else wl_display_cancel_read(display);
+   if(!wayland::pump(display,fds,2,ownCursor&&cursorDirty&&clean?int(std::clamp<qint64>((cursorIntervalNs-(monotonicNs()-lastPush))/1'000'000,1,16)):100)){
+    fail({"recording_target","The Wayland connection for recording was lost",{}});break;
+   }
    if(fds[1].revents&POLLIN){uint64_t value=0;(void)!::read(wake,&value,sizeof value);}
-   if(wl_display_dispatch_pending(display)<0){fail({"recording_target","The Wayland connection for recording was lost",{}});break;}
   }
   if(failure&&lost&&!stopping)lost(failure);
  }

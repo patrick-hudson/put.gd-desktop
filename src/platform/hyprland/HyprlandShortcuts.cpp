@@ -1,3 +1,4 @@
+#include "platform/wayland/EventPump.h"
 #include "HyprlandShortcuts.h"
 #include "HyprlandIpc.h"
 #include "hyprland-global-shortcuts-v1-client-protocol.h"
@@ -56,7 +57,7 @@ struct HyprlandShortcuts::Registry:QObject {
  struct Entry {Registry* owner=nullptr;QString action;hyprland_global_shortcut_v1* native=nullptr;};
  HyprlandShortcuts& q;
  wl_display* display=nullptr;wl_registry* registry=nullptr;hyprland_global_shortcuts_manager_v1* manager=nullptr;
- QHash<QString,Entry*> entries;QSocketNotifier* notifier=nullptr;QTimer reconnect;
+ QHash<QString,Entry*> entries;QSocketNotifier* notifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect;
  QString error=QStringLiteral("The Hyprland shortcut protocol has not connected");bool connected=false,dispatching=false,closing=false,everConnected=false;int failures=0;
  explicit Registry(HyprlandShortcuts& q):q(q){reconnect.setSingleShot(true);connect(&reconnect,&QTimer::timeout,this,[this]{open();});open();}
  ~Registry() override{closing=true;reset();}
@@ -75,6 +76,8 @@ struct HyprlandShortcuts::Registry:QObject {
   if(!roundTrip()){fail("The compositor did not answer the shortcut protocol query");return;}
   if(!manager){error="The compositor does not offer hyprland-global-shortcuts-v1";reset();retry(30000);q.changed();return;}
   notifier=new QSocketNotifier(wl_display_get_fd(display),QSocketNotifier::Read,this);
+  writeNotifier=new QSocketNotifier(wl_display_get_fd(display),QSocketNotifier::Write,this);writeNotifier->setEnabled(false);
+  QObject::connect(writeNotifier,&QSocketNotifier::activated,this,[this]{flush();});
   connect(notifier,&QSocketNotifier::activated,this,[this]{events();});
   connected=true;error.clear();failures=0;
   for(auto it=q.requested_.cbegin();it!=q.requested_.cend();++it)if(!it.value().isEmpty())ensure(it.key());
@@ -88,13 +91,10 @@ struct HyprlandShortcuts::Registry:QObject {
   bool done=false;auto* callback=wl_display_sync(display);
   static const wl_callback_listener synced{[](void* data,wl_callback*,uint32_t){*static_cast<bool*>(data)=true;}};
   wl_callback_add_listener(callback,&synced,&done);
-  if(wl_display_flush(display)<0&&errno!=EAGAIN){wl_callback_destroy(callback);return false;}
-  for(int waited=0;!done&&waited<2000;){
-   if(wl_display_dispatch_pending(display)<0)break;
-   if(done)break;
-   pollfd ready{wl_display_get_fd(display),POLLIN,0};const int count=::poll(&ready,1,100);waited+=100;
-   if(count<0&&errno!=EINTR)break;
-   if(count>0&&wl_display_dispatch(display)<0)break;
+  for(int waited=0;!done&&waited<2000;waited+=100){
+   bool pending=false;if(!wayland::flush(display,pending))break;
+   pollfd ready{wl_display_get_fd(display),short(POLLIN|(pending?POLLOUT:0)),0};
+   if(!wayland::pump(display,&ready,1,100))break;
   }
   wl_callback_destroy(callback);return done;
  }
@@ -113,21 +113,15 @@ struct HyprlandShortcuts::Registry:QObject {
   hyprland_global_shortcut_v1_add_listener(entry->native,&listener,entry);
   entries.insert(action,entry);flush();
  }
- void flush(){if(display&&wl_display_flush(display)<0&&errno!=EAGAIN)lost();}
+ void flush(){if(!display)return;bool pending=false;if(!wayland::flush(display,pending)){lost();return;}if(writeNotifier)writeNotifier->setEnabled(pending);}
  void events(){
   if(!display||dispatching)return;dispatching=true;
-  bool ok=wl_display_dispatch_pending(display)>=0;
-  if(ok){
-   pollfd ready{wl_display_get_fd(display),POLLIN,0};
-   if(::poll(&ready,1,0)>0){
-    while(ok&&wl_display_prepare_read(display)!=0)ok=wl_display_dispatch_pending(display)>=0;
-    if(ok)ok=wl_display_read_events(display)>=0&&wl_display_dispatch_pending(display)>=0;
-   }
-  }
+  const bool ok=wayland::pump(display);
   dispatching=false;
   if(!ok){lost();return;}
   flush();
  }
+
  void lost(){
   QString reason=QStringLiteral("The Wayland connection for hotkeys was lost");
   if(display){
@@ -146,6 +140,7 @@ struct HyprlandShortcuts::Registry:QObject {
   ++failures;reconnect.start(delayMs>0?delayMs:std::min(30000,1000*failures));
  }
  void reset(){
+  if(writeNotifier){writeNotifier->setEnabled(false);writeNotifier->deleteLater();writeNotifier=nullptr;}
   connected=false;
   if(notifier){notifier->setEnabled(false);notifier->disconnect(this);notifier->deleteLater();notifier=nullptr;}
   for(auto* entry:entries){if(entry->native&&display)hyprland_global_shortcut_v1_destroy(entry->native);delete entry;}entries.clear();

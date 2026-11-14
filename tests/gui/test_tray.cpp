@@ -5,6 +5,8 @@
 #include "ui/TrayController.h"
 #include "ui/Ui.h"
 #include <QAction>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QApplication>
 #include <QMenu>
 #include <QSystemTrayIcon>
@@ -58,6 +60,24 @@ private slots:
  void activityFollowsTheFlags() {
   QFETCH(bool,error);QFETCH(bool,completed);QFETCH(bool,visible);QFETCH(bool,storage);QFETCH(bool,tracked);QFETCH(int,expected);
   QCOMPARE(int(TrayController::activityFor({error,completed,visible,storage,tracked})),expected);
+ }
+ // A file that is on the storage and only lacks its link is never called a failed upload: a user told
+ // so uploads it again or gives up on a file that is already stored (#1399). Every other case keeps its text.
+ void uploadedFilesWithoutTheirLinkAreNotFailedUploads_data() {
+  QTest::addColumn<QJsonArray>("items");QTest::addColumn<QString>("expected");
+  const auto item=[](const QString& upload,const QString& share,const QString& errorCode={}){
+   return QJsonObject{{"uploadStatus",upload},{"shareStatus",share},{"error",errorCode.isEmpty()?QJsonObject{}:QJsonObject{{"code",errorCode},{"message","Synthetic"}}}};};
+  QTest::newRow("link unknown")<<QJsonArray{item("uploaded","unknown")}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";
+  QTest::newRow("link changed")<<QJsonArray{item("uploaded","changed")}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";
+  QTest::newRow("link failed")<<QJsonArray{item("uploaded","failed","permission_denied")}<<"Uploaded, but the share link was not made: access denied by the destination. Use Create share link in History.";
+  QTest::newRow("batch, one link")<<QJsonArray{item("uploaded","shared"),item("uploaded","unknown")}<<"2 files uploaded, but 1 share link could not be confirmed. Use Inspect link in History.";
+  QTest::newRow("batch, upload and link")<<QJsonArray{item("failed","not_requested","permission_denied"),item("uploaded","failed")}<<"1 of 2 files uploaded. 1 failed: access denied by the destination. 1 share link was not made. Use Create share link in History.";
+  QTest::newRow("failed upload, unchanged")<<QJsonArray{item("failed","not_requested","permission_denied")}<<"Upload failed: access denied by the destination.";
+ }
+ void uploadedFilesWithoutTheirLinkAreNotFailedUploads() {
+  QFETCH(QJsonArray,items);QFETCH(QString,expected);
+  const QJsonObject operation{{"state","partial"},{"copyStatus","no_result"},{"items",items}};
+  QCOMPARE(TrayController::completionMessage(operation,false),expected);
  }
 };
 
