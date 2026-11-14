@@ -81,7 +81,7 @@ The contract in `ScrollBackend.h`:
   {rect}`, `start`, `pause`, `resume`, `stop`, `cancel` and `overlay {visible, rect?}`.
   Replies come only once the helper reached the state. `pause` and `resume` answer
   `{state: "capturing", paused, pausedBy?}`; `resume` of a capture that is not paused is
-  `scroll_state`. `stop` keeps the image, and its reply is the object a later
+  `scroll_state`, a refusal that leaves the capture running. `stop` keeps the image, and its reply is the object a later
   `scroll.inspect` returns. `cancel` is accepted while a `start` or `stop` is pending (it
   is never `scroll_busy`); a `start` or `stop` waiting for the helper then ends with the
   session. Once a `cancel` is on its way it decides the end: see
@@ -323,7 +323,9 @@ labwc, where nothing can ask where the pointer is, a clear layer surface (the wa
 rectangle's output and takes the pointer everywhere except 8 px holes at the points where the
 wheel is turned, the bar and the pad: the capture's own pointer is only ever at its rest or in a
 hole, so any pointer event on the watch is the user's, also while the pointer is in the
-rectangle for a wheel step. The watch is hidden while paused, so the desktop is the user's then.
+rectangle for a wheel step. The watch is hidden while paused, so the desktop is the user's then,
+and shows again for Resume's quiet half second, so that a hand still moving over the page is
+seen; a watch made while paused (a pause before the first frame) stays hidden until then.
 Under software rendering it costs the compositor some work: on the Omarchy guest frames came
 about 12% further apart with it (median 118 ms against 106 ms), and whole captures took as long
 as without it. `PUTGD_SCROLL_WATCH=0` in the resident's environment leaves it out, for lab

@@ -323,7 +323,7 @@ A scrolling capture ([design](../design/scroll-capture.md)) is driven by nine se
 | `scroll.select` | `id`, `rect` | Completes an open selector with a rectangle, as a drag would; the state becomes `ready` and `rect` is set |
 | `scroll.start` | `id` | The state `capturing` once the helper has begun; the capture then runs on its own, at most 180 s, not counting pauses |
 | `scroll.pause` | `id` | Stops all injection at once, as the user moving the mouse does: `{state: "capturing", paused: true, pausedBy}`. `pausedBy` is `request`, or `pointer` when the user had paused it already. A pause that lasts 10 minutes ends the capture as Stop |
-| `scroll.resume` | `id` | Goes on after a pause: the helper looks at the page again first, and ends the capture `lost_track` with the exact image so far when the page moved where it cannot be placed. `scroll_state` when it is not paused |
+| `scroll.resume` | `id` | Goes on after a pause: the helper looks at the page again first, and ends the capture `lost_track` with the exact image so far when the page moved where it cannot be placed. `scroll_state` when it is not paused, and the capture goes on |
 | `scroll.stop` | `id` | Keeps the image. The reply is the finished view (below), after the PNG is written and admitted |
 | `scroll.cancel` | `id` | Discards the capture: state `cancelled`, no history row, no staging files |
 | `scroll.inspect` | `id` | The session's view while it runs and after: the last 32 sessions stay inspectable |
