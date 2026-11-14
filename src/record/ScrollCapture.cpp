@@ -1326,6 +1326,7 @@ void ScrollCapture::finish(std::shared_ptr<Outcome> outcome) {
     debugLog(QStringLiteral("scroll: ended %1, %2 rows, placed %3, skipped %4, recovered %5, moved by user %6 by put.gd %7, %8 wheel steps, %9 px per notch, %10 ms%11")
                  .arg(QString::fromLatin1(toString(outcome->end))).arg(st.bottom - st.top).arg(st.placed).arg(st.skipped).arg(st.recovered).arg(st.movedByUser).arg(st.movedByPutgd).arg(st.steps)
                  .arg(st.pxPerNotch, 0, 'f', 1).arg(st.elapsedMs).arg(st.lastError.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(st.lastError))));
+    if (outcome->end == SessionEnd::Finished) debugLog(QStringLiteral("scroll: Done's fresh frame added %1 rows").arg(st.rowsAtDone));
     // How fast the desktop's frame source delivered: what a person's scrolling is followed at.
     debugLog(QStringLiteral("scroll: source %1 frames in %2 ms (%3 per second), slowest response %4 ms").arg(st.framesSeen).arg(st.readMs)
                  .arg(st.readMs > 0 ? 1000.0 * (st.framesSeen - 1) / double(st.readMs) : 0.0, 0, 'f', 1).arg(st.maxResponseMs));
@@ -1546,7 +1547,8 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                     {"endReason", reason}, {"truncated", truncated}, {"appliedMaxHeight", applied},
                     {"scrolledBy", scrolledBy}, {"framesPlaced", stats.placed}, {"framesSkipped", stats.skipped}, {"endedLost", stats.endedLost}, {"reachedEnd", stats.reachedEnd},
                     {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", std::round(stats.pxPerNotch * 10) / 10}, {"lowConfidenceSteps", stats.byExpectation + stats.onHint}, {"elapsedMs", double(stats.elapsedMs)},
-                                          {"frames", stats.framesSeen}, {"recovered", stats.recovered}, {"pinnedRegions", stats.pinnedRegions}, {"framesPerSecond", fps}}}};
+                                          {"frames", stats.framesSeen}, {"recovered", stats.recovered}, {"pinnedRegions", stats.pinnedRegions}, {"framesPerSecond", fps},
+                                          {"rowsAtDone", double(stats.rowsAtDone)}}}};
                 // Rows under the bar inside the region that no frame showed clear (#1519).
                 if (stats.hiddenCells > 0) { outcome->descriptor["hiddenCells"] = double(stats.hiddenCells); outcome->descriptor["hiddenRows"] = double(stats.hiddenRows); }
                 if (end == SessionEnd::Idle) outcome->descriptor["note"] = QStringLiteral("nobody scrolled or used the bar for %1 minutes, so the capture ended there").arg(SessionOptions{}.idleLimitMs / 60000);
