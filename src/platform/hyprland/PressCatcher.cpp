@@ -88,7 +88,7 @@ struct PressCatcher::Impl {
   if(!layers.isEmpty())return true;
   if(!display||!compositor||!shm||!shell)return false;
   over=nullptr;placed=false;down=false;
-  for(const auto& area:areas)for(auto* output:outputs)if(output->name==area.output){
+  for(const auto& area:areas)for(auto* output:std::as_const(outputs))if(output->name==area.output){
    auto* entry=new Layer{this,wl_compositor_create_surface(compositor),nullptr,nullptr,area.logical};
    entry->layer=zwlr_layer_shell_v1_get_layer_surface(shell,entry->surface,output->native,ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,"putgd-region-catcher");
    zwlr_layer_surface_v1_set_anchor(entry->layer,ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP|ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM|ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT|ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
@@ -119,7 +119,7 @@ struct PressCatcher::Impl {
  void place(wl_fixed_t x,wl_fixed_t y){if(over)at=over->logical.topLeft()+QPointF(wl_fixed_to_double(x),wl_fixed_to_double(y));}
  static void entered(void* data,wl_pointer*,uint32_t,wl_surface* surface,wl_fixed_t x,wl_fixed_t y){
   auto& self=*static_cast<Impl*>(data);if(!surface)return;
-  for(auto* layer:self.layers)if(layer->surface==surface)self.over=layer;
+  for(auto* layer:std::as_const(self.layers))if(layer->surface==surface)self.over=layer;
   // As the surfaces map, Hyprland enters the one under the pointer, then moves
   // the focus to another output's surface with a position that lies outside it
   // (#1487, measured on 0.56: the output's offset taken twice). A position
