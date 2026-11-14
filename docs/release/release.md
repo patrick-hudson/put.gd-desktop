@@ -342,7 +342,7 @@ These are hard dependencies of every package, because one complete package is th
 | --- | --- | --- |
 | DEB | `tesseract-ocr-eng`, with `libtesseract5` and `libzxing3` found by the ELF dependency scan | `libtesseract-dev`, `libleptonica-dev`, `libzxing-dev` |
 | RPM | `tesseract-langpack-eng`, with `tesseract-libs` and `zxing-cpp` found by the ELF dependency scan | `tesseract-devel`, `leptonica-devel`, `zxing-cpp-devel` |
-| pacman and the AUR recipe | `tesseract`, `tesseract-data-eng`, `zxing-cpp` | The same |
+| pacman and the AUR recipe | `tesseract-data-eng`, `tesseract`, `zxing-cpp`, in that order: with the data first pacman does not ask which of 128 `tessdata` packages to use or add Afrikaans by default. `arch.py` refuses the other order | The same |
 
 - `PUTGD_OCR` is `AUTO` for developer builds and `ON` in every package configure, the extracted-source
   rebuild included. A package build without the libraries fails. Recording's Recommends are unchanged.
