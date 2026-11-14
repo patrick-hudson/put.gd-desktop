@@ -671,7 +671,10 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     job_->paintedPointer = frames_ == "image-copy";
     job_->endedByDesktop = [this] { return mutter_.closedByCompositor(); };
     QPointer<ScrollCapture> guard(this);
-    if (surfaceMode() == SurfaceMode::LayerShell)
+    // PUTGD_SCROLL_WATCH=0 leaves the watch out (lab diagnostics: what the
+    // watch costs a compositor; the user's motion during a wheel step is then
+    // seen as on GNOME).
+    if (surfaceMode() == SurfaceMode::LayerShell && qEnvironmentVariable("PUTGD_SCROLL_WATCH") != QLatin1String("0"))
         job_->watchHoles = [guard](QList<QPointF> holes) { QMetaObject::invokeMethod(guard, [guard, holes] { if (guard) guard->showWatch(holes); }, Qt::QueuedConnection); };
     job_->gate.tookPointer = [guard] { QMetaObject::invokeMethod(guard, [guard] { if (guard) guard->pause(QStringLiteral("pointer")); }, Qt::QueuedConnection); };
     state_ = State::Capturing;
