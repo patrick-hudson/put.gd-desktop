@@ -69,7 +69,8 @@ thing:
    [custom uploader](docs/user/custom-uploader.md) (import a ShareX `.sxcu` file),
    and fill in its details.
 2. Click **Save to keychain** (for Proton Drive, **Connect account…** and pick a
-   folder), then **Test upload and link**, and **Make default** if it isn't already.
+   folder), then **Test upload and link** (for Proton Drive, **Check account and
+   folder**, which uploads nothing), and **Make default** if it isn't already.
 3. Press a hotkey:
 
    | Hotkey | Captures |
@@ -79,8 +80,8 @@ thing:
    | `Ctrl+Shift+3` | The whole desktop |
 
 The capture uploads and its link is on your clipboard. Every capture is also in the
-main window and the tray menu, and you can give any of them a key in
-**Settings → Hotkeys**. Closing the window leaves put.gd running in the tray.
+main window and the tray menu. **Settings → Hotkeys** lets you change any key and says
+why one couldn't be set, for example when another app already uses it. Closing the window leaves put.gd running in the tray.
 
 ## What it does
 
