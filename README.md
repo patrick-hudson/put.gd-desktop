@@ -36,6 +36,17 @@ If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea, built 
   </picture>
 </p>
 
+## Why
+
+I was tired of screenshot tools built on a webview, and with LLMs, native code is easier to
+write than ever. put.gd is C++ and Qt, and memory is a deliberate design choice: a
+screenshot tool shouldn't use 100 MB or more sitting in your system tray. It's been
+ruthlessly trimmed to idle at about 10–20 MB, and less once the kernel reclaims its pages.
+The main window, the editor and the recorder are separate processes that exit when you're
+done with them ([memory strategy](docs/design/memory-strategy.md)).
+
+C++20 was a choice I regret. I'd like to move to C++23 eventually.
+
 ## Install
 
 put.gd runs on x86_64 Linux. This installs the right package for your distribution
