@@ -263,10 +263,13 @@ twice the patience, that also shows the page where it was in frames that arrived
 response time, is the end, but only at the centre of the region: still steps at another
 wheel point move the wheel to the centre, which keeps it from then on, and the two steps are
 made again there. (A side bar that sticks once the page has moved can take the wheel for its
-own list; Python's documentation in Chrome ended at 1,071 of 110,440 px before this rule.) A stream that sent no frame then (a damage-driven stream while
-the screen is still) is asked for a frame of the screen itself, which must show the page
-where it was. A fresh frame the tracker cannot place is no end: auto-scroll steps on, or
-goes back when lost. (KWin's stream stopped sending new pictures while Chrome went on
+own list; Python's documentation in Chrome ended at 1,071 of 110,440 px before this rule.)
+The stream alone does not prove the end: one that sent no frame (a damage-driven stream
+while the screen is still) has nothing from after the steps, and one that went stale sends
+its last picture again with new times. So every end is taken from a fresh frame of the
+screen itself (image copy: a new capture session; PipeWire: the stream linked again; X11: a
+grab after the call), which must show the page where it was. A fresh frame the tracker
+cannot place is no end: auto-scroll steps on, or goes back when lost. (KWin's stream stopped sending new pictures while Chrome went on
 scrolling, twice on 2026-11-14, and the restarted stream's first frame came 33 to 56 s
 later showing the page elsewhere.) The capture then finishes by itself.
 
