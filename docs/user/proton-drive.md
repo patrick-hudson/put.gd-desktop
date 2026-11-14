@@ -121,8 +121,10 @@ operation ID and intent before the helper starts. Interrupted results suppress
 copied links and require inspection; startup does not repeat mutations. A
 stale upload completion or retry cannot restore a revoked URL. If inspection
 finds no link after an uncertain create, the original create intent and its
-expiry/password references remain pending; a subsequent explicit retry creates
-the link without reuploading. Inspection of a previously shared expired link or
+expiry/password references remain pending. `operation.retry` inspects an
+uncertain link and, when it finds none while that create intent is pending,
+makes the link in the same run without reuploading; a link it finds is reported,
+not made again. Inspection of a previously shared expired link or
 an explicitly revoked link does not restore it. A failed journal commit stops
 polling, clears any unconfirmed URL and permits explicit inspection after the
 journal becomes writable.
@@ -143,10 +145,11 @@ helper has just uploaded, it reads the file again for about ten seconds before
 it believes such an answer; a read that shows another version of the file, or
 the file renamed, moved or in the trash, is believed at once. If the file still
 does not read as put.gd's own, no link is made and History shows **Sharing
-outcome unknown** rather than **Share link changed**. Nothing is uploaded again:
-Inspect link in History reads the file again and Share then makes the link, or
-Retry inspects it the same way and the next Retry makes the link, as for any
-uncertain link (#1399).
+outcome unknown** rather than **Share link changed**, and the notification says
+the file was uploaded but its share link could not be confirmed. Nothing is
+uploaded again: Inspect link in History reads the file again and **Create share
+link** then makes the link, or one `operation.retry` of the operation (through
+`putgd-cli` or the MCP helper) does both, as for any uncertain link (#1399).
 
 Safe remote deletion is unavailable because the SDK does not expose atomic
 revision-guarded deletion. The app rejects deletion of a recorded Proton file;
