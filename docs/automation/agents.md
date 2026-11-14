@@ -87,11 +87,13 @@ round trips, replacement/missing/denied deletes, and lost deletion replies.
 Do not teach shared code to decode URLs or provider object keys.
 
 To take a scrolling capture as an agent, read `scroll.capabilities` first (`available`, `injector`,
-`frames`), then `scroll.prepare` with a `rect` (or none, for the selector: the session is then `selecting`; finish the selector or call `scroll.select` and wait for `ready`), `scroll.start`, poll
-`scroll.inspect` until `state` is `done`, `failed` or `cancelled`, and read `endReason`: only
-`end_of_content` is a complete capture, and a `lost_track` or `height_cap` image is exact but partial.
-`top_not_reached` (and `topReached: false` on any other end) says the image starts partway down the
-page, because the scroll to the top could not be finished.
+`frames`), then `scroll.prepare` with a `rect` (or none, for the selector: the session is then `selecting`; finish the selector or call `scroll.select` and wait for `ready`) and `driver: "putgd"`, so put.gd turns the page itself (with `driver: "user"` the capture waits for a person to scroll), then `scroll.start`, poll
+`scroll.inspect` until `state` is `done`, `failed` or `cancelled`, and read `endReason`: `end_of_content`
+means put.gd scrolled to the end of the page and could place every frame; `done` is a capture someone
+finished (by `scroll.stop` too), whole as far as it was scrolled; `lost_track`, `height_cap` and
+`top_not_reached` are partial (`truncated`). While it runs, `activity`, `driver` and `pausedBy` say what
+the bar says; a user who moves the mouse pauses auto-scroll (`pausedBy: pointer`) and
+`scroll.autoScroll {on: true}` goes on.
 The tool and method forms are in [CLI](cli.md#scrolling-capture) and [MCP](mcp.md#tools-and-effects).
 It sends real wheel events to a live desktop, so run it only at a window you opened for the test, with
 the pointer and keyboard left alone, and never on a physical desktop without its lease.

@@ -228,48 +228,52 @@ existed they used a DEB built on the Debian host.
 
 ## Scrolling capture rows
 
-Scrolling capture (#1376, [design](../design/scroll-capture.md)) is accepted on every adapter,
-from the release packages, on the exact build. It sends real wheel events, so a physical
-desktop is used under its lease, with nothing else on the screen, and a guest keeps the wall
-visible. A wrong stitch looks like a valid image, so every case decodes the page: a ruler of
-40 px rows, each painted with its index as a bar code and as text, in a window the test opened,
-in Firefox or Chromium (give it time to draw: a cold start captured black after 4 s), and in
-a Qt and a GTK 4 application. The PNG must show every row once, in order, at the expected height,
-with no cursor, ring, bar or notification pixel. Text pages count distinct bands at one pitch.
+Scrolling capture (#1376, rebuilt in #1515, [design](../design/scroll-capture.md)) is accepted on
+every adapter, from the release packages, on the exact build. Auto-scroll sends real wheel events,
+so a physical desktop is used under its lease, with nothing else on the screen, and a guest keeps
+the wall visible. "You scroll" is a relative mouse through `/dev/uinput` turning its wheel at a
+person's pace (bursts, pauses, one way back up), never put.gd. A wrong place looks like a valid
+image, so every case decodes the page: a ruler of 40 px rows, each painted with its index as a bar
+code and as text, in a window the test opened, in Firefox or Chromium, and in a Qt and a GTK 4
+application; live pages are compared with the browser's own full-page picture in 64-row bands,
+leaving out what the page pins. The PNG must show every row once, in order, at the expected height,
+with no cursor, ring, bar or notification pixel.
 
 | Desktop | Placement and package |
 | --- | --- |
 | Cinnamon / X11 | physical `.74` (m74), Ubuntu 24.04 DEB |
 | GNOME 50 | physical `.70` (f44), Fedora 44 RPM with the package's extension, at 100% and at 125% |
 | Plasma, KWin 6.3 | physical `.69` (d69), Debian 13 DEB, and its AppImage (AppRun's per-mount entry must list `org_kde_kwin_fake_input`) |
-| Plasma, KWin 6.8 or later | an Aurora 45 or neon guest, AppImage |
+| Plasma, KWin 6.8 or later | physical aurora-amd, an Aurora 45 or neon guest, AppImage |
 | Budgie 10.10 (labwc 0.20) | Fedora 45 Budgie guest (`fedora45-budgie`), AppImage |
 | Hyprland (Omarchy 4.5) | Omarchy guest (`omarchy-hyprland`), AppImage and Arch package |
 
 | Case | Passes when |
 | --- | --- |
-| Fixture window, plain | exact |
-| Fixture window, sticky header and footer | header once, footer once, body exact |
-| The same ruler page in Firefox and in Chromium | every row once, in order |
+| You scroll the fixture window to its end, then Done | exact, `done`, `scrolledBy: user`; the X server or compositor saw no event from put.gd |
+| Auto-scroll the fixture window, left alone | exact, `end_of_content`, finished by itself |
+| Fixture window with sticky header and footer, both drivers | header once, footer once, body exact |
+| You scroll down, back up past the start, down again | the image grows at both ends, every row once |
+| The same ruler page in Firefox and in Chromium, both drivers | every row once, in order |
 | A Qt and a GTK 4 text view of 1,500 numbered lines, wide and narrow | 1,500 distinct bands at one pitch |
-| Page opened halfway down, from the top on | row 0 first, every row once, `end_of_content` |
-| Page opened halfway down, from the top off | starts at the row that was on screen |
+| Auto-scroll from halfway down with scroll to the top first on | row 0 first, every row once, `end_of_content` |
+| Auto-scroll on mid-capture, then the mouse moved, then Auto-scroll again | one exact image, `scrolledBy: both`; nothing injected from the first motion until Auto-scroll |
+| A jump past the screen with the scrollbar, then back | **Lost the page**, then found again; the image exact |
 | Page taller than the cap | exact prefix at the cap height, `height_cap`, the warning shown and uploaded |
 | The next capture right after the cap warning or an upload notice | exact: no put.gd notification in the image |
-| Stop halfway | exact prefix, `stopped`, uploaded |
-| Stop on the way to the top | the viewport on screen, with no pointer in it |
-| Cancel | no history row, no staging files |
+| Done halfway, in each state of the bar | exact prefix, `done` (`lost_track` when lost), uploaded |
+| Cancel in each state | no history row, no staging files |
+| A region that fills the screen | the bar inside its corner, Done and Cancel work, no bar pixel in the image |
+| Done by the `scroll` hotkey (all desktops) and by Esc (X11) | the image kept; the bar named the key |
 | Fractional scale, where the desktop has one | every row once, in order, seams at most one pixel |
-| Agent-only run through MCP | the same result with no pointer or keyboard from the driver; the PNG found by the returned SHA-256 |
-| The hotkey and a real drag | the bar and ring visible outside the rectangle, an exact PNG |
+| Agent-only run through MCP, both drivers | the same result with no pointer or keyboard from the driver; the PNG found by the returned SHA-256 |
+| The hotkey and a real drag | the bar and ring visible beside the rectangle, an exact PNG |
 | GNOME with the extension loaded before the update | `helper_outdated` on the `scroll` hotkey only; the tray still starts a capture |
-| Live web pages in Firefox and Chromium (a pull request page, an encyclopedia article, a documentation page, a reference page, a repository page), from the top and halfway down | `end_of_content` or `height_cap` with every band exact against the browser's own picture of the page, or an honest `lost_track` or `top_not_reached` with an exact prefix and a note; never a wrong row ([known limits](../design/scroll-capture.md#known-limits)) |
-| A column that scrolls at a third of the page's rate | `lost_track` with the note about a pace of its own, the rows from before it moved exact |
+| Live web pages in Firefox and Chromium (search results, the user guide, an encyclopedia article, a documentation page, a long pull request, a reference page longer than the cap, a news front page and a long thread, a question page, an article with a cookie banner), both drivers | every page under the cap whole, with pinned parts once and the bands equal to the browser's own picture outside them; a page over the cap `height_cap` with an exact prefix; never a wrong row ([known limits](../design/scroll-capture.md#known-limits)) |
 | Memory | the resident is back under the idle target after the work drains |
 
-A result that is not `end_of_content` is an honest partial only if its image is exact; it is
-not a pass for a case that must complete. Hyprland shows the pointer in every frame, and
-Omarchy keeps closed notification cards on screen: both are why those two cases exist.
+Hyprland shows the pointer in every frame, and Omarchy keeps closed notification cards on
+screen: both are why those two cases exist.
 
 ## Text recognition and QR code rows
 

@@ -312,46 +312,63 @@ One text operation runs at a time. A second `text.recognize`, `action.invoke {"a
 
 ## Scrolling capture
 
-A scrolling capture ([design](../design/scroll-capture.md)) is driven by seven session methods.
-`putgd-cli` forwards each like any other method. Failures use the codes in
+A scrolling capture ([design](../design/scroll-capture.md)) is driven by eight session methods
+(and two old names). `putgd-cli` forwards each like any other method. Failures use the codes in
 [errors](../user/errors.md#scrolling-capture).
 
 | Method | Parameters | Reply |
 | --- | --- | --- |
 | `scroll.capabilities` | none | `{available, reason?, message?, injector, frames, selection, maxHeight}`: `injector` is `xtest`, `mutter-remote-desktop`, `kwin-fake-input` or `wlr-virtual-pointer`; `frames` is `ximagesrc`, `mutter-screencast`, `kde-screencast` or `image-copy`; `selection` says who selects the region (`helper`, `shell`, `none`); `maxHeight` is the configured cap. Also under `capabilities` as `result.scroll`. Opens no source and sends no input |
-| `scroll.prepare` | optional `rect` `[x, y, w, h]` (logical desktop pixels, X11 root pixels; at least 64 each way), optional `maxHeight` 2,000 to 60,000 | `{id, operationId, state, height, steps, pixelsPerNotch}`, `state` `selecting` (the region selector is open) or `ready` (a `rect` was given). Never starts capturing: call `scroll.start`. The `id` is the operation ID |
+| `scroll.prepare` | optional `rect` `[x, y, w, h]` (logical desktop pixels, X11 root pixels; at least 64 each way), optional `maxHeight` 2,000 to 60,000, optional `driver` `user` or `putgd` | `{id, operationId, state, driver, height, steps, pixelsPerNotch, placed, skipped}`, `state` `selecting` (the region selector is open) or `ready` (a `rect` was given). `driver` is who turns the page at the start: `user` (the capture waits for the user to scroll; nothing is injected) or `putgd` (auto-scroll); without it, the **Start with auto-scroll** setting decides. Never starts capturing: call `scroll.start`. The `id` is the operation ID |
 | `scroll.select` | `id`, `rect` | Completes an open selector with a rectangle, as a drag would; the state becomes `ready` and `rect` is set |
-| `scroll.start` | `id` | The state `capturing` once the helper has begun; the capture then runs on its own, at most 180 s |
-| `scroll.stop` | `id` | Keeps the image. The reply is the finished view (below), after the PNG is written and admitted |
+| `scroll.start` | `id` | The state `capturing` once the helper has begun. The capture then follows the page until Done, the end of the page under auto-scroll, the cap, or 10 minutes with nothing to follow |
+| `scroll.autoScroll` | `id`, `on` true or false | Turns auto-scroll on (put.gd turns the page) or off (the user does), while capturing. Answers `{state: "capturing", driver, paused}`. The image is kept either way. `scroll.pause` and `scroll.resume` are the same as off and on |
+| `scroll.stop` | `id` | Done: keeps the image. The reply is the finished view (below), after the PNG is written and admitted |
 | `scroll.cancel` | `id` | Discards the capture: state `cancelled`, no history row, no staging files |
 | `scroll.inspect` | `id` | The session's view while it runs and after: the last 32 sessions stay inspectable |
 
-The view is `{id, operationId, state, rect?, height, steps, pixelsPerNotch}` while running, with
-`state` `preparing`, `selecting`, `ready`, `capturing` (including the way to the top) or
-`finishing`. After the end it also carries what the helper reported: `state: "done"`,
-`endReason` (`end_of_content`, `height_cap`, `stopped`, `lost_track`, `time_limit`,
-`top_not_reached`), `truncated` (false only for `end_of_content`), `height`, `bytes`, `stats {steps,
-pixelsPerNotch, lowConfidenceSteps, elapsedMs}` (also flat), `result` (the helper's descriptor
-without its path: `sha256`, `width`, `height`, `appliedMaxHeight`, and `note` for a `lost_track` or a
-`top_not_reached`) and, for `height_cap` and `top_not_reached`, `note`: the warning text. With
-**Scroll to the top first** on, a capture whose scroll to the top did not prove the top carries
-`topReached: false` (in the view and in `result`), whatever ended it; when it then reached the end
-of the content its `endReason` is `top_not_reached`, and the image starts partway down. The field is
-absent otherwise. A failed or cancelled session has `state` `failed` or `cancelled` and `error`.
-Inspect `operation.inspect` with the same `id` for the upload and the link. Only `end_of_content`
-means the whole scroll area, top to bottom, is in the image.
+The view is `{id, operationId, state, rect?, driver, paused, pausedBy?, activity?, height, placed,
+skipped, steps, pixelsPerNotch}` while running, with `state` `preparing`, `selecting`, `ready`,
+`capturing` or `finishing`. While capturing, `activity` is what the bar says: `waiting`,
+`following`, `lost`, `scrollingToTop`, `autoScrolling`, `paused` or `resuming`; `driver` is who
+turns the page now; `paused` is true when auto-scroll handed the wheel back by itself, and
+`pausedBy` says why: `pointer` (the user moved the mouse), `scrolled` (the user scrolled during
+it), `lost` (it lost the page and could not find it again), `no_movement` (nothing scrolled under
+its wheel). After the end the view also carries what the helper reported: `state: "done"`,
+`endReason`, `truncated`, `scrolledBy` (`user`, `putgd`, `both`, `none`), `framesPlaced`,
+`framesSkipped`, `endedLost`, `reachedEnd`, `height`, `bytes`, `stats {steps, pixelsPerNotch,
+lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond}` (also flat),
+`result` (the helper's descriptor without its path), `note` where there is one, and
+`hiddenCells` and `hiddenRows` when the bar sat inside the region and hid part of the page's
+end. With
+**Auto-scroll goes to the top first** on, a capture whose way to the top did not prove the top
+carries `topReached: false`; the field is absent otherwise.
+
+| `endReason` | `truncated` | Meaning |
+| --- | --- | --- |
+| `end_of_content` | false | Auto-scroll proved the end of the page and no frame was skipped |
+| `top_not_reached` | true | The same, but the way to the top could not prove the top: the image starts partway down |
+| `done` | false | Finished by Done, the hotkey, Esc, `scroll.stop` or the idle bound, or by auto-scroll at the end after skipped frames (`reachedEnd` true): the page as far as it was scrolled |
+| `lost_track` | true | Finished while put.gd had lost the page: the image ends where it last found it |
+| `height_cap` | true | The cap was reached |
+
+A failed or cancelled session has `state` `failed` or `cancelled` and `error`. Inspect
+`operation.inspect` with the same `id` for the upload and the link.
 
 ```sh
 putgd-cli scroll.capabilities
-putgd-cli scroll.prepare '{"rect":[100,100,900,700],"maxHeight":12000}'
+putgd-cli scroll.prepare '{"rect":[100,100,900,700],"maxHeight":12000,"driver":"putgd"}'
 putgd-cli scroll.start '{"id":"RETURNED-ID"}'
 putgd-cli scroll.inspect '{"id":"RETURNED-ID"}'
+putgd-cli scroll.autoScroll '{"id":"RETURNED-ID","on":false}'
 putgd-cli scroll.stop '{"id":"RETURNED-ID"}'
 ```
 
 On a build with no region selector (`scroll.capabilities` `selection: none`, `available: false`, reason `region_unavailable`; the Ubuntu 24.04 package on KDE Wayland), scroll capture is unavailable for every caller: `scroll.prepare` is `scroll_unavailable` with reason `region_unavailable` before a session exists, with `rect` as well as without it. Use the AppImage.
 
 One scroll session exists at a time. While it is capturing, another `action.invoke` (and
-`recording.prepare`) is `scroll_active`, and `action.invoke {"action":"scroll"}` is Stop.
+`recording.prepare`) is `scroll_active`, and `action.invoke {"action":"scroll"}` is Done.
+Auto-scroll sends real input to whatever is under the rectangle: point it only at a window
+you opened for the purpose.
 `scroll.start` on a session that is not `ready` is `scroll_state`; a command sent while another is
 pending is `scroll_busy` (`scroll.cancel` is accepted while a `start` or `stop` is pending). Once a `scroll.cancel` is on its way every other command is `scroll_busy`, a pending `scroll.stop` is answered `cancelled`, and the session ends cancelled with the image discarded; a `scroll.stop` whose image was admitted before the cancel arrived wins, and that `scroll.cancel` is `scroll_not_found`. An unknown or finished-and-forgotten ID is `scroll_not_found`.

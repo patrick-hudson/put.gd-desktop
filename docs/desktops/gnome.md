@@ -307,6 +307,14 @@ all four targets have them; see
 
 ## Scrolling capture
 
+Since #1515 a capture waits for you to scroll and injects nothing; the RemoteDesktop wheel
+below is what **Auto-scroll** uses. The ring and the beat pixel are Shell actors that take no
+input, so the wheel, the pointer and the keys reach the page. When the Shell finds no room for
+the bar beside the region it puts it inside the region's bottom-right corner; the resident tells
+the helper (`overlay {visible, rect, inside}`), which keeps the bar's rows out of the image.
+The extension is unchanged (version 23). GNOME gives put.gd no key for the length of a capture:
+the `scroll` hotkey pressed again finishes it, where one is bound.
+
 Scrolling capture ([design](../design/scroll-capture.md)) adds the `scroll` action (extension
 version 22). The extension selects the region and draws the ring (`SelectArea`,
 `ShowRecordingFrame`, as for a recording), and the resident places the bar through it. The helper
@@ -319,7 +327,7 @@ accepts `Start`, `Stop` and every `Notify*` only from the D-Bus connection that 
 one connection makes all the calls. The interface is private to Mutter and promises no
 compatibility; no owner for `org.gnome.Mutter.RemoteDesktop`, or a refused `CreateSession`, is
 `scroll_unavailable` with reason `injection_unavailable`. The Shell shows its screen-sharing
-indicator while the session runs; a click on it closes the session, and the helper reads that as Stop.
+indicator while the session runs; a click on it closes the session, and the helper reads that as Done.
 
 `ShowRecordingFrame` takes `beat: true` for a scroll capture's frame (`GnomeAdapter::showFrameImpl`).
 While that frame shows, the extension adds one transparent 1×1 `St.Widget` at the rectangle's

@@ -102,6 +102,9 @@ serves every X11 session, Plasma X11 included. The design is in
 
 ## Scrolling capture
 
+Since #1515 a capture waits for you to scroll and injects nothing; the XTest wheel below is
+what **Auto-scroll** uses. `ximagesrc` grabs the region at 30 frames a second. Escape is Done.
+
 Scrolling capture ([design](../design/scroll-capture.md)) uses `ximagesrc` on the region with
 `show-pointer=false` for its frames and XTest for the wheel, and serves every X11 session,
 Plasma X11 included. The helper's own xcb connection sends XTest button 5 and 4 presses and
@@ -109,12 +112,12 @@ releases (one pair per notch) and absolute pointer motion; it reads the user's p
 first move and puts it back at the end. It needs the XTEST extension (`injection_unavailable`
 without it) and waits up to 10 seconds for Ctrl, Shift, Alt and Super to be up before the first
 notch, because Ctrl plus wheel zooms (`capture_timeout`, check `modifiers_released`). The region
-selector is the helper's own, as for a region recording. Escape stops the capture and keeps the
+selector is the helper's own, as for a region recording. Escape finishes the capture (Done) and keeps the
 image: it is read as an XInput 2.1 raw key press, so the bar never needs the keyboard and the key
 still goes where it was going. The capture bar sits 32 px below the rectangle on X11 (10 px
 elsewhere), because Muffin draws a shadow around it that at 10 px darkened the last rows of the
 image under the bar's columns. `scroll_capture_x11` drives the real helper on Xvfb and
-reads the X server's raw input to show that nothing is injected before capturing or after Stop,
+reads the X server's raw input to show that nothing is injected while you scroll, before capturing or after Done,
 Cancel or the end of the control pipe; it does not establish Cinnamon behaviour.
 
 ## Copy text
