@@ -76,13 +76,15 @@ UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<
  return {};
 }
 QJsonObject systemAction(const QString& target,const QString& root,const QString& repository,const UpdaterChoice& choice) {
- const bool deb=debTargets().contains(target),rpm=target=="fedora44",arch=target=="archlinux";
+ const bool deb=debTargets().contains(target),rpm=target=="fedora44"||target=="fedora45",arch=target=="archlinux";
  if(!deb&&!rpm&&!arch)return {{"kind","download"},{"repository","none"}};
  const QString file=arch?"/etc/pacman.d/putgd.conf":deb?"/etc/apt/sources.list.d/putgd.sources":"/etc/yum.repos.d/putgd.repo";
  bool exists=false;const auto text=readSmall(root+file,exists);
  if(!exists)return {{"kind","download"},{"repository","absent"},{"file",file}};
  // Only this build's repository counts; anything else is the user's own setup.
- const auto base=repository+(deb?"/apt/"+target:QString("/rpm/fedora/44/x86_64/"));
+ // An RPM's file names $releasever, or this build's release in files written before Fedora 45 had a build.
+ const auto base=repository+(deb?"/apt/"+target:QString("/rpm/fedora/"));
+ const QStringList rpmReleases{"$releasever",target.mid(6)};
  QString state="other",channel;
  if(deb) {
   static const QRegularExpression whitespace("\\s+");
@@ -103,8 +105,9 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
  } else {
   for(const auto& section:sections(text)) {
    const auto url=section.value("baseurl");
-   if(!url.startsWith(base))continue;
-   channel=url.mid(base.size()).section('/',0,0);
+   const auto release=std::find_if(rpmReleases.cbegin(),rpmReleases.cend(),[&](const QString& r){return url.startsWith(base+r+"/x86_64/");});
+   if(release==rpmReleases.cend())continue;
+   channel=url.mid(base.size()+release->size()+8).section('/',0,0);
    state=section.contains("enabled")&&falseValue(section.value("enabled"))?"disabled":"managed";
    if(state=="managed")break;
   }

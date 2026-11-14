@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit downloaded installers-v1 release bytes, sources and stable CVE policy.
+"""Audit downloaded installers-v1/v2 release bytes, sources and stable CVE policy.
 
 Run on a builder: python3 tools/releases/audit_assets.py --tag TAG --download
 --directory /short/private/assets --output /short/private/audit. Downloads use gh,
@@ -272,10 +272,11 @@ def audit(args):
             run('gh', 'release', 'download', args.tag, '--repo', args.repository, '--dir', directory)
         print('Verifying installer inventory and identity', flush=True)
         builds = json.loads((directory / 'release-builds.json').read_text())
-        if builds.get('assetLayout') != support_assets.LAYOUT:
-            raise ValueError('Expected installers-v1 release layout')
+        layout = builds.get('assetLayout')
+        if layout not in support_assets.LAYOUTS:
+            raise ValueError('Expected an installers-v1 or installers-v2 release layout')
         release, receipts = builds['release'], builds['receipts']
-        checks['assets'] = checksums(directory, support_assets.inventory(release['version']))
+        checks['assets'] = checksums(directory, support_assets.inventory(release['version'], layout))
         checks['remoteAssets'] = remote_snapshot(args.repository, args.tag, directory, checks['assets'])
         stamp = release_identity(args.source_root, args.tag, release)
         checks['identity'] = release
@@ -345,13 +346,13 @@ def audit(args):
         checks['dependencies'] = {}
         bun_versions = {}
         generated = {}
-        for label in sbom.LABELS:
+        for label in (label for label in sbom.LABELS if label == 'appimage' or label in support_assets.packages(layout)):
             print('Auditing package and regenerating SBOM: ' + label, flush=True)
             receipt = receipts[label]
             appimage = label == 'appimage'
             artifact = receipt['artifact'] if appimage else receipt['package']
             filename = (artifact['file'] if appimage else
-                        f'putgd-{release["version"]}-{label}-x86_64' + ('.pkg.tar.zst' if label == 'archlinux' else '.rpm' if label == 'fedora44' else '.deb'))
+                        f'putgd-{release["version"]}-{label}-x86_64' + ('.pkg.tar.zst' if label == 'archlinux' else '.rpm' if label.startswith('fedora') else '.deb'))
             package = directory / filename
             if sha256(package) != artifact['sha256']:
                 raise ValueError('Package differs from CI audit: ' + label)
@@ -392,7 +393,7 @@ def audit(args):
                 found_license = ET.parse(root / appimage_notices.METAINFO).getroot().findtext('project_license')
                 if set(re.findall(r'[A-Za-z0-9.+-]+', found_license or '')) != {'MIT', 'AND', 'Apache-2.0', 'GPL-3.0-or-later'}:
                     raise ValueError('Native AppStream license differs from bundled components')
-                if label == 'fedora44':
+                if label.startswith('fedora'):
                     observed['metadata']['license'] = run('rpm', '-qp', '--qf', '%{LICENSE}', package)
                     if observed['metadata']['license'] != 'MIT AND Apache-2.0 AND GPL-3.0-or-later':
                         raise ValueError('RPM license metadata differs from bundled components')
@@ -483,7 +484,9 @@ def audit_proton_ci(directory, output):
         versions = {}
         for index, package in enumerate(packages):
             label = 'appimage' if package.suffix == '.AppImage' else (
-                'archlinux' if package.name.endswith('.pkg.tar.zst') else 'fedora44' if package.suffix == '.rpm' else 'debian13')
+                'archlinux' if package.name.endswith('.pkg.tar.zst') else
+                (re.search(r'-(fedora[0-9]+)-x86_64[.]rpm$', package.name) or [None, 'fedora44'])[1] if package.suffix == '.rpm'
+                else 'debian13')
             work = output / str(index)
             work.mkdir()
             root = sbom.extract(package, label, work)

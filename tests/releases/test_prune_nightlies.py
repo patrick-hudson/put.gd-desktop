@@ -231,7 +231,7 @@ class Repositories(unittest.TestCase):
         self.assertEqual(prune.primary_tags(
             f'<metadata xmlns="{prune.PRIMARY_NS[1:-1]}" packages="0"/>'.encode()), set())
 
-    def test_all_eight_repository_indexes_are_required_and_kept(self):
+    def test_all_ten_repository_indexes_are_required_and_kept(self):
         seen = []
         def get(url):
             seen.append(url)
@@ -239,8 +239,9 @@ class Repositories(unittest.TestCase):
         with patch.object(prune, 'rpm_tags', return_value={'v26.1030.19'}) as rpm:
             result = prune.repository_tags(get)
         self.assertEqual(len(seen), 6)
-        self.assertEqual(len(result), 8)
-        self.assertEqual(rpm.call_count, 2)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(rpm.call_count, 4)
+        self.assertTrue(any('/rpm/fedora/45/x86_64/stable/' in url for url in result))
         self.assertTrue(any('/debian13/dists/stable/' in url for url in seen))
 
 

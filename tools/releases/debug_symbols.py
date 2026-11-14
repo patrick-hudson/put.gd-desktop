@@ -36,7 +36,7 @@ PRODUCTS = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-region', '
 # Built on every Linux packaging job; the others depend on the desktop libraries present.
 REQUIRED = ('putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker', 'libputgd-s3.so')
 # Package matrix names in .github/workflows/package.yml, plus the AppImage.
-LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux', 'appimage')
+LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45', 'archlinux', 'appimage')
 ARCHITECTURE = 'x86_64'
 BUILD_ID = re.compile(r'[0-9a-f]{16,64}')
 SHT_NOTE = 7

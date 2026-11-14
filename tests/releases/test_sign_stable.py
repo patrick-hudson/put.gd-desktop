@@ -40,5 +40,37 @@ class SignRpm(unittest.TestCase):
                 self.sign(directory, None)
 
 
+
+class StagedRpms(unittest.TestCase):
+    """The stage must name exactly the tag's RPM assets, one per Fedora release, with GitHub's checksums."""
+    TAG = 'v26.1201.1'
+    SUMS = {f'putgd-26.1201.1-{label}-x86_64.rpm': digest for label, digest in (('fedora44', 'a' * 64), ('fedora45', 'b' * 64))}
+
+    def manifest(self, rpms, schema=3):
+        base = {'schemaVersion': schema, 'check': {'packages': []}, 'sign': {}}
+        return {**base, 'rpms': rpms} if schema >= 3 else {**base, 'rpm': rpms.get('fedora44')}
+
+    def rpms(self, labels=('fedora44', 'fedora45')):
+        return {label: {'asset': f'putgd-26.1201.1-{label}-x86_64.rpm', 'sha256': self.SUMS[f'putgd-26.1201.1-{label}-x86_64.rpm'],
+                        'file': f'putgd-26.1201.1-1.fc{label[-2:]}.x86_64.rpm'} for label in labels}
+
+    def test_every_released_rpm_is_staged(self):
+        sign_stable.check_staged(self.manifest(self.rpms()), {}, self.TAG, self.SUMS)
+        with self.assertRaisesRegex(SystemExit, 'RPM assets'):
+            sign_stable.check_staged(self.manifest(self.rpms(('fedora44',))), {}, self.TAG, self.SUMS)
+        wrong = self.rpms()
+        wrong['fedora45']['sha256'] = 'c' * 64
+        with self.assertRaisesRegex(SystemExit, 'RPM assets'):
+            sign_stable.check_staged(self.manifest(wrong), {}, self.TAG, self.SUMS)
+
+    def test_a_release_without_fedora45_and_an_older_stage_still_sign(self):
+        only44 = {name: digest for name, digest in self.SUMS.items() if 'fedora44' in name}
+        sign_stable.check_staged(self.manifest(self.rpms(('fedora44',))), {}, self.TAG, only44)
+        sign_stable.check_staged(self.manifest(self.rpms(('fedora44',)), schema=2), {}, self.TAG, only44)
+        sign_stable.check_staged(self.manifest({}), {}, None, {})
+        with self.assertRaisesRegex(SystemExit, 'no fedora44'):
+            sign_stable.check_staged(self.manifest({}), {}, self.TAG, {})
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -144,5 +144,15 @@ class Sources(unittest.TestCase):
                 sources.verify_proton(self.api, {'delivery': {'parts': [{**part, field: value}]}})
 
 
+
+class Layouts(unittest.TestCase):
+    def test_fedora45_joins_in_installers_v2_and_v1_releases_keep_their_inventory(self):
+        v1, v2 = sources.inventory('26.1113.1', 'installers-v1'), sources.inventory('26.1113.1')
+        self.assertEqual((len(v1), len(v2)), (17, 19))
+        self.assertEqual(v2 - v1, {'putgd-26.1113.1-fedora45-x86_64.rpm', 'putgd-26.1113.1-fedora45.cdx.json'})
+        with self.assertRaisesRegex(ValueError, 'Unknown release asset layout'):
+            sources.inventory('26.1113.1', 'installers-v0')
+
+
 if __name__ == '__main__':
     unittest.main()

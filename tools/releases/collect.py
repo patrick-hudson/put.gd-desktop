@@ -18,7 +18,8 @@ from release_bundle import create_gnome_zip, create_release_bundle
 
 # Package matrix names in .github/workflows/package.yml, each built on its own distro.
 NATIVE_TARGETS = (('ubuntu24.04', 'DEB', '.deb'), ('ubuntu26.04', 'DEB', '.deb'),
-                  ('debian13', 'DEB', '.deb'), ('fedora44', 'RPM', '.rpm'), ('archlinux', 'PACMAN', '.pkg.tar.zst'))
+                  ('debian13', 'DEB', '.deb'), ('fedora44', 'RPM', '.rpm'),
+                  ('fedora45', 'RPM', '.rpm'), ('archlinux', 'PACMAN', '.pkg.tar.zst'))
 
 
 def identity_matches(manifest, release):

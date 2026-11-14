@@ -58,6 +58,7 @@ HELP
                 ubuntu:26.04|kubuntu:26.04) package=ubuntu26.04 ;;
                 debian:13|debian:13.*) package=debian13 ;;
                 fedora:44) package=fedora44 ;;
+                fedora:45) package=fedora45 ;;
                 arch:*) package=archlinux ;;
                 *)
                     case " $ID_LIKE " in *' arch '*) package=archlinux ;; esac
@@ -101,7 +102,7 @@ HELP
     case "$package" in
         appimage) suffix=-x86_64.AppImage ;;
         archlinux) suffix=-archlinux-x86_64.pkg.tar.zst ;;
-        fedora44) suffix=-fedora44-x86_64.rpm ;;
+        fedora44|fedora45) suffix=-$package-x86_64.rpm ;;
         *) suffix=-$package-x86_64.deb ;;
     esac
     if "$dry_run"; then
@@ -117,8 +118,8 @@ HELP
                     note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and run pacman -Syu putgd from the signed pkg.put.gd repository.'
                 fi
                 ;;
-            fedora44)
-                note 'Would run sudo dnf install ./putgd-VERSION-fedora44-x86_64.rpm; package adds the signed pkg.put.gd update repository. Start: putgd'
+            fedora44|fedora45)
+                note "Would run sudo dnf install ./putgd-VERSION$suffix; package adds the signed pkg.put.gd update repository. Start: putgd"
                 note 'Then, in the same sudo step, if noopenh264 is installed or either codec package is missing and fedora-cisco-openh264 is enabled: dnf install -y openh264 gstreamer1-plugin-openh264'
                 note 'If the codec is needed but the repo is disabled, print: sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1; sudo dnf install -y openh264 gstreamer1-plugin-openh264'
                 ;;
@@ -223,10 +224,10 @@ HELP
             ;;
         *)
             command -v sudo >/dev/null 2>&1 || die 'Missing sudo; install sudo or use --appimage'
-            if [ "$package" = fedora44 ]; then manager=dnf; else manager=apt; fi
+            case "$package" in fedora*) manager=dnf ;; *) manager=apt ;; esac
             command -v "$manager" >/dev/null 2>&1 || die "Missing $manager; use --appimage"
             note "Using sudo only for $manager install; sudo and $manager may ask for confirmation on your terminal."
-            if [ "$package" = fedora44 ]; then
+            if [ "$manager" = dnf ]; then
                 # Fixed local commands only; the verified basename is a positional argument.
                 (cd "$work" && sudo sh -c '
                     set -eu

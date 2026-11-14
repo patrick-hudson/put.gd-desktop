@@ -30,9 +30,10 @@ import http_retry
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS_LOCK = ROOT / 'packaging/sbom/tools.lock.json'
 POLICY = ROOT / 'packaging/sbom/policy.json'
-LABELS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'archlinux')
+LABELS = ('appimage', 'ubuntu24.04', 'ubuntu26.04', 'debian13', 'fedora44', 'fedora45', 'archlinux')
 DISTROS = {'appimage': 'ubuntu:24.04', 'ubuntu24.04': 'ubuntu:24.04', 'ubuntu26.04': 'ubuntu:26.04',
-           'debian13': 'debian:13', 'fedora44': 'fedora:44', 'archlinux': 'archlinux:base'}
+           'debian13': 'debian:13', 'fedora44': 'fedora:44', 'fedora45': 'fedora:45',
+           'archlinux': 'archlinux:base'}
 SEVERITIES = ('Critical', 'High', 'Medium', 'Low', 'Negligible', 'Unknown')
 # Origins: code put.gd builds or ships itself, and the Ubuntu packages the AppImage
 # freezes, are put.gd's to fix; components Syft found on its own are reported with them.

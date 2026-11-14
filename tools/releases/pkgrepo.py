@@ -10,7 +10,7 @@ A systemd user timer on one lab builder runs `pkgrepo.py run`. Each run:
    package's own name, version and architecture;
 3. builds the next repository state in a copy of the channel's workspace:
    reprepro for apt/<label>/dists/<channel>, createrepo_c for
-   rpm/fedora/44/x86_64/<channel>, each with an AppStream catalog made from the
+   rpm/fedora/<release>/x86_64/<channel> (one per Fedora release), each with an AppStream catalog made from the
    package it carries (DEP-11 listed in Release, appstream in repomd.xml; #314);
 4. signs it: nightly here with the builder's nightly key (InRelease and
    Release.gpg over the finished Release, an rpmsign signature on a copy of the RPM, SHA256SUMS.minisig,
@@ -63,11 +63,15 @@ import update_feed  # noqa: E402
 
 REPOSITORY = 'patrick-hudson/put.gd-desktop'
 DEB_LABELS = ('ubuntu24.04', 'ubuntu26.04', 'debian13')
-RPM_LABELS = {'fedora44': 'rpm/fedora/44/x86_64'}
+# Fedora 45 has its own build: its FFmpeg 9 has other sonames than Fedora 44's 8.1.
+RPM_LABELS = {'fedora44': 'rpm/fedora/44/x86_64', 'fedora45': 'rpm/fedora/45/x86_64'}
+# Labels every release must carry; the others are required once release-builds.json has their receipt,
+# so a release built before a label existed still publishes.
+BASE_LABELS = DEB_LABELS + ('fedora44',)
 LABELS = DEB_LABELS + tuple(RPM_LABELS) + ('archlinux',)
 CHANNELS = ('nightly', 'stable')
 SCOPES = {'live': '', 'lab': 'lab/'}
-PACKAGE_ASSET = re.compile(r'^putgd-(?P<version>[0-9][0-9A-Za-z.-]*)-(?P<label>ubuntu24\.04|ubuntu26\.04|debian13|fedora44|archlinux)'
+PACKAGE_ASSET = re.compile(r'^putgd-(?P<version>[0-9][0-9A-Za-z.-]*)-(?P<label>ubuntu24\.04|ubuntu26\.04|debian13|fedora4[45]|archlinux)'
                            r'-x86_64\.(?P<ext>deb|rpm|pkg[.]tar[.]zst)$')
 MIRROR_BASE = 'https://pkg.put.gd/'
 MAX_ZSYNC = 16 * 1024 * 1024
@@ -309,9 +313,7 @@ def verify_release(release, github, workdir, run=subprocess.run):
                            'checks': ['SHA256SUMS', 'release-builds.json receipt',
                                       'GitHub digest' if assets[name].get('digest') else 'GitHub digest absent',
                                       'package fields ' + ' '.join(fields.values())]}
-    required_labels = set(DEB_LABELS) | set(RPM_LABELS)
-    if 'archlinux' in builds.get('receipts', {}):
-        required_labels.add('archlinux')
+    required_labels = set(BASE_LABELS) | (set(LABELS) & set(builds.get('receipts', {})))
     if set(packages) != required_labels:
         raise SignerError('Release lacks packages for ' + ', '.join(sorted(set(LABELS) - set(packages))))
     appimage = None
@@ -393,7 +395,7 @@ def local_inputs(tag, directory, run=subprocess.run, base=MIRROR_BASE + SCOPES['
                 raise SignerError(path.name + ' differs from SHA256SUMS')
         appimage = appimage_inputs(tag, image, zsync, sums, base, ['SHA256SUMS'])
     # An AppImage-only lab release (#293 phase 3) leaves the lab apt/dnf repositories as they are.
-    if (packages or not appimage) and not (set(DEB_LABELS) | set(RPM_LABELS)).issubset(packages):
+    if (packages or not appimage) and not set(BASE_LABELS).issubset(packages):
         raise SignerError('Lab directory lacks packages for ' + ', '.join(sorted(set(LABELS) - set(packages))))
     published = iso(now_utc())
     release = {'tag_name': tag, 'published_at': published,
@@ -447,7 +449,7 @@ class Workspace:
                    '--outdir', str(self.tree / 'apt' / label), *arguments]
         self.run(command, check=True, env=self.env(), capture_output=True, text=True)
 
-    def rpm_dir(self, label='fedora44'):
+    def rpm_dir(self, label):
         return self.tree / RPM_LABELS[label] / self.channel
 
     def prepare(self):
@@ -455,7 +457,8 @@ class Workspace:
             conf = self.root / 'reprepro' / label / 'conf'
             conf.mkdir(parents=True, exist_ok=True)
             (conf / 'distributions').write_text(distributions_stanza(self.channel, label))
-        (self.rpm_dir() / 'Packages').mkdir(parents=True, exist_ok=True)
+        for label in RPM_LABELS:
+            (self.rpm_dir(label) / 'Packages').mkdir(parents=True, exist_ok=True)
 
     def published(self):
         path = self.root / 'published.json'
@@ -464,17 +467,20 @@ class Workspace:
     def export_empty(self):
         for label in DEB_LABELS:
             self.reprepro(label, 'export', self.channel)
-        self.createrepo(None)
+        for label in RPM_LABELS:
+            self.createrepo(label, None)
         pacman_repo.database(self.arch_dir(), self.channel)
 
     def arch_dir(self):
         return self.tree / "pacman" / "x86_64" / self.channel
 
-    def include(self, inputs, rpm_path):
+    def include(self, inputs, rpm_paths):
+        """rpm_paths: RPM label -> the file to add; a label the release has no RPM for keeps what it carries."""
         for label in DEB_LABELS:
             self.reprepro(label, '-C', 'main', 'includedeb', self.channel, str(inputs['packages'][label]['path']))
             self.catalog_deb(label)
-        self.createrepo(rpm_path)
+        for label in RPM_LABELS:
+            self.createrepo(label, rpm_paths.get(label))
         package = inputs['packages'].get('archlinux')
         if package:
             target = self.arch_dir() / package['name']
@@ -500,17 +506,17 @@ class Workspace:
         self.catalogs[label] = {'origin': origin, 'package': deb.name, 'packageSha256': sha256_file(deb),
                                 'files': {f'apt/{label}/dists/{self.channel}/{name}': digest for name, digest in files.items()}}
 
-    def catalog_rpm(self, rpm):
+    def catalog_rpm(self, label, rpm):
         """appstream and appstream-icons in repomd.xml from the newest RPM; dnf5 files them under the repo id."""
         origin = 'putgd-' + self.channel
         with tempfile.TemporaryDirectory(prefix='appstream-', dir=self.config.state) as work:
-            files = appstream_catalog.write_appstream_repodata(rpm, origin, self.rpm_dir(), Path(work), self.run)
-        self.catalogs['fedora44'] = {'origin': origin, 'package': rpm.name, 'packageSha256': sha256_file(rpm),
-                                     'files': {f'{RPM_LABELS["fedora44"]}/{self.channel}/{name}': digest
-                                               for name, digest in files.items()}}
+            files = appstream_catalog.write_appstream_repodata(rpm, origin, self.rpm_dir(label), Path(work), self.run)
+        self.catalogs[label] = {'origin': origin, 'package': rpm.name, 'packageSha256': sha256_file(rpm),
+                                'files': {f'{RPM_LABELS[label]}/{self.channel}/{name}': digest
+                                          for name, digest in files.items()}}
 
-    def createrepo(self, rpm_path):
-        packages = self.rpm_dir() / 'Packages'
+    def createrepo(self, label, rpm_path):
+        packages = self.rpm_dir(label) / 'Packages'
         if rpm_path:
             # The header's name, not the release asset's: dnf users see this one.
             target = packages / rpm_file_name(rpm_path, self.run)
@@ -521,19 +527,19 @@ class Workspace:
         for old in rpms[self.config.dnf_keep:]:
             old.unlink()
         self.run(['createrepo_c', '--quiet', '--update', '--unique-md-filenames', '--checksum', 'sha256',
-                  '--no-database', str(self.rpm_dir())], check=True, capture_output=True, text=True)
+                  '--no-database', str(self.rpm_dir(label))], check=True, capture_output=True, text=True)
         # createrepo_c drops the types it didn't make; the catalog describes the newest package.
         if rpms:
-            self.catalog_rpm(rpms[0])
+            self.catalog_rpm(label, rpms[0])
 
-    def replace_rpm(self, signed):
+    def replace_rpm(self, label, signed):
         """Put a signed RPM in place of its unsigned build and regenerate the repodata."""
-        target = self.rpm_dir() / 'Packages' / signed.name
+        target = self.rpm_dir(label) / 'Packages' / signed.name
         if not target.exists():
             raise SignerError('The staged repository has no ' + signed.name)
         target.unlink()
         shutil.copy2(signed, target)
-        self.createrepo(None)
+        self.createrepo(label, None)
 
     def write_published(self, inputs):
         record = {'tag': inputs['tag'], 'version': inputs['version'], 'publishedAt': iso(now_utc())} if inputs else None
@@ -758,6 +764,13 @@ class Publisher:
                 self.sleep(15)
 
 
+def staged_rpms(manifest):
+    """RPM label -> the staged RPM; schema 2 stages carry one fedora44 RPM as 'rpm'."""
+    if manifest['schemaVersion'] >= 3:
+        return manifest['rpms']
+    return {'fedora44': manifest['rpm']} if manifest.get('rpm') else {}
+
+
 def readback_files(workspace):
     files = [f'apt/{label}/dists/{workspace.channel}/{name}' for label in DEB_LABELS
              for name in ('InRelease', 'main/binary-amd64/Packages')]
@@ -766,7 +779,9 @@ def readback_files(workspace):
                 for label in DEB_LABELS]
     files += [relative for relative in catalogs if (workspace.tree / relative).exists()]
     files += [str(p.relative_to(workspace.tree)) for p in workspace.arch_dir().glob('*.db*')]
-    return files + [f'{RPM_LABELS["fedora44"]}/{workspace.channel}/repodata/repomd.xml']
+    # A repository added after this workspace's last package (an AppImage-only lab release) has no repodata yet.
+    repomds = [f'{directory}/{workspace.channel}/repodata/repomd.xml' for directory in RPM_LABELS.values()]
+    return files + [relative for relative in repomds if (workspace.tree / relative).exists()]
 
 
 def aws_clients(config):
@@ -823,12 +838,16 @@ class Signer:
             workspace.export_empty()
             return workspace
         if inputs['packages']:
-            rpm = inputs['packages']['fedora44']
+            rpms = {label: inputs['packages'][label] for label in RPM_LABELS if label in inputs['packages']}
             if self.config.rpm_sign and channel == 'nightly':
                 with tempfile.TemporaryDirectory(prefix='rpmsign-', dir=self.config.state) as directory:
-                    workspace.include(inputs, self.rpm_signed_copy(rpm, Path(directory), receipt))
+                    signed = {}
+                    for label, rpm in rpms.items():
+                        (Path(directory) / label).mkdir()
+                        signed[label] = self.rpm_signed_copy(label, rpm, Path(directory) / label, receipt)
+                    workspace.include(inputs, signed)
             else:
-                workspace.include(inputs, rpm['path'])
+                workspace.include(inputs, {label: rpm['path'] for label, rpm in rpms.items()})
             receipt['catalog'].update(workspace.catalogs)
         elif not (workspace.tree / 'apt' / DEB_LABELS[0] / 'dists' / channel / 'Release').exists():
             # An AppImage-only lab release on a fresh lab scope still gets (empty) signed repositories.
@@ -868,22 +887,23 @@ class Signer:
             old.unlink()
             old.with_name(old.name + '.zsync').unlink(missing_ok=True)
 
-    def rpm_signed_copy(self, rpm, directory, receipt):
+    def rpm_signed_copy(self, label, rpm, directory, receipt):
         target = directory / rpm_file_name(rpm['path'], self.run)
         shutil.copy2(rpm['path'], target)
         self.run(['rpmsign', '--define', '_gpg_name ' + self.config.nightly_fingerprint, '--define',
                   '_gpg_path ' + str(self.config.gnupghome), '--addsign', str(target)], check=True,
                  capture_output=True, text=True, env=dict(os.environ, GNUPGHOME=str(self.config.gnupghome)))
-        self.check_signed_rpm(rpm, target, self.config.keys / 'putgd-nightly.asc', self.config.nightly_fingerprint, receipt)
+        self.check_signed_rpm(label, rpm, target, self.config.keys / 'putgd-nightly.asc', self.config.nightly_fingerprint,
+                              receipt)
         return target
 
-    def check_signed_rpm(self, rpm, signed, armored_key, fingerprint, receipt):
+    def check_signed_rpm(self, label, rpm, signed, armored_key, fingerprint, receipt):
         """The signed RPM is the GitHub build plus a signature by this channel's key, nothing else."""
         if rpm_digests(signed, self.run) != rpm_digests(rpm['path'], self.run):
             raise SignerError('The signed RPM is not the GitHub build: ' + rpm['name'])
         if not verify_rpm(armored_key, signed, self.run):
             raise SignerError('The RPM signature does not verify against the channel key: ' + rpm['name'])
-        receipt['rpm'].append({'asset': rpm['name'], 'file': signed.name, 'githubSha256': rpm['sha256'],
+        receipt['rpm'].append({'label': label, 'asset': rpm['name'], 'file': signed.name, 'githubSha256': rpm['sha256'],
                                'repoSha256': sha256_file(signed), 'signedWith': fingerprint})
 
     def record_inputs(self, receipt, inputs):
@@ -929,7 +949,7 @@ class Signer:
             receipt['signatures'].append({'file': (pair[1] or pair[0]).relative_to(workspace.tree).as_posix(),
                                           'kind': 'openpgp', 'key': self.config.nightly_fingerprint})
         for entry in receipt['rpm']:
-            receipt['signatures'].append({'file': f'{RPM_LABELS["fedora44"]}/{workspace.channel}/Packages/{entry["file"]}',
+            receipt['signatures'].append({'file': f'{RPM_LABELS[entry["label"]]}/{workspace.channel}/Packages/{entry["file"]}',
                                           'kind': 'rpm', 'key': entry['signedWith']})
         for path in extra:
             receipt['signatures'].append({'file': path.relative_to(workspace.tree).as_posix(), 'kind': 'minisign',
@@ -1012,14 +1032,16 @@ class Signer:
                    'minisign': ['update/v1/stable.json'] + ([f'releases/{inputs["tag"]}/SHA256SUMS'] if inputs else [])}
         to_sign['detached'] = [str(p.relative_to(workspace.tree)) for p in workspace.arch_dir().glob('*.db.tar.gz')]
         check = {'packages': [f'apt/{label}/dists/stable/main/binary-amd64/Packages' for label in DEB_LABELS]}
-        # The workstation downloads this RPM from GitHub itself, signs it and returns it.
-        rpm = None
-        if inputs:
-            package = inputs['packages']['fedora44']
-            rpm = {'asset': package['name'], 'sha256': package['sha256'], 'file': rpm_file_name(package['path'], self.run)}
-            shutil.copy2(package['path'], stage / 'unsigned.rpm')
-        manifest = {'schemaVersion': 2, 'scope': scope, 'tag': inputs['tag'] if inputs else None,
-                    'stableFingerprint': self.config.stable_fingerprint, 'sign': to_sign, 'check': check, 'rpm': rpm,
+        # The workstation downloads these RPMs from GitHub itself, signs them and returns them.
+        rpms = {}
+        for label in RPM_LABELS:
+            package = (inputs or {}).get('packages', {}).get(label)
+            if package:
+                rpms[label] = {'asset': package['name'], 'sha256': package['sha256'],
+                               'file': rpm_file_name(package['path'], self.run)}
+                shutil.copy2(package['path'], stage / f'unsigned-{label}.rpm')
+        manifest = {'schemaVersion': 3, 'scope': scope, 'tag': inputs['tag'] if inputs else None,
+                    'stableFingerprint': self.config.stable_fingerprint, 'sign': to_sign, 'check': check, 'rpms': rpms,
                     'pacman': ({'asset': inputs['packages']['archlinux']['name'], 'sha256': inputs['packages']['archlinux']['sha256']} if inputs and 'archlinux' in inputs['packages'] else None),
                     'sha256': {relative: sha256_file(workspace.tree / relative)
                                for group in (to_sign, check) for paths in group.values() for relative in paths},
@@ -1036,7 +1058,7 @@ class Signer:
         signatures = stage / 'signatures'
         wanted = ([relative + suffix for relative in manifest['sign']['clearsign'] for suffix in ('.InRelease', '.gpg')]
                   + [relative + '.minisig' for relative in manifest['sign']['minisign']]
-                  + ([manifest['rpm']['file']] if manifest['rpm'] else [])
+                  + [rpm['file'] for rpm in staged_rpms(manifest).values()]
                   + [r + '.sig' for r in manifest['sign'].get('detached', [])]
                   + ([manifest['pacman']['asset'] + '.sig'] if manifest.get('pacman') else []))
         return all((signatures / name.replace('/', '__')).is_file() for name in wanted)
@@ -1081,16 +1103,18 @@ class Signer:
                 shutil.copy2(signature, str(path) + '.sig')
                 receipt['signatures'].append({'file': str(path.relative_to(workspace.tree)) + '.sig', 'kind': 'openpgp', 'key': self.config.stable_fingerprint})
             arch_aliases(workspace)
-            if manifest['rpm']:
-                signed = signatures / manifest['rpm']['file']
-                unsigned = {'name': manifest['rpm']['asset'], 'sha256': manifest['rpm']['sha256'], 'path': stage / 'unsigned.rpm'}
+            for label, rpm in staged_rpms(manifest).items():
+                signed = signatures / rpm['file']
+                # Stages made before Fedora 45 had a build kept their one RPM as unsigned.rpm.
+                staged = stage / (f'unsigned-{label}.rpm' if manifest['schemaVersion'] >= 3 else 'unsigned.rpm')
+                unsigned = {'name': rpm['asset'], 'sha256': rpm['sha256'], 'path': staged}
                 if sha256_file(unsigned['path']) != unsigned['sha256']:
-                    raise SignerError('The staged unsigned RPM changed after staging')
-                self.check_signed_rpm(unsigned, signed, self.config.keys / 'putgd-stable.asc',
+                    raise SignerError('The staged unsigned RPM changed after staging: ' + rpm['asset'])
+                self.check_signed_rpm(label, unsigned, signed, self.config.keys / 'putgd-stable.asc',
                                       self.config.stable_fingerprint, receipt)
-                workspace.replace_rpm(signed)
+                workspace.replace_rpm(label, signed)
                 receipt.setdefault('catalog', {}).update(workspace.catalogs)
-                receipt['signatures'].append({'file': f'{RPM_LABELS["fedora44"]}/stable/Packages/{signed.name}',
+                receipt['signatures'].append({'file': f'{RPM_LABELS[label]}/stable/Packages/{signed.name}',
                                               'kind': 'rpm', 'key': self.config.stable_fingerprint})
             for relative in manifest['sign']['minisign']:
                 signature = signatures / (relative.replace('/', '__') + '.minisig')

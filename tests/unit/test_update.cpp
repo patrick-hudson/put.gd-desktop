@@ -26,6 +26,7 @@ private slots:
   QTest::newRow("nightly deb")<<"0.1.1-nightly.588"<<"debian13"<<true<<"nightly"<<true<<"";
   QTest::newRow("stable appimage")<<"0.1.1"<<"appimage"<<true<<"stable"<<true<<"";
   QTest::newRow("candidate follows stable")<<"0.1.1-rc.2"<<"fedora44"<<true<<"stable"<<true<<"";
+  QTest::newRow("fedora 45 rpm")<<"0.1.1-nightly.588"<<"fedora45"<<true<<"nightly"<<true<<"";
   QTest::newRow("turned off at build")<<"0.1.1"<<"ubuntu24.04"<<false<<"stable"<<false<<"disabled_at_build";
   QTest::newRow("no package job")<<"0.1.1-nightly.588"<<""<<true<<"nightly"<<false<<"no_package";
   QTest::newRow("unknown package")<<"0.1.1"<<"arch"<<true<<"stable"<<false<<"no_package";

@@ -212,7 +212,7 @@ def installer_notes(directory, release, producer):
     delivery = json.loads((directory / 'source-delivery.json').read_text())
     catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
     links = '\n'.join(f'- [{part["file"]}]({part["url"]})' for part in catalog['delivery']['parts'])
-    return ('Downloads: AppImage, Ubuntu 24.04/26.04 and Debian 13 DEBs, and Fedora 44 RPM. '
+    return ('Downloads: AppImage, Ubuntu 24.04/26.04 and Debian 13 DEBs, and Fedora 44 and 45 RPMs. '
             'Checksums, update metadata and package SBOMs accompany the installers.\n\n'
             f'AppImage bundles dynamically linked Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
             'Its GPL-2.0-or-later codec/runtime sources and put.gd source snapshot are available from '
@@ -244,7 +244,7 @@ def publish_nightly(args, release, listed):
             f'release of commit {release["gitCommit"]}.\n\n'
             + changes_section(args.tag, producer) +
             'Automated coverage: Linux test suites, '
-            'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
+            'Ubuntu 24.04/26.04 DEB and Fedora 44/45 RPM audits, AppImage packaging, '
             'and production compilation of the exact curated source tarball. '
             'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'
             'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
@@ -266,7 +266,7 @@ def publish_nightly(args, release, listed):
             + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
-        if layout == support_assets.LAYOUT:
+        if layout in support_assets.LAYOUTS:
             notes.write_text(f'Nightly {release["version"]} from commit {release["gitCommit"]}.\n\n'
                 + changes_section(args.tag, producer) + installer_notes(args.directory, release, producer)
                 + 'Automated coverage: tagged native package audits, AppImage start/recording checks, '
@@ -345,7 +345,7 @@ def main():
         listed[name] = digest
     args.asset_layout = bundle.get('assetLayout')
     verify_inventory(args.tag, listed, args.asset_layout)
-    if args.asset_layout == support_assets.LAYOUT:
+    if args.asset_layout in support_assets.LAYOUTS:
         if args.publish:
             # Manual acceptance runs use the same checkout/repository as the gh release commands.
             repository = subprocess.check_output(
@@ -390,7 +390,7 @@ def main():
     producer = run_provenance()
     kind = 'release candidate' if release['channel'] == 'candidate' else 'release'
     notes = args.directory / 'release-notes.md'
-    notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
+    notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, Fedora RPMs, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      + changes_section(args.tag, producer) +
                      f'DEB/RPM use distro Qt. AppImage dynamically bundles Qt {APPIMAGE_QT} and requires glibc 2.39 or newer. '
                      'Its screen recorder bundles x264, x265 and a GPL FFmpeg, so the AppImage is a GPL-2.0-or-later combined work; '
@@ -408,7 +408,7 @@ def main():
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Package-specific acceptance is recorded before this draft is published.\n\n'
                      'Built, tested and packaged by ' + producer['url'] + '\n')
-    if args.asset_layout == support_assets.LAYOUT:
+    if args.asset_layout in support_assets.LAYOUTS:
         notes.write_text('Linux x86_64 ' + kind + '.\n\n' + changes_section(args.tag, producer)
                          + installer_notes(args.directory, release, producer)
                          + 'Package-specific acceptance is required before this draft is published.\n\n'

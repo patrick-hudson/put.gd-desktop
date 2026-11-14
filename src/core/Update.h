@@ -10,7 +10,7 @@ namespace putgd {
 // performs IO.
 namespace update {
 // Which published package this build is: ubuntu24.04, ubuntu26.04, debian13,
-// fedora44, appimage; empty for a build no package job made.
+// fedora44, fedora45, archlinux, appimage; empty for a build no package job made.
 QString packageTarget();
 // False when the build was configured with PUTGD_UPDATE_CHECK=OFF.
 bool checkBuilt();
