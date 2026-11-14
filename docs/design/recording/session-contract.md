@@ -6,8 +6,8 @@ Part of [Screen recording](../recording.md).
 
 - Time is an integer count of **microseconds on the recorded-clip timeline**
   with pauses removed; intervals are half-open `[start, end)`. Export rounds
-  to the nearest frame boundary at the recording's `fps`
-  (`recording::alignToFrame`), identically for preview and export.
+  to the nearest frame boundary at the recording's `fps` (the `fps` filter of the
+  export graph).
 - The output canvas is fixed when the recording starts (`canvas: [w, h]`);
   masks use canvas pixels. A topology change during recording ends it with a
   helper failure rather than moving the canvas.
