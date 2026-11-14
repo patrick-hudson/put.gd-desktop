@@ -117,8 +117,14 @@ struct TrackerOptions {
   // still, the page did not move and something changed in place.
   double stillFallback = 0.50;
   // Where that much stood still, what moved is the page only when its rows
-  // of tiles cover at least this share in its columns.
-  double stillCoverage = 0.80;
+  // of tiles cover at least this share in its columns; where stillMostly of
+  // it stood still, stillCoverageMostly. A page's code block that scrolled
+  // under the pointer covered 0.62 with three quarters still; a page moving
+  // under a header, side bars and an advertisement bar that nothing has
+  // pinned yet covers 0.77 with half to two thirds still.
+  double stillCoverage = 0.70;
+  double stillMostly = 0.70;
+  double stillCoverageMostly = 0.80;
   // Candidates below this share of agreeing bands are given up after a
   // coarse look.
   double coarseFloor = 0.30;
@@ -127,9 +133,10 @@ struct TrackerOptions {
   double tieCells = 0.012;
   // The frame did not move when this share of its textured cells stayed.
   double stillShare = 0.97;
-  // Pinned: a block that stayed through this many moving steps of at least
-  // learnMinStep rows. A block pinned once is released when it moves with the
-  // page again.
+  // Pinned: a block that stayed through this many consecutive moving steps
+  // of at least learnMinStep rows (twice as many when only its flat inside
+  // stayed). A block pinned once is released when it moves with the page
+  // again.
   int pinAfterSteps = 2;
   int learnMinStep = 4;
   // Holes in a pinned part up to this share of the frame height are closed

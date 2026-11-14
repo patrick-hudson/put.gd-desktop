@@ -1054,21 +1054,26 @@ int ScrollTracker::decide(std::vector<Candidate>& cands, int expected, int uncer
     if (held[size_t(l)] > held[size_t(page)] || (held[size_t(l)] == held[size_t(page)] && area[size_t(l)] > area[size_t(page)]))
       page = l;
   // The page keeps the pace it had: when exactly one layer continues the
-  // last movement, it is the page, whatever the columns say (an inner box as
-  // wide as the article, with sparse text above and below it, or a code
-  // block that scrolled on its own and then with the page).
+  // last movement and the columns' layer does not come near it, the one that
+  // continues is the page, whatever the columns say (an inner box as wide as
+  // the article, with sparse text above and below it, or a code block that
+  // scrolled on its own and then with the page). A smooth scroll changes
+  // pace by half from frame to frame; a side bar on its way into place moves
+  // by part of the page's step, which may happen to be near the last one.
   if (layers > 1 && lastMove_ != 0) {
-    const int near = std::max(8, std::abs(lastMove_) / 5);
+    const int near = std::max(8, std::abs(lastMove_) / 5), far = std::max(8, std::abs(lastMove_) / 2);
     int consistent = -1, count = 0;
+    bool columnsNear = false;
     std::vector<uint8_t> seen(size_t(layers), 0);
     for (int i : ok) {
       const int l = layerOf[size_t(i)];
+      if (l == page && std::abs(cands[size_t(i)].d - lastMove_) <= far) columnsNear = true;
       if (seen[size_t(l)] || std::abs(cands[size_t(i)].d - lastMove_) > near) continue;
       seen[size_t(l)] = 1;
       consistent = l;
       ++count;
     }
-    if (count == 1) page = consistent;
+    if (count == 1 && !columnsNear) page = consistent;
   }
   // The page's layer must explain the frame: tiles that neither move with
   // any layer found nor stood still (a page further away than the frame is
@@ -1844,7 +1849,9 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   bool recovered = false;
   // Most of the frame stood still and what moved does not span it: an inner
   // scroll area under the pointer (a page's code block), not the page.
-  if (pick >= 0 && share >= opts_.stillFallback && cands[size_t(pick)].coverage < opts_.stillCoverage) return noMovement();
+  if (pick >= 0 && share >= opts_.stillFallback &&
+      cands[size_t(pick)].coverage < (share >= opts_.stillMostly ? opts_.stillCoverageMostly : opts_.stillCoverage))
+    return noMovement();
   if (pick >= 0) {
     d = cands[size_t(pick)].d;
     pos = lastPos_ + d;
