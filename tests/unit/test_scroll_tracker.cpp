@@ -447,11 +447,80 @@ void testExcluded() {
   }
 }
 
+// ------------------------------------------------------------------ live failures
+
+// A sticky header and a cookie banner with a flat inside over a narrow band
+// of the page, scrolled as a person does (small steps, pauses, a way back
+// up): the banner never reaches the page's rows, no frame is misplaced.
+// And auto-scroll's hint across a jump far past the image places nothing.
+void testLive() {
+  std::printf("\n[live] a narrow band under a banner; a jump under auto-scroll\n");
+  const int W = 480, V = 400;
+  const Document doc = plainPage(3, W, V);
+  const int end = doc.img.h - V;
+  {
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, 0xF0F0F2, 0x202024, 0, 5});
+    ss.pinned.push_back({0, 290, W, 110, 0x1E2266, 0xF0F0FF, 0, 9});
+    const Scene scene(doc.img, ss);
+    Rng rng(41);
+    std::vector<int> pos{0};
+    bool up = false;
+    while (pos.back() < end) {
+      const int r = rng.range(0, 100);
+      if (!up && pos.back() > end / 2) {
+        for (int k = 0; k < 20; ++k) pos.push_back(std::max(0, pos.back() - rng.range(5, 25)));
+        up = true;
+        continue;
+      }
+      pos.push_back(std::min(end, pos.back() + (r < 15 ? 0 : r < 70 ? rng.range(2, 18) : rng.range(18, 60))));
+    }
+    const Played r = play(scene, pos);
+    long long banner = 0;
+    for (long long y = 0; y < r.totals.bottom - r.totals.top; ++y) {
+      if (r.totals.top + y >= end + 290) continue;  // the banner once, at the end
+      for (int x = 0; x < W; ++x) {
+        const uint8_t* q = &r.image[(size_t(y) * W + x) * 4];
+        banner += q[0] == 0x66 && q[1] == 0x22 && q[2] == 0x1E;
+      }
+    }
+    report("a banner over a narrow band, a person's steps: none of it in the page", r.wrong == 0 && banner == 0,
+           counts(r) + fmt(", %d wrong%s, %lld banner pixels in page rows", r.wrong, r.firstWrong.c_str(), banner));
+  }
+  {
+    // Auto-scroll's frames say how far the page will move; a jump of 2,000
+    // rows is not where the hint says, and nothing there is blank.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc.img, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int wrong = 0, placed = 0;
+    std::vector<int> pos;
+    for (int p = 0; p <= 800; p += 40) pos.push_back(p);
+    const int jump = std::max(800 + 2 * V, end - 240);  // far past the image's end (1,200)
+    for (int p = jump; p <= end; p += 40) pos.push_back(p);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      const TrackResult t = tracker.addFrame(f.view(), i ? TrackerHint{true, 40, 6} : TrackerHint{});
+      if (t.status != TrackStatus::Placed) continue;
+      ++placed;
+      wrong += t.position != pos[i];
+    }
+    report("a jump far past the image under the hint is never placed on it", wrong == 0 && placed >= 21 && pos.size() > 21,
+           fmt("%zu frames, %d placed, %d wrong, %d on the hint", pos.size(), placed, wrong, tracker.totals().onHint));
+  }
+}
+
 int main() {
   testOffsets();
   testPinned();
   testChangesAndRecovery();
   testExcluded();
+  testLive();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }
