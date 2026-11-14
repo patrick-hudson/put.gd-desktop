@@ -437,7 +437,7 @@ class ScrollTracker {
     std::vector<uint16_t> bands;
     std::vector<uint64_t> open;
   };
-  std::vector<Pending> pending_;
+  std::vector<Pending> pending_, spare_;  // spare_: flushed, their buffers kept for reuse
   void narrowPending(Pending& p, const std::vector<uint64_t>& blocked) const;
   long long allowLo_ = 0, allowHi_ = 0;
   uint32_t frameSerial_ = 0;  // placed frames, counted from 1

@@ -1726,9 +1726,15 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   // 3. This frame's cells that nothing is written for yet wait for the next:
   //    their pixels (cell spans, not whole rows), the row's bands, and which
   //    cells they are.
-  pending_.emplace_back();
+  if (spare_.empty()) {
+    pending_.emplace_back();
+  } else {
+    pending_.push_back(std::move(spare_.back()));
+    spare_.pop_back();
+  }
   Pending& pend = pending_.back();
   pend.pos = pos;
+  pend.rows.clear();
   const int B = cur.bands, P = opts_.cellPx;
   for (int y = 0; y < H; ++y) {
     const long long p = pos + y;
@@ -1774,7 +1780,10 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
     std::memcpy(&pend.bands[slot * size_t(B) * 2], cur.bandRow(y), size_t(B) * 2);
     std::memcpy(&pend.bands[slot * size_t(B) * 2 + size_t(B)], cur.bandTexRow(y), size_t(B) * 2);
   }
-  if (pend.rows.empty()) pending_.pop_back();
+  if (pend.rows.empty()) {
+    spare_.push_back(std::move(pend));
+    pending_.pop_back();
+  }
   // The extent follows the frame even where a row has nothing written yet.
   top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, fTop)) : std::max(allowLo_, fTop);
   bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, fBottom)) : std::min(allowHi_, fBottom);
@@ -1810,6 +1819,7 @@ void ScrollTracker::flushPending(const std::vector<uint64_t>& blocked) {
       const uint16_t* bands = &pend.bands[slot * size_t(B) * 2];
       writeCells(p, &pend.pixels[slot * size_t(width_) * 4], bands, bands + B, mask.data(), 1, blk);
     }
+  for (Pending& pend : pending_) spare_.push_back(std::move(pend));
   pending_.clear();
 }
 
