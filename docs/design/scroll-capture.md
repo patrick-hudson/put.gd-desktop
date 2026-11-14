@@ -313,8 +313,13 @@ the bar, whose place the resident passes on.
 **Who moved it.** The helper knows where and when it last put the pointer. The rest surface
 reporting the pointer anywhere else (more than 4 px from that point), or the pointer leaving
 it when no visit into the rectangle was sent, is the user. So is, on X11, a pointer that is
-not where XTest last put it (`XQueryPointer` before every injection). The user's motion is
-watched from the moment the pointer is first seen arriving at its rest.
+not where XTest last put it (`XQueryPointer` before every injection). On Plasma, Hyprland and
+labwc, where nothing can ask where the pointer is, a clear layer surface (the watch) covers the
+rectangle's output and takes the pointer everywhere except 8 px holes at the points where the
+wheel is turned, the bar and the pad: the capture's own pointer is only ever at its rest or in a
+hole, so any pointer event on the watch is the user's, also while the pointer is in the
+rectangle for a wheel step. The watch is hidden while paused, so the desktop is the user's then.
+The user's motion is watched from the moment the pointer is first seen arriving at its rest.
 
 **Pause.** On the user's motion the injection gate closes at once, from the event itself,
 before the loop has looked. The loop stops between any two injections, inside a visit and
@@ -615,9 +620,11 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
 - **Hyprland paints the pointer into the frames,** whatever was asked. The loop keeps it out of the
   rectangle wherever a frame may become the image. A Stop in the 60 ms between the pointer's entry and its
   wheel step sends one pointer motion (out of the rectangle) after Stop.
-- **The user's mouse.** On Wayland a motion that comes while the pointer is inside the
+- **The user's mouse.** On GNOME a motion that comes while the pointer is inside the
   rectangle for a wheel step (about 100 ms of every step) is seen only when the pointer is
-  back on its rest: the capture moves it there once more, then pauses. X11 sees it at once.
+  back on its rest: the capture moves it there once more, then pauses. GNOME has no watch and
+  no pad, because only the Shell places windows there. X11 and the layer-shell desktops see it
+  at once.
   A region that covers its whole output has no place outside it: the pointer stays parked on
   the page, no bar shows, and moving the mouse does not pause the capture (Esc on X11, the
   hotkey and `scroll.stop` still stop it). The same is true on GNOME when the Shell found no
