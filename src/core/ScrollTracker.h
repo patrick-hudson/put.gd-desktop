@@ -52,6 +52,7 @@
 // composed.
 #pragma once
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -101,6 +102,13 @@ struct TrackerOptions {
   // neighbouring offsets, and between lines that differ in a few characters.
   double acceptBands = 0.85;
   double acceptCells = 0.50;
+  // Or bands down to acceptBandsWithCells where cells agree on at least
+  // acceptCellsStrong: text that the browser draws with other antialiasing
+  // (Chrome switches between greyscale and subpixel text while it scrolls
+  // a long GitHub page) moves every band's mean, while the cells of the
+  // same glyphs still agree.
+  double acceptBandsWithCells = 0.70;
+  double acceptCellsStrong = 0.90;
   // The tiles (a band by 32 rows) that move with an offset must be at least
   // this share of the tiles that show something: the page is the largest
   // layer. A side bar that sticks, a strip at a pace of its own, an inner
@@ -344,9 +352,13 @@ class ScrollTracker {
   void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const;
-  void storeCellTally(const Signature& cur, long long pos, Tally& t) const;
+  void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const;
+  void storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs, const std::vector<uint8_t>& have,
+                      long long from, Tally& t) const;
   void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1) const;
   bool stillTile(size_t i) const;
+  bool boxed(const Candidate& c) const;
+  int texturedRowCount(const Signature& sig) const;
   double coarseShare(const Signature& cur, const Signature& ref, int d, double abortBelow,
                      const std::vector<uint16_t>& incl) const;
   void searchPass(const Signature& cur, const Signature& ref, int expected, const std::vector<uint16_t>& incl,
@@ -355,7 +367,12 @@ class ScrollTracker {
   std::vector<int> pickPeaks(const std::vector<float>& coarse, double floor, long long center) const;
   bool stillFrame(const Signature& cur, const Signature& ref, double* share) const;
   std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected) const;
-  std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, bool wide) const;
+  std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, long long lo, long long hi,
+                                     size_t maxPeaks) const;
+  // The slice of the image a lost frame looks through after the near window,
+  // and where the next one starts.
+  static constexpr long long kSweepRows = 4096;
+  long long sweep_ = LLONG_MIN;
   int decide(std::vector<Candidate>& cands, int expected, int uncertainty, bool hinted,
              bool* byExpectation, SkipReason* why) const;
   bool contradicted(const Signature& cur, long long pos) const;
@@ -443,6 +460,7 @@ class ScrollTracker {
     std::vector<uint8_t> pixels;
     std::vector<uint16_t> bands;
     std::vector<uint64_t> open;
+    std::vector<uint64_t> agreed;  // of those, the ones the last frame showed the same
   };
   std::vector<Pending> pending_, spare_;  // spare_: flushed, their buffers kept for reuse
   void narrowPending(Pending& p, const std::vector<uint64_t>& blocked) const;
