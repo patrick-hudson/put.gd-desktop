@@ -6,7 +6,10 @@ pkgdesc='Native Linux screen and clipboard sharing'
 arch=('x86_64')
 url='https://put.gd'
 license=('MIT' 'Apache-2.0' 'GPL-3.0-or-later')
-depends=('tesseract' 'tesseract-data-eng' 'zxing-cpp' 'gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
+# tesseract-data-eng stays before tesseract: pacman resolves in this order, and with the data first
+# tesseract's own need for "tessdata" is already met. The other way round pacman asks which of 128
+# language packages to use and takes Afrikaans by default.
+depends=('tesseract-data-eng' 'tesseract' 'zxing-cpp' 'gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
          'qt6-imageformats' 'qtkeychain-qt6' 'layer-shell-qt' 'libxcb'
          'xcb-util-keysyms' 'xcb-util-image' 'libxcursor' 'libxkbcommon'
          'libxkbcommon-x11' 'curl' 'openssl' 'zlib' 'glib2' 'gtk3'
