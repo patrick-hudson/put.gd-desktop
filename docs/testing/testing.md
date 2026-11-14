@@ -263,7 +263,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   one exact image with nothing injected while the user drives or has the mouse; a jump past the screen
   is lost and found again on the way back, and Done while lost keeps the image and says it ended lost;
   under auto-scroll, a jump into the page's end is found by the steps back with the image exact, and
-  a jump far past the image ends in a hand-back (`pausedBy: lost`) with nothing injected after it;
+  a jump far past the image (on text, and on plain stretches) is handed back lost, found again when
+  the user scrolls back, and finished by Auto-scroll as one exact image; Done after the stream went
+  stale (the same picture again and again while the page moves) keeps the rows the page shows; a
+  blank stretch taller than the region stops auto-scroll without calling it the end of the page;
   the cap and the idle bound end it with the image kept; Done keeps an exact image and Cancel discards
   it in every state. It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,

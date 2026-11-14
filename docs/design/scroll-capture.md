@@ -344,7 +344,10 @@ helper exit until the resident has admitted them.
   owned, the declared size and SHA-256, the PNG header and IHDR size, bounds) and the
   result's promises (below), and re-enters the normal path as a `png` clipboard payload;
   through the editor as a one-file payload. A result that fails is `scroll_output_invalid`.
-- **Done and Cancel.** Done keeps the image, in every state. Cancel discards the files and
+- **Done and Cancel.** Done keeps the image, in every state. Before it finishes, Done takes a
+  fresh frame of the screen (the stream linked again, at most 1.5 s): KWin's region stream
+  once sent the same picture 92 times while Chrome went on scrolling, and the last rows of a
+  person's capture were missing. Cancel discards the files and
   leaves no History row. The helper answers a Cancel only when its worker has ended, so the
   resident remembers a Cancel that is on its way and it decides the end: other commands are
   answered `scroll_busy`; a pending Done is answered `cancelled`; a `finished` event is
@@ -372,7 +375,7 @@ helper exit until the resident has admitted them.
 | --- | --- | --- |
 | `end_of_content` | false | Auto-scroll proved the end of the page and no frame was skipped, and where the way to the top was asked for, the top was proved: the page from the top (or from where it was) to its end |
 | `top_not_reached` | true | The same, but the way to the top could not prove the top: the image starts partway down. `topReached` is false and `note` says why |
-| `done` | false | Finished by Done, the hotkey, Esc, `scroll.stop`, the idle bound, or by auto-scroll at the end of the page after skipped frames (`reachedEnd` true, `framesSkipped` above 0): the page as far as it was scrolled |
+| `done` | false | Finished by Done, the hotkey, Esc, `scroll.stop`, the idle bound, by auto-scroll at the end of the page after skipped frames (`reachedEnd` true, `framesSkipped` above 0), or by auto-scroll at a stretch that showed nothing (`reachedEnd` false, a note): the page as far as it was scrolled |
 | `lost_track` | true | Finished while the tracker was lost: the image ends where it last placed a frame, and the page went somewhere it could not follow |
 | `height_cap` | true | The cap was reached first |
 
@@ -408,10 +411,13 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
   compare. On a news article in Chrome (Plasma 6.8.2) it skipped most frames, and the banner's
   colour was drawn in strips through the image while the capture ended `done`. Read
   `framesSkipped`: a capture that skipped many frames needs a look.
-- **A blank stretch taller than the region** shows nothing that moves. Auto-scroll takes it
-  for the end of the page; your own scrolling past it leaves the page where the tracker
-  cannot place it (lost) until you scroll back. Include the scrollbar: it is in the image,
-  but the tracker leaves the side margins out of its vote, so it does not help.
+- **A blank stretch taller than the region** shows nothing that moves. Auto-scroll stops
+  there: frames with nothing on them show no movement, so its steps look still, though the
+  wheel may still be moving the page. It does not call that the end of the page: the capture
+  ends `done` with `reachedEnd: false` and the note "auto-scroll stopped where the page showed
+  nothing". Your own scrolling past it leaves the page where the tracker cannot place it
+  (lost) until you scroll back. Including the scrollbar does not help: the tracker leaves the
+  side margins out of its vote.
 - **The bar inside the corner** hides the page beside its place at the very end of the page:
   those cells are plain, and `hiddenCells` counts them.
 - **Pages that lay themselves out anew under the viewport** while it is scrolled (a long
