@@ -15,6 +15,24 @@
 #include "fixtures/UiSessionFixture.h"
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
+// A destination with a separate link step whose create reply can be lost (#1496).
+class LinkStepFixture final:public StorageProvider {
+public:
+ OpaqueProvider storage;std::atomic_int shares{0},inspections{0};std::atomic_bool loseReply{true};
+ ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.sharing=true;c.privateUploads=true;return c;}
+ QString defaultPublicationMode(const Destination&)const override{return "share";}
+ QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n)const override{return storage.serializationKey(d,o,n);}
+ Error validateSettings(const QJsonObject& s)const override{return storage.validateSettings(s);}
+ void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb,std::shared_ptr<std::atomic_bool> c={})override{storage.checkName(d,n,cb,c);}
+ void upload(const UploadRequest& r,std::function<void(UploadResult)> cb)override{storage.upload(r,[cb](UploadResult result){result.receipt.directUrl.clear();cb(result);});}
+ void stat(const StorageReceipt& r,std::function<void(StatResult)> cb)override{storage.stat(r,cb);}
+ void reconcile(const UploadRequest& r,std::function<void(StatResult)> cb)override{storage.reconcile(r,cb);}
+ void remove(const DeleteRequest& r,DurableCheckpoint d,std::function<void(DeleteResult)> cb)override{storage.remove(r,d,cb);}
+ void share(const ShareRequest& r,DurableCheckpoint durable,std::function<void(ShareResult)> cb)override{
+  auto receipt=r.receipt;if(r.action=="inspect"){++inspections;receipt.directUrl.clear();cb({"private",receipt,{},{}});return;}
+  durable({{"schemaVersion",1},{"phase","intent"}},[this,r,receipt,cb](Error e)mutable{if(e){cb({"failed",r.receipt,{},e});return;}++shares;if(r.action=="create")receipt.directUrl="https://example.invalid/finished#secret";cb({loseReply.load()?"unknown":"shared",receipt,{},{}});});
+ }
+};
 class HistoryGui:public QObject {
  Q_OBJECT
  // The remote-deletion confirmation, as an agent or test finds it.
@@ -81,6 +99,40 @@ private slots:
   QSignalSpy accepted(dialog.get(),&QDialog::accepted);dialog->findChild<QPushButton*>("confirmCancel")->click();QVERIFY(!dialog->isVisible());QCOMPARE(accepted.count(),0);
  }
  // A link whose object was removed is never offered for copying.
+ // An uploaded file whose link was not confirmed is finished by one click: the link-only
+ // retry for exactly its operation, which makes the link once and uploads nothing (#1496).
+ void unconfirmedLinkIsFinishedInOneClick(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<LinkStepFixture>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->shares.load(),1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  // As after a crash in the link step: the operation is interrupted, not partial (m74 acceptance, #1512).
+  {HistoryStore ledger(operations.databasePath());auto op=ledger.operation(ledger.recent(1).first().toObject()["id"].toString());QCOMPARE(op.stateName(),QString("partial"));op.restore(OperationState::Interrupted);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();fixture.server.setUiCommand([&](const QString& name,const QJsonObject& p,JsonReply reply){QCOMPARE(name,QString("history"));window.command(p,std::move(reply));});
+  auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),1);
+  const auto row=model->record(0);const auto itemId=row["id"].toString(),operationId=row["operationId"].toString();
+  QCOMPARE(model->index(0).data(HistoryModel::PrimaryActionRole).toString(),QString("Finish share link"));QCOMPARE(HistoryModel::statusText(row),QString("Share link not finished"));
+  PUTGD_TRY_COMPARE(window.historyState()["finishableIds"].toArray(),QJsonArray{itemId});
+  // The pane keeps the state when the file has no local copy (m74 acceptance, #1512).
+  selectRow(list,0);auto paneSays=[&](const QString& text){for(auto* label:window.findChildren<QLabel*>())if(label->isVisible()&&label->text().contains(text))return true;return false;};PUTGD_TRY_VERIFY(paneSays("Share link not finished. No local copy"));
+  QJsonObject retry;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& p){if(method=="operation.retry")retry=p;};provider->loseReply=false;
+  auto drive=[&](const QJsonObject& p){bool done=false;Error error;fixture.client.request("ui.history",p,&window,[&](Error e,QJsonObject){error=e;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.message));};
+  drive({{"action","select"},{"ids",QJsonArray{itemId}}});drive({{"action","finishShareLink"}});
+  PUTGD_TRY_COMPARE(retry["scope"].toString(),QString("sharing"));QCOMPARE(retry["id"].toString(),operationId);
+  PUTGD_TRY_COMPARE(provider->shares.load(),2);PUTGD_TRY_VERIFY(model->linkAvailable(0));PUTGD_TRY_VERIFY(window.historyState()["finishableIds"].toArray().isEmpty());
+  QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(provider->inspections.load(),1);
+ }
+ // Finish share link is offered only when the retry would do nothing but links; the
+ // operation's own items count, so a file hidden by a filter or page still blocks it.
+ void finishShareLinkNeedsEveryUploadDone(){
+  const QJsonObject file{{"id","file-a"},{"operationId","op"},{"uploadStatus","uploaded"},{"shareStatus","unknown"},{"shareIntent","create"},{"linkFinishable",true},{"receipt",QJsonObject{}}};
+  auto row=[](QJsonObject first,const QJsonArray& files,const QJsonObject& operation={}){first["records"]=files;if(!operation.isEmpty())first["operation"]=operation;return first;};
+  QCOMPARE(HistoryModel::finishShareLabel(row(file,{file})),QString("Finish share link"));
+  auto second=file;second["id"]="file-b";QCOMPARE(HistoryModel::finishShareLabel(row(file,{file,second})),QString("Finish share links"));
+  const QJsonObject hidden{{"uploadStatus","failed"},{"shareStatus","not_requested"}};QVERIFY(!HistoryModel::finishShareLink(row(file,{file},{{"state","completed"},{"items",QJsonArray{file,hidden}}})));
+  QVERIFY(!HistoryModel::finishShareLink(row(file,{file},{{"state","running"},{"items",QJsonArray{file}}})));
+  auto changed=file;changed["shareStatus"]="changed";changed["linkFinishable"]=false;QVERIFY(!HistoryModel::finishShareLink(row(changed,{changed})));
+  QCOMPARE(HistoryModel::statusText(row(changed,{changed})),QString("Share link changed"));
+  auto noIntent=file;noIntent["shareIntent"]="";noIntent["linkFinishable"]=false;QCOMPARE(HistoryModel::statusText(row(noIntent,{noIntent})),QString("Sharing outcome needs inspection"));
+ }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-operation";op.created="2020-01-01T00:00:00.000Z";op.restore(OperationState::Completed);op.settings=settings.snapshot();OperationItem item;item.artifact.id="old-item";item.artifact.name="old-image.png";item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus="uploaded";item.remoteStatus="removed";item.receipt.directUrl="https://example.invalid/original.png";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}

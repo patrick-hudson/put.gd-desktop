@@ -61,7 +61,12 @@ public:
  // What a row (a capture group) can do now. The inline action, the inspector,
  // the row menu and the selection strip all ask these, so none of them offers
  // a command the resident would refuse for this row's state and receipts.
- static bool failed(const QJsonObject&);static bool retryUpload(const QJsonObject&);static bool retryLocalSave(const QJsonObject&);static bool copyLocalResult(const QJsonObject&);
+ static bool failed(const QJsonObject&);static bool retryUpload(const QJsonObject&);
+ // #1496: a row whose files are all uploaded and some of whose wanted links were not
+ // confirmed or not made. Its label is "Finish share link", or "Finish share links"
+ // when the link-only retry may make more than one; empty when it does not apply.
+ static bool finishShareLink(const QJsonObject&);static QString finishShareLabel(const QJsonObject&);
+ static bool retryLocalSave(const QJsonObject&);static bool copyLocalResult(const QJsonObject&);
  // One stored file whose original remote target delete.prepare can accept.
  static bool remoteDeletable(const QJsonObject& file);
 signals:void activityChanged();void busyChanged(bool);void loaded();void error(const QString&);void countsChanged();

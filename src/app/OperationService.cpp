@@ -918,7 +918,7 @@ Operation OperationService::run(Job job) {
  op.phase="saving_local";
  const auto route=routeOf(op);
  const bool local=route.destination=="local"||route.profileId.isEmpty();
- for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
+ for(auto& item:op.items) if(!job.sharingOnly&&(local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";bool saved=true;for(const auto& item:std::as_const(op.items)) if(item.local.status!="saved")saved=false;op.advance(saved?OperationState::Completed:OperationState::Failed);save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.advance(OperationState::Failed);save();return op;}
  const auto capabilities=provider->capabilities(op.destination);
@@ -1121,6 +1121,9 @@ Operation OperationService::run(Job job) {
   auto lock=objectLock(item.receipt.destination,item.receipt.objectReference,{});std::unique_lock guard(*lock);
   const auto current=store.detail(item.artifact.id);
   if(current.contains("shareStatus")){item.shareStatus=current["shareStatus"].toString();item.shareIntent=current["shareIntent"].toString();item.shareIntentOptions=current["shareIntentOptions"].toObject();item.receipt=StorageReceipt::fromJson(current["receipt"].toObject());}
+  // A file deleted, replaced or changed at the destination since its upload gets no link (#1496).
+  // The durable item state stands in when the History row was cleared.
+  if(!OperationItem::shareableRemote(current.contains("remoteStatus")?current["remoteStatus"].toString():item.remoteStatus))continue;
   if(!QStringList{"not_requested","unknown"}.contains(item.shareStatus)&&!(QStringList{"private","failed"}.contains(item.shareStatus)&&item.shareIntent=="create"))continue;
   if(publicationMode=="private"&&item.shareStatus!="unknown"&&item.shareIntent!="create"){item.shareStatus="private";if(!saveItem(item))return op;continue;}
   if(!item.receipt.directUrl.isEmpty())continue;
@@ -1327,23 +1330,25 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  // link or a failure in History. Only a row a failed journal write left active is.
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};if(!op.active()){e={"operation_inactive","This operation has finished; only an active operation can be cancelled",{{"state",op.stateName()}}};return QJsonObject{};}op.cancelled=true;op.advance(OperationState::Cancelled);op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
 }
-void OperationService::retry(const QString& id,JsonReply reply) {
- if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retry(id,reply);});return;}
+void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly) {
+ if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  if(active_.contains(id)) {reply({"operation_busy","Operation is already active",{}},{});return;}
- auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path](Error e,QJsonObject doc) {
+ auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path,sharingOnly](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
+  // The whole operation is checked here, not the History rows a client happened to load.
+  if(sharingOnly)for(const auto& i:std::as_const(op.items))if(!terminalUpload(i.uploadStatus)){active_.remove(id);reply({"retry_would_upload","A file of this upload still needs its upload; use Retry upload",{{"itemId",i.artifact.id}}},{});return;}
   bool pending=false;for(const auto& i:std::as_const(op.items))if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);
   if(!op.advance(OperationState::Stored)){active_.remove(id);reply({"operation_busy","Operation is already active",{}},{});return;}
   op.cancelled=reserved->load();op.error={};op.phase="queued";op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.copyStatus="pending";beginUploadCopies(op);
-  background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return QJsonObject{};},[this,reply,op,reserved](Error error,QJsonObject)mutable{
+  background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return QJsonObject{};},[this,reply,op,reserved,sharingOnly](Error error,QJsonObject)mutable{
    if(error){abandonUploadCopies(op.id);releaseActive(op.id);reply(error,{});return;}
-   op.cancelled=reserved->load();enqueue({op,{},false,reserved,{}});reply({},{{"operationId",op.id},{"retryAccepted",true}});
+   op.cancelled=reserved->load();Job job{op,{},false,reserved,{}};job.sharingOnly=sharingOnly;enqueue(std::move(job));reply({},{{"operationId",op.id},{"retryAccepted",true}});
    logging::info(logOperation(),"Retry accepted",{{"operationId",op.id},{"action",op.action},{"provider",op.destination.providerId},{"items",op.items.size()}});
   });
  });

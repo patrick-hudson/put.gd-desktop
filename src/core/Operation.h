@@ -21,6 +21,11 @@ struct OperationItem {
  static OperationItem fromJson(const QJsonObject&);
  UploadRequest uploadRequest(const Destination&,std::optional<int> requestTimeoutMs={}) const;
  bool linkAvailable() const;
+ // An uploaded file whose wanted link was not confirmed or not yet made: one
+ // link-only retry finishes it with the options kept at upload (#1496).
+ bool linkFinishable() const;
+ // The remote states in which a stored file may still be shared.
+ static bool shareableRemote(const QString& remoteStatus);
 };
 // An operation's state (#1433). Its name is the journal's and the wire's string;
 // never rename one. Unknown is a string no build of put.gd writes (a newer
