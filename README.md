@@ -15,6 +15,11 @@
   <a href="https://app.put.gd/">Downloads</a>
 </p>
 
+> [!NOTE]
+> put.gd is under heavy development. It's heavily tested, but it's one person and a lot
+> of LLMs. It works for my use case, and maybe it'll work for yours. Fork it, steal it,
+> change it, contribute, do whatever you want with it.
+
 Press a hotkey, drag over what you want to show, and a link is on your clipboard, ready
 to paste into a chat, a ticket or a pull request. put.gd takes screenshots, scrolling
 pages and screen recordings, lets you annotate and redact an image or trim and blur a
@@ -30,6 +35,18 @@ If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea, built 
     <img src="docs/readme/shots/desktop-light.webp" width="900" alt="put.gd on Fedora 44 with GNOME: the History window open on the desktop, listing today's captures and recordings, with the newest one shared and its link ready to copy">
   </picture>
 </p>
+
+## Why
+
+I was tired of screenshot tools built on a webview, and with LLMs, native code is easier to
+write than ever. put.gd is C++ and Qt, and memory is a deliberate design choice: a
+screenshot tool shouldn't use 100 MB or more sitting in your system tray. It's been
+ruthlessly trimmed to idle well under 40 MB, often 10–20 MB, and less once the kernel
+reclaims its pages.
+The main window, the editor and the recorder are separate processes that exit when you're
+done with them ([memory strategy](docs/design/memory-strategy.md)).
+
+C++20 was a choice I regret. I'd like to move to C++23 eventually.
 
 ## Install
 
