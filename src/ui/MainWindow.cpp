@@ -352,7 +352,8 @@ void MainWindow::updateSaveStatus(){
  const int versionWidth=width(link.url.isEmpty()?static_cast<QWidget*>(version_):versionGroup),available=content->contentsRect().width()-space(Space::s);
  const bool versionRoom=!unsaved&&!link.version.isEmpty()&&needed+versionWidth+(count?gap:0)<=available;
  version_->setVisible(versionRoom&&!link.version.isEmpty()&&link.url.isEmpty());versionGroup->setVisible(versionRoom&&!link.url.isEmpty());
- explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&needed+(versionRoom?versionWidth+gap:0)+width(explanation_)+gap<=available);
+ // The explanation goes first: it never shows while the version had to give way.
+ explanation_->setVisible(tabs_->currentIndex()>0&&!unsaved&&(versionRoom||link.version.isEmpty())&&needed+(versionRoom?versionWidth+gap:0)+width(explanation_)+gap<=available);
 }
 // One label set at every width: one row when it fits, else the second group
 // under the first, in the same reading order. The window is never narrower
