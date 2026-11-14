@@ -543,44 +543,58 @@ class DriverContext(Context):
             resize_before = self._probe('resize', {})
         unmanaged = (bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test') or
                      self._current_window in ('region', 'recsel'))
-        last = start
+        last = [start]
         with armed(self.review):
             try:
                 self._press(*start,w,h,button,head)
-                # QMP acknowledges queued input before Qt/X11 consumes it.
-                # On Cinnamon/Qt 6.4 an immediate motion can become the press
-                # position. Let the editor receive the press at the start point.
-                if self.profile.get('session') == 'x11' and self._current_window == 'editor':
-                    time.sleep(.1)
-                # Managed header/resize grabs can leave the client. Unmanaged
-                # selector covers/bars need pointer witnesses, not keyboard focus:
-                # WA_ShowWithoutActivating deliberately leaves that elsewhere.
-                for step in range(1,steps+1):
-                    self._check_time()
-                    x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
-                    self._guard(holding=True, **({'point':self._global_point(x,y,head)} if unmanaged else {}))
-                    self.target.pointer(x,y,w,h,head=head)
-                    last = (x,y)
-                    time.sleep(.025)
-                    if require_resize and step == 1:
-                        from .probe import resize_started
-                        deadline = min(self._deadline, time.monotonic()+2)
-                        while True:
-                            after = self._probe('resize', {})
-                            try:
-                                proof = resize_started(resize_before, after, resize_target)
-                            except (RuntimeError, KeyError, TypeError) as error:
-                                raise RecipeBlocked('resize-start witness invalid: '+str(error)) from error
-                            if proof:
-                                self.note('resize-start '+json.dumps(dict(proof,epoch=after['epoch']),sort_keys=True))
-                                break
-                            if time.monotonic() >= deadline:
-                                raise RecipeBlocked('resize-start not witnessed: Mutter emitted no new interactive resize begin '
-                                                    'for window '+str(resize_target['window_id'])+' after guarded press and first motion')
-                            time.sleep(.05)
+                self._drag_motion(start,end,w,h,button,head,steps,unmanaged,require_resize,
+                                  resize_before,resize_target,last)
             finally:
                 if self._press_open or not self.target.physical:
-                    self._release_pointer(last,w,h,button,head)
+                    self._release_pointer(last[0],w,h,button,head)
+
+    def _drag_motion(self,start,end,w,h,button,head,steps,unmanaged,require_resize,resize_before,resize_target,last):
+        """The motion while the button is down, in a frame of its own.
+
+        CPython 3.13 leaves some loop back-edges outside the exception table
+        (the one where an ``if`` ends the loop body). A deadline alarm handled
+        there raises in the frame with no handler, so a ``finally`` in the same
+        function never runs and the press stays down. Called from the try body,
+        any exception raised in this frame reaches ``drag``'s release at a
+        covered call, on every Python. Keep loops that run while input is held
+        out of the frame that owns the release. ``last`` holds the latest point.
+        """
+        # QMP acknowledges queued input before Qt/X11 consumes it.
+        # On Cinnamon/Qt 6.4 an immediate motion can become the press
+        # position. Let the editor receive the press at the start point.
+        if self.profile.get('session') == 'x11' and self._current_window == 'editor':
+            time.sleep(.1)
+        # Managed header/resize grabs can leave the client. Unmanaged
+        # selector covers/bars need pointer witnesses, not keyboard focus:
+        # WA_ShowWithoutActivating deliberately leaves that elsewhere.
+        for step in range(1,steps+1):
+            self._check_time()
+            x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
+            self._guard(holding=True, **({'point':self._global_point(x,y,head)} if unmanaged else {}))
+            self.target.pointer(x,y,w,h,head=head)
+            last[0] = (x,y)
+            time.sleep(.025)
+            if require_resize and step == 1:
+                from .probe import resize_started
+                deadline = min(self._deadline, time.monotonic()+2)
+                while True:
+                    after = self._probe('resize', {})
+                    try:
+                        proof = resize_started(resize_before, after, resize_target)
+                    except (RuntimeError, KeyError, TypeError) as error:
+                        raise RecipeBlocked('resize-start witness invalid: '+str(error)) from error
+                    if proof:
+                        self.note('resize-start '+json.dumps(dict(proof,epoch=after['epoch']),sort_keys=True))
+                        break
+                    if time.monotonic() >= deadline:
+                        raise RecipeBlocked('resize-start not witnessed: Mutter emitted no new interactive resize begin '
+                                            'for window '+str(resize_target['window_id'])+' after guarded press and first motion')
+                    time.sleep(.05)
 
     @entry
     def _release_pointer(self, point, width, height, button, head):
