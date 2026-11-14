@@ -19,17 +19,13 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": false,
+    "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
-    "finalPackageAcceptanceVerified": false,
-    "nativeCompiledHelperSourceSelectionVerified": false,
+    "finalPackageAcceptanceVerified": true,
+    "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
-  "openGates": [
-    "Fresh Bun 1.4.4 native modification/relink verification for this helper (34dda9fa8550); the retained receipt describes helper d4bea9c8a1cd",
-    "P6: fresh final-helper desktop functional/resource and actual package acceptance for this helper (34dda9fa8550), including the Cinnamon link after upload (#1399) retested on every declared desktop; the retained receipt describes helper d4bea9c8a1cd",
-    "P6: repeat Cinnamon post-use resource windows after 180 seconds settling in a new exclusive m74 slot; retained two quiet 301-second windows used a 35-second settle."
-  ],
+  "openGates": [],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
@@ -179,7 +175,7 @@
     "preferredRustSourceClaimed": false
   },
   "nativeRelinkProof": {
-    "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
+    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
       "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -189,17 +185,17 @@
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "receipt": "tools/proton/native_relink/evidence/native-proof-1399.json",
-    "receiptSha256": "dec84dd99e91dee06b3cf9219c18846f358cb61900e458d9ebfa6c676fa9036f",
+    "receipt": "tools/proton/native_relink/evidence/native-proof-34dda9fa.json",
+    "receiptSha256": "c61f7a7843e15b827b2f83db3376ef69570494c254956d9bf882e723194cd18e",
     "nativeBunSha256": "b50486d187598c38a1fd6b379d82a5a671fc5d65dc2e44a9b06f667a9f3b54d2",
-    "proofHelperSha256": "8872758f1d3e07eb2d3d25f312176efbaca7257b2a00bd7adbd9db8069150f91",
-    "scope": "Fresh Aurora Toolbx source-built Bun/JavaScriptCore/TinyCC modification and current-overlay helper relink. Native byte identity is not claimed. Retained archive verified by full readback; old 2026-10-31 private archive was lost in the 2026-11-07 cleanup."
+    "proofHelperSha256": "a12b9b2bd442c48e652482a5d97c9b34479d7ae62f591bef9640204ec6879f0c",
+    "scope": "Current overlay relink using verified retained source-built Bun; second archive verified by readback beside the original archive. No native byte identity claimed."
   },
   "desktopResourceAcceptance": {
-    "helperSha256": "d4bea9c8a1cdaffa6ae4efc7489bb6eb5c70720277950fe6999e6ba466b4555e",
-    "status": "failed",
-    "receipt": "tools/proton/native_relink/evidence/desktop-resource-1399.json",
-    "receiptSha256": "6caae7a1f6e85355c0498a1c45d075672666f7844aed78110a4f06128ecd2587",
+    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+    "status": "passed",
+    "receipt": "tools/proton/native_relink/evidence/desktop-resource-34dda9fa.json",
+    "receiptSha256": "f95788fde0b4b7183c9efce65f282e8d602af61498da2b0884ed63afb93793a1",
     "historicalProofTransferred": false,
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
@@ -210,6 +206,6 @@
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "scope": "Current-helper published nightly installed-package native desktop checks and five installer Proton audits. Cinnamon sharing finding remains unresolved; its native 180-second-settle repeat is pending. See the receipt for actual per-run results and package identities."
+    "scope": "Current-helper successful nightly push CI packages: installed-package functional, region-helper lifetime, normal UI exit plus 180-second-settle and two quiet >=300-second windows on each physical Cinnamon/GNOME/KDE desktop; five installer Proton audits."
   }
 }
