@@ -163,7 +163,7 @@ void X11Clipboard::received(){
  const auto data=bytes_;const auto target=target_;const auto limits=limits_;const bool uris=target==atom("text/uri-list"),image=!imageFormat_.isEmpty();const auto cancelled=cancelled_;auto callback=std::move(callback_);callback_={};incremental_=false;bytes_.clear();
  // Parsing/decoding potentially large owner data must not run on the session thread.
  auto result=std::make_shared<PayloadResult>();auto noLocal=std::make_shared<bool>(false);auto* worker=QThread::create([data,limits,uris,image,result,noLocal,cancelled] {
-  QMimeData mime;if(uris){QList<QUrl> urls;for(auto line:data.split('\n')){line=line.trimmed();if(!line.isEmpty()&&!line.startsWith('#'))urls.append(QUrl::fromEncoded(line));}mime.setUrls(urls);*noLocal=true;for(const auto& url:urls)if(url.isLocalFile())*noLocal=false;}
+  QMimeData mime;if(uris){QList<QUrl> urls;for(auto line:data.split('\n')){line=line.trimmed();if(!line.isEmpty()&&!line.startsWith('#'))urls.append(QUrl::fromEncoded(line));}mime.setUrls(urls);*noLocal=true;for(const auto& url:std::as_const(urls))if(url.isLocalFile())*noLocal=false;}
   else if(image){
    QImage decoded;
    if(imageFormatHint(data)=="png"){
@@ -264,7 +264,7 @@ void X11Clipboard::selectionRequest(const xcb_selection_request_event_t& request
     auto error=reply(xcb_request_check(connection_,xcb_change_property_checked(connection_,XCB_PROP_MODE_REPLACE,request.requestor,property,request.target,8,data.size(),data.constData())));accepted=!error;
    }else if(outgoing_.size()<16){
     QSet<const OwnedContent*> versions; qint64 leasedBytes=0;
-    for(const auto& transfer:outgoing_)if(!versions.contains(transfer.content.get())){versions.insert(transfer.content.get());leasedBytes+=transfer.content->data.size();}
+    for(const auto& transfer:std::as_const(outgoing_))if(!versions.contains(transfer.content.get())){versions.insert(transfer.content.get());leasedBytes+=transfer.content->data.size();}
     if(!versions.contains(owned_.get()))leasedBytes+=owned_->data.size();
     // At most 16 independently pinned stream versions plus current ownership.
     // This hard ceiling preserves all accepted Settings limits; no peer can

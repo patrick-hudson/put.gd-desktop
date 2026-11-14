@@ -247,7 +247,7 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
   if(!output.commit()) {fail("artifact_io","Artifact commit failed",i); return result;}
   QFile::setPermissions(a.path,QFile::ReadOwner); a.sha256=QString::fromLatin1(hash.result().toHex()); if(p.kind=="files")a.mime=QMimeDatabase().mimeTypeForFile(a.path,QMimeDatabase::MatchContent).name();a.category=category(a.mime); total+=a.bytes; result.artifacts.append(a);
  }
- QJsonArray entries;for(const auto& artifact:result.artifacts) {auto stored=artifact;stored.path=target+"/"+artifact.id;entries.append(stored.toJson());}
+ QJsonArray entries;for(const auto& artifact:std::as_const(result.artifacts)) {auto stored=artifact;stored.path=target+"/"+artifact.id;entries.append(stored.toJson());}
  const auto metadata=QJsonDocument(QJsonObject{{"schemaVersion",1},{"operationId",op},{"artifacts",entries}}).toJson(QJsonDocument::Compact);
  QSaveFile manifest(staging+"/_manifest.json");manifest.setDirectWriteFallback(false);
  if(metadata.size()>16*1024*1024||!manifest.open(QIODevice::WriteOnly)||!manifest.setPermissions(QFile::ReadOwner)||manifest.write(metadata)!=metadata.size()||!manifest.commit()) {fail("artifact_io","Cannot commit batch recovery metadata",0);return result;}

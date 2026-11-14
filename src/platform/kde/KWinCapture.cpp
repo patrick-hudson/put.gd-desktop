@@ -26,7 +26,7 @@ bool installedEntryMatches(){
   for(const auto& name:applications.entryList({"putgd-appimage-*.desktop"},QDir::Files))entries.append(applications.filePath(name));
  }
  const auto actual=QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath();
- for(const auto& entry:entries){QFile file(entry);if(!file.open(QIODevice::ReadOnly))continue;QString exec,restricted;bool section=false;
+ for(const auto& entry:std::as_const(entries)){QFile file(entry);if(!file.open(QIODevice::ReadOnly))continue;QString exec,restricted;bool section=false;
   while(!file.atEnd()){const auto line=QString::fromUtf8(file.readLine()).trimmed();if(line.startsWith('[')){section=line=="[Desktop Entry]";continue;}if(!section)continue;if(line.startsWith("Exec="))exec=line.mid(5);if(line.startsWith("X-KDE-DBUS-Restricted-Interfaces="))restricted=line.section('=',1);}
   const auto command=QProcess::splitCommand(exec);if(command.isEmpty()||!restricted.split(';').contains(iface))continue;
   auto binary=command.first();if(!QFileInfo(binary).isAbsolute())binary=QStandardPaths::findExecutable(binary);

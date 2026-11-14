@@ -330,7 +330,7 @@ QString storedValueIn(const QString& address, const QHash<QString, QString>& val
     auto keys = values.keys();
     std::sort(keys.begin(), keys.end());
     const auto texts = readings(tail);
-    for (const auto& key : keys)
+    for (const auto& key : std::as_const(keys))
         for (const auto& needle : credentialTexts(key, values.value(key))) {
             for (const auto& reading : texts) if (stands(reading, needle)) return key;
             if (holdsBase64(texts, needle)) return key;
@@ -348,7 +348,7 @@ QString nameStoredValues(const QString& address, const QHash<QString, QString>& 
     auto keys = values.keys();
     std::sort(keys.begin(), keys.end());
     // Only a value that is itself looked for can be named in its own place.
-    for (const auto& key : keys)
+    for (const auto& key : std::as_const(keys))
         if (const auto value = values.value(key); key != dataSecretKey() && credentialTexts(key, value).contains(value) && stands(address, value)) exact.append({value, key});
     std::sort(exact.begin(), exact.end(), [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
     if (exact.isEmpty()) return {};
@@ -723,7 +723,7 @@ SxcuImport readSxcu(const QByteArray& json) {
         if (entries.size() > maximumRows) { out.error = sxcuError("sxcu_unsupported", QString("This file has more than %1 %2.").arg(maximumRows).arg(list)); return out; }
         QJsonArray rows;
         QSet<QString> seen;
-        for (const auto& [name, raw] : entries) {
+        for (const auto& [name, raw] : std::as_const(entries)) {
             const auto label = singular(list) + " " + boundedMessage(name, 64);
             if (name.isEmpty() || name.size() > maximumNameChars || !controlFree(name)) { out.error = sxcuError("sxcu_invalid", "A " + singular(list) + " has an empty or unusable name."); return out; }
             if (list == "headers") {

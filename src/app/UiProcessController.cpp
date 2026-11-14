@@ -40,8 +40,8 @@ void UiProcessController::activate(const QString& view,Reply reply,const QString
   if(reply)reply(unavailable("ui_view"));
   return;
  }
- int queued=0;for(const auto& callbacks:pending_)queued+=callbacks.size();
- for(const auto& activation:activations_)queued+=activation.replies.size();
+ int queued=0;for(const auto& callbacks:std::as_const(pending_))queued+=callbacks.size();
+ for(const auto& activation:std::as_const(activations_))queued+=activation.replies.size();
  if(queued>=64){if(reply)reply(unavailable("ui_busy"));return;}
  // Keep one activation per view while its acknowledgement is outstanding;
  // a new token is a new click, which still has to reach the window.
@@ -311,7 +311,7 @@ void UiProcessController::killHelper(const QString& reason,QJsonObject context){
  if(!context.contains("phase"))context["phase"]=QString::fromLatin1(phaseName());
  QJsonArray pending,activations;
  for(auto it=pending_.begin();it!=pending_.end();++it)pending.append(it.key());
- for(const auto& activation:activations_)activations.append(activation.view);
+ for(const auto& activation:std::as_const(activations_))activations.append(activation.view);
  context["pendingViews"]=pending;context["activations"]=activations;
  if(!commands_.isEmpty())context["commands"]=int(commands_.size());
  if(!closeSequence_.isEmpty())context["closeConfirmed"]=closeConfirmed_;

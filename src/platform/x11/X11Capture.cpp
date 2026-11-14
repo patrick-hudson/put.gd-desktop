@@ -73,7 +73,7 @@ QRect X11Capture::windowRect(xcb_window_t window,Error& error) {
 }
 X11Target X11Capture::freeze(const QString& action,Error& error) {
  X11Target target;target.action=action;target.layout=layout(error);if(error)return target;
- for(const auto& frame:target.layout)target.logicalSelection=target.logicalSelection.united(frame.logicalRect);
+ for(const auto& frame:std::as_const(target.layout))target.logicalSelection=target.logicalSelection.united(frame.logicalRect);
  if(action=="window") {
   auto active=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,root_,atom("_NET_ACTIVE_WINDOW"),XCB_ATOM_WINDOW,0,1),nullptr));
   if(!active||active->format!=32||xcb_get_property_value_length(active.get())!=4){error=targetError();return target;}
@@ -84,7 +84,7 @@ X11Target X11Capture::freeze(const QString& action,Error& error) {
   if(owner&&((uiProcess_&&qint64(owner)==uiProcess_)||x11::startedByResident(owner))){error={"capture_target","Focus an external window before invoking window capture",{}};return target;}
   target.nativeWindowRect=windowRect(target.window,error);if(error)return target;
   target.logicalSelection={};
-  for(const auto& f:target.layout){const QRect intersection=f.nativeRect.intersected(target.nativeWindowRect);if(intersection.isEmpty())continue;
+  for(const auto& f:std::as_const(target.layout)){const QRect intersection=f.nativeRect.intersected(target.nativeWindowRect);if(intersection.isEmpty())continue;
    const QRectF part(f.logicalRect.x()+(intersection.x()-f.nativeRect.x())/f.density,f.logicalRect.y()+(intersection.y()-f.nativeRect.y())/f.density,intersection.width()/f.density,intersection.height()/f.density);target.logicalSelection=target.logicalSelection.united(part);
   }
   if(target.logicalSelection.isEmpty())error=targetError();
@@ -93,7 +93,7 @@ X11Target X11Capture::freeze(const QString& action,Error& error) {
   // The output under the pointer, frozen at invocation.
   auto pointer=reply(xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr));
   target.logicalSelection={};
-  if(pointer&&pointer->same_screen)for(const auto& f:target.layout)if(f.nativeRect.contains(pointer->root_x,pointer->root_y)){target.nativeArea=f.nativeRect;target.logicalSelection=f.logicalRect;break;}
+  if(pointer&&pointer->same_screen)for(const auto& f:std::as_const(target.layout))if(f.nativeRect.contains(pointer->root_x,pointer->root_y)){target.nativeArea=f.nativeRect;target.logicalSelection=f.logicalRect;break;}
   if(target.nativeArea.isNull())error={"capture_target","The pointer is not over a monitor",{}};
  }
  return target;

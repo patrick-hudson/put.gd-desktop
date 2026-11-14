@@ -71,7 +71,7 @@ PackageRedactor::PackageRedactor(bool includeNames):names_(includeNames) {
 void PackageRedactor::root(const QString& path,const QString& placeholder) {
  const auto clean=QDir::cleanPath(path);
  if(path.isEmpty()||clean=="/"||!QDir::isAbsolutePath(clean))return;
- for(const auto& existing:roots_)if(existing.path==clean)return;
+ for(const auto& existing:std::as_const(roots_))if(existing.path==clean)return;
  roots_.append({clean,placeholder,QRegularExpression(QRegularExpression::escape(clean)+"(?=$|[/\\s\"'<>,;:)\\]}])")});
  std::sort(roots_.begin(),roots_.end(),[](const Root& a,const Root& b){return a.path.size()>b.path.size();});
 }
@@ -91,7 +91,7 @@ QString PackageRedactor::token(const QString& kind,const QString& value) const {
 void PackageRedactor::compile() const {
  if(compiled_)return;
  auto values=literals_.keys();std::sort(values.begin(),values.end(),[](const QString& a,const QString& b){return a.size()>b.size();});
- QStringList escaped;for(const auto& value:values)escaped.append(QRegularExpression::escape(value));
+ QStringList escaped;for(const auto& value:std::as_const(values))escaped.append(QRegularExpression::escape(value));
  literalPattern_=QRegularExpression(escaped.isEmpty()?QStringLiteral("(?!)"):escaped.join('|'));
  compiled_=true;
 }
@@ -422,7 +422,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   }
  }
  const auto uploadedPackage=[&uploadedPackages](const QByteArray& line){for(const auto& needle:uploadedPackages)if(line.contains(needle))return true;return false;};
- for(const auto& op:operations)for(const auto& item:op.items) {
+ for(const auto& op:std::as_const(operations))for(const auto& item:op.items) {
   redactor.literal("name",item.artifact.name);redactor.literal("path",item.artifact.path);redactor.literal("path",item.artifact.previewPath);
   redactor.literal("name",item.candidate);redactor.literal("key",item.objectReference["key"].toString());
   redactor.literal("url",item.receipt.directUrl);redactor.literal("path",item.local.path);
@@ -431,10 +431,10 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // minutes before it was accepted to ten minutes after its last record.
  QDir logs(context.logsDirectory);auto files=logs.entryList({"putgd-*.jsonl"},QDir::Files,QDir::Name);std::reverse(files.begin(),files.end());
  QHash<QString,QByteArray> contents;
- for(const auto& name:files)contents.insert(name,readBounded(logs.filePath(name),64LL*1024*1024));
+ for(const auto& name:std::as_const(files))contents.insert(name,readBounded(logs.filePath(name),64LL*1024*1024));
  if(!request.operationId.isEmpty()) {
   QString last;const auto needle="\"operationId\":\""+request.operationId.toUtf8()+"\"";
-  for(const auto& name:files)for(const auto& line:contents.value(name).split('\n'))if(line.contains(needle)){const auto time=QJsonDocument::fromJson(line).object()["time"].toString();if(time>last)last=time;}
+  for(const auto& name:std::as_const(files))for(const auto& line:contents.value(name).split('\n'))if(line.contains(needle)){const auto time=QJsonDocument::fromJson(line).object()["time"].toString();if(time>last)last=time;}
   const auto end=QDateTime::fromString(last,Qt::ISODateWithMs);
   to=end.isValid()?qMin(now,end.addSecs(600)):now;
  }
@@ -463,13 +463,13 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // Count upload attempts from the window's records before choosing lines.
  struct Line {QString time;QByteArray bytes;};QList<Line> selected;qint64 used=0,dropped=0,eligible=0;
  const qint64 fixedBytes=environmentBytes.size()+diagnosticsBytes.size()+configBytes.size()+coredumpBytes.size()+256*1024;
- for(const auto& name:files) for(const auto& raw:contents.value(name).split('\n')) {
+ for(const auto& name:std::as_const(files)) for(const auto& raw:contents.value(name).split('\n')) {
   if(raw.isEmpty()||uploadedPackage(raw))continue;
   const auto object=QJsonDocument::fromJson(raw).object();const auto time=object["time"].toString();
   if(time.isEmpty()||time<fromText||time>toText)continue;
   if(object["message"]=="Upload attempt")attempts[object["itemId"].toString()]+=1;
  }
- for(const auto& op:operations) {
+ for(const auto& op:std::as_const(operations)) {
   QJsonArray items;for(const auto& item:op.items)items.append(itemSummary(item,attempts.value(item.artifact.id)));
   QJsonObject summary{{"id",op.id},{"action",op.action},{"state",op.stateName()},{"phase",op.phase},{"created",op.created},{"cancelled",op.cancelled},
    {"copyStatus",op.copyStatus},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",items}};
@@ -478,7 +478,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  }
  const auto operationsBytes=compact(redactor.json(operationList,"operations"));
  const qint64 budget=maximumBytes-fixedBytes-operationsBytes.size();
- for(const auto& name:files) {
+ for(const auto& name:std::as_const(files)) {
   const auto lines=contents.value(name).split('\n');
   for(auto it=lines.crbegin();it!=lines.crend();++it) {
    if(it->isEmpty()||uploadedPackage(*it))continue;
@@ -508,7 +508,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // would go, from the same selection, and writes nothing.
  if(request.preview) {
   QJsonArray names;names.append("manifest.json");for(const auto& entry:entries)names.append(entry.first);
-  QJsonArray summaries;for(const auto& value:operationList){const auto op=value.toObject();summaries.append(QJsonObject{{"id",op["id"]},{"action",op["action"]},{"state",op["state"]},{"created",op["created"]},{"items",op["items"].toArray().size()}});}
+  QJsonArray summaries;for(const auto& value:std::as_const(operationList)){const auto op=value.toObject();summaries.append(QJsonObject{{"id",op["id"]},{"action",op["action"]},{"state",op["state"]},{"created",op["created"]},{"items",op["items"].toArray().size()}});}
   const QFileInfo output(request.output);
   const auto folder=request.output.isEmpty()?context.defaultFolder:output.isDir()?output.absoluteFilePath():output.absolutePath();
   return {{"preview",true},{"files",names},{"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"operations",operationList.size()},

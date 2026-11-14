@@ -145,7 +145,7 @@ void NativeRegionOverlay::initializeSurfaces(){
  if(!pidAtom){cancel(unavailable());return;}
  const auto pidProperty=pidAtom->atom;std::free(pidAtom);
  QList<xcb_void_cookie_t> creates;
- for(const auto& frame:frames_){
+ for(const auto& frame:std::as_const(frames_)){
   Surface surface;surface.frame=frame;surface.frame.pixels={};surface.index=int(surfaces_.size());surface.window=xcb_generate_id(connection_);surface.pen=std::max(1,qRound(frame.density));
   // RGB32 keeps an opaque alpha byte, matching the 32-bit ARGB visual.
   if(frozen_)surface.frozen=frame.pixels.convertToFormat(QImage::Format_RGB32);
@@ -193,7 +193,7 @@ void NativeRegionOverlay::initializeSurfaces(){
  // Map every monitor, then request both grabs in one ordered XCB batch. Any
  // pre-grab parent input and subsequent child-grab input are delivered to this
  // same connection, preserving event order without a Qt logical-input fallback.
- for(const auto& surface:surfaces_)xcb_map_window(connection_,surface.window);
+ for(const auto& surface:std::as_const(surfaces_))xcb_map_window(connection_,surface.window);
  if(releasePointer_){
   // The maps must have taken effect before the resident lets go: the server
   // replays what it held at that moment, onto whatever is under the pointer.
@@ -317,7 +317,7 @@ int NativeRegionOverlay::screenAt(QPoint native)const{
 
 void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint native){
  int screen=keyboardScreen_<0?screenAt(native):keyboardScreen_;
- QList<QRectF> screens;for(const auto& frame:frames_)screens.append(frame.logicalRect);
+ QList<QRectF> screens;for(const auto& frame:std::as_const(frames_))screens.append(frame.logicalRect);
  const bool switched=switchRegionDisplay(selection_,screens,screen,key,modifiers);
  switch(switched?RegionKeyAction::Change:regionKey(selection_,frames_[screen].logicalRect,key,modifiers)){
  case RegionKeyAction::Cancel:cancel();break;
@@ -374,7 +374,7 @@ void NativeRegionOverlay::prepareBadges(Surface& surface){
  const QFontMetrics metrics(nativeRegionFont());
  const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
  prepareBadge(surface,surface.hint,regionHintBox(bounds,metrics,regionHint(),local),regionHint(),surface.index==hintScreen_?hint_.opacity():0);
- QList<QRectF> displays;for(const auto& frame:frames_)displays.append(frame.logicalRect);
+ QList<QRectF> displays;for(const auto& frame:std::as_const(frames_))displays.append(frame.logicalRect);
  const bool label=regionLabelDisplay(displays,selection_)==surface.index;
  const auto text=label?regionSizeLabel(selection_,frames_):QString();
  prepareBadge(surface,surface.size,label?regionSizeBox(bounds,metrics,text,local):QRect{},text,1);
@@ -498,7 +498,7 @@ void NativeRegionOverlay::finish(){
  if(qtConnection_){auto* fence=xcb_get_input_focus_reply(qtConnection_,xcb_get_input_focus(qtConnection_),nullptr);std::free(fence);qtConnection_=nullptr;}
  if(connection_){
   grabs_.release();
-  for(const auto& surface:surfaces_){xcb_unmap_window(connection_,surface.window);xcb_destroy_window(connection_,surface.window);if(surface.background)xcb_free_pixmap(connection_,surface.background);}
+  for(const auto& surface:std::as_const(surfaces_)){xcb_unmap_window(connection_,surface.window);xcb_destroy_window(connection_,surface.window);if(surface.background)xcb_free_pixmap(connection_,surface.background);}
   surfaces_.clear();
   if(gc_)xcb_free_gc(connection_,gc_);
   if(colormap_)xcb_free_colormap(connection_,colormap_);

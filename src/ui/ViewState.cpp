@@ -133,7 +133,7 @@ bool captureRouting(const QJsonValue& value){
   if(!fields(it.value(),text+flags))return false;
   const auto route=it.value().toObject();
   for(const auto& key:text)if(!route[key].isString())return false;
-  for(const auto& key:flags)if(!route[key].isBool())return false;
+  for(const auto& key:std::as_const(flags))if(!route[key].isBool())return false;
   if(!QStringList{"default","share","private"}.contains(route["publicationMode"].toString())||!QStringList{"","share","private"}.contains(route["effectivePublicationMode"].toString()))return false;
  }
  return true;

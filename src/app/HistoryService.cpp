@@ -18,7 +18,7 @@ HistoryService::HistoryService(OperationService& operations,QObject* parent):QOb
  retention_.setInterval(60*60*1000);connect(&retention_,&QTimer::timeout,this,&HistoryService::expireConfigured);connect(&operations_,&OperationService::initialized,this,&HistoryService::expireConfigured);retention_.start();if(operations_.ready())expireConfigured();
 }
 HistoryService::~HistoryService() {
- for(const auto& cancelled:active_)cancelled->store(true);
+ for(const auto& cancelled:std::as_const(active_))cancelled->store(true);
  operations_.shutdown();
 }
 void HistoryService::notifyChanged() {if(!notification_.isActive())notification_.start();}

@@ -579,7 +579,7 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   if(!systemPlugin(c,"nautilus/extensions-4"))scripts<<QDir(c.dataHome).filePath("nautilus/scripts/"+scriptName);
   if(ding)scripts<<dingScriptPath(c);
   scripts.removeDuplicates();
-  for(const auto& script:scripts) {
+  for(const auto& script:std::as_const(scripts)) {
    if(systemRecord.files.contains(script)&&managedFile(script)) {result.skipped<<script;continue;}
    keep(script,scriptText(launcher,script,"nautilus",icon),programMode);
   }

@@ -332,7 +332,7 @@ QList<QRect> panels(const GreyView& image,const QList<Quad>& codes,int lineHeigh
  QList<CellRect> leaves;cut(a,{0,0,a.columns,a.rows},down,across,minimumSide,0,leaves);
  if(leaves.size()<2)return {whole};
  QList<QRect> out;const int margin=std::max(4,line/2);
- for(const auto& r:leaves){
+ for(const auto& r:std::as_const(leaves)){
   // Trimmed to its activity; a panel with less than one short line of it is empty.
   int x0=r.x1,y0=r.y1,x1=r.x0,y1=r.y0;qint64 total=0;
   for(int y=r.y0;y<r.y1;++y)for(int x=r.x0;x<r.x1;++x){

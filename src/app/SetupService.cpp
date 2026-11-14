@@ -90,7 +90,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
    if(auto error=namedCredentials_(profile,typed,&names)) {complete(error);return;}
    // Values typed now replace stored ones; the rest are kept from the loaded set.
    const auto cached=credentials_.cached(profileId,reference);QStringList missing;
-   for(const auto& name:names) {
+   for(const auto& name:std::as_const(names)) {
     if(typed.contains(name))value.values.insert(name,typed.value(name));
     else if(cached&&cached->values.contains(name))value.values.insert(name,cached->values.value(name));
     else missing.append(name);
@@ -113,7 +113,7 @@ QStringList SetupService::unlockSavedCredentials() {
   if(!usesCredentialStore(it.value())||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
- for(const auto& id:started)if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
+ for(const auto& id:std::as_const(started))if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
  // An unlock someone already started for a profile holds the gate as well.
  for(auto job=jobs_.cbegin();job!=jobs_.cend();++job)
   if((*job)["kind"]=="unlockCredentials"&&(*job)["state"]=="running"&&snapshot.profiles.contains((*job)["profileId"].toString()))startupUnlocks_.insert(job.key());
@@ -133,7 +133,7 @@ void SetupService::credentialHint(const QString& profileId,const QString& expect
  QStringList names;
  if(namedCredentials_&&!namedCredentials_(profile,{},&names)) {
   QJsonArray stored,missing;
-  for(const auto& name:names)(cached&&cached->values.contains(name)?stored:missing).append(name);
+  for(const auto& name:std::as_const(names))(cached&&cached->values.contains(name)?stored:missing).append(name);
   hint["storedValues"]=stored;hint["missingValues"]=missing;hint.remove("accessKeyHint");hint.remove("secretStored");hint.remove("tokenStored");
  }
  reply({},hint);

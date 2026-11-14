@@ -255,7 +255,7 @@ QList<Operation> HistoryStore::recover(Error* error) {
   if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
   if(changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty())) result.append(op);
  }
- q.finish();for(const auto& op:result) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
+ q.finish();for(const auto& op:std::as_const(result)) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
  // Sharing intent survives a crash; revoke/create are never automatically replayed.
  auto shares=forwardQuery(db_);if(!shares.exec("SELECT data FROM sharing_operations WHERE json_extract(data,'$.state') IN ('accepted','running')")){if(error)*error=sqlError();return result;}
  QList<QJsonObject> interruptedShares;
@@ -289,9 +289,9 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  HistoryPage r;if(error_) {r.error=error_;return r;}
  if(query.limit<1||query.limit>200||query.offset<0||query.search.size()>256) {r.error={"invalid_query","History page must be between 1 and 200 records",{}};return r;}
  QString where;QVariantList values;historyWhere(query,where,values);
- auto q=forwardQuery(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
+ auto q=forwardQuery(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:std::as_const(values)) q.addBindValue(v);
  if(!q.exec()||!q.next()) {r.error=sqlError();return r;}r.total=q.value(0).toLongLong();
- q.prepare("SELECT data FROM history"+where+" ORDER BY created DESC,id LIMIT ? OFFSET ?");for(const auto& v:values) q.addBindValue(v);q.addBindValue(query.limit);q.addBindValue(query.offset);
+ q.prepare("SELECT data FROM history"+where+" ORDER BY created DESC,id LIMIT ? OFFSET ?");for(const auto& v:std::as_const(values)) q.addBindValue(v);q.addBindValue(query.limit);q.addBindValue(query.offset);
  if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(relocate(publicRecord(decode(q.value(0)))));return r;
 }
 QJsonObject HistoryStore::counts(const HistoryQuery& query,const QList<std::pair<QString,QString>>& days,Error* error) const {
@@ -307,11 +307,11 @@ QJsonObject HistoryStore::counts(const HistoryQuery& query,const QList<std::pair
  // calendar; the count is the query's stored files created in it.
  QString where;QVariantList values;historyWhere(query,where,values);
  if(!q.prepare("SELECT count(*) FROM history"+where)) {if(error)*error=sqlError();return {};}
- for(const auto& v:values) q.addBindValue(v);if(!q.exec()||!q.next()) {if(error)*error=sqlError();return {};}const auto total=q.value(0).toLongLong();q.finish();
+ for(const auto& v:std::as_const(values)) q.addBindValue(v);if(!q.exec()||!q.next()) {if(error)*error=sqlError();return {};}const auto total=q.value(0).toLongLong();q.finish();
  QJsonArray dayCounts;
  for(const auto& [from,to]:days) {
   if(!q.prepare("SELECT count(*) FROM history"+where+" AND created>=? AND created<=?")) {if(error)*error=sqlError();return {};}
-  for(const auto& v:values) q.addBindValue(v);q.addBindValue(from);q.addBindValue(to);
+  for(const auto& v:std::as_const(values)) q.addBindValue(v);q.addBindValue(from);q.addBindValue(to);
   if(!q.exec()||!q.next()) {if(error)*error=sqlError();return {};}dayCounts.append(double(q.value(0).toLongLong()));q.finish();
  }
  return {{"categories",categories},{"total",double(total)},{"days",dayCounts}};

@@ -99,7 +99,7 @@ bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable
 bool HistoryModel::multipleDestinations()const{return multipleDestinations_;}
 bool HistoryModel::scanDestinations()const{
  QSet<QString> destinations;
- for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:files){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();id=file["uploadStatus"]=="local_only"?QString("local:"):!id.isEmpty()?"profile:"+id:"receipt:"+QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
+ for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:std::as_const(files)){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();id=file["uploadStatus"]=="local_only"?QString("local:"):!id.isEmpty()?"profile:"+id:"receipt:"+QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
  return false;
 }
 QString HistoryModel::commonDestination()const{return rows_.isEmpty()||multipleDestinations()?QString{}:data(index(0),OutputRole).toString();}
@@ -243,7 +243,7 @@ void HistoryModel::refresh(){
 }
 void HistoryModel::rebuild(){
  QList<QJsonObject> groups;QHash<QString,int> grouped;
- for(const auto& v:records_){const auto r=v.toObject();const auto key=r["operationId"].toString(r["id"].toString());if(grouped.contains(key)){auto& group=groups[grouped[key]];auto children=group["records"].toArray();children.append(r);group["records"]=children;group["bytes"]=double(group["bytes"].toInteger()+r["bytes"].toInteger());if(r["uploadStatus"]=="failed")group["error"]=r["error"],group["uploadStatus"]="failed";}else{auto group=r;group["records"]=QJsonArray{r};grouped[key]=groups.size();groups.append(group);}}
+ for(const auto& v:std::as_const(records_)){const auto r=v.toObject();const auto key=r["operationId"].toString(r["id"].toString());if(grouped.contains(key)){auto& group=groups[grouped[key]];auto children=group["records"].toArray();children.append(r);group["records"]=children;group["bytes"]=double(group["bytes"].toInteger()+r["bytes"].toInteger());if(r["uploadStatus"]=="failed")group["error"]=r["error"],group["uploadStatus"]="failed";}else{auto group=r;group["records"]=QJsonArray{r};grouped[key]=groups.size();groups.append(group);}}
  const bool specific=!query_.category.isEmpty()||!query_.mime.isEmpty()||!query_.profileId.isEmpty()||!query_.localStatus.isEmpty()||!query_.remoteStatus.isEmpty()||!query_.from.isEmpty()||!query_.to.isEmpty();
  for(const auto& v:operations_){const auto op=v.toObject();const auto id=op["id"].toString();if(grouped.contains(id)){groups[grouped[id]]["operation"]=op;continue;}
   // A cleared history stays clear. Only a live or no-file failed/cancelled capture
@@ -257,7 +257,7 @@ void HistoryModel::rebuild(){
  }
  std::stable_sort(groups.begin(),groups.end(),[](const auto& a,const auto& b){if(active(a)!=active(b))return active(a);return a["created"].toString()>b["created"].toString();});
  QList<QJsonObject> rows;QList<QDateTime> createdAt;QList<RowFacts> facts;int hidden=0;
- for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hidden;continue;}rows.append(group);createdAt.append(created(group));facts.append(rowFacts(group));}
+ for(auto group:std::as_const(groups)){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hidden;continue;}rows.append(group);createdAt.append(created(group));facts.append(rowFacts(group));}
  // A live operation republishes up to four times a second, usually without
  // moving anything a row is laid out from. Update such rows where they are: a
  // reset repaints every visible tile and drops a press, for one row's facts.

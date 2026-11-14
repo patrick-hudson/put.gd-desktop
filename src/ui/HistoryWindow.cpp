@@ -225,7 +225,7 @@ public:
  void setFields(const QList<std::pair<QString,QString>>& fields){
   while(auto* item=grid_->takeAt(0)){delete item->widget();delete item;}labels_.clear();values_.clear();QStringList text;
   for(const auto& [key,value]:fields){auto* label=new QLabel(key,this);Ui::role(label,"meta");QLabel* content;if(key=="File"){auto* file=new Ui::ElidedLabel(this);file->setElideMode(titleElision(value));file->setText(value);file->setObjectName("historyFileValue");content=file;}else content=new QLabel(value,this);Ui::role(content,"body");content->setAlignment(Qt::AlignLeft|Qt::AlignTop);content->setTextFormat(Qt::PlainText);content->setWordWrap(key!="File");content->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);content->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);content->setMinimumWidth(0);content->setAccessibleName(key+": "+value);content->setToolTip(value);labels_.append(label);values_.append(content);text.append(key+": "+value);}
-  setProperty("text",text.join("\n"));setAccessibleDescription(text.join("\n"));arrange();for(auto* label:labels_)label->show();for(auto* value:values_)value->show();updateGeometry();
+  setProperty("text",text.join("\n"));setAccessibleDescription(text.join("\n"));arrange();for(auto* label:std::as_const(labels_))label->show();for(auto* value:std::as_const(values_))value->show();updateGeometry();
  }
 protected:void resizeEvent(QResizeEvent* event)override{QWidget::resizeEvent(event);arrange();}
 private:
@@ -398,7 +398,7 @@ void HistoryWindow::metadataDocument(QTextDocument& document,const QModelIndex& 
   QStringList shown;if(!HistoryModel::failed(record)){if(!kind.isEmpty())shown.append(kind);if(!size.isEmpty())shown.append(size);if(!destination.isEmpty())shown.append(destination);}if(!status.isEmpty())shown.append(status);if(!created.isEmpty())shown.append(created);
   for(const auto& optional:{destination,size,kind})if(!optional.isEmpty()&&measured(shown)>width)shown.removeAll(optional);
   if(!status.isEmpty()&&measured(shown)>width){shown.removeAll(status);const int reserved=created.isEmpty()?0:int(std::ceil(measured({created})))+facts.horizontalAdvance(" · ");const auto shortened=facts.elidedText(status,Qt::ElideRight,qMax(0,width-reserved));if(!shortened.isEmpty())shown.prepend(shortened);}
-  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:parts)if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,parts.contains(original)?t.textSecondary:t.textMuted),parts.contains(original)));}
+  QStringList spans;for(const auto& part:shown.join(" · ").split(" · ",Qt::SkipEmptyParts)){auto original=part;if(part.endsWith(QChar(0x2026)))for(const auto& candidate:std::as_const(parts))if(candidate.startsWith(part.chopped(1))){original=candidate;break;}spans.append(metadataSpan(part,metadataColor(record,original,parts.contains(original)?t.textSecondary:t.textMuted),parts.contains(original)));}
   option.setWrapMode(QTextOption::NoWrap);document.setDefaultTextOption(option);document.setHtml(spans.join(metadataSpan(" · ",t.textSecondary)));document.setTextWidth(qMax(20,width));return;
  }
  if(bounded&&!HistoryModel::failed(record))text=QFontMetrics(document.defaultFont()).elidedText(text,Qt::ElideRight,qMax(20,width));
@@ -465,7 +465,7 @@ public:
  std::function<void(const QModelIndex&)> primaryAction;
  explicit AccessibleHistoryList(QListView* view):QAccessibleWidget(view,QAccessible::List),view_(view){}
  int childCount()const override{return view_->model()?view_->model()->rowCount():0;}
- ~AccessibleHistoryList()override{for(const auto id:items_)QAccessible::deleteAccessibleInterface(id);}
+ ~AccessibleHistoryList()override{for(const auto id:std::as_const(items_))QAccessible::deleteAccessibleInterface(id);}
  QAccessibleInterface* child(int row)const override{if(row<0||row>=childCount())return nullptr;const auto index=view_->model()->index(row,0);for(const auto id:items_)if(auto* item=static_cast<AccessibleHistoryItem*>(QAccessible::accessibleInterface(id));item&&item->index()==index)return item;auto primary=[this](const QModelIndex& i){if(primaryAction)primaryAction(i);};auto* item=new AccessibleHistoryItem(view_,index,primary);items_.append(QAccessible::registerAccessibleInterface(item));return item;}
  int indexOfChild(const QAccessibleInterface* child)const override{const auto* item=dynamic_cast<const AccessibleHistoryItem*>(child);return item&&item->index().isValid()?item->index().row():-1;}
  QAccessibleInterface* childAt(int x,int y)const override{const auto index=view_->indexAt(view_->viewport()->mapFromGlobal(QPoint(x,y)));return index.isValid()?child(index.row()):nullptr;}
@@ -523,7 +523,7 @@ public:
  void raiseActions(){
   QWidgetList order,shown;for(auto* button:{primary_,details_,more_})if(button->isVisible())order.append(button);
   for(auto* child:view_->viewport()->children())if(auto* widget=qobject_cast<QWidget*>(child);widget&&widget->isVisible())shown.append(widget);
-  if(shown.mid(shown.size()-order.size())!=order)for(auto* button:order)button->raise();
+  if(shown.mid(shown.size()-order.size())!=order)for(auto* button:std::as_const(order))button->raise();
  }
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
   // Qt also asks about the gaps between gallery tiles, where there is no row.
@@ -984,7 +984,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
    if(key=="uploadStatus")choices={{"uploaded","Uploaded"},{"local_only","Local only"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Failed"},{"unknown","Outcome unknown"},{"cancelled","Canceled"},{"not_requested","Not requested"},{"skipped","Skipped"},{"conflict","Conflict"}};
    else if(key=="localStatus")choices={{"saved","Saved"},{"disabled","Not requested"},{"pending","Waiting to save"},{"failed","Save failed"}};
    else if(key=="remoteStatus")choices={{"not_requested","Deletion not requested"},{"present","Available"},{"pending","Waiting for deletion"},{"deleting","Deleting"},{"removed","Deleted"},{"already_missing","Already missing"},{"failed","Deletion failed"},{"unknown","Outcome unknown"},{"changed","Remote file changed"},{"superseded","Replaced by newer upload"},{"hidden_version_retained","Hidden; version retained"},{"version_retained","Version retained"},{"unsupported_safe_removal","Safe removal unavailable"}};
-   for(const auto& [value,name]:choices)combo->addItem(name,value);
+   for(const auto& [value,name]:std::as_const(choices))combo->addItem(name,value);
    if(key=="remoteStatus"){showCancelled_=new QCheckBox("Include canceled",technical);showCancelled_->setObjectName("historyShowCancelled");showCancelled_->setCheckable(true);showCancelled_->setAccessibleName("Include canceled");techBox->addWidget(showCancelled_);connect(showCancelled_,&QCheckBox::toggled,this,[this](bool show){if(model_){model_->setShowCancelled(show);updateFilterSummary();emit viewStateChanged();}});}
    if(key=="profileId"){
     auto refresh=[this,combo,raw]{const QSignalBlocker block(combo);const auto value=raw->text();combo->clear();combo->addItem("Any destination",QString{});for(const auto& v:session_.document()["profiles"].toArray()){const auto profile=v.toObject();combo->addItem(profile["label"].toString(),profile["id"].toString());}int index=combo->findData(value);if(index<0){combo->addItem("Unavailable destination",value);index=combo->count()-1;}combo->setCurrentIndex(index);};refresh();connect(&session_,&UiSession::accepted,this,refresh);
@@ -1380,7 +1380,7 @@ void HistoryWindow::resizeEvent(QResizeEvent* event){RetainedWindow::resizeEvent
 void HistoryWindow::refresh(){if(!session_.ready()){awaitingInitialization_=true;Ui::feedback(status_,"Waiting for the resident journal to initialize.");return;}model_->refresh();}
 QStringList HistoryWindow::selectedIds()const{QStringList ids;for(auto index:table_->selectionModel()->selectedRows()){auto r=model_->record(index.row());const auto records=r["records"].toArray();if(records.isEmpty())ids.append("operation:"+r["operationId"].toString());else for(auto v:records)ids.append(v.toObject()["id"].toString());}return ids;}
 QJsonObject HistoryWindow::selectedRecord()const{if(model_->busy())return {};const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return {};const auto group=model_->record(rows.first().row());for(const auto& v:group["records"].toArray())if(v.toObject()["id"]==items_->currentData().toString())return v.toObject();return group["records"].toArray().isEmpty()?QJsonObject{}:group["records"].toArray().first().toObject();}
-QList<QJsonObject> HistoryWindow::selectedFiles()const{if(model_->busy())return {};QList<QJsonObject> files;auto rows=table_->selectionModel()->selectedRows();std::sort(rows.begin(),rows.end(),[](const QModelIndex& a,const QModelIndex& b){return a.row()<b.row();});for(const auto& index:rows)for(const auto& v:model_->record(index.row())["records"].toArray())files.append(v.toObject());return files;}
+QList<QJsonObject> HistoryWindow::selectedFiles()const{if(model_->busy())return {};QList<QJsonObject> files;auto rows=table_->selectionModel()->selectedRows();std::sort(rows.begin(),rows.end(),[](const QModelIndex& a,const QModelIndex& b){return a.row()<b.row();});for(const auto& index:std::as_const(rows))for(const auto& v:model_->record(index.row())["records"].toArray())files.append(v.toObject());return files;}
 QStringList HistoryWindow::deletableIds()const{QStringList ids;for(const auto& file:selectedFiles())if(HistoryModel::remoteDeletable(file))ids.append(file["id"].toString());return ids;}
 QStringList HistoryWindow::selectedLinkIds()const{QStringList ids;for(const auto& file:selectedFiles())if(file["linkAvailable"].toBool()||file["linkRefreshable"].toBool())ids.append(file["id"].toString());return ids;}
 bool HistoryWindow::selectionHasLinks()const{return !selectedLinkIds().isEmpty();}

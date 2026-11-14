@@ -131,7 +131,7 @@ void KdeScreencast::streamOutput(const QString& name, Done done, bool pointerHid
     if (!available(facts, &reason)) { done({"recording_unsupported", "KWin screen casting is unavailable: " + reason, {}}, {}); return; }
     if (d_->done || d_->stream) { done({"recording_state", "A KWin screen cast is already open", {}}, {}); return; }
     Impl::Output* chosen = nullptr;
-    for (auto* output : d_->outputs) if (name.isEmpty() || output->name == name) { chosen = output; break; }
+    for (auto* output : std::as_const(d_->outputs)) if (name.isEmpty() || output->name == name) { chosen = output; break; }
     if (!chosen) { done({"recording_target", "No connected output has this name", {{"identity", name}}}, {}); return; }
     d_->pending = {0, chosen->logical, chosen->name};
     d_->done = std::move(done);
@@ -146,7 +146,7 @@ double KdeScreencast::regionScale(const QRect& logical) {
     // The output under the region's centre, else the one sharing most of it.
     const Impl::Output* chosen = nullptr;
     qint64 best = 0;
-    for (const auto* output : d_->outputs) {
+    for (const auto* output : std::as_const(d_->outputs)) {
         if (output->logical.contains(logical.center())) { chosen = output; break; }
         const QRect piece = output->logical.intersected(logical);
         if (qint64(piece.width()) * piece.height() > best) { best = qint64(piece.width()) * piece.height(); chosen = output; }

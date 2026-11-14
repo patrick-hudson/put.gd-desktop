@@ -114,7 +114,7 @@ bool readData(const char* filename,std::vector<char>* data){
  if(!validLanguage(language))return false;
  const std::lock_guard<std::mutex> guard(resolver->lock);
  // A language asked for again, by Tesseract or by another engine, comes from memory.
- for(const auto& file:resolver->files)if(file.language==language){*data=file.data;return true;}
+ for(const auto& file:std::as_const(resolver->files))if(file.language==language){*data=file.data;return true;}
  if(resolver->files.size()>=maximumLanguages){resolver->overLimit=language;return false;}
  for(const auto& directory:resolver->directories){
   const auto path=directory+QLatin1Char('/')+language+QLatin1String(".traineddata");
@@ -145,17 +145,17 @@ void LanguageData::release(){
 }
 qint64 LanguageData::bytesBeyondEnglish()const{
  qint64 total=0;if(!resolver)return 0;
- for(const auto& f:resolver->files)if(f.language!=QLatin1String("eng"))total+=f.kept;
+ for(const auto& f:std::as_const(resolver->files))if(f.language!=QLatin1String("eng"))total+=f.kept;
  return total;
 }
 qint64 LanguageData::bytesHanded()const{
  qint64 total=0;if(!resolver)return 0;
- for(const auto& f:resolver->files)total+=f.kept;
+ for(const auto& f:std::as_const(resolver->files))total+=f.kept;
  return total;
 }
 QStringList LanguageData::files()const{
  QStringList out;if(!resolver)return out;
- for(const auto& f:resolver->files)out.append(f.language+QLatin1String(".traineddata ")+QString::number(f.bytes)+QLatin1Char(' ')+QString::fromLatin1(f.sha256));
+ for(const auto& f:std::as_const(resolver->files))out.append(f.language+QLatin1String(".traineddata ")+QString::number(f.bytes)+QLatin1Char(' ')+QString::fromLatin1(f.sha256));
  return out;
 }
 TextEngine::TextEngine()=default;

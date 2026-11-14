@@ -2267,7 +2267,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             if (!field) continue;
             QList<QWidget*> controls;
             if (field->widget()) controls << field->widget() << field->widget()->findChildren<QWidget*>();
-            for (auto* control : controls) {
+            for (auto* control : std::as_const(controls)) {
                 const bool unitted = qobject_cast<QLineEdit*>(control) && control->parentWidget() && !qobject_cast<QComboBox*>(control->parentWidget())
                     && std::any_of(control->parentWidget()->children().cbegin(), control->parentWidget()->children().cend(), [](QObject* o) { return o->property("visualRole").toString() == "unitSuffix"; });
                 if (!qobject_cast<QComboBox*>(control) && !qobject_cast<QAbstractSpinBox*>(control) && !unitted) continue;
@@ -2306,7 +2306,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             : QObject(page), page_(page), forms_(forms), sharedForms_(sharedForms.isEmpty() ? forms : sharedForms), shared_(!sharedForms.isEmpty()) {
             page->installEventFilter(this);
             if (page->parentWidget()) page->parentWidget()->installEventFilter(this);
-            for (auto* form : forms_) {
+            for (auto* form : std::as_const(forms_)) {
                 form->parentWidget()->installEventFilter(this);
                 for (auto* child : form->parentWidget()->findChildren<QWidget*>()) child->installEventFilter(this);
                 form->setRowWrapPolicy(QFormLayout::WrapAllRows);
@@ -2374,7 +2374,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
             }
             bool stack = false;
             const int pageWidth = page_->parentWidget() ? std::min(page_->width(), page_->parentWidget()->width()) : page_->width();
-            for (auto* form : forms_) {
+            for (auto* form : std::as_const(forms_)) {
                 if (!form->parentWidget()->isVisibleTo(page_)) continue;
                 int fieldWidth = 0;
                 bool labelled = false;
@@ -2399,7 +2399,7 @@ void alignForms(QWidget* page, const QList<QFormLayout*>& sharedForms) {
                 stack |= available < gutter_ + std::max(0, form->horizontalSpacing()) + (shared_ ? std::max(240, std::min(320, fieldWidth)) : fieldWidth);
             }
             const auto policy = stack ? QFormLayout::WrapAllRows : QFormLayout::DontWrapRows;
-            for (auto* form : forms_) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
+            for (auto* form : std::as_const(forms_)) if (form->rowWrapPolicy() != policy) form->setRowWrapPolicy(policy);
         }
         QWidget* page_;
         QList<QFormLayout*> forms_, sharedForms_;
@@ -2622,7 +2622,7 @@ namespace {
 int& customFrameOverride() { static int forced = 0; return forced; }
 }
 void WindowHeader::chromeAfter(QWidget* last) {
-    for (auto* button : chromeOrder_) { QWidget::setTabOrder(last, button); last = button; }
+    for (auto* button : std::as_const(chromeOrder_)) { QWidget::setTabOrder(last, button); last = button; }
     if (menu_) QWidget::setTabOrder(last, menu_);
 }
 void WindowHeader::setCustomFrameOverride(int forced) { customFrameOverride() = forced; }

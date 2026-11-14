@@ -26,7 +26,7 @@ inline QList<QByteArray> x11ClipboardImportTargets(const QList<QByteArray>& offe
   }
   if(!standardOnly) {
    auto imageTypes=discover();imageTypes.removeAll("image/png");imageTypes.prepend("image/png");
-   for(const auto& mime:imageTypes)if(offered.contains(mime))targets.append(mime);
+   for(const auto& mime:std::as_const(imageTypes))if(offered.contains(mime))targets.append(mime);
   }
  }
  for(const char* name:{"UTF8_STRING","text/plain;charset=utf-8","text/plain"})

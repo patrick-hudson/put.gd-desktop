@@ -86,7 +86,7 @@ void UploaderRows::addRow(const QString& name, const QString& value, bool secret
     renumber();
     refreshRow(row);
     auto* box = row.box;
-    const auto find = [this, box]() -> const Row* { for (const auto& r : rows_) if (r.box == box) return &r; return nullptr; };
+    const auto find = [this, box]() -> const Row* { for (const auto& r : std::as_const(rows_)) if (r.box == box) return &r; return nullptr; };
     connect(reveal, &QAction::toggled, this, [this, find] { if (const auto* r = find()) refreshRow(*r); });
     connect(row.name, &QLineEdit::editingFinished, this, [this, find] {
         if (const auto* r = find()) { refreshRow(*r); renumber(); }
@@ -487,7 +487,7 @@ Error CustomUploaderPanel::importBytes(const QByteArray& bytes) {
     QString text = "Imported" + (result.name.isEmpty() ? QString() : " " + result.name) + ".";
     if (!held.isEmpty())
         text += QString(" %1 secret value%2 held in this window until you store %3: %4.").arg(held.size()).arg(held.size() == 1 ? " is" : "s are", held.size() == 1 ? "it" : "them", held.join(", "));
-    for (const auto& note : result.notes)
+    for (const auto& note : std::as_const(result.notes))
         text += " " + (plainHttpAllowed && note == http::plainHttpNote()
             ? QStringLiteral("This destination sends files and credentials over plain HTTP, as allowed for it.") : note);
     setNotice(text, true);
