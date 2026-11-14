@@ -1,79 +1,44 @@
 # README image sources
 
-The current README uses `logo.svg` (see [Logo and icons](#logo-and-icons)), the hero `hero.png`
-(see [Hero](#hero)) and two screenshots from the `ui-catalog` artifact of
-[CI run 41225146672](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41225146672),
-the newest successful CI run on `nightly` when collected on 2026-10-31.
-The run started at 17:33:59 UTC. Its manifest records source commit
-`8694706f3ae3e357f9bb3eb1f999f44a4ed278e4`, tree
-`f9c5d5de1cc05e10416a77f5ad74f4ac1ee6e632`, and build
-`26.1031.3481-dev+g8694706f3ae3`.
+The README shows the application icon straight from `packaging/linux/putgd.svg`, so it
+always matches the app. Everything else it shows is in `shots/`.
 
-These are current application widgets rendered with synthetic sample content,
-not real-desktop acceptance evidence. The catalog includes a deliberately fixed
-sample version in the main-window footer; it is not the source/build identity.
-The selected images contain no URLs, credentials, account names or personal data.
+## Screenshots
 
-| README file | Catalog source | Preparation |
+`shots/` holds six screenshots copied unchanged from the put.gd website
+([put.gd-site](https://github.com/patrick-hudson/put.gd-site) `public/_site/shots/`, commit
+`5e3aca5`, the `@2x` WebP files). They are real windows of put.gd 26.1111.4633 nightly (commit
+`4f80bcfffc047087d69a5e469a08d9f6397249f3`) on GNOME 50.6 (Wayland), Fedora Linux 44, taken by
+the site's `tools/shots/` and recorded in its `shots.json`. Each comes in a dark and a light
+version, and the README picks one with `<picture>` and `prefers-color-scheme`, as GitHub's
+theme does. Uploads in them went to `demo.put.gd`, the site's demo destination.
+
+| README file | Site file | What it shows |
 | --- | --- | --- |
-| `recording-bar.png` | `34-record-recording-bar.png` | Full 892 × 52 frame; recording with system audio, Pause and Stop |
-| `history.png` | `history-gallery-compact.png` | Crop `(0, 0, 1060, 440)` from 1060 × 680; keeps navigation and the complete first row of cards, excluding the partly visible second row and sample-version footer |
+| `desktop-dark.webp`, `desktop-light.webp` | `desktop-*@2x.webp` (3840 × 2160) | History on the Fedora GNOME desktop |
+| `edit-dark.webp`, `edit-light.webp` | `edit-*@2x.webp` (3218 × 2040) | The editor with a box, steps, an arrow, a label, a highlight and a redaction on the Apollo 11 plaque |
+| `record-bar-dark.webp`, `record-bar-light.webp` | `record-bar-*@2x.webp` (2556 × 1494) | A region over a playing video and the recording bar |
 
-Images retain the catalog's dark theme and native resolution. PNGs were losslessly
-re-encoded with Pillow; no widget content was painted over or replaced.
+To refresh them, copy the same files from a newer put.gd-site commit and update the version
+and commit above and the credit line at the end of the README.
 
-Retrieve the source artifact with:
-
-```sh
-gh run download 41225146672 --repo patrick-hudson/put.gd-desktop \
-  --name ui-catalog --dir work/readme-draft/catalog
-```
+Demo media, credited at the end of the README as on the website:
+[Sintel](https://commons.wikimedia.org/wiki/File:Sintel_trailer-1080p.ogv) © copyright
+Blender Foundation | durian.blender.org, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)
+(the recording bar); NASA photos, public domain (the Apollo 11 lunar plaque `S69-38749` in the
+editor, and the History thumbnails).
 
 ## Image checksums
 
-- `hero.png`: `c59ff5920fd3939bd478560688e7c29aa3419497331fd3e551234648d1f13af6`
-- `recording-bar.png`: `4dc7657b231cb40b6bccac36e2cb2aa4d91f720f671bd48425b2e4428b08dd24`
-- `history.png`: `11934c9efc717f9df97d7ecf3834b1240a1de8e9cf89344ebd8ab08a6cc94a04`
-
-## Hero
-
-`hero.png` is the editor window of the published nightly AppImage
-`putgd-26.1113.4757-nightly-x86_64.AppImage`, rendered on 2026-11-14 on d69 in a
-private `Xvfb` display (1600 × 1000, no window manager, so put.gd draws its own
-header) under `dbus-run-session`, with private `XDG_*` folders. The profile was the
-development template (`settings.importDevelopment`, no credentials) with its
-destination relabelled "Team screenshots" and the light theme.
-
-The edited image is a made-up "acme" deploy-keys page (an HTML page rendered to a
-1200 × 720 PNG with headless Chrome); its keys are random strings. The marks were
-added with `putgd-cli editor.open {"source":"file",...}` and one `editor.apply`:
-two redacts over the `ak_live_` keys, a yellow highlight on the error, a rectangle
-round the first Rotate button, steps 1 and 2, the text "Rotate this key first" and an
-arrow, all in `#D7263D`. The window was sized to 1280 × 800 with `xdotool` and grabbed
-with `import -window root`. The only change after that is the frame: rounded corners
-(radius 14), a 1 px hairline and a soft drop shadow on a transparent 36 px margin,
-drawn with Pillow. Nothing inside the window was painted over.
-
-## Logo and icons
-
-`logo.svg` is shown 88 px wide above the README's title. It is the application
-icon from `packaging/linux/putgd.svg` (the IconArt arrow-and-tray glyph) with a
-soft glow, on a padded viewBox.
-
-`icons/*.svg` are section and feature icons the current README does not use: the
-brand tile (`#1b1e25`, corner radius 5 on a 24-unit grid) with a duotone glyph placed
-exactly as the application icon places its own (`translate(2.4 2) scale(.8)`), accent
-`#9bbcff` and secondary `#526386`. `capture`, `edit`, `record`, `storage`
-(destinations), `history`, `desktop`/`desktops`, `screenshots` (image) and `docs`
-(file) transcribe the glyphs in `src/ui/IconArt.cpp`; `features` and `download` are the
-Lift arrow-and-tray glyph and its downward mirror; the rest (`scriptable`, `quiet`,
-`quickstart`, `build`, `releases`, `architecture`, `shield`, `contributing`, `license`,
-`search`) are drawn in the same two tones and stroke weights. They were generated by a
-small Python script kept out of the tree; edit the SVGs directly or regenerate the
-whole set.
+- `desktop-dark.webp`: `b42eed199e4c4974762d9fd2d5072d22ba3fec6a15a671258650b8ec60a86ab8`
+- `desktop-light.webp`: `9d1766826caf852d48cf77a6ffc33e2b274ea069ba3e8097e401adefdebfdcb2`
+- `edit-dark.webp`: `7953fcb69170d495323b147257be813004e45aac149e5aaee9aad70b3be1366b`
+- `edit-light.webp`: `fea2fd04300cdde30cbffafc483a9e302a373fbb1301c7a2a0d8a432257a4727`
+- `record-bar-dark.webp`: `2214c1aeb96e7ae2dda3b3f8ca5122045654f8ec5914c6ea0f40aa9393965bbc`
+- `record-bar-light.webp`: `2ff44364dbca9f74addccf25b7641ded0204ce54f3063578bc9cc68ae2606d57`
 
 Everything under `docs/readme/` exists only for the repository README. Nothing here is
-packaged, exported in the curated source archive or used by a test. The README claims
-no acceptance result from these images; acceptance evidence lives in
+packaged, exported in the curated source archive or used by a test. The README claims no
+acceptance result from these images; acceptance evidence lives in
 [put.gd-evidence](https://github.com/patrick-hudson/put.gd-evidence) and is recorded in
 `docs/testing/verification.md`.
