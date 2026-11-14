@@ -60,15 +60,15 @@ private slots:
   profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/synthetic"}};doc["profiles"]=QJsonArray{profile};QVERIFY(settings.save(doc,{}));
   doc=putgd::test::configuration(tmp.path());QVERIFY(settings.save(doc,settings.revision()));
  }
- void missingShareAfterUncertainCreateRetainsIntent() {
+ // One Retry finishes an uncertain create (#1399): its inspection finds the file
+ // unshared with the create intent kept, and the same run makes the link, once.
+ void uncertainCreateIsFinishedByOneRetry() {
   QTemporaryDir tmp;ProviderRegistry registry;auto provider=std::make_shared<SharingFixture>();provider->loseShareReply=true;provider->inspectPrivate=true;registry.add("opaque",provider);
   SettingsService settings(tmp.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(putgd::test::configuration(tmp.path()),{}));putgd::test::Source source;source.payload=putgd::test::textPayload();OperationService operations(tmp.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject d){QVERIFY(!e);id=d["operationId"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(operations.databasePath());
   const auto original=store.operation(id).items.first().receipt;QCOMPARE(store.operation(id).items.first().shareIntent,QString("create"));
-  bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  QCOMPARE(store.operation(id).items.first().shareStatus,QString("private"));QCOMPARE(store.operation(id).items.first().shareIntent,QString("create"));QCOMPARE(store.operation(id).stateName(),QString("partial"));QCOMPARE(provider->shares.load(),1);QCOMPARE(source.copies,0);
-  provider->loseShareReply=false;retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  const auto item=store.operation(id).items.first();QCOMPARE(item.shareStatus,QString("shared"));QVERIFY(item.shareIntent.isEmpty());QCOMPARE(item.receipt.objectReference,original.objectReference);QCOMPARE(item.receipt.concurrencyToken,original.concurrencyToken);QCOMPARE(provider->shares.load(),2);QCOMPARE(provider->inspections.load(),1);QCOMPARE(provider->storage.uploads.load(),1);
+  provider->loseShareReply=false;bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  const auto item=store.operation(id).items.first();QCOMPARE(item.shareStatus,QString("shared"));QVERIFY(item.shareIntent.isEmpty());QCOMPARE(store.operation(id).stateName(),QString("completed"));QCOMPARE(item.receipt.objectReference,original.objectReference);QCOMPARE(item.receipt.concurrencyToken,original.concurrencyToken);QCOMPARE(provider->shares.load(),2);QCOMPARE(provider->inspections.load(),1);QCOMPARE(provider->storage.uploads.load(),1);
  }
  void journalFailureStopsPollingAndCanBeInspected_data() {QTest::addColumn<bool>("runningFailure");QTest::newRow("running-transition")<<true;QTest::newRow("terminal-write")<<false;}
  void journalFailureStopsPollingAndCanBeInspected() {

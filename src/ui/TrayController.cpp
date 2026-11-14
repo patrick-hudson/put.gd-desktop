@@ -481,8 +481,22 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  }
  const auto cause=failureReason(!itemError.isEmpty()?itemError:meaningfulError(error)?error:QJsonObject{});
  const auto what=localFailed&&!uploaded&&failed==1?QString("Local save failed"):state=="interrupted"?QString("Upload interrupted"):QString("Upload failed");
+ // An uploaded file whose link step did not finish is on the storage: say that,
+ // and name the History action its link state offers (#1399).
+ int unconfirmed=0,unmade=0;QString linkCause;
+ for(const auto& value:items){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"||state=="interrupted")continue;const auto share=item["shareStatus"].toString();
+  if(share=="unknown"||share=="changed")++unconfirmed;
+  else if(share=="failed"||(share=="private"&&item["shareIntent"]=="create")){++unmade;if(linkCause.isEmpty()&&share=="failed")linkCause=failureReason(item["error"].toObject());}}
+ QString link;
+ if(const int links=unconfirmed+unmade){
+  const auto subject=items.size()>1?QString(links==1?"1 share link ":"%1 share links ").arg(links):QString("the share link ");
+  const auto outcome=unconfirmed&&unmade?QString("were not made or could not be confirmed"):unconfirmed?QString("could not be confirmed"):QString(links==1?"was not made":"were not made");
+  const auto action=unconfirmed&&unmade?QString("Inspect link or Create share link"):unconfirmed?QString("Inspect link"):QString("Create share link");
+  link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Use "+action+" in History.";
+ }
  QString text;
- if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".");
+ if(!link.isEmpty()&&uploaded==items.size())text=(items.size()>1?QString("%1 files uploaded, but ").arg(uploaded):QString("Uploaded, but "))+link;
+ else if(items.size()>1)text=QString("%1 of %2 files uploaded. ").arg(uploaded).arg(items.size())+QString("%1 failed").arg(items.size()-uploaded)+(cause.isEmpty()?".":": "+cause+".")+(link.isEmpty()?QString{}:" "+link);
  else text=what+(cause.isEmpty()?".":": "+cause+".");
  if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
  if(!copied.isEmpty())text+=" "+copied;
@@ -615,10 +629,10 @@ void TrayController::refreshActivity() {
 }
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";
- for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
+ for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=item["uploadStatus"]!="uploaded"&&(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
  attentionOperation_=operation["id"].toString();attentionLabel_="Action needs attention";attentionView_="history";
  const bool setup=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","credential_setup_required"}.contains(cause.code);
- if(uploadFailed){for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]=="failed"||item["uploadStatus"]=="unknown"||meaningfulError(item["error"].toObject())||operation["state"]=="interrupted")failedItems_.insert(item["artifact"].toObject()["id"].toString(operation["id"].toString()));}attentionLabel_="Failed uploads";attentionView_="historyFailed";}
+ if(uploadFailed){for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"&&(item["uploadStatus"]=="failed"||item["uploadStatus"]=="unknown"||meaningfulError(item["error"].toObject())||operation["state"]=="interrupted"))failedItems_.insert(item["artifact"].toObject()["id"].toString(operation["id"].toString()));}attentionLabel_="Failed uploads";attentionView_="historyFailed";}
  else if(localFailed||setup){attentionLabel_=localFailed?"Local save needs attention":"Destination needs attention";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Review the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
  else if(!operation["id"].toString().isEmpty()&&operation["items"].toArray().isEmpty()&&QStringList{"region","window","desktop","edit","record"}.contains(operation["action"].toString()))attentionLabel_="Capture needs attention";
  flashError();

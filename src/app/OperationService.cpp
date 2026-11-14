@@ -1122,32 +1122,40 @@ Operation OperationService::run(Job job) {
   if(!QStringList{"not_requested","unknown"}.contains(item.shareStatus)&&!(QStringList{"private","failed"}.contains(item.shareStatus)&&item.shareIntent=="create"))continue;
   if(publicationMode=="private"&&item.shareStatus!="unknown"&&item.shareIntent!="create"){item.shareStatus="private";if(!saveItem(item))return op;continue;}
   if(!item.receipt.directUrl.isEmpty())continue;
-  op.phase="sharing";item.phase="sharing";if(!saveItem(item))return op;
-  const auto shareId=uuid();
-  // A diagnostics package's share link expires (#123).
-  const auto options=op.action==diagnosticsAction&&item.shareIntentOptions.isEmpty()?QJsonObject{{"expirationDays",diagnosticsShareDays}}:item.shareIntentOptions;
-  QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action","create"},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",options}};
-  if(item.shareStatus=="unknown")doc["action"]="inspect";
-  if(auto e=store.saveSharing(doc)){item.error=e;op.advance(OperationState::Partial);saveItem(item);return op;}
-  const auto path=root_+"/history.sqlite";
-  auto checkpoint=[path,&doc](const QJsonObject& progress,std::function<void(Error)> ack){
-   auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto e=durable.saveSharing(proposed);if(!e)doc=std::move(proposed);ack(e);
-  };
-  ShareRequest request{shareId,doc["action"].toString(),item.receipt,doc["options"].toObject(),doc["progress"].toObject(),job.cancelled};
-  auto result=storageRequest<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
-  if(!shareResultMatchesReceipt(result,item.receipt)){result.status="unknown";result.receipt=item.receipt;result.receipt.directUrl.clear();result.expiresAt.clear();result.error={"share_identity_changed","Sharing returned a different publication identity",{}};}
-  if(result.status!="shared")result.receipt.directUrl.clear();
-  item.receipt=result.receipt;item.shareStatus=result.status;item.phase=result.status;item.error=result.error;
-  {auto fields=itemFields(op,item);fields["action"]=request.action;fields["status"]=result.status;if(result.error)fields["error"]=logging::errorFields(result.error);logging::write(providerLog(op.destination.providerId),result.status=="shared"||result.status=="private"?QtInfoMsg:QtWarningMsg,"Sharing finished",fields);}
-  doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();
-  if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
-  if(auto e=store.saveSharing(doc)){
-   item.error=e;op.advance(OperationState::Partial);
-   QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,doc,e]{if(owner)emit owner->sharingStopped(doc,e);},Qt::QueuedConnection);
-   return op;
+  // An uncertain share is inspected first. On the user's Retry, an inspection that
+  // finds the file unshared while the create intent is still kept goes on to make
+  // that link in the same run, through the same ownership checks as any create
+  // (#1399). A found link is reported, never made twice; a changed or missing file
+  // ends the step. A revoke clears the intent, so it is never repeated here, and a
+  // new operation (`job.acquire`) never inspects.
+  for(QString action=item.shareStatus=="unknown"?"inspect":"create";!action.isEmpty();) {
+   op.phase="sharing";item.phase="sharing";if(!saveItem(item))return op;
+   const auto shareId=uuid();
+   // A diagnostics package's share link expires (#123).
+   const auto options=op.action==diagnosticsAction&&item.shareIntentOptions.isEmpty()?QJsonObject{{"expirationDays",diagnosticsShareDays}}:item.shareIntentOptions;
+   QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action",action},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",options}};
+   if(auto e=store.saveSharing(doc)){item.error=e;op.advance(OperationState::Partial);saveItem(item);return op;}
+   const auto path=root_+"/history.sqlite";
+   auto checkpoint=[path,&doc](const QJsonObject& progress,std::function<void(Error)> ack){
+    auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto e=durable.saveSharing(proposed);if(!e)doc=std::move(proposed);ack(e);
+   };
+   ShareRequest request{shareId,doc["action"].toString(),item.receipt,doc["options"].toObject(),doc["progress"].toObject(),job.cancelled};
+   auto result=storageRequest<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
+   if(!shareResultMatchesReceipt(result,item.receipt)){result.status="unknown";result.receipt=item.receipt;result.receipt.directUrl.clear();result.expiresAt.clear();result.error={"share_identity_changed","Sharing returned a different publication identity",{}};}
+   if(result.status!="shared")result.receipt.directUrl.clear();
+   item.receipt=result.receipt;item.shareStatus=result.status;item.phase=result.status;item.error=result.error;
+   {auto fields=itemFields(op,item);fields["action"]=request.action;fields["status"]=result.status;if(result.error)fields["error"]=logging::errorFields(result.error);logging::write(providerLog(op.destination.providerId),result.status=="shared"||result.status=="private"?QtInfoMsg:QtWarningMsg,"Sharing finished",fields);}
+   doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();
+   if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
+   if(auto e=store.saveSharing(doc)){
+    item.error=e;op.advance(OperationState::Partial);
+    QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,doc,e]{if(owner)emit owner->sharingStopped(doc,e);},Qt::QueuedConnection);
+    return op;
+   }
+   const auto committed=store.sharing(shareId);if(result.status=="shared"||result.status=="revoked"||result.status=="changed"){item.shareIntent.clear();item.shareIntentOptions={};}else if(committed["action"]=="create"){item.shareIntent="create";item.shareIntentOptions=committed["options"].toObject();}
+   if(!saveItem(item))return op;
+   action=action=="inspect"&&!job.acquire&&result.status=="private"&&item.shareIntent=="create"&&!job.cancelled->load()?"create":QString{};
   }
-  const auto committed=store.sharing(shareId);if(result.status=="shared"||result.status=="revoked"||result.status=="changed"){item.shareIntent.clear();item.shareIntentOptions={};}else if(committed["action"]=="create"){item.shareIntent="create";item.shareIntentOptions=committed["options"].toObject();}
-  if(!saveItem(item))return op;
  }
  op.cancelled=op.cancelled||job.cancelled->load();
  bool partial=false;for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.uploadStatus=="cancelled"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")partial=true;
