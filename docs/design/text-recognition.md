@@ -904,7 +904,7 @@ error rate per class, with the bar in brackets:
 | URLs exact (90%) | | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 | 50 of 52 (96.15%) | 52 of 52 |
 | Emails exact (90%) | | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 | 52 of 52 |
 
-Fedora 45 and Aurora use Fedora 44's build. Every class median is within its bar on every engine build.
+Aurora uses the AppImage. Fedora 45's own RPM ([#1509](https://github.com/patrick-hudson/put.gd-desktop/pull/1509)) was not measured separately. Every class median is within its bar on every engine build.
 
 - **Wikipedia.** All 24 Wikipedia transcripts said "squares in a square grid" where the captured pixels
   say "squares within a square grid". The transcripts were corrected before this scoring, and the

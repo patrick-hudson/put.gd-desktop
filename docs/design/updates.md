@@ -388,7 +388,7 @@ the app.put.gd copy within about a minute of each release.
 }
 ```
 
-- **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44` and `appimage`.
+- **Assets:** keyed `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44`, `fedora45`, `archlinux` and `appimage`.
 - **No release:** `release` is `null` while a channel has none. Today that's stable.
 - **Version order:** calendar versions `YY.MDD.N` sort by date, then commit count, and a
   nightly sorts before the stable release with the same `YY.MDD.N` (#373,
@@ -411,7 +411,7 @@ the app.put.gd copy within about a minute of each release.
 Two CMake cache variables decide whether a build checks:
 
 - **`PUTGD_PACKAGE_TARGET`:** which published package this build becomes:
-  - `ubuntu24.04`, `ubuntu26.04`, `debian13` or `fedora44`, set by `package.yml` from the
+  - `ubuntu24.04`, `ubuntu26.04`, `debian13`, `fedora44`, `fedora45` or `archlinux`, set by `package.yml` from the
     matrix name;
   - `appimage`, set by `tools/releases/build-appimage.sh`;
   - empty for development and source builds, which never check.
