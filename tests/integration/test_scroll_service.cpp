@@ -67,9 +67,21 @@ private slots:
   }
   QCOMPARE(backend->commands.mid(backend->commands.indexOf("start")+1),(QStringList{"autoScroll","autoScroll","resume","pause"}));
   refused=false;service.command("autoScroll",{{"id",id}},[&](Error e,QJsonObject){refused=e.code=="invalid_request";});PUTGD_TRY_VERIFY(refused);
+  // A toggle the helper refuses leaves the capture running (#1520's review: a refused resume ended it and discarded its image).
+  backend->refuseToggle=true;
+  for(const auto& command:{QString("autoScroll"),QString("resume"),QString("pause")}){
+   Error refusal;bool answered=false;auto params=QJsonObject{{"id",id}};if(command=="autoScroll")params["on"]=true;
+   service.command(command,params,[&](Error e,QJsonObject){refusal=e;answered=true;});PUTGD_TRY_VERIFY(answered);
+   QCOMPARE(refusal.code,QString("scroll_state"));QVERIFY(service.active());QVERIFY(inspect());QCOMPARE(view["state"].toString(),QString("capturing"));QVERIFY(QFileInfo::exists(backend->directory));
+  }
+  backend->refuseToggle=false;
+  // A helper that sends more statistics than it should: only the known ones, as numbers, reach the view.
+  backend->extraStats={{"steps",7},{"pixelsPerNotch",53.0},{"lowConfidenceSteps",0},{"elapsedMs",1234.0},{"id","forged"},{"bogus",1},{"frames","many"}};
+  backend->overrides={{"hiddenCells",96},{"hiddenRows","x"}};
   bool done=false;Error error;service.command(end,{{"id",id}},[&](Error e,QJsonObject){error=e;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
   QVERIFY(!service.active());QVERIFY(inspect());QVERIFY(!view.contains("paused")&&!view.contains("pausedBy")&&!view.contains("activity"));
-  if(end=="stop"){QCOMPARE(view["state"].toString(),QString("done"));QCOMPARE(view["endReason"].toString(),QString("done"));QCOMPARE(view["truncated"].toBool(true),false);QCOMPARE(view["scrolledBy"].toString(),QString("user"));PUTGD_TRY_VERIFY(admissions==1);}
+  if(end=="stop"){QCOMPARE(view["state"].toString(),QString("done"));QCOMPARE(view["endReason"].toString(),QString("done"));QCOMPARE(view["truncated"].toBool(true),false);QCOMPARE(view["scrolledBy"].toString(),QString("user"));PUTGD_TRY_VERIFY(admissions==1);
+   QCOMPARE(view["id"].toString(),id);QCOMPARE(view["steps"].toInt(),7);QVERIFY(!view.contains("bogus"));QVERIFY(!view.contains("frames"));QCOMPARE(view["hiddenCells"].toInt(),96);QVERIFY(!view.contains("hiddenRows"));}
   else{QCOMPARE(view["state"].toString(),QString("cancelled"));QVERIFY(ended.cancelled);PUTGD_COMPARE_STEADY(admissions,0,200);QVERIFY(!QFileInfo::exists(backend->directory));}
  }
  // A PNG that does not match the helper's descriptor (other bytes, other

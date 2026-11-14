@@ -121,7 +121,7 @@ bool MutterScreenCast::pointerMotionBy(double dx, double dy) {
     QString remote;
     { std::lock_guard lock(paths_); remote = remote_; }
     if (remote.isEmpty() || closed_.load()) return false;
-    const QDBusMessage reply = QDBusConnection::sessionBus().call(QDBusMessage::createMethodCall(remoteService, remote, remoteSessionInterface, "NotifyPointerMotion") << dx << dy, QDBus::Block, 5000);
+    const QDBusMessage reply = QDBusConnection::sessionBus().call(QDBusMessage::createMethodCall(remoteService, remote, remoteSessionInterface, "NotifyPointerMotionRelative") << dx << dy, QDBus::Block, 5000);
     if (reply.type() == QDBusMessage::ErrorMessage) { debugLog("mutter remote desktop: relative motion refused: " + reply.errorMessage()); return false; }
     return true;
 }

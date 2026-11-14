@@ -105,6 +105,9 @@ private:
     void emitProgress();
     // Where the pointer rests between wheel steps, and the surface that sees it.
     void placeRest();
+    // The rest and, on layer-shell desktops, the watch: before a run of
+    // auto-scroll and during Resume's quiet period.
+    void raiseAutoSurfaces();
     void pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp);
     void startCorrection(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs);
     void startCorrectionLocked(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs, QPointF latest);
