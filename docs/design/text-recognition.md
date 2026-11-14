@@ -676,9 +676,9 @@ stays available from version 22.
 
 | Surface | Control |
 | --- | --- |
-| Command band | **Copy text**, after Capture scrolling region and before Upload clipboard. Narrow label "Text". The glyph `copy-text` is a letter T inside selection corners. It is a secondary command, icon-only at the stage where Capture scrolling region is. Its tooltip says "Select a region and copy the text in it. Nothing is saved or uploaded." It shows no output line, and its unavailable badge follows `text.sources.region` |
-| Tray, both implementations | **Copy text from region**, directly after Capture scrolling region. The native menu appends ID 41 with no output row |
-| Settings, Hotkeys | A row **Copy text from region** after Capture scrolling region |
+| Command band | **Copy text**, at the far end of the band's second group, before Upload clipboard; its label never shortens. The glyph `copy-text` is a letter T inside selection corners. Its tooltip says "Select a region and copy the text in it. Nothing is saved or uploaded." It shows no output line, and its unavailable badge follows `text.sources.region` |
+| Tray, both implementations | **Copy text from region**, in the last command group before Upload clipboard. Native menu ID 41, with no output row |
+| Settings, Hotkeys | A row **Copy text from region** in the last group, before Upload clipboard |
 | Settings, Capture | Text recognition: Language, Second language and Third language |
 | Capture output summaries | Never list it |
 | History | **Copy text** beside Edit, **QR code** beside Open and **Show QR code** in the item's menu |

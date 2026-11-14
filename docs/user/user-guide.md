@@ -1,8 +1,18 @@
 # put.gd user guide
 
-Open put.gd to reach one window with **History**, **Destinations**, and **Settings**. The tray's **Settings and setup** and **Upload history** commands open that window, and clicking the tray icon opens History, which also shows current work. (The tray's former **Recent activity** command opened the same History page and has been removed.) Closing the window keeps the tray and accepted work running. The launcher reopens it. The tray pane and its capture commands are unchanged.
+Open put.gd to reach one window with **History**, **Destinations**, and **Settings**. The tray's **Open put.gd** command and a click on the tray icon open it on History, which also shows current work; the tray's **Settings** opens it on Settings. Closing the window keeps the tray and accepted work running. The launcher reopens it.
 
-The left rail starts **Capture region**, **Capture window**, **Capture monitor**, **Capture desktop**, **Upload clipboard**, **Capture scrolling region**, **Copy text** or **Record screen** after finished settings edits are saved. The tray lists the same captures in this order: **Capture region**, **Repeat last region**, **Capture window**, **Capture monitor**, **Capture desktop** and the **Capture delay** choice, then **Capture region & edit**, **Edit image** (from the clipboard or a file), **Record screen** and **Upload clipboard**, with **Capture scrolling region** and then **Copy text from region** after them. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; monitor capture takes the one monitor the pointer is on, at its full size; desktop capture includes enabled monitors and panels. See [One monitor, a delay, or the same region again](#one-monitor-a-delay-or-the-same-region-again). Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through hotkeys and the CLI.
+The action bar across the top of the window has the same commands as the tray, in the same order and groups:
+
+- **Capture region** (the lead button), then **Window**, **Monitor**, **Desktop** and **Scrolling region**: Capture window, Capture monitor, Capture desktop and Capture scrolling region. The arrow beside Capture region, or a right-click on it, has **Repeat last region**.
+- **Capture region & edit** and **Record screen**. The arrow beside Capture region & edit, or a right-click on it, has **Edit clipboard image** and **Edit an image file…**; you can also drop a PNG or JPEG on that button.
+- At the far end, **Copy text** and **Upload clipboard**.
+
+The labels never shorten. When the window is too narrow for one row, the second group moves to a second row in the same order. From the keyboard, Alt+Down (or F4, the Menu key or Shift+F10) opens a button's arrow menu.
+
+The tray menu lists **Capture region**, **Repeat last region**, **Capture window**, **Capture monitor**, **Capture desktop** and **Capture scrolling region**; then **Capture region & edit**, **Edit image** (from the clipboard or a file) and **Record screen**; then **Copy text from region** and **Upload clipboard**; then the **Capture delay** and **Capture output** submenus; then **Open put.gd**, **Settings**, **Update available** (when there is one) and **Quit put.gd**. While something is happening, rows at the top say what: a recording's state and **Show recording**, an upload and **Cancel upload**, or a failure to look at. **About put.gd** is in the window's menu (☰).
+
+Each command starts after finished settings edits are saved. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; monitor capture takes the one monitor the pointer is on, at its full size; desktop capture includes enabled monitors and panels. See [One monitor, a delay, or the same region again](#one-monitor-a-delay-or-the-same-region-again). Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Capture region & edit** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). Each button's tooltip names its hotkey and its output, and **How capture actions work** in the window's menu explains them all. Capture is also available through hotkeys and the CLI.
 
 ## GNOME 50: log out once
 
@@ -41,12 +51,15 @@ this is the one in between. It has its own output and its own hotkey, both set l
 the other captures' (the hotkey starts unassigned).
 
 **Capture delay** waits 3, 5 or 10 seconds before a region, window, monitor or desktop
-capture, and before Repeat last region and Capture region & edit, so you can open a
-menu, hover a button or hold a key first. Choose it in **Settings → Capture → Capture
-delay**, in the tray's **Capture delay** submenu, or right-click one of those capture
-buttons in the window and open **Capture delay** there; the choice stays until you set
-it back to None. A capture you start with a hotkey is immediate unless you
-turn on **Also delay captures started by a hotkey** in the same Settings section. A small pill at the top of the
+capture, and before Repeat last region, Capture region & edit and Copy text from region,
+so you can open a menu, hover a button or hold a key first. Scrolling capture and
+recording never wait. Choose it in **Capture delay** at the bottom of the window (on
+every page), in the tray's **Capture delay** submenu, or in **Settings → Capture →
+Capture delay**; all three show the same choice, and it stays until you set it back to
+None. While a delay is set, the window's control is highlighted and the buttons that
+wait say "Waits 5 seconds first" in their tooltip. A capture you start with a hotkey is immediate unless you
+turn on **Also delay captures started by a hotkey** in the Settings section; the delay
+menus then say **Hotkeys capture at once** under the choices. A small pill at the top of the
 screen counts down. It doesn't take the keyboard and you can keep working around it;
 click it to cancel, and nothing is captured. It is never in the picture.
 
@@ -60,8 +73,8 @@ click it to cancel, and nothing is captured. It is never in the picture.
 - If the screen is locked when the countdown ends, nothing is captured.
 
 **Repeat last region** captures the same rectangle as your last region capture, with
-no selection step: handy for a series of the same area. It's in the tray, in the
-right-click menu of **Capture region**, and has its own hotkey (unassigned to begin
+no selection step: handy for a series of the same area. It's in the tray, under the
+arrow (or right-click) of **Capture region** in the window, and has its own hotkey (unassigned to begin
 with). It uses Capture region's output. put.gd forgets the rectangle when it quits,
 and says so instead of capturing when there is nothing to repeat yet or the monitors
 have changed since.
@@ -72,7 +85,7 @@ Right-click files or folders in your file manager and choose **Upload with put.g
 
 ## Edit before uploading
 
-Choose **Capture region & edit** from the rail or tray, or assign it a key in **Settings → Hotkeys** (it has no default key). Drag the region to edit; Escape cancels. To edit something you already have, use **Edit image** at the top of History (the clipboard image or a PNG/JPEG file), right-click the rail button, or drop a PNG or JPEG on it. **Edit again** on a History item reopens its local copy when **Keep a local copy** was on; the edited result is uploaded as a new item. In the editor:
+Choose **Capture region & edit** from the action bar or the tray, or assign it a key in **Settings → Hotkeys** (it has no default key). Drag the region to edit; Escape cancels. To edit something you already have, use **Edit image** at the top of History (the clipboard image or a PNG/JPEG file), use the arrow beside the action-bar button (or right-click it), or drop a PNG or JPEG on that button. **Edit again** on a History item reopens its local copy when **Keep a local copy** was on; the edited result is uploaded as a new item. In the editor:
 
 - **Redact** (X) covers an area with opaque black and removes those pixels from the uploaded image. Use it for passwords, tokens, names and other private information.
 - **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Its **Pixelate** style draws square blocks instead, and pixelation may be reversible too. Prefer Redact for anything private.
@@ -87,7 +100,7 @@ Choose **Capture region & edit** from the rail or tray, or assign it a key in **
 
 ## Capture a scrolling region
 
-Use **Capture scrolling region** to get one tall image of something longer than the screen: a web page, a document, a chat, a settings list. Choose it from the tray or the main window (its button reads **Scroll** when the window is narrow), or give **Capture scrolling region** a hotkey in **Settings → Hotkeys** (it has none by default). Drag a rectangle over the scrollable content, and include its scrollbar. There is no Start button: put.gd begins as soon as you let go.
+Use **Capture scrolling region** to get one tall image of something longer than the screen: a web page, a document, a chat, a settings list. Choose it from the tray or the main window (its button reads **Scrolling region**), or give **Capture scrolling region** a hotkey in **Settings → Hotkeys** (it has none by default). Drag a rectangle over the scrollable content, and include its scrollbar. There is no Start button: put.gd begins as soon as you let go.
 
 1. put.gd scrolls the content to the top first, so the image starts at the top of the page. A long page takes a while; the bar says so. Turn this off in **Settings → Capture → Scrolling capture → Scroll to the top first** to start from wherever the content is now.
 2. It turns the mouse wheel for you. The pointer waits on put.gd's bar while put.gd reads the screen and comes in just inside your rectangle only to turn the wheel, then leaves, so a link under it does not show its address in the image. The bar sits beside the rectangle and shows the height so far, with **Stop** and **Cancel**. Keep your keyboard still: the wheel goes to whatever is under the pointer, and it waits until Ctrl, Shift, Alt and Super are up on X11.
@@ -127,7 +140,7 @@ Tips:
 
 ## Copy text from the screen
 
-Use **Copy text** to copy the text out of something you can see but cannot select: a screenshot of a terminal, an error in a dialog, a slide, a video frame, a PDF that is only an image. Choose **Copy text from region** in the tray, **Copy text** in the main window (its button reads **Text** when the window is narrow), or give **Copy text from region** a hotkey in **Settings → Hotkeys** (it has none by default). Drag a rectangle over the text. Escape cancels. A capture delay works as it does for a region. The selector looks the same as for any other capture. It works on Cinnamon, GNOME, Plasma, Budgie and Hyprland, and on GNOME and Plasma sessions that run on X11.
+Use **Copy text** to copy the text out of something you can see but cannot select: a screenshot of a terminal, an error in a dialog, a slide, a video frame, a PDF that is only an image. Choose **Copy text from region** in the tray, **Copy text** in the main window, or give **Copy text from region** a hotkey in **Settings → Hotkeys** (it has none by default). Drag a rectangle over the text. Escape cancels. A capture delay works as it does for a region. The selector looks the same as for any other capture. It works on Cinnamon, GNOME, Plasma, Budgie and Hyprland, and on GNOME and Plasma sessions that run on X11.
 
 put.gd reads the region on your computer, in a short-lived helper that has no network access and cannot write a file or start a program. It then puts the text on your clipboard as plain text and tells you with a notification:
 
@@ -182,7 +195,7 @@ Choose the **Copy text** tool (G) in the editor, the last one, after Blur. put.g
 
 ## Record the screen
 
-Choose **Record screen** on the rail or in the tray, or assign the record hotkey in **Settings → Hotkeys**. Drag the area to record on X11, Plasma, GNOME (with the put.gd Shell extension), Budgie and Hyprland; other Wayland desktops ask once which screen or window to share. The floating bar chooses MP4, WebM, GIF or WebP, system audio and the microphone, then records, pauses and stops. Stop always opens a private review: trim, add blur or solid covers for part of the clip, play it back, **Save copy…**, **Discard** or **Upload**. Nothing is saved or uploaded until you choose one. See [screen recording](../design/recording.md) for the details.
+Choose **Record screen** in the action bar or the tray, or assign the record hotkey in **Settings → Hotkeys**. Drag the area to record on X11, Plasma, GNOME (with the put.gd Shell extension), Budgie and Hyprland; other Wayland desktops ask once which screen or window to share. The floating bar chooses MP4, WebM, GIF or WebP, system audio and the microphone, then records, pauses and stops. Stop always opens a private review: trim, add blur or solid covers for part of the clip, play it back, **Save copy…**, **Discard** or **Upload**. Nothing is saved or uploaded until you choose one. See [screen recording](../design/recording.md) for the details.
 
 To narrate a recording, tick **Microphone** on the bar. The bar beside it moves with your voice, so you can see the microphone is live before you press Record; put.gd opens the microphone only while that box is ticked and lets go of it when the recording stops. The choice is remembered for next time. put.gd uses the system's default microphone unless you pick another in **Settings → Capture → Screen recording → Microphone**. If no microphone can be opened, the box reads **No microphone** and is greyed out (hover it for the reason). A microphone plugged in while the bar is showing is offered within a second or two, with no need to start over; if **Microphone** was ticked last time, it is ticked again. A microphone unplugged during a recording leaves the recording running, silent from there. With **System audio** ticked as well, both are in the clip. GIF and WebP have no sound.
 
