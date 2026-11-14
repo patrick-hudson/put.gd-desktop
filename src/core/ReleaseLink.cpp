@@ -3,7 +3,7 @@
 #include <QRegularExpression>
 namespace putgd {
 namespace {
-const QString releases="https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v";
+const QString releases=QStringLiteral("https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v");
 }
 std::optional<ReleaseVersion> parseReleaseVersion(const QString& version){
  // The grammar of tools/releases/release_identity.py and GenerateBuildInfo.cmake.

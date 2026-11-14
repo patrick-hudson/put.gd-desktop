@@ -15,26 +15,26 @@ namespace {
 // pair, held to the same rules on the selected fill; test_theme checks both
 // schemes.
 const Palette dark{
- QColor("#121212"),QColor("#191919"),QColor("#202020"),QColor("#2A2A2A"),QColor("#333230"),QColor(255,255,255,18),QColor("#737373"),
- QColor("#F0F0EC"),QColor("#C4C4BF"),QColor("#AAAAA6"),QColor("#7B7B77"),
- QColor("#E8B66D"),QColor("#F0C887"),QColor("#24201A"),QColor("#E8C591"),
- QColor("#91BCA2"),QColor("#E8B66D"),QColor("#E59B93"),QColor("#EFB4AE"),QColor("#29372E"),QColor("#332C22"),QColor("#3D2A29"),
- QColor("#D6D6D2"),QColor("#777773"),
- QColor("#7C7C78"),
- QColor("#F0F0EC"),QColor("#848480"),
- QColor("#2E2E2C"),QColor("#7C7C78"),QColor("#F0524F"),
- QColor("#DEDED8"),QColor("#F0F0EC"),
+ QColor(0x121212),QColor(0x191919),QColor(0x202020),QColor(0x2A2A2A),QColor(0x333230),QColor(255,255,255,18),QColor(0x737373),
+ QColor(0xF0F0EC),QColor(0xC4C4BF),QColor(0xAAAAA6),QColor(0x7B7B77),
+ QColor(0xE8B66D),QColor(0xF0C887),QColor(0x24201A),QColor(0xE8C591),
+ QColor(0x91BCA2),QColor(0xE8B66D),QColor(0xE59B93),QColor(0xEFB4AE),QColor(0x29372E),QColor(0x332C22),QColor(0x3D2A29),
+ QColor(0xD6D6D2),QColor(0x777773),
+ QColor(0x7C7C78),
+ QColor(0xF0F0EC),QColor(0x848480),
+ QColor(0x2E2E2C),QColor(0x7C7C78),QColor(0xF0524F),
+ QColor(0xDEDED8),QColor(0xF0F0EC),
 };
 const Palette light{
- QColor("#EDEDEA"),QColor("#FFFFFF"),QColor("#F5F5F2"),QColor("#FFFFFF"),QColor("#ECEBE6"),QColor(0,0,0,20),QColor("#8E8E87"),
- QColor("#292926"),QColor("#484844"),QColor("#62625B"),QColor("#878780"),
- QColor("#8F5B20"),QColor("#774816"),QColor("#FFFFFF"),QColor("#80521D"),
- QColor("#386A4B"),QColor("#8F5B20"),QColor("#A44139"),QColor("#8F322B"),QColor("#DFEDE3"),QColor("#EEE5D8"),QColor("#F4E0DE"),
- QColor("#383834"),QColor("#86867E"),
- QColor("#82827B"),
- QColor("#292926"),QColor("#787874"),
- QColor("#F0EFEA"),QColor("#82827B"),QColor("#C8302B"),
- QColor("#292926"),QColor("#3A3A37"),
+ QColor(0xEDEDEA),QColor(0xFFFFFF),QColor(0xF5F5F2),QColor(0xFFFFFF),QColor(0xECEBE6),QColor(0,0,0,20),QColor(0x8E8E87),
+ QColor(0x292926),QColor(0x484844),QColor(0x62625B),QColor(0x878780),
+ QColor(0x8F5B20),QColor(0x774816),QColor(0xFFFFFF),QColor(0x80521D),
+ QColor(0x386A4B),QColor(0x8F5B20),QColor(0xA44139),QColor(0x8F322B),QColor(0xDFEDE3),QColor(0xEEE5D8),QColor(0xF4E0DE),
+ QColor(0x383834),QColor(0x86867E),
+ QColor(0x82827B),
+ QColor(0x292926),QColor(0x787874),
+ QColor(0xF0EFEA),QColor(0x82827B),QColor(0xC8302B),
+ QColor(0x292926),QColor(0x3A3A37),
 };
 struct Token {const char* name;QColor Palette::* member;};
 constexpr Token table[]{
@@ -59,10 +59,10 @@ double luminance(const QColor& c){return 0.2126*channel(c.redF())+0.7152*channel
 const Palette& palette(Scheme scheme){return scheme==Scheme::Light?light:dark;}
 const Palette& current(){return palette(active.load());}
 Scheme scheme(){return active.load();}
-QColor preferencePage(){return scheme()==Scheme::Light?QColor("#F5F5F2"):current().bg;}
-QColor preferenceCard(){return scheme()==Scheme::Light?QColor("#FFFFFF"):current().surface;}
-QColor preferenceBorder(){return scheme()==Scheme::Light?QColor("#E2E1DB"):current().border;}
-QColor preferenceSeparator(){return scheme()==Scheme::Light?QColor("#ECEBE6"):current().border;}
+QColor preferencePage(){return scheme()==Scheme::Light?QColor(0xF5F5F2):current().bg;}
+QColor preferenceCard(){return scheme()==Scheme::Light?QColor(0xFFFFFF):current().surface;}
+QColor preferenceBorder(){return scheme()==Scheme::Light?QColor(0xE2E1DB):current().border;}
+QColor preferenceSeparator(){return scheme()==Scheme::Light?QColor(0xECEBE6):current().border;}
 QString name(Scheme scheme){return scheme==Scheme::Light?QStringLiteral("light"):QStringLiteral("dark");}
 QJsonObject tokens(Scheme scheme){
  QJsonObject result;const auto& values=palette(scheme);
@@ -77,7 +77,7 @@ QString stylesheet(QString qss,Scheme scheme){
 const TrayTints& trayTints(bool lightPanel){
  const auto adjusted=[](Scheme scheme){
   const auto& p=palette(scheme);const bool lightPanel=scheme==Scheme::Light;
-  const QColor panels[]= {lightPanel?QColor("#ffffff"):QColor("#141414"),lightPanel?QColor("#dedee2"):QColor("#3b3b3f")};
+  const QColor panels[]= {lightPanel?QColor(0xffffff):QColor(0x141414),lightPanel?QColor(0xdedee2):QColor(0x3b3b3f)};
   const auto readable=[&](QColor color){for(int step=0;step<100&&(contrast(color,panels[0])<3.0||contrast(color,panels[1])<3.0);++step)color=lightPanel?color.darker(105):color.lighter(105);return color;};
   return TrayTints{readable(p.icon),readable(p.success),readable(p.accent),readable(p.danger),readable(p.live)};
  };

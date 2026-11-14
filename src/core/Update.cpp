@@ -4,11 +4,11 @@
 #include <QRegularExpression>
 namespace putgd::update {
 namespace {
-const QString defaultFeedBase="https://app.put.gd/update/v1/";
-const QString releasePages="https://github.com/patrick-hudson/put.gd-desktop/releases/tag/";
-const QString releaseDownloads="https://github.com/patrick-hudson/put.gd-desktop/releases/download/";
-const QString mirrorDownloads="https://pkg.put.gd/releases/";
-const QStringList targets{"ubuntu24.04","ubuntu26.04","debian13","fedora44","archlinux","appimage"};
+const QString defaultFeedBase=QStringLiteral("https://app.put.gd/update/v1/");
+const QString releasePages=QStringLiteral("https://github.com/patrick-hudson/put.gd-desktop/releases/tag/");
+const QString releaseDownloads=QStringLiteral("https://github.com/patrick-hudson/put.gd-desktop/releases/download/");
+const QString mirrorDownloads=QStringLiteral("https://pkg.put.gd/releases/");
+const QStringList& targets() {static const QStringList value{"ubuntu24.04","ubuntu26.04","debian13","fedora44","archlinux","appimage"};return value;}
 Error invalidFeed(const QString& message) {return {"update_feed_invalid",message,{}};}
 }
 QJsonObject Build::toJson() const {
@@ -23,7 +23,7 @@ Build build(const QJsonObject& manifest,const QString& target,bool built) {
  // A distribution's own package turns checks off at build time;
  // untagged builds have no feed to follow.
  if(!built)result.reason="disabled_at_build";
- else if(target.isEmpty()||!targets.contains(target))result.reason="no_package";
+ else if(target.isEmpty()||!targets().contains(target))result.reason="no_package";
  else if(result.channel.isEmpty())result.reason="development_build";
  result.supported=result.reason.isEmpty();
  return result;

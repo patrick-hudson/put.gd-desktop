@@ -66,7 +66,7 @@ QJsonObject request(const QString& socketPath,const QString& method,const QJsonO
 namespace {
 // Every systemd-run call: newer systemd expands ${...} in a scope's arguments,
 // so a selected /somewhere/${USER}.txt would otherwise become another file.
-const QStringList scopeArguments{"--user","--scope","--quiet","--expand-environment=no","--"};
+const QStringList& scopeArguments() {static const QStringList value{"--user","--scope","--quiet","--expand-environment=no","--"};return value;}
 // One starter at a time, and how long a cold start may take: the resident
 // AppRun's sycoca rebuild and journal recovery come before the socket answers.
 constexpr int startDeadlineMs=60000;
@@ -172,7 +172,7 @@ int leaveServiceCgroup(int argc,char** argv){
  const auto libraries=withoutPrivateLibraries(environment.value("LD_LIBRARY_PATH"),binaryDirectory());
  if(libraries.isEmpty())environment.remove("LD_LIBRARY_PATH");else environment.insert("LD_LIBRARY_PATH",libraries);
  environment.insert(scopedVariable,"1");environment.insert(startedFdVariable,QString::number(started[1]));
- QStringList arguments{runner};arguments<<scopeArguments<<systemLauncher();
+ QStringList arguments{runner};arguments<<scopeArguments()<<systemLauncher();
  QList<QByteArray> argumentBytes=encoded(arguments);for(int i=1;i<argc;++i)argumentBytes.append(QByteArray(argv[i]));
  CStrings childArguments(argumentBytes),childEnvironment(environmentList(environment));
  const pid_t child=::fork();
@@ -313,7 +313,7 @@ Start startResident(bool appImage,const QString& appImagePath,bool scoped){
  for(const char* name:{"XDG_ACTIVATION_TOKEN","DESKTOP_STARTUP_ID",scopedVariable,startedFdVariable})environment.remove(QString::fromLatin1(name));
  const auto runner=scoped?host::findProgram("systemd-run",environment):QString();
  QStringList arguments;
- if(!runner.isEmpty())arguments<<runner<<scopeArguments;
+ if(!runner.isEmpty())arguments<<runner<<scopeArguments();
  arguments<<program<<"--background";
  CStrings childArguments(encoded(arguments)),childEnvironment(environmentList(environment));
  const auto home=QFile::encodeName(QDir::homePath());

@@ -202,7 +202,7 @@ public:explicit HistoryLinkBar(QWidget* parent):QWidget(parent){setSizePolicy(QS
 protected:void paintEvent(QPaintEvent*)override{QPainter painter(this);painter.setRenderHint(QPainter::Antialiasing);painter.setPen(Ui::controlStroke());painter.setBrush(Theme::current().surfaceRaised);painter.drawRoundedRect(QRectF(rect()).adjusted(0.5,0.5,-0.5,-0.5),Ui::Metric::radius,Ui::Metric::radius);}
 };
 class HistoryLinkCopy final:public QPushButton {
-public:explicit HistoryLinkCopy(QWidget* parent):QPushButton("Copy link",parent){auto refresh=[this]{setProperty("uiPrimaryFill",Theme::scheme()==Theme::Scheme::Dark?QColor("#D6D5CF"):QColor());update();};refresh();connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,refresh);}
+public:explicit HistoryLinkCopy(QWidget* parent):QPushButton("Copy link",parent){auto refresh=[this]{setProperty("uiPrimaryFill",Theme::scheme()==Theme::Scheme::Dark?QColor(0xD6D5CF):QColor());update();};refresh();connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,refresh);}
 protected:void paintEvent(QPaintEvent*)override{QPainter painter(this);QStyleOptionButton option;initStyleOption(&option);const auto label=option.rect;option.rect.adjust(-Ui::Metric::radius,0,0,0);style()->drawControl(QStyle::CE_PushButtonBevel,&option,&painter,this);option.rect=label;style()->drawControl(QStyle::CE_PushButtonLabel,&option,&painter,this);painter.setPen(Ui::controlStroke());painter.drawLine(0,0,0,height()-1);}
 };
 // Keep one action row, dropping labels as a group when their measured widths do not fit.

@@ -9,11 +9,14 @@
 namespace putgd::update {
 namespace {
 constexpr qint64 maximumRepositoryFile=64*1024;
-const QStringList debTargets{"ubuntu24.04","ubuntu26.04","debian13"};
-const QList<Updater> updaters{
+const QStringList& debTargets() {static const QStringList value{"ubuntu24.04","ubuntu26.04","debian13"};return value;}
+const QList<Updater>& updaters() {
+ static const QList<Updater> value{
  {"mintupdate","Update Manager","mintupdate",{}},
  {"plasma-discover","Discover","plasma-discover",{"--mode","update"}},
  {"gnome-software","GNOME Software","gnome-software",{"--mode=updates"}}};
+ return value;
+}
 QString readSmall(const QString& path,bool& exists) {
  QFile file(path);exists=file.exists();
  if(!exists||!file.open(QIODevice::ReadOnly)||file.size()>maximumRepositoryFile)return {};
@@ -64,8 +67,8 @@ UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<
  const auto preferred=desktops.contains("x-cinnamon")||desktops.contains("cinnamon")?QString("mintupdate"):
   desktops.contains("kde")?QString("plasma-discover"):desktops.contains("gnome")?QString("gnome-software"):QString();
  QList<Updater> order;
- for(const auto& updater:updaters)if(updater.id==preferred)order.append(updater);
- for(const auto& updater:updaters)if(updater.id!=preferred)order.append(updater);
+ for(const auto& updater:updaters())if(updater.id==preferred)order.append(updater);
+ for(const auto& updater:updaters())if(updater.id!=preferred)order.append(updater);
  for(auto updater:order) {
   const auto path=which(updater.program);
   if(!path.isEmpty()){updater.program=path;return {true,updater};}
@@ -73,7 +76,7 @@ UpdaterChoice softwareUpdater(const QString& currentDesktop,const std::function<
  return {};
 }
 QJsonObject systemAction(const QString& target,const QString& root,const QString& repository,const UpdaterChoice& choice) {
- const bool deb=debTargets.contains(target),rpm=target=="fedora44",arch=target=="archlinux";
+ const bool deb=debTargets().contains(target),rpm=target=="fedora44",arch=target=="archlinux";
  if(!deb&&!rpm&&!arch)return {{"kind","download"},{"repository","none"}};
  const QString file=arch?"/etc/pacman.d/putgd.conf":deb?"/etc/apt/sources.list.d/putgd.sources":"/etc/yum.repos.d/putgd.repo";
  bool exists=false;const auto text=readSmall(root+file,exists);
@@ -126,8 +129,8 @@ bool openSoftwareUpdates(const QJsonObject& action) {
  if(action["kind"]!="software-updates"||updater.isEmpty())return false;
  // Only the three updaters this file knows, at the path it found.
  const auto id=updater["id"].toString();
- const auto known=std::find_if(updaters.cbegin(),updaters.cend(),[&](const Updater& u){return u.id==id;});
- if(known==updaters.cend())return false;
+ const auto known=std::find_if(updaters().cbegin(),updaters().cend(),[&](const Updater& u){return u.id==id;});
+ if(known==updaters().cend())return false;
  // The updater outlives the short-lived putgd-cli child that starts it, so it
  // must not inherit that child's pipes: Discover logs to stderr and died of
  // SIGPIPE once the resident closed them (k72). It gets the host's libraries

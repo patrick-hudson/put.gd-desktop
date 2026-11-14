@@ -22,11 +22,10 @@
 #include <algorithm>
 namespace putgd {
 namespace {
-const QStringList nameKeys{"name","candidate","fileName","folderName","label","notificationText"};
-const QStringList urlKeys{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl","requestUrl"};
-const QStringList objectKeys{"key","objectKey","objectPrefix"};
-const QStringList idKeys{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};
-const QStringList pathKeys{"path","localPath","previewPath","directory","stagingPath","root","from","to","modulePath","configPath"};
+const QStringList& nameKeys() {static const QStringList value{"name","candidate","fileName","folderName","label","notificationText"};return value;}
+const QStringList& urlKeys() {static const QStringList value{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl","requestUrl"};return value;}
+const QStringList& objectKeys() {static const QStringList value{"key","objectKey","objectPrefix"};return value;}
+const QStringList& idKeys() {static const QStringList value{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};return value;}
 QString iso(const QDateTime& time) {return time.toUTC().toString(Qt::ISODateWithMs);}
 QByteArray compact(const QJsonValue& value) {return value.isArray()?QJsonDocument(value.toArray()).toJson(QJsonDocument::Indented):QJsonDocument(value.toObject()).toJson(QJsonDocument::Indented);}
 QString sha256(const QByteArray& bytes) {return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());}
@@ -136,10 +135,10 @@ QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) con
   const auto string=value.toString();
   if(string.isEmpty())return value;
   if(!names_) {
-   if(nameKeys.contains(key))return token("name",string);
-   if(urlKeys.contains(key))return token("url",string);
-   if(objectKeys.contains(key))return token("key",string);
-   if(idKeys.contains(key))return token("id",string);
+   if(nameKeys().contains(key))return token("name",string);
+   if(urlKeys().contains(key))return token("url",string);
+   if(objectKeys().contains(key))return token("key",string);
+   if(idKeys().contains(key))return token("id",string);
    if(key=="bucket")return token("bucket",string);
    if(key=="endpoint")return token("endpoint",string);
   }
