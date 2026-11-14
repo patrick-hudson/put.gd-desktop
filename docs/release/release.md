@@ -347,8 +347,9 @@ These are hard dependencies of every package, because one complete package is th
   rebuild included. A package build without the libraries fails. Recording's Recommends are unchanged.
 - The distributions ship ZXing-cpp 2.2.1 (Ubuntu 24.04, Mint 22, Fedora), 2.3.0 (Ubuntu 26.04, Debian
   13) and 3.1.1 (Arch). The helper uses only `ReadBarcodes(ImageView, ReaderOptions)`, which all three
-  have, so every package build proves it compiles and links. Fedora 45 and Aurora install the Fedora 44
-  RPM, as they do today. Mint's names come from its Ubuntu base and are confirmed in package acceptance.
+  have, so every package build proves it compiles and links. Fedora 45 installs the Fedora 44
+  RPM. On Aurora and other Atomic systems the one-line installer installs the AppImage, so the
+  system image is not changed. Mint's names come from its Ubuntu base and are confirmed in package acceptance.
 - Languages other than English come from the distribution's Tesseract language packages or from
   `~/.local/share/putgd/tessdata/`. put.gd downloads none.
 - The vendored QR code generator is compiled into the core library, so it needs no package. It is Nayuki's
