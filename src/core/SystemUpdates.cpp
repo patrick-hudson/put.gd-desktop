@@ -82,9 +82,10 @@ QJsonObject systemAction(const QString& target,const QString& root,const QString
  const auto base=repository+(deb?"/apt/"+target:QString("/rpm/fedora/44/x86_64/"));
  QString state="other",channel;
  if(deb) {
+  static const QRegularExpression whitespace("\\s+");
   for(const auto& stanza:stanzas(text)) {
    if(!stanza.value("types").split(' ',Qt::SkipEmptyParts).contains("deb"))continue;
-   if(!stanza.value("uris").split(QRegularExpression("\\s+"),Qt::SkipEmptyParts).contains(base))continue;
+   if(!stanza.value("uris").split(whitespace,Qt::SkipEmptyParts).contains(base))continue;
    channel=stanza.value("suites").section(' ',0,0);
    state=stanza.contains("enabled")&&falseValue(stanza.value("enabled"))?"disabled":"managed";
    if(state=="managed")break;

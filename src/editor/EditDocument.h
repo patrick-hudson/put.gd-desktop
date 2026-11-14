@@ -100,8 +100,6 @@ public:
  bool canRedo() const {return !redo_.isEmpty();}
  bool undo();
  bool redo();
- qint64 historyBytes() const {return historyBytes_;}
- int historyEntries() const {return undo_.size()+redo_.size();}
  bool historyTruncated() const {return truncated_;}
 
  // Resolve text on the calling (GUI) thread before a worker renders a copy.

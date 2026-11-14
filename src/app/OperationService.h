@@ -41,7 +41,6 @@ public:
  QString editingOperation() const {return editingId_;}
  // Relays one recording.* command to the shared recording service.
  void recordingCommand(const QString& command,const QJsonObject& params,JsonReply);
- QString recordingActiveId() const;
  // Tests inject a fake backend; production installs the helper supervisor.
  void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
  // The interface's resolved scheme ("dark" or "light"), passed to each editor
@@ -68,8 +67,6 @@ public:
  // region does and never changes what Repeat last region remembers.
  // Answers {operationId, state} once the operation is journaled.
  void recognizeText(const QJsonObject& params,JsonReply);
- // Tests may run a fixture helper; production always uses the sibling putgd-ui.
- void setEditorHelper(QString path) {editorHelper_=std::move(path);}
  // The internal action of a diagnostics package upload (#123), outside the
  // sharing actions: recorded in history and deletable like any upload.
  static constexpr const char* diagnosticsAction="diagnostics";
@@ -134,7 +131,6 @@ public:
  struct CleanupSchedule {int startupDelayMs=60*1000,intervalMs=60*60*1000,followUpMs=60*1000,batch=50;};
  // Tests substitute the schedule (before ready) and the clock retention compares against.
  void setCleanupScheduleForTesting(CleanupSchedule schedule) {cleanupSchedule_=schedule;cleanupTimer_.setInterval(schedule.intervalMs);}
- void setImagePageDelayForTesting(int delayMs) {imagePageDelayMs_=delayMs;}
  void setClockForTesting(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void shutdown();
  QJsonObject capabilities() const;

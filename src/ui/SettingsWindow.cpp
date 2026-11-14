@@ -387,11 +387,6 @@ class DestinationList final:public QListWidget {
 public:
  std::function<void(int from,int to)> moveRequested;
  DestinationList(){setDragEnabled(true);setAcceptDrops(true);setDragDropMode(QAbstractItemView::InternalMove);setDefaultDropAction(Qt::MoveAction);setDropIndicatorShown(false);setItemDelegate(new DestinationRowDelegate(this));setTextElideMode(Qt::ElideRight);}
- // The displayed name has up to two lines; status stays separate.
- QStringList shownLines(int row)const{
-  QStyleOptionViewItem option;initViewItemOption(&option);option.rect=visualItemRect(item(row));
-  auto* delegate=static_cast<DestinationRowDelegate*>(itemDelegate());auto lines=delegate->shown(option,model()->index(row,0)).text.split(QChar::LineSeparator);lines[0]=delegate->nameLines(lines[0],delegate->textWidth(option.rect.width())).join('\n');lines[1]=PreferenceRows::destinationStateLines(lines[1],delegate->textWidth(option.rect.width())).join('\n');return lines;
- }
  // A slim, slightly translucent label beside and below the pointer, so the drop
  // line within half a row of it stays visible (#133).
  static QPixmap dragImage(const QListWidgetItem& item,const QFont& font,qreal ratio){
@@ -1446,7 +1441,7 @@ void SettingsWindow::addS3Profile(const QString& defaultLabel){
  bool accepted=false;const auto destinationName=QInputDialog::getText(this,"Add destination","Destination name",QLineEdit::Normal,defaultLabel,&accepted).trimmed();if(!accepted||destinationName.isEmpty())return;
  QJsonObject restored=provisionalProfile_.value("profile").toObject();
  QString id=restored.value("id").toString();int number=1;
- if(id.isEmpty()||std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}))do{auto slug=destinationName.toLower();slug.replace(QRegularExpression("[^a-z0-9]+"),"-");slug=slug.left(48);if(slug.isEmpty()||!slug[0].isLetterOrNumber())slug="destination";id=slug+(number==1?QString{}:"-"+QString::number(number));++number;}while(std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}));
+ if(id.isEmpty()||std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}))do{auto slug=destinationName.toLower();static const QRegularExpression runOfOthers("[^a-z0-9]+");slug.replace(runOfOthers,"-");slug=slug.left(48);if(slug.isEmpty()||!slug[0].isLetterOrNumber())slug="destination";id=slug+(number==1?QString{}:"-"+QString::number(number));++number;}while(std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}));
  while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
  credentialDrafts_.resize(profiles.size()+1);
  if(restored.isEmpty()){auto profile=s3Profile(id);profile["label"]=destinationName;profiles.append(profile);profileEditors_.append(QJsonValue::Null);}
@@ -1883,8 +1878,6 @@ void SettingsWindow::diagnosticsCommand(const QJsonObject& params,std::function<
  if(action=="closePackage"){dialog->reject();reply({},diagnosticsState());return;}
  reply({"invalid_request","Unknown diagnostics action.",{}},{});
 }
-QPixmap SettingsWindow::destinationDragImage(int row,QPoint* hotSpot)const{if(hotSpot)*hotSpot=-DestinationList::dragOffset;return row>=0&&row<destinationList_->count()?DestinationList::dragImage(*destinationList_->item(row),destinationList_->font(),destinationList_->devicePixelRatioF()):QPixmap{};}
-QStringList SettingsWindow::destinationRowLines(int row)const{return row>=0&&row<destinationList_->count()?static_cast<DestinationList*>(destinationList_)->shownLines(row):QStringList{};}
 Error SettingsWindow::moveSelectedDestination(int delta,const QString& profileId,QJsonObject& result){
  if(!profileId.isEmpty()){const int index=profileOrder().indexOf(profileId);if(index<0)return {"profile_not_found","No destination has that ID.",{{"profileId",profileId}}};if(index!=profile_->currentIndex())profile_->setCurrentIndex(index);}
  const int from=profile_->currentIndex();if(from<0)return {"destination_not_selected","Select a destination first.",{}};
@@ -2352,7 +2345,8 @@ bool SettingsWindow::applyProtonAccountResult(const QString& id,const QJsonObjec
  storeProfile();profiles=draft_["profiles"].toArray();auto profile=profiles[index].toObject();auto settings=profile["settings"].toObject();
  if(index>=profileEditors_.size()||!profileEditors_[index].toObject().contains("id"))return false;
  auto editor=profileEditors_[index].toObject();const auto previous=editor["proton"].toObject();const auto root=result["accountRootUid"].toString();
- auto email=result["accountEmail"].toString();if(email.size()>320||email.contains(QRegularExpression("[\\x00-\\x1f\\x7f]")))email.clear();
+ static const QRegularExpression controlCharacter("[\\x00-\\x1f\\x7f]");
+ auto email=result["accountEmail"].toString();if(email.size()>320||email.contains(controlCharacter))email.clear();
  if(email.isEmpty()&&previous["accountRootUid"]==root)email=previous["accountEmail"].toString();
  if(settings["accountRootUid"]!=root){settings["folderUid"]="";settings.remove("folderName");}
  settings["accountRootUid"]=root;const auto selected=settings["folderUid"].toString();QJsonArray folders;int selectedIndex=0;

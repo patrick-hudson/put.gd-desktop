@@ -42,9 +42,11 @@ import signal
 import subprocess
 import sys
 import time
+import types
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import lab_resident  # noqa: E402
 import record_run  # noqa: E402
 import rfb  # noqa: E402
 
@@ -76,16 +78,10 @@ def main():
     tone = None
     report = {'host': os.uname().nodename, 'desktop': desktop, 'session': env.get('XDG_SESSION_TYPE'), 'build': build.identity, 'states': {}}
 
+    driver = types.SimpleNamespace(env=env)  # lab_resident.cli reads only the driver's environment
+
     def cli(method, params=None, timeout=60):
-        result = subprocess.run([build.cli, method, json.dumps(params or {})], env=env, capture_output=True, text=True, timeout=timeout)
-        try:
-            reply = json.loads(result.stdout)
-        except ValueError:
-            raise record_run.RunError('%s: no JSON reply (exit %d): %s' % (method, result.returncode, result.stderr.strip()[-300:]))
-        if not reply.get('ok'):
-            error = reply.get('error') or {}
-            raise record_run.RunError('%s failed: %s %s' % (method, error.get('code'), error.get('message')))
-        return reply.get('result') or {}
+        return lab_resident.cli(driver, build, method, params, timeout)
 
     def virtual_mic(*arguments):
         result = subprocess.run([sys.executable, str(HERE / 'virtual_mic.py'), *arguments], capture_output=True, text=True, env=env)

@@ -33,7 +33,8 @@ QString kwinVersion() {
     auto message = QDBusMessage::createMethodCall("org.kde.KWin", "/KWin", "org.kde.KWin", "supportInformation");
     const auto reply = QDBusConnection::sessionBus().call(message, QDBus::Block, 1500);
     if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) return {};
-    const auto match = QRegularExpression(QStringLiteral("KWin version: (\\d+\\.\\d+(?:\\.\\d+)?)")).match(reply.arguments().first().toString().left(65536));
+    static const QRegularExpression version(QStringLiteral("KWin version: (\\d+\\.\\d+(?:\\.\\d+)?)"));
+    const auto match = version.match(reply.arguments().first().toString().left(65536));
     return match.hasMatch() ? match.captured(1) : QString{};
 }
 #endif

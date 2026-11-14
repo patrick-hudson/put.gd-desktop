@@ -74,7 +74,6 @@ public:
     qint64 size() const override { return qMax<qint64>(total(), 1); }
     // Every byte has been handed to the transport: the server may have the whole request.
     bool consumed() const { return read_ >= total(); }
-    qint64 fileOffset() const { return before_.size(); }
     qint64 fileBytes() const { return fileBytes_; }
 protected:
     qint64 readData(char* data, qint64 maximum) override {

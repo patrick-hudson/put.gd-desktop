@@ -121,7 +121,7 @@ QStringList verifiedMarkerFiles(const QDir& directory,const QFileInfoList& conte
 // files named like the extension's or in its own marker. Anything else stays.
 void removeStaleStaging(const QString& parent,QStringList bundled){
  bundled.append(copyMarkerName);
- const QRegularExpression ownName(QRegularExpression::anchoredPattern(QStringLiteral("\\.putgd-extension-(new|old)-[0-9a-f]{32}")));
+ static const QRegularExpression ownName(QRegularExpression::anchoredPattern(QStringLiteral("\\.putgd-extension-(new|old)-[0-9a-f]{32}")));
  for(const auto& directory:QDir(parent).entryInfoList(QDir::Dirs|QDir::NoSymLinks|QDir::Hidden|QDir::NoDotAndDotDot)){
   if(!ownName.match(directory.fileName()).hasMatch())continue;
   const QDir stale(directory.filePath());

@@ -69,7 +69,6 @@ private:
     void fail(const Error&);
     void release();
     void removeFiles();
-    QString stateName() const;
     static void work(std::shared_ptr<Job>);
 
     State state_ = State::Idle;

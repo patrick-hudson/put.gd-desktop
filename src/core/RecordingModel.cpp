@@ -285,11 +285,6 @@ bool validMicrophoneDevice(const QJsonValue& value) {
     return true;
 }
 bool monitorSourceName(const QString& name) { return name.endsWith(QStringLiteral(".monitor"), Qt::CaseInsensitive) || name == QStringLiteral("@DEFAULT_MONITOR@"); }
-qint64 alignToFrame(qint64 us, int fps) {
-    if (fps < 1) return us;
-    const double frame = 1000000.0 / fps;
-    return qint64(std::llround(std::llround(us / frame) * frame));
-}
 namespace {
 Error validateMask(const QJsonValue& value, RecordingMask& mask, qint64 duration, const QSize& canvas) {
     if (!value.isObject()) return invalid("A mask must be an object", "mask");

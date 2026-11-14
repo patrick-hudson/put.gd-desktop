@@ -82,7 +82,7 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
 }
 void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
  if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
- const auto ticket=operations_.invalidateCopyEligibility();const auto path=operations_.databasePath();
+ const auto ticket=operations_.invalidateCopyEligibility();
  operations_.background([this,ids](Error& e) {
   QStringList urls;
   for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}

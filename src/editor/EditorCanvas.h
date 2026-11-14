@@ -56,7 +56,6 @@ public:
  // One undoable document step (the crop stays a draft until applied). Text
  // keeps its own size; an arrow takes its tail at x/y and head at x+w/y+h.
  bool setSelectionGeometry(const QRect&);
- QRect cropDraft() const {return cropDraft_;}
  bool fitted() const {return fitted_;}
  // The image area currently shown, in source pixels.
  QRect visibleImageRect() const;
@@ -65,7 +64,6 @@ public:
  // What a screen reader hears about the canvas: the selection or crop and
  // the keys that act on it.
  QString selectionSummary() const;
- qint64 cachedBlurBytes() const {return cacheBytes_;}
  // The label the next step gets: one more than the last one placed, or the
  // number set here. Undo, redo and agent edits recount from the highest step.
  int nextStepNumber() const {return nextStep_;}

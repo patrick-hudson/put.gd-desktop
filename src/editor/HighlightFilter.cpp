@@ -31,8 +31,6 @@ int distance(QRgb a,QRgb b){
  return int(std::lround(std::sqrt(double(dr*dr+dg*dg+db*db))));
 }
 int quantize(QRgb p){return ((qRed(p)>>3)<<10)|((qGreen(p)>>3)<<5)|(qBlue(p)>>3);}
-QRgb multiply(QRgb p,QRgb m){return qRgba(qRed(p)*qRed(m)/255,qGreen(p)*qGreen(m)/255,qBlue(p)*qBlue(m)/255,qAlpha(p));}
-QRgb screen(QRgb p,QRgb s){return qRgba(255-(255-qRed(p))*(255-qRed(s))/255,255-(255-qGreen(p))*(255-qGreen(s))/255,255-(255-qBlue(p))*(255-qBlue(s))/255,qAlpha(p));}
 bool inside(const QList<QRect>& rects,int x,int y){for(const auto& r:rects)if(r.contains(x,y))return true;return false;}
 // The finished colour for every pixel luminance (12-bit, linear) on one page:
 // the pixel keeps the contrast it had with its page, now against the band,
@@ -269,7 +267,6 @@ QRgb bandOf(QRgb pigment,QRgb page){
  const QRgb paper=whiteMix(page,pageFloor);
  return qRgb((qRed(paper)*qRed(pigment)+127)/255,(qGreen(paper)*qGreen(pigment)+127)/255,(qBlue(paper)*qBlue(pigment)+127)/255);
 }
-QRgb bandFor(const QColor& marker,QRgb page){return bandOf(pigmentOf(marker),page);}
 
 // How far a light neutral marker's wash may scale Y+0.05 over `area`: every
 // pixel counts here, one bright pixel the sampling grid missed would clip.
