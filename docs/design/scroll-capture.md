@@ -20,15 +20,24 @@ the position the capture started at; `topReached` says which).
    `perform_action`. `editor.open {"source":"scroll"}` does the same and opens the result
    in the [editor](image-editor.md) instead of sending it on.
 2. **Select.** The recording region selector opens, live as for a recording. The
-   ring sits just outside the rectangle, and a small bar (state, height so far, **Stop**,
-   **Cancel**) sits outside it too (on X11 32 px from the rectangle, so that the window
-   manager's shadow around the bar stays out of the last rows; 10 px elsewhere).
-3. **Capture.** It starts by itself after the drag. put.gd keeps the pointer outside the region
-   and brings it in for each wheel step. It scrolls the content to its top first (`preferences.scrollCaptureFromTop`, on by
-   default), then sends wheel steps down and stitches until the content stops moving.
-4. **End.** At the end of the content, at the height cap, on Stop, or when it
+   ring sits just outside the rectangle, and a small bar (state, height so far, a line
+   that says what the mouse does, **Stop**, **Cancel**) sits outside it too (on X11 32 px
+   from the rectangle, so that the window manager's shadow around the bar stays out of
+   the last rows; 10 px elsewhere). The bar goes beside the rectangle on its own screen
+   wherever it fits: below, above, left, right, then the corners outside it, and only then
+   on another screen ([#1514](https://github.com/patrick-hudson/put.gd-desktop/issues/1514)).
+   It has one size for every state, so it never moves and Stop stays where it is.
+3. **Capture.** It starts by itself after the drag. put.gd keeps the pointer outside the region,
+   on the bar or a small clear pad of its own, and brings it in for each wheel step. It scrolls
+   the content to its top first (`preferences.scrollCaptureFromTop`, on by default), then sends
+   wheel steps down and stitches until the content stops moving. While it runs, the bar says
+   "Move the mouse to pause".
+4. **Pause.** The moment the user moves the mouse the capture stops sending anything and the
+   bar says "Paused: you moved the mouse", with **Resume**, **Stop** and **Cancel** (see
+   [the user's mouse](#the-users-mouse)).
+5. **End.** At the end of the content, at the height cap, on Stop, or when it
    cannot follow the content any more. Stop keeps the image so far; Cancel discards it.
-5. **Result.** One PNG, routed by the `scroll` action's output like a region capture
+6. **Result.** One PNG, routed by the `scroll` action's output like a region capture
    (local copy, upload, History, link copy). Through the editor, by the `edit` action's.
 
 One scroll session exists at a time. It excludes recording, the editor and any other
@@ -69,27 +78,32 @@ The contract in `ScrollBackend.h`:
   the helper's `prepare` and the resident's `scroll.prepare` refuse with it whether or not
   they name a `rect` (see [no region selector](#known-limits)).
 - `prepare {rect?, maxHeight, maxPixels, fromTop, autoStart, selection}` then `select
-  {rect}`, `start`, `stop`, `cancel` and `overlay {visible}`. Replies come only once the
-  helper reached the state. `stop` keeps the image, and its reply is the object a later
+  {rect}`, `start`, `pause`, `resume`, `stop`, `cancel` and `overlay {visible, rect?}`.
+  Replies come only once the helper reached the state. `pause` and `resume` answer
+  `{state: "capturing", paused, pausedBy?}`; `resume` of a capture that is not paused is
+  `scroll_state`. `stop` keeps the image, and its reply is the object a later
   `scroll.inspect` returns. `cancel` is accepted while a `start` or `stop` is pending (it
   is never `scroll_busy`); a `start` or `stop` waiting for the helper then ends with the
   session. Once a `cancel` is on its way it decides the end: see
   [Stop and Cancel](#output-and-limits).
 - Events, each with the session id: `selected {rect}`; `progress {state: scrollingToTop |
-  capturing, height, steps, pixelsPerNotch}`; `finished {path, bytes, sha256, width,
+  capturing | paused, paused, pausedBy?, height, steps, pixelsPerNotch}`; `finished {path, bytes, sha256, width,
   height, endReason, truncated, appliedMaxHeight, topReached?, stats}`; `cancelled`;
   `failed {error}`.
   After `finished`, `cancelled` or `failed` the helper injects nothing more for that id.
 - Deadlines: 10 s for the helper to start, 15 s per command, 30 s for `stop`, 180 s for
-  the capture itself. A missed deadline is `scroll_helper_failed` with the check
+  the capture itself, not counting the time it is paused. A missed deadline is `scroll_helper_failed` with the check
   (`start_timeout`, `command_timeout`); a helper that dies, answers out of order or
   floods stderr is the same code (`exited`, `crashed`, `protocol`, `build`). A session client
   waits 15 s past those deadlines, so the resident's own answer arrives (40 s for the
   `scroll.*` methods, 45 s for `scroll.stop`).
 
 On GNOME the Shell extension selects the region and draws the ring, and the resident
-places the bar through it (`ScrollShell`, a `RecordingShell` of the scroll session). A
-capture with no spot for the bar outside the rectangle hides it for the whole capture. The
+places the bar through it (`ScrollShell`, a `RecordingShell` of the scroll session). The
+resident sends the helper where the Shell put the bar (`overlay {visible: true, rect}`), so
+the pointer can rest on it. A capture with no spot for the bar outside the rectangle hides
+it for the whole capture. The Shell still places the bar below or above the rectangle, then
+on another monitor: the sides of the rectangle are not tried there. The
 bar never takes the keyboard and has no handle inside the frame.
 
 put.gd's own notifications stay out of the picture. When a session is accepted the
@@ -186,15 +200,18 @@ so Stop is seen soon.
    step 7 decides whether the region scrolls. The pointer is in the
    rectangle for each wheel step up only, as later (rule 3). Where the frames show a painted
    pointer (Hyprland, labwc) that also keeps an arrow out of the viewport that Stop keeps.
-2. **First frame**, with the pointer outside the region on its output and off the bar, so no
-   hover effect is in it. The place is 16 px outside the rectangle, a third of the way down
-   its left side, else the same on its right side, else above or below its middle. The
+2. **First frame**, with the pointer outside the region on its output, so no hover effect is
+   in it. The place is on the bar when it is beside the rectangle (see
+   [the user's mouse](#the-users-mouse)), else 16 px outside the rectangle, a third of the way
+   down its left side, else the same on its right side, else above or below its middle. The
    pointer then has 450 ms (`awayLingerMs`) to let go of what it called up before the
    capture, such as a browser's link panel. With no such place the pointer stays where it
    is, except where the frames show a painted pointer: it then goes to the bottom right
    corner.
 3. **The pointer's visits.** On every desktop the pointer waits at that place outside while
    frames are read (`RunOptions::restAway`) and is in the rectangle only for a wheel step.
+   Where the helper has a surface of its own there, the place is on it (see
+   [the user's mouse](#the-users-mouse)).
    A pointer that rests on the page makes the page answer it: a browser shows the address
    of a link under it in a panel at the bottom of the viewport, in the very rows the next
    step appends. For a step the pointer comes in to the point `entryInset` inside the edge
@@ -270,9 +287,66 @@ so Stop is seen soon.
    twice, or the last stitched frame cannot be found, the capture stops with the exact
    image so far.
 9. **Stops.** End of content, height cap, Stop, Cancel, 180 s, injector refusal, source
-   lost, frame size changed, modifier keys held. Stop at any point keeps the image;
-   Stop on the way to the top keeps the viewport on screen at that moment (one
-   frame, confirmed by a second look), with `topReached: false`.
+   lost, frame size changed, modifier keys held, a pause of 10 minutes. Stop at any point
+   keeps the image; Stop on the way to the top (the bar's button works there too) keeps the
+   viewport on screen at that moment (one frame, confirmed by a second look), with
+   `topReached: false`.
+
+## The user's mouse
+
+The pointer is the user's the moment they touch it
+([#1514](https://github.com/patrick-hudson/put.gd-desktop/issues/1514)). Before, a person
+could not reach Stop: the next wheel step pulled the pointer back.
+
+**Where the pointer rests.** Between wheel steps the pointer rests on a surface the helper
+owns, outside the rectangle, so that the helper gets the user's motion from the first pixel
+as ordinary pointer events (enter, leave, move). That is the bar when it is beside the
+rectangle: a point in the margin above or below its controls, on the edge nearest the
+rectangle, so the way to the page stays short (Plasma's "shake cursor" effect fires on a
+pointer that travels more than about 100 px back and forth several times a second). Where
+the frames show a painted pointer (Hyprland, labwc), the arrow hangs clear of the rectangle.
+Without the bar beside it, a clear 32 px pad of the helper's own sits at the old rest spot,
+16 px outside the rectangle (an X11 window, or a layer surface on Plasma, Hyprland and
+labwc). GNOME has no pad, because only the Shell places windows there: the pointer rests on
+the bar, whose place the resident passes on.
+
+**Who moved it.** The helper knows where and when it last put the pointer. The rest surface
+reporting the pointer anywhere else (more than 4 px from that point), or the pointer leaving
+it when no visit into the rectangle was sent, is the user. So is, on X11, a pointer that is
+not where XTest last put it (`XQueryPointer` before every injection). The user's motion is
+watched from the moment the pointer is first seen arriving at its rest.
+
+**Pause.** On the user's motion the injection gate closes at once, from the event itself,
+before the loop has looked. The loop stops between any two injections, inside a visit and
+inside a wait, sends nothing more (no pointer motion, no wheel step), reads no frame, and
+keeps its state and the image so far. The pointer stays where the user put it. The bar says
+"Paused: you moved the mouse" next to **Resume**, **Stop** and **Cancel**; a pause asked
+through `scroll.pause` says "Paused". `scroll.inspect` and the `progress` event carry
+`paused: true` and `pausedBy: "pointer"` or `"request"`.
+
+**Resume** (the bar's button, once the mouse has been still for half a second, or
+`scroll.resume`) looks at the screen before it goes on. The pointer goes back to its rest,
+what it did to the page gets its time to go, and the picture at rest is placed against the
+last stitched frame by its pixels alone, never by where the wheel would have taken the page.
+Where the page is, or a frame that can be placed further down or up, the capture goes on
+from there. Where it cannot be placed and the pause came after one plain wheel step, that
+step is scrolled back and the last stitched frame looked for where it was. Otherwise the
+capture ends `lost_track`, with the exact image so far and the note "the page moved while
+the capture was paused and its place could not be found again". A pause before the first
+frame was stitched goes back up to the top. The next step after a pause teaches nothing
+about the distance per notch, and an end that was pending is proved again.
+
+**Stop and Cancel while paused.** Stop keeps the image (on the way to the top, the
+viewport); Cancel discards it. Esc on X11 and the hotkey again stop it, as at any time.
+
+**Time while paused.** A pause is not counted in the 180 s of the capture. A pause that lasts
+10 minutes (`RunOptions::pauseLimitMs`) ends the capture as Stop, with the image kept and the
+note "the capture was paused for 10 minutes and ended there", so a capture nobody comes back
+to does not hold the session. The resident has no deadline of its own for a running capture,
+only for its commands, and those answer at once while paused.
+
+**At the end on X11** the pointer goes back where the user had it before the capture, unless
+the user has taken it: it then stays where they put it.
 
 ## What counts as proved
 
@@ -493,7 +567,7 @@ result report them so an agent can tell a complete capture from a partial one.
 | `end_of_content` | false | The content stopped moving, proved by a fresh frame, and with scroll-to-top on the top was proved too: the whole scroll area is in the image, top to bottom. (With scroll-to-top off it is everything from where the content was scrolled to.) |
 | `top_not_reached` | true | The capture reached the end of the content, but the scroll-to-top step had not proved the top, so the image starts partway down. It is kept and routed, a warning notification "put.gd — scrolling capture incomplete" says "Could not reach the top of the page. The image starts partway down.", and History carries the same note. `topReached` is false and `result.note` says why the way up ended. The rows it has are exact |
 | `height_cap` | true | The cap was reached first. The image is kept and routed, a warning notification says "Stopped at 30,000 px. The page continues below.", and History carries the same note. A warning, not a failure: the rows so far are exact |
-| `stopped` | true | The user stopped it (the bar, the hotkey again, Esc on X11, `scroll.stop`) |
+| `stopped` | true | The user stopped it (the bar, the hotkey again, Esc on X11, `scroll.stop`), or a pause lasted 10 minutes (`result.note` says so) |
 | `lost_track` | true | A step could not be matched or recovered, the end could not be proved, the [layout inside the selection changed](#the-layout-rule), or a column of the selection scrolls at a pace of its own. The image so far is exact and `result.note` says why |
 | `time_limit` | true | The 180 s limit ended it. The image so far is exact |
 
@@ -541,6 +615,15 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
 - **Hyprland paints the pointer into the frames,** whatever was asked. The loop keeps it out of the
   rectangle wherever a frame may become the image. A Stop in the 60 ms between the pointer's entry and its
   wheel step sends one pointer motion (out of the rectangle) after Stop.
+- **The user's mouse.** On Wayland a motion that comes while the pointer is inside the
+  rectangle for a wheel step (about 100 ms of every step) is seen only when the pointer is
+  back on its rest: the capture moves it there once more, then pauses. X11 sees it at once.
+  A region that covers its whole output has no place outside it: the pointer stays parked on
+  the page, no bar shows, and moving the mouse does not pause the capture (Esc on X11, the
+  hotkey and `scroll.stop` still stop it). The same is true on GNOME when the Shell found no
+  spot for the bar. The bar needs about 650 by 56 px beside the rectangle; a region that
+  leaves less on every side of its screen puts the bar on another screen, or hides it with
+  one screen, and the pointer then rests on the pad.
 - **A build with no region selector has no scroll capture, for any caller.** The Ubuntu
   24.04 DEB on KDE Wayland is built without LayerShellQt for Qt 6 (`cmake/Platform.cmake`),
   so it has no layer-shell selector and no layer-shell surfaces for the ring, the bar and the
@@ -591,7 +674,8 @@ and what to do are in [errors](../user/errors.md#scrolling-capture).
 ## Agent control
 
 Every step is a session method: `scroll.capabilities`, `scroll.prepare`, `scroll.select`,
-`scroll.start`, `scroll.stop`, `scroll.cancel` and `scroll.inspect`, with the MCP tools
+`scroll.start`, `scroll.pause`, `scroll.resume`, `scroll.stop`, `scroll.cancel` and
+`scroll.inspect`, with the MCP tools
 `prepare_scroll_capture`, `control_scroll_capture` and `get_scroll_capture`. See
 [CLI](../automation/cli.md#scrolling-capture) and [MCP](../automation/mcp.md#tools-and-effects).
 `scroll.prepare` never starts by itself: select (or pass `rect`), then `scroll.start`.

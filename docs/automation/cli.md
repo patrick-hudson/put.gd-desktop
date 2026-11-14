@@ -59,7 +59,7 @@ Methods and parameters:
 | `action.invoke` | `action`: region, window, monitor, desktop, repeat, clipboard, edit, scroll, text, record. `monitor` captures the monitor the pointer is on; `repeat` captures the rectangle of the last region capture again with no selector, and its operation is a `region` capture (`repeat_unavailable` with nothing remembered, `repeat_layout_changed` after the monitors changed). region, window, monitor, desktop, repeat, edit and text accept `delaySeconds`: 0 (default, immediate, no countdown), 3, 5 or 10; an `edit` takes it only for a `region`, `window` or `desktop` source. With 3, 5 or 10 the reply still comes at once with the operation ID, a countdown shows for that long, and `operation.cancel` ends it ([capture monitor, delay and repeat](../design/capture-delay.md)). `edit` also accepts `source` and `path` as `editor.open`; `scroll` takes no other parameter and, while a scrolling capture is capturing, is Stop ([scrolling capture](#scrolling-capture)); `text` selects a region, copies the text and codes in it and stores nothing ([text recognition](#text-recognition-and-qr-codes)). Only `record` accepts `mode`: `open` (default) or `toggle` ([recording](../design/recording/overlay-and-review.md#tray-and-hotkey)) |
 | `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](../design/file-manager-upload.md)) |
 | `editor.open` | optional `source` region (default)/window/desktop/clipboard/file/scroll, `path` (absolute, file only). `scroll` selects a scrolling capture whose result opens in the editor |
-| `scroll.capabilities`, `.prepare`, `.select`, `.start`, `.stop`, `.cancel`, `.inspect` | a scrolling capture's session; see [scrolling capture](#scrolling-capture) |
+| `scroll.capabilities`, `.prepare`, `.select`, `.start`, `.pause`, `.resume`, `.stop`, `.cancel`, `.inspect` | a scrolling capture's session; see [scrolling capture](#scrolling-capture) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
 | `editor.apply` | `id`, `commands` array (1–100); atomic; shapes redact, blur (`style` blur/pixelate), arrow, line, rectangle, ellipse, pen, step, text, highlight |
 | `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
@@ -312,7 +312,7 @@ One text operation runs at a time. A second `text.recognize`, `action.invoke {"a
 
 ## Scrolling capture
 
-A scrolling capture ([design](../design/scroll-capture.md)) is driven by seven session methods.
+A scrolling capture ([design](../design/scroll-capture.md)) is driven by nine session methods.
 `putgd-cli` forwards each like any other method. Failures use the codes in
 [errors](../user/errors.md#scrolling-capture).
 
@@ -321,14 +321,17 @@ A scrolling capture ([design](../design/scroll-capture.md)) is driven by seven s
 | `scroll.capabilities` | none | `{available, reason?, message?, injector, frames, selection, maxHeight}`: `injector` is `xtest`, `mutter-remote-desktop`, `kwin-fake-input` or `wlr-virtual-pointer`; `frames` is `ximagesrc`, `mutter-screencast`, `kde-screencast` or `image-copy`; `selection` says who selects the region (`helper`, `shell`, `none`); `maxHeight` is the configured cap. Also under `capabilities` as `result.scroll`. Opens no source and sends no input |
 | `scroll.prepare` | optional `rect` `[x, y, w, h]` (logical desktop pixels, X11 root pixels; at least 64 each way), optional `maxHeight` 2,000 to 60,000 | `{id, operationId, state, height, steps, pixelsPerNotch}`, `state` `selecting` (the region selector is open) or `ready` (a `rect` was given). Never starts capturing: call `scroll.start`. The `id` is the operation ID |
 | `scroll.select` | `id`, `rect` | Completes an open selector with a rectangle, as a drag would; the state becomes `ready` and `rect` is set |
-| `scroll.start` | `id` | The state `capturing` once the helper has begun; the capture then runs on its own, at most 180 s |
+| `scroll.start` | `id` | The state `capturing` once the helper has begun; the capture then runs on its own, at most 180 s, not counting pauses |
+| `scroll.pause` | `id` | Stops all injection at once, as the user moving the mouse does: `{state: "capturing", paused: true, pausedBy}`. `pausedBy` is `request`, or `pointer` when the user had paused it already. A pause that lasts 10 minutes ends the capture as Stop |
+| `scroll.resume` | `id` | Goes on after a pause: the helper looks at the page again first, and ends the capture `lost_track` with the exact image so far when the page moved where it cannot be placed. `scroll_state` when it is not paused |
 | `scroll.stop` | `id` | Keeps the image. The reply is the finished view (below), after the PNG is written and admitted |
 | `scroll.cancel` | `id` | Discards the capture: state `cancelled`, no history row, no staging files |
 | `scroll.inspect` | `id` | The session's view while it runs and after: the last 32 sessions stay inspectable |
 
 The view is `{id, operationId, state, rect?, height, steps, pixelsPerNotch}` while running, with
-`state` `preparing`, `selecting`, `ready`, `capturing` (including the way to the top) or
-`finishing`. After the end it also carries what the helper reported: `state: "done"`,
+`state` `preparing`, `selecting`, `ready`, `capturing` (including the way to the top and a pause) or
+`finishing`. While capturing it also has `paused`, and with `paused: true` `pausedBy`: `pointer`
+(the user moved the mouse) or `request` (`scroll.pause`). After the end it also carries what the helper reported: `state: "done"`,
 `endReason` (`end_of_content`, `height_cap`, `stopped`, `lost_track`, `time_limit`,
 `top_not_reached`), `truncated` (false only for `end_of_content`), `height`, `bytes`, `stats {steps,
 pixelsPerNotch, lowConfidenceSteps, elapsedMs}` (also flat), `result` (the helper's descriptor
@@ -346,6 +349,8 @@ putgd-cli scroll.capabilities
 putgd-cli scroll.prepare '{"rect":[100,100,900,700],"maxHeight":12000}'
 putgd-cli scroll.start '{"id":"RETURNED-ID"}'
 putgd-cli scroll.inspect '{"id":"RETURNED-ID"}'
+putgd-cli scroll.pause '{"id":"RETURNED-ID"}'
+putgd-cli scroll.resume '{"id":"RETURNED-ID"}'
 putgd-cli scroll.stop '{"id":"RETURNED-ID"}'
 ```
 
