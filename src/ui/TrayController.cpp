@@ -5,6 +5,7 @@
 #include "Ui.h"
 #include "Theme.h"
 #include "core/ByteSize.h"
+#include "core/Operation.h"
 #include "core/Log.h"
 #include "platform/HostOpen.h"
 #include "core/HostEnvironment.h"
@@ -487,8 +488,9 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // History's Finish share link, or by Retry upload while other files still need theirs (#1496).
  int unconfirmed=0,unmade=0,finishable=0,inspect=0,create=0;QString linkCause;
  for(const auto& value:items){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"||state=="interrupted")continue;const auto share=item["shareStatus"].toString();const bool wanted=item["shareIntent"]=="create";
-  if(share=="unknown"||share=="changed"){++unconfirmed;if(share=="unknown"&&wanted)++finishable;else ++inspect;}
-  else if(share=="failed"||(share=="private"&&wanted)){++unmade;if(share=="failed"){++create;if(linkCause.isEmpty())linkCause=failureReason(item["error"].toObject());}else ++finishable;}}
+  // Only a file still stored as uploaded gets Finish share link, as in History.
+  if(share=="unknown"||share=="changed"){++unconfirmed;if(share=="unknown"&&wanted&&OperationItem::shareableRemote(item["remoteStatus"].toString()))++finishable;else ++inspect;}
+  else if(share=="failed"||(share=="private"&&wanted)){++unmade;if(share=="failed"){++create;if(linkCause.isEmpty())linkCause=failureReason(item["error"].toObject());}else if(OperationItem::shareableRemote(item["remoteStatus"].toString()))++finishable;else ++inspect;}}
  QString link;
  if(const int links=unconfirmed+unmade){
   const auto subject=items.size()>1?QString(links==1?"1 share link ":"%1 share links ").arg(links):QString("the share link ");

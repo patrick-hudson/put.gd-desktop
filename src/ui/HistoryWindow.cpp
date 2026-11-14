@@ -683,7 +683,7 @@ public:
  bool iconPrimary(const QRect& r,const QModelIndex& i)const{Q_UNUSED(r);return compactIcon(i);}
  // Independent of hover and selection, so nothing reflows on interaction.
  int compactActionWidth(const QModelIndex& i)const{
-  const bool failed=i.data(HistoryModel::FailedRole).toBool();if(!failed&&inspectorBeside&&inspectorBeside())return 0;
+  const bool failed=i.data(HistoryModel::FailedRole).toBool();if(!failed&&inspectorBeside&&inspectorBeside()&&!i.data(HistoryModel::PrimaryActionRole).toString().startsWith("Finish share link"))return 0;
   if(i.data(HistoryModel::PrimaryActionRole).toString().isEmpty())return space(Space::s)+actionHeight();
   return space(Space::s)+actionHeight()+(compactIcon(i)?space(Space::xs)+actionHeight():space(Space::s)+primaryWidth(i));
  }
@@ -1480,7 +1480,7 @@ void HistoryWindow::openBrowser(const QString& url){
 }
 void HistoryWindow::operationAction(const QString& method,const QJsonObject& extra){if(model_->busy())return;const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return;const auto id=model_->record(rows.first().row())["operationId"].toString();if(id.isEmpty())return;auto params=extra;params["id"]=id;const bool links=extra["scope"]=="sharing";session_.request(method,params,this,[g=QPointer<HistoryWindow>(this),method,links](Error e,QJsonObject result){if(g&&method=="operation.cancel"&&e.code=="operation_inactive"){Ui::feedback(g->status_,"That upload had already finished.",false);g->refresh();return;}if(g){const auto message=method=="operation.cancel"?QString("Cancellation requested"):method=="operation.retry"&&links?QString("Finish share link requested"):method=="operation.retry"?QString("Upload retry requested"):method=="operation.retryLocalSave"?QString("Local save retry requested"):result["copyStatus"]=="copied"?QString("Copied to clipboard"):QString("Nothing was copied to the clipboard");const bool copyFailed=method=="operation.copy"&&result["copyStatus"]!="copied";const auto reason=result["error"].toObject()["message"].toString();Ui::feedback(g->status_,e?e.message:message+(copyFailed&&!reason.isEmpty()?": "+reason:QString{}),bool(e)||copyFailed);g->refresh();}});}
 // #1496: the link-only retry. The resident refuses it if any file still needs its upload.
-void HistoryWindow::finishShareLink(){if(sharingAccepting_||sharingTimer_->isActive())return;operationAction("operation.retry",{{"scope","sharing"}});}
+bool HistoryWindow::finishShareLink(){if(sharingAccepting_||sharingTimer_->isActive()){Ui::feedback(status_,"Wait for the current share link request to finish.",true);return false;}operationAction("operation.retry",{{"scope","sharing"}});return true;}
 QStringList HistoryWindow::finishableIds()const{QStringList ids;for(int row=0;row<model_->rowCount();++row){const auto r=model_->record(row);if(!HistoryModel::finishShareLink(r))continue;auto files=r["records"].toArray();if(files.isEmpty())files.append(r);for(const auto& v:std::as_const(files))if(v.toObject()["linkFinishable"].toBool())ids.append(v.toObject()["id"].toString());}return ids;}
 void HistoryWindow::copyHistoryLink(const QJsonObject& record){
  // A row owns its copy request even while its inspector detail is still loading.
@@ -1882,7 +1882,7 @@ void HistoryWindow::command(const QJsonObject& params,std::function<void(Error,Q
  }
  else if(action=="showCategory"){const auto category=params["category"].toString();int row=0;for(int i=0;i<categories_->count();++i)if(categories_->item(i)->flags()!=Qt::NoItemFlags&&categories_->item(i)->data(Qt::UserRole).toString()==(category=="all"?QString{}:category)){row=i;break;}categories_->setCurrentRow(row);}
  else if(action=="setView"){setDetailsOpen(false);setGridMode(params["view"].toString()=="gallery");}
- else if(action=="finishShareLink"){const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1||!HistoryModel::finishShareLink(model_->record(rows.first().row()))){reply({"history_selection_invalid","Select one row that offers Finish share link first.",{}},historyState());return;}finishShareLink();}
+ else if(action=="finishShareLink"){const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1||!HistoryModel::finishShareLink(model_->record(rows.first().row()))){reply({"history_selection_invalid","Select one row that offers Finish share link first.",{}},historyState());return;}if(!finishShareLink()){reply({"history_busy","Wait for the current share link request to finish.",{}},historyState());return;}}
  else if(action=="copySelectedLinks"){if(table_->selectionModel()->selectedRows().size()<2||selectedLinkIds().isEmpty()){reply({"history_selection_invalid","Select two or more rows with stored links first.",{}},historyState());return;}copySelectedLinks();}
  else if(action=="deleteSelected"){const auto ids=deletableIds();if(table_->selectionModel()->selectedRows().size()<2||ids.isEmpty()){reply({"history_selection_invalid","Select two or more rows with confirmed uploads first.",{}},historyState());return;}prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));}
  else if(action=="cancelConfirmation"){bool closed=false;for(auto* dialog:findChildren<QDialog*>("confirmAction"))if(dialog->isVisible()){dialog->reject();closed=true;}if(!closed){reply({"history_confirmation_unavailable","No deletion confirmation is open.",{}},historyState());return;}}

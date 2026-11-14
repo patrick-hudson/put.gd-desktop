@@ -1122,7 +1122,8 @@ Operation OperationService::run(Job job) {
   const auto current=store.detail(item.artifact.id);
   if(current.contains("shareStatus")){item.shareStatus=current["shareStatus"].toString();item.shareIntent=current["shareIntent"].toString();item.shareIntentOptions=current["shareIntentOptions"].toObject();item.receipt=StorageReceipt::fromJson(current["receipt"].toObject());}
   // A file deleted, replaced or changed at the destination since its upload gets no link (#1496).
-  if(current.contains("remoteStatus")&&!OperationItem::shareableRemote(current["remoteStatus"].toString()))continue;
+  // The durable item state stands in when the History row was cleared.
+  if(!OperationItem::shareableRemote(current.contains("remoteStatus")?current["remoteStatus"].toString():item.remoteStatus))continue;
   if(!QStringList{"not_requested","unknown"}.contains(item.shareStatus)&&!(QStringList{"private","failed"}.contains(item.shareStatus)&&item.shareIntent=="create"))continue;
   if(publicationMode=="private"&&item.shareStatus!="unknown"&&item.shareIntent!="create"){item.shareStatus="private";if(!saveItem(item))return op;continue;}
   if(!item.receipt.directUrl.isEmpty())continue;
