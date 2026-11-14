@@ -109,6 +109,14 @@ std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
 void FrameTap::stop() {
     if (!pipeline_) return;
     if (imageCopy_) { imageCopy_->stop(); imageCopy_ = nullptr; }
+    // The sink first. It keeps the last buffer until it reaches NULL, which the
+    // pipeline does sink first but after the source has stopped. Every ximagesrc
+    // buffer holds a reference to its source, and one handed back to a stopped
+    // ximagesrc goes into its emptied pool, so source, pads and buffer then keep
+    // each other alive for good: 2800 bytes and an XShm image per start, found by
+    // LeakSanitizer. Stopped first, the sink returns it to the running source,
+    // whose stop frees it. No new-sample call reaches this object after this.
+    if (sink_) gst_element_set_state(sink_, GST_STATE_NULL);
     gst_element_set_state(pipeline_, GST_STATE_NULL);
     if (sink_) { gst_object_unref(sink_); sink_ = nullptr; }
     gst_object_unref(pipeline_);

@@ -5,14 +5,6 @@
 #include <random>
 #include <thread>
 #include <vector>
-#if defined(__has_feature)
-#if __has_feature(address_sanitizer)||__has_feature(thread_sanitizer)||__has_feature(memory_sanitizer)
-#define PUTGD_REPLACED_ALLOCATOR 1
-#endif
-#endif
-#if defined(__SANITIZE_ADDRESS__)||defined(__SANITIZE_THREAD__)
-#define PUTGD_REPLACED_ALLOCATOR 1
-#endif
 using namespace putgd;
 // #560: after a 50-upload burst the resident kept about 12 MB in worker arenas
 // whose entirely free top chunks malloc_trim cannot return. The resident policy

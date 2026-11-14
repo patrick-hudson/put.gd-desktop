@@ -15,6 +15,7 @@
 #include <QElapsedTimer>
 #include <QWindow>
 #include <QTimer>
+#include <algorithm>
 #include <QCursor>
 #include <QFontMetricsF>
 #include <QPointer>
@@ -158,7 +159,10 @@ void LayerShellRegionOverlay::takeKeyboard(int qtKey,int qtModifiers){
 #endif
  QKeyEvent press(QEvent::KeyPress,qtKey,Qt::KeyboardModifiers(qtModifiers));QCoreApplication::sendEvent(surfaces_.first(),&press);
 }
-void LayerShellRegionOverlay::relayPointer(const QString& kind,QPointF logical){if(kind=="press")press(logical);else if(kind=="move")move(logical);else if(kind=="release")release(logical);}
+void LayerShellRegionOverlay::relayPointer(const QString& kind,QPointF logical){
+ // A relayed press off every output (#1487) starts no drag; the selector stays open.
+ if(kind=="press"&&std::none_of(frames_.begin(),frames_.end(),[&](const CaptureFrame& frame){return frame.logicalRect.contains(logical);}))return;
+ if(kind=="press")press(logical);else if(kind=="move")move(logical);else if(kind=="release")release(logical);}
 void LayerShellRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
 void LayerShellRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=waylandRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
 void LayerShellRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=waylandRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();++stats_.moves;for(auto* surface:surfaces_)surface->updateSelection();}
