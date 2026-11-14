@@ -1,8 +1,9 @@
 // Deterministic synthetic document, viewport renderer and fake scrolling app
-// used by test_scroll_stitcher.cpp (#1376), and the scenes of
-// test_scroll_tracker.cpp (#1515): parts pinned over the page, a header that
-// shows up late, a block that changes in place, text drawn again with other
-// antialiasing. Not part of the product code.
+// used by test_scroll_session.cpp (#1515: a person's scrolling as a script,
+// put.gd's wheel steps, the mouse), and the scenes of test_scroll_tracker.cpp
+// (#1515): parts pinned over the page, a header that shows up late, a block
+// that changes in place, text drawn again with other antialiasing. Not part of
+// the product code.
 #pragma once
 
 #include <algorithm>
@@ -12,7 +13,7 @@
 #include <optional>
 #include <vector>
 
-#include "record/ScrollRun.h"
+#include "record/ScrollSession.h"
 
 namespace synth {
 
@@ -162,6 +163,12 @@ struct FakeAppSpec {
   // With busyMsPerNotch: the first notch of a step that finds it idle is
   // painted as soon as it is worked through, the rest only once none waits.
   bool busyShowsFirst = false;
+  // A part of the page that takes the wheel for itself (a side bar that
+  // sticks and scrolls its own list): from this injection on, a wheel step
+  // whose pointer is inside the rectangle (viewport pixels) does not move
+  // the page. -1: off.
+  int deadAfterInjection = -1;
+  int deadX = 0, deadY = 0, deadW = 0, deadH = 0;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -181,8 +188,20 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   struct Event {
     char kind;
     int a, b;
+    int64_t t = 0;  // the clock when it was sent
   };
   std::vector<Event> events;
+  // The user turns the wheel while the capture is paused: the page moves by px.
+  void userScroll(int px);
+  // A person's scrolling, as a script: at time `at` (the fake clock) the page
+  // starts to move by px over durMs; durMs 0 jumps (a scrollbar drag).
+  struct UserScroll {
+    int64_t at;
+    int px;
+    int durMs = 120;
+  };
+  std::vector<UserScroll> script;
+  int scrolledByUser = 0;
 
  private:
   struct Seg {
@@ -203,8 +222,10 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   int64_t lastFrameT_ = -1;
   int frameIndex_ = 0;
   Image scratch_, delivered_;
+  size_t scriptAt_ = 0;
   bool quiet_ = false;
   int64_t busyUntil_ = 0;
+  int pointerX_ = -1, pointerY_ = -1;
 };
 
 }  // namespace synth

@@ -223,11 +223,20 @@ FakeApp::FakeApp(const Image& doc, ViewportSpec vs, FakeAppSpec spec, FakeClock&
 }
 
 bool FakeApp::movePointer(int x, int y) {
-  events.push_back({'m', x, y});
+  events.push_back({'m', x, y, clock_.nowMs()});
+  pointerX_ = x;
+  pointerY_ = y;
   return true;
 }
 
 int FakeApp::maxScroll() const { return renderer_.maxScroll(); }
+
+void FakeApp::userScroll(int px) {
+  const int64_t now = clock_.nowMs();
+  const double nt = std::clamp(target_ + px, 0.0, double(maxScroll()));
+  segs_.push_back({now, 200, posAt(now), nt});
+  target_ = nt;
+}
 
 double FakeApp::posAt(int64_t t) const {
   if (segs_.empty()) return spec_.startPos;
@@ -243,10 +252,13 @@ double FakeApp::posAt(int64_t t) const {
 
 bool FakeApp::scroll(int n) {
   const int idx = injections++;
-  events.push_back({'s', n, 0});
+  events.push_back({'s', n, 0, clock_.nowMs()});
   if (spec_.quietFromInjection >= 0 && idx == spec_.quietFromInjection) quiet_ = true;
   if (spec_.cancelFlag && spec_.cancelAfterInjections >= 0 && idx >= spec_.cancelAfterInjections)
     spec_.cancelFlag->store(true);
+  if (spec_.deadAfterInjection >= 0 && idx >= spec_.deadAfterInjection && pointerX_ >= spec_.deadX && pointerX_ < spec_.deadX + spec_.deadW &&
+      pointerY_ >= spec_.deadY && pointerY_ < spec_.deadY + spec_.deadH)
+    return true;  // the part under the pointer scrolled, the page did not
   if (spec_.busyMsPerNotch > 0) {
     // What it has not painted yet it paints when it has worked through all it was sent.
     const int64_t now = clock_.nowMs();
@@ -294,6 +306,17 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
   clock_.set(t);
   lastFrameT_ = t;
   ++frameIndex_;
+  // What the person did up to this frame.
+  for (; scriptAt_ < script.size() && script[scriptAt_].at <= t; ++scriptAt_) {
+    const UserScroll& u = script[scriptAt_];
+    const double from = posAt(u.at);
+    const double nt = std::clamp(target_ + u.px, 0.0, double(maxScroll()));
+    // Kept in time order: a wheel step sent just before may not have begun to move yet.
+    const auto at = std::upper_bound(segs_.begin(), segs_.end(), u.at, [](int64_t v, const Seg& g) { return v < g.t0; });
+    segs_.insert(at, {u.at, std::max(1, u.durMs), from, nt});
+    target_ = nt;
+    ++scrolledByUser;
+  }
   const int pos = int(std::lround(posAt(t)));
   renderer_.render(pos, scratch_);
   for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)

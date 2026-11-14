@@ -882,11 +882,18 @@ int main(int argc,char** argv){
   ready.findChild<QPushButton*>("keepRecording")->click();ready.setState("ready");ready.setRetained(0);ready.fitTo(QRect(0,0,1024,768));if(!shot(ready,"37-record-ready-narrow"))return 2;
   ready.hide();
   {
+   // #1515: every state of the scrolling capture's bar, one size for all.
    record::ScrollBar scroll;
-   for(const auto& state:QStringList{"ready","scrollingToTop","capturing","finishing"}){
-    scroll.setState(state);scroll.setHeight(state=="ready"?0:12340);scroll.show();
+   scroll.setFinishKey("Esc");
+   for(const auto& state:QStringList{"ready","waiting","following","lost","scrollingToTop","autoScrolling","resuming","finishing"}){
+    scroll.setState(state);scroll.setHeight(state=="ready"||state=="waiting"?950:12340);scroll.setPicture(state!="ready");scroll.setAutoScroll(state=="autoScrolling"||state=="scrollingToTop");scroll.show();
     if(!shot(scroll,"scroll-bar-"+state))return 2;
    }
+   // Auto-scroll handed the wheel back: the user moved the mouse, scrolled, or nothing scrolled under the wheel.
+   scroll.setHeight(12340);scroll.setAutoScroll(false);
+   for(const auto& by:QStringList{"pointer","scrolled","no_movement"}){scroll.setPaused(by);if(!shot(scroll,"scroll-bar-paused-"+by))return 2;}
+   // Wayland with no `scroll` hotkey bound: no key to name.
+   scroll.setFinishKey(QString());scroll.setState("following");if(!shot(scroll,"scroll-bar-following-no-key"))return 2;
    scroll.hide();
   }
   // #1364: the microphone toggle with its meter, the state without a microphone, and a recording that lost it.

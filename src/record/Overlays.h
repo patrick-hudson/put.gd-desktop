@@ -34,6 +34,8 @@ inline constexpr const char* controlBarTitle = "put.gd recording controls";
 // desktop, a widget made an overlay layer surface at a logical position.
 QList<QRect> barScreens();
 QRect barLogicalRect(const QRect& root);
+// The other way: X11 root pixels of a logical point.
+QPoint barRootPoint(const QPointF& logical);
 void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard);
 
 // Drag-to-select over every screen. Reports the selection in X11 root pixels;
