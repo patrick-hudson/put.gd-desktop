@@ -324,6 +324,10 @@ rectangle's output and takes the pointer everywhere except 8 px holes at the poi
 wheel is turned, the bar and the pad: the capture's own pointer is only ever at its rest or in a
 hole, so any pointer event on the watch is the user's, also while the pointer is in the
 rectangle for a wheel step. The watch is hidden while paused, so the desktop is the user's then.
+Under software rendering it costs the compositor some work: on the Omarchy guest frames came
+about 12% further apart with it (median 118 ms against 106 ms), and whole captures took as long
+as without it. `PUTGD_SCROLL_WATCH=0` in the resident's environment leaves it out, for lab
+comparisons; the user's motion during a wheel step is then seen as on GNOME.
 The user's motion is watched from the start of the capture: before the pointer first arrives at
 its rest, a pointer that moves on any of these surfaces while the capture sent nothing in between
 is the user.
