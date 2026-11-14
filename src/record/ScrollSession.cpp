@@ -220,9 +220,12 @@ void ScrollSession::feed(const RunFrame& frame) {
 
 void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
+    lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
     const TrackResult r = tracker_->addFrame(view, hint);
     if (opts_.onFrame) opts_.onFrame(r, hint, t);
+    // The image grew where auto-scroll turns the page: its way back has helped.
+    if (r.addedBottom > 0 || r.addedTop > 0) recoversWithoutGrowth_ = 0;
     account(r, t);
 }
 
@@ -292,8 +295,10 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
                     if (upSinceStep_ >= std::max(height_ / 4.0, 2 * stats_.pxPerNotch) && phase_ != Phase::Recover) handBack(HandBack::Scrolled);
                 }
                 lastStill_ = false;
+                stillRun_ = 0;
             } else {
                 lastStill_ = true;
+                ++stillRun_;
                 if (afterWait) ++framesAfterWait_;
             }
             break;
@@ -303,9 +308,13 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
             if (chainHinted_) pending_ += attributed_;
             resetChain();
             lastStill_ = true;
+            ++stillRun_;
             if (afterWait) ++framesAfterWait_;
             break;
-        case TrackStatus::Skipped: lastStill_ = false; break;
+        case TrackStatus::Skipped:
+            lastStill_ = false;
+            stillRun_ = 0;
+            break;
         case TrackStatus::CapReached: capped_ = true; break;
         case TrackStatus::Invalid: sizeChanged_ = true; break;
     }
@@ -373,6 +382,7 @@ void ScrollSession::startAuto() {
     if (stopping()) return;
     auto_ = true;
     pausedBy_ = HandBack::None;
+    recoversWithoutGrowth_ = 0;
     ++stats_.autoRuns;
     stillSteps_ = 0;
     patience_ = 1;
@@ -477,6 +487,7 @@ void ScrollSession::autoTick() {
         framesAfterWait_ = 0;
         upSinceStep_ = 0;
         lastStill_ = false;
+        stillRun_ = 0;
         if (stats_.pxPerNotch > 0) pending_ += notches * stats_.pxPerNotch;
         phase_ = Phase::Settle;
         if (!visit(notches)) { stepSentAt_ = -1; pending_ = 0; if (auto_) phase_ = Phase::Step; return; }
@@ -484,12 +495,13 @@ void ScrollSession::autoTick() {
     }
     if (phase_ != Phase::Settle && phase_ != Phase::Recover) return;
     if (stepFirstMoveAt_ >= 0) {
-        if ((lastStill_ && now - lastMoveAt_ >= opts_.settleMs) || now - stepSentAt_ >= opts_.stepTimeoutMs) { settled(now); return; }
+        const bool quiet = opts_.restQuietMs > 0 && lastMoveAt_ >= 0 && now - lastMoveAt_ >= opts_.restQuietMs && now - lastFrameAt_ >= opts_.restQuietMs;
+        if ((lastStill_ && stillRun_ >= opts_.restFrames && now - lastMoveAt_ >= opts_.settleMs) || quiet || now - stepSentAt_ >= opts_.stepTimeoutMs) { settled(now); return; }
         // Most of the step has moved: the next goes now. A browser's smooth
         // scroll eases out for half a second and more; the frames of its tail
         // and of the next step overlap as well as any.
         const double expected = std::abs(stepNotches_) * stats_.pxPerNotch;
-        if (phase_ == Phase::Settle && stillSteps_ == 0 && expected > 0 && double(stepMoved_) >= opts_.nextAtShare * expected && tracker_->state() != TrackState::Lost) {
+        if (phase_ == Phase::Settle && opts_.nextAtShare > 0 && stillSteps_ == 0 && expected > 0 && double(stepMoved_) >= opts_.nextAtShare * expected && tracker_->state() != TrackState::Lost) {
             stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(stepFirstMoveAt_ - stepSentAt_));
             if (stepCap_ > 0 && ++goodSteps_ >= 6) stepCap_ = 0;
             restedBefore_ = false;
@@ -507,6 +519,14 @@ void ScrollSession::autoTick() {
 }
 
 void ScrollSession::startRecover() {
+    // Lost again and again with the image no taller: whatever the tracker
+    // says it found in between was no way on (a page that keeps laying
+    // itself out, a picture it cannot hold). The user takes it from here.
+    if (phase_ != Phase::Recover && ++recoversWithoutGrowth_ > opts_.recoverTries) {
+        recoversWithoutGrowth_ = 0;
+        handBack(HandBack::Lost);
+        return;
+    }
     // Back by the last forward step, again at every try: the tracker finds
     // that picture in the image.
     if (phase_ != Phase::Recover) backNotches_ = std::max(1, std::abs(stepNotches_));
@@ -520,6 +540,7 @@ void ScrollSession::startRecover() {
     stepFirstMoveAt_ = lastMoveAt_ = -1;
     framesAfterWait_ = 0;
     lastStill_ = false;
+    stillRun_ = 0;
     pending_ = stats_.pxPerNotch > 0 ? notches * stats_.pxPerNotch : 0;
     if (!visit(notches)) { stepSentAt_ = -1; pending_ = 0; if (auto_) phase_ = Phase::Step; }
 }
@@ -717,7 +738,8 @@ SessionState ScrollSession::state() const {
     if (phase_ == Phase::ToTop) return SessionState::ScrollingToTop;
     if (tracker_->state() == TrackState::Lost) return SessionState::Lost;
     if (auto_) return SessionState::AutoScrolling;
-    if (pausedBy_ == HandBack::Lost) return SessionState::Lost;
+    // Auto-scroll gave up lost and the user has brought the page back where
+    // the image finds it: paused (by Lost) until Auto-scroll goes on.
     if (pausedBy_ != HandBack::None) return SessionState::Paused;
     if (!movedYet_) return SessionState::Waiting;
     return SessionState::Following;

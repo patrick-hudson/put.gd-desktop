@@ -18,7 +18,7 @@
 namespace putgd::record {
 namespace {
 const QStringList allStates{"ready", "waiting", "following", "lost", "scrollingToTop", "autoScrolling", "paused", "resuming", "finishing"};
-const QStringList allPauses{"pointer", "scrolled", "no_movement"};
+const QStringList allPauses{"pointer", "scrolled", "no_movement", "lost"};
 }
 ScrollBar::ScrollBar(QWidget* parent) : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus) {
     setObjectName("putgd-scroll-bar");
@@ -87,11 +87,15 @@ QStringList ScrollBar::words(const QString& state, const QString& pausedBy, cons
     const QString finish = finishKey.isEmpty() ? QStringLiteral("Done when you reach the end") : QStringLiteral("Done or %1 when you reach the end").arg(finishKey);
     if (state == "waiting") return {QStringLiteral("Scroll the page"), finish};
     if (state == "following") return {QStringLiteral("Following"), finish};
+    // Auto-scroll gave up: it went back five times and did not find the page
+    // (a page that lays itself out anew under the viewport).
+    if (state == "lost" && pausedBy == "lost") return {QStringLiteral("Auto-scroll lost the page"), QStringLiteral("Scroll back a little")};
     if (state == "lost") return {QStringLiteral("Lost the page"), QStringLiteral("Scroll back a little")};
     if (state == "scrollingToTop") return {QStringLiteral("Scrolling to the top…"), QStringLiteral("Move the mouse to pause")};
     if (state == "autoScrolling") return {QStringLiteral("Auto-scrolling"), QStringLiteral("Move the mouse to pause")};
     if (state == "paused") {
         if (pausedBy == "no_movement") return {QStringLiteral("Nothing scrolled here"), QStringLiteral("Scroll the page yourself")};
+        if (pausedBy == "lost") return {QStringLiteral("Found the page again"), QStringLiteral("Scroll on, or Auto-scroll to go on")};
         if (pausedBy == "scrolled") return {QStringLiteral("Paused: you scrolled"), QStringLiteral("Scroll on, or Auto-scroll to go on")};
         return {QStringLiteral("Paused: you moved the mouse"), QStringLiteral("Scroll on, or Auto-scroll to go on")};
     }
@@ -125,10 +129,11 @@ void ScrollBar::setFinishKey(const QString& key) {
     fitSize();
     refresh();
 }
-void ScrollBar::setState(const QString& state) {
-    if (state_ == state) return;
+void ScrollBar::setState(const QString& state, const QString& by) {
+    const QString keep = state == "paused" || state == "resuming" ? (by.isEmpty() ? pausedBy_ : by) : state == "lost" ? by : QString();
+    if (state_ == state && pausedBy_ == keep) return;
     state_ = state;
-    if (state != "paused" && state != "resuming") pausedBy_.clear();
+    pausedBy_ = keep;
     refresh();
 }
 void ScrollBar::setPaused(const QString& by) {

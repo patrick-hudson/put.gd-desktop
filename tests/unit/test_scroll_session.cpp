@@ -371,6 +371,53 @@ void testLostAndFound() {
   }
 }
 
+// A page that jumps under auto-scroll (GitHub in Chrome lays itself out anew
+// near 20,000 px). Into the page's end: the steps back find it, and the image
+// is exact to the end. Far past the image: auto-scroll does not step on for
+// ever; after five ways back that did not grow the image it hands the page
+// back, says lost, and injects nothing more. (What the image holds after
+// such a jump is the tracker's: a frame with no candidate at all is taken for
+// a blank stretch and placed on the hint, reported for its round 3.)
+void testAutoJump() {
+  std::printf("A page that jumps under auto-scroll\n");
+  DocSpec ds;
+  ds.seed = 43;
+  ds.width = W;
+  ds.viewport = H;
+  ds.flatFactor = 0;
+  ds.tableFactor = 0;
+  ds.noiseFactor = 0.5;
+  ds.gradientFactor = 0;
+  ds.blankFactor = 0;
+  ds.paragraphsPerGap = 12;
+  const Document doc = makeDocument(ds);
+  for (const bool intoEnd : {true, false}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    const int jumpAt = intoEnd ? doc.img.h - 2 * H - 300 : 1500, jump = intoEnd ? 1500 : 2000;
+    int before = -1;
+    int64_t jumpedAt = -1, handedAt = -1;
+    h.script = [&](Harness& x, int64_t t) {
+      if (before < 0 && x.app->positionNow() >= jumpAt) { before = x.app->positionNow(); jumpedAt = t; x.play({{t, jump, 0}}); }
+      if (handedAt < 0 && !x.seen.empty() && x.seen.back().second.driver == Driver::User && x.seen.back().second.pausedBy == HandBack::Lost) handedAt = t;
+      if (handedAt >= 0 && t >= handedAt + 5000) x.stop.store(true);
+      if (t >= 180000) x.stop.store(true);
+    };
+    h.run(doc.img, as, options(true));
+    if (intoEnd) {
+      const std::string wrong = h.exact(doc.img, 0);
+      report("a jump into the page's end: the steps back find it, one exact image to the end", h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.img.h,
+             (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, jump at %d", doc.img.h, before));
+      continue;
+    }
+    report("a jump far past the image: auto-scroll hands the page back and says lost", handedAt >= 0 && h.saw(SessionState::Lost, HandBack::Lost) && handedAt - jumpedAt < 60000,
+           handedAt < 0 ? std::string("it never handed the page back") : fmt("%lld ms after the jump, %d steps back", (long long)(handedAt - jumpedAt), h.stats.stepsBack));
+    report("a jump far past the image: nothing injected after the hand-back", handedAt >= 0 && h.injectedBetween(handedAt + 1, handedAt + 5000) == 0,
+           fmt("%d", handedAt >= 0 ? h.injectedBetween(handedAt + 1, handedAt + 5000) : -1));
+  }
+}
+
 // ------------------------------------------------------------------- limits
 
 void testCapAndIdle() {
@@ -455,6 +502,7 @@ int main() {
   testBarInside();
   testSwitchAndPause();
   testLostAndFound();
+  testAutoJump();
   testCapAndIdle();
   testDoneAndCancel();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);

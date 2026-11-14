@@ -25,10 +25,12 @@ public:
     // Inside the rectangle's bottom-right corner; false when it does not fit.
     bool placeInside(const QRect& captured);
     bool outside() const { return outside_; }
-    // ready | waiting | following | lost | scrollingToTop | autoScrolling | paused | resuming | finishing
-    void setState(const QString& state);
+    // ready | waiting | following | lost | scrollingToTop | autoScrolling | paused | resuming | finishing.
+    // lost with by "lost": auto-scroll gave up there and handed the page back.
+    void setState(const QString& state, const QString& by = QString());
     // paused, and why: "pointer" (the user moved the mouse), "scrolled" (the
-    // user scrolled), "no_movement" (nothing scrolled under the wheel).
+    // user scrolled), "no_movement" (nothing scrolled under the wheel), "lost"
+    // (auto-scroll gave up lost, and the user has found the page again).
     void setPaused(const QString& by);
     QString state() const { return state_; }
     void setHeight(int rows);

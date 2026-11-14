@@ -168,11 +168,22 @@ struct SessionOptions {
     // slowest answer seen, at most responseMaxMs) is still.
     double stepFraction = 0.40;
     int maxNotches = 12;
-    // The next step goes once the page has moved this share of what the step
-    // asked (or has come to rest).
-    double nextAtShare = 0.85;
+    // The next step goes only once the page has been seen at rest, as a
+    // person's scrolling gives it for free: a frame that shows what the last
+    // placed frame showed, at least settleMs after the page last moved; or no
+    // frame at all for restQuietMs after the last that moved (a stream that
+    // sends a frame only when the picture changes: KWin, Mutter, image copy).
+    // Chrome leaves parts of the page undrawn while a scroll runs on: a step
+    // taken at 85% of the last one's way left cells of the image that no
+    // frame ever showed drawn (Python's documentation, 2026-11-14), at 16.7 s
+    // per 10,000 px; the rest costs 22.4 s and leaves none. nextAtShare > 0
+    // takes the next step once the page has moved that share of the step.
+    double nextAtShare = 0;
+    int restFrames = 1;
+    int restQuietMs = 100;
     // Lost: up to this many steps back, each judged on three frames and at
-    // least recoverWaitMs, before auto-scroll hands the page back.
+    // least recoverWaitMs, before auto-scroll hands the page back; and no
+    // more than this many ways back in a row that the image did not grow after.
     int recoverTries = 5, recoverWaitMs = 2500;
     int settleMs = 150;
     int responseMs = 600;
@@ -297,11 +308,14 @@ private:
     int64_t nextStepAt_ = 0, stepSentAt_ = -1, stepFirstMoveAt_ = -1, lastMoveAt_ = -1;
     int stepNotches_ = 0, stillSteps_ = 0, patience_ = 1, wheelAt_ = 0, triesHere_ = 0;
     int recoverTries_ = 0, stepCap_ = 0, goodSteps_ = 0, backNotches_ = 1, framesSinceStep_ = 0;
+    int recoversWithoutGrowth_ = 0;  // ways back begun since the image last grew
     int animationMs_ = 0;        // the longest recent step animation seen
     bool restedBefore_ = true, stepFromRest_ = true;
     long long stepMoved_ = 0;
     double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
     bool lastStill_ = false;
+    int stillRun_ = 0;           // frames in a row that showed the page still
+    int64_t lastFrameAt_ = -1;   // when the last frame went to the tracker
     int framesAfterWait_ = 0;    // frames placed or still that arrived after the step's response time
     // The hint's model of what auto-scroll's steps still owe in movement.
     double pending_ = 0, attributed_ = 0;

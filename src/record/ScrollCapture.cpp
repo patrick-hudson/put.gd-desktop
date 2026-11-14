@@ -601,8 +601,22 @@ void ScrollCapture::showBar() {
     if (!bar_) return;
     const bool live = state_ == State::Ready || state_ == State::Starting || state_ == State::Capturing;
     const bool allowed = surfaceMode() == SurfaceMode::Compositor ? !autoStart_ : barOutside_ || barInside_;
-    if (live && allowed && !barHidden_) { bar_->show(); bar_->raise(); }
-    else bar_->hide();
+    if (live && allowed && !barHidden_) {
+        const bool was = bar_->isVisible();
+        bar_->show();
+        bar_->raise();
+        // Where the bar and its buttons are (desktop logical pixels on Wayland,
+        // root pixels on X11), for lab runs that press them as a person would.
+        if (!was && debugLogEnabled()) {
+            QStringList at;
+            for (const char* name : {"autoScroll", "done", "cancel"})
+                if (auto* button = bar_->findChild<QWidget*>(QLatin1String(name))) {
+                    const QPoint p = bar_->pos() + button->mapTo(bar_, QPoint());
+                    at << QStringLiteral("%1 %2,%3 %4x%5").arg(QLatin1String(name)).arg(p.x()).arg(p.y()).arg(button->width()).arg(button->height());
+                }
+            debugLog(QStringLiteral("scroll: bar at %1,%2 %3x%4 %5; %6").arg(bar_->x()).arg(bar_->y()).arg(bar_->width()).arg(bar_->height()).arg(barInside_ ? QStringLiteral("inside") : QStringLiteral("outside")).arg(at.join(QStringLiteral(", "))));
+        }
+    } else bar_->hide();
 }
 
 void ScrollCapture::start(Reply reply) {
@@ -909,7 +923,7 @@ void ScrollCapture::sessionProgress(const QJsonObject& p) {
         if (!resumePending_) {
             bar_->setAutoScroll(autoOn_);
             if (progressState_ == "paused") bar_->setPaused(pausedBy_.isEmpty() ? by : pausedBy_);
-            else bar_->setState(progressState_);
+            else bar_->setState(progressState_, progressState_ == "lost" && by == "lost" ? by : QString());
         }
     }
     emitProgress();
