@@ -484,12 +484,119 @@ void testLoop() {
   }
 }
 
+// The user took the pointer (#1514): from the moment the pause is seen
+// nothing reaches the desktop, and Resume never puts a wrong row in the image.
+struct PauseRun {
+  RunResult result;
+  RunStats stats;
+  std::vector<uint8_t> img;
+  int sentWhilePaused = 0, docRows = 0;
+  bool exactPrefix = false, whole = false;
+};
+// pauseAt: the pause begins this long after the injection numbered `after`;
+// it lasts pauseMs (-1: until Stop). userPx: the page moves by this much while paused.
+PauseRun pausedRun(int after, int pauseAt, int pauseMs, int userPx = 0, bool fromTop = false, int stopAfterMs = -1, int limitMs = 600000) {
+  const int W = 480, V = 600;
+  DocSpec ds;
+  ds.viewport = V;
+  ds.width = W;
+  static const Document doc = makeDocument(ds);
+  ViewportSpec vs;
+  vs.width = W;
+  vs.height = V;
+  FakeAppSpec as;
+  as.pxPerNotch = 53;
+  if (fromTop) as.startPos = 2400;
+  FakeClock clock;
+  FakeApp app(doc.img, vs, as, clock);
+  static std::atomic<bool> stop;
+  stop = false;
+  int64_t begins = -1;
+  bool moved = false;
+  RunOptions so;
+  so.pointer = true;
+  so.away = RunPoint{-12, V / 3};
+  so.restAway = true;
+  so.leaveDelayMs = 30;
+  so.awayLingerMs = 450;
+  so.fromTop = fromTop;
+  so.pauseLimitMs = limitMs;
+  so.paused = [&] {
+    if (begins < 0 && app.injections > after) begins = clock.nowMs() + pauseAt;
+    const int64_t now = clock.nowMs();
+    const bool on = begins >= 0 && now >= begins && (pauseMs < 0 || now < begins + pauseMs);
+    if (on && userPx && !moved) { app.userScroll(userPx); moved = true; }
+    if (on && stopAfterMs >= 0 && now >= begins + stopAfterMs) stop = true;
+    return on;
+  };
+  ScrollRun run(app, app, clock, so);
+  PauseRun out;
+  out.result = run.run(&stop);
+  out.stats = run.stats();
+  out.img = run.stitcher().takeImage();
+  out.docRows = doc.img.h;
+  for (const auto& e : app.events)
+    if (begins >= 0 && e.t >= begins && (pauseMs < 0 || e.t < begins + pauseMs)) ++out.sentWhilePaused;
+  int c0, c1;
+  comparedColumns(W, so.stitch, c0, c1);
+  const int rows = out.stats.outputRows;
+  const Cmp prefix = compare(out.img, rows, app.renderer().expected(rows), c0, c1);
+  const Cmp all = compare(out.img, rows, app.renderer().expected(doc.img.h), c0, c1);
+  out.exactPrefix = prefix.mismatches == 0 && prefix.heightOk;
+  out.whole = all.mismatches == 0 && all.heightOk;
+  return out;
+}
+
+void testPause() {
+  std::printf("\n[pause] nothing is sent while paused; Resume never adds a wrong row\n");
+  const PauseRun plain = pausedRun(1 << 30, 0, 0);
+  report("unpaused reference capture", plain.result == RunResult::EndOfContent && plain.whole, fmt("%s, rows %d of %d", toString(plain.result), plain.stats.outputRows, plain.docRows));
+  {
+    // Paused inside a visit, in the wait after a wheel step and between two
+    // steps, on the way down and on the way to the top: no pointer motion and
+    // no wheel step while paused, and the same image as without the pause.
+    int same = 0, total = 0, sent = 0;
+    std::string bad;
+    for (const bool top : {false, true})
+      for (const int after : {2, 5, 9})
+        for (const int at : {0, 20, 70, 300}) {
+          const PauseRun r = pausedRun(after, at, 4000, 0, top);
+          ++total;
+          sent += r.sentWhilePaused;
+          if (r.result == RunResult::EndOfContent && r.whole && r.img == plain.img && r.stats.pauses >= 1 && r.sentWhilePaused == 0) ++same;
+          else bad += fmt(" [%s after %d +%d ms: %s, rows %d, sent %d, pauses %d]", top ? "top" : "down", after, at, toString(r.result), r.stats.outputRows, r.sentWhilePaused, r.stats.pauses);
+        }
+    report(fmt("pause and resume: same image, nothing sent (%d runs)", total), same == total && sent == 0, fmt("%d same%s", same, bad.c_str()));
+  }
+  {
+    // The user scrolled the page while it was paused. A short way: the frame
+    // is placed and the capture completes. Far: it ends as lost track with an
+    // exact prefix, never with a row from elsewhere.
+    const PauseRun near = pausedRun(6, 70, 3000, 150);
+    report("page moved while paused, placed: whole page", near.result == RunResult::EndOfContent && near.whole && near.sentWhilePaused == 0,
+           fmt("%s, rows %d of %d, sent %d [%s]", toString(near.result), near.stats.outputRows, near.docRows, near.sentWhilePaused, near.stats.lastError.c_str()));
+    const PauseRun far = pausedRun(6, 70, 3000, 2600);
+    report("page moved far while paused: honest end, exact prefix", (far.result == RunResult::LostTrack || far.result == RunResult::EndOfContent) && (far.result == RunResult::EndOfContent ? far.whole : far.exactPrefix) && far.sentWhilePaused == 0,
+           fmt("%s, rows %d, exact prefix %d, sent %d [%s]", toString(far.result), far.stats.outputRows, far.exactPrefix, far.sentWhilePaused, far.stats.lastError.c_str()));
+  }
+  {
+    // Stop while paused keeps the image; so does a pause nobody ends, at its limit.
+    const PauseRun stopped = pausedRun(6, 70, -1, 0, false, 1500);
+    report("stop while paused keeps the image", stopped.result == RunResult::Stopped && stopped.stats.outputRows > 600 && stopped.exactPrefix && stopped.sentWhilePaused == 0,
+           fmt("%s, rows %d, exact prefix %d, sent %d", toString(stopped.result), stopped.stats.outputRows, stopped.exactPrefix, stopped.sentWhilePaused));
+    const PauseRun expired = pausedRun(6, 70, -1, 0, false, -1, 20000);
+    report("a pause at its limit ends as Stop, image kept", expired.result == RunResult::Stopped && expired.stats.pauseExpired && expired.stats.outputRows > 600 && expired.exactPrefix && expired.sentWhilePaused == 0,
+           fmt("%s, expired %d, rows %d, paused %lld ms", toString(expired.result), expired.stats.pauseExpired, expired.stats.outputRows, (long long)expired.stats.pausedMs));
+  }
+}
+
 }  // namespace
 
 int main() {
   testNeverGuessed();
   testOutputBound();
   testLoop();
+  testPause();
   int pass = 0, fail = 0;
   std::printf("\n==================== summary ====================\n");
   for (const Row& r : g_rows) {

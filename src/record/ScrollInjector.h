@@ -32,8 +32,13 @@ struct ScrollInjector {
     // as a gesture that never ends otherwise (KWin's fake input); true when
     // something was sent.
     virtual bool rest() { return false; }
-    // X11 only: put the pointer back where the user had it.
+    // X11 only: put the pointer back where the user had it, unless the user
+    // has it again (it is no longer where the capture last put it).
     virtual void restorePointer() {}
+    // X11 only: the pointer is not where the capture last put it, so the user
+    // has moved it (#1514). Elsewhere nobody can tell and it is false; the
+    // helper's own surfaces see the user's motion there.
+    virtual bool userHasPointer() { return false; }
     // X11 only: wait until Ctrl, Shift, Alt and Super are up (Ctrl plus wheel
     // zooms). False when they stayed down, or `stop` was set first.
     virtual bool waitReady(const std::atomic<bool>& stop) { Q_UNUSED(stop); return true; }
