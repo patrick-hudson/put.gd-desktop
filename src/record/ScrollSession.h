@@ -122,6 +122,9 @@ struct SessionStats {
     // image's tracker only).
     int frames = 0, placed = 0, noMovement = 0, skipped = 0, recovered = 0, longestSkipRun = 0;
     int byExpectation = 0, onHint = 0, pinnedRegions = 0;
+    // Cells under the excluded rectangle no frame showed clear, filled with
+    // their column's plain colour, and the rows that hold them.
+    long long hiddenCells = 0, hiddenRows = 0;
     // Placed frames that moved, by who drove at the time.
     int movedByUser = 0, movedByPutgd = 0;
     // Every frame the source delivered, and how long the session read them:
@@ -150,9 +153,10 @@ struct SessionOptions {
     // Auto-scroll goes to the top of the page first, when it begins while
     // nothing has moved yet; the image then starts at the top.
     bool fromTop = false;
-    // Only the frame's first rows are the page's: put.gd's bar sits inside
-    // the rectangle below them (#1519). 0: all of them.
-    int frameRows = 0;
+    // A rectangle of the frame that is not the page: put.gd's bar where it
+    // has to sit inside the region (#1519). The tracker keeps it out of the
+    // image (ScrollTracker::setExcluded) and the wheel is not turned over it.
+    scroll::TrackerRect excluded;
     // A session that nobody touches (no frame placed with movement, no
     // command) for this long ends as Idle, the image kept.
     int idleLimitMs = 600000;
@@ -273,7 +277,7 @@ private:
     SessionStats stats_;
     const std::atomic<bool>* stop_ = nullptr;
     const std::atomic<bool>* discard_ = nullptr;
-    int width_ = 0, height_ = 0;  // the tracker's frames (after frameRows)
+    int width_ = 0, height_ = 0;  // the tracker's frames
     int frameW_ = 0, frameH_ = 0;  // the source's frames
     int64_t firstFrameAt_ = -1;
     bool sizeChanged_ = false, capped_ = false, failed_ = false, notReady_ = false, pageEnd_ = false;

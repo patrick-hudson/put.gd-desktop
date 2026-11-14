@@ -124,8 +124,8 @@ protected:
         painter.fillRect(rect(), Qt::transparent);
     }
 };
-// Rows kept clear of the bar where it sits inside the rectangle (#1519): the
-// window manager's shadow on X11 reaches further than the bar.
+// Pixels kept out of the image around the bar where it sits inside the
+// rectangle (#1519): the window manager's shadow on X11 reaches further.
 int insideBarMargin() { return surfaceMode() == SurfaceMode::X11 ? 24 : 6; }
 }
 
@@ -810,7 +810,8 @@ void ScrollCapture::prepareAuto() {
         // The wheel points as the session finds them (ScrollSession::wheelPoints),
         // in desktop logical pixels: the entry just inside the edge the pointer
         // rests beyond, and the three park points.
-        const int rows = barInside_ ? std::max(1, insideBar_.top() - rect_.top() - insideBarMargin()) : rect_.height();
+        const int above = insideBar_.top() - rect_.top() - insideBarMargin();
+        const int rows = barInside_ && above > rect_.height() / 4 ? above : rect_.height();
         const QPoint at = *job_->rest - rect_.topLeft();
         QList<QPointF> holes;
         if (!QRect(QPoint(), rect_.size()).contains(at)) {
@@ -1144,9 +1145,15 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         const double sx = double(width) / r.width(), sy = double(height) / r.height();
         job->gate.sx = sx;
         job->gate.sy = sy;
-        // The bar inside the rectangle (#1519): the frames' rows from just above it down are not the page's.
-        int frameRows = 0;
-        if (!job->insideBar.isEmpty()) frameRows = std::clamp(int(std::floor((job->insideBar.top() - r.top() - insideBarMargin()) * sy)), 1, height);
+        // The bar inside the rectangle (#1519), with the window manager's
+        // shadow around it, in frame pixels: not the page.
+        scroll::TrackerRect excluded;
+        if (!job->insideBar.isEmpty()) {
+            const QRect bar = job->insideBar.adjusted(-insideBarMargin(), -insideBarMargin(), insideBarMargin(), insideBarMargin()).translated(-r.topLeft());
+            const int x0 = std::clamp(int(std::floor(bar.left() * sx)), 0, width), y0 = std::clamp(int(std::floor(bar.top() * sy)), 0, height);
+            const int x1 = std::clamp(int(std::ceil((bar.right() + 1) * sx)), 0, width), y1 = std::clamp(int(std::ceil((bar.bottom() + 1) * sy)), 0, height);
+            excluded = {x0, y0, x1 - x0, y1 - y0};
+        }
         // Room at both ends: the cap's rows above the first frame and below it, and a frame besides.
         spoolFd = createPrivate(job->spoolPath);
         if (spoolFd < 0 || !canvas.open(spoolFd, width, qint64(applied) + height, qint64(applied) + 2LL * height)) spoolFailed = true;
@@ -1154,7 +1161,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         options.tracker.maxOutputRows = applied;
         options.autoScroll = job->autoStart;
         options.fromTop = job->fromTop;
-        options.frameRows = frameRows;
+        options.excluded = excluded;
         options.pointer = true;
         options.entryInset = std::max(24, int(std::lround(48 * sy)));
         // Hyprland paints the pointer into the frames whatever was asked: the
@@ -1207,8 +1214,9 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             };
             options.onStep = [](int notches, RunPoint at) { debugLog(QStringLiteral("scroll step: %1 notches at %2,%3").arg(notches).arg(at.x).arg(at.y)); };
         }
-        debugLog(QStringLiteral("scroll: frames %1x%2 for %3x%4, cap %5 rows, page rows %6, driver %7").arg(width).arg(height).arg(r.width()).arg(r.height()).arg(applied)
-                     .arg(frameRows > 0 ? frameRows : height).arg(job->autoStart ? QStringLiteral("putgd") : QStringLiteral("user")));
+        debugLog(QStringLiteral("scroll: frames %1x%2 for %3x%4, cap %5 rows, excluded %6, driver %7").arg(width).arg(height).arg(r.width()).arg(r.height()).arg(applied)
+                     .arg(excluded.empty() ? QStringLiteral("none") : QStringLiteral("%1,%2 %3x%4").arg(excluded.x).arg(excluded.y).arg(excluded.w).arg(excluded.h))
+                     .arg(job->autoStart ? QStringLiteral("putgd") : QStringLiteral("user")));
         Primed frames(*job->tap, *first, job->sourceGone);
         SteadyClock clock;
         ScrollSession session(job->gate, frames, clock, canvas, options);
@@ -1281,6 +1289,8 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                     {"scrolledBy", scrolledBy}, {"framesPlaced", stats.placed}, {"framesSkipped", stats.skipped}, {"endedLost", stats.endedLost}, {"reachedEnd", stats.reachedEnd},
                     {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", std::round(stats.pxPerNotch * 10) / 10}, {"lowConfidenceSteps", stats.byExpectation + stats.onHint}, {"elapsedMs", double(stats.elapsedMs)},
                                           {"frames", stats.framesSeen}, {"recovered", stats.recovered}, {"pinnedRegions", stats.pinnedRegions}, {"framesPerSecond", fps}}}};
+                // Rows under the bar inside the region that no frame showed clear (#1519).
+                if (stats.hiddenCells > 0) { outcome->descriptor["hiddenCells"] = double(stats.hiddenCells); outcome->descriptor["hiddenRows"] = double(stats.hiddenRows); }
                 if (end == SessionEnd::Idle) outcome->descriptor["note"] = QStringLiteral("nobody scrolled or used the bar for %1 minutes, so the capture ended there").arg(SessionOptions{}.idleLimitMs / 60000);
                 else if (reason == "lost_track") outcome->descriptor["note"] = QStringLiteral("the capture was finished while put.gd could not find its place on the page; the image ends where it last could");
                 if (stats.topAsked && !stats.topReached) {

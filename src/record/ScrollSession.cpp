@@ -82,7 +82,9 @@ constexpr int samePictureRows = 2;
 
 ScrollSession::ScrollSession(RunInjector& injector, RunFrames& source, RunClock& clock, SessionCanvas& canvas, SessionOptions opts)
     : injector_(injector), source_(source), clock_(clock), canvas_(canvas), opts_(std::move(opts)),
-      tracker_(std::make_unique<scroll::ScrollTracker>(canvas_, opts_.tracker)), away_(opts_.away) {}
+      tracker_(std::make_unique<scroll::ScrollTracker>(canvas_, opts_.tracker)), away_(opts_.away) {
+    if (!opts_.excluded.empty()) tracker_->setExcluded(opts_.excluded);
+}
 ScrollSession::~ScrollSession() = default;
 
 RunPoint ScrollSession::parkPoint(int position, int width, int height) {
@@ -100,7 +102,8 @@ RunPoint ScrollSession::entryPoint(RunPoint away, int entryInset, int width, int
 }
 std::vector<RunPoint> ScrollSession::wheelPoints(int width, int height) const {
     std::vector<RunPoint> points;
-    const int rows = opts_.frameRows > 0 ? std::min(opts_.frameRows, height) : height;
+    // Not over the bar inside the region: its rows are left out of the wheel's places.
+    const int rows = !opts_.excluded.empty() && opts_.excluded.y > height / 4 ? std::min(opts_.excluded.y, height) : height;
     // A rest inside the frame (the bar inside the rectangle) is no edge to come in from.
     if (away_ && (away_->x < 0 || away_->y < 0 || away_->x >= width || away_->y >= height))
         points.push_back(entryPoint(*away_, opts_.entryInset, width, rows));
@@ -181,6 +184,8 @@ void ScrollSession::finishTracker() {
     stats_.onHint = totals.onHint;
     stats_.pinnedRegions = totals.pinnedRegions;
     stats_.capReached = totals.capReached || capped_;
+    stats_.hiddenCells = totals.hiddenCells;
+    stats_.hiddenRows = totals.hiddenRows;
     stats_.top = totals.top;
     stats_.bottom = totals.bottom;
 }
@@ -198,7 +203,6 @@ void ScrollSession::feed(const RunFrame& frame) {
     ++stats_.framesSeen;
     if (firstFrameAt_ < 0) firstFrameAt_ = frame.timestampMs;
     stats_.readMs = frame.timestampMs - firstFrameAt_;
-    if (opts_.frameRows > 0 && opts_.frameRows < view.height) view.height = opts_.frameRows;
     // A visit's frames show the painted pointer over the page.
     if (blindUntil_ >= 0 && frame.timestampMs <= blindUntil_ && tracker_->totals().placed > 0) return;
     width_ = view.width;
@@ -695,6 +699,7 @@ void ScrollSession::endToTop(bool proved, const std::string& gaveUp) {
 void ScrollSession::resetTracker() {
     canvas_.clear();
     tracker_ = std::make_unique<scroll::ScrollTracker>(canvas_, opts_.tracker);
+    if (!opts_.excluded.empty()) tracker_->setExcluded(opts_.excluded);
     movedYet_ = false;
     movedDown_ = stats_.toTopSteps > 0 && !digest_.empty();
     pending_ = 0;

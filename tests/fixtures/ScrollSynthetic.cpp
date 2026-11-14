@@ -319,6 +319,9 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
   }
   const int pos = int(std::lround(posAt(t)));
   renderer_.render(pos, scratch_);
+  for (int y = spec_.barY; y < std::min(scratch_.h, spec_.barY + spec_.barH); ++y)
+    for (int x = spec_.barX; x < std::min(scratch_.w, spec_.barX + spec_.barW); ++x)
+      scratch_.at(x, y) = rgb(250, (frameIndex_ * 7 + x) & 63, (y * 5 + frameIndex_) & 63);
   for (int y = 0; y < std::min(scratch_.h, spec_.restlessRows); ++y)
     for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb((frameIndex_ * 37 + y) & 255, (x * 3 + frameIndex_ * 11) & 255, 90);
   std::swap(scratch_, delivered_);

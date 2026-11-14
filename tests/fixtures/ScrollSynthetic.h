@@ -169,6 +169,9 @@ struct FakeAppSpec {
   // the page. -1: off.
   int deadAfterInjection = -1;
   int deadX = 0, deadY = 0, deadW = 0, deadH = 0;
+  // put.gd's own bar drawn into every frame at this rectangle (viewport
+  // pixels), its pixels changing from frame to frame like a height counter.
+  int barX = 0, barY = 0, barW = 0, barH = 0;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {

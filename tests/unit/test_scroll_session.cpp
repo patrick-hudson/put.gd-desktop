@@ -274,6 +274,48 @@ void testWheelTakenByAPart() {
          wrong.empty() ? counts(h) : wrong);
 }
 
+// #1519: put.gd's bar drawn inside the region's bottom-right corner, its
+// counter changing every frame. None of its pixels is in the image, and the
+// page under it comes from frames where it was clear.
+void testBarInside() {
+  std::printf("The bar inside the region\n");
+  const Document doc = page(81);
+  const TrackerRect bar{W - 260, H - 60, 250, 50};
+  for (const bool autoScroll : {true, false}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.barX = bar.x, as.barY = bar.y, as.barW = bar.w, as.barH = bar.h;
+    SessionOptions so = options(autoScroll);
+    so.excluded = bar;
+    std::vector<FakeApp::UserScroll> script;
+    for (int i = 0; i < (doc.img.h - H) / 120 + 4; ++i) script.push_back({1500 + 100 * i, 120, 90});
+    const int stopAt = 1500 + 100 * int(script.size()) + 1500;
+    h.script = [script, stopAt, autoScroll](Harness& x, int64_t t) {
+      if (autoScroll) return;
+      if (x.app->script.empty()) x.play(script);
+      if (t >= stopAt) x.stop.store(true);
+    };
+    h.run(doc.img, as, so);
+    // Every row is the page's, except, at the page's end, cells only the bar ever covered: those are plain.
+    const auto& c = h.spool->canvas;
+    std::vector<uint32_t> row(W);
+    long long wrong = 0, barPixels = 0, hidden = 0;
+    for (long long r = c.top(); r < c.bottom(); ++r) {
+      c.readRow(r, reinterpret_cast<uint8_t*>(row.data()));
+      for (int x = 0; x < W; ++x) {
+        if (((row[x] >> 16) & 0xff) == 250 && ((row[x] >> 8) & 0xff) < 64 && (row[x] & 0xff) < 64) ++barPixels;
+        // The tracker rounds the rectangle out to whole cells and blocks of 8.
+        const bool underBarAtEnd = r >= doc.img.h - (H - bar.y) - 8 && x >= bar.x - 8 && x < bar.x + bar.w + 8;
+        if (row[x] != doc.img.at(x, int(r))) (underBarAtEnd ? hidden : wrong) += 1;
+      }
+    }
+    report(fmt("%s with the bar inside: no bar pixel, every other row exact", autoScroll ? "auto-scroll" : "you scroll"),
+           barPixels == 0 && wrong == 0 && h.stats.bottom == doc.img.h && (hidden == 0) == (h.stats.hiddenCells == 0),
+           fmt("%s, bar pixels %lld, wrong %lld, under the bar at the end %lld (hiddenCells %lld)", counts(h).c_str(), barPixels, wrong, hidden, h.stats.hiddenCells));
+  }
+}
+
 // A switch to auto-scroll and back, and the mouse that pauses it.
 void testSwitchAndPause() {
   std::printf("Switching, and the mouse\n");
@@ -410,6 +452,7 @@ int main() {
   testUserScrolls();
   testAutoScroll();
   testWheelTakenByAPart();
+  testBarInside();
   testSwitchAndPause();
   testLostAndFound();
   testCapAndIdle();
