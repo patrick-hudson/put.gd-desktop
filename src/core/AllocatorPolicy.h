@@ -4,6 +4,16 @@
 #if defined(__linux__) && defined(__GLIBC__)
 #include <malloc.h>
 #endif
+// A sanitizer replaces the glibc allocator, and its mallopt answers 0: there is
+// no glibc policy to apply (and none to measure) in such a build.
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)||__has_feature(thread_sanitizer)||__has_feature(memory_sanitizer)
+#define PUTGD_REPLACED_ALLOCATOR 1
+#endif
+#endif
+#if defined(__SANITIZE_ADDRESS__)||defined(__SANITIZE_THREAD__)
+#define PUTGD_REPLACED_ALLOCATOR 1
+#endif
 
 namespace putgd {
 // Resident glibc policy: a fixed 128 KiB mmap threshold. Large transient
@@ -18,9 +28,9 @@ namespace putgd {
 // I/O bound and per-thread caches still serve their small allocations.
 // The editor helper uses the same policy for its previews and exports.
 // Call before application construction, before worker threads start.
-// Returns false only if glibc refused.
+// Returns false only if glibc refused (true where a sanitizer owns the allocator).
 inline bool applyResidentAllocatorPolicy() {
-#if defined(__linux__) && defined(__GLIBC__)
+#if defined(__linux__) && defined(__GLIBC__) && !defined(PUTGD_REPLACED_ALLOCATOR)
  const bool threshold=mallopt(M_MMAP_THRESHOLD,128*1024)==1;
  const bool arenas=mallopt(M_ARENA_MAX,1)==1;
  return threshold&&arenas;
