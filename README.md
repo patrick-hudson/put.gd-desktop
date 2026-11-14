@@ -70,7 +70,7 @@ thing:
    and fill in its details.
 2. Click **Save to keychain** (for Proton Drive, **Connect account…** and pick a
    folder), then **Test upload and link** (for Proton Drive, **Check account and
-   folder**, which uploads nothing), and **Make default** if it isn't already.
+   folder**, which checks access but tries no upload or share link), and **Make default** if it isn't already.
 3. Press a hotkey:
 
    | Hotkey | Captures |
