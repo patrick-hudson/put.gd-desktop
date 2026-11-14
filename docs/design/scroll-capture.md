@@ -382,6 +382,10 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
 
 ## Known limits
 
+- **A cookie banner at the bottom under a sticky header** leaves the tracker a narrow band to
+  compare. On a news article in Chrome (Plasma 6.8.2) it skipped most frames, and the banner's
+  colour was drawn in strips through the image while the capture ended `done`. Read
+  `framesSkipped`: a capture that skipped many frames needs a look.
 - **A blank stretch taller than the region** shows nothing that moves. Auto-scroll takes it
   for the end of the page; your own scrolling past it leaves the page where the tracker
   cannot place it (lost) until you scroll back. Include the scrollbar: it is in the image,
