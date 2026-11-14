@@ -95,12 +95,19 @@ def run_replay(replay, frames, out, engine, repeat=1, reuse=False):
 
 def excluded_rects(pinned, viewport_height, reference_height):
     """The pinned rectangles where either picture can show them: at the top of
-    the document, at its bottom, and where the screen showed them."""
+    the document, at its bottom, and where the screen showed them. A side bar
+    as tall as the screen covers its columns in every frame, so no frame shows
+    the page under it anywhere: its columns are left out from top to bottom
+    (the image has the side bar's own background there, the reference the
+    page's)."""
     rects = []
     for sample in pinned:
         scroll = sample['position'].get('y', 0)
         for element in sample['elements']:
             x, y, w, h = element['rect']
+            if y + h >= 0.9 * viewport_height and h >= 0.75 * viewport_height:
+                rects.append((int(x), 0, int(x + w + 0.999), reference_height))
+                continue
             for top in (y, reference_height - viewport_height + y, scroll + y):
                 rects.append((int(x), int(top), int(x + w + 0.999), int(top + h + 0.999)))
     return rects
