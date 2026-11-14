@@ -43,6 +43,7 @@ public:
     // them only from the D-Bus connection that created the session: this one.
     // Motion is in stream pixels of the area; a positive step scrolls down.
     bool pointerMotion(double streamX, double streamY);
+    bool pointerMotionBy(double dx, double dy);
     bool pointerAxis(int steps);
     // Mutter (or the user, through the Shell's indicator) ended the session.
     bool closedByCompositor() const { return closed_.load(); }

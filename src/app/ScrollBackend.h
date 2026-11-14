@@ -37,7 +37,9 @@ public:
     virtual void refreshCapabilities(std::function<void()> done) { done(); }
     // Unsolicited events, each {"id", "event", ...}:
     //   selected  {rect: [x, y, w, h]}                    the user finished the drag
-    //   progress  {state: "scrollingToTop"|"capturing", height, steps, pixelsPerNotch}
+    //   progress  {state: "scrollingToTop"|"capturing"|"paused", paused, pausedBy?: "pointer"|"request",
+    //              height, steps, pixelsPerNotch}   paused: nothing is injected until resume
+    //                                               (#1514); "pointer": the user moved the mouse
     //   finished  {path, bytes, sha256, width, height,
     //              endReason: "end_of_content"|"height_cap"|"stopped"|"lost_track"|"time_limit"|"top_not_reached",
     //              truncated, appliedMaxHeight, topReached?: false,
@@ -65,14 +67,17 @@ public:
     // The PNG is written under stagingDirectory (0700, owned by the resident).
     // Replies {state: "selecting"|"ready"|"capturing"} once the helper is up.
     virtual void prepare(const QString& id, const QJsonObject& params, const QString& stagingDirectory, Reply) = 0;
-    // select {rect} | start | stop | cancel | overlay {visible}. Reply only once
-    // the helper reached the state. stop keeps the image: its reply carries the
+    // select {rect} | start | pause | resume | stop | cancel | overlay {visible,
+    // rect?}. Reply only once the helper reached the state. pause and resume
+    // answer {state: "capturing", paused, pausedBy?}; resume of a capture that
+    // is not paused is scroll_state. stop keeps the image: its reply carries the
     // same object as the finished event (which is still sent). cancel deletes
     // the staging files. overlay hides or shows the helper's bar. On GNOME the
     // Shell has to move the bar out of the rectangle, which needs it on screen
     // first: prepare with autoStart false, `select`, place the bar through
     // RecordingShell::showFrame (and send overlay {visible: false} when it
-    // could not go outside), then `start`. With autoStart true there the bar
+    // could not go outside, else overlay {visible: true, rect} with where the
+    // Shell put it, so the pointer rests on it between wheel steps), then `start`. With autoStart true there the bar
     // stays hidden for the whole capture.
     virtual void control(const QString& id, const QString& command, const QJsonObject& params, Reply) = 0;
     // A finished PNG survives helper exit. The resident validates and admits it,

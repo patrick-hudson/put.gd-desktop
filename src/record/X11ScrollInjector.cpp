@@ -65,7 +65,23 @@ bool X11ScrollInjector::movePointer(QPoint streamPixel) {
     const QPoint root = area_.topLeft() + streamPixel;
     // detail 0: absolute root coordinates.
     xcb_test_fake_input(connection_, XCB_MOTION_NOTIFY, 0, XCB_CURRENT_TIME, root_, int16_t(root.x()), int16_t(root.y()), 0);
+    placed_ = true;
+    taken_ = false;
+    placedX_ = root.x();
+    placedY_ = root.y();
     return sync();
+}
+bool X11ScrollInjector::movedByUser() {
+    int x = 0, y = 0;
+    return placed_ && query(&x, &y, nullptr) && (std::abs(x - placedX_) > 1 || std::abs(y - placedY_) > 1);
+}
+bool X11ScrollInjector::userHasPointer() {
+    if (!reason_.isEmpty()) return false;
+    std::lock_guard lock(mutex_);
+    const bool moved = movedByUser();
+    // The next motion is the capture's again (after Resume): measured from there.
+    if (moved) { placed_ = false; taken_ = true; }
+    return moved;
 }
 bool X11ScrollInjector::scroll(int units) {
     if (!reason_.isEmpty() || units == 0) return false;
@@ -82,6 +98,8 @@ void X11ScrollInjector::restorePointer() {
     std::lock_guard lock(mutex_);
     if (!saved_) return;
     saved_ = false;
+    // The user took the pointer during the capture: it stays where they put it.
+    if (taken_ || movedByUser()) return;
     xcb_test_fake_input(connection_, XCB_MOTION_NOTIFY, 0, XCB_CURRENT_TIME, root_, int16_t(savedX_), int16_t(savedY_), 0);
     sync();
 }

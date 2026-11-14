@@ -43,6 +43,7 @@ private:
  void prepareProbed(QJsonObject,bool,bool,JsonReply);
  void placeShellBar();
  void event(QJsonObject);
+ void paused(const QJsonObject&);
  void complete(QJsonObject);
  void rememberResult();
  void terminate(Error,bool cancelled=false);

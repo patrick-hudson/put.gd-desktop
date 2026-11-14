@@ -13,12 +13,16 @@ namespace putgd::record {
 // home screen holds most of the rectangle. With allowOutside false only the
 // inside corner is used. The result always lies within `screens[screen]`
 // unless the bar is larger than that screen.
+// With `beside` (the scroll capture's bar, #1514) every place next to the
+// rectangle on its home screen comes before another screen: below, above,
+// left and right of it (a bar at a side is level with the rectangle's
+// bottom), then the four corners outside it.
 struct BarSpot {
     QRect rect;
     int screen = -1;
     bool outside = false;
 };
-BarSpot placeBar(const QSize& bar, const QRect& recorded, const QList<QRect>& screens, bool allowOutside = true, int gap = 10);
+BarSpot placeBar(const QSize& bar, const QRect& recorded, const QList<QRect>& screens, bool allowOutside = true, int gap = 10, bool beside = false);
 // Moves rect the least distance that keeps it within screen; a rect larger
 // than the screen keeps its top-left corner on it.
 QRect clampToScreen(QRect rect, const QRect& screen);

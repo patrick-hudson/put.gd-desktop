@@ -2,7 +2,8 @@
 // putgd-record as a scroll session on a private Xvfb display against the
 // fixture window, and the X server's raw input (XInput2) shows what the helper
 // injects and when: wheel steps and pointer motion only, only while capturing,
-// nothing after Stop, Cancel or the end of its control pipe.
+// nothing after Stop, Cancel or the end of its control pipe, and nothing while
+// paused because another client moved the pointer (#1514).
 #include "app/ScrollHelperBackend.h"
 #include "core/BuildInfo.h"
 #include "fixtures/Waits.h"
@@ -164,6 +165,24 @@ private slots:
         raw.read();
         QVERIFY(raw.wheel > 0);
         QVERIFY(raw.motions > 0);
+        // #1514: another client moves the pointer, as a user's mouse does. The
+        // capture pauses, says why, and sends nothing until Resume; the
+        // pointer stays where the user put it.
+        QVERIFY(!capture.ended());
+        {
+            const QPoint user(1000, 300);
+            raw.warp(user);
+            QVERIFY(putgd::test::waitFor([&] { return capture.last("progress")["state"].toString() == "paused"; }, 3000));
+            QCOMPARE(capture.last("progress")["pausedBy"].toString(), QString("pointer"));
+            const int atPause = raw.total();
+            QVERIFY(atPause <= 1);
+            PUTGD_COMPARE_STEADY(raw.total(), atPause, 1000);
+            QCOMPARE(raw.pointer(), user);
+            const auto resumed = capture.control("resume");
+            QVERIFY2(!resumed.error, qPrintable(resumed.error.message));
+            QVERIFY(putgd::test::waitFor([&] { return raw.total() > atPause + 2; }, 10000));
+            QVERIFY(!capture.ended());
+        }
         const auto stopped = capture.control("stop");
         QVERIFY2(!stopped.error, qPrintable(stopped.error.message));
         // From the stop reply on: not one more event, and the pointer is back.
