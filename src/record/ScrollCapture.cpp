@@ -54,7 +54,7 @@ constexpr int firstFrameMs = 3000, awayMargin = 16;
 constexpr int padSize = 32, restTolerance = 4, visitLateMs = 1000, resumeQuietMs = 500;
 // A hand's motion events come every 8 to 10 ms: one within this long of the
 // pointer's arrival at its rest was under way when the capture moved it there.
-constexpr int pullBackMs = 30;
+constexpr int pullBackMs = 12;
 // KWin's region stream (seen on 6.3.6, real desktop runs of 2026-11-10) holds
 // back or drops a frame that no further damage follows: after one isolated
 // repaint the loop saw the old picture for 500 ms and more, four or five steps
@@ -156,14 +156,32 @@ struct ScrollCapture::Gate final : RunInjector {
     QPointF origin;
     double sx = 1, sy = 1;
     std::atomic<double> visitX{0}, visitY{0};
+    // Where and when (FrameTap::nowMs, the monotonic clock) the last motion was sent.
+    std::atomic<double> lastX{0}, lastY{0};
+    std::atomic<qint64> lastMoveMs{-1};
     QPointF restGlobal() const { return restAt ? origin + QPointF(restAt->x() / sx, restAt->y() / sy) : QPointF(); }
     // A pointer pulled back from under the user's moving hand (#1514): the
     // main thread knows where the hand had it (base) and follows its motion
     // from the rest since (latest); held() puts it back there, once.
     std::mutex correctionMutex;
     bool correctionPending = false;
-    QPointF correctionBase, correctionLatest;
-    qint64 correctionSince = 0;
+    // anchor: where the capture put the pointer after the hand had moved it,
+    // at anchorMs; base: where the hand had it then (the last event from
+    // before anchorMs, by the events' own times where they can be compared:
+    // stamped); latest: where the hand has it since. The correction is a
+    // relative motion by base - anchor, which keeps whatever the hand did
+    // since however late its events come; else an absolute move to
+    // base + (latest - anchor).
+    QPointF correctionBase, correctionLatest, correctionAnchor;
+    qint64 correctionSince = 0, correctionAnchorMs = 0;
+    quint64 correctionBaseStamp = 0;
+    bool correctionStamped = false, correctionAfter = false;
+    // Where the hand was seen when the pause began, and the capture's last
+    // motion then: a motion that was already past the gate can still land
+    // after the pause, and held() undoes it.
+    bool seenValid = false;
+    QPointF seenAt;
+    quint64 seenSeq = 0;
     bool desktopCorrects = false;
     // X11: the pointer is not where XTest left it. Called on the worker.
     std::function<void()> tookPointer;
@@ -186,6 +204,9 @@ struct ScrollCapture::Gate final : RunInjector {
         // Counted before it is sent: the leave event may come before this returns.
         if (restAt && !toRest && resting.load()) { visitAt.store(FrameTap::nowMs()); visits.fetch_add(1); }
         if (!toRest) { visitX.store(origin.x() + x / sx); visitY.store(origin.y() + y / sy); }
+        lastX.store(origin.x() + x / sx);
+        lastY.store(origin.y() + y / sy);
+        lastMoveMs.store(FrameTap::nowMs());
         resting.store(toRest);
         seq.fetch_add(1);
         const bool sent = injector->movePointer(QPoint(x, y));
@@ -199,19 +220,44 @@ struct ScrollCapture::Gate final : RunInjector {
         return sent;
     }
     bool waitReady(const std::atomic<bool>& stop) override { return armed.load() && injector->waitReady(stop); }
-    // While paused: the one correction, after 20 ms of following the hand.
+    // While paused: the one correction, once the events from before the
+    // capture's motion are in (one from after it has come, at most 400 ms).
     void held() override {
-        QPointF target;
+        QPointF delta, target;
         {
             std::lock_guard lock(correctionMutex);
-            if (!correctionPending || FrameTap::nowMs() - correctionSince < 20) return;
+            const qint64 now = FrameTap::nowMs();
+            if (seenValid) {
+                seenValid = false;
+                if (desktopCorrects && seq.load() > seenSeq) {
+                    // Sent after the hand was seen: the pointer goes back by that motion too.
+                    const QPointF latestTarget(lastX.load(), lastY.load());
+                    if (correctionPending) correctionAnchor = latestTarget;
+                    else {
+                        correctionBase = seenAt;
+                        correctionAnchor = correctionLatest = latestTarget;
+                        correctionStamped = false;
+                        correctionSince = now;
+                        correctionPending = true;
+                    }
+                    debugLog(QStringLiteral("scroll: a motion went out after the hand was seen; it is undone too"));
+                }
+            }
+            if (!correctionPending || now - correctionSince < 20) return;
+            if (correctionStamped && !correctionAfter && now - correctionSince < 400) return;
             correctionPending = false;
-            target = correctionBase + (correctionLatest - restGlobal());
+            delta = correctionBase - correctionAnchor;
+            target = correctionBase + (correctionLatest - correctionAnchor);
         }
         if (!armed.load()) return;
-        const QPoint stream(int(std::lround((target.x() - origin.x()) * sx)), int(std::lround((target.y() - origin.y()) * sy)));
         seq.fetch_add(1);
         resting.store(false);
+        lastMoveMs.store(FrameTap::nowMs());
+        if (injector->movePointerBy(delta)) {
+            debugLog(QStringLiteral("scroll inject: t=%1 pointer put back by %2,%3 sent").arg(FrameTap::nowMs() % 1000000).arg(delta.x(), 0, 'f', 0).arg(delta.y(), 0, 'f', 0));
+            return;
+        }
+        const QPoint stream(int(std::lround((target.x() - origin.x()) * sx)), int(std::lround((target.y() - origin.y()) * sy)));
         const bool sent = injector->movePointer(stream);
         debugLog(QStringLiteral("scroll inject: t=%1 pointer put back at %2,%3 (desktop %4,%5) %6").arg(FrameTap::nowMs() % 1000000).arg(stream.x()).arg(stream.y()).arg(target.x(), 0, 'f', 0).arg(target.y(), 0, 'f', 0).arg(sent ? "sent" : "refused"));
     }
@@ -665,7 +711,7 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     progressState_ = autoAtStart_ ? (fromTop_ ? QStringLiteral("scrollingToTop") : QStringLiteral("autoScrolling")) : QStringLiteral("waiting");
     lastProgress_ = {};
     watchSeqBase_ = 0;
-    haveSeen_ = lastWasArrival_ = false;
+    haveSeen_ = lastWasArrival_ = decisionPending_ = false;
     arrivedMs_ = -1;
     job_->gate.origin = QPointF(rect_.topLeft());
     // Where the desktop cannot be asked where the pointer is, a pointer pulled
@@ -768,9 +814,10 @@ void ScrollCapture::resumeNow() {
     {
         std::lock_guard lock(job_->gate.correctionMutex);
         job_->gate.correctionPending = false;
+        job_->gate.correctionStamped = false;
     }
     watchSeqBase_ = job_->gate.seq.load();
-    haveSeen_ = lastWasArrival_ = false;
+    haveSeen_ = lastWasArrival_ = decisionPending_ = false;
     arrivedMs_ = -1;
     autoOn_ = true;
     // The gate opens before the session hears of it, or it would find itself paused.
@@ -806,7 +853,10 @@ void ScrollCapture::autoOff() {
 void ScrollCapture::prepareAuto() {
     if (!job_ || !autoOn_ || state_ != State::Capturing) return;
     if (!restWindow_) placeRest();
-    if (surfaceMode() == SurfaceMode::LayerShell && job_->rest) {
+    // PUTGD_SCROLL_WATCH=0 leaves the watch out (lab diagnostics: what the
+    // watch costs a compositor; the user's motion during a wheel step is then
+    // seen as on GNOME).
+    if (surfaceMode() == SurfaceMode::LayerShell && job_->rest && qEnvironmentVariable("PUTGD_SCROLL_WATCH") != QLatin1String("0")) {
         // The wheel points as the session finds them (ScrollSession::wheelPoints),
         // in desktop logical pixels: the entry just inside the edge the pointer
         // rests beyond, and the three park points.
@@ -973,11 +1023,29 @@ void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint6
     if (!job_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
     auto& gate = job_->gate;
     const std::optional<QPointF> global = local ? std::optional<QPointF>(*local + (watch ? QPointF(screen_.topLeft()) : restOrigin_)) : std::nullopt;
+    const qint64 now = FrameTap::nowMs();
+    const bool clocksAgree = stamp != 0 && qint32(quint32(now) - quint32(stamp)) >= 0 && qint32(quint32(now) - quint32(stamp)) < 1000;
+    if (global && decisionPending_ && gate.paused.load()) {
+        // A pause that came from an event without a time: the first motion
+        // event with one decides whether the hand had moved before the
+        // capture's last motion.
+        if (now > decisionUntil_) decisionPending_ = false;
+        else if (clocksAgree) {
+            decisionPending_ = false;
+            if (qint32(quint32(decisionMoveMs_) - quint32(stamp)) > 0) startCorrection(*global, decisionTarget_, stamp, decisionMoveMs_);
+        }
+    }
     if (global && gate.desktopCorrects) {
         // Following the hand for a correction that is still to be made.
         std::lock_guard lock(gate.correctionMutex);
-        const QPointF rest = gate.restGlobal();
-        if (gate.correctionPending && QLineF(*global, rest).length() < QLineF(*global, gate.correctionBase).length()) gate.correctionLatest = *global;
+        if (gate.correctionPending && stamp != 0) {
+            if (gate.correctionStamped && qint32(quint32(stamp) - quint32(gate.correctionAnchorMs)) < 0) {
+                if (stamp >= gate.correctionBaseStamp) { gate.correctionBase = *global; gate.correctionBaseStamp = stamp; }
+            } else {
+                gate.correctionAfter = true;
+                gate.correctionLatest = *global;
+            }
+        }
     }
     if (resumePending_) { resumeQuiet_.start(resumeQuietMs); return; }
     if (gate.paused.load()) return;
@@ -985,7 +1053,8 @@ void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint6
         if (watch || !gate.detecting.load()) return;
         if (gate.visits.load() > 0) { gate.visits.fetch_sub(1); return; }
         debugLog(QStringLiteral("scroll: pointer left the rest surface with no visit sent"));
-        userMoved(arrivedMs_ >= 0 && FrameTap::nowMs() - arrivedMs_ <= pullBackMs, std::nullopt);
+        // A leave has neither a place nor a time: it decides nothing about a pull-back.
+        pause(QStringLiteral("pointer"));
         return;
     }
     const quint64 seq = gate.seq.load();
@@ -1011,31 +1080,64 @@ void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint6
     else if (!watch && gate.detecting.load()) why = QStringLiteral("not at its rest");
     else if (watch && seq > watchSeqBase_) why = QStringLiteral("on the watch");
     if (why.isEmpty()) return;
-    debugLog(QStringLiteral("scroll: pointer at %1,%2 %3 (%4)").arg(global->x()).arg(global->y()).arg(watch ? QStringLiteral("on the watch") : QStringLiteral("on the rest surface")).arg(why));
-    // The hand was moving when the capture put the pointer back on its rest:
-    // seen on the watch where the capture believes it at rest (the event left
-    // before the move back), or on the rest within a few ms of its arrival.
-    if (watch && gate.resting.load()) userMoved(true, global, true);
-    else userMoved(!watch && afterArrival, global, false);
-}
-
-// The user has the pointer. pulledBack: the capture had just moved it back to
-// its rest from under the moving hand. Then, where the desktop cannot be asked
-// (Wayland), the pointer is put back once where the hand had it, plus the way
-// it has moved since: base is where the watch saw the hand before the move
-// back, else the point the wheel was turned at; at is where it is now.
-void ScrollCapture::userMoved(bool pulledBack, std::optional<QPointF> at, bool atIsBase) {
-    auto& gate = job_->gate;
-    if (pulledBack && gate.desktopCorrects) {
+    // The gate closes first, before a line is logged: a motion the worker was
+    // about to send went out 2 ms after the hand was seen (k72, 2026-11-14).
+    const qint64 lastMoveSeen = gate.lastMoveMs.load();
+    const QPointF lastTargetSeen(gate.lastX.load(), gate.lastY.load());
+    gate.paused.store(true);
+    {
         std::lock_guard lock(gate.correctionMutex);
-        const QPointF rest = gate.restGlobal();
-        gate.correctionBase = atIsBase && at ? *at : QPointF(gate.visitX.load(), gate.visitY.load());
-        gate.correctionLatest = !atIsBase && at ? *at : rest;
-        gate.correctionSince = FrameTap::nowMs();
-        gate.correctionPending = true;
-        debugLog(QStringLiteral("scroll: the pointer was pulled back from under the hand; it goes back to %1,%2 plus the hand's way since").arg(gate.correctionBase.x(), 0, 'f', 0).arg(gate.correctionBase.y(), 0, 'f', 0));
+        gate.seenValid = true;
+        gate.seenAt = *global;
+        gate.seenSeq = seq;
+    }
+    debugLog(QStringLiteral("scroll: pointer at %1,%2 %3 (%4)").arg(global->x()).arg(global->y()).arg(watch ? QStringLiteral("on the watch") : QStringLiteral("on the rest surface")).arg(why));
+    // The capture moved the pointer after the hand had moved it, told by the
+    // event's own time (the compositor's monotonic milliseconds, as the
+    // capture's clock, used only where the two agree within a second): a
+    // motion sent after it means the pointer is no longer where this event
+    // says the hand put it (an Omarchy guest delivered the hand's events 100
+    // to 200 ms late, and the next wheel step's visit went out in between).
+    // An enter has no time of its own (Qt gives it an older one): the next
+    // motion event decides. Without a watch (GNOME), whose rest surface sees
+    // the hand only after the move back, a motion within 12 ms of the
+    // pointer's arrival at rest was under way when it arrived.
+    const qint64 lastMove = lastMoveSeen;
+    const QPointF lastTarget = lastTargetSeen;
+    if (clocksAgree && lastMove >= 0 && qint32(quint32(lastMove) - quint32(stamp)) > 0) {
+        startCorrection(*global, lastTarget, stamp, lastMove);
+    } else if (!clocksAgree && lastMove >= 0 && now - lastMove < 400) {
+        decisionPending_ = true;
+        decisionUntil_ = now + 400;
+        decisionMoveMs_ = lastMove;
+        decisionTarget_ = lastTarget;
+    } else if (!watch && !watch_ && afterArrival) {
+        std::lock_guard lock(gate.correctionMutex);
+        startCorrectionLocked(QPointF(gate.visitX.load(), gate.visitY.load()), gate.restGlobal(), 0, 0, *global);
     }
     pause(QStringLiteral("pointer"));
+}
+
+// A pointer the capture moved from under the user's hand (#1514) is put back
+// once by held(): by the displacement from anchor (where the capture put it)
+// to base (where the hand had it). Not on X11, which asks before every motion.
+void ScrollCapture::startCorrection(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs) {
+    std::lock_guard lock(job_->gate.correctionMutex);
+    startCorrectionLocked(base, anchor, stamp, anchorMs, anchor);
+}
+void ScrollCapture::startCorrectionLocked(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs, QPointF latest) {
+    auto& gate = job_->gate;
+    if (!gate.desktopCorrects) return;
+    gate.correctionAnchor = anchor;
+    gate.correctionBase = base;
+    gate.correctionLatest = latest;
+    gate.correctionStamped = stamp != 0;
+    gate.correctionBaseStamp = stamp;
+    gate.correctionAnchorMs = anchorMs;
+    gate.correctionAfter = false;
+    gate.correctionSince = FrameTap::nowMs();
+    gate.correctionPending = true;
+    debugLog(QStringLiteral("scroll: the pointer was moved from under the hand; it goes back by %1,%2").arg(base.x() - anchor.x(), 0, 'f', 0).arg(base.y() - anchor.y(), 0, 'f', 0));
 }
 
 void ScrollCapture::showWatch(const QList<QPointF>& holes) {
@@ -1065,7 +1167,8 @@ bool ScrollCapture::eventFilter(QObject* object, QEvent* e) {
     if (watch || rest) {
         switch (e->type()) {
             case QEvent::MouseMove: { auto* m = static_cast<QMouseEvent*>(e); pointerSeen(watch, m->position(), m->timestamp()); break; }
-            case QEvent::Enter: { auto* m = static_cast<QEnterEvent*>(e); pointerSeen(watch, m->position(), m->timestamp()); break; }
+            // An enter's time is not its own (Qt fills in an earlier event's).
+            case QEvent::Enter: pointerSeen(watch, static_cast<QEnterEvent*>(e)->position(), 0); break;
             case QEvent::Leave: if (rest) pointerSeen(false, std::nullopt, 0); break;
             default: break;
         }

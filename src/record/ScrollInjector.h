@@ -25,6 +25,10 @@ struct ScrollInjector {
     // Put the pointer at a point given in stream pixels of the captured
     // rectangle; a point outside the frame lies outside the rectangle.
     virtual bool movePointer(QPoint streamPixel) = 0;
+    // Relative motion in desktop logical pixels, as a mouse moves, where the
+    // desktop takes it; false where it does not (#1514: undoing a pointer
+    // pulled back from under the user's hand, whatever the hand did since).
+    virtual bool movePointerBy(QPointF logicalDelta) { Q_UNUSED(logicalDelta); return false; }
     // Positive scrolls the content down. One unit is one wheel notch where the
     // desktop has such a thing; the loop measures what a unit really moved.
     virtual bool scroll(int units) = 0;
