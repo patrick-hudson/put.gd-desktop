@@ -1,3 +1,4 @@
+#include "EventPump.h"
 #include "SurfaceVisibility.h"
 #include "CaptureConnection.h"
 #include <QObject>
@@ -19,23 +20,19 @@ class Visibility final:public QObject {
  wl_display* display_=nullptr;wl_registry* registry_=nullptr;wl_compositor* compositor_=nullptr;
  wl_shm* shm_=nullptr;zwlr_layer_shell_v1* shell_=nullptr;zwlr_layer_surface_v1* layer_=nullptr;
  wl_surface* surface_=nullptr;wl_buffer* buffer_=nullptr;wl_callback* callback_=nullptr;
- QSocketNotifier* notifier_=nullptr;QTimer timeout_;std::function<void(bool)> reply_;bool done_=false;
+ QSocketNotifier* notifier_=nullptr;QSocketNotifier* writeNotifier_=nullptr;QTimer timeout_;std::function<void(bool)> reply_;bool done_=false;
  void finish(bool visible){
   if(std::exchange(done_,true))return;
-  timeout_.stop();if(notifier_)notifier_->setEnabled(false);
+  timeout_.stop();if(notifier_)notifier_->setEnabled(false);if(writeNotifier_)writeNotifier_->setEnabled(false);
   // A listener's storage and display must outlive the current dispatch.
   QTimer::singleShot(0,this,[this,visible]{auto reply=std::move(reply_);deleteLater();reply(visible);});
  }
- void flush(){if(wl_display_flush(display_)<0&&errno!=EAGAIN)finish(false);}
+ void flush(){if(done_)return;bool pending=false;if(!wayland::flush(display_,pending)){finish(false);return;}if(writeNotifier_)writeNotifier_->setEnabled(pending);}
  void events(){
-  bool ok=wl_display_dispatch_pending(display_)>=0;
-  pollfd ready{wl_display_get_fd(display_),POLLIN,0};
-  if(ok&&!done_&&::poll(&ready,1,0)>0){
-   while(ok&&wl_display_prepare_read(display_)!=0)ok=wl_display_dispatch_pending(display_)>=0;
-   if(ok)ok=wl_display_read_events(display_)>=0&&wl_display_dispatch_pending(display_)>=0;
-  }
-  if(!ok)finish(false);else if(!done_)flush();
+  if(done_)return;
+  if(!wayland::pump(display_))finish(false);else if(!done_)flush();
  }
+
  void configured(uint32_t serial){
   zwlr_layer_surface_v1_ack_configure(layer_,serial);if(buffer_)return;
   const int fd=memfd_create("putgd-visibility",MFD_CLOEXEC);if(fd<0){finish(false);return;}
@@ -82,10 +79,12 @@ public:
   static const wl_callback_listener sync{[](void* data,wl_callback* callback,uint32_t){auto* self=static_cast<Visibility*>(data);wl_callback_destroy(callback);self->callback_=nullptr;self->ready();}};
   wl_callback_add_listener(callback_,&sync,this);
   notifier_=new QSocketNotifier(wl_display_get_fd(display_),QSocketNotifier::Read,this);
+  writeNotifier_=new QSocketNotifier(wl_display_get_fd(display_),QSocketNotifier::Write,this);writeNotifier_->setEnabled(false);
+  connect(writeNotifier_,&QSocketNotifier::activated,this,[this]{flush();});
   connect(notifier_,&QSocketNotifier::activated,this,[this]{events();});flush();
  }
  ~Visibility() override{
-  if(notifier_)notifier_->setEnabled(false);
+  if(notifier_)notifier_->setEnabled(false);if(writeNotifier_)writeNotifier_->setEnabled(false);
   if(callback_)wl_callback_destroy(callback_);
   if(layer_)zwlr_layer_surface_v1_destroy(layer_);if(surface_)wl_surface_destroy(surface_);
   if(buffer_)wl_buffer_destroy(buffer_);
