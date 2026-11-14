@@ -91,7 +91,7 @@ private:
     // Where the pointer rests between wheel steps, and the surface that sees it.
     void placeRest();
     void pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp);
-    void userMoved(bool pulledBack, std::optional<QPointF> at, bool atIsBase = false);
+    void userMoved(bool pulledBack, std::optional<QPointF> at, bool atIsBase, std::optional<QPointF> anchor, quint64 stamp = 0, qint64 anchorMs = 0);
     // Layer-shell desktops: a clear surface over the rectangle's output that
     // takes the pointer everywhere but at the wheel points (desktop logical
     // coordinates), the bar and the pad, so that the user's motion is seen
