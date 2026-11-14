@@ -144,12 +144,20 @@ not there yet, or without the details put.gd stored with it. For the file the
 helper has just uploaded, it reads the file again for about ten seconds before
 it believes such an answer; a read that shows another version of the file, or
 the file renamed, moved or in the trash, is believed at once. If the file still
-does not read as put.gd's own, no link is made and History shows **Sharing
-outcome unknown** rather than **Share link changed**, and the notification says
+does not read as put.gd's own, no link is made and History shows **Share link
+not finished** rather than **Share link changed**, and the notification says
 the file was uploaded but its share link could not be confirmed. Nothing is
-uploaded again: Inspect link in History reads the file again and **Create share
-link** then makes the link, or one `operation.retry` of the operation (through
-`putgd-cli` or the MCP helper) does both, as for any uncertain link (#1399).
+uploaded again. **Finish share link** on the History row reads the file again
+and makes the link in one step, with the expiry and password the upload asked
+for; a link that already exists is reported, not made twice, and a file that
+changed gets no link. Agents call `operation.retry` with `"scope":"sharing"`
+(MCP `retry_operation` with stage `share_link`), which refuses with
+`retry_would_upload` while another file of the upload still needs its upload
+(#1399, #1496). **Inspect link** only reads: it never makes a link. A row whose
+link is uncertain with no link wanted, such as an interrupted inspection or
+revocation, shows **Sharing outcome needs inspection** and offers Inspect link.
+After a crash the notification is not shown again, so the History row is where
+an unfinished link appears.
 
 Safe remote deletion is unavailable because the SDK does not expose atomic
 revision-guarded deletion. The app rejects deletion of a recorded Proton file;

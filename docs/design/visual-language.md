@@ -211,8 +211,8 @@ and goes rather than shrink below its first word, then the size and file count
 go, and last the kind by the destination's rule, so no stub such as `Re…` is
 left. A failure line is body size and names where the upload was going (`Upload to
 Proton Drive failed · Connection interrupted`); it wraps rather than elides.
-Right of the text come the row's labelled recovery action (Retry upload, Retry
-local save, Retry deletion), a right-aligned time column (relative for the last
+Right of the text come the row's labelled recovery action (Retry upload, Finish
+share link, Retry local save, Retry deletion), a right-aligned time column (relative for the last
 hour, else the locale's short time; full timestamp in its tooltip) measured from
 the widest text it can show, and a slot reserved for copy and more. A row with a
 recovery action keeps more visible; hover never moves anything. The keyboard-
