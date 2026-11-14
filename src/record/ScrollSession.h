@@ -290,6 +290,7 @@ private:
     // Blind: frames until this time are a visit's (blindVisits).
     int64_t blindUntil_ = -1;
     HandBack pausedBy_ = HandBack::None;
+    int64_t handBackAt_ = 0;
     Phase phase_ = Phase::Off;
     bool movedYet_ = false;      // a frame has been placed that moved
     bool movedDown_ = false;     // auto-scroll has moved the page in its direction

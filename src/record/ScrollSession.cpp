@@ -162,7 +162,11 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         if (sizeChanged_) return done(SessionEnd::FrameSizeChanged);
         if (capped_) return done(SessionEnd::Capped);
         if (pageEnd_) return done(SessionEnd::PageEnd);
-        if (auto frame = source_.nextFrame(auto_ ? 15 : 40)) feed(*frame);
+        // For a second after the mouse took the wheel back the loop comes
+        // round every 10 ms: the one correction of a pointer moved from under
+        // the hand goes out from injector_.held() (#1514).
+        const bool correcting = !auto_ && pausedBy_ == HandBack::Pointer && clock_.nowMs() - handBackAt_ < 1000;
+        if (auto frame = source_.nextFrame(auto_ ? 15 : correcting ? 10 : 40)) feed(*frame);
         else if (source_.lost()) return done(SessionEnd::SourceLost);
         if (sizeChanged_) return done(SessionEnd::FrameSizeChanged);
         if (capped_) return done(SessionEnd::Capped);
@@ -400,6 +404,7 @@ void ScrollSession::handBack(HandBack why) {
     auto_ = false;
     phase_ = Phase::Off;
     pausedBy_ = why;
+    handBackAt_ = clock_.nowMs();
     ++stats_.handBacks;
     pending_ = 0;
     stepSentAt_ = -1;
