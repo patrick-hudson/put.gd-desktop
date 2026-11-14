@@ -202,7 +202,9 @@ reports `injection_unavailable` and says so. `KWIN_WAYLAND_NO_PERMISSION_CHECKS`
 set. The AppImage also carries `libxcb-xtest.so.0` for the X11 route.
 
 **Pace.** The first step is one notch: what the page moved, once it rests, is the distance
-per notch (only a step that began with the page at rest measures it). Every later step is
+per notch. Only a step that began with the page at rest measures it, and a later sample
+over 1.5 times the one it has is ignored: a page that lays itself out anew during a step
+(GitHub in Chrome) measured 540 px for a notch of 180. Every later step is
 40% of the frame's height (at least one notch, at most 12), so the frames of its animation
 overlap well: the tracker places small steps where 600 px bursts sometimes do not.
 
@@ -212,10 +214,9 @@ page last moved, or no frame at all for 100 ms after the last one that moved. Th
 rule is for streams that send a frame only when the picture changes (KWin, Mutter, image
 copy). A page that never rests gets 3 s per step.
 
-Why: Chrome draws parts of the page late while a scroll runs on. When the next step went at
-85% of the last one's way, Python's documentation came out with 126,284 cells that no frame
-had shown drawn. They were black, on the tracker's 8-column grid, from row 17,150. At rest,
-it has none. Per 10,000 px on Plasma 6.8.2, steps from rest cost 22.4 s against 16.7 s. A
+Why: while a scroll runs on, Chrome leaves tiles of the page undrawn for a moment, black at a
+fixed place in the viewport. When the next step went at 85% of the last one's way, Python's
+documentation came out with 126,284 black cells from row 17,150. Seen at rest, it has none. Per 10,000 px on Plasma 6.8.2, steps from rest cost 22.4 s against 16.7 s. A
 still frame alone costs 71.6 s, because KWin sends the next frame about a second later. A
 step at 100% of the way, not at rest, leaves more cells unwritten (189,952).
 
@@ -260,8 +261,11 @@ response time, is the end, but only at the centre of the region: still steps at 
 wheel point move the wheel to the centre, which keeps it from then on, and the two steps are
 made again there. (A side bar that sticks once the page has moved can take the wheel for its
 own list; Python's documentation in Chrome ended at 1,071 of 110,440 px before this rule.) A stream that sent no frame then (a damage-driven stream while
-the screen is still) is asked for a frame of the screen itself, which must agree. The
-capture then finishes by itself.
+the screen is still) is asked for a frame of the screen itself, which must show the page
+where it was. A fresh frame the tracker cannot place is no end: auto-scroll steps on, or
+goes back when lost. (KWin's stream stopped sending new pictures while Chrome went on
+scrolling, twice on 2026-11-14, and the restarted stream's first frame came 33 to 56 s
+later showing the page elsewhere.) The capture then finishes by itself.
 
 **Scroll to the top first** (`preferences.scrollCaptureFromTop`, off by default; it applies
 to auto-scroll only) runs when auto-scroll begins before anything has moved. Steps up of
