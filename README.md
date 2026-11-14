@@ -41,7 +41,8 @@ If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea, built 
 I was tired of screenshot tools built on a webview, and with LLMs, native code is easier to
 write than ever. put.gd is C++ and Qt, and memory is a deliberate design choice: a
 screenshot tool shouldn't use 100 MB or more sitting in your system tray. It's been
-ruthlessly trimmed to idle at about 10–20 MB, and less once the kernel reclaims its pages.
+ruthlessly trimmed to idle well under 40 MB, often 10–20 MB, and less once the kernel
+reclaims its pages.
 The main window, the editor and the recorder are separate processes that exit when you're
 done with them ([memory strategy](docs/design/memory-strategy.md)).
 
