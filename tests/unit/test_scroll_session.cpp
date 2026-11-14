@@ -530,6 +530,24 @@ void testStaleStreamAtDone() {
          (wrong.empty() ? counts(h) : wrong) + fmt(", image to %lld, page shows to %d, Done's frame added %lld", h.stats.bottom, end, h.stats.rowsAtDone));
 }
 
+// Auto-scroll on a stream that goes stale (KWin resent its last picture while
+// the page went on moving): frames keep coming, all still, after every step.
+// The end is taken only from a fresh frame of the screen, which shows the page
+// moved on: no end_of_content for half a page (CodeRabbit on #1528).
+void testStaleStreamUnderAuto() {
+  std::printf("Auto-scroll on a stream gone stale\n");
+  const Document doc = page(98);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.staleFromMs = 2200;
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  report("auto-scroll on a stale stream: the end only from a fresh frame, the whole page",
+         h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && h.stats.bottom == doc.img.h,
+         (wrong.empty() ? counts(h) : wrong) + fmt(", image to %lld of %d, %d fresh frames", h.stats.bottom, doc.img.h, h.app->freshFrames));
+}
+
 // A blank stretch taller than the region under auto-scroll: no frame shows
 // anything move while it fills the region, the tracker reports such frames
 // still under any hint, and two still steps there look like the end. The
@@ -548,16 +566,27 @@ void testBlankStretch() {
   ds.blankFactor = 2.5;
   ds.paragraphsPerGap = 6;
   const Document doc = makeDocument(ds);
-  Harness h;
-  FakeAppSpec as;
-  as.pxPerNotch = 40;
-  h.run(doc.img, as, options(true));
-  const std::string wrong = h.exact(doc.img, 0);
-  // It cannot be followed (frames that show nothing show no movement), so it
-  // stops there; it is not called the end of the page, and what it has is exact.
-  report("auto-scroll at a blank stretch taller than the region: stops, not called the end, exact so far",
-         h.end == SessionEnd::PageEnd && h.stats.endBlank && !h.stats.reachedEnd && wrong.empty() && h.stats.bottom < doc.img.h,
-         (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, blank end %d", doc.img.h, int(h.stats.endBlank)));
+  // Also with put.gd's bar inside the region: its pixels change in every
+  // frame, and the blank check leaves them out as the tracker does.
+  const TrackerRect bar{W - 260, H - 60, 250, 50};
+  for (const bool withBar : {false, true}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    SessionOptions so = options(true);
+    if (withBar) {
+      as.barX = bar.x, as.barY = bar.y, as.barW = bar.w, as.barH = bar.h;
+      so.excluded = bar;
+    }
+    h.run(doc.img, as, so);
+    // It cannot be followed (frames that show nothing show no movement), so it
+    // stops there; it is not called the end of the page. What it has is exact
+    // (the bar's place left out).
+    const std::string wrong = withBar ? std::string() : h.exact(doc.img, 0);
+    report(fmt("auto-scroll at a blank stretch taller than the region%s: stops, not called the end", withBar ? ", the bar inside" : ""),
+           h.end == SessionEnd::PageEnd && h.stats.endBlank && !h.stats.reachedEnd && wrong.empty() && h.stats.bottom < doc.img.h,
+           (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, blank end %d", doc.img.h, int(h.stats.endBlank)));
+  }
 }
 
 // ------------------------------------------------------------------- limits
@@ -647,6 +676,7 @@ int main() {
   testAutoJump();
   testReviewCases();
   testStaleStreamAtDone();
+  testStaleStreamUnderAuto();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();

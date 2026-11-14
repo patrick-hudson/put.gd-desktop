@@ -246,18 +246,26 @@ void ScrollSession::feed(const RunFrame& frame) {
 }
 
 // A frame with nothing on it: no sampled pixel differs much from the first.
-static bool plainFrame(const FrameView& v) {
+// The excluded rectangle (put.gd's bar inside the region, its pixels changing
+// in every frame) is left out with the tracker's rounding to blocks of 8, as
+// the tracker leaves it out of its stillness test (CodeRabbit on #1528).
+static bool plainFrame(const FrameView& v, const scroll::TrackerRect& ex) {
     const auto luma = [&](int x, int y) { const uint8_t* p = v.row(y) + std::ptrdiff_t(x) * 4; return int(p[0]) + 2 * int(p[1]) + int(p[2]); };
-    const int first = luma(0, 0);
+    const auto excluded = [&](int x, int y) { return !ex.empty() && x >= ex.x - 8 && x < ex.x + ex.w + 8 && y >= ex.y - 8 && y < ex.y + ex.h + 8; };
+    int first = -1;
     for (int y = 0; y < v.height; y += 8)
-        for (int x = 0; x < v.width; x += 8)
-            if (std::abs(luma(x, y) - first) > 24) return false;
+        for (int x = 0; x < v.width; x += 8) {
+            if (excluded(x, y)) continue;
+            const int l = luma(x, y);
+            if (first < 0) first = l;
+            else if (std::abs(l - first) > 24) return false;
+        }
     return true;
 }
 
 void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
-    lastFrameBlank_ = auto_ && plainFrame(view);
+    lastFrameBlank_ = auto_ && plainFrame(view, opts_.excluded);
     lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
     const TrackResult r = tracker_->addFrame(view, hint);
@@ -315,7 +323,6 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
         attributed_ = 0;
         chainHinted_ = true;
     };
-    const bool afterWait = stepSentAt_ >= 0 && t - stepSentAt_ >= responseWaitMs() * patience_;
     // Whether this frame showed the page where the last placed frame had it.
     lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);
     switch (r.status) {
@@ -351,7 +358,6 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
             } else {
                 lastStill_ = true;
                 ++stillRun_;
-                if (afterWait) ++framesAfterWait_;
             }
             break;
         }
@@ -361,7 +367,6 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
             resetChain();
             lastStill_ = true;
             ++stillRun_;
-            if (afterWait) ++framesAfterWait_;
             break;
         case TrackStatus::Skipped:
             lastStill_ = false;
@@ -546,7 +551,6 @@ void ScrollSession::autoTick() {
         stepMoved_ = 0;
         lastStepMove_ = 0;
         stepFirstMoveAt_ = lastMoveAt_ = -1;
-        framesAfterWait_ = 0;
         upSinceStep_ = 0;
         lastStill_ = false;
         stillRun_ = 0;
@@ -601,7 +605,6 @@ void ScrollSession::startRecover() {
     stepMoved_ = 0;
     lastStepMove_ = 0;
     stepFirstMoveAt_ = lastMoveAt_ = -1;
-    framesAfterWait_ = 0;
     lastStill_ = false;
     stillRun_ = 0;
     pending_ = stats_.pxPerNotch > 0 ? notches * stats_.pxPerNotch : 0;
@@ -678,30 +681,32 @@ void ScrollSession::stillStep(int64_t now) {
         return;
     }
     if (stillSteps_ >= 2) {
-        // The end of the page: twice the page was where it was in frames from
-        // after the step's response time. A stream that sent nothing then
-        // (damage-driven, the screen still) is asked for a frame of the screen.
-        if (framesAfterWait_ == 0) {
-            auto fresh = source_.freshFrame(2000);
-            if (!fresh) {
-                stats_.lastError = "the frame source gave no frame after the last wheel steps, so the end of the page is not proven";
-                handBack(HandBack::NoMovement);
-                return;
-            }
-            feed(*fresh);
-            if (stepFirstMoveAt_ >= 0) { stillSteps_ = 0; return; }  // it had moved after all: settle as usual
-            // Only a frame that shows the page where it was proves the end. A
-            // stream that went quiet while the page moved (KWin resent its last
-            // picture every second, and the restarted stream's first frame came
-            // 56 s later showing the page elsewhere: a GitHub pull request in
-            // Chrome ended at 37,096 of 44,491 px, 2026-11-14) proves nothing.
-            if (!lastShowedStill_) {
-                stillSteps_ = 0;
-                patience_ = 1;
-                if (tracker_->state() == TrackState::Lost) startRecover();
-                else { phase_ = Phase::Step; nextStepAt_ = now; }
-                return;
-            }
+        // The end of the page: twice the page did not move after a step. The
+        // screen itself must agree, not only the stream: a stream that sent
+        // nothing then (damage-driven, the screen still) has no frame from
+        // after the steps, and one that went stale sends its last picture
+        // again with new times (KWin resent it every second while Chrome went
+        // on scrolling). Every end is taken from a fresh frame of the screen
+        // (CodeRabbit on #1528).
+        auto fresh = source_.freshFrame(2000);
+        if (!fresh) {
+            stats_.lastError = "the frame source gave no frame after the last wheel steps, so the end of the page is not proven";
+            handBack(HandBack::NoMovement);
+            return;
+        }
+        feed(*fresh);
+        if (stepFirstMoveAt_ >= 0) { stillSteps_ = 0; return; }  // it had moved after all: settle as usual
+        // Only a frame that shows the page where it was proves the end. A
+        // stream that went quiet while the page moved (the restarted stream's
+        // first frame came 56 s later showing the page elsewhere: a GitHub
+        // pull request in Chrome ended at 37,096 of 44,491 px, 2026-11-14)
+        // proves nothing.
+        if (!lastShowedStill_) {
+            stillSteps_ = 0;
+            patience_ = 1;
+            if (tracker_->state() == TrackState::Lost) startRecover();
+            else { phase_ = Phase::Step; nextStepAt_ = now; }
+            return;
         }
         // Frames that show nothing move nothing either: a blank stretch taller
         // than the region looks like the end, and the wheel may still be moving
