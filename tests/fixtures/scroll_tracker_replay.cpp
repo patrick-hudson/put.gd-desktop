@@ -5,7 +5,11 @@
 // output with the browser's own full-page picture and the true scroll position.
 //
 //   test_scroll_tracker_replay --list FILE --out DIR [--engine tracker|stitcher]
-//       [--repeat N] [--max-height N]
+//       [--repeat N] [--max-height N] [--exclude X,Y,W,H [--paint]]
+//
+// --exclude tells the tracker a rectangle of the frame is not the application;
+// --paint also draws into it, in every frame, a bar whose pixels change from
+// frame to frame (as put.gd's own bar with a height counter would).
 //
 // FILE has one frame per line: a PNG path, optionally followed by a hint
 // (expected offset since the line before, and its uncertainty).
@@ -88,7 +92,9 @@ int main(int argc, char** argv) {
                      {"out", "an existing directory for image.png and results.json", "dir"},
                      {"engine", "tracker or stitcher", "name", "tracker"},
                      {"repeat", "run the sequence this many times for timing (the image is the first run's)", "n", "1"},
-                     {"max-height", "height cap", "rows", "32000"}});
+                     {"max-height", "height cap", "rows", "32000"},
+                     {"exclude", "a rectangle of the frame that is not the application (tracker only)", "x,y,w,h"},
+                     {"paint", "draw a bar that changes every frame into the excluded rectangle"}});
   parser.process(app);
   if (!parser.isSet("list") || !parser.isSet("out")) {
     std::fprintf(stderr, "usage: --list FILE --out DIR [--engine tracker|stitcher]\n");
@@ -107,11 +113,27 @@ int main(int argc, char** argv) {
     lines.push_back(l);
   }
   std::vector<QImage> frames;
+  const QStringList ex = parser.value("exclude").split(',');
+  const bool paint = parser.isSet("paint") && ex.size() == 4;
   for (const Line& l : lines) {
     frames.push_back(load(l.path));
     if (frames.back().isNull()) {
       std::fprintf(stderr, "cannot read %s\n", qPrintable(l.path));
       return 3;
+    }
+    if (!paint) continue;
+    // A dark bar with a counter-like pattern of the frame's number.
+    QImage& f = frames.back();
+    const int n = int(frames.size());
+    const int x0 = std::max(0, ex[0].toInt()), y0 = std::max(0, ex[1].toInt());
+    const int x1 = std::min(f.width(), x0 + ex[2].toInt()), y1 = std::min(f.height(), y0 + ex[3].toInt());
+    for (int y = y0; y < y1; ++y) {
+      QRgb* row = reinterpret_cast<QRgb*>(f.scanLine(y));
+      for (int x = x0; x < x1; ++x) {
+        const int digit = ((x - x0) / 12 + n * 7 + (x - x0) / 60 * n) % 10;
+        const bool ink = (y - y0) > 6 && (y1 - y) > 6 && ((x - x0) % 12) < 2 + digit / 2 && ((y - y0 + digit) % 5) < 3;
+        row[x] = ink ? qRgb(240, 192, 96) : qRgb(30, 34, 48);
+      }
     }
   }
   const QString out = parser.value("out");
@@ -128,6 +150,7 @@ int main(int argc, char** argv) {
       TrackerOptions opts;
       opts.maxOutputRows = parser.value("max-height").toLongLong();
       ScrollTracker tracker(canvas, opts);
+      if (ex.size() == 4) tracker.setExcluded({ex[0].toInt(), ex[1].toInt(), ex[2].toInt(), ex[3].toInt()});
       for (size_t i = 0; i < frames.size(); ++i) {
         const double canvasBefore = canvas.ms;
         const auto t0 = Clock::now();
@@ -176,6 +199,8 @@ int main(int argc, char** argv) {
                             {"capReached", tot.capReached},
                             {"top", double(tot.top)},
                             {"bottom", double(tot.bottom)},
+                            {"hiddenCells", double(tot.hiddenCells)},
+                            {"hiddenRows", double(tot.hiddenRows)},
                             {"finishMs", finishMs},
                             {"cellPx", tracker.options().cellPx},
                             {"blockRows", tracker.options().blockRows},
