@@ -149,7 +149,7 @@ QString missingLocalCopyHint(const QJsonObject& data){
  else if(data["uploadStatus"]=="uploaded")text+="You may still be able to download the uploaded "+kind+" from its destination.";
  else if(data["uploadStatus"]=="unknown")text+="The upload outcome is unknown. Check its destination for a copy.";
  else text+="No successful upload is recorded. Check the original source or another saved copy.";
- const auto remoteOutcome=HistoryModel::remoteStateText(data),shareOutcome=HistoryModel::remoteStateText(QJsonObject{{"shareStatus",data["shareStatus"]}});auto outcome=HistoryModel::statusText(data);
+ const auto remoteOutcome=HistoryModel::remoteStateText(data),shareOutcome=HistoryModel::remoteStateText(QJsonObject{{"shareStatus",data["shareStatus"]},{"linkFinishable",data["linkFinishable"]}});auto outcome=HistoryModel::statusText(data);
  if(HistoryModel::failed(data)||(!remoteOutcome.isEmpty()&&remoteOutcome==shareOutcome)||(remoteOutcome.isEmpty()&&data["uploadStatus"]=="uploaded"&&outcome!="Uploaded")){
   outcome.remove(" · Saved previously · Local file unavailable");outcome.remove(" · Saved locally");text=outcome+". "+text;
  }

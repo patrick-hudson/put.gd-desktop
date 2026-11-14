@@ -104,11 +104,15 @@ private slots:
  void unconfirmedLinkIsFinishedInOneClick(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<LinkStepFixture>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(provider->shares.load(),1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  // As after a crash in the link step: the operation is interrupted, not partial (m74 acceptance, #1512).
+  {HistoryStore ledger(operations.databasePath());auto op=ledger.operation(ledger.recent(1).first().toObject()["id"].toString());QCOMPARE(op.stateName(),QString("partial"));op.restore(OperationState::Interrupted);QVERIFY(!ledger.saveOperation(op));}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,700);window.show();fixture.server.setUiCommand([&](const QString& name,const QJsonObject& p,JsonReply reply){QCOMPARE(name,QString("history"));window.command(p,std::move(reply));});
   auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),1);
   const auto row=model->record(0);const auto itemId=row["id"].toString(),operationId=row["operationId"].toString();
   QCOMPARE(model->index(0).data(HistoryModel::PrimaryActionRole).toString(),QString("Finish share link"));QCOMPARE(HistoryModel::statusText(row),QString("Share link not finished"));
   PUTGD_TRY_COMPARE(window.historyState()["finishableIds"].toArray(),QJsonArray{itemId});
+  // The pane keeps the state when the file has no local copy (m74 acceptance, #1512).
+  selectRow(list,0);auto paneSays=[&](const QString& text){for(auto* label:window.findChildren<QLabel*>())if(label->isVisible()&&label->text().contains(text))return true;return false;};PUTGD_TRY_VERIFY(paneSays("Share link not finished. No local copy"));
   QJsonObject retry;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& p){if(method=="operation.retry")retry=p;};provider->loseReply=false;
   auto drive=[&](const QJsonObject& p){bool done=false;Error error;fixture.client.request("ui.history",p,&window,[&](Error e,QJsonObject){error=e;done=true;});PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.message));};
   drive({{"action","select"},{"ids",QJsonArray{itemId}}});drive({{"action","finishShareLink"}});
