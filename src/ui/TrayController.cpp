@@ -42,8 +42,8 @@ bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
 constexpr int finishingBoundMs=5000;
-const QString idleTooltip = "put.gd";
-const QString seasonalTooltip = "put.gd - Happy Holidays!";
+const QString idleTooltip = QStringLiteral("put.gd");
+const QString seasonalTooltip = QStringLiteral("put.gd - Happy Holidays!");
 // Which way a link or folder opened on the host (#326), never the target itself.
 void logOpened(const QString& target,const QJsonObject& result) {
  auto fields=result;fields["target"]=target;
@@ -405,7 +405,6 @@ TrayController::TrayController(OperationService& operations,
  });
 }
 
-QString TrayController::describeActivity(const QJsonArray& observations) {return activityText(observations);}
 // What went wrong, in plain words, from an operation or item error code (#152).
 QString TrayController::failureReason(const QJsonObject& error) {
  const auto code=error["code"].toString();

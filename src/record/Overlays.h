@@ -132,8 +132,6 @@ public:
     void setHandleWhileRecording(bool handle) { handle_ = handle; refresh(); }
     bool handleWhileRecording() const { return handle_; }
     bool outside() const { return outside_; }
-    // The recorded rectangle in Qt logical pixels, as placed.
-    QRect recordedArea() const { return recorded_; }
     void setState(const QString& state);  // ready | recording | paused | stopping
     void setRetained(qint64 us);
     // One row or two for this screen (Qt logical pixels); placement calls it

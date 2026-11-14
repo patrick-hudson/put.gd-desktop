@@ -171,11 +171,6 @@ void FrameSignatures::compute(const FrameView& f, const StitchOptions& o) {
   }
 }
 
-size_t FrameSignatures::bytes() const {
-  return (bandHash.size() + edgeHash.size() + rowHash.size() + sideHash.size()) * 8 +
-         (flatBandMask.size() + edgeBandMask.size() + flatColor.size()) * 4 + rowFlat.size() + sideFlat.size();
-}
-
 bool sameRowLoose(const FrameSignatures& a, int ya, const FrameSignatures& b, int yb,
                   const StitchOptions& o) {
   if (a.rowHash[ya] == b.rowHash[yb]) return true;
@@ -255,10 +250,6 @@ int ScrollStitcher::outputHeight() const {
   if (finished_) return int(bodyRows_);
   if (!moved_) return std::min(height_, opts_.maxOutputRows);
   return int(logicalRows()) + std::max(estBot_, 0);
-}
-
-size_t ScrollStitcher::memoryBytes() const {
-  return image_.capacity() + pending_.capacity() + footer_.capacity() + held_.capacity() + proved_.pixels.capacity() + pace_.pixels.capacity() + (refFine_.capacity() + curFine_.capacity()) * 8 + (refLight_.capacity() + curLight_.capacity()) * 2 + ref_.bytes();
 }
 
 void ScrollStitcher::emitRaw(const uint8_t* row) {

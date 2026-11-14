@@ -423,14 +423,6 @@ QString checkNodes(const Template& nodes, TemplateUse use, bool nested = false) 
     }
     return {};
 }
-bool nodesReadInput(const Template& nodes) {
-    for (const auto& node : nodes) {
-        if (!node.call) continue;
-        if (node.text == "input") return true;
-        for (const auto& parameter : node.parameters) if (nodesReadInput(parameter)) return true;
-    }
-    return false;
-}
 const QRegularExpression& oldPlaceholder() {
     static const QRegularExpression value("(?<!\\\\)\\$(?:json|xml|regex|header|random|select|prompt|inputbox|base64):[^$]*\\$|(?<!\\\\)\\$(?:response|responseurl|filename|input)\\$",
                                           QRegularExpression::CaseInsensitiveOption);
@@ -473,7 +465,6 @@ QStringList secretReferences(const QString& text) {
     if (text.contains("secret", Qt::CaseInsensitive)) collectSecrets(parseTemplate(text), out);
     return out;
 }
-bool readsInput(const QString& text) { return nodesReadInput(parseTemplate(text)); }
 QString migrateOldSyntax(const QString& text, const QStringList& regexList) {
     QString out;
     bool open = false;

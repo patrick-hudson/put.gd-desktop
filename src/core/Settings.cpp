@@ -54,7 +54,6 @@ QJsonObject Settings::effectiveArtifactLimits() const {
 }
 
 QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit", "monitor", "scroll"}; }
-QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
 QString Settings::repeatActionName() { return QStringLiteral("repeat"); }
 QString Settings::textActionName() { return QStringLiteral("text"); }
@@ -310,8 +309,9 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("editorRecentColors")) {
         const auto colors = preferences["editorRecentColors"];
         bool valid = colors.isArray() && colors.toArray().size() <= Settings::maximumRecentColors;
+        static const QRegularExpression recentColor("^#[0-9a-f]{6}$");
         if (valid) for (const auto& color : colors.toArray())
-            valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
+            valid = valid && color.isString() && recentColor.match(color.toString()).hasMatch();
         if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 6 lowercase #rrggbb values.");
     }
     if (preferences.contains("diagnostics")) {

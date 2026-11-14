@@ -47,8 +47,6 @@ struct Plan {
 double luminance(QRgb);
 // `color` with its hue and chroma kept and its luminance set in linear light.
 QRgb atLuminance(const QColor& color,double target);
-// The band `marker` leaves on a page of colour `page`.
-QRgb bandFor(const QColor& marker,QRgb page);
 
 // Reads `source` inside `area` (pixels inside `redactions` count as black) and
 // decides the band and transfer for each background. Large areas are sampled on a grid.

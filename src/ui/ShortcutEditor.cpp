@@ -111,7 +111,7 @@ void ShortcutEditor::startRecording(const QString& action){
  // scroll area: FocusOut cancels, then clicked starts recording again.
  recordButtons_[action]->setAccessibleDescription("Recording "+editors_[action]->accessibleName()+". Press one key with optional modifiers, then release all keys. Escape cancels.");
  recordButtons_[action]->setFocus();qApp->installEventFilter(this);
- if(!chordResolver_)keyboard_=std::make_unique<ShortcutKeyboard>();
+ keyboard_=std::make_unique<ShortcutKeyboard>();
  if(!recordingControl_){finishRecording("Recording is unavailable. Reopen Settings from the running app.");return;}
  QPointer<ShortcutEditor> guard(this);
  recordingControl_(true,[guard,generation](Error error){
@@ -180,7 +180,7 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
   }
   // Store the physical key's unshifted digit or punctuation (Ctrl+Shift+4,
   // not Ctrl+Shift+$), the form the defaults and every desktop backend share.
-  const auto pressed=chordResolver_?chordResolver_(*key):keyboard_?keyboard_->chord(*key):key->keyCombination();
+  const auto pressed=keyboard_?keyboard_->chord(*key):key->keyCombination();
   if(!chord_.isEmpty()&&chord_[0].key()!=pressed.key()){finishRecording("Use one key with modifiers. The draft hotkey is unchanged.");return true;}
   chord_=QKeySequence(pressed);
   setRecordingStatus(chord_.toString(QKeySequence::NativeText)+" — release all keys to keep it. Escape cancels.");

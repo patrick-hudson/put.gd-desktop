@@ -11,8 +11,8 @@ namespace putgd {
 QDBusArgument& operator<<(QDBusArgument& a,const KdeKeySequence& s){a.beginStructure();a<<s.keys;a.endStructure();return a;}
 const QDBusArgument& operator>>(const QDBusArgument& a,KdeKeySequence& s){s.keys.clear();a.beginStructure();a.beginArray();while(!a.atEnd()){int key;a>>key;if(s.keys.size()<4)s.keys.append(key);}a.endArray();a.endStructure();while(s.keys.size()<4)s.keys.append(0);return a;}
 namespace {
-const QString service="org.kde.kglobalaccel",path="/kglobalaccel",iface="org.kde.KGlobalAccel",component="putgd";
-const QString layoutService="org.kde.keyboard",layoutPath="/Layouts",layoutInterface="org.kde.KeyboardLayouts";
+const QString service=QStringLiteral("org.kde.kglobalaccel"),path=QStringLiteral("/kglobalaccel"),iface=QStringLiteral("org.kde.KGlobalAccel"),component=QStringLiteral("putgd");
+const QString layoutService=QStringLiteral("org.kde.keyboard"),layoutPath=QStringLiteral("/Layouts"),layoutInterface=QStringLiteral("org.kde.KeyboardLayouts");
 QStringList actionId(const QString& action){return {component,action,"put.gd",action};}
 KdeKeySequence wire(const QKeySequence& seq){KdeKeySequence out;for(int i=0;i<4;++i)out.keys.append(i<seq.count()?seq[i].toCombined():0);return out;}
 QString text(const KdeKeySequence& s){int keys[4]={};for(int i=0;i<std::min(4,int(s.keys.size()));++i)keys[i]=s.keys[i];return QKeySequence(keys[0],keys[1],keys[2],keys[3]).toString(QKeySequence::PortableText);}

@@ -301,7 +301,8 @@ bool holdsBase64(const QStringList& texts, const QString& needle) {
 qsizetype afterAuthority(const QString& address) {
     const auto authority = address.indexOf("://");
     if (authority < 0) return 0;
-    const auto path = address.indexOf(QRegularExpression("[/?#]"), authority + 3);
+    static const QRegularExpression pathStart("[/?#]");
+    const auto path = address.indexOf(pathStart, authority + 3);
     return path < 0 ? address.size() : path;
 }
 }
@@ -396,7 +397,8 @@ QUrl requestOrigin(const QJsonObject& settings) {
     const auto text = settings["requestUrl"].toString();
     const auto authority = text.indexOf("://");
     if (authority < 0) return {};
-    const auto path = text.indexOf(QRegularExpression("[/?#]"), authority + 3);
+    static const QRegularExpression pathStart("[/?#]");
+    const auto path = text.indexOf(pathStart, authority + 3);
     return QUrl(path < 0 ? text : text.left(path), QUrl::StrictMode);
 }
 namespace {

@@ -262,7 +262,6 @@ void OperationService::observe(const QJsonObject& document){
  {std::lock_guard lock(observationsMutex_);const auto existing=observations_.constFind(id);if(existing!=observations_.cend()&&*existing==document)return;observations_[id]=document;observationsDirty_.insert(id);if(!observationScheduled_){observationScheduled_=true;schedule=true;}}
  if(schedule){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner]{if(owner&&!owner->stopping_)owner->observationTimer_.start();},Qt::QueuedConnection);}
 }
-QString OperationService::recordingActiveId() const {return recording_->activeId();}
 QJsonArray OperationService::activeObservations() const {
  QJsonArray result;std::lock_guard lock(observationsMutex_);
  for(const auto& document:observations_)if(Operation::activeState(document["state"].toString()))result.append(document);

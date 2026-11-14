@@ -26,7 +26,7 @@
 #include <utility>
 namespace putgd {
 namespace {
-const QString service="org.gnome.Shell",client="org.putgd.App.Gnome50",path="/org/gnome/Shell/Extensions/Putgd",interface="org.putgd.Gnome50";
+const QString service=QStringLiteral("org.gnome.Shell"),client=QStringLiteral("org.putgd.App.Gnome50"),path=QStringLiteral("/org/gnome/Shell/Extensions/Putgd"),interface=QStringLiteral("org.putgd.Gnome50");
 QString uuid(){return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
 bool missingEndpoint(const QDBusMessage& message){

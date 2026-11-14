@@ -115,8 +115,6 @@ Error applyEditCommands(RecordingEdit&, const QJsonArray& commands, qint64 durat
 bool validMicrophoneDevice(const QJsonValue&);
 // An output's monitor by its name; it is never opened as a microphone.
 bool monitorSourceName(const QString& name);
-// Nearest frame boundary at the given rate; the export side rounds identically.
-qint64 alignToFrame(qint64 us, int fps);
 // Animation exports must fit the configured duration and dimension budget.
 Error checkExportBudget(const RecordingConfig&, const RecordingEdit&, qint64 durationUs, const QSize& canvas, const RecordingLimits&);
 // GIF/WebP outputs larger than the animation edge limit get maxEdge set to it
