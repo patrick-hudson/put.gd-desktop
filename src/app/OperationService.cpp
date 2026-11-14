@@ -40,6 +40,8 @@
 #endif
 namespace putgd {
 namespace {
+// Clean library pages leave this process once it has been quiet for this long.
+constexpr int imagePageDelayMs=30*1000;
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 Error unsupported() {return {"source_unsupported","Native desktop adapter is not available",{}};}
 bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
@@ -190,7 +192,7 @@ bool OperationService::heapReclamationIdle() const {
 void OperationService::scheduleHeapReclamation() {
  if(!heapReclamationIdle())return;
  if(heapReclamationPending_)heapReclamationTimer_.start(2000);
- else if(imagePagesPending_)imagePageTimer_.start(imagePageDelayMs_);
+ else if(imagePagesPending_)imagePageTimer_.start(imagePageDelayMs);
 }
 void OperationService::requestHeapReclamation() {
  if(stopping_)return;
@@ -201,7 +203,7 @@ void OperationService::requestImagePageRelease() {
  imagePagesPending_=true;
  // A pending trim schedules the release itself; work that is still running
  // schedules it when it drains.
- if(!heapReclamationPending_&&!imagePageTimer_.isActive()&&heapReclamationIdle())imagePageTimer_.start(imagePageDelayMs_);
+ if(!heapReclamationPending_&&!imagePageTimer_.isActive()&&heapReclamationIdle())imagePageTimer_.start(imagePageDelayMs);
 }
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
@@ -526,7 +528,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  if(!session||editingId_!=op.id||flag->load()){op.cancelled=true;op.advance(OperationState::Cancelled);finish(op);return;}
  if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","The editor needs exactly one static PNG or JPEG image",{}};op.advance(OperationState::Failed);finish(op);return;}
  op.advance(OperationState::Editing);op.phase="editing";
- const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
+ const auto path=databasePath(),staging=root_+"/editing",destination=editorDestination(op);
  const auto route=routeOf(op);const Error submissionError=(route.destination!="upload"||route.profileId.isEmpty())&&!op.settings.archive.keepUploads?Error{"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}}:Error{};
  const auto recentColors=settings_.snapshot().editorRecentColors;const auto appearance=editorAppearance_;const auto textLanguages=op.settings.textRecognitionLanguages;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
@@ -563,11 +565,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging,helper).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withSubmissionError(submissionError).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -1490,7 +1492,7 @@ void OperationService::copyHistoryQr(QByteArray png,JsonReply reply,quint64 tick
 }
 QJsonObject OperationService::capabilities() const {
 #ifdef Q_OS_UNIX
- const bool editor=QFileInfo(editorHelper_.isEmpty()?QCoreApplication::applicationDirPath()+"/putgd-ui":editorHelper_).isExecutable();
+ const bool editor=QFileInfo(QCoreApplication::applicationDirPath()+"/putgd-ui").isExecutable();
 #else
  const bool editor=false;
 #endif

@@ -153,7 +153,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  // Copy image: the window renders the sanitized PNG off the GUI thread, this
  // stages it as copy.png and the resident puts it on the clipboard through
  // its native adapter. One copy at a time; nothing is handed off for upload.
- constexpr qint64 copyBytes=128LL*1024*1024;
+ static constexpr qint64 copyBytes=128LL*1024*1024;
  bool copyPending=false;std::function<void(QJsonObject,QString,QString)> copyReply;QJsonObject copyInfo;QString copyId;
  // A copy the resident never answers fails here, so the window never stays busy.
  QTimer copyDeadline;copyDeadline.setSingleShot(true);copyDeadline.setInterval(30000);
@@ -176,7 +176,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    auto frame=envelope(nonce);frame["copyId"]=copyId;frame["bytes"]=QString::number(png.size());frame["sha256"]=digest;frame["width"]=size.width();frame["height"]=size.height();
    if(control.send("copyImage",frame).isEmpty()){fail();return;}
    copyDeadline.start();
-  },[&files,copyBytes](const QByteArray& png){return png.size()>copyBytes?QString():files.writeCopy(png);});
+  },[&files](const QByteArray& png){return png.size()>copyBytes?QString():files.writeCopy(png);});
   if(started){copyPending=true;copyReply=std::move(reply);}
   return started;
  };

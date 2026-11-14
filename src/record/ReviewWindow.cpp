@@ -928,13 +928,11 @@ void ReviewTimeline::layoutLanes() {
 int ReviewTimeline::gutterWidth() {
     return std::max(std::min(112, Ui::scaled(96)), QFontMetrics(Ui::labelFont()).horizontalAdvance(QStringLiteral("+ Add mask")) + 20);
 }
-bool ReviewTimeline::transportAbove(int) const { return transport_ != nullptr; }
-int ReviewTimeline::timelineTop() const { return transport_ ? transport_->height() : 0; }
 QRect ReviewTimeline::trackRect() const {
-    return QRect(gutterWidth(), timelineTop() + rulerHeight() + 1, std::max(1, width() - trackPad - gutterWidth()), trackHeight);
+    return QRect(gutterWidth(), rulerHeight() + 1, std::max(1, width() - trackPad - gutterWidth()), trackHeight);
 }
-QRect ReviewTimeline::laneRect(int lane) const { const auto track = trackRect(); return QRect(track.left(), timelineTop() + clipHeight() + (lane - laneScroll_->value()) * rowHeight() + (rowHeight() - laneHeight()) / 2, track.width(), laneHeight()); }
-int ReviewTimeline::lanesBottom() const { return timelineTop() + clipHeight() + std::min(lanes_, visibleLanes()) * rowHeight(); }
+QRect ReviewTimeline::laneRect(int lane) const { const auto track = trackRect(); return QRect(track.left(), clipHeight() + (lane - laneScroll_->value()) * rowHeight() + (rowHeight() - laneHeight()) / 2, track.width(), laneHeight()); }
+int ReviewTimeline::lanesBottom() const { return clipHeight() + std::min(lanes_, visibleLanes()) * rowHeight(); }
 void ReviewTimeline::setLaneHeader(QWidget* header) { laneHeader_ = header; header->setParent(this); placeNavigation(); }
 int ReviewTimeline::xFor(qint64 us) const { const auto track = trackRect(); return track.left() + int(double(track.width()) * std::clamp<qint64>(us, 0, duration_) / duration_); }
 qint64 ReviewTimeline::timeAt(qreal x) const { const auto track = trackRect(); return std::clamp<qint64>(qint64((x - track.left()) * double(duration_) / track.width()), 0, duration_); }
@@ -964,7 +962,7 @@ int ReviewTimeline::heightForLanes(int width, int lanes) const {
     // Leave the clamped last target below the trim track and nearest its own lane.
     const int rows = std::max(clipHeight() + std::min(lanes, visibleLanes()) * rowHeight(), lanes > 0 ? clipHeight() - 1 + gripTarget() : 0)
         + (lanes > visibleLanes() ? iconTarget() : 0);
-    return timelineTop() + std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 + (laneHeader_->height() + 1) / 2 + 1 : rulerHeight() + 10, rows);
+    return std::max(laneHeader_ ? clipHeight() + rowHeight() / 2 + (laneHeader_->height() + 1) / 2 + 1 : rulerHeight() + 10, rows);
 }
 QSize ReviewTimeline::minimumSizeHint() const { return {220, heightForLanes(width(), lanes_)}; }
 void ReviewTimeline::paintEvent(QPaintEvent*) {
@@ -982,10 +980,10 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
         const int x = xFor(at);
         const int labelWidth = QFontMetrics(rulerFont()).horizontalAdvance(durationText(at)) + 2;
         const int left = std::clamp(x - labelWidth / 2, track.left(), std::max(track.left(), track.right() - labelWidth + 1));
-        const auto label = QRect(left, timelineTop(), labelWidth, rulerHeight());
+        const auto label = QRect(left, 0, labelWidth, rulerHeight());
         Ui::paintText(painter, label, durationText(at), p.textMuted, rulerFont(), Qt::AlignLeft | Qt::AlignVCenter, Qt::ElideNone);
         painter.setPen(QPen(p.borderStrong, 1));
-        painter.drawLine(x, timelineTop() + rulerHeight(), x, track.top() - 2);
+        painter.drawLine(x, rulerHeight(), x, track.top() - 2);
     }
     const bool trimming = drag_ == Drag::TrimStart || drag_ == Drag::TrimEnd;
     const qint64 start = trimming ? dragStart_ : trimStart_, end = trimming ? dragEnd_ : trimEnd_;
@@ -1052,15 +1050,8 @@ void ReviewTimeline::paintEvent(QPaintEvent*) {
     painter.restore();
     painter.setPen(Qt::NoPen);
     painter.setBrush(p.text);
-    painter.drawPolygon(QPolygonF{QPointF(x - 4, timelineTop() + rulerHeight()), QPointF(x + 4, timelineTop() + rulerHeight()), QPointF(x, timelineTop() + rulerHeight() + 5)});
+    painter.drawPolygon(QPolygonF{QPointF(x - 4, rulerHeight()), QPointF(x + 4, rulerHeight()), QPointF(x, rulerHeight() + 5)});
     if (Ui::keyboardFocus(this)) { painter.setPen(QPen(p.accent, 1)); painter.setBrush(Qt::NoBrush); painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5); }
-}
-void ReviewTimeline::setTransport(QWidget* transport) {
-    transport_ = transport;
-    transport_->setParent(this);
-    clipLabel_->hide();
-    placeNavigation();
-    updateGeometry();
 }
 int ReviewTimeline::firstLane() const { return laneScroll_->value(); }
 QString ReviewTimeline::laneSummary() const { return laneSummary_->text(); }
@@ -1078,14 +1069,6 @@ void ReviewTimeline::placeNavigation() {
     laneSummary_->setAccessibleDescription(laneSummary_->toolTip());
     previousMasks_->setEnabled(laneScroll_->value() > 0);
     moreMasks_->setEnabled(laneScroll_->value() < laneScroll_->maximum());
-    if (transport_) {
-        auto* row = static_cast<QBoxLayout*>(transport_->layout());
-        row->setDirection(QBoxLayout::LeftToRight);
-        rowTransportHeight_ = Ui::scaled(28);
-        transport_->setProperty("inlineWidth", 0);
-        transport_->setProperty("aboveTimeline", true);
-        transport_->setGeometry(0, 0, width(), rowTransportHeight_);
-    }
     if (laneHeader_) laneHeader_->setGeometry(0, laneRect(laneScroll_->value()).center().y() - (laneHeader_->height() - 1) / 2, gutterWidth() - reviewSpace(Ui::Space::xs), laneHeader_->height());
     const int side = iconTarget();
     previousMasks_->setGeometry(0, lanesBottom(), side, side);
@@ -2347,7 +2330,7 @@ void ReviewWindow::updateMinimum() {
                 const int timelineHeight = timeline_->heightForLanes(candidate - 2 * reviewSpace(Ui::Space::m), std::max(2, timeline_->lanes()));
                 const double steady = share(candidate, std::max(futureControls, flow->heightFor(candidate - 2 * reviewSpace(Ui::Space::m))), timelineHeight);
                 const double transient = share(candidate, controls + std::max(32, QFontMetrics(Ui::font(Ui::Type::metadata)).height() + 8) + 4, timelineHeight);
-                const int inlineAxis = candidate - 2 * reviewSpace(Ui::Space::m) - trackPad - ReviewTimeline::gutterWidth() - transport_->property("inlineWidth").toInt() - 12;
+                const int inlineAxis = candidate - 2 * reviewSpace(Ui::Space::m) - trackPad - ReviewTimeline::gutterWidth() - 12;
                 const int axis = inlineAxis < 360 ? candidate - 2 * reviewSpace(Ui::Space::m) - trackPad - ReviewTimeline::gutterWidth() : inlineAxis;
                 const double organization = std::min(1.0, double(axis) / axisMinimum) - controls * 0.002;
                 const double score = steady >= 0.605 && transient >= 0.535 ? 10 + transient + organization * 0.02 : steady >= 0.605 ? 1 + transient : steady;
