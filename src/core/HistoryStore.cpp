@@ -26,7 +26,8 @@ QJsonObject publicRecord(QJsonObject data) {
  if(expiry.isEmpty())expiry=data["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString();
  if(!expiry.isEmpty())data["linkExpiresAt"]=expiry;
  const auto expires=QDateTime::fromString(expiry,Qt::ISODateWithMs);
- const bool available=OperationItem::fromJson(data).linkAvailable();
+ const auto file=OperationItem::fromJson(data);const bool available=file.linkAvailable();
+ data["linkFinishable"]=file.linkFinishable();
  data["linkRefreshable"]=!expiry.isEmpty()&&available&&!QStringList{"pending","deleting","unknown","superseded"}.contains(data["remoteStatus"].toString())&&expires.isValid()&&expires<=QDateTime::currentDateTimeUtc()&&
    !data["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString().isEmpty();
  data["linkAvailable"]=available&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());

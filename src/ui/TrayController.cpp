@@ -483,16 +483,18 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  const auto what=localFailed&&!uploaded&&failed==1?QString("Local save failed"):state=="interrupted"?QString("Upload interrupted"):QString("Upload failed");
  // An uploaded file whose link step did not finish is on the storage: say that,
  // and name the History action its link state offers (#1399).
- int unconfirmed=0,unmade=0;QString linkCause;
- for(const auto& value:items){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"||state=="interrupted")continue;const auto share=item["shareStatus"].toString();
-  if(share=="unknown"||share=="changed")++unconfirmed;
-  else if(share=="failed"||(share=="private"&&item["shareIntent"]=="create")){++unmade;if(linkCause.isEmpty()&&share=="failed")linkCause=failureReason(item["error"].toObject());}}
+ // A link still wanted (intent create, not confirmed or not yet made) is finished by
+ // History's Finish share link, or by Retry upload while other files still need theirs (#1496).
+ int unconfirmed=0,unmade=0,finishable=0,inspect=0,create=0;QString linkCause;
+ for(const auto& value:items){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"||state=="interrupted")continue;const auto share=item["shareStatus"].toString();const bool wanted=item["shareIntent"]=="create";
+  if(share=="unknown"||share=="changed"){++unconfirmed;if(share=="unknown"&&wanted)++finishable;else ++inspect;}
+  else if(share=="failed"||(share=="private"&&wanted)){++unmade;if(share=="failed"){++create;if(linkCause.isEmpty())linkCause=failureReason(item["error"].toObject());}else ++finishable;}}
  QString link;
  if(const int links=unconfirmed+unmade){
   const auto subject=items.size()>1?QString(links==1?"1 share link ":"%1 share links ").arg(links):QString("the share link ");
   const auto outcome=unconfirmed&&unmade?QString("were not made or could not be confirmed"):unconfirmed?QString("could not be confirmed"):QString(links==1?"was not made":"were not made");
-  const auto action=unconfirmed&&unmade?QString("Inspect link or Create share link"):unconfirmed?QString("Inspect link"):QString("Create share link");
-  link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Use "+action+" in History.";
+  QStringList actions;if(finishable){bool stored=true;for(const auto& value:items)if(!QStringList{"uploaded","skipped","conflict","local_only"}.contains(value.toObject()["uploadStatus"].toString()))stored=false;actions<<(stored?QString("Finish share link"):QString("Retry upload"));}if(inspect)actions<<"Inspect link";if(create)actions<<"Create share link";
+  link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Use "+actions.join(" or ")+" in History.";
  }
  QString text;
  if(!link.isEmpty()&&uploaded==items.size())text=(items.size()>1?QString("%1 files uploaded, but ").arg(uploaded):QString("Uploaded, but "))+link;

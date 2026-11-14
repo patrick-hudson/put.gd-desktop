@@ -65,8 +65,12 @@ private slots:
  // so uploads it again or gives up on a file that is already stored (#1399). Every other case keeps its text.
  void uploadedFilesWithoutTheirLinkAreNotFailedUploads_data() {
   QTest::addColumn<QJsonArray>("items");QTest::addColumn<QString>("expected");
-  const auto item=[](const QString& upload,const QString& share,const QString& errorCode={}){
-   return QJsonObject{{"uploadStatus",upload},{"shareStatus",share},{"error",errorCode.isEmpty()?QJsonObject{}:QJsonObject{{"code",errorCode},{"message","Synthetic"}}}};};
+  const auto item=[](const QString& upload,const QString& share,const QString& errorCode={},const QString& intent={}){
+   return QJsonObject{{"uploadStatus",upload},{"shareStatus",share},{"shareIntent",intent},{"error",errorCode.isEmpty()?QJsonObject{}:QJsonObject{{"code",errorCode},{"message","Synthetic"}}}};};
+  // A link still wanted names History's one-click Finish share link, or Retry upload while a file still needs its upload (#1496).
+  QTest::newRow("wanted link unconfirmed")<<QJsonArray{item("uploaded","unknown",{},"create")}<<"Uploaded, but the share link could not be confirmed. Use Finish share link in History.";
+  QTest::newRow("wanted link not made after inspection")<<QJsonArray{item("uploaded","private",{},"create")}<<"Uploaded, but the share link was not made. Use Finish share link in History.";
+  QTest::newRow("wanted link with a failed upload")<<QJsonArray{item("failed","not_requested","permission_denied"),item("uploaded","unknown",{},"create")}<<"1 of 2 files uploaded. 1 failed: access denied by the destination. 1 share link could not be confirmed. Use Retry upload in History.";
   QTest::newRow("link unknown")<<QJsonArray{item("uploaded","unknown")}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";
   QTest::newRow("link changed")<<QJsonArray{item("uploaded","changed")}<<"Uploaded, but the share link could not be confirmed. Use Inspect link in History.";
   QTest::newRow("link failed")<<QJsonArray{item("uploaded","failed","permission_denied")}<<"Uploaded, but the share link was not made: access denied by the destination. Use Create share link in History.";

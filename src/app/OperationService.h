@@ -105,7 +105,10 @@ public:
  void setCaptureDelayPreference(int seconds);
  // With an item ID, cancels only that file's upload; the batch's other files continue.
  void cancel(const QString& id,JsonReply,const QString& itemId={});
- void retry(const QString& id,JsonReply);
+ // sharingOnly (#1496): finish the operation's wanted share links and nothing else.
+ // Refused with retry_would_upload while any file still needs its upload; skips
+ // local saves, which keep their own Retry local save.
+ void retry(const QString& id,JsonReply,bool sharingOnly=false);
  void retryLocalSave(const QString& id,JsonReply);
  void copyResult(const QString& id,JsonReply);
  void copyHistoryImage(const QString& id,JsonReply);
@@ -215,7 +218,7 @@ private:
  // Retry and manual cleanup requests that arrived during an automatic pass.
  QList<std::function<void()>> afterCleanup_;
  QJsonObject lastCleanup_;
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};};
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);

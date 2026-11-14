@@ -82,7 +82,7 @@ QString HistoryModel::destination(int row)const{
 HistoryModel::RowFacts HistoryModel::rowFacts(const QJsonObject& r){
  RowFacts facts;facts.active=active(r);facts.failed=failed(r);
  if(facts.active)return facts;
- if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool()||r["linkRefreshable"].toBool())facts.primary="Copy link";
+ if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(finishShareLink(r))facts.primary=finishShareLabel(r);else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool()||r["linkRefreshable"].toBool())facts.primary="Copy link";
  return facts;
 }
 QString HistoryModel::fileSize(qint64 bytes){return ByteSize::fileSummary(bytes);}
@@ -108,6 +108,28 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
 }
 bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
 bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
+namespace {
+bool terminalUpload(const QString& s){return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
+// The operation's own items when History has them (a filter or page can hide some files), else the row's files.
+QJsonArray operationFiles(const QJsonObject& r){auto items=r["operation"].toObject()["items"].toArray();if(!items.isEmpty())return items;auto files=r["records"].toArray();if(files.isEmpty())files.append(r);return files;}
+QJsonArray rowFiles(const QJsonObject& r){auto files=r["records"].toArray();if(files.isEmpty())files.append(r);return files;}
+}
+// The resident refuses the link-only retry when any file of the operation still needs
+// its upload, so a row this rule misjudges never uploads anything.
+bool HistoryModel::finishShareLink(const QJsonObject& r){
+ if(active(r)||r["operationId"].toString().isEmpty()||retryUpload(r))return false;
+ for(const auto& v:operationFiles(r))if(!terminalUpload(v.toObject()["uploadStatus"].toString()))return false;
+ bool finishable=false;for(const auto& v:rowFiles(r)){const auto f=v.toObject();if(!terminalUpload(f["uploadStatus"].toString()))return false;if(f["shareStatus"]=="pending")return false;finishable|=f["linkFinishable"].toBool();}
+ return finishable;
+}
+QString HistoryModel::finishShareLabel(const QJsonObject& r){
+ if(!finishShareLink(r))return {};
+ // Count every link the retry may make: in share mode it also makes an uploaded file's
+ // missing or failed link, so err towards the plural.
+ int links=0;for(const auto& v:operationFiles(r)){const auto f=v.toObject();const auto share=f["shareStatus"].toString();
+  if(f["uploadStatus"]=="uploaded"&&f["receipt"].toObject()["directUrl"].toString().isEmpty()&&(f["linkFinishable"].toBool()||(f["shareIntent"]=="create"&&QStringList{"unknown","private","failed"}.contains(share))||share=="not_requested"))++links;}
+ return links>1?QStringLiteral("Finish share links"):QStringLiteral("Finish share link");
+}
 // Any failed local copy can be saved again from the retained artifact,
 // including one whose upload succeeded.
 bool HistoryModel::retryLocalSave(const QJsonObject& r){return localSaveFailed(r)&&!active(r)&&!r["operationId"].toString().isEmpty();}
@@ -122,11 +144,13 @@ QString HistoryModel::remoteStateText(const QJsonObject& r){
   {"remoteStatus","failed","Deletion failed"},{"remoteStatus","unknown","Remote outcome needs inspection"},{"remoteStatus","changed","Remote file changed"},
   {"remoteStatus","deleting","Deleting from destination"},{"remoteStatus","pending","Waiting for deletion"},
   {"remoteStatus","removed","Deleted from destination"},{"remoteStatus","already_missing","Deleted from destination"},
-  {"shareStatus","failed","Sharing failed"},{"shareStatus","unknown","Sharing outcome needs inspection"},{"shareStatus","changed","Share link changed"},
+  {"shareStatus","failed","Sharing failed"},{"shareStatus","unfinished","Share link not finished"},{"shareStatus","unknown","Sharing outcome needs inspection"},{"shareStatus","changed","Share link changed"},
   {"shareStatus","pending","Creating share link"},{"shareStatus","revoked","Link revoked"},
   {"remoteStatus","hidden_version_retained","Hidden; original version remains"},{"remoteStatus","version_retained","Original version retained"},
   {"remoteStatus","unsupported_safe_removal","Safe removal unavailable"},{"remoteStatus","superseded","Replaced by a newer upload"}};
- QList<std::pair<QString,QString>> states;for(const auto& value:std::as_const(files)){const auto file=value.toObject();states.append({file["remoteStatus"].toString(),file["shareStatus"].toString()});}
+ QList<std::pair<QString,QString>> states;for(const auto& value:std::as_const(files)){const auto file=value.toObject();
+  // A wanted link not confirmed or not yet made reads the same before and after Inspect link (#1496).
+  states.append({file["remoteStatus"].toString(),file["linkFinishable"].toBool()?QStringLiteral("unfinished"):file["shareStatus"].toString()});}
  for(const auto& [key,state,label]:outcomes)
   for(const auto& [remote,share]:states)if((key=="remoteStatus"?remote:share)==state)return label;
  return {};
@@ -149,6 +173,9 @@ QString HistoryModel::statusText(const QJsonObject& r){
    if(phase=="exporting")return "Saving a recording copy…";
    if(phase=="encoding")return "Encoding recording…";
   }
+  // A retry with every upload done only finishes links (#1496).
+  {const auto items=op["items"].toArray();bool linksOnly=!items.isEmpty();for(const auto& v:items)linksOnly&=terminalUpload(v.toObject()["uploadStatus"].toString());
+   if(linksOnly&&QStringList{"queued","preflight","sharing"}.contains(phase))return "Creating share link…";}
   if(phase=="queued")return "Waiting to upload…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
