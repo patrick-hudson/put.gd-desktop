@@ -1,3 +1,4 @@
+#include "VaapiFrames.h"
 #include "ClipExporter.h"
 #include "DebugLog.h"
 #include <QFile>
@@ -206,29 +207,6 @@ struct Encoder {
     bool hardware() const { return frames != nullptr; }
     ~Encoder() { if (context) avcodec_free_context(&context); if (frames) av_buffer_unref(&frames); if (device) av_buffer_unref(&device); }
 };
-// A VA-API device and frame pool for `size`: the default render node first,
-// then the others, since the display GPU may have no VA driver (an NVIDIA card
-// beside an Intel or AMD GPU). Returns the first device whose pool initialises.
-bool openVaapiFrames(const QSize& size, AVBufferRef*& device, AVBufferRef*& frames) {
-    QStringList nodes{QString()};
-    for (int i = 128; i < 136; ++i) { const auto node = QStringLiteral("/dev/dri/renderD%1").arg(i); if (QFile::exists(node)) nodes.append(node); }
-    for (const auto& node : nodes) {
-        if (av_hwdevice_ctx_create(&device, AV_HWDEVICE_TYPE_VAAPI, node.isEmpty() ? nullptr : node.toUtf8().constData(), nullptr, 0) < 0) { device = nullptr; continue; }
-        frames = av_hwframe_ctx_alloc(device);
-        if (frames) {
-            auto* pool = reinterpret_cast<AVHWFramesContext*>(frames->data);
-            pool->format = AV_PIX_FMT_VAAPI;
-            pool->sw_format = AV_PIX_FMT_NV12;
-            pool->width = size.width();
-            pool->height = size.height();
-            pool->initial_pool_size = 16;
-            if (av_hwframe_ctx_init(frames) == 0) return true;
-            av_buffer_unref(&frames);
-        }
-        av_buffer_unref(&device);
-    }
-    return false;
-}
 // Encoder candidates in preference order. NVENC runs on an NVIDIA GPU and
 // takes system-memory frames, so it is tried first where libavcodec knows it;
 // opening fails without the driver and the next candidate is used. The lab
@@ -251,7 +229,7 @@ Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, c
         if (out.frames) av_buffer_unref(&out.frames);
         if (out.device) av_buffer_unref(&out.device);
         const bool vaapi = name.endsWith("_vaapi");
-        if (vaapi && !openVaapiFrames(size, out.device, out.frames)) { lastError = {"recording_export_failed", "No VA-API device accepts " + name, {}}; continue; }
+        if (vaapi && !openVaapiFrames(size, 16, out.device, out.frames)) { lastError = {"recording_export_failed", "No VA-API device accepts " + name, {}}; continue; }
         out.name = name;
         out.context = avcodec_alloc_context3(codec);
         auto* c = out.context;
