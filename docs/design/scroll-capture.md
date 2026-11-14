@@ -331,20 +331,21 @@ is the user.
 **A pointer pulled back from under the hand.** Where the desktop cannot be asked where the
 pointer is (Wayland), a hand can start to move while the pointer is in the rectangle for a
 wheel step, and the capture can move the pointer before it has heard of the hand (an Omarchy
-guest delivered the hand's events 100 to 200 ms late). The capture knows this from the event's
-own time, the compositor's monotonic milliseconds, against when it last sent a motion (used
-only where the two clocks agree within a second). A pointer entering the watch carries no time:
-an enter more than 12 px from where the capture last put the pointer, within 400 ms of that
-motion, is from before it, because a hand's first event out of an 8 px hole lands within a few
-pixels of it. Else the capture knows it from the watch seeing the hand where the
-capture believes the pointer at rest, or from the hand's motion on the rest surface within 30 ms
-of the pointer's arrival there. The pointer is then put back once by a relative motion of
-exactly the displacement the capture caused: from where it put the pointer to where the hand had
-it (the last event from before that motion, waiting at most 400 ms for one from after it; on
-GNOME, which has no watch, the point the wheel was turned at). A relative motion keeps whatever
-the hand did since, however late its events come; KWin's fake input, the wlroots virtual pointer
-and Mutter's remote desktop do not accelerate it. The capture pauses. The helper's log says
-`pointer put back by`. X11 asks the server before every motion and needs none of this.
+guest delivered the hand's events 100 to 200 ms late). The gate closes the moment the hand is
+seen, before anything else. Whether the capture moved the pointer after the hand did is told by
+the motion event's own time, the compositor's monotonic milliseconds, against when the capture
+last sent a motion (used only where the two clocks agree within a second). An enter has no time
+of its own and a leave neither a time nor a place: they pause, and the next motion event
+decides. Without a watch (GNOME), whose rest surface sees the hand only after the move back, a
+motion within 12 ms of the pointer's arrival at rest was under way when it arrived. The pointer
+is then put back once by a relative motion of exactly the displacement the capture caused: from
+where it put the pointer to where the hand had it (the last event from before that motion,
+waiting at most 400 ms for one from after it; on GNOME, the point the wheel was turned at). A
+motion that was already past the gate when the hand was seen is undone with it. A relative
+motion keeps whatever the hand did since, however late its events come; KWin's fake input, the
+wlroots virtual pointer and Mutter's remote desktop do not accelerate it. The capture pauses.
+The helper's log says `pointer put back by`. X11 asks the server before every motion and needs
+none of this.
 
 **Pause.** On the user's motion the injection gate closes at once, from the event itself,
 before the loop has looked. The loop stops between any two injections, inside a visit and
