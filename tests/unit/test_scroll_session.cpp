@@ -795,6 +795,73 @@ void testSpoolDiskFull() {
          fmt("%s after %lld ms, spool error %d", toString(h.end), (long long)h.stats.elapsedMs, h.spool->canvas.error()));
 }
 
+// CodeRabbit on #1536 (dropOwed). A step whose only frame is skipped (a
+// foreign picture: a notification over the region), the page's own frames
+// of the step never delivered (the stream says nothing until the page has
+// come to rest and the next step moves it): where the page went since the
+// tracker's last placed frame is not known. On content that repeats every
+// step, forgetting what the step's hints said let the next frame be placed
+// at the alias one step short, and the image lost a period. The hints stay
+// with the tracker. The opposite case: the step at the page's end moves
+// nothing, and its hints must not take a later frame a period on.
+void testSkippedStepOnRepeatingContent() {
+  std::printf("A step whose only frame is skipped, on content that repeats every step\n");
+  const Document unique = page(99, 0);
+  const int period = 160, repeats = 12, head = 1200, tail = 1200;
+  // moved: the step moves the page inside the repeating part; end: the page
+  // ends in the repeating part and the step there moves nothing; unique: a
+  // page that does not repeat.
+  // Not here: the same step's frame coming late, after the step's whole
+  // distance was handed out. Its next frames show the page exactly one period
+  // on, the same picture as the tracker's reference, which the tracker takes
+  // for a page that did not move: a period is lost whatever the hints say.
+  for (const char* kind : {"moved", "end", "end, late", "unique"}) {
+    const bool repeating = std::strncmp(kind, "unique", 6) != 0, atEnd = std::strncmp(kind, "end", 3) == 0;
+    const int delay = std::strstr(kind, "late") ? 400 : 0;
+    Image doc(W, !repeating ? unique.img.h : head + repeats * period + (atEnd ? 0 : tail), kBg);
+    if (repeating) {
+      std::memcpy(doc.px.data(), unique.img.px.data(), size_t(head) * W * 4);
+      for (int k = 0; k < repeats; ++k) {
+        Rng ink(5);
+        const int y0 = head + k * period;
+        for (int y = 12; y < period - 20; y += 26) drawTextLine(doc, y0 + y, 24, W - 24, ink);
+        fillRows(doc, y0 + period - 8, y0 + period - 4, 0x3060A0);
+      }
+      if (!atEnd) std::memcpy(&doc.px[size_t(head + repeats * period) * W], &unique.img.px[size_t(head) * W], size_t(tail) * W * 4);
+    } else {
+      doc = unique.img;
+    }
+    const int last = doc.h - H;
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;  // a step of 4 notches is 160 rows: the period
+    bool fired = false;
+    int firedAt = -1;
+    h.script = [&fired, &firedAt, atEnd, last, delay](Harness& x, int64_t t) {
+      const auto& e = x.app->events;
+      const int at = x.app->positionNow();
+      if (!fired && !e.empty() && e.back().kind == 's' && (atEnd ? at == last : e.back().a == 4 && at > 1300 && at < 2400)) {
+        fired = true;
+        firedAt = at;
+        x.app->foreignThenQuiet(700, delay);
+      }
+      if (t >= 120000) x.stop.store(true);
+    };
+    SessionOptions so = options(true);
+    if (std::getenv("PUTGD_SCROLL_TRACE")) {
+      so.onFrame = [&](const TrackResult& r, const TrackerHint& hint, int64_t t) {
+        std::printf("    t=%lld app=%d %s %s off=%d pos=%lld hint=%d/%d/%d expected=%d state=%s\n", (long long)t, h.app->framePositions.back(), toString(r.status),
+                    toString(r.reason), r.offset, r.position, int(hint.known), hint.offset, hint.uncertainty, r.expected, toString(r.state));
+      };
+      so.onStep = [](int n, RunPoint) { std::printf("    step %d\n", n); };
+    }
+    h.run(doc, as, so);
+    const std::string wrong = h.exact(doc, 0);
+    report(fmt("one skipped frame in a step (%s): the image is exact as far as it goes", kind), fired && wrong.empty(),
+           (wrong.empty() ? counts(h) : wrong) + fmt(", the step at %d, page %d rows, image to %lld", firedAt, doc.h, h.stats.bottom));
+  }
+}
+
 // A blank stretch taller than the region under auto-scroll: no frame shows
 // anything move while it fills the region, the tracker reports such frames
 // still under any hint, and two still steps there look like the end. The
@@ -955,6 +1022,7 @@ int main() {
   testOffAndOnBackToBack();
   testDoneOnTheWayUpStale();
   testSpoolDiskFull();
+  testSkippedStepOnRepeatingContent();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();

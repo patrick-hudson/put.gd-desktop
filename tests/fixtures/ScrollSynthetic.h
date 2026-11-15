@@ -216,6 +216,14 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   };
   std::vector<UserScroll> script;
   int scrolledByUser = 0;
+  // The next frame is a foreign picture (a notification over the region for
+  // one frame), after which the stream sends nothing for quietMs although the
+  // page goes on moving (CodeRabbit on #1536).
+  // delayMs: no frame at all until then, so the foreign one comes late.
+  void foreignThenQuiet(int quietMs, int delayMs = 0) {
+    foreignQuietMs_ = quietMs;
+    if (delayMs > 0) quietUntil_ = clock_.nowMs() + delayMs;
+  }
 
  private:
   struct Seg {
@@ -238,6 +246,8 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   Image scratch_, delivered_;
   size_t scriptAt_ = 0;
   bool quiet_ = false;
+  int foreignQuietMs_ = -1;
+  int64_t quietUntil_ = -1;
   bool forceNext_ = false;
   bool stale_ = false, staleDone_ = false, glitchDone_ = false;
   int64_t firstFrameT_ = -1;
