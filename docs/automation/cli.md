@@ -72,7 +72,7 @@ Methods and parameters:
 | `operation.recent` | empty object; configured recent-activity bound |
 | `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id`; `.cancel` also takes an optional `itemId` (an item's `artifact.id`) to cancel one file of an active batch while the others continue. That item ends `cancelled` and the next Retry uploads it. `.retry` also takes `scope` `"sharing"`, History's **Finish share link**: it only inspects and makes the operation's wanted share links, with the options kept at upload, saves no local copies, and answers `retry_would_upload` (changing nothing) while any file of the operation still needs its upload. A History record's `linkFinishable` marks a file whose wanted link it would finish |
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
-| `history.counts` | optional search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to (as `history.list`, no paging) and `days`, at most 64 `{from, to}` ranges. Every `from` and `to` here is a UTC timestamp in the stored fixed-width form with milliseconds (`2026-11-10T06:00:00.000Z`); they are compared as text and both bounds are inclusive, so a value without milliseconds misses files inside that second. Returns `categories` (`all`, `images`, `videos`, `text+other`, `failed`: every stored file, ignoring the filters), `total` (the files matching the filters) and `days` (the matching files in each range, in order). History's heading, sidebar and day headings use it |
+| `history.counts` | optional search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to (as `history.list`, no paging) and `days`, at most 64 `{from, to}` ranges. Every `from` and `to` here is a UTC timestamp in the stored fixed-width form with milliseconds (`2026-11-10T06:00:00.000Z`); they are compared as text and both bounds are inclusive, so a value without milliseconds misses files inside that second. Returns `categories` (`all`, `images`, `videos`, `text+other`, `failed`: every stored file, ignoring the filters; `failed` counts uploads whose state is `failed` or `unknown`), `total` (the files matching the filters) and `days` (the matching files in each range, in order). History's heading, sidebar and day headings use it |
 | `history.detail`, `history.copyLink`, `history.copyImage` | history `id`; detail includes `linkExpiresAt` and, for expired S3/B2 links, `linkRefreshable`. Copy refreshes an expired link from the original receipt and cached credentials before copying; it never unlocks the keyring. Missing credentials return `credential_setup_required` |
 | `history.unlockLinkCredentials` | history `id`; explicit keyring unlock for an expired link’s original saved credential reference. May prompt through the desktop keyring. Then call `history.copyLink` separately |
 | `history.openLink` | history `id`; opens the stored link in the default browser as the link-ready notification does, and returns `route` (`portal` or `launcher`), `opened` and `fallbackFrom`. `link_unavailable` for a removed or expired link, `link_not_opened` when nothing could open it ([diagnostics.md](../design/diagnostics.md#opening-links-and-folders-on-the-host)) |
@@ -129,6 +129,12 @@ the category unfiltered. For example:
 ```sh
 putgd-cli history.list '{"limit":50,"category":"text+other"}'
 ```
+
+The `uploadStatus` filter likewise matches a stored state exactly (`failed`,
+`unknown`, `uploaded` and so on), and accepts the aggregate value `failed+unknown`,
+which matches both. History's **Failed uploads** page queries that aggregate, because
+the tray counts an upload whose outcome is unknown as failed. `failed+unknown` is a
+query value, never a stored state, and `failed` alone stays exact.
 
 Delete preparation performs no destructive request. Review its original destinations
 and effects before confirming. Wrong acknowledgement, unresolved publication, local-only
