@@ -620,6 +620,59 @@ void testHintAndEdges() {
            fmt("%d placed, %d wrong, %d on the hint, %d skipped", placed, wrong, tracker.totals().onHint, tracker.totals().skipped));
   }
   {
+    // The page's last lines above a blank tail, under a header and a footer,
+    // stepped through as auto-scroll does (a 60 px notch, then steps of two,
+    // each animated over five frames and the hint at each frame's share).
+    // Near the end only the last few lines are left in the frame: matches
+    // that agree in every lane fall short of the evidence rows, and of the
+    // row coverage against the edges of the header's and footer's text. Seed
+    // 51 lost the page there at 3,537 px and ended idle (#1543's review).
+    // With the hint they are placed where the page is.
+    DocSpec ds;
+    ds.seed = 51;
+    ds.width = W;
+    ds.viewport = V;
+    ds.flatFactor = 0.2;
+    ds.tableFactor = 0;
+    ds.noiseFactor = 0.3;
+    ds.gradientFactor = 0.3;
+    ds.blankFactor = 0;
+    ds.paragraphsPerGap = 4;
+    const Document page = makeDocument(ds);
+    Image doc(W, page.img.h + V, kBg);
+    std::memcpy(doc.px.data(), page.img.px.data(), page.img.px.size() * 4);
+    const Renderer rd(doc, ViewportSpec{W, V, 48, 48, 7});
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    std::vector<std::pair<int, int>> frames{{0, 0}};  // position, hint
+    const auto step = [&](int px) {
+      const int at = frames.back().first;
+      for (const double share : {0.3, 0.37, 0.21, 0.1, 0.02}) {
+        const int to = std::min(rd.maxScroll(), frames.back().first + int(std::lround(share * px)));
+        frames.push_back({to, to - frames.back().first});
+      }
+      frames.push_back({std::min(rd.maxScroll(), at + px), std::min(rd.maxScroll(), at + px) - frames.back().first});
+      for (int i = 0; i < 4; ++i) frames.push_back({frames.back().first, 0});
+    };
+    step(60);
+    while (frames.back().first < rd.maxScroll()) step(120);
+    Image f(W, V, kBg);
+    int wrong = 0, noMatch = 0, placed = 0;
+    for (size_t i = 0; i < frames.size(); ++i) {
+      rd.render(frames[i].first, f);
+      const TrackResult t = tracker.addFrame(f.view(), i ? TrackerHint{true, frames[i].second, int(std::lround(0.35 * std::abs(frames[i].second))) + 4} : TrackerHint{});
+      noMatch += t.status == TrackStatus::Skipped && t.reason == SkipReason::NoMatch;
+      if (t.status != TrackStatus::Placed || t.onHint) continue;
+      ++placed;
+      wrong += t.position != frames[i].first;
+    }
+    report("a page's last lines above a blank tail: placed where the page is, never unmatched", wrong == 0 && noMatch == 0,
+           fmt("%zu frames, %d placed, %d wrong, %d unmatched, %d on the hint, page content to %d", frames.size(), placed, wrong, noMatch,
+               tracker.totals().onHint, page.img.h));
+  }
+  {
+    // Steps too fast to follow, then a blank frame far past what the image
+    // holds: the hints since the last placed frame add up to more than the  {
     // Steps too fast to follow, then a blank frame far past what the image
     // holds: the hints since the last placed frame add up to more than the
     // frame's height. Placed there, it would leave rows that no frame showed.

@@ -257,6 +257,18 @@ struct TrackResult {
   bool byExpectation = false;  // repeating content: the expected offset chose among equal candidates
   bool onHint = false;         // placed on the driver's hint alone (nothing to compare)
   bool recovered = false;      // found inside the image after skipped frames
+  // NoMovement with nothing proved (most of the frame stood still, nothing
+  // moved as the page): the sum of hints since the last placed frame is kept
+  // for the next frame. A frame proved still starts the sum again.
+  bool hintsKept = false;
+  // The offset the frame was expected at: the sum of the driver's hints
+  // since the last placed frame (hinted), else the last pace.
+  int expected = 0;
+  bool hinted = false;
+  // Rows of the frame with texture outside what is pinned, the excluded
+  // rectangle and the side margins: 0 is a frame that shows nothing of the
+  // page (a blank stretch between a header and a footer).
+  int texturedRows = 0;
   TrackState state = TrackState::Waiting;
 };
 
@@ -286,6 +298,10 @@ class ScrollTracker {
   ScrollTracker& operator=(const ScrollTracker&) = delete;
 
   TrackResult addFrame(const FrameView& frame, TrackerHint hint = {});
+  // The driver takes back what its hints said since the last placed frame:
+  // a step that ended without moving the page. The sum of hints starts again,
+  // as after a frame proved still.
+  void forgetHints();
   // A rectangle of the frame that is not the application (put.gd's own bar
   // drawn inside the region). Its cells never vote, never count as evidence
   // or contradiction, are never composed and never drawn as a pinned part:
@@ -337,6 +353,10 @@ class ScrollTracker {
     double coverage = 0;     // rows of tiles that moved, against rows that stood still, in its columns
     int informative = 0, rows = 0;
     bool accepted = false;
+    // At least half the rows of evidence, and acceptable but for its rows or
+    // agreeing strongly whatever its row coverage: the page's last lines
+    // above a blank tail (see decide).
+    bool fewRows = false;
   };
   // Agreeing and informative lanes per tile (a voting band by kTileRows rows
   // of the incoming frame), for one candidate.

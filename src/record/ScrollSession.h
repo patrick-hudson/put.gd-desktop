@@ -271,6 +271,7 @@ private:
     void toTopTick();
     void endToTop(bool proved, const std::string& gaveUp);
     void resetTracker();
+    void dropOwed();
     bool visit(int notches);
     bool injected(bool sent);
     RunPoint wheelPoint() const;

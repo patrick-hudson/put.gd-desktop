@@ -123,6 +123,8 @@ struct Harness {
   std::unique_ptr<Spool> spool;
   std::atomic<bool> stop{false}, discard{false};
   bool wantAuto = false, paused = false;
+  // A header and a footer pinned in the viewport (rows of it).
+  int headerH = 0, footerH = 0;
   // Auto-scroll asked for after the session was set up but before its loop read the request.
   bool autoBeforeRun = false;
   unsigned serial = 0, activity = 0;
@@ -139,7 +141,7 @@ struct Harness {
   }
   SessionEnd run(const Image& doc, FakeAppSpec as, SessionOptions so) {
     t0 = clock.nowMs();
-    app = std::make_unique<FakeApp>(doc, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+    app = std::make_unique<FakeApp>(doc, ViewportSpec{W, H, headerH, footerH, 7}, as, clock);
     spool = std::make_unique<Spool>(so.tracker.maxOutputRows + 2LL * H);
     wantAuto = so.autoScroll;
     if (autoBeforeRun) setAuto(true);
@@ -606,6 +608,106 @@ void testTopUnderADeadPoint() {
          (wrong.empty() ? counts(h) : wrong) + fmt(", top %s, %d steps up", h.stats.topReached ? "proved" : h.stats.toTopGaveUp.c_str(), h.stats.toTopSteps));
 }
 
+// Hints counted twice (#1543's review): a frame the tracker calls still
+// without proving it (nothing matched, most of it the same) keeps the sum of
+// hints since its last placed frame; the session took its share back as
+// owed and handed it out again, so the tracker's expected offset grew past
+// what the step owed (a sum past the frame height was seen). Steps whose
+// first frames show the page still (an application that answers late), with
+// part of the frame changing: the tracker's working sum, rebuilt from the
+// hints and the results, never exceeds what the step owes.
+void testHintsCountedOnce() {
+  std::printf("Hints after frames that show the page still\n");
+  const Document doc = page(95);
+  for (const int restless : {0, 24}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.reactionDelayMs = 450;
+    as.restlessRows = restless;
+    SessionOptions so = options(true);
+    int notches = 0, kept = 0;
+    double worst = -1e9;
+    so.onStep = [&](int n, RunPoint) { notches = n; };
+    so.onFrame = [&](const TrackResult& r, const TrackerHint&, int64_t) {
+      if (r.hinted && notches != 0) worst = std::max(worst, std::abs(r.expected) - std::abs(notches) * as.pxPerNotch * 1.05);
+      kept += r.status == TrackStatus::NoMovement && r.hintsKept;
+    };
+    h.script = [](Harness& x, int64_t t) { if (t >= 120000) x.stop.store(true); };
+    h.run(doc.img, as, so);
+    // Rows that change in every frame are in the image as one frame showed them.
+    const std::string wrong = restless ? std::string() : h.exact(doc.img, 0);
+    report(fmt("the tracker's expected offset stays within what a step owes (restless rows %d)", restless),
+           worst <= 4 && h.end == SessionEnd::PageEnd && wrong.empty(),
+           (wrong.empty() ? counts(h) : wrong) + fmt(", most past the step %.0f px, %d frames kept the hints", worst, kept));
+  }
+}
+
+// A blank stretch under a pinned header and footer (#1543's review): the
+// header and footer are no content of the page there; the blank check looks
+// at the part that scrolls, so it is not called the end of the page.
+void testBlankUnderPinnedParts() {
+  std::printf("A blank stretch under a pinned header and footer\n");
+  DocSpec ds;
+  ds.seed = 99;
+  ds.width = W;
+  ds.viewport = H;
+  ds.flatFactor = 0;
+  ds.tableFactor = 0;
+  ds.noiseFactor = 0;
+  ds.gradientFactor = 0;
+  ds.blankFactor = 2.5;
+  ds.paragraphsPerGap = 6;
+  const Document doc = makeDocument(ds);
+  Harness h;
+  h.headerH = 48;
+  h.footerH = 32;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  SessionOptions so = options(true);
+  if (std::getenv("PUTGD_SCROLL_TRACE"))
+    so.onFrame = [&](const TrackResult& r, const TrackerHint&, int64_t t) {
+      std::printf("    t=%lld app=%d %s %s off=%d pos=%lld textured=%d\n", (long long)t, h.app->framePositions.back(), toString(r.status), toString(r.reason), r.offset,
+                  r.position, r.texturedRows);
+    };
+  h.script = [](Harness& x, int64_t t) { if (t >= 120000) x.stop.store(true); };
+  h.run(doc.img, as, so);
+  report("auto-scroll at a blank stretch under a pinned header and footer: stops, not called the end",
+         h.end == SessionEnd::PageEnd && h.stats.endBlank && !h.stats.reachedEnd,
+         counts(h) + fmt(", blank end %d, reached end %d, %d pinned", int(h.stats.endBlank), int(h.stats.reachedEnd), h.stats.pinnedRegions));
+}
+
+// The end of a page whose last content rows sit above a blank tail, under a
+// pinned header and footer (#1543's review: seed 51, no blank stretches, a
+// tail one region tall; the tracker reviewer saw it go lost with no_match
+// under auto-scroll and end idle, so the person would read "Auto-scroll lost
+// the page" on a page that simply ended). Auto-scroll stops at the end.
+void testEndAboveABlankTail() {
+  std::printf("The end of a page with a blank tail\n");
+  const Document d = page(51, 0);
+  Image doc(W, d.img.h + H, kBg);
+  std::memcpy(doc.px.data(), d.img.px.data(), d.img.px.size() * 4);
+  Harness h;
+  h.headerH = h.footerH = 48;
+  FakeAppSpec as;
+  as.pxPerNotch = 60;
+  SessionOptions so = options(true);
+  so.idleLimitMs = 60000;
+  if (std::getenv("PUTGD_SCROLL_TRACE"))
+    so.onFrame = [&](const TrackResult& r, const TrackerHint& hint, int64_t t) {
+      std::printf("    t=%lld app=%d %s %s off=%d pos=%lld hint=%d/%d/%d state=%s\n", (long long)t, h.app->framePositions.back(), toString(r.status),
+                  toString(r.reason), r.offset, r.position, int(hint.known), hint.offset, hint.uncertainty, toString(r.state));
+    };
+  h.script = [](Harness& x, int64_t t) { if (t >= 300000) x.stop.store(true); };
+  h.run(doc, as, so);
+  const long long full = h.headerH + doc.h + h.footerH;
+  report("auto-scroll at the end of a page with a blank tail: ends there, not lost, the image no taller than the page",
+         h.end == SessionEnd::PageEnd && !h.saw(SessionState::Paused, HandBack::Lost) && !h.saw(SessionState::Lost) && h.stats.bottom - h.stats.top <= full &&
+             h.stats.bottom - h.stats.top >= h.headerH + d.img.h,
+         counts(h) + fmt(", page with header and footer %lld rows, content to %d, image %lld, reachedEnd %d endBlank %d%s", full, h.headerH + d.img.h,
+                         h.stats.bottom - h.stats.top, int(h.stats.reachedEnd), int(h.stats.endBlank), h.saw(SessionState::Lost) ? ", went lost" : ""));
+}
+
 // A blank stretch taller than the region under auto-scroll: no frame shows
 // anything move while it fills the region, the tracker reports such frames
 // still under any hint, and two still steps there look like the end. The
@@ -760,6 +862,9 @@ int main() {
   testStaleStreamUnderAuto();
   testTopUnderADeadPoint();
   testOneFrameOutOfPlace();
+  testHintsCountedOnce();
+  testBlankUnderPinnedParts();
+  testEndAboveABlankTail();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();
