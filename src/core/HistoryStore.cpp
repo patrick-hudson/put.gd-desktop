@@ -276,7 +276,11 @@ void historyWhere(const HistoryQuery& query,QString& where,QVariantList& values)
  // "text+other" is an aggregate, never a stored category: clipboard text and
  // other files together, History's "Other files" (2026-10-26). Every other
  // value still matches one stored category exactly.
- if(query.category=="text+other")where+=" AND category IN ('text','other')";else filter("category",query.category);filter("mime",query.mime);filter("profile_id",query.profileId);filter("upload_status",query.uploadStatus);filter("local_status",query.localStatus);
+ if(query.category=="text+other")where+=" AND category IN ('text','other')";else filter("category",query.category);filter("mime",query.mime);filter("profile_id",query.profileId);
+ // "failed+unknown" is History's Failed uploads aggregate, never a stored state: the
+ // tray calls an unknown outcome failed, so the page it opens lists both. A plain
+ // "failed" or "unknown" still matches exactly, for technical queries.
+ if(query.uploadStatus=="failed+unknown")where+=" AND upload_status IN ('failed','unknown')";else filter("upload_status",query.uploadStatus);filter("local_status",query.localStatus);
  // Friendly History groups retain exact recorded states for technical queries.
  if(query.remoteStatus=="available")where+=" AND upload_status='uploaded' AND remote_status IN ('present','not_requested')";
  else if(query.remoteStatus=="deleted")where+=" AND remote_status IN ('removed','already_missing')";
@@ -301,7 +305,7 @@ QJsonObject HistoryStore::counts(const HistoryQuery& query,const QList<std::pair
  // Category totals ignore the search and filters: History's sidebar and the
  // denominator of "12 of 168 items".
  auto q=forwardQuery(db_);
- if(!q.exec("SELECT count(*),coalesce(sum(category='images'),0),coalesce(sum(category='videos'),0),coalesce(sum(category IN ('text','other')),0),coalesce(sum(upload_status='failed'),0) FROM history")||!q.next()) {if(error)*error=sqlError();return {};}
+ if(!q.exec("SELECT count(*),coalesce(sum(category='images'),0),coalesce(sum(category='videos'),0),coalesce(sum(category IN ('text','other')),0),coalesce(sum(upload_status IN ('failed','unknown')),0) FROM history")||!q.next()) {if(error)*error=sqlError();return {};}
  const QJsonObject categories{{"all",double(q.value(0).toLongLong())},{"images",double(q.value(1).toLongLong())},{"videos",double(q.value(2).toLongLong())},{"text+other",double(q.value(3).toLongLong())},{"failed",double(q.value(4).toLongLong())}};
  q.finish();
  // Each day is a [from, to] range of ISO times the caller derives from its own

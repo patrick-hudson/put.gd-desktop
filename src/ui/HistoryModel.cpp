@@ -16,6 +16,8 @@ namespace {
 QDateTime created(const QJsonObject& r){auto d=QDateTime::fromString(r["created"].toString(),Qt::ISODateWithMs);if(!d.isValid())d=QDateTime::fromString(r["created"].toString(),Qt::ISODate);return d.toLocalTime();}
 // A day section's heading, in sentence case: the year only when it is not this one.
 QString day(const QDateTime& created){const auto date=created.date();const auto today=QDate::currentDate();if(date==today)return QStringLiteral("Today");if(date==today.addDays(-1))return QStringLiteral("Yesterday");return date.isValid()?QLocale().toString(date,date.year()==today.year()?QStringLiteral("dddd, MMMM d"):QStringLiteral("dddd, MMMM d, yyyy")):QStringLiteral("Earlier");}
+// The page keeps "failed" as its Failed uploads state; the store lists that view as failed and unknown-outcome uploads, as the tray counts them.
+QString storeUploadStatus(const QString& status){return status=="failed"?QStringLiteral("failed+unknown"):status;}
 QString itemCount(qint64 count){return QStringLiteral("%1 %2").arg(QLocale().toString(count),count==1?QStringLiteral("item"):QStringLiteral("items"));}
 struct AggregateProgress {
  qint64 sent=0,total=0;bool known=false;
@@ -255,7 +257,7 @@ void HistoryModel::refresh(){
   if(!g)return;
   if(!operationError){g->operations_=recent["operations"].toArray();emit g->activityChanged();}
   const auto query=g->query_;
-  g->history_.request("history.list",{{"limit",query.limit},{"offset",query.offset},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,operationError](Error e,QJsonObject data){
+  g->history_.request("history.list",{{"limit",query.limit},{"offset",query.offset},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",storeUploadStatus(query.uploadStatus)},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,operationError](Error e,QJsonObject data){
    if(!g)return;
    g->loadInFlight_=false;const bool again=std::exchange(g->loadPending_,false);
    if(g->request_==seq){if(g->queryBusy_){g->queryBusy_=false;emit g->busyChanged(false);}if(e)emit g->error(e.message);else{g->records_=data["records"].toArray();g->total_=data["total"].toInteger();g->rebuild();if(operationError)emit g->error("Recent captures unavailable: "+operationError.message);}}
@@ -313,7 +315,7 @@ void HistoryModel::requestCounts(){
  for(int row=0;row<rows_.size();++row){if(facts_.at(row).active)continue;const auto date=createdAt_.at(row).date();if(!first.isValid())first=createdAt_.at(row);if(date.isValid()&&!dates.contains(date))dates.append(date);}
  QJsonArray days;if(daySections())for(const auto& date:std::as_const(dates).mid(0,64))days.append(QJsonObject{{"from",QDateTime(date,QTime(0,0)).toUTC().toString(Qt::ISODateWithMs)},{"to",QDateTime(date,QTime(23,59,59,999)).toUTC().toString(Qt::ISODateWithMs)}});
  const auto query=query_;const auto seq=++countsRequest_;
- QJsonObject params{{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to},{"days",days}};
+ QJsonObject params{{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",storeUploadStatus(query.uploadStatus)},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to},{"days",days}};
  history_.request("history.counts",params,this,[g=QPointer<HistoryModel>(this),seq,dates,query,first](Error e,QJsonObject data){
   if(!g||g->countsRequest_!=seq)return;
   if(e){g->countsKey_.clear();g->categoryTotals_={};g->dayCounts_.clear();g->continued_={};g->dayLabelsFor_={};emit g->countsChanged();return;}
@@ -321,7 +323,7 @@ void HistoryModel::requestCounts(){
   auto finish=[g](const QDate& continued){g->continued_=continued;g->dayLabelsFor_={};if(g->rowCount())emit g->dataChanged(g->index(0),g->index(g->rowCount()-1),{DayRole,SectionRole,DayCountRole});emit g->countsChanged();};
   // Whether the first day began on an earlier page: the stored file just before this page.
   if(query.offset<=0||!first.isValid()||!g->daySections()){finish({});return;}
-  g->history_.request("history.list",{{"limit",1},{"offset",query.offset-1},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",query.uploadStatus},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,first,finish](Error e,QJsonObject page){
+  g->history_.request("history.list",{{"limit",1},{"offset",query.offset-1},{"search",query.search},{"category",query.category},{"mime",query.mime},{"profileId",query.profileId},{"uploadStatus",storeUploadStatus(query.uploadStatus)},{"localStatus",query.localStatus},{"remoteStatus",query.remoteStatus},{"from",query.from},{"to",query.to}},g,[g,seq,first,finish](Error e,QJsonObject page){
    if(!g||g->countsRequest_!=seq)return;const auto before=page["records"].toArray();finish(!e&&!before.isEmpty()&&created(before.first().toObject()).date()==first.date()?first.date():QDate{});
   });
  });
