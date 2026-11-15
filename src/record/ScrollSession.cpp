@@ -41,6 +41,7 @@ const char* toString(SessionEnd e) {
         case SessionEnd::Finished: return "Finished";
         case SessionEnd::Idle: return "Idle";
         case SessionEnd::Forgotten: return "Forgotten";
+        case SessionEnd::CanvasFailed: return "CanvasFailed";
         case SessionEnd::PageEnd: return "PageEnd";
         case SessionEnd::Capped: return "Capped";
         case SessionEnd::Discarded: return "Discarded";
@@ -153,9 +154,16 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
     for (;;) {
         if (discard.load()) return done(SessionEnd::Discarded);
         if (stop.load()) {
-            // Done on the way to the top: the image is the screen as it is now.
-            if (phase_ == Phase::ToTop) endToTop(false, "the capture was finished on the way to the top");
-            else takeScreenAtDone();
+            // Done on the way to the top: the image is the screen as it is now,
+            // from a fresh frame as at every other end; the last one the
+            // stream sent only if none comes (CodeRabbit on #1536).
+            if (phase_ == Phase::ToTop) {
+                if (opts_.freshAtDoneMs > 0 && !source_.lost())
+                    if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs)) feed(*fresh);
+                endToTop(false, "the capture was finished on the way to the top");
+            } else {
+                takeScreenAtDone();
+            }
             return done(SessionEnd::Finished);
         }
         applyRequests();
@@ -177,6 +185,8 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         const bool correcting = !auto_ && pausedBy_ == HandBack::Pointer && clock_.nowMs() - handBackAt_ < 1000;
         if (auto frame = source_.nextFrame(auto_ ? 15 : correcting ? 10 : 40)) feed(*frame);
         else if (source_.lost()) return done(SessionEnd::SourceLost);
+        // Nothing more can be written: the capture ends here, with a reason.
+        if (canvas_.failed()) return done(SessionEnd::CanvasFailed);
         if (sizeChanged_) return done(SessionEnd::FrameSizeChanged);
         if (capped_) return done(SessionEnd::Capped);
         // The idle bound. A capture in which nothing ever moved (no placed
@@ -411,9 +421,16 @@ void ScrollSession::applyRequests() {
     if (!opts_.request) return;
     const auto [serial, on] = opts_.request();
     if (serial == seenSerial_) return;
+    // Every request counts one. More than one since the last look, the latest
+    // "on" while auto-scroll still runs here: an "off" came in between that
+    // this loop never saw, and the main thread took the watch and the rest
+    // down with it. It is taken as off, then on again, so that the run
+    // prepares them again (beforeAuto) before its next step (CodeRabbit on
+    // #1536).
+    const bool missedOff = on && auto_ && serial - seenSerial_ >= 2;
     seenSerial_ = serial;
     lastActivity_ = now;
-    if (on) {
+    if (on && !missedOff) {
         if (!auto_) startAuto();
         return;
     }
@@ -423,6 +440,10 @@ void ScrollSession::applyRequests() {
     pausedBy_ = HandBack::None;
     pending_ = 0;
     stepSentAt_ = -1;
+    if (missedOff) {
+        startAuto();
+        return;
+    }
     progress(true);
 }
 

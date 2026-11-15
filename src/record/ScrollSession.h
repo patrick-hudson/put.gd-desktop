@@ -74,6 +74,9 @@ struct RunPoint { int x = 0, y = 0; };
 class SessionCanvas : public scroll::TrackerCanvas {
 public:
     virtual void clear() = 0;
+    // The image can no longer be written (its file could not grow): the
+    // session ends at once.
+    virtual bool failed() const { return false; }
 };
 
 enum class Driver { User, Putgd };
@@ -107,6 +110,7 @@ enum class SessionEnd {
     Finished,          // the stop flag: Done, the hotkey, Esc, scroll.stop
     Idle,              // nobody scrolled or used a control for idleLimitMs
     Forgotten,         // the same, and no placed frame ever moved: nothing to keep, ended like Cancel
+    CanvasFailed,      // the image could not be written (its spool file could not grow: a full disk)
     PageEnd,           // auto-scroll reached the end of the page
     Capped,            // the image reached its height cap
     Discarded,         // the discard flag (Cancel)

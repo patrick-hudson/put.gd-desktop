@@ -9,7 +9,10 @@ namespace putgd::record {
 // because the page can grow upwards too (rows above the first frame's are
 // negative). The file is sparse: page row r lives at file row rowsAbove + r,
 // so the rows are in order and the image is one contiguous block at the end,
-// which the PNG writer reads from the mapping. Only rows written take disk.
+// which the PNG writer reads from the mapping. Only rows written take disk:
+// they are given their blocks (posix_fallocate) before the mapping writes
+// them, so a full disk fails the write with a reason (failed(), error())
+// instead of raising SIGBUS in the copy (CodeRabbit on #1536).
 class SpoolCanvas final : public SessionCanvas {
 public:
     SpoolCanvas() = default;
@@ -24,8 +27,13 @@ public:
     long long top() const override { return any_ ? top_ : 0; }
     long long bottom() const override { return any_ ? bottom_ : 0; }
     void clear() override;
-    // A row outside the room, or the file could not be resized or mapped.
-    bool failed() const { return failed_; }
+    // A row outside the room, the file could not be resized or mapped, or
+    // its rows could not be given blocks (error() is the errno, ENOSPC for a
+    // full disk).
+    bool failed() const override { return failed_; }
+    int error() const { return error_; }
+    // Tests: blocks beyond this many bytes are refused as on a full disk.
+    void setSpaceLimit(size_t bytes) { spaceLimit_ = bytes; }
     // Rows [top(), bottom()) back to back, width * 4 bytes each; valid until close.
     const uint8_t* image() const;
     size_t rowBytes() const { return rowBytes_; }
@@ -33,6 +41,7 @@ public:
     void close();
 private:
     bool map();
+    bool reserve(long long fileRow);
     int fd_ = -1;
     int width_ = 0;
     size_t rowBytes_ = 0;
@@ -41,5 +50,10 @@ private:
     size_t mapBytes_ = 0;
     long long top_ = 0, bottom_ = 0;
     bool any_ = false, failed_ = false;
+    // File rows [heldTop_, heldBottom_) have their blocks.
+    long long heldTop_ = 0, heldBottom_ = 0;
+    bool held_ = false;
+    int error_ = 0;
+    size_t spaceLimit_ = SIZE_MAX;
 };
 }

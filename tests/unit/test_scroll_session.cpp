@@ -8,7 +8,10 @@
 // a summary; exit code 1 on any failure.
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <climits>
+#include <cstdint>
+#include <optional>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -125,6 +128,8 @@ struct Harness {
   bool wantAuto = false, paused = false;
   // A header and a footer pinned in the viewport (rows of it).
   int headerH = 0, footerH = 0;
+  // The spool's disk: blocks beyond this many bytes are refused, as on a full disk.
+  size_t spoolSpace = SIZE_MAX;
   // Auto-scroll asked for after the session was set up but before its loop read the request.
   bool autoBeforeRun = false;
   unsigned serial = 0, activity = 0;
@@ -143,6 +148,7 @@ struct Harness {
     t0 = clock.nowMs();
     app = std::make_unique<FakeApp>(doc, ViewportSpec{W, H, headerH, footerH, 7}, as, clock);
     spool = std::make_unique<Spool>(so.tracker.maxOutputRows + 2LL * H);
+    spool->canvas.setSpaceLimit(spoolSpace);
     wantAuto = so.autoScroll;
     if (autoBeforeRun) setAuto(true);
     so.request = [this] {
@@ -708,6 +714,87 @@ void testEndAboveABlankTail() {
                          h.stats.bottom - h.stats.top, int(h.stats.reachedEnd), int(h.stats.endBlank), h.saw(SessionState::Lost) ? ", went lost" : ""));
 }
 
+// CodeRabbit on #1536. Auto-scroll turned off and on again before the loop
+// read either request: the main thread took the watch and the rest down with
+// the off, and the loop, seeing only the latest "on" while it still ran,
+// never asked for them again. It takes the jump as off, then on, and asks.
+void testOffAndOnBackToBack() {
+  std::printf("Auto-scroll off and on before the loop reads either\n");
+  const Document doc = page(96);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  SessionOptions so = options(true);
+  int prepared = 0;
+  so.beforeAuto = [&prepared]() -> std::optional<RunPoint> {
+    ++prepared;
+    return RunPoint{-16, H / 3};
+  };
+  bool toggled = false;
+  h.script = [&toggled](Harness& x, int64_t t) {
+    if (!toggled && t >= 3000 && x.last() == SessionState::AutoScrolling) {
+      toggled = true;
+      x.setAuto(false);
+      x.setAuto(true);
+    }
+    if (t >= 120000) x.stop.store(true);
+  };
+  h.run(doc.img, as, so);
+  const std::string wrong = h.exact(doc.img, 0);
+  report("off then on back to back: the run asks for its surfaces again, and goes on to the end", toggled && prepared == 2 && h.end == SessionEnd::PageEnd && wrong.empty(),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", asked for its surfaces %d times", prepared));
+}
+
+// CodeRabbit on #1536. Done on the way to the top, while the stream sends its
+// last picture again (KWin's region stream went stale while Chrome moved):
+// the image is the screen as it is at Done, from a fresh frame.
+void testDoneOnTheWayUpStale() {
+  std::printf("Done on the way to the top on a stale stream\n");
+  const Document doc = page(97);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 10;  // a way up of many steps
+  as.startPos = 2400;
+  as.staleFromMs = 2500;
+  SessionOptions so = options(true);
+  so.fromTop = true;
+  bool doneOnWay = false;
+  int atStale = -1;
+  h.script = [&doneOnWay, &atStale](Harness& x, int64_t t) {
+    if (atStale < 0 && t >= 2500) atStale = x.app->positionNow();
+    if (t >= 3300 && !x.stop.load()) {
+      doneOnWay = x.last() == SessionState::ScrollingToTop;
+      x.stop.store(true);
+    }
+  };
+  h.run(doc.img, as, so);
+  const int now = h.app->positionNow();
+  const std::string wrong = h.exact(doc.img, now);
+  report("Done on the way up while the stream is stale: the image is the screen at Done",
+         doneOnWay && atStale != now && h.end == SessionEnd::Finished && wrong.empty() && h.stats.bottom - h.stats.top == H,
+         (wrong.empty() ? counts(h) : wrong) + fmt(", page at %d when the stream went stale, at %d at Done", atStale, now));
+}
+
+// CodeRabbit on #1536. The spool's disk fills while the person scrolls: the
+// rows are given their blocks before they are written, so the write fails
+// with a reason instead of SIGBUS in the copy, and the session ends at once.
+void testSpoolDiskFull() {
+  std::printf("The spool's disk fills\n");
+  const Document doc = page(98);
+  Harness h;
+  h.spoolSpace = size_t(1200) * W * 4;  // about 1,200 rows of the image
+  std::vector<FakeApp::UserScroll> script;
+  for (int i = 0; i < (doc.img.h - H) / 120 + 4; ++i) script.push_back({1500 + 150 * i, 120, 100});
+  h.script = [script](Harness& x, int64_t t) {
+    if (x.app->script.empty()) x.play(script);
+    if (t >= 60000) x.stop.store(true);
+  };
+  h.run(doc.img, FakeAppSpec{}, options(false));
+  report("a full disk under the spool ends the capture at once, with a reason", h.end == SessionEnd::CanvasFailed && h.spool->canvas.failed() &&
+                                                                               h.spool->canvas.error() == ENOSPC && h.stats.elapsedMs < 30000,
+         fmt("%s after %lld ms, spool error %d", toString(h.end), (long long)h.stats.elapsedMs, h.spool->canvas.error()));
+}
+
 // A blank stretch taller than the region under auto-scroll: no frame shows
 // anything move while it fills the region, the tracker reports such frames
 // still under any hint, and two still steps there look like the end. The
@@ -865,6 +952,9 @@ int main() {
   testHintsCountedOnce();
   testBlankUnderPinnedParts();
   testEndAboveABlankTail();
+  testOffAndOnBackToBack();
+  testDoneOnTheWayUpStale();
+  testSpoolDiskFull();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();
