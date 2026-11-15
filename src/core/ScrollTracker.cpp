@@ -51,6 +51,7 @@
 #include <cmath>
 #include <cstring>
 #include <numeric>
+#include <tuple>
 #include <map>
 #include <unordered_map>
 
@@ -523,6 +524,7 @@ struct ScrollTracker::Store {
   std::vector<uint64_t> hid;         // count * words: under the excluded rectangle in some placed frame
   std::vector<uint64_t> vis;         // count * words: outside it in some placed frame
   std::vector<uint16_t> band, valid, tex;  // count * bands
+  std::vector<uint8_t> shown;              // count: a placed frame covered the row
 
   void init(int c, int b) {
     cells = c;
@@ -540,6 +542,7 @@ struct ScrollTracker::Store {
     std::vector<uint64_t> p(size_t(n) * words, 0), v(size_t(n) * words, 0), h(size_t(n) * words, 0),
         o(size_t(n) * words, 0);
     std::vector<uint16_t> bd(size_t(n) * bands, 0), vd(size_t(n) * bands, 0), td(size_t(n) * bands, 0);
+    std::vector<uint8_t> sh(size_t(n), 0);
 
     if (count > 0) {
       const size_t at = size_t(origin - nlo);
@@ -550,6 +553,7 @@ struct ScrollTracker::Store {
       std::memcpy(&bd[at * bands], band.data(), band.size() * 2);
       std::memcpy(&vd[at * bands], valid.data(), valid.size() * 2);
       std::memcpy(&td[at * bands], tex.data(), tex.size() * 2);
+      std::memcpy(&sh[at], shown.data(), shown.size());
     }
     prov.swap(p);
     ver.swap(v);
@@ -558,6 +562,7 @@ struct ScrollTracker::Store {
     band.swap(bd);
     valid.swap(vd);
     tex.swap(td);
+    shown.swap(sh);
     origin = nlo;
     count = n;
   }
@@ -930,6 +935,11 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchPair(const Signature&
 void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int expected,
                                const std::vector<uint16_t>& incl, std::vector<Candidate>& out) const {
   const int H = cur.h;
+  // A limit, not a defect: the pair follows moves up to H less a sliver
+  // (minOverlapRows, or minOverlapFraction of H). At the product's smallest
+  // region (64 rows) that is 16 rows; a larger move is looked up in the
+  // image, which needs the same overlap, so a region that small follows a
+  // wheel only when the application animates its notches in small frames.
   const int dmax = H - sliverRows(opts_, H);
   if (dmax < 1) return;
   const int n = 2 * dmax + 1;
@@ -960,10 +970,12 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
     }
     if (bestShare >= 0) fine.push_back(std::move(best));
   }
-  std::sort(fine.begin(), fine.end(), [&](const Fine& a, const Fine& b) {
-    if (std::abs(a.bands.share() - b.bands.share()) > 0.01) return a.bands.share() > b.bands.share();
-    return std::abs(a.d - expected) < std::abs(b.d - expected);
-  });
+  // Best by bands, in steps of 0.01 (a comparison within a tolerance would
+  // not be a strict weak ordering); equal ones nearest the expected offset.
+  const auto fineKey = [&](const Fine& f) {
+    return std::make_tuple(-std::llround(f.bands.share() * 100), std::abs(f.d - expected), f.d);
+  };
+  std::sort(fine.begin(), fine.end(), [&](const Fine& a, const Fine& b) { return fineKey(a) < fineKey(b); });
   if (!fine.empty()) {
     const double top = fine[0].bands.share();
     std::erase_if(fine, [&](const Fine& f) { return f.bands.share() < top - 0.4; });
@@ -978,12 +990,16 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
   }
   // The best by cells, and any that ties with it, to the row: a neighbour
   // that agrees in more cells is the place (whole pixels, never one off).
+  // At most kWalk rows each way: the basins come from a look at every
+  // offset, so the place is a few rows from one, and each step costs a full
+  // look by cells and bands.
+  constexpr int kWalk = 32;
   double best = -1;
   for (const Candidate& c : out) best = std::max(best, c.cells);
   for (Candidate& c : out) {
     if (c.cells < best - opts_.tieCells) continue;
     for (int step : {-1, 1}) {
-      for (int d = c.d + step; d != 0 && std::abs(d) <= dmax; d += step) {
+      for (int d = c.d + step, walked = 0; d != 0 && std::abs(d) <= dmax && walked < kWalk; d += step, ++walked) {
         cellTally(cur, ref, d, tc);
         if (tc.share() <= c.cells) break;
         bandTally(cur, ref, d, t);
@@ -1013,11 +1029,9 @@ std::vector<int> ScrollTracker::pickPeaks(const std::vector<float>& coarse, doub
   }
   // Equal ones (content that repeats) nearest the expected place first, so
   // that the candidates the expected offset must choose between are kept.
-  std::sort(peaks.begin(), peaks.end(), [&](int a, int b) {
-    const float va = coarse[size_t(a)], vb = coarse[size_t(b)];
-    if (std::abs(va - vb) > 0.02f) return va > vb;
-    return std::llabs(a - center) < std::llabs(b - center);
-  });
+  // In steps of 0.02, as a strict weak ordering.
+  const auto peakKey = [&](int i) { return std::make_tuple(-std::lround(coarse[size_t(i)] * 50.0), std::llabs(i - center), i); };
+  std::sort(peaks.begin(), peaks.end(), [&](int a, int b) { return peakKey(a) < peakKey(b); });
   if (!peaks.empty()) {
     const float best = coarse[size_t(peaks[0])];
     std::erase_if(peaks, [&](int i) { return coarse[size_t(i)] < best - 0.35f; });
@@ -1780,8 +1794,10 @@ void ScrollTracker::applyExcluded() {
   effBottom_ = height_;
   const TrackerRect& e = excludedRect_;
   if (!e.empty()) {
-    const int c0 = std::clamp(e.x / P, 0, C), c1 = std::clamp((e.x + e.w + P - 1) / P, 0, C);
-    const int r0 = std::clamp(e.y / BR, 0, R), r1 = std::clamp((e.y + e.h + BR - 1) / BR, 0, R);
+    // In 64 bits: x + w of a rectangle given in ints may not fit in one.
+    const auto out = [](long long v, long long unit, int n) { return int(std::clamp<long long>(v / unit, 0, n)); };
+    const int c0 = out(e.x, P, C), c1 = out((long long)e.x + e.w + P - 1, P, C);
+    const int r0 = out(e.y, BR, R), r1 = out((long long)e.y + e.h + BR - 1, BR, R);
     for (int r = r0; r < r1; ++r)
       for (int c = c0; c < c1; ++c) {
         excl_[size_t(r) * C + c] = 1;
@@ -1823,7 +1839,7 @@ void ScrollTracker::keepCopy(const FrameView& f, FrameCopy& copy, long long pos,
       if (excl_[i]) copy.tag[i] = 0;
     return;
   }
-  for (int r = fromRow / BR; r < R; ++r)
+  for (int r = std::max(0, fromRow) / BR; r < R; ++r)
     for (int c = 0; c < C;) {
       const size_t bi = size_t(r) * C + c;
       if (!blocked_[bi] || excl_[bi]) {
@@ -1940,6 +1956,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
     allowHi_ = lo + cap;
   }
   store_->ensure(std::max(allowLo_, pos), std::min(allowHi_, pos + H));
+  for (long long p = std::max(allowLo_, fTop); p < std::min(allowHi_, fBottom); ++p) store_->shown[size_t(p - store_->origin)] = 1;
   const int words = store_->words;
   std::vector<uint64_t> blocked;
   blockedWords(blocked);
@@ -1992,6 +2009,11 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   // the mask is young they wait longer (at most 8 frames), until it can know
   // what is pinned: the flat inside of a cookie box is learned after four
   // steps, and a box's cells seen once before that are not the page.
+  // A bound, not a leak: while the mask is young (it stays so through a
+  // scroll whose every step is under learnMinStep rows) each waiting frame
+  // holds up to a whole frame of pixels, at most 8 of them, and spare_ keeps
+  // their buffers: about 9 frames at the peak (at 3840x2160 some 300 MB),
+  // whatever the session's length.
   if (!pending_.empty()) narrowPending(pending_.back(), blocked);
   const bool young = youngMask && pending_.size() < 8;
   if (!young) flushPending(blocked);
@@ -2157,7 +2179,9 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
 TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   TrackResult r;
   ++totals_.frames;
-  if (finished_ || !frame.data || frame.width <= 0 || frame.height <= 0 ||
+  // A frame narrower than two cells or lower than two block rows is too small
+  // to track (the bottommost frame's copy starts a block row above its middle).
+  if (finished_ || !frame.data || frame.width < 2 * opts_.cellPx || frame.height < 2 * opts_.blockRows ||
       (hasFrame_ && (frame.width != width_ || frame.height != height_))) {
     ++totals_.invalid;
     r.status = TrackStatus::Invalid;
@@ -2200,9 +2224,13 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   computeSignature(frame, opts_.cellPx, bandLo_, opts_.cellTexture, opts_.bandTexture, *work_);
   Signature& cur = *work_;
   ++framesSincePlaced_;
+  // A hint further than a few frame heights says nothing the search could
+  // use: offsets, their sum and the uncertainty are kept within four frame
+  // heights, so that no arithmetic on them overflows.
+  const long long room = 4LL * frame.height;
   if (hint.known) {
-    hintSum_ += hint.offset;
-    hintUnc_ += std::max(0, hint.uncertainty);
+    hintSum_ = std::clamp(hintSum_ + std::clamp<long long>(hint.offset, -room, room), -room, room);
+    hintUnc_ = std::min(room, hintUnc_ + std::clamp<long long>(hint.uncertainty, 0, room));
   } else {
     hintKnown_ = false;
   }
@@ -2215,7 +2243,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   const Signature& ref = *last_;
   computeExcluded(cur, ref);
   const bool hinted = hintKnown_;
-  const int expected = hinted ? int(hintSum_) : int(std::lround(velocity_ * framesSincePlaced_));
+  const int expected = hinted ? int(hintSum_)
+                              : int(std::lround(std::clamp(velocity_ * framesSincePlaced_, -double(room), double(room))));
   const int uncertainty = hinted ? int(hintUnc_ + std::lround(0.08 * std::abs(hintSum_))) + 2
                                  : std::max(6, int(std::lround(0.25 * std::abs(expected))));
   double share = 0;
@@ -2244,7 +2273,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     r.state = state_ = TrackState::Following;
     return r;
   };
-  if (stillFrame(cur, ref, &share) && (!hinted || std::abs(expected) <= uncertainty)) return noMovement(true);
+  const bool still = stillFrame(cur, ref, &share);
+  if (still && (!hinted || std::abs(expected) <= uncertainty)) return noMovement(true);
   std::vector<Candidate> cands = searchPair(cur, ref, expected);
   bool byExp = false;
   SkipReason why = SkipReason::None;
@@ -2274,8 +2304,12 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // Nothing moved as the page, and most of the frame stood still: the page
   // did not move, and something changed in place (a video, an inner scroll
   // area, an animation). Not a lookup: a reader who jumped leaves nothing
-  // where it was.
-  if (pick < 0 && why != SkipReason::Ambiguous && share >= opts_.stillFallback) return noMovement(false);
+  // where it was. So also when the frame stood still by stillFrame's rule
+  // for a frame with next to nothing textured (a blank page end under a
+  // header and a footer, one small cell changing: a spinner, a caret), where
+  // the share of textured cells says nothing: such a frame is never placed
+  // on the hint, so a page that rests there can end.
+  if (pick < 0 && why != SkipReason::Ambiguous && (share >= opts_.stillFallback || still)) return noMovement(false);
   if (pick < 0 && why != SkipReason::NoEvidence) {
     // Not where the last frame says: look in the image (the user scrolled
     // back), within three screens of where it was expected; then, from the
@@ -2306,9 +2340,12 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       why = fw;
     }
   }
-  if (pick < 0 && why == SkipReason::NoEvidence && hinted && !contradicted(cur, lastPos_ + expected)) {
-    // Nothing to compare (a blank stretch): the driver's hint bridges it,
-    // where what the image already has there does not say otherwise.
+  // Nothing to compare (a blank stretch): the driver's hint bridges it, where
+  // the frame placed there overlaps what the image holds (else it would leave
+  // rows no frame showed, and one wild hint could take the image to its cap)
+  // and what the image already has there does not say otherwise.
+  if (pick < 0 && why == SkipReason::NoEvidence && hinted && lastPos_ + expected + effTop_ < bottom_ &&
+      lastPos_ + expected + effBottom_ > top_ && !contradicted(cur, lastPos_ + expected)) {
     d = expected;
     pos = lastPos_ + d;
     r.onHint = true;
@@ -2605,6 +2642,14 @@ TrackTotals ScrollTracker::finish() {
   const uint32_t page = pageColour_;
   store_->ensure(top_, bottom_);
   for (long long p = top_; p < bottom_; ++p) {
+    // A row no placed frame covered (none can be since a placement on the
+    // hint must overlap the image; kept so that such a row is never plain
+    // without saying so): every cell of it.
+    if (!store_->shown[size_t(p - store_->origin)]) {
+      totals_.hiddenCells += C;
+      ++totals_.hiddenRows;
+      continue;
+    }
     bool any = false;
     for (int c = 0; c < C; ++c)
       if (store_->level(p, c) == 0 && store_->hidden(p, c)) {
