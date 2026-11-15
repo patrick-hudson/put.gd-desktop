@@ -77,6 +77,13 @@ public:
     // and paused) and bar placement. Replies {bar: {placed, outside, rect}}.
     virtual void showFrame(const QJsonObject&, Reply) = 0;
     virtual void hideFrame() = 0;
+    // Where the pointer moves anywhere on the desktop, for the length of a
+    // scroll capture's auto-scroll (#1531): {x, y, t} in logical desktop
+    // pixels and CLOCK_MONOTONIC milliseconds, every motion, the capture's own
+    // included. False where the shell cannot (an older extension still loaded).
+    virtual bool watchesPointer() const { return false; }
+    virtual void watchPointer(std::function<void(QJsonObject)>) {}
+    virtual void unwatchPointer() {}
 };
 class UnavailableRecordingBackend final : public RecordingBackend {
 public:

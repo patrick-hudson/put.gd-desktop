@@ -50,6 +50,9 @@ def main():
     required = {'tesseract', 'tesseract-data-eng', 'zxing-cpp', 'qt6-imageformats', 'qt6-wayland', 'qt6-base>=6.4.2', 'gst-plugins-bad', 'gst-plugin-pipewire', 'ffmpeg', 'layer-shell-qt'}
     if not required.issubset(dependencies):
         raise ValueError('Missing Arch runtime dependency: ' + ', '.join(sorted(required - set(dependencies))))
+    # pacman resolves in listed order; tesseract first makes it also pick a default "tessdata" (Afrikaans).
+    if dependencies.index('tesseract-data-eng') > dependencies.index('tesseract'):
+        raise ValueError('tesseract-data-eng must be listed before tesseract')
     result = audit_tree(extracted, identity, require_kde=True, require_proton=True, package_target='archlinux')
     result['fileManagerPlugins'] = audit_plugins(extracted, build, package_target='archlinux')
     result['package'] = {'format': 'PACMAN', 'name': 'putgd', 'version': metadata['pkgver'],

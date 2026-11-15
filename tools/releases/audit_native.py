@@ -91,6 +91,9 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
                   "wayland-wlr-foreign-toplevel-management-unstable-v1.xml", "wayland-hyprland-global-shortcuts-v1.xml",
                   "wayland-hyprland-toplevel-mapping-v1.xml", "wayland-wlr-layer-shell-unstable-v1.xml",
                   "wayland-wlr-virtual-pointer-unstable-v1.xml", "wayland-fake-input.xml", *SDK_LICENSES)]
+    if (root / "usr/bin/putgd-record").exists():
+        # The scrolling capture's tracker in putgd-record ports an MIT matcher (#1515).
+        required.append("usr/share/doc/putgd/scroll-tracker-LICENSE")
     for name in required:
         path = root / name
         if not path.is_file() or path.stat().st_size == 0:

@@ -63,6 +63,7 @@ signals:
 private slots:
  void helperAction(const QString& action,const QString& ticket);
  void helperClick(const QString& json);
+ void helperPointer(const QString& json);
  void helperClipboardChanged(qulonglong revision);
  void helperChanged();
 private:
@@ -77,6 +78,10 @@ private:
   void cancelSelection()override{owner_.cancelSelection();}
   void showFrame(const QJsonObject& frame,Reply reply)override{owner_.showFrameImpl(frame,std::move(reply),true);}
   void hideFrame()override{if(selectsRegions())owner_.call("HideRecordingFrame",{},[](Error,QJsonObject){});}
+  // Extension version 24 (#1531): pointer motion while auto-scroll runs.
+  bool watchesPointer()const override{return selectsRegions()&&owner_.helper_["pointerWatchVersion"].toInt()>=1;}
+  void watchPointer(std::function<void(QJsonObject)> sink)override{owner_.watchPointerImpl(std::move(sink));}
+  void unwatchPointer()override{owner_.unwatchPointerImpl();}
  private:GnomeAdapter& owner_;
  } scrollShell_{*this};
  // Why a region cannot be recorded through the Shell right now.
@@ -87,6 +92,11 @@ private:
  Error helperAvailabilityError(bool fallback=false)const;
  void emitSetupNotice(const gnome::SetupStatus&);
  RecordingClicks::Sink clickSink_;
+ std::function<void(QJsonObject)> pointerSink_;
+ // Each WatchPointer request's generation: a failed reply undoes only its own watch.
+ quint64 pointerGeneration_=0;
+ void watchPointerImpl(std::function<void(QJsonObject)>);
+ void unwatchPointerImpl();
  using Reply=std::function<void(Error,QJsonObject)>;
  // Capture version 2: monitor, repeat and the countdown need the packaged extension.
  Error captureVersionError()const;

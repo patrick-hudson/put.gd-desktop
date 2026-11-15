@@ -120,6 +120,7 @@ QList<QRect> screenRects() {
 }
 QList<QRect> barScreens() { return screenRects(); }
 QRect barLogicalRect(const QRect& root) { return fromRootSpan(root); }
+QPoint barRootPoint(const QPointF& logical) { return toRoot(QRectF(logical, QSizeF(1, 1))).topLeft(); }
 void barToLayer(QWidget* widget, QScreen* screen, const QRect& logical, bool keyboard) {
 #ifdef PUTGD_RECORD_LAYER_SHELL
     toLayer(widget, screen, logical, keyboard);

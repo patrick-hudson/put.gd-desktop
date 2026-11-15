@@ -149,7 +149,7 @@ QJsonObject Settings::defaults() {
             {"clipboardTextBytes", 16777216.0}, {"imagePixels", 100000000.0}, {"imageBytes", 536870912.0}}},
         {"retention", QJsonObject{{"failedArtifactDays", 7}, {"recentActivityLimit", 100},
             {"previewCacheBytes", 268435456.0}, {"historyRetentionDays", QJsonValue::Null}}},
-        {"preferences", QJsonObject{{"scrollCaptureMaxHeight",30000},{"scrollCaptureFromTop",true},{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
+        {"preferences", QJsonObject{{"scrollCaptureMaxHeight",30000},{"scrollCaptureFromTop",false},{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
 }
 
 QJsonObject Settings::developmentTemplate() {
@@ -299,7 +299,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -349,6 +349,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
     if (preferences.contains("scrollCaptureMaxHeight") && !integer(preferences["scrollCaptureMaxHeight"],2000,60000)) return invalid("/preferences/scrollCaptureMaxHeight", "Choose 2000 to 60000 pixels.");
     if (preferences.contains("scrollCaptureFromTop") && !preferences["scrollCaptureFromTop"].isBool()) return invalid("/preferences/scrollCaptureFromTop", "Choose true or false.");
+    if (preferences.contains("scrollCaptureAutoScroll") && !preferences["scrollCaptureAutoScroll"].isBool()) return invalid("/preferences/scrollCaptureAutoScroll", "Choose true or false.");
     if (preferences.contains("regionSelectionMode") && !choice(preferences["regionSelectionMode"], {"live", "screenshot_first"}))
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
     if (preferences.contains("captureDelaySeconds") && !(preferences["captureDelaySeconds"].isDouble() && integer(preferences["captureDelaySeconds"], 0, 10) && captureDelayChoices().contains(preferences["captureDelaySeconds"].toInt())))
@@ -451,7 +452,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.debugLogging = doc["preferences"].toObject()["diagnostics"].toObject()["debugLogging"].toBool();
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
     settings.scrollCaptureMaxHeight = doc["preferences"].toObject()["scrollCaptureMaxHeight"].toInt(30000);
-    settings.scrollCaptureFromTop = doc["preferences"].toObject()["scrollCaptureFromTop"].toBool(true);
+    settings.scrollCaptureFromTop = doc["preferences"].toObject()["scrollCaptureFromTop"].toBool(false);
+    settings.scrollCaptureAutoScroll = doc["preferences"].toObject()["scrollCaptureAutoScroll"].toBool(false);
     settings.regionSelectionMode = doc["preferences"].toObject()["regionSelectionMode"].toString("live");
     settings.recordingFrameRate = doc["preferences"].toObject()["recordingFrameRate"].toInt(30);
     settings.recordingMicrophone = doc["preferences"].toObject()["recordingMicrophone"].toBool(false);

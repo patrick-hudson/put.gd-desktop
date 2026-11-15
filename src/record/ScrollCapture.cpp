@@ -1,10 +1,10 @@
 #include "ScrollCapture.h"
 #include "DebugLog.h"
 #include "ScrollInjectors.h"
-#include "ScrollRun.h"
+#include "ScrollSession.h"
+#include "ScrollSpool.h"
 #include "X11ScrollInjector.h"
 #include "X11Targets.h"
-#include "core/ScrollStitcher.h"
 #ifdef PUTGD_RECORD_KDE_SCREENCAST
 #include "KdeFakeInput.h"
 #endif
@@ -19,6 +19,13 @@
 #include <QImageWriter>
 #include <QJsonArray>
 #include <QPointer>
+#include <QEnterEvent>
+#include <QLineF>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QRegion>
+#include <chrono>
+#include <mutex>
 #include <QScreen>
 #include <QTimer>
 #include <algorithm>
@@ -40,6 +47,14 @@ Error stateError(const QString& message) { return {"scroll_state", message, {}};
 Error unavailable(const QString& reason, const QString& message) { return {"scroll_unavailable", message, {{"reason", reason}}}; }
 // How long the first frame may take, and the pointer's rest outside the region.
 constexpr int firstFrameMs = 3000, awayMargin = 16;
+// #1514: the rest pad's size, how far from where the capture put it a pointer
+// the helper's surface reports is still the capture's (logical pixels, for
+// rounding through the stream's scale), how long a visit's leave event may
+// come late, and how still the mouse must be after the bar's Resume.
+constexpr int padSize = 32, restTolerance = 4, visitLateMs = 1000, resumeQuietMs = 500;
+// A hand's motion events come every 8 to 10 ms: one within this long of the
+// pointer's arrival at its rest was under way when the capture moved it there.
+constexpr int pullBackMs = 12;
 // KWin's region stream (seen on 6.3.6, real desktop runs of 2026-11-10) holds
 // back or drops a frame that no further damage follows: after one isolated
 // repaint the loop saw the old picture for 500 ms and more, four or five steps
@@ -93,42 +108,185 @@ struct Primed final : RunFrames {
         return frame;
     }
 };
-const char* endReason(RunResult result) {
-    switch (result) {
-        case RunResult::EndOfContent: return "end_of_content";
-        case RunResult::TopNotReached: return "top_not_reached";
-        case RunResult::LimitReached: return "height_cap";
-        case RunResult::Stopped: return "stopped";
-        case RunResult::TimeLimit: return "time_limit";
-        case RunResult::LostTrack: return "lost_track";
-        default: return nullptr;
+// A clear surface that takes the pointer (#1514): the rest pad and the watch.
+class ClearSurface final : public QWidget {
+public:
+    explicit ClearSurface(const char* name) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus) {
+        setObjectName(QString::fromLatin1(name));
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+        setAttribute(Qt::WA_NoSystemBackground);
     }
-}
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.fillRect(rect(), Qt::transparent);
+    }
+};
+// Pixels kept out of the image around the bar where it sits inside the
+// rectangle (#1519): the window manager's shadow on X11 reaches further.
+int insideBarMargin() { return surfaceMode() == SurfaceMode::X11 ? 24 : 6; }
 }
 
 struct ScrollCapture::Gate final : RunInjector {
     ScrollInjector* injector = nullptr;
     // Closed for good at stop, cancel and the end of the control pipe.
     std::atomic<bool> armed{true};
+    // Closed while paused (#1514): set by the main thread the moment it sees
+    // the user's motion, before the loop has looked, so nothing slips through.
+    std::atomic<bool> paused{false};
+    // After Resume the first motion is the capture's own, wherever the user left the pointer.
+    std::atomic<bool> skipCheck{false};
+    // Where the pointer rests between wheel steps (stream pixels; worker thread only).
+    std::optional<QPoint> restAt;
+    // What the main thread needs to tell the capture's pointer from the user's:
+    // whether the last motion went to the rest spot, whether the pointer has
+    // been seen arriving there, and visits into the rectangle whose leave
+    // event has not been seen yet.
+    std::atomic<bool> resting{false}, detecting{false};
+    std::atomic<int> visits{0};
+    std::atomic<qint64> visitAt{0};
+    // Every pointer motion sent counts: the main thread tells a pointer that
+    // moved with nothing sent in between (the user) from one the capture moved.
+    std::atomic<quint64> seq{0};
+    // Desktop logical coordinates of the rectangle's corner (set before the
+    // worker starts) and the stream's scale (set by the worker before its
+    // first injection; the worker alone reads it), and the rest (set before
+    // the worker starts; the main thread reads it).
+    QPointF origin, restPoint;
+    double sx = 1, sy = 1;
+    // The last motion sent, as one record: when (FrameTap::nowMs, the
+    // monotonic clock), where (desktop logical), its count, the last point
+    // the wheel was turned at, and whether it is still on its way to the
+    // injector (recorded first: its own leave event can come before the
+    // injector returns).
+    struct Sent { qint64 ms = -1; QPointF at, visit; quint64 seq = 0; bool inFlight = false; };
+    mutable std::mutex sentMutex;
+    Sent sentLast;
+    Sent lastSent() const { std::lock_guard lock(sentMutex); return sentLast; }
+    void recordSent(QPointF at, bool visit) {
+        std::lock_guard lock(sentMutex);
+        sentLast.ms = FrameTap::nowMs();
+        sentLast.at = at;
+        if (visit) sentLast.visit = at;
+        sentLast.seq = seq.load();
+        sentLast.inFlight = true;
+    }
+    void doneSent(quint64 count) {
+        std::lock_guard lock(sentMutex);
+        if (sentLast.seq == count) sentLast.inFlight = false;
+    }
+    // A pointer pulled back from under the user's moving hand (#1514): the
+    // main thread knows where the hand had it (base) and follows its motion
+    // from the rest since (latest); held() puts it back there, once.
+    std::mutex correctionMutex;
+    bool correctionPending = false;
+    // anchor: where the capture put the pointer after the hand had moved it,
+    // at anchorMs; base: where the hand had it then (the last event from
+    // before anchorMs, by the events' own times where they can be compared:
+    // stamped); latest: where the hand has it since. The correction is a
+    // relative motion by base - anchor, which keeps whatever the hand did
+    // since however late its events come; else an absolute move to
+    // base + (latest - anchor).
+    QPointF correctionBase, correctionLatest, correctionAnchor;
+    qint64 correctionSince = 0, correctionAnchorMs = 0;
+    quint64 correctionBaseStamp = 0;
+    bool correctionStamped = false, correctionAfter = false;
+    // Where the hand was seen when the pause began, and the capture's last
+    // motion then: a motion that was already past the gate can still land
+    // after the pause, and held() undoes it.
+    bool seenValid = false;
+    QPointF seenAt;
+    quint64 seenSeq = 0;
+    // At most one correction per pause: held() and a decision that comes
+    // with a later motion event must not both apply the same displacement.
+    bool correctionTaken = false;
+    bool desktopCorrects = false;
+    // X11: the pointer is not where XTest left it. Called on the worker.
+    std::function<void()> tookPointer;
+    bool userHasIt() {
+        // X11 asks the server where the pointer is, which needs no rest surface:
+        // a region that fills its output with the bar hidden has none (CodeRabbit
+        // on #1528). skipCheck exempts the capture's own first motion after Resume.
+        if (skipCheck.load() || !injector->userHasPointer()) return false;
+        paused.store(true);
+        if (tookPointer) tookPointer();
+        return true;
+    }
     bool scroll(int notches) override {
-        if (!armed.load()) return false;
+        if (!armed.load() || paused.load() || userHasIt()) return false;
         const bool sent = injector->scroll(notches);
         if (debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 wheel %2 %3").arg(FrameTap::nowMs() % 1000000).arg(notches).arg(sent ? "sent" : "refused"));
         return sent;
     }
     bool movePointer(int x, int y) override {
-        if (!armed.load()) return false;
+        if (!armed.load() || paused.load() || userHasIt()) return false;
+        skipCheck.store(false);
+        const bool toRest = restAt && *restAt == QPoint(x, y);
+        // Counted before it is sent: the leave event may come before this returns.
+        if (restAt && !toRest && resting.load()) { visitAt.store(FrameTap::nowMs()); visits.fetch_add(1); }
+        resting.store(toRest);
+        const quint64 count = seq.fetch_add(1) + 1;
+        recordSent(origin + QPointF(x / sx, y / sy), !toRest);
         const bool sent = injector->movePointer(QPoint(x, y));
+        doneSent(count);
         if (debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 pointer %2,%3 %4").arg(FrameTap::nowMs() % 1000000).arg(x).arg(y).arg(sent ? "sent" : "refused"));
         return sent;
     }
     bool rest() override {
-        if (!armed.load()) return false;
+        if (!armed.load() || paused.load()) return false;
         const bool sent = injector->rest();
         if (sent && debugLogEnabled()) debugLog(QStringLiteral("scroll inject: t=%1 wheel rest sent").arg(FrameTap::nowMs() % 1000000));
         return sent;
     }
     bool waitReady(const std::atomic<bool>& stop) override { return armed.load() && injector->waitReady(stop); }
+    // While paused: the one correction, once the events from before the
+    // capture's motion are in (one from after it has come, at most 400 ms).
+    void held() override {
+        QPointF delta, target;
+        {
+            std::lock_guard lock(correctionMutex);
+            const qint64 now = FrameTap::nowMs();
+            if (seenValid) {
+                seenValid = false;
+                const Sent sent = lastSent();
+                if (desktopCorrects && sent.seq > seenSeq) {
+                    // Sent after the hand was seen: the pointer goes back by that motion too.
+                    const QPointF latestTarget = sent.at;
+                    if (correctionPending) correctionAnchor = latestTarget;
+                    else if (!correctionTaken) {
+                        correctionTaken = true;
+                        correctionBase = seenAt;
+                        correctionAnchor = correctionLatest = latestTarget;
+                        correctionStamped = false;
+                        correctionSince = now;
+                        correctionPending = true;
+                    }
+                    debugLog(QStringLiteral("scroll: a motion went out after the hand was seen; it is undone too"));
+                }
+            }
+            if (!correctionPending || now - correctionSince < 20) return;
+            if (correctionStamped && !correctionAfter && now - correctionSince < 400) return;
+            correctionPending = false;
+            delta = correctionBase - correctionAnchor;
+            target = correctionBase + (correctionLatest - correctionAnchor);
+        }
+        if (!armed.load()) return;
+        const quint64 count = seq.fetch_add(1) + 1;
+        resting.store(false);
+        recordSent(target, false);
+        const bool by = injector->movePointerBy(delta);
+        doneSent(count);
+        if (by) {
+            debugLog(QStringLiteral("scroll inject: t=%1 pointer put back by %2,%3 sent").arg(FrameTap::nowMs() % 1000000).arg(delta.x(), 0, 'f', 0).arg(delta.y(), 0, 'f', 0));
+            return;
+        }
+        const QPoint stream(int(std::lround((target.x() - origin.x()) * sx)), int(std::lround((target.y() - origin.y()) * sy)));
+        const bool sent = injector->movePointer(stream);
+        doneSent(count);
+        debugLog(QStringLiteral("scroll inject: t=%1 pointer put back at %2,%3 (desktop %4,%5) %6").arg(FrameTap::nowMs() % 1000000).arg(stream.x()).arg(stream.y()).arg(target.x(), 0, 'f', 0).arg(target.y(), 0, 'f', 0).arg(sent ? "sent" : "refused"));
+    }
 };
 // What the main thread and the worker share for one capture.
 struct ScrollCapture::Job {
@@ -138,9 +296,33 @@ struct ScrollCapture::Job {
     QString spoolPath, pngPath;
     // Desktop coordinates: the captured rectangle, its output, and the bar when it shows.
     QRect rect, screen, bar;
+    // Where the pointer rests between wheel steps, on the bar or the rest pad
+    // (desktop coordinates); unset where it has no such place (#1514). Written
+    // by the main thread under restMutex (placeRest, dropAutoSurfaces); the
+    // worker copies it under restMutex once `prepared` says so, and never after
+    // an unanswered wait.
+    std::optional<QPoint> rest;
+    std::mutex restMutex;
+    // Called on the worker before auto-scroll's first wheel step of a run:
+    // the main thread puts up the rest and the watch and then sets `prepared`
+    // to the serial it was asked with. The worker waits a bounded time and
+    // never blocks on it otherwise, as abandon() joins the worker.
+    std::function<void(unsigned)> prepareAuto;
+    std::atomic<unsigned> prepared{0};
+    // GNOME: the Shell's pointer watch is on (its first report has come).
+    bool shellPointer = false;
+    std::atomic<bool> pointerArmed{false};
+    // Auto-scroll as the main thread wants it: the wish, and a serial that
+    // changes with every request; and the commands, which count against the
+    // idle bound.
+    std::atomic<bool> wantAuto{false};
+    std::atomic<unsigned> autoSerial{0}, touches{0};
+    // The bar inside the rectangle (#1519), desktop coordinates: the frames'
+    // rows from its top down are not the page's. Empty: it is outside.
+    QRect insideBar;
     int maxHeight = 0;
     qint64 maxPixels = 0;
-    bool fromTop = false;
+    bool fromTop = false, autoStart = false;
     // The frames may show the mouse pointer although none was asked for (ext-image-copy-capture).
     bool paintedPointer = false;
     std::function<bool()> endedByDesktop;
@@ -148,8 +330,8 @@ struct ScrollCapture::Job {
 };
 struct ScrollCapture::Outcome {
     const Job* job = nullptr;
-    RunResult result = RunResult::NoFrames;
-    RunStats stats;
+    SessionEnd end = SessionEnd::NoFrames;
+    SessionStats stats;
     Error error;
     QJsonObject descriptor;
     bool nothing = false;  // stopped before any row existed
@@ -163,12 +345,17 @@ ScrollCapture::ScrollCapture(QObject* parent) : QObject(parent), bounds_(this) {
 #endif
     auto layoutChanged = [this] { if (job_ && state_ == State::Capturing) { job_->layoutChanged.store(true); job_->stop.store(true); } };
     connect(&heartbeat_, &QTimer::timeout, this, [this] { bounds_.beat(); });
+    resumeQuiet_.setSingleShot(true);
+    connect(&resumeQuiet_, &QTimer::timeout, this, [this] { if (resumePending_) resumeNow(); });
+    qApp->installEventFilter(this);
     connect(qGuiApp, &QGuiApplication::screenAdded, this, layoutChanged);
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, layoutChanged);
 }
 ScrollCapture::~ScrollCapture() {
     abandon();
     delete bar_;
+    delete pad_;
+    delete watch_;
     delete selection_;
 #ifdef PUTGD_RECORD_LAYER_SHELL
     delete layerSelection_;
@@ -207,6 +394,14 @@ void ScrollCapture::release() {
     injector_.reset();
     bounds_.hideAll();
     if (bar_) bar_->hide();
+    delete pad_;
+    pad_ = nullptr;
+    delete watch_;
+    watch_ = nullptr;
+    restWindow_.clear();
+    watchWindow_.clear();
+    resumeQuiet_.stop();
+    resumePending_ = false;
 }
 void ScrollCapture::closeSelector() {
     if (selection_) { selection_->disconnect(this); selection_->cancel(); selection_->deleteLater(); selection_ = nullptr; }
@@ -246,11 +441,42 @@ void ScrollCapture::command(const QString& command, const QJsonObject& params, R
         start([reply](Error error, QJsonObject result) { reply(error, result); });
         return;
     }
+    // Auto-scroll on or off; pause and resume are its names from #1514.
+    if (command == "autoScroll" || command == "pause" || command == "resume") {
+        if (state_ != State::Capturing || !job_ || stopRequested_ || cancelRequested_) { reply(stateError("Nothing is being captured"), {}); return; }
+        if (command == "autoScroll" && !params["on"].isBool()) { reply({"invalid_request", "autoScroll takes on: true or false", {}}, {}); return; }
+        const bool on = command == "autoScroll" ? params["on"].toBool() : command == "resume";
+        job_->touches.fetch_add(1);
+        setAutoScroll(on, false);
+        reply({}, pauseView());
+        return;
+    }
     if (command == "stop") { stop(std::move(reply)); return; }
     if (command == "cancel") { cancel(std::move(reply)); return; }
+    if (command == "pointer") {
+        // GNOME (#1531): where the Shell saw the pointer, {at: [x, y], t}
+        // in logical desktop pixels and CLOCK_MONOTONIC milliseconds.
+        const QJsonArray at = params["at"].toArray();
+        if (at.size() != 2 || !at[0].isDouble() || !at[1].isDouble() || !params["t"].isDouble() || params["t"].toDouble() < 0) { reply({"invalid_request", "pointer takes at: [x, y] and t", {}}, {}); return; }
+        shellPointerSeen(QPointF(at[0].toDouble(), at[1].toDouble()), quint64(params["t"].toDouble()));
+        reply({}, {});
+        return;
+    }
     if (command == "overlay") {
-        // GNOME: the Shell could not place the bar outside the rectangle.
+        // GNOME: the Shell placed no bar at all.
         if (params.contains("visible")) barHidden_ = !params["visible"].toBool(true);
+        // GNOME: where the Shell put the bar, so the pointer can rest on it;
+        // inside: in the rectangle's corner, kept out of the image (#1519).
+        if (params.contains("rect")) shellBar_ = rectFromJson(params["rect"]);
+        barInside_ = params["inside"].toBool(false) && !shellBar_.isEmpty();
+        insideBar_ = barInside_ ? shellBar_ : QRect();
+        // Where the bar's buttons are on the desktop, for lab runs that press them.
+        if (debugLogEnabled() && !shellBar_.isEmpty() && bar_)
+            if (auto* done = bar_->findChild<QWidget*>(QStringLiteral("done"))) {
+                const QPoint p = shellBar_.topLeft() + done->mapTo(bar_, QPoint());
+                debugLog(QStringLiteral("scroll: the Shell put the bar at %1,%2 %3x%4%5; done %6,%7 %8x%9").arg(shellBar_.x()).arg(shellBar_.y()).arg(shellBar_.width()).arg(shellBar_.height())
+                             .arg(barInside_ ? QStringLiteral(" inside") : QString()).arg(p.x()).arg(p.y()).arg(done->width()).arg(done->height()));
+            }
         showBar();
         reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
         return;
@@ -266,7 +492,8 @@ void ScrollCapture::prepare(const QJsonObject& params, Reply reply) {
     if (!probe["available"].toBool()) { reply(unavailable(probe["reason"].toString(), probe["message"].toString()), {}); return; }
     const QString selection = params["selection"].toString(QStringLiteral("helper"));
     const double maxHeight = params["maxHeight"].toDouble(scrollDefaultHeight), maxPixels = params["maxPixels"].toDouble(0);
-    if ((selection != "helper" && selection != "shell") || (params.contains("rect") && rectFromJson(params["rect"]).isEmpty()) || !std::isfinite(maxHeight) || maxHeight < 1 || !std::isfinite(maxPixels) || maxPixels < 0) {
+    const QString driver = params["driver"].toString(QStringLiteral("user"));
+    if ((selection != "helper" && selection != "shell") || (driver != "user" && driver != "putgd") || (params.contains("finishKey") && !params["finishKey"].isString()) || (params.contains("shellPointer") && !params["shellPointer"].isBool()) || (params.contains("rect") && rectFromJson(params["rect"]).isEmpty()) || !std::isfinite(maxHeight) || maxHeight < 1 || !std::isfinite(maxPixels) || maxPixels < 0) {
         reply({"invalid_request", "Invalid scroll capture request", {}}, {}); return;
     }
     id_ = params["id"].toString();
@@ -275,9 +502,14 @@ void ScrollCapture::prepare(const QJsonObject& params, Reply reply) {
     selectionMode_ = selection;
     maxHeight_ = int(std::clamp(maxHeight, double(scrollMinEdge), double(scrollMaxHeight)));
     maxPixels_ = qint64(std::min(maxPixels, 4e12));
-    fromTop_ = params["fromTop"].toBool(true);
+    fromTop_ = params["fromTop"].toBool(false);
     autoStart_ = params["autoStart"].toBool(true);
-    debugLog(QStringLiteral("scroll: prepare frames %1 injector %2 maxHeight %3 fromTop %4 autoStart %5").arg(frames_, probe["injector"].toString()).arg(maxHeight_).arg(fromTop_).arg(autoStart_));
+    autoAtStart_ = driver == "putgd";
+    shellPointer_ = params["shellPointer"].toBool(false);
+    // The key that finishes the capture here, named on the bar: Esc on X11,
+    // else the resident's `scroll` hotkey where one is bound.
+    finishKey_ = surfaceMode() == SurfaceMode::X11 ? QStringLiteral("Esc") : params["finishKey"].toString().left(40);
+    debugLog(QStringLiteral("scroll: prepare frames %1 injector %2 maxHeight %3 fromTop %4 autoStart %5 driver %6").arg(frames_, probe["injector"].toString()).arg(maxHeight_).arg(fromTop_).arg(autoStart_).arg(driver));
     if (params.contains("rect")) {
         if (auto e = setRect(rectFromJson(params["rect"]))) { reply(e, {}); return; }
         if (!autoStart_) { reply({}, {{"state", "ready"}, {"rect", rectJson(rect_)}}); return; }
@@ -389,26 +621,51 @@ Error ScrollCapture::setRect(const QRect& rect) {
     if (surfaceMode() != SurfaceMode::Compositor) bounds_.showBounds(rect_);
     delete bar_;
     bar_ = new ScrollBar;
-    connect(bar_, &ScrollBar::stopRequested, this, [this] { stop([](Error, QJsonObject) {}); });
+    bar_->setFinishKey(finishKey_);
+    connect(bar_, &ScrollBar::doneRequested, this, [this] { if (job_) job_->touches.fetch_add(1); stop([](Error, QJsonObject) {}); });
+    connect(bar_, &ScrollBar::autoScrollRequested, this, [this](bool on) { if (job_) job_->touches.fetch_add(1); setAutoScroll(on, true); });
     // The event follows the worker's end: nothing is injected after it.
     connect(bar_, &ScrollBar::cancelRequested, this, [this] { cancel([this](Error, QJsonObject) { emit event({{"event", "cancelled"}}); }); });
     barOutside_ = bar_->place(rect_);
+    barInside_ = false;
+    insideBar_ = {};
+    // No room beside the rectangle (#1519): in its corner, its rows kept out of the image.
+    if (!barOutside_ && surfaceMode() != SurfaceMode::Compositor && bar_->placeInside(rect_)) {
+        barInside_ = true;
+        const QRect g = bar_->geometry();
+        insideBar_ = surfaceMode() == SurfaceMode::X11 ? QRect(barRootPoint(QPointF(g.topLeft())), barRootPoint(QPointF(g.bottomRight() + QPoint(1, 1))) - QPoint(1, 1)) : g;
+        debugLog(QStringLiteral("scroll: no room beside the rectangle, the bar sits inside at %1,%2 %3x%4").arg(insideBar_.x()).arg(insideBar_.y()).arg(insideBar_.width()).arg(insideBar_.height()));
+    }
     state_ = State::Ready;
     showBar();
     return {};
 }
 
-// The bar is never inside the captured rectangle while frames are read. X11
-// and layer-shell: it shows only where a spot outside exists. GNOME: the Shell
-// moves it, which needs it on screen first, so it shows when the capture does
-// not start by itself (the resident places it, then starts), and the resident
-// hides it (`overlay`) when the Shell found no spot outside.
+// The bar is beside the rectangle where there is room, else inside its
+// corner with its rows kept out of the image (#1519). GNOME: the Shell moves
+// it, which needs it on screen first, so it shows when the capture does not
+// start by itself (the resident places it, then starts), and the resident
+// hides it (`overlay`) only when the Shell placed no bar at all.
 void ScrollCapture::showBar() {
     if (!bar_) return;
     const bool live = state_ == State::Ready || state_ == State::Starting || state_ == State::Capturing;
-    const bool allowed = surfaceMode() == SurfaceMode::Compositor ? !autoStart_ : barOutside_;
-    if (live && allowed && !barHidden_) { bar_->show(); bar_->raise(); }
-    else bar_->hide();
+    const bool allowed = surfaceMode() == SurfaceMode::Compositor ? !autoStart_ : barOutside_ || barInside_;
+    if (live && allowed && !barHidden_) {
+        const bool was = bar_->isVisible();
+        bar_->show();
+        bar_->raise();
+        // Where the bar and its buttons are (desktop logical pixels on Wayland,
+        // root pixels on X11), for lab runs that press them as a person would.
+        if (!was && debugLogEnabled()) {
+            QStringList at;
+            for (const char* name : {"autoScroll", "done", "cancel"})
+                if (auto* button = bar_->findChild<QWidget*>(QLatin1String(name))) {
+                    const QPoint p = bar_->pos() + button->mapTo(bar_, QPoint());
+                    at << QStringLiteral("%1 %2,%3 %4x%5").arg(QLatin1String(name)).arg(p.x()).arg(p.y()).arg(button->width()).arg(button->height());
+                }
+            debugLog(QStringLiteral("scroll: bar at %1,%2 %3x%4 %5; %6").arg(bar_->x()).arg(bar_->y()).arg(bar_->width()).arg(bar_->height()).arg(barInside_ ? QStringLiteral("inside") : QStringLiteral("outside")).arg(at.join(QStringLiteral(", "))));
+        }
+    } else bar_->hide();
 }
 
 void ScrollCapture::start(Reply reply) {
@@ -497,16 +754,42 @@ void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     job_->fromTop = fromTop_;
     job_->paintedPointer = frames_ == "image-copy";
     job_->endedByDesktop = [this] { return mutter_.closedByCompositor(); };
+    job_->autoStart = autoAtStart_;
+    job_->shellPointer = shellPointer_ && surfaceMode() == SurfaceMode::Compositor;
+    job_->wantAuto.store(autoAtStart_);
+    job_->insideBar = barInside_ ? insideBar_ : QRect();
+    // Nothing is injected while the user drives.
+    job_->gate.paused.store(!autoAtStart_);
+    QPointer<ScrollCapture> guard(this);
+    const std::weak_ptr<Job> weak = job_;
+    job_->prepareAuto = [guard, weak](unsigned serial) {
+        QMetaObject::invokeMethod(guard, [guard, weak, serial] {
+            if (guard) guard->prepareAuto();
+            if (auto job = weak.lock()) job->prepared.store(serial);
+        }, Qt::QueuedConnection);
+    };
+    job_->gate.tookPointer = [guard] { QMetaObject::invokeMethod(guard, [guard] { if (guard) guard->pause(QStringLiteral("pointer")); }, Qt::QueuedConnection); };
     state_ = State::Capturing;
+    pausedBy_.clear();
+    autoOn_ = autoAtStart_;
+    progressState_ = autoAtStart_ ? (fromTop_ ? QStringLiteral("scrollingToTop") : QStringLiteral("autoScrolling")) : QStringLiteral("waiting");
+    lastProgress_ = {};
+    watchSeqBase_ = 0;
+    haveSeen_ = lastWasArrival_ = decisionPending_ = false;
+    arrivedMs_ = -1;
+    job_->gate.origin = QPointF(rect_.topLeft());
+    // Where the desktop cannot be asked where the pointer is, a pointer pulled
+    // back from under the hand is put back (X11 asks before every motion).
+    job_->gate.desktopCorrects = surfaceMode() != SurfaceMode::X11;
     if (frames_ == "kde-screencast" && surfaceMode() == SurfaceMode::LayerShell) {
         bounds_.showHeartbeat(screen_.topLeft());
         heartbeat_.start(heartbeatMs);
     }
-    if (bar_) bar_->setState(fromTop_ ? QStringLiteral("scrollingToTop") : QStringLiteral("capturing"));
+    if (bar_) { bar_->setState(progressState_); bar_->setAutoScroll(autoOn_); }
     showBar();
     debugLog(QStringLiteral("scroll: capturing %1,%2 %3x%4 with %5").arg(rect_.x()).arg(rect_.y()).arg(rect_.width()).arg(rect_.height()).arg(injector_->name()));
     worker_ = std::thread(&ScrollCapture::work, job_);
-    // Escape on X11 is Stop: the image so far is kept.
+    // Escape on X11 is Done: the image so far is kept.
     if (surfaceMode() == SurfaceMode::X11) escape_.start([this] { if (state_ == State::Capturing && !stopRequested_ && !cancelRequested_) stop([](Error, QJsonObject) {}); });
     reply({}, {{"state", "capturing"}, {"rect", rectJson(rect_)}});
 }
@@ -521,6 +804,9 @@ void ScrollCapture::stop(Reply reply) {
     if (stopReply_) { reply(stateError("The capture is already stopping"), {}); return; }
     stopRequested_ = true;
     stopReply_ = std::move(reply);
+    // A Resume waiting for the mouse to be still does not go on after Stop.
+    resumePending_ = false;
+    resumeQuiet_.stop();
     job_->stop.store(true);
     if (bar_) bar_->setState(QStringLiteral("finishing"));
 }
@@ -531,6 +817,8 @@ void ScrollCapture::cancel(Reply reply) {
         if (cancelReply_) { reply({}, {}); return; }
         cancelRequested_ = true;
         cancelReply_ = std::move(reply);
+        resumePending_ = false;
+        resumeQuiet_.stop();
         job_->discard.store(true);
         job_->stop.store(true);
         if (bar_) bar_->hide();
@@ -545,16 +833,503 @@ void ScrollCapture::cancel(Reply reply) {
     reply({}, {});
 }
 
+// The user moved the mouse while auto-scroll was on (#1514). The gate closes
+// at once; the session sees it before its next injection, hands the wheel back
+// and goes on following whatever the user does.
+void ScrollCapture::pause(const QString& by) {
+    if (!job_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    job_->gate.paused.store(true);
+    const bool wasResuming = resumePending_;
+    resumePending_ = false;
+    resumeQuiet_.stop();
+    // The desktop is the user's again: also when Resume's quiet period had put
+    // the watch up and auto-scroll was not on yet (#1520's review).
+    if (watch_) watch_->hide();
+    if (!autoOn_) {
+        // Paused already, or the user drives: a pause in Resume's quiet
+        // period keeps the reason it was paused for.
+        if (wasResuming) {
+            if (bar_) {
+                bar_->setAutoScroll(false);
+                if (!pausedBy_.isEmpty()) bar_->setPaused(pausedBy_);
+                else bar_->setState(progressState_ == "paused" ? QStringLiteral("following") : progressState_);
+            }
+            dropAutoSurfaces();
+            emitProgress();
+        }
+        return;
+    }
+    autoOn_ = false;
+    pausedBy_ = by;
+    // The pad goes a moment later: a pointer pulled back from under the hand
+    // is still being put back where the hand has it (Gate::held).
+    QPointer<ScrollCapture> guard(this);
+    QTimer::singleShot(300, this, [guard] { if (guard && !guard->autoOn_ && !guard->resumePending_) guard->dropAutoSurfaces(); });
+    debugLog(QStringLiteral("scroll: auto-scroll paused by %1 at t=%2").arg(by).arg(FrameTap::nowMs() % 1000000));
+    if (bar_) { bar_->setAutoScroll(false); bar_->setPaused(by); }
+    emitProgress();
+}
+void ScrollCapture::setAutoScroll(bool on, bool quiet) {
+    if (!job_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    if (!on) { autoOff(); return; }
+    if (autoOn_ || resumePending_) return;
+    resume(quiet);
+}
+// The bar's Auto-scroll waits until the hand is off the mouse: the click
+// itself comes with motion, and a pause the moment it begins helps nobody.
+void ScrollCapture::resume(bool quiet) {
+    if (!job_ || autoOn_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    if (!quiet) { resumeNow(); return; }
+    resumePending_ = true;
+    if (bar_) bar_->setState(QStringLiteral("resuming"));
+    // The rest and the watch go up now: the watch sees whether the hand is
+    // still moving over the page, with the gate still closed (pointerSeen
+    // restarts the quiet period).
+    raiseAutoSurfaces();
+    resumeQuiet_.start(resumeQuietMs);
+}
+void ScrollCapture::resumeNow() {
+    // Never after Stop or Cancel: the quiet period's timer can still fire.
+    if (!job_ || autoOn_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    resumePending_ = false;
+    resumeQuiet_.stop();
+    pausedBy_.clear();
+    // The pointer is wherever the user left it: the capture's next motion is
+    // its own, and the user is told from the capture again once it has arrived.
+    job_->gate.detecting.store(false);
+    job_->gate.resting.store(false);
+    job_->gate.visits.store(0);
+    job_->gate.skipCheck.store(true);
+    {
+        std::lock_guard lock(job_->gate.correctionMutex);
+        job_->gate.correctionPending = false;
+        job_->gate.correctionStamped = false;
+        // This pause's record and its one correction end with it.
+        job_->gate.seenValid = false;
+        job_->gate.correctionTaken = false;
+    }
+    watchSeqBase_ = job_->gate.seq.load();
+    haveSeen_ = lastWasArrival_ = decisionPending_ = false;
+    arrivedMs_ = -1;
+    autoOn_ = true;
+    // The gate opens before the session hears of it, or it would find itself paused.
+    job_->gate.paused.store(false);
+    job_->wantAuto.store(true);
+    job_->autoSerial.fetch_add(1);
+    debugLog(QStringLiteral("scroll: auto-scroll on at t=%1").arg(FrameTap::nowMs() % 1000000));
+    if (bar_) { bar_->setAutoScroll(true); bar_->setState(QStringLiteral("autoScrolling")); }
+    emitProgress();
+}
+void ScrollCapture::autoOff() {
+    if (!job_) return;
+    resumePending_ = false;
+    resumeQuiet_.stop();
+    job_->wantAuto.store(false);
+    job_->autoSerial.fetch_add(1);
+    job_->gate.paused.store(true);
+    const bool was = autoOn_ || !pausedBy_.isEmpty();
+    autoOn_ = false;
+    pausedBy_.clear();
+    dropAutoSurfaces();
+    if (was) debugLog(QStringLiteral("scroll: auto-scroll off at t=%1").arg(FrameTap::nowMs() % 1000000));
+    if (bar_) {
+        bar_->setAutoScroll(false);
+        const QString state = lastProgress_["state"].toString();
+        bar_->setState(state == "lost" || state == "following" || state == "waiting" ? state : lastProgress_["placed"].toInt() > 1 ? QStringLiteral("following") : QStringLiteral("waiting"));
+    }
+    emitProgress();
+}
+// The worker is about to send auto-scroll's first wheel step of a run: the
+// pointer's rest, and on layer-shell desktops the watch with holes at the
+// wheel points.
+void ScrollCapture::prepareAuto() {
+    if (!job_ || !autoOn_ || state_ != State::Capturing) return;
+    raiseAutoSurfaces();
+}
+void ScrollCapture::raiseAutoSurfaces() {
+    if (!job_ || state_ != State::Capturing) return;
+    if (!restWindow_) placeRest();
+    // GNOME: the Shell watches the pointer everywhere for the length of the
+    // auto-scroll (the bar's window sees it only on the bar, #1531).
+    if (job_->shellPointer && !shellWatchOn_) {
+        shellWatchOn_ = true;
+        job_->pointerArmed.store(false);
+        emit event(QJsonObject{{"event", "pointerWatch"}, {"on", true}});
+    }
+    // PUTGD_SCROLL_WATCH=0 leaves the watch out (lab diagnostics: what the
+    // watch costs a compositor; the user's motion during a wheel step is then
+    // seen as on GNOME).
+    if (surfaceMode() == SurfaceMode::LayerShell && job_->rest && qEnvironmentVariable("PUTGD_SCROLL_WATCH") != QLatin1String("0")) {
+        // The wheel points as the session finds them (ScrollSession::wheelPoints),
+        // in desktop logical pixels: the entry just inside the edge the pointer
+        // rests beyond, and the three park points.
+        const int above = insideBar_.top() - rect_.top() - insideBarMargin();
+        const int rows = barInside_ && above > rect_.height() / 4 ? above : rect_.height();
+        const QPoint at = *job_->rest - rect_.topLeft();
+        QList<QPointF> holes;
+        if (!QRect(QPoint(), rect_.size()).contains(at)) {
+            const RunPoint e = ScrollSession::entryPoint({at.x(), at.y()}, 48, rect_.width(), rows);
+            holes << QPointF(rect_.topLeft()) + QPointF(e.x, e.y);
+        }
+        for (int position = 0; position < 3; ++position) {
+            const RunPoint p = ScrollSession::parkPoint(position, rect_.width(), rows);
+            holes << QPointF(rect_.topLeft()) + QPointF(p.x, p.y);
+        }
+        if (!watch_) showWatch(holes);
+        else { watch_->show(); watchWindow_ = watch_->windowHandle(); }
+    }
+}
+void ScrollCapture::dropAutoSurfaces() {
+    if (shellWatchOn_) {
+        shellWatchOn_ = false;
+        emit event(QJsonObject{{"event", "pointerWatch"}, {"on", false}});
+    }
+    delete pad_;
+    pad_ = nullptr;
+    delete watch_;
+    watch_ = nullptr;
+    restWindow_.clear();
+    watchWindow_.clear();
+    if (job_) {
+        std::lock_guard lock(job_->restMutex);
+        job_->rest.reset();
+    }
+}
+// The session's progress (worker thread, queued here). A hand-back the
+// session made by itself (it lost the page, the user scrolled, nothing
+// scrolled under the wheel) closes the gate and takes the surfaces down;
+// progress from before the latest auto-scroll request decides nothing.
+void ScrollCapture::sessionProgress(const QJsonObject& p) {
+    if (!job_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    lastProgress_ = {{"state", p["state"]}, {"height", p["height"]}, {"placed", p["placed"]}, {"skipped", p["skipped"]}, {"steps", p["steps"]}, {"pixelsPerNotch", p["pixelsPerNotch"]}};
+    const QString driver = p["driver"].toString(), by = p["pausedBy"].toString();
+    progressState_ = p["state"].toString();
+    const bool current = unsigned(p["serial"].toDouble()) == job_->autoSerial.load();
+    if (current && driver == "user" && autoOn_ && !resumePending_) {
+        job_->gate.paused.store(true);
+        autoOn_ = false;
+        if (watch_) watch_->hide();
+        dropAutoSurfaces();
+        debugLog(QStringLiteral("scroll: auto-scroll handed the wheel back (%1)").arg(by.isEmpty() ? QStringLiteral("off") : by));
+    }
+    if (current && driver == "user" && !by.isEmpty()) pausedBy_ = by;
+    if (bar_) {
+        bar_->setHeight(p["height"].toInt());
+        bar_->setPicture(p["picture"].toBool());
+        if (!resumePending_) {
+            bar_->setAutoScroll(autoOn_);
+            if (progressState_ == "paused") bar_->setPaused(pausedBy_.isEmpty() ? by : pausedBy_);
+            else bar_->setState(progressState_, progressState_ == "lost" && by == "lost" ? by : QString());
+        }
+    }
+    emitProgress();
+}
+QJsonObject ScrollCapture::pauseView() const {
+    QJsonObject view{{"state", "capturing"}, {"driver", autoOn_ ? "putgd" : "user"}, {"paused", !pausedBy_.isEmpty()}};
+    if (!pausedBy_.isEmpty()) view["pausedBy"] = pausedBy_;
+    return view;
+}
+void ScrollCapture::emitProgress() {
+    QJsonObject progress = lastProgress_;
+    progress["event"] = "progress";
+    if (!progress.contains("state")) progress["state"] = progressState_;
+    if (resumePending_) progress["state"] = QStringLiteral("resuming");
+    const auto view = pauseView();
+    progress.remove("pausedBy");
+    for (auto i = view.begin(); i != view.end(); ++i) if (i.key() != "state") progress[i.key()] = i.value();
+    if (!progress.contains("height")) { progress["height"] = 0; progress["placed"] = 0; progress["skipped"] = 0; progress["steps"] = 0; progress["pixelsPerNotch"] = 0; }
+    emit event(progress);
+}
+
+// Where the pointer rests between wheel steps (#1514): on the bar where it is
+// beside the rectangle, in a margin of the bar that holds no button and on its
+// edge nearest the rectangle, so the way to the page is short (Plasma's
+// "shake cursor", ScrollSession::entryPoint); else at the old rest spot, 16 px
+// outside the rectangle, on a clear pad of the helper's own. Where frames show
+// a painted pointer the arrow, which hangs down and right from its tip, stays
+// out of the rectangle. With no such place (the rectangle fills its output, or
+// GNOME without the bar) there is none, and the user's motion is not seen.
+void ScrollCapture::placeRest() {
+    const auto mode = surfaceMode();
+    const bool painted = frames_ == "image-copy";
+    const QRect capture = mode == SurfaceMode::X11 ? barLogicalRect(rect_) : rect_;
+    const QRect output = mode == SurfaceMode::X11 ? barLogicalRect(screen_) : screen_;
+    const QRect guard = capture.adjusted(-2, -2, 2, 2);
+    QWidget* surface = nullptr;
+    QRect place;
+    std::optional<QPoint> rest;
+    const bool barShown = bar_ && bar_->isVisible() && !barHidden_;
+    const QRect bar = mode == SurfaceMode::Compositor ? shellBar_ : barShown && (barOutside_ || barInside_) ? bar_->geometry() : QRect();
+    // The bar inside the rectangle (#1519) covers page rows the image leaves out: the pointer may rest on it.
+    const QRect onBar = barInside_ ? bar.adjusted(4, 4, -4, -4) : QRect();
+    const auto clear = [&](const QPoint& p) { return onBar.contains(p) || (!guard.contains(p) && (!painted || !QRect(p.x() - 2, p.y() - 2, 26, 34).intersects(guard))); };
+    if (barShown && !bar.isEmpty() && (barInside_ || !bar.intersects(capture))) {
+        // Over the state text at the bar's left end, never a button, and at
+        // least 14 px from every edge of the bar: a hand's first motion
+        // event (about 6 px at a brisk pace) then lands on the bar and is
+        // seen, where at 3 px from its edge it left the bar at once and its
+        // leave was taken for the capture's own (GNOME acceptance, two
+        // pull-backs in one try).
+        const int inset = 14;
+        qint64 best = -1;
+        for (int y = bar.top() + inset; y <= bar.bottom() - inset; y += 2)
+            for (int x = bar.left() + 16; x <= bar.left() + bar.width() * 35 / 100; x += 4) {
+                const QPoint p(x, y);
+                if (!clear(p)) continue;
+                const int dx = std::max({capture.left() - x, 0, x - capture.right()}), dy = std::max({capture.top() - y, 0, y - capture.bottom()});
+                const qint64 d = qint64(dx) * dx + qint64(dy) * dy;
+                if (best < 0 || d < best) { best = d; rest = p; }
+            }
+        // The way into the rectangle stays short (Plasma's shake cursor): a bar
+        // whose text end is far from the rectangle is no rest where a pad can be.
+        if (rest && best > 60 * 60 && mode != SurfaceMode::Compositor && !barInside_) rest.reset();
+        if (rest) { surface = bar_; place = bar; }
+    }
+    if (!rest && mode != SurfaceMode::Compositor) {
+        const QRect& r = capture;
+        for (const QPoint& candidate : {QPoint(r.left() - awayMargin, r.top() + r.height() / 3), QPoint(r.right() + 1 + awayMargin, r.top() + r.height() / 3),
+                                        QPoint(r.center().x(), r.top() - awayMargin), QPoint(r.center().x(), r.bottom() + 1 + awayMargin)}) {
+            QRect pad(candidate - QPoint(padSize / 2, padSize / 2), QSize(padSize, padSize));
+            // Kept off the rectangle: moved outward by as much as it overlaps.
+            if (candidate.x() < r.left()) pad.moveRight(std::min(pad.right(), r.left() - 1));
+            else if (candidate.x() > r.right()) pad.moveLeft(std::max(pad.left(), r.right() + 1));
+            else if (candidate.y() < r.top()) pad.moveBottom(std::min(pad.bottom(), r.top() - 1));
+            else pad.moveTop(std::max(pad.top(), r.bottom() + 1));
+            if (!output.contains(pad) || pad.intersects(capture) || (barShown && bar.intersects(pad)) || !pad.contains(candidate) || !clear(candidate)) continue;
+            auto* w = new ClearSurface("putgd-scroll-rest");
+            const auto screens = QGuiApplication::screens();
+            QScreen* on = nullptr;
+            for (QScreen* each : screens) if (each->geometry().contains(pad)) on = each;
+            if (mode == SurfaceMode::LayerShell && on) barToLayer(w, on, pad, false);
+            else w->setGeometry(pad);
+            w->show();
+            pad_ = w;
+            surface = w;
+            place = pad;
+            rest = candidate;
+            break;
+        }
+    }
+    if (!rest || !surface) {
+        debugLog(QStringLiteral("scroll: no rest surface, the user's motion is not watched"));
+        return;
+    }
+    restLocal_ = QPointF(*rest - place.topLeft());
+    restOrigin_ = QPointF(place.topLeft());
+    restWindow_ = surface->windowHandle();
+    {
+        std::lock_guard lock(job_->restMutex);
+        job_->rest = mode == SurfaceMode::X11 ? barRootPoint(QPointF(*rest)) : *rest;
+    }
+    // Fixed before the worker starts; the main thread reads it, the worker never writes it.
+    job_->gate.restPoint = QPointF(*job_->rest);
+    debugLog(QStringLiteral("scroll: rest on the %1 at %2,%3 (local %4,%5)").arg(surface == bar_ ? QStringLiteral("bar") : QStringLiteral("pad")).arg(job_->rest->x()).arg(job_->rest->y()).arg(restLocal_.x()).arg(restLocal_.y()));
+}
+
+// A pointer event on one of the helper's surfaces: the rest (the bar or the
+// pad) or the watch; local: where on it, none: it left; stamp: the event's
+// time. The capture's own: arriving at the rest spot, leaving it for a visit
+// it sent. The user: the pointer anywhere else on the rest once it has
+// arrived there, leaving the rest with no visit sent, on the watch once the
+// capture has moved it, or moved on any of them with nothing sent in between
+// (so a hand is seen before the first arrival too: a Hyprland guest's first
+// rest came 3.2 s into the capture, after the whole gesture).
+void ScrollCapture::pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp) {
+    if (!job_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    auto& gate = job_->gate;
+    const std::optional<QPointF> global = local ? std::optional<QPointF>(*local + (watch ? QPointF(screen_.topLeft()) : restOrigin_)) : std::nullopt;
+    const qint64 now = FrameTap::nowMs();
+    const bool clocksAgree = stamp != 0 && qint32(quint32(now) - quint32(stamp)) >= 0 && qint32(quint32(now) - quint32(stamp)) < 1000;
+    if (global && decisionPending_ && gate.paused.load()) {
+        // A pause that came from an event without a time: the first motion
+        // event with one decides whether the hand had moved before the
+        // capture's last motion.
+        if (now > decisionUntil_) decisionPending_ = false;
+        else if (clocksAgree) {
+            decisionPending_ = false;
+            if (qint32(quint32(decisionMoveMs_) - quint32(stamp)) > 0) startCorrection(*global, decisionTarget_, stamp, decisionMoveMs_);
+        }
+    }
+    if (global && gate.desktopCorrects) {
+        // Following the hand for a correction that is still to be made.
+        std::lock_guard lock(gate.correctionMutex);
+        if (gate.correctionPending && stamp != 0) {
+            if (gate.correctionStamped && qint32(quint32(stamp) - quint32(gate.correctionAnchorMs)) < 0) {
+                if (stamp >= gate.correctionBaseStamp) { gate.correctionBase = *global; gate.correctionBaseStamp = stamp; }
+            } else {
+                gate.correctionAfter = true;
+                gate.correctionLatest = *global;
+            }
+        }
+    }
+    if (resumePending_) { resumeQuiet_.start(resumeQuietMs); return; }
+    if (gate.paused.load()) return;
+    if (!global) {
+        if (watch || !gate.detecting.load()) return;
+        if (gate.visits.load() > 0) { gate.visits.fetch_sub(1); return; }
+        debugLog(QStringLiteral("scroll: pointer left the rest surface with no visit sent"));
+        // A leave has neither a place nor a time: it decides nothing about a pull-back.
+        pause(QStringLiteral("pointer"));
+        return;
+    }
+    const quint64 seq = gate.seq.load();
+    const bool movedAlone = haveSeen_ && seq == seenSeq_ && QLineF(*global, seen_).length() > restTolerance;
+    const bool afterArrival = lastWasArrival_ && stamp - arrivalStamp_ <= quint64(pullBackMs);
+    haveSeen_ = true;
+    seen_ = *global;
+    seenSeq_ = seq;
+    lastWasArrival_ = false;
+    if (!watch && QLineF(*local, restLocal_).length() <= restTolerance) {
+        if (gate.resting.load()) {
+            if (!gate.detecting.exchange(true)) debugLog(QStringLiteral("scroll: pointer at rest, watching from t=%1").arg(FrameTap::nowMs() % 1000000));
+            // A leave that never came is not waited for.
+            if (gate.visits.load() > 0 && FrameTap::nowMs() - gate.visitAt.load() > visitLateMs) gate.visits.store(0);
+            lastWasArrival_ = true;
+            arrivalStamp_ = stamp;
+            arrivedMs_ = FrameTap::nowMs();
+        }
+        return;
+    }
+    QString why;
+    if (movedAlone) why = QStringLiteral("moved with nothing sent");
+    else if (!watch && gate.detecting.load()) why = QStringLiteral("not at its rest");
+    else if (watch && seq > watchSeqBase_) why = QStringLiteral("on the watch");
+    if (why.isEmpty()) return;
+    // The gate closes first, before a line is logged: a motion the worker was
+    // about to send went out 2 ms after the hand was seen (k72, 2026-11-14).
+    // The capture's last motion is read as one record just before.
+    const auto sent = gate.lastSent();
+    gate.paused.store(true);
+    // The capture moved the pointer after the hand had moved it, told by the
+    // event's own time (the compositor's monotonic milliseconds, as the
+    // capture's clock, used only where the two agree within a second): a
+    // motion sent after it means the pointer is no longer where this event
+    // says the hand put it (an Omarchy guest delivered the hand's events 100
+    // to 200 ms late, and the next wheel step's visit went out in between).
+    // An enter has no time of its own (Qt gives it an older one): the next
+    // motion event decides. Without a watch (GNOME), whose rest surface sees
+    // the hand only after the move back, a motion within 12 ms of the
+    // pointer's arrival at rest was under way when it arrived.
+    // The record held() reads (where the hand was seen, the motion count
+    // then) and the decision are published together, so held() cannot
+    // start a correction of its own for the same displacement.
+    {
+        std::lock_guard lock(gate.correctionMutex);
+        gate.seenValid = true;
+        gate.seenAt = *global;
+        // A motion recorded but not yet sent lands after this event, whatever
+        // its time says: held() counts it as one sent after the hand was seen.
+        gate.seenSeq = sent.inFlight ? sent.seq - 1 : sent.seq;
+        if (clocksAgree && sent.ms >= 0 && qint32(quint32(sent.ms) - quint32(stamp)) > 0) {
+            startCorrectionLocked(*global, sent.at, stamp, sent.ms, sent.at);
+        } else if (!clocksAgree && sent.ms >= 0 && now - sent.ms < 400) {
+            decisionPending_ = true;
+            decisionUntil_ = now + 400;
+            decisionMoveMs_ = sent.ms;
+            decisionTarget_ = sent.at;
+        } else if (!watch && !watch_ && afterArrival) {
+            startCorrectionLocked(sent.visit, gate.restPoint, 0, 0, *global);
+        }
+    }
+    debugLog(QStringLiteral("scroll: pointer at %1,%2 %3 (%4)").arg(global->x()).arg(global->y()).arg(watch ? QStringLiteral("on the watch") : QStringLiteral("on the rest surface")).arg(why));
+    pause(QStringLiteral("pointer"));
+}
+
+// A pointer the capture moved from under the user's hand (#1514) is put back
+// once by held(): by the displacement from anchor (where the capture put it)
+// to base (where the hand had it). Not on X11, which asks before every motion.
+void ScrollCapture::startCorrection(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs) {
+    std::lock_guard lock(job_->gate.correctionMutex);
+    startCorrectionLocked(base, anchor, stamp, anchorMs, anchor);
+}
+void ScrollCapture::startCorrectionLocked(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs, QPointF latest) {
+    auto& gate = job_->gate;
+    if (!gate.desktopCorrects || gate.correctionTaken) return;
+    gate.correctionTaken = true;
+    gate.correctionAnchor = anchor;
+    gate.correctionBase = base;
+    gate.correctionLatest = latest;
+    gate.correctionStamped = stamp != 0;
+    gate.correctionBaseStamp = stamp;
+    gate.correctionAnchorMs = anchorMs;
+    gate.correctionAfter = false;
+    gate.correctionSince = FrameTap::nowMs();
+    gate.correctionPending = true;
+    debugLog(QStringLiteral("scroll: the pointer was moved from under the hand; it goes back by %1,%2").arg(base.x() - anchor.x(), 0, 'f', 0).arg(base.y() - anchor.y(), 0, 'f', 0));
+}
+
+// GNOME (#1531): a position the Shell saw the pointer at. The capture's own
+// motions (to a wheel point, back to the rest) are seen too and are not the
+// user; any other position is the hand, decided as on a watch surface.
+void ScrollCapture::shellPointerSeen(QPointF global, quint64 stamp) {
+    if (!job_ || !shellWatchOn_ || state_ != State::Capturing || stopRequested_ || cancelRequested_) return;
+    auto& gate = job_->gate;
+    // The worker's first wheel step waits for the watch: it is marked on only
+    // once this report (the first is where the pointer was when the watch
+    // began) has been decided, before any motion of the capture's.
+    struct Armed { Job& job; ~Armed() { if (!job.pointerArmed.exchange(true)) debugLog(QStringLiteral("scroll: the Shell watches the pointer from t=%1").arg(FrameTap::nowMs() % 1000000)); } } armed{*job_};
+    const auto sent = gate.lastSent();
+    if (sent.ms >= 0 && QLineF(global, sent.at).length() <= restTolerance) return;
+    // job_->rest is the main thread's own (written here, under restMutex for the worker).
+    if (job_->rest && QLineF(global, QPointF(*job_->rest)).length() <= restTolerance) return;
+    pointerSeen(true, global - QPointF(screen_.topLeft()), stamp);
+}
+
+void ScrollCapture::showWatch(const QList<QPointF>& holes) {
+    if (!job_ || state_ != State::Capturing || watch_) return;
+    QScreen* on = nullptr;
+    for (QScreen* each : QGuiApplication::screens()) if (each->geometry() == screen_) on = each;
+    if (!on) return;
+    auto* w = new ClearSurface("putgd-scroll-watch");
+    QRegion input(QRect(QPoint(), screen_.size()));
+    // A wheel step goes to the page only through these holes, 8 px across.
+    for (const QPointF& hole : holes) input -= QRect((hole - QPointF(4, 4)).toPoint() - screen_.topLeft(), QSize(8, 8));
+    if (bar_ && bar_->isVisible()) input -= bar_->geometry().translated(-screen_.topLeft());
+    if (pad_) input -= pad_->geometry().translated(-screen_.topLeft());
+    w->setMask(input);
+    barToLayer(w, on, screen_, false);
+    watch_ = w;
+    // Made while paused (the pause came before the first frame): kept hidden,
+    // since the desktop is the user's until Resume, which shows it.
+    if (job_->gate.paused.load() && !resumePending_) {
+        debugLog(QStringLiteral("scroll: watch made while paused, shown on Resume"));
+    } else {
+        w->show();
+        watchWindow_ = w->windowHandle();
+    }
+    QStringList where;
+    for (const QPointF& hole : holes) where << QStringLiteral("%1,%2").arg(hole.x(), 0, 'f', 1).arg(hole.y(), 0, 'f', 1);
+    debugLog(QStringLiteral("scroll: watch over %1 with holes at %2").arg(screenName_, where.join(' ')));
+}
+bool ScrollCapture::eventFilter(QObject* object, QEvent* e) {
+    // The capture's pointer is only ever at its rest (on the bar or the pad,
+    // cut out of the watch) or in a hole: see pointerSeen.
+    const bool watch = watchWindow_ && object == watchWindow_.data(), rest = restWindow_ && object == restWindow_.data();
+    if (watch || rest) {
+        switch (e->type()) {
+            case QEvent::MouseMove: { auto* m = static_cast<QMouseEvent*>(e); pointerSeen(watch, m->position(), m->timestamp()); break; }
+            // An enter's time is not its own (Qt fills in an earlier event's).
+            case QEvent::Enter: pointerSeen(watch, static_cast<QEnterEvent*>(e)->position(), 0); break;
+            case QEvent::Leave: if (rest) pointerSeen(false, std::nullopt, 0); break;
+            default: break;
+        }
+    }
+    return QObject::eventFilter(object, e);
+}
+
 void ScrollCapture::finish(std::shared_ptr<Outcome> outcome) {
     if (!job_ || outcome->job != job_.get()) return;
     if (worker_.joinable()) worker_.join();
     job_.reset();
     release();
-    debugLog(QStringLiteral("scroll: ended %1, %2 rows, %3 steps, %4 px per notch, %5 ms%6").arg(QString::fromLatin1(toString(outcome->result))).arg(outcome->stats.outputRows).arg(outcome->stats.steps).arg(outcome->stats.pxPerNotch).arg(outcome->stats.elapsedMs)
-                 .arg(outcome->stats.lastError.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(outcome->stats.lastError))));
-    // How the frame source behaved: fresh frames asked for, those that showed
-    // movement the stream had not sent, still steps left unproven, the slowest response.
-    debugLog(QStringLiteral("scroll: source fresh %1, quiet %2, unproven %3, slowest response %4 ms, retries %5, scroll-backs %6").arg(outcome->stats.freshFrames).arg(outcome->stats.quietStream).arg(outcome->stats.unprovenStill).arg(outcome->stats.maxResponseMs).arg(outcome->stats.retries).arg(outcome->stats.scrollBacks));
+    const SessionStats& st = outcome->stats;
+    debugLog(QStringLiteral("scroll: ended %1, %2 rows, placed %3, skipped %4, recovered %5, moved by user %6 by put.gd %7, %8 wheel steps, %9 px per notch, %10 ms%11")
+                 .arg(QString::fromLatin1(toString(outcome->end))).arg(st.bottom - st.top).arg(st.placed).arg(st.skipped).arg(st.recovered).arg(st.movedByUser).arg(st.movedByPutgd).arg(st.steps)
+                 .arg(st.pxPerNotch, 0, 'f', 1).arg(st.elapsedMs).arg(st.lastError.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(st.lastError))));
+    if (outcome->end == SessionEnd::Finished) debugLog(QStringLiteral("scroll: Done's fresh frame added %1 rows").arg(st.rowsAtDone));
+    // How fast the desktop's frame source delivered: what a person's scrolling is followed at.
+    debugLog(QStringLiteral("scroll: source %1 frames in %2 ms (%3 per second), slowest response %4 ms").arg(st.framesSeen).arg(st.readMs)
+                 .arg(st.readMs > 0 ? 1000.0 * (st.framesSeen - 1) / double(st.readMs) : 0.0, 0, 'f', 1).arg(st.maxResponseMs));
     auto stopReply = std::exchange(stopReply_, {});
     auto cancelReply = std::exchange(cancelReply_, {});
     if (cancelRequested_) {
@@ -587,7 +1362,7 @@ void ScrollCapture::finish(std::shared_ptr<Outcome> outcome) {
     if (stopReply) stopReply({}, finished_);
 }
 
-// The capture itself, off the main thread: the first frame, the loop, the
+// The capture itself, off the main thread: the first frame, the session, the
 // pointer's way back, then the spool as one PNG.
 void ScrollCapture::work(std::shared_ptr<Job> job) {
     auto outcome = std::make_shared<Outcome>();
@@ -598,12 +1373,12 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     std::optional<RunFrame> first;
     const int64_t started = FrameTap::nowMs();
     while (!first && !job->stop.load() && !job->tap->lost() && FrameTap::nowMs() - started < firstFrameMs) first = job->tap->nextFrame(100);
-    RunStats stats;
-    RunResult result = RunResult::NoFrames;
+    SessionStats stats;
+    SessionEnd end = SessionEnd::NoFrames;
     int width = 0, applied = 0;
-    qint64 rows = 0;
     bool spoolFailed = false;
-    QFile spool;
+    SpoolCanvas canvas;
+    int spoolFd = -1;
     if (first) {
         width = first->view.width;
         const int height = first->view.height;
@@ -611,111 +1386,143 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         applied = job->maxHeight;
         if (job->maxPixels > 0) applied = int(std::min<qint64>(applied, job->maxPixels / width));
         applied = std::max(applied, scrollMinEdge);
-        const int fd = createPrivate(job->spoolPath);
-        if (fd < 0 || !spool.open(fd, QIODevice::ReadWrite, QFileDevice::AutoCloseHandle)) { if (fd >= 0) ::close(fd); spoolFailed = true; }
-        RunOptions options;
-        options.stitch.maxOutputRows = applied;
-        options.pointer = true;
-        options.fromTop = job->fromTop;
-        options.discarded = [job] { return job->discard.load(); };
-        // Rule 1: a place outside the rectangle, on its output and off the bar,
-        // for the pointer while the first frame is read. Stream pixels.
-        const double sx = double(width) / job->rect.width(), sy = double(height) / job->rect.height();
         const QRect& r = job->rect;
-        for (const QPoint& candidate : {QPoint(r.left() - awayMargin, r.top() + r.height() / 3), QPoint(r.right() + 1 + awayMargin, r.top() + r.height() / 3),
-                                        QPoint(r.center().x(), r.top() - awayMargin), QPoint(r.center().x(), r.bottom() + 1 + awayMargin)}) {
-            if (!job->screen.contains(candidate) || job->bar.contains(candidate)) continue;
-            options.away = RunPoint{int(std::lround((candidate.x() - r.left()) * sx)), int(std::lround((candidate.y() - r.top()) * sy))};
-            break;
+        const double sx = double(width) / r.width(), sy = double(height) / r.height();
+        job->gate.sx = sx;
+        job->gate.sy = sy;
+        // The bar inside the rectangle (#1519), with the window manager's
+        // shadow around it, in frame pixels: not the page.
+        scroll::TrackerRect excluded;
+        if (!job->insideBar.isEmpty()) {
+            const QRect bar = job->insideBar.adjusted(-insideBarMargin(), -insideBarMargin(), insideBarMargin(), insideBarMargin()).translated(-r.topLeft());
+            const int x0 = std::clamp(int(std::floor(bar.left() * sx)), 0, width), y0 = std::clamp(int(std::floor(bar.top() * sy)), 0, height);
+            const int x1 = std::clamp(int(std::ceil((bar.right() + 1) * sx)), 0, width), y1 = std::clamp(int(std::ceil((bar.bottom() + 1) * sy)), 0, height);
+            excluded = {x0, y0, x1 - x0, y1 - y0};
         }
-        // The pointer waits outside the rectangle while frames are read, on
-        // every desktop, and what it called up before the capture gets time
-        // to go (a browser hides its link panel a quarter of a second after
-        // the pointer has left, and fades it out).
-        options.restAway = true;
-        options.awayLingerMs = 450;
-        options.leaveDelayMs = 30;
+        // Room at both ends: the cap's rows above the first frame and below it, and a frame besides.
+        spoolFd = createPrivate(job->spoolPath);
+        if (spoolFd < 0 || !canvas.open(spoolFd, width, qint64(applied) + height, qint64(applied) + 2LL * height)) spoolFailed = true;
+        SessionOptions options;
+        options.tracker.maxOutputRows = applied;
+        options.autoScroll = job->autoStart;
+        options.fromTop = job->fromTop;
+        options.excluded = excluded;
+        options.pointer = true;
         options.entryInset = std::max(24, int(std::lround(48 * sy)));
-        // A page's own bar that slides in over the bottom on the way becomes the footer.
-        options.stitch.lateBarIsFooter = true;
-        if (job->paintedPointer) {
-            // A compositor that paints the pointer into the frames whatever was
-            // asked (Hyprland 0.56 did; lab guest of 2026-11-10): rows are kept
-            // further below the parked pointer than a hover effect needs, and
-            // with no place outside the rectangle the first frame is read with
-            // the pointer in the bottom right corner, where an arrow lies off
-            // the screen.
-            options.hoverMarginRows = std::max(options.hoverMarginRows, int(std::lround(48 * sy)));
-            if (!options.away) options.away = RunPoint{width - 1, height - 1};
-            // And Stop on the way to the top keeps the viewport as it is then:
-            // the pointer waits outside between the wheel steps up.
-            options.restAwayToTop = true;
+        // Hyprland paints the pointer into the frames whatever was asked: the
+        // frames of a wheel step's visit are not the page's.
+        options.blindVisits = job->paintedPointer;
+        options.paused = [job] { return job->gate.paused.load(); };
+        options.request = [job] { return std::pair<unsigned, bool>(job->autoSerial.load(), job->wantAuto.load()); };
+        options.activity = [job] { return job->touches.load(); };
+        // Before each run of auto-scroll: the rest and the watch (#1514) on the
+        // main thread, then the rest in stream pixels.
+        unsigned asked = 0;
+        options.beforeAuto = [job, &asked, r, sx, sy, width, height]() -> std::optional<RunPoint> {
+            const unsigned serial = ++asked;
+            job->prepareAuto(serial);
+            const int64_t since = FrameTap::nowMs();
+            while (job->prepared.load() != serial && !job->stop.load() && FrameTap::nowMs() - since < 1000) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            // The main thread did not answer: no rest of its is taken as placed
+            // (CodeRabbit on #1528); the pointer goes to a place outside all the same.
+            const bool answered = job->prepared.load() == serial;
+            // Mapped by the compositor before the first injection.
+            if (answered && surfaceMode() == SurfaceMode::LayerShell) std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            // GNOME: the Shell's pointer watch is on before the first visit;
+            // an extension that never answers leaves the bar's own detection.
+            if (answered && job->shellPointer) {
+                const int64_t asked = FrameTap::nowMs();
+                while (!job->pointerArmed.load() && !job->stop.load() && FrameTap::nowMs() - asked < 500) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+            const auto stream = [&](const QPoint& p) { return RunPoint{int(std::lround((p.x() - r.left()) * sx)), int(std::lround((p.y() - r.top()) * sy))}; };
+            std::optional<QPoint> rest;
+            if (answered) {
+                std::lock_guard lock(job->restMutex);
+                rest = job->rest;
+            }
+            if (rest) {
+                const RunPoint away = stream(*rest);
+                job->gate.restAt = QPoint(away.x, away.y);
+                return away;
+            }
+            job->gate.restAt.reset();
+            // No surface of the helper's to rest on: a place outside the rectangle
+            // all the same, where nobody watches for the user's motion.
+            for (const QPoint& candidate : {QPoint(r.left() - awayMargin, r.top() + r.height() / 3), QPoint(r.right() + 1 + awayMargin, r.top() + r.height() / 3),
+                                            QPoint(r.center().x(), r.top() - awayMargin), QPoint(r.center().x(), r.bottom() + 1 + awayMargin)})
+                if (job->screen.contains(candidate) && !job->bar.contains(candidate)) return stream(candidate);
+            // A painted arrow hangs down and right of its tip: off the screen in the bottom right corner.
+            if (job->paintedPointer) return RunPoint{width - 1, height - 1};
+            return std::nullopt;
+        };
+        options.onProgress = [owner, job](const SessionProgress& p) {
+            QJsonObject o{{"state", QString::fromLatin1(toString(p.state))}, {"driver", QString::fromLatin1(toString(p.driver))}, {"pausedBy", QString::fromLatin1(toString(p.pausedBy))},
+                          {"height", double(p.height)}, {"placed", p.placed}, {"skipped", p.skipped}, {"steps", p.steps}, {"pixelsPerNotch", std::round(p.pixelsPerNotch * 10) / 10},
+                          {"picture", p.picture}, {"serial", double(p.serial)}};
+            QMetaObject::invokeMethod(owner, [owner, job, o] { if (owner->job_ == job) owner->sessionProgress(o); }, Qt::QueuedConnection);
+        };
+        // Geometry of every frame's result for the lab log; never pixels.
+        if (debugLogEnabled()) {
+            options.onFrame = [](const scroll::TrackResult& tr, const scroll::TrackerHint& hint, int64_t t) {
+                debugLog(QStringLiteral("scroll track: t=%1 %2%3 offset %4 position %5 added %6/%7 confidence %8 hint %9 state %10%11")
+                             .arg(t % 1000000).arg(QString::fromLatin1(scroll::toString(tr.status)))
+                             .arg(tr.reason == scroll::SkipReason::None ? QString() : QStringLiteral(" ") + QString::fromLatin1(scroll::toString(tr.reason)))
+                             .arg(tr.offset).arg(tr.position).arg(tr.addedTop).arg(tr.addedBottom).arg(tr.confidence, 0, 'f', 2)
+                             .arg(hint.known ? QStringLiteral("%1±%2").arg(hint.offset).arg(hint.uncertainty) : QStringLiteral("none"))
+                             .arg(QString::fromLatin1(scroll::toString(tr.state))).arg(tr.recovered ? QStringLiteral(" recovered") : QString()));
+            };
+            options.onStep = [](int notches, RunPoint at) { debugLog(QStringLiteral("scroll step: %1 notches at %2,%3").arg(notches).arg(at.x).arg(at.y)); };
         }
-        options.onProgress = [owner, job](const RunProgress& progress) {
-            QMetaObject::invokeMethod(owner, [owner, job, progress] {
-                if (owner->job_ != job || owner->state_ != State::Capturing || owner->stopRequested_ || owner->cancelRequested_) return;
-                const QString state = progress.scrollingToTop ? QStringLiteral("scrollingToTop") : QStringLiteral("capturing");
-                if (owner->bar_) { owner->bar_->setState(state); owner->bar_->setHeight(progress.height); }
-                emit owner->event({{"event", "progress"}, {"state", state}, {"height", progress.height}, {"steps", progress.steps}, {"pixelsPerNotch", progress.pixelsPerNotch}});
-            }, Qt::QueuedConnection);
-        };
-        // Geometry of each stitch attempt for the lab log; never pixels.
-        options.onStep = [](const scroll::StepResult& step, int hint, int notches) {
-            debugLog(QStringLiteral("scroll step: %1 offset %2 hint %3 notches %4 score %5 evidence %6 appended %7 fixed %8/%9%10").arg(QString::fromLatin1(scroll::toString(step.status))).arg(step.offset).arg(hint).arg(notches)
-                         .arg(step.score, 0, 'f', 2).arg(step.evidenceRows).arg(step.appendedRows).arg(step.fixedTop).arg(step.fixedBottom).arg(step.lowConfidence ? QStringLiteral(" low-confidence") : QString()));
-        };
-        debugLog(QStringLiteral("scroll: frames %1x%2 for %3x%4, cap %5 rows, away %6").arg(width).arg(height).arg(r.width()).arg(r.height()).arg(applied).arg(options.away ? QStringLiteral("%1,%2").arg(options.away->x).arg(options.away->y) : QStringLiteral("none")));
+        debugLog(QStringLiteral("scroll: frames %1x%2 for %3x%4, cap %5 rows, excluded %6, driver %7").arg(width).arg(height).arg(r.width()).arg(r.height()).arg(applied)
+                     .arg(excluded.empty() ? QStringLiteral("none") : QStringLiteral("%1,%2 %3x%4").arg(excluded.x).arg(excluded.y).arg(excluded.w).arg(excluded.h))
+                     .arg(job->autoStart ? QStringLiteral("putgd") : QStringLiteral("user")));
         Primed frames(*job->tap, *first, job->sourceGone);
         SteadyClock clock;
-        const scroll::RowSink sink = [&](const uint8_t* row, int w) {
-            const qint64 bytes = qint64(w) * 4;
-            if (spoolFailed || spool.write(reinterpret_cast<const char*>(row), bytes) != bytes) spoolFailed = true;
-            else ++rows;
-        };
-        // The layout rule takes the last rows back (ScrollStitcher::barVerdict).
-        const scroll::RowTakeBack takeBack = [&](long long taken) {
-            rows = std::max<qint64>(0, rows - taken);
-            if (!spoolFailed && (!spool.resize(rows * qint64(width) * 4) || !spool.seek(rows * qint64(width) * 4))) spoolFailed = true;
-        };
-        ScrollRun run(job->gate, frames, clock, options, sink, takeBack);
-        if (!spoolFailed) result = run.run(&job->stop);
-        stats = run.stats();
-        // X11: the pointer goes back where the user had it, unless the pipe closed.
-        if (job->gate.armed.load()) job->gate.injector->restorePointer();
-    } else if (job->stop.load()) result = RunResult::Stopped;
-    else if (job->tap->lost()) result = RunResult::SourceLost;
+        ScrollSession session(job->gate, frames, clock, canvas, options);
+        if (!spoolFailed) end = session.run(job->stop, job->discard);
+        stats = session.stats();
+        if (canvas.failed()) spoolFailed = true;
+        // X11: the pointer goes back where the user had it, unless the pipe
+        // closed or the user has taken it (it then stays where they put it).
+        if (job->gate.armed.load() && stats.steps > 0) job->gate.injector->restorePointer();
+    } else if (job->stop.load()) end = SessionEnd::Finished;
+    else if (job->tap->lost()) end = SessionEnd::SourceLost;
     // Nothing is injected from here on.
     job->gate.armed.store(false);
-    // GNOME: the session was ended from the Shell's indicator. That is Stop.
-    if ((result == RunResult::InjectorFailed || result == RunResult::SourceLost) && job->endedByDesktop && job->endedByDesktop()) result = RunResult::Stopped;
-    if (job->layoutChanged.load()) result = RunResult::LayoutChanged;
-    outcome->result = result;
+    // GNOME: the session was ended from the Shell's indicator. That is Done.
+    if ((end == SessionEnd::InjectorFailed || end == SessionEnd::SourceLost) && job->endedByDesktop && job->endedByDesktop()) end = SessionEnd::Finished;
+    if (job->layoutChanged.load()) end = SessionEnd::FrameSizeChanged;
+    outcome->end = end;
     outcome->stats = stats;
-    const char* reason = endReason(result);
-    // Scroll-to-top was asked for and the top was not proved: the image starts
-    // where the page was then. A capture that then ran to the end of the
-    // content is not the whole scroll area and does not say it is (the loop
-    // ends it as TopNotReached); one that ended otherwise carries the mark.
-    const bool topMissed = job->fromTop && first && !stats.reachedTop;
-    if (first && job->fromTop)
-        debugLog(QStringLiteral("scroll: way to the top %1 steps, %2 ms, %3%4").arg(stats.toTopSteps).arg(stats.toTopMs).arg(stats.reachedTop ? QStringLiteral("top proved") : QStringLiteral("top not proved"))
+    if (first && stats.topAsked)
+        debugLog(QStringLiteral("scroll: way to the top %1 steps, %2 ms, %3%4").arg(stats.toTopSteps).arg(stats.toTopMs).arg(stats.topReached ? QStringLiteral("top proved") : QStringLiteral("top not proved"))
                      .arg(stats.toTopGaveUp.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(stats.toTopGaveUp))));
-    const QString detail = QString::fromStdString(stats.lastError);
+    const bool kept = end == SessionEnd::Finished || end == SessionEnd::Idle || end == SessionEnd::PageEnd || end == SessionEnd::Capped;
+    // What ended it (#1515). end_of_content: auto-scroll proved the end of the
+    // page and no frame was skipped. A capture finished by the user is whole
+    // as far as they scrolled, unless it ended lost or at the cap.
+    QString reason;
+    if (end == SessionEnd::Capped || stats.capReached) reason = QStringLiteral("height_cap");
+    else if (end == SessionEnd::PageEnd && stats.skipped == 0 && !stats.endBlank) reason = stats.topAsked && !stats.topReached ? QStringLiteral("top_not_reached") : QStringLiteral("end_of_content");
+    else if (stats.endedLost) reason = QStringLiteral("lost_track");
+    else reason = QStringLiteral("done");
+    const bool truncated = reason == "height_cap" || reason == "lost_track" || reason == "top_not_reached";
+    const qint64 rows = canvas.bottom() - canvas.top();
     if (spoolFailed) outcome->error = {"encoding_failed", "The capture could not be written to its staging file", {{"stage", "capture"}, {"check", "spool"}}};
-    else if (result == RunResult::Stopped && rows == 0) outcome->nothing = true;
-    else if (!reason) {
-        switch (result) {
-            case RunResult::NoMovement: outcome->error = {"scroll_no_movement", "Nothing under the selection scrolled", {{"parkPositions", 3}}}; break;
-            case RunResult::InjectorFailed: outcome->error = unavailable(QStringLiteral("injection_unavailable"), QStringLiteral("The desktop refused the scroll input")); outcome->error.details["stage"] = "capture"; break;
-            case RunResult::NotReady: outcome->error = {"capture_timeout", "A modifier key stayed down, so no wheel step was sent", {{"stage", "capture"}, {"check", "modifiers_released"}}}; break;
-            case RunResult::LayoutChanged: outcome->error = {"display_changed", "The display changed during the capture", {{"stage", "capture"}}}; break;
-            case RunResult::SourceLost: outcome->error = unavailable(QStringLiteral("frame_source_unavailable"), QStringLiteral("The frame stream ended during the capture")); outcome->error.details["stage"] = "capture"; break;
+    else if (end == SessionEnd::Discarded) {}
+    else if (end == SessionEnd::Finished && (stats.placed == 0 || rows <= 0)) outcome->nothing = true;
+    else if (!kept) {
+        switch (end) {
+            case SessionEnd::InjectorFailed: outcome->error = unavailable(QStringLiteral("injection_unavailable"), QStringLiteral("The desktop refused the scroll input")); outcome->error.details["stage"] = "capture"; break;
+            case SessionEnd::NotReady: outcome->error = {"capture_timeout", "A modifier key stayed down, so no wheel step was sent", {{"stage", "capture"}, {"check", "modifiers_released"}}}; break;
+            case SessionEnd::FrameSizeChanged: outcome->error = {"display_changed", "The display changed during the capture", {{"stage", "capture"}}}; break;
+            case SessionEnd::SourceLost: outcome->error = unavailable(QStringLiteral("frame_source_unavailable"), QStringLiteral("The frame stream ended during the capture")); outcome->error.details["stage"] = "capture"; break;
             default: outcome->error = {"capture_timeout", "The frame stream delivered no frame", {{"stage", "capture"}, {"check", "first_frame"}}}; break;
         }
     } else if (!job->discard.load()) {
         // The spool as one PNG, straight from the file's pages.
         const qint64 raw = rows * qint64(width) * 4;
-        uchar* pixels = rows > 0 && spool.flush() && spool.size() == raw ? spool.map(0, raw) : nullptr;
+        const uchar* pixels = rows > 0 ? canvas.image() : nullptr;
         if (!pixels) outcome->error = {"encoding_failed", "The capture's staging file could not be read", {{"stage", "encode"}, {"check", "spool"}}};
         else {
             const QImage image(pixels, width, int(rows), qsizetype(width) * 4, QImage::Format_RGB32);
@@ -731,23 +1538,32 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
             }
             const qint64 bytes = png.size();
             png.close();
-            spool.unmap(pixels);
             QCryptographicHash hash(QCryptographicHash::Sha256);
             QFile check(job->pngPath);
             if (written && !job->discard.load() && check.open(QIODevice::ReadOnly) && hash.addData(&check) && check.size() == bytes) {
+                const QString scrolledBy = stats.movedByUser > 0 && stats.movedByPutgd > 0 ? QStringLiteral("both") : stats.movedByPutgd > 0 ? QStringLiteral("putgd") : stats.movedByUser > 0 ? QStringLiteral("user") : QStringLiteral("none");
+                const double fps = stats.readMs > 0 ? std::round(10000.0 * (stats.framesSeen - 1) / double(stats.readMs)) / 10 : 0;
                 outcome->descriptor = {{"path", job->pngPath}, {"bytes", double(bytes)}, {"sha256", QString::fromLatin1(hash.result().toHex())}, {"width", width}, {"height", int(rows)},
-                    {"endReason", reason}, {"truncated", result == RunResult::LimitReached || result == RunResult::TopNotReached}, {"appliedMaxHeight", applied},
-                    {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", stats.pxPerNotch}, {"lowConfidenceSteps", stats.lowConfidenceSteps}, {"elapsedMs", double(stats.elapsedMs)}}}};
-                if (!detail.isEmpty() && result == RunResult::LostTrack) outcome->descriptor["note"] = detail;
-                if (topMissed) {
-                    // Whatever ended the capture (the end, the cap, Stop): its first row is not the page's.
+                    {"endReason", reason}, {"truncated", truncated}, {"appliedMaxHeight", applied},
+                    {"scrolledBy", scrolledBy}, {"framesPlaced", stats.placed}, {"framesSkipped", stats.skipped}, {"endedLost", stats.endedLost}, {"reachedEnd", stats.reachedEnd},
+                    {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", std::round(stats.pxPerNotch * 10) / 10}, {"lowConfidenceSteps", stats.byExpectation + stats.onHint}, {"elapsedMs", double(stats.elapsedMs)},
+                                          {"frames", stats.framesSeen}, {"recovered", stats.recovered}, {"pinnedRegions", stats.pinnedRegions}, {"framesPerSecond", fps},
+                                          {"rowsAtDone", double(stats.rowsAtDone)}}}};
+                // Rows under the bar inside the region that no frame showed clear (#1519).
+                if (stats.hiddenCells > 0) { outcome->descriptor["hiddenCells"] = double(stats.hiddenCells); outcome->descriptor["hiddenRows"] = double(stats.hiddenRows); }
+                if (end == SessionEnd::Idle) outcome->descriptor["note"] = QStringLiteral("nobody scrolled or used the bar for %1 minutes, so the capture ended there").arg(SessionOptions{}.idleLimitMs / 60000);
+                else if (reason == "lost_track") outcome->descriptor["note"] = QStringLiteral("the capture was finished while put.gd could not find its place on the page; the image ends where it last could");
+                else if (stats.endBlank) outcome->descriptor["note"] = QStringLiteral("auto-scroll stopped where the page showed nothing: a blank stretch taller than the region looks like the end of the page; if the page goes on, scroll past it yourself");
+                if (stats.topAsked && !stats.topReached) {
+                    // Whatever ended the capture: its first row is not the page's.
                     outcome->descriptor["topReached"] = false;
-                    if (result == RunResult::TopNotReached && !stats.toTopGaveUp.empty()) outcome->descriptor["note"] = QString::fromStdString(stats.toTopGaveUp);
+                    if (reason == "top_not_reached" && !stats.toTopGaveUp.empty()) outcome->descriptor["note"] = QString::fromStdString(stats.toTopGaveUp);
                 }
             } else if (!job->discard.load()) outcome->error = {png.exceeded() ? "input_excessive" : "encoding_failed", png.exceeded() ? "The PNG exceeded its size bound" : "The PNG could not be written", {{"stage", "encode"}, {"check", "png"}}};
         }
     }
-    spool.close();
+    canvas.close();
+    if (spoolFd >= 0) ::close(spoolFd);
     QFile::remove(job->spoolPath);
     if (outcome->error || outcome->nothing || job->discard.load()) QFile::remove(job->pngPath);
     report();

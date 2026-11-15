@@ -330,6 +330,7 @@ put.gd-evidence records for each candidate. A row says "met" only where the repo
 | Confinement | 16 of 16 rows including two recognition controls, on an unsanitized native build with Landlock ABI 6 |
 | Unavailable paths | With extension 22 loaded and 23 installed without a logout (8a3294c3c): the window button showed the log-out dialog, region actions returned `helper_outdated`, other hotkey recording worked, and window, monitor, desktop, clipboard and file sources worked. After a logout and login the text hotkey pasted the exact text. A History item whose retained copy was withheld returned `artifact_missing` and left the clipboard alone (fe838a950) |
 | Packages | Clean installs of a DEB, an RPM and a pacman package, the source-archive rebuild, the stable CVE rehearsal and the notices were met on bcb868f9a and carried forward. The recording Recommends are unchanged |
+| Upgrade through the signed repositories | Met on the first published nightly with the feature, 26.1114.5000 (df229be29), from 26.1113.4757 on systems without Tesseract data ([receipts](https://github.com/patrick-hudson/put.gd-evidence/blob/b00bc1114fc5ae1c91a2ab399afa7c95fed924a5/records/2026-11-14-issue-1428-repo-upgrade/README.md)). apt on d69 (Debian 13, Plasma Wayland): the upgrade of put.gd alone installed `tesseract-ocr-eng` and `tesseract-ocr`. dnf on f44 (Fedora 44, GNOME Wayland): the English data was already there, pulled in by FFmpeg; with extension 22 loaded, a region action answered `helper_outdated` until the next login, as documented. pacman on a fresh Omarchy guest (Hyprland): `omarchy update` installed `tesseract` and `tesseract-data-eng`, and Afrikaans data as pacman's default provider, which #1524 has since stopped. Omarchy refuses a direct `pacman -Syu`. On each, the signatures were accepted with the shipped checks, `putgd-ocr --version-json` ran, and one Copy text job pasted the exact 62-character fixture, read back with `wl-paste`. On Omarchy the job was driven by hotkey, because `putgd-cli` cannot load there ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)) |
 | Window sizes | The command band at 1060 px at normal and 150 percent text was checked on f44 on fe838a950 and not rerun |
 | Memory | After the workload, none of the forbidden libraries was mapped and the frozen Gate C evaluator was met on m74 (357210d2f) and nine other cells (8a3294c3c). The helper's highest peak was 126,064 KiB |
 | Latency | Recorded, not gated. 30 runs per batch on m74, and five runs on each other cell |
@@ -337,8 +338,6 @@ put.gd-evidence records for each candidate. A row says "met" only where the repo
 
 **Not run.**
 
-- The upgrade through the signed apt, dnf and pacman repositories. It is run after the nightly is
-  published.
 - Aurora with a layered native RPM. Aurora ran the AppImage, because layering and rebooting would have
   changed the host's session.
 - A forced late editor result on a live desktop. A test in CI covers it.
