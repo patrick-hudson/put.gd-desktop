@@ -39,7 +39,12 @@ bool SpoolCanvas::reserve(long long fileRow) {
     const long long nextTop = held_ ? std::min(heldTop_, lo) : lo, nextBottom = held_ ? std::max(heldBottom_, hi) : hi;
     int err = 0;
     if (size_t(nextBottom - nextTop) * rowBytes_ > spaceLimit_) err = ENOSPC;
-    else err = ::posix_fallocate(fd_, off_t(lo) * off_t(rowBytes_), off_t(hi - lo) * off_t(rowBytes_));
+    else {
+        // A signal that arrives during the call ends it with EINTR (tmpfs does
+        // this): that is not a full disk, so it is tried again.
+        do err = ::posix_fallocate(fd_, off_t(lo) * off_t(rowBytes_), off_t(hi - lo) * off_t(rowBytes_));
+        while (err == EINTR);
+    }
     if (err != 0) {
         error_ = err;
         failed_ = true;
