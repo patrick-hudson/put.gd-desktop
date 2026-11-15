@@ -548,6 +548,38 @@ void testStaleStreamUnderAuto() {
          (wrong.empty() ? counts(h) : wrong) + fmt(", image to %lld of %d, %d fresh frames", h.stats.bottom, doc.img.h, h.app->freshFrames));
 }
 
+// One frame out of place under auto-scroll (#1535): on a starved X server a
+// grab caught the page half repainted, the tracker placed it far up against
+// the hint, and the session took that one frame for the user scrolling up and
+// handed the wheel back to nobody. A jump up is the user's only if the next
+// frame agrees; one that falls back onto auto-scroll's way is not.
+void testOneFrameOutOfPlace() {
+  std::printf("One frame out of place under auto-scroll\n");
+  const Document doc = page(94);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.glitchAtMs = 3000;
+  as.glitchUp = 300;
+  h.script = [](Harness& x, int64_t t) { if (t >= 90000) x.stop.store(true); };
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a single frame shown 300 px up is not the user scrolling: auto-scroll goes on to the end, the image exact",
+         h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && h.stats.bottom == doc.img.h && !h.saw(SessionState::Paused, HandBack::Scrolled),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+  // The user's own scrolling up still hands the wheel back: the page stays up.
+  Harness u;
+  FakeAppSpec us;
+  us.pxPerNotch = 40;
+  u.script = [](Harness& x, int64_t t) {
+    if (t >= 3000 && x.app->script.empty() && !x.saw(SessionState::Paused, HandBack::Scrolled)) x.play({{t, -300, 250}});
+    if (t >= 9000) x.stop.store(true);
+  };
+  u.run(doc.img, us, options(true));
+  report("the user scrolling up during auto-scroll still takes the wheel back", u.saw(SessionState::Paused, HandBack::Scrolled) && u.exact(doc.img, 0).empty(),
+         counts(u) + fmt(", %d hand-backs", u.stats.handBacks));
+}
+
 // "Scroll to the top first" with a strip under the first wheel point that
 // takes no wheel (#1536's review): two still steps there say nothing of the
 // top. The top is proved only where the wheel moves the page, or once every
@@ -727,6 +759,7 @@ int main() {
   testStaleStreamAtDone();
   testStaleStreamUnderAuto();
   testTopUnderADeadPoint();
+  testOneFrameOutOfPlace();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();

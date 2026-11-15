@@ -330,6 +330,20 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
     };
     // Whether this frame showed the page where the last placed frame had it.
     lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);
+    // A jump up under auto-scroll is the user's scrolling only if the next
+    // frame agrees: the page stays up, or goes on up. A frame that falls back
+    // down onto auto-scroll's way was one picture out of place. On a starved
+    // X server a grab caught the page half repainted, and the tracker placed
+    // it 418 px up against a hint of 25 ± 13. The next frames were back on the
+    // page's way, but the wheel had been handed back to nobody (#1535).
+    const auto settleUp = [&](bool fellBack) {
+        if (!upPending_) return;
+        upPending_ = false;
+        if (fellBack) upSinceStep_ = 0;
+        else if (auto_ && phase_ != Phase::Off && phase_ != Phase::Recover) handBack(HandBack::Scrolled);
+    };
+    if (r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset <= 0)) settleUp(false);
+    else if (r.status == TrackStatus::Placed) settleUp(true);
     switch (r.status) {
         case TrackStatus::Placed: {
             const long long d = r.offset;
@@ -356,7 +370,7 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
                     // (a header that shrinks, a banner) is not that. A frame found again
                     // after skipped ones went wherever the user had taken it.
                     if (d < 0 && phase_ != Phase::Recover && !r.recovered) upSinceStep_ -= d;
-                    if (upSinceStep_ >= std::max(height_ / 4.0, 2 * stats_.pxPerNotch) && phase_ != Phase::Recover) handBack(HandBack::Scrolled);
+                    if (d < 0 && upSinceStep_ >= std::max(height_ / 4.0, 2 * stats_.pxPerNotch) && phase_ != Phase::Recover) upPending_ = true;
                 }
                 lastStill_ = false;
                 stillRun_ = 0;
@@ -559,6 +573,7 @@ void ScrollSession::autoTick() {
         lastStepMove_ = 0;
         stepFirstMoveAt_ = lastMoveAt_ = -1;
         upSinceStep_ = 0;
+        upPending_ = false;
         lastStill_ = false;
         stillRun_ = 0;
         if (stats_.pxPerNotch > 0) pending_ += notches * stats_.pxPerNotch;

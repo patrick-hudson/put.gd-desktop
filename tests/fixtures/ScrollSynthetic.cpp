@@ -335,7 +335,12 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     framePositions.push_back(framePositions.back());
     return putgd::record::RunFrame{delivered_.view(), t};
   }
-  renderer_.render(pos, scratch_);
+  int shown = pos;
+  if (spec_.glitchAtMs >= 0 && !glitchDone_ && t - firstFrameT_ >= spec_.glitchAtMs && !framePositions.empty() && pos != framePositions.back()) {
+    glitchDone_ = true;
+    shown = std::max(0, pos - spec_.glitchUp);
+  }
+  renderer_.render(shown, scratch_);
   for (int y = spec_.barY; y < std::min(scratch_.h, spec_.barY + spec_.barH); ++y)
     for (int x = spec_.barX; x < std::min(scratch_.w, spec_.barX + spec_.barW); ++x)
       scratch_.at(x, y) = rgb(250, (frameIndex_ * 7 + x) & 63, (y * 5 + frameIndex_) & 63);
