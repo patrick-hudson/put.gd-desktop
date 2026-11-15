@@ -39,7 +39,7 @@ const resident = ':1.50';
 const residentPid = 1000;
 const helperPid = 2000;
 const context = {
-    Clutter: {EVENT_PROPAGATE: 0, EventType: {BUTTON_PRESS: 1}},
+    Clutter: {EVENT_PROPAGATE: 0, EventType: {BUTTON_PRESS: 1}, ModifierType: {BUTTON1_MASK: 256, BUTTON2_MASK: 512, BUTTON3_MASK: 1024}},
     Gio: {_promisify() {}, Cancellable: class {cancel() {}}, DBusCallFlags: {NONE: 0},
         DBus: {session: {call_sync(_service, _path, _iface, method) {
             return {deep_unpack: () => [method === 'GetNameOwner' ? resident : residentPid]};
@@ -578,6 +578,13 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     };
     const reset = () => {hidden = false; destroyed = false; sticks = true; position = [700, 400]; touches = moves = 0;};
     const step = async delay => {await flush(); tick(delay); await flush();};
+    // A scroll capture's bar follows the focus (its own test below); here it is never focused.
+    const focusHandlers = new Map();
+    let focusIds = 0;
+    Object.assign(context.global.display, {focus_window: null,
+        connect: (signal, handler) => {focusHandlers.set(++focusIds, {signal, handler}); return focusIds;},
+        disconnect: id => assert.equal(focusHandlers.delete(id), true)});
+    context.global.get_pointer = () => [0, 0, 0];
     const settle = async promise => {for (let i = 0; i < 45; i++) {await flush(); tick(50); tick(100);} return promise;};
     context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${parent} 1 1 0`)];
     context.global.get_window_actors = () => [{meta_window: bar, is_destroyed: () => destroyed}];
@@ -665,9 +672,82 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.deepEqual((await settle(show('recording'))).bar, none);
     assert.deepEqual([touches - touched, moves], [0, 1]);
     assert.deepEqual(await hide(), {});
-    assert.deepEqual([context.Main.uiGroup.get_children().length, timers.size, handlers.size], [before, 0, 0]);
+    assert.deepEqual([context.Main.uiGroup.get_children().length, timers.size, handlers.size, focusHandlers.size], [before, 0, 0, 0]);
     parent = 4321;
     print('PASS recording bar is never touched once Mutter unmanages it, and a hidden frame ends its placement and beat');
+}
+{
+    // #1515's acceptance: Mutter focuses a window when it is first shown and when it is clicked, and
+    // End, Home and Ctrl+End went to the scroll bar instead of the page. A scroll capture's bar gives
+    // the focus back to the window used before it, after a held button is released (a press on
+    // Done stays a click); a recording's bar, which takes Esc, keeps it.
+    const {extension} = fixture();
+    const handlers = new Map(), focusHandlers = new Map();
+    let ids = 0, buttons = 0;
+    const focused = [];
+    const bar = {get_title: () => 'put.gd recording controls', get_pid: () => helperPid,
+        get_frame_rect: () => ({x: 600, y: 670, width: 400, height: 40}), is_hidden: () => false, is_above: () => true,
+        make_above() {}, move_frame() {}, minimized: false, focus() {focused.push('bar');},
+        connect(signal, handler) {handlers.set(++ids, {signal, handler}); return ids;},
+        disconnect(id) {assert.equal(handlers.delete(id), true);}};
+    const page = {minimized: false, focus(time) {focused.push(['page', time]);}};
+    const hiddenAway = {minimized: true, focus() {focused.push('minimized');}};
+    const contents = context.GLib.file_get_contents;
+    context.GLib.file_get_contents = () => [true, new TextEncoder().encode(`${helperPid} (putgd record) S ${residentPid} 1 1 0`)];
+    context.global.get_window_actors = () => [{meta_window: bar, is_destroyed: () => false}];
+    context.global.get_current_time = () => 77;
+    context.global.get_pointer = () => [0, 0, buttons];
+    context.global.stage = {width: 1920, height: 1080};
+    Object.assign(context.global.display, {focus_window: bar,
+        get_tab_list: type => type === context.Meta.TabList.NORMAL_ALL ? [bar, hiddenAway, page] : [],
+        connect: (signal, handler) => {focusHandlers.set(++ids, {signal, handler}); return ids;},
+        disconnect: id => assert.equal(focusHandlers.delete(id), true)});
+    context.Main.layoutManager = {monitors: [{x: 0, y: 0, width: 1920, height: 1080}], getWorkAreaForMonitor: () => ({x: 0, y: 32, width: 1920, height: 1048})};
+    const settle = async promise => {for (let i = 0; i < 20; i++) {await flush(); tick(100);} return promise;};
+    const show = (beat, state = 'recording') => bridge(extension, 'ShowRecordingFrameAsync', [JSON.stringify({rect: [600, 300, 640, 360], kind: 'region', state, pid: helperPid, ...(beat ? {beat} : {})})]);
+    const focusChanged = () => {for (const entry of [...focusHandlers.values()]) entry.handler();};
+
+    // A recording's bar: nothing watches the focus.
+    assert.equal((await settle(show(false))).bar.placed, true);
+    assert.deepEqual([focusHandlers.size, focused], [0, []]);
+    await bridge(extension, 'HideRecordingFrameAsync', []);
+    // The scroll bar, focused when Mutter showed it: the page gets it back at once.
+    assert.equal((await settle(show(true))).bar.placed, true);
+    assert.deepEqual([[...focusHandlers.values()].map(entry => entry.signal), focused], [['notify::focus-window'], [['page', 77]]]);
+    // Another state of the same frame keeps one watch.
+    await settle(show(true, 'paused'));
+    assert.equal(focusHandlers.size, 1);
+    // Clicked: the button is still held, so the focus waits for its release.
+    focused.length = 0; buttons = 256;
+    focusChanged();
+    assert.deepEqual([focused, [...timers.values()].filter(timer => timer.delay === 50).length], [[], 1]);
+    focusChanged();
+    assert.equal([...timers.values()].filter(timer => timer.delay === 50).length, 1);
+    tick(50);
+    assert.deepEqual(focused, []);
+    buttons = 0;
+    tick(50);
+    assert.deepEqual([focused, [...timers.values()].filter(timer => timer.delay === 50).length], [[['page', 77]], 0]);
+    // The focus elsewhere: left alone.
+    focused.length = 0;
+    context.global.display.focus_window = page;
+    focusChanged();
+    assert.deepEqual(focused, []);
+    // Hidden while a release is awaited: the watch and its wait end with the frame.
+    context.global.display.focus_window = bar; buttons = 256;
+    focusChanged();
+    await bridge(extension, 'HideRecordingFrameAsync', []);
+    assert.deepEqual([focusHandlers.size, [...timers.values()].filter(timer => timer.delay === 50).length, extension._barFollow], [0, 0, null]);
+    // Unmanaged: its handlers go with it.
+    buttons = 0;
+    await settle(show(true));
+    assert.equal(focusHandlers.size, 1);
+    for (const entry of [...handlers.values()]) if (entry.signal === 'unmanaging') entry.handler();
+    assert.deepEqual([focusHandlers.size, extension._barFollow], [0, null]);
+    await bridge(extension, 'HideRecordingFrameAsync', []);
+    assert.deepEqual([timers.size, handlers.size], [0, 0]);
+    context.GLib.file_get_contents = contents;
+    print('PASS a scroll capture\'s bar gives the keyboard focus back after a click; a recording\'s bar keeps it');
 }
 {
     // #924: a selection hotkey closes put.gd's own open tray menu first; desktop

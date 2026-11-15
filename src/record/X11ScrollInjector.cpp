@@ -1,10 +1,13 @@
 #include "X11ScrollInjector.h"
 #include "DebugLog.h"
+#include <QByteArray>
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <memory>
 #include <thread>
 #include <xcb/xcb.h>
+#include <xcb/xinput.h>
 #include <xcb/xtest.h>
 
 namespace putgd::record {
@@ -19,7 +22,38 @@ X11ScrollInjector::X11ScrollInjector() {
     const auto* extension = xcb_get_extension_data(connection_, &xcb_test_id);
     if (!extension || !extension->present) { reason_ = QStringLiteral("The X server has no XTEST extension"); return; }
     std::unique_ptr<xcb_test_get_version_reply_t, decltype(&free)> version(xcb_test_get_version_reply(connection_, xcb_test_get_version(connection_, XCB_TEST_MAJOR_VERSION, XCB_TEST_MINOR_VERSION), nullptr), free);
-    if (!version) reason_ = QStringLiteral("The X server did not answer for XTEST");
+    if (!version) { reason_ = QStringLiteral("The X server did not answer for XTEST"); return; }
+    // XInput 2 raw events, where the server has them (2.1 or later).
+    const auto* input = xcb_get_extension_data(connection_, &xcb_input_id);
+    if (!input || !input->present) return;
+    std::unique_ptr<xcb_input_xi_query_version_reply_t, decltype(&free)> xi(xcb_input_xi_query_version_reply(connection_, xcb_input_xi_query_version(connection_, 2, 2), nullptr), free);
+    if (!xi || xi->major_version < 2 || (xi->major_version == 2 && xi->minor_version < 1)) return;
+    inputOpcode_ = input->major_opcode;
+    std::unique_ptr<xcb_input_xi_query_device_reply_t, decltype(&free)> devices(xcb_input_xi_query_device_reply(connection_, xcb_input_xi_query_device(connection_, XCB_INPUT_DEVICE_ALL), nullptr), free);
+    if (!devices) return;
+    for (auto it = xcb_input_xi_query_device_infos_iterator(devices.get()); it.rem; xcb_input_xi_device_info_next(&it)) {
+        const QByteArray name(xcb_input_xi_device_info_name(it.data), xcb_input_xi_device_info_name_length(it.data));
+        if (name.contains("XTEST")) xtestDevices_.push_back(it.data->deviceid);
+    }
+    struct { xcb_input_event_mask_t head; uint32_t mask; } selection{{XCB_INPUT_DEVICE_ALL_MASTER, 1},
+        XCB_INPUT_XI_EVENT_MASK_RAW_MOTION | XCB_INPUT_XI_EVENT_MASK_RAW_BUTTON_PRESS};
+    auto* error = xcb_request_check(connection_, xcb_input_xi_select_events_checked(connection_, root_, 1, &selection.head));
+    if (error) { free(error); return; }
+    raw_ = true;
+}
+bool X11ScrollInjector::handMoved(bool discard) {
+    bool moved = false;
+    if (!raw_) return false;
+    while (xcb_generic_event_t* event = xcb_poll_for_event(connection_)) {
+        const auto* generic = reinterpret_cast<const xcb_ge_generic_event_t*>(event);
+        if (!discard && (event->response_type & 0x7f) == XCB_GE_GENERIC && generic->extension == inputOpcode_ &&
+            (generic->event_type == XCB_INPUT_RAW_MOTION || generic->event_type == XCB_INPUT_RAW_BUTTON_PRESS)) {
+            const uint16_t source = reinterpret_cast<const xcb_input_raw_button_press_event_t*>(event)->sourceid;
+            if (std::find(xtestDevices_.begin(), xtestDevices_.end(), source) == xtestDevices_.end()) moved = true;
+        }
+        free(event);
+    }
+    return moved;
 }
 X11ScrollInjector::~X11ScrollInjector() {
     if (connection_) xcb_disconnect(connection_);
@@ -72,6 +106,9 @@ bool X11ScrollInjector::movePointer(QPoint streamPixel) {
     return sync();
 }
 bool X11ScrollInjector::movedByUser() {
+    // The hand's raw events first (they survive the capture's own absolute
+    // moves), then the place, where the server has no raw events.
+    if (handMoved(!placed_)) return true;
     int x = 0, y = 0;
     return placed_ && query(&x, &y, nullptr) && (std::abs(x - placedX_) > 1 || std::abs(y - placedY_) > 1);
 }

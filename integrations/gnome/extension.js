@@ -257,6 +257,9 @@ class BarWindow {
 // still page, measured). Queueing the same pixel on the stage with a clip,
 // which is what Mutter does for its own follow-up frames, sent none.
 const BEAT_MS = 40;
+// A scroll capture's bar gives the keyboard focus back this often while a
+// mouse button is held on it.
+const FOCUS_WAIT_MS = 50;
 class RecordingFrame {
     constructor() {
         this._actors = [];
@@ -1707,7 +1710,7 @@ export default class PutgdExtension extends Extension {
     // `current` throws once the frame has been hidden or the extension
     // disabled: the resident answers "ready" before the bar is placed, so a
     // cancel, a quit or a killed helper can arrive during any wait below.
-    async _placeRecordingBar(sender, pid, rect, current) {
+    async _placeRecordingBar(sender, pid, rect, current, scroll = false) {
         const pause = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
             resolve();
             return GLib.SOURCE_REMOVE;
@@ -1754,7 +1757,7 @@ export default class PutgdExtension extends Extension {
                 if (actual[0] === target.rect[0] && actual[1] === target.rect[1])
                     break;
             }
-            this._followRecordingBar(bar, rect, earlier ? earlier.outside : target.outside);
+            this._followRecordingBar(bar, rect, earlier ? earlier.outside : target.outside, scroll);
             return {placed: true, outside: !overlaps(actual, rect), rect: actual};
         } finally {
             if (this._barFollow?.bar !== bar)
@@ -1765,17 +1768,56 @@ export default class PutgdExtension extends Extension {
     // The helper resizes its bar when the state changes (wider while recording,
     // a handle when it has to sit inside); place it again on every size change
     // so it never runs past its monitor and the dim strips keep its hole.
-    _followRecordingBar(bar, rect, outside) {
+    _followRecordingBar(bar, rect, outside, scroll = false) {
         if (this._barFollow?.bar.window !== bar.window || !this._barFollow.bar.live) {
             this._unfollowRecordingBar();
             const follow = this._barFollow = {bar};
             bar.connect('size-changed', () => this._replaceRecordingBar());
             bar.onGone = () => {
-                if (this._barFollow === follow)
+                if (this._barFollow === follow) {
+                    this._unfollowFocus(follow);
                     this._barFollow = null;
+                }
             };
         }
         Object.assign(this._barFollow, {rect, outside});
+        if (scroll && !this._barFollow.focus) {
+            const follow = this._barFollow;
+            follow.focus = global.display.connect('notify::focus-window', () => this._giveFocusBack(follow));
+            this._giveFocusBack(follow);
+        }
+    }
+
+    // A scroll capture's bar never keeps the keyboard focus (#1515's
+    // acceptance): Mutter gives a window the focus when it is first shown and
+    // when it is clicked, and End, Home or Page Down then went to the bar, which
+    // takes no key, instead of the page being captured. The window used before
+    // it gets the focus back, once no mouse button is held: a press on Done or
+    // Cancel ends as a click.
+    _giveFocusBack(follow) {
+        if (this._barFollow !== follow || !follow.bar.live || global.display.focus_window !== follow.bar.window)
+            return;
+        const [, , mods] = global.get_pointer();
+        const {BUTTON1_MASK, BUTTON2_MASK, BUTTON3_MASK} = Clutter.ModifierType;
+        if (mods & (BUTTON1_MASK | BUTTON2_MASK | BUTTON3_MASK)) {
+            follow.focusWait ||= GLib.timeout_add(GLib.PRIORITY_DEFAULT, FOCUS_WAIT_MS, () => {
+                follow.focusWait = 0;
+                this._giveFocusBack(follow);
+                return GLib.SOURCE_REMOVE;
+            });
+            return;
+        }
+        // Listed now, so every window in it is still managed.
+        const before = global.display.get_tab_list(Meta.TabList.NORMAL_ALL, null).find(window => window !== follow.bar.window && !window.minimized);
+        before?.focus(global.get_current_time());
+    }
+
+    _unfollowFocus(follow) {
+        if (follow.focus)
+            global.display.disconnect(follow.focus);
+        if (follow.focusWait)
+            GLib.source_remove(follow.focusWait);
+        follow.focus = follow.focusWait = 0;
     }
 
     _replaceRecordingBar() {
@@ -1792,6 +1834,8 @@ export default class PutgdExtension extends Extension {
     }
 
     _unfollowRecordingBar() {
+        if (this._barFollow)
+            this._unfollowFocus(this._barFollow);
         this._barFollow?.bar.release();
         this._barFollow = null;
     }
@@ -1813,7 +1857,7 @@ export default class PutgdExtension extends Extension {
             const bar = await this._placeRecordingBar(sender, frame.pid || 0, rect, () => {
                 check(this._enabled, 'helper_unavailable', 'GNOME extension disabled');
                 check(epoch === this._frameEpoch, 'cancelled', 'The recording frame was hidden while its bar was placed');
-            });
+            }, frame.beat === true);  // `beat` comes only with a scroll capture's frame (GnomeAdapter)
             check(this._enabled && !Main.sessionMode.isLocked, 'helper_unavailable', 'GNOME user session is unavailable');
             this._recordingFrame ??= new RecordingFrame();
             this._recordingFrame.show(rect, frame.kind, frame.state !== 'ready', bar.placed ? bar.rect : null, frame.beat === true);

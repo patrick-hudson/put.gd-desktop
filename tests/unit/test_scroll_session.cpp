@@ -804,6 +804,26 @@ void testSpoolDiskFull() {
 // at the alias one step short, and the image lost a period. The hints stay
 // with the tracker. The opposite case: the step at the page's end moves
 // nothing, and its hints must not take a later frame a period on.
+// The fixture itself: on a stream that sends a frame only when the picture
+// changed, a foreign picture waiting to be shown is a change, at rest too.
+void testFixtureForeignOnDamageOnly() {
+  std::printf("The fixture: a foreign picture on a damage-only stream at rest\n");
+  const Document doc = page(98);
+  FakeClock clock;
+  FakeAppSpec as;
+  as.damageOnly = true;
+  FakeApp app(doc.img, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+  const auto first = app.nextFrame(100);
+  std::vector<uint8_t> row0;
+  if (first) row0.assign(first->view.row(0), first->view.row(0) + size_t(W) * 4);
+  const auto still = app.nextFrame(200);  // nothing changed: nothing sent
+  app.foreignThenQuiet(500);
+  const auto foreign = app.nextFrame(200);
+  const bool differs = foreign && !row0.empty() && std::memcmp(foreign->view.row(0), row0.data(), row0.size()) != 0;
+  report("a foreign picture is sent on a damage-only stream at rest", first && !still && foreign && differs,
+         fmt("first %d, at rest %d, foreign %d, differs %d", bool(first), bool(still), bool(foreign), differs));
+}
+
 void testSkippedStepOnRepeatingContent() {
   std::printf("A step whose only frame is skipped, on content that repeats every step\n");
   const Document unique = page(99, 0);
@@ -1023,6 +1043,7 @@ int main() {
   testDoneOnTheWayUpStale();
   testSpoolDiskFull();
   testSkippedStepOnRepeatingContent();
+  testFixtureForeignOnDamageOnly();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();
