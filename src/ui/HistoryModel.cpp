@@ -108,7 +108,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="text"?"Text recognition failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
 }
-bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
+bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial";}
 bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
 namespace {
 bool terminalUpload(const QString& s){return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
@@ -200,7 +200,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
  if(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)&&!localSaveFailed(r))return "Saved previously · Local file unavailable";
  if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed). Copy it again."):QString("Saved locally");
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
- if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial"){
+ if(r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial"){
   message.replace(" Try again.","").replace(" Try again","");message=message.trimmed();while(!message.isEmpty()&&QStringLiteral(".!?…").contains(message.back()))message.chop(1);
   auto text=failureLabel(r);if(!message.isEmpty()&&message!=text)text+=" · "+message;if(r["local"].toObject()["status"]=="saved")text+=localCopyUnavailable(r)?" · Saved previously · Local file unavailable":" · Saved locally";return text;
  }
