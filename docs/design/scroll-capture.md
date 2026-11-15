@@ -162,7 +162,12 @@ up or down, and composes the page into a canvas the helper owns. In brief:
 - Content that changes in place (a video, a carousel, a hover effect) is taken as first
   seen and ends nothing.
 - It never writes a row at a guessed offset. The one exception is a frame with nothing to
-  compare (a blank stretch) while auto-scroll gives a hint.
+  compare (a blank stretch) while auto-scroll gives a hint, and only where that frame
+  overlaps what the image holds. A frame that stood still is never placed on the hint.
+- A frame needs 16 rows of evidence that agree. The page's last lines above a blank tail
+  may have fewer: a match with at least half of them, agreeing in every lane, is taken
+  when it is the only one where auto-scroll's hint says the page is.
+- Frames narrower or lower than 16 px (two cells, two block rows) are refused.
 
 ## Drivers
 
@@ -233,7 +238,12 @@ thirds down follow, two single notches at each.
 **The hint.** Auto-scroll knows how far a step will move the page but not when, since an
 application animates it. Each frame's hint is the share of the movement still owed that
 its time takes up of the step's expected animation; a placed frame corrects what is owed
-by what the page really did. A person's scrolling gives no hint.
+by what the page really did. A person's scrolling gives no hint. The tracker sums the hints
+since the frame it last placed. A frame it calls still without proving it keeps that sum,
+and the session does not hand the same distance out again. A step that ends without
+moving the page drops what it owed on both sides
+([#1543](https://github.com/patrick-hudson/put.gd-desktop/pull/1543)'s review: the sum had
+grown past the frame's height).
 
 **Moving the mouse pauses it** (#1514). The helper knows where it last put the pointer.
 Its rest surface reporting the pointer anywhere else, or leaving with no visit sent, is the
@@ -387,7 +397,7 @@ helper exit until the resident has admitted them.
 | `reachedEnd` | Auto-scroll proved the end of the page |
 | `topReached` | `false` when the way to the top was asked for and could not prove the top; absent otherwise |
 | `note` | Why, for `lost_track`, `top_not_reached`, the idle bound and auto-scroll stopped at a blank stretch |
-| `hiddenCells`, `hiddenRows` | Only when the bar sat inside the region: cells of the page that only the bar ever covered (filled with their column's plain colour), and the rows that hold them |
+| `hiddenCells`, `hiddenRows` | Cells of the page that only the bar inside the region ever covered (filled with their column's plain colour), and the rows that hold them. `hiddenRows` also counts rows that no placed frame covered (since a frame is placed on the hint only where it overlaps the image, none should occur). Absent when there are none |
 | `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added) |
 
 | `endReason` | `truncated` | Meaning |
@@ -431,7 +441,9 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
   compare. On a news article in Chrome (Plasma 6.8.2) it skipped most frames, and the banner's
   colour was drawn in strips through the image while the capture ended `done`. Read
   `framesSkipped`: a capture that skipped many frames needs a look.
-- **A blank stretch taller than the region** shows nothing that moves. Auto-scroll stops
+- **A blank stretch taller than the region** shows nothing that moves (fewer rows with
+  texture than the tracker needs as evidence, leaving out what it has learned as pinned, the
+  bar and the side margins, so a pinned header and footer do not count). Auto-scroll stops
   there: frames with nothing on them show no movement, so its steps look still, though the
   wheel may still be moving the page. It does not call that the end of the page: the capture
   ends `done` with `reachedEnd: false`, and the resident shows the note "Auto-scroll stopped

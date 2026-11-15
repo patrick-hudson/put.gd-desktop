@@ -341,7 +341,7 @@ the image finds the page, then `paused`; `scroll.autoScroll {on: true}` then car
 lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond, rowsAtDone}` (also flat),
 `result` (the helper's descriptor without its path), `note` where there is one, and
 `hiddenCells` and `hiddenRows` when the bar sat inside the region and hid part of the page's
-end. With
+end, or rows were left that no frame covered. With
 **Auto-scroll goes to the top first** on, a capture whose way to the top did not prove the top
 carries `topReached: false`; the field is absent otherwise.
 

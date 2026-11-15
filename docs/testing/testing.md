@@ -253,7 +253,8 @@ design is in [scrolling capture](../design/scroll-capture.md).
 - `scroll_tracker_contract` (`tests/unit/test_scroll_tracker.cpp`, on scenes of
   `tests/fixtures/ScrollSynthetic.*`; no display): the matching engine. A frame placed at another
   offset than the page's own, a pinned part in the image more than once, a row lost or doubled at a
-  seam ([#1527](https://github.com/patrick-hudson/put.gd-desktop/pull/1527)).
+  seam ([#1527](https://github.com/patrick-hudson/put.gd-desktop/pull/1527)); a page's last lines above
+  a blank tail under a header and a footer placed where the page is, never unmatched.
 - `scroll_session_contract` (`tests/unit/test_scroll_session.cpp`, on the synthetic application in
   `tests/fixtures/ScrollSynthetic.*`, with the helper's spool file; no display): the session loop. A
   person's scrolling as a script (slow, fast, still, back up, to the end) gives the exact page and not
@@ -268,7 +269,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   stale (the same picture again and again while the page moves) keeps the rows the page shows; a
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
   one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
-  up still is); the way to the top over a strip that takes no wheel under the first wheel point still starts the
+  up still is); the tracker's expected offset stays within what a step owes when its first frames
+  show the page still; a blank stretch under a pinned header and footer is not called the end; the
+  end of a page whose last lines sit above a blank tail under a header and a footer is reached, not
+  lost; the way to the top over a strip that takes no wheel under the first wheel point still starts the
   image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
   in a capture where nothing ever moved ends it like Cancel; Done keeps an exact image and Cancel discards
   it in every state. It is in the contract lists of `cmake/TestPolicy.cmake`.
