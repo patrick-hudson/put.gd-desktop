@@ -323,6 +323,7 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
       ++scrolledByUser;
     }
     pos = int(std::lround(posAt(t)));
+    if (t < quietUntil_) continue;
     // Damage-driven: nothing to send while the picture stands still.
     if (spec_.damageOnly && !forceNext_ && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
     forceNext_ = false;
@@ -333,6 +334,16 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
   if (stale_ && !framePositions.empty()) {
     // The same picture again, whatever the page did since.
     framePositions.push_back(framePositions.back());
+    return putgd::record::RunFrame{delivered_.view(), t};
+  }
+  if (foreignQuietMs_ >= 0 && t >= quietUntil_) {
+    // One foreign picture, then the quiet.
+    for (int y = 0; y < scratch_.h; ++y)
+      for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb(rng_.range(0, 255), rng_.range(0, 255), rng_.range(0, 255));
+    quietUntil_ = t + foreignQuietMs_;
+    foreignQuietMs_ = -1;
+    std::swap(scratch_, delivered_);
+    framePositions.push_back(pos);
     return putgd::record::RunFrame{delivered_.view(), t};
   }
   int shown = pos;

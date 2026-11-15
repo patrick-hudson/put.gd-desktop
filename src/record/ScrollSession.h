@@ -329,6 +329,7 @@ private:
     long long lastStepMove_ = 0;  // how far the last placed frame of this step moved
     double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
     bool upPending_ = false;     // it went up far enough to be the user's, if the next frame agrees
+    bool lastSkipped_ = false;   // the tracker's latest result was a skipped frame (dropOwed)
     bool lastStill_ = false;
     bool lastShowedStill_ = false;
     bool lastFrameBlank_ = false;   // the last frame (under auto-scroll) showed nothing  // the last frame showed the page where the last placed one had it

@@ -327,6 +327,7 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
         attributed_ = 0;
         chainHinted_ = true;
     };
+    lastSkipped_ = r.status == TrackStatus::Skipped;
     // Whether this frame showed the page where the last placed frame had it.
     lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);
     // A jump up under auto-scroll is the user's scrolling only if the next
@@ -657,6 +658,16 @@ void ScrollSession::startRecover() {
 void ScrollSession::dropOwed() {
     pending_ = 0;
     if (tracker_->state() == TrackState::Lost) return;
+    // The step's last frame was skipped (one frame: the tracker is not lost
+    // yet), so the tracker's reference has not advanced and where the page
+    // went since it is not known. What the hints said stays with the tracker,
+    // and with the session's chain, and the next step's add to it. Dropped, a
+    // step that moved unseen leaves the next frame a step short, and on content
+    // that repeats every step that is a place that fits: the image lost a
+    // period (CodeRabbit on #1536). After a frame placed or taken still they
+    // are dropped, as before: a step that moved nothing must not add to the
+    // next (#1544).
+    if (lastSkipped_) return;
     tracker_->forgetHints();
     emitted_ = 0;
     attributed_ = 0;
