@@ -27,7 +27,8 @@ public:
  Error indexPublications(const ProviderRegistry&);
  HistoryPage list(const HistoryQuery&) const;
  // History's counts: per-category totals of every stored file (all, images,
- // videos, text+other, failed), the query's total, and the query's files in
+ // videos, text+other, failed; failed counts failed and unknown-outcome uploads),
+ // the query's total, and the query's files in
  // each [from, to] ISO range of days (at most 64).
  QJsonObject counts(const HistoryQuery&,const QList<std::pair<QString,QString>>& days,Error* = nullptr) const;
  QJsonObject detail(const QString&,Error* = nullptr) const;
