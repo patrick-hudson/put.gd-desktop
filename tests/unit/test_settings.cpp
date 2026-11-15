@@ -1,4 +1,5 @@
 #include "core/SettingsService.h"
+#include "core/CommandText.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -549,6 +550,33 @@ private slots:
         }
         const auto badKey = withRecord(QJsonObject{{"shortcut", "Ctrl+Shift+Nope"}});
         QCOMPARE(badKey.details["path"].toString(), QStringLiteral("/actions/record/shortcut"));
+    }
+    // The tray's output submenu and the window's popup read these rows. A timing
+    // word goes only on a row it is true for: editing and recording upload or
+    // save when you choose, the others right away, and nothing promises a save
+    // when there is no output (council round 4).
+    void outputRowsSayTimingOnlyWhereItIsTrue() {
+        auto document = putgd::Settings::developmentTemplate();
+        auto profiles = document["profiles"].toArray(); auto profile = profiles.first().toObject(); profile["id"] = "s3"; profile["label"] = "Archive"; profiles[0] = profile; document["profiles"] = profiles;
+        document["captureDefaults"] = QJsonObject{{"destination", "upload"}, {"profileId", "s3"}, {"publicationMode", "default"}};
+        auto actions = document["actions"].toObject();
+        for (const auto& name : putgd::Settings::actionNames()) { auto action = actions[name].toObject(); action["destination"] = "default"; action.remove("profileId"); action.remove("publicationMode"); actions[name] = action; }
+        document["actions"] = actions;
+        auto archive = document["archive"].toObject(); archive["keepUploads"] = false; document["archive"] = archive;
+        auto summary = putgd::commandtext::outputSummary(document);
+        QVERIFY(!summary.mixed); QCOMPARE(summary.tray, QString("Capture output: Shared link · Archive"));
+        QCOMPARE(summary.rows, QStringList({"All actions: Shared link · Archive · No local copy", "Capture region & edit · Record screen: Upload when you choose"}));
+        // Recording saves locally while editing uploads: separate rows, each true.
+        actions["record"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}}; actions["window"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"shortcut", ""}};
+        archive["keepUploads"] = true; document["archive"] = archive; document["actions"] = actions;
+        summary = putgd::commandtext::outputSummary(document);
+        QVERIFY(summary.mixed); QCOMPARE(summary.tray, QString("Capture output: mixed")); QCOMPARE(summary.band, QString("Mixed outputs")); QCOMPARE(summary.exceptions, 2);
+        QCOMPARE(summary.rows, QStringList({"Default: Shared link · Archive + local copy", "Capture region & edit: Upload when you choose", "Capture window: Saves locally · Local only", "Record screen: Save when you choose · Local only"}));
+        // With no output at all nothing is promised.
+        document["captureDefaults"] = QJsonObject{{"destination", "local"}, {"profileId", QJsonValue::Null}, {"publicationMode", "default"}};
+        archive["keepUploads"] = false; document["archive"] = archive; actions["record"] = QJsonObject{{"shortcut", ""}}; actions["window"] = QJsonObject{{"destination", "default"}, {"shortcut", ""}}; document["actions"] = actions;
+        summary = putgd::commandtext::outputSummary(document);
+        QCOMPARE(summary.band, QString("Captures have no output")); QCOMPARE(summary.rows, QStringList({"All actions: Nothing is saved or uploaded"}));
     }
 };
 QTEST_GUILESS_MAIN(SettingsContract)

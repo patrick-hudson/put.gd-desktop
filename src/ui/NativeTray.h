@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include "IconArt.h"
+#include "TrayMenu.h"
 #include <QDBusConnection>
 #include <QObject>
 #include <QColor>
@@ -26,10 +27,9 @@ public:
  void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {},IconArt::TrayGlyph glyph = IconArt::TrayGlyph::Mark);
  // Shows the "update" menu entry with this label; empty hides it (#293).
  void setUpdateLabel(const QString& label);
- void setCommands(const QHash<QString,QString>& shortcuts,const QString& uploadStatus,int uploads=1,bool failed=false,const QString& recording = {},const QString& attention = "Failed uploads");
- void setOutput(const QString& summary,const QStringList& details);
- // The capture delay the radio submenu shows as chosen (#1363): 0, 3, 5 or 10.
- void setCaptureDelay(int seconds);
+ // The menu's live state (TrayMenu's table): the live block, shortcuts,
+ // capture delay, output rows and update label. The host hears what changed.
+ void setMenu(const traymenu::State& state);
  void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {},
              const QList<NotificationAction>& actions = {});
  // Closes every notification this tray sent that its server has not reported

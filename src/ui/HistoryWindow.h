@@ -45,7 +45,9 @@ public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();QJsonObj
  // names maps history IDs to file names; skipped counts selected files that
  // were not sent because they have no deletable remote target.
  static QDialog* deletionConfirmation(QWidget* parent,const QJsonObject& preparation,const QHash<QString,QString>& names,const QJsonArray& profiles,int skipped=0);
-signals:void viewStateChanged();
+// The active operations History last read (operation.recent); activityChanged follows them.
+ QJsonArray activeOperations()const;
+signals:void viewStateChanged();void activityChanged();
  void captureSettingsRequested();void localCopySettingsRequested();
  // Edit & upload from another source: "clipboard", or "file" with a path.
  void editRequested(const QString& source,const QString& path);void chooseImageRequested();

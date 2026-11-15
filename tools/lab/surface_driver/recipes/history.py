@@ -713,7 +713,7 @@ def _copied_row_details(ctx, row):
 
 def _application_menu(ctx):
     ctx.click('applicationMenu', window='history')
-    expected = {'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'}
+    expected = {'How capture actions work', 'Check for updates', 'About put.gd', 'Quit put.gd'}
     ctx.wait(lambda: expected <= _menu_names(ctx), 'application menu exposes all four commands')
 
 
@@ -735,9 +735,9 @@ def capture_help(ctx):
     _row(ctx)
     _frame(ctx, 'before')
     _application_menu(ctx)
-    ctx.click('text:Capture actions', window='applicationMenuPopup')
-    ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'name': 'Capture actions'}),
-             'Capture actions help is visible')
+    ctx.click('text:How capture actions work', window='applicationMenuPopup')
+    ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'name': 'How capture actions work'}),
+             'How capture actions work help is visible')
     ctx.frame('help', window='captureHelp')
     ctx.click('text:Close', window='captureHelp')
     ctx.wait(lambda: not ctx.accessible({'owned': True, 'visible': True, 'name': 'Help'}),
@@ -1516,7 +1516,7 @@ BLOCKED = {
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
-    'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
+    'shell.narrow-labels': 'Needs a command-band row projection at several widths; ui.viewState has no oracle for which row a button is on.',
     'shell.action-recovery-banner': 'settings-no-output covers Change output; no controlled rejected-action fixtures yet supply Keep local copies and Review destination variants for the complete banner matrix.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
     'cli.launcher-background': 'Private resident lifecycle exists; no isolated absent-tray fixture exposes the required 10-second Settings fallback after --background.',
