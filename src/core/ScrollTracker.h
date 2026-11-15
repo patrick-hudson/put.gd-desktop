@@ -52,15 +52,23 @@
 // composed.
 #pragma once
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <vector>
 
-#include "core/ScrollStitcher.h"  // FrameView
-
 namespace putgd::scroll {
+
+// One frame of the captured region: BGRx rows, top to bottom.
+struct FrameView {
+  const uint8_t* data = nullptr;
+  int width = 0;
+  int height = 0;
+  std::ptrdiff_t stride = 0;  // bytes per row, >= 4 * width
+  const uint8_t* row(int y) const { return data + static_cast<std::ptrdiff_t>(y) * stride; }
+};
 
 struct TrackerOptions {
   // Columns left out of the vote at each side (scrollbars, shadows). They are
@@ -94,6 +102,13 @@ struct TrackerOptions {
   // neighbouring offsets, and between lines that differ in a few characters.
   double acceptBands = 0.85;
   double acceptCells = 0.50;
+  // Or bands down to acceptBandsWithCells where cells agree on at least
+  // acceptCellsStrong: text that the browser draws with other antialiasing
+  // (Chrome switches between greyscale and subpixel text while it scrolls
+  // a long GitHub page) moves every band's mean, while the cells of the
+  // same glyphs still agree.
+  double acceptBandsWithCells = 0.70;
+  double acceptCellsStrong = 0.90;
   // The tiles (a band by 32 rows) that move with an offset must be at least
   // this share of the tiles that show something: the page is the largest
   // layer. A side bar that sticks, a strip at a pace of its own, an inner
@@ -144,7 +159,7 @@ struct TrackerOptions {
   double closeFraction = 0.34;
   // ... and gaps across up to this share of the frame width.
   double closeWidthFraction = 0.15;
-  // Height cap of the image, all rows (as StitchOptions::maxOutputRows).
+  // Height cap of the image, all rows.
   long long maxOutputRows = 32000;
   // After this many frames in a row that could not be placed the state is Lost.
   int lostAfterSkips = 2;
@@ -197,6 +212,13 @@ struct TrackerHint {
   int uncertainty = 0;
 };
 
+// A rectangle of the frame in frame pixels: x, y its top left corner. Empty
+// when w or h is not positive.
+struct TrackerRect {
+  int x = 0, y = 0, w = 0, h = 0;
+  bool empty() const { return w <= 0 || h <= 0; }
+};
+
 enum class TrackStatus {
   Placed,      // the frame's place in the page is proved (the first frame too)
   NoMovement,  // the content did not move (changes in place are ignored)
@@ -245,6 +267,11 @@ struct TrackTotals {
   int pinnedRegions = 0;       // pinned parts found (connected regions of the final mask)
   bool capReached = false;
   long long top = 0, bottom = 0;  // the image's extent in page rows
+  // Under the excluded rectangle (ScrollTracker::setExcluded), in rows of the
+  // image: cells that only the rectangle kept from being seen (every placed
+  // frame that held them had them under it), filled with the plain colour,
+  // and the rows that hold them. 0 when every such cell was shown outside it.
+  long long hiddenCells = 0, hiddenRows = 0;
 };
 
 class ScrollTracker {
@@ -255,6 +282,26 @@ class ScrollTracker {
   ScrollTracker& operator=(const ScrollTracker&) = delete;
 
   TrackResult addFrame(const FrameView& frame, TrackerHint hint = {});
+  // A rectangle of the frame that is not the application (put.gd's own bar
+  // drawn inside the region). Its cells never vote, never count as evidence
+  // or contradiction, are never composed and never drawn as a pinned part:
+  // the page rows under it come from frames in which they are clear, as under
+  // a pinned box. It is rounded out to whole cells (cellPx columns) and block
+  // rows (blockRows rows). Set it before the first frame or between frames;
+  // it applies from the next addFrame(). An empty rectangle clears it.
+  //
+  // What no frame shows clear. When the rectangle spans every cell of the
+  // width and touches the frame's top or bottom edge (a bar across the
+  // bottom of the region), the frame rows it covers there never count for
+  // the extent: the image ends above such a bar, also at the page's end, and
+  // addedTop/addedBottom never include them. Any other cell under it that no
+  // frame showed clear (a bar over part of the width at the page's very end
+  // or start) is filled in finish() like anything else no frame showed
+  // clear, with the plain colour of its column (the most common colour of
+  // the written rows beside it), and counted in TrackTotals::hiddenCells and
+  // hiddenRows.
+  void setExcluded(TrackerRect rect);
+  TrackerRect excluded() const { return excludedRect_; }
   // Writes what is pinned once (at the top as the first screen showed it, at
   // the bottom as the last), fills what no frame showed clear, and returns
   // the extent. No frame is taken after it.
@@ -305,9 +352,13 @@ class ScrollTracker {
   void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const;
-  void storeCellTally(const Signature& cur, long long pos, Tally& t) const;
+  void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const;
+  void storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs, const std::vector<uint8_t>& have,
+                      long long from, Tally& t) const;
   void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1) const;
   bool stillTile(size_t i) const;
+  bool boxed(const Candidate& c) const;
+  int texturedRowCount(const Signature& sig) const;
   double coarseShare(const Signature& cur, const Signature& ref, int d, double abortBelow,
                      const std::vector<uint16_t>& incl) const;
   void searchPass(const Signature& cur, const Signature& ref, int expected, const std::vector<uint16_t>& incl,
@@ -316,7 +367,12 @@ class ScrollTracker {
   std::vector<int> pickPeaks(const std::vector<float>& coarse, double floor, long long center) const;
   bool stillFrame(const Signature& cur, const Signature& ref, double* share) const;
   std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected) const;
-  std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, bool wide) const;
+  std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, long long lo, long long hi,
+                                     size_t maxPeaks) const;
+  // The slice of the image a lost frame looks through after the near window,
+  // and where the next one starts.
+  static constexpr long long kSweepRows = 4096;
+  long long sweep_ = LLONG_MIN;
   int decide(std::vector<Candidate>& cands, int expected, int uncertainty, bool hinted,
              bool* byExpectation, SkipReason* why) const;
   bool contradicted(const Signature& cur, long long pos) const;
@@ -369,8 +425,19 @@ class ScrollTracker {
   // that vote (not pinned, not standing still since the last placed frame).
   std::vector<int> bandLo_;
   std::vector<uint16_t> bandIncl_, cellIncl_;
-  // The closed mask as 16-bit lanes: per block row, per cell and per band.
+  // The closed mask as 16-bit lanes: per block row, per cell and per band;
+  // the excluded rectangle is in them too.
   std::vector<uint16_t> closed16_, bandPinned16_;
+  // The excluded rectangle: as given, per block, as words per block row, and
+  // the frame rows it leaves [effTop_, effBottom_) (rows it covers across the
+  // whole width at the top and the bottom are not).
+  TrackerRect excludedRect_;
+  std::vector<uint8_t> excl_;
+  std::vector<uint16_t> exclLane16_;
+  std::vector<uint64_t> exclWords_;
+  int effTop_ = 0, effBottom_ = 0;
+  void applyExcluded();
+  void refreshLanes();
   // Rows of the incoming frame [0, y) that show something outside what is pinned.
   std::vector<int> texturedRows_;
   // Per tile of the incoming frame: its textured band lanes outside what is
@@ -384,14 +451,19 @@ class ScrollTracker {
   uint32_t pageColour_ = 0;
   unsigned pageCell_ = 0;  // its cell value
   int learnedSteps_ = 0;
-  // The last placed frame's rows with cells seen once, waiting for the next
-  // pair (their pixels, and their bands and texture), and the rows the cap
-  // allows.
-  long long pendingPos_ = 0;
-  std::vector<int> pendingRows_;
-  std::vector<uint8_t> pendingPixels_;
-  std::vector<uint16_t> pendingBands_;
-  std::vector<uint64_t> pendingOpen_;
+  // Placed frames' rows with cells seen once, waiting (their pixels, their
+  // bands and texture, and which cells): for the next pair, and while the
+  // mask is young for it to learn what is pinned; and the rows the cap allows.
+  struct Pending {
+    long long pos = 0;
+    std::vector<int> rows;
+    std::vector<uint8_t> pixels;
+    std::vector<uint16_t> bands;
+    std::vector<uint64_t> open;
+    std::vector<uint64_t> agreed;  // of those, the ones the last frame showed the same
+  };
+  std::vector<Pending> pending_, spare_;  // spare_: flushed, their buffers kept for reuse
+  void narrowPending(Pending& p, const std::vector<uint64_t>& blocked) const;
   long long allowLo_ = 0, allowHi_ = 0;
   uint32_t frameSerial_ = 0;  // placed frames, counted from 1
   std::unique_ptr<Store> store_;

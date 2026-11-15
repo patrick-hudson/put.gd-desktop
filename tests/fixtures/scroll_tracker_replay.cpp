@@ -1,15 +1,19 @@
 // Replay tool for the scroll tracker (#1515): feeds a recorded sequence of
-// frames through ScrollTracker (or, for a before and after, through today's
-// ScrollStitcher) and writes the image and every frame's result as JSON. Lab
+// frames through ScrollTracker and writes the image and every frame's result
+// as JSON. (The stitcher it was once compared with is gone; its numbers are in
+// PR #1527.) Lab
 // input, never desktop proof; tools/lab/scroll_tracker_score.py compares the
 // output with the browser's own full-page picture and the true scroll position.
 //
-//   test_scroll_tracker_replay --list FILE --out DIR [--engine tracker|stitcher]
-//       [--repeat N] [--max-height N]
+//   test_scroll_tracker_replay --list FILE --out DIR [--engine tracker]
+//       [--repeat N] [--max-height N] [--exclude X,Y,W,H [--paint]]
+//
+// --exclude tells the tracker a rectangle of the frame is not the application;
+// --paint also draws into it, in every frame, a bar whose pixels change from
+// frame to frame (as put.gd's own bar with a height counter would).
 //
 // FILE has one frame per line: a PNG path, optionally followed by a hint
 // (expected offset since the line before, and its uncertainty).
-#include "core/ScrollStitcher.h"
 #include "core/ScrollTracker.h"
 
 #include <QCommandLineParser>
@@ -86,12 +90,14 @@ int main(int argc, char** argv) {
   QCommandLineParser parser;
   parser.addOptions({{"list", "frames, one PNG path per line [hint uncertainty]", "file"},
                      {"out", "an existing directory for image.png and results.json", "dir"},
-                     {"engine", "tracker or stitcher", "name", "tracker"},
+                     {"engine", "tracker (the only engine)", "name", "tracker"},
                      {"repeat", "run the sequence this many times for timing (the image is the first run's)", "n", "1"},
-                     {"max-height", "height cap", "rows", "32000"}});
+                     {"max-height", "height cap", "rows", "32000"},
+                     {"exclude", "a rectangle of the frame that is not the application (tracker only)", "x,y,w,h"},
+                     {"paint", "draw a bar that changes every frame into the excluded rectangle"}});
   parser.process(app);
   if (!parser.isSet("list") || !parser.isSet("out")) {
-    std::fprintf(stderr, "usage: --list FILE --out DIR [--engine tracker|stitcher]\n");
+    std::fprintf(stderr, "usage: --list FILE --out DIR [--engine tracker]\n");
     return 2;
   }
   QFile listFile(parser.value("list"));
@@ -106,32 +112,57 @@ int main(int argc, char** argv) {
     if (parts.size() >= 3) l.hint = {true, parts[1].toInt(), parts[2].toInt()};
     lines.push_back(l);
   }
-  std::vector<QImage> frames;
-  for (const Line& l : lines) {
-    frames.push_back(load(l.path));
-    if (frames.back().isNull()) {
-      std::fprintf(stderr, "cannot read %s\n", qPrintable(l.path));
-      return 3;
+  // Frames are read as they are fed: a live run has thousands.
+  const QStringList ex = parser.value("exclude").split(',');
+  const bool paint = parser.isSet("paint") && ex.size() == 4;
+  const auto frameAt = [&](size_t i) {
+    QImage f = load(lines[i].path);
+    if (f.isNull()) {
+      std::fprintf(stderr, "cannot read %s\n", qPrintable(lines[i].path));
+      return f;
     }
-  }
+    if (!paint) return f;
+    // A dark bar with a counter-like pattern of the frame's number.
+    const int n = int(i) + 1;
+    const int x0 = std::max(0, ex[0].toInt()), y0 = std::max(0, ex[1].toInt());
+    const int x1 = std::min(f.width(), x0 + ex[2].toInt()), y1 = std::min(f.height(), y0 + ex[3].toInt());
+    for (int y = y0; y < y1; ++y) {
+      QRgb* row = reinterpret_cast<QRgb*>(f.scanLine(y));
+      for (int x = x0; x < x1; ++x) {
+        const int digit = ((x - x0) / 12 + n * 7 + (x - x0) / 60 * n) % 10;
+        const bool ink = (y - y0) > 6 && (y1 - y) > 6 && ((x - x0) % 12) < 2 + digit / 2 && ((y - y0 + digit) % 5) < 3;
+        row[x] = ink ? qRgb(240, 192, 96) : qRgb(30, 34, 48);
+      }
+    }
+    return f;
+  };
+  if (lines.empty()) return 2;
+  const QImage first = frameAt(0);
+  if (first.isNull()) return 3;
   const QString out = parser.value("out");
-  const bool stitcher = parser.value("engine") == "stitcher";
+  if (parser.value("engine") != "tracker") {
+    std::fprintf(stderr, "the only engine is tracker\n");
+    return 2;
+  }
   const int repeat = std::max(1, parser.value("repeat").toInt());
   QJsonArray results;
   QJsonObject summary;
   std::vector<double> ms, engineMs;
   using Clock = std::chrono::steady_clock;
 
-  if (!stitcher) {
+  {
     for (int run = 0; run < repeat; ++run) {
-      TimedCanvas canvas(frames[0].width());
+      TimedCanvas canvas(first.width());
       TrackerOptions opts;
       opts.maxOutputRows = parser.value("max-height").toLongLong();
       ScrollTracker tracker(canvas, opts);
-      for (size_t i = 0; i < frames.size(); ++i) {
+      if (ex.size() == 4) tracker.setExcluded({ex[0].toInt(), ex[1].toInt(), ex[2].toInt(), ex[3].toInt()});
+      for (size_t i = 0; i < lines.size(); ++i) {
+        const QImage frame = frameAt(i);
+        if (frame.isNull()) return 3;
         const double canvasBefore = canvas.ms;
         const auto t0 = Clock::now();
-        const TrackResult r = tracker.addFrame(viewOf(frames[i]), lines[i].hint);
+        const TrackResult r = tracker.addFrame(viewOf(frame), lines[i].hint);
         const double t = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
         ms.push_back(t);
         engineMs.push_back(t - (canvas.ms - canvasBefore));
@@ -176,6 +207,8 @@ int main(int argc, char** argv) {
                             {"capReached", tot.capReached},
                             {"top", double(tot.top)},
                             {"bottom", double(tot.bottom)},
+                            {"hiddenCells", double(tot.hiddenCells)},
+                            {"hiddenRows", double(tot.hiddenRows)},
                             {"finishMs", finishMs},
                             {"cellPx", tracker.options().cellPx},
                             {"blockRows", tracker.options().blockRows},
@@ -184,51 +217,6 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "cannot write the image\n");
         return 4;
       }
-    }
-  } else {
-    // Today's stitcher, fed as the control loop would: the hint is the last
-    // proved step (the loop's notches times its measured pixels per notch),
-    // and the capture ends at the first step it cannot match, as the loop
-    // does after its retry and its way back show the same picture.
-    StitchOptions so;
-    so.maxOutputRows = parser.value("max-height").toInt();
-    ScrollStitcher st(so);
-    int refPos = 0, lastStep = kNoHint;
-    QString ended;
-    for (size_t i = 0; i < frames.size(); ++i) {
-      const auto t0 = Clock::now();
-      const StepResult r = st.addFrame(viewOf(frames[i]), lastStep);
-      const double t = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
-      ms.push_back(t);
-      const bool moved = r.status == StepStatus::Appended || r.status == StepStatus::Reversed || r.status == StepStatus::LimitReached;
-      if (moved) {
-        refPos += r.offset;
-        if (r.offset > 0) lastStep = r.offset;
-      }
-      const char* status = r.status == StepStatus::First || moved ? "placed"
-                           : r.status == StepStatus::NoMovement   ? "no_movement"
-                                                                  : "skipped";
-      results.append(QJsonObject{{"file", lines[i].path},
-                                 {"status", status},
-                                 {"reason", toString(r.status)},
-                                 {"offset", r.offset},
-                                 {"position", refPos},
-                                 {"addedBottom", r.appendedRows},
-                                 {"confidence", r.score},
-                                 {"ms", t}});
-      if (r.status == StepStatus::NoMatch || r.status == StepStatus::Ambiguous || r.status == StepStatus::LayoutChanged ||
-          r.status == StepStatus::LimitReached) {
-        ended = toString(r.status);
-        break;
-      }
-    }
-    st.finish();
-    const int h = st.outputHeight();
-    summary = QJsonObject{{"engine", "stitcher"}, {"frames", int(frames.size())}, {"fed", int(results.size())}, {"endedOn", ended},
-                          {"top", 0}, {"bottom", h}};
-    if (!save(st.takeImage(), frames[0].width(), h, out + "/image.png")) {
-      std::fprintf(stderr, "cannot write the image\n");
-      return 4;
     }
   }
   double sum = 0;
@@ -245,8 +233,8 @@ int main(int argc, char** argv) {
     summary["engineMsP95"] = percentile(engineMs, 0.95);
     summary["engineMsMax"] = *std::max_element(engineMs.begin(), engineMs.end());
   }
-  summary["width"] = frames[0].width();
-  summary["height"] = frames[0].height();
+  summary["width"] = first.width();
+  summary["height"] = first.height();
   QFile f(out + "/results.json");
   if (!f.open(QIODevice::WriteOnly)) return 4;
   f.write(QJsonDocument(QJsonObject{{"summary", summary}, {"frames", results}}).toJson(QJsonDocument::Indented));

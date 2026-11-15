@@ -52,7 +52,10 @@ const XML = `<node><interface name="${IFACE}">
 <method name="RecordingWindows"><arg type="s" direction="out"/></method>
 <method name="WatchClicks"><arg type="s" direction="out"/></method>
 <method name="UnwatchClicks"><arg type="s" direction="out"/></method>
+<method name="WatchPointer"><arg type="s" direction="out"/></method>
+<method name="UnwatchPointer"><arg type="s" direction="out"/></method>
 <signal name="Click"><arg type="s"/></signal>
+<signal name="Pointer"><arg type="s"/></signal>
 <signal name="Action"><arg type="s"/><arg type="s"/></signal>
 <signal name="ClipboardChanged"><arg type="t"/></signal>
 <signal name="CapabilitiesChanged"/>
@@ -932,6 +935,7 @@ export default class PutgdExtension extends Extension {
                 }
                 this._hideRecordingFrame();
                 this._unwatchClicks();
+                this._unwatchPointer();
             }
         });
         this._acceleratorSignal = global.display.connect('accelerator-activated', (_display, id) => {
@@ -945,6 +949,7 @@ export default class PutgdExtension extends Extension {
                     this._drop(id, 'helper_unavailable', 'Resident application disconnected');
                 this._hideRecordingFrame();
                 this._unwatchClicks();
+                this._unwatchPointer();
                 this._unbind();
                 this._uiProcess = 0;
                 this._uiProcessOwner = null;
@@ -974,6 +979,7 @@ export default class PutgdExtension extends Extension {
         }
         this._hideRecordingFrame();
         this._unwatchClicks();
+        this._unwatchPointer();
         this._unbind();
         if (this._ownerSignal)
             this._selection.disconnect(this._ownerSignal);
@@ -1107,7 +1113,7 @@ export default class PutgdExtension extends Extension {
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
             extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
-            recordingVersion: 3, previewVersion: 1, captureVersion: 2}));
+            recordingVersion: 3, previewVersion: 1, captureVersion: 2, pointerWatchVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -1905,6 +1911,46 @@ export default class PutgdExtension extends Extension {
             return Clutter.EVENT_PROPAGATE;
         });
         this._clicks = clicks;
+    }
+
+    // A scroll capture's auto-scroll (#1531, extension version 24): where the
+    // pointer moves, for as long as the resident asks. The Shell sees the
+    // pointer everywhere; the helper sees it only on its bar's window, so a
+    // hand that moves while the helper's pointer is in the page for a wheel
+    // step went unseen until the helper had pulled the pointer back. Mutter's
+    // cursor tracker says when the position changes (no event handler on the
+    // stage); each change is sent with the monotonic time in milliseconds, the
+    // helper's clock, and the helper tells its own motions from the hand's.
+    // It is never on while a person scrolls: nothing is injected then.
+    WatchPointerAsync(_args, invocation) {
+        this._run(invocation, sender => {
+            this._unwatchPointer();
+            const tracker = global.backend.get_cursor_tracker();
+            const emit = () => {
+                const [x, y] = global.get_pointer();
+                Gio.DBus.session.emit_signal(sender, PATH, IFACE, 'Pointer',
+                    new GLib.Variant('(s)', [JSON.stringify({x, y, t: Math.floor(GLib.get_monotonic_time() / 1000)})]));
+            };
+            this._pointer = {tracker, signal: tracker.connect('position-invalidated', emit)};
+            // Where it is now: the resident knows the watch is on.
+            emit();
+            return {version: 1};
+        });
+    }
+
+    UnwatchPointerAsync(_args, invocation) {
+        this._run(invocation, () => {
+            this._unwatchPointer();
+            return {};
+        });
+    }
+
+    _unwatchPointer() {
+        const pointer = this._pointer;
+        if (!pointer)
+            return;
+        this._pointer = null;
+        pointer.tracker.disconnect(pointer.signal);
     }
 
     _unwatchClicks() {

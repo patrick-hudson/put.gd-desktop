@@ -1084,7 +1084,8 @@
           "description": "Whether captures started by a hotkey also wait captureDelaySeconds. Omitted means false: hotkey captures are immediate."
         },
         "scrollCaptureMaxHeight": {"type": "integer", "minimum": 2000, "maximum": 60000, "default": 30000},
-        "scrollCaptureFromTop": {"type": "boolean", "default": true},
+        "scrollCaptureFromTop": {"type": "boolean", "default": false, "description": "Auto-scroll goes to the top of the page first, when it begins before anything has moved. Omitted means false."},
+        "scrollCaptureAutoScroll": {"type": "boolean", "default": false, "description": "A scrolling capture starts with auto-scroll on (put.gd turns the page). Omitted means false: the capture waits for you to scroll."},
         "recordingFrameRate": {
           "enum": [
             30,

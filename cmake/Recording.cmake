@@ -15,7 +15,7 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # Scroll capture (#1376), the helper's second session kind: the same sources
     # into a frame tap and a stitcher, and one injector per desktop (XTest, Mutter
     # RemoteDesktop, KWin fake input, a wlroots virtual pointer).
-    target_sources(putgd-record PRIVATE src/core/ScrollStitcher.cpp src/record/ScrollRun.cpp src/record/FrameTap.cpp src/record/ScrollBar.cpp
+    target_sources(putgd-record PRIVATE src/core/ScrollTracker.cpp src/record/ScrollSession.cpp src/record/ScrollSpool.cpp src/record/FrameTap.cpp src/record/ScrollBar.cpp
       src/record/ScrollCapture.cpp src/record/ScrollInjectors.cpp src/record/X11ScrollInjector.cpp src/record/X11EscapeWatch.cpp src/platform/wayland/VirtualPointer.cpp)
     target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_XCB_XTEST)
     target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_dialog_attachment putgd_x11_native_snapshot putgd_host_open putgd_visual putgd_fonts putgd_file_dialog Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)

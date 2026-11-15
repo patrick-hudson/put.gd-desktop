@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import prune_nightlies as prune
@@ -243,6 +244,24 @@ class Repositories(unittest.TestCase):
         self.assertEqual(rpm.call_count, 4)
         self.assertTrue(any('/rpm/fedora/45/x86_64/stable/' in url for url in result))
         self.assertTrue(any('/debian13/dists/stable/' in url for url in seen))
+
+    def test_only_an_absent_stable_rpm_repository_counts_as_empty(self):
+        _, compressed, repomd = self.fixture()
+        def get(url):
+            if '/rpm/fedora/45/x86_64/stable/' in url or missing in url:
+                raise HTTPError(url, 404, 'Not Found', {}, None)
+            if '/rpm/' in url:
+                return repomd if url.endswith('repomd.xml') else compressed
+            return b'Package: putgd\nVersion: 26.1031.20~nightly\n'
+        missing = 'no such url'
+        result = prune.repository_tags(get)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[prune.MIRROR + 'rpm/fedora/45/x86_64/stable/repodata/repomd.xml'], [])
+        # A missing nightly repository, and a stable one that has lost its primary index, abort.
+        for missing in ('/rpm/fedora/45/x86_64/nightly/repodata/repomd.xml',
+                        '/rpm/fedora/44/x86_64/stable/repodata/test-primary'):
+            with self.subTest(missing=missing), self.assertRaises(HTTPError):
+                prune.repository_tags(get)
 
 
 class Workflow(unittest.TestCase):

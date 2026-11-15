@@ -107,6 +107,14 @@ bool VirtualPointer::moveTo(uint32_t x, uint32_t y, uint32_t extentWidth, uint32
     return d_->sync();
 }
 
+bool VirtualPointer::moveBy(double dx, double dy) {
+    std::lock_guard lock(d_->mutex);
+    if (!d_->pointer) return false;
+    zwlr_virtual_pointer_v1_motion(d_->pointer, Impl::stamp(), wl_fixed_from_double(dx), wl_fixed_from_double(dy));
+    zwlr_virtual_pointer_v1_frame(d_->pointer);
+    return d_->sync();
+}
+
 bool VirtualPointer::wheel(int notches) {
     std::lock_guard lock(d_->mutex);
     if (!d_->pointer || notches == 0) return false;

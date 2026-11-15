@@ -45,6 +45,7 @@
 #include "ScrollTracker.h"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <climits>
 #include <cmath>
@@ -256,10 +257,11 @@ unsigned countAndNot(const uint16_t* x, const uint16_t* y, int n) {
 // strictly where it was (a pinned part is drawn again the same; a photo's
 // smooth cells only look alike) and not where the page moved it; move where
 // it is where the page moved it and not where it was. bd: ref's row y + d,
-// ad: cur's row y - d (null outside the frame).
+// ad: cur's row y - d (null outside the frame); xd, xa: 1 where those rows
+// are under the excluded rectangle, where neither test can tell anything.
 void votes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint16_t* tb, const uint16_t* bd,
-           const uint16_t* ad, int n, unsigned tol, unsigned strict, unsigned page, uint16_t* stay, uint16_t* stayFlat,
-           uint16_t* move, uint16_t* astray) {
+           const uint16_t* ad, const uint16_t* xd, const uint16_t* xa, int n, unsigned tol, unsigned strict, unsigned page,
+           uint16_t* stay, uint16_t* stayFlat, uint16_t* move, uint16_t* astray) {
   int k = 0;
 #if defined(__SSE2__)
   const __m128i t = _mm_set1_epi16(short(tol)), ts = _mm_set1_epi16(short(strict)), one = _mm_set1_epi16(1),
@@ -268,15 +270,16 @@ void votes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint1
     const __m128i va = ld(a + k), vb = ld(b + k);
     const __m128i diff = absd(va, vb);
     const __m128i same = le(diff, t), exact = le(diff, ts);
-    const __m128i here = bd ? le(absd(va, ld(bd + k)), t) : zero;
-    const __m128i there = ad ? le(absd(vb, ld(ad + k)), t) : zero;
+    const __m128i okD = bd ? _mm_cmpeq_epi16(ld(xd + k), zero) : zero, okA = ad ? _mm_cmpeq_epi16(ld(xa + k), zero) : zero;
+    const __m128i here = bd ? _mm_and_si128(okD, le(absd(va, ld(bd + k)), t)) : zero;
+    const __m128i there = ad ? _mm_and_si128(okA, le(absd(vb, ld(ad + k)), t)) : zero;
     const __m128i tex = _mm_cmpeq_epi16(_mm_or_si128(ld(ta + k), ld(tb + k)), one);
     // A flat cell votes too, apart, when it is not the page's own background
     // (the flat inside of a cookie banner, a side bar's colour): blank rows
     // of the page that line up by chance must not, and two grey code
     // blocks that do count toward pinning only, not toward this pair.
     const __m128i coloured = _mm_andnot_si128(le(absd(va, _mm_set1_epi16(short(page))), t), _mm_cmpeq_epi16(zero, zero));
-    const __m128i away = _mm_andnot_si128(_mm_or_si128(here, there), exact);
+    const __m128i away = _mm_and_si128(_mm_andnot_si128(_mm_or_si128(here, there), exact), _mm_or_si128(okD, okA));
     // Stays only where both frames show something: a blank cell beside a
     // line of text over a blank part of the frame before stood nowhere.
     const __m128i both = _mm_cmpeq_epi16(_mm_and_si128(ld(ta + k), ld(tb + k)), one);
@@ -285,7 +288,7 @@ void votes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint1
     const __m128i m = _mm_andnot_si128(same, _mm_and_si128(here, _mm_cmpeq_epi16(ld(ta + k), one)));
     // Neither where it was nor where the page moved it, where that can be
     // told: something that changes at its own place.
-    const __m128i x = bd ? _mm_andnot_si128(_mm_or_si128(_mm_or_si128(here, there), same), tex) : zero;
+    const __m128i x = bd ? _mm_and_si128(okD, _mm_andnot_si128(_mm_or_si128(_mm_or_si128(here, there), same), tex)) : zero;
     st(stay + k, _mm_sub_epi16(ld(stay + k), s));
     st(stayFlat + k, _mm_sub_epi16(ld(stayFlat + k), sf));
     st(move + k, _mm_sub_epi16(ld(move + k), m));
@@ -296,13 +299,14 @@ void votes(const uint16_t* a, const uint16_t* b, const uint16_t* ta, const uint1
     const unsigned diff = absDiff(a[k], b[k]);
     const bool tex = ta[k] | tb[k];
     const bool coloured = absDiff(a[k], page) > tol;
-    const bool here = bd && absDiff(a[k], bd[k]) <= tol;
-    const bool there = ad && absDiff(b[k], ad[k]) <= tol;
-    const bool away = diff <= strict && !here && !there;
+    const bool okD = bd && !xd[k], okA = ad && !xa[k];
+    const bool here = okD && absDiff(a[k], bd[k]) <= tol;
+    const bool there = okA && absDiff(b[k], ad[k]) <= tol;
+    const bool away = diff <= strict && !here && !there && (okD || okA);
     if (away && (ta[k] & tb[k])) ++stay[k];
     else if (away && !tex && coloured) ++stayFlat[k];
     else if (diff > tol && here && ta[k]) ++move[k];
-    else if (bd && tex && diff > tol && !here && !there) ++astray[k];
+    else if (okD && tex && diff > tol && !here && !there) ++astray[k];
   }
 }
 
@@ -516,6 +520,8 @@ struct ScrollTracker::Store {
   int cells = 0, bands = 0, words = 0;
   long long origin = 0, count = 0;  // rows [origin, origin + count)
   std::vector<uint64_t> prov, ver;  // count * words
+  std::vector<uint64_t> hid;         // count * words: under the excluded rectangle in some placed frame
+  std::vector<uint64_t> vis;         // count * words: outside it in some placed frame
   std::vector<uint16_t> band, valid, tex;  // count * bands
 
   void init(int c, int b) {
@@ -531,19 +537,24 @@ struct ScrollTracker::Store {
     if (count > 0 && nlo < origin) nlo -= slack;
     if (count == 0 || nhi > origin + count) nhi += slack;
     const long long n = nhi - nlo;
-    std::vector<uint64_t> p(size_t(n) * words, 0), v(size_t(n) * words, 0);
+    std::vector<uint64_t> p(size_t(n) * words, 0), v(size_t(n) * words, 0), h(size_t(n) * words, 0),
+        o(size_t(n) * words, 0);
     std::vector<uint16_t> bd(size_t(n) * bands, 0), vd(size_t(n) * bands, 0), td(size_t(n) * bands, 0);
 
     if (count > 0) {
       const size_t at = size_t(origin - nlo);
       std::memcpy(&p[at * words], prov.data(), prov.size() * 8);
       std::memcpy(&v[at * words], ver.data(), ver.size() * 8);
+      std::memcpy(&h[at * words], hid.data(), hid.size() * 8);
+      std::memcpy(&o[at * words], vis.data(), vis.size() * 8);
       std::memcpy(&bd[at * bands], band.data(), band.size() * 2);
       std::memcpy(&vd[at * bands], valid.data(), valid.size() * 2);
       std::memcpy(&td[at * bands], tex.data(), tex.size() * 2);
     }
     prov.swap(p);
     ver.swap(v);
+    hid.swap(h);
+    vis.swap(o);
     band.swap(bd);
     valid.swap(vd);
     tex.swap(td);
@@ -561,6 +572,13 @@ struct ScrollTracker::Store {
     const uint64_t bit = 1ull << (c & 63);
     if (lvl >= 1) prov[i] |= bit;
     if (lvl >= 2) ver[i] |= bit;
+  }
+  // Under the excluded rectangle in a placed frame and never outside it:
+  // only the rectangle kept it from being seen.
+  bool hidden(long long r, int c) const {
+    if (!has(r)) return false;
+    const size_t i = size_t(r - origin) * words + size_t(c >> 6);
+    return ((hid[i] & ~vis[i]) >> (c & 63)) & 1;
   }
   uint16_t* bandRow(long long r) { return &band[size_t(r - origin) * bands]; }
   uint16_t* validRow(long long r) { return &valid[size_t(r - origin) * bands]; }
@@ -756,6 +774,43 @@ int sliverRows(const TrackerOptions& o, int h) {
 // A tile stood still when at least two of its textured cells, and half of
 // them, are strictly where they were (what is pinned is drawn again the
 // same; photo-like noise only sometimes looks alike).
+// Whether what moves with a candidate is a box: in its rows of tiles, at
+// least a quarter of the tiles do not move with it (they show something
+// else, stood still, or are pinned: an inner scroll area beside text or
+// between side bars). A page between a header and a cookie banner that
+// nothing has pinned yet moves across the width.
+bool ScrollTracker::boxed(const Candidate& c) const {
+  const int B = int(bandLo_.size()) - 1, tileBlocks = std::max(1, kTileRows / opts_.blockRows);
+  int moving = 0, other = 0;
+  for (size_t r = 0; r * size_t(B) < c.moving.size(); ++r) {
+    int m = 0, o = 0;
+    for (int k = 0; k < B; ++k) {
+      const uint8_t v = c.moving[r * size_t(B) + size_t(k)];
+      bool pinned = false;
+      for (int br = int(r) * tileBlocks; br < std::min(blockRowCount_, (int(r) + 1) * tileBlocks); ++br)
+        pinned |= bandPinned16_[size_t(br) * B + size_t(k)] != 0;
+      m += v == 1;
+      o += v == 2 || (v == 0 && pinned);
+    }
+    if (m == 0) continue;
+    moving += m;
+    other += o;
+  }
+  return 4 * other >= moving + other;
+}
+
+// Rows of a frame that show something outside what is pinned or excluded
+// (two textured bands or more).
+int ScrollTracker::texturedRowCount(const Signature& sig) const {
+  const int B = sig.bands;
+  int n = 0;
+  for (int y = 0; y < sig.h; ++y) {
+    const uint16_t* pin = &bandPinned16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * B];
+    n += countAndNot(sig.bandTexRow(y), pin, B) >= 2;
+  }
+  return n;
+}
+
 bool ScrollTracker::stillTile(size_t i) const { return stillTile_[i] >= 2 && 2 * stillTile_[i] >= texCellTile_[i]; }
 
 void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1) const {
@@ -817,7 +872,9 @@ void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, 
   c.informative = int(bands.infSum);
   c.rows = bands.rows;
   c.coverage = movedRows + stillRows ? double(movedRows) / (movedRows + stillRows) : 0.0;
-  c.accepted = c.area >= opts_.minArea && c.bandsKept >= opts_.acceptBands && c.cellsKept >= opts_.acceptCells &&
+  const bool agree = (c.bandsKept >= opts_.acceptBands && c.cellsKept >= opts_.acceptCells) ||
+                     (c.bandsKept >= opts_.acceptBandsWithCells && c.cellsKept >= opts_.acceptCellsStrong);
+  c.accepted = c.area >= opts_.minArea && agree &&
                c.coverage >= opts_.minRowCoverage && int(ki) >= 4 * opts_.minEvidenceRows &&
                c.rows >= opts_.minEvidenceRows && y1 - y0 >= sliverRows(opts_, height_);
 }
@@ -1170,29 +1227,48 @@ double ScrollTracker::storeCoarseShare(const Signature& cur, long long pos, doub
     lanes(cur.bandRow(y), store_->bandRow(p), cur.bandTexRow(y), store_->texRow(p), &bandIncl_[size_t(y) * B],
           store_->validRow(p), B, tol, agree, inf);
     ++used;
+    // A position whose first anchors agree on less than half the floor is
+    // given up early (the page's own place agrees on nearly all of them).
+    if (used == 6 && inf >= 12 && 2.0 * agree < abortBelow * inf) break;
     if ((used == 16 || used == 40) && inf >= 32 && double(agree) / inf < abortBelow) break;
     if (used == 64) break;
   }
   return inf >= 16 ? double(agree) / inf : 0.0;
 }
 
-// Cells of the frame placed at pos against the canvas's written rows (read
-// back, signatures computed the same way).
-void ScrollTracker::storeCellTally(const Signature& cur, long long pos, Tally& t) const {
-  const int H = cur.h, C = cur.cells, P = opts_.cellPx, B = cur.bands;
-  t.clear(B, H);
+// The cell signatures of the canvas's written rows [from, from + n), read
+// back and computed the same way as a frame's (have: 0 where not written).
+void ScrollTracker::storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const {
+  const int C = cells_, P = opts_.cellPx;
+  sigs.assign(size_t(n) * C, 0);
+  have.assign(size_t(n), 0);
   std::vector<uint8_t> row(size_t(width_) * 4);
-  std::vector<uint16_t> sig(static_cast<size_t>(C));
-  const unsigned tol = unsigned(opts_.cellTolerance);
-  for (int y = 0; y < H; ++y) {
-    const long long p = pos + y;
+  for (int i = 0; i < n; ++i) {
+    const long long p = from + i;
     if (!store_->has(p) || !canvas_.readRow(p, row.data())) continue;
+    have[size_t(i)] = 1;
+    uint16_t* sig = &sigs[size_t(i) * C];
     for (int c = cellLo_; c < cellHi_; ++c) {
       const int x0 = c * P, x1 = std::min(width_, x0 + P);
       unsigned sum = 0;
       for (int x = x0; x < x1; ++x) sum += unsigned(row[4 * x]) + 2u * row[4 * x + 1] + row[4 * x + 2];
-      sig[size_t(c)] = uint16_t(sum * 16u / unsigned(x1 - x0));
+      sig[c] = uint16_t(sum * 16u / unsigned(x1 - x0));
     }
+  }
+}
+
+// Cells of the frame placed at pos against the canvas's written rows, from
+// signatures of the rows [from, from + n) computed once (storeCellSigs).
+void ScrollTracker::storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs,
+                                   const std::vector<uint8_t>& have, long long from, Tally& t) const {
+  const int H = cur.h, C = cur.cells, B = cur.bands;
+  t.clear(B, H);
+  const unsigned tol = unsigned(opts_.cellTolerance);
+  const long long n = (long long)have.size();
+  for (int y = 0; y < H; ++y) {
+    const long long p = pos + y;
+    if (p < from || p >= from + n || !have[size_t(p - from)]) continue;
+    const uint16_t* sig = &sigs[size_t(p - from) * C];
     const uint16_t* a = cur.cellRow(y);
     const uint16_t* ta = cur.cellTexRow(y);
     const uint16_t* inc = &cellIncl_[size_t(y) * C];
@@ -1227,19 +1303,17 @@ bool ScrollTracker::contradicted(const Signature& cur, long long pos) const {
   return shown >= 16 && double(kept) / shown < opts_.keepShare;
 }
 
-// Looks the frame up in the image already built: every position where it
-// keeps more than a sliver of overlap with the extent (near the expected one
-// first), by bands against the store, then cells against the canvas.
-std::vector<ScrollTracker::Candidate> ScrollTracker::searchStore(const Signature& cur, long long expectedPos,
-                                                                 bool wide) const {
+// Looks the frame up in the image already built, at the positions [lo, hi]
+// that keep more than a sliver of overlap with the extent (peaks nearest the
+// expected one first), by bands against the store, then cells against the
+// canvas.
+std::vector<ScrollTracker::Candidate> ScrollTracker::searchStore(const Signature& cur, long long expectedPos, long long lo,
+                                                                 long long hi, size_t maxPeaks) const {
   std::vector<Candidate> out;
   const int H = cur.h;
   const int sliver = sliverRows(opts_, H);
-  long long lo = top_ - H + sliver, hi = bottom_ - sliver;
-  if (!wide) {
-    lo = std::max(lo, expectedPos - 3LL * H);
-    hi = std::min(hi, expectedPos + 3LL * H);
-  }
+  lo = std::max(lo, top_ - H + sliver);
+  hi = std::min(hi, bottom_ - sliver);
   if (hi < lo) return out;
   const double floor = opts_.coarseFloor;
   const long long n = hi - lo + 1;
@@ -1247,13 +1321,17 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchStore(const Signature
   for (long long pos = lo; pos <= hi; ++pos) coarse[size_t(pos - lo)] = float(storeCoarseShare(cur, pos, floor));
   std::vector<long long> peaks;
   for (int i : pickPeaks(coarse, floor, std::clamp(expectedPos, lo, hi) - lo)) peaks.push_back(lo + i);
-  if (peaks.size() > 4) peaks.resize(4);
+  if (peaks.size() > maxPeaks) peaks.resize(maxPeaks);
   Tally t, tc;
+  std::vector<uint16_t> sigs;
+  std::vector<uint8_t> have;
   for (long long p : peaks) {
+    // The best of the peak's neighbours by bands on every second row, then
+    // the best of that one's by cells.
     long long bestPos = p;
     double bestBands = -1;
     for (long long pos = std::max(lo, p - 3); pos <= std::min(hi, p + 3); ++pos) {
-      storeBandTally(cur, pos, 1, t);
+      storeBandTally(cur, pos, 2, t);
       if (t.share() > bestBands) {
         bestBands = t.share();
         bestPos = pos;
@@ -1261,8 +1339,9 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchStore(const Signature
     }
     Candidate best;
     best.cells = -1;
+    storeCellSigs(bestPos - 1, H + 2, sigs, have);
     for (long long pos = bestPos - 1; pos <= bestPos + 1; ++pos) {
-      storeCellTally(cur, pos, tc);
+      storeCellTally(cur, pos, sigs, have, bestPos - 1, tc);
       if (tc.share() <= best.cells) continue;
       storeBandTally(cur, pos, 1, t);
       Candidate c;
@@ -1284,11 +1363,12 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchStore(const Signature
 // where they were vote for "moved".
 void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
   const int H = cur.h, C = cur.cells, R = opts_.blockRows;
-  std::fill(stillNow_.begin(), stillNow_.end(), 0);
   if (std::abs(d) < opts_.learnMinStep) {
-    blocked_ = closed_;
+    // Too small a step to learn from: what the last step held back stays held
+    // back (a banner's flat inside does not become the page between steps).
     return;
   }
+  std::fill(stillNow_.begin(), stillNow_.end(), 0);
   ++learnedSteps_;
   std::vector<uint16_t> stay(size_t(blockRowCount_) * C, 0), stayFlat(size_t(blockRowCount_) * C, 0),
       move(size_t(blockRowCount_) * C, 0), astray(size_t(blockRowCount_) * C, 0);
@@ -1299,12 +1379,18 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
     // looks the same at the same place is a coincidence, not evidence.
     if (!fwd && !back) continue;
     const size_t base = size_t(std::min(y / R, blockRowCount_ - 1)) * C;
+    const auto exclAt = [&](int yy) { return &exclLane16_[size_t(std::min(yy / R, blockRowCount_ - 1)) * C]; };
     votes(cur.cellRow(y), ref.cellRow(y), cur.cellTexRow(y), ref.cellTexRow(y), fwd ? ref.cellRow(y + d) : nullptr,
-          back ? cur.cellRow(y - d) : nullptr, C, tol, tol / 8, pageCell_, &stay[base], &stayFlat[base], &move[base],
-          &astray[base]);
+          back ? cur.cellRow(y - d) : nullptr, fwd ? exclAt(y + d) : nullptr, back ? exclAt(y - d) : nullptr, C, tol, tol / 8,
+          pageCell_, &stay[base], &stayFlat[base], &move[base], &astray[base]);
   }
   bool changed = false;
+  std::vector<uint8_t> weak(stay.size(), 0);
   for (size_t i = 0; i < stay.size(); ++i) {
+    if (excl_[i]) {  // the excluded rectangle learns nothing
+      stayed_[i] = wandering_[i] = 0;
+      continue;
+    }
     const unsigned s = stay[i], m = move[i], x = astray[i];
     // A block that keeps changing at its own place while the page moves (an
     // animated advertisement in a column that sticks) is not the page either.
@@ -1343,18 +1429,212 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
       if (!pinned_[i]) stayed_[i] = 0;
       if (s >= 2 && s > m) stillNow_[i] = 1;
     }
+    // A block whose only votes are rows that stayed, however few (a header's
+    // bottom border, one row under its plain inside): the page is always
+    // where it moved, so it stood still in this pair, where it is the edge
+    // of something pinned or still (below). Held back as it is, not grown
+    // into a region.
+    if (!stillNow_[i] && m == 0 && x == 0 && all >= 1) weak[i] = 1;
   }
   if (changed) closeMask();
+  for (size_t i = 0; i < weak.size(); ++i) {
+    if (!weak[i]) continue;
+    const int br = int(i) / C;
+    const bool above = br > 0 && (closed_[i - size_t(C)] || stillNow_[i - size_t(C)]);
+    const bool below = br + 1 < blockRowCount_ && (closed_[i + size_t(C)] || stillNow_[i + size_t(C)]);
+    if (!above && !below) weak[i] = 0;
+  }
+  // The flat inside of something that stood still or is pinned (a cookie
+  // banner's plain colour beside its text): a flat cell looks the same at
+  // its place and where the page moved it, so no vote can tell it from the
+  // page's background, and two frames always agree on it. From each region
+  // that stood still or is pinned, blocks of its own background colour (the
+  // most common flat cell in it) that are flat in both frames, strictly
+  // where they were and not the page's colour are held back with it; a flat
+  // part of the page beside a side bar has another colour and stays.
+  {
+    const int Rb = blockRowCount_, strict = int(tol / 8);
+    // The page's colour: the first screen's most common one, and any colour
+    // behind the text that moved with the page in this pair (an eighth of
+    // it or more). A first screen can be mostly something else: a footer
+    // where a capture starts at the end, a picture at the top. Counted when
+    // first needed.
+    std::array<uint8_t, 256> pageBin{};
+    bool binsKnown = false;
+    const int reach = int(tol / 64);
+    const auto pageLike = [&](int colour) {
+      const int bin = std::min(255, colour / 64);
+      if (absDiff(uint16_t(bin * 64 + 32), pageCell_) <= tol) return true;
+      if (!binsKnown) {
+        binsKnown = true;
+        std::array<int, 256> behind{};
+        int behindAll = 0;
+        for (int br = 0; br < Rb; ++br)
+          for (int c = 0; c < C; ++c) {
+            const size_t i = size_t(br) * C + c;
+            if (move[i] < 3 || move[i] < 3u * (stay[i] + stayFlat[i])) continue;
+            for (int y = br * R; y < std::min(H, (br + 1) * R); y += 2)  // every other row is enough
+              if (!cur.cellTexRow(y)[c]) {
+                ++behind[size_t(std::min(255, cur.cellRow(y)[c] / 64))];
+                ++behindAll;
+              }
+          }
+        for (int b = 0; b < 256; ++b) {
+          int n = 0;
+          for (int k = std::max(0, b - reach); k <= std::min(255, b + reach); ++k) n += behind[size_t(k)];
+          pageBin[size_t(b)] = behindAll > 0 && 8 * n >= behindAll;
+        }
+      }
+      return pageBin[size_t(bin)] != 0;
+    };
+    // A block's flat colour: every cell of its rows flat in both frames,
+    // strictly where it was, one colour, not the page's; else -1. Found when
+    // first asked (the flood looks only around what stood still).
+    std::vector<int> flatColour(stillNow_.size(), -2);
+    const auto flatAt = [&](size_t i) {
+      int& out = flatColour[i];
+      if (out != -2) return out;
+      out = -1;
+      const int br = int(i) / C, c = int(i) % C;
+      if (excl_[i]) return out;
+      int colour = -1;
+      bool ok = true;
+      for (int y = br * R; ok && y < std::min(H, (br + 1) * R); ++y) {
+        const uint16_t a = cur.cellRow(y)[c], b = ref.cellRow(y)[c];
+        ok = !cur.cellTexRow(y)[c] && !ref.cellTexRow(y)[c] && int(absDiff(a, b)) <= strict &&
+             (colour < 0 || int(absDiff(a, uint16_t(colour))) <= strict);
+        if (colour < 0) colour = a;
+      }
+      if (ok && absDiff(uint16_t(colour), pageCell_) > tol && !pageLike(colour)) out = colour;
+      return out;
+    };
+    std::vector<uint8_t> flooded(stillNow_.size(), 0);
+    std::vector<int> floodId(stillNow_.size(), -1);
+    int regions = 0;
+    std::vector<uint8_t> seed(stillNow_.size(), 0), seen(stillNow_.size(), 0);
+    for (size_t i = 0; i < seed.size(); ++i) seed[i] = stillNow_[i] || closed_[i];
+    std::vector<int> part, stack;
+    std::array<int, 256> count{};
+    for (size_t s0 = 0; s0 < seed.size(); ++s0) {
+      if (!seed[s0] || seen[s0]) continue;
+      // One region that stood still or is pinned, and its background colour.
+      part.clear();
+      count.fill(0);
+      stack.assign(1, int(s0));
+      seen[s0] = 1;
+      while (!stack.empty()) {
+        const int i = stack.back();
+        stack.pop_back();
+        part.push_back(i);
+        const int br = i / C, c = i % C;
+        for (int y = br * R; y < std::min(H, (br + 1) * R); y += 2)  // every other row is enough
+          if (!cur.cellTexRow(y)[c]) ++count[size_t(std::min(255, cur.cellRow(y)[c] / 64))];
+        const int nb[4] = {br > 0 ? i - C : -1, br + 1 < Rb ? i + C : -1, c > 0 ? i - 1 : -1, c + 1 < C ? i + 1 : -1};
+        for (int k : nb)
+          if (k >= 0 && seed[size_t(k)] && !seen[size_t(k)]) {
+            seen[size_t(k)] = 1;
+            stack.push_back(k);
+          }
+      }
+      int bg = -1, best = 0;
+      for (int v = 0; v < 256; ++v)
+        if (count[size_t(v)] > best) {
+          best = count[size_t(v)];
+          bg = v * 64 + 32;
+        }
+      if (bg < 0 || pageLike(bg)) continue;
+      const int id = regions++;
+      // Its own blocks of that colour are where its edge is looked for.
+      for (int i : part)
+        if (flatAt(size_t(i)) >= 0 && absDiff(uint16_t(flatAt(size_t(i))), uint16_t(bg)) <= tol) {
+          flooded[size_t(i)] = 1;
+          floodId[size_t(i)] = id;
+        }
+      // Its flat blocks of that colour, joined to it.
+      stack = part;
+      while (!stack.empty()) {
+        const int i = stack.back();
+        stack.pop_back();
+        const int br = i / C, c = i % C;
+        const int nb[4] = {br > 0 ? i - C : -1, br + 1 < Rb ? i + C : -1, c > 0 ? i - 1 : -1, c + 1 < C ? i + 1 : -1};
+        for (int k : nb) {
+          if (k < 0 || seed[size_t(k)] || stillNow_[size_t(k)]) continue;
+          const int fc = flatAt(size_t(k));
+          if (fc < 0 || absDiff(uint16_t(fc), uint16_t(bg)) > tol) continue;
+          stillNow_[size_t(k)] = 1;
+          flooded[size_t(k)] = 1;
+          floodId[size_t(k)] = id;
+          stack.push_back(k);
+        }
+      }
+    }
+    // And its edge: a flat block beside a block of its background, of
+    // another colour (the banner's border or shadow, half in a cell), one
+    // block deep. Not beside a side bar's own edge: the page next to it is
+    // the page.
+    for (size_t i = 0; i < flooded.size(); ++i) {
+      if (!flooded[i]) continue;
+      const int br = int(i) / C, c = int(i) % C;
+      const int nb[4] = {br > 0 ? int(i) - C : -1, br + 1 < Rb ? int(i) + C : -1, c > 0 ? int(i) - 1 : -1, c + 1 < C ? int(i) + 1 : -1};
+      for (int k : nb)
+        if (k >= 0 && !stillNow_[size_t(k)] && flatAt(size_t(k)) >= 0) stillNow_[size_t(k)] = 1;
+    }
+    // And what its flat inside surrounds (a white button on a dark banner,
+    // of the page's own colour, which nothing votes on): what lies between
+    // two of its blocks in a block row, up to 32 cells, or in a column, up
+    // to 8 blocks.
+    if (regions > 0) {
+      for (int br = 0; br < Rb; ++br) {
+        int lastC = -1, lastId = -1;
+        for (int c = 0; c < C; ++c) {
+          const int id = floodId[size_t(br) * C + c];
+          if (id < 0) continue;
+          if (id == lastId && c - lastC > 1 && c - lastC - 1 <= 32)
+            for (int k = lastC + 1; k < c; ++k) stillNow_[size_t(br) * C + k] = 1;
+          lastC = c;
+          lastId = id;
+        }
+      }
+      for (int c = 0; c < C; ++c) {
+        int lastR = -1, lastId = -1;
+        for (int br = 0; br < Rb; ++br) {
+          const int id = floodId[size_t(br) * C + c];
+          if (id < 0) continue;
+          if (id == lastId && br - lastR > 1 && br - lastR - 1 <= 8)
+            for (int k = lastR + 1; k < br; ++k) stillNow_[size_t(k) * C + c] = 1;
+          lastR = br;
+          lastId = id;
+        }
+      }
+    }
+  }
   // What a frame offers the image: not what is pinned, nor what stood still
   // in this pair, its short gaps in a column closed (a side bar that has
   // just stuck holds back the flat rows between its items too) and widened
   // by a block. A step over half the frame leaves rows in its middle that
   // neither frame shows twice, so nothing there can vote: the pair's still
-  // parts are closed as pinned parts are, across those rows.
+  // parts are closed as pinned parts are, across those rows. Then the blocks
+  // that stood still by a row or two (above), as they are: closed or widened,
+  // a few such blocks of a side bar's items would hold back the page between
+  // them. A pinned part that ends one cell short of the frame's edge holds
+  // that cell back too: a banner's border down its edge looks the same
+  // wherever the page moved it, so nothing votes on it, and two frames always
+  // agree on it.
+  const auto lastly = [&] {
+    for (size_t i = 0; i < weak.size(); ++i) blocked_[i] |= weak[i];
+    if (C < 3) return;
+    for (int r = 0; r < blockRowCount_; ++r) {
+      uint8_t* o = &blocked_[size_t(r) * C];
+      const uint8_t* p = &closed_[size_t(r) * C];
+      o[0] |= p[1];
+      o[C - 1] |= p[C - 2];
+    }
+  };
   if (2 * std::abs(d) > H) {
     std::vector<uint8_t> either(pinned_.size());
     for (size_t i = 0; i < either.size(); ++i) either[i] = pinned_[i] | stillNow_[i];
     close(either, blocked_);
+    lastly();
     return;
   }
   const int Rb = blockRowCount_;
@@ -1384,6 +1664,7 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
     const uint8_t* dn = r + 1 < Rb ? mid + C : mid;
     for (int c = 0; c < C; ++c) o[c] |= up[c] | mid[c] | dn[c];
   }
+  lastly();
 }
 
 // The closed mask: pinned blocks, plus the holes of a pinned part (the flat
@@ -1459,18 +1740,69 @@ void ScrollTracker::close(const std::vector<uint8_t>& src, std::vector<uint8_t>&
 }
 
 void ScrollTracker::closeMask() {
-  const int C = cells_, R = blockRowCount_;
   close(pinned_, closed_);
+  for (size_t i = 0; i < closed_.size() && i < excl_.size(); ++i)
+    if (excl_[i]) closed_[i] = 0;
+  refreshLanes();
+}
+
+// The lanes that never vote: the closed mask and the excluded rectangle, per
+// cell and per band (a band with any such cell in the block row).
+void ScrollTracker::refreshLanes() {
+  const int C = cells_, R = blockRowCount_;
   closed16_.assign(closed_.begin(), closed_.end());
+  for (size_t i = 0; i < closed16_.size() && i < excl_.size(); ++i) closed16_[i] = uint16_t(closed16_[i] | excl_[i]);
   const int B = int(bandLo_.size()) - 1;
   bandPinned16_.assign(size_t(R) * B, 0);
   for (int r = 0; r < R; ++r)
     for (int k = 0; k < B; ++k)
       for (int c = bandLo_[size_t(k)]; c < bandLo_[size_t(k) + 1]; ++c)
-        if (closed_[size_t(r) * C + c]) {
+        if (closed16_[size_t(r) * C + c]) {
           bandPinned16_[size_t(r) * B + k] = 1;
           break;
         }
+}
+
+void ScrollTracker::setExcluded(TrackerRect rect) {
+  excludedRect_ = rect;
+  if (cells_ > 0) applyExcluded();
+}
+
+// The excluded rectangle in blocks (rounded out), and what follows from it:
+// nothing learned there, nothing pinned there, the lanes, and the frame rows
+// that count for the extent.
+void ScrollTracker::applyExcluded() {
+  const int C = cells_, R = blockRowCount_, P = opts_.cellPx, BR = opts_.blockRows, words = (C + 63) / 64;
+  excl_.assign(size_t(R) * C, 0);
+  exclLane16_.assign(size_t(R) * C, 0);
+  exclWords_.assign(size_t(R) * words, 0);
+  effTop_ = 0;
+  effBottom_ = height_;
+  const TrackerRect& e = excludedRect_;
+  if (!e.empty()) {
+    const int c0 = std::clamp(e.x / P, 0, C), c1 = std::clamp((e.x + e.w + P - 1) / P, 0, C);
+    const int r0 = std::clamp(e.y / BR, 0, R), r1 = std::clamp((e.y + e.h + BR - 1) / BR, 0, R);
+    for (int r = r0; r < r1; ++r)
+      for (int c = c0; c < c1; ++c) {
+        excl_[size_t(r) * C + c] = 1;
+        exclLane16_[size_t(r) * C + c] = 1;
+        exclWords_[size_t(r) * words + size_t(c >> 6)] |= 1ull << (c & 63);
+      }
+    if (c0 == 0 && c1 == C && r0 < r1) {
+      // Rows covered across the whole width at either end are not the page's.
+      if (r0 == 0) effTop_ = std::min(height_, r1 * BR);
+      if (r1 == R) effBottom_ = std::max(0, r0 * BR);
+      if (effBottom_ <= effTop_) {
+        effTop_ = 0;
+        effBottom_ = height_;
+      }
+    }
+  }
+  for (size_t i = 0; i < excl_.size(); ++i)
+    if (excl_[i]) {
+      pinned_[i] = stayed_[i] = wandering_[i] = stillNow_[i] = 0;
+    }
+  closeMask();
 }
 
 // The topmost and the bottommost frames are kept for what is pinned, which
@@ -1486,17 +1818,20 @@ void ScrollTracker::keepCopy(const FrameView& f, FrameCopy& copy, long long pos,
   if (all) {
     for (int y = 0; y < height_; ++y) std::memcpy(&copy.px[size_t(y) * width_ * 4], f.row(y), size_t(width_) * 4);
     std::fill(copy.tag.begin(), copy.tag.end(), copy.serial);
+    // What the excluded rectangle covers is never drawn from a copy.
+    for (size_t i = 0; i < copy.tag.size() && i < excl_.size(); ++i)
+      if (excl_[i]) copy.tag[i] = 0;
     return;
   }
   for (int r = fromRow / BR; r < R; ++r)
     for (int c = 0; c < C;) {
       const size_t bi = size_t(r) * C + c;
-      if (!blocked_[bi]) {
+      if (!blocked_[bi] || excl_[bi]) {
         ++c;
         continue;
       }
       int e = c;
-      while (e < C && blocked_[size_t(r) * C + e]) copy.tag[size_t(r) * C + e++] = copy.serial;
+      while (e < C && blocked_[size_t(r) * C + e] && !excl_[size_t(r) * C + e]) copy.tag[size_t(r) * C + e++] = copy.serial;
       const int x0 = c * P, x1 = std::min(width_, e * P);
       for (int y = r * BR; y < std::min(height_, (r + 1) * BR); ++y)
         std::memcpy(&copy.px[(size_t(y) * width_ + x0) * 4], f.row(y) + size_t(x0) * 4, size_t(x1 - x0) * 4);
@@ -1513,6 +1848,8 @@ void ScrollTracker::blockedWords(std::vector<uint64_t>& out) const {
     const uint8_t* row = &blocked_[size_t(br) * C];
     uint64_t* w = &out[size_t(br) * words];
     for (int c = 0; c < C; ++c) w[c >> 6] |= uint64_t(row[c] != 0) << (c & 63);
+    if (!exclWords_.empty())
+      for (int k = 0; k < words; ++k) w[k] |= exclWords_[size_t(br) * words + size_t(k)];
   }
 }
 
@@ -1580,18 +1917,21 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   const int H = height_, C = cells_;
   const long long cap = opts_.maxOutputRows;
   const long long top0 = top_, bot0 = bottom_;
-  long long lo = hasFrame_ ? std::min(top_, pos) : pos, hi = hasFrame_ ? std::max(bottom_, pos + H) : pos + H;
+  // The frame's rows that count for the extent: not those the excluded
+  // rectangle covers across the whole width at its top or bottom.
+  const long long fTop = pos + effTop_, fBottom = pos + effBottom_;
+  long long lo = hasFrame_ ? std::min(top_, fTop) : fTop, hi = hasFrame_ ? std::max(bottom_, fBottom) : fBottom;
   // The cap: rows outside [allowLo_, allowHi_) are not written.
   if (!hasFrame_) {
-    allowLo_ = pos;
-    allowHi_ = pos + cap;
+    allowLo_ = fTop;
+    allowHi_ = fTop + cap;
   }
   if (hi - lo > cap) {
     capped_ = true;
-    if (pos + H > bot0 && hasFrame_) {
+    if (fBottom > bot0 && hasFrame_) {
       allowLo_ = top0;
       allowHi_ = top0 + cap;
-    } else if (pos < top0 && hasFrame_) {
+    } else if (fTop < top0 && hasFrame_) {
       allowHi_ = bot0;
       allowLo_ = bot0 - cap;
     }
@@ -1606,7 +1946,16 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   std::vector<uint64_t> full(static_cast<size_t>(words), ~0ull), mask(static_cast<size_t>(words));
   if (C % 64) full[size_t(words - 1)] = (1ull << (C % 64)) - 1;
   const unsigned tol = unsigned(opts_.cellTolerance);
-  // 1. Verified: the cells this frame and the last one show the same.
+  // 1. Verified: the cells this frame and the last one show the same. Not
+  //    while the mask is young: before it has learned a few steps, a
+  //    banner's flat inside looks the same in two frames as the page does.
+  //    Such cells wait with this frame's others, marked as agreed: when the
+  //    waiting frames are written they come first, as seen once, so that a
+  //    link the pointer lit in one frame is written as the next two showed
+  //    it, and a later pair can still replace them.
+  const bool youngMask = learnedSteps_ <= 2 * opts_.pinAfterSteps;
+  std::vector<uint64_t> agreedRows;
+  if (ref && youngMask) agreedRows.assign(size_t(H) * size_t(words), 0);
   if (ref) {
     for (int y = std::max(0, -d); y < std::min(H, H - d); ++y) {
       const long long p = pos + y;
@@ -1631,37 +1980,65 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
         mask[size_t(w)] = take;
         any |= take != 0;
       }
-      if (any) writeCells(p, f.row(y), cur.bandRow(y), cur.bandTexRow(y), mask.data(), 2, blk);
+      if (!any) continue;
+      if (youngMask)
+        std::memcpy(&agreedRows[size_t(y) * size_t(words)], mask.data(), size_t(words) * 8);
+      else
+        writeCells(p, f.row(y), cur.bandRow(y), cur.bandTexRow(y), mask.data(), 2, blk);
     }
   }
   // 2. The last frame's cells that were seen once: as seen, where this pair
-  // did not find them standing still and nothing better was written.
-  flushPending(blocked);
+  // did not find them standing still and nothing better was written. While
+  // the mask is young they wait longer (at most 8 frames), until it can know
+  // what is pinned: the flat inside of a cookie box is learned after four
+  // steps, and a box's cells seen once before that are not the page.
+  if (!pending_.empty()) narrowPending(pending_.back(), blocked);
+  const bool young = youngMask && pending_.size() < 8;
+  if (!young) flushPending(blocked);
   // 3. This frame's cells that nothing is written for yet wait for the next:
   //    their pixels (cell spans, not whole rows), the row's bands, and which
   //    cells they are.
-  pendingPos_ = pos;
-  pendingRows_.clear();
+  if (spare_.empty()) {
+    pending_.emplace_back();
+  } else {
+    pending_.push_back(std::move(spare_.back()));
+    spare_.pop_back();
+  }
+  Pending& pend = pending_.back();
+  pend.pos = pos;
+  pend.rows.clear();
   const int B = cur.bands, P = opts_.cellPx;
   for (int y = 0; y < H; ++y) {
     const long long p = pos + y;
     if (p < allowLo_ || p >= allowHi_) continue;
     const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
     const size_t at = size_t(p - store_->origin) * words;
+    // Page cells the excluded rectangle covered in a placed frame, and those
+    // a placed frame showed outside it (pinned or not): finish() counts the
+    // first that are not the second and that nothing was written for.
+    for (int w = 0; w < words; ++w) {
+      const uint64_t e = exclWords_[size_t(brow) * words + size_t(w)];
+      store_->hid[at + size_t(w)] |= e;
+      store_->vis[at + size_t(w)] |= ~e & full[size_t(w)];
+    }
     bool open = false;
     for (int w = 0; w < words; ++w) {
       mask[size_t(w)] = ~(store_->prov[at + size_t(w)] | blocked[size_t(brow) * words + size_t(w)]) & full[size_t(w)];
       open |= mask[size_t(w)] != 0;
     }
     if (!open) continue;
-    const size_t slot = pendingRows_.size();
-    pendingRows_.push_back(y);
-    pendingPixels_.resize((slot + 1) * size_t(width_) * 4);
-    pendingBands_.resize((slot + 1) * size_t(B) * 2);
-    pendingOpen_.resize((slot + 1) * size_t(words));
-    std::memcpy(&pendingOpen_[slot * size_t(words)], mask.data(), size_t(words) * 8);
+    const size_t slot = pend.rows.size();
+    pend.rows.push_back(y);
+    pend.pixels.resize((slot + 1) * size_t(width_) * 4);
+    pend.bands.resize((slot + 1) * size_t(B) * 2);
+    pend.open.resize((slot + 1) * size_t(words));
+    std::memcpy(&pend.open[slot * size_t(words)], mask.data(), size_t(words) * 8);
+    pend.agreed.resize((slot + 1) * size_t(words));
+    for (int w = 0; w < words; ++w)
+      pend.agreed[slot * size_t(words) + size_t(w)] =
+          agreedRows.empty() ? 0 : agreedRows[size_t(y) * size_t(words) + size_t(w)] & mask[size_t(w)];
     const uint8_t* row = f.row(y);
-    uint8_t* to = &pendingPixels_[slot * size_t(width_) * 4];
+    uint8_t* to = &pend.pixels[slot * size_t(width_) * 4];
     for (int w = 0; w < words; ++w) {
       uint64_t bits = mask[size_t(w)];
       while (bits) {
@@ -1676,12 +2053,16 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
         std::memcpy(to + size_t(x0) * 4, row + size_t(x0) * 4, size_t(x1 - x0) * 4);
       }
     }
-    std::memcpy(&pendingBands_[slot * size_t(B) * 2], cur.bandRow(y), size_t(B) * 2);
-    std::memcpy(&pendingBands_[slot * size_t(B) * 2 + size_t(B)], cur.bandTexRow(y), size_t(B) * 2);
+    std::memcpy(&pend.bands[slot * size_t(B) * 2], cur.bandRow(y), size_t(B) * 2);
+    std::memcpy(&pend.bands[slot * size_t(B) * 2 + size_t(B)], cur.bandTexRow(y), size_t(B) * 2);
+  }
+  if (pend.rows.empty()) {
+    spare_.push_back(std::move(pend));
+    pending_.pop_back();
   }
   // The extent follows the frame even where a row has nothing written yet.
-  top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, pos)) : std::max(allowLo_, pos);
-  bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, pos + H)) : std::min(allowHi_, pos + H);
+  top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, fTop)) : std::max(allowLo_, fTop);
+  bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, fBottom)) : std::min(allowHi_, fBottom);
   r.addedTop = int(std::max<long long>(0, top0 - top_));
   r.addedBottom = int(std::max<long long>(0, bottom_ - bot0));
   if (!hasFrame_) {
@@ -1690,30 +2071,46 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   }
 }
 
-// Writes the waiting cells of the last placed frame as it saw them, where
-// they are not blocked now and nothing is written for them yet.
+// Writes the waiting cells of placed frames as they saw them, where they are
+// not blocked now and nothing is written for them yet: first those two frames
+// agreed on, then the rest, the oldest frame first each time.
 void ScrollTracker::flushPending(const std::vector<uint64_t>& blocked) {
   const int words = store_->words, C = cells_, B = int(bandLo_.size()) - 1;
   std::vector<uint64_t> full(static_cast<size_t>(words), ~0ull), mask(static_cast<size_t>(words));
   if (C % 64) full[size_t(words - 1)] = (1ull << (C % 64)) - 1;
-  for (size_t slot = 0; slot < pendingRows_.size(); ++slot) {
-    const int y = pendingRows_[slot];
-    const long long p = pendingPos_ + y;
-    if (!store_->has(p) || p < allowLo_ || p >= allowHi_) continue;
-    const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
-    const size_t at = size_t(p - store_->origin) * words;
-    const uint64_t* blk = &blocked[size_t(brow) * words];
-    const uint64_t* open = &pendingOpen_[slot * size_t(words)];
-    bool any = false;
-    for (int w = 0; w < words; ++w) {
-      mask[size_t(w)] = ~(store_->prov[at + size_t(w)] | blk[w]) & full[size_t(w)] & open[w];
-      any |= mask[size_t(w)] != 0;
-    }
-    if (!any) continue;
-    const uint16_t* bands = &pendingBands_[slot * size_t(B) * 2];
-    writeCells(p, &pendingPixels_[slot * size_t(width_) * 4], bands, bands + B, mask.data(), 1, blk);
+  for (int pass = 0; pass < 2; ++pass) {
+    for (const Pending& pend : pending_)
+      for (size_t slot = 0; slot < pend.rows.size(); ++slot) {
+        const int y = pend.rows[slot];
+        const long long p = pend.pos + y;
+        if (!store_->has(p) || p < allowLo_ || p >= allowHi_) continue;
+        const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
+        const size_t at = size_t(p - store_->origin) * words;
+        const uint64_t* blk = &blocked[size_t(brow) * words];
+        const uint64_t* open = &pend.open[slot * size_t(words)];
+        const uint64_t* agreed = &pend.agreed[slot * size_t(words)];
+        bool any = false;
+        for (int w = 0; w < words; ++w) {
+          mask[size_t(w)] = ~(store_->prov[at + size_t(w)] | blk[w]) & full[size_t(w)] & open[w] & (pass ? ~0ull : agreed[w]);
+          any |= mask[size_t(w)] != 0;
+        }
+        if (!any) continue;
+        const uint16_t* bands = &pend.bands[slot * size_t(B) * 2];
+        writeCells(p, &pend.pixels[slot * size_t(width_) * 4], bands, bands + B, mask.data(), 1, blk);
+      }
   }
-  pendingRows_.clear();
+  for (Pending& pend : pending_) spare_.push_back(std::move(pend));
+  pending_.clear();
+}
+
+// What a waiting frame's next pair found pinned or standing still is not
+// written from it, whenever it is written.
+void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& blocked) const {
+  const int words = store_->words;
+  for (size_t slot = 0; slot < pend.rows.size(); ++slot) {
+    const int brow = std::min(pend.rows[slot] / opts_.blockRows, blockRowCount_ - 1);
+    for (int w = 0; w < words; ++w) pend.open[slot * size_t(words) + size_t(w)] &= ~blocked[size_t(brow) * words + size_t(w)];
+  }
 }
 
 void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signature* ref, int d, long long pos,
@@ -1798,6 +2195,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     blocked_.assign(blocks, 0);
     bandPinned16_.assign(size_t(blockRowCount_) * B, 0);
     store_->init(cells_, B);
+    applyExcluded();
   }
   computeSignature(frame, opts_.cellPx, bandLo_, opts_.cellTexture, opts_.bandTexture, *work_);
   Signature& cur = *work_;
@@ -1821,37 +2219,50 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   const int uncertainty = hinted ? int(hintUnc_ + std::lround(0.08 * std::abs(hintSum_))) + 2
                                  : std::max(6, int(std::lround(0.25 * std::abs(expected))));
   double share = 0;
-  const auto noMovement = [&] {
-    // The page is where it was; this frame is its latest picture, so that
-    // what changes in place (an inner scroll area, a video) is compared with
-    // how it looks now, not with how it looked frames ago.
-    std::swap(last_, work_);
+  const auto noMovement = [&](bool still) {
+    // A frame that stood still, or in which only a box moved (an inner
+    // scroll area under the pointer): the page is where it was and this
+    // frame is its latest picture, so that what changes in place (a video,
+    // an inner scroll area) is compared with how it looks now, not frames
+    // ago. A frame in which nothing could be proved while most of it stood
+    // still is not made the reference, and what was expected since the last
+    // placed frame stays: if the page did move after all, the next frame is
+    // placed against the last placed one, never off by this frame's movement.
+    if (still) {
+      std::swap(last_, work_);
+      framesSincePlaced_ = 0;
+      hintSum_ = 0;
+      hintUnc_ = 0;
+      hintKnown_ = true;
+      velocity_ = 0;
+    }
     r.status = TrackStatus::NoMovement;
     r.position = lastPos_;
     r.confidence = share;
     ++totals_.noMovement;
-    framesSincePlaced_ = 0;
-    hintSum_ = 0;
-    hintUnc_ = 0;
-    hintKnown_ = true;
-    velocity_ = 0;
     skipRun_ = 0;
     r.state = state_ = TrackState::Following;
     return r;
   };
-  if (stillFrame(cur, ref, &share) && (!hinted || std::abs(expected) <= uncertainty)) return noMovement();
+  if (stillFrame(cur, ref, &share) && (!hinted || std::abs(expected) <= uncertainty)) return noMovement(true);
   std::vector<Candidate> cands = searchPair(cur, ref, expected);
   bool byExp = false;
   SkipReason why = SkipReason::None;
   int pick = decide(cands, expected, uncertainty, hinted, &byExp, &why);
+  // Nothing to compare only when there is nothing: a frame and a reference
+  // that both show enough are no blank stretch, whatever the search found
+  // (a jump past what the last frame showed is no match, and is looked up).
+  if (why == SkipReason::NoEvidence && texturedRows_.back() >= 4 * opts_.minEvidenceRows &&
+      texturedRowCount(ref) >= 4 * opts_.minEvidenceRows)
+    why = SkipReason::NoMatch;
   long long pos = 0;
   int d = 0;
   bool recovered = false;
   // Most of the frame stood still and what moved does not span it: an inner
   // scroll area under the pointer (a page's code block), not the page.
-  if (pick >= 0 && share >= opts_.stillFallback &&
+  if (pick >= 0 && share >= opts_.stillFallback && boxed(cands[size_t(pick)]) &&
       cands[size_t(pick)].coverage < (share >= opts_.stillMostly ? opts_.stillCoverageMostly : opts_.stillCoverage))
-    return noMovement();
+    return noMovement(true);
   if (pick >= 0) {
     d = cands[size_t(pick)].d;
     pos = lastPos_ + d;
@@ -1864,16 +2275,24 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // did not move, and something changed in place (a video, an inner scroll
   // area, an animation). Not a lookup: a reader who jumped leaves nothing
   // where it was.
-  if (pick < 0 && why != SkipReason::Ambiguous && share >= opts_.stillFallback) return noMovement();
+  if (pick < 0 && why != SkipReason::Ambiguous && share >= opts_.stillFallback) return noMovement(false);
   if (pick < 0 && why != SkipReason::NoEvidence) {
-    // Not where the last frame says: look in the image (the user scrolled back).
+    // Not where the last frame says: look in the image (the user scrolled
+    // back), within three screens of where it was expected; then, from the
+    // second frame skipped on, in one slice of the rest of the image, the
+    // next one for the next frame. The work per frame stays bounded however
+    // long the image (a lost frame comes every frame while a person looks
+    // for the place), and the whole image is looked through within a few.
     const long long expPos = lastPos_ + expected;
-    std::vector<Candidate> found = searchStore(cur, expPos, false);
+    std::vector<Candidate> found = searchStore(cur, expPos, expPos - 3LL * height_, expPos + 3LL * height_, 4);
     bool fb = false;
     SkipReason fw = SkipReason::None;
     int fp = decide(found, expected, uncertainty, hinted, &fb, &fw);
-    if (fp < 0 && fw != SkipReason::Ambiguous && skipRun_ % 4 == 3) {
-      found = searchStore(cur, expPos, true);
+    if (fp < 0 && fw != SkipReason::Ambiguous && skipRun_ >= 1) {
+      const long long lo = top_ - height_, hi = bottom_;
+      if (sweep_ < lo || sweep_ > hi) sweep_ = lo;
+      found = searchStore(cur, expPos, sweep_, sweep_ + kSweepRows - 1, 2);
+      sweep_ += kSweepRows;
       fp = decide(found, expected, uncertainty, hinted, &fb, &fw);
     }
     if (fp >= 0) {
@@ -1887,8 +2306,9 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       why = fw;
     }
   }
-  if (pick < 0 && why == SkipReason::NoEvidence && hinted) {
-    // Nothing to compare (a blank stretch): the driver's hint bridges it.
+  if (pick < 0 && why == SkipReason::NoEvidence && hinted && !contradicted(cur, lastPos_ + expected)) {
+    // Nothing to compare (a blank stretch): the driver's hint bridges it,
+    // where what the image already has there does not say otherwise.
     d = expected;
     pos = lastPos_ + d;
     r.onHint = true;
@@ -1942,6 +2362,8 @@ TrackTotals ScrollTracker::finish() {
   struct Part {
     int r0 = 1 << 30, r1 = -1, c0 = 1 << 30, c1 = -1;
     long long blocks = 0;
+    bool splitOff = false;  // split from the part it touched, where the width jumps
+    int pieceOf = -1;       // a piece of the split-off part this is close under
   };
   std::vector<Part> parts;
   std::vector<int> stack;
@@ -1973,6 +2395,57 @@ TrackTotals ScrollTracker::finish() {
     }
   }
   totals_.pinnedRegions = int(parts.size());
+  // A part whose width jumps from one block row to the next is two things
+  // that touch: a cookie box over the bottom of a side bar's column sticks
+  // out of the side bar (Stack Overflow, 18 blocks wide to 53). From the row
+  // where the width doubles or halves, by at least 16 blocks, the rows are a
+  // part of their own (a list's items of other lengths are not).
+  {
+    const size_t n = parts.size();
+    for (size_t i = 0; i < n; ++i) {
+      int id = int(i), prevW = -1;
+      for (int r = parts[i].r0; r <= parts[i].r1; ++r) {
+        int a = C, b = -1;
+        for (int c = parts[i].c0; c <= parts[i].c1; ++c)
+          if (label[size_t(r) * C + c] == int(i)) {
+            a = std::min(a, c);
+            b = std::max(b, c);
+          }
+        if (b < 0) {
+          prevW = -1;
+          continue;
+        }
+        const int w = b - a + 1;
+        const int wide = std::max(w, prevW), narrow = std::min(w, prevW);
+        if (prevW > 0 && wide >= 2 * narrow && wide - narrow >= 16) {
+          id = int(parts.size());
+          parts.push_back({});
+          parts.back().splitOff = true;
+        }
+        prevW = w;
+        if (id == int(i)) continue;
+        for (int c = a; c <= b; ++c)
+          if (label[size_t(r) * C + c] == int(i)) label[size_t(r) * C + c] = id;
+      }
+    }
+    if (parts.size() > n) {
+      for (Part& part : parts) {
+        const bool splitOff = part.splitOff;
+        part = Part{};
+        part.splitOff = splitOff;
+      }
+      for (int i = 0; i < R * C; ++i) {
+        const int l = label[size_t(i)];
+        if (l < 0) continue;
+        Part& part = parts[size_t(l)];
+        part.r0 = std::min(part.r0, i / C);
+        part.r1 = std::max(part.r1, i / C);
+        part.c0 = std::min(part.c0, i % C);
+        part.c1 = std::max(part.c1, i % C);
+        ++part.blocks;
+      }
+    }
+  }
   // Parts that share columns and are close one above the other are one
   // pinned thing (the items of a side bar's list, with flat rows between
   // them): a group, anchored by its top edge. What starts in the top half of
@@ -1985,6 +2458,26 @@ TrackTotals ScrollTracker::finish() {
     while (group[size_t(i)] != i) i = group[size_t(i)] = group[size_t(group[size_t(i)])];
     return i;
   };
+  // The pieces of a thing split off in the lower half: parts close under it
+  // and within its columns (a cookie banner's line of text and its buttons,
+  // under its plain top), however narrow, are kept apart with it too.
+  {
+    std::vector<size_t> order(parts.size());
+    std::iota(order.begin(), order.end(), size_t(0));
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return parts[a].r0 < parts[b].r0; });
+    for (size_t j : order) {
+      Part& piece = parts[j];
+      if (piece.splitOff || piece.r0 * BR * 2 < height_) continue;
+      for (size_t i : order) {
+        const Part& above = parts[i];
+        if (i == j || !above.splitOff || above.r0 >= piece.r0 || above.r0 * BR * 2 < height_) continue;
+        if (piece.c0 >= above.c0 && piece.c1 <= above.c1 && piece.r0 - above.r1 - 1 <= R / 4) {
+          piece.pieceOf = int(i);
+          break;
+        }
+      }
+    }
+  }
   for (size_t a = 0; a < parts.size(); ++a)
     for (size_t b = a + 1; b < parts.size(); ++b) {
       const Part& A = parts[a];
@@ -1992,7 +2485,24 @@ TrackTotals ScrollTracker::finish() {
       const int overlap = std::min(A.c1, Bp.c1) - std::max(A.c0, Bp.c0) + 1;
       const int narrower = std::min(A.c1 - A.c0, Bp.c1 - Bp.c0) + 1;
       const int gap = std::max(A.r0, Bp.r0) - std::min(A.r1, Bp.r1) - 1;
-      if (overlap * 2 >= narrower && gap <= R / 4) group[size_t(find(int(a)))] = find(int(b));
+      // A part split off where the width jumped, that starts in the lower
+      // half, is a thing of its own, not the next item of what is above it
+      // (the cookie box under a side bar, an advertisement bar under a
+      // column); items of one list, wide and narrow, are separate parts and
+      // keep together.
+      const Part& upper = A.r0 <= Bp.r0 ? A : Bp;
+      const Part& lower = &upper == &A ? Bp : A;
+      const int wu = upper.c1 - upper.c0 + 1, wl = lower.c1 - lower.c0 + 1;
+      // So is one much wider than the part above it (a cookie banner under a
+      // column of advertisements that sticks): twice as wide and 16 blocks.
+      const bool apart =
+          lower.r0 * BR * 2 >= height_ &&
+          (lower.splitOff || wl >= 2 * wu + 16 || (lower.pieceOf >= 0 && upper.r0 < parts[size_t(lower.pieceOf)].r0));
+      // Items of a side bar's list are one thing however far apart (the
+      // items between them may not have been learned): narrow parts, under a
+      // third of the width, with their left or right edges aligned.
+      const bool list = std::max(wu, wl) * 3 < C && (std::abs(A.c0 - Bp.c0) <= 2 || std::abs(A.c1 - Bp.c1) <= 2);
+      if (overlap * 2 >= narrower && (gap <= R / 4 || list) && !apart) group[size_t(find(int(a)))] = find(int(b));
     }
   std::vector<int> groupTop(parts.size(), R);
   for (size_t i = 0; i < parts.size(); ++i) groupTop[size_t(find(int(i)))] = std::min(groupTop[size_t(find(int(i)))], parts[i].r0);
@@ -2024,6 +2534,8 @@ TrackTotals ScrollTracker::finish() {
             if (boxOf[size_t(r) * C + c] < 0) boxOf[size_t(r) * C + c] = int(g);
   }
   std::vector<uint8_t> overlaid(size_t(R) * C, 0);
+  // Per block of the first and the last screen, the pinned group drawn there.
+  std::vector<int> drawnTop(size_t(R) * C, -1), drawnBottom(size_t(R) * C, -1);
   auto overlay = [&](const FrameCopy& copy, bool topSide) {
     const long long pos = copy.pos;
     for (int r = 0; r < R; ++r)
@@ -2038,7 +2550,11 @@ TrackTotals ScrollTracker::finish() {
           continue;
         }
         int e = c;
-        while (e < C && take(e)) overlaid[size_t(r) * C + e++] = 1;
+        std::vector<int>& drawn = topSide ? drawnTop : drawnBottom;
+        while (e < C && take(e)) {
+          drawn[size_t(r) * C + e] = boxOf[size_t(r) * C + e];
+          overlaid[size_t(r) * C + e++] = 1;
+        }
         for (int y = r * BR; y < std::min(height_, (r + 1) * BR); ++y) {
           const long long p = pos + y;
           if (p < top_ || p >= bottom_) continue;
@@ -2082,10 +2598,34 @@ TrackTotals ScrollTracker::finish() {
     }
   // What no frame showed clear: a plain colour, in each column the most
   // common colour of the cell over up to 16 written rows above it (below,
-  // where there are none). Under a side bar as tall as the screen that is the
-  // side bar's own background at its bottom.
+  // where there are none). Under a pinned group a third of the screen tall
+  // in that column (a side bar), the group's own background instead: the
+  // most common colour of the cell over all the rows the first or the last
+  // screen drew it in, never a box's colour or its last item's.
   const uint32_t page = pageColour_;
   store_->ensure(top_, bottom_);
+  for (long long p = top_; p < bottom_; ++p) {
+    bool any = false;
+    for (int c = 0; c < C; ++c)
+      if (store_->level(p, c) == 0 && store_->hidden(p, c)) {
+        ++totals_.hiddenCells;
+        any = true;
+      }
+    totals_.hiddenRows += any;
+  }
+  // The pinned group the first or the last screen drew at page cell (p, c),
+  // and which of the two copies drew it; -1 for the page.
+  const auto ownerOf = [&](long long p, int c, const FrameCopy** by) {
+    for (const FrameCopy* copy : {&topCopy_, &bottomCopy_}) {
+      const long long y = p - copy->pos;
+      if (y < 0 || y >= height_) continue;
+      const int g = (copy == &topCopy_ ? drawnTop : drawnBottom)[size_t(std::min(int(y) / BR, R - 1)) * C + c];
+      if (g < 0) continue;
+      if (by) *by = copy;
+      return g;
+    }
+    return -1;
+  };
   std::vector<uint8_t> fill(size_t(width_) * 4);
   std::vector<uint32_t> colour(size_t(C), page);
   std::vector<uint8_t> known(size_t(C), 0);
@@ -2102,7 +2642,25 @@ TrackTotals ScrollTracker::finish() {
   };
   const auto cellColour = [&](int c, long long from, long long step) {
     std::vector<uint32_t> v;
-    for (long long p = from, seen = 0; seen < 16 && p >= top_ && p < bottom_; p -= step) {
+    const FrameCopy* by = nullptr;
+    const int own = ownerOf(from, c, &by);
+    if (own >= 0) {
+      // Under a pinned group as tall as a third of the screen in this column
+      // (a side bar): its own background, the most common colour of the cell
+      // over all the rows the group was drawn in (not the colour of the last
+      // item of its list, a button of its own).
+      const std::vector<int>& drawn = by == &topCopy_ ? drawnTop : drawnBottom;
+      int rows = 0;
+      for (int r = 0; r < R; ++r) rows += drawn[size_t(r) * C + c] == own;
+      if (rows * BR * 3 >= height_)
+        for (int y = 0; y < height_; ++y) {
+          if (drawn[size_t(std::min(y / BR, R - 1)) * C + c] != own) continue;
+          for (int x = c * P; x < std::min(width_, (c + 1) * P); ++x) v.push_back(px(&by->px[(size_t(y) * width_ + x) * 4]));
+        }
+    }
+    // Else the written rows above it (below, in the second pass).
+    const bool fromGroup = !v.empty();
+    for (long long p = from, seen = 0; !fromGroup && seen < 16 && p >= top_ && p < bottom_; p -= step) {
       if (store_->level(p, c) == 0) continue;
       const std::vector<uint8_t>* r = rowAt(p);
       if (!r) break;
