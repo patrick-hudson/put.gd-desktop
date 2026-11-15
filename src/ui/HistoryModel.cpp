@@ -109,7 +109,8 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  return action=="edit"?"Edit failed":action=="text"?"Text recognition failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
 }
 bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial";}
-bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
+// An unknown outcome is retried like a failure, also after a crash left its operation interrupted: operation.retry accepts any non-active state (OperationService::retry).
+bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
 namespace {
 bool terminalUpload(const QString& s){return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
 // The operation's own items when History has them (a filter or page can hide some files), else the row's files.
@@ -267,7 +268,7 @@ void HistoryModel::refresh(){
 }
 void HistoryModel::rebuild(){
  QList<QJsonObject> groups;QHash<QString,int> grouped;
- for(const auto& v:std::as_const(records_)){const auto r=v.toObject();const auto key=r["operationId"].toString(r["id"].toString());if(grouped.contains(key)){auto& group=groups[grouped[key]];auto children=group["records"].toArray();children.append(r);group["records"]=children;group["bytes"]=double(group["bytes"].toInteger()+r["bytes"].toInteger());if(r["uploadStatus"]=="failed")group["error"]=r["error"],group["uploadStatus"]="failed";}else{auto group=r;group["records"]=QJsonArray{r};grouped[key]=groups.size();groups.append(group);}}
+ for(const auto& v:std::as_const(records_)){const auto r=v.toObject();const auto key=r["operationId"].toString(r["id"].toString());if(grouped.contains(key)){auto& group=groups[grouped[key]];auto children=group["records"].toArray();children.append(r);group["records"]=children;group["bytes"]=double(group["bytes"].toInteger()+r["bytes"].toInteger());if(r["uploadStatus"]=="failed")group["error"]=r["error"],group["uploadStatus"]="failed";else if(r["uploadStatus"]=="unknown"&&group["uploadStatus"]!="failed")group["error"]=r["error"],group["uploadStatus"]="unknown";}else{auto group=r;group["records"]=QJsonArray{r};grouped[key]=groups.size();groups.append(group);}}
  const bool specific=!query_.category.isEmpty()||!query_.mime.isEmpty()||!query_.profileId.isEmpty()||!query_.localStatus.isEmpty()||!query_.remoteStatus.isEmpty()||!query_.from.isEmpty()||!query_.to.isEmpty();
  for(const auto& v:operations_){const auto op=v.toObject();const auto id=op["id"].toString();if(grouped.contains(id)){groups[grouped[id]]["operation"]=op;continue;}
   // A cleared history stays clear. Only a live or no-file failed/cancelled capture

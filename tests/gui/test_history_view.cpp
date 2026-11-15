@@ -142,7 +142,7 @@ private slots:
   {HistoryStore ledger(operations.databasePath());for(const auto& status:QStringList{"uploaded","failed","unknown"}){Operation op;op.id="operation-"+status;op.created="2026-11-14T00:00:00.000Z";op.restore(status=="unknown"?OperationState::Interrupted:OperationState::Completed);op.settings=settings.snapshot();OperationItem item;item.artifact.id="item-"+status;item.artifact.name=status+".png";item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus=status;op.items.append(item);QVERIFY(!ledger.saveOperation(op));}}
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();window.showFailedUploads();
   auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
-  for(int row=0;row<2;++row){const auto record=qobject_cast<HistoryModel*>(list->model())->record(row);QVERIFY(HistoryModel::failed(record));QVERIFY(HistoryModel::statusText(record).startsWith("Upload failed"));}
+  for(int row=0;row<2;++row){const auto record=qobject_cast<HistoryModel*>(list->model())->record(row);QVERIFY(HistoryModel::failed(record));QVERIFY(HistoryModel::retryUpload(record));QVERIFY(HistoryModel::statusText(record).startsWith("Upload failed"));}
   auto* categories=window.findChild<QListWidget*>("historyCategories");PUTGD_TRY_COMPARE(categories->item(5)->data(Ui::NavigationDelegate::TrailingRole).toString(),QString("2"));
  }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
