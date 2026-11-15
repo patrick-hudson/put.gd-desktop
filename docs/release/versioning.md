@@ -46,7 +46,7 @@ cat build/dev/build-identity/build-info.json
 All product executables support `--version` and `--version-json` without a
 graphical session, control pipes or running resident. The JSON command prints the
 embedded build manifest, including the full commit, without starting services.
-The tray's **About put.gd** action shows the version; its details contain the
+**About put.gd** in the main window's menu (☰) shows the version; its details contain the
 manifest. About is modeless, so it leaves capture input available. Opening it again
 reuses the visible dialog. The UI helper exits when its last primary window closes;
 the resident tray remains available. About reports the connected resident's build.

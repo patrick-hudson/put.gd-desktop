@@ -5,9 +5,9 @@ Each one is native on every desktop adapter; no portal picker stands in for any 
 
 | Addition | What it does | How it is started |
 | --- | --- | --- |
-| Capture monitor | Captures the monitor the pointer is on, at that monitor's native size | The `monitor` action: tray, dashboard, a hotkey (unbound by default), `action.invoke`, MCP `perform_action` |
-| Delayed capture | Waits 3, 5 or 10 seconds before a region, window, monitor or desktop capture, a repeat, or Capture region & edit | `delaySeconds` on `action.invoke`; the tray and the dashboard pass `preferences.captureDelaySeconds`, and so does a hotkey when `preferences.captureDelayShortcuts` is on |
-| Repeat last region | Captures the rectangle of the last region capture again, with no selector | The `repeat` action: tray, the Capture region button's context menu, a hotkey (unbound by default), `action.invoke`, MCP |
+| Capture monitor | Captures the monitor the pointer is on, at that monitor's native size | The `monitor` action: tray, the action bar's Monitor button, a hotkey (unbound by default), `action.invoke`, MCP `perform_action` |
+| Delayed capture | Waits 3, 5 or 10 seconds before a region, window, monitor or desktop capture, a repeat, Capture region & edit or Copy text from region; scrolling capture and recording never wait | `delaySeconds` on `action.invoke`; the tray and the main window pass `preferences.captureDelaySeconds`, and so does a hotkey when `preferences.captureDelayShortcuts` is on |
+| Repeat last region | Captures the rectangle of the last region capture again, with no selector | The `repeat` action: tray, the Capture region split button's ▾ menu (also on a right-click), a hotkey (unbound by default), `action.invoke`, MCP |
 
 ## Capture monitor
 
@@ -43,20 +43,27 @@ read. A pointer that is over no output (a gap in the layout) is refused with
 starts with is: its `source` must be `region` (the default), `window` or `desktop`.
 An edit of the clipboard or a file reads no screen, so a delay on one is refused.
 
-- **The tray and the dashboard** read `preferences.captureDelaySeconds`. The tray's
-  **Capture delay** submenu and the same submenu in the context menu of the
-  dashboard's Capture region, window, monitor and desktop and Edit & upload buttons
-  set it, as one radio group: None, 3, 5 or 10 seconds. The submenu's own label names
-  the current choice ("Capture delay: 3 seconds"). **Settings → Capture → Capture
-  delay** has the same choice as **Wait before capturing**.
+- **The tray and the main window** read `preferences.captureDelaySeconds` for the
+  actions `Settings::delayableAction()` names: region, repeat, window, monitor,
+  desktop, edit and text. The tray's **Capture delay** submenu and the main
+  window's **Capture delay** control in the status band (on every page, Settings →
+  Capture included) set it, as one radio group: None, 3, 5 or 10 seconds. Both
+  name the current choice ("Capture delay: 3 seconds"); the window's control takes
+  the lead accent while a delay is set, and the buttons that wait add "Waits 3
+  seconds first" to their tooltip. While a delay is set and hotkeys skip it, both
+  menus show a disabled **Hotkeys capture at once** row under the choices.
+  **Settings → Capture → Capture delay** has the same choice as **Wait before
+  capturing**. The delay stays set until it is changed.
 - **A hotkey capture is immediate by default**, whatever that delay is.
   `preferences.captureDelayShortcuts` (Settings → Capture → Capture delay → **Also
   delay captures started by a hotkey**) makes hotkeys wait for it too. An open
   menu usually holds the keyboard, so a hotkey cannot fire while one shows; with
   this on, press the hotkey first and open the menu during the countdown.
-- **Capture region & edit** waits like Capture region, from the tray, the dashboard
-  and (with the option above) its hotkey. The tray's Edit image entries (the
-  clipboard, a file) never wait.
+- **Capture region & edit** waits like Capture region, from the tray, the action
+  bar and (with the option above) its hotkey. The Edit image entries (the
+  clipboard, a file) in the tray and the edit button's ▾ menu never wait.
+- **Copy text from region** waits like Capture region. **Capture scrolling
+  region** and **Record screen** never wait.
 - **`action.invoke` and MCP `perform_action`** use the `delaySeconds` they are given
   and never read the preference.
 
