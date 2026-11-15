@@ -879,9 +879,17 @@ void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, 
   c.coverage = movedRows + stillRows ? double(movedRows) / (movedRows + stillRows) : 0.0;
   const bool agree = (c.bandsKept >= opts_.acceptBands && c.cellsKept >= opts_.acceptCells) ||
                      (c.bandsKept >= opts_.acceptBandsWithCells && c.cellsKept >= opts_.acceptCellsStrong);
-  c.accepted = c.area >= opts_.minArea && agree &&
-               c.coverage >= opts_.minRowCoverage && int(ki) >= 4 * opts_.minEvidenceRows &&
-               c.rows >= opts_.minEvidenceRows && y1 - y0 >= sliverRows(opts_, height_);
+  const bool base = c.area >= opts_.minArea && int(ki) >= 4 * opts_.minEvidenceRows && y1 - y0 >= sliverRows(opts_, height_);
+  c.accepted = base && agree && c.coverage >= opts_.minRowCoverage && c.rows >= opts_.minEvidenceRows;
+  // For decide's last lines of a page: at least half the rows of evidence,
+  // and either acceptable but for its rows, or agreeing strongly whatever its
+  // row coverage. Under a header and a footer the page's last lines fill one
+  // row of tiles, while the edges of their text the pinned mask does not
+  // quite cover stand still in two (seed 51: 3 px agreeing in every lane,
+  // coverage 0.33).
+  const bool strong = c.bandsKept >= 0.95 && c.cellsKept >= opts_.acceptCellsStrong;
+  c.fewRows = base && !c.accepted && 2 * c.rows >= opts_.minEvidenceRows &&
+              ((agree && c.coverage >= opts_.minRowCoverage) || strong);
 }
 
 // The coarse look at a candidate: the share of agreeing bands over every
@@ -1051,6 +1059,25 @@ int ScrollTracker::decide(std::vector<Candidate>& cands, int expected, int uncer
   for (size_t i = 0; i < cands.size(); ++i) {
     maxInf = std::max(maxInf, cands[i].informative);
     if (cands[i].accepted) ok.push_back(int(i));
+  }
+  // The page's last lines above a blank tail: as the page scrolls on, fewer
+  // rows of it are left to compare, and a match that agrees in every lane
+  // can fall short of minEvidenceRows only by its rows (13 of 16 at seed 51
+  // under a header and a footer: every later frame went unmatched and the
+  // capture lost the page where it simply ended, #1543's review). With at
+  // least half the rows it is taken where the hint says the page is and it
+  // is the only one there: the content and the driver's step agree.
+  if (ok.empty() && hinted) {
+    int only = -1, near = 0;
+    for (size_t i = 0; i < cands.size(); ++i)
+      if (cands[i].fewRows && std::abs(cands[i].d - expected) <= uncertainty) {
+        only = int(i);
+        ++near;
+      }
+    if (near == 1) {
+      ok.push_back(only);
+      *byExpectation = true;
+    }
   }
   if (ok.empty()) {
     *why = maxInf < 4 * opts_.minEvidenceRows ? SkipReason::NoEvidence : SkipReason::NoMatch;
@@ -2176,6 +2203,12 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
   if (capped_) totals_.capReached = true;
 }
 
+void ScrollTracker::forgetHints() {
+  hintSum_ = 0;
+  hintUnc_ = 0;
+  hintKnown_ = true;
+}
+
 TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   TrackResult r;
   ++totals_.frames;
@@ -2223,6 +2256,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   }
   computeSignature(frame, opts_.cellPx, bandLo_, opts_.cellTexture, opts_.bandTexture, *work_);
   Signature& cur = *work_;
+  r.texturedRows = texturedRowCount(cur);
   ++framesSincePlaced_;
   // A hint further than a few frame heights says nothing the search could
   // use: offsets, their sum and the uncertainty are kept within four frame
@@ -2247,6 +2281,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
                               : int(std::lround(std::clamp(velocity_ * framesSincePlaced_, -double(room), double(room))));
   const int uncertainty = hinted ? int(hintUnc_ + std::lround(0.08 * std::abs(hintSum_))) + 2
                                  : std::max(6, int(std::lround(0.25 * std::abs(expected))));
+  r.expected = expected;
+  r.hinted = hinted;
   double share = 0;
   const auto noMovement = [&](bool still) {
     // A frame that stood still, or in which only a box moved (an inner
@@ -2264,6 +2300,8 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       hintUnc_ = 0;
       hintKnown_ = true;
       velocity_ = 0;
+    } else {
+      r.hintsKept = true;
     }
     r.status = TrackStatus::NoMovement;
     r.position = lastPos_;

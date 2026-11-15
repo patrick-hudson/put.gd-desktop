@@ -250,30 +250,19 @@ void ScrollSession::feed(const RunFrame& frame) {
     feedTracker(view, frame.timestampMs);
 }
 
-// A frame with nothing on it: no sampled pixel differs much from the first.
-// The excluded rectangle (put.gd's bar inside the region, its pixels changing
-// in every frame) is left out with the tracker's rounding to blocks of 8, as
-// the tracker leaves it out of its stillness test (CodeRabbit on #1528).
-static bool plainFrame(const FrameView& v, const scroll::TrackerRect& ex) {
-    const auto luma = [&](int x, int y) { const uint8_t* p = v.row(y) + std::ptrdiff_t(x) * 4; return int(p[0]) + 2 * int(p[1]) + int(p[2]); };
-    const auto excluded = [&](int x, int y) { return !ex.empty() && x >= ex.x - 8 && x < ex.x + ex.w + 8 && y >= ex.y - 8 && y < ex.y + ex.h + 8; };
-    int first = -1;
-    for (int y = 0; y < v.height; y += 8)
-        for (int x = 0; x < v.width; x += 8) {
-            if (excluded(x, y)) continue;
-            const int l = luma(x, y);
-            if (first < 0) first = l;
-            else if (std::abs(l - first) > 24) return false;
-        }
-    return true;
-}
-
 void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
-    lastFrameBlank_ = auto_ && plainFrame(view, opts_.excluded);
     lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
     const TrackResult r = tracker_->addFrame(view, hint);
+    // A frame that shows nothing of the page: fewer rows with texture than
+    // the tracker needs as evidence, outside what it has learned as pinned (a
+    // header, a footer), put.gd's bar inside the region and the side margins.
+    // A header's flat background is no content, and the edges of its text the
+    // mask does not quite cover are not either (#1543's review: a blank
+    // stretch between a header and a footer was called the end of the page).
+    lastFrameBlank_ = auto_ && r.texturedRows < opts_.tracker.minEvidenceRows &&
+                      (r.status == TrackStatus::Placed || r.status == TrackStatus::NoMovement || r.status == TrackStatus::Skipped);
     if (opts_.onFrame) opts_.onFrame(r, hint, t);
     // The image grew where auto-scroll turns the page: its way back has helped.
     if (r.addedBottom > 0 || r.addedTop > 0) recoversWithoutGrowth_ = 0;
@@ -381,9 +370,16 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
             break;
         }
         case TrackStatus::NoMovement:
-            // The page did not move: what the hints gave this stretch is still owed.
-            if (chainHinted_) pending_ += attributed_;
-            resetChain();
+            // The page did not move. A frame proved still starts the tracker's
+            // sum of hints again, so what the hints gave this stretch is owed
+            // again. One still by the tracker's fallback (nothing proved) keeps
+            // its sum for the next frame, and so does the session: handing it
+            // out again counted it twice, and the tracker expected the page
+            // further than the step could take it (#1543's review).
+            if (!r.hintsKept) {
+                if (chainHinted_) pending_ += attributed_;
+                resetChain();
+            }
             lastStill_ = true;
             ++stillRun_;
             break;
@@ -633,9 +629,22 @@ void ScrollSession::startRecover() {
     if (!visit(notches)) { stepSentAt_ = -1; pending_ = 0; if (auto_) phase_ = Phase::Step; }
 }
 
+// A step is over: what it owed is dropped, and the tracker forgets what the
+// hints since its last placed frame still hold, or the next step's hints add
+// to them (#1543's review). Not while lost: then that sum is where the page
+// went.
+void ScrollSession::dropOwed() {
+    pending_ = 0;
+    if (tracker_->state() == TrackState::Lost) return;
+    tracker_->forgetHints();
+    emitted_ = 0;
+    attributed_ = 0;
+    chainHinted_ = true;
+}
+
 void ScrollSession::settled(int64_t now) {
     if (stepFirstMoveAt_ >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(stepFirstMoveAt_ - stepSentAt_));
-    pending_ = 0;
+    dropOwed();
     const bool measure = stepFromRest_;
     restedBefore_ = true;
     if (phase_ == Phase::Settle && measure && stepNotches_ > 0 && stepMoved_ > 0) {
@@ -667,7 +676,7 @@ void ScrollSession::settled(int64_t now) {
 }
 
 void ScrollSession::stillStep(int64_t now) {
-    pending_ = 0;
+    dropOwed();
     if (phase_ == Phase::Recover) {
         if (tracker_->state() != TrackState::Lost) { recoverTries_ = 0; phase_ = Phase::Step; nextStepAt_ = now; return; }
         if (++recoverTries_ >= opts_.recoverTries) { handBack(HandBack::Lost); return; }
