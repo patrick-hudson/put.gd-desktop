@@ -1,6 +1,8 @@
 #include "ScrollSpool.h"
 #include <algorithm>
+#include <cerrno>
 #include <cstring>
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -16,8 +18,42 @@ bool SpoolCanvas::open(int fd, int width, long long rowsAbove, long long rowsBel
     above_ = rowsAbove;
     below_ = rowsBelow;
     failed_ = false;
+    error_ = 0;
     any_ = false;
+    held_ = false;
     return map();
+}
+
+// Blocks for the file row about to be written, with the rows between it and
+// those that have them, and some to spare in the direction the image grows
+// (one call per 64 rows, not one per row). The image is one block of rows,
+// so the file stays sparse outside it.
+bool SpoolCanvas::reserve(long long fileRow) {
+    if (held_ && fileRow >= heldTop_ && fileRow < heldBottom_) return true;
+    constexpr long long kSpare = 64;
+    const long long rows = above_ + below_;
+    long long lo = fileRow, hi = fileRow + 1;
+    if (held_ && fileRow >= heldBottom_) lo = heldBottom_, hi = std::min(rows, fileRow + 1 + kSpare);
+    else if (held_) lo = std::max(0LL, fileRow - kSpare), hi = heldTop_;
+    else hi = std::min(rows, fileRow + 1 + kSpare);
+    const long long nextTop = held_ ? std::min(heldTop_, lo) : lo, nextBottom = held_ ? std::max(heldBottom_, hi) : hi;
+    int err = 0;
+    if (size_t(nextBottom - nextTop) * rowBytes_ > spaceLimit_) err = ENOSPC;
+    else {
+        // A signal that arrives during the call ends it with EINTR (tmpfs does
+        // this): that is not a full disk, so it is tried again.
+        do err = ::posix_fallocate(fd_, off_t(lo) * off_t(rowBytes_), off_t(hi - lo) * off_t(rowBytes_));
+        while (err == EINTR);
+    }
+    if (err != 0) {
+        error_ = err;
+        failed_ = true;
+        return false;
+    }
+    heldTop_ = nextTop;
+    heldBottom_ = nextBottom;
+    held_ = true;
+    return true;
 }
 
 bool SpoolCanvas::map() {
@@ -36,6 +72,7 @@ void SpoolCanvas::writeSpan(long long row, int x0, int x1, const uint8_t* bgrx) 
     x0 = std::max(0, x0);
     x1 = std::min(width_, x1);
     if (x1 <= x0) return;
+    if (!reserve(row + above_)) return;
     std::memcpy(map_ + size_t(row + above_) * rowBytes_ + size_t(x0) * 4, bgrx, size_t(x1 - x0) * 4);
     if (!any_) { top_ = row; bottom_ = row + 1; any_ = true; }
     else { top_ = std::min(top_, row); bottom_ = std::max(bottom_, row + 1); }
@@ -52,6 +89,7 @@ void SpoolCanvas::clear() {
     if (map_) ::munmap(map_, mapBytes_);
     map_ = nullptr;
     any_ = false;
+    held_ = false;
     // Every row back to zero, and the disk they took given back.
     if (::ftruncate(fd_, 0) != 0) { failed_ = true; return; }
     map();

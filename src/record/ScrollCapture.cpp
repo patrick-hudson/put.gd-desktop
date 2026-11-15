@@ -29,6 +29,7 @@
 #include <QScreen>
 #include <QTimer>
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
 #include <fcntl.h>
 #include <optional>
@@ -912,6 +913,10 @@ void ScrollCapture::resumeNow() {
     haveSeen_ = lastWasArrival_ = decisionPending_ = false;
     arrivedMs_ = -1;
     autoOn_ = true;
+    // The rest and the watch are up before the gate opens: an off and an on
+    // that came before the worker read either took them down, and the worker
+    // may still be in a step (CodeRabbit on #1536).
+    raiseAutoSurfaces();
     // The gate opens before the session hears of it, or it would find itself paused.
     job_->gate.paused.store(false);
     job_->wantAuto.store(true);
@@ -1379,7 +1384,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     SessionStats stats;
     SessionEnd end = SessionEnd::NoFrames;
     int width = 0, applied = 0;
-    bool spoolFailed = false;
+    bool spoolFailed = false, diskFull = false;
     SpoolCanvas canvas;
     int spoolFd = -1;
     if (first) {
@@ -1485,6 +1490,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         if (!spoolFailed) end = session.run(job->stop, job->discard);
         stats = session.stats();
         if (canvas.failed()) spoolFailed = true;
+        if (canvas.error() == ENOSPC) diskFull = true;
         // X11: the pointer goes back where the user had it, unless the pipe
         // closed or the user has taken it (it then stays where they put it).
         if (job->gate.armed.load() && stats.steps > 0) job->gate.injector->restorePointer();
@@ -1511,7 +1517,9 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     else reason = QStringLiteral("done");
     const bool truncated = reason == "height_cap" || reason == "lost_track" || reason == "top_not_reached";
     const qint64 rows = canvas.bottom() - canvas.top();
-    if (spoolFailed) outcome->error = {"encoding_failed", "The capture could not be written to its staging file", {{"stage", "capture"}, {"check", "spool"}}};
+    if (spoolFailed)
+        outcome->error = {"encoding_failed", diskFull ? QStringLiteral("The capture could not be written to its staging file: the disk is full") : QStringLiteral("The capture could not be written to its staging file"),
+                          {{"stage", "capture"}, {"check", "spool"}}};
     else if (end == SessionEnd::Discarded) {}
     else if (end == SessionEnd::Finished && (stats.placed == 0 || rows <= 0)) outcome->nothing = true;
     // A capture left alone until the idle bound in which nothing ever moved:
