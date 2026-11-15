@@ -157,13 +157,21 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
     if (autoAtStart && opts_.pointer) {
         startAuto();
         if (auto_ && away_ && !stopping() && !pausedNow() && injector_.movePointer(away_->x, away_->y)) {
-            const int64_t until = clock_.nowMs() + std::max(opts_.pointerSettleMs, 100);
-            std::optional<RunFrame> after;
-            while (!stopping() && !source_.lost() && clock_.nowMs() < until)
-                if (auto frame = source_.nextFrame(int(until - clock_.nowMs()))) after = frame;
+            // Only a frame from after the move: one already waiting in the
+            // stream still shows the pointer where it was (the Omarchy guest
+            // sends 3 to 4 frames a second, so one nearly always waits).
+            // `first` stays the newest frame the source returned: an older
+            // one's pixels belong to the stream again once another is taken.
+            const int64_t from = clock_.nowMs() + std::max(opts_.pointerSettleMs, 100), until = from + 500;
+            bool moved = false;
+            while (!moved && !stopping() && !source_.lost() && clock_.nowMs() < until)
+                if (auto frame = source_.nextFrame(int(until - clock_.nowMs()))) {
+                    first = frame;
+                    moved = frame->timestampMs >= from;
+                }
             // A stream that sends only changes may have nothing new: the screen as it is.
-            if (!after && !stopping() && !source_.lost()) after = source_.freshFrame(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500);
-            if (after) first = after;
+            if (!moved && !stopping() && !source_.lost())
+                if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500)) first = fresh;
         }
     }
     feed(*first);

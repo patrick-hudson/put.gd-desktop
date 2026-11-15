@@ -1023,6 +1023,63 @@ void testDoneAndCancel() {
 
 }  // namespace
 
+// The Omarchy guest (#1515's acceptance): its stream sends 3 to 4 frames a second, so a
+// frame taken before the session moved the pointer to its rest still waits in it, and
+// Hyprland paints the pointer into every frame. Auto-scroll from the start takes its first
+// frame from after the move, not that one.
+struct WaitingFrame final : putgd::record::RunFrames {
+  FakeApp& app;
+  Image held;
+  int64_t heldAt = -1;
+  size_t eventsBefore = 0;
+  bool given = false;
+  explicit WaitingFrame(FakeApp& a) : app(a) {}
+  std::optional<putgd::record::RunFrame> nextFrame(int timeoutMs) override {
+    // Once the session has moved the pointer: the frame from before it, at once (it waited).
+    if (heldAt >= 0 && !given && app.events.size() > eventsBefore) {
+      given = true;
+      return putgd::record::RunFrame{held.view(), heldAt};
+    }
+    auto f = app.nextFrame(timeoutMs);
+    if (f && heldAt < 0) {
+      held = Image(f->view.width, f->view.height);
+      for (int y = 0; y < held.h; ++y) std::memcpy(&held.px[size_t(y) * held.w], f->view.row(y), size_t(held.w) * 4);
+      heldAt = f->timestampMs;
+      eventsBefore = app.events.size();
+      return f;
+    }
+    return f;
+  }
+  bool lost() const override { return app.lost(); }
+  std::optional<putgd::record::RunFrame> freshFrame(int timeoutMs) override { return app.freshFrame(timeoutMs); }
+};
+
+void testAutoStartTakesAFrameAfterTheRest() {
+  std::printf("Auto-scroll from the start: the first frame comes after the pointer's move to its rest\n");
+  const Document doc = page(17);
+  FakeClock clock;
+  FakeAppSpec as;
+  as.frameIntervalMs = 270;
+  FakeApp app(doc.img, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+  WaitingFrame source(app);
+  Spool spool(30000 + 2LL * H);
+  SessionOptions so = options(true);
+  int64_t firstFed = -1;
+  so.onFrame = [&](const TrackResult&, const TrackerHint&, int64_t t) { if (firstFed < 0) firstFed = t; };
+  std::atomic<bool> stop{false}, discard{false};
+  so.request = [&] {
+    if (clock.nowMs() > 3000) stop.store(true);
+    return std::pair<unsigned, bool>(0, true);
+  };
+  ScrollSession session(app, source, clock, spool.canvas, so);
+  session.run(stop, discard);
+  int64_t moved = -1;
+  for (const auto& e : app.events)
+    if (e.kind == 'm') { moved = e.t; break; }
+  report("the frame that waited from before the move is not the image's first", source.given && moved >= 0 && firstFed >= moved + 100,
+         fmt("moved at %lld, waiting frame given %d (from %lld), first frame fed at %lld", (long long)moved, source.given, (long long)source.heldAt, (long long)firstFed));
+}
+
 int main() {
   testUserScrolls();
   testAutoScroll();
@@ -1044,6 +1101,7 @@ int main() {
   testSpoolDiskFull();
   testSkippedStepOnRepeatingContent();
   testFixtureForeignOnDamageOnly();
+  testAutoStartTakesAFrameAfterTheRest();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();
