@@ -106,6 +106,7 @@ struct SessionProgress {
 enum class SessionEnd {
     Finished,          // the stop flag: Done, the hotkey, Esc, scroll.stop
     Idle,              // nobody scrolled or used a control for idleLimitMs
+    Forgotten,         // the same, and no placed frame ever moved: nothing to keep, ended like Cancel
     PageEnd,           // auto-scroll reached the end of the page
     Capped,            // the image reached its height cap
     Discarded,         // the discard flag (Cancel)
@@ -338,7 +339,10 @@ private:
     int lastPixelsW_ = 0, lastPixelsH_ = 0;
     int64_t toTopStart_ = 0, toTopRested_ = 0, toTopSent_ = -1, toTopChangedAt_ = -1;
     int toTopNotchesNow_ = 0, toTopStill_ = 0;
-    bool toTopChanged_ = false, toTopDone_ = false;
+    // Wheel points the way has turned the wheel at, and whether a step of the
+    // way really moved the page (at the point it is at).
+    int toTopPointsTried_ = 0;
+    bool toTopChanged_ = false, toTopDone_ = false, toTopMoved_ = false;
     // Progress.
     SessionProgress shown_;
     int64_t shownAt_ = -1;

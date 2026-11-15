@@ -132,7 +132,9 @@ void ScrollCaptureService::placeShellBar(){
   },Qt::QueuedConnection);
  });
 }
-void ScrollCaptureService::event(QJsonObject e){if(e.value("id")!=id_||id_.isEmpty()||cancelling_)return;const auto type=e.take("event").toString();if(type=="finished")complete(e);else if(type=="cancelled")terminate({},true);else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");maybeStartHelper();}
+void ScrollCaptureService::event(QJsonObject e){if(e.value("id")!=id_||id_.isEmpty()||cancelling_)return;const auto type=e.take("event").toString();if(type=="finished")complete(e);
+ // Left alone until the idle bound with nothing ever scrolled: ended like Cancel, without an image, and said why.
+ else if(type=="cancelled"){if(e.value("reason")=="idle"){const auto note=QString("Nothing was scrolled for 10 minutes, so the capture ended without an image.");op_.note=note;view_["note"]=note;}terminate({},true);}else if(type=="failed"){auto error=e["error"].toObject();terminate({error["code"].toString("scroll_failed"),error["message"].toString(),error["details"].toObject()});}else if(type=="selected"){view_["rect"]=e["rect"];update("ready");maybeStartHelper();}
  // The helper asks for the Shell's pointer watch for the length of an auto-scroll, and gives it up (#1531).
  else if(type=="pointerWatch"){if(!shell_||!shell_->watchesPointer())return;if(!e["on"].toBool()){shell_->unwatchPointer();return;}
   QPointer<ScrollCaptureService> g(this);const auto id=id_;

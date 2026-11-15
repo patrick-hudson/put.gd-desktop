@@ -40,6 +40,7 @@ const char* toString(SessionEnd e) {
     switch (e) {
         case SessionEnd::Finished: return "Finished";
         case SessionEnd::Idle: return "Idle";
+        case SessionEnd::Forgotten: return "Forgotten";
         case SessionEnd::PageEnd: return "PageEnd";
         case SessionEnd::Capped: return "Capped";
         case SessionEnd::Discarded: return "Discarded";
@@ -178,7 +179,11 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         else if (source_.lost()) return done(SessionEnd::SourceLost);
         if (sizeChanged_) return done(SessionEnd::FrameSizeChanged);
         if (capped_) return done(SessionEnd::Capped);
-        if (clock_.nowMs() - lastActivity_ >= opts_.idleLimitMs) return done(SessionEnd::Idle);
+        // The idle bound. A capture in which nothing ever moved (no placed
+        // frame moved, by the user or by auto-scroll, over the whole session;
+        // the way to the top is not the image's movement) was forgotten: its
+        // one screen is not saved, uploaded or put in History.
+        if (clock_.nowMs() - lastActivity_ >= opts_.idleLimitMs) return done(stats_.movedByUser + stats_.movedByPutgd == 0 ? SessionEnd::Forgotten : SessionEnd::Idle);
         progress();
     }
 }
@@ -455,6 +460,8 @@ void ScrollSession::startAuto() {
         toTopSent_ = -1;
         toTopNotchesNow_ = opts_.toTopNotches;
         toTopStill_ = 0;
+        toTopPointsTried_ = 1;
+        toTopMoved_ = false;
         checkDigest_.clear();
         // The screen as it is now is the way's first look.
         if (!lastPixels_.empty()) digestRows(FrameView{lastPixels_.data(), lastPixelsW_, lastPixelsH_, std::ptrdiff_t(lastPixelsW_) * 4}, digest_);
@@ -767,12 +774,26 @@ void ScrollSession::toTopTick() {
             return;
         }
         if (++toTopStill_ < 2) { nextStepAt_ = now + 400; return; }
+        // Twice still where no step of the way has moved the page: the wheel
+        // may be over a part that takes no wheel, which says nothing of the
+        // top. The top is proved only where the wheel is known to move the
+        // page, or once every wheel point has been tried (one more still step
+        // at each) and moved nothing: a page that does not scroll here, or
+        // its top.
+        const int points = int(wheelPoints(frameW_, frameRowsFull()).size());
+        if (!toTopMoved_ && toTopPointsTried_ < points) {
+            ++toTopPointsTried_;
+            wheelAt_ = (wheelAt_ + 1) % points;
+            toTopStill_ = 1;
+            nextStepAt_ = now;
+            return;
+        }
         // Twice still: the screen itself must agree, not only the stream.
         auto fresh = source_.freshFrame(2000);
         if (!fresh) { endToTop(false, "the frame source gave no fresh frame after the last steps up, so the top of the page is not proven"); return; }
         feed(*fresh);
         if (phase_ != Phase::ToTop) return;
-        if (differingRows(digest_, checkDigest_) > samePictureRows) { toTopStill_ = 0; checkDigest_ = digest_; return; }
+        if (differingRows(digest_, checkDigest_) > samePictureRows) { toTopStill_ = 0; toTopMoved_ = true; checkDigest_ = digest_; return; }
         endToTop(true, {});
     };
     if (toTopChanged_) {
@@ -782,6 +803,7 @@ void ScrollSession::toTopTick() {
         // It moved: bigger steps while it keeps moving.
         toTopSent_ = -1;
         toTopStill_ = 0;
+        toTopMoved_ = true;
         if (rested) toTopRested_ = now;
         checkDigest_ = digest_;
         toTopNotchesNow_ = std::min(2 * toTopNotchesNow_, std::max(opts_.toTopNotches, opts_.toTopMaxNotches));
@@ -805,6 +827,9 @@ void ScrollSession::endToTop(bool proved, const std::string& gaveUp) {
     if (stats_.toTopSteps > 0 && auto_ && !stopping() && !pausedNow() && injector_.rest()) pump(opts_.settleMs * 2);
     phase_ = auto_ ? Phase::Step : Phase::Off;
     nextStepAt_ = now;
+    // Where no step of the way moved the page, auto-scroll looks for a wheel
+    // point that does, from the first.
+    if (!toTopMoved_) wheelAt_ = 0;
     resetTracker();
     // The image starts with the screen as it is now.
     if (!lastPixels_.empty()) {
@@ -819,7 +844,8 @@ void ScrollSession::resetTracker() {
     tracker_ = std::make_unique<scroll::ScrollTracker>(canvas_, opts_.tracker);
     if (!opts_.excluded.empty()) tracker_->setExcluded(opts_.excluded);
     movedYet_ = false;
-    movedDown_ = stats_.toTopSteps > 0 && !digest_.empty();
+    // Known to move the page under the wheel only where a step of the way did.
+    movedDown_ = toTopMoved_ && !digest_.empty();
     pending_ = 0;
     emitted_ = 0;
     attributed_ = 0;

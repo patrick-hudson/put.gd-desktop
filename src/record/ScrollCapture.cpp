@@ -1340,10 +1340,13 @@ void ScrollCapture::finish(std::shared_ptr<Outcome> outcome) {
         return;
     }
     if (outcome->nothing) {
-        // Stop before the first frame was stitched: there is no image to keep.
+        // Stop before the first frame was stitched, or a capture forgotten
+        // (the idle bound with nothing ever moved): there is no image to keep.
         removeFiles();
         state_ = State::Cancelled;
-        emit event({{"event", "cancelled"}});
+        QJsonObject cancelled{{"event", "cancelled"}};
+        if (outcome->end == SessionEnd::Forgotten) cancelled["reason"] = QStringLiteral("idle");
+        emit event(cancelled);
         if (stopReply) stopReply({"cancelled", "The capture was stopped before anything was captured", {}}, {});
         return;
     }
@@ -1511,6 +1514,9 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     if (spoolFailed) outcome->error = {"encoding_failed", "The capture could not be written to its staging file", {{"stage", "capture"}, {"check", "spool"}}};
     else if (end == SessionEnd::Discarded) {}
     else if (end == SessionEnd::Finished && (stats.placed == 0 || rows <= 0)) outcome->nothing = true;
+    // A capture left alone until the idle bound in which nothing ever moved:
+    // no picture of one screen is saved, uploaded or put in History.
+    else if (end == SessionEnd::Forgotten) outcome->nothing = true;
     else if (!kept) {
         switch (end) {
             case SessionEnd::InjectorFailed: outcome->error = unavailable(QStringLiteral("injection_unavailable"), QStringLiteral("The desktop refused the scroll input")); outcome->error.details["stage"] = "capture"; break;
