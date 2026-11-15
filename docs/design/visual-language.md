@@ -191,7 +191,9 @@ while a search or filter narrows the category. The note counts stored files,
 never grouped rows or live activity without a file; it is blank while a query
 loads and falls back to `12 matching items` when the category total is unknown.
 The sidebar shows each category's unfiltered total; Failed uploads uses the error
-colour and hides a zero. Both come from one `history.counts` request per change of
+colour and hides a zero. Failed uploads lists and counts uploads that failed and
+uploads whose outcome is unknown, the same ones the tray's Failed uploads row
+counts, so the row never opens an empty page. Both come from one `history.counts` request per change of
 the page's files, never per progress update.
 
 Rows sit in day sections: a 16 px semibold heading in sentence case (`Today`,
