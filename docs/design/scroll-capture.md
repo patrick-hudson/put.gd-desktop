@@ -276,7 +276,12 @@ later showing the page elsewhere.) The capture then finishes by itself.
 **Scroll to the top first** (`preferences.scrollCaptureFromTop`, off by default; it applies
 to auto-scroll only) runs when auto-scroll begins before anything has moved. Steps up of
 10 notches, doubled to 40 while the page moves; the top is two checked 10-notch steps that
-changed nothing and a frame of the screen that agrees. At most 90 s, and the way up gives
+changed nothing and a frame of the screen that agrees. Still steps prove the top only at a
+wheel point where a step of the way moved the page. Where none has, the wheel may be over a
+part of the page that takes no wheel, so the way tries the other wheel points, one more
+step at each. Only when every point has moved nothing is the screen taken as the top (a
+page already at its top, or one that does not scroll here). Auto-scroll then keeps the
+point that moved the page, or looks for one from the first. At most 90 s, and the way up gives
 up when no check has found the page at rest for 15 s. The image then starts again with the
 screen at the top; `topReached` says whether the top was proved. Moving the mouse or Done
 on the way up keeps the screen as it is then.
@@ -341,7 +346,14 @@ helper exit until the resident has admitted them.
   also `EditorJob::admissionPixels / width` (24 MP, 15,000 px at 1,600 wide). The helper
   reports the height it applied as `appliedMaxHeight`.
 - **Idle bound.** A capture with no frame placed with movement and no command for 10
-  minutes ends as Done, the image kept, with a note.
+  minutes ends by itself. Where a placed frame ever moved (the user's scrolling or
+  auto-scroll's, over the whole session; the way to the top is not the image's movement), it
+  ends as Done, the image kept, with a note. Where none ever did, the capture was forgotten:
+  it ends like Cancel (the session's `Forgotten`). The helper sends `cancelled` with
+  `reason: idle` and removes its files. The resident ends the operation cancelled, admits
+  nothing (no save, copy, upload or History row) and closes the bar and the ring. The view
+  and the operation note "Nothing was scrolled for 10 minutes, so the capture ended without
+  an image."
 - **Region.** On one output and at least 64 px each way (`scroll_region`).
 - **Admission.** The resident checks the file (inside the session's directory, regular,
   owned, the declared size and SHA-256, the PNG header and IHDR size, bounds) and the
@@ -393,7 +405,8 @@ scrolling capture stopped" or "… incomplete") and put a note on the History ro
 at 30,000 px. The page continues below.", "Could not reach the top of the page. The image
 starts partway down." and "Finished while put.gd had lost its place. The image ends where
 it last found the page." The idle bound puts "Finished by itself after 10 minutes without
-scrolling." on the row with no notification. When the upload or the local save failed, the
+scrolling." on the row with no notification (a capture in which nothing ever moved has no
+row: it ends like Cancel). When the upload or the local save failed, the
 row's status shows that first and the note follows after a `·`. No confirmation dialog is
 ever shown.
 

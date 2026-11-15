@@ -267,13 +267,17 @@ design is in [scrolling capture](../design/scroll-capture.md).
   the user scrolls back, and finished by Auto-scroll as one exact image; Done after the stream went
   stale (the same picture again and again while the page moves) keeps the rows the page shows; a
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
-  the cap and the idle bound end it with the image kept; Done keeps an exact image and Cancel discards
+  the way to the top over a strip that takes no wheel under the first wheel point still starts the
+  image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
+  in a capture where nothing ever moved ends it like Cancel; Done keeps an exact image and Cancel discards
   it in every state. It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
   `LocalServer` and the production `putgd-cli` against a fake backend. An image finished beside a
   Cancel is never admitted (`cancelInFlightDecides`); the driver, `activity`, `paused`, `placed` and
   `skipped` reach an agent, `scroll.autoScroll` and its old names work, Done keeps an image that is not
-  truncated and Cancel discards (`drivenCaptureEnds`); a PNG that does not match its descriptor is never
+  truncated and Cancel discards (`drivenCaptureEnds`); a capture forgotten until the idle bound ends
+  cancelled with its note, nothing admitted, the Shell's ring and pointer watch gone
+  (`forgottenCaptureEndsLikeCancel`); a PNG that does not match its descriptor is never
   admitted (`corruptOutputFails`); every end reason's promise is checked and a helper that breaks one is
   refused (`endReasons`).
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a

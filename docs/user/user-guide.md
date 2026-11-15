@@ -105,7 +105,7 @@ The result is one PNG that goes to the output chosen for this action (it starts 
 
 **Lost at the end.** If you press Done while put.gd has lost the page, the image ends where it last found it, and a warning says "Finished while put.gd had lost its place. The image ends where it last found the page."
 
-**Left alone.** A capture with nothing to follow and no button pressed for 10 minutes finishes by itself and keeps the image. History notes "Finished by itself after 10 minutes without scrolling."
+**Left alone.** A capture with nothing to follow and no button pressed for 10 minutes finishes by itself. If the page was scrolled during the capture, it keeps the image, and History notes "Finished by itself after 10 minutes without scrolling." If nothing was ever scrolled, it ends as if you had pressed Cancel: no picture is saved, copied or uploaded, and no History row is added. The capture's view says "Nothing was scrolled for 10 minutes, so the capture ended without an image." The way to the top does not count as scrolling.
 
 Tips:
 
