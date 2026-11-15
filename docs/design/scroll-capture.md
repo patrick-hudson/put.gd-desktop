@@ -249,7 +249,11 @@ capture follows the user. **Auto-scroll** (once the mouse has been still for 500
 
 **It hands the wheel back by itself** when the page moves up while it turns it down (you
 scrolled: **Paused: you scrolled**), and when nothing scrolls at any of its wheel points
-(**Nothing scrolled here**). It also hands it back when the tracker is lost and five steps
+(**Nothing scrolled here**). A jump up counts as yours only if the next frame agrees: the
+page stays up or goes on up. One frame placed far up and then the page back on
+auto-scroll's way was a picture out of place. On a starved X server a grab caught the
+window half repainted, and the wheel was handed back to nobody
+([#1535](https://github.com/patrick-hudson/put.gd-desktop/issues/1535)). It also hands it back when the tracker is lost and five steps
 back do not find the page. Each step back is judged on at least three frames and 2.5 s,
 because a lost tracker takes about a second per frame. It does the same after more than
 five ways back in a row that did not make the image grow. The bar then says **Auto-scroll

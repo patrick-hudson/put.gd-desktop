@@ -267,7 +267,8 @@ design is in [scrolling capture](../design/scroll-capture.md).
   the user scrolls back, and finished by Auto-scroll as one exact image; Done after the stream went
   stale (the same picture again and again while the page moves) keeps the rows the page shows; a
   blank stretch taller than the region stops auto-scroll without calling it the end of the page;
-  the way to the top over a strip that takes no wheel under the first wheel point still starts the
+  one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
+  up still is); the way to the top over a strip that takes no wheel under the first wheel point still starts the
   image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
   in a capture where nothing ever moved ends it like Cancel; Done keeps an exact image and Cancel discards
   it in every state. It is in the contract lists of `cmake/TestPolicy.cmake`.
@@ -283,8 +284,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
   while the page scrolls by itself, as under a person's wheel, not one event is injected and Done keeps
-  the exact page; that auto-scroll left alone runs to the end and finishes `end_of_content` with every
-  row exact; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
+  the exact page; that auto-scroll left alone runs to the end with every row exact and finishes
+  `end_of_content`, or `done` with `reachedEnd` where a starved runner's grab caught the fixture half
+  repainted and that frame was skipped (#1535); on failure it prints the result and the helper's
+  `scroll: ended` line from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
   Done or Cancel reply, nothing once another client moved the pointer until auto-scroll is on again,
   and the pointer is put back; the end of the control pipe stops injection at once. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
