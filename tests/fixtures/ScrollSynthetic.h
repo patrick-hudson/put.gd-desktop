@@ -159,6 +159,10 @@ struct FakeAppSpec {
   // coming, every one the last picture before it, until a fresh frame is asked
   // for (KWin sent 92 such frames while Chrome scrolled on, #1534). -1: off.
   int staleFromMs = -1;
+  // One picture out of place (#1535: a grab of a half-repainted window on a
+  // starved X server): the first frame from this time on that shows the page
+  // moving shows it glitchUp rows higher up than it is. -1: off.
+  int glitchAtMs = -1, glitchUp = 0;
   // This many rows at the top of the viewport change with every frame (a
   // video in a fixed player): the picture never comes to rest.
   int restlessRows = 0;
@@ -235,7 +239,7 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   size_t scriptAt_ = 0;
   bool quiet_ = false;
   bool forceNext_ = false;
-  bool stale_ = false, staleDone_ = false;
+  bool stale_ = false, staleDone_ = false, glitchDone_ = false;
   int64_t firstFrameT_ = -1;
   int64_t busyUntil_ = 0;
   int pointerX_ = -1, pointerY_ = -1;

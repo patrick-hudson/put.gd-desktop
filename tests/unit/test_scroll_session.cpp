@@ -548,6 +548,64 @@ void testStaleStreamUnderAuto() {
          (wrong.empty() ? counts(h) : wrong) + fmt(", image to %lld of %d, %d fresh frames", h.stats.bottom, doc.img.h, h.app->freshFrames));
 }
 
+// One frame out of place under auto-scroll (#1535): on a starved X server a
+// grab caught the page half repainted, the tracker placed it far up against
+// the hint, and the session took that one frame for the user scrolling up and
+// handed the wheel back to nobody. A jump up is the user's only if the next
+// frame agrees; one that falls back onto auto-scroll's way is not.
+void testOneFrameOutOfPlace() {
+  std::printf("One frame out of place under auto-scroll\n");
+  const Document doc = page(94);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.glitchAtMs = 3000;
+  as.glitchUp = 300;
+  h.script = [](Harness& x, int64_t t) { if (t >= 90000) x.stop.store(true); };
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a single frame shown 300 px up is not the user scrolling: auto-scroll goes on to the end, the image exact",
+         h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && h.stats.bottom == doc.img.h && !h.saw(SessionState::Paused, HandBack::Scrolled),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+  // The user's own scrolling up still hands the wheel back: the page stays up.
+  Harness u;
+  FakeAppSpec us;
+  us.pxPerNotch = 40;
+  u.script = [](Harness& x, int64_t t) {
+    if (t >= 3000 && x.app->script.empty() && !x.saw(SessionState::Paused, HandBack::Scrolled)) x.play({{t, -300, 250}});
+    if (t >= 9000) x.stop.store(true);
+  };
+  u.run(doc.img, us, options(true));
+  report("the user scrolling up during auto-scroll still takes the wheel back", u.saw(SessionState::Paused, HandBack::Scrolled) && u.exact(doc.img, 0).empty(),
+         counts(u) + fmt(", %d hand-backs", u.stats.handBacks));
+}
+
+// "Scroll to the top first" with a strip under the first wheel point that
+// takes no wheel (#1536's review): two still steps there say nothing of the
+// top. The top is proved only where the wheel moves the page, or once every
+// wheel point has moved nothing. The image starts at the page's top, or the
+// result says topReached false; it never starts in the middle with the top
+// claimed.
+void testTopUnderADeadPoint() {
+  std::printf("The way to the top over a strip that takes no wheel\n");
+  const Document doc = page(93);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.startPos = 1800;
+  // Under the first wheel point (the entry point, 48 px in from the left) from the first injection on.
+  as.deadAfterInjection = 0;
+  as.deadX = 0, as.deadY = 0, as.deadW = 120, as.deadH = H;
+  SessionOptions so = options(true);
+  so.fromTop = true;
+  h.run(doc.img, as, so);
+  const std::string wrong = h.exact(doc.img, 0);
+  const bool fromTheTop = h.stats.topReached && wrong.empty() && h.stats.top == 0 && h.stats.bottom == doc.img.h;
+  report("to the top first over a strip that takes no wheel: the image from the page's top, or topReached false",
+         h.end == SessionEnd::PageEnd && (fromTheTop || !h.stats.topReached),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", top %s, %d steps up", h.stats.topReached ? "proved" : h.stats.toTopGaveUp.c_str(), h.stats.toTopSteps));
+}
+
 // A blank stretch taller than the region under auto-scroll: no frame shows
 // anything move while it fills the region, the tracker reports such frames
 // still under any hint, and two still steps there look like the end. The
@@ -615,8 +673,31 @@ void testCapAndIdle() {
     };
     h.run(doc.img, FakeAppSpec{}, so);
     const std::string wrong = h.exact(doc.img, 0);
-    report("a capture nobody touches ends by itself, the image kept", h.end == SessionEnd::Idle && h.stats.elapsedMs < 8000 && wrong.empty(),
+    report("a capture nobody touches after scrolling ends by itself, the image kept", h.end == SessionEnd::Idle && h.stats.elapsedMs < 8000 && wrong.empty(),
            wrong.empty() ? fmt("%s after %lld ms", toString(h.end), (long long)h.stats.elapsedMs) : wrong);
+  }
+  // Forgotten (#1536's review): nothing ever scrolled, by the person or by
+  // auto-scroll, so the one screen is not saved: ended like Cancel. Also when
+  // auto-scroll was on and found nothing that scrolls, and when the way to the
+  // top moved the page but nothing after it did (not the image's movement).
+  struct Forgotten { const char* name; bool autoScroll, fromTop; int startPos; };
+  for (const Forgotten& c : {Forgotten{"nobody scrolls", false, false, 0}, Forgotten{"the way to the top only, then paused", true, true, 1200}}) {
+    Harness h;
+    SessionOptions so = options(c.autoScroll);
+    so.idleLimitMs = 5000;
+    so.fromTop = c.fromTop;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.startPos = c.startPos;
+    // The second: the mouse pauses auto-scroll right after the way to the top.
+    h.script = [c](Harness& x, int64_t t) {
+      if (c.fromTop && x.saw(SessionState::ScrollingToTop) && x.last() != SessionState::ScrollingToTop) x.paused = true;
+      if (t >= 30000) x.stop.store(true);  // the bound must come first
+    };
+    h.run(doc.img, as, so);
+    report(fmt("a capture nobody ever scrolls ends by itself like Cancel, no image (%s)", c.name),
+           h.end == SessionEnd::Forgotten && h.stats.movedByUser + h.stats.movedByPutgd == 0 && (!c.fromTop || h.stats.toTopSteps > 0),
+           fmt("%s after %lld ms, moved by user %d by put.gd %d, %d steps up", toString(h.end), (long long)h.stats.elapsedMs, h.stats.movedByUser, h.stats.movedByPutgd, h.stats.toTopSteps));
   }
 }
 
@@ -677,6 +758,8 @@ int main() {
   testReviewCases();
   testStaleStreamAtDone();
   testStaleStreamUnderAuto();
+  testTopUnderADeadPoint();
+  testOneFrameOutOfPlace();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();

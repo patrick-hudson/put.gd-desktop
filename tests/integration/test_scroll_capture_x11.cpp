@@ -10,6 +10,7 @@
 #include "fixtures/Waits.h"
 #include "ipc/UiControl.h"
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QImage>
 #include <QJsonArray>
@@ -147,7 +148,29 @@ private:
 
 class ScrollCaptureX11 : public QObject {
     Q_OBJECT
+    // The helper's debug log (#1535): a failure says how the session ended.
+    QTemporaryDir logs_;
+    QString log_;
+    QString helperLog() const { return log_; }
+    // The result object and the helper's last "scroll: ended" line, for a failure message.
+    QByteArray endOf(const QJsonObject& result) const {
+        QByteArray ended;
+        QFile log(helperLog());
+        if (log.open(QIODevice::ReadOnly))
+            for (const QByteArray& line : log.readAll().split('\n'))
+                if (line.contains("scroll: ended") || line.contains("scroll: way to the top")) ended = line;
+        return "result " + QJsonDocument(result).toJson(QJsonDocument::Compact) + "\nhelper " + ended;
+    }
 private slots:
+    void initTestCase() {
+        // A log asked for from outside (a lab loop) is kept; otherwise one of the test's own.
+        log_ = qEnvironmentVariable("PUTGD_RECORD_DEBUG_LOG");
+        if (log_.isEmpty()) {
+            QVERIFY(logs_.isValid());
+            log_ = logs_.filePath("helper.log");
+            qputenv("PUTGD_RECORD_DEBUG_LOG", QFile::encodeName(log_));
+        }
+    }
     // Auto-scroll: what is injected, and when: wheel steps and pointer motion
     // only, only while capturing, nothing after the Done or Cancel reply, and
     // the pointer back where it was.
@@ -262,12 +285,19 @@ private slots:
         QVERIFY(putgd::test::waitFor([&] { return capture.ended(); }, 90000));
         const auto finished = capture.last("finished");
         QVERIFY2(!finished.isEmpty(), qPrintable(QJsonDocument(capture.last("failed")).toJson(QJsonDocument::Compact)));
-        QCOMPARE(finished["endReason"].toString(), QString("end_of_content"));
-        QCOMPARE(finished["reachedEnd"].toBool(), true);
-        QCOMPARE(finished["scrolledBy"].toString(), QString("putgd"));
         const QImage image(finished["path"].toString());
         const auto verdict = ruler::verify(image, 0, 0, 0, 59);
-        QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem));
+        QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem + "\n" + QString::fromUtf8(endOf(finished))));
+        // end_of_content promises that no frame was skipped. Xvfb has no
+        // compositor: on a starved runner a grab can catch the fixture half
+        // repainted. The tracker skips that one frame and finds the page in
+        // the next, so the helper ends `done` with reachedEnd and frames
+        // skipped. That is right too, and the image is exact (checked
+        // above). Seen 10 times in 40 runs on one shared core (#1535).
+        const QString reason = finished["endReason"].toString();
+        QVERIFY2(reason == "end_of_content" || (reason == "done" && finished["reachedEnd"].toBool() && finished["framesSkipped"].toInt() > 0), endOf(finished).constData());
+        QCOMPARE(finished["reachedEnd"].toBool(), true);
+        QCOMPARE(finished["scrolledBy"].toString(), QString("putgd"));
         raw.read();
         QCOMPARE(raw.otherButtons, 0);
         QCOMPARE(raw.keys, 0);
