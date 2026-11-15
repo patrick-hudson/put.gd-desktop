@@ -206,6 +206,7 @@ class MemoryCanvas final : public TrackerCanvas {
 // What the driver expects of a frame: how far the content moved since the
 // frame before it (not since the last placed one), and how far that may be
 // off. put.gd's own wheel steps know it; a person's scrolling does not.
+// Offsets, their sum and the uncertainty count up to four frame heights.
 struct TrackerHint {
   bool known = false;
   int offset = 0;
@@ -224,7 +225,8 @@ enum class TrackStatus {
   NoMovement,  // the content did not move (changes in place are ignored)
   Skipped,     // no place could be proved; nothing was written
   CapReached,  // the image is at its height cap; nothing more is written
-  Invalid,     // the frame's size differs from the first frame's, or no data
+  Invalid,     // the frame's size differs from the first frame's, it is under two cells
+               // wide or two block rows high, or no data
 };
 const char* toString(TrackStatus);
 
@@ -271,6 +273,8 @@ struct TrackTotals {
   // image: cells that only the rectangle kept from being seen (every placed
   // frame that held them had them under it), filled with the plain colour,
   // and the rows that hold them. 0 when every such cell was shown outside it.
+  // Also every cell of a row that no placed frame covered at all (none should
+  // be: a placement on the hint alone must overlap the image).
   long long hiddenCells = 0, hiddenRows = 0;
 };
 
