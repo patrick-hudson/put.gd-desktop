@@ -82,8 +82,10 @@ def _nodes(ctx, name, role=None):
             x, y, w, h = rect
         return (x >= 0 and y >= 0 and w > 0 and h > 0
                 and not (menu_policy.get('reject_origin') and x == 0 and y == 0))
+    # A trailing * matches a prefix (accessible() matches names as globs).
+    exact = (lambda n: n.get('name', '').startswith(name[:-1])) if name.endswith('*') else (lambda n: n.get('name') == name)
     nodes = [n for n in ctx.accessible(query)
-             if n.get('name') == name and n.get('visible', True)
+             if exact(n) and n.get('visible', True)
              and n.get('showing', True) and on_screen(n)]
     if menu_policy.get('enabled_from_parent'):
         nodes = [_menu_parent_state(ctx, n) for n in nodes]
@@ -111,16 +113,17 @@ def _point(ctx, node):
     return round(x + w / 2), round(y + h / 2)
 
 
-# Stable catalog row IDs from #711/#738. Desktop menus are still resolved
-# through live shell nodes; catalog rectangles never authorize desktop input.
+# Stable catalog row IDs (#711/#738; src/ui/TrayMenu.cpp names every row).
+# Desktop menus are still resolved through live shell nodes; catalog
+# rectangles never authorize desktop input. The output rows are what
+# _local's all-local routes produce (commandtext::outputSummary).
+OUTPUT_ROWS = ('All actions: Local only', 'Capture region & edit · Record screen: Save when you choose')
 CONTROLS = {
-    'trayOutputSummary': 'Local only', 'trayChangeOutput': 'Change output…',
-    **LABELS, **{'trayOutput' + a: label + ': Local only' for a, label in LABELS.items()},
-    'trayCancelUpload': 'Cancel upload', 'edit-sources': 'Edit image', 'trayMenuAction-3deabb1a41ce13d8': 'Edit clipboard image',
-    'trayMenuAction-672f6057ec40f3b4': 'Edit an image file…', 'history': 'History',
-    'destinations': 'Destinations', 'preferences': 'Settings',
-    'trayMenuAction-362db4ee39b59aea': 'About put.gd',
-    'trayMenuAction-33617f924b4aa7fb': 'Quit put.gd',
+    'trayOutputSummary': 'Capture output: Local only', 'trayChangeOutput': 'Change output…',
+    **LABELS, **{'trayOutputRow%d' % i: row for i, row in enumerate(OUTPUT_ROWS)},
+    'trayCancelUpload': 'Cancel upload', 'edit-sources': 'Edit image', 'trayEditClipboard': 'Edit clipboard image',
+    'trayEditFile': 'Edit an image file…', 'history': 'Open put.gd', 'preferences': 'Settings',
+    'trayQuit': 'Quit put.gd',
 }
 
 
@@ -201,7 +204,18 @@ def _icon_input(ctx, button='left'):
 
 def _menu(ctx):
     _icon_input(ctx, 'right')
-    return _node(ctx, 'History', 'menu item')
+    return _node(ctx, 'Open put.gd', 'menu item')
+
+
+def _output_title(ctx):
+    """The Capture output submenu's row, whatever output the profile has."""
+    def find():
+        names = sorted({n['name'] for n in _nodes(ctx, 'Capture output: *', 'menu item')
+                        if n.get('name', '').startswith('Capture output: ')})
+        if len(names) > 1:
+            ctx.blocked('More than one Capture output row is showing: ' + ', '.join(names), 670)
+        return names[0] if names else None
+    return ctx.wait(find, 'visible desktop node: Capture output submenu')
 
 
 def _dismiss_menu(ctx, *, depth=1):
@@ -331,8 +345,12 @@ def context_menu(ctx):
     try:
         _menu(ctx)
         opened = True
-        for name in ('Capture region', 'History', 'Destinations', 'Settings', 'About put.gd', 'Quit put.gd'):
+        for name in ('Capture region', 'Repeat last region', 'Capture scrolling region', 'Copy text from region',
+                     'Capture delay: none', 'Open put.gd', 'Settings', 'Quit put.gd'):
             _node(ctx, name, 'menu item')
+        # Destinations and About put.gd left the tray (2026-11-14); the window has them.
+        for name in ('History', 'Destinations', 'About put.gd'):
+            ctx.expect(not _nodes(ctx, name, 'menu item'), 'tray menu has no row: ' + name)
         _menu_frame(ctx, 'after')
     finally:
         if opened:
@@ -348,40 +366,33 @@ def _navigation(interaction, label, target):
         _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
         if target == 'settings':
             ctx.view('ui.show', {'view': 'history'})
-        about_focused = False
-        try:
-            _menu(ctx)
-            _menu_frame(ctx, 'before')
-            _press(ctx, next((k for k,v in CONTROLS.items() if v == label), label), 'menu item')
-            if target == 'history':
-                ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'History inspector answers')
-                _page(ctx, 'History')
-            elif target in ('settings', 'destinations'):
-                _page(ctx, target.title())
-            elif target == 'capture':
-                _page(ctx, 'Settings')
-                ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
-                         'Settings Capture section')
-            elif target == 'editFile':
-                state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
-                ctx.expect(state.get('open'), 'edit image file chooser is open')
-            if target == 'about':
-                _node(ctx, 'About put.gd', 'dialog')
-                _focus(ctx, 'trayAbout')
-                about_focused = True
-            _frame(ctx, 'after')
-        finally:
-            if about_focused:
-                ctx.keys('Esc')
+        _menu(ctx)
+        _menu_frame(ctx, 'before')
+        if target == 'capture':
+            # Change output… closes the Capture output submenu, whose title
+            # names the profile's output ("Capture output: …").
+            _press(ctx, _output_title(ctx), 'menu item')
+        _press(ctx, next((k for k,v in CONTROLS.items() if v == label), label), 'menu item')
+        if target == 'history':
+            ctx.expect(bool(ctx.call('ui.history', {'action': 'inspect'})), 'History inspector answers')
+            _page(ctx, 'History')
+        elif target == 'settings':
+            _page(ctx, 'Settings')
+        elif target == 'capture':
+            _page(ctx, 'Settings')
+            ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
+                     'Settings Capture section')
+        elif target == 'editFile':
+            state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
+            ctx.expect(state.get('open'), 'edit image file chooser is open')
+        _frame(ctx, 'after')
     navigate.__name__ = interaction.replace('.', '_').replace('-', '_')
     return navigate
 
 
 for _id, _label, _target in (
-    ('tray.menu-history', 'History', 'history'),
+    ('tray.menu-history', 'Open put.gd', 'history'),
     ('tray.menu-settings', 'Settings', 'settings'),
-    ('tray.menu-destinations', 'Destinations', 'destinations'),
-    ('tray.menu-about', 'About put.gd', 'about'),
     ('tray.menu-change-output', 'Change output…', 'capture'),
 ):
     globals()[_id.replace('.', '_').replace('-', '_')] = _navigation(_id, _label, _target)
@@ -394,11 +405,12 @@ def output_submenu(ctx):
         _menu_frame(ctx, 'before')
         try:
             _press(ctx, 'trayOutputSummary', 'menu item')
-            for action, label in LABELS.items():
-                node = _node(ctx, CONTROLS['trayOutput' + action], 'menu item')
+            for index, row in enumerate(OUTPUT_ROWS):
+                node = _node(ctx, row, 'menu item')
                 if 'enabled' not in node:
                     ctx.blocked('AT-SPI needs the enabled state to prove informational output rows are disabled', 670)
-                ctx.expect(node.get('enabled') is False, 'output row is informational: ' + action)
+                ctx.expect(node.get('enabled') is False, 'output row is informational: %d' % index)
+            _node(ctx, 'Change output…', 'menu item')
             _menu_frame(ctx, 'after', 'output')
         finally:
             _dismiss_menu(ctx, depth=2)
@@ -410,7 +422,7 @@ def edit_file(ctx):
     _menu(ctx)
     _press(ctx, 'edit-sources', 'menu item')
     _menu_frame(ctx, 'before')
-    _press(ctx, 'trayMenuAction-672f6057ec40f3b4', 'menu item')
+    _press(ctx, 'trayEditFile', 'menu item')
     focused = False
     try:
         state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
@@ -501,7 +513,7 @@ def edit_clipboard(ctx):
         _menu(ctx)
         _press(ctx, 'edit-sources', 'menu item')
         _menu_frame(ctx, 'before')
-        _press(ctx, 'trayMenuAction-3deabb1a41ce13d8', 'menu item')
+        _press(ctx, 'trayEditClipboard', 'menu item')
         operation = _new_operation(ctx, previous, 'edit')
         operation = ctx.wait(lambda: (o if (o := ctx.call('operation.inspect', {'id': operation['id']}))
                                       ['state'] == 'editing' else None), 'clipboard image editor')
@@ -900,7 +912,7 @@ def quit_resident(ctx):
     lifecycle = ctx.fixture('resident-lifecycle')
     _begin(ctx, show_ui=False)
     _menu(ctx)
-    _press(ctx, 'trayMenuAction-33617f924b4aa7fb', 'menu item')
+    _press(ctx, 'trayQuit', 'menu item')
     ctx.wait(lifecycle.stopped, 'real Quit releases the private socket')
     _frame(ctx, 'quit')
     restarted = lifecycle.launch()

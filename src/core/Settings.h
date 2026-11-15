@@ -129,6 +129,7 @@ struct Settings {
     // Everything the tray, the dashboard rail and a global shortcut can start:
     // the sharing actions plus the screen-recording, repeat and Copy text actions.
     static QStringList invocableActionNames();
+    // Routed actions in the command order: actionTable() without repeat and text.
     static QStringList presentationOrder();
     // The optional recording route; absent documents inherit the region route.
     static QString recordingActionName();
@@ -137,9 +138,21 @@ struct Settings {
     // Copy text (#1428): route-free. It has a hotkey and no destination, archive,
     // naming or publication, so it is in no output list and never output_required.
     static QString textActionName();
-    // Shortcut rows and tray entries: presentationOrder() plus Repeat last region
-    // and Copy text, which has no output and so is not in presentationOrder().
+    // Shortcut rows and tray entries: every actionTable() entry, in its order.
     static QStringList shortcutOrder();
+    // One row per command the tray, the window's action bar, Settings → Hotkeys
+    // and the output lists show: its action ID, full name, the bar's label
+    // (empty when the bar has no button for it) and its group. The order is the
+    // order every surface uses: the screenshots (region, repeat, window, monitor,
+    // desktop, scroll), then editing and recording (edit, record), then the
+    // two that capture no picture to keep (text, clipboard). Each surface filters
+    // and places from this table; none keeps its own list.
+    struct Command { QString action, label, barLabel; int group = 0; bool routed = true; };
+    static const QList<Command>& actionTable();
+    // The full name of an action ID ("Capture region"), empty for an unknown one.
+    static QString actionLabel(const QString& action);
+    // The group an action belongs to (0, 1 or 2); -1 for an unknown one.
+    static int actionGroup(const QString& action);
     // Delays a capture can start after, in seconds; 0 is immediate.
     static QList<int> captureDelayChoices();
     // Captures that take delaySeconds: region, window, monitor, desktop, repeat,
