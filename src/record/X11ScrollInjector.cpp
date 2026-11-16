@@ -96,6 +96,12 @@ bool X11ScrollInjector::movePointer(QPoint streamPixel) {
         if (!query(&savedX_, &savedY_, nullptr)) return false;
         saved_ = true;
     }
+    // Before the capture places the pointer (auto-scroll just turned on, or
+    // back after the hand): what the hand did until now, the click on
+    // Auto-scroll included, is not about this motion. The Gate does not ask
+    // before it (skipCheck), so the queue is emptied here, or the next check
+    // took the click for the hand and paused at once (Cinnamon, #1548).
+    if (!placed_) handMoved(true);
     const QPoint root = area_.topLeft() + streamPixel;
     // detail 0: absolute root coordinates.
     xcb_test_fake_input(connection_, XCB_MOTION_NOTIFY, 0, XCB_CURRENT_TIME, root_, int16_t(root.x()), int16_t(root.y()), 0);
