@@ -103,6 +103,9 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  // GNOME: `ready` is answered while the Shell still places the bar. A start
  // that arrives meanwhile waits for the placement; it is not refused.
  if(cmd=="start"&&shellPlacing_&&pending_.isEmpty()&&!startWaiting_&&view_["state"].toString()=="ready"){startWaiting_=std::move(reply);return;}
+ // A toggle while the capture stops (Done on its way): it can never apply to this capture again, so it is the state's
+ // refusal, as the helper's own, not "busy, try again" (#1515's acceptance found scroll_busy here on all five desktops).
+ if((cmd=="autoScroll"||cmd=="pause"||cmd=="resume")&&!cancelling_&&(pending_=="stop"||view_["state"].toString()=="finishing")){reply({"scroll_state","The capture is stopping",{}},{});return;}
  if(((!pending_.isEmpty()||cancelling_)&&cmd!="cancel")||(cmd=="start"&&shellPlacing_)){reply({"scroll_busy","A scroll command is pending",{}},{});return;}
  const auto state=view_["state"].toString();if((cmd=="start"&&state!="ready")||(cmd=="select"&&state!="selecting")||((cmd=="stop"||cmd=="autoScroll"||cmd=="pause"||cmd=="resume")&&state!="capturing")){reply({"scroll_state","Command is unavailable in this state",{}},{});return;}
  if(cmd=="select"&&shellSelecting_){shellSelecting_=false;shell_->cancelSelection();}

@@ -148,8 +148,34 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         if (stop.load()) return SessionEnd::Finished;
         return source_.lost() ? SessionEnd::SourceLost : SessionEnd::NoFrames;
     }
+    // Auto-scroll from the start: the pointer goes to its rest before the
+    // first frame is taken into the image, as the published nightly did. A
+    // desktop that paints the pointer into every frame (Hyprland) put the
+    // arrow where the person had left it into the image's first screen, and
+    // a hover under it shows too (#1515's acceptance). The person scrolling
+    // themselves keeps the pointer: it is never moved for them.
+    if (autoAtStart && opts_.pointer) {
+        startAuto();
+        if (auto_ && away_ && !stopping() && !pausedNow() && injector_.movePointer(away_->x, away_->y)) {
+            // Only a frame from after the move: one already waiting in the
+            // stream still shows the pointer where it was (the Omarchy guest
+            // sends 3 to 4 frames a second, so one nearly always waits).
+            // `first` stays the newest frame the source returned: an older
+            // one's pixels belong to the stream again once another is taken.
+            const int64_t from = clock_.nowMs() + std::max(opts_.pointerSettleMs, 100), until = from + 500;
+            bool moved = false;
+            while (!moved && !stopping() && !source_.lost() && clock_.nowMs() < until)
+                if (auto frame = source_.nextFrame(int(until - clock_.nowMs()))) {
+                    first = frame;
+                    moved = frame->timestampMs >= from;
+                }
+            // A stream that sends only changes may have nothing new: the screen as it is.
+            if (!moved && !stopping() && !source_.lost())
+                if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500)) first = fresh;
+        }
+    }
     feed(*first);
-    if (autoAtStart) startAuto();
+    if (autoAtStart && !auto_ && !stopping() && pausedBy_ == HandBack::None) startAuto();
     progress(true);
     for (;;) {
         if (discard.load()) return done(SessionEnd::Discarded);

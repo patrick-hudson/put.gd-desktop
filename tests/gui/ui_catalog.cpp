@@ -894,6 +894,8 @@ int main(int argc,char** argv){
    for(const auto& by:QStringList{"pointer","scrolled","no_movement","lost"}){scroll.setPaused(by);if(!shot(scroll,"scroll-bar-paused-"+by))return 2;}
    // Auto-scroll went back five times and did not find the page (it lays itself out anew).
    scroll.setState("lost","lost");if(!shot(scroll,"scroll-bar-lost-auto-gave-up"))return 2;
+   // X11 with a `scroll` hotkey bound: Esc and the key, within the bar's one size.
+   scroll.setFinishKey("Esc\nCtrl+Shift+F7");scroll.setState("following");if(!shot(scroll,"scroll-bar-following-x11-keys"))return 2;
    // Wayland with no `scroll` hotkey bound: no key to name.
    scroll.setFinishKey(QString());scroll.setState("following");if(!shot(scroll,"scroll-bar-following-no-key"))return 2;
    scroll.hide();

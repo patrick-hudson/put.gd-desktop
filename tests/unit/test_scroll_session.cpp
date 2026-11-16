@@ -804,6 +804,26 @@ void testSpoolDiskFull() {
 // at the alias one step short, and the image lost a period. The hints stay
 // with the tracker. The opposite case: the step at the page's end moves
 // nothing, and its hints must not take a later frame a period on.
+// The fixture itself: on a stream that sends a frame only when the picture
+// changed, a foreign picture waiting to be shown is a change, at rest too.
+void testFixtureForeignOnDamageOnly() {
+  std::printf("The fixture: a foreign picture on a damage-only stream at rest\n");
+  const Document doc = page(98);
+  FakeClock clock;
+  FakeAppSpec as;
+  as.damageOnly = true;
+  FakeApp app(doc.img, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+  const auto first = app.nextFrame(100);
+  std::vector<uint8_t> row0;
+  if (first) row0.assign(first->view.row(0), first->view.row(0) + size_t(W) * 4);
+  const auto still = app.nextFrame(200);  // nothing changed: nothing sent
+  app.foreignThenQuiet(500);
+  const auto foreign = app.nextFrame(200);
+  const bool differs = foreign && !row0.empty() && std::memcmp(foreign->view.row(0), row0.data(), row0.size()) != 0;
+  report("a foreign picture is sent on a damage-only stream at rest", first && !still && foreign && differs,
+         fmt("first %d, at rest %d, foreign %d, differs %d", bool(first), bool(still), bool(foreign), differs));
+}
+
 void testSkippedStepOnRepeatingContent() {
   std::printf("A step whose only frame is skipped, on content that repeats every step\n");
   const Document unique = page(99, 0);
@@ -1003,6 +1023,63 @@ void testDoneAndCancel() {
 
 }  // namespace
 
+// The Omarchy guest (#1515's acceptance): its stream sends 3 to 4 frames a second, so a
+// frame taken before the session moved the pointer to its rest still waits in it, and
+// Hyprland paints the pointer into every frame. Auto-scroll from the start takes its first
+// frame from after the move, not that one.
+struct WaitingFrame final : putgd::record::RunFrames {
+  FakeApp& app;
+  Image held;
+  int64_t heldAt = -1;
+  size_t eventsBefore = 0;
+  bool given = false;
+  explicit WaitingFrame(FakeApp& a) : app(a) {}
+  std::optional<putgd::record::RunFrame> nextFrame(int timeoutMs) override {
+    // Once the session has moved the pointer: the frame from before it, at once (it waited).
+    if (heldAt >= 0 && !given && app.events.size() > eventsBefore) {
+      given = true;
+      return putgd::record::RunFrame{held.view(), heldAt};
+    }
+    auto f = app.nextFrame(timeoutMs);
+    if (f && heldAt < 0) {
+      held = Image(f->view.width, f->view.height);
+      for (int y = 0; y < held.h; ++y) std::memcpy(&held.px[size_t(y) * held.w], f->view.row(y), size_t(held.w) * 4);
+      heldAt = f->timestampMs;
+      eventsBefore = app.events.size();
+      return f;
+    }
+    return f;
+  }
+  bool lost() const override { return app.lost(); }
+  std::optional<putgd::record::RunFrame> freshFrame(int timeoutMs) override { return app.freshFrame(timeoutMs); }
+};
+
+void testAutoStartTakesAFrameAfterTheRest() {
+  std::printf("Auto-scroll from the start: the first frame comes after the pointer's move to its rest\n");
+  const Document doc = page(17);
+  FakeClock clock;
+  FakeAppSpec as;
+  as.frameIntervalMs = 270;
+  FakeApp app(doc.img, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+  WaitingFrame source(app);
+  Spool spool(30000 + 2LL * H);
+  SessionOptions so = options(true);
+  int64_t firstFed = -1;
+  so.onFrame = [&](const TrackResult&, const TrackerHint&, int64_t t) { if (firstFed < 0) firstFed = t; };
+  std::atomic<bool> stop{false}, discard{false};
+  so.request = [&] {
+    if (clock.nowMs() > 3000) stop.store(true);
+    return std::pair<unsigned, bool>(0, true);
+  };
+  ScrollSession session(app, source, clock, spool.canvas, so);
+  session.run(stop, discard);
+  int64_t moved = -1;
+  for (const auto& e : app.events)
+    if (e.kind == 'm') { moved = e.t; break; }
+  report("the frame that waited from before the move is not the image's first", source.given && moved >= 0 && firstFed >= moved + 100,
+         fmt("moved at %lld, waiting frame given %d (from %lld), first frame fed at %lld", (long long)moved, source.given, (long long)source.heldAt, (long long)firstFed));
+}
+
 int main() {
   testUserScrolls();
   testAutoScroll();
@@ -1023,6 +1100,8 @@ int main() {
   testDoneOnTheWayUpStale();
   testSpoolDiskFull();
   testSkippedStepOnRepeatingContent();
+  testFixtureForeignOnDamageOnly();
+  testAutoStartTakesAFrameAfterTheRest();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();

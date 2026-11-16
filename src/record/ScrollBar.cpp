@@ -84,7 +84,12 @@ ScrollBar::ScrollBar(QWidget* parent) : QWidget(parent, Qt::Tool | Qt::Frameless
 }
 QString ScrollBar::heightText(int rows) { return QLocale(QLocale::English, QLocale::UnitedStates).toString(std::max(0, rows)) + QStringLiteral(" px"); }
 QStringList ScrollBar::words(const QString& state, const QString& pausedBy, const QString& finishKey) {
-    const QString finish = finishKey.isEmpty() ? QStringLiteral("Done when you reach the end") : QStringLiteral("Done or %1 when you reach the end").arg(finishKey);
+    // finishKey: the keys that finish the capture, one per line (X11: Esc,
+    // then the bound `scroll` hotkey where there is one).
+    const QStringList keys = finishKey.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    const QString finish = keys.isEmpty()      ? QStringLiteral("Done when you reach the end")
+                           : keys.size() == 1 ? QStringLiteral("Done or %1 when you reach the end").arg(keys[0])
+                                              : QStringLiteral("Done, %1 or %2 when you reach the end").arg(keys.mid(0, keys.size() - 1).join(QStringLiteral(", ")), keys.last());
     if (state == "waiting") return {QStringLiteral("Scroll the page"), finish};
     if (state == "following") return {QStringLiteral("Following"), finish};
     // Auto-scroll gave up: it went back five times and did not find the page
@@ -207,8 +212,17 @@ bool ScrollBar::placeInside(const QRect& captured) {
     const auto mode = surfaceMode();
     outside_ = false;
     if (mode == SurfaceMode::Compositor) return false;
-    const QRect area = mode == SurfaceMode::X11 ? barLogicalRect(captured) : captured;
+    QRect area = mode == SurfaceMode::X11 ? barLogicalRect(captured) : captured;
     const int gap = 10;
+    // Within the screen's available area: a panel or a dock over the
+    // rectangle's corner takes the clicks meant for the bar (Cinnamon's panel
+    // took Done's and Cancel's, #1515's acceptance). The Shell does the same
+    // on GNOME (its work area).
+    for (QScreen* screen : QGuiApplication::screens())
+        if (screen->geometry().contains(area.center())) {
+            const QRect usable = area.intersected(screen->availableGeometry());
+            if (usable.width() >= width() + 2 * gap && usable.height() >= height() + 2 * gap) area = usable;
+        }
     if (area.width() < width() + 2 * gap || area.height() < height() + 2 * gap) return false;
     const QRect spot(area.right() + 1 - gap - width(), area.bottom() + 1 - gap - height(), width(), height());
     QScreen* on = nullptr;

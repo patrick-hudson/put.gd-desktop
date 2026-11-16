@@ -98,6 +98,24 @@ private slots:
    QCOMPARE(view["id"].toString(),id);QCOMPARE(view["steps"].toInt(),7);QCOMPARE(view["rowsAtDone"].toInt(),12);QVERIFY(!view.contains("bogus"));QVERIFY(!view.contains("frames"));QCOMPARE(view["hiddenCells"].toInt(),96);QVERIFY(!view.contains("hiddenRows"));}
   else{QCOMPARE(view["state"].toString(),QString("cancelled"));QVERIFY(ended.cancelled);PUTGD_COMPARE_STEADY(admissions,0,200);QVERIFY(!QFileInfo::exists(backend->directory));}
  }
+ // A toggle sent while the capture stops (Done on its way) is refused as the
+ // state's, scroll_state, like the helper's own; the stop goes on and keeps the image.
+ void toggleWhileStoppingIsState(){
+  QTemporaryDir dir("/tmp/st-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="stopping";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};
+  int admissions=0;host.finish=[](Operation){};host.admit=[&](Operation,ClipboardPayload,auto){++admissions;};
+  ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+  QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}},{"driver","putgd"}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});PUTGD_TRY_VERIFY(started);
+  backend->holdCommands={"stop"};
+  bool stopped=false;Error stopError;service.command("stop",{{"id",id}},[&](Error e,QJsonObject){stopError=e;stopped=true;});QVERIFY(backend->held.contains("stop"));
+  for(const auto& command:{QString("autoScroll"),QString("pause"),QString("resume")}){
+   Error refusal;bool answered=false;auto params=QJsonObject{{"id",id}};if(command=="autoScroll")params["on"]=false;
+   service.command(command,params,[&](Error e,QJsonObject){refusal=e;answered=true;});PUTGD_TRY_VERIFY(answered);
+   QCOMPARE(refusal.code,QString("scroll_state"));QVERIFY(service.active());
+  }
+  backend->held.take("stop")({},backend->finished());PUTGD_TRY_VERIFY(stopped);QVERIFY2(!stopError,qPrintable(stopError.code));PUTGD_TRY_VERIFY(admissions==1);
+ }
  // A capture left alone until the idle bound with nothing ever scrolled ends
  // like Cancel (#1536's review): no image admitted, cancelled, the Shell's ring
  // and pointer watch gone, no staging files; scroll.inspect and the operation say why.

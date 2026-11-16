@@ -325,7 +325,8 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     pos = int(std::lround(posAt(t)));
     if (t < quietUntil_) continue;
     // Damage-driven: nothing to send while the picture stands still.
-    if (spec_.damageOnly && !forceNext_ && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
+    // A foreign picture waiting to be shown is a change: it is never held back.
+    if (spec_.damageOnly && !forceNext_ && foreignQuietMs_ < 0 && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
     forceNext_ = false;
     break;
   }
@@ -337,7 +338,8 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     return putgd::record::RunFrame{delivered_.view(), t};
   }
   if (foreignQuietMs_ >= 0 && t >= quietUntil_) {
-    // One foreign picture, then the quiet.
+    // One foreign picture, then the quiet. The buffer may not have its size yet (one frame sent so far).
+    renderer_.render(pos, scratch_);
     for (int y = 0; y < scratch_.h; ++y)
       for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb(rng_.range(0, 255), rng_.range(0, 255), rng_.range(0, 255));
     quietUntil_ = t + foreignQuietMs_;

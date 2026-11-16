@@ -1,6 +1,8 @@
 #pragma once
 #include "ScrollInjector.h"
+#include <cstdint>
 #include <mutex>
+#include <vector>
 
 struct xcb_connection_t;
 
@@ -26,6 +28,16 @@ public:
 private:
     bool query(int* x, int* y, unsigned* mask);
     bool sync();
+    // The hand's own events (#1515's acceptance on Cinnamon): XInput 2 raw
+    // motion and button presses of every pointer but the XTEST one (the
+    // capture's own). A hand that moved just before the capture's absolute
+    // move leaves no trace in the pointer's place, but its raw event stays
+    // queued. Under mutex_: whether one came since the last look; discarded
+    // when the capture has not placed the pointer (nothing to tell apart yet).
+    bool handMoved(bool discard);
+    uint8_t inputOpcode_ = 0;
+    std::vector<uint16_t> xtestDevices_;
+    bool raw_ = false;
     xcb_connection_t* connection_ = nullptr;
     unsigned root_ = 0;
     QString reason_;

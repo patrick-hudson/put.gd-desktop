@@ -41,9 +41,9 @@ struct RunInjector {
     // Before the first injection. X11 waits here until the modifier keys are up
     // (Ctrl plus wheel zooms); false when they never were, or `stop` was set.
     virtual bool waitReady(const std::atomic<bool>& stop) { (void)stop; return true; }
-    // Called while auto-scroll is paused by the mouse, every few ms. The only
-    // injection allowed then is the helper's own one-time correction of a
-    // pointer it pulled back from under the user's hand (#1514).
+    // Called while auto-scroll is paused by the mouse, every few ms. Nothing
+    // is injected then: the helper's one put-back of a pointer it pulled from
+    // under the user's hand (#1514) goes out in the check that sees the hand.
     virtual void held() {}
 };
 struct RunFrame {
