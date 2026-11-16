@@ -118,6 +118,15 @@ struct TrackerOptions {
   // contradicts the image when fewer than this share of its tiles that show
   // something agree with it.
   double keepShare = 0.40;
+  // A place found again (after skipped frames, or by the image lookup away
+  // from the pair's place): the image must agree in this share of the
+  // candidate's own area of tiles (contradicted, with keepShare at least),
+  // and the cells of its own layer in recoverCells.
+  double recoverKeepShare = 0.80;
+  double recoverCells = 0.95;
+  // ... and no other place in the image may fit within this share of cells
+  // of it (look-alikes: numbered paragraphs, a table's equal rows).
+  double recoverTie = 0.05;
   // Per row of tiles, in the columns that mostly agree at the offset: rows
   // where moving tiles outnumber tiles that stood still, against rows where
   // the still ones do. At least this share: what moves is the page only when
@@ -399,7 +408,16 @@ class ScrollTracker {
   long long sweep_ = LLONG_MIN;
   int decide(std::vector<Candidate>& cands, int expected, int uncertainty, bool hinted,
              bool* byExpectation, SkipReason* why) const;
-  bool contradicted(const Signature& cur, long long pos) const;
+  bool contradicted(const Signature& cur, long long pos, double keepShare) const;
+  bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
+  double wholeCells(const Signature& cur, const Signature& ref, int d) const;
+  // What storeCells saw: cells of the rows, those the image has written,
+  // and rows with two agreeing cells or more.
+  struct StoreFit {
+    long long cells = 0, written = 0;
+    int rows = 0;
+  };
+  double storeCells(const Signature& cur, long long pos, int y0, int y1, StoreFit* fit) const;
   void learn(const Signature& cur, const Signature& ref, int d);
   void closeMask();
   void close(const std::vector<uint8_t>& src, std::vector<uint8_t>& out) const;
