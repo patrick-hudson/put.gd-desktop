@@ -284,7 +284,7 @@ design is in [scrolling capture](../design/scroll-capture.md).
   cancelled with its note, nothing admitted, the Shell's ring and pointer watch gone
   (`forgottenCaptureEndsLikeCancel`); a PNG that does not match its descriptor is never
   admitted (`corruptOutputFails`); every end reason's promise is checked and a helper that breaks one is
-  refused (`endReasons`).
+  refused (`endReasons`), including `foundAgain` counts and recovery notes appended to existing notes. Recovery preserves `endReason` and `truncated`; the notice is `scroll_found_again` unless another warning already applies.
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
   while the page scrolls by itself, as under a person's wheel, not one event is injected and Done keeps
