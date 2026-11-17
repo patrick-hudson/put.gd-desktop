@@ -1004,11 +1004,19 @@ Operation OperationService::run(Job job) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
   ArtifactStore artifacts(root_+"/artifacts");
   auto lock=objectLock(op.destination,item.objectReference,item.candidate);std::unique_lock guard(*lock);
+  // What a failed or cancelled attempt leaves the item as.
+  QString undone=QStringLiteral("failed");
   if(item.uploadStatus=="unknown"&&capabilities.serverNamesObjects) {
    // Nothing can tell whether the earlier request stored the file. This runs only
    // on an explicit Retry, which sends it again; the server may then hold two copies.
    logging::warning(providerLog(op.destination.providerId),"Uncertain upload sent again; the destination cannot be checked",itemFields(op,item));
-   item.uploadStatus="stored";item.error={};if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
+   // The first request's copy may still be on the server whatever this resend
+   // does, so a resend that does not finish leaves the item unknown, as it was
+   // (with this attempt's error), never failed: History keeps saying so and
+   // Retry stays the same. Only an upload confirmed here clears it. Nothing is
+   // journaled before the attempt itself (uploading reads back as unknown).
+   undone=QStringLiteral("unknown");
+   item.uploadStatus="stored";item.error={};if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus=undone;item.error=error;commit(item,index);return;}
   }
   if(item.uploadStatus=="unknown") {
    item.phase="reconciling";show(item,index);
@@ -1069,8 +1077,8 @@ Operation OperationService::run(Job job) {
    }
    if(uploaded.status=="unknown") {item.uploadStatus="unknown";if(!commit(item,index))return;break;}
    // Cancelling one file leaves it pending for Retry; the rest of the batch continues.
-   if(uploaded.status=="failed"&&cancel->load()&&!job.cancelled->load()) {item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled; Retry uploads this file again",{}};commit(item,index);break;}
-   if(uploaded.status!="collision") {item.uploadStatus="failed";if(!commit(item,index))return;break;}
+   if(uploaded.status=="failed"&&cancel->load()&&!job.cancelled->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Upload cancelled; Retry uploads this file again",{}};commit(item,index);break;}
+   if(uploaded.status!="collision") {item.uploadStatus=undone;if(!commit(item,index))return;break;}
    // Reconcile our publication before changing any proposed target after a race.
    item.phase="reconciling";show(item,index);
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
@@ -1078,13 +1086,13 @@ Operation OperationService::run(Job job) {
    const bool unpublishedDraft=stat.status=="missing"&&uploaded.error.code=="upload_draft_conflict";
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
-   if(op.settings.collisionPolicy!="rename") {item.uploadStatus="failed";item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
+   if(op.settings.collisionPolicy!="rename") {item.uploadStatus=undone;item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
    item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
    auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
-   if(cancel->load()) {item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
-   if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus="failed";item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
+   if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
+   if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::mutex>(*lock);
-   if(attempts==31) {item.uploadStatus="failed";item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}
+   if(attempts==31) {item.uploadStatus=undone;item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}
   }
  };
  op.phase="uploading";
@@ -1100,7 +1108,8 @@ Operation OperationService::run(Job job) {
   {std::lock_guard lock(itemsMutex);op.phase="uploading";}
   if(!admitted) {
    if(job.cancelled->load()) {op.cancelled=true;break;}
-   item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started; Retry uploads this file",{}};commit(item,index);settled(index);continue;
+   // An unknown item cancelled before its retry began is still unknown, with its own error.
+   if(item.uploadStatus!="unknown"){item.uploadStatus="cancelled";item.error={"cancelled","Upload cancelled before it started; Retry uploads this file",{}};}item.phase="cancelled";commit(item,index);settled(index);continue;
   }
   if(!parallel) {transfer(index,cancel);uploadSlots_.release(op.id);settleTransfer(index);continue;}
   workers.emplace_back([&,index,cancel]{transfer(index,cancel);uploadSlots_.release(op.id);settleTransfer(index);});
