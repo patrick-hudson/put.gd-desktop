@@ -1,6 +1,8 @@
 // Delayed capture in the operation service (#1363), against a fake desktop
 // adapter: a countdown that ends on a locked screen, or is cancelled while the
-// lock is being asked about, prepares no target and reads no pixel.
+// lock is being asked about, prepares no target and reads no pixel. A capture
+// the compositor is known to refuse (capture_permission) fails at once, before
+// any selector or countdown.
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/Waits.h"
 #include <QSignalSpy>
@@ -10,11 +12,16 @@ namespace {
 class DelaySource final:public SourceAdapter {
 public:
  QStringList events;bool locked=false,deferLock=false;
- std::function<void(bool)> pendingLock;
+ std::function<void(bool)> pendingLock;QJsonObject capture;
  quint64 clipboardRevision() const override {return 0;}
- QJsonObject capabilities() const override {return {};}
+ QJsonObject capabilities() const override {return capture.isEmpty()?QJsonObject{}:QJsonObject{{"capture",capture}};}
  void countdown(int seconds,std::function<void(Error)> reply) override {events<<QStringLiteral("countdown:%1").arg(seconds);reply({});}
  void sessionLocked(std::function<void(bool)> reply) override {events<<"locked?";if(deferLock)pendingLock=std::move(reply);else reply(locked);}
+ // Stands for the selector: the live region overload is what shows it.
+ PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits& limits,std::function<void(Error)> terminal,std::function<void()> released) override {
+  events<<"select:"+action;return SourceAdapter::prepareAcquisition(action,limits,std::move(terminal),std::move(released));
+ }
+ using SourceAdapter::prepareAcquisition;
  PreparedAcquisition prepareAcquisition(const QString& action) override {
   events<<"prepare:"+action;
   return [this,action](const ResourceLimits&,std::function<void(PayloadResult)> reply){
@@ -80,6 +87,28 @@ private slots:
   QCOMPARE(operation["state"].toString(),QString("cancelled"));
   QCOMPARE(f.source.events,QStringList({"countdown:3","locked?"}));
   QVERIFY(operation["items"].toArray().isEmpty());
+ }
+ // Plasma without the restricted entry (gui_fuzz on Aurora): the region and every
+ // screen source refuse straight away with the adapter's own error, delayed or
+ // not, and the next capture is not left busy_selecting.
+ void knownPermissionRefusalShowsNoSelector() {
+  Fixture f;const QJsonObject refused{{"available",false},{"code","capture_permission"},{"error","Install the restricted desktop entry against this resident executable"}};
+  f.source.capture={{"region",refused},{"window",refused},{"desktop",refused},{"monitor",refused},{"repeat",refused}};
+  for(const auto& [action,options]:QList<std::pair<QString,QJsonObject>>{{"region",{}},{"region",{{"delaySeconds",3}}},{"window",{}},{"desktop",{{"delaySeconds",3}}},{"monitor",{}},{"edit",{}}}){
+   const auto operation=f.run(action,options);
+   QCOMPARE(operation["state"].toString(),QString("failed"));
+   QCOMPARE(operation["error"].toObject()["code"].toString(),QString("capture_permission"));
+   QCOMPARE(operation["error"].toObject()["message"].toString(),refused["error"].toString());
+   QVERIFY(operation["items"].toArray().isEmpty());
+  }
+  QVERIFY2(f.source.events.isEmpty(),qPrintable(f.source.events.join(',')));
+ }
+ // Unavailable for another reason, or no code: the request goes to the adapter as before.
+ void unknownPermissionStateCapturesAsBefore() {
+  Fixture f;f.source.capture={{"region",QJsonObject{{"available",false},{"error","ScreenShot2 has not been probed"}}},{"desktop",QJsonObject{{"available",true},{"code","capture_permission"}}}};
+  QCOMPARE(f.run("region")["state"].toString(),QString("completed"));
+  QCOMPARE(f.run("desktop")["state"].toString(),QString("completed"));
+  QCOMPARE(f.source.events,QStringList({"select:region","prepare:region","acquire:region","select:desktop","prepare:desktop","acquire:desktop"}));
  }
 };
 QTEST_GUILESS_MAIN(CaptureDelayTest)

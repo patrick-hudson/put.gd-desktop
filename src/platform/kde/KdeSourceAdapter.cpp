@@ -33,9 +33,9 @@ bool KdeSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revis
 QJsonObject KdeSourceAdapter::capabilities()const{
  auto region=capture_.status();auto desktop=capture_.status();auto window=capture_.status();
  const QJsonObject outputs=core_?outputs_.status():QJsonObject{{"available",!layout().isEmpty()},{"protocol","qt-screens"}};
- if(core_&&!outputs["available"].toBool()){const auto error=outputs["error"];region["available"]=false;region["error"]=error;desktop["available"]=false;desktop["error"]=error;}
+ if(core_&&!outputs["available"].toBool()){const auto error=outputs["error"];for(auto* status:{&region,&desktop}){(*status)["available"]=false;(*status)["error"]=error;status->remove("code");}}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
- region["available"]=false;region["error"]="Native region selection requires current distro per-window LayerShellQt and Qt 6.5 or later";
+ region["available"]=false;region["error"]="Native region selection requires current distro per-window LayerShellQt and Qt 6.5 or later";region.remove("code");
 #endif
  if(core_&&region_.cleanupRequired()){for(auto* status:{&region,&window,&desktop}){(*status)["available"]=false;(*status)["error"]=cleanupMessage;(*status)["code"]="capture_cleanup_pending";}}
  const QJsonObject helper=region_.diagnostics();

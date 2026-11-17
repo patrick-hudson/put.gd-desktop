@@ -48,7 +48,15 @@ void KWinCapture::probe(){
  auto* call=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(message,3000),this);
  connect(call,&QDBusPendingCallWatcher::finished,this,[this,call,generation]{QDBusPendingReply<QDBusVariant> reply=*call;call->deleteLater();if(generation!=probeGeneration_)return;if(reply.isError()){version_=0;error_="KWin ScreenShot2 service is unavailable";}else{version_=reply.value().variant().toUInt();error_=version_<4?"ScreenShot2 version 4 or later is required":!entryMatches_?"Install the restricted desktop entry against this resident executable":QString{};}emit changed();});
 }
-QJsonObject KWinCapture::status()const{return {{"available",available()},{"interface","org.kde.KWin.ScreenShot2"},{"interface_version",int(version_)},{"permission_entry_matches_executable",entryMatches_},{"permission_rejected",permissionDenied_},{"permission","restricted-desktop-entry"},{"mode","compositor-native"},{"error",error_}};}
+QJsonObject KWinCapture::status()const{
+ QJsonObject status{{"available",available()},{"interface","org.kde.KWin.ScreenShot2"},{"interface_version",int(version_)},{"permission_entry_matches_executable",entryMatches_},{"permission_rejected",permissionDenied_},{"permission","restricted-desktop-entry"},{"mode","compositor-native"},{"error",error_}};
+ // Once ScreenShot2 has answered, the missing entry or an earlier refusal is
+ // the only thing in the way, and request() answers capture_permission: the
+ // code lets the operation refuse before a selector opens
+ // (SourceAdapter::knownPermissionRefusal). Before that answer it stays unset.
+ if(version_>=4&&(!entryMatches_||permissionDenied_))status["code"]="capture_permission";
+ return status;
+}
 void KWinCapture::request(const QString& method,const QVariantList& args,const ResourceLimits& limits,Reply reply){
  if(!available()){reply({}, {}, {entryMatches_&&!permissionDenied_?"capture_unavailable":"capture_permission",error_,{}});return;}
  int pipes[2];if(pipe2(pipes,O_CLOEXEC|O_NONBLOCK)<0){reply({}, {}, {"transfer_fd","Cannot create screenshot transfer pipe",{}});return;}
