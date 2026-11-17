@@ -1,0 +1,1 @@
+{"role":"text-job","nonce":"111555555555","generation":"1","build":{"fre":"build"},"task":"recognize","input":{"bytv":"00Aztec0"},"options":{"ired":false},"limits":{"outputBytes":"8388608","textBytes":"1048576","words":"20000","wordBytes":"256","codes":"64","codeBytes":"8192"}}

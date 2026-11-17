@@ -1,0 +1,1 @@
+{"result":{"text":"Invo6\nTo00","lineTops":[12,30],"words":[{"text":"Invoice","rect":[104],"text":[74,12,30,14],"confidence":88}],"candidates":[],"codes":[{"format":"QRCode","k":[[120,40],[160,4160,80,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

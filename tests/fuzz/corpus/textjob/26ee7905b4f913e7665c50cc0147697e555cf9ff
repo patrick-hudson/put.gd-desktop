@@ -1,0 +1,1 @@
+{"w":200,"h":100,"s":100,"result":{"text":"Invoice 2262.00","lineTops":[12,30],"words":[{"text":"Invoice","recte":88}],"candidates":[],"codes":[{"for":"htt/a","length":23,"quad":[[120,40],[160,40],[160,120,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":150}}}

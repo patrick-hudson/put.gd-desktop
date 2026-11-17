@@ -59,7 +59,7 @@ class Selection(unittest.TestCase):
 
     def test_core_app_and_their_tests_select_the_sanitizer_job(self):
         for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'src/ipc/UiControl.cpp', 'tests/unit/test_settings.cpp',
-                     'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h',
+                     'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h', 'tests/fuzz/corpus/s3wire/upload',
                      'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
                      'tools/ci/sdk_cache.py'):
             with self.subTest(path=path):

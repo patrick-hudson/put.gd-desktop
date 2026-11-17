@@ -1,0 +1,1 @@
+{"w":200,"result":{"text":"Ii\nT","lineTops":[1,0],"words":[{"text":"c","rect":[10,1,6,13],"confidence":93}],"candidates":[],"codes":[{}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":7,"recognizeMs":3}}}

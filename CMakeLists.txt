@@ -92,5 +92,7 @@ include(cmake/HttpTests.cmake)
 include(cmake/TestsScroll.cmake)
 # Package metadata.
 include(cmake/NativeMetadata.cmake)
+# libFuzzer targets for process-boundary decoders (off unless PUTGD_FUZZ).
+include(cmake/Fuzz.cmake)
 # Test labels and scheduling; last, once every test is registered.
 include(cmake/TestPolicy.cmake)

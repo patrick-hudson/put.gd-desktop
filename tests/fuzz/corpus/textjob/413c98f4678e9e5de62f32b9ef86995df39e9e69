@@ -1,0 +1,1 @@
+{"w":200,"h":100,"":200,"result":{"text":"Ivoice 2026\nTotal 12.00","lineTops":[12,30],"words":[{"text":"Invoice","rect":[10,121,60,14],"confidence":93},{"tonfidence":88}],"candidates":[],"codes":[{"folength":22,"quad":[[121,4120,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":588,"recognizeMs":300}}}

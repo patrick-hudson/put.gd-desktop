@@ -1,0 +1,1 @@
+{"w":200,"h":100,"result":{"text":"","lineTops":[],"words":[],"candidates":[],"codes":[{"format":"rix","kind":"binary","length":49,"quad":[[0,40]]}],"truncated":false,"banded":false,"languagesUsed":[],"languagesSkipped":[],"timings":{"engineStartMs":120,"recognizeMs":300}}}

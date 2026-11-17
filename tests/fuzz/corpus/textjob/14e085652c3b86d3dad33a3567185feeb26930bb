@@ -1,0 +1,1 @@
+{"w":200,"result":{"text":" 12.00","lineTops":[12,30],"words":[{"text":"Invoice","rence":88}],"candidates":[],"codes":[{"format":"Qst/a","len":[[120,4060,80],[120,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":888608,"timings":{"enineSgacognizeMs":300}}}

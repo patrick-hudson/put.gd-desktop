@@ -13,6 +13,19 @@ elseif(NOT PUTGD_SANITIZER STREQUAL "")
   message(FATAL_ERROR "Unknown PUTGD_SANITIZER: ${PUTGD_SANITIZER}")
 endif()
 
+# libFuzzer targets (cmake/Fuzz.cmake, tests/fuzz): clang only. PUTGD_FUZZ builds them and
+# registers the corpus replay tests; PUTGD_FUZZ_INSTRUMENT also instruments every library
+# for coverage, which a fuzzing run needs and the replay does not.
+option(PUTGD_FUZZ "Build the libFuzzer targets and their corpus replay tests (clang)" OFF)
+option(PUTGD_FUZZ_INSTRUMENT "Instrument every library for libFuzzer coverage (needs PUTGD_FUZZ)" OFF)
+if(PUTGD_FUZZ_INSTRUMENT)
+  if(NOT PUTGD_FUZZ)
+    message(FATAL_ERROR "PUTGD_FUZZ_INSTRUMENT needs PUTGD_FUZZ")
+  endif()
+  # Undefined behaviour must stop the run: a recoverable report is only a line in a log.
+  target_compile_options(putgd_build_options INTERFACE -fsanitize=fuzzer-no-link -fno-sanitize-recover=undefined)
+endif()
+
 find_package(Threads REQUIRED)
 # Release builds keep debug information, split out of each product binary into
 # <file>.debug before anything hashes or installs it (#124, docs/design/diagnostics.md).
