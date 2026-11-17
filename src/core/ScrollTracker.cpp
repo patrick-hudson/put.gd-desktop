@@ -769,6 +769,25 @@ bool ScrollTracker::stillFrame(const Signature& cur, const Signature& ref, doubl
 }
 
 namespace {
+// Peaks and fine candidates kept beyond the usual few when they are about as
+// good as the best (content that repeats), at most this many, within this
+// share of the best.
+constexpr size_t kSimilarMax = 16;
+constexpr double kSimilarShare = 0.02;
+// A frame still to this share of its textured cells is the same picture;
+// below it, a movement whose cells agree by kStillMargin more explains it
+// better.
+constexpr double kStillSure = 0.995;
+constexpr double kStillMargin = 0.01;
+// A movement whose candidate agrees in kWholeCells of its cells and bands,
+// and the whole overlap in kWholeShare, leaving at most half the disagreement
+// that standing still leaves, is the page's though it covers too little to be
+// accepted (content repeating at the step's distance; a sticky header not
+// quite all pinned leaves the whole overlap at 0.95).
+constexpr double kWholeCells = 0.99;
+constexpr double kWholeShare = 0.90;
+// Offsets closer than this are the same place.
+constexpr int kSamePlaceRows = 8;
 int sliverRows(const TrackerOptions& o, int h) {
   return std::max(o.minOverlapRows, int(std::ceil(o.minOverlapFraction * h)));
 }
@@ -988,7 +1007,16 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
     const double top = fine[0].bands.share();
     std::erase_if(fine, [&](const Fine& f) { return f.bands.share() < top - 0.4; });
   }
-  if (fine.size() > 5) fine.resize(5);
+  // The five best, and every other one about as good as the best (content
+  // that repeats: a far offset that fits as well must be judged, or the one
+  // nearest the expected offset wins unopposed; #1515's acceptance lost four
+  // rows of a pull request's test table so).
+  if (fine.size() > 5) {
+    const double top = fine[0].bands.share();
+    size_t keep = 5;
+    while (keep < fine.size() && keep < kSimilarMax && fine[keep].bands.share() >= top - kSimilarShare) ++keep;
+    fine.resize(keep);
+  }
   for (const Fine& f : fine) {
     cellTally(cur, ref, f.d, tc);
     Candidate c;
@@ -1044,7 +1072,13 @@ std::vector<int> ScrollTracker::pickPeaks(const std::vector<float>& coarse, doub
     const float best = coarse[size_t(peaks[0])];
     std::erase_if(peaks, [&](int i) { return coarse[size_t(i)] < best - 0.35f; });
   }
-  if (peaks.size() > 6) peaks.resize(6);
+  // Six, and every other one about as good as the best (see searchPass).
+  if (peaks.size() > 6) {
+    const float best = coarse[size_t(peaks[0])];
+    size_t keep = 6;
+    while (keep < peaks.size() && keep < kSimilarMax && coarse[size_t(peaks[keep])] >= best - float(kSimilarShare)) ++keep;
+    peaks.resize(keep);
+  }
   return peaks;
 }
 
@@ -1330,7 +1364,7 @@ void ScrollTracker::storeCellTally(const Signature& cur, long long pos, const st
 // The rows a frame placed at pos shares with the image must agree with it
 // (the second opinion after the pair: wayscrollshot's check against the
 // long image). Lenient: content that changes in place is taken as first seen.
-bool ScrollTracker::contradicted(const Signature& cur, long long pos) const {
+bool ScrollTracker::contradicted(const Signature& cur, long long pos, double keepShare) const {
   Tally t;
   storeBandTally(cur, pos, 1, t);
   // By area: dense text in a box that moved on its own must not outvote a
@@ -1341,7 +1375,94 @@ bool ScrollTracker::contradicted(const Signature& cur, long long pos) const {
     ++shown;
     kept += t.keptTile(i);
   }
-  return shown >= 16 && double(kept) / shown < opts_.keepShare;
+  return shown >= 16 && double(kept) / shown < keepShare;
+}
+
+// The share of textured cells outside what is pinned or excluded, over the
+// whole overlap, that agree between the frame and the reference at d (the
+// still lanes included).
+double ScrollTracker::wholeCells(const Signature& cur, const Signature& ref, int d) const {
+  const int H = cur.h, C = cur.cells;
+  const unsigned tol = unsigned(opts_.cellTolerance);
+  unsigned agree = 0, inf = 0;
+  for (int y = std::max(0, -d); y < std::min(H, H - d); ++y) {
+    const uint16_t* pa = &closed16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * C];
+    const uint16_t* pb = &closed16_[size_t(std::min((y + d) / opts_.blockRows, blockRowCount_ - 1)) * C];
+    const uint16_t *a = cur.cellRow(y), *b = ref.cellRow(y + d), *ta = cur.cellTexRow(y), *tb = ref.cellTexRow(y + d);
+    for (int c = cellLo_; c < cellHi_; ++c) {
+      if (pa[c] || pb[c] || !(ta[c] | tb[c])) continue;
+      ++inf;
+      agree += absDiff(a[c], b[c]) <= tol;
+    }
+  }
+  return inf ? double(agree) / inf : 0.0;
+}
+
+// Whether a place found again (after skipped frames) has a look-alike: the
+// whole image is looked through, and another accepted place that fits within
+// recoverTie of the place's own fit there (its cells against the image; 0
+// when the lookup does not find the place itself) means the frame could be
+// either, or neither (content the image does not hold, such as numbered
+// paragraphs below a blank stretch that look like those above it). Run only
+// for a place about to be taken, so its cost (a coarse look at every row of
+// the image, then up to 16 places by cells) does not come every lost frame.
+bool ScrollTracker::lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const {
+  const std::vector<Candidate> found = searchStore(cur, pos, top_ - height_, bottom_, 16);
+  // Each on the same rows of the frame, those the place has inside the
+  // image: at the image's edge a few rows agree all too easily, and the
+  // others, on all their rows, would show more of what differs.
+  const int y0 = int(std::clamp<long long>(top_ - pos, 0, height_)), y1 = int(std::clamp<long long>(bottom_ - pos, 0, height_));
+  StoreFit own;
+  const double fit = storeCells(cur, pos, y0, y1, &own);
+  // Where the image has the place written (it can judge), the frame must
+  // agree with it on enough rows: an exact match on a few rows (the rest
+  // of the place blank) is no evidence. Where it holds next to nothing
+  // written yet (the first frames' cells wait), the pair's word stands.
+  if (own.written * 10 >= own.cells * 3 && own.rows < opts_.minEvidenceRows) return true;
+  const int d = int(pos - lastPos_);
+  for (const Candidate& f : found) {
+    if (!f.accepted || std::abs(f.d - d) < kSamePlaceRows) continue;
+    // A place the pair found too is another layer of this frame, not a look-alike.
+    if (std::any_of(known.begin(), known.end(), [&](long long k) { return std::llabs(k - (lastPos_ + f.d)) < kSamePlaceRows; })) continue;
+    if (storeCells(cur, lastPos_ + f.d, y0, y1, nullptr) >= fit - opts_.recoverTie) return true;
+  }
+  return false;
+}
+
+// The share of the frame's informative cells of rows [y0, y1) that agree with
+// the image's written cells when the frame is at pos (0 with none).
+double ScrollTracker::storeCells(const Signature& cur, long long pos, int y0, int y1, StoreFit* fitOut) const {
+  StoreFit local;
+  StoreFit& fo = fitOut ? *fitOut : local;
+  fo = {};
+  if (y1 <= y0) return 0;
+  std::vector<uint16_t> sigs;
+  std::vector<uint8_t> have;
+  storeCellSigs(pos + y0, y1 - y0, sigs, have);
+  const int C = cur.cells;
+  const unsigned tol = unsigned(opts_.cellTolerance);
+  unsigned agree = 0, inf = 0;
+  for (int y = y0; y < y1; ++y) {
+    fo.cells += cellHi_ - cellLo_;
+    if (!have[size_t(y - y0)]) continue;
+    const long long p = pos + y;
+    const uint16_t* sig = &sigs[size_t(y - y0) * C];
+    const uint16_t* a = cur.cellRow(y);
+    const uint16_t* ta = cur.cellTexRow(y);
+    const uint16_t* inc = &cellIncl_[size_t(y) * C];
+    unsigned rowAgree = 0;
+    for (int c = cellLo_; c < cellHi_; ++c) {
+      if (store_->level(p, c) == 0) continue;
+      ++fo.written;
+      if (!inc[c] || !ta[c]) continue;
+      ++inf;
+      const bool ok = absDiff(a[c], sig[size_t(c)]) <= tol;
+      agree += ok;
+      rowAgree += ok;
+    }
+    fo.rows += rowAgree >= 2;
+  }
+  return inf ? double(agree) / inf : 0.0;
 }
 
 // Looks the frame up in the image already built, at the positions [lo, hi]
@@ -2312,11 +2433,58 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     return r;
   };
   const bool still = stillFrame(cur, ref, &share);
-  if (still && (!hinted || std::abs(expected) <= uncertainty)) return noMovement(true);
+  // Still, unless the frame was not quite the same picture and a movement
+  // explains it better: content that nearly repeats at the step's distance
+  // (a pull request's table of near-equal rows, moved by two of them, 68
+  // rows, looked still to 0.97 of its cells; the position stayed and every
+  // later frame was off by the step, #1515's acceptance on Cinnamon).
+  const bool stillish = still && (!hinted || std::abs(expected) <= uncertainty);
+  if (stillish && share >= kStillSure) return noMovement(true);
   std::vector<Candidate> cands = searchPair(cur, ref, expected);
   bool byExp = false;
   SkipReason why = SkipReason::None;
   int pick = decide(cands, expected, uncertainty, hinted, &byExp, &why);
+  // Content that repeats at the step's distance: what changed moved by d,
+  // and what did not change looks the same where it was and where d puts it
+  // (two rows of a table of near-equal rows), so it does not vote and the
+  // movement covers too little of the frame to be accepted; the next frame,
+  // the same picture as the reference, then looked still, and the page's
+  // place stayed behind by d. A movement that the whole overlap agrees with,
+  // every textured cell outside what is pinned, is the page's.
+  // Also over a pick that agrees clearly less (another layer, a look-alike
+  // of the moved rows that the coverage let through).
+  // It must agree with the whole overlap in kWholeShare, and leave at most
+  // half the disagreement that standing still leaves.
+  // Only without the driver's hint: auto-scroll's hint chooses among look-
+  // alikes itself, and a ruler's near-equal numbered rows must not be taken
+  // for a move by their period.
+  const auto wholeAgrees = [&](int d) {
+    if (hinted) return false;
+    const double w = wholeCells(cur, ref, d);
+    return w >= kWholeShare && w > share && 1.0 - w <= 0.5 * (1.0 - share);
+  };
+  const auto wholeRescue = [&](int over) {
+    int whole = -1;
+    for (size_t i = 0; i < cands.size(); ++i) {
+      const Candidate& c = cands[i];
+      if (c.accepted || c.cells < kWholeCells || c.bands < kWholeCells || c.rows < opts_.minEvidenceRows) continue;
+      if (over >= 0 && c.cells < cands[size_t(over)].cells + kStillMargin) continue;
+      if (whole >= 0 && c.cells <= cands[size_t(whole)].cells) continue;
+      if (wholeAgrees(c.d)) whole = int(i);
+    }
+    return whole;
+  };
+  bool wholeMove = false;
+  if (why != SkipReason::Ambiguous && (!still || stillish)) {
+    const int whole = wholeRescue(stillish ? -1 : pick);
+    if (whole >= 0) {
+      pick = whole;
+      why = SkipReason::None;
+      wholeMove = true;
+    }
+  }
+  if (stillish && !wholeMove && (pick < 0 || cands[size_t(pick)].cells < share + kStillMargin)) return noMovement(true);
+
   // Nothing to compare only when there is nothing: a frame and a reference
   // that both show enough are no blank stretch, whatever the search found
   // (a jump past what the last frame showed is no match, and is looked up).
@@ -2328,16 +2496,86 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   bool recovered = false;
   // Most of the frame stood still and what moved does not span it: an inner
   // scroll area under the pointer (a page's code block), not the page.
-  if (pick >= 0 && share >= opts_.stillFallback && boxed(cands[size_t(pick)]) &&
+  // (Not a movement the whole overlap agrees with: that is no box. A box's
+  // page stood still around it, and disagrees where the box's move puts it;
+  // a table of near-equal rows moved by two of them agrees.)
+  if (pick >= 0 && !wholeMove && share >= opts_.stillFallback && boxed(cands[size_t(pick)]) && !wholeAgrees(cands[size_t(pick)].d) &&
       cands[size_t(pick)].coverage < (share >= opts_.stillMostly ? opts_.stillCoverageMostly : opts_.stillCoverage))
     return noMovement(true);
+  // The image's say on a place. Lenient while following (what changes in
+  // place is taken as first seen); after skipped frames the frame must show
+  // what the image holds there (recoverKeepShare): the page may be anywhere
+  // by then, and content that only looks like the image's (paragraphs past
+  // a blank stretch that differ from those above it in their numbers) was
+  // "found again" among them (#1515's acceptance, Cinnamon and Hyprland).
+  // And the cells of its own layer must agree nearly all (recoverCells,
+  // within the tiles that move with it: another layer of the page, a side bar
+  // at its own pace, disagrees anyway): bands cannot tell such look-alikes
+  // apart, their few differing cells can.
+  // And a third of its rows at least must lie inside the image: an overlap
+  // of a few rows at the image's edge agrees all too easily. The same for a
+  // place the image lookup finds: the frame is not where the last one says,
+  // so it is found again wherever it is.
+  // None of this where the driver's hint says where the page is (auto-scroll
+  // knows its steps): the hint chooses among look-alikes, as before (the
+  // ruler page's equal rows after one skipped frame of a step).
+  const auto hintSays = [&](int at) { return hinted && std::abs(at - expected) <= uncertainty; };
+  const auto refused = [&](const Candidate& c, bool found) {
+    const bool strict = (found || skipRun_ > 0) && !hintSays(c.d);
+    const long long at = lastPos_ + c.d, inside = std::min(bottom_, at + height_) - std::max(top_, at);
+    // A place the image lookup finds is judged against the image as a whole
+    // (it holds the page's layers as placed), the pair's against its own layer.
+    // A frame placed where the image holds every row of it shows content the
+    // image has: it must agree as a place found again does (a look-alike 579
+    // rows back, at 0.88 of its cells, while the page went down, left a
+    // GitHub pull request 952 rows short on Cinnamon).
+    const bool known = at >= top_ && at + height_ <= bottom_;
+    return (strict && ((found ? c.cells : c.cellsKept) < opts_.recoverCells || 3 * inside < height_)) ||
+           (known && !hintSays(c.d) && c.cells < opts_.recoverCells) ||
+           contradicted(cur, at, strict ? std::max(opts_.keepShare, opts_.recoverKeepShare * c.area) : opts_.keepShare);
+  };
+  // The pair's place, also when the image's check refuses it: the image
+  // lookup that finds the same place again confirms it, as before.
+  int pairD = INT_MIN;
   if (pick >= 0) {
     d = cands[size_t(pick)].d;
     pos = lastPos_ + d;
-    if (contradicted(cur, pos)) {
+    pairD = d;
+    if (refused(cands[size_t(pick)], false)) {
       pick = -1;
       why = SkipReason::Contradicted;
     }
+  }
+  // Found again by the pair, against the last frame placed before the
+  // skipped ones: the page may have gone anywhere since, and the pair sees
+  // only offsets near that frame. The place must be the only one in the image
+  // that fits (look-alike paragraphs below a blank stretch matched one
+  // paragraph above it in the pair's window, and several others in the image).
+  // The pair's own other offsets are look-alikes too, and the only ones to
+  // be seen while the image holds nothing written yet (the first frames'
+  // cells wait until the mask has learned a few steps).
+  // Of the same layer: moving mostly the same tiles (another layer, a side
+  // bar at its own pace, is no look-alike of the page).
+  const auto sameLayer = [](const Candidate& a, const Candidate& b) {
+    int both = 0;
+    for (size_t t = 0; t < a.moving.size() && t < b.moving.size(); ++t) both += a.moving[t] == 1 && b.moving[t] == 1;
+    return 2 * both >= std::min(a.movingTiles, b.movingTiles);
+  };
+  const auto pairLookAlike = [&] {
+    const Candidate& p = cands[size_t(pick)];
+    for (const Candidate& c : cands)
+      if (c.accepted && std::abs(c.d - d) >= kSamePlaceRows && c.cells >= p.cells - opts_.recoverTie && sameLayer(c, p)) return true;
+    return false;
+  };
+  // The pair's other accepted places: where the image fits the frame better
+  // at one of them, that is another layer of the frame moving at its own
+  // pace (a side bar on MDN fills much of it), not a look-alike.
+  std::vector<long long> pairPlaces;
+  for (const Candidate& c : cands)
+    if (c.accepted) pairPlaces.push_back(lastPos_ + c.d);
+  if (pick >= 0 && skipRun_ > 0 && !hintSays(d) && (pairLookAlike() || lookAlike(cur, pos, pairPlaces))) {
+    pick = -1;
+    why = SkipReason::Ambiguous;
   }
   // Nothing moved as the page, and most of the frame stood still: the page
   // did not move, and something changed in place (a video, an inner scroll
@@ -2367,6 +2605,21 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       sweep_ += kSweepRows;
       fp = decide(found, expected, uncertainty, hinted, &fb, &fw);
     }
+    // What the image lookup finds elsewhere than the pair's place, or after
+    // skipped frames, is checked as a place found again: by the strict check.
+    // The pair's own place found again in the image is taken, as it was: the
+    // pair agreed in every cell, and a part of the image written by a layer
+    // of its own (a side bar at its own pace) made the check refuse it.
+    const bool elsewhere = fp >= 0 && (pairD == INT_MIN || std::abs(found[size_t(fp)].d - pairD) >= kSamePlaceRows);
+    if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
+      fp = -1;
+      fw = SkipReason::Contradicted;
+    }
+    // A place found elsewhere in the image must be the only one there that fits.
+    if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && lookAlike(cur, lastPos_ + found[size_t(fp)].d, {})) {
+      fp = -1;
+      fw = SkipReason::Ambiguous;
+    }
     if (fp >= 0) {
       pick = fp;
       d = found[size_t(fp)].d;
@@ -2383,7 +2636,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // rows no frame showed, and one wild hint could take the image to its cap)
   // and what the image already has there does not say otherwise.
   if (pick < 0 && why == SkipReason::NoEvidence && hinted && lastPos_ + expected + effTop_ < bottom_ &&
-      lastPos_ + expected + effBottom_ > top_ && !contradicted(cur, lastPos_ + expected)) {
+      lastPos_ + expected + effBottom_ > top_ && !contradicted(cur, lastPos_ + expected, opts_.keepShare)) {
     d = expected;
     pos = lastPos_ + d;
     r.onHint = true;
