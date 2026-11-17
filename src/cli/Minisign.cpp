@@ -68,7 +68,8 @@ Error verify(const QByteArray& message,const QByteArray& signatureFile,const QBy
  if(!available())return invalid("This build can't check signatures","unavailable");
 #ifdef PUTGD_MINISIGN_OPENSSL
  const auto signed_=algorithm=="ED"?blake2b512(message):message;
- if(signed_.isEmpty()||!ed25519(publicKey.mid(10),signature.mid(10),signed_))return invalid("The signature doesn't match","signature");
+ // The prehash is never empty; a legacy signature over an empty message is a valid one.
+ if((algorithm=="ED"&&signed_.isEmpty())||!ed25519(publicKey.mid(10),signature.mid(10),signed_))return invalid("The signature doesn't match","signature");
  const auto comment=lines[2].mid(int(qstrlen("trusted comment: ")));
  if(!ed25519(publicKey.mid(10),global,signature.mid(10)+comment))return invalid("The signature's trusted comment doesn't match","trustedComment");
  if(trustedComment)*trustedComment=QString::fromUtf8(comment);

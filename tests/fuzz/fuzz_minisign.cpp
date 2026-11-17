@@ -42,9 +42,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     const auto comment = QString::fromUtf8(trusted);
     const auto publicFile = key->publicFile();
     const auto good = key->signature(message, trusted, prehashed);
-    // Minisign.cpp refuses a legacy ("Ed") signature over an empty message, which the
-    // format allows (it fails closed; fixed below once the fix is in).
-    if (!prehashed && message.isEmpty()) { minisign::verify(message, good, publicFile); return 0; }
     // The genuine pair verifies (this is the regression for the harness itself, too).
     if (mode == 0) {
         QString got;

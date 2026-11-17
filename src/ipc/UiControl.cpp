@@ -36,7 +36,7 @@ QString UiControl::send(const QString& type,const QJsonObject& payload){
  QPointer<UiControl> guard(this);write();
  return guard&&!guard->stopped_?sequence:QString{};
 }
-void UiControl::stop(){stopped_=true;input_.clear();output_.clear();}
+void UiControl::stop(){stopped_=true;input_.clear();scanned_=0;output_.clear();}
 void UiControl::fail(const QString& code){
  if(stopped_)return;
  stop();emit failed({code,"The interface connection failed. Reopen the window from the tray.",{}});
@@ -62,11 +62,13 @@ void UiControl::read(){
   if(receivedBytes_>4*maximumFrameBytes){fail("ui_control_flood");return;}
   input_+=chunk;
   for(;;){
-   const auto newline=input_.indexOf('\n');
-   if(newline<0)break;
+   // Look only at what is new: a peer that sends an unfinished frame a few bytes at
+   // a time would otherwise make every read rescan all of it.
+   const auto newline=input_.indexOf('\n',scanned_);
+   if(newline<0){scanned_=input_.size();break;}
    if(newline+1>maximumFrameBytes||++receivedFrames_>256){fail("ui_control_limit");return;}
    QJsonParseError parse;const auto document=QJsonDocument::fromJson(input_.first(newline),&parse);
-   input_.remove(0,newline+1);
+   input_.remove(0,newline+1);scanned_=0;
    const auto object=document.object();
    bool numeric=false;const auto sequence=object["sequence"].toString();const auto number=sequence.toULongLong(&numeric);
    if(parse.error!=QJsonParseError::NoError||!document.isObject()||object.size()!=4||object["version"]!=1||!object["type"].isString()||!knownType(object["type"].toString())||!object["payload"].isObject()||!numeric||number!=received_+1||QString::number(number)!=sequence||number==0){fail("ui_protocol");return;}
