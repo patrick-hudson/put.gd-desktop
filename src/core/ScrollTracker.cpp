@@ -779,6 +779,9 @@ constexpr double kSimilarShare = 0.02;
 // better.
 constexpr double kStillSure = 0.995;
 constexpr double kStillMargin = 0.01;
+// A frame that repeats itself within this share of bands of how well the
+// pair matches cannot be placed by the pair after skipped frames.
+constexpr double kRepeatMargin = 0.05;
 // A movement whose candidate agrees in kWholeCells of its cells and bands,
 // and the whole overlap in kWholeShare, leaving at most half the disagreement
 // that standing still leaves, is the page's though it covers too little to be
@@ -1396,6 +1399,36 @@ double ScrollTracker::wholeCells(const Signature& cur, const Signature& ref, int
     }
   }
   return inf ? double(agree) / inf : 0.0;
+}
+
+// How well rows [y0, y1) of a frame repeat elsewhere in it: the best share
+// of agreeing bands between those rows and the rows s above or below them,
+// over shifts of a sliver or more (textured lanes, what is pinned left out,
+// every second row).
+double ScrollTracker::selfRepeat(const Signature& sig, int y0, int y1) const {
+  const int H = sig.h, B = sig.bands, far = sliverRows(opts_, H);
+  const unsigned tol = unsigned(bandTol_);
+  y0 = std::clamp(y0, 0, H);
+  y1 = std::clamp(y1, y0, H);
+  double best = 0;
+  for (int s = far; s < H; ++s)
+    for (const int dir : {-1, 1}) {
+      unsigned agree = 0, inf = 0;
+      for (int y = y0; y < y1; y += 2) {
+        const int z = y + dir * s;
+        if (z < 0 || z >= H) continue;
+        const uint16_t* pa = &bandPinned16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * B];
+        const uint16_t* pb = &bandPinned16_[size_t(std::min(z / opts_.blockRows, blockRowCount_ - 1)) * B];
+        const uint16_t *a = sig.bandRow(y), *b = sig.bandRow(z), *ta = sig.bandTexRow(y), *tb = sig.bandTexRow(z);
+        for (int k = 0; k < B; ++k) {
+          if (pa[k] || pb[k] || !(ta[k] | tb[k])) continue;
+          ++inf;
+          agree += absDiff(a[k], b[k]) <= tol;
+        }
+      }
+      if (inf >= unsigned(2 * opts_.minEvidenceRows)) best = std::max(best, double(agree) / inf);
+    }
+  return best;
 }
 
 // Whether a place found again (after skipped frames) has a look-alike: the
@@ -2314,6 +2347,7 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
   lastPos_ = pos;
   std::swap(last_, work_);
   framesSincePlaced_ = 0;
+  skipsSincePlaced_ = 0;
   hintSum_ = 0;
   hintUnc_ = 0;
   hintKnown_ = true;
@@ -2417,6 +2451,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (still) {
       std::swap(last_, work_);
       framesSincePlaced_ = 0;
+      skipsSincePlaced_ = 0;
       hintSum_ = 0;
       hintUnc_ = 0;
       hintKnown_ = true;
@@ -2573,6 +2608,24 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   std::vector<long long> pairPlaces;
   for (const Candidate& c : cands)
     if (c.accepted) pairPlaces.push_back(lastPos_ + c.d);
+  // And without the driver's hint, after skipped frames the page may have
+  // moved by anything, also past the reference: where the frame or its
+  // reference repeats itself (a pull request's tables of equal rows, 505
+  // rows apart) about as well as the pair matches, the offset is known only
+  // modulo that period, and the pair finds the look-alike one or two
+  // periods short of a jump past the reference (#1515's re-check on
+  // Cinnamon: 1,010 rows missing after a place "found again" at 0.80).
+  // Still lost: scrolled back, the image lookup finds the place.
+  // Compared on the rows the pair compared: the frame's [max(0, -d),
+  // min(H, H - d)), the reference's those plus d.
+  if (pick >= 0 && skipsSincePlaced_ > 0 && !hinted) {
+    const int dd = cands[size_t(pick)].d, y0 = std::max(0, -dd), y1 = std::min(height_, height_ - dd);
+    if (std::max(selfRepeat(cur, y0, y1), selfRepeat(ref, y0 + dd, y1 + dd)) >= cands[size_t(pick)].bands - kRepeatMargin) {
+      pick = -1;
+      why = SkipReason::Ambiguous;
+      pairD = INT_MIN;  // the image lookup does not confirm it either: there it is a place found again
+    }
+  }
   if (pick >= 0 && skipRun_ > 0 && !hintSays(d) && (pairLookAlike() || lookAlike(cur, pos, pairPlaces))) {
     pick = -1;
     why = SkipReason::Ambiguous;
@@ -2649,6 +2702,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     r.position = lastPos_;
     ++totals_.skipped;
     ++skipRun_;
+    ++skipsSincePlaced_;
     totals_.longestSkipRun = std::max(totals_.longestSkipRun, skipRun_);
     r.state = state_ = skipRun_ >= opts_.lostAfterSkips ? TrackState::Lost : state_;
     return r;

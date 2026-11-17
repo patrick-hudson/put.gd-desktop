@@ -153,26 +153,35 @@ void ScrollCaptureService::complete(QJsonObject r){
  Error bad{"scroll_output_invalid","Scrolling capture output failed validation",{}};
  if(QFileInfo(path).absolutePath()!=directory_||bytes<33||bytes>op_.settings.limits.imageBytes||w<1||h<1||qint64(w)*h>op_.settings.limits.imagePixels||cap<1||cap>requestedCap_||h>cap||qint64(w)*h*4>op_.settings.limits.imageBytes||(edit_&&qint64(w)*h>EditorJob::admissionPixels)||!QStringList{"end_of_content","top_not_reached","height_cap","done","lost_track"}.contains(reason)||(r.contains("topReached")&&!r.value("topReached").isBool())||(reason=="top_not_reached"&&r.value("topReached")!=QJsonValue(false))||(reason=="end_of_content"&&!r.value("topReached").toBool(true))
   // How it was made (#1515), and what each end reason promises of it.
-  ||!QStringList{"user","putgd","both","none"}.contains(r["scrolledBy"].toString())||!r["framesPlaced"].isDouble()||r["framesPlaced"].toInt()<1||!r["framesSkipped"].isDouble()||r["framesSkipped"].toInt()<0||!r["endedLost"].isBool()||!r["reachedEnd"].isBool()
+  ||!QStringList{"user","putgd","both","none"}.contains(r["scrolledBy"].toString())||!r["framesPlaced"].isDouble()||r["framesPlaced"].toInt()<1||!r["framesSkipped"].isDouble()||r["framesSkipped"].toInt()<0||!r["endedLost"].isBool()||!r["reachedEnd"].isBool()||(r.contains("foundAgain")&&(!r["foundAgain"].isDouble()||r["foundAgain"].toDouble()<0||r["foundAgain"].toDouble()>r["framesPlaced"].toDouble()+r["framesSkipped"].toDouble()))
   ||((reason=="end_of_content"||reason=="top_not_reached")&&(!r["reachedEnd"].toBool()||r["framesSkipped"].toInt()!=0||r["endedLost"].toBool()))||(reason=="lost_track"&&!r["endedLost"].toBool())||r.value("truncated")!=QJsonValue(reason=="height_cap"||reason=="lost_track"||reason=="top_not_reached")){terminate(bad);return;}
  const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK);struct stat st{};
  if(fd<0){terminate(bad);return;}QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);terminate(bad);return;}
  if(fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid()||st.st_size!=bytes){terminate(bad);return;}
  const auto png=file.read(bytes+1);if(png.size()!=bytes||!png.startsWith(QByteArray::fromHex("89504e470d0a1a0a0000000d49484452"))||qFromBigEndian<quint32>(png.constData()+16)!=quint32(w)||qFromBigEndian<quint32>(png.constData()+20)!=quint32(h)||QString::fromLatin1(QCryptographicHash::hash(png,QCryptographicHash::Sha256).toHex())!=r["sha256"].toString()){terminate(bad);return;}
  r.remove("path");view_.remove("paused");view_.remove("pausedBy");view_.remove("activity");view_["result"]=r;view_["endReason"]=reason;view_["truncated"]=r["truncated"];view_["height"]=h;
- for(const auto* key:{"scrolledBy","framesPlaced","framesSkipped","endedLost","reachedEnd"})view_[key]=r[key];view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();
+ for(const auto* key:{"scrolledBy","framesPlaced","framesSkipped","endedLost","reachedEnd"})view_[key]=r[key];const int foundAgain=r["foundAgain"].toInt();view_["foundAgain"]=foundAgain;view_["bytes"]=double(bytes);view_["stats"]=r.value("stats");const auto stats=r.value("stats").toObject();
  // Only the known statistics, and only numbers: the helper's output is not trusted to name view keys.
  for(const char* key:{"steps","pixelsPerNotch","lowConfidenceSteps","elapsedMs","frames","recovered","pinnedRegions","framesPerSecond","rowsAtDone"})if(stats.value(key).isDouble())view_[key]=stats.value(key);
  for(const char* key:{"hiddenCells","hiddenRows"})if(r.value(key).isDouble()&&r.value(key).toDouble()>=0)view_[key]=r.value(key);
  // The scroll-to-top step did not prove the top: said with every end reason, and the image is kept.
  if(r.contains("topReached"))view_["topReached"]=r.value("topReached");
  update("done");
- if(reason=="height_cap"){const auto note=QString("Stopped at %1 px. The page continues below.").arg(QLocale(QLocale::English).toString(cap));op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
- else if(reason=="top_not_reached"){const auto note=QString("Could not reach the top of the page. The image starts partway down.");op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
- else if(reason=="lost_track"){const auto note=QString("Finished while put.gd had lost its place. The image ends where it last found the page.");op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
- else if(r["note"].toString().startsWith("nobody scrolled")){const auto note=QString("Finished by itself after 10 minutes without scrolling.");op_.note=note;view_["note"]=note;}
+ // What the person is told of the result: one note, and one notice when it is a warning.
+ QString note,warn;
+ if(reason=="height_cap"){note=QString("Stopped at %1 px. The page continues below.").arg(QLocale(QLocale::English).toString(cap));warn=reason;}
+ else if(reason=="top_not_reached"){note=QString("Could not reach the top of the page. The image starts partway down.");warn=reason;}
+ else if(reason=="lost_track"){note=QString("Finished while put.gd had lost its place. The image ends where it last found the page.");warn=reason;}
+ else if(r["note"].toString().startsWith("nobody scrolled"))note=QString("Finished by itself after 10 minutes without scrolling.");
  // Auto-scroll stopped at a blank stretch it cannot tell from the end: said, as the page may go on.
- else if(reason=="done"&&!r["reachedEnd"].toBool()&&r["note"].toString().startsWith("auto-scroll stopped where the page showed nothing")){const auto note=QString("Auto-scroll stopped where the page showed nothing. If the page goes on, scroll past the blank part yourself.");op_.note=note;view_["note"]=note;emit warning(id_,note,reason);}
+ else if(reason=="done"&&!r["reachedEnd"].toBool()&&r["note"].toString().startsWith("auto-scroll stopped where the page showed nothing")){note=QString("Auto-scroll stopped where the page showed nothing. If the page goes on, scroll past the blank part yourself.");warn=reason;}
+ // The tracker lost the page while the person scrolled and found its place
+ // again: a place among look-alike rows can be one repeat off, and the rows
+ // between are then missing. Said with any end reason, which stays as it is.
+ if(foundAgain>0){const auto again=foundAgain==1?QString("The capture lost the page once and found it again. Rows may be missing there: check the image."):QString("The capture lost the page %1 times and found it again. Rows may be missing there: check the image.").arg(foundAgain);
+  note=note.isEmpty()?again:note+" "+again;if(warn.isEmpty())warn="found_again";}
+ if(!note.isEmpty()){op_.note=note;view_["note"]=note;}
+ if(!warn.isEmpty())emit warning(id_,note,warn);
  backend_->discard(id_);
  rememberResult();auto op=op_;const auto id=id_;id_.clear();pending_.clear();if(shell_){shell_->unwatchPointer();shell_->hideFrame();}emit ended();
  ClipboardPayload payload;if(edit_){payload.kind="files";payload.files={path};}else{payload.kind="png";payload.bytes=png;payload.mime="image/png";}
