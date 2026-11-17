@@ -1,0 +1,1 @@
+{"w":2000,"s":0,"result":{"text":"In- voice 106\nTotal 10","lineTops":[12,30256],"words":[{"tene":88}],"candidates":[],"codes":[{"hoad":[[120,40],[1680]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

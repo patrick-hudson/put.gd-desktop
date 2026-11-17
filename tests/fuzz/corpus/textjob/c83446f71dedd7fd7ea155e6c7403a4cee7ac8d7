@@ -1,0 +1,1 @@
+{"result":{"text":"6\n","lineTops":[2,29],"words":[{"text":"vo","rect":[0,1,60,1],"confidence":6},{"text":"i","rect":[1,1,60,4],"confidence":93},{"text":"2","rect":[7,12,30,4],"confidence":8}],"candidates":[],"codes":[{"nd":[]}],"truncated":false,"banded":false,"languagesUsed":[],"languagesSkipped":["deu"],"timings":{"engineStartMs":0,"recognizeMs":30}}}

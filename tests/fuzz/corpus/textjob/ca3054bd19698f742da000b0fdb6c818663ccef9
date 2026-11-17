@@ -1,0 +1,1 @@
+{"w":200,"s":0,"result":{"text":"I\nT","lineTops":[12,86],"words":[{"text":"Invoic","rect":[10,12,30,14],"confidence":88}],"candidates":[],"codes":[],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":0}}}

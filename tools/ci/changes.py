@@ -41,7 +41,7 @@ PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
 # The core and application libraries, their C++ tests and the build definitions
 # that compile them. The clang ASan/UBSan job runs only for these.
 SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'src/ipc/', 'tests/unit/', 'tests/integration/',
-                      'tests/fixtures/', 'cmake/', 'tools/ci/')
+                      'tests/fixtures/', 'tests/fuzz/', 'cmake/', 'tools/ci/')
 SANITIZER_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/ci.yml'})
 
 # The pipewire job links the AppImage's pipewiresrc, with the recorder's

@@ -1,0 +1,1 @@
+{"ws":200,"result":{"text":"I   06\nTota 12.00","lineTops":[12,88],"words":[{"tence":8}],"candidates":[],"codes":[{"forlengtuad":[[20]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

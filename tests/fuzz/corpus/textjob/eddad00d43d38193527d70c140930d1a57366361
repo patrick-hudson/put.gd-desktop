@@ -1,0 +1,1 @@
+{"w":200,"s":200,"result":{"text":"Invoice 2026\nTotal 12.00","lineTops":[{},30],"words":[{"texrect":[10,4],"confidence":89}],"candidates":[],"codes":[{"format":"Qle.test/a","length":22,"quad":[[12,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

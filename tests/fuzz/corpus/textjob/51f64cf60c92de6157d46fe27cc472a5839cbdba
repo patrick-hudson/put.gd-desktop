@@ -1,0 +1,1 @@
+{"w":200,"h":100,"s":200,"result":{"text":"","lineTops":[],"words":[],"candidates":[],"codes":[{"format":"QRCode","kind":"bin'ry","text":"secret","length":6,"quad":[[0,0],[40],[40,40],[0,40]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":[],"timings":{"engineStartMs":120,"recognizeMs":300}}}

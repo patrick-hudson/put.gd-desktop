@@ -1,0 +1,1 @@
+{"result":{"text":"Invoice 206\nTo00","lineTops":[12,30],"words":[{"text":"","rect":[104],"rect":[74,12,30,14],"confidence":88}],"candidates":[],"codes":[{"d":[[120,40],[160,4],[160,80],[120,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

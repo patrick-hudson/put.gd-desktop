@@ -1,0 +1,1 @@
+{"w":200,"h":100,"s":200,"result":{"text":"I\nTota12.00","lineTops":[12222222,30],"words":[{"texttonfience":88}],"candidates":[],"codes":[{"fh":44,"quad":[[100],[160,80],[120,80]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":120,"recognizeMs":300}}}

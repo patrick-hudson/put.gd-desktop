@@ -1,0 +1,1 @@
+{"s":9,"result":{"text":"I     \n","lineTops":[2,8],"words":[{}],"candidates":[],"codes":[{"r":[[0]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":["deu"],"timings":{"engineStartMs":8,"recognizeMs":0}}}

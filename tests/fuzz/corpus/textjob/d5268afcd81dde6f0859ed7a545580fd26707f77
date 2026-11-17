@@ -1,0 +1,1 @@
+{"":2,"result":{"text":"/\not","lineTops":[3,3],"words":[],"candidates":[],"codes":[{"format":"QRCode","kind":"text","text":"a","length":2,"quad":[[1,0],[1,0],[],[]]}],"truncated":false,"banded":false,"languagesUsed":["eng"],"languagesSkipped":[],"timings":{"engineStartMs":10,"recognizeMs":3}}}
