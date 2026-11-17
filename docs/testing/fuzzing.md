@@ -1,0 +1,62 @@
+# Fuzzing the process boundaries
+
+libFuzzer targets for the code that decodes what another process sends put.gd: the update
+signature check, the framed JSON on helper pipes and the session socket, the worker and
+helper protocols, the files read back after a crash and the replies of compositors and
+the GNOME Shell extension. They live in `tests/fuzz/` and are built only with clang.
+
+## What is covered
+
+| Target | Code under test | Properties checked beyond "does not crash" |
+| --- | --- | --- |
+| `fuzz_minisign` | `src/cli/Minisign.cpp` | A genuine signature verifies. One changed byte of the message, the key, the signature, the global signature or the trusted comment is refused. Whatever is accepted is exactly what was signed. |
+| `fuzz_frames` | `UiControl`, `CaptureControl`, `StdioDevice`, `SessionProtocol::decodeReply` | Input cut at any point, repeated past the frame limit, over real pipes; a failure is reported once and no frame follows it; a reply built for a request id decodes. |
+| `fuzz_localipc` | `src/app/LocalIpc.cpp` | Both ends of the session socket against a peer that sends the bytes in pieces: a reply is one frame within its limit, or an error and nothing. |
+| `fuzz_s3wire` | `S3WorkerProtocol`, `S3Journal.h`, `PublicUrl` | A decoded value encodes and decodes to the same bytes. |
+| `fuzz_textjob` | `TextJobProtocol` | Sanitized text has no control, bidirectional or invisible characters; what decodes stays inside the image and the byte caps. |
+| `fuzz_settings` | `Settings::validate`, `fromValidated`, `normalized` | A document that validates builds settings that validate again. |
+| `fuzz_journal` | `Operation`, `OperationItem`, `StorageReceipt` | What a damaged journal row reads as is written out and read again unchanged. |
+| `fuzz_gnome` | `GnomeProtocol::decodeTransfer` | Image bytes always start with a PNG header, so the decoder never starts the image helper process. |
+| `fuzz_hyprland` | `HyprlandIpc` | `luaString` always yields one Lua string literal; replies and event lines of any shape. |
+
+Out of scope: the custom uploader parsers (`.sxcu`, templates, responses), which an
+earlier round fuzzed for 45 minutes without a finding.
+
+## Build and run
+
+```
+cmake --preset clang-asan -DPUTGD_FUZZ_INSTRUMENT=ON
+cmake --build build/clang-asan --target fuzz_minisign   # or any fuzz_<name>
+mkdir -p run/minisign && cd run/minisign
+../../build/clang-asan/fuzz_minisign -dict=../../tests/fuzz/dict/minisign.dict \
+  -max_len=2048 -timeout=5 -rss_limit_mb=2048 -malloc_limit_mb=1024 \
+  corpus ../../tests/fuzz/corpus/minisign
+```
+
+`PUTGD_FUZZ` (on in the `clang-asan` preset) builds the targets and registers a ctest per
+target. `PUTGD_FUZZ_INSTRUMENT` also instruments every library the targets link, which a
+fuzzing run needs and the replay does not. Neither exists in other builds. Use at most
+the cores you are lent: `-jobs` and `-workers` write `fuzz-N.log` into the working
+directory, so give each target its own directory.
+
+## Corpora and regression tests
+
+`tests/fuzz/corpus/<target>/` holds the seed and regression inputs and
+`tests/fuzz/dict/<target>.dict` the dictionary. `ctest -R fuzz_` replays each corpus once in
+about five seconds (`-runs=0`), under the `clang-asan` preset's sanitizers and with a 5 s
+per-input limit, so an input that crashed or hung once keeps failing the build if it
+returns.
+
+A run must stop on undefined behaviour: `PUTGD_FUZZ_INSTRUMENT` compiles with
+`-fno-sanitize-recover=undefined`, and a run started through `toolbox run` needs
+`env UBSAN_OPTIONS=halt_on_error=1 ...` because the toolbox does not pass the caller's
+environment on. Without it UBSan only prints a line and the fuzzer carries on.
+
+Keep a corpus small: merge a run back with
+`fuzz_<name> -merge=1 new_corpus tests/fuzz/corpus/<name> run/<name>/corpus`, which keeps
+only inputs that reach code the others do not, then copy `new_corpus` over the committed
+set. A crash or hang found by a run is minimized with `-minimize_crash=1`, fixed, and
+added to its target's corpus in the fix's pull request.
+
+Seed from real messages: the encoders' own output, `tests/fixtures/` and the schemas
+(a target's first byte usually selects the decoder, then the payload follows).
