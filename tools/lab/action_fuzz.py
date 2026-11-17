@@ -525,6 +525,7 @@ class Fuzzer:
         self.rss = []
         self.stats = {}
         self.temporary = []
+        self.open_editors = set()
         self.multi = None
 
     # --- logging
@@ -665,6 +666,10 @@ class Fuzzer:
                 raise Finding('transport', '%s: %s while the resident lives' % (method, error))
             raise Finding('crash', '%s: %s and the resident is gone (exit %s)' % (method, error, self.resident.process.returncode))
         error = reply.get('error') or {}
+        if method == 'editor.open' and reply.get('ok') and (reply.get('result') or {}).get('operationId'):
+            self.open_editors.add(reply['result']['operationId'])
+        if method in ('editor.cancel', 'editor.submit') and reply.get('ok') and isinstance(params, dict):
+            self.open_editors.discard(params.get('id'))
         key = '%s %s' % (method, 'ok' if reply.get('ok') else error.get('code'))
         self.stats[key] = self.stats.get(key, 0) + 1
         self.log('call', method=method, params=json.dumps(params, ensure_ascii=False, default=str)[:200], ok=reply.get('ok'), code=error.get('code'))
@@ -1335,6 +1340,14 @@ class Fuzzer:
         """End of a sequence: cancel what is open and require every operation to end. An operation that cannot be cancelled and never ends is stuck."""
         if self.drain(30):
             return
+        # operation.recent is bounded by the retention setting, so every editor this run opened is cancelled by its own id too.
+        for identifier in sorted(self.open_editors):
+            for _ in range(20):
+                reply = self.call('editor.cancel', {'id': identifier}, timeout=60)
+                if reply.get('ok') or (reply.get('error') or {}).get('code') != 'editor_starting':
+                    break
+                time.sleep(0.5)
+            self.call('operation.cancel', {'id': identifier}, timeout=60)
         recent = (self.resident.call('operation.recent', raw=True).get('result') or {}).get('operations', [])
         for operation in recent:
             if operation.get('state') in ('completed', 'failed', 'cancelled', 'interrupted', 'partial'):
@@ -1523,7 +1536,17 @@ class Fuzzer:
             if (reply.get('error') or {}).get('code') not in BUSY_CODES:
                 raise Finding('recovery', 'operation.recent fails after a kill: %s' % str(reply)[:300])
             time.sleep(0.3)
-        raise Finding('hang', 'journal recovery still initializing %d s after a restart' % seconds)
+        holders = []
+        for entry in Path('/proc').iterdir():
+            if entry.name.isdigit():
+                try:
+                    for fd in (entry / 'fd').iterdir():
+                        if os.readlink(fd).endswith('resident.lock'):
+                            holders.append((int(entry.name), (entry / 'comm').read_text().strip()))
+                except OSError:
+                    pass
+        raise Finding('hang', 'journal recovery still initializing %d s after a restart; processes holding resident.lock: %s; resident pid %s; lock file: %s' % (
+            seconds, holders, self.resident.process.pid, (self.resident.root / 'data' / 'putgd' / 'resident.lock').read_text().split() if (self.resident.root / 'data' / 'putgd' / 'resident.lock').exists() else None))
 
     def verify_recovery(self, scenario):
         self.wait_journal()
