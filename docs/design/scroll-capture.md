@@ -143,6 +143,8 @@ The frame size is the logical rectangle at the output's scale. Lab runs at 125% 
 and GNOME and at 150% on Cinnamon X11 gave exact images; a compositor that resamples a
 client's buffer would not.
 
+When auto-scroll is selected at the start, the pointer moves to its rest place before the first frame.
+
 ## The tracker
 
 `putgd::scroll::ScrollTracker` (`src/core/ScrollTracker.h`, the interface and every rule;
@@ -167,6 +169,8 @@ up or down, and composes the page into a canvas the helper owns. In brief:
 - A frame needs 16 rows of evidence that agree. The page's last lines above a blank tail
   may have fewer: a match with at least half of them, agreeing in every lane, is taken
   when it is the only one where auto-scroll's hint says the page is.
+- A place found again needs `recoverCells` (0.95) agreement from its layer's cells and `recoverKeepShare` (0.80) agreement over its candidate tile area, with `keepShare` as a floor. Another place fitting within `recoverTie` (0.05) makes it ambiguous.
+- After skipped frames, without a hint, a pair match is rejected if the frame or its reference repeats itself about as well as the pair matches (`selfRepeat`, within `kRepeatMargin` of 0.05). The tracker stays lost and the bar asks to scroll back; repeated rows alone do not prove the place (#1556).
 - Frames narrower or lower than 16 px (two cells, two block rows) are refused.
 
 ## Drivers
@@ -343,6 +347,8 @@ get their column's plain colour, and the result counts them in `hiddenCells` and
 `hiddenRows`. The wheel is not turned over it. GNOME's Shell places it the same way. Where even the corner is too small for it, the bar is
 hidden and the `scroll` hotkey, the tray and Esc on X11 finish the capture.
 
+The finish hint names the keys that work: **Done, Esc or** the bound hotkey on X11 when both are available. When there is no room beside the region, the bar stays inside the available screen area.
+
 ## Output and limits
 
 The image lives in a private spool file under `<data>/scroll/<id>/` (0700 directory, 0600
@@ -398,6 +404,7 @@ helper exit until the resident has admitted them.
 | `topReached` | `false` when the way to the top was asked for and could not prove the top; absent otherwise |
 | `note` | Why, for `lost_track`, `top_not_reached`, the idle bound and auto-scroll stopped at a blank stretch |
 | `hiddenCells`, `hiddenRows` | Cells of the page that only the bar inside the region ever covered (filled with their column's plain colour), and the rows that hold them. `hiddenRows` also counts rows that no placed frame covered (since a frame is placed on the hint only where it overlaps the image, none should occur). Absent when there are none |
+| `foundAgain` | Times the tracker lost the page while the user scrolled and found it again; included in the helper result, `scroll.inspect`, `putgd-cli` and MCP `get_scroll_capture` |
 | `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added) |
 
 | `endReason` | `truncated` | Meaning |
@@ -435,7 +442,17 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
 (the spool or the PNG). The codes and what to do are in
 [errors](../user/errors.md#scrolling-capture).
 
+A positive `foundAgain` adds a History note and, when there is no other warning, the notice `scroll_found_again`, titled **put.gd — check the scrolling capture**: "The capture lost the page once and found it again. Rows may be missing there: check the image." For more than one it says "N times" instead of "once". The sentence is appended when another note exists; `endReason` and `truncated` stay unchanged. An existing warning keeps its notice kind.
+
 ## Known limits
+
+- [#1557](https://github.com/patrick-hudson/put.gd-desktop/issues/1557): small white boxes can cover content in captures you scroll yourself on Cinnamon.
+- [#1558](https://github.com/patrick-hudson/put.gd-desktop/issues/1558): on Cinnamon at about 30 frames per second, captures you scroll yourself lose the page often.
+- [#1547](https://github.com/patrick-hudson/put.gd-desktop/issues/1547): auto-scroll can lose one period on a page that repeats every step.
+- [#1554](https://github.com/patrick-hudson/put.gd-desktop/issues/1554): moving the mouse on Hyprland does not always pause auto-scroll (8 of 20 lab guest runs).
+- [#1537](https://github.com/patrick-hudson/put.gd-desktop/issues/1537): a playing video can hold a capture you scroll yourself for minutes.
+- [#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538): pinned side columns can repeat or be drawn in fragments.
+- [#1559](https://github.com/patrick-hudson/put.gd-desktop/issues/1559): without a watch surface the pointer can be put back late; X11 can report stale hand events.
 
 - **A cookie banner at the bottom under a sticky header** leaves the tracker a narrow band to
   compare. On a news article in Chrome (Plasma 6.8.2) it skipped most frames, and the banner's

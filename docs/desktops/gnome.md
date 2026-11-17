@@ -315,7 +315,9 @@ the helper (`overlay {visible, rect, inside}`), which keeps the bar's rows out o
 GNOME gives put.gd no key for the length of a capture: the `scroll` hotkey pressed again
 finishes it, where one is bound.
 
-**Auto-scroll's pause (#1531, extension version 24).** The helper sees the pointer only on its
+**Auto-scroll's pause (#1531, extension version 25).** The packaged extension reports pointer motion during auto-scroll and gives keyboard focus back to the page. Log out and log in once after the update.
+
+Before the pointer watch, the helper saw the pointer only on its
 bar's window. A mouse moved while the helper's pointer was in the page for a wheel step went
 unseen until the helper had put the pointer back on the bar, so the pointer was pulled back
 once. Extension 24 adds `WatchPointer`, `UnwatchPointer` and a `Pointer` signal
@@ -366,7 +368,7 @@ as for any extension update ([Setup](#setup)).
 ## Copy text
 
 Copy text ([design](../design/text-recognition.md)) adds the `text` action to the extension's hotkey
-list (extension **version 23**; the packages now carry version 24). The extension prepares a native region selection
+list (extension **version 23**; the packages now carry version 25). The extension prepares a native region selection
 for `text` as it does for `edit`, and the adapter keeps the prepared hotkey tickets for it by action.
 A text capture never changes the rectangle that **Repeat last region** remembers.
 

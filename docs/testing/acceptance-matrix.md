@@ -259,6 +259,7 @@ with no cursor, ring, bar or notification pixel.
 | A Qt and a GTK 4 text view of 1,500 numbered lines, wide and narrow | 1,500 distinct bands at one pitch |
 | Auto-scroll from halfway down with scroll to the top first on | row 0 first, every row once, `end_of_content` |
 | Auto-scroll on mid-capture, then the mouse moved, then Auto-scroll again | one exact image, `scrolledBy: both`; nothing injected from the first motion until Auto-scroll |
+| Lost while the user scrolls, then found again, once and several times | `foundAgain` in helper, CLI and MCP results; History note and `scroll_found_again` notice (or existing warning), correct count, unchanged `endReason` and `truncated`; repeated rows without a hint stay lost until the place is proved |
 | A jump past the screen with the scrollbar, then back | **Lost the page**, then found again; the image exact |
 | Auto-scroll on a page that rearranges itself (a GitHub pull request in Chrome) | **Auto-scroll lost the page**; scrolled back, **Found the page again**; **Auto-scroll** carries on |
 | Auto-scroll in Chrome on a long page (Python's `stdtypes`, dark) | no cell of the image left unwritten (pure black on the 8-column grid) |

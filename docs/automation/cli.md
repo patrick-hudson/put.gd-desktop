@@ -343,7 +343,7 @@ it), `lost` (it lost the page and could not find it again), `no_movement` (nothi
 its wheel). After `pausedBy: lost`, `activity` is `lost` until the user scrolls back to where
 the image finds the page, then `paused`; `scroll.autoScroll {on: true}` then carries on. After the end the view also carries what the helper reported: `state: "done"`,
 `endReason`, `truncated`, `scrolledBy` (`user`, `putgd`, `both`, `none`), `framesPlaced`,
-`framesSkipped`, `endedLost`, `reachedEnd`, `height`, `bytes`, `stats {steps, pixelsPerNotch,
+`framesSkipped`, `endedLost`, `reachedEnd`, `foundAgain`, `height`, `bytes`, `stats {steps, pixelsPerNotch,
 lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond, rowsAtDone}` (also flat),
 `result` (the helper's descriptor without its path), `note` where there is one, and
 `hiddenCells` and `hiddenRows` when the bar sat inside the region and hid part of the page's
@@ -373,9 +373,11 @@ putgd-cli scroll.stop '{"id":"RETURNED-ID"}'
 
 On a build with no region selector (`scroll.capabilities` `selection: none`, `available: false`, reason `region_unavailable`; the Ubuntu 24.04 package on KDE Wayland), scroll capture is unavailable for every caller: `scroll.prepare` is `scroll_unavailable` with reason `region_unavailable` before a session exists, with `rect` as well as without it. Use the AppImage.
 
+`foundAgain` counts times put.gd lost the page while the user scrolled and found it again. Rows may be missing there: read `note` and check the image. The same count is in the helper result and `scroll.inspect`, including through `putgd-cli`. It does not change `endReason` or `truncated`.
+
 One scroll session exists at a time. While it is capturing, another `action.invoke` (and
 `recording.prepare`) is `scroll_active`, and `action.invoke {"action":"scroll"}` is Done.
 Auto-scroll sends real input to whatever is under the rectangle: point it only at a window
 you opened for the purpose.
 `scroll.start` on a session that is not `ready` is `scroll_state`; a command sent while another is
-pending is `scroll_busy` (`scroll.cancel` is accepted while a `start` or `stop` is pending). Once a `scroll.cancel` is on its way every other command is `scroll_busy`, a pending `scroll.stop` is answered `cancelled`, and the session ends cancelled with the image discarded; a `scroll.stop` whose image was admitted before the cancel arrived wins, and that `scroll.cancel` is `scroll_not_found`. An unknown or finished-and-forgotten ID is `scroll_not_found`.
+pending is `scroll_busy`, except an auto-scroll toggle (`scroll.autoScroll`, `scroll.pause` or `scroll.resume`) sent while stopping is `scroll_state` (`scroll.cancel` is accepted while a `start` or `stop` is pending). Once a `scroll.cancel` is on its way every other command is `scroll_busy`, a pending `scroll.stop` is answered `cancelled`, and the session ends cancelled with the image discarded; a `scroll.stop` whose image was admitted before the cancel arrived wins, and that `scroll.cancel` is `scroll_not_found`. An unknown or finished-and-forgotten ID is `scroll_not_found`.
