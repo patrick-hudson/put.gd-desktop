@@ -8,7 +8,10 @@
 // a summary; exit code 1 on any failure.
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <climits>
+#include <cstdint>
+#include <optional>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -123,6 +126,10 @@ struct Harness {
   std::unique_ptr<Spool> spool;
   std::atomic<bool> stop{false}, discard{false};
   bool wantAuto = false, paused = false;
+  // A header and a footer pinned in the viewport (rows of it).
+  int headerH = 0, footerH = 0;
+  // The spool's disk: blocks beyond this many bytes are refused, as on a full disk.
+  size_t spoolSpace = SIZE_MAX;
   // Auto-scroll asked for after the session was set up but before its loop read the request.
   bool autoBeforeRun = false;
   unsigned serial = 0, activity = 0;
@@ -139,8 +146,9 @@ struct Harness {
   }
   SessionEnd run(const Image& doc, FakeAppSpec as, SessionOptions so) {
     t0 = clock.nowMs();
-    app = std::make_unique<FakeApp>(doc, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+    app = std::make_unique<FakeApp>(doc, ViewportSpec{W, H, headerH, footerH, 7}, as, clock);
     spool = std::make_unique<Spool>(so.tracker.maxOutputRows + 2LL * H);
+    spool->canvas.setSpaceLimit(spoolSpace);
     wantAuto = so.autoScroll;
     if (autoBeforeRun) setAuto(true);
     so.request = [this] {
@@ -190,8 +198,8 @@ SessionOptions options(bool autoScroll) {
 }
 
 std::string counts(const Harness& h) {
-  return fmt("%s, %lld rows, placed %d skipped %d recovered %d, by user %d by put.gd %d, %d steps, %.0f px/notch", toString(h.end), h.stats.bottom - h.stats.top,
-             h.stats.placed, h.stats.skipped, h.stats.recovered, h.stats.movedByUser, h.stats.movedByPutgd, h.stats.steps, h.stats.pxPerNotch);
+  return fmt("%s, %lld rows, placed %d skipped %d recovered %d found again %d, by user %d by put.gd %d, %d steps, %.0f px/notch", toString(h.end), h.stats.bottom - h.stats.top,
+             h.stats.placed, h.stats.skipped, h.stats.recovered, h.stats.foundAgain, h.stats.movedByUser, h.stats.movedByPutgd, h.stats.steps, h.stats.pxPerNotch);
 }
 
 // ------------------------------------------------------------------ the user
@@ -368,8 +376,10 @@ void testLostAndFound() {
       for (const auto& [t, p] : h.seen) { lost = lost || p.state == SessionState::Lost; lostThenFound = lostThenFound || (lost && p.state == SessionState::Following); }
       report("a jump past the screen is lost, then found again on the way back", lostThenFound && h.stats.skipped > 0 && !h.stats.endedLost && h.stats.bottom == 200 + H + 400, counts(h));
       report("nothing of the frames it could not place is in the image", wrong.empty(), wrong.empty() ? fmt("%lld rows", h.stats.bottom - h.stats.top) : wrong);
+      // The result says so: the person checks the image where it was lost (#1515).
+      report("the result counts the page found again once", h.stats.foundAgain == 1, counts(h));
     } else {
-      report("Done while lost keeps the image so far and says it ended lost", h.end == SessionEnd::Finished && h.stats.endedLost && wrong.empty(), wrong.empty() ? counts(h) : wrong);
+      report("Done while lost keeps the image so far and says it ended lost", h.end == SessionEnd::Finished && h.stats.endedLost && wrong.empty() && h.stats.foundAgain == 0, wrong.empty() ? counts(h) : wrong);
     }
   }
 }
@@ -423,7 +433,8 @@ void testAutoJump() {
     h.run(doc, as, options(true));
     const std::string wrong = h.exact(doc, 0);
     if (c.intoEnd) {
-      report(fmt("%s: the steps back find it, one exact image to the end", c.name), h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h,
+      // Auto-scroll's own way back to its place is not a place found again for the result.
+      report(fmt("%s: the steps back find it, one exact image to the end", c.name), h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h && h.stats.foundAgain == 0,
              (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, jump at %d", doc.h, before));
       continue;
     }
@@ -432,7 +443,8 @@ void testAutoJump() {
     report(fmt("%s: scrolled back, found, nothing injected until Auto-scroll", c.name),
            foundAt >= 0 && h.saw(SessionState::Paused, HandBack::Lost) && againAt >= 0 && h.injectedBetween(handedAt + 1, againAt) == 0,
            foundAt < 0 ? std::string("never found") : fmt("found %lld ms after the hand-back, %d injected", (long long)(foundAt - handedAt), againAt >= 0 ? h.injectedBetween(handedAt + 1, againAt) : -1));
-    report(fmt("%s: Auto-scroll again, one exact image to the end", c.name), againAt >= 0 && h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h,
+    // Found again where the user scrolled back to: the result says so.
+    report(fmt("%s: Auto-scroll again, one exact image to the end", c.name), againAt >= 0 && h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h && h.stats.foundAgain == 1,
            (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows", doc.h));
   }
 }
@@ -548,6 +560,332 @@ void testStaleStreamUnderAuto() {
          (wrong.empty() ? counts(h) : wrong) + fmt(", image to %lld of %d, %d fresh frames", h.stats.bottom, doc.img.h, h.app->freshFrames));
 }
 
+// One frame out of place under auto-scroll (#1535): on a starved X server a
+// grab caught the page half repainted, the tracker placed it far up against
+// the hint, and the session took that one frame for the user scrolling up and
+// handed the wheel back to nobody. A jump up is the user's only if the next
+// frame agrees; one that falls back onto auto-scroll's way is not.
+void testOneFrameOutOfPlace() {
+  std::printf("One frame out of place under auto-scroll\n");
+  const Document doc = page(94);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.glitchAtMs = 3000;
+  as.glitchUp = 300;
+  h.script = [](Harness& x, int64_t t) { if (t >= 90000) x.stop.store(true); };
+  h.run(doc.img, as, options(true));
+  const std::string wrong = h.exact(doc.img, 0);
+  report("a single frame shown 300 px up is not the user scrolling: auto-scroll goes on to the end, the image exact",
+         h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && h.stats.bottom == doc.img.h && !h.saw(SessionState::Paused, HandBack::Scrolled),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", %d hand-backs", h.stats.handBacks));
+  // The user's own scrolling up still hands the wheel back: the page stays up.
+  Harness u;
+  FakeAppSpec us;
+  us.pxPerNotch = 40;
+  u.script = [](Harness& x, int64_t t) {
+    if (t >= 3000 && x.app->script.empty() && !x.saw(SessionState::Paused, HandBack::Scrolled)) x.play({{t, -300, 250}});
+    if (t >= 9000) x.stop.store(true);
+  };
+  u.run(doc.img, us, options(true));
+  report("the user scrolling up during auto-scroll still takes the wheel back", u.saw(SessionState::Paused, HandBack::Scrolled) && u.exact(doc.img, 0).empty(),
+         counts(u) + fmt(", %d hand-backs", u.stats.handBacks));
+}
+
+// "Scroll to the top first" with a strip under the first wheel point that
+// takes no wheel (#1536's review): two still steps there say nothing of the
+// top. The top is proved only where the wheel moves the page, or once every
+// wheel point has moved nothing. The image starts at the page's top, or the
+// result says topReached false; it never starts in the middle with the top
+// claimed.
+void testTopUnderADeadPoint() {
+  std::printf("The way to the top over a strip that takes no wheel\n");
+  const Document doc = page(93);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  as.startPos = 1800;
+  // Under the first wheel point (the entry point, 48 px in from the left) from the first injection on.
+  as.deadAfterInjection = 0;
+  as.deadX = 0, as.deadY = 0, as.deadW = 120, as.deadH = H;
+  SessionOptions so = options(true);
+  so.fromTop = true;
+  h.run(doc.img, as, so);
+  const std::string wrong = h.exact(doc.img, 0);
+  const bool fromTheTop = h.stats.topReached && wrong.empty() && h.stats.top == 0 && h.stats.bottom == doc.img.h;
+  report("to the top first over a strip that takes no wheel: the image from the page's top, or topReached false",
+         h.end == SessionEnd::PageEnd && (fromTheTop || !h.stats.topReached),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", top %s, %d steps up", h.stats.topReached ? "proved" : h.stats.toTopGaveUp.c_str(), h.stats.toTopSteps));
+}
+
+// Hints counted twice (#1543's review): a frame the tracker calls still
+// without proving it (nothing matched, most of it the same) keeps the sum of
+// hints since its last placed frame; the session took its share back as
+// owed and handed it out again, so the tracker's expected offset grew past
+// what the step owed (a sum past the frame height was seen). Steps whose
+// first frames show the page still (an application that answers late), with
+// part of the frame changing: the tracker's working sum, rebuilt from the
+// hints and the results, never exceeds what the step owes.
+void testHintsCountedOnce() {
+  std::printf("Hints after frames that show the page still\n");
+  const Document doc = page(95);
+  for (const int restless : {0, 24}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.reactionDelayMs = 450;
+    as.restlessRows = restless;
+    SessionOptions so = options(true);
+    int notches = 0, kept = 0;
+    double worst = -1e9;
+    so.onStep = [&](int n, RunPoint) { notches = n; };
+    so.onFrame = [&](const TrackResult& r, const TrackerHint&, int64_t) {
+      if (r.hinted && notches != 0) worst = std::max(worst, std::abs(r.expected) - std::abs(notches) * as.pxPerNotch * 1.05);
+      kept += r.status == TrackStatus::NoMovement && r.hintsKept;
+    };
+    h.script = [](Harness& x, int64_t t) { if (t >= 120000) x.stop.store(true); };
+    h.run(doc.img, as, so);
+    // Rows that change in every frame are in the image as one frame showed them.
+    const std::string wrong = restless ? std::string() : h.exact(doc.img, 0);
+    report(fmt("the tracker's expected offset stays within what a step owes (restless rows %d)", restless),
+           worst <= 4 && h.end == SessionEnd::PageEnd && wrong.empty(),
+           (wrong.empty() ? counts(h) : wrong) + fmt(", most past the step %.0f px, %d frames kept the hints", worst, kept));
+  }
+}
+
+// A blank stretch under a pinned header and footer (#1543's review): the
+// header and footer are no content of the page there; the blank check looks
+// at the part that scrolls, so it is not called the end of the page.
+void testBlankUnderPinnedParts() {
+  std::printf("A blank stretch under a pinned header and footer\n");
+  DocSpec ds;
+  ds.seed = 99;
+  ds.width = W;
+  ds.viewport = H;
+  ds.flatFactor = 0;
+  ds.tableFactor = 0;
+  ds.noiseFactor = 0;
+  ds.gradientFactor = 0;
+  ds.blankFactor = 2.5;
+  ds.paragraphsPerGap = 6;
+  const Document doc = makeDocument(ds);
+  Harness h;
+  h.headerH = 48;
+  h.footerH = 32;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  SessionOptions so = options(true);
+  if (std::getenv("PUTGD_SCROLL_TRACE"))
+    so.onFrame = [&](const TrackResult& r, const TrackerHint&, int64_t t) {
+      std::printf("    t=%lld app=%d %s %s off=%d pos=%lld textured=%d\n", (long long)t, h.app->framePositions.back(), toString(r.status), toString(r.reason), r.offset,
+                  r.position, r.texturedRows);
+    };
+  h.script = [](Harness& x, int64_t t) { if (t >= 120000) x.stop.store(true); };
+  h.run(doc.img, as, so);
+  report("auto-scroll at a blank stretch under a pinned header and footer: stops, not called the end",
+         h.end == SessionEnd::PageEnd && h.stats.endBlank && !h.stats.reachedEnd,
+         counts(h) + fmt(", blank end %d, reached end %d, %d pinned", int(h.stats.endBlank), int(h.stats.reachedEnd), h.stats.pinnedRegions));
+}
+
+// The end of a page whose last content rows sit above a blank tail, under a
+// pinned header and footer (#1543's review: seed 51, no blank stretches, a
+// tail one region tall; the tracker reviewer saw it go lost with no_match
+// under auto-scroll and end idle, so the person would read "Auto-scroll lost
+// the page" on a page that simply ended). Auto-scroll stops at the end.
+void testEndAboveABlankTail() {
+  std::printf("The end of a page with a blank tail\n");
+  const Document d = page(51, 0);
+  Image doc(W, d.img.h + H, kBg);
+  std::memcpy(doc.px.data(), d.img.px.data(), d.img.px.size() * 4);
+  Harness h;
+  h.headerH = h.footerH = 48;
+  FakeAppSpec as;
+  as.pxPerNotch = 60;
+  SessionOptions so = options(true);
+  so.idleLimitMs = 60000;
+  if (std::getenv("PUTGD_SCROLL_TRACE"))
+    so.onFrame = [&](const TrackResult& r, const TrackerHint& hint, int64_t t) {
+      std::printf("    t=%lld app=%d %s %s off=%d pos=%lld hint=%d/%d/%d state=%s\n", (long long)t, h.app->framePositions.back(), toString(r.status),
+                  toString(r.reason), r.offset, r.position, int(hint.known), hint.offset, hint.uncertainty, toString(r.state));
+    };
+  h.script = [](Harness& x, int64_t t) { if (t >= 300000) x.stop.store(true); };
+  h.run(doc, as, so);
+  const long long full = h.headerH + doc.h + h.footerH;
+  report("auto-scroll at the end of a page with a blank tail: ends there, not lost, the image no taller than the page",
+         h.end == SessionEnd::PageEnd && !h.saw(SessionState::Paused, HandBack::Lost) && !h.saw(SessionState::Lost) && h.stats.bottom - h.stats.top <= full &&
+             h.stats.bottom - h.stats.top >= h.headerH + d.img.h,
+         counts(h) + fmt(", page with header and footer %lld rows, content to %d, image %lld, reachedEnd %d endBlank %d%s", full, h.headerH + d.img.h,
+                         h.stats.bottom - h.stats.top, int(h.stats.reachedEnd), int(h.stats.endBlank), h.saw(SessionState::Lost) ? ", went lost" : ""));
+}
+
+// CodeRabbit on #1536. Auto-scroll turned off and on again before the loop
+// read either request: the main thread took the watch and the rest down with
+// the off, and the loop, seeing only the latest "on" while it still ran,
+// never asked for them again. It takes the jump as off, then on, and asks.
+void testOffAndOnBackToBack() {
+  std::printf("Auto-scroll off and on before the loop reads either\n");
+  const Document doc = page(96);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 40;
+  SessionOptions so = options(true);
+  int prepared = 0;
+  so.beforeAuto = [&prepared]() -> std::optional<RunPoint> {
+    ++prepared;
+    return RunPoint{-16, H / 3};
+  };
+  bool toggled = false;
+  h.script = [&toggled](Harness& x, int64_t t) {
+    if (!toggled && t >= 3000 && x.last() == SessionState::AutoScrolling) {
+      toggled = true;
+      x.setAuto(false);
+      x.setAuto(true);
+    }
+    if (t >= 120000) x.stop.store(true);
+  };
+  h.run(doc.img, as, so);
+  const std::string wrong = h.exact(doc.img, 0);
+  report("off then on back to back: the run asks for its surfaces again, and goes on to the end", toggled && prepared == 2 && h.end == SessionEnd::PageEnd && wrong.empty(),
+         (wrong.empty() ? counts(h) : wrong) + fmt(", asked for its surfaces %d times", prepared));
+}
+
+// CodeRabbit on #1536. Done on the way to the top, while the stream sends its
+// last picture again (KWin's region stream went stale while Chrome moved):
+// the image is the screen as it is at Done, from a fresh frame.
+void testDoneOnTheWayUpStale() {
+  std::printf("Done on the way to the top on a stale stream\n");
+  const Document doc = page(97);
+  Harness h;
+  FakeAppSpec as;
+  as.pxPerNotch = 10;  // a way up of many steps
+  as.startPos = 2400;
+  as.staleFromMs = 2500;
+  SessionOptions so = options(true);
+  so.fromTop = true;
+  bool doneOnWay = false;
+  int atStale = -1;
+  h.script = [&doneOnWay, &atStale](Harness& x, int64_t t) {
+    if (atStale < 0 && t >= 2500) atStale = x.app->positionNow();
+    if (t >= 3300 && !x.stop.load()) {
+      doneOnWay = x.last() == SessionState::ScrollingToTop;
+      x.stop.store(true);
+    }
+  };
+  h.run(doc.img, as, so);
+  const int now = h.app->positionNow();
+  const std::string wrong = h.exact(doc.img, now);
+  report("Done on the way up while the stream is stale: the image is the screen at Done",
+         doneOnWay && atStale != now && h.end == SessionEnd::Finished && wrong.empty() && h.stats.bottom - h.stats.top == H,
+         (wrong.empty() ? counts(h) : wrong) + fmt(", page at %d when the stream went stale, at %d at Done", atStale, now));
+}
+
+// CodeRabbit on #1536. The spool's disk fills while the person scrolls: the
+// rows are given their blocks before they are written, so the write fails
+// with a reason instead of SIGBUS in the copy, and the session ends at once.
+void testSpoolDiskFull() {
+  std::printf("The spool's disk fills\n");
+  const Document doc = page(98);
+  Harness h;
+  h.spoolSpace = size_t(1200) * W * 4;  // about 1,200 rows of the image
+  std::vector<FakeApp::UserScroll> script;
+  for (int i = 0; i < (doc.img.h - H) / 120 + 4; ++i) script.push_back({1500 + 150 * i, 120, 100});
+  h.script = [script](Harness& x, int64_t t) {
+    if (x.app->script.empty()) x.play(script);
+    if (t >= 60000) x.stop.store(true);
+  };
+  h.run(doc.img, FakeAppSpec{}, options(false));
+  report("a full disk under the spool ends the capture at once, with a reason", h.end == SessionEnd::CanvasFailed && h.spool->canvas.failed() &&
+                                                                               h.spool->canvas.error() == ENOSPC && h.stats.elapsedMs < 30000,
+         fmt("%s after %lld ms, spool error %d", toString(h.end), (long long)h.stats.elapsedMs, h.spool->canvas.error()));
+}
+
+// CodeRabbit on #1536 (dropOwed). A step whose only frame is skipped (a
+// foreign picture: a notification over the region), the page's own frames
+// of the step never delivered (the stream says nothing until the page has
+// come to rest and the next step moves it): where the page went since the
+// tracker's last placed frame is not known. On content that repeats every
+// step, forgetting what the step's hints said let the next frame be placed
+// at the alias one step short, and the image lost a period. The hints stay
+// with the tracker. The opposite case: the step at the page's end moves
+// nothing, and its hints must not take a later frame a period on.
+// The fixture itself: on a stream that sends a frame only when the picture
+// changed, a foreign picture waiting to be shown is a change, at rest too.
+void testFixtureForeignOnDamageOnly() {
+  std::printf("The fixture: a foreign picture on a damage-only stream at rest\n");
+  const Document doc = page(98);
+  FakeClock clock;
+  FakeAppSpec as;
+  as.damageOnly = true;
+  FakeApp app(doc.img, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+  const auto first = app.nextFrame(100);
+  std::vector<uint8_t> row0;
+  if (first) row0.assign(first->view.row(0), first->view.row(0) + size_t(W) * 4);
+  const auto still = app.nextFrame(200);  // nothing changed: nothing sent
+  app.foreignThenQuiet(500);
+  const auto foreign = app.nextFrame(200);
+  const bool differs = foreign && !row0.empty() && std::memcmp(foreign->view.row(0), row0.data(), row0.size()) != 0;
+  report("a foreign picture is sent on a damage-only stream at rest", first && !still && foreign && differs,
+         fmt("first %d, at rest %d, foreign %d, differs %d", bool(first), bool(still), bool(foreign), differs));
+}
+
+void testSkippedStepOnRepeatingContent() {
+  std::printf("A step whose only frame is skipped, on content that repeats every step\n");
+  const Document unique = page(99, 0);
+  const int period = 160, repeats = 12, head = 1200, tail = 1200;
+  // moved: the step moves the page inside the repeating part; end: the page
+  // ends in the repeating part and the step there moves nothing; unique: a
+  // page that does not repeat.
+  // Not here: the same step's frame coming late, after the step's whole
+  // distance was handed out. Its next frames show the page exactly one period
+  // on, the same picture as the tracker's reference, which the tracker takes
+  // for a page that did not move: a period is lost whatever the hints say.
+  for (const char* kind : {"moved", "end", "end, late", "unique"}) {
+    const bool repeating = std::strncmp(kind, "unique", 6) != 0, atEnd = std::strncmp(kind, "end", 3) == 0;
+    const int delay = std::strstr(kind, "late") ? 400 : 0;
+    Image doc(W, !repeating ? unique.img.h : head + repeats * period + (atEnd ? 0 : tail), kBg);
+    if (repeating) {
+      std::memcpy(doc.px.data(), unique.img.px.data(), size_t(head) * W * 4);
+      for (int k = 0; k < repeats; ++k) {
+        Rng ink(5);
+        const int y0 = head + k * period;
+        for (int y = 12; y < period - 20; y += 26) drawTextLine(doc, y0 + y, 24, W - 24, ink);
+        fillRows(doc, y0 + period - 8, y0 + period - 4, 0x3060A0);
+      }
+      if (!atEnd) std::memcpy(&doc.px[size_t(head + repeats * period) * W], &unique.img.px[size_t(head) * W], size_t(tail) * W * 4);
+    } else {
+      doc = unique.img;
+    }
+    const int last = doc.h - H;
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;  // a step of 4 notches is 160 rows: the period
+    bool fired = false;
+    int firedAt = -1;
+    h.script = [&fired, &firedAt, atEnd, last, delay](Harness& x, int64_t t) {
+      const auto& e = x.app->events;
+      const int at = x.app->positionNow();
+      if (!fired && !e.empty() && e.back().kind == 's' && (atEnd ? at == last : e.back().a == 4 && at > 1300 && at < 2400)) {
+        fired = true;
+        firedAt = at;
+        x.app->foreignThenQuiet(700, delay);
+      }
+      if (t >= 120000) x.stop.store(true);
+    };
+    SessionOptions so = options(true);
+    if (std::getenv("PUTGD_SCROLL_TRACE")) {
+      so.onFrame = [&](const TrackResult& r, const TrackerHint& hint, int64_t t) {
+        std::printf("    t=%lld app=%d %s %s off=%d pos=%lld hint=%d/%d/%d expected=%d state=%s\n", (long long)t, h.app->framePositions.back(), toString(r.status),
+                    toString(r.reason), r.offset, r.position, int(hint.known), hint.offset, hint.uncertainty, r.expected, toString(r.state));
+      };
+      so.onStep = [](int n, RunPoint) { std::printf("    step %d\n", n); };
+    }
+    h.run(doc, as, so);
+    const std::string wrong = h.exact(doc, 0);
+    report(fmt("one skipped frame in a step (%s): the image is exact as far as it goes", kind), fired && wrong.empty(),
+           (wrong.empty() ? counts(h) : wrong) + fmt(", the step at %d, page %d rows, image to %lld", firedAt, doc.h, h.stats.bottom));
+  }
+}
+
 // A blank stretch taller than the region under auto-scroll: no frame shows
 // anything move while it fills the region, the tracker reports such frames
 // still under any hint, and two still steps there look like the end. The
@@ -615,8 +953,31 @@ void testCapAndIdle() {
     };
     h.run(doc.img, FakeAppSpec{}, so);
     const std::string wrong = h.exact(doc.img, 0);
-    report("a capture nobody touches ends by itself, the image kept", h.end == SessionEnd::Idle && h.stats.elapsedMs < 8000 && wrong.empty(),
+    report("a capture nobody touches after scrolling ends by itself, the image kept", h.end == SessionEnd::Idle && h.stats.elapsedMs < 8000 && wrong.empty(),
            wrong.empty() ? fmt("%s after %lld ms", toString(h.end), (long long)h.stats.elapsedMs) : wrong);
+  }
+  // Forgotten (#1536's review): nothing ever scrolled, by the person or by
+  // auto-scroll, so the one screen is not saved: ended like Cancel. Also when
+  // auto-scroll was on and found nothing that scrolls, and when the way to the
+  // top moved the page but nothing after it did (not the image's movement).
+  struct Forgotten { const char* name; bool autoScroll, fromTop; int startPos; };
+  for (const Forgotten& c : {Forgotten{"nobody scrolls", false, false, 0}, Forgotten{"the way to the top only, then paused", true, true, 1200}}) {
+    Harness h;
+    SessionOptions so = options(c.autoScroll);
+    so.idleLimitMs = 5000;
+    so.fromTop = c.fromTop;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.startPos = c.startPos;
+    // The second: the mouse pauses auto-scroll right after the way to the top.
+    h.script = [c](Harness& x, int64_t t) {
+      if (c.fromTop && x.saw(SessionState::ScrollingToTop) && x.last() != SessionState::ScrollingToTop) x.paused = true;
+      if (t >= 30000) x.stop.store(true);  // the bound must come first
+    };
+    h.run(doc.img, as, so);
+    report(fmt("a capture nobody ever scrolls ends by itself like Cancel, no image (%s)", c.name),
+           h.end == SessionEnd::Forgotten && h.stats.movedByUser + h.stats.movedByPutgd == 0 && (!c.fromTop || h.stats.toTopSteps > 0),
+           fmt("%s after %lld ms, moved by user %d by put.gd %d, %d steps up", toString(h.end), (long long)h.stats.elapsedMs, h.stats.movedByUser, h.stats.movedByPutgd, h.stats.toTopSteps));
   }
 }
 
@@ -666,6 +1027,63 @@ void testDoneAndCancel() {
 
 }  // namespace
 
+// The Omarchy guest (#1515's acceptance): its stream sends 3 to 4 frames a second, so a
+// frame taken before the session moved the pointer to its rest still waits in it, and
+// Hyprland paints the pointer into every frame. Auto-scroll from the start takes its first
+// frame from after the move, not that one.
+struct WaitingFrame final : putgd::record::RunFrames {
+  FakeApp& app;
+  Image held;
+  int64_t heldAt = -1;
+  size_t eventsBefore = 0;
+  bool given = false;
+  explicit WaitingFrame(FakeApp& a) : app(a) {}
+  std::optional<putgd::record::RunFrame> nextFrame(int timeoutMs) override {
+    // Once the session has moved the pointer: the frame from before it, at once (it waited).
+    if (heldAt >= 0 && !given && app.events.size() > eventsBefore) {
+      given = true;
+      return putgd::record::RunFrame{held.view(), heldAt};
+    }
+    auto f = app.nextFrame(timeoutMs);
+    if (f && heldAt < 0) {
+      held = Image(f->view.width, f->view.height);
+      for (int y = 0; y < held.h; ++y) std::memcpy(&held.px[size_t(y) * held.w], f->view.row(y), size_t(held.w) * 4);
+      heldAt = f->timestampMs;
+      eventsBefore = app.events.size();
+      return f;
+    }
+    return f;
+  }
+  bool lost() const override { return app.lost(); }
+  std::optional<putgd::record::RunFrame> freshFrame(int timeoutMs) override { return app.freshFrame(timeoutMs); }
+};
+
+void testAutoStartTakesAFrameAfterTheRest() {
+  std::printf("Auto-scroll from the start: the first frame comes after the pointer's move to its rest\n");
+  const Document doc = page(17);
+  FakeClock clock;
+  FakeAppSpec as;
+  as.frameIntervalMs = 270;
+  FakeApp app(doc.img, ViewportSpec{W, H, 0, 0, 7}, as, clock);
+  WaitingFrame source(app);
+  Spool spool(30000 + 2LL * H);
+  SessionOptions so = options(true);
+  int64_t firstFed = -1;
+  so.onFrame = [&](const TrackResult&, const TrackerHint&, int64_t t) { if (firstFed < 0) firstFed = t; };
+  std::atomic<bool> stop{false}, discard{false};
+  so.request = [&] {
+    if (clock.nowMs() > 3000) stop.store(true);
+    return std::pair<unsigned, bool>(0, true);
+  };
+  ScrollSession session(app, source, clock, spool.canvas, so);
+  session.run(stop, discard);
+  int64_t moved = -1;
+  for (const auto& e : app.events)
+    if (e.kind == 'm') { moved = e.t; break; }
+  report("the frame that waited from before the move is not the image's first", source.given && moved >= 0 && firstFed >= moved + 100,
+         fmt("moved at %lld, waiting frame given %d (from %lld), first frame fed at %lld", (long long)moved, source.given, (long long)source.heldAt, (long long)firstFed));
+}
+
 int main() {
   testUserScrolls();
   testAutoScroll();
@@ -677,6 +1095,17 @@ int main() {
   testReviewCases();
   testStaleStreamAtDone();
   testStaleStreamUnderAuto();
+  testTopUnderADeadPoint();
+  testOneFrameOutOfPlace();
+  testHintsCountedOnce();
+  testBlankUnderPinnedParts();
+  testEndAboveABlankTail();
+  testOffAndOnBackToBack();
+  testDoneOnTheWayUpStale();
+  testSpoolDiskFull();
+  testSkippedStepOnRepeatingContent();
+  testFixtureForeignOnDamageOnly();
+  testAutoStartTakesAFrameAfterTheRest();
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();

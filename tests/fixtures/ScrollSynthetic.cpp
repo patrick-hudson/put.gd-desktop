@@ -323,8 +323,10 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
       ++scrolledByUser;
     }
     pos = int(std::lround(posAt(t)));
+    if (t < quietUntil_) continue;
     // Damage-driven: nothing to send while the picture stands still.
-    if (spec_.damageOnly && !forceNext_ && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
+    // A foreign picture waiting to be shown is a change: it is never held back.
+    if (spec_.damageOnly && !forceNext_ && foreignQuietMs_ < 0 && !framePositions.empty() && pos == framePositions.back() && spec_.barW == 0 && spec_.restlessRows == 0) continue;
     forceNext_ = false;
     break;
   }
@@ -335,7 +337,23 @@ std::optional<putgd::record::RunFrame> FakeApp::nextFrame(int timeoutMs) {
     framePositions.push_back(framePositions.back());
     return putgd::record::RunFrame{delivered_.view(), t};
   }
-  renderer_.render(pos, scratch_);
+  if (foreignQuietMs_ >= 0 && t >= quietUntil_) {
+    // One foreign picture, then the quiet. The buffer may not have its size yet (one frame sent so far).
+    renderer_.render(pos, scratch_);
+    for (int y = 0; y < scratch_.h; ++y)
+      for (int x = 0; x < scratch_.w; ++x) scratch_.at(x, y) = rgb(rng_.range(0, 255), rng_.range(0, 255), rng_.range(0, 255));
+    quietUntil_ = t + foreignQuietMs_;
+    foreignQuietMs_ = -1;
+    std::swap(scratch_, delivered_);
+    framePositions.push_back(pos);
+    return putgd::record::RunFrame{delivered_.view(), t};
+  }
+  int shown = pos;
+  if (spec_.glitchAtMs >= 0 && !glitchDone_ && t - firstFrameT_ >= spec_.glitchAtMs && !framePositions.empty() && pos != framePositions.back()) {
+    glitchDone_ = true;
+    shown = std::max(0, pos - spec_.glitchUp);
+  }
+  renderer_.render(shown, scratch_);
   for (int y = spec_.barY; y < std::min(scratch_.h, spec_.barY + spec_.barH); ++y)
     for (int x = spec_.barX; x < std::min(scratch_.w, spec_.barX + spec_.barW); ++x)
       scratch_.at(x, y) = rgb(250, (frameIndex_ * 7 + x) & 63, (y * 5 + frameIndex_) & 63);

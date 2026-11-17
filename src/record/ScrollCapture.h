@@ -109,8 +109,6 @@ private:
     // auto-scroll and during Resume's quiet period.
     void raiseAutoSurfaces();
     void pointerSeen(bool watch, std::optional<QPointF> local, quint64 stamp);
-    void startCorrection(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs);
-    void startCorrectionLocked(QPointF base, QPointF anchor, quint64 stamp, qint64 anchorMs, QPointF latest);
     // Layer-shell desktops: a clear surface over the rectangle's output that
     // takes the pointer everywhere but at the wheel points (desktop logical
     // coordinates), the bar and the pad, so that the user's motion is seen
@@ -162,9 +160,6 @@ private:
     bool haveSeen_ = false, lastWasArrival_ = false;
     // A pause from an event without a time: the next motion event says
     // whether the hand had moved before the capture's last motion.
-    bool decisionPending_ = false;
-    qint64 decisionUntil_ = 0, decisionMoveMs_ = 0;
-    QPointF decisionTarget_;
     // GNOME: where the Shell put the bar (the resident's `overlay` rect).
     QRect shellBar_;
     // Why auto-scroll handed the wheel back: pointer, scrolled, lost, no_movement.

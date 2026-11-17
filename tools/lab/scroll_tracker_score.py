@@ -84,7 +84,8 @@ def run_replay(replay, frames, out, engine, repeat=1, reuse=False, exclude=None)
     if reuse and (out / 'results.json').exists() and (out / 'image.png').exists():
         return json.loads((out / 'results.json').read_text())
     out.mkdir(parents=True, exist_ok=True)
-    (out / 'list.txt').write_text(''.join(f['path'] + '\n' for f in frames))
+    # One JSON object per frame: a path with spaces stays one field (CodeRabbit on #1536).
+    (out / 'list.txt').write_text(''.join(json.dumps({'path': f['path']}) + '\n' for f in frames))
     command = [replay, '--list', str(out / 'list.txt'), '--out', str(out), '--engine', engine,
                '--repeat', str(repeat)]
     if exclude:

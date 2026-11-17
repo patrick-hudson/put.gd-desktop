@@ -23,6 +23,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QTextStream>
 #include <algorithm>
 #include <chrono>
@@ -88,7 +89,7 @@ double percentile(std::vector<double> v, double q) {
 int main(int argc, char** argv) {
   QCoreApplication app(argc, argv);
   QCommandLineParser parser;
-  parser.addOptions({{"list", "frames, one PNG path per line [hint uncertainty]", "file"},
+  parser.addOptions({{"list", "frames, one per line: {\"path\": PNG, \"hint\": N, \"uncertainty\": N} (hint optional), or PATH [HINT UNCERTAINTY]", "file"},
                      {"out", "an existing directory for image.png and results.json", "dir"},
                      {"engine", "tracker (the only engine)", "name", "tracker"},
                      {"repeat", "run the sequence this many times for timing (the image is the first run's)", "n", "1"},
@@ -105,11 +106,25 @@ int main(int argc, char** argv) {
   std::vector<Line> lines;
   QTextStream in(&listFile);
   while (!in.atEnd()) {
-    const QStringList parts = in.readLine().split(' ', Qt::SkipEmptyParts);
-    if (parts.isEmpty()) continue;
+    // A JSON object per line (the scorer's): the path is one field, spaces and
+    // all (CodeRabbit on #1536). An older list's line is the path, then the
+    // hint and its uncertainty where the last two words are numbers.
+    const QString text = in.readLine();
+    if (text.trimmed().isEmpty()) continue;
     Line l;
-    l.path = parts[0];
-    if (parts.size() >= 3) l.hint = {true, parts[1].toInt(), parts[2].toInt()};
+    if (text.trimmed().startsWith('{')) {
+      const QJsonObject o = QJsonDocument::fromJson(text.toUtf8()).object();
+      l.path = o["path"].toString();
+      if (o.contains("hint")) l.hint = {true, o["hint"].toInt(), o["uncertainty"].toInt()};
+    } else {
+      l.path = text;
+      static const QRegularExpression hinted(QStringLiteral("^(.*\\S)\\s+(-?\\d+)\\s+(\\d+)\\s*$"));
+      if (const auto m = hinted.match(text); m.hasMatch()) {
+        l.path = m.captured(1);
+        l.hint = {true, m.captured(2).toInt(), m.captured(3).toInt()};
+      }
+    }
+    if (l.path.isEmpty()) continue;
     lines.push_back(l);
   }
   // Frames are read as they are fed: a live run has thousands.

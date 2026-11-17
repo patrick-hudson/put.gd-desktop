@@ -9,15 +9,16 @@ desktop acceptance beyond the evidence listed at the end.
 ## User workflow
 
 1. Invoke **Capture region & edit** from its hotkey, the tray menu or the main
-   window rail. By default the existing native region selector runs first; drag
+   window's action bar. By default the existing native region selector runs first; drag
    the area to edit. Escape cancels without creating an editor. To edit the
    clipboard image or an existing PNG/JPEG instead:
    - History's **Edit image** menu (**Edit clipboard image**, **Edit an image
      file…**) is the visible entry point.
-   - On the rail, right-click **Capture region & edit** for the same menu, or
-     drop one local PNG or JPEG file on the button. The rail keeps five
-     matching buttons, so these are accelerators, not the only route.
-   - The tray's **Edit image** submenu (**From clipboard**, **From a file…**)
+   - In the action bar, the ▾ of **Capture region & edit** (or a right-click,
+     or Alt+Down from the keyboard) opens the same menu, and one local PNG or
+     JPEG file can be dropped on the button. The menu stays usable when region
+     capture is not; these are accelerators, not the only route.
+   - The tray's **Edit image** submenu (**Edit clipboard image**, **Edit an image file…**)
      works too. Its file entry opens the main window's file picker, because the
      resident shows no dialogs of its own.
    - **Edit again** in a History item's inspector or **⋯** menu opens that item's

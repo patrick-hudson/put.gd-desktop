@@ -58,8 +58,25 @@ QString Settings::recordingActionName() { return QStringLiteral("record"); }
 QString Settings::repeatActionName() { return QStringLiteral("repeat"); }
 QString Settings::textActionName() { return QStringLiteral("text"); }
 QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName() << repeatActionName() << textActionName(); }
-QStringList Settings::presentationOrder() { return {"region", "window", "monitor", "desktop", "edit", "record", "scroll", "clipboard"}; }
-QStringList Settings::shortcutOrder() { return {"region", "repeat", "window", "monitor", "desktop", "edit", "record", "scroll", "text", "clipboard"}; }
+const QList<Settings::Command>& Settings::actionTable() {
+    static const QList<Command> table{
+        {"region", "Capture region", "Capture region", 0, true},
+        {"repeat", "Repeat last region", {}, 0, false},
+        {"window", "Capture window", "Window", 0, true},
+        {"monitor", "Capture monitor", "Monitor", 0, true},
+        {"desktop", "Capture desktop", "Desktop", 0, true},
+        {"scroll", "Capture scrolling region", "Scrolling region", 0, true},
+        {"edit", "Capture region & edit", "Capture region & edit", 1, true},
+        {"record", "Record screen", "Record screen", 1, true},
+        {"text", "Copy text from region", "Copy text", 2, false},
+        {"clipboard", "Upload clipboard", "Upload clipboard", 2, true},
+    };
+    return table;
+}
+QString Settings::actionLabel(const QString& action) { for (const auto& c : actionTable()) if (c.action == action) return c.label; return {}; }
+int Settings::actionGroup(const QString& action) { for (const auto& c : actionTable()) if (c.action == action) return c.group; return -1; }
+QStringList Settings::presentationOrder() { QStringList order; for (const auto& c : actionTable()) if (c.routed) order << c.action; return order; }
+QStringList Settings::shortcutOrder() { QStringList order; for (const auto& c : actionTable()) order << c.action; return order; }
 QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
 bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit", "text"}.contains(action); }
 bool Settings::delayableEditSource(const QString& source) { return QStringList{"region", "window", "desktop"}.contains(source); }

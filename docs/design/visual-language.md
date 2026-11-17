@@ -120,9 +120,23 @@ History–Destinations–Settings segmented control, and window controls on the
 right. Each page can have a sidebar for its own categories. The command band
 keeps capture and upload actions available across pages.
 
-At narrower widths, Capture window and Capture desktop can fold into the
-Capture region split menu. Remaining tools can use icons with complete tooltips
-and accessible names. A compact layout must retain every action.
+The command band has one label set at every width: **Capture region** (the
+lead, a split button whose ▾ holds Repeat last region), **Window**, **Monitor**,
+**Desktop**, **Scrolling region**, a divider, **Capture region & edit** (a split
+button with the editor's other sources) and **Record screen**, then at the far
+end **Copy text** and **Upload clipboard**. The scope labels' accessible names
+are the full action names. The band takes one row when it fits; otherwise the
+second group wraps under the first in the same order. Nothing shortens, turns
+icon-only or folds into a menu, and the window's minimum width follows the wider
+row. The default window (1,440 px) holds one row at the default text size; at
+enlarged text the band keeps wrapping in reading order. A right-click on a split
+button opens its ▾ menu, and Alt+Down, F4, the Menu key or Shift+F10 open it from
+the keyboard; no other button has a context menu.
+
+The status band holds **Capture output: …** (hidden on Settings → Capture, where
+the page shows it) and **Capture delay: …**, which shows on every page, never
+elides and takes the lead accent while a delay is set. When the band is short of
+room, "Settings save automatically" hides first, then the output summary elides.
 
 The image editor uses the shared document header with its title and truthful
 upload state. Recording review keeps the desktop title bar to preserve frame
@@ -148,16 +162,31 @@ second source of truth.
 
 ## Words and actions
 
-Use the same action names in the command band, menus, help and hotkey settings:
+Use the same action names in the tray, menus, help, accessible names and hotkey
+settings. One table, `Settings::actionTable()`, holds them with their order and
+group; every surface filters and places from it. The command band shows a
+shorter scope label beside the lead for four of them.
 
-| Action ID | Visible action |
-| --- | --- |
-| `region` | Capture region |
-| `window` | Capture window |
-| `desktop` | Capture desktop |
-| `edit` | Capture region & edit |
-| `clipboard` | Upload clipboard |
-| `record` | Record screen |
+| Group | Action ID | Visible action | Command band label |
+| --- | --- | --- | --- |
+| Screenshots | `region` | Capture region | Capture region |
+| | `repeat` | Repeat last region | in Capture region's ▾ |
+| | `window` | Capture window | Window |
+| | `monitor` | Capture monitor | Monitor |
+| | `desktop` | Capture desktop | Desktop |
+| | `scroll` | Capture scrolling region | Scrolling region |
+| Editing and recording | `edit` | Capture region & edit | Capture region & edit |
+| | `record` | Record screen | Record screen |
+| Nothing kept as a picture | `text` | Copy text from region | Copy text |
+| | `clipboard` | Upload clipboard | Upload clipboard |
+
+The tray separates the groups with separators, the command band with its divider
+and far end, and Settings → Hotkeys with a gap. Output lists leave out `repeat`
+(it follows Capture region) and `text` (it has no output). The words of the
+capture output summary and its rows come from one function
+(`commandtext::outputSummary`) for the tray, the status band and its popup; a
+timing word ("Uploads right away", "Upload when you choose") goes only on a row
+it is true for.
 
 Other image sources are **Edit clipboard image** and **Edit an image file…**.
 Choosing either must not start a region capture. Keep drag-and-drop, tray,
@@ -191,7 +220,9 @@ while a search or filter narrows the category. The note counts stored files,
 never grouped rows or live activity without a file; it is blank while a query
 loads and falls back to `12 matching items` when the category total is unknown.
 The sidebar shows each category's unfiltered total; Failed uploads uses the error
-colour and hides a zero. Both come from one `history.counts` request per change of
+colour and hides a zero. Failed uploads lists and counts uploads that failed and
+uploads whose outcome is unknown, the same ones the tray's Failed uploads row
+counts, so the row never opens an empty page. Both come from one `history.counts` request per change of
 the page's files, never per progress update.
 
 Rows sit in day sections: a 16 px semibold heading in sentence case (`Today`,

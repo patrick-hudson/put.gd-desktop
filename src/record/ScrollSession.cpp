@@ -40,6 +40,8 @@ const char* toString(SessionEnd e) {
     switch (e) {
         case SessionEnd::Finished: return "Finished";
         case SessionEnd::Idle: return "Idle";
+        case SessionEnd::Forgotten: return "Forgotten";
+        case SessionEnd::CanvasFailed: return "CanvasFailed";
         case SessionEnd::PageEnd: return "PageEnd";
         case SessionEnd::Capped: return "Capped";
         case SessionEnd::Discarded: return "Discarded";
@@ -146,15 +148,48 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         if (stop.load()) return SessionEnd::Finished;
         return source_.lost() ? SessionEnd::SourceLost : SessionEnd::NoFrames;
     }
+    // Auto-scroll from the start: the pointer goes to its rest before the
+    // first frame is taken into the image, as the published nightly did. A
+    // desktop that paints the pointer into every frame (Hyprland) put the
+    // arrow where the person had left it into the image's first screen, and
+    // a hover under it shows too (#1515's acceptance). The person scrolling
+    // themselves keeps the pointer: it is never moved for them.
+    if (autoAtStart && opts_.pointer) {
+        startAuto();
+        if (auto_ && away_ && !stopping() && !pausedNow() && injector_.movePointer(away_->x, away_->y)) {
+            // Only a frame from after the move: one already waiting in the
+            // stream still shows the pointer where it was (the Omarchy guest
+            // sends 3 to 4 frames a second, so one nearly always waits).
+            // `first` stays the newest frame the source returned: an older
+            // one's pixels belong to the stream again once another is taken.
+            const int64_t from = clock_.nowMs() + std::max(opts_.pointerSettleMs, 100), until = from + 500;
+            bool moved = false;
+            while (!moved && !stopping() && !source_.lost() && clock_.nowMs() < until)
+                if (auto frame = source_.nextFrame(int(until - clock_.nowMs()))) {
+                    first = frame;
+                    moved = frame->timestampMs >= from;
+                }
+            // A stream that sends only changes may have nothing new: the screen as it is.
+            if (!moved && !stopping() && !source_.lost())
+                if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs > 0 ? opts_.freshAtDoneMs : 1500)) first = fresh;
+        }
+    }
     feed(*first);
-    if (autoAtStart) startAuto();
+    if (autoAtStart && !auto_ && !stopping() && pausedBy_ == HandBack::None) startAuto();
     progress(true);
     for (;;) {
         if (discard.load()) return done(SessionEnd::Discarded);
         if (stop.load()) {
-            // Done on the way to the top: the image is the screen as it is now.
-            if (phase_ == Phase::ToTop) endToTop(false, "the capture was finished on the way to the top");
-            else takeScreenAtDone();
+            // Done on the way to the top: the image is the screen as it is now,
+            // from a fresh frame as at every other end; the last one the
+            // stream sent only if none comes (CodeRabbit on #1536).
+            if (phase_ == Phase::ToTop) {
+                if (opts_.freshAtDoneMs > 0 && !source_.lost())
+                    if (auto fresh = source_.freshFrame(opts_.freshAtDoneMs)) feed(*fresh);
+                endToTop(false, "the capture was finished on the way to the top");
+            } else {
+                takeScreenAtDone();
+            }
             return done(SessionEnd::Finished);
         }
         applyRequests();
@@ -176,9 +211,15 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         const bool correcting = !auto_ && pausedBy_ == HandBack::Pointer && clock_.nowMs() - handBackAt_ < 1000;
         if (auto frame = source_.nextFrame(auto_ ? 15 : correcting ? 10 : 40)) feed(*frame);
         else if (source_.lost()) return done(SessionEnd::SourceLost);
+        // Nothing more can be written: the capture ends here, with a reason.
+        if (canvas_.failed()) return done(SessionEnd::CanvasFailed);
         if (sizeChanged_) return done(SessionEnd::FrameSizeChanged);
         if (capped_) return done(SessionEnd::Capped);
-        if (clock_.nowMs() - lastActivity_ >= opts_.idleLimitMs) return done(SessionEnd::Idle);
+        // The idle bound. A capture in which nothing ever moved (no placed
+        // frame moved, by the user or by auto-scroll, over the whole session;
+        // the way to the top is not the image's movement) was forgotten: its
+        // one screen is not saved, uploaded or put in History.
+        if (clock_.nowMs() - lastActivity_ >= opts_.idleLimitMs) return done(stats_.movedByUser + stats_.movedByPutgd == 0 ? SessionEnd::Forgotten : SessionEnd::Idle);
         progress();
     }
 }
@@ -245,30 +286,19 @@ void ScrollSession::feed(const RunFrame& frame) {
     feedTracker(view, frame.timestampMs);
 }
 
-// A frame with nothing on it: no sampled pixel differs much from the first.
-// The excluded rectangle (put.gd's bar inside the region, its pixels changing
-// in every frame) is left out with the tracker's rounding to blocks of 8, as
-// the tracker leaves it out of its stillness test (CodeRabbit on #1528).
-static bool plainFrame(const FrameView& v, const scroll::TrackerRect& ex) {
-    const auto luma = [&](int x, int y) { const uint8_t* p = v.row(y) + std::ptrdiff_t(x) * 4; return int(p[0]) + 2 * int(p[1]) + int(p[2]); };
-    const auto excluded = [&](int x, int y) { return !ex.empty() && x >= ex.x - 8 && x < ex.x + ex.w + 8 && y >= ex.y - 8 && y < ex.y + ex.h + 8; };
-    int first = -1;
-    for (int y = 0; y < v.height; y += 8)
-        for (int x = 0; x < v.width; x += 8) {
-            if (excluded(x, y)) continue;
-            const int l = luma(x, y);
-            if (first < 0) first = l;
-            else if (std::abs(l - first) > 24) return false;
-        }
-    return true;
-}
-
 void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
-    lastFrameBlank_ = auto_ && plainFrame(view, opts_.excluded);
     lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
     const TrackResult r = tracker_->addFrame(view, hint);
+    // A frame that shows nothing of the page: fewer rows with texture than
+    // the tracker needs as evidence, outside what it has learned as pinned (a
+    // header, a footer), put.gd's bar inside the region and the side margins.
+    // A header's flat background is no content, and the edges of its text the
+    // mask does not quite cover are not either (#1543's review: a blank
+    // stretch between a header and a footer was called the end of the page).
+    lastFrameBlank_ = auto_ && r.texturedRows < opts_.tracker.minEvidenceRows &&
+                      (r.status == TrackStatus::Placed || r.status == TrackStatus::NoMovement || r.status == TrackStatus::Skipped);
     if (opts_.onFrame) opts_.onFrame(r, hint, t);
     // The image grew where auto-scroll turns the page: its way back has helped.
     if (r.addedBottom > 0 || r.addedTop > 0) recoversWithoutGrowth_ = 0;
@@ -323,8 +353,31 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
         attributed_ = 0;
         chainHinted_ = true;
     };
+    // The tracker lost the page and found it again: a frame placed, or one
+    // proved where the last placed frame was. A frame let through as still
+    // with nothing proved has not found it.
+    if (r.state == TrackState::Lost) lostSincePlaced_ = true;
+    else if (lostSincePlaced_ && (r.status == TrackStatus::Placed || (r.status == TrackStatus::NoMovement && !r.hintsKept))) {
+        lostSincePlaced_ = false;
+        if (!auto_ || phase_ == Phase::Off) ++stats_.foundAgain;
+    }
+    lastSkipped_ = r.status == TrackStatus::Skipped;
     // Whether this frame showed the page where the last placed frame had it.
     lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);
+    // A jump up under auto-scroll is the user's scrolling only if the next
+    // frame agrees: the page stays up, or goes on up. A frame that falls back
+    // down onto auto-scroll's way was one picture out of place. On a starved
+    // X server a grab caught the page half repainted, and the tracker placed
+    // it 418 px up against a hint of 25 ± 13. The next frames were back on the
+    // page's way, but the wheel had been handed back to nobody (#1535).
+    const auto settleUp = [&](bool fellBack) {
+        if (!upPending_) return;
+        upPending_ = false;
+        if (fellBack) upSinceStep_ = 0;
+        else if (auto_ && phase_ != Phase::Off && phase_ != Phase::Recover) handBack(HandBack::Scrolled);
+    };
+    if (r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset <= 0)) settleUp(false);
+    else if (r.status == TrackStatus::Placed) settleUp(true);
     switch (r.status) {
         case TrackStatus::Placed: {
             const long long d = r.offset;
@@ -351,7 +404,7 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
                     // (a header that shrinks, a banner) is not that. A frame found again
                     // after skipped ones went wherever the user had taken it.
                     if (d < 0 && phase_ != Phase::Recover && !r.recovered) upSinceStep_ -= d;
-                    if (upSinceStep_ >= std::max(height_ / 4.0, 2 * stats_.pxPerNotch) && phase_ != Phase::Recover) handBack(HandBack::Scrolled);
+                    if (d < 0 && upSinceStep_ >= std::max(height_ / 4.0, 2 * stats_.pxPerNotch) && phase_ != Phase::Recover) upPending_ = true;
                 }
                 lastStill_ = false;
                 stillRun_ = 0;
@@ -362,9 +415,16 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
             break;
         }
         case TrackStatus::NoMovement:
-            // The page did not move: what the hints gave this stretch is still owed.
-            if (chainHinted_) pending_ += attributed_;
-            resetChain();
+            // The page did not move. A frame proved still starts the tracker's
+            // sum of hints again, so what the hints gave this stretch is owed
+            // again. One still by the tracker's fallback (nothing proved) keeps
+            // its sum for the next frame, and so does the session: handing it
+            // out again counted it twice, and the tracker expected the page
+            // further than the step could take it (#1543's review).
+            if (!r.hintsKept) {
+                if (chainHinted_) pending_ += attributed_;
+                resetChain();
+            }
             lastStill_ = true;
             ++stillRun_;
             break;
@@ -396,9 +456,16 @@ void ScrollSession::applyRequests() {
     if (!opts_.request) return;
     const auto [serial, on] = opts_.request();
     if (serial == seenSerial_) return;
+    // Every request counts one. More than one since the last look, the latest
+    // "on" while auto-scroll still runs here: an "off" came in between that
+    // this loop never saw, and the main thread took the watch and the rest
+    // down with it. It is taken as off, then on again, so that the run
+    // prepares them again (beforeAuto) before its next step (CodeRabbit on
+    // #1536).
+    const bool missedOff = on && auto_ && serial - seenSerial_ >= 2;
     seenSerial_ = serial;
     lastActivity_ = now;
-    if (on) {
+    if (on && !missedOff) {
         if (!auto_) startAuto();
         return;
     }
@@ -408,6 +475,10 @@ void ScrollSession::applyRequests() {
     pausedBy_ = HandBack::None;
     pending_ = 0;
     stepSentAt_ = -1;
+    if (missedOff) {
+        startAuto();
+        return;
+    }
     progress(true);
 }
 
@@ -455,6 +526,8 @@ void ScrollSession::startAuto() {
         toTopSent_ = -1;
         toTopNotchesNow_ = opts_.toTopNotches;
         toTopStill_ = 0;
+        toTopPointsTried_ = 1;
+        toTopMoved_ = false;
         checkDigest_.clear();
         // The screen as it is now is the way's first look.
         if (!lastPixels_.empty()) digestRows(FrameView{lastPixels_.data(), lastPixelsW_, lastPixelsH_, std::ptrdiff_t(lastPixelsW_) * 4}, digest_);
@@ -552,6 +625,7 @@ void ScrollSession::autoTick() {
         lastStepMove_ = 0;
         stepFirstMoveAt_ = lastMoveAt_ = -1;
         upSinceStep_ = 0;
+        upPending_ = false;
         lastStill_ = false;
         stillRun_ = 0;
         if (stats_.pxPerNotch > 0) pending_ += notches * stats_.pxPerNotch;
@@ -611,9 +685,32 @@ void ScrollSession::startRecover() {
     if (!visit(notches)) { stepSentAt_ = -1; pending_ = 0; if (auto_) phase_ = Phase::Step; }
 }
 
+// A step is over: what it owed is dropped, and the tracker forgets what the
+// hints since its last placed frame still hold, or the next step's hints add
+// to them (#1543's review). Not while lost: then that sum is where the page
+// went.
+void ScrollSession::dropOwed() {
+    pending_ = 0;
+    if (tracker_->state() == TrackState::Lost) return;
+    // The step's last frame was skipped (one frame: the tracker is not lost
+    // yet), so the tracker's reference has not advanced and where the page
+    // went since it is not known. What the hints said stays with the tracker,
+    // and with the session's chain, and the next step's add to it. Dropped, a
+    // step that moved unseen leaves the next frame a step short, and on content
+    // that repeats every step that is a place that fits: the image lost a
+    // period (CodeRabbit on #1536). After a frame placed or taken still they
+    // are dropped, as before: a step that moved nothing must not add to the
+    // next (#1544).
+    if (lastSkipped_) return;
+    tracker_->forgetHints();
+    emitted_ = 0;
+    attributed_ = 0;
+    chainHinted_ = true;
+}
+
 void ScrollSession::settled(int64_t now) {
     if (stepFirstMoveAt_ >= 0) stats_.maxResponseMs = std::max(stats_.maxResponseMs, int(stepFirstMoveAt_ - stepSentAt_));
-    pending_ = 0;
+    dropOwed();
     const bool measure = stepFromRest_;
     restedBefore_ = true;
     if (phase_ == Phase::Settle && measure && stepNotches_ > 0 && stepMoved_ > 0) {
@@ -645,7 +742,7 @@ void ScrollSession::settled(int64_t now) {
 }
 
 void ScrollSession::stillStep(int64_t now) {
-    pending_ = 0;
+    dropOwed();
     if (phase_ == Phase::Recover) {
         if (tracker_->state() != TrackState::Lost) { recoverTries_ = 0; phase_ = Phase::Step; nextStepAt_ = now; return; }
         if (++recoverTries_ >= opts_.recoverTries) { handBack(HandBack::Lost); return; }
@@ -767,12 +864,26 @@ void ScrollSession::toTopTick() {
             return;
         }
         if (++toTopStill_ < 2) { nextStepAt_ = now + 400; return; }
+        // Twice still where no step of the way has moved the page: the wheel
+        // may be over a part that takes no wheel, which says nothing of the
+        // top. The top is proved only where the wheel is known to move the
+        // page, or once every wheel point has been tried (one more still step
+        // at each) and moved nothing: a page that does not scroll here, or
+        // its top.
+        const int points = int(wheelPoints(frameW_, frameRowsFull()).size());
+        if (!toTopMoved_ && toTopPointsTried_ < points) {
+            ++toTopPointsTried_;
+            wheelAt_ = (wheelAt_ + 1) % points;
+            toTopStill_ = 1;
+            nextStepAt_ = now;
+            return;
+        }
         // Twice still: the screen itself must agree, not only the stream.
         auto fresh = source_.freshFrame(2000);
         if (!fresh) { endToTop(false, "the frame source gave no fresh frame after the last steps up, so the top of the page is not proven"); return; }
         feed(*fresh);
         if (phase_ != Phase::ToTop) return;
-        if (differingRows(digest_, checkDigest_) > samePictureRows) { toTopStill_ = 0; checkDigest_ = digest_; return; }
+        if (differingRows(digest_, checkDigest_) > samePictureRows) { toTopStill_ = 0; toTopMoved_ = true; checkDigest_ = digest_; return; }
         endToTop(true, {});
     };
     if (toTopChanged_) {
@@ -782,6 +893,7 @@ void ScrollSession::toTopTick() {
         // It moved: bigger steps while it keeps moving.
         toTopSent_ = -1;
         toTopStill_ = 0;
+        toTopMoved_ = true;
         if (rested) toTopRested_ = now;
         checkDigest_ = digest_;
         toTopNotchesNow_ = std::min(2 * toTopNotchesNow_, std::max(opts_.toTopNotches, opts_.toTopMaxNotches));
@@ -805,6 +917,9 @@ void ScrollSession::endToTop(bool proved, const std::string& gaveUp) {
     if (stats_.toTopSteps > 0 && auto_ && !stopping() && !pausedNow() && injector_.rest()) pump(opts_.settleMs * 2);
     phase_ = auto_ ? Phase::Step : Phase::Off;
     nextStepAt_ = now;
+    // Where no step of the way moved the page, auto-scroll looks for a wheel
+    // point that does, from the first.
+    if (!toTopMoved_) wheelAt_ = 0;
     resetTracker();
     // The image starts with the screen as it is now.
     if (!lastPixels_.empty()) {
@@ -819,7 +934,8 @@ void ScrollSession::resetTracker() {
     tracker_ = std::make_unique<scroll::ScrollTracker>(canvas_, opts_.tracker);
     if (!opts_.excluded.empty()) tracker_->setExcluded(opts_.excluded);
     movedYet_ = false;
-    movedDown_ = stats_.toTopSteps > 0 && !digest_.empty();
+    // Known to move the page under the wheel only where a step of the way did.
+    movedDown_ = toTopMoved_ && !digest_.empty();
     pending_ = 0;
     emitted_ = 0;
     attributed_ = 0;

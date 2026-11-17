@@ -206,7 +206,7 @@ class FakeContext(Context):
         self.focused_control = 'historySearch' if control == 'historyList' and self.fault == 'list-cannot-focus' else control
         if control == 'applicationMenu':
             self.menu = 'app'
-        elif control == 'text:Capture actions':
+        elif control == 'text:How capture actions work':
             self.menu = None
             self.help = True
         elif control == 'text:Close':
@@ -411,9 +411,9 @@ class FakeContext(Context):
                 raise AssertionError('image and glyph share their button role')
             return [{'rect': [1200 if query['states']['focusable'] else 1300, 400, 40, 40]}] if self.pane() else []
         if query.get('role') == 'menu item':
-            return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else {'Copy details'} if self.menu == 'row' else set())]
-        if query.get('name') == 'Capture actions':
-            return [{'name': 'Capture actions'}] if self.help else []
+            return [{'name': n} for n in ({'How capture actions work', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else {'Copy details'} if self.menu == 'row' else set())]
+        if query.get('name') == 'How capture actions work':
+            return [{'name': 'How capture actions work'}] if self.help else []
         if query.get('role') == 'page tab':
             return [{'name': query['name'], 'states': {'selected': query['name'] == 'History'}}]
         if query.get('name') == 'Help':

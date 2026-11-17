@@ -71,11 +71,14 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  connect(refresh_,&QPushButton::clicked,this,[this]{if(refreshAction_)refreshAction_();});
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Hotkey recording status");recordingStatus_->setWordWrap(true);Ui::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* card=new Ui::Surface("surface");card->setProperty("preferenceCard",true);card->setObjectName("shortcutPreferenceCard");auto* cardBox=new QVBoxLayout(card);cardBox->setContentsMargins(0,0,0,0);cardBox->setSpacing(0);auto* form=new QFormLayout;Ui::styleForm(form);form->setHorizontalSpacing(0);form->setVerticalSpacing(0);cardBox->addLayout(form);layout->addWidget(card);
- // The command names the main window, menu and tray use.
- const QHash<QString,QString> labels{{"region","Capture region"},{"repeat","Repeat last region"},{"window","Capture window"},{"monitor","Capture monitor"},{"desktop","Capture desktop"},{"clipboard","Upload clipboard"},{"edit","Capture region & edit"},{"scroll","Capture scrolling region"},{"text","Copy text from region"},{"record","Record screen"}};
+ // The command names and groups the main window and tray use (Settings::actionTable).
+ QHash<QString,QString> labels;for(const auto& command:Settings::actionTable())labels.insert(command.action,command.label);
  auto* helpToggle=new QToolButton(this);helpToggle->setObjectName("shortcutHelpToggle");helpToggle->setText("How hotkeys work");Ui::disclosure(helpToggle);helpToggle->setProperty("uiFlush",true);auto* help=new QLabel("Click a hotkey field, press one key with optional modifiers, then release all keys. Escape cancels; × turns the hotkey off. Changes save automatically. Your desktop confirms each binding and reports conflicts below.",this);help->setObjectName("shortcutHelp");help->setWordWrap(true);Ui::role(help,"muted");help->hide();connect(helpToggle,&QToolButton::toggled,this,[help](bool open){help->setVisible(open);});
  const auto defaultActions=Settings::defaults()["actions"].toObject();
+ int group=0;
  for(const auto& action:Settings::shortcutOrder()) {
+  // A gap at each group boundary, as the tray's separators and the bar's divider.
+  if(Settings::actionGroup(action)!=group){group=Settings::actionGroup(action);auto* gap=new QWidget(card);gap->setObjectName("shortcutGroupGap");gap->setFixedHeight(space(Space::m));gap->setFocusPolicy(Qt::NoFocus);form->addRow(gap);}
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(space(Space::s));
   auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
   auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" hotkey");input->setReadOnly(true);input->setFrame(false);input->setPlaceholderText("Not set");input->setAccessibleDescription("Click a hotkey field, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;

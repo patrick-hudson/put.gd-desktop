@@ -10,12 +10,12 @@ using namespace putgd;using namespace putgd::test;
 namespace {
 // The Shell on GNOME, as far as a scroll capture uses it (#1531: its pointer watch).
 struct FakeShell final:RecordingShell {
- bool capable=true,watching=false;int watches=0,unwatches=0;std::function<void(QJsonObject)> sink;
+ bool capable=true,watching=false;int watches=0,unwatches=0,hides=0;std::function<void(QJsonObject)> sink;
  bool selectsRegions()const override{return true;}
  void selectRegion(Reply reply)override{reply({},{{"rect",QJsonArray{0,0,64,64}}});}
  void cancelSelection()override{}
  void showFrame(const QJsonObject&,Reply reply)override{reply({},{{"bar",QJsonObject{{"placed",true},{"outside",true},{"rect",QJsonArray{0,70,64,20}}}}});}
- void hideFrame()override{}
+ void hideFrame()override{++hides;}
  bool watchesPointer()const override{return capable;}
  void watchPointer(std::function<void(QJsonObject)> s)override{sink=std::move(s);watching=true;++watches;}
  void unwatchPointer()override{if(watching)++unwatches;watching=false;sink={};}
@@ -97,6 +97,45 @@ private slots:
   if(end=="stop"){QCOMPARE(view["state"].toString(),QString("done"));QCOMPARE(view["endReason"].toString(),QString("done"));QCOMPARE(view["truncated"].toBool(true),false);QCOMPARE(view["scrolledBy"].toString(),QString("user"));PUTGD_TRY_VERIFY(admissions==1);
    QCOMPARE(view["id"].toString(),id);QCOMPARE(view["steps"].toInt(),7);QCOMPARE(view["rowsAtDone"].toInt(),12);QVERIFY(!view.contains("bogus"));QVERIFY(!view.contains("frames"));QCOMPARE(view["hiddenCells"].toInt(),96);QVERIFY(!view.contains("hiddenRows"));}
   else{QCOMPARE(view["state"].toString(),QString("cancelled"));QVERIFY(ended.cancelled);PUTGD_COMPARE_STEADY(admissions,0,200);QVERIFY(!QFileInfo::exists(backend->directory));}
+ }
+ // A toggle sent while the capture stops (Done on its way) is refused as the
+ // state's, scroll_state, like the helper's own; the stop goes on and keeps the image.
+ void toggleWhileStoppingIsState(){
+  QTemporaryDir dir("/tmp/st-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="stopping";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};
+  int admissions=0;host.finish=[](Operation){};host.admit=[&](Operation,ClipboardPayload,auto){++admissions;};
+  ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+  QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}},{"driver","putgd"}},[&](Error e,QJsonObject r){QVERIFY(!e);id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY(!e);started=true;});PUTGD_TRY_VERIFY(started);
+  backend->holdCommands={"stop"};
+  bool stopped=false;Error stopError;service.command("stop",{{"id",id}},[&](Error e,QJsonObject){stopError=e;stopped=true;});QVERIFY(backend->held.contains("stop"));
+  for(const auto& command:{QString("autoScroll"),QString("pause"),QString("resume")}){
+   Error refusal;bool answered=false;auto params=QJsonObject{{"id",id}};if(command=="autoScroll")params["on"]=false;
+   service.command(command,params,[&](Error e,QJsonObject){refusal=e;answered=true;});PUTGD_TRY_VERIFY(answered);
+   QCOMPARE(refusal.code,QString("scroll_state"));QVERIFY(service.active());
+  }
+  backend->held.take("stop")({},backend->finished());PUTGD_TRY_VERIFY(stopped);QVERIFY2(!stopError,qPrintable(stopError.code));PUTGD_TRY_VERIFY(admissions==1);
+ }
+ // A capture left alone until the idle bound with nothing ever scrolled ends
+ // like Cancel (#1536's review): no image admitted, cancelled, the Shell's ring
+ // and pointer watch gone, no staging files; scroll.inspect and the operation say why.
+ void forgottenCaptureEndsLikeCancel(){
+  QTemporaryDir dir("/tmp/sf-XXXXXX");SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(configuration(dir.path(),true),{}));
+  ScrollCaptureService::Host host;host.settings=[&]{return settings.snapshot();};host.accept=[&](Operation& op){op.id="forgotten";op.settings=settings.snapshot();return Error{};};host.persist=[](const Operation&,auto done){done({});};host.observe=[](const Operation&){};
+  Operation ended;int finishes=0,admissions=0;host.finish=[&](Operation op){ended=op;++finishes;};host.admit=[&](Operation,ClipboardPayload,auto){++admissions;};
+  ScrollCaptureService service(dir.filePath("staging"),host);auto fake=std::make_unique<FakeScrollBackend>();auto* backend=fake.get();service.setBackend(std::move(fake));
+  FakeShell shell;service.setShell(&shell);
+  QString id;service.command("prepare",{{"rect",QJsonArray{0,0,64,64}}},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.code));id=r["id"].toString();});PUTGD_TRY_VERIFY(!id.isEmpty());
+  bool started=false;service.command("start",{{"id",id}},[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));started=true;});PUTGD_TRY_VERIFY(started);
+  backend->sink({{"id",id},{"event","pointerWatch"},{"on",true}});PUTGD_TRY_VERIFY(shell.watching);
+  const int hidesBefore=shell.hides;
+  backend->sink({{"id",id},{"event","cancelled"},{"reason","idle"}});
+  PUTGD_TRY_VERIFY(!service.active());QCOMPARE(finishes,1);QVERIFY(ended.cancelled);QCOMPARE(ended.stateName(),QString("cancelled"));QVERIFY(ended.error.code.isEmpty());
+  const QString note("Nothing was scrolled for 10 minutes, so the capture ended without an image.");
+  QCOMPARE(ended.note,note);QVERIFY(ended.items.isEmpty());
+  QJsonObject view;service.command("inspect",{{"id",id}},[&](Error e,QJsonObject r){QVERIFY(!e);view=r;});PUTGD_TRY_VERIFY(!view.isEmpty());
+  QCOMPARE(view["state"].toString(),QString("cancelled"));QCOMPARE(view["note"].toString(),note);QVERIFY(!view.contains("activity")&&!view.contains("paused"));
+  QVERIFY(shell.hides>hidesBefore);QVERIFY(!shell.watching);QVERIFY(!QFileInfo::exists(backend->directory));PUTGD_COMPARE_STEADY(admissions,0,200);
  }
  // A PNG that does not match the helper's descriptor (other bytes, other
  // dimensions) is never admitted; and the helper is given the pixel bound.
@@ -180,6 +219,16 @@ private slots:
   QTest::newRow("done marked truncated")<<"done"<<false<<QJsonObject{{"truncated",true}}<<false<<"";
   QTest::newRow("an end reason of the old loop")<<"stopped"<<false<<none<<false<<"";
   QTest::newRow("no frame placed")<<"done"<<false<<QJsonObject{{"framesPlaced",0}}<<false<<"";
+  // The tracker lost the page while the user scrolled and found it again: a
+  // place among look-alike rows can be a repeat off, so the person is told to
+  // check the image, and the end reason stays (#1515).
+  QTest::newRow("done, found again once")<<"done"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"The capture lost the page once and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("done, found again twice")<<"done"<<false<<QJsonObject{{"foundAgain",2},{"framesSkipped",9}}<<true<<"The capture lost the page 2 times and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("lost track, found again before")<<"lost_track"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"Finished while put.gd had lost its place. The image ends where it last found the page. The capture lost the page once and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("height cap, found again")<<"height_cap"<<false<<QJsonObject{{"foundAgain",3}}<<true<<"Stopped at 30,000 px. The page continues below. The capture lost the page 3 times and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("found again, a negative count")<<"done"<<false<<QJsonObject{{"foundAgain",-1}}<<false<<"";
+  QTest::newRow("found again, not a number")<<"done"<<false<<QJsonObject{{"foundAgain","2"}}<<false<<"";
+  QTest::newRow("found again, more than the frames placed")<<"done"<<false<<QJsonObject{{"foundAgain",13}}<<false<<"";
  }
  void endReasons(){
   QFETCH(QString,reason);QFETCH(bool,missed);QFETCH(QJsonObject,overrides);QFETCH(bool,admitted);QFETCH(QString,note);
@@ -197,9 +246,12 @@ private slots:
   QCOMPARE(result["truncated"].toBool(),reason=="height_cap"||reason=="lost_track"||reason=="top_not_reached");
   for(const auto* key:{"scrolledBy","framesPlaced","framesSkipped","endedLost","reachedEnd"})QVERIFY2(result.contains(key)&&result[key]==result["result"].toObject()[key],key);
   QCOMPARE(result.contains("topReached"),missed);QCOMPARE(result["result"].toObject().contains("topReached"),missed);
+  QVERIFY(result["foundAgain"].isDouble());QCOMPARE(result["foundAgain"].toInt(),overrides["foundAgain"].toInt());QCOMPARE(result["endReason"].toString(),reason);
+  // The notice: the end reason's own, else the one that says the page was found again.
+  const auto warned=reason=="done"&&!overrides.contains("note")&&overrides["foundAgain"].toInt()>0?QString("found_again"):reason;
   QCOMPARE(warning.size(),note.isEmpty()?0:1);
   HistoryStore store(operations.databasePath());QVERIFY(waitFor([&]{return !store.operation(id).items.isEmpty();}));
-  if(!note.isEmpty()){QCOMPARE(warning[0][2].toString(),reason);QCOMPARE(warning[0][1].toString(),note);QCOMPARE(result["note"].toString(),note);QCOMPARE(store.operation(id).note,note);}
+  if(!note.isEmpty()){QCOMPARE(warning[0][2].toString(),warned);QCOMPARE(warning[0][1].toString(),note);QCOMPARE(result["note"].toString(),note);QCOMPARE(store.operation(id).note,note);}
   else QVERIFY(store.operation(id).note.isEmpty());
  }
 };

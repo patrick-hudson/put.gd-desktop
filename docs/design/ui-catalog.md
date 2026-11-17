@@ -75,6 +75,24 @@ with a `· continued` day), `history-filter-chips` and `history-filter-chips-mor
 shows the `In progress` section; `47-history-filtering` the blank count while a
 query loads and `43-history-no-matches` the `0 of N items` note.
 
+## Tray and command band
+
+`tray-native-layout.txt` is the native (dbusmenu) tray menu as text, from the
+table both trays read (`src/ui/TrayMenu.cpp`), in ten states: idle, uploading,
+several uploads, failure, recording, update, mixed outputs with a long
+destination name, a delay set (hotkeys at once, and hotkeys waiting) and
+everything at once. Hidden rows are left out, `[…]` marks a disabled row and
+`#n` its native menu ID. The `00-tray-*` captures are the Qt fallback menu.
+
+The command band renders at 1,320 px (`80-command-band-1320`), at the default
+1,440 px (`80a-command-band-1440`) and at 1,060 × 680 (`81-command-band-1060`);
+`command-band-measurements.json` gives each state's one-row and two-row widths,
+whether it wrapped, its buttons and the History rows left whole. A second run of
+the catalog with `PUTGD_TEXT_SCALE=1.5` and `PUTGD_CATALOG_BAR_ONLY=1` writes the
+enlarged-text pair to `large-text/` (the text scale is read once per process).
+`84-capture-region-menu`, `85-command-band-delay-set` and `86-capture-delay-menu`
+show the Capture region ▾ menu and the status band's capture delay set and open.
+
 ## Reviewing a UI change
 
 Inspect the published `ui-catalog` artifact when changing the UI. Moved,

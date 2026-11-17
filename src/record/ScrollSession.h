@@ -41,9 +41,9 @@ struct RunInjector {
     // Before the first injection. X11 waits here until the modifier keys are up
     // (Ctrl plus wheel zooms); false when they never were, or `stop` was set.
     virtual bool waitReady(const std::atomic<bool>& stop) { (void)stop; return true; }
-    // Called while auto-scroll is paused by the mouse, every few ms. The only
-    // injection allowed then is the helper's own one-time correction of a
-    // pointer it pulled back from under the user's hand (#1514).
+    // Called while auto-scroll is paused by the mouse, every few ms. Nothing
+    // is injected then: the helper's one put-back of a pointer it pulled from
+    // under the user's hand (#1514) goes out in the check that sees the hand.
     virtual void held() {}
 };
 struct RunFrame {
@@ -74,6 +74,9 @@ struct RunPoint { int x = 0, y = 0; };
 class SessionCanvas : public scroll::TrackerCanvas {
 public:
     virtual void clear() = 0;
+    // The image can no longer be written (its file could not grow): the
+    // session ends at once.
+    virtual bool failed() const { return false; }
 };
 
 enum class Driver { User, Putgd };
@@ -106,6 +109,8 @@ struct SessionProgress {
 enum class SessionEnd {
     Finished,          // the stop flag: Done, the hotkey, Esc, scroll.stop
     Idle,              // nobody scrolled or used a control for idleLimitMs
+    Forgotten,         // the same, and no placed frame ever moved: nothing to keep, ended like Cancel
+    CanvasFailed,      // the image could not be written (its spool file could not grow: a full disk)
     PageEnd,           // auto-scroll reached the end of the page
     Capped,            // the image reached its height cap
     Discarded,         // the discard flag (Cancel)
@@ -140,6 +145,11 @@ struct SessionStats {
     // The end was found where the page showed nothing: a blank stretch taller
     // than the region looks the same (reachedEnd is false then).
     bool endBlank = false;
+    // Times the tracker lost the page while the person turned it and found
+    // its place again. A place found again may be a look-alike one: the
+    // result says so, and the image may be missing rows there. Auto-scroll's
+    // own way back to its place is not counted.
+    int foundAgain = 0;
     bool endedLost = false;    // the session ended while the tracker was lost
     bool capReached = false;
     bool topAsked = false, topReached = false;
@@ -270,6 +280,7 @@ private:
     void toTopTick();
     void endToTop(bool proved, const std::string& gaveUp);
     void resetTracker();
+    void dropOwed();
     bool visit(int notches);
     bool injected(bool sent);
     RunPoint wheelPoint() const;
@@ -322,6 +333,9 @@ private:
     long long stepMoved_ = 0;
     long long lastStepMove_ = 0;  // how far the last placed frame of this step moved
     double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
+    bool upPending_ = false;     // it went up far enough to be the user's, if the next frame agrees
+    bool lostSincePlaced_ = false;  // the tracker was lost and has not found the page since (stats_.foundAgain)
+    bool lastSkipped_ = false;   // the tracker's latest result was a skipped frame (dropOwed)
     bool lastStill_ = false;
     bool lastShowedStill_ = false;
     bool lastFrameBlank_ = false;   // the last frame (under auto-scroll) showed nothing  // the last frame showed the page where the last placed one had it
@@ -338,7 +352,10 @@ private:
     int lastPixelsW_ = 0, lastPixelsH_ = 0;
     int64_t toTopStart_ = 0, toTopRested_ = 0, toTopSent_ = -1, toTopChangedAt_ = -1;
     int toTopNotchesNow_ = 0, toTopStill_ = 0;
-    bool toTopChanged_ = false, toTopDone_ = false;
+    // Wheel points the way has turned the wheel at, and whether a step of the
+    // way really moved the page (at the point it is at).
+    int toTopPointsTried_ = 0;
+    bool toTopChanged_ = false, toTopDone_ = false, toTopMoved_ = false;
     // Progress.
     SessionProgress shown_;
     int64_t shownAt_ = -1;

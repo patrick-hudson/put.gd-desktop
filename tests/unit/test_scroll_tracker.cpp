@@ -6,11 +6,14 @@
 // tools/lab/scroll_tracker_score.py's job on recorded frames.
 // Plain checks with a summary; exit code 1 on any failure.
 #include <algorithm>
+#include <climits>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -546,12 +549,452 @@ void testLive() {
   }
 }
 
+// ------------------------------------------------------------------ the hint and the edges
+
+// What the driver's hint may and may not do, and frames and values at the
+// edges: run under ASan and UBSan too.
+void testHintAndEdges() {
+  std::printf("\n[hint] what the hint bridges and what it never does; frames and values at the edges\n");
+  const int W = 480, V = 400;
+  // The hint auto-scroll gives a frame of a step of s rows (ScrollSession::hintFor).
+  const auto hintOf = [](int s) { return TrackerHint{true, s, int(std::lround(0.35 * std::abs(s))) + 4}; };
+  {
+    // A page that ends in a blank stretch under a header and a footer that
+    // are learned on the way down. At the end the page rests while
+    // auto-scroll's steps go on and its hints say it moves, and one small
+    // thing changes in every frame (a loading spinner at a feed's end): a
+    // frame that shows what the last one showed, but for that cell, did not
+    // move, and the image must not grow by blank rows.
+    const Document base = plainPage(41, W, V);
+    Image doc(W, base.img.h + V, kBg);
+    std::memcpy(doc.px.data(), base.img.px.data(), base.img.px.size() * 4);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 48, 0xF0F0F2, 0x202024, 0, 5});
+    ss.pinned.push_back({0, V - 48, W, 48, 0xE8E8EC, 0x202024, 0, 7});
+    const Scene scene(doc, ss);
+    const int end = doc.h - V;
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int moved = 0, rest = 0;
+    long long bottomBefore = 0;
+    for (int i = 0, p = 0; rest < 30; ++i) {
+      Image f = scene.frame(p, i);
+      if (p == end) {
+        // The spinner: 8 by 8, its rows dark and light, the other way round in every frame.
+        for (int y = V / 2; y < V / 2 + 8; ++y)
+          for (int x = W / 2; x < W / 2 + 8; ++x) f.at(x, y) = (y + i) % 2 ? 0x202020 : 0xA0A0A0;
+        if (rest++ == 0) bottomBefore = tracker.bottom();
+      }
+      const TrackResult t = tracker.addFrame(f.view(), i ? hintOf(60) : TrackerHint{});
+      moved += p == end && t.status == TrackStatus::Placed && t.offset != 0;
+      p = std::min(end, p + 60);
+    }
+    report("a nearly blank frame at rest is not placed on the hint", moved == 0 && tracker.bottom() <= std::max<long long>(bottomBefore, doc.h),
+           fmt("%d of %d frames at rest placed as moved, the image grew by %lld rows at rest (page %d rows, image to %lld)", moved, rest,
+               tracker.bottom() - bottomBefore, doc.h, tracker.bottom()));
+  }
+  {
+    // What the hint is for: a short word moving through a blank stretch
+    // (nothing to compare, no evidence): placed on the hint, where the page is.
+    Image doc(W, 4000, kBg);
+    Rng ink(3);
+    for (int y = 20; y < 1000; y += 18) drawTextLine(doc, y, 20, W - 20, ink);
+    for (int y = 1300; y < 3600; y += 450) drawTextLine(doc, y, 200, 216, ink);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int wrong = 0, placed = 0;
+    for (int i = 0, p = 0; p <= 3000; ++i, p += 50) {
+      const TrackResult t = tracker.addFrame(scene.frame(p, i).view(), i ? hintOf(50) : TrackerHint{});
+      if (t.status != TrackStatus::Placed) continue;
+      ++placed;
+      wrong += t.position != p;
+    }
+    report("a short word through a blank stretch: bridged on the hint, where the page is",
+           wrong == 0 && tracker.totals().onHint > 0,
+           fmt("%d placed, %d wrong, %d on the hint, %d skipped", placed, wrong, tracker.totals().onHint, tracker.totals().skipped));
+  }
+  {
+    // The page's last lines above a blank tail, under a header and a footer,
+    // stepped through as auto-scroll does (a 60 px notch, then steps of two,
+    // each animated over five frames and the hint at each frame's share).
+    // Near the end only the last few lines are left in the frame: matches
+    // that agree in every lane fall short of the evidence rows, and of the
+    // row coverage against the edges of the header's and footer's text. Seed
+    // 51 lost the page there at 3,537 px and ended idle (#1543's review).
+    // With the hint they are placed where the page is.
+    DocSpec ds;
+    ds.seed = 51;
+    ds.width = W;
+    ds.viewport = V;
+    ds.flatFactor = 0.2;
+    ds.tableFactor = 0;
+    ds.noiseFactor = 0.3;
+    ds.gradientFactor = 0.3;
+    ds.blankFactor = 0;
+    ds.paragraphsPerGap = 4;
+    const Document page = makeDocument(ds);
+    Image doc(W, page.img.h + V, kBg);
+    std::memcpy(doc.px.data(), page.img.px.data(), page.img.px.size() * 4);
+    const Renderer rd(doc, ViewportSpec{W, V, 48, 48, 7});
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    std::vector<std::pair<int, int>> frames{{0, 0}};  // position, hint
+    const auto step = [&](int px) {
+      const int at = frames.back().first;
+      for (const double share : {0.3, 0.37, 0.21, 0.1, 0.02}) {
+        const int to = std::min(rd.maxScroll(), frames.back().first + int(std::lround(share * px)));
+        frames.push_back({to, to - frames.back().first});
+      }
+      frames.push_back({std::min(rd.maxScroll(), at + px), std::min(rd.maxScroll(), at + px) - frames.back().first});
+      for (int i = 0; i < 4; ++i) frames.push_back({frames.back().first, 0});
+    };
+    step(60);
+    while (frames.back().first < rd.maxScroll()) step(120);
+    Image f(W, V, kBg);
+    int wrong = 0, noMatch = 0, placed = 0;
+    for (size_t i = 0; i < frames.size(); ++i) {
+      rd.render(frames[i].first, f);
+      const TrackResult t = tracker.addFrame(f.view(), i ? TrackerHint{true, frames[i].second, int(std::lround(0.35 * std::abs(frames[i].second))) + 4} : TrackerHint{});
+      noMatch += t.status == TrackStatus::Skipped && t.reason == SkipReason::NoMatch;
+      if (t.status != TrackStatus::Placed || t.onHint) continue;
+      ++placed;
+      wrong += t.position != frames[i].first;
+    }
+    report("a page's last lines above a blank tail: placed where the page is, never unmatched", wrong == 0 && noMatch == 0,
+           fmt("%zu frames, %d placed, %d wrong, %d unmatched, %d on the hint, page content to %d", frames.size(), placed, wrong, noMatch,
+               tracker.totals().onHint, page.img.h));
+  }
+  {
+    // Steps too fast to follow, then a blank frame far past what the image
+    // holds: the hints since the last placed frame add up to more than the  {
+    // Steps too fast to follow, then a blank frame far past what the image
+    // holds: the hints since the last placed frame add up to more than the
+    // frame's height. Placed there, it would leave rows that no frame showed.
+    const Document base = plainPage(43, W, V);
+    Image doc(W, 4000, kBg);
+    std::memcpy(doc.px.data(), base.img.px.data(), size_t(W) * 1100 * 4);
+    fillRows(doc, 1100, 2600, kBg);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    std::vector<int> pos;
+    for (int p = 0; p <= 400; p += 40) pos.push_back(p);
+    pos.push_back(790);   // too far for the pair: skipped
+    pos.push_back(1180);  // blank, 780 rows past the last placed frame
+    pos.push_back(1570);  // blank
+    pos.push_back(700);   // back where the image is: found again
+    for (int p = 740; p <= 1000; p += 40) pos.push_back(p);
+    int gaps = 0, wrong = 0;
+    std::string first;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      const long long top = tracker.top(), bottom = tracker.bottom();
+      const TrackResult t = tracker.addFrame(scene.frame(pos[i], int(i)).view(), i ? hintOf(pos[i] - pos[i - 1]) : TrackerHint{});
+      if (t.status != TrackStatus::Placed) continue;
+      const bool gap = i > 0 && (t.position > bottom || t.position + V < top);
+      gaps += gap;
+      wrong += t.position != pos[i];
+      if ((gap || t.position != pos[i]) && first.empty())
+        first = fmt(", frame %zu placed at %lld (page at %d, image [%lld, %lld))", i, t.position, pos[i], top, bottom);
+    }
+    const TrackTotals tot = tracker.finish();
+    report("on the hint alone, never past what the image or the last frame holds", gaps == 0 && wrong == 0 && tot.hiddenRows == 0,
+           fmt("%d placed with a gap, %d wrong%s, %d on the hint, %lld rows never shown", gaps, wrong, first.c_str(), tot.onHint,
+               tot.hiddenRows));
+  }
+  {
+    // One wild hint over a blank frame does not take the image to its cap.
+    Image doc(W, 3000, kBg);
+    const Document base = plainPage(47, W, V);
+    std::memcpy(doc.px.data(), base.img.px.data(), size_t(W) * 900 * 4);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    for (int i = 0, p = 0; p <= 400; ++i, p += 40) tracker.addFrame(scene.frame(p, i).view(), i ? hintOf(40) : TrackerHint{});
+    const TrackResult t = tracker.addFrame(scene.frame(1800, 20).view(), TrackerHint{true, 40000, 20});
+    const TrackResult back = tracker.addFrame(scene.frame(440, 21).view(), hintOf(40));
+    report("one wild hint over a blank frame: no jump to the cap", !tracker.totals().capReached && tracker.height() < 3 * V &&
+                                                                         t.status == TrackStatus::Skipped && back.position == 440,
+           fmt("%s, %s at %lld, image %lld rows, cap %s", toString(t.status), toString(back.status), back.position,
+               tracker.height(), tracker.totals().capReached ? "reached" : "not reached"));
+  }
+  {
+    // Frames too small to track are refused, also after placements on the
+    // hint; the smallest accepted size runs a whole sequence.
+    const auto run = [&](int w, int h, int frames, int* invalid, int* placed) {
+      MemoryCanvas canvas(w);
+      ScrollTracker tracker(canvas);
+      Rng noise(uint64_t(w) * 131 + uint64_t(h));
+      *invalid = *placed = 0;
+      for (int i = 0; i < frames; ++i) {
+        Image f(w, h);
+        for (uint32_t& v : f.px) v = uint32_t(noise.next()) & 0xFFFFFF;
+        const TrackResult t = tracker.addFrame(f.view(), i ? TrackerHint{true, 6, 2} : TrackerHint{});
+        *invalid += t.status == TrackStatus::Invalid;
+        *placed += t.status == TrackStatus::Placed;
+      }
+      tracker.finish();
+    };
+    int inv1 = 0, pl1 = 0, invMin = 0, plMin = 0, invBelow = 0, plBelow = 0;
+    run(W, 1, 12, &inv1, &pl1);
+    run(16, 16, 40, &invMin, &plMin);
+    run(16, 15, 4, &invBelow, &plBelow);
+    report("frames too small are refused; the smallest accepted runs through",
+           inv1 == 12 && pl1 == 0 && invMin == 0 && plMin > 3 && invBelow == 4,
+           fmt("1 row: %d of 12 invalid; 16x16: %d invalid, %d placed; 16x15: %d of 4 invalid", inv1, invMin, plMin, invBelow));
+  }
+  {
+    // Absurd hints and excluded rectangles: nothing overflows (UBSan), no
+    // frame is placed off the page.
+    const Document doc = plainPage(53, W, V);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc.img, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    const TrackerHint wild[] = {{true, INT_MAX, INT_MAX - 1}, {true, INT_MIN, INT_MAX}, {true, INT_MAX, 0},
+                                {true, INT_MIN, -5},          {true, 0, INT_MAX - 1},  {true, INT_MAX, INT_MAX}};
+    const TrackerRect rects[] = {{INT_MAX - 5, INT_MAX - 5, INT_MAX, INT_MAX}, {INT_MIN, INT_MIN, INT_MAX, INT_MAX},
+                                 {-10, -10, INT_MAX, 20}, {INT_MIN, 100, INT_MAX, INT_MAX}, {}};
+    int wrong = 0, placed = 0;
+    for (int i = 0, p = 0; i < 60; ++i, p += 30) {
+      tracker.setExcluded(rects[size_t(i / 4) % std::size(rects)]);
+      const TrackResult t = tracker.addFrame(scene.frame(p, i).view(), i ? wild[size_t(i) % std::size(wild)] : TrackerHint{});
+      if (t.status != TrackStatus::Placed) continue;
+      ++placed;
+      wrong += t.position != p;
+    }
+    tracker.setExcluded({});
+    tracker.finish();
+    report("absurd hints and rectangles: no overflow, nothing placed off the page", wrong == 0 && placed > 0,
+           fmt("%d placed, %d wrong, image %lld rows", placed, wrong, tracker.height()));
+  }
+}
+
+// ------------------------------------------------------------------ look-alikes
+
+// Content that repeats but for a few cells, scrolled by a person (no hint):
+// a step that a look-alike offset fits about as well is skipped, never taken
+// at the look-alike; a frame of content the image does not hold is never
+// "found again" among look-alikes it does hold (#1515's acceptance: a test
+// table in a pull request, paragraphs on both sides of a blank stretch).
+void testLookAlikes() {
+  std::printf("\n[look-alikes] repeating content: never a join at a look-alike offset\n");
+  const int W = 480, V = 400;
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  // Lines whose text is the same but for a number at the left (a table's
+  // rows of equal labels, a list's numbered lines).
+  const auto numbered = [&](int rows, uint64_t seed) {
+    Image doc(W, rows, kBg);
+    Rng numbers(seed);
+    for (int i = 0; i * 18 + 12 < doc.h; ++i) {
+      Rng words(77);
+      drawTextLine(doc, 4 + i * 18, 70, W - 30, words);
+      drawTextLine(doc, 4 + i * 18, 26, 26 + 6 * (1 + numbers.range(1, 4)), numbers);
+    }
+    return doc;
+  };
+  {
+    // A person's flick from rest: the frames before it stood still, so the
+    // last pace says nothing about how far it went.
+    const Image doc = numbered(4000, 91);
+    const Scene scene(doc, ss);
+    int wrong = 0, placed = 0;
+    std::string first;
+    for (const int step : {150, 220, 300, 330}) {
+      MemoryCanvas canvas(W);
+      ScrollTracker tracker(canvas);
+      std::vector<int> pos{0, 0, 0};
+      for (int p = step; p + V <= doc.h && pos.size() < 40; p += step) {
+        pos.push_back(p);
+        pos.push_back(p);  // at rest again
+        pos.push_back(p);
+      }
+      for (size_t i = 0; i < pos.size(); ++i) {
+        const TrackResult t = tracker.addFrame(scene.frame(pos[i], int(i)).view());
+        if (t.status != TrackStatus::Placed) continue;
+        ++placed;
+        if (t.position != pos[i]) {
+          ++wrong;
+          if (first.empty()) first = fmt(", step %d: frame %zu at %lld, page at %d (confidence %.3f)", step, i, t.position, pos[i], t.confidence);
+        }
+      }
+    }
+    report("flicks from rest over look-alike lines: never placed at a look-alike", wrong == 0 && placed > 0,
+           fmt("%d placed, %d wrong%s", placed, wrong, first.c_str()));
+  }
+  {
+    // Numbered paragraphs, a blank stretch taller than the region, more
+    // numbered paragraphs below it; a person scrolls through to the end.
+    // What is below the stretch is not in the image: it is never found
+    // there, and the capture stays lost.
+    Image doc(W, 5200, kBg);
+    Rng numbers(5);
+    const auto paragraphs = [&](int y0, int y1) {
+      for (int y = y0; y + 80 < y1; y += 96) {
+        const int label = 6 * (2 + numbers.range(1, 2));
+        for (int line = 0; line < 4; ++line) {
+          Rng words(77 + uint64_t(line));
+          drawTextLine(doc, y + line * 18, 40 + (line ? 0 : label + 8), W - 40, words);
+        }
+        drawTextLine(doc, y, 40, 40 + label, numbers);
+      }
+    };
+    paragraphs(20, 2000);
+    paragraphs(3400, 5200);  // 1,400 blank rows between, more than three regions
+    const Scene scene(doc, ss);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    int wrong = 0, below = 0, foundBelow = 0;
+    std::string first;
+    for (int i = 0, p = 0; p + V <= doc.h; ++i, p += 120) {
+      const TrackResult t = tracker.addFrame(scene.frame(p, i).view());
+      if (p >= 3400 - V / 2) {
+        ++below;
+        foundBelow += t.status == TrackStatus::Placed;
+      }
+      if (t.status == TrackStatus::Placed && t.position != p) {
+        ++wrong;
+        if (first.empty()) first = fmt(", frame %d at %lld, page at %d (confidence %.3f%s)", i, t.position, p, t.confidence, t.recovered ? ", found again" : "");
+      }
+    }
+    report("past a blank stretch, look-alike paragraphs: never found again among those above",
+           wrong == 0 && foundBelow == 0 && tracker.state() == TrackState::Lost,
+           fmt("%d wrong%s, %d of %d frames below the stretch placed, state %s", wrong, first.c_str(), foundBelow, below,
+               toString(tracker.state())));
+  }
+}
+
+// Content that repeats at the step's distance: a table of near-equal rows
+// moved by exactly two of them while a sticky header stays. Only the few
+// unique lines show the move; the rest looks the same where it was and where
+// the move puts it, so the move covers too little of the frame and the next
+// frame, the same picture as the last placed one, looked still: the page's
+// place stayed behind by the step (#1515's acceptance, GitHub on Cinnamon).
+void testRepeatAtStep() {
+  std::printf("\n[repeat at the step] a move by exactly the content's period is a move\n");
+  const int W = 480, V = 400;
+  // Text first (the header is learned on the way), then the table.
+  Image doc(W, 5000, kBg);
+  const int table = 1500;
+  Rng prose(3);
+  for (int y = 10; y + 12 < table; y += 18) drawTextLine(doc, y, 40, W - 40, prose);
+  for (int i = 0; table + i * 34 + 24 < doc.h; ++i) {
+    Rng words(77 + uint64_t(i % 2));  // two rows that repeat: a period of 68
+    drawTextLine(doc, table + i * 34 + 10, 40, W - 40, words);
+  }
+  for (int y = table + 300; y + 40 < doc.h; y += 140) {  // a unique line every few rows
+    fillRows(doc, y, y + 34, kBg);
+    Rng words(1000 + uint64_t(y));
+    drawTextLine(doc, y + 10, 40, W - 40, words);
+  }
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  ss.pinned.push_back({0, 0, W, 48, 0xF0F0F2, 0x202024, 0, 5});
+  const Scene scene(doc, ss);
+  MemoryCanvas canvas(W);
+  ScrollTracker tracker(canvas);
+  std::vector<int> pos;
+  for (int p = 0; p < table; p += 90) pos.push_back(p);
+  for (int p = table; p + V <= doc.h && pos.size() < 160; p += 68)
+    for (int k = 0; k < 3; ++k) pos.push_back(p);  // a step, then the page at rest
+  int wrong = 0, placed = 0;
+  std::string first;
+  for (size_t i = 0; i < pos.size(); ++i) {
+    const TrackResult t = tracker.addFrame(scene.frame(pos[i], int(i)).view());
+    if (t.status != TrackStatus::Placed && t.status != TrackStatus::NoMovement) continue;
+    placed += t.status == TrackStatus::Placed;
+    // A frame placed, or said not to have moved, must be where the page is.
+    if (t.position != pos[i]) {
+      ++wrong;
+      if (first.empty()) first = fmt(", frame %zu %s at %lld, page at %d", i, toString(t.status), t.position, pos[i]);
+    }
+  }
+  report("moves by the content's period, with rests: never left behind", wrong == 0 && placed > 0,
+         fmt("%d placed, %d wrong%s", placed, wrong, first.c_str()));
+}
+
+// A jump past the reference over look-alike tables (#1515's re-check on
+// Cinnamon): while frames were skipped the page moved more than a frame
+// tall, and the pair, against the last placed frame, found the look-alike a
+// period short. After skipped frames, a frame that repeats itself as well
+// as the pair matches is not placed by the pair: still lost, and found again
+// only once scrolled back where the image is.
+void testJumpPastLookAlikes() {
+  std::printf("\n[jump past look-alikes] after skipped frames, a repeating frame is not placed by the pair\n");
+  const int W = 480, V = 400, P = 200;
+  // Prose first, then the tables.
+  Image doc(W, 6000, kBg);
+  const int tables = 1000;
+  Rng prose(23);
+  for (int y = 10; y + 12 < tables; y += 18) drawTextLine(doc, y, 40, W - 40, prose);
+  for (int b = tables / P; b * P < doc.h; ++b) {
+    Rng head(500 + uint64_t(b));  // a table's heading of its own
+    drawTextLine(doc, b * P + 6, 40, W - 40, head);
+    drawTextLine(doc, b * P + 24, 40, W - 40, head);
+    for (int j = 0; j < 8; ++j) {
+      Rng words(77 + uint64_t(j));  // rows the same in every table
+      drawTextLine(doc, b * P + 44 + j * 19, 40, W - 40, words);
+    }
+  }
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  const Scene scene(doc, ss);
+  const Document other = plainPage(61, W, V);
+  const Scene stray(other.img, ss);
+  MemoryCanvas canvas(W);
+  ScrollTracker tracker(canvas);
+  std::vector<int> pos;
+  for (int p = 0; p <= 1200; p += 60) pos.push_back(p);  // following
+  const size_t lost0 = pos.size();
+  for (int k = 0; k < 3; ++k) pos.push_back(-1);  // frames that cannot be placed while the page jumps
+  const int far = 1200 + 600;                     // 1.5 frames past the last placed one
+  for (int p = far; p <= far + 240; p += 60) pos.push_back(p);
+  const size_t back0 = pos.size();
+  for (int p = far + 240 - 100; p >= 500; p -= 100) pos.push_back(p);  // scrolled back, to the prose
+  int wrong = 0, lostAfterJump = 0, foundBack = 0;
+  std::string first;
+  for (size_t i = 0; i < pos.size(); ++i) {
+    const Image f = pos[i] < 0 ? stray.frame(300 * int(i), int(i)) : scene.frame(pos[i], int(i));
+    const TrackResult t = tracker.addFrame(f.view());
+    if (t.status == TrackStatus::Placed && (pos[i] < 0 || t.position != pos[i])) {
+      ++wrong;
+      if (first.empty()) first = fmt(", frame %zu at %lld, page at %d", i, t.position, pos[i]);
+    }
+    if (i > lost0 + 2 && i < back0) lostAfterJump += t.status != TrackStatus::Placed;
+    if (i >= back0) foundBack += t.status == TrackStatus::Placed && t.position == pos[i];
+  }
+  report("a jump past the reference over look-alike tables: still lost, found again on the way back",
+         wrong == 0 && lostAfterJump > 0 && foundBack > 0,
+         fmt("%d wrong%s, %d frames past the jump not placed, %d placed right on the way back", wrong, first.c_str(), lostAfterJump, foundBack));
+}
+
 int main() {
   testOffsets();
   testPinned();
   testChangesAndRecovery();
   testExcluded();
   testLive();
+  testHintAndEdges();
+  testLookAlikes();
+  testRepeatAtStep();
+  testJumpPastLookAlikes();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

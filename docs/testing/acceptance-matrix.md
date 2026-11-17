@@ -192,8 +192,9 @@ Each row must show:
    no file.
 6. A lock during the countdown ends it `session_locked` with no file.
 7. The tray's Capture monitor, Repeat last region and Capture delay entries, the
-   capture buttons' context menu, and the two unbound Hotkeys rows; a hotkey
-   capture stays immediate with a tray delay chosen.
+   Capture region ▾ menu (Repeat last region) and the status band's Capture delay
+   control, and the two unbound Hotkeys rows; a hotkey capture stays immediate with
+   a tray delay chosen.
 8. GNOME with the older extension loaded: `helper_outdated` for monitor, repeat and
    any delay, the two rows in Desktop support details, window and desktop screenshots
    still working, and a region capture refused with `helper_outdated` as it was before.

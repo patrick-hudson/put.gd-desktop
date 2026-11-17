@@ -2,10 +2,11 @@
 #include <QMainWindow>
 #include <QJsonObject>
 #include <QList>
+#include <QHash>
 #include <functional>
 #include "FileDialog.h"
 #include "core/Error.h"
-class QListWidget;class QToolButton;class QTabBar;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
+class QListWidget;class QBoxLayout;class QHBoxLayout;class QToolButton;class QTabBar;class QStackedWidget;class QLabel;class QPushButton;class QMimeData;class QScrollArea;class QSpacerItem;
 namespace putgd {
 class UiSession;class SettingsWindow;class HistoryWindow;
 class MainWindow final:public QMainWindow {
@@ -33,11 +34,14 @@ protected:
  bool eventFilter(QObject*,QEvent*)override;
 private:
  QString sourceGaps_; // the last capture-kind gaps seen, so statusChanged rebuilds the output popup only on change
- QList<std::function<void()>> captureButtonUpdates_; // each capture button's refresh, rerun when a capture gap changes
- void updateOutputSummary();void fitBand();void updateSaveStatus();void updateAvailability();
- UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_;QTabBar* tabs_;QStackedWidget* pages_;QToolButton* destination_=nullptr;QLabel *saveStatus_=nullptr,*version_=nullptr;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;QLabel* explanation_=nullptr;QWidget* outputGroup_=nullptr;
+ QHash<QString,QString> explanations_; // each action button's description
+ void updateOutputSummary();void fitBand();void updateSaveStatus();void updateAvailability();void updateDelay();void refreshCommands();
+ UiSession& session_;QToolButton* editButton_=nullptr;SettingsWindow* settings_=nullptr;HistoryWindow* history_=nullptr;QTabBar* tabs_;QStackedWidget* pages_;QToolButton* destination_=nullptr;QLabel *saveStatus_=nullptr,*version_=nullptr;QPushButton* versionLink_;QPushButton* updateLink_=nullptr;FileDialog* chooser_=nullptr;QLabel* explanation_=nullptr;QWidget* outputGroup_=nullptr;
  // Edit an image file… whose chooser failed: its reason and Try again, under the command band.
  QWidget* chooserFailure_=nullptr;QLabel* chooserError_=nullptr;
- QWidget* outputWarning_=nullptr;QLabel* outputWarningText_=nullptr;QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;int bandStage_=0;bool fittingBand_=false,statusFitPending_=false;
+ QWidget* outputWarning_=nullptr;QLabel* outputWarningText_=nullptr;QWidget* band_=nullptr;QList<QToolButton*> actionButtons_;bool fittingBand_=false,statusFitPending_=false;
+ // The command band's two groups, laid out in one row or wrapped into two (fitBand).
+ QBoxLayout* bandBox_=nullptr;QHBoxLayout *firstRow_=nullptr,*secondRow_=nullptr;QSpacerItem* firstRowEnd_=nullptr;QWidget* divider_=nullptr;bool bandWrapped_=false;
+ QToolButton* delay_=nullptr; // the status band's Capture delay control
 };
 }

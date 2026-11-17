@@ -118,6 +118,15 @@ struct TrackerOptions {
   // contradicts the image when fewer than this share of its tiles that show
   // something agree with it.
   double keepShare = 0.40;
+  // A place found again (after skipped frames, or by the image lookup away
+  // from the pair's place): the image must agree in this share of the
+  // candidate's own area of tiles (contradicted, with keepShare at least),
+  // and the cells of its own layer in recoverCells.
+  double recoverKeepShare = 0.80;
+  double recoverCells = 0.95;
+  // ... and no other place in the image may fit within this share of cells
+  // of it (look-alikes: numbered paragraphs, a table's equal rows).
+  double recoverTie = 0.05;
   // Per row of tiles, in the columns that mostly agree at the offset: rows
   // where moving tiles outnumber tiles that stood still, against rows where
   // the still ones do. At least this share: what moves is the page only when
@@ -206,6 +215,7 @@ class MemoryCanvas final : public TrackerCanvas {
 // What the driver expects of a frame: how far the content moved since the
 // frame before it (not since the last placed one), and how far that may be
 // off. put.gd's own wheel steps know it; a person's scrolling does not.
+// Offsets, their sum and the uncertainty count up to four frame heights.
 struct TrackerHint {
   bool known = false;
   int offset = 0;
@@ -224,7 +234,8 @@ enum class TrackStatus {
   NoMovement,  // the content did not move (changes in place are ignored)
   Skipped,     // no place could be proved; nothing was written
   CapReached,  // the image is at its height cap; nothing more is written
-  Invalid,     // the frame's size differs from the first frame's, or no data
+  Invalid,     // the frame's size differs from the first frame's, it is under two cells
+               // wide or two block rows high, or no data
 };
 const char* toString(TrackStatus);
 
@@ -255,6 +266,18 @@ struct TrackResult {
   bool byExpectation = false;  // repeating content: the expected offset chose among equal candidates
   bool onHint = false;         // placed on the driver's hint alone (nothing to compare)
   bool recovered = false;      // found inside the image after skipped frames
+  // NoMovement with nothing proved (most of the frame stood still, nothing
+  // moved as the page): the sum of hints since the last placed frame is kept
+  // for the next frame. A frame proved still starts the sum again.
+  bool hintsKept = false;
+  // The offset the frame was expected at: the sum of the driver's hints
+  // since the last placed frame (hinted), else the last pace.
+  int expected = 0;
+  bool hinted = false;
+  // Rows of the frame with texture outside what is pinned, the excluded
+  // rectangle and the side margins: 0 is a frame that shows nothing of the
+  // page (a blank stretch between a header and a footer).
+  int texturedRows = 0;
   TrackState state = TrackState::Waiting;
 };
 
@@ -271,6 +294,8 @@ struct TrackTotals {
   // image: cells that only the rectangle kept from being seen (every placed
   // frame that held them had them under it), filled with the plain colour,
   // and the rows that hold them. 0 when every such cell was shown outside it.
+  // Also every cell of a row that no placed frame covered at all (none should
+  // be: a placement on the hint alone must overlap the image).
   long long hiddenCells = 0, hiddenRows = 0;
 };
 
@@ -282,6 +307,10 @@ class ScrollTracker {
   ScrollTracker& operator=(const ScrollTracker&) = delete;
 
   TrackResult addFrame(const FrameView& frame, TrackerHint hint = {});
+  // The driver takes back what its hints said since the last placed frame:
+  // a step that ended without moving the page. The sum of hints starts again,
+  // as after a frame proved still.
+  void forgetHints();
   // A rectangle of the frame that is not the application (put.gd's own bar
   // drawn inside the region). Its cells never vote, never count as evidence
   // or contradiction, are never composed and never drawn as a pinned part:
@@ -333,6 +362,10 @@ class ScrollTracker {
     double coverage = 0;     // rows of tiles that moved, against rows that stood still, in its columns
     int informative = 0, rows = 0;
     bool accepted = false;
+    // At least half the rows of evidence, and acceptable but for its rows or
+    // agreeing strongly whatever its row coverage: the page's last lines
+    // above a blank tail (see decide).
+    bool fewRows = false;
   };
   // Agreeing and informative lanes per tile (a voting band by kTileRows rows
   // of the incoming frame), for one candidate.
@@ -375,7 +408,20 @@ class ScrollTracker {
   long long sweep_ = LLONG_MIN;
   int decide(std::vector<Candidate>& cands, int expected, int uncertainty, bool hinted,
              bool* byExpectation, SkipReason* why) const;
-  bool contradicted(const Signature& cur, long long pos) const;
+  bool contradicted(const Signature& cur, long long pos, double keepShare) const;
+  bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
+  double wholeCells(const Signature& cur, const Signature& ref, int d) const;
+  double selfRepeat(const Signature& sig, int y0, int y1) const;
+  // Frames skipped since the last placed frame (a frame that only stood
+  // still while nothing was proved does not end the count).
+  int skipsSincePlaced_ = 0;
+  // What storeCells saw: cells of the rows, those the image has written,
+  // and rows with two agreeing cells or more.
+  struct StoreFit {
+    long long cells = 0, written = 0;
+    int rows = 0;
+  };
+  double storeCells(const Signature& cur, long long pos, int y0, int y1, StoreFit* fit) const;
   void learn(const Signature& cur, const Signature& ref, int d);
   void closeMask();
   void close(const std::vector<uint8_t>& src, std::vector<uint8_t>& out) const;
