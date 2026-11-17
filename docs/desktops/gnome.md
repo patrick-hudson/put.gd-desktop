@@ -307,6 +307,34 @@ all four targets have them; see
 
 ## Scrolling capture
 
+Since #1515 a capture waits for you to scroll and injects nothing; the RemoteDesktop wheel
+below is what **Auto-scroll** uses. The ring and the beat pixel are Shell actors that take no
+input, so the wheel, the pointer and the keys reach the page. When the Shell finds no room for
+the bar beside the region it puts it inside the region's bottom-right corner; the resident tells
+the helper (`overlay {visible, rect, inside}`), which keeps the bar's rows out of the image.
+GNOME gives put.gd no key for the length of a capture: the `scroll` hotkey pressed again
+finishes it, where one is bound.
+
+**Auto-scroll's pause (#1531, extension version 25).** The packaged extension reports pointer motion during auto-scroll and gives keyboard focus back to the page. Log out and log in once after the update.
+
+Before the pointer watch, the helper saw the pointer only on its
+bar's window. A mouse moved while the helper's pointer was in the page for a wheel step went
+unseen until the helper had put the pointer back on the bar, so the pointer was pulled back
+once. Extension 24 adds `WatchPointer`, `UnwatchPointer` and a `Pointer` signal
+(`pointerWatchVersion: 1` in `Hello`). While auto-scroll runs, and during Resume's half-second
+wait for a still mouse, the helper asks the resident for the watch
+(`pointerWatch {on}`). The extension connects to Mutter's cursor tracker (`position-invalidated`,
+no handler on the stage's events) and sends every new position with `CLOCK_MONOTONIC`
+milliseconds. The resident passes each to the helper (`pointer {at, t}`). The helper ignores the
+positions it put the pointer at (its wheel points, its rest on the bar) and treats any other as
+the hand, as a watch surface does on Plasma: the pause comes with the first motion, and a
+motion the helper had already overtaken is undone once. The watch ends a moment after
+auto-scroll pauses or stops; nothing is watched while a person scrolls.
+
+With extension 23 or older still loaded, the resident does not ask: the bar's own window is the
+only witness, as before. **After updating put.gd, log out and back in once** to load
+extension 24.
+
 Scrolling capture ([design](../design/scroll-capture.md)) adds the `scroll` action (extension
 version 22). The extension selects the region and draws the ring (`SelectArea`,
 `ShowRecordingFrame`, as for a recording), and the resident places the bar through it. The helper
@@ -319,7 +347,7 @@ accepts `Start`, `Stop` and every `Notify*` only from the D-Bus connection that 
 one connection makes all the calls. The interface is private to Mutter and promises no
 compatibility; no owner for `org.gnome.Mutter.RemoteDesktop`, or a refused `CreateSession`, is
 `scroll_unavailable` with reason `injection_unavailable`. The Shell shows its screen-sharing
-indicator while the session runs; a click on it closes the session, and the helper reads that as Stop.
+indicator while the session runs; a click on it closes the session, and the helper reads that as Done.
 
 `ShowRecordingFrame` takes `beat: true` for a scroll capture's frame (`GnomeAdapter::showFrameImpl`).
 While that frame shows, the extension adds one transparent 1×1 `St.Widget` at the rectangle's
@@ -340,7 +368,7 @@ as for any extension update ([Setup](#setup)).
 ## Copy text
 
 Copy text ([design](../design/text-recognition.md)) adds the `text` action to the extension's hotkey
-list, so the packaged extension is **version 23**. The extension prepares a native region selection
+list (extension **version 23**; the packages now carry version 25). The extension prepares a native region selection
 for `text` as it does for `edit`, and the adapter keeps the prepared hotkey tickets for it by action.
 A text capture never changes the rectangle that **Repeat last region** remembers.
 

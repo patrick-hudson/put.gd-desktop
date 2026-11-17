@@ -235,6 +235,9 @@ desktop acceptance only.
 
 ## Scrolling capture
 
+Since #1515 a capture waits for you to scroll and injects nothing; the virtual pointer below is
+what **Auto-scroll** uses. There is no Esc: the `scroll` hotkey pressed again finishes a capture.
+
 Scrolling capture ([design](../design/scroll-capture.md)) reads `ext-image-copy-capture` frames of the
 output the region lies on, cropped to the region, through the same `wlr-capture` source as a recording
 and with its session created without `paint_cursors`. The wheel is a `zwlr_virtual_pointer_v1` on the

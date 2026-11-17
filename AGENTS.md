@@ -118,11 +118,12 @@ Screen recording (#50) is user-approved and ships in the DEB, RPM and AppImage
 (X11 and Wayland capture with region selection, system audio, private review,
 export, explicit upload). Follow `docs/design/recording.md`; finalized files enter the
 shared pipeline only through the explicit Upload action.
-Scrolling capture (#1376) is a second session kind of `putgd-record`: it injects wheel
-events at a region the user selected and stitches the frames into one tall image. Follow
-`docs/design/scroll-capture.md`. It sends real input to a live desktop, so run it only at a
-window you opened for the test; a result is complete only when its `endReason` is
-`end_of_content`.
+Scrolling capture (#1376, #1515) is a second session kind of `putgd-record`: it follows the
+content of a region the user selected, frame by frame, as the user scrolls it or as put.gd's
+auto-scroll turns its wheel, and composes one tall image. Follow
+`docs/design/scroll-capture.md`. Auto-scroll sends real input to a live desktop, so run it only
+at a window you opened for the test; `end_of_content` means put.gd scrolled to the end itself,
+`done` is a capture someone finished, and `truncated` marks a partial image.
 The user-approved Edit & upload image editor (#51) is the still-image editing feature; its
 contract, privacy boundaries and agent control are in `docs/design/image-editor.md`.
 New windows reuse the app style (`putgd::Ui`, `src/ui/Ui.h`) and IconArt glyphs, and every interactive

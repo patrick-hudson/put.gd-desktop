@@ -160,6 +160,12 @@ back as it was. The design is in
 
 ## Scrolling capture
 
+Since #1515 a capture waits for you to scroll and injects nothing; what follows is what
+**Auto-scroll** uses. While you scroll, KWin's region stream (with the helper's heartbeat
+surface) delivers about 24 frames a second on Plasma 6.8.2, which the tracker follows. Plasma
+gives put.gd no key for the length of a capture: the `scroll` hotkey pressed again finishes it,
+where one is bound, and the bar names it.
+
 Scrolling capture ([design](../design/scroll-capture.md)) reads frames from `stream_region` of
 KWin's screencast protocol with the pointer hidden and at the output's own scale (from protocol
 version 5, scale 0 lets KWin choose; earlier versions get the scale computed from the output's mode),

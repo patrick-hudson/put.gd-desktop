@@ -250,24 +250,51 @@ A wrong stitch looks like a valid image, and the feature sends input to a live d
 these suites compare pixels and check what is injected. None of them is desktop proof. The
 design is in [scrolling capture](../design/scroll-capture.md).
 
-- `scroll_stitcher_contract` (`tests/unit/test_scroll_stitcher.cpp`, on the synthetic application in
-  `tests/fixtures/ScrollSynthetic.*`; no display): the stitcher and `ScrollRun` together, only where a
-  wrong result would look like a whole page. No pair of frames further apart than the viewport is ever
-  matched (a ruler sweep); lines that are identical stay ambiguous rather than guessed; the output cap
-  holds, also with a footer larger than it; a stream that goes quiet, a slow page, a top that was not
-  reached and a page that never rests never end as `EndOfContent`; no wheel step follows Stop; and a
-  stream whose frames change size is a layout change. It is in the contract lists of
-  `cmake/TestPolicy.cmake`.
+- `scroll_tracker_contract` (`tests/unit/test_scroll_tracker.cpp`, on scenes of
+  `tests/fixtures/ScrollSynthetic.*`; no display): the matching engine. A frame placed at another
+  offset than the page's own, a pinned part in the image more than once, a row lost or doubled at a
+  seam ([#1527](https://github.com/patrick-hudson/put.gd-desktop/pull/1527)); a page's last lines above
+  a blank tail under a header and a footer placed where the page is, never unmatched.
+- `scroll_session_contract` (`tests/unit/test_scroll_session.cpp`, on the synthetic application in
+  `tests/fixtures/ScrollSynthetic.*`, with the helper's spool file; no display): the session loop. A
+  person's scrolling as a script (slow, fast, still, back up, to the end) gives the exact page and not
+  one injected event; auto-scroll from the top and from the middle with the way to the top gives the
+  whole page and ends by itself with no frame skipped, each wheel step a short visit of under half
+  the frame; a switch from the user to auto-scroll, a pause by the mouse and auto-scroll again give
+  one exact image with nothing injected while the user drives or has the mouse; a jump past the screen
+  is lost and found again on the way back, and Done while lost keeps the image and says it ended lost;
+  under auto-scroll, a jump into the page's end is found by the steps back with the image exact, and
+  a jump far past the image (on text, and on plain stretches) is handed back lost, found again when
+  the user scrolls back, and finished by Auto-scroll as one exact image; Done after the stream went
+  stale (the same picture again and again while the page moves) keeps the rows the page shows; a
+  blank stretch taller than the region stops auto-scroll without calling it the end of the page;
+  one frame shown far up under auto-scroll is not taken for the user scrolling (a person's scrolling
+  up still is); the tracker's expected offset stays within what a step owes when its first frames
+  show the page still; a blank stretch under a pinned header and footer is not called the end; the
+  end of a page whose last lines sit above a blank tail under a header and a footer is reached, not
+  lost; the way to the top over a strip that takes no wheel under the first wheel point still starts the
+  image at the page's top; the cap and the idle bound end it with the image kept, and the idle bound
+  in a capture where nothing ever moved ends it like Cancel; Done keeps an exact image and Cancel discards
+  it in every state. It is in the contract lists of `cmake/TestPolicy.cmake`.
 - `scroll_service_integration` (`tests/integration/test_scroll_service.cpp`): `ScrollCaptureService`,
   `LocalServer` and the production `putgd-cli` against a fake backend. An image finished beside a
-  Cancel is never admitted (`cancelInFlightDecides`); a PNG that does not match its descriptor is never
-  admitted (`corruptOutputFails`); an unproved top is marked, and a helper that calls such a capture
-  complete is refused (`topNotReached`).
+  Cancel is never admitted (`cancelInFlightDecides`); the driver, `activity`, `paused`, `placed` and
+  `skipped` reach an agent, `scroll.autoScroll` and its old names work, Done keeps an image that is not
+  truncated and Cancel discards (`drivenCaptureEnds`); a capture forgotten until the idle bound ends
+  cancelled with its note, nothing admitted, the Shell's ring and pointer watch gone
+  (`forgottenCaptureEndsLikeCancel`); a PNG that does not match its descriptor is never
+  admitted (`corruptOutputFails`); every end reason's promise is checked and a helper that breaks one is
+  refused (`endReasons`), including `foundAgain` counts and recovery notes appended to existing notes. Recovery preserves `endReason` and `truncated`; the notice is `scroll_found_again` unless another warning already applies.
 - `scroll_capture_x11` (`tests/integration/test_scroll_capture_x11.cpp`): the real `putgd-record` on a
   private Xvfb display against `tests/fixtures/scroll_page_fixture.cpp`. An XInput 2 listener shows that
-  only wheel steps and pointer motion are injected, only while capturing, and nothing after the Stop or
-  Cancel reply, with the pointer put back; the end of the control pipe stops injection at once. There is
-  no compositor or window manager, so it does not establish Cinnamon behaviour.
+  while the page scrolls by itself, as under a person's wheel, not one event is injected and Done keeps
+  the exact page; that auto-scroll left alone runs to the end with every row exact and finishes
+  `end_of_content`, or `done` with `reachedEnd` where a starved runner's grab caught the fixture half
+  repainted and that frame was skipped (#1535); on failure it prints the result and the helper's
+  `scroll: ended` line from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
+  Done or Cancel reply, nothing once another client moved the pointer until auto-scroll is on again,
+  and the pointer is put back; the end of the control pipe stops injection at once. There is no
+  compositor or window manager, so it does not establish Cinnamon behaviour.
 - `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
   component spec.
 - `gnome_ui_ownership_contract`: a frame shown with `beat: true` keeps the extension's 40 ms timer
@@ -277,10 +304,13 @@ design is in [scrolling capture](../design/scroll-capture.md).
   `putgd-record.desktop`; `tests/unit/test_portable_appimage.py` pins the same list in AppRun's per-mount entry and
   that the AppImage bundles `libxcb-xtest.so.0`.
 
-Whether stitches come out right on real pages, the notices held before a capture, the Settings
+Whether captures come out right on real pages, the notices held before a capture, the Settings
 controls and the MCP tools are left to desktop acceptance and the acceptance drivers since the second
 round of [removed tests](removed-tests.md#second-round).
 
 `test_scroll_capture_driver` (`tests/fixtures/scroll_capture_driver.cpp`) is a lab tool, not a test:
-it runs one capture through the production backend and helper without a resident, and
-`PUTGD_RECORD_DEBUG_LOG` gives the helper's timeline (each stitch attempt's geometry, never pixels).
+it runs one capture through the production backend and helper without a resident (`--driver
+user|putgd`, `--auto-at-ms`, `--stop-after-ms`, `--stop-file`), and `PUTGD_RECORD_DEBUG_LOG` gives
+the helper's timeline (every frame's result and hint, every wheel step, the source's frame rate;
+never pixels). `test_scroll_tracker_replay` and `tools/lab/scroll_tracker_score.py` replay recorded
+frame sequences through the tracker and score them against the browsers' own pictures.

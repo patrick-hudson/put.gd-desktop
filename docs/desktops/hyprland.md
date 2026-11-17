@@ -257,6 +257,12 @@ is in [Microphone and click highlights](../design/recording/microphone-and-click
 
 ## Scrolling capture
 
+Since #1515 a capture waits for you to scroll and injects nothing; the virtual pointer below is
+what **Auto-scroll** uses. Under auto-scroll the frames of a wheel step's visit, and the one after
+it, do not reach the tracker, because the painted arrow is over the page then; your own pointer
+over the page while you scroll can be in the image. There is no Esc: the `scroll` hotkey pressed
+again finishes a capture.
+
 Scrolling capture ([design](../design/scroll-capture.md)) uses the `wlr-capture` frames of a
 recording for the region, with the session created without `paint_cursors`, and a
 `zwlr_virtual_pointer_v1` on put.gd's own Wayland connection for the wheel and for pointer placement:
