@@ -61,7 +61,15 @@ std::shared_ptr<void> ArtifactStore::reserveDisk(const QString& path,qint64 byte
 }
 void ArtifactStore::setDiskForTesting(qint64 freeBytes,qint64 totalBytes) {freeOverride.store(freeBytes);totalOverride.store(totalBytes);}
 QJsonObject Artifact::toJson() const {return {{"id",id},{"path",path},{"name",name},{"mime",mime},{"category",category},{"bytes",double(bytes)},{"sha256",sha256},{"originalFile",originalFile},{"previewPath",previewPath},{"namingPrepared",namingPrepared}};}
-Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),qint64(o["bytes"].toDouble()),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
+namespace {
+// A JSON number as a size. A saved value outside what a qint64 holds (a damaged journal row)
+// reads as zero; NaN fails both comparisons.
+qint64 wholeNumber(const QJsonValue& value) {
+ const double number=value.toDouble();
+ return number>=-9.2e18&&number<=9.2e18?qint64(number):0;
+}
+}
+Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),wholeNumber(o["bytes"]),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
 ArtifactStore::ArtifactStore(QString root):root_(std::move(root)) {QDir().mkpath(root_); QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);}
 qint64 ArtifactStore::bytes() const {qint64 n=0; QDirIterator it(root_,QDir::Files,QDirIterator::Subdirectories); while(it.hasNext()) {const QFileInfo file(it.next());if(!QUuid(file.fileName()).isNull())n+=file.size();} return n;}
 Error ArtifactStore::remove(const QString& id) {

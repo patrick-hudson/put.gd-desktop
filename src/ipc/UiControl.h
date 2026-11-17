@@ -21,7 +21,7 @@ private:
  QPointer<QIODevice> device_;
  QByteArray input_,output_;
  quint64 sent_=0,received_=0;
- QElapsedTimer rate_;qint64 receivedBytes_=0;
+ QElapsedTimer rate_;qint64 receivedBytes_=0;qsizetype scanned_=0; // input_ before scanned_ holds no newline
  bool stopped_=false,writing_=false;int receivedFrames_=0;
 };
 }
