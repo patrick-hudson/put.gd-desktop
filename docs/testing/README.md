@@ -18,6 +18,7 @@ What must be tested, how, and what has been recorded.
 - [Removed tests](removed-tests.md): what the November 2026 cuts removed, what no longer gets caught and how to bring a test back.
 - [Acceptance matrix](acceptance-matrix.md): required coverage and execution placement.
 - [Evidence retention](evidence-retention.md): what to keep, where records go and how to publish them.
+- [Action fuzzing](action-fuzzing.md): seeded random session-method sequences and crash-recovery runs against a sanitizer resident.
 - [ThreadSanitizer dependency build](thread-sanitizer.md): the instrumented Qt used for thread checks.
 - [Surface driver prerequisites](surface-driver-prerequisites.md): target tools and cleanup for the surface driver.
 - [Live S3 acceptance](live-s3.md): acceptance against an isolated synthetic S3 destination.
