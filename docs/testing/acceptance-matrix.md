@@ -237,8 +237,9 @@ person's pace (bursts, pauses, one way back up), never put.gd. A wrong place loo
 image, so every case decodes the page: a ruler of 40 px rows, each painted with its index as a bar
 code and as text, in a window the test opened, in Firefox or Chromium, and in a Qt and a GTK 4
 application; live pages are compared with the browser's own full-page picture in 64-row bands,
-leaving out what the page pins. The PNG must show every row once, in order, at the expected height,
-with no cursor, ring, bar or notification pixel.
+leaving out what the page pins. A capture that reaches the end of the page must show every row once, in order, at the expected
+height; a row that ends earlier (the cap, Done halfway, Cancel) passes as its own **Passes when**
+says. No PNG has a cursor, ring, bar or notification pixel.
 
 | Desktop | Placement and package |
 | --- | --- |

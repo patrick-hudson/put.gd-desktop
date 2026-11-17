@@ -126,7 +126,7 @@ Tips:
 
 - A sticky header, a footer, a side bar or a floating box is in the image once, as a browser's own full-page picture has it, not beside every screenful.
 - Things that change in place (a video, a carousel, a hover effect) are in the image as they were first seen.
-- A blank stretch taller than your rectangle shows nothing that moves: auto-scroll stops there, and put.gd says in a notice and in History that it stopped where the page showed nothing. If you scroll past it yourself, put.gd loses its place. Press Done, or scroll back.
+- A blank stretch taller than your rectangle shows nothing that moves: auto-scroll ends the capture there and keeps the image so far, and put.gd says in a notice and in History that it stopped where the page showed nothing. To get the rest, start another capture below the blank part. In a capture you scroll yourself, put.gd loses its place when you scroll past such a stretch: scroll back until the bar follows again, or press Done to keep the image so far.
 - With the pointer over the page while you scroll, a link's address or a tooltip can end up in the image. Auto-scroll keeps the pointer outside except for each wheel step.
 - put.gd closes its own notifications (including the file-manager notice and the fallback balloon) when a capture starts and holds new ones until it ends. If one cannot be closed the capture does not start (`notification_close_failed`): dismiss it and try again. A notification from another application over the rectangle can end up in the image, so close it first.
 - The region has to lie on one monitor and be at least 64 px each way.

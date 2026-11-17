@@ -60,7 +60,8 @@ filenames, history URLs, authorization values or credential references.
 These come from [scrolling capture](../design/scroll-capture.md). A capture that ends with
 an image is not a failure: its `endReason` says how it ended and the image is kept.
 `end_of_content` (put.gd scrolled to the end of the page) and `done` (you finished it) are
-whole as far as the page was scrolled. `height_cap`, `lost_track` (finished while put.gd
+whole as far as the page was scrolled, unless the note in History says otherwise: after put.gd
+lost the page and found it again (`foundAgain`), rows may be missing there, so check the image. `height_cap`, `lost_track` (finished while put.gd
 had lost the page: the image ends where it last found it) and `top_not_reached` (the way
 to the top could not reach the top, so the image starts partway down) are marked
 `truncated`, with a warning and a note in History. Losing the page no longer ends a
