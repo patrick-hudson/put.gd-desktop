@@ -1467,6 +1467,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                 outcome->descriptor = {{"path", job->pngPath}, {"bytes", double(bytes)}, {"sha256", QString::fromLatin1(hash.result().toHex())}, {"width", width}, {"height", int(rows)},
                     {"endReason", reason}, {"truncated", truncated}, {"appliedMaxHeight", applied},
                     {"scrolledBy", scrolledBy}, {"framesPlaced", stats.placed}, {"framesSkipped", stats.skipped}, {"endedLost", stats.endedLost}, {"reachedEnd", stats.reachedEnd},
+                    {"foundAgain", stats.foundAgain},
                     {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", std::round(stats.pxPerNotch * 10) / 10}, {"lowConfidenceSteps", stats.byExpectation + stats.onHint}, {"elapsedMs", double(stats.elapsedMs)},
                                           {"frames", stats.framesSeen}, {"recovered", stats.recovered}, {"pinnedRegions", stats.pinnedRegions}, {"framesPerSecond", fps},
                                           {"rowsAtDone", double(stats.rowsAtDone)}}}};

@@ -198,8 +198,8 @@ SessionOptions options(bool autoScroll) {
 }
 
 std::string counts(const Harness& h) {
-  return fmt("%s, %lld rows, placed %d skipped %d recovered %d, by user %d by put.gd %d, %d steps, %.0f px/notch", toString(h.end), h.stats.bottom - h.stats.top,
-             h.stats.placed, h.stats.skipped, h.stats.recovered, h.stats.movedByUser, h.stats.movedByPutgd, h.stats.steps, h.stats.pxPerNotch);
+  return fmt("%s, %lld rows, placed %d skipped %d recovered %d found again %d, by user %d by put.gd %d, %d steps, %.0f px/notch", toString(h.end), h.stats.bottom - h.stats.top,
+             h.stats.placed, h.stats.skipped, h.stats.recovered, h.stats.foundAgain, h.stats.movedByUser, h.stats.movedByPutgd, h.stats.steps, h.stats.pxPerNotch);
 }
 
 // ------------------------------------------------------------------ the user
@@ -376,8 +376,10 @@ void testLostAndFound() {
       for (const auto& [t, p] : h.seen) { lost = lost || p.state == SessionState::Lost; lostThenFound = lostThenFound || (lost && p.state == SessionState::Following); }
       report("a jump past the screen is lost, then found again on the way back", lostThenFound && h.stats.skipped > 0 && !h.stats.endedLost && h.stats.bottom == 200 + H + 400, counts(h));
       report("nothing of the frames it could not place is in the image", wrong.empty(), wrong.empty() ? fmt("%lld rows", h.stats.bottom - h.stats.top) : wrong);
+      // The result says so: the person checks the image where it was lost (#1515).
+      report("the result counts the page found again once", h.stats.foundAgain == 1, counts(h));
     } else {
-      report("Done while lost keeps the image so far and says it ended lost", h.end == SessionEnd::Finished && h.stats.endedLost && wrong.empty(), wrong.empty() ? counts(h) : wrong);
+      report("Done while lost keeps the image so far and says it ended lost", h.end == SessionEnd::Finished && h.stats.endedLost && wrong.empty() && h.stats.foundAgain == 0, wrong.empty() ? counts(h) : wrong);
     }
   }
 }
@@ -431,7 +433,8 @@ void testAutoJump() {
     h.run(doc, as, options(true));
     const std::string wrong = h.exact(doc, 0);
     if (c.intoEnd) {
-      report(fmt("%s: the steps back find it, one exact image to the end", c.name), h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h,
+      // Auto-scroll's own way back to its place is not a place found again for the result.
+      report(fmt("%s: the steps back find it, one exact image to the end", c.name), h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h && h.stats.foundAgain == 0,
              (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows, jump at %d", doc.h, before));
       continue;
     }
@@ -440,7 +443,8 @@ void testAutoJump() {
     report(fmt("%s: scrolled back, found, nothing injected until Auto-scroll", c.name),
            foundAt >= 0 && h.saw(SessionState::Paused, HandBack::Lost) && againAt >= 0 && h.injectedBetween(handedAt + 1, againAt) == 0,
            foundAt < 0 ? std::string("never found") : fmt("found %lld ms after the hand-back, %d injected", (long long)(foundAt - handedAt), againAt >= 0 ? h.injectedBetween(handedAt + 1, againAt) : -1));
-    report(fmt("%s: Auto-scroll again, one exact image to the end", c.name), againAt >= 0 && h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h,
+    // Found again where the user scrolled back to: the result says so.
+    report(fmt("%s: Auto-scroll again, one exact image to the end", c.name), againAt >= 0 && h.end == SessionEnd::PageEnd && wrong.empty() && h.stats.bottom == doc.h && h.stats.foundAgain == 1,
            (wrong.empty() ? counts(h) : wrong) + fmt(", page %d rows", doc.h));
   }
 }

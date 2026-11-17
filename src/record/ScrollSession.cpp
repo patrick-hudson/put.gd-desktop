@@ -353,6 +353,8 @@ void ScrollSession::account(const TrackResult& r, int64_t t) {
         attributed_ = 0;
         chainHinted_ = true;
     };
+    if (r.status == TrackStatus::Placed && r.recovered && lastLost_ && (!auto_ || phase_ == Phase::Off)) ++stats_.foundAgain;
+    lastLost_ = r.state == TrackState::Lost;
     lastSkipped_ = r.status == TrackStatus::Skipped;
     // Whether this frame showed the page where the last placed frame had it.
     lastShowedStill_ = r.status == TrackStatus::NoMovement || (r.status == TrackStatus::Placed && r.offset == 0);

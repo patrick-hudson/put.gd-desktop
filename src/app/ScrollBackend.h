@@ -46,7 +46,7 @@ public:
     //   finished  {path, bytes, sha256, width, height,
     //              endReason: "end_of_content"|"top_not_reached"|"height_cap"|"done"|"lost_track",
     //              truncated, appliedMaxHeight, topReached?: false, note?,
-    //              scrolledBy: "user"|"putgd"|"both"|"none", framesPlaced, framesSkipped, endedLost, reachedEnd,
+    //              scrolledBy: "user"|"putgd"|"both"|"none", framesPlaced, framesSkipped, endedLost, reachedEnd, foundAgain,
     //              stats: {steps, pixelsPerNotch, lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond}}
     //             end_of_content: auto-scroll proved the end of the page and
     //             no frame was skipped. top_not_reached: the same, but the way
@@ -55,6 +55,10 @@ public:
     //             at the end after skipped frames) and whole as far as it was
     //             scrolled. lost_track: finished while the tracker was lost.
     //             truncated is height_cap, lost_track and top_not_reached.
+    //             foundAgain: times the tracker lost the page while the user
+    //             turned it and found its place again (rows may be missing
+    //             there); the service says so in the note and a notice, and
+    //             the end reason stays.
     //   cancelled {}                                      Cancel on the bar, Esc in the selector, or a
     //                                                     stop before the first frame was stitched
     //   failed    {error: {code, message, details}}

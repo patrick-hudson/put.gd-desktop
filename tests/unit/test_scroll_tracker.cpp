@@ -929,6 +929,62 @@ void testRepeatAtStep() {
          fmt("%d placed, %d wrong%s", placed, wrong, first.c_str()));
 }
 
+// A jump past the reference over look-alike tables (#1515's re-check on
+// Cinnamon): while frames were skipped the page moved more than a frame
+// tall, and the pair, against the last placed frame, found the look-alike a
+// period short. After skipped frames, a frame that repeats itself as well
+// as the pair matches is not placed by the pair: still lost, and found again
+// only once scrolled back where the image is.
+void testJumpPastLookAlikes() {
+  std::printf("\n[jump past look-alikes] after skipped frames, a repeating frame is not placed by the pair\n");
+  const int W = 480, V = 400, P = 200;
+  // Prose first, then the tables.
+  Image doc(W, 6000, kBg);
+  const int tables = 1000;
+  Rng prose(23);
+  for (int y = 10; y + 12 < tables; y += 18) drawTextLine(doc, y, 40, W - 40, prose);
+  for (int b = tables / P; b * P < doc.h; ++b) {
+    Rng head(500 + uint64_t(b));  // a table's heading of its own
+    drawTextLine(doc, b * P + 6, 40, W - 40, head);
+    drawTextLine(doc, b * P + 24, 40, W - 40, head);
+    for (int j = 0; j < 8; ++j) {
+      Rng words(77 + uint64_t(j));  // rows the same in every table
+      drawTextLine(doc, b * P + 44 + j * 19, 40, W - 40, words);
+    }
+  }
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  const Scene scene(doc, ss);
+  const Document other = plainPage(61, W, V);
+  const Scene stray(other.img, ss);
+  MemoryCanvas canvas(W);
+  ScrollTracker tracker(canvas);
+  std::vector<int> pos;
+  for (int p = 0; p <= 1200; p += 60) pos.push_back(p);  // following
+  const size_t lost0 = pos.size();
+  for (int k = 0; k < 3; ++k) pos.push_back(-1);  // frames that cannot be placed while the page jumps
+  const int far = 1200 + 600;                     // 1.5 frames past the last placed one
+  for (int p = far; p <= far + 240; p += 60) pos.push_back(p);
+  const size_t back0 = pos.size();
+  for (int p = far + 240 - 100; p >= 500; p -= 100) pos.push_back(p);  // scrolled back, to the prose
+  int wrong = 0, lostAfterJump = 0, foundBack = 0;
+  std::string first;
+  for (size_t i = 0; i < pos.size(); ++i) {
+    const Image f = pos[i] < 0 ? stray.frame(300 * int(i), int(i)) : scene.frame(pos[i], int(i));
+    const TrackResult t = tracker.addFrame(f.view());
+    if (t.status == TrackStatus::Placed && (pos[i] < 0 || t.position != pos[i])) {
+      ++wrong;
+      if (first.empty()) first = fmt(", frame %zu at %lld, page at %d", i, t.position, pos[i]);
+    }
+    if (i > lost0 + 2 && i < back0) lostAfterJump += t.status != TrackStatus::Placed;
+    if (i >= back0) foundBack += t.status == TrackStatus::Placed && t.position == pos[i];
+  }
+  report("a jump past the reference over look-alike tables: still lost, found again on the way back",
+         wrong == 0 && lostAfterJump > 0 && foundBack > 0,
+         fmt("%d wrong%s, %d frames past the jump not placed, %d placed right on the way back", wrong, first.c_str(), lostAfterJump, foundBack));
+}
+
 int main() {
   testOffsets();
   testPinned();
@@ -938,6 +994,7 @@ int main() {
   testHintAndEdges();
   testLookAlikes();
   testRepeatAtStep();
+  testJumpPastLookAlikes();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

@@ -219,6 +219,16 @@ private slots:
   QTest::newRow("done marked truncated")<<"done"<<false<<QJsonObject{{"truncated",true}}<<false<<"";
   QTest::newRow("an end reason of the old loop")<<"stopped"<<false<<none<<false<<"";
   QTest::newRow("no frame placed")<<"done"<<false<<QJsonObject{{"framesPlaced",0}}<<false<<"";
+  // The tracker lost the page while the user scrolled and found it again: a
+  // place among look-alike rows can be a repeat off, so the person is told to
+  // check the image, and the end reason stays (#1515).
+  QTest::newRow("done, found again once")<<"done"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"The capture lost the page once and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("done, found again twice")<<"done"<<false<<QJsonObject{{"foundAgain",2},{"framesSkipped",9}}<<true<<"The capture lost the page 2 times and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("lost track, found again before")<<"lost_track"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"Finished while put.gd had lost its place. The image ends where it last found the page. The capture lost the page once and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("height cap, found again")<<"height_cap"<<false<<QJsonObject{{"foundAgain",3}}<<true<<"Stopped at 30,000 px. The page continues below. The capture lost the page 3 times and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("found again, a negative count")<<"done"<<false<<QJsonObject{{"foundAgain",-1}}<<false<<"";
+  QTest::newRow("found again, not a number")<<"done"<<false<<QJsonObject{{"foundAgain","2"}}<<false<<"";
+  QTest::newRow("found again, more than the frames placed")<<"done"<<false<<QJsonObject{{"foundAgain",13}}<<false<<"";
  }
  void endReasons(){
   QFETCH(QString,reason);QFETCH(bool,missed);QFETCH(QJsonObject,overrides);QFETCH(bool,admitted);QFETCH(QString,note);
@@ -236,9 +246,12 @@ private slots:
   QCOMPARE(result["truncated"].toBool(),reason=="height_cap"||reason=="lost_track"||reason=="top_not_reached");
   for(const auto* key:{"scrolledBy","framesPlaced","framesSkipped","endedLost","reachedEnd"})QVERIFY2(result.contains(key)&&result[key]==result["result"].toObject()[key],key);
   QCOMPARE(result.contains("topReached"),missed);QCOMPARE(result["result"].toObject().contains("topReached"),missed);
+  QVERIFY(result["foundAgain"].isDouble());QCOMPARE(result["foundAgain"].toInt(),overrides["foundAgain"].toInt());QCOMPARE(result["endReason"].toString(),reason);
+  // The notice: the end reason's own, else the one that says the page was found again.
+  const auto warned=reason=="done"&&!overrides.contains("note")&&overrides["foundAgain"].toInt()>0?QString("found_again"):reason;
   QCOMPARE(warning.size(),note.isEmpty()?0:1);
   HistoryStore store(operations.databasePath());QVERIFY(waitFor([&]{return !store.operation(id).items.isEmpty();}));
-  if(!note.isEmpty()){QCOMPARE(warning[0][2].toString(),reason);QCOMPARE(warning[0][1].toString(),note);QCOMPARE(result["note"].toString(),note);QCOMPARE(store.operation(id).note,note);}
+  if(!note.isEmpty()){QCOMPARE(warning[0][2].toString(),warned);QCOMPARE(warning[0][1].toString(),note);QCOMPARE(result["note"].toString(),note);QCOMPARE(store.operation(id).note,note);}
   else QVERIFY(store.operation(id).note.isEmpty());
  }
 };

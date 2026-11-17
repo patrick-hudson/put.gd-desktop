@@ -145,6 +145,11 @@ struct SessionStats {
     // The end was found where the page showed nothing: a blank stretch taller
     // than the region looks the same (reachedEnd is false then).
     bool endBlank = false;
+    // Times the tracker lost the page while the person turned it and found
+    // its place again. A place found again may be a look-alike one: the
+    // result says so, and the image may be missing rows there. Auto-scroll's
+    // own way back to its place is not counted.
+    int foundAgain = 0;
     bool endedLost = false;    // the session ended while the tracker was lost
     bool capReached = false;
     bool topAsked = false, topReached = false;
@@ -329,6 +334,7 @@ private:
     long long lastStepMove_ = 0;  // how far the last placed frame of this step moved
     double upSinceStep_ = 0;     // how far the page went up since auto-scroll's last step
     bool upPending_ = false;     // it went up far enough to be the user's, if the next frame agrees
+    bool lastLost_ = false;      // the tracker's latest result left it lost (stats_.foundAgain)
     bool lastSkipped_ = false;   // the tracker's latest result was a skipped frame (dropOwed)
     bool lastStill_ = false;
     bool lastShowedStill_ = false;
