@@ -215,6 +215,9 @@ TrayController::TrayController(OperationService& operations,
    quit_(std::move(quit)) {
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
   if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
+  else if(reason=="lost_track")notifyMessage("scroll_lost_track","put.gd — scrolling capture incomplete",message,true);
+  else if(reason=="done")notifyMessage("scroll_blank_stretch","put.gd — scrolling capture stopped",message,true);
+  else if(reason=="found_again")notifyMessage("scroll_found_again","put.gd — check the scrolling capture",message,true);
   else notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
  // put.gd's own notices stay out of a scroll capture: those on screen are
  // closed, later ones wait for the capture's end. The capture starts

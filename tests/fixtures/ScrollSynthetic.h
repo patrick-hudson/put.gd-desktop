@@ -1,5 +1,9 @@
 // Deterministic synthetic document, viewport renderer and fake scrolling app
-// used by test_scroll_stitcher.cpp (#1376). Not part of the product code.
+// used by test_scroll_session.cpp (#1515: a person's scrolling as a script,
+// put.gd's wheel steps, the mouse), and the scenes of test_scroll_tracker.cpp
+// (#1515): parts pinned over the page, a header that shows up late, a block
+// that changes in place, text drawn again with other antialiasing. Not part of
+// the product code.
 #pragma once
 
 #include <algorithm>
@@ -9,7 +13,7 @@
 #include <optional>
 #include <vector>
 
-#include "record/ScrollRun.h"
+#include "record/ScrollSession.h"
 
 namespace synth {
 
@@ -84,6 +88,43 @@ class Renderer {
   Image header_, footer_;
 };
 
+// A part pinned over the page, in viewport coordinates: a flat box with a
+// border and a few lines of text.
+struct PinnedPart {
+  int x = 0, y = 0, w = 0, h = 0;
+  uint32_t background = 0x2B2F3A;
+  uint32_t ink = 0xE6E6E6;
+  int fromPos = 0;  // shows once the page is scrolled at least this far (a header that comes late)
+  uint64_t seed = 11;
+};
+
+struct SceneSpec {
+  int width = 480, height = 400;
+  std::vector<PinnedPart> pinned;
+  // A block of the page (document coordinates) that changes with every frame.
+  int changingX = -1, changingY = 0, changingW = 0, changingH = 0;
+  // Text drawn again with other antialiasing: the ink's edge pixels shift in
+  // brightness by up to this much from frame to frame.
+  int antialias = 0;
+};
+
+class Scene {
+ public:
+  Scene(const Image& doc, SceneSpec spec);
+  // The viewport at scroll position pos; frame numbers the picture (what
+  // changes in place, and the antialiasing, change with it).
+  Image frame(int pos, int frame) const;
+  const SceneSpec& spec() const { return spec_; }
+  const Image& doc() const { return doc_; }
+  // A pinned part as drawn (its own pixels, w x h).
+  const Image& part(size_t i) const { return parts_[i]; }
+
+ private:
+  const Image& doc_;
+  SceneSpec spec_;
+  std::vector<Image> parts_;
+};
+
 class FakeClock : public putgd::record::RunClock {
  public:
   int64_t nowMs() override { return t_; }
@@ -111,6 +152,17 @@ struct FakeAppSpec {
   // has no fresh frame to give.
   int quietFromInjection = -1;
   bool quietHasFresh = true;
+  // A stream that sends a frame only when the picture changed (KWin, Mutter,
+  // image copy): none while the page stands still. A fresh frame always comes.
+  bool damageOnly = false;
+  // A stream that goes stale this long after its first frame: frames keep
+  // coming, every one the last picture before it, until a fresh frame is asked
+  // for (KWin sent 92 such frames while Chrome scrolled on, #1534). -1: off.
+  int staleFromMs = -1;
+  // One picture out of place (#1535: a grab of a half-repainted window on a
+  // starved X server): the first frame from this time on that shows the page
+  // moving shows it glitchUp rows higher up than it is. -1: off.
+  int glitchAtMs = -1, glitchUp = 0;
   // This many rows at the top of the viewport change with every frame (a
   // video in a fixed player): the picture never comes to rest.
   int restlessRows = 0;
@@ -122,6 +174,15 @@ struct FakeAppSpec {
   // With busyMsPerNotch: the first notch of a step that finds it idle is
   // painted as soon as it is worked through, the rest only once none waits.
   bool busyShowsFirst = false;
+  // A part of the page that takes the wheel for itself (a side bar that
+  // sticks and scrolls its own list): from this injection on, a wheel step
+  // whose pointer is inside the rectangle (viewport pixels) does not move
+  // the page. -1: off.
+  int deadAfterInjection = -1;
+  int deadX = 0, deadY = 0, deadW = 0, deadH = 0;
+  // put.gd's own bar drawn into every frame at this rectangle (viewport
+  // pixels), its pixels changing from frame to frame like a height counter.
+  int barX = 0, barY = 0, barW = 0, barH = 0;
 };
 
 class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFrames {
@@ -146,6 +207,23 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   std::vector<Event> events;
   // The user turns the wheel while the capture is paused: the page moves by px.
   void userScroll(int px);
+  // A person's scrolling, as a script: at time `at` (the fake clock) the page
+  // starts to move by px over durMs; durMs 0 jumps (a scrollbar drag).
+  struct UserScroll {
+    int64_t at;
+    int px;
+    int durMs = 120;
+  };
+  std::vector<UserScroll> script;
+  int scrolledByUser = 0;
+  // The next frame is a foreign picture (a notification over the region for
+  // one frame), after which the stream sends nothing for quietMs although the
+  // page goes on moving (CodeRabbit on #1536).
+  // delayMs: no frame at all until then, so the foreign one comes late.
+  void foreignThenQuiet(int quietMs, int delayMs = 0) {
+    foreignQuietMs_ = quietMs;
+    if (delayMs > 0) quietUntil_ = clock_.nowMs() + delayMs;
+  }
 
  private:
   struct Seg {
@@ -166,8 +244,15 @@ class FakeApp : public putgd::record::RunInjector, public putgd::record::RunFram
   int64_t lastFrameT_ = -1;
   int frameIndex_ = 0;
   Image scratch_, delivered_;
+  size_t scriptAt_ = 0;
   bool quiet_ = false;
+  int foreignQuietMs_ = -1;
+  int64_t quietUntil_ = -1;
+  bool forceNext_ = false;
+  bool stale_ = false, staleDone_ = false, glitchDone_ = false;
+  int64_t firstFrameT_ = -1;
   int64_t busyUntil_ = 0;
+  int pointerX_ = -1, pointerY_ = -1;
 };
 
 }  // namespace synth

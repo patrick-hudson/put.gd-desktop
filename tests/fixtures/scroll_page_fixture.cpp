@@ -2,7 +2,10 @@
 // place showing the bar-coded ruler page of ScrollRuler.h, scrolled by the
 // wheel and by nothing else. Options: a sticky header and footer, smooth
 // scrolling, pixels per notch, a starting row, a tail that loads late, and an
-// application that answers the wheel late (`--answer-ms`).
+// application that answers the wheel late (`--answer-ms`), and a page that
+// a person scrolls (`--self-scroll PX,MS,WAIT`: PX every MS after WAIT ms,
+// down to the end, with no input event at all; WAIT -1: once a line "go"
+// arrives on standard input, so a test starts it when its capture is ready).
 // It prints `ready X Y W H` once it has painted, then `position N` whenever
 // the scroll position settles. On a Wayland desktop a client cannot place its
 // own window, so `--fullscreen` fills one output instead and the capture takes
@@ -12,7 +15,9 @@
 #include <QCommandLineParser>
 #include <QFont>
 #include <QPainter>
+#include <QSocketNotifier>
 #include <QTimer>
+#include <unistd.h>
 #include <QVariantAnimation>
 #include <QWheelEvent>
 #include <QWidget>
@@ -39,6 +44,26 @@ public:
     void start(int row) {
         loaded_ = lazyRows <= 0;
         position_ = target_ = std::clamp(row * ruler::rowHeight, 0, maxScroll());
+    }
+    // As a person scrolls: by px every ms, beginning after wait ms, to the end.
+    void selfScroll(int px, int ms, int wait) {
+        connect(&self_, &QTimer::timeout, this, [this, px] {
+            target_ = std::clamp(target_ + px, 0, maxScroll());
+            setPosition(target_);
+            settled();
+            if (target_ >= maxScroll()) self_.stop();
+        });
+        if (wait >= 0) {
+            QTimer::singleShot(wait, this, [this, ms] { self_.start(ms); });
+            return;
+        }
+        auto* in = new QSocketNotifier(STDIN_FILENO, QSocketNotifier::Read, this);
+        connect(in, &QSocketNotifier::activated, this, [this, in, ms] {
+            char buffer[64];
+            const ssize_t n = ::read(STDIN_FILENO, buffer, sizeof buffer);
+            if (n <= 0) { in->setEnabled(false); return; }
+            if (QByteArray(buffer, int(n)).contains("go") && !self_.isActive()) self_.start(ms);
+        });
     }
 protected:
     void wheelEvent(QWheelEvent* event) override {
@@ -115,7 +140,7 @@ private:
         if (!loaded_ && position_ >= maxScroll() && !lazy_.isActive()) lazy_.start(lazyMs);
     }
     QVariantAnimation animation_;
-    QTimer lazy_, answer_;
+    QTimer lazy_, answer_, self_;
     int position_ = 0, target_ = 0;
     bool loaded_ = true, announced_ = false;
 };
@@ -126,7 +151,7 @@ int main(int argc, char** argv) {
     parser.addOptions({{"geometry", "X,Y,W,H in desktop pixels", "rect", "100,60,640,600"}, {"rows", "rows on the page", "n", "60"}, {"notch", "pixels per wheel notch", "px", "100"},
         {"header", "sticky header height", "px", "0"}, {"footer", "sticky footer height", "px", "0"}, {"start", "the row at the top at start", "row", "0"},
         {"lazy-tail", "rows that load only after the end was reached", "n", "0"}, {"lazy-ms", "how long the tail takes", "ms", "250"}, {"smooth", "animate each scroll"}, {"answer-ms", "move this long after the wheel", "ms", "0"},
-        {"fullscreen", "fill the output instead of taking --geometry"}});
+        {"fullscreen", "fill the output instead of taking --geometry"}, {"self-scroll", "scroll by itself as a person would: PX every MS after WAIT ms", "px,ms,wait"}});
     parser.process(app);
     const auto geometry = parser.value("geometry").split(',');
     if (geometry.size() != 4) return 2;
@@ -141,6 +166,11 @@ int main(int argc, char** argv) {
     page.answerMs = parser.value("answer-ms").toInt();
     page.setGeometry(geometry[0].toInt(), geometry[1].toInt(), geometry[2].toInt(), geometry[3].toInt());
     page.start(parser.value("start").toInt());
+    if (parser.isSet("self-scroll")) {
+        const auto parts = parser.value("self-scroll").split(',');
+        if (parts.size() != 3) return 2;
+        page.selfScroll(parts[0].toInt(), parts[1].toInt(), parts[2].toInt());
+    }
     if (parser.isSet("fullscreen")) {
         // An ordinary window for the compositor to make full screen.
         page.setWindowFlags(Qt::Window);

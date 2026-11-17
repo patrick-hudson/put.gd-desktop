@@ -68,7 +68,9 @@ struct Settings {
     // preferences.regionSelectionMode (#629): live (default) keeps the desktop
     // updating under the selector; screenshot_first freezes every monitor first.
     int scrollCaptureMaxHeight = 30000;
-    bool scrollCaptureFromTop = true;
+    // #1515: auto-scroll goes to the top first (auto-scroll only); a capture starts with auto-scroll on.
+    bool scrollCaptureFromTop = false;
+    bool scrollCaptureAutoScroll = false;
     QString regionSelectionMode = "live";
     // preferences.recordingFrameRate (#984): 30 (default) or 60 frames per
     // second for recordings that don't ask for a rate; the recorder may still

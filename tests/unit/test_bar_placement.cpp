@@ -42,6 +42,15 @@ private slots:
         // No room anywhere beside it: another screen.
         const BarSpot full = placeBar(bar, QRect(0, 0, 1900, 1060), screens, true, 10, true);
         QVERIFY(full.outside && full.screen == 1);
+        // A region at the left edge of its screen with a monitor to the left:
+        // the spot at its right on its own screen, not the one on the neighbour
+        // that comes first in the order (CodeRabbit on #1528).
+        const QList<QRect> leftNeighbour{QRect(0, 0, 1920, 1080), QRect(-1920, 0, 1920, 1080)};
+        const QRect atLeftEdge(0, 0, 800, 1080);
+        const BarSpot own = placeBar(QSize(500, 60), atLeftEdge, leftNeighbour, true, 32, true);
+        QCOMPARE(own.screen, 0);
+        QVERIFY(own.outside && leftNeighbour[0].contains(own.rect) && !own.rect.intersects(atLeftEdge));
+        QCOMPARE(own.rect.left(), atLeftEdge.right() + 1 + 32);
     }
     // #1364: what the user asked for decides the microphone. One that is plugged in
     // after the bar opened is offered, never switched on.

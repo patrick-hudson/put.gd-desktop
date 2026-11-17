@@ -1,5 +1,5 @@
 #pragma once
-#include "ScrollRun.h"
+#include "ScrollSession.h"
 #include "core/Error.h"
 #include <QRect>
 #include <QSize>

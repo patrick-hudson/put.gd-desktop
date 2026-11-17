@@ -39,6 +39,12 @@ BarSpot placeBar(const QSize& bar, const QRect& recorded, const QList<QRect>& sc
                    << QRect(QPoint(toLeft, below), bar) << QRect(QPoint(toRight, below), bar)
                    << QRect(QPoint(toLeft, above), bar) << QRect(QPoint(toRight, above), bar);
     }
+    // The rectangle's own screen first: a spot beside it that lies on a
+    // neighbouring monitor (left of a region at the left edge) is taken only
+    // when no spot beside it fits its own screen.
+    if (allowOutside)
+        for (const auto& candidate : candidates)
+            if (clear(candidate) == home) return {candidate, home, true};
     for (int i = 0; i < screens.size(); ++i) {
         if (i == home) continue;
         const int x = screens[i].center().x() - bar.width() / 2;
