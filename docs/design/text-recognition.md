@@ -523,7 +523,9 @@ other tool active it does not. The user's side is in the
       does not read `$USER`, which `sudo -E` or a changed environment can make wrong. If the
       GECOS name is empty it asks AccountsService for `RealName` on the system bus, without
       starting the service, with 250 ms for each of two calls; any failure leaves the real name
-      empty and the login still matches. Checked on 2026-11-18: GECOS is filled on f44, d69, k72
+      empty and the login still matches. The lookup runs on the matching worker thread, and only
+      when `name` is chosen, so it never waits on the interface thread; `getpwuid_r` retries with
+      a buffer doubled up to 1 MiB when the entry is larger than expected. Checked on 2026-11-18: GECOS is filled on f44, d69, k72
       and m74, and empty on aurora-amd, where AccountsService has no name either, so there only
       the login is matched. The name never crosses a process boundary and is never stored or
       logged.
@@ -534,16 +536,22 @@ other tool active it does not. The user's side is in the
       `redactPatterns`, each sent only when it is not empty. An agent's own `terms` and `patterns`
       stay in that request. Nothing here is written to a log, a journal or a diagnostics bundle.
     - **How a word or phrase is compared.** Both the entry and the recognized text go through
-      NFKC, accent stripping and case folding, and curly and straight apostrophes count as one.
-      Text is never compared with a regular expression, so a typed `.` or `*` is only a
-      character. An entry splits into parts at spaces, `-`, `_`, `.` and lower-to-upper case
-      changes, so `PatrickHudson` has the parts `patrick` and `hudson`. In the text the parts
-      must come in order, joined by nothing or by at most two characters from space, `-`, `_`
-      and `.`. The space between two recognized words counts as nothing, and a wrapped line joins
-      where the wrap evidence above joins lines (a line that ends or starts with `-`, `_` or `.`,
-      or a wrapped column). So `Patrick Hudson` matches `Patrick Hudson`, `patrick-hudson`,
+      NFKC, full case folding (`Straße` matches `STRASSE`) and one apostrophe for curly and
+      straight. Accents are stripped only from Latin, Greek and Cyrillic letters; in other
+      scripts, such as an Indic vowel sign, a combining mark is a letter of its own and stays.
+      Lengths and edges count Unicode code points, and a combining mark belongs to its word. Text
+      is never compared with a regular expression, so a typed `.` or `*` is only a character. An
+      entry splits into parts at spaces, `-`, `_`, `.` and lower-to-upper case changes between its
+      letters and digits, so `PatrickHudson` has the parts `patrick` and `hudson`. Punctuation
+      before the first letter or after the last stays part of the entry, so `.env` is not `env`
+      and does not mark it. In the text the parts must come in order, joined by nothing or by
+      one optional space, one optional `-`, `_` or `.`, and one optional space, in that order.
+      A gap between two recognized words counts as a space, and a wrapped line joins where the
+      wrap evidence above joins lines (a line that ends or starts with `-`, `_` or `.`, or a
+      wrapped column). So `Patrick Hudson` matches `Patrick Hudson`, `patrick-hudson`,
       `patrick_hudson`, `PatrickHudson`, `Patrick - Hudson` and the part of `patrick.hudson@x.io`
-      before the `@`.
+      before the `@`, but not `Patrick -- Hudson`, `Patrick - - Hudson` or `patrick__hudson`.
+      Every occurrence is found, overlapping ones too, and a word belongs to one match.
     - **Edges.** A term starts and ends at a word edge or beside a character that is not a letter
       or digit. `patrick` matches `/home/patrick/x`, `patrick@d69:~$`, `Patrick's` and
       `Patrick,`, but not `patricks` or `pattern`.
@@ -553,12 +561,15 @@ other tool active it does not. The user's side is in the
       misread beyond these folds is missed.
     - **A list entry matches only whole.** `Patrick Hudson` in the list does not match `Patrick`
       alone; the user adds `Patrick` as its own line for that.
-    - **`name` knows which part is which.** It matches the whole real name as an entry would, "last,
-      first" (`Hudson, Patrick`), the first initial and the last name (`phudson`, `p.hudson`,
-      `P. Hudson`, `p-hudson`), each part of 3 characters or more on its own (`Patrick`,
-      `Hudson`), and the login name when it is 3 characters or more. The login and the
-      initial-plus-last forms may end in up to 4 digits, so `phudson2` matches. The longest form
-      is tried first, so a whole name is one match and not one per part.
+    - **`name` knows which part is which.** It matches the whole real name as an entry would,
+      "last, first" (`Hudson, Patrick`, with the first name only: a middle name is ignored), the
+      first initial and the last name (`phudson`, `p.hudson`, `P. Hudson`, `p-hudson`), each part of
+      3 characters or more on its own (`Patrick`, `Hudson`), and the login name. The login follows
+      the same part rules as an entry, so a login `jane.doe` also matches `jane-doe` and
+      `janedoe2`. A form made of one part needs 3 characters. A first name of one letter makes no
+      initial form of its own, since the whole name covers it. The login and the initial-plus-last
+      forms may end in up to 4 digits, so `phudson2` matches. The longest form is tried first, so
+      a whole name is one match and not one per part.
     - **Never matched.** A part shorter than 3 characters on its own (`Li`, `Al`), though it
       still counts inside a whole-name match; a single initial; and anything that needs
       edit-distance fuzziness. With the name `Patrick Hudson`, `Patricks`, `pattern`, `pat` and
@@ -569,30 +580,56 @@ other tool active it does not. The user's side is in the
       words joined by one space (NFKC-normalized; case and accents are kept), and the next line after `\n` only
       where the wrap evidence joins them; elsewhere a line is a text of its own. Examples:
       `\bJIRA-\d+\b` and `(?i)\b[a-z0-9-]+\.corp\.example\b`. A hit marks every word box it
-      touches. A hit that is empty is skipped.
+      touches. A hit that is empty is skipped. A wrapped line's break is a line break in the
+      text, not a space, so a pattern that has to match across a wrap uses `\s` (or `\s+`); `.`
+      does not match it.
     - **Limits.** Up to 200 words of 1 to 100 characters, and up to 50 patterns of up to 500
-      characters, with no line break in either. A pattern must compile and must not match empty
-      text; both are checked when the setting is saved and when an agent sends it. A pattern
-      that matches everything (`.+`) is allowed, and the result says how many marks it added.
+      characters. Lengths count code points and are taken after trimming (words only). A word or
+      pattern may not hold a line feed, a carriage return, U+2028 or U+2029. A word needs a
+      letter or digit. A pattern must compile, must not match empty text, and must not start with
+      `(*`, since a start-of-pattern item could set its own matching limits ("Patterns can't set
+      their own matching limits"). All of this is checked when the setting is saved and when an
+      agent sends it. A pattern that matches everything (`.+`) is allowed, and the result says how
+      many marks it added.
     - **Runaway patterns.** `QRegularExpression` cannot set PCRE2's limits from code, and not
-      every shipped Qt links `libpcre2-16` (the AppImage's Qt carries PCRE2 inside QtCore). So the
-      matcher puts `(*LIMIT_MATCH=1000000)(*LIMIT_DEPTH=100000)` in front of each pattern. A
-      pattern that reaches them stops at once and is reported skipped, and the marks it found
-      before that stay. On aurora-amd `(a+)+$` over 5000 `a` and a `b` took 1 to 2 ms with these
-      limits under Qt 6.11 and the AppImage's Qt 6.12, and 12 to 21 ms with PCRE2's default limit.
-      All patterns together have a 2 second budget, checked between matches; a pattern that finds
-      none left is skipped and named. Matching with patterns runs on a worker thread, so the
-      editor never freezes. The editor first finds everything that needs no pattern, so if the
-      worker has not answered 1 second after the budget the editor gives up on it, adds those
-      marks, and reports every pattern skipped. The result is "Pattern 3 took too long and was
-      skipped." (the first pattern is number 1), and never says the page was fully checked.
+      every shipped Qt links `libpcre2-16` (the AppImage's Qt carries PCRE2 inside QtCore). PCRE2
+      counts its match limit again at every start position of one unanchored call, so one call
+      over a long line can run for seconds (on m74, `(a+)+$` over 8000 runs of `aaaaaaaaaaaaaab`
+      took 1.7 s and never reached the limit), and the clock cannot interrupt a call. So the
+      matcher steps through the start positions itself, one code point at a time, and anchors the
+      pattern at each (`\G(?:…)`, which keeps JIT; a pattern whose wrapped form does not compile,
+      such as an `(?x)` pattern that ends in a comment, uses `AnchorAtOffsetMatchOption` on the
+      interpreter instead). Each attempt carries `(*LIMIT_MATCH=100000)(*LIMIT_DEPTH=10000)(*NOTEMPTY)`,
+      and the clock is checked before every attempt. `(*NOTEMPTY)` makes an attempt that could
+      match empty text find a longer match at the same position, or none, so an empty hit never
+      stops a consuming one. A pattern that reaches the limits is skipped and named, and the
+      marks it found before that stay. Stepping never lands inside a surrogate pair. The text is
+      valid UTF-16, so Qt does not check it again on every call. A pattern that does not
+      compile on its own or starts with `(*` is left out at run time, never wrapped into
+      something it did not say. Measured on m74 (i5-6500T, Qt 6.4.2): an ordinary pattern costs
+      about 0.2 µs a position (4 ms over 20,000 characters), and the slowest single attempt,
+      stopped by the limit, takes 0.8 ms with JIT and 9 ms on the interpreter.
+    - **Time budget.** All patterns together have a 2 second budget. The worst case for total
+      pattern time is the budget plus one attempt, under 10 ms on m74. A pattern the budget
+      leaves no time for is skipped and named. Matching runs on a worker thread, in one pass,
+      so the editor never freezes. The worker reports what it has after the name and list terms
+      and after each pattern. The editor is answered when the worker ends, or 1 second after
+      the budget with every hit found so far and the patterns not yet finished reported
+      skipped. At exit `QApplication`'s destructor waits for a running worker, at most until that
+      same moment (the budget plus 1 second from the run's start, 3 s in the editor) and in
+      practice the budget that is left plus one attempt. The result is "Pattern 3 took too
+      long and was skipped." (the first pattern is number 1), and never says the page was fully
+      checked.
     - **Geometry.** A hit marks the whole word box it touches, as every kind does.
       `/home/patrick/project` is covered entirely, not only `patrick`. A sub-box estimated from
       character counts could leave part of a name visible in a proportional font, so none is made.
     - **No list saved.** "My redaction list" is disabled in the menu with the tooltip "Add words
       or patterns in Settings → Capture → Text recognition." when the saved words and patterns are
-      both empty. A `redactText` asking for `list` with nothing to match (no saved list, no
-      `terms`, no `patterns`) returns `counts.list` 0, not an error.
+      both empty. A `redactText` whose `categories` is `list` alone with nothing to match (no
+      saved list, no `terms`, no `patterns`) answers `created: []` and `counts: {list: 0}`
+      at once, without starting recognition, so it cannot fail for lack of a recognizer. The
+      result line says "Your redaction list is empty. Add words in Settings → Capture → Text
+      recognition." With other categories chosen, recognition runs as usual.
   - A match becomes Redact marks over its word boxes, one box per line, padded by a quarter of the
     line height above and below and by one and a half characters on each side, clamped to the
     image. Recognition boxes can stop a whole glyph short, which the side padding covers. A mark can
@@ -607,12 +644,18 @@ other tool active it does not. The user's side is in the
     and name" (or the label of its category) in the Redact panel, and `editor.inspect` shows
     `suggested` on the shape. A mark drawn by hand, or added with `editor.apply add`, has no such
     field, and `update` keeps it.
+  - **Applying the marks.** If recognition's result lands while a drag is in progress, the
+    marks wait for the drag to end and then join the document as an undo step of their own, so
+    Undo removes the suggestions and the drag separately. Staleness uses a counter that rises with
+    every Redact mark or crop change, so a change that was then undone is still a change, and
+    the result adds nothing (`edit_stale`).
   - **Deleting a suggestion.** Deleting a suggested mark, with the Select tool and Delete or
     `remove {shapeId}`, records its original box in the document's history. Running Quick
     redact again on the same edit does not add a mark at that box. Undoing the delete forgets
     it. It is kept in memory only, for that edit, and `counts` counts only matches that added a mark.
   - **Remove suggestions** removes every suggested mark that is still there as one undo step, and
-    leaves marks drawn by hand alone. It is off when there are none, and it does not record
+    leaves marks drawn by hand alone. Agents have it as `editor.view` `removeSuggestions`, which
+    answers `edit_shape_missing` when there are none. It is off when there are none, and it does not record
     anything as deleted. It says "Removed 3 suggested redactions". Removing a mark gives its
     pixels back to the export through the same redaction path as any other mark.
   - Choosing a category with no result for the current revision starts recognition and waits for
@@ -693,7 +736,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | `editor.selectText` | `id`, `result`, and `from` with `to` (word indexes in reading order), or `all`, or `none` | The selection |
 | `editor.copyText` | `id`, `result`, `all?` (default false, the current selection) | `copyStatus` and the character count |
 | `editor.copyCode`, `editor.openCode` | `id`, `result`, `index` | `copyStatus`, or the launch result. Open is refused for anything but a valid http or https URL |
-| `editor.apply` command `redactText` | `categories` (1 to 7 of email, phone, ip, card, key, name, list); optional `terms` (1 to 200 words or phrases of 1 to 100 characters on one line) and `patterns` (1 to 50 regular expressions of up to 500 characters), both only with `list` in `categories` | Created shape IDs and counts per category, and `skippedPatterns` (the 0-based indexes in the combined saved and given patterns of any that ran out of the time budget) when there are any. `terms` and `patterns` add to the saved list for this command only. A term or pattern that is empty, too long or has a line break, or a pattern that does not compile or matches empty text, refuses the whole command with `edit_command_invalid` naming the entry's index, never its text. It must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is done, not at once, within the recognition deadline plus a margin |
+| `editor.apply` command `redactText` | `categories` (1 to 7 of email, phone, ip, card, key, name, list); optional `terms` (1 to 200 words or phrases of 1 to 100 code points on one line, each with a letter or digit) and `patterns` (1 to 50 regular expressions of up to 500 code points on one line, none starting with `(*`), both only with `list` in `categories` | Created shape IDs and counts per category, and `skippedPatterns` (the 0-based indexes in the combined saved and given patterns of any that ran out of the time budget) when there are any. `terms` and `patterns` add to the saved list for this command only. A term or pattern that is empty, too long or has a line break, or a pattern that does not compile or matches empty text, refuses the whole command with `edit_command_invalid` naming the entry's index, never its text. It must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is done, not at once, within the recognition deadline plus a margin |
 | `history.copyText` | `id`, `keepResult?` (default false) | `operationId` and `state`. Follows `text.inspect` |
 | `history.qr` | `id`, `mode` (`copy`, `save` or `show`), `path` (absolute, `save` only), `overwrite?` (`save` only) | Once the receipt refresh and the copy or write are done, under Copy link's deadline: `copyStatus`, the saved `path`, or the window state. `show` needs the History window open |
 

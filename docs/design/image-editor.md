@@ -409,7 +409,12 @@ what the editor itself guarantees.
     that edit, by their word box.
   - **Remove suggestions** removes every suggested mark still there as one undo step and says
     "Removed 3 suggested redactions". Marks drawn by hand are never touched, and the removed
-    marks are not remembered as deleted. It is off when there is no suggested mark.
+    marks are not remembered as deleted. It is off when there is no suggested mark. Agents use
+    `editor.view` `removeSuggestions`.
+  - A result that lands during a drag waits for the drag to end and becomes its own undo step. A
+    Redact mark or crop change that was undone still counts as a change, so the result is
+    `edit_stale`. A pattern's time is bounded: the budget (2 s) plus one attempt, and the editor is
+    answered at the budget plus 1 s with every hit found so far.
 - Recognition runs in `putgd-ocr`, started by `putgd-ui --edit-image` as its own child. The
   editor process does not link Tesseract, Leptonica or ZXing-cpp.
 
@@ -438,22 +443,26 @@ Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 `crop {rect}`, `resetCrop`, `undo`, `redo`, `redactText {categories}`. Rectangles are `[x, y, width, height]`.
 `redactText` is Quick redact: `categories` is 1 to 7 of `email`, `phone`, `ip`, `card`, `key`, `name`
 and `list`. `name` is the account's username and real name. `list` is the saved list from Settings
-plus the optional `terms` (up to 200 words or phrases of up to 100 characters) and `patterns` (up to 50
-regular expressions of up to 500 characters) of this command, which are for this command only and
-need `list` in `categories`. A term or pattern that is empty, too long or has a line break, or a
-pattern that does not compile or matches empty text, fails the whole command with
+plus the optional `terms` (up to 200 words or phrases of up to 100 code points, each with a letter or
+digit) and `patterns` (up to 50 regular expressions of up to 500 code points, none starting with `(*`) of
+this command, which are for this command only and
+need `list` in `categories`. A term or pattern that is empty, too long or has a line feed, carriage return,
+U+2028 or U+2029, a term with no letter or digit, or a pattern that starts with `(*`, does not compile or
+matches empty text, fails the whole command with
 `edit_command_invalid` and the entry's index, never its text. It must be the only command in its batch,
 or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is
 done, not at once, and returns the created shape IDs and counts per category, and `skippedPatterns`
-(0-based indexes) when a pattern ran out of time. A `list` request with nothing to match returns
-`counts.list` 0, not an error. Marks it adds report `suggested` in the shape's state; `add` cannot set
+(0-based indexes) when a pattern ran out of time. A request for `list` alone with nothing saved and no
+`terms` or `patterns` answers `created: []` and `counts: {list: 0}` at once, without recognition. Marks it adds report `suggested` in the shape's state; `add` cannot set
 it and `update` keeps it.
 A `result` that is no longer current is refused with `edit_stale` by every method that takes
 one, before anything is copied.
 `editor.view` also takes `blurStyle {style: blur|pixelate}` (the Blur tool's
 Style buttons; it restyles a selected blur) and `stepNumber {number}` (Next
 number, or the selected step's Number); its state reports `nextStepNumber`,
-`style.blurStyle`, `style.stepSize`, `copying` and `lastCopy`.
+`style.blurStyle`, `style.stepSize`, `copying` and `lastCopy`. `editor.view` `removeSuggestions` (MCP
+`drive_editor`) is Quick redact's Remove suggestions: every suggested mark still there, as one undo step,
+and `edit_shape_missing` when there are none.
 
 | Shape kind | Geometry | Optional style |
 | --- | --- | --- |
