@@ -15,6 +15,22 @@ private slots:
   PUTGD_TRY_COMPARE(profileIds(service.document()),QStringList({"development-s3","synthetic-third","synthetic-alternate"}));
   QCOMPARE(routing(),routes);QCOMPARE(service.snapshot().actions["clipboard"].profileId,QString("synthetic-third"));
  }
+ // #1583: a destination whose last Test connection found the service ignoring overwrite
+ // protection says so, in plain words, and others don't.
+ void ignoredOverwriteProtectionShowsANoteOnThatDestination(){
+  QTemporaryDir dir;auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="second-destination";second["label"]="Second destination";auto fields=second["settings"].toObject();fields["bucket"]="second-bucket";second["settings"]=fields;profiles.append(second);doc["profiles"]=profiles;
+  const auto first=profiles[0].toObject()["settings"].toObject();
+  const auto key=QUrl(first["endpoint"].toString()).adjusted(QUrl::StripTrailingSlash|QUrl::NormalizePathSegments).toString().toLower()+"\n"+first["bucket"].toString();
+  {QFile state(dir.filePath("s3/s3-overwrite-protection.json"));QDir().mkpath(dir.filePath("s3"));QVERIFY(state.open(QIODevice::WriteOnly));state.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"services",QJsonObject{{key,QJsonObject{{"overwriteProtection","ignored"}}}}}}).toJson());}
+  CredentialStore secrets;auto provider=std::make_shared<S3Provider>(secrets);provider->setStateDirectory(dir.filePath("s3"));ProviderRegistry registry;registry.add("s3",provider);
+  SettingsService service(dir.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(service.save(doc,{}));
+  Source source;OperationService operations(dir.filePath("data"),service,registry,source);HistoryService history(operations);
+  UiSessionFixture fixture(service,operations,history);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* note=window.findChild<QLabel*>("destinationOverwriteNote");auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(note&&list);
+  list->setCurrentRow(0);PUTGD_TRY_VERIFY(note->isVisible());
+  QCOMPARE(note->text(),QString("This service ignores overwrite protection, so put.gd gives every upload a unique name."));
+  list->setCurrentRow(1);PUTGD_TRY_VERIFY(!note->isVisible());
+ }
  void removingDestinationBeforeDebounceNeverAppliesItsEditToNextDestination(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="second-destination";second["label"]="Second destination";auto fields=second["settings"].toObject();fields["bucket"]="second-bucket";second["settings"]=fields;profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QLineEdit*>("s3Bucket")->setText("edited-first-bucket");QMetaObject::invokeMethod(window.findChild<QLineEdit*>("s3Bucket"),"editingFinished");QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();PUTGD_TRY_COMPARE(service.document()["profiles"].toArray().size(),1);QCOMPARE(service.document()["profiles"].toArray()[0].toObject(),second);
  }

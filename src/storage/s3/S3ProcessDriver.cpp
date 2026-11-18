@@ -185,10 +185,12 @@ private:
   auto activate=envelope();activate["method"]=method;activate["request"]=request;
   // SDK CURL bounds each HTTP exchange; allow the complete driver's bounded
   // call chain, slow local artifact hashing and durable persistence separately.
+  // Destination testing adds the overwrite check (#1583): a second PUT, its HEAD and
+  // the removal of a replacing copy, with their checkpoints.
   // A multipart upload makes up to three attempts per part plus its create,
   // listing, completion and abort calls; each part is bounded like one PUT.
   const auto resume=request["resume"].toObject();const qint64 parts=method=="upload"?qBound<qint64>(0LL,s3PartCount(request["artifact"].toObject()["bytes"].toInteger(),qBound<qint64>(0LL,resume["partBytes"].toInteger(),s3MaximumPartBytes)),s3MaximumParts):0;
-  const qint64 calls=method=="testDestination"?20:method=="remove"?8:method=="abandon"?3:method=="upload"?6+parts*3+(parts?16:0):1;
+  const qint64 calls=method=="testDestination"?30:method=="remove"?8:method=="abandon"?3:method=="upload"?6+parts*3+(parts?16:0):1;
   const auto settings=destination.settings;
   const auto timeout=[&](const char* key){return qBound<qint64>(1LL,settings[key].toInteger(),2147483647LL);};
   const qint64 perCall=qMax<qint64>(timeout("requestTimeoutMs"),timeout("connectTimeoutMs")+timeout("lowSpeedTimeSeconds")*1000)+1000;
@@ -196,7 +198,7 @@ private:
   // malformed direct driver calls, before child request validation rejects them.
   const qint64 bytes=method=="upload"?qBound<qint64>(0LL,request["artifact"].toObject()["bytes"].toInteger(),1099511627776LL):0;
   const qint64 hashBudget=qMax<qint64>(60000,((bytes+16383)/16384)*4000);
-  const qint64 checkpoints=method=="testDestination"?12:method=="remove"?8:method=="upload"&&parts?4:0;
+  const qint64 checkpoints=method=="testDestination"?22:method=="remove"?8:method=="upload"&&parts?4:0;
   const qint64 cancellationGrace=limits_.cancellationGraceMs>0?limits_.cancellationGraceMs:qBound<qint64>(30000LL,perCall+5000,120000LL);
   QElapsedTimer cancelDeadline;
   const qint64 totalBudget=calls*perCall+hashBudget+checkpoints*300000+60000;

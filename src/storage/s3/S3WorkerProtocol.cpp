@@ -423,8 +423,9 @@ bool decodeTestDestinationResult(const QJsonObject& object) {
     StorageReceipt receipt;
     if (!object["receipt"].isObject() || !decode(object["receipt"].toObject(), receipt)) return false;
     if (keys(object, {"uploadStatus", "receipt"})) return true;
-    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart","presignedReachable","unsignedDenied"}) ||
-        !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject()) return false;
+    if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart","presignedReachable","unsignedDenied","overwriteProtection"}) ||
+        !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject() ||
+        (object.contains("overwriteProtection") && !choice(object["overwriteProtection"], {"enforced", "ignored"}))) return false;
     if (!object.contains("multipart")) return true;
     // The multipart permission probe: created, listed and aborted, or the stage S3 refused.
     const auto probe = object["multipart"].toObject();

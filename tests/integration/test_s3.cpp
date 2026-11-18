@@ -1,6 +1,7 @@
 #include "fixtures/S3Fixture.h"
 #include "fixtures/U2Fixtures.h"
 #include <QBuffer>
+#include <QTemporaryDir>
 #include <QUrlQuery>
 #include "fixtures/Waits.h"
 using namespace putgd::test;
@@ -176,6 +177,47 @@ private slots:
         QCOMPARE(result.status, QString("collision"));
         QCOMPARE(f.events("PUT")[0].toObject()["headers"].toObject()["if-match"].toString(), request.concurrencyToken);
         QCOMPARE(f.events("PUT").size(), 1);
+    }
+    // #1583: Test connection sends the synthetic file again under If-None-Match: *. A service
+    // that accepts it ignores overwrite protection; the provider remembers that per service.
+    void connectionTestFindsIgnoredOverwriteProtection_data() {
+        QTest::addColumn<bool>("ignore");QTest::addColumn<QString>("versioning");
+        QTest::newRow("ignored") << true << QString();QTest::newRow("ignored-versioned") << true << QString("Enabled");
+        QTest::newRow("enforced") << false << QString();
+    }
+    void connectionTestFindsIgnoredOverwriteProtection() {
+        QFETCH(bool, ignore);QFETCH(QString, versioning);
+        S3Fixture f;f.reset({{"ignoreConditions", ignore}, {"versioning", versioning}});
+        QTemporaryDir state;f.provider.setStateDirectory(state.path());
+        QVERIFY(!f.provider.capabilities(f.destination).ignoresConditionalWrites);
+        bool done=false;Error error;QJsonObject result;QStringList phases;
+        f.provider.testDestination(f.destination,[&](auto value,auto ack){phases.append(value["phase"].toString());ack({});},[&](auto value,auto e){result=value;error=e;done=true;});
+        PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code+": "+error.message));
+        QCOMPARE(result["overwriteProtection"].toString(), ignore ? QString("ignored") : QString("enforced"));
+        QVERIFY(phases.contains("synthetic_overwrite_intent"));
+        QCOMPARE(phases.contains("synthetic_overwrite_uploaded"), ignore);
+        const auto cleanup = result["cleanupStatus"].toString();
+        QVERIFY2(cleanup == "removed" || cleanup == "missing", qPrintable(cleanup));
+        QCOMPARE(f.provider.capabilities(f.destination).ignoresConditionalWrites, ignore);
+        // Both synthetic copies are gone, including a noncurrent version.
+        for (const auto& versions : f.state()["objects"].toObject())
+            for (const auto& version : versions.toArray()) QVERIFY(version.toObject()["marker"].toBool());
+        // A second PUT went out with If-None-Match: * to the same key.
+        const auto puts = f.events("PUT");QCOMPARE(puts.size(), 2);
+        QCOMPARE(puts[1].toObject()["key"], puts[0].toObject()["key"]);
+        QCOMPARE(puts[1].toObject()["headers"].toObject()["if-none-match"].toString(), QString("*"));
+        // The finding survives a restart, and only for this endpoint and bucket.
+        S3Provider reopened(f.credentials);reopened.setStateDirectory(state.path());
+        QCOMPARE(reopened.capabilities(f.destination).ignoresConditionalWrites, ignore);
+        auto other = f.destination;other.settings["bucket"] = "other-bucket";
+        QVERIFY(!reopened.capabilities(other).ignoresConditionalWrites);
+        // A later test that finds the condition enforced clears it.
+        if (ignore) {
+            f.reset();done=false;
+            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[&](auto value,auto e){result=value;error=e;done=true;});
+            PUTGD_TRY_VERIFY(done);QVERIFY(!error);QCOMPARE(result["overwriteProtection"].toString(), QString("enforced"));
+            QVERIFY(!f.provider.capabilities(f.destination).ignoresConditionalWrites);
+        }
     }
     void headDeniedDoesNotPublishAndCredentialsNeverAmbient() {
         S3Fixture f;

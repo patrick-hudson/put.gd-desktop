@@ -957,6 +957,8 @@ Operation OperationService::run(Job job) {
  // Check all pending names before the first PUT, including opaque references that
  // may identify one target despite differing proposed display names.
  QHash<QByteArray,QList<int>> targets;
+ // Replace overwrites by intent, so it keeps the chosen name even there.
+ const bool uniqueNames=capabilities.ignoresConditionalWrites&&op.settings.collisionPolicy!="overwrite";
  for(int index=0;index<op.items.size();++index) {
   auto& item=op.items[index];if(terminalUpload(item.uploadStatus)||item.uploadStatus=="unknown")continue;
   if(job.cancelled->load())break;
@@ -970,6 +972,12 @@ Operation OperationService::run(Job job) {
    if(check.error||check.status=="inconclusive"||check.objectReference.isEmpty()) {item.error=check.error?check.error:Error{"existence_unknown","Name availability is inconclusive",{}};item.uploadStatus="failed";auto fields=itemFields(op,item);fields["status"]=check.status;fields["error"]=logging::errorFields(item.error);logging::warning(providerLog(op.destination.providerId),"Name check failed",fields);break;}
    if(check.status=="present"&&op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";break;}
    if(check.status=="present"&&op.settings.collisionPolicy=="rename") {item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);if(!saveItem(item))return op;continue;}
+   // The service ignores If-None-Match (#1583): a name another client creates after this
+   // check would be replaced, so only a name nobody else can choose is safe to publish.
+   if(check.status=="absent"&&uniqueNames&&!UploadNaming::hasUniqueSuffix(item.candidate)) {
+    auto fields=itemFields(op,item);fields["name"]=item.candidate;item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);fields["uniqueName"]=item.candidate;
+    logging::info(providerLog(op.destination.providerId),"Unique name given: the destination ignores overwrite protection",fields);if(!saveItem(item))return op;continue;
+   }
    item.objectReference=check.objectReference;item.concurrencyToken=check.concurrencyToken;item.condition=check.status=="present"?"match":"absent";
    if(item.condition=="match"&&item.concurrencyToken.isEmpty()) {item.error={"precondition_missing","Provider returned no replacement precondition",{}};item.uploadStatus="failed";break;}
    item.uploadStatus="stored";targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);checked=true;break;

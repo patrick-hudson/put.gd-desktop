@@ -5,6 +5,7 @@
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
+#include <QJsonArray>
 #include <QUuid>
 #include <QDir>
 #include <QFileInfo>
@@ -446,6 +447,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QJsonObject snapshot{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}};
   // A changed generation tells an open window that a credential read or store ended (#600).
   if(setup_)snapshot["credentials"]=QJsonObject{{"generation",double(setup_->credentialGeneration())}};
+  // Destinations whose service ignores overwrite protection (#1583), as their last Test connection found.
+  QJsonArray ignored;const auto profiles=settings_.snapshot().profiles;
+  for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(auto provider=operations_.providers().find(it.value()["provider"].toString()))
+   if(provider->capabilities({it.value()["provider"].toString(),it.key(),settings_.revision(),it.value()["settings"].toObject(),it.value()["credentials"].toObject()}).ignoresConditionalWrites)ignored.append(it.key());
+  snapshot["overwriteProtectionIgnored"]=ignored;
   reply({},snapshot);
  }
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}

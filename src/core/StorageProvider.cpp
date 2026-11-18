@@ -33,7 +33,7 @@ bool shareResultMatchesReceipt(const ShareResult& result,const StorageReceipt& o
 }
 
 QJsonObject ProviderCapabilities::toJson() const {
- QJsonObject value{{"conditionalCreate",conditionalCreate},{"conditionalReplace",conditionalReplace},{"conditionalDelete",conditionalDelete},{"versionAddressing",versionAddressing},{"stat",stat},{"delete",remove},{"urls",urls},{"maximumNameBytes",maximumNameBytes},{"maximumObjectBytes",maximumObjectBytes>0?QJsonValue(double(maximumObjectBytes)):QJsonValue(QJsonValue::Null)},{"deletionEffect",deletionEffect},{"sharing",sharing},{"privateUploads",privateUploads},{"serverNamesObjects",serverNamesObjects},{"referenceDelete",referenceDelete}};
+ QJsonObject value{{"conditionalCreate",conditionalCreate},{"conditionalReplace",conditionalReplace},{"conditionalDelete",conditionalDelete},{"versionAddressing",versionAddressing},{"stat",stat},{"delete",remove},{"urls",urls},{"maximumNameBytes",maximumNameBytes},{"maximumObjectBytes",maximumObjectBytes>0?QJsonValue(double(maximumObjectBytes)):QJsonValue(QJsonValue::Null)},{"deletionEffect",deletionEffect},{"sharing",sharing},{"privateUploads",privateUploads},{"serverNamesObjects",serverNamesObjects},{"referenceDelete",referenceDelete},{"ignoresConditionalWrites",ignoresConditionalWrites}};
  if(!removeUnavailable.isEmpty())value["removeUnavailable"]=removeUnavailable;
  return value;
 }

@@ -1,6 +1,7 @@
 #include "UploadNaming.h"
 #include <QFileInfo>
 #include <QHash>
+#include <QRegularExpression>
 #include <QUuid>
 
 namespace putgd {
@@ -120,6 +121,12 @@ QString UploadNaming::candidate(const Artifact& artifact, const QString& mode, b
 
 QString UploadNaming::renamedCandidate(const QString& name, int maximumBytes) {
  return boundedName(name, maximumBytes, "-" + QUuid::createUuid().toString(QUuid::WithoutBraces));
+}
+
+bool UploadNaming::hasUniqueSuffix(const QString& name) {
+ static const QRegularExpression uuid(QStringLiteral("(?:^|-)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"));
+ const auto suffix = QFileInfo(name).suffix();
+ return uuid.match(suffix.isEmpty() ? name : name.chopped(suffix.size() + 1)).hasMatch();
 }
 
 QList<NamedItem> UploadNaming::batch(const QList<Artifact>& artifacts, const QString& mode,

@@ -2,6 +2,12 @@
 #include "S3Module.h"
 #include "PublicUrl.h"
 #include "IpAddress.h"
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QSaveFile>
+#include <QUrl>
 #include <condition_variable>
 #include <mutex>
 #include <vector>
@@ -29,6 +35,49 @@ Error unexpected() {
 }
 
 }
+// What Test connection found about each service's write preconditions (#1583), by
+// endpoint and bucket. A service that ignores If-None-Match is "ignored" until a later
+// test finds it enforced. Kept in a private state file when the resident gives one.
+struct S3Provider::OverwriteProtection {
+    std::mutex mutex;
+    QString path;
+    QHash<QString, QJsonObject> services;
+    static QString key(const QJsonObject& settings) {
+        const QUrl endpoint(settings["endpoint"].toString());
+        return endpoint.adjusted(QUrl::StripTrailingSlash | QUrl::NormalizePathSegments).toString().toLower() + "\n" + settings["bucket"].toString();
+    }
+    bool ignored(const QJsonObject& settings) {
+        std::lock_guard lock(mutex);
+        return services.value(key(settings))["overwriteProtection"] == QJsonValue("ignored");
+    }
+    void load(const QString& file) {
+        std::lock_guard lock(mutex);
+        path = file;
+        services.clear();
+        QFile source(file);
+        if (!source.open(QIODevice::ReadOnly) || source.size() > 1024 * 1024) return;
+        const auto document = QJsonDocument::fromJson(source.readAll()).object();
+        if (document["schemaVersion"] != QJsonValue(1)) return;
+        const auto saved = document["services"].toObject();
+        for (auto it = saved.begin(); it != saved.end() && services.size() < 1024; ++it)
+            if (QStringList{"ignored", "enforced"}.contains(it.value().toObject()["overwriteProtection"].toString()))
+                services.insert(it.key(), it.value().toObject());
+    }
+    void record(const QJsonObject& settings, const QString& found) {
+        if (!QStringList{"ignored", "enforced"}.contains(found)) return;
+        std::lock_guard lock(mutex);
+        services.insert(key(settings), {{"overwriteProtection", found}, {"testedAt", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}});
+        if (path.isEmpty()) return;
+        QJsonObject saved;
+        for (auto it = services.cbegin(); it != services.cend(); ++it) saved.insert(it.key(), it.value());
+        QSaveFile file(path);
+        if (file.open(QIODevice::WriteOnly)) {
+            file.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+            file.write(QJsonDocument(QJsonObject{{"schemaVersion", 1}, {"services", saved}}).toJson(QJsonDocument::Compact));
+            file.commit();
+        }
+    }
+};
 struct S3Provider::State {
     CredentialStore& credentials;
     S3UploadPolicy policy;
@@ -156,7 +205,12 @@ int S3Provider::maximumLanes() {
 #endif
 }
 S3Provider::S3Provider(CredentialStore& credentials, S3UploadPolicy policy, int lanes)
-    : state_(std::make_unique<State>(credentials, policy, lanes > 0 ? qMin(lanes, maximumLanes()) : maximumLanes())) {}
+    : state_(std::make_unique<State>(credentials, policy, lanes > 0 ? qMin(lanes, maximumLanes()) : maximumLanes())),
+      overwrite_(std::make_shared<OverwriteProtection>()) {}
+void S3Provider::setStateDirectory(const QString& directory) {
+    QDir().mkpath(directory);
+    overwrite_->load(QDir(directory).filePath("s3-overwrite-protection.json"));
+}
 S3Provider::~S3Provider() = default;
 int S3Provider::maximumConcurrentRequests(const Destination&) const { return state_->maximumLanes; }
 QJsonObject S3Provider::diagnostics() const {
@@ -182,6 +236,7 @@ ProviderCapabilities S3Provider::capabilities(const Destination& destination) co
             "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes"};
     // Larger files upload in parts; S3 itself stores objects of at most 5 TiB.
     result.maximumObjectBytes = s3MaximumObjectBytes;
+    result.ignoresConditionalWrites = overwrite_->ignored(destination.settings);
     return result;
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
@@ -281,8 +336,12 @@ void S3Provider::abandonUpload(const Destination& destination, const QJsonObject
 }
 void S3Provider::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
     reply = once(std::move(reply));
-    state_->run(*this, destination, {}, [destination, save, reply](S3Driver& driver) {
-        driver.testDestination(destination, save, reply);
+    state_->run(*this, destination, {}, [destination, save, reply, overwrite = overwrite_](S3Driver& driver) {
+        // Recorded even when the test fails later, for example at cleanup.
+        driver.testDestination(destination, save, [destination, reply, overwrite](QJsonObject result, Error error) {
+            overwrite->record(destination.settings, result["overwriteProtection"].toString());
+            reply(std::move(result), std::move(error));
+        });
     }, [reply](Error error) { reply({}, error); });
 }
 }

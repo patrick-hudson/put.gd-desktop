@@ -1425,7 +1425,7 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
             reply({}, error);
             return;
         }
-        upload(request, [this, temporary, bytes, save, reply](UploadResult uploaded) {
+        upload(request, [this, temporary, bytes, save, reply, request](UploadResult uploaded) {
             if (uploaded.status != "uploaded") {
                 reply({{"uploadStatus", uploaded.status}}, uploaded.error);
                 return;
@@ -1435,6 +1435,30 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 reply({{"uploadStatus", "uploaded"}, {"receipt", uploaded.receipt.toJson()}}, error);
                 return;
             }
+            // Overwrite protection (#1583): send the same file to the same key again under
+            // If-None-Match: *. S3 refuses it with 412. Garage and Zenko CloudServer accept
+            // the header, ignore it and replace the file; anything but a 412 counts as that.
+            auto again = request;
+            again.publicationId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+            const QJsonObject probeIntent{{"schemaVersion", 1}, {"phase", "synthetic_overwrite_intent"},
+                                          {"destination", again.destination.toJson()}, {"objectReference", again.objectReference},
+                                          {"publicationId", again.publicationId}, {"sha256", again.artifact.sha256}, {"bytes", double(again.artifact.bytes)}};
+            if (auto error = checkpoint(save, probeIntent)) {
+                reply({{"uploadStatus", "uploaded"}, {"receipt", uploaded.receipt.toJson()}}, error);
+                return;
+            }
+            UploadResult probe{"unknown", {}, {}};
+            upload(again, [&probe](UploadResult value) { probe = std::move(value); });
+            const QString protection = probe.status == "collision" ? QStringLiteral("enforced") : QStringLiteral("ignored");
+            // A replacing probe is a second synthetic upload: cleanup removes it first.
+            std::optional<StorageReceipt> replaced;
+            if (probe.status == "uploaded") {
+                replaced = probe.receipt;
+                if (auto error = checkpoint(save, {{"schemaVersion", 1}, {"phase", "synthetic_overwrite_uploaded"}, {"receipt", probe.receipt.toJson()}})) {
+                    reply({{"uploadStatus", "uploaded"}, {"receipt", uploaded.receipt.toJson()}}, error);
+                    return;
+                }
+            }
             const bool signedReachable = publicFixtureMatches(uploaded.receipt, bytes);
             const bool presigned=uploaded.receipt.destination.settings.value("linkMode")=="presigned";
             bool unsignedDenied=true;
@@ -1442,10 +1466,20 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 unsignedReceipt.directUrl=publicObjectUrl(settings,unsignedReceipt.objectReference["key"].toString());
                 int status=0;bool authorizationRequired=false;publicFixtureMatches(unsignedReceipt,bytes,&status,&authorizationRequired);unsignedDenied=status==401||status==403||authorizationRequired;}
             const bool reachable=signedReachable&&unsignedDenied;
-            QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", uploaded.receipt.toJson()}};
+            QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", uploaded.receipt.toJson()},
+                               {"overwriteProtection", protection}};
             if(presigned){result["presignedReachable"]=signedReachable;result["unsignedDenied"]=unsignedDenied;}
+            std::optional<DeleteResult> probeRemoved;
+            if (replaced) {
+                DeleteRequest removeProbe{QUuid::createUuid().toString(QUuid::WithoutBraces), *replaced, {}, {}};
+                remove(removeProbe, save, [&probeRemoved](DeleteResult removed) { probeRemoved = std::move(removed); });
+                if (!probeRemoved) probeRemoved = DeleteResult{"unknown", {}, {"s3_transport_unknown", "The overwrite check's cleanup did not finish", {}}};
+            }
             DeleteRequest removeRequest{QUuid::createUuid().toString(QUuid::WithoutBraces), uploaded.receipt, {}, {}};
-            remove(removeRequest, save, [this, destination = uploaded.receipt.destination, save, result, reachable, reply](DeleteResult removed) mutable {
+            remove(removeRequest, save, [this, destination = uploaded.receipt.destination, save, result, reachable, reply, probeRemoved](DeleteResult removed) mutable {
+                // The original is usually gone already once the replacing probe was removed;
+                // a probe that could not be removed is the cleanup still to finish.
+                if (probeRemoved && !QStringList{"removed", "missing"}.contains(probeRemoved->status)) removed = *probeRemoved;
                 result["cleanupStatus"] = removed.status;
                 result["cleanupProgress"] = removed.progress;
                 Error multipart;

@@ -23,6 +23,11 @@ struct ProviderCapabilities {
  // Deletion goes through a reference the upload itself returned and addresses exactly
  // that upload, so it needs no stat, precondition or version.
  bool referenceDelete=false;
+ // The service accepts the write precondition and then ignores it (Garage, Zenko
+ // CloudServer; #1583), which its connection test showed: a name that appeared after
+ // the name check would be replaced. Uploads then get a unique name unless the
+ // collision policy replaces by intent.
+ bool ignoresConditionalWrites=false;
  // Why this recorded upload cannot be deleted, when remove is false for it alone.
  QString removeUnavailable;
  // Whether a recorded object can be deleted without risking another object.

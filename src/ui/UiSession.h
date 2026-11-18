@@ -37,11 +37,15 @@ signals:
  // A storeCredentials or unlockCredentials job ended since the last snapshot,
  // such as the resident's startup unlock: saved-key hints may have changed.
  void credentialsChanged();
+public:
+ // The saved destination's service ignores overwrite protection (#1583), so uploads get a unique name.
+ bool overwriteProtectionIgnored(const QString& profileId) const {return overwriteIgnored_.contains(profileId);}
 private:
  void applySettings(const QJsonObject&);
  ShortcutRecordingHandler shortcutRecording_;
  SessionClient& client_;
  QJsonObject document_,metadata_,diagnostics_,build_;
+ QStringList overwriteIgnored_;
  QString epoch_;
  QThreadPool previews_;
  bool ready_=false,snapshotActive_=false,snapshotPending_=false;

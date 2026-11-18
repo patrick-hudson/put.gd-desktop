@@ -14,6 +14,9 @@ public:
     static int maximumLanes();
     int maximumConcurrentRequests(const Destination&) const override;
     ~S3Provider() override;
+    // Where the provider keeps what Test connection learned about each service; without
+    // one it remembers only for its own lifetime.
+    void setStateDirectory(const QString&);
     QJsonObject diagnostics() const override;
     bool reconcilesDeleteProgress() const override { return true; }
     ProviderCapabilities capabilities(const Destination&) const override;
@@ -32,6 +35,8 @@ public:
     void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>);
 private:
     struct State;
+    struct OverwriteProtection;
     std::unique_ptr<State> state_;
+    std::shared_ptr<OverwriteProtection> overwrite_;
 };
 }

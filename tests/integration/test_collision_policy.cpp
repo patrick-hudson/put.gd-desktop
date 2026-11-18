@@ -1,6 +1,7 @@
 #include "fixtures/S3Fixture.h"
 #include "fixtures/U2Fixtures.h"
 #include <QSqlQuery>
+#include "core/UploadNaming.h"
 #include "fixtures/Waits.h"
 using namespace putgd::test;
 class CollisionTest : public QObject {
@@ -91,6 +92,55 @@ private slots:
             const auto key = item.receipt.objectReference["key"].toString();
             QCOMPARE(QByteArray::fromBase64(objects[key].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("new fixture"));
             if (policy == "rename") QCOMPARE(QByteArray::fromBase64(objects["prefix é/report.pdf"].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("original fixture"));
+        }
+    }
+    // #1583: on a service that ignores If-None-Match, another client creates the name right
+    // after put.gd's name check. Without a unique name the upload would replace that file.
+    void raceOnServiceIgnoringOverwriteProtection_data() {
+        QTest::addColumn<QString>("policy");
+        QTest::newRow("rename") << QString("rename");
+        QTest::newRow("skip") << QString("skip");
+        QTest::newRow("overwrite") << QString("overwrite");
+    }
+    void raceOnServiceIgnoringOverwriteProtection() {
+        QFETCH(QString, policy);
+        S3Fixture f;
+        f.reset({{"ignoreConditions", true}});
+        ProviderRegistry registry;
+        auto provider = std::make_shared<S3Provider>(f.credentials);
+        registry.add("s3", provider);
+        // The destination's Test connection finds the service ignoring the condition.
+        bool tested = false;QJsonObject result;
+        provider->testDestination(f.destination, [](auto, auto ack) { ack({}); }, [&](auto value, auto) { result = value; tested = true; });
+        PUTGD_TRY_VERIFY(tested);
+        QCOMPARE(result["overwriteProtection"].toString(), QString("ignored"));
+        const QString original = "prefix é/report.pdf";
+        f.reset({{"ignoreConditions", true}, {"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"key", original}, {"competitorAfter", true}}}}});
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(configuration(f, policy), {}));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {putgd::test::fixture(f.directory.path(), "report.pdf", "new fixture")};
+        OperationService operations(f.directory.filePath("data"), settings, registry, source);
+        PUTGD_TRY_VERIFY(operations.ready());
+        QString id;
+        operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); id = value["operationId"].toString(); });
+        PUTGD_TRY_VERIFY(!id.isEmpty());
+        const auto item = waitOperation(operations, id).items[0];
+        QCOMPARE(item.uploadStatus, QString("uploaded"));
+        const auto objects = f.state()["objects"].toObject();
+        const auto body = [&](const QString& key) { return QByteArray::fromBase64(objects[key].toArray().last().toObject()["body"].toString().toUtf8()); };
+        if (policy == "overwrite") {
+            // Replace overwrites by intent and keeps the chosen name.
+            QCOMPARE(item.candidate, QString("report.pdf"));
+            QCOMPARE(body(original), QByteArray("new fixture"));
+        } else {
+            QVERIFY(item.candidate.startsWith("report-"));
+            QVERIFY(item.candidate.endsWith(".pdf"));
+            QVERIFY(UploadNaming::hasUniqueSuffix(item.candidate));
+            QCOMPARE(body(original), QByteArray("competitor"));
+            QCOMPARE(body(item.receipt.objectReference["key"].toString()), QByteArray("new fixture"));
+            for (const auto& put : f.events("PUT")) QVERIFY(put.toObject()["key"].toString() != original);
         }
     }
     void partialBatchRetriesOnlyFailedAndRetainsArchives() {

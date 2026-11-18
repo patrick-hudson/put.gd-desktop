@@ -246,7 +246,7 @@ int main(int argc,char* argv[]) {
  }
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
- auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
+ auto s3=std::make_shared<putgd::S3Provider>(credentials);s3->setStateDirectory(locations.dataRoot);providers.add("s3",s3);
  auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
