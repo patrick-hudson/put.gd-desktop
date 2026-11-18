@@ -46,6 +46,7 @@ struct Sources {
 struct Result {
  QList<Match> matches;
  QList<int> skippedPatterns; // indexes into Sources::patterns that did not finish (time, limits, not compiling)
+ bool nameUnchecked=false; // `name` was chosen but the account lookup did not answer in time
 };
 // Decision 6, round 3 of #1631: user patterns. A pattern runs exactly as typed
 // with ordinary PCRE2 search (QRegularExpression, Unicode properties, case as
@@ -90,10 +91,15 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& categorie
 // yet finished counted as skipped. `cancel`, when set, is read between stages.
 // `matcher`, when set, runs the patterns.
 Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel=nullptr,const PatternMatcher& matcher={});
-// The Redact marks for a match: its word boxes, one box per line, padded by a
+// The Redact marks for a match: its word boxes, one box per visual row, padded by a
 // quarter of the line height above and below and by one and a half characters
 // either side, clamped to `bounds` (the image).
 QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds);
+// The same marks, each with the recognized words' own box it was padded from
+// (what a deleted suggestion is remembered by). One per visual row of the
+// match, in reading order.
+struct MarkBox {QRect mark;QRect words;};
+QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match&,const QRect& bounds);
 // Luhn's check over the digits of `number`.
 bool luhn(const QString& digits);
 }

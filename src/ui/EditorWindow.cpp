@@ -61,25 +61,11 @@ QString quickRedactLabel(const QString& category){
  static const QHash<QString,QString> labels{{"email","Email addresses"},{"phone","Phone numbers"},{"ip","IP addresses"},{"card","Card numbers"},{"key","Keys and tokens"},{"name","My username and name"},{"list","My redaction list"}};
  return labels.value(category,category);
 }
-// quickRedact::marks(), each mark with the union of the recognized words' boxes on its line (unpadded). marks() makes one mark
-// per line of the match in line order, so they pair by position; a mark left out (its line outside the image) falls back to
-// the word box it contains.
+// Each mark with the union of the recognized words' boxes it was padded from (unpadded), one per visual row of the match
+// (quickRedact::markBoxes): a match across two rows is two marks, never one box over the pixels between them.
 QList<QPair<QRect,QRect>> markedWords(const QList<editor::RecognizedWord>& candidates,const editor::quickRedact::Match& match,const QRect& bounds){
- QMap<int,QRect> lines;
- for(const int index:match.words)if(index>=0&&index<candidates.size())lines[candidates.at(index).line]=lines.value(candidates.at(index).line).united(candidates.at(index).rect);
- const auto marks=editor::quickRedact::marks(candidates,match,bounds);
  QList<QPair<QRect,QRect>> out;
- if(marks.size()==lines.size()){int i=0;for(const auto& words:std::as_const(lines))out.append({marks.at(i++),words});return out;}
- for(const auto& mark:marks){
-  // The line whose words the mark contains (the larger one first), else the one it overlaps most.
-  QRect words;qint64 best=-1;
-  for(const auto& line:std::as_const(lines)){
-   const auto shared=line.intersected(mark);
-   const qint64 score=(mark.contains(line)?qint64(1)<<40:0)+qint64(shared.width())*shared.height();
-   if(score>best){best=score;words=line;}
-  }
-  out.append({mark,words});
- }
+ for(const auto& box:editor::quickRedact::markBoxes(candidates,match,bounds))out.append({box.mark,box.words});
  return out;
 }
 QFrame* separator(QWidget* parent){auto* line=Ui::rule(parent,Qt::Vertical);line->setFixedHeight(Ui::scaled(22));return line;}
@@ -1268,9 +1254,11 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     const auto added=created.size();
     QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
     QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 took too long and was skipped.").arg(index+1);}
+    // The account lookup did not answer in time: the other categories ran without it (#1618).
+    if(found.nameUnchecked)lines<<QStringLiteral("My username and name was not checked: the account lookup did not answer in time.");
     g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
     g->documentEdited();
-    QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;
+    QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;
     if(done)done({},result);
    };
    (*apply)();
