@@ -25,7 +25,7 @@ filenames, history URLs, authorization values or credential references.
 | `unsupported_capability` | Choose a provider/policy that supports the required safeguards |
 | `existence_unknown`, `collision_exhausted`, `precondition_changed` | Inspect the saved candidate and retry deliberately |
 | `unknown` upload / `publication_unknown` | Reconcile the saved publication identity before another PUT |
-| `history_io` | put.gd could not read or write its History database (a full disk, an I/O error). Free disk space; put.gd keeps trying. An upload that ended meanwhile shows its real result with "Not saved in History yet", and Retry waits until that result is saved |
+| `history_io` | put.gd could not read or write its History database (a full disk, an I/O error). Free disk space and try again. When an upload ended while the database refused it, put.gd keeps that final result and writes it again by itself once the disk works: History shows the real result with "Not saved in History yet", and Retry is refused (not queued) until the result is saved. Other journal failures have no result to rewrite; repeat the action once the disk works |
 | copy `suppressed` / `failed` | Explicitly copy the existing result; no new PUT is needed |
 | `delete_confirmation_changed`, `delete_target_changed` | Review the exact original targets/effects again |
 | remote `changed` | Replacement is preserved; no destructive request was sent |

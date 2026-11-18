@@ -28,8 +28,10 @@ Active `operation.inspect` and `operation.recent` results also expose an operati
 optional `bytesTotal`. A missing total means percentage is unknown. These are
 transient observations, not confirmed publication or final result evidence.
 A finished operation whose result the journal has not taken yet (#1579) is reported
-with that result and `resultUnsaved` (the journal error); `diagnostics` counts such
-results in `unsavedResults`. They are written again until they land.
+by a successful `operation.inspect` or `operation.recent` read with that result and
+`resultUnsaved` (the journal error); a read that SQLite fails returns an error and no
+result. `diagnostics.unsavedResults` counts such results without reading the journal.
+They are written again until they land.
 
 The CLI waits 3 s to connect, 3 s to send and then a bounded time for the whole
 reply, at most 16 MiB: 15 s for most methods. Screen-recording commands that the
