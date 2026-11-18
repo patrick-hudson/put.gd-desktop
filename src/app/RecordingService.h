@@ -3,6 +3,7 @@
 #include "core/RecordingClicks.h"
 #include "core/Operation.h"
 #include <QElapsedTimer>
+#include <QMap>
 #include <QObject>
 #include <QPointer>
 #include <functional>
@@ -84,6 +85,10 @@ private:
         // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
         QJsonObject lastExport;
         QJsonObject lastExportRequest;
+        // Each answered review-window proposal by number: {} when applied, else
+        // its refusal {code, message, revision}. recording.review reads its own
+        // proposals' outcomes here; the newest 128 are kept.
+        QMap<quint64, QJsonObject> proposalOutcomes;
         std::optional<bool> overlayExcluded;
         // outside | inside | hidden | compositor: where the control bar ended up.
         QString overlayPlacement;

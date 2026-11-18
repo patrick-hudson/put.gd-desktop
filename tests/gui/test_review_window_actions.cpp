@@ -65,7 +65,7 @@ private slots:
         auto cut = edit;
         cut.revision = 3;
         cut.cuts = {RecordingCut{"c1", 4000000, 6000000}};
-        window.setEdit(cut);
+        window.setEdit(cut, answer(spy.last().at(2).toULongLong()));
         const auto state = window.inspect();
         QCOMPARE(state["outputDurationUs"].toDouble(), 10000000.0);
         QCOMPARE(state["playheadUs"].toDouble(), 3000000.0);
@@ -427,14 +427,18 @@ private slots:
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         QCOMPARE(window.drive({{"action", "setCoverEdge"}, {"edge", "middle"}, {"time", 5010000}}).code, QString("invalid_request"));
         QVERIFY(window.drive({{"action", "setCoverEdge"}, {"edge", "start"}, {"time", 5010000}}).code.isEmpty());
+        QCOMPARE(proposals.size(), 1);
         QCOMPARE(proposed(proposals)["op"].toString(), QString("updateMask"));
         QCOMPARE(proposed(proposals)["mask"].toObject()["start"].toDouble(), 5000000.0);
         auto* field = window.findChild<QLineEdit*>("reviewPanelUntilTime");
         QVERIFY(field);
         field->setText("0:07.0");
+        auto count = proposals.size();
         emit field->editingFinished();
+        QCOMPARE(proposals.size(), count + 1);
         const auto typed = proposals.last().at(1).toJsonArray();
         QVERIFY(window.drive({{"action", "setCoverEdge"}, {"edge", "end"}, {"time", 7000000}}).code.isEmpty());
+        QCOMPARE(proposals.size(), count + 2);
         QCOMPARE(proposals.last().at(1).toJsonArray(), typed);
     }
     // U13: Enter by focus and state: placing, it places the centred cover; a
@@ -509,8 +513,137 @@ private slots:
         window.setEdit(covered);
         QVERIFY(!exact());
         PUTGD_TRY_VERIFY(exact());
+        // U21: 100 % drops the Fit skim frame at once and asks at source size.
+        window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
+        QVERIFY(!exact());
+        PUTGD_TRY_VERIFY(exact());
+        QCOMPARE(window.inspect()["preview"].toObject()["skimSize"].toArray(), (QJsonArray{1600, 900}));
+        window.drive({{"action", "viewerZoom"}, {"mode", "fit"}});
+        PUTGD_TRY_VERIFY(exact());
+        // U20: a seek ends the skim, so the same time skimmed again is asked again.
         window.drive({{"action", "seek"}, {"time", 500000}});
         QVERIFY(!exact());
+        QVERIFY(window.inspect()["timeline"].toObject()["skim"].isNull());
+        window.drive({{"action", "skim"}, {"time", 1500000}});
+        PUTGD_TRY_VERIFY(exact());
+    }
+    // U21, U22 on a real clip: playback at 100 % decodes source pixels, and an
+    // edit that leaves nothing kept ahead of the playhead pauses it there
+    // rather than starting over.
+    void playbackFollowsZoomAndPausesWithNothingAhead() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 3, 1600, 900));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 3000000;
+        o.canvas = QSize(1600, 900);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
+        QVERIFY(window.drive({{"action", "play"}}).code.isEmpty());
+        const auto preview = [&] { return window.inspect()["preview"].toObject(); };
+        PUTGD_TRY_VERIFY(preview()["frameTimeUs"].toDouble() >= 300000);
+        QVERIFY(window.inspect()["playing"].toBool());
+        QCOMPARE(preview()["frameSize"].toArray(), (QJsonArray{1600, 900}));
+        PUTGD_TRY_VERIFY(window.inspect()["playheadUs"].toDouble() >= 1000000);
+        auto trimmed = edit;
+        trimmed.revision = 3;
+        trimmed.trimEnd = 500000;
+        window.setEdit(trimmed);
+        auto state = window.inspect();
+        QVERIFY(!state["playing"].toBool());
+        QVERIFY2(state["playheadUs"].toDouble() >= 1000000, qPrintable(QString::number(state["playheadUs"].toDouble())));
+    }
+    // U16: an upload waiting for its edit's answer is called off by new work
+    // (a placement, an edit), and the answer rechecks every Upload guard (a
+    // drag, an export) before it sends.
+    void aWaitingUploadYieldsToNewWork() {
+        ReviewWindow window(options(), config());
+        QSignalSpy uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        window.drive({{"action", "resetTrim"}});
+        ctrlEnter(window);
+        QVERIFY(window.inspect()["uploadWaiting"].toBool());
+        window.drive({{"action", "armRedact"}});
+        QVERIFY(!window.inspect()["uploadWaiting"].toBool());
+        QVERIFY(window.inspect()["status"].toString().contains("kept editing"));
+        window.setEdit(edit, answer(1));
+        QCOMPARE(uploads.size(), 0);
+        window.drive({{"action", "cancelPlacement"}});
+        // A drag started before the answer arrives.
+        window.drive({{"action", "resetTrim"}});
+        ctrlEnter(window);
+        auto* strip = timeline(window);
+        const QPoint handle = strip->trimHandleRect(true).center();
+        QTest::mousePress(strip, Qt::LeftButton, {}, handle);
+        QVERIFY(strip->dragging());
+        window.setEdit(edit, answer(2));
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.inspect()["status"].toString().contains("kept editing"));
+        QTest::mouseRelease(strip, Qt::LeftButton, {}, handle);
+        // An export started before the answer arrives.
+        window.drive({{"action", "resetTrim"}});
+        ctrlEnter(window);
+        window.setExporting(true, "Exporting MP4…");
+        window.setEdit(edit, answer(3));
+        QCOMPARE(uploads.size(), 0);
+        window.setExporting(false, {});
+        QCOMPARE(uploads.size(), 0);
+    }
+    // U18: a held Enter (auto-repeat) never reaches Upload; Ctrl+Enter does not repeat.
+    void aHeldEnterNeverUploads() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.cuts = {RecordingCut{"c1", 1000000, 2000000}};
+        window.setEdit(edit);
+        for (auto* shortcut : window.findChildren<QShortcut*>())
+            if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Return) || shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Enter)) QVERIFY(!shortcut->autoRepeat());
+        timeline(window)->setFocus();
+        const auto repeat = [&] { QKeyEvent held(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier, QString(), true); QApplication::sendEvent(&window, &held); };
+        window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
+        repeat();
+        QCOMPARE(proposals.size(), 0);
+        window.drive({{"action", "clearSelection"}});
+        repeat();
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.isVisible());
+    }
+    // U23: only the cut's own accepted answer moves the playhead to its seam;
+    // an earlier refusal or an unrelated push leaves it alone.
+    void onlyTheCutsAnswerMovesThePlayhead() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        window.drive({{"action", "resetTrim"}});
+        window.drive({{"action", "selectRange"}, {"start", 4000000}, {"end", 6000000}});
+        QVERIFY(window.drive({{"action", "cut"}}).state["proposals"].toArray() == QJsonArray{2});
+        window.setEdit(edit, answer(1, "invalid_request"));
+        auto unrelated = edit;
+        unrelated.revision = 3;
+        unrelated.masks = {mask("m1", "solid", 0, 1000000)};
+        window.setEdit(unrelated);
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 0.0);
+        auto cut = unrelated;
+        cut.revision = 4;
+        cut.cuts = {RecordingCut{"c1", 4000000, 6000000}};
+        window.setEdit(cut, answer(2));
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 3000000.0);
     }
     // While recording, Stop keeps the clip and Discard only asks.
     void stoppingKeepsTheClipAndDiscardStillAsks() {
