@@ -46,6 +46,33 @@ def test_definition(build, name):
     return test['command'], env, cwd
 
 
+class Interrupted(BaseException):
+    def __init__(self, signum):
+        super().__init__(signum)
+        self.signum = signum
+
+
+def interrupted(signum, frame):
+    raise Interrupted(signum)
+
+
+def stop_recording(process, handle, why):
+    """SIGTERM to rr alone: it stops its tracees and finishes the trace. Only if it does not, its process group (ours alone, and pinned
+    while rr is unreaped) gets SIGKILL, and that trace stays incomplete. Reaps rr."""
+    previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGTERM)}
+    try:
+        signal.pidfd_send_signal(handle, signal.SIGTERM)
+        try:
+            process.wait(120)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+    return why
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     parser.add_argument('--build', type=Path, required=True)
@@ -60,6 +87,9 @@ def main():
     parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
     parser.add_argument('extra', nargs=argparse.REMAINDER)
     options = parser.parse_args()
+    # Ctrl+C or SIGTERM stops the recording this script started (rr runs in a session of its own and would not see the signal).
+    signal.signal(signal.SIGINT, interrupted)
+    signal.signal(signal.SIGTERM, interrupted)
     options.build, options.run_dir = options.build.absolute(), options.run_dir.absolute()
     extra = options.extra[1:] if options.extra[:1] == ['--'] else options.extra
     options.run_dir.mkdir(parents=True)
@@ -78,23 +108,28 @@ def main():
         argv = [options.rr, 'record', '-o', str(trace)] + ([] if options.no_chaos else ['--chaos']) + command + extra
         started = time.monotonic()
         with open(log, 'w') as out:
-            process = subprocess.Popen(argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
-                                       start_new_session=True)
-            handle = os.pidfd_open(process.pid)  # rr itself, not reaped until wait() below, so this names it for good
+            process, handle, stopped_by = None, None, None
             try:
+                process = subprocess.Popen(argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
+                                           start_new_session=True)
+                handle = os.pidfd_open(process.pid)  # rr itself, not reaped until wait() below, so this names it for good
                 code = process.wait(options.timeout)
             except subprocess.TimeoutExpired:
-                # SIGTERM to rr alone: it stops its tracees and finishes the trace. Only if it does not, its process group (ours alone, and
-                # pinned while rr is unreaped) gets SIGKILL, and that trace stays incomplete.
-                signal.pidfd_send_signal(handle, signal.SIGTERM)
-                try:
-                    process.wait(120)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    process.wait()
-                code = 'stopped after %.0f s: a possible slowdown or hang' % options.timeout
+                code = stop_recording(process, handle, 'stopped after %.0f s: a possible slowdown or hang' % options.timeout)
+            except Interrupted as stop:
+                stopped_by = stop.signum
+                if process is None:
+                    return 128 + stop.signum
+                if handle is None:
+                    handle = os.pidfd_open(process.pid)  # still unreaped, so the PID is still rr's
+                code = stop_recording(process, handle, 'interrupted by %s' % signal.Signals(stop.signum).name)
             finally:
-                os.close(handle)
+                if handle is not None:
+                    os.close(handle)
+        if stopped_by is not None:
+            replayable = (trace / 'version').exists() and not (trace / 'incomplete').exists()
+            print('run %d: %s; trace %s (%s)' % (index, code, trace, 'rr replay %s' % trace if replayable else 'INCOMPLETE, not replayable'), flush=True)
+            return 128 + stopped_by
         seconds = time.monotonic() - started
         if code == 0:
             removed = subprocess.run([options.rr, 'rm', str(trace)], capture_output=True, text=True)

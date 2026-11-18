@@ -348,6 +348,11 @@ class Resident:
         os.chmod(self.runtime, 0o700)
         self.san.mkdir(exist_ok=True)
         env = {k: os.environ[k] for k in ('PATH', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'XDG_DATA_DIRS') if k in os.environ}
+        # A private TMPDIR inside the run folder, for the resident and a recorder around it alike: it lives where --run-dir does (tmpfs
+        # for rr, which aborts on FS_IOC_GETFSLABEL on ext4 and btrfs) and never in a shared /tmp.
+        tmp = self.run / 'tmp'
+        tmp.mkdir(mode=0o700, exist_ok=True)
+        env['TMPDIR'] = str(tmp)
         env.update(self.extra_env)
         env[self.token.split('=', 1)[0]] = self.token.split('=', 1)[1]
         env.update(HOME=str(self.root / 'home'), XDG_CONFIG_HOME=str(self.root / 'config'), XDG_DATA_HOME=str(self.root / 'data'),
@@ -724,7 +729,9 @@ class Resident:
         if not folder:
             return [], []
         found = [p for p in sorted(Path(folder).glob('*-*')) if p.is_dir() and not p.is_symlink()]
-        return [str(p) for p in found if not (p / 'incomplete').exists()], [str(p) for p in found if (p / 'incomplete').exists()]
+        # Complete: rr wrote its `version` file and removed its `incomplete` marker. A folder with neither is not a trace rr finished.
+        complete = [p for p in found if (p / 'version').exists() and not (p / 'incomplete').exists()]
+        return [str(p) for p in complete], [str(p) for p in found if p not in complete]
 
     def quit(self, how='ui.quit'):
         """A graceful stop: ui.quit, or the signal a session manager sends. The resident must exit by itself, with its leak check clean."""

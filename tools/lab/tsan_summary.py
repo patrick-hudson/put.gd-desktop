@@ -5,13 +5,15 @@ TSan with log_path writes one file per process (tsan.<pid>). Reports are capture
 the D-Bus lock-order rule), and this lists each distinct report once with how often it occurred, in three parts:
 
   put.gd     a put.gd frame within the top frames of either racing access: read these first
-  qt-known   a known Qt-internal race (KNOWN_QT_RACES, each diagnosed in docs/testing/thread-sanitizer.md) whose two racing accesses
-             both start in a Qt library with no put.gd frame in their top frames
+  qt-known   a known Qt-internal race (KNOWN_QT_RACES, each diagnosed in docs/testing/thread-sanitizer.md): both racing access stacks
+             start in a Qt library and hold no put.gd frame at all, in any of their frames
   external   everything else: Qt, GLib, GStreamer or the C library with no known race; read it before adding an entry
 
-Only qt-known reports are excused. An entry names a function that must be in the top frames of a racing access, and it applies only
-when both racing accesses pass the Qt-only test, so a put.gd frame near the top of either access (put.gd touching a QNetworkReply
-that Qt destroys) makes it a put.gd report, never a known one. A thread-creation or mutex stack never matches an entry. The action-sequence fuzzer uses unexplained() to fail a seed on anything but qt-known reports.
+Only qt-known reports are excused, under one strict rule: neither racing access stack contains a put.gd frame anywhere (so a report
+whose main-thread stack ends in put.gd's main() is not excused), both start in Qt, and an entry's function is in the top frames of
+one of the two stacks, with its anchor (the diagnosed Qt caller), when it has one, in that same stack. Any other report counts,
+including every report that involves put.gd at any depth. Thread-creation, mutex and allocation stacks are not read. The
+action-sequence fuzzer uses unexplained() to fail a seed on anything but qt-known reports.
 
   python3 -I tools/lab/tsan_summary.py --source . "$report_dir"
 
@@ -23,11 +25,11 @@ from pathlib import Path
 import re
 import sys
 
-TOP = 6  # frames of each racing access that must hold no put.gd code for a known race to apply
+TOP = 6  # frames of a racing access in which a known function must appear
 
 # The Qt-internal races diagnosed in the race hunt (docs/testing/thread-sanitizer.md), as (function, anchor). A report is excused only
-# when the function is in the top frames of a racing access, the anchor (when given) is somewhere in the racing access stacks, and both
-# racing accesses pass the Qt-only test. The anchor ties a generic Qt function to the one Qt caller the diagnosis covers.
+# when neither racing access stack holds a put.gd frame, the function is in the top frames of one stack, and the anchor (when given) is
+# in that same stack. The anchor ties a generic Qt function to the one Qt caller the diagnosis covers.
 KNOWN_QT_RACES = (
     # QNetworkAccessManager starts its HTTP thread, then connects to that QThread's started() from the calling thread; the new thread reads
     # the connection list with a relaxed load (qobject.cpp maybeSignalConnected) while connect() publishes it under the signal mutex.
@@ -80,12 +82,15 @@ def classify(block, own_prefixes):
     key = (kind.group(1) if kind else '?', ' || '.join(function(frames[0]) if frames else '?' for frames in stacks), tuple(sorted(set(own)))[:2])
     if own:
         return 'put.gd', key
-    qt_only = len(stacks) == 2 and all(frames and is_qt(frames[0]) and not any(is_own(l, own_prefixes) for l in frames[:TOP]) for frames in stacks)
-    if qt_only and kind and kind.group(1) == 'data race':
-        top = ' '.join(function(l) for frames in stacks for l in frames[:TOP])
-        whole = ' '.join(function(l) for frames in stacks for l in frames)
-        if any(name in top and (anchor is None or anchor in whole) for name, anchor in KNOWN_QT_RACES):
-            return 'qt-known', key
+    # Strict: no put.gd frame anywhere in either racing access stack (every frame, not only the top ones), both start in Qt, and a known
+    # function sits in the top frames of one stack whose own frames also hold its anchor (the diagnosed Qt caller), when it has one.
+    clean = len(stacks) == 2 and all(frames and is_qt(frames[0]) and not any(is_own(l, own_prefixes) for l in frames) for frames in stacks)
+    if clean and kind and kind.group(1) == 'data race':
+        for frames in stacks:
+            top = ' '.join(function(l) for l in frames[:TOP])
+            whole = ' '.join(function(l) for l in frames)
+            if any(name in top and (anchor is None or anchor in whole) for name, anchor in KNOWN_QT_RACES):
+                return 'qt-known', key
     return 'external', key
 
 
