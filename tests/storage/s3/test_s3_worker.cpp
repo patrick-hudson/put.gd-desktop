@@ -126,9 +126,21 @@ private slots:
         QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
     }
     // The resident asks for idle upload lanes every 100 ms while it waits, so one such update can
-    // cross the worker's result on the wire. The worker ignores it and still exits cleanly; a worker
-    // that exits with an error makes the resident discard a finished answer as "ended unexpectedly".
-    void lanesUpdateAfterTheResultDoesNotFailTheWorker() {
+    // cross the worker's result on the wire. A valid one is dropped and the worker still exits cleanly;
+    // a worker that exits with an error makes the resident discard a finished answer as "ended
+    // unexpectedly". A count that is invalid is a protocol failure before and after the result alike:
+    // the worker exits with code 3.
+    void lanesUpdateAfterTheResult_data() {
+        QTest::addColumn<double>("lanes");
+        QTest::addColumn<int>("exitCode");
+        QTest::newRow("valid") << 1.0 << 0;
+        QTest::newRow("negative") << -1.0 << 3;
+        QTest::newRow("fraction") << 1.5 << 3;
+        QTest::newRow("too-many") << double(s3MaximumPartLanes) << 3;
+    }
+    void lanesUpdateAfterTheResult() {
+        QFETCH(double, lanes);
+        QFETCH(int, exitCode);
         test::S3Fixture fixture;
         const auto request = fixture.request("late-lanes.txt", QByteArray(1024, 'l'));
         QProcess child;child.setProcessChannelMode(QProcess::SeparateChannels);
@@ -150,8 +162,8 @@ private slots:
                 acknowledge(kind,value["rpc"].toString(),{{"error",s3wire::encode(Error{})}});
             else if(type=="checkpoint"&&kind=="result") {
                 result=value["data"].toObject();terminal=true;
-                auto lanes=envelope();lanes["lanes"]=1;
-                control.send("lanes",lanes);
+                auto update=envelope();update["lanes"]=lanes;
+                control.send("lanes",update);
                 acknowledge("result","terminal",{});
             }
         });
@@ -164,7 +176,7 @@ private slots:
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(terminal,10000);
         QCOMPARE(result["status"].toString(),QString("uploaded"));
         PUTGD_TRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
-        QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
+        QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),exitCode);QVERIFY(!wireFailed);
     }
     void faultyChildren_data() {
         QTest::addColumn<QString>("mode");
