@@ -22,10 +22,9 @@ Part of [Screen recording](../recording.md).
 
 The review window's controls are reachable through `recording.review`, and each action
 routes through the same handler as its UI (the rule in
-[AGENTS.md](../../../AGENTS.md)), with two exceptions, listed below: the Format
-menu's **audio toggle** has no review action (it is a footer control that changes
-whether the export carries system audio), and `retryExport` is handled by the resident
-rather than the window. The edit operations themselves (`addCut`, `updateCut`,
+[AGENTS.md](../../../AGENTS.md)), with one exception: the Format menu's **audio
+toggle** has no review action (it is a footer control that changes whether the export
+carries system audio). The edit operations themselves (`addCut`, `updateCut`,
 `removeCut`, `undo`, `redo` beside the trim and cover ones) go through `recording.edit`;
 the model, limits and error codes are in
 [the edit model](session-contract.md#time-geometry-and-the-edit-model).
@@ -46,20 +45,26 @@ pixels.
   `useSolidCover`, `selectMask` with an unknown ID, and `setMaskIn`, `setMaskOut`,
   `setIn`, `setOut` when the edge would cross the other).
 - `recording_state`: the window's state refuses the action. A cover being placed
-  (`selectRange`, `cut`, `redo`, `saveCopyDialog`, `retryExport`), no time selection
+  (`selectRange`, `cut`, `redo`, `saveCopyDialog`, `retryExport`), no failed export to
+  retry (`retryExport`), no time selection
   (`cut`), no selected cover (`seekCoverStart`, `seekCoverEnd`, `setCoverEdge`,
   `setCoverEdgeToPlayhead`, `coverKind`), nothing to undo, redo or step through, no
   placement to cancel, an excluded cover (`seekCoverStart`, `seekCoverEnd`), playing
   (`skim`), a panel that is not folded (`panel`), the picture at Fit (`viewerPan`), an
   export running, the discard confirmation or the **Save a copy…** chooser open.
-- **The resident's refusal of a proposed edit** is the action's error. An action that
+- **The outcome of the action's own proposals** is its result. Each action reports only
+  the proposals it made: a proposal the resident refused is the action's error, and a
+  proposal that was never answered is `recording_state` ("The edit was not answered").
+  An action that
   proposes an edit (`cut`, `adjustCut`, `restoreCut`, `setTrim`, `setIn`, `setOut`,
   `resetTrim`, `trimToLimit`, `addMask`, `placeMask`, `setMaskIn`, `setMaskOut`,
   `setCoverEdge`, `setCoverEdgeToPlayhead`, `coverKind`, `strength`, `removeMask`,
   `undo`, `redo`) answers with the model's code and message and `details {revision,
   proposal}`: for example `recording_cut_empty` for a cut that would leave less than one
   frame, `invalid_request` for a 65th cut, `recording_stale` for a stale revision. The
-  edit is unchanged. The refusal also appears in `inspect` as `lastRefusal`.
+  edit is unchanged. `lastRefusal` in `inspect` is for display only: it is the latest
+  refusal the window saw, which a later proposal may have replaced, so an agent reads its
+  own action's error, not `lastRefusal`.
 
 | Action | Fields | What it does |
 | --- | --- | --- |
@@ -108,7 +113,7 @@ pixels.
 | `saveCopyDialog`, `closeFileDialog` | | opens **Save a copy…** as the button does, or closes it as a cancel |
 | `dismissStatus`, `showAdvice` | | clears the status line, or opens an error's details |
 | `showInFolder`, `copyPath`, `dismissSavedCopy` | | the saved-copy result's actions |
-| `retryExport` | | Try again, handled by the resident: repeats the last failed **Save a copy…** or Upload with the same path or destination at the **current** revision, and answers with the export-start reply (`state: exporting`). If the failed request was an Upload, **this publishes**. `recording_state` with no failed export, or while a cover is being placed |
+| `retryExport` | | Try again, through the window like every other control: the window asks the resident to repeat the last failed **Save a copy…** or Upload with the same path or destination at the **current** revision. It **answers with the window's state**, not the export-start reply: the export starts from the window's request, and the agent polls `lastExport` (and `recording.inspect`) as for any export. If the failed request was an Upload, **this publishes**. Refused (`recording_state`) when nothing failed, while a cover is being placed, or when the window can't be asked |
 | `retryPreview` | | decodes the playhead frame again |
 | `discard`, `keepReviewing`, `confirmDiscard` | | Discard… asks; the other two answer it |
 
@@ -139,7 +144,7 @@ removed: those controls no longer exist.
 | `size` | the window's `[width, height]` |
 | `timeline` | `zoom`, `visible {start, end}`, `selection {start, end}` or `null`, `selectedEdit {kind, id}` (empty strings when nothing is selected), `skim {time, exact}` or `null`, `lanes`, `hiddenCovers`, `tiles {shown, placeholders}`, and the rectangles `rect`, `strip` and `ruler` (window coordinates) |
 | `lastRefusal` | `null`, or `{code, message, revision, proposal}` for the latest edit the resident refused |
-| `uploadWaiting` | true while an Upload waits for the resident to accept pending proposals; a refusal or 2 s without an answer cancels it |
+| `uploadWaiting` | true while an Upload waits for the resident to accept pending proposals; a refusal, 2 s without an answer, more editing, a cover being placed or an export starting cancels it |
 | `preview` | `{error, stale, frameTimeUs, frameSize [w, h]}`: the shown frame's error, whether it is an earlier frame, its time and its size in pixels (at 100 % the source size) |
 
 The rest is unchanged: `visible`, `playing`, `speed`, `armed`, `audio`, `audioRequested`, `audioEffective`, `selectedMaskId`, `status`,

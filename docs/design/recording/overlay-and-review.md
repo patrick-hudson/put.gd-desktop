@@ -245,6 +245,8 @@ menu's `format` action does not change it.
   Ctrl+Enter always uploads, and does nothing with a menu open.
 - **100 % view** shows source pixels: the helper decodes the clip at its own size rather
   than the 1280 px preview, so a cover and the picture can be checked pixel for pixel.
+  Changing the zoom refreshes the paused frame or the skim frame at the new size, and
+  playback at 100 % decodes at full size.
 - **Undo and redo** run in the resident: one step per committed gesture (a run of
   nudges is one), covering trim, cuts and covers only. Every undo or redo is a new
   revision (see [the edit model](session-contract.md#time-geometry-and-the-edit-model)).
@@ -256,9 +258,12 @@ menu's `format` action does not change it.
   drag's edit has not been proposed), and Upload is disabled while a cover is being
   placed. Upload then waits until the resident has accepted every pending proposal and
   sends the acknowledged revision. A refusal, or 2 s without an answer, cancels the
-  upload: the status line says what was not applied or "Upload didn't start", and
-  `inspect` shows `uploadWaiting` while it waits. **Try again** (`retryExport`) is
-  refused while a cover is being placed.
+  upload: the status line says what was not applied or "Upload didn't start". So does
+  more editing, placing a cover or an export starting while it waits: the status line then
+  says "Upload cancelled because you kept editing." `inspect` shows `uploadWaiting` while
+  it waits. **Try again** (`retryExport`) is refused while a cover is being placed.
+- **Held keys.** An auto-repeated Enter is ignored, so a held key places or restores once
+  and never uploads, and Ctrl+Enter does not auto-repeat.
 
 ### Thumbnails and skimming
 
@@ -306,7 +311,8 @@ its own time only, so a cover wholly inside a frame gap is not drawn on the stil
 picture while playing. That is a limit of the local viewer; the export is correct. While
 a cover is being dragged the pending area is drawn as a dashed rubber band. Play plays
 the kept footage silently from the playhead at the chosen speed and follows edits made
-while it plays: a cut is jumped, and frames that fall behind the clock are decoded but
+while it plays (it resumes from the playhead, or pauses there when the edit leaves no
+kept footage ahead of it): a cut is jumped, and frames that fall behind the clock are decoded but
 not drawn, so a large clip keeps pace with dropped frames. Scrubbing or any edit control
 pauses playback. The audio track is not previewed. **Check the saved export before
 uploading sensitive footage:** the preview and the export are separate renderers.
@@ -315,8 +321,7 @@ uploading sensitive footage:** the preview and the export are separate renderers
 window's controls as a user does, one action per call, in `reviewing` (and
 `inspect` while `exporting`). The answer is the window's state after the action plus
 the resident's `state` and `edit`. Not every control has an action: the Format menu's
-audio toggle (the footer's "with system audio") has none, and `retryExport` is handled
-by the resident, not the window (see
+audio toggle (the footer's "with system audio") has none (see
 [Review window actions](agent-control-and-tests.md#review-window-actions)). Errors:
 
 - **`invalid_request`** for a value the window rejects (a missing or malformed field, a
@@ -329,12 +334,13 @@ by the resident, not the window (see
   an export running, the discard confirmation or the **Save a copy…** chooser open (opened
   through the desktop's XDG portal or the themed fallback; see
   [file-dialogs.md](../file-dialogs.md)).
-- **The resident's refusal.** An edit a control proposes reaches the resident as an
-  `edit` event first. If the resident refuses it (a cut that would leave no frame, a
-  65th cut, a stale revision), the action answers with the refusal as its error: the
-  model's own code (for example `recording_cut_empty`, `recording_stale` or
-  `invalid_request`) and message, with `details {revision, proposal}`. The same refusal
-  stays in `inspect` as `lastRefusal {code, message, revision, proposal}`. An action that
+- **The outcome of the action's own proposals.** An edit a control proposes reaches the
+  resident as an `edit` event first. If the resident refuses it (a cut that would leave
+  no frame, a 65th cut, a stale revision), the action answers with the refusal as its
+  error: the model's own code (for example `recording_cut_empty`, `recording_stale` or
+  `invalid_request`) and message, with `details {revision, proposal}`. A proposal that
+  was never answered is a `recording_state` error. `inspect`'s
+  `lastRefusal {code, message, revision, proposal}` is for display only. An action that
   succeeds returns the window's state with the edit after it, so an agent can read the
   returned `edit.revision`; `recording.edit` returns the same refusal codes directly.
 

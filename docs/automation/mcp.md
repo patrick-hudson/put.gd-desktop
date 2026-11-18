@@ -138,8 +138,11 @@ state. Errors, by cause, are in
 `invalid_request` for a value or selection the window rejects, `recording_state` when
 the window's state refuses the action, and, when the resident refuses an edit the action
 proposed, that refusal's own code (`recording_cut_empty`, `recording_stale` and so on)
-with `details {revision, proposal}`. `retryExport` and the audio toggle are the two
-controls the review actions do not drive like the window.
+with `details {revision, proposal}`; a proposal that was never answered is
+`recording_state`. Each action reports only its own proposals, and `lastRefusal` in
+`inspect` is for display. `retryExport` goes through the window like the other controls and
+answers with the window's state, so poll `lastExport`; the Format menu's audio toggle is
+the one control with no action.
 
 | MCP parameter | Session field | Used by |
 | --- | --- | --- |

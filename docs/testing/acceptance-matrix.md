@@ -227,9 +227,8 @@ can pass with the cut still in the clip.
 - A cover's area is covered in every frame shown during its time, including a frame
   held over a still stretch or across a cut, and uncovered in frames outside it.
 - Audio carries the kept tone and none of the cut tone, with no click at the join.
-- The duration is compared with the expected export timing, not with the review's kept
-  time alone: kept time on the frame grid, plus up to one frame per span; a GIF or WebP
-  is never longer than the kept time.
+- The duration equals the review clock (kept time on the output frame grid); a GIF or
+  WebP is never longer than the kept time.
 - Fold the window below 1180×720 and use the **Edits** overlay.
 
 | Package | Desktop/session | Placement | What the row must show |

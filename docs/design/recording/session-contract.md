@@ -34,9 +34,9 @@ Part of [Screen recording](../recording.md).
 - The **kept spans** are `[trimStart, trimEnd)` minus every cut, sorted and disjoint;
   output time lays them end to end from zero (`recording::KeptSpans`). The total is the
   **kept time**: the length the review's output clock shows and the length the GIF and
-  WebP limit counts. Export snaps each span to the frame grid, so its own lengths differ
-  slightly; the three durations (kept time, export grid time, exported duration) and
-  where each appears are in
+  WebP limit counts. Export lays the kept time on the output frame grid and the exported
+  length equals the clock's; the three durations (kept time, export grid time, exported
+  duration) and where each appears are in
   [Kept spans, cuts and frame gaps](capture-and-export.md#kept-spans-cuts-and-frame-gaps).
   Covers map through the kept spans the same way: each mask is intersected with them and
   mapped to output time, in as many parts as the cuts split it. Retaining 10–30 s with no
@@ -101,14 +101,14 @@ the export starts, like `prepare`. The reply is the session as `inspect` shows
 it: `state: exporting`, `pending: saveCopy|upload`. Edits, previews and other
 exports are refused with `recording_state` until the export ends; `cancel` still
 works and discards it. While it runs, `progress.exportFraction` reports how far
-it got over the export grid time (the kept spans on the frame grid), and `operation.inspect` reports phase `exporting` (copy) or `encoding`
+it got over the export grid time (the kept time on the output frame grid), and `operation.inspect` reports phase `exporting` (copy) or `encoding`
 (upload).
 
 `lastExport` is the session's latest export: `{command, status, revision}`, plus
 `path` for a copy. `status` is `exporting`, then `saved` (with `bytes` and
-`durationUs`, the exported duration: the last encoded frame's end, which is the kept time
-on the frame grid plus up to one frame per span, and for a GIF or WebP never more than the
-kept time; the reply that starts the export carries no duration) or `failed` (with `error`, for example `recording_export_failed`,
+`durationUs`, the exported duration: the last encoded frame's end, which is the kept
+time on the output frame grid and equals the review clock's length; the reply that starts
+the export carries no duration) or `failed` (with `error`, for example `recording_export_failed`,
 `input_excessive` or `local_save_failed`). A failed export writes nothing and
 returns the session to `reviewing`. For a copy, poll `recording.inspect` until
 `state` is `reviewing` again. For an upload, `reviewing` with
