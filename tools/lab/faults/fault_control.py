@@ -1,0 +1,197 @@
+"""Fault plans for the put.gd fault-injection harness (tools/lab/action_fuzz.py faults).
+
+  FaultControl   the LD_PRELOAD shim (faultshim.c), its rule file and its log; the network proxy (fault_proxy.py);
+                 resource limits (open files, memory).  Every random choice comes from the harness's seeded generator
+                 and is logged, so a finding replays from its seed and --steps.
+"""
+import json
+import os
+from pathlib import Path
+import resource
+import shutil
+import subprocess
+import sys
+import time
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import fault_proxy  # noqa: E402
+
+# What a file the resident writes is called; a rule's path filter picks one of these (or any file under the run).
+FS_TARGETS = {
+    'database': 'history.sqlite',
+    'config': 'config.json',
+    'journal': 'journal',
+    'archive': '/archive/',
+    'state': '/state/',
+    'data': '/data/',
+    'cache': '/cache/',
+    'source': '/fixtures/u',
+    'runtime': '/rt/',
+    'everything': '/r/|/archive/',
+}
+
+
+class NofileNotRestored(Exception):
+    """The original open-file limit could not be put back: the harness stops the run."""
+
+
+class FaultControl:
+    def __init__(self, run, rng, classes, source_dir, target, log=None, seed=1, net_kinds=None):
+        """target: the resident's executable, the only program the shim injects into."""
+        self.run, self.rng, self.classes = run, rng, set(classes)
+        self.log = log or (lambda *a, **k: None)
+        self.dir = run / 'faults'
+        self.dir.mkdir(exist_ok=True)
+        self.spec = self.dir / 'faults.spec'
+        self.shim_log = run / 'logs' / 'faultshim.log'
+        self.shim = self.dir / 'faultshim.so'
+        self.seed = seed
+        self.net_kinds = net_kinds
+        self.rules = []
+        self.target = os.path.realpath(target)
+        self.proxy = None
+        self.nofile_lowered = False
+        self.nofile_events = 0
+        self.nofile_starts = set()
+        self.saved_nofile = {}   # pid -> its (soft, hard) open-file limit before the first lowering   # the resident starts (Resident.starts) during which its open-file limit was lowered
+        self.build_shim(source_dir)
+        self.write_spec([])
+
+    # --- the shim
+
+    def build_shim(self, source_dir):
+        source = Path(source_dir) / 'faultshim.c'
+        subprocess.run(['gcc', '-O2', '-Wall', '-shared', '-fPIC', '-o', str(self.shim), str(source), '-ldl', '-lpthread'], check=True)
+
+    def environment(self):
+        # The shim binds to the first process of the target executable and strips these from its environment, so helpers run without it.
+        return {'LD_PRELOAD': str(self.shim), 'PUTGD_FAULT_SPEC': str(self.spec), 'PUTGD_FAULT_EXE': self.target, 'PUTGD_FAULT_SHIM': '1'}
+
+    def faulted_pids(self):
+        """{pid: comm} of every process the shim injected a fault into, from its log."""
+        found = {}
+        if self.shim_log.exists():
+            for line in self.shim_log.read_text(errors='replace').splitlines():
+                fields = line.split(' ', 3)
+                if len(fields) >= 3 and fields[1].isdigit():
+                    found[int(fields[1])] = fields[2]
+        return found
+
+    def write_spec(self, rules):
+        """Atomically replace the rule file; the shim notices the new mtime within 50 ms."""
+        self.rules = list(rules)
+        text = 'seed %d\nlog %s\n%s\n' % (self.seed, self.shim_log, '\n'.join(rules))
+        temporary = self.dir / 'faults.spec.new'
+        temporary.write_text(text)
+        os.replace(temporary, self.spec)
+        self.log('fault-fs', rules=self.rules)
+
+    def random_fs_rules(self):
+        rng = self.rng
+        rules = []
+        for _ in range(rng.choice((1, 1, 2, 3))):
+            target = FS_TARGETS[rng.choice(list(FS_TARGETS))]
+            probability = rng.choice((0.02, 0.1, 0.3, 1.0))
+            kind = rng.choice(('space', 'space', 'io', 'io', 'perm', 'fsync', 'rename', 'short', 'slow', 'open', 'read', 'fds'))
+            skip = rng.choice((0, 0, 0, 2, 10, 40))
+            tail = ' skip=%d' % skip if skip else ''
+            if rng.random() < 0.3:
+                tail += ' count=%d' % rng.choice((1, 2, 5, 20))
+            if kind == 'space':
+                rules.append('rule write,truncate,fallocate %s %s ENOSPC%s' % (target, probability, tail))
+            elif kind == 'io':
+                rules.append('rule write,truncate %s %s EIO%s' % (target, probability, tail))
+            elif kind == 'perm':
+                rules.append('rule open,rename,unlink,mkdir %s %s %s%s' % (target, probability, rng.choice(('EACCES', 'EROFS')), tail))
+            elif kind == 'fsync':
+                rules.append('rule fsync %s %s %s%s' % (target, probability, rng.choice(('EIO', 'ENOSPC', 'EINTR')), tail))
+            elif kind == 'rename':
+                rules.append('rule rename %s %s %s%s' % (target, probability, rng.choice(('EIO', 'ENOSPC', 'EXDEV', 'EBUSY', 'EACCES')), tail))
+            elif kind == 'short':
+                rules.append('rule write %s %s short%s' % (target, probability, tail))
+            elif kind == 'slow':
+                rules.append('rule write,fsync,rename %s %s delay:%d%s' % (target, min(probability, 0.3), rng.choice((20, 100, 400)), tail))
+            elif kind == 'open':
+                rules.append('rule open %s %s %s%s' % (target, probability, rng.choice(('ENOSPC', 'EIO', 'EMFILE', 'ENOENT', 'EACCES')), tail))
+            elif kind == 'read':
+                rules.append('rule read %s %s EIO%s' % (target, probability, tail))
+            else:
+                rules.append('rule open,mkdir %s %s %s%s' % (target, probability, rng.choice(('EMFILE', 'ENFILE', 'ENOMEM')), tail))
+        return rules
+
+    # --- network
+
+    def start_proxy(self, upstream_port):
+        self.proxy = fault_proxy.Proxy(upstream_port, seed=self.seed, log_path=str(self.run / 'logs' / 'proxy.jsonl')).start()
+        return self.proxy.port
+
+    def random_net_profile(self):
+        rng = self.rng
+        kinds = self.net_kinds or ['reset_before', 'reset_request', 'reset_after_request', 'cut_response', 'stall', 'stall_response', 'dup_response', 'slow', 'latency']
+        chosen = rng.sample(kinds, min(len(kinds), rng.choice((1, 2, 3, 5))))
+        return {'fault_rate': rng.choice((0.1, 0.3, 0.6, 1.0)), 'weights': {k: rng.choice((1, 2, 4)) for k in chosen},
+                'latency_ms': rng.choice((0, 0, 5, 40, 200)), 'jitter_ms': rng.choice((0, 0, 5, 40)), 'stall': rng.choice((3, 6, 12))}
+
+    def set_net(self, profile):
+        if self.proxy:
+            self.proxy.set_profile(profile)
+            self.log('fault-net', profile=profile)
+
+    # --- resources
+
+    def lower_nofile(self, pid, headroom, start=None):
+        """Cap the open-file limit of a running process just above what it holds now (and so its next open fails with EMFILE)."""
+        try:
+            held = len(os.listdir('/proc/%d/fd' % pid))
+            limit = held + headroom
+            soft, hard = resource.prlimit(pid, resource.RLIMIT_NOFILE)
+            self.saved_nofile.setdefault(pid, (soft, hard))  # the original, restored exactly by restore_nofile
+            resource.prlimit(pid, resource.RLIMIT_NOFILE, (min(limit, hard), hard))
+            self.nofile_lowered = True
+            self.nofile_events += 1
+            self.nofile_starts.add(start)
+            self.log('fault-nofile', pid=pid, held=held, limit=limit)
+            return True
+        except (OSError, ValueError, ProcessLookupError):
+            return False
+
+    def restore_nofile(self, pids):
+        """Give each process its original open-file limit back and check it took. A process that is gone needs nothing; any other
+        failure raises NofileNotRestored, because a resident left at a lowered limit would fail everything after it."""
+        if not self.nofile_lowered:
+            return
+        for pid in pids:
+            saved = self.saved_nofile.get(pid)
+            if saved is None:
+                continue
+            try:
+                resource.prlimit(pid, resource.RLIMIT_NOFILE, saved)
+                now = resource.prlimit(pid, resource.RLIMIT_NOFILE)
+            except ProcessLookupError:
+                continue
+            except (OSError, ValueError) as error:
+                raise NofileNotRestored('could not restore the open-file limit %s of pid %d: %s' % (saved, pid, error))
+            if tuple(now) != tuple(saved):
+                raise NofileNotRestored('the open-file limit of pid %d is %s after restoring %s' % (pid, tuple(now), saved))
+            self.log('fault-nofile-restored', pid=pid, limit=saved)
+        self.nofile_lowered = False
+
+    # --- everything
+
+    def clear_all(self, pids=()):
+        self.write_spec([])
+        if self.proxy:
+            self.proxy.clear()
+        self.restore_nofile(pids)
+
+    def tail(self, count=40):
+        lines = []
+        for path in (self.shim_log,):
+            if path.exists():
+                lines += path.read_text(errors='replace').splitlines()[-count:]
+        return lines
+
+    def stop(self):
+        if self.proxy:
+            self.proxy.stop()
