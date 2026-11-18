@@ -17,7 +17,7 @@ import shlex
 from pathlib import PurePosixPath
 from uuid import uuid4
 
-from tools.lab.surface_driver.api import RecipeBlocked, recipe
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
 
 BACKENDS = ('portal', 'fallback')
@@ -246,15 +246,22 @@ def _enter_review_path(ctx, path, title):
         return any(node['showing'] and any(parent['name'] == 'Files' and parent['role'] in ('tree', 'tree table', 'table', 'list')
                                            for parent in node['ancestors']) for node in rows)
 
-    if not has_witness():
+    witness = 'the chooser file list shows the private output directory witness'
+    try:
+        ctx.wait(has_witness, witness, timeout=5)
+    except RecipeFailed as error:
+        if str(error) != 'timeout: ' + witness:
+            raise
         # Qt's completer may consume the first pointer click to dismiss itself.
         # Open again only with the same verified directory still in the field.
         ctx.click('class:QLineEdit', window='putgdFileDialog')
-        ctx.wait(lambda: (_review_filename(ctx, title) or {}).get('text') == folder,
-                 'the folder path remains in the owned chooser after the completion list closes')
-        ctx.click('text:Open', window='putgdFileDialog')
+        still_entered = (_review_filename(ctx, title) or {}).get('text') == folder
+        if not has_witness():
+            ctx.expect(still_entered, 'the owned chooser still shows the exact private folder before retrying Open')
+            ctx.click('text:Open', window='putgdFileDialog')
+            ctx.note('Retried Open after waiting for the directory marker and rechecking the exact folder')
     _frame(ctx, 'directory-navigation', 'fallback')
-    ctx.wait(has_witness, 'the chooser file list shows the private output directory witness')
+    ctx.wait(has_witness, witness)
     ctx.click('class:QLineEdit', window='putgdFileDialog')
     _type_review_filename(ctx, path.name, title)
     _frame(ctx, 'path-entered', 'fallback')

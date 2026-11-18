@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import shlex
-import time
 from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import recipe
@@ -431,6 +430,31 @@ def _export(ctx, rid, name='review-check'):
     return _saved(ctx, rid, path)
 
 
+def _playback_sample(ctx, rid):
+    request = json.dumps({'id': rid, 'action': 'inspect'})
+    result = ctx.shell(f"""python3 - <<'SD_PLAYBACK'
+import json, os, subprocess, time
+command = ['putgd-cli', '--socket', os.environ['XDG_RUNTIME_DIR'] + '/putgd/session.sock',
+           '--params-stdin', 'recording.review']
+before = time.monotonic_ns()
+response = subprocess.run(command, input={request!r}, text=True, stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL, timeout=5, check=True)
+after = time.monotonic_ns()
+state = json.loads(response.stdout)['result']
+print(json.dumps([state['playheadUs'], before, after] if state['playing'] else None))
+SD_PLAYBACK
+""", timeout=8)
+    ctx.expect(result['returncode'] == 0, 'target timed a recording.review inspect call')
+    return json.loads(result['stdout'])
+
+
+def _playback_rate(first, last):
+    # Each playhead was observed somewhere inside its target-side CLI interval.
+    elapsed_us = last[0] - first[0]
+    shortest_ns, longest_ns = last[1] - first[2], last[2] - first[1]
+    return elapsed_us * 1000 / longest_ns, elapsed_us * 1000 / shortest_ns
+
+
 @recipe('review.play', 'review.speed', needs=('recording',), timeout=CAPTURE_BUDGET)
 def playback(ctx):
     rid = _open(ctx)
@@ -442,17 +466,13 @@ def playback(ctx):
     ctx.click_at(*_video(ctx, rid, .05, .05))
     ctx.keys('Space')
 
-    def sample():
-        before = time.monotonic()
-        state = _state(ctx, rid)
-        return (state['playheadUs'], (before + time.monotonic()) / 2) if state['playing'] else None
-
-    first = ctx.wait(sample, 'playback begins')
-    last = ctx.wait(lambda: point if (point := sample()) and point[1] - first[1] >= .75 else None,
+    first = ctx.wait(lambda: _playback_sample(ctx, rid), 'playback begins')
+    last = ctx.wait(lambda: point if (point := _playback_sample(ctx, rid)) and point[1] - first[2] >= 750_000_000 else None,
                     'a second playing sample spans at least 750 ms', timeout=3)
-    rate = (last[0] - first[0]) / ((last[1] - first[1]) * 1_000_000)
-    ctx.note(f'Native 2× playback measured {rate:.2f}× over {last[1] - first[1]:.3f} s')
-    ctx.expect(1.55 <= rate <= 2.45, 'playhead advances at twice elapsed time')
+    lower, upper = _playback_rate(first, last)
+    elapsed = (last[1] - first[2]) / 1_000_000_000
+    ctx.note(f'Native 2× playback measured {lower:.2f}–{upper:.2f}× over at least {elapsed:.3f} s on the target')
+    ctx.expect(1.55 <= lower <= upper <= 2.45, 'target sample bounds show the playhead advancing at twice elapsed time')
     ctx.keys('Space')
     ctx.wait(lambda: not _state(ctx, rid)['playing'], 'Space pauses playback')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'playback remains private')
@@ -701,10 +721,9 @@ def save_copy(ctx):
 def _check_saved_actions(ctx, rid, path):
     ctx.wait(lambda: {'copyPath', 'showInFolder', 'dismissSavedCopy'} <= _saved_copy_actions(_state(ctx, rid)),
              'the saved copy offers Copy path, Show in folder and Dismiss')
-    before = ctx.clipboard_text(allow_absent=True)
-    ctx.expect(before != path, 'the clipboard differs from the fresh output before Copy path')
+    ctx.expect(not ctx.clipboard_matches(path), 'the clipboard differs from the fresh output before Copy path')
     _drive(ctx, rid, 'copyPath')
-    ctx.wait(lambda: ctx.clipboard_text(allow_absent=True) == path, 'Copy path changes the clipboard to the saved output path')
+    ctx.wait(lambda: ctx.clipboard_matches(path), 'Copy path changes the clipboard to the saved output path')
     _drive(ctx, rid, 'dismissSavedCopy')
 
 

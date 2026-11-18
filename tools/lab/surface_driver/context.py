@@ -1024,14 +1024,36 @@ asyncio.run(main())
     def tray(self):
         return self._probe('tray', {})
 
-    def clipboard_text(self, *, expected_json=None, allow_absent=False):
-        command = 'wl-paste --no-newline --type text' if self.profile['session']=='wayland' else 'xclip -selection clipboard -out'
-        result = self.shell('LC_ALL=C ' + command)
+    def _clipboard_reader(self):
+        if self.profile['session'] == 'wayland':
+            return ['wl-paste', '--no-newline', '--type', 'text'], b'Nothing is copied'
+        return ['xclip', '-selection', 'clipboard', '-out'], b'Error: target STRING not available'
+
+    def clipboard_matches(self, expected):
+        command, absent = self._clipboard_reader()
+        script = f"""LC_ALL=C python3 - <<'SD_CLIPBOARD'
+import subprocess
+try:
+    selection = subprocess.run({command!r}, stdin=subprocess.DEVNULL, capture_output=True, timeout=5)
+except (OSError, subprocess.TimeoutExpired):
+    raise SystemExit(2)
+if selection.returncode == 0:
+    print('true' if selection.stdout == {expected.encode('utf-8')!r} else 'false')
+elif selection.returncode == 1 and not selection.stdout and selection.stderr.strip() == {absent!r}:
+    print('false')
+else:
+    raise SystemExit(2)
+SD_CLIPBOARD
+"""
+        result = self.shell(script, timeout=8)
+        if result['returncode'] or result['stdout'] not in ('true\n', 'false\n'):
+            raise RecipeBlocked('clipboard text comparison unavailable on the target')
+        return result['stdout'] == 'true\n'
+
+    def clipboard_text(self, *, expected_json=None):
+        command, _ = self._clipboard_reader()
+        result = self.shell('LC_ALL=C ' + shlex.join(command))
         if result['returncode']:
-            absent = 'Nothing is copied' if self.profile['session']=='wayland' else 'Error: target STRING not available'
-            if (allow_absent and expected_json is None and result['returncode'] == 1
-                    and not result['stdout'] and result['stderr'].strip() == absent):
-                return None
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
         value, verified = result['stdout'], False
         if expected_json is not None:
