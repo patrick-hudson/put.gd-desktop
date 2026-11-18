@@ -234,6 +234,25 @@ private slots:
         modified["objectReference"] = object;
         QVERIFY(wire::decode(modified, decoded));
     }
+    // A link spelled for the key as typed (before #1582) is accepted only as the link the
+    // checked receipt already holds, never for a new publication.
+    void oldLinkSpellingOnlyForTheCheckedReceipt() {
+        auto old = receipt();
+        old.objectReference["key"] = "a//b/p.txt";
+        old.directUrl = s3LegacyPublicObjectUrl(old.destination.settings, "a//b/p.txt");
+        QVERIFY(old.directUrl != publicObjectUrl(old.destination.settings, "a//b/p.txt"));
+        StorageReceipt decoded;
+        QVERIFY(!wire::decode(old.toJson(), decoded));
+        QVERIFY(wire::decode(old.toJson(), decoded, old.directUrl));
+        UploadResult uploaded;
+        QVERIFY(!wire::decode(wire::encode(UploadResult{"uploaded", old, {}}), uploaded));
+        StatResult stat;
+        QVERIFY(!wire::decode(wire::encode(StatResult{"own", old, {}}), stat));
+        QVERIFY(wire::decode(wire::encode(StatResult{"own", old, {}}), stat, old));
+        auto other = old;
+        other.directUrl = s3LegacyPublicObjectUrl(old.destination.settings, "a//b/q.txt");
+        QVERIFY(!wire::decode(wire::encode(StatResult{"own", old, {}}), stat, other));
+    }
     void resultStatusDomainsAndNullUnusedReceipts() {
         NameCheck checked;
         const NameCheck absent{"absent", {{"schemaVersion", 1}, {"key", "key"}}, {}, {}};
