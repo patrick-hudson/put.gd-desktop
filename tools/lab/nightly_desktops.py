@@ -436,6 +436,10 @@ RECOVERY_SECONDS = 180
 # next cells run against a guest that cannot pass them, so the row stops.
 LOST_SESSION_ERRORS = frozenset(('resident quit transport unavailable; private session retained',
                                  'resident quit was rejected; private session retained'))
+# Cleanup errors that live only inside the guest, so retiring the guest resolves them. A lost
+# guest session also fails the `kill` of the notification monitor over the same dead transport,
+# so that message always arrives with the quit failure and must not block the recovery.
+GUEST_LOCAL_CLEANUP_ERRORS = LOST_SESSION_ERRORS | {'notification monitor cleanup unavailable'}
 
 
 def lost_guest_session(out):
@@ -572,7 +576,7 @@ def recover_guest(config, owner, out, cells):
     for path in evidence.glob('*/receipt.json'):
         environment = json.loads(path.read_text()).get('environment', {})
         errors = environment.get('cleanup_errors', [])
-        if (any(error not in LOST_SESSION_ERRORS for error in errors) or
+        if (any(error not in GUEST_LOCAL_CLEANUP_ERRORS for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
     if (run/'state.json').exists():

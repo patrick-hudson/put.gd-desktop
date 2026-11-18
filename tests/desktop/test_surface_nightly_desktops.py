@@ -257,10 +257,12 @@ class NightlyTests(unittest.TestCase):
             with self.subTest(safe=safe), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
-                message = ('resident quit transport unavailable; private session retained'
-                           if safe else 'fixture cleanup failed; publication outstanding')
+                # A lost session fails its notification monitor kill over the same dead transport.
+                messages = (['notification monitor cleanup unavailable',
+                             'resident quit transport unavailable; private session retained']
+                            if safe else ['fixture cleanup failed; publication outstanding'])
                 nightly.save(Path(owner['evidence'])/'flow/receipt.json', dict(environment=dict(
-                    cleanup_errors=[message], private_cleanup='not-owned-or-retained')))
+                    cleanup_errors=messages, private_cleanup='not-owned-or-retained')))
                 with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
                         patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
                               proton if kw.get('resource') == 'proton' else desktop), \
@@ -447,7 +449,8 @@ class NightlyTests(unittest.TestCase):
             return records[0], cells, retire, (root/'putgd-lab/locks/tier1-guest.lock.d').exists()
 
     def test_lost_session_stops_the_row_with_the_first_failure(self):
-        record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained'])
+        record, cells, retire, slot = self.lost_session_row(['notification monitor cleanup unavailable',
+                                                             'resident quit transport unavailable; private session retained'])
         self.assertEqual(cells, ['idle_memory-1'])
         reason = record['notRunReason']
         self.assertIn('guest session lost in idle_memory attempt 1: target session command unavailable', reason)
