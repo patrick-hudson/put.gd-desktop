@@ -1049,6 +1049,11 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         reply({"failed", {}, {"s3_precondition_invalid", "Persist an exact object key and write precondition before upload", {}}});
         return;
     }
+    // #1601: one hint for every failure of this upload, single request or multipart.
+    reply = [key, deliver = std::move(reply)](UploadResult result) {
+        if (result.error) result.error = withNameCharactersHint(result.error, key);
+        deliver(std::move(result));
+    };
     QFile source(request.artifact.path);
     if (!source.open(QIODevice::ReadOnly) || source.size() != request.artifact.bytes) {
         reply({"failed", {}, {"artifact_invalid", "Retained artifact is unavailable", {}}});
@@ -1121,7 +1126,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
                                          qt(outcome.GetResult().GetETag()), qt(outcome.GetResult().GetVersionId())), {}});
                                          return;
         }
-        const auto error = withNameCharactersHint(wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed()), key);
+        const auto error = wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed());
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
         if (!ambiguous(outcome.GetError()) && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
