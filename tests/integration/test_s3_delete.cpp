@@ -354,6 +354,82 @@ private slots:
         QCOMPARE(f.remove(uploaded.receipt, journal).status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 1);
     }
+    // Garage (#1581): a version ID on every write, no versioning, a request naming a version is
+    // answered with the current object and no version ID, and DELETE ignores If-Match. put.gd took
+    // that for another object ("changed") and never deleted what it had uploaded. It now checks the
+    // current object without the version and removes it with the conditional DELETE, as on R2.
+    void versionIgnoringBucketChecksAndRemovesLikeUnversioned() {
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        QVERIFY(!uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(stat.status, QString("own"));
+        QCOMPARE(stat.receipt.objectReference, uploaded.receipt.objectReference);
+        QJsonObject journal;
+        const auto removed = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) {
+            journal = progress;
+            ack({});
+        });
+        QCOMPARE(removed.status, QString("removed"));
+        QVERIFY(journal["versionless"].toBool());
+        const auto deletes = f.events("DELETE");
+        QCOMPARE(deletes.size(), 1);
+        QVERIFY(!deletes[0].toObject()["path"].toString().contains("versionId"));
+        QCOMPARE(deletes[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
+    // A read that fails while telling Garage's version-only mismatch from another object ends
+    // unknown, not "changed" (which History never retries). A later Retry removes the file.
+    void versionIgnoringBucketTransientReadStaysRetryable_data() {
+        QTest::addColumn<QString>("method");QTest::addColumn<QString>("query");QTest::addColumn<int>("after");
+        // The second HEAD, of the current object without the version.
+        QTest::newRow("current-head") << QString("HEAD") << QString() << 1;
+        QTest::newRow("bucket-versioning") << QString("GET") << QString("versioning") << 0;
+    }
+    void versionIgnoringBucketTransientReadStaysRetryable() {
+        QFETCH(QString, method);QFETCH(QString, query);QFETCH(int, after);
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto objects = f.state()["objects"].toObject();
+        QJsonObject rule{{"method", method}, {"status", 503}, {"code", "SlowDown"}, {"after", after}};
+        if (!query.isEmpty()) rule["query"] = query;
+        f.reset({{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true}, {"rules", QJsonArray{rule}}});
+        const auto checked = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(checked.status, QString("unknown"));
+        QCOMPARE(checked.error.details["httpStatus"].toInt(), 503);
+        rule["remaining"] = 1;
+        f.reset({{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true}, {"rules", QJsonArray{rule}}});
+        const auto first = f.remove(uploaded.receipt);
+        QCOMPARE(first.status, QString("unknown"));
+        QCOMPARE(first.error.details["httpStatus"].toInt(), 503);
+        QCOMPARE(f.events("DELETE").size(), 0);
+        const auto retried = f.remove(uploaded.receipt, first.progress);
+        QCOMPARE(retried.status, QString("removed"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
+    // The same answer from an object someone else wrote (other bytes) is still "changed", and nothing is sent.
+    void versionIgnoringBucketStillRefusesAReplacedObject() {
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto objects = f.state()["objects"].toObject();
+        auto versions = objects["prefix é/a b.txt"].toArray();
+        auto replaced = versions.last().toObject();
+        replaced["etag"] = "\"someone-else\"";
+        versions.replace(versions.size() - 1, replaced);
+        objects["prefix é/a b.txt"] = versions;
+        QJsonObject configuration{{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true}};
+        f.reset(configuration);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("changed"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
         S3Fixture f;
         f.reset({{"versioning", "Enabled"}});
