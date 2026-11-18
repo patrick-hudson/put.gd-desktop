@@ -1,0 +1,7 @@
+{
+  "uuid": "guifuzz@put.gd.test",
+  "name": "put.gd GUI fuzz witness (lab guests only)",
+  "description": "Test-only. Exports org.putgd.GuiFuzz.Eval on the Shell's connection so the GUI fuzzer can read windows, Shell actors, monitors and the pointer from Mutter's side. Never install outside a disposable lab guest.",
+  "shell-version": ["50"],
+  "version": 1
+}

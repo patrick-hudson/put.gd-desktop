@@ -16,7 +16,7 @@ HOTKEYS = {'region': 'ctrl+shift+1', 'window': 'ctrl+shift+2', 'desktop': 'ctrl+
            'monitor': 'ctrl+shift+5', 'repeat': 'ctrl+shift+6', 'text': 'ctrl+shift+7', 'scroll': 'ctrl+shift+8',
            'record': 'ctrl+shift+9', 'clipboard': 'ctrl+shift+0'}
 HOTKEY_CHORDS = set(HOTKEYS.values())
-EDGE = 8  # keep clear of Plasma's screen edges and hot corners
+EDGE = 8  # keep clear of the desktop's screen edges and hot corners
 
 
 class Denied(Exception):

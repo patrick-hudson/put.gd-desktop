@@ -7,7 +7,7 @@ import sys
 import time
 
 from gui_fuzz.actor import Actor
-from gui_fuzz.fence import Fence
+from gui_fuzz import desktop
 from gui_fuzz.uinput import Devices
 from gui_fuzz.walk import Walker
 from gui_fuzz.watch import Findings, Watchdog
@@ -45,18 +45,20 @@ def main():
     parser.add_argument('--max-steps', type=int, default=0)
     parser.add_argument('--out', required=True)
     parser.add_argument('--replay')
+    parser.add_argument('--desktop', choices=sorted(desktop.DESKTOPS), help='default: from XDG_CURRENT_DESKTOP')
     parser.add_argument('--chaos', action='store_true', help='favour monitor hotplug and rapid repeats (default for odd seeds)')
     parser.add_argument('--calm', action='store_true', help='never chaos, whatever the seed')
     parser.add_argument('--keep-going', action='store_true', help='continue after a fatal finding (default: stop the walk)')
     args = parser.parse_args()
     os.makedirs(args.out, exist_ok=True)
     rng = random.Random(args.seed)
-    fence = Fence()
+    desk = desktop.make(args.desktop)
+    fence = desk.make_fence()
     fence.start()
     dev = Devices()
-    dev.flatten_acceleration()
+    desk.flatten_acceleration(dev)
     log = Log(os.path.join(args.out, 'actions.jsonl'), args.seed)
-    world = World(fence)
+    world = World(fence, desk)
     findings = Findings(args.out, log, world, args.seed)
     watch = Watchdog(args.out, world, findings, log)
     watch.prime()
@@ -91,14 +93,14 @@ def main():
         except OSError:
             pass
         watch.stop.set()
-        summary = {'seed': args.seed, 'seconds': round(time.time() - started), 'steps': log.step, 'actions': walker.counts, 'denied': actor.denied,
+        summary = {'desktop': desk.name, 'seed': args.seed, 'seconds': round(time.time() - started), 'steps': log.step, 'actions': walker.counts, 'denied': actor.denied,
                    'harness_errors': walker.harness_errors, 'findings': {'%s|%s' % k: v for k, v in findings.seen.items()},
-                   'pings': watch.pings, 'log_warnings': watch.warnings}
+                   'pings': watch.pings, 'log_warnings': watch.warnings, 'shell_warnings': watch.shell_warnings, 'foreign_windows_closed': watch.foreign}
         with open(os.path.join(args.out, 'summary.json'), 'w') as stream:
             json.dump(summary, stream, indent=1)
         dev.close()
         fence.stop()
-        print(json.dumps({k: summary[k] for k in ('seed', 'seconds', 'steps', 'denied', 'harness_errors', 'findings')}), flush=True)
+        print(json.dumps({k: summary[k] for k in ('desktop', 'seed', 'seconds', 'steps', 'denied', 'harness_errors', 'findings')}), flush=True)
     return code
 
 

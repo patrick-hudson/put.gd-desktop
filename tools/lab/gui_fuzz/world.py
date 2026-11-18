@@ -62,8 +62,9 @@ class Log:
 
 
 class World:
-    def __init__(self, fence, procs=putgd_processes):
+    def __init__(self, fence, desk, procs=putgd_processes):
         self.fence = fence
+        self.desk = desk
         self.procs = procs
         self._procs = {}
         self._procs_at = 0.0
@@ -80,7 +81,7 @@ class World:
         """put.gd's own window, or a dialog (the desktop portal's file chooser) that put.gd opened over one of its windows."""
         if window['pid'] in self.pids() or window['cls'].startswith('putgd'):
             return True
-        if window['cls'] == 'org.freedesktop.impl.portal.desktop.kde' and window['normal']:
+        if window['cls'] in self.desk.portal_classes and window['normal']:
             return True  # put.gd's file choosers (opened with no parent when the toolkit has no window handle to export)
         parent = window.get('tr')
         if parent:
@@ -89,14 +90,18 @@ class World:
             return bool(owner and (owner['pid'] in self.pids() or owner['cls'].startswith('putgd')))
         return False
 
+    def is_layer(self, window):
+        return window['kind'] in self.desk.layer_kinds
+
     def layer(self):
-        """put.gd's layer-shell surfaces: the selector's dimming strips, the recording bar, the countdown pill."""
-        return [w for w in self.snapshot()['windows'] if self.mine(w) and not w['min'] and w['kind'] == 'KWin::LayerShellV1Window']
+        """put.gd's overlay surfaces: layer-shell surfaces on KDE (the selector's dimming strips, the recording bar, the countdown pill),
+        Shell actors on GNOME (the selector, the recording frame, the countdown)."""
+        return [w for w in self.snapshot()['windows'] if self.mine(w) and not w['min'] and self.is_layer(w)]
 
     def windows(self):
         """put.gd's windows that make fair click targets, bottom to top: dashboard, editor, popups, bar, pill."""
         return [w for w in self.snapshot()['windows'] if self.mine(w) and not w['min'] and w['frame'][2] >= 24 and w['frame'][3] >= 24
-                and not (w['kind'] == 'KWin::LayerShellV1Window' and self.overlays())]
+                and not (self.is_layer(w) and self.overlays())]
 
     def overlays(self):
         """The region selector: put.gd layer surfaces that together cover most of an output."""
@@ -111,7 +116,7 @@ class World:
         return [w for w in self.windows() if w['popup']]
 
     def toplevels(self):
-        return [w for w in self.windows() if not w['popup'] and w['kind'] != 'KWin::LayerShellV1Window']
+        return [w for w in self.windows() if not w['popup'] and not self.is_layer(w)]
 
     def outputs(self):
         return self.snapshot()['outputs']
