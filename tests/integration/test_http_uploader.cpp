@@ -167,24 +167,38 @@ private slots:
         };
         const auto helper = script("putgd-helper", "#!/bin/sh\nexit 0\n");
         const auto noLoader = script("putgd-no-loader", "#!/nonexistent/putgd-interpreter\n");
-        const auto reason = [](const QString& program, rlim_t descriptors = 0) {
+        // The start's reason, and how the failure is classed right after it (while a lowered
+        // descriptor limit still holds, as exchange() classes it).
+        const auto start = [](const QString& program, rlim_t descriptors = 0) {
             rlimit saved{};
             getrlimit(RLIMIT_NOFILE, &saved);
             if (descriptors) { auto low = saved; low.rlim_cur = descriptors; setrlimit(RLIMIT_NOFILE, &low); }
             QProcess process;
             process.start(program, {"--stdio"});
             const bool started = process.waitForStarted(10000);
+            const auto reason = started ? QString() : process.errorString();
+            const auto failure = worker::classifyStartFailure(program, reason);
             if (descriptors) setrlimit(RLIMIT_NOFILE, &saved);
-            if (started) { process.kill(); process.waitForFinished(); return QString(); }
-            return process.errorString();
+            if (started) { process.kill(); process.waitForFinished(); }
+            return std::pair{reason, failure};
         };
+        const auto reason = [&](const QString& program) { return start(program).first; };
         // A searchable directory is executable, and still no helper.
         QCOMPARE(worker::classifyStartFailure(dir.path(), reason(dir.path())), StartFailure::Installation);
         QCOMPARE(worker::classifyStartFailure(dir.filePath("missing"), reason(dir.filePath("missing"))), StartFailure::Installation);
         // No descriptor left (only 0, 1 and 2 fit under the limit): the helper is fine.
-        const auto exhausted = reason(helper, 3);
+        const auto [exhausted, shortage] = start(helper, 3);
         QVERIFY2(!exhausted.isEmpty(), "the helper started with no descriptor left");
-        QVERIFY2(worker::classifyStartFailure(helper, exhausted) == StartFailure::Temporary, qPrintable(exhausted));
+        QVERIFY2(shortage == StartFailure::Temporary, qPrintable(exhausted));
+        // A Qt that reports that shortage with an unrelated reason: the shortage is found all the same.
+        rlimit saved{};
+        getrlimit(RLIMIT_NOFILE, &saved);
+        auto low = saved;
+        low.rlim_cur = 3;
+        setrlimit(RLIMIT_NOFILE, &low);
+        const auto probed = worker::classifyStartFailure(helper, "execve: " + QString::fromLocal8Bit(std::strerror(ENOENT)));
+        setrlimit(RLIMIT_NOFILE, &saved);
+        QCOMPARE(probed, StartFailure::Temporary);
         QCOMPARE(worker::classifyStartFailure(helper, "fork: " + QString::fromLocal8Bit(std::strerror(EAGAIN))), StartFailure::Temporary);
         const auto missing = reason(noLoader);
         QVERIFY2(!missing.isEmpty(), "a helper without its interpreter started");

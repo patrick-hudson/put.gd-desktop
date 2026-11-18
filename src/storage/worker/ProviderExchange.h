@@ -14,8 +14,9 @@ struct ExchangePolicy {
 // processes), so trying again helps. Unclear: neither is known (a missing loader or
 // library, a refused permission), so the advice names both.
 enum class StartFailure { Installation, Temporary, Unclear };
-// `reason` is QProcess::errorString() after a failed start: Qt writes the system's
-// strerror() text into it, in this process's own locale.
+// `reason` is QProcess::errorString() after a failed start: Qt usually writes the system's
+// strerror() text into it, in this process's own locale. Call it right after the failed
+// start: it also checks whether the process is out of descriptors at that moment.
 StartFailure classifyStartFailure(const QString& program, const QString& reason);
 // The message for a helper that did not start: `installationMessage` for a broken
 // installation, otherwise one that names `reason` and says whether trying again helps.

@@ -5,8 +5,20 @@
 #include <QProcess>
 #include <cerrno>
 #include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
 #include <future>
 namespace putgd::worker {
+namespace {
+// Whether this process can open no descriptor right now. Some Qt versions report a start
+// that ran out of descriptors with an unrelated reason ("No such file or directory" on
+// Ubuntu 24.04's Qt), so the shortage is also looked for directly.
+bool descriptorsExhausted() {
+    int pipe[2];
+    if (::pipe2(pipe, O_CLOEXEC) == 0) { ::close(pipe[0]); ::close(pipe[1]); return false; }
+    return errno == EMFILE || errno == ENFILE;
+}
+}
 StartFailure classifyStartFailure(const QString& program, const QString& reason) {
     // A directory or a missing file is not a helper: only a regular executable file is.
     const QFileInfo file(program);
@@ -15,7 +27,7 @@ StartFailure classifyStartFailure(const QString& program, const QString& reason)
     // threads (EAGAIN), and a program file that is being written just then (ETXTBSY).
     for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
         if (reason.contains(QString::fromLocal8Bit(std::strerror(code)), Qt::CaseInsensitive)) return StartFailure::Temporary;
-    return StartFailure::Unclear;
+    return descriptorsExhausted() ? StartFailure::Temporary : StartFailure::Unclear;
 }
 QString startFailureMessage(StartFailure failure, const QString& helperName, const QString& reason, const QString& installationMessage) {
     if (failure == StartFailure::Installation) return installationMessage;
