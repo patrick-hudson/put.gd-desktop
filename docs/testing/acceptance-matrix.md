@@ -231,12 +231,16 @@ can pass with the cut still in the clip.
   times that the seam really lies in a gap before accepting a counter value there. A GIF
   or WebP samples at no more than 15 fps, so neighbouring pictures can merge; compare the
   nearest sampled frame.
-- A cover's area is covered in every frame whose display interval overlaps the cover or
+- A cover's area is covered in every frame whose display interval overlaps the cover, or
   whose picture was captured under it (one rule, including a picture held into a kept span
-  from a cover inside a cut or outside the trim), and uncovered in other frames. **GIF
-  exception:** the frame before a cover starts may stay visible up to one centisecond
-  into the cover (GIF times are centiseconds); it was captured before the cover, so it shows
-  nothing covered, and it passes.
+  from a cover inside a cut or outside the trim), and uncovered in frames that neither
+  overlap nor were captured under it. Allow these extra covered frames, which are not
+  failures: a picture covered for its display interval stays covered for as long as it is
+  shown, up to the next shown picture (there is no one-frame cap), and a capture time within
+  the container's timestamp tolerance of a cover's bound counts as inside. **GIF:** times are
+  centiseconds, so require the cover wherever the ideal **or** the centisecond-rounded
+  display interval overlaps it (a 66.667 ms frame stored as 70 ms is covered for both). A
+  frame does not pass because it was captured before the cover began.
 - Audio, for **MP4 and WebM with audio only** (GIF and WebP are always silent, so no
   tone check applies to them): the kept tone is present, no cut tone is heard beyond the
   allowance below, and there is no click at the join. **Audio exception:** when the source

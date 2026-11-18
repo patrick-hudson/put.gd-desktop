@@ -63,12 +63,16 @@ Part of [Screen recording](../recording.md).
   current edit** at the moment it starts (the window's `saveCopyRequested` carries a
   revision, which the resident does not check). An upload exports **exactly the revision it
   started with, or it is refused**: the resident refuses an upload at any other revision
-  (`recording_stale`), any export request while an export runs and any export request
-  while an earlier one may still be finishing past its deadline (`recording_state`, "An
-  export is still finishing"). **On the window's own request path** it then reopens the
+  (`recording_stale`). It also refuses an export request in **two different situations**,
+  both `recording_state`: while another export is running (on the window path the message
+  is "Another export is running, so this one didn't start. Try again when it finishes."; a
+  direct API call fails the ordinary `recording_state` check), and when an export timed out
+  but may still be finishing past its deadline ("An export is still finishing. Try again
+  when it's done.", for both paths). **On the window's own request path** it reopens the
   window with the reason and **no Try again** (`retry: false`), since pressing Upload again
-  is the answer; a **direct API call** (`recording.upload`, `recording.saveCopy`) just gets
-  the error and reopens nothing. For the window's `uploadRequested` path only, the resident
+  is the answer; retry your original action (Upload, Save a copy) once the export
+  finishes. A **direct API call** (`recording.upload`, `recording.saveCopy`) just gets the
+  error and reopens nothing. For the window's `uploadRequested` path only, the resident
   also refuses an upload whose output is not the one the window shows (`recording_config`)
   and reopens the window the same way; a direct `recording.upload` takes no output snapshot
   and exports the session's current output. A proposal the resident answers during an

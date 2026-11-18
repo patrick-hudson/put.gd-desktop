@@ -39,7 +39,12 @@ only turn a refused state into an error. Times are integer microseconds on the
 recorded-clip timeline (source time), rectangles `[x, y, width, height]` in canvas
 pixels.
 
-**Errors.**
+**Errors.** An edit-proposing action that is refused, with whatever code below (bad values,
+nothing selected, a dialog open, an export running), **also cancels a waiting Upload**, through
+the same path as a refused gesture, and keeps its own error code. These are `setIn`, `setOut`,
+`resetTrim`, `addMask`, `placeMask`, `useSolidCover`, `trimToLimit`, `setMaskIn`, `setMaskOut`,
+`strength`, `removeMask`, `cut`, `adjustCut`, `restoreCut`, `undo`, `redo`, `setCoverEdge`,
+`setCoverEdgeToPlayhead`, `coverKind` and `setTrim`.
 
 - `invalid_request`: unknown actions, missing or malformed fields, out-of-range values
   and unknown IDs; also an action that needs a selection the window lacks and checks

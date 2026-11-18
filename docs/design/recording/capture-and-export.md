@@ -278,17 +278,21 @@ covered if its display interval overlaps the cover mapped through the kept spans
 was captured under the cover.** (A source frame also counts as covered when its own
 display interval, from its stored time to the next frame's, overlaps the cover's source
 span at all, so a cover never misses a frame because of where inside a frame it starts or
-ends. Covers are outward-only: a cover can grow by up to one frame, never shrink.) Both parts hold for held and repeated frames. So a cover
+ends. Covers only ever grow: there is no cap of one frame on that growth.) A picture covered
+**only** because its display overlaps the cover (it was not captured under it) is covered for
+as long as it is shown, up to the next shown picture's tick; where the export puts a span's
+last picture on the span's last tick (because the next picture rounds past the span), that
+last tick is not covered by this display rule. Covers by capture time and by output time are
+unchanged. Both parts hold for held and repeated frames. So a cover
 wholly inside a frame gap covers the picture held over it; a frame held across a cut
 from footage a cover covers stays covered; a frame captured while a cover was active and
 shown after its end is covered there too; and **a cover wholly inside a cut, or outside
 the trim, still covers a picture that is held into a kept span**: the picture on screen at
 that kept time may come from inside the cut. Container timestamp rounding does not
-matter: a GIF that shows a frame at 70 ms instead of 66.7 ms covers it the same, and a
-capture time within the timestamp tolerance of the cover's bound counts as inside
-(uncertainty is covered). **Known limit:** in a GIF the frame before a cover starts (at a cut seam, for example) can stay
-visible up to one centisecond into the cover (GIF times are centiseconds). That picture was
-captured before the cover, so it shows nothing covered. To gather the frame times under each cover the exporter reads
+matter: a GIF counts centiseconds and shows a frame at 70 ms instead of 66.7 ms, and a
+frame is covered when **either** its ideal display interval **or** its centisecond-rounded one
+overlaps the cover; a capture time within the timestamp tolerance of the cover's bound
+counts as inside (uncertainty is covered). To gather the frame times under each cover the exporter reads
 each cover's kept parts once more, demux only.
 
 **Previews.** `previewFrame` and the review's exact skim frame check the cover against

@@ -275,7 +275,8 @@ action does not change it.
     other than the awaited answers (a later edit, undo or redo, by the user or an agent); the
     output changing (format, codec, audio or size, from the window or the resident); **any
     refusal received while it waits, including one for a later proposal**; a trim or cover
-    change the window itself refuses locally; and 2 s without an answer. The output change
+    change the window itself refuses locally, **whether a gesture or an agent's
+    `recording.review` action** (see below); and 2 s without an answer. The output change
     counts even when the revision stays the same, because the helper applies the config
     (with `answer.configSeq`) before it calls the window's `setEdit`. A drag or a
     placement *started* after Upload was pressed does not cancel it: the upload exports
@@ -287,18 +288,31 @@ action does not change it.
   exactly the revision it started with, or it is refused. Input, dialogs and menus opening,
   hover, `inspect`, `dismissStatus`, a raise and a saved-copy push do **not** cancel it. A
   second Upload while one waits does nothing and says "Upload already waiting for your last
-  change to be saved." (the notice clears when the upload is sent). When it is cancelled the
+  change to be saved." (the notice clears when the upload is sent), and appears only when the
+  press gets past the guard above: a new press is blocked while placing, mid-drag, during an
+  export and while the window is closing, and says nothing then. When it is cancelled the
   status line reads "Upload cancelled: … Press Upload again." on a line of its own above
   any other status line (so the row can hold two lines). It is not a dialog, has no
   Dismiss, and stays until Upload is pressed again, including after the awaited answer
-  arrives. **On the window path** the resident refuses an upload at any other revision
-  (`recording_stale`), an export request while an export runs or may still be finishing past
-  its deadline (`recording_state`, "An export is still finishing"), and, for the window's own
-  upload, an output other than the one shown (`recording_config`); it reopens the window with
-  the reason and **no Try again** (`retry: false`), since pressing Upload again is the answer.
-  A direct API call (`recording.upload`, `recording.saveCopy`) just gets the error, and
-  `recording.upload` takes no output snapshot. Upload and Save a copy are also refused while
-  an earlier export may still be finishing after its deadline. A proposal answered during an
+  arrives. **An agent's refused edit cancels it too:** any edit-proposing `recording.review`
+  action that is refused (bad values, nothing selected, a dialog open, an export running)
+  cancels a waiting Upload through the same path as a refused gesture, and keeps its own
+  error code. The actions are `setIn`, `setOut`, `resetTrim`, `addMask`, `placeMask`,
+  `useSolidCover`, `trimToLimit`, `setMaskIn`, `setMaskOut`, `strength`, `removeMask`, `cut`,
+  `adjustCut`, `restoreCut`, `undo`, `redo`, `setCoverEdge`, `setCoverEdgeToPlayhead`,
+  `coverKind` and `setTrim`.
+  **On the window path** the resident refuses an upload at any other revision
+  (`recording_stale`) and, for the window's own upload, an output other than the one shown
+  (`recording_config`). It also refuses an export request in **two different situations**:
+  while another export is running ("Another export is running, so this one didn't start. Try
+  again when it finishes."), and when an export timed out but the helper may still be
+  finishing it ("An export is still finishing. Try again when it's done."); both are
+  `recording_state`. It reopens the window with the reason and **no Try again**
+  (`retry: false`), since pressing Upload again (or Save a copy again) is the answer: **retry
+  your original action once the export finishes**. A direct API call (`recording.upload`,
+  `recording.saveCopy`) just gets the error: during an export it fails the ordinary
+  `recording_state` check, and after a timeout it gets "An export is still finishing"; it
+  reopens nothing. `recording.upload` takes no output snapshot. A proposal answered during an
   export is held and delivered when review resumes, and so are a format or audio change made
   then; after an export timeout, answers and pushes stay held until the helper's late result
   arrives. Nothing is dropped silently.
