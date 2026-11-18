@@ -2163,11 +2163,12 @@ class Fuzzer:
                 raise Finding('recovery', 'operation.recent fails after a kill: %s' % str(reply)[:300])
             time.sleep(0.3)
         holders = []
+        lock = os.path.realpath(self.resident.root / 'data' / 'putgd' / 'resident.lock')  # this run's lock, not another run's on the host
         for entry in Path('/proc').iterdir():
             if entry.name.isdigit():
                 try:
                     for fd in (entry / 'fd').iterdir():
-                        if os.readlink(fd).endswith('resident.lock'):
+                        if os.readlink(fd) == lock:
                             holders.append((int(entry.name), (entry / 'comm').read_text().strip()))
                 except OSError:
                     pass
