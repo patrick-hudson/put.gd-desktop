@@ -334,22 +334,26 @@ StorageReceipt withoutVersion(StorageReceipt receipt) {
     return receipt;
 }
 // Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
-// a request naming a version gets 501, and the bucket reports no versioning status. Garage
-// does the same without the 501: it answers a request naming a version with the object and
-// no version ID, which the identity check takes for another object. A bucket whose
-// versioning was never enabled holds one object per key, so a receipt from it is checked
-// and removed like an unversioned one.
-bool versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
+// a request naming a version gets 501, and the bucket reports no versioning status. A
+// bucket whose versioning was never enabled holds one object per key, so a receipt from
+// it is checked and removed like an unversioned one.
+// Garage (#1581) does the same without the 501: it answers a request naming a version with
+// the object and no version ID, which the identity check takes for another object. Its
+// DELETE also ignores both the version and If-Match, so nothing can stop a delete from
+// removing a file another client saved at the key after put.gd's last check.
+enum class Versionless { No, Refused, Ignored };
+Versionless versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
     const auto version = expected.objectReference["versionId"].toString();
-    if (version.isEmpty() || version == "null") return false;
+    if (version.isEmpty() || version == "null") return Versionless::No;
     const bool refused = found.status == "unknown" && found.error.details["httpStatus"].toInt() == 501;
     // Everything but the version ID matches the object that is current at the key.
     const bool ignored = found.status == "foreign" && inspect(client, withoutVersion(expected), true).status == "own";
-    if (!refused && !ignored) return false;
+    if (!refused && !ignored) return Versionless::No;
     Aws::S3::Model::GetBucketVersioningRequest request;
     request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
     const auto outcome = client.GetBucketVersioning(request);
-    return outcome.IsSuccess() && outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    if (!outcome.IsSuccess() || outcome.GetResult().GetStatus() != Aws::S3::Model::BucketVersioningStatus::NOT_SET) return Versionless::No;
+    return refused ? Versionless::Refused : Versionless::Ignored;
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -945,7 +949,7 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         return;
     }
     auto found = inspect(*client, expected);
-    if (versionless(*client, expected, found)) {
+    if (versionless(*client, expected, found) != Versionless::No) {
         found = inspect(*client, withoutVersion(expected), true);
         // The recorded ID names the only object the key can hold; keep the receipt as recorded.
         if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
@@ -1182,7 +1186,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     auto identity = inspect(*client, expected);
-    if (phase == S3DeletePhase::None && immutable && versionless(*client, expected, identity)) {
+    const auto kind = phase == S3DeletePhase::None && immutable ? versionless(*client, expected, identity) : Versionless::No;
+    if (kind == Versionless::Ignored) {
+        // A check before the DELETE cannot close that gap, so no DELETE is sent (#1581).
+        finish("unsupported_safe_removal", {"unsupported_safe_removal", "This storage service ignores the checks put.gd sends with a delete, so put.gd can't be sure it would delete only its own file and not one saved under the same name since. Nothing was deleted. Delete the file with the storage service's own console or tools.", {}});
+        return;
+    }
+    if (kind == Versionless::Refused) {
         progress["versionless"] = true;
         expected = withoutVersion(expected);
         version.clear();

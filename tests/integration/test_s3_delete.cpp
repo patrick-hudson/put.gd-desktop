@@ -354,29 +354,33 @@ private slots:
         QCOMPARE(f.remove(uploaded.receipt, journal).status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 1);
     }
-    // Garage: a version ID on every write, no versioning, and a request naming a version is answered with the object and no version ID.
-    // put.gd took that for another object ("changed") and never deleted what it had uploaded.
-    void versionIgnoringBucketChecksAndRemovesLikeUnversioned() {
+    // Garage (#1581): a version ID on every write, no versioning, a request naming a version is answered
+    // with the object and no version ID, and DELETE ignores both the version and If-Match. History's
+    // check still finds the upload, but deletion fails closed: no DELETE could be guarded.
+    void versionIgnoringBucketNeverSendsAnUnguardedDelete() {
         S3Fixture f;
-        f.reset({{"versionIgnored", true}});
+        f.reset({{"versionIgnored", true}, {"ignoreConditions", true}});
         const auto uploaded = f.upload(f.request());
         QCOMPARE(uploaded.status, QString("uploaded"));
         QVERIFY(!uploaded.receipt.objectReference["versionId"].toString().isEmpty());
         const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
         QCOMPARE(stat.status, QString("own"));
         QCOMPARE(stat.receipt.objectReference, uploaded.receipt.objectReference);
-        QJsonObject journal;
-        const auto removed = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) {
-            journal = progress;
-            ack({});
-        });
-        QCOMPARE(removed.status, QString("removed"));
-        QVERIFY(journal["versionless"].toBool());
-        const auto deletes = f.events("DELETE");
-        QCOMPARE(deletes.size(), 1);
-        QVERIFY(!deletes[0].toObject()["path"].toString().contains("versionId"));
-        QCOMPARE(deletes[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
-        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+        // Another client replaces the file after put.gd's last HEAD: here while the bucket's
+        // versioning is read the second time, just before a DELETE would go out. That DELETE,
+        // its If-Match ignored, would remove the other client's file.
+        auto objects = f.state()["objects"].toObject();
+        f.reset({{"objects", objects}, {"versionIgnored", true}, {"ignoreConditions", true},
+                 {"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "versioning"}},
+                                      QJsonObject{{"method", "GET"}, {"query", "versioning"}, {"replaceKey", "prefix é/a b.txt"}}}}});
+        const auto removed = f.remove(uploaded.receipt);
+        QCOMPARE(removed.status, QString("unsupported_safe_removal"));
+        QCOMPARE(removed.error.code, QString("unsupported_safe_removal"));
+        QVERIFY(removed.error.message.contains("Nothing was deleted"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+        const auto versions = f.state()["objects"].toObject()["prefix é/a b.txt"].toArray();
+        QCOMPARE(versions.size(), 1);
+        QVERIFY(!versions[0].toObject()["marker"].toBool());
     }
     // The same answer from an object someone else wrote (other bytes) is still "changed", and nothing is sent.
     void versionIgnoringBucketStillRefusesAReplacedObject() {

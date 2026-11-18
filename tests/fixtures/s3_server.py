@@ -18,7 +18,7 @@ TIME_SCALE = _time_scale()
 
 lock = threading.RLock()
 barriers = {}
-state = {'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}}
+state = {'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}}
 # Large bodies (multipart parts and the objects they complete) stay out of the
 # JSON state so /__state remains bounded; events and versions record their digest.
 blobs = {}
@@ -99,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_wire(body)
             if self.path == '/__reset':
                 blobs.clear()
-                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'versionIgnored': False, 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -171,6 +171,9 @@ class Handler(BaseHTTPRequestHandler):
             versions = state['objects'].setdefault(key, []) if key else []
             if rule and rule.get('competitor'):
                 versions.append({'version': 'competitor', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False})
+            # Another client replaces the named key while this request (of any kind) is handled.
+            if rule and rule.get('replaceKey'):
+                state['objects'][rule['replaceKey']] = [{'version': '', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False}]
             current = versions[-1] if versions else None
             selected = next((v for v in versions if v['version'] == query['versionId'][0]), None) if 'versionId' in query else current
             if 'uploads' in query or 'uploadId' in query:
@@ -192,10 +195,12 @@ class Handler(BaseHTTPRequestHandler):
                 if selected.get('version'): headers['x-amz-version-id'] = selected['version']
                 for k,v in selected['metadata'].items(): headers['x-amz-meta-' + k] = v
                 self.respond(200, payload(selected), headers); return
+            # Like Garage and Zenko CloudServer (#1583): If-None-Match and If-Match are accepted and ignored.
+            conditional = not state.get('ignoreConditions')
             if self.command == 'PUT':
-                if self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
+                if conditional and self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
                     self.error(412, 'PreconditionFailed'); return
-                if self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
+                if conditional and self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
                     self.error(412, 'PreconditionFailed'); return
                 state['sequence'] += 1
                 version = str(state['sequence']) if state['versioning'] == 'Enabled' else ('null' if state['versioning'] == 'Suspended' else '')
@@ -209,7 +214,7 @@ class Handler(BaseHTTPRequestHandler):
                 if version: headers['x-amz-version-id'] = version
                 elif state['versionless'] or state.get('versionIgnored'): headers['x-amz-version-id'] = uuid.uuid4().hex
             else:
-                if self.headers.get('if-match') and (not selected or selected.get('marker') or selected['etag'] != self.headers['if-match']):
+                if conditional and self.headers.get('if-match') and (not selected or selected.get('marker') or selected['etag'] != self.headers['if-match']):
                     self.error(412, 'PreconditionFailed'); return
                 headers = {}
                 if 'versionId' in query:
@@ -270,9 +275,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(204)
         # CompleteMultipartUpload: conditional on the key's current object.
         current = versions[-1] if versions else None
-        if self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
+        conditional = not state.get('ignoreConditions')
+        if conditional and self.headers.get('if-none-match') == '*' and current and not current.get('marker'):
             return self.error(412, 'PreconditionFailed')
-        if self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
+        if conditional and self.headers.get('if-match') and (not current or current.get('marker') or current['etag'] != self.headers['if-match']):
             return self.error(412, 'PreconditionFailed')
         listed = [(int(p.findtext('{*}PartNumber')), p.findtext('{*}ETag')) for p in ElementTree.fromstring(body).iter('{http://s3.amazonaws.com/doc/2006-03-01/}Part')]
         if not listed or [n for n, _ in listed] != sorted(n for n, _ in listed) or any(str(n) not in upload['parts'] or upload['parts'][str(n)]['etag'] != e for n, e in listed):
