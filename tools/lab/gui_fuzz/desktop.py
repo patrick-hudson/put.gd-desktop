@@ -1,4 +1,4 @@
-"""What differs between desktops: the fence, the session processes, pointer acceleration, monitor churn, clipboard, portal windows.
+"""What differs between desktops: the fence, the session processes, pointer acceleration, monitor churn, clipboard.
 
 The walk, the watchdog and the actor ask the Desktop; nothing else in the package names a compositor.
 """
@@ -80,7 +80,6 @@ class Desktop:
     session_procs = ()  # losing the first ends the session; the rest are restartable shells
     restartable = ()
     layer_kinds = frozenset()
-    portal_classes = frozenset()
     shell_focus_classes = ('',)
     crash_viewers = ()
     tray_prefix = 'org.kde.StatusNotifierItem.putgd'
@@ -92,13 +91,15 @@ class Desktop:
     crash_viewer_comms = ()  # process names (comm) a crash viewer may have: only such a process is ever killed
     # Rules the GNOME and Cinnamon backends added. Plasma keeps what it had, so each is off here.
     strict_input = False        # input only with positive evidence that put.gd owns the target; deny when the backend cannot tell
-    verify_portal = False       # a portal window is put.gd's only if transient for a put.gd window or opened while put.gd's chooser request was pending
     closes_foreign = False      # close an app that opened soon after the walk's input and holds the focus
     restarts_resident = False   # restart the resident after the Quit item the actor activated
     split_cores = False         # a core dump of a process that is not put.gd's is recorded apart
     narrow_noise = False        # known ffmpeg probe lines are noise; nothing wider
     late_selector_escape = False  # a checkpoint gives a late selector another Escape before calling it stuck
     skip_old_logs = False       # a seed judges only the log lines written after it started
+
+    def replayed(self, args):
+        """A recorded shell command is being re-run by --replay: note it if it changes monitors, so finish() puts the layout back."""
 
     def prepare(self):
         """Before the fence starts: whatever the backend needs in the session."""
@@ -147,7 +148,6 @@ class Kde(Desktop):
     session_procs = ('kwin_wayland', 'plasmashell')
     restartable = ('plasmashell',)
     layer_kinds = frozenset({'KWin::LayerShellV1Window'})
-    portal_classes = frozenset({'org.freedesktop.impl.portal.desktop.kde'})
     shell_focus_classes = ('plasmashell', 'org.kde.plasmashell', '')
     crash_viewers = ('org.kde.drkonqi',)
     crash_viewer_comms = ('drkonqi',)
@@ -221,15 +221,13 @@ class Gnome(Desktop):
     session_procs = ('gnome-shell',)
     restartable = ()
     layer_kinds = frozenset({'ShellOverlay'})
-    # the GTK file chooser of xdg-desktop-portal-gnome, which put.gd opens without a parent when the toolkit has no handle to export
-    portal_classes = frozenset({'org.gnome.Nautilus', 'xdg-desktop-portal-gnome', 'org.freedesktop.impl.portal.desktop.gnome', 'org.gnome.Shell.Extensions'})
     shell_focus_classes = ('', 'gjs')  # Shell actors take no Meta focus; Desktop Icons NG is a desktop window of class gjs
     crash_viewers = ('apport', 'Apport')
     crash_viewer_comms = ('apport-gtk',)
     shell_label = 'Mutter'
     session_env_process = 'gnome-shell'
     journal_args = ('-t', 'gnome-shell')
-    strict_input = verify_portal = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
+    strict_input = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
     EXTENSION = 'guifuzz@put.gd.test'
     POINTER = ('org.gnome.desktop.peripherals.mouse', ('accel-profile', 'speed'))
 
@@ -281,6 +279,10 @@ class Gnome(Desktop):
             args += ['--logical-monitor', '--monitor', 'Virtual-2', '--right-of', 'Virtual-1', '--scale', scale2]
         return args
 
+    def replayed(self, args):
+        if list(args[:2]) == ['gdctl', 'set']:
+            self.layout_changed = True
+
     def layout(self, walker, heads, scale1='1', scale2='1'):
         args = self.layout_args(heads, scale1, scale2)
         walker.log.write({'op': 'sh', 'a': args})
@@ -321,14 +323,13 @@ class Cinnamon(Desktop):
     session_procs = ('cinnamon',)
     restartable = ('cinnamon',)
     layer_kinds = frozenset({'X11Overlay'})
-    portal_classes = frozenset({'xdg-desktop-portal-gtk', 'xdg-desktop-portal-xapp'})
     shell_focus_classes = ('', 'nemo-desktop', 'cinnamon')
     crash_viewers = ('apport', 'mintreport')
     crash_viewer_comms = ('apport-gtk',)
     shell_label = 'the X server'
     session_env_process = 'cinnamon'
     journal_args = ('-t', 'cinnamon')
-    strict_input = verify_portal = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
+    strict_input = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
     POINTER = ('org.cinnamon.desktop.peripherals.mouse', ('accel-profile', 'speed'))
 
     def begin(self, world):
@@ -365,6 +366,10 @@ class Cinnamon(Desktop):
         host_run(['gsettings', 'set', schema, 'accel-profile', 'flat'])
         host_run(['gsettings', 'set', schema, 'speed', '0'])
         return 'gsettings'
+
+    def replayed(self, args):
+        if args and args[0] == 'xrandr':
+            self.monitors_changed = True
 
     def xrandr(self, walker, *args):
         walker.log.write({'op': 'sh', 'a': ['xrandr'] + list(args)})

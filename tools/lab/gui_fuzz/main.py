@@ -15,9 +15,10 @@ from gui_fuzz.watch import Findings, Watchdog
 from gui_fuzz.world import Log, World
 
 
-def replay(path, actor):
-    for line in open(path):
-        record = json.loads(line)
+def replay(path, actor, desk):
+    with open(path) as stream:
+        records = [json.loads(line) for line in stream]
+    for record in records:
         op = record.get('op')
         if op == 'sleep':
             time.sleep(record['s'])
@@ -37,6 +38,7 @@ def replay(path, actor):
             actor.cli(record['m'], record['p'], timeout=55)
         elif op == 'sh':
             actor.sh(*record['a'])
+            desk.replayed(record['a'])  # a replayed monitor change is one the run made: finish() puts the layout back
 
 
 def stop_code(findings, args, log, started, now):
@@ -56,6 +58,16 @@ def exit_status(code, watch, findings, args):
         watch.join(3)
     watch.final_poll()
     return 3 if findings.fatal.is_set() and not args.keep_going else code
+
+
+def blocked(step):
+    """Run `step` with SIGTERM and SIGINT held back, then let any that arrived through (the handler runs after the step is done)."""
+    held = {signal.SIGTERM, signal.SIGINT}
+    before = signal.pthread_sigmask(signal.SIG_BLOCK, held)
+    try:
+        return step()
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, before)
 
 
 def quietly(step, what):
@@ -103,7 +115,7 @@ def main():
         walker = Walker(actor, world, watch, findings, rng, log, chaos=args.chaos or (args.seed % 2 == 1 and not args.calm))
         started = time.time()
         if args.replay:
-            replay(args.replay, actor)
+            replay(args.replay, actor, desk)
         else:
             while True:
                 stop = stop_code(findings, args, log, started, time.time())
@@ -142,9 +154,12 @@ def main():
                 quietly(dev.close, 'destroy the virtual devices')
             if fence is not None:
                 quietly(fence.stop, 'stop the fence')
-            quietly(desk.finish, 'restore the session and take the witness down')
+            quietly(lambda: blocked(desk.finish), 'restore the session and take the witness down')  # no interruption may cut the teardown short
     return code
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:  # an interruption that arrived while the teardown was protected: it is done now
+        sys.exit(130)

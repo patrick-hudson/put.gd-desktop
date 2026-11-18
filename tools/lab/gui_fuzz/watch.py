@@ -44,6 +44,8 @@ class Findings:
         key = (kind, detail[:200] if unique else norm(detail)[:80])  # a core dump is never folded into an earlier one that looks alike
         with self.lock:
             self.seen[key] = self.seen.get(key, 0) + 1
+            if fatal:
+                self.fatal.set()  # at the reservation, before any evidence is read: a slow read cannot let the run end as a pass, and a repeat of a fatal finding sets it again
             if self.seen[key] > 1:
                 return None
             number = len(self.seen)
@@ -59,8 +61,6 @@ class Findings:
             json.dump(record, stream, indent=1)
         self.marks.write('%.3f %s %s\n' % (now, kind, detail[:120].replace('\n', ' ')))
         print('FINDING', kind, detail[:160], flush=True)
-        if fatal:
-            self.fatal.set()
         return path
 
 

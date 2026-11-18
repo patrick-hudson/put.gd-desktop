@@ -66,7 +66,11 @@ class Actor:
         """The pointer is where the fence says put.gd owns, read after the last input and 1 px inside the window; else the input is denied."""
         if self.replaying:
             return
-        x, y = self.world.fresh_cursor()
+        cursor = self.world.fresh_cursor()
+        if cursor is None:
+            self.denied += 1
+            raise Denied('%s: no fresh snapshot of the pointer arrived in time' % what)
+        x, y = cursor
         if not self.world.inside(x, y, margin=1):
             self.denied += 1
             raise Denied('%s with the pointer at %d,%d, which is not inside a put.gd window' % (what, x, y))
@@ -80,12 +84,12 @@ class Actor:
                 self.denied += 1
                 raise Denied('pointer target outside the fence: %d,%d' % (x, y))
         self.log.write({'op': 'move', 'x': x, 'y': y, 'drag': drag})
-        self.sent()
         for _ in range(8):
             cx, cy = self.world.cursor()
             dx, dy = x - cx, y - cy
             if abs(dx) <= 1 and abs(dy) <= 1:
                 break
+            self.sent()  # an input is recorded only when device events really go out: a move to where the pointer already is records nothing
             self.dev.rel(dx, dy)
             time.sleep(0.045)
         else:
@@ -124,11 +128,11 @@ class Actor:
             self.button(button, False)
 
     def wheel(self, notches, horizontal=False):
-        """One wheel event at a time, each checked against the fence first."""
-        self.log.write({'op': 'wheel', 'n': notches, 'h': horizontal})
+        """One wheel event at a time: each is checked against the fence, logged as it is sent, and recorded."""
         step = 1 if notches > 0 else -1
         for _ in range(abs(notches)):
             self.checked('wheel')
+            self.log.write({'op': 'wheel', 'n': step, 'h': horizontal})
             self.sent()
             self.dev.wheel(step, horizontal)
 
@@ -167,12 +171,12 @@ class Actor:
             self.denied += 1
             raise Denied('typing needs put.gd focus')
         self.log.write({'op': 'text', 'v': value})
-        self.sent()
         for char in value:
             lower = char.lower()
             name = {' ': 'space', '-': 'minus', '=': 'equal', ',': 'comma', '.': 'dot', '/': 'slash'}.get(char, lower)
             if name not in KEYS:
                 continue
+            self.sent()
             if char.isupper():
                 self.dev.key('shift', True)
             self.dev.key(name, True)

@@ -75,10 +75,13 @@ class PortalWindows(unittest.TestCase):
         w2, _ = world([OURS, other, window('w-n2', 77, 'org.gnome.Nautilus', [0, 0, 100, 100], tr='w-other')], Gnome())
         self.assertFalse(w2.mine(window('w-n2', 77, 'org.gnome.Nautilus', [0, 0, 100, 100], tr='w-other')))
 
-    def test_plasma_keeps_accepting_its_portal_class(self):
+    def test_plasmas_portal_chooser_needs_a_putgd_parent_too(self):
         chooser = window('w-kde', 78, 'org.freedesktop.impl.portal.desktop.kde', [0, 0, 300, 300])
         w, _ = world([OURS, chooser], Kde())
-        self.assertTrue(w.mine(chooser))
+        self.assertFalse(w.mine(chooser))
+        child = dict(chooser, tr='w-ours')
+        w2, _ = world([OURS, child], Kde())
+        self.assertTrue(w2.mine(child))
 
 
 class StrictInput(unittest.TestCase):
@@ -142,6 +145,17 @@ class GrabStack(unittest.TestCase):
         focused, w = self.mine_focused(self.raw(['Gjs_putgd_put_gd_extension_RegionSelector', 'Gjs_ui_modalDialog_ModalDialog']))
         self.assertFalse(focused)
         self.assertFalse(w.inside(600, 400))
+
+    def test_a_foreign_grab_denies_keys_even_while_a_putgd_window_is_the_active_one(self):
+        raw = self.raw(['Gjs_ui_modalDialog_ModalDialog'])
+        raw['actors'] = []
+        raw['windows'] = [dict(OURS, hidden=False, active=True)]
+        focused, w = self.mine_focused(raw)
+        self.assertFalse(focused)
+        raw['chrome'] = dict(raw['chrome'], overview=True, modal=0, modal_actors=[])
+        self.assertFalse(self.mine_focused(raw)[0])  # the overview too
+        raw['chrome'] = dict(raw['chrome'], overview=False)
+        self.assertTrue(self.mine_focused(raw)[0])   # nothing above put.gd's window: keys may go
 
     def test_a_selector_below_a_foreign_grab_is_not_the_target_either(self):
         focused, w = self.mine_focused(self.raw(['Gjs_ui_popupMenu_PopupMenu', 'Gjs_putgd_put_gd_extension_RegionSelector', 'Gjs_ui_popupMenu_PopupMenu']))
@@ -248,6 +262,42 @@ class PointerRechecks(unittest.TestCase):
         with self.assertRaises(Exception):
             actor.click(300, 300, count=3)
         self.assertEqual(dev.presses, 1)
+
+    def test_no_fresh_snapshot_means_deny_and_never_the_cached_one(self):
+        actor, dev, fence = self.actor()
+        actor.move(300, 300)
+        actor.world.freshness = 0.0
+        stale = time.time() - 5
+        fence.get = lambda: (fence.snapshot, stale)   # the fence has stopped producing snapshots
+        actor.world.fresh_timeout = 0.05
+        with self.assertRaises(Exception):
+            actor.click(300, 300)
+        self.assertEqual(dev.presses, 0)
+        with self.assertRaises(Exception):
+            actor.wheel(2)
+        self.assertEqual(dev.wheels, 0)
+
+    def test_a_move_that_sends_no_events_records_no_input(self):
+        actor, dev, fence = self.actor()
+        actor.move(300, 300)
+        sent = len(actor.world.input_serials)
+        self.assertGreater(sent, 0)
+        actor.move(300, 300)    # already there: no device event goes out
+        self.assertEqual(len(actor.world.input_serials), sent)
+
+    def test_each_wheel_notch_is_logged_as_it_is_sent(self):
+        actor, dev, fence = self.actor()
+        actor.move(300, 300)
+
+        def vanish(event):
+            fence.snapshot['windows'] = []   # after the first notch
+        dev.after = vanish
+        actor.log.write.reset_mock()
+        with self.assertRaises(Exception):
+            actor.wheel(5)
+        wheels = [c.args[0] for c in actor.log.write.call_args_list if c.args and c.args[0].get('op') == 'wheel']
+        self.assertEqual(wheels, [{'op': 'wheel', 'n': 1, 'h': False}])
+        self.assertEqual(dev.wheels, 1)
 
     def test_every_wheel_event_is_checked(self):
         actor, dev, fence = self.actor()
@@ -496,6 +546,60 @@ Logical monitors:
 
     def test_an_unreadable_layout_is_not_restored(self):
         self.assertIsNone(parse_gdctl('gdctl: command not found'))
+
+
+class FatalAtReservation(Fixtures):
+    """S6: a fatal finding sets the flag when it is reserved, before its evidence is read, and a repeat sets it again."""
+
+    def test_the_flag_is_set_before_the_evidence_is_collected(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        seen = []
+
+        def slow_evidence(args, timeout=10):
+            seen.append(findings.fatal.is_set())   # the first thing add() does after reserving is read the journal
+            return (0, '', '')
+        with mock.patch.object(watch, 'run', side_effect=slow_evidence):
+            findings.add('resident_died', 'resident pid 7 is gone', fatal=True)
+        self.assertTrue(seen and all(seen), seen)
+
+    def test_a_repeat_of_a_fatal_finding_sets_it_again_and_nothing_clears_it(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        findings.add('resident_died', 'resident pid 7 is gone')           # the same finding, not yet fatal
+        self.assertFalse(findings.fatal.is_set())
+        findings.add('resident_died', 'resident pid 7 is gone', fatal=True)  # a duplicate key, now fatal
+        self.assertTrue(findings.fatal.is_set())
+        findings.add('resident_died', 'resident pid 7 is gone')
+        self.assertTrue(findings.fatal.is_set())
+
+
+class ReplayAndSignals(unittest.TestCase):
+    """S9 on replay and S1 on teardown."""
+
+    def test_a_replayed_monitor_command_marks_the_layout_changed(self):
+        import json
+        gnome, cinnamon = Gnome(), Cinnamon()
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, 'actions.jsonl')
+            with open(path, 'w') as stream:
+                stream.write(json.dumps({'op': 'sh', 'a': ['gdctl', 'set', '--logical-monitor', '--monitor', 'Virtual-1']}) + '\n')
+                stream.write(json.dumps({'op': 'sh', 'a': ['xrandr', '--output', 'Virtual-2', '--off']}) + '\n')
+            for desk in (gnome, cinnamon):
+                fuzz_main.replay(path, mock.Mock(), desk)
+        self.assertTrue(gnome.layout_changed)
+        self.assertTrue(cinnamon.monitors_changed)
+
+    def test_an_interruption_during_the_teardown_waits_until_it_is_done(self):
+        import signal
+        seen = []
+        previous = signal.signal(signal.SIGTERM, lambda *_: seen.append('handler'))
+        try:
+            def teardown():
+                os.kill(os.getpid(), signal.SIGTERM)
+                seen.append('teardown finished' if not seen else 'cut short')
+            fuzz_main.blocked(teardown)
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+        self.assertEqual(seen, ['teardown finished', 'handler'])
 
 
 class Noise(unittest.TestCase):

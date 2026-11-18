@@ -26,12 +26,14 @@ def convert(raw):
     # a menu or the overview grabbed above it means the input goes there, and the fence denies.
     modal = (raw.get('chrome') or {}).get('modal_actors', [])
     grab = bool(modal) and modal[-1].endswith('RegionSelector')
+    chrome_raw = raw.get('chrome') or {}
+    foreign = bool(chrome_raw.get('overview')) or (bool(chrome_raw.get('modal')) and not grab)  # the input goes elsewhere: keys as well as the pointer are denied
     windows = []
     for w in raw['windows']:
         w = dict(w, content=w['frame'])
         if w.pop('hidden', False):
             w['min'] = True
-        if grab:
+        if grab or foreign:
             w['active'] = False
         windows.append(w)
     z = len(windows)
@@ -58,7 +60,7 @@ def convert(raw):
         windows.append(pseudo('panel', 'gnome-shell-panel', chrome['panel'], top, kind='ShellChrome'))
     if chrome.get('banner'):
         windows.append(pseudo('banner', 'gnome-shell-banner', chrome['banner'], top + 1, kind='ShellChrome'))
-    if chrome.get('overview') or (chrome.get('modal') and not grab):  # a grab that is not the selector's, or the overview: input goes elsewhere
+    if foreign:
         for index, output in enumerate(raw['outputs']):
             windows.append(pseudo('modal%d' % index, 'gnome-shell-overview' if chrome.get('overview') else 'gnome-shell-modal', output['geom'], top + 2, kind='ShellChrome'))
     return {'windows': windows, 'outputs': raw['outputs'], 'cursor': raw['cursor'], 'chrome': chrome}

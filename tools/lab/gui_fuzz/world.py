@@ -76,6 +76,7 @@ class World:
         self._procs_at = 0.0
         self.input_serials = collections.deque(maxlen=4000)  # the fence's snapshot number when each input was sent
         self.freshness = 0.04  # a reading is fresh when its snapshot was taken at least this long after it was asked for
+        self.fresh_timeout = 0.3  # and is waited for this long
 
     def putgd_now(self):
         """put.gd's processes read from /proc now, not from the cache."""
@@ -94,12 +95,9 @@ class World:
         return window['pid'] in self.pids() or window['cls'].startswith('putgd')
 
     def mine(self, window):
-        """put.gd's own window, or a window transient for one. On KDE the portal's file chooser is accepted by its class as well (put.gd opens it
-        with no parent when the toolkit has no handle to export). On GNOME and Cinnamon a portal window with no put.gd parent is not put.gd's:
-        the fence denies it, whatever it looks like."""
+        """put.gd's own window, or a window transient for one. A portal file chooser with no put.gd parent (put.gd opens its choosers with none) is
+        not put.gd's on any desktop, whatever it looks like: the fence denies it."""
         if self.owned_by_putgd(window):
-            return True
-        if window['cls'] in self.desk.portal_classes and window['normal'] and not self.desk.verify_portal:
             return True
         parent = window.get('tr')
         if parent:
@@ -162,15 +160,17 @@ class World:
         return False
 
     def fresh_cursor(self):
-        """The cursor as the fence sees it in a snapshot taken after this call: what the last input really did."""
+        """The cursor as the fence sees it in a snapshot taken after this call: what the last input really did. None when no such snapshot
+        arrives in time: an input decision never rests on an older one."""
         asked = time.time()
-        deadline = asked + 0.3
-        while time.time() < deadline:
+        deadline = asked + self.fresh_timeout
+        while True:
             snapshot, stamp = self.fence.get()
             if stamp > asked + self.freshness:
                 return tuple(snapshot['cursor'])
+            if time.time() >= deadline:
+                return None
             time.sleep(0.005)
-        return self.cursor()
 
     def on_output(self, x, y):
         return any(o['geom'][0] <= x < o['geom'][0] + o['geom'][2] and o['geom'][1] <= y < o['geom'][1] + o['geom'][3] for o in self.outputs())
