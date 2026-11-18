@@ -447,7 +447,7 @@ jobs:
           PUTGD_PKG_LABEL: appimage
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '0'
+          PUTGD_PKG_ATTEMPTS: '3'
         run: |
           # Retried package installs (#368); sudo keeps the summary file for the retry report.
           # The package snapshot is on every install here, so each can fall back to it.
@@ -523,7 +523,7 @@ jobs:
           PUTGD_PKG_LABEL: appimage
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '0'
+          PUTGD_PKG_ATTEMPTS: '3'
         run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh --no-install-recommends weston
       - name: Restore release compiler cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
