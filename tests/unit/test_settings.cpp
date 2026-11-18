@@ -176,6 +176,27 @@ private slots:
         QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}));
         QCOMPARE(service.snapshot().quickRedactTerms, (QStringList{"Project Aurora", "d69", "acme"}));
     }
+    // Round 2 (U12): the limits apply to what was sent, before repeats are dropped.
+    void quickRedactListLimitsCountRepeatsToo() {
+        QTemporaryDir dir;
+        putgd::SettingsService service(dir.filePath("config.json"));
+        QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
+        const auto many = [](int count, const QString& entry) { QJsonArray list; for (int i = 0; i < count; ++i) list.append(entry); return list; };
+        const auto send = [&](const char* key, const QJsonArray& list) { return service.patch({{"preferences", QJsonObject{{key, list}}}}, service.metadata()["observedRevision"].toString()); };
+        const auto terms = send("quickRedactTerms", many(201, "same"));
+        QCOMPARE(terms.error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(terms.error.details["path"].toString(), QStringLiteral("/preferences/quickRedactTerms"));
+        const auto patterns = send("quickRedactPatterns", many(51, "\\bsame\\b"));
+        QCOMPARE(patterns.error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(patterns.error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns"));
+        QVERIFY(!QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject().contains("quickRedactTerms"));
+        // At the limits they are accepted, and stored once.
+        QVERIFY(!send("quickRedactTerms", many(200, "same")).error);
+        QVERIFY(!send("quickRedactPatterns", many(50, "\\bsame\\b")).error);
+        const auto saved = QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject();
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"same"}));
+        QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bsame\\b"}));
+    }
     void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
         auto document = putgd::Settings::defaults();
         QCOMPARE(document["naming"].toObject()["mode"].toString(), QString("original"));
