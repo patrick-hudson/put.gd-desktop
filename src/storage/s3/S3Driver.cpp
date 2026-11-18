@@ -518,11 +518,20 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     // Another object holds the key. A collision lets History rename, skip or fail the item, so
     // it is reported only once the upload is aborted: if S3 refuses the abort, the item stays
     // unknown with its journal, which still names the parts (M8).
-    auto collided = [&](Error error) -> UploadResult {
-        if (abort(uploadId, key)) return {"collision", {}, error};
+    // The same for a definitely absent key and failed. While S3 keeps the parts, the item is
+    // unresolved either way.
+    auto unresolved = [](Error error) -> UploadResult {
         error.details["incompleteUpload"] = true;
         error.message += " The incomplete multipart upload could not be removed, so put.gd keeps its record and the item stays unresolved; Retry to try again, or allow s3:AbortMultipartUpload.";
         return {"unknown", {}, error};
+    };
+    auto collided = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"collision", {}, error};
+        return unresolved(error);
+    };
+    auto absentKey = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"failed", {}, error};
+        return unresolved(error);
     };
     // What the key says once a completion's outcome is in doubt, or the upload vanished.
     auto settle = [&](const Error& error, bool conflict) -> UploadResult {
@@ -534,7 +543,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         // The HEAD can't tell: the item stays unknown, keeping its journal and parts.
         if (found.status == "unknown") return {"unknown", {}, error};
         if (found.status == "foreign") return collided(conflict ? error : Error{"precondition_changed", "Another object now uses the saved object key", {}});
-        return fail(error);
+        return absentKey(error);
     };
     std::map<int, Aws::String> done;
     qint64 completed = 0;
@@ -571,11 +580,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         }
         if (found.status == "unknown") return {"unknown", {}, found.error};
         if (found.status == "foreign") return collided({"precondition_changed", "Another object now uses the saved object key", {}});
-        if (!abort(previous, key)) {
-            Error error{"publication_unknown", "The earlier multipart upload could not be removed; retry to try again.", {}};
-            error.details["incompleteUpload"] = true;
-            return {"failed", {}, error};
-        }
+        if (!abort(previous, key)) return unresolved({"publication_unknown", "The earlier multipart upload could not be removed.", {}});
         uploadId.clear();
     } else if (!previous.isEmpty()) {
         uploadId = previous;

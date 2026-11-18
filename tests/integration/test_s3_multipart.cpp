@@ -255,6 +255,10 @@ private slots:
                                  << QString("failed") << 1;
         QTest::newRow("lost-reply-absent") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}}}
                                            << QString("failed") << 1;
+        // The key is absent but S3 refuses the abort: the parts remain, so the item stays unknown.
+        QTest::newRow("absent-abort-refused") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 501}, {"code", "NotImplemented"}},
+                                                            QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}, {"code", "AccessDenied"}}}
+                                              << QString("unknown") << 1;
         QTest::newRow("check-fails") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
                                                    QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}
                                      << QString("unknown") << 0;
