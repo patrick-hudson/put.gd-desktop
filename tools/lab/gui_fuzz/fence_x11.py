@@ -116,7 +116,7 @@ class X11Fence:
             try:
                 attrs = window.get_attributes()
                 geo = window.get_geometry()
-                origin = window.translate_coords(root, 0, 0)
+                origin = root.translate_coords(window, 0, 0)  # the window's origin in root coordinates
             except (error.BadWindow, error.XError):
                 continue
             info = self.info(window, now)
@@ -142,9 +142,11 @@ class X11Fence:
                 if not attrs.override_redirect or attrs.map_state != X.IsViewable or attrs.win_class == X.InputOnly:
                     continue
                 geo = window.get_geometry()
-                origin = window.translate_coords(root, 0, 0)
+                origin = root.translate_coords(window, 0, 0)  # the window's origin in root coordinates
             except (error.BadWindow, error.XError):
                 continue
+            if geo.width < 3 or geo.height < 3:
+                continue  # Cinnamon keeps 1x1 override-redirect helpers
             info = self.info(window, now)
             if not info['pid']:
                 continue  # the compositor's own windows have no client
@@ -153,6 +155,12 @@ class X11Fence:
                 'id': str(window.id), 'pid': info['pid'], 'cls': info['cls'], 'title': info['title'], 'frame': frame, 'content': frame,
                 'active': False, 'min': False, 'popup': True, 'dock': False, 'desktop': False, 'normal': False, 'notif': False, 'fullscreen': False,
                 'tr': info['tr'], 'kind': 'X11Window', 'types': info['types'], 'states': ['override-redirect']}))
+        monitors = self.monitors(now)
+        for _, w in windows:  # put.gd's selector and recording shade are borderless override-redirect windows that cover a whole output
+            fx, fy, fw, fh = w['frame']
+            if 'override-redirect' in w['states'] and any(fw >= 0.9 * m['geom'][2] and fh >= 0.9 * m['geom'][3] and abs(fx - m['geom'][0]) <= 8 and abs(fy - m['geom'][1]) <= 8
+                                                         for m in monitors):
+                w['kind'], w['popup'] = 'X11Overlay', False
         windows.sort(key=lambda item: item[0])
         out = []
         for z, (_, w) in enumerate(windows):
@@ -162,7 +170,7 @@ class X11Fence:
         if len(self.static) > 400:
             self.static = {k: v for k, v in self.static.items() if now - v[0] < 30}
             self.parents = {}
-        return {'windows': out, 'outputs': self.monitors(now), 'cursor': [pointer.root_x, pointer.root_y]}
+        return {'windows': out, 'outputs': monitors, 'cursor': [pointer.root_x, pointer.root_y]}
 
     # -- the loop --------------------------------------------------------------------------------
     def update(self, snapshot):
@@ -178,7 +186,7 @@ class X11Fence:
             started = time.time()
             try:
                 self.update(self.take())
-            except (error.XError, OSError, AttributeError, KeyError, IndexError) as problem:
+            except Exception as problem:  # a window vanishing mid-read must not end the fence
                 self.errors += 1
                 self.last_error = repr(problem)[:200]
                 time.sleep(0.2)

@@ -271,9 +271,10 @@ class Cinnamon(Desktop):
         mime = {'text': 'UTF8_STRING', 'image': 'image/png', 'uris': 'text/uri-list'}.get(kind)
         try:
             if kind == 'clear':
-                subprocess.run(['xclip', '-selection', 'clipboard', '-i', '/dev/null'], timeout=10, env=host_env(), capture_output=True)
-            else:
-                subprocess.run(['xclip', '-selection', 'clipboard', '-t', mime, '-i'], input=payload, timeout=10, env=host_env(), capture_output=True)
+                subprocess.run(['xclip', '-selection', 'clipboard', '-i', '/dev/null'], timeout=10, env=host_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:  # xclip forks to serve the selection: it must not hold our pipes, or run() waits for it until the timeout
+                subprocess.run(['xclip', '-selection', 'clipboard', '-t', mime, '-i'], input=payload, timeout=10, env=host_env(),
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except (OSError, subprocess.SubprocessError) as error:
             walker.log.write({'op': 'harness_error', 'action': 'clipboard', 'error': repr(error)[:160]})
 

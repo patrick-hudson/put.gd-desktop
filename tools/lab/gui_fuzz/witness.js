@@ -67,7 +67,8 @@ function monitors() {
 }
 
 function chrome() {
-    const out = {panel: null, overview: !!Main.overview.visible, modal: Main.modalCount | 0, banner: null, keyboard: false};
+    const out = {panel: null, overview: !!Main.overview.visible, modal: Main.modalCount | 0, banner: null, keyboard: false,
+                 modal_actors: (Main.modalActorFocusStack || []).map(m => gtype(m.actor))};
     const panel = Main.layoutManager.panelBox;
     if (panel && panel.visible)
         out.panel = extents(panel);

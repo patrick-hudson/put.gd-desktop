@@ -13,7 +13,8 @@ CRITICAL = re.compile(r'(QObject::|QWidget::|QPainter::|QBackingStore|QPixmap::|
                       r'ASSERT|Assertion|terminate called|Segmentation|Fatal|fatal|Critical|CRITICAL|Cannot |cannot |'
                       r'Unhandled|uncaught|double free|corrupt|stack smashing|invalid pointer|bad_alloc)')
 # Known lab/desktop noise that says nothing about put.gd (extend with the exact text, never a wide pattern).
-NOISE = re.compile(r'(Failed to register with host portal|Could not register app ID|QFSFileEngine::open: No file name)')
+NOISE = re.compile(r'(Failed to register with host portal|Could not register app ID|QFSFileEngine::open: No file name|'
+                   r'\[h264_nvenc @ 0x[0-9a-f]+\] Cannot load libcuda\.so\.1|\[(VAAPI|AVHWDeviceContext) @ 0x[0-9a-f]+\] )')
 
 
 SHELL_ERROR = re.compile(r'(JS ERROR|JS LOG: .*[Ee]rror|Gjs-CRITICAL|Gjs-WARNING|CRITICAL|TypeError|ReferenceError|RangeError|SyntaxError|is not a function|'
@@ -102,6 +103,11 @@ class Watchdog(threading.Thread):
         residents = [p for p, c in self.world.pids().items() if c == 'putgd']
         self.resident = residents[0] if residents else None
         self.session = {name: (self.pid_of(name) or [None])[0] for name in self.desk.session_procs}
+        for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*.jsonl')):  # earlier seeds' lines were judged then
+            try:
+                self.log_offsets[path] = os.path.getsize(path)
+            except OSError:
+                pass
 
     def run(self):
         while not self.stop.is_set():
@@ -132,7 +138,8 @@ class Watchdog(threading.Thread):
         if now - stamp > 3:
             self.fence_stale_since = self.fence_stale_since or now
             if now - self.fence_stale_since > 3:
-                self.findings.add('shell_unresponsive', '%s has not reported for %.1f s' % (self.desk.shell_label, now - stamp), fatal=True)
+                self.findings.add('shell_unresponsive', '%s has not reported for %.1f s (%d errors, last: %s)' % (self.desk.shell_label, now - stamp, getattr(self.world.fence, 'errors', 0),
+                                                                                                getattr(self.world.fence, 'last_error', '')), fatal=True)
         else:
             self.fence_stale_since = None
         for name, pid in list(self.session.items()):
