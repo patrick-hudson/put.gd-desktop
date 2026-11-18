@@ -200,6 +200,36 @@ private slots:
         QCOMPARE(stored["blob"].toString(), request.artifact.sha256);
         QVERIFY(second.last().isEmpty());
     }
+    // A journal written before #1582 holds the key with its doubled slash. It names the
+    // same stored key, so the upload resumes with its upload ID and matching parts.
+    void oldFormJournalKeyResumesTheSameUpload() {
+        S3Fixture f(policy);
+        f.destination.settings["objectPrefix"] = "a//b/";
+        auto request = f.request("resume.bin", synthetic(16 * mib));
+        QCOMPARE(request.objectReference["key"].toString(), QString("a/b/resume.bin"));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"query", "partNumber=4"}, {"status", 403}},
+                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 503}, {"code", "ServiceUnavailable"}, {"remaining", 3}}}}});
+        Journal first;
+        first.attach(request);
+        QCOMPARE(f.upload(request).status, QString("failed"));
+        auto saved = first.last();
+        QCOMPARE(saved["phase"].toString(), QString("parts"));
+        const auto uploadId = saved["uploadId"].toString();
+        saved["key"] = "a//b/resume.bin";
+        f.control("/__clear_events", {}, true);
+        auto retry = request;
+        retry.objectReference["key"] = "a//b/resume.bin";
+        retry.resume = saved;
+        const auto result = f.upload(retry);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
+        QCOMPARE(result.receipt.objectReference["key"].toString(), QString("a/b/resume.bin"));
+        QCOMPARE(count(f, "POST", "uploads"), 0);
+        QCOMPARE(count(f, "DELETE", "uploadId="), 0);
+        QCOMPARE(count(f, "GET", "uploadId=" + uploadId), 1);
+        for (const auto* number : {"1", "2", "3"}) QCOMPARE(parts(f, number).size(), 0);
+        QCOMPARE(parts(f, "4").size(), 1);
+        QCOMPARE(f.state()["objects"].toObject()["a/b/resume.bin"].toArray().last().toObject()["blob"].toString(), request.artifact.sha256);
+    }
     void uncertainCompletionResumesWithoutResendingParts() {
         S3Fixture f(policy);
         auto request = f.request("complete.bin", synthetic(11 * mib));
