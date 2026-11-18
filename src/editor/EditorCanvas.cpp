@@ -134,22 +134,26 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  announce();
 }
 
+// The one place a drag in progress is dropped without a release: switching tools, or a pan taking over from
+// it. A drag that edits the document holds a document gesture, which ends with it (the half-made change is
+// rolled back); left open it would keep every later edit out of the undo history until a release that never comes.
+void EditorCanvas::abandonDrag(){
+ if(drag_==Drag::Create||drag_==Drag::Move||drag_==Drag::Resize){
+  doc_.cancelGesture();moved_=false;editOnClick_=0;
+  if(selected_&&!doc_.find(selected_)){selected_=0;emit selectionChanged();}
+ }
+ drag_=Drag::None;
+}
 void EditorCanvas::setTool(Tool tool){
  if(textEditor_)finishText(true);
  // A newly chosen drawing tool starts unselected, so its style controls
  // configure the tool rather than restyling an earlier shape.
  const bool deselect=tool!=tool_&&tool!=Tool::Select&&selected_;
  if(tool_==Tool::Crop&&tool!=Tool::Crop)cancelCrop();
- // A drag in progress is abandoned, and so is its document gesture: left open it would hold every
- // later edit (Quick redact's marks among them) out of the undo history until a release that never comes.
- if(drag_==Drag::Create||drag_==Drag::Move||drag_==Drag::Resize){
-  doc_.cancelGesture();moved_=false;editOnClick_=0;
-  if(selected_&&!doc_.find(selected_)){selected_=0;emit selectionChanged();}
- }
+ abandonDrag();
  tool_=tool;
  if(tool_==Tool::Crop){cropDraft_=doc_.crop();selected_=0;emit selectionChanged();}
  else if(deselect){selected_=0;emit selectionChanged();}
- drag_=Drag::None;
  setCursor(tool_==Tool::Select?Qt::ArrowCursor:tool_==Tool::CopyText?Qt::IBeamCursor:Qt::CrossCursor);
  if(fitted_)fit();else update();
  announce();
@@ -447,7 +451,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
 void EditorCanvas::mousePressEvent(QMouseEvent* event){
  setFocus();
  press_=last_=event->position();const auto image=toImage(press_);
- if(event->button()==Qt::MiddleButton||(event->button()==Qt::LeftButton&&space_)){drag_=Drag::Pan;setCursor(Qt::ClosedHandCursor);return;}
+ if(event->button()==Qt::MiddleButton||(event->button()==Qt::LeftButton&&space_)){abandonDrag();drag_=Drag::Pan;setCursor(Qt::ClosedHandCursor);return;}
  if(event->button()!=Qt::LeftButton)return;
  if(textEditor_){finishText(true);return;}
  if(tool_==Tool::Crop){

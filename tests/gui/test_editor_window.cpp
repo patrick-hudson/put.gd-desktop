@@ -87,6 +87,49 @@ private slots:
   QTest::mouseRelease(&window.canvas(),Qt::LeftButton,{},center+QPoint(60,30));
   QVERIFY(!doc.inGesture());QVERIFY(doc.shapes().isEmpty());
  }
+ // Round 3 (U1): a middle-button press during a left-button drag turns it into a pan; the document gesture ends with the drag.
+ void middleButtonPanDuringADragEndsTheDocumentGesture(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","redact"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  const auto center=window.canvas().rect().center();
+  QTest::mousePress(&window.canvas(),Qt::LeftButton,{},center);QTest::mouseMove(&window.canvas(),center+QPoint(60,30));
+  QVERIFY(doc.inGesture());
+  QTest::mousePress(&window.canvas(),Qt::MiddleButton,{},center+QPoint(60,30));
+  QVERIFY(!doc.inGesture());QVERIFY(doc.shapes().isEmpty());
+  QTest::mouseRelease(&window.canvas(),Qt::MiddleButton,{},center+QPoint(60,30));
+  QTest::mouseRelease(&window.canvas(),Qt::LeftButton,{},center+QPoint(60,30));
+  QVERIFY(!doc.inGesture());
+  // The document edits normally afterwards: one undo step per change.
+  QVERIFY(doc.add(Shape{})>0);QVERIFY(doc.undo());
+ }
+ // Round 3 (U13): while a mark is being dragged, every change an agent asks for answers editor_busy, and the drag
+ // still completes normally. Without it, abandoning the drag would roll back an edit the agent was told succeeded.
+ void agentChangesDuringADragAnswerBusyAndTheDragCompletes(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","redact"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  const auto center=window.canvas().rect().center();
+  QTest::mousePress(&window.canvas(),Qt::LeftButton,{},center);QTest::mouseMove(&window.canvas(),center+QPoint(60,30));
+  QVERIFY(doc.inGesture());
+  const auto refused=[&](const QJsonObject& command){QString c,m;const auto result=window.applyCommands(QJsonArray{command},c,m);return c==QString("editor_busy")&&result.isEmpty();};
+  const QJsonObject rect{{"kind","redact"},{"rect",QJsonArray{5,5,20,20}}};
+  QVERIFY(refused({{"op","add"},{"shape",rect}}));
+  QVERIFY(refused({{"op","update"},{"shapeId",1},{"shape",QJsonObject{{"rect",QJsonArray{6,6,20,20}}}}}));
+  QVERIFY(refused({{"op","remove"},{"shapeId",1}}));
+  QVERIFY(refused({{"op","crop"},{"rect",QJsonArray{0,0,100,100}}}));
+  QVERIFY(refused({{"op","resetCrop"}}));
+  QVERIFY(refused({{"op","undo"}}));
+  for(const auto* action:{"removeMark","removeSuggestions","place","geometry","applyCrop","blurStyle","stepNumber"}){
+   code.clear();window.viewCommand({{"action",action}},code,message);QCOMPARE(code,QString("editor_busy"));
+  }
+  Error asked{"pending","",{}};window.quickRedact({"email"},[&](Error e,QJsonObject){asked=e;});QCOMPARE(asked.code,QString("editor_busy"));
+  // Views that change nothing still answer.
+  code.clear();window.viewCommand({{"action","zoom"},{"percent",150}},code,message);QVERIFY2(code.isEmpty(),qPrintable(code+": "+message));
+  // The drag completes as if nothing had been asked: one new mark, and one undo removes it.
+  QTest::mouseRelease(&window.canvas(),Qt::LeftButton,{},center+QPoint(60,30));
+  QVERIFY(!doc.inGesture());QCOMPARE(doc.shapes().size(),1);
+  QString c,m;QVERIFY(!window.applyCommands(QJsonArray{QJsonObject{{"op","add"},{"shape",rect}}},c,m).isEmpty());QCOMPARE(doc.shapes().size(),2);
+  QVERIFY(doc.undo());QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());
+ }
  // A crop drawn but not yet applied is applied before Upload exports the image.
  void uploadFinishesThePendingCrop(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

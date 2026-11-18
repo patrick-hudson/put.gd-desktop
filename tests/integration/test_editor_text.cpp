@@ -276,9 +276,10 @@ private slots:
  void resultDuringADragIsItsOwnUndoStep() {
   editor::EditDocument doc(capture());EditorWindow window(doc);useTerminal(window);
   Shape arrow;arrow.kind=Shape::Kind::Arrow;arrow.from=QPoint(300,100);arrow.to=QPoint(350,150);const auto id=doc.add(arrow);
-  doc.beginGesture();auto moved=*doc.find(id);moved.from=QPoint(310,110);moved.to=QPoint(360,160);doc.preview(moved);
   Error error{"pending","",{}};QJsonObject result;
   window.quickRedact({"email"},[&](Error e,QJsonObject r){error=e;result=r;});
+  // The drag starts right after the matching does, so the result arrives in the middle of it (a drag cannot start Quick redact: round 3, U13).
+  window.text().whenRecognized([&](Error){doc.beginGesture();auto moved=*doc.find(id);moved.from=QPoint(310,110);moved.to=QPoint(360,160);doc.preview(moved);});
   PUTGD_COMPARE_STEADY(error.code,QString("pending"),400);
   QCOMPARE(doc.shapes().size(),1); // nothing joined the drag
   doc.commitGesture();
@@ -327,6 +328,20 @@ private slots:
   QCOMPARE(neighbour["created"].toArray().size(),1);
   // And the deleted one is still skipped.
   QCOMPARE(run(window,{"list"},{"x"})["created"].toArray().size(),0);
+ }
+ // Round 3 (U11): on a wrapped match each line's mark carries its own word box. The padded marks of
+ // these two lines overlap each other's word boxes, so pairing by overlap gave both the same box.
+ void wrappedMatchMarksEachKeepTheirOwnWordBox() {
+  editor::EditDocument doc(capture());EditorWindow window(doc);
+  window.text().setRunner([](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){auto result=found();result.candidates={{"jane.doe@",QRect(100,60,5,20),95},{"example.com",QRect(96,71,15,20),95}};result.lineTops={60,71};return result;});
+  const auto first=run(window,{"email"});
+  const auto created=first["created"].toArray();
+  QCOMPARE(created.size(),2);QCOMPARE(first["counts"].toObject()["email"].toInt(),1);
+  const auto upper=*doc.find(quint64(created.at(0).toDouble())),lower=*doc.find(quint64(created.at(1).toDouble()));
+  QCOMPARE(upper.suggestedAt,QRect(100,60,5,20));QCOMPARE(lower.suggestedAt,QRect(96,71,15,20));
+  // Deleting the first line's mark dismisses that line's box and not the other's.
+  QVERIFY(doc.remove(upper.id));
+  QVERIFY(doc.dismissed(QRect(100,60,5,20),"email"));QVERIFY(!doc.dismissed(QRect(96,71,15,20),"email"));
  }
  void wordUnderRedactMarkIsNeverReturned_data() {
   QTest::addColumn<QString>("change");
