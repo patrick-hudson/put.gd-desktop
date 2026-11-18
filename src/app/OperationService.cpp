@@ -172,7 +172,7 @@ void OperationService::recoverJournal() {
  background([this,path,artifactsRoot](Error& e) {
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   if(!journalOwner_||!journalOwner_->isLocked()) {journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);}
-  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {e={"journal_busy","Another resident owns this operation journal",{}};return QJsonObject{};}
+  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {e=journalOwner_->error()==QLockFile::LockFailedError?Error{"journal_busy","Another resident owns this operation journal",{}}:Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};}
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
   RecordingService::discardStaging(root_+"/recording");
