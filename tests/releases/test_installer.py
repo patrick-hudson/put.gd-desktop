@@ -45,6 +45,16 @@ class Installer(unittest.TestCase):
                       "f.write(json.dumps(sys.argv) + '\\n')")
         with (self.bin / 'sudo').open('a') as f:
             f.write("import subprocess\nsys.exit(subprocess.call(sys.argv[1:]))\n")
+        with (self.bin / 'pacman').open('a') as f:
+            # The installer asks pacman to resolve putgd (-Sp, or -Syp) before it installs anything.
+            f.write('''if sys.argv[1:2] in (['-Sp'], ['-Syp']) and os.environ.get('RESOLVE') == 'unsatisfied':
+    sys.stderr.write('error: failed to prepare transaction (could not satisfy dependencies)\\n'
+                     ':: unable to satisfy dependency libcrypto.so=4-64 required by putgd\\n')
+    sys.exit(1)
+if sys.argv[1:2] in (['-Sp'], ['-Syp']) and os.environ.get('RESOLVE') == 'network':
+    sys.stderr.write('error: failed retrieving file putgd.db from pkg.put.gd : Could not resolve host\\n')
+    sys.exit(1)
+''')
         with (self.bin / 'rpm').open('a') as f:
             f.write("sys.exit(0 if all(p in os.environ['CODEC'].split(',') for p in sys.argv[2:]) else 1)\n")
         with (self.bin / 'dnf').open('a') as f:
@@ -201,7 +211,7 @@ else:
         trust = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'pacman-key')
         self.assertLess(update, trust)
         self.assertEqual(calls[update][1:], ['-y'])
-        self.assertEqual([c[1:] for c in calls if Path(c[0]).name == 'pacman'], [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-S', 'putgd']])
+        self.assertEqual([c[1:] for c in calls if Path(c[0]).name == 'pacman'], [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-Sp', 'putgd'], ['-S', 'putgd']])
 
     def test_omarchy_dry_run_explains_update_without_running_it(self):
         self.arch_with_updater()
@@ -255,7 +265,7 @@ else:
         (self.root / 'pacman.d').mkdir()
         (self.root / 'pacman.conf').write_text('[options]\n')
         self.run_script('--channel', 'nightly')
-        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syu','putgd']])
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syp', 'putgd'], ['-Syu','putgd']])
 
     def test_arch_installs_from_signed_repo_without_direct_release_download(self):
         self.os_release.write_text('ID=arch\n')
@@ -266,7 +276,58 @@ else:
         self.run_script('--channel', 'nightly')
         config = self.root / 'pacman.d/putgd.conf'
         self.assertIn('PackageRequired DatabaseRequired', config.read_text())
-        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syu', 'putgd']])
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syp', 'putgd'], ['-Syu', 'putgd']])
+
+    def arch_cannot_satisfy(self, updater=False):
+        if updater:
+            self.arch_with_updater()
+        else:
+            self.os_release.write_text('ID=manjaro\nID_LIKE=arch\n')
+            self.tool('gpg', 'print("fpr:::::::::4032E28D893BAF66F4AC23D9A11D38D55536B371:")')
+            (self.root / 'pacman.d').mkdir()
+            (self.root / 'pacman.conf').write_text('[options]\n')
+        # The release checksums name the AppImage: that is the only download this run makes.
+        self.env.update(SUFFIX='-x86_64.AppImage', RESOLVE='unsatisfied')
+
+    def pacman_calls(self):
+        return [c[1:] for c in self.calls() if Path(c[0]).name == 'pacman']
+
+    def test_arch_falls_back_to_appimage_when_pacman_cannot_satisfy_the_package(self):
+        self.arch_cannot_satisfy()
+        out = self.run_script('--channel', 'nightly')
+        self.assertIn('could not satisfy dependencies', out)
+        self.assertIn('Using the AppImage', out)
+        self.assertEqual(self.pacman_calls(), [['-Syp', 'putgd']])
+        self.assertEqual((self.home / '.local/bin/putgd.AppImage').read_bytes(), PAYLOAD)
+        probes = [call[-1] for call in self.calls() if '--write-out' in call]
+        self.assertEqual(probes, ['https://app.put.gd/dl/nightly/archlinux', 'https://app.put.gd/dl/nightly/appimage'])
+        self.assertFalse(list(self.root.glob('putgd-install.*')))
+
+    def test_omarchy_falls_back_to_appimage_after_its_update(self):
+        self.arch_cannot_satisfy(updater=True)
+        out = self.run_script('--channel', 'nightly', terminal_input='y\n')
+        calls = self.calls()
+        self.assertTrue(any(Path(c[0]).name == 'omarchy-update' for c in calls))
+        self.assertEqual(self.pacman_calls(), [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-Sp', 'putgd']])
+        self.assertIn('Using the AppImage', out)
+        self.assertEqual((self.home / '.local/bin/putgd.AppImage').read_bytes(), PAYLOAD)
+
+    def test_arch_fallback_still_needs_a_usable_appimage_host(self):
+        self.arch_cannot_satisfy()
+        self.env['GLIBC'] = 'glibc 2.35'
+        self.assertIn('glibc 2.39+', self.run_script('--channel', 'nightly', ok=False))
+        self.assertFalse((self.home / '.local').exists())
+
+    def test_arch_other_pacman_failures_do_not_switch_to_the_appimage(self):
+        self.arch_cannot_satisfy()
+        self.env['RESOLVE'] = 'network'
+        self.assertIn('Could not resolve host', self.run_script('--channel', 'nightly', ok=False))
+        self.assertEqual(self.pacman_calls(), [['-Syp', 'putgd']])
+        self.assertFalse((self.home / '.local').exists())
+
+    def test_arch_dry_run_says_the_appimage_is_the_fallback(self):
+        self.os_release.write_text('ID=arch\n')
+        self.assertIn('AppImage is installed instead', self.run_script('--dry-run'))
 
     def test_arch_key_mismatch_stops_before_trusting_key(self):
         self.os_release.write_text('ID=arch\n')

@@ -17,6 +17,13 @@ class Arch(unittest.TestCase):
         self.assertEqual(arch.pkgver('26.1107.4000'), '26.1107.4000')
         self.assertNotIn('-', arch.pkgver('26.1107.4000-dev+g123456789abc'))
 
+    def test_openssl_dependency_must_carry_the_linked_soname(self):
+        self.assertTrue(arch.versioned_libcrypto(['curl', 'libcrypto.so=4-64']))
+        self.assertTrue(arch.versioned_libcrypto(['libcrypto.so=5-64']))
+        for dependencies in (['curl', 'openssl'], ['libcrypto.so'], ['libcrypto.so', 'libcrypto.so=4-64'],
+                             ['libssl.so=4-64'], ['libcrypto.so=4']):
+            self.assertFalse(arch.versioned_libcrypto(dependencies), dependencies)
+
     def test_database_binds_package_and_rejects_other_bytes(self):
         fields = {k: [v] for k, v in dict(pkgname='putgd', pkgver='26.1107.4000nightly-1', pkgdesc='Sharing', arch='x86_64', size='7', builddate='1', packager='put.gd').items()}
         fields['depend'] = ['qt6-base>=6.4.2']

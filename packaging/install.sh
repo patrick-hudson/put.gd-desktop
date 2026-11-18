@@ -18,6 +18,8 @@ Usage: curl -fsSL https://app.put.gd/install | sh -s -- [OPTIONS]
   --dry-run                 Show the plan; only checks channel availability online
   --help                    Show this help
 Native packages use sudo only for apt/dnf/pacman install, with prompts on your terminal.
+On Arch-family systems where pacman cannot satisfy the package (for example, one whose OpenSSL is
+older than Arch's), the AppImage is installed instead.
 AppImage requires glibc 2.39+ and a working AppImage/FUSE runtime.
 HELP
     }
@@ -71,40 +73,43 @@ HELP
         fi
         package=${package:-appimage}
     fi
-    if [ "$package" = appimage ]; then
+    check_appimage_host() {
         libc=$(getconf GNU_LIBC_VERSION 2>/dev/null) \
             || die 'AppImage requires glibc 2.39+; use a supported distro or build from source'
         case "$libc" in 'glibc '*) ;; *) die 'AppImage requires glibc 2.39+' ;; esac
         awk -v version="${libc#glibc }" 'BEGIN {
             split(version, p, "."); exit !(p[1] > 2 || (p[1] == 2 && p[2] >= 39))
         }' || die "AppImage requires glibc 2.39+ (found $libc); upgrade your distro or build from source"
-    fi
-
+    }
     base=https://app.put.gd/dl
     # Check the exact download before fetching anything or asking for privilege.
-    status=$(curl --proto '=https' --connect-timeout 30 --max-time 60 --silent \
-        --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel/$package") \
-        || die 'Could not check release availability'
-    if [ "$status" = 404 ] && [ "$channel" = stable ]; then
-        note "No stable $package download exists yet; falling back to nightly."
-        channel=nightly
+    check_download() {
         status=$(curl --proto '=https' --connect-timeout 30 --max-time 60 --silent \
             --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel/$package") \
-            || die 'Could not check nightly release availability'
-    fi
-    [ "$status" = 302 ] || die "No usable $channel $package download (HTTP $status)"
+            || die 'Could not check release availability'
+        if [ "$status" = 404 ] && [ "$channel" = stable ]; then
+            note "No stable $package download exists yet; falling back to nightly."
+            channel=nightly
+            status=$(curl --proto '=https' --connect-timeout 30 --max-time 60 --silent \
+                --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel/$package") \
+                || die 'Could not check nightly release availability'
+        fi
+        [ "$status" = 302 ] || die "No usable $channel $package download (HTTP $status)"
+        case "$package" in
+            appimage) suffix=-x86_64.AppImage ;;
+            archlinux) suffix=-archlinux-x86_64.pkg.tar.zst ;;
+            fedora44|fedora45) suffix=-$package-x86_64.rpm ;;
+            *) suffix=-$package-x86_64.deb ;;
+        esac
+    }
+    [ "$package" != appimage ] || check_appimage_host
+    check_download
     if [ "$package" = archlinux ]; then
         note "Installing $channel / $package using the configured pacman repositories and signature policy."
     else
         note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
     fi
 
-    case "$package" in
-        appimage) suffix=-x86_64.AppImage ;;
-        archlinux) suffix=-archlinux-x86_64.pkg.tar.zst ;;
-        fedora44|fedora45) suffix=-$package-x86_64.rpm ;;
-        *) suffix=-$package-x86_64.deb ;;
-    esac
     if "$dry_run"; then
         if [ "$package" != archlinux ]; then
             note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
@@ -117,6 +122,7 @@ HELP
                 else
                     note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and run pacman -Syu putgd from the signed pkg.put.gd repository.'
                 fi
+                note 'If pacman cannot satisfy the package (an Arch derivative with an older OpenSSL), the AppImage is installed instead.'
                 ;;
             fedora44|fedora45)
                 note "Would run sudo dnf install ./putgd-VERSION$suffix; package adds the signed pkg.put.gd update repository. Start: putgd"
@@ -139,9 +145,7 @@ HELP
     }
     trap cleanup 0
     trap 'exit 1' 1 2 3 15
-    # Pacman fetches and authenticates both the index and payload itself. Avoid
-    # a second, redundant GitHub download before using the signed repository.
-    if [ "$package" != archlinux ]; then
+    fetch_package() {
         fetch --output "$work/SHA256SUMS" "$base/$channel/checksums" || die 'Could not download SHA256SUMS'
         # Select exactly one safe basename and digest; never execute release metadata.
         entry=$(awk -v suffix="$suffix" '
@@ -155,22 +159,29 @@ HELP
         fetch --output "$work/$filename" "$base/$channel/$package" || die 'Package download failed'
         (cd "$work" && sha256sum --check selected.sha256) \
             || die 'SHA-256 verification failed; nothing installed. A release may have changed; retry.'
+    }
+    install_appimage() {
+        mkdir -p "$HOME/.local/bin"
+        [ ! -d "$HOME/.local/bin/putgd.AppImage" ] || die "$HOME/.local/bin/putgd.AppImage is a directory"
+        staged=$(mktemp "$HOME/.local/bin/.putgd-install.XXXXXX")
+        cp "$work/$filename" "$staged"
+        chmod 755 "$staged"
+        mv -f "$staged" "$HOME/.local/bin/putgd.AppImage"
+        staged=
+        # AppRun manages its temporary desktop entries at launch; no install flag exists.
+        note 'Installed. Start: ~/.local/bin/putgd.AppImage'
+    }
+    # Pacman fetches and authenticates both the index and payload itself. Avoid
+    # a second, redundant GitHub download before using the signed repository.
+    if [ "$package" != archlinux ]; then
+        fetch_package
     fi
 
     case "$package" in
-        appimage)
-            mkdir -p "$HOME/.local/bin"
-            [ ! -d "$HOME/.local/bin/putgd.AppImage" ] || die "$HOME/.local/bin/putgd.AppImage is a directory"
-            staged=$(mktemp "$HOME/.local/bin/.putgd-install.XXXXXX")
-            cp "$work/$filename" "$staged"
-            chmod 755 "$staged"
-            mv -f "$staged" "$HOME/.local/bin/putgd.AppImage"
-            staged=
-            # AppRun manages its temporary desktop entries at launch; no install flag exists.
-            note 'Installed. Start: ~/.local/bin/putgd.AppImage'
-            ;;
+        appimage) install_appimage ;;
         archlinux)
             arch_updated=false
+            arch_status=0
             if command -v omarchy-update >/dev/null 2>&1; then
                 if ! ( : < /dev/tty ) 2>/dev/null; then
                     die 'Omarchy needs a terminal for its system update. Run omarchy update, then rerun this installer in a terminal.'
@@ -216,11 +227,36 @@ HELP
                     # Omarchy refreshed the system repositories before this file existed.
                     # Sync only the newly configured repository, then install normally.
                     pacman --config /etc/pacman.d/putgd.conf -Sy
+                    resolve=-Sp
+                else
+                    resolve=-Syp
+                fi
+                # Ask pacman whether it can satisfy the package here, library dependencies such as
+                # libcrypto.so=4-64 included, before installing anything. Status 73 asks the installer
+                # to use the AppImage; any other failure is reported as it is.
+                if ! failure=$(LC_ALL=C pacman "$resolve" putgd 2>&1 >/dev/null); then
+                    printf "%s\n" "$failure" >&2
+                    case "$failure" in *"could not satisfy dependencies"*) exit 73 ;; esac
+                    exit 1
+                fi
+                if [ "$4" = true ]; then
                     pacman -S putgd
                 else
                     pacman -Syu putgd
                 fi
-            ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty
+            ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty || arch_status=$?
+            case "$arch_status" in
+                0) ;;
+                73)
+                    note "pacman cannot satisfy this package's library dependencies here (an Arch derivative with an older OpenSSL than Arch's, for example), so the native package would not run. Using the AppImage."
+                    package=appimage
+                    check_appimage_host
+                    check_download
+                    fetch_package
+                    install_appimage
+                    ;;
+                *) exit "$arch_status" ;;
+            esac
             ;;
         *)
             command -v sudo >/dev/null 2>&1 || die 'Missing sudo; install sudo or use --appimage'

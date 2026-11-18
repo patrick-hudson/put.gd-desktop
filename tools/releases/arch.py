@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -15,6 +16,11 @@ def pkgver(version):
     # libalpm orders an alpha suffix before the same numeric final version.
     # No '-' is allowed inside pkgver; retain the compiled identity in the payload.
     return version.replace('-nightly', 'nightly').replace('-dev+', 'dev.').replace('~', '')
+
+
+def versioned_libcrypto(dependencies):
+    """True when makepkg recorded the soname (libcrypto.so=4-64) and left no bare libcrypto.so entry."""
+    return 'libcrypto.so' not in dependencies and any(re.fullmatch(r'libcrypto\.so=\d+-64', d) for d in dependencies)
 
 
 def main():
@@ -50,6 +56,10 @@ def main():
     required = {'tesseract', 'tesseract-data-eng', 'zxing-cpp', 'qt6-imageformats', 'qt6-wayland', 'qt6-base>=6.4.2', 'gst-plugins-bad', 'gst-plugin-pipewire', 'ffmpeg', 'layer-shell-qt'}
     if not required.issubset(dependencies):
         raise ValueError('Missing Arch runtime dependency: ' + ', '.join(sorted(required - set(dependencies))))
+    # makepkg turns 'libcrypto.so' into the soname the binaries link (libcrypto.so=4-64). An entry left bare is met by
+    # any OpenSSL, which is how pacman once accepted the package on a system where putgd-cli cannot start.
+    if not versioned_libcrypto(dependencies):
+        raise ValueError('Arch package must depend on a versioned libcrypto soname, such as libcrypto.so=4-64')
     # pacman resolves in listed order; tesseract first makes it also pick a default "tessdata" (Afrikaans).
     if dependencies.index('tesseract-data-eng') > dependencies.index('tesseract'):
         raise ValueError('tesseract-data-eng must be listed before tesseract')
