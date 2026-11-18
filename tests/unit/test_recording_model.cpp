@@ -59,6 +59,71 @@ private slots:
         disk.clipBytes = std::numeric_limits<qint64>::max();
         QCOMPARE(disk.requiredBytes(), std::numeric_limits<qint64>::max());
     }
+    // #1635: every edit edge lands on the 30 fps frame grid (edge k at
+    // round(k * 1e6 / 30) µs), in the direction that lets no unwanted footage
+    // through: covers and cuts grow outward, the trim shrinks inward. An edit
+    // that snapping would empty is refused, not snapped. The clip here is 10.01 s,
+    // so its end is not on the grid and stays where it is.
+    void editEdgesSnapToTheFrameGrid_data() {
+        QTest::addColumn<QJsonArray>("commands");
+        QTest::addColumn<QString>("error");
+        QTest::addColumn<QList<qint64>>("trim");   // start, end (-1: none)
+        QTest::addColumn<QList<qint64>>("cut");    // start, end of the last cut, or empty
+        QTest::addColumn<QList<qint64>>("cover");  // start, end of the last mask, or empty
+        const auto setTrim = [](double start, double end) { return QJsonObject{{"op", "setTrim"}, {"start", start}, {"end", end}}; };
+        const auto addCut = [](double start, double end) { return QJsonObject{{"op", "addCut"}, {"start", start}, {"end", end}}; };
+        const auto addMask = [](double start, double end) { return QJsonObject{{"op", "addMask"}, {"mask", mask(10, 10, 20, 20, start, end, "solid")}}; };
+        using L = QList<qint64>;
+        QTest::newRow("trim shrinks inward") << QJsonArray{setTrim(1'010'000, 5'010'000)} << QString() << L{1'033'333, 5'000'000} << L{} << L{};
+        QTest::newRow("trim on the grid stays") << QJsonArray{setTrim(1'033'333, 5'066'667)} << QString() << L{1'033'333, 5'066'667} << L{} << L{};
+        QTest::newRow("trim to the clip end keeps no end") << QJsonArray{setTrim(10'000, 10'010'000)} << QString() << L{33'333, -1} << L{} << L{};
+        QTest::newRow("cut grows outward") << QJsonArray{addCut(2'010'000, 2'050'000)} << QString() << L{0, -1} << L{2'000'000, 2'066'667} << L{};
+        QTest::newRow("cut inside one frame grows to it") << QJsonArray{addCut(2'005'000, 2'006'000)} << QString() << L{0, -1} << L{2'000'000, 2'033'333} << L{};
+        QTest::newRow("cut to past the last edge ends at the clip end") << QJsonArray{addCut(9'990'000, 10'005'000)} << QString() << L{0, -1} << L{9'966'667, 10'010'000} << L{};
+        QTest::newRow("cover grows outward") << QJsonArray{addMask(3'010'000, 3'020'000)} << QString() << L{0, -1} << L{} << L{3'000'000, 3'033'333};
+        QTest::newRow("cover on the grid stays") << QJsonArray{addMask(3'000'000, 3'033'333)} << QString() << L{0, -1} << L{} << L{3'000'000, 3'033'333};
+        // 30 ms asked for, but no whole frame lies inside it.
+        QTest::newRow("trim that snaps empty is refused") << QJsonArray{setTrim(1'010'000, 1'040'000)} << QString("invalid_request") << L{} << L{} << L{};
+        // 100 ms kept with 50 ms cut from it leaves 50 ms as asked, nothing once the cut grows to whole frames.
+        QTest::newRow("cut that snaps over the rest is refused") << QJsonArray{setTrim(1'000'000, 1'100'000), addCut(1'020'000, 1'070'000)} << QString("recording_cut_empty") << L{} << L{} << L{};
+    }
+    void editEdgesSnapToTheFrameGrid() {
+        QFETCH(QJsonArray, commands);
+        QFETCH(QString, error);
+        QFETCH(QList<qint64>, trim);
+        QFETCH(QList<qint64>, cut);
+        QFETCH(QList<qint64>, cover);
+        RecordingEdit edit;
+        const auto result = recording::applyEditCommands(edit, commands, 10'010'000, QSize(1280, 720), 30);
+        QCOMPARE(result.code, error);
+        if (!error.isEmpty()) { QCOMPARE(edit.revision, quint64(1)); return; }
+        QCOMPARE(edit.trimStart, trim[0]);
+        QCOMPARE(edit.trimEnd.value_or(-1), trim[1]);
+        if (!cut.isEmpty()) { QCOMPARE(edit.cuts.last().start, cut[0]); QCOMPARE(edit.cuts.last().end, cut[1]); }
+        if (!cover.isEmpty()) { QCOMPARE(edit.masks.last().start, cover[0]); QCOMPARE(edit.masks.last().end, cover[1]); }
+    }
+    // #1635 D17: preview and export draw no cover under 2 px on a side, so the
+    // model refuses one rather than accept a cover that covers nothing.
+    void coversAreAtLeastTwoPixels_data() {
+        QTest::addColumn<int>("w");
+        QTest::addColumn<int>("h");
+        QTest::addColumn<bool>("accepted");
+        QTest::newRow("1 px wide") << 1 << 40 << false;
+        QTest::newRow("1 px high") << 40 << 1 << false;
+        QTest::newRow("1 by 1") << 1 << 1 << false;
+        QTest::newRow("2 by 2") << 2 << 2 << true;
+    }
+    void coversAreAtLeastTwoPixels() {
+        QFETCH(int, w);
+        QFETCH(int, h);
+        QFETCH(bool, accepted);
+        for (const QString kind : {"solid", "blur"}) {
+            RecordingEdit edit;
+            const auto result = recording::applyEditCommands(edit, QJsonArray{QJsonObject{{"op", "addMask"}, {"mask", mask(10, 10, w, h, 0.0, 1'000'000.0, kind)}}}, 10'000'000, QSize(1280, 720), 30);
+            QCOMPARE(result.code.isEmpty(), accepted);
+            if (!accepted) QCOMPARE(result.message, QString("A mask must be at least 2 by 2 pixels"));
+        }
+    }
     void trimAndMasksUseSourceTimeAndRebaseAtExport() {
         // The issue's example: retaining 10-30 s makes a 12-15 s blur active at 2-5 s of output.
         RecordingEdit edit;
@@ -397,14 +462,16 @@ private slots:
     void theOldestUndoStepIsDroppedPastTheLimit() {
         RecordingEdit edit;
         RecordingEditHistory history;
-        const qint64 duration = 1000000;
+        const qint64 duration = 10000000;
+        // Trim starts on the 30 fps frame grid (frame i), where the model keeps them.
+        auto frame = [](int i) { return qRound64(i * 1e6 / 30); };
         for (int i = 0; i < recording::maximumUndoSteps + 5; ++i)
-            QVERIFY(!recording::applyEditCommands(edit, {QJsonObject{{"op", "setTrim"}, {"start", double(i)}, {"end", QJsonValue::Null}}}, duration, QSize(64, 64), 30, &history));
+            QVERIFY(!recording::applyEditCommands(edit, {QJsonObject{{"op", "setTrim"}, {"start", double(frame(i))}, {"end", QJsonValue::Null}}}, duration, QSize(64, 64), 30, &history));
         QCOMPARE(history.undo.size(), recording::maximumUndoSteps);
         // Batches 0..4 fell off the front: undoing every kept step ends at the edit batch 5 replaced.
         for (int i = 0; i < recording::maximumUndoSteps; ++i)
             QVERIFY(!recording::applyEditCommands(edit, {QJsonObject{{"op", "undo"}}}, duration, QSize(64, 64), 30, &history));
-        QCOMPARE(edit.trimStart, qint64(4));
+        QCOMPARE(edit.trimStart, frame(4));
         QVERIFY(!edit.canUndo);
         QCOMPARE(recording::applyEditCommands(edit, {QJsonObject{{"op", "undo"}}}, duration, QSize(64, 64), 30, &history).code, QString("recording_history_empty"));
     }
