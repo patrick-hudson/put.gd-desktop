@@ -241,6 +241,21 @@ private slots:
         QVERIFY2(abandoned.code!="s3_multipart_invalid",qPrintable(abandoned.message));
         QCOMPARE(f.events("DELETE").last().toObject()["key"].toString(),QString("a/b/big.bin"));
     }
+    // An upload whose reply was lost, retried from a journal that holds the key as typed:
+    // reconciliation finds it and its first receipt names the stored key.
+    void reconciledReceiptNamesTheStoredKey() {
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]="a//b/";
+        auto request=f.request("lost.txt");
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}},QJsonObject{{"method","HEAD"},{"status",503},{"code","ServiceUnavailable"},{"remaining",10}}}}});
+        QCOMPARE(f.upload(request).status,QString("unknown"));
+        f.reset({{"objects",f.state()["objects"]}});
+        auto retry=request;retry.objectReference["key"]="a//b/lost.txt";
+        const auto found=f.await<StatResult>([&](auto cb){f.provider.reconcile(retry,cb);});
+        QVERIFY2(found.status=="own",qPrintable(found.error.code));
+        QCOMPARE(found.receipt.objectReference["key"].toString(),QString("a/b/lost.txt"));
+        QCOMPARE(found.receipt.directUrl,f.endpoint+"/isolated-fixture/a/b/lost.txt");
+        QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/lost.txt"));
+    }
     // A "." or ".." part is removed by libcurl after the SDK signed it, so no request
     // names it exactly: new uploads are refused and old receipts are left alone.
     void dotSegmentsAreNeverSent_data() {

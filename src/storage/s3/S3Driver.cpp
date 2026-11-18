@@ -975,7 +975,9 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
         reply({"unknown", {}, prefixError()});
         return;
     }
-    const auto expected = receipt(request.destination, request.objectReference["key"].toString(), request.publicationId,
+    // The first receipt of an upload names the key it is stored under, even when the
+    // journal from before #1582 holds the key as typed.
+    const auto expected = receipt(request.destination, s3StoredKey(request.objectReference["key"].toString()), request.publicationId,
                                   request.artifact.sha256, request.artifact.bytes, {}, {});
     auto client = state_->client(request.destination);
     if (!client) {
