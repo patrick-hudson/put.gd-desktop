@@ -808,7 +808,9 @@ and dwz steps. It works in three layers:
   that job runs `apt-get`.
 
   The native ubuntu24.04 job adds the AppImage packages and `weston` to its
-  snapshot with one `--download-only` call after its own install. That call
+  snapshot with one `--download-only` call after its own install, which runs
+  `install-native-deps.sh` itself (`PUTGD_INSTALL_OPTIONS`) with the AppImage
+  job's package list, so the base list and the extras can't drift apart. That call
   never refreshes the indexes, on any attempt (`PUTGD_PKG_REUSE_METADATA=true`):
   it downloads against the indexes the install before it fetched, so the
   snapshot's indexes and packages match. If it can't download everything
@@ -817,8 +819,8 @@ and dwz steps. It works in three layers:
   small budget (2 attempts of 5 minutes, 15 minutes in all), so cache warming
   can't use up the native job's time. It runs with `--reinstall`, which also
   downloads archives of packages the image already had at the candidate version
-  (it names `git` and `ca-certificates`, which the bootstrap installs before the
-  snapshot exists), because a runner with an older version needs them offline. Only the ubuntu24.04
+  (for example `git` and `ca-certificates`, which the bootstrap installs before
+  the snapshot exists), because a runner with an older version needs them offline. Only the ubuntu24.04
   cache key includes `tools/ci/appimage-packages.txt`, so changing the list
   rebuilds that snapshot and no other. Until the native job has saved it, an
   AppImage run on the new key restores nothing, or the previous week's snapshot,
