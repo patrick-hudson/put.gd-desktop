@@ -312,21 +312,36 @@ class Running(unittest.TestCase):
                 self.assertEqual(target.guest_local_cleanup,['notification monitor cleanup unavailable'] if unreachable else [])
 
     def test_a_remote_marker_is_written_before_publishing_and_removed_only_when_cleaned(self):
-        from tools.lab.surface_driver.fixtures.live_outcomes import RemotePending
+        from tools.lab.surface_driver.fixtures.live_outcomes import RemotePending, capture_name
         marker=self.path/'live-cleanup-pending.json'
-        pending=RemotePending(marker,dict(destination='s3',prefix='acceptance/tier1-live/abc/',runId='run-1'))
+        prefix='acceptance/tier1-live/abc/'
+        template,key=capture_name(prefix)
+        # The key is known before publishing: the profile's capture template is this literal name.
+        self.assertEqual(key,prefix+template.replace('{ext}','png'))
+        self.assertRegex(key,r'^acceptance/tier1-live/abc/Tier1-[0-9a-f]{32}\.png$')
+        self.assertNotEqual(key,capture_name(prefix)[1])
+        pending=RemotePending(marker,dict(destination='s3',prefix=prefix,objectKey=key,runId='run-1'))
         self.assertFalse(marker.exists())
+        # The recipe sets this just before opening the region selector, so before any publish call.
         pending['remote']=True
         document=json.loads(marker.read_text())
-        self.assertEqual((document['destination'],document['prefix'],document['runId']),('s3','acceptance/tier1-live/abc/','run-1'))
-        self.assertEqual(sorted(document),['destination','prefix','runId','schemaVersion'])
+        self.assertEqual((document['destination'],document['prefix'],document['objectKey'],document['runId']),
+                         ('s3',prefix,key,'run-1'))
+        self.assertEqual(sorted(document),['destination','objectKey','prefix','runId','schemaVersion'])
         self.assertEqual(marker.stat().st_mode&0o777,0o600)
+        # The receipt's key keeps the marker current if the destination stored another name.
+        pending.record_key(key)
+        self.assertEqual(json.loads(marker.read_text())['objectKey'],key)
+        pending.record_key(prefix+'renamed.png')
+        self.assertEqual(json.loads(marker.read_text())['objectKey'],prefix+'renamed.png')
         # A runner killed here leaves the marker; the next fixture in this run is blocked, not allowed to clear it.
         with self.assertRaises(RecipeBlocked):
             RemotePending(marker,{})
         pending['remote']=False
         self.assertFalse(marker.exists())
         self.assertFalse(pending['remote'])
+        pending.record_key(prefix+'late.png')
+        self.assertFalse(marker.exists())
 
     def test_a_guest_that_staged_no_kwin_entries_has_none_to_clean_up(self):
         from tools.lab.surface_driver.api import GuestUnreachable
