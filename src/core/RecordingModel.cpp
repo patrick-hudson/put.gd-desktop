@@ -64,6 +64,8 @@ QJsonObject RecordingMask::toJson() const {
     if (kind == "blur") o["strength"] = strength;
     return o;
 }
+// #1613 skeleton: the model task replaces this with KeptSpans::outputDuration().
+qint64 RecordingEdit::exportDuration(qint64 duration) const { return exportEnd(duration) - trimStart; }
 std::optional<std::pair<qint64, qint64>> RecordingEdit::exportInterval(const RecordingMask& mask, qint64 trimStart, qint64 trimEnd) {
     const auto start = std::max(mask.start, trimStart), end = std::min(mask.end, trimEnd);
     if (end <= start) return std::nullopt;
