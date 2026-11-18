@@ -32,13 +32,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not p
 import run_scope  # noqa: E402
 
 
-def test_definition(build, name):
-    listing = subprocess.run(['ctest', '--test-dir', str(build), '--show-only=json-v1', '-R', '^%s$' % name],
-                             capture_output=True, text=True, check=True)
-    tests = json.loads(listing.stdout)['tests']
+def pick_test(listing, name):
+    """The one test in a `ctest --show-only=json-v1` listing whose name is exactly `name` (CTest's -R is a regular expression, so
+    `unit.v2` would also select `unit_v2`)."""
+    tests = [test for test in json.loads(listing)['tests'] if test.get('name') == name]
     if len(tests) != 1:
-        raise SystemExit('%s: %d tests match' % (name, len(tests)))
-    test = tests[0]
+        raise SystemExit('%s: %d tests have that exact name' % (name, len(tests)))
+    return tests[0]
+
+
+def test_definition(build, name):
+    listing = subprocess.run(['ctest', '--test-dir', str(build), '--show-only=json-v1'], capture_output=True, text=True, check=True)
+    test = pick_test(listing.stdout, name)
     env, cwd = {}, str(build)
     for prop in test.get('properties', []):
         if prop['name'] == 'ENVIRONMENT':
