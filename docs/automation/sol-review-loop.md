@@ -73,8 +73,10 @@ back on findings that are wrong.
    reviewer fetch and move to the reviewed head and check it. Never prepare the reviewer's
    checkout in the shell, and never use `t3_thread_send`, `create_threads` or
    `t3_thread_launch` for a review round.
-3. Don't edit the scoped files while a round runs. Wait for the completion notice; don't poll
-   and don't start a second reviewer. A timeout, error or empty reply is not approval: cancel
+3. Don't edit the scoped files while a round runs. Wait for the completion notice; don't poll,
+   and don't start another reviewer beyond the parallel reviews allowed under "Who runs it".
+   When a round has several reviewers, wait for all of them before merging their findings,
+   editing the scoped files or declaring approval. A timeout, error or empty reply is not approval: cancel
    it, check it stopped, and restart with the ledger.
 
 Round 1 brief (a delegated child has no history):
