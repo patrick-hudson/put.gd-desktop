@@ -790,25 +790,29 @@ and dwz steps. It works in three layers:
   install reads the metadata through them, because apt names its metadata files
   after the source URI.
 
-  The AppImage job restores the ubuntu24.04 snapshot and runs every apt install
-  of its own through it: the standard build dependencies, the packages in
-  `tools/ci/appimage-packages.txt` (which include the system libraries
-  `jurplel/install-qt-action` would otherwise install itself, so the action runs
-  with `install-deps: false`) and `weston`. Nothing in that job runs `apt-get`
-  outside the fallback. The job only reads the snapshot
-  (`PUTGD_PKG_KEEP_SNAPSHOT=true`): an online install early in the job doesn't
-  replace the snapshot's metadata and packages with newer ones, so a later
-  install that finds every mirror down still falls back to a matching set.
+  The AppImage job restores the ubuntu24.04 snapshot and installs everything in
+  one `install-packages.sh` call, so it is one apt transaction: the base
+  dependencies, the packages in `tools/ci/appimage-packages.txt` and `weston`
+  (`install-native-deps.sh` takes them as `PUTGD_EXTRA_PACKAGES`). The list
+  includes the system libraries `jurplel/install-qt-action` would otherwise
+  install itself, so the action runs with `install-deps: false`. The transaction
+  comes entirely online or entirely from the snapshot, never a mix: a mirror
+  that moved on since the snapshot would otherwise give an online install newer
+  packages that an offline install of the rest can't satisfy. Nothing else in
+  that job runs `apt-get`.
 
   The native ubuntu24.04 job adds the AppImage packages and `weston` to its
-  snapshot with `--download-only` after its own install, reusing that install's
-  metadata (`PUTGD_PKG_REUSE_METADATA=true`). Those downloads have no offline
-  fallback. If one fails, the step reports an error annotation but the native
-  build goes on, and that run saves no snapshot. Only the ubuntu24.04 cache key
-  includes `tools/ci/appimage-packages.txt`, so changing the list rebuilds that
-  snapshot and no other. Until the native job has saved it, an AppImage run on
-  the new key restores nothing, or the previous week's snapshot, and has no
-  fallback for packages it doesn't hold: that first run depends on the mirrors.
+  snapshot with one `--download-only` call after its own install. That call
+  never refreshes the indexes, on any attempt (`PUTGD_PKG_REUSE_METADATA=true`):
+  it downloads against the indexes the install before it fetched, so the
+  snapshot's indexes and packages match. If it can't download everything
+  against them, it has no offline fallback and fails with an error annotation,
+  the native build goes on, and that run saves no snapshot. Only the ubuntu24.04
+  cache key includes `tools/ci/appimage-packages.txt`, so changing the list
+  rebuilds that snapshot and no other. Until the native job has saved it, an
+  AppImage run on the new key restores nothing, or the previous week's snapshot,
+  and has no fallback for packages it doesn't hold: that first run depends on
+  the mirrors.
 
   The AppImage job also switches off the runner's non-Ubuntu apt sources
   (`tools/ci/hosted_apt_mirrors.py`), so a 429 from `packages.microsoft.com`
