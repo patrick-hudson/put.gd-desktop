@@ -1199,6 +1199,13 @@ void OperationService::releaseActive(const QString& id) {
  else active_.remove(id);
 }
 void OperationService::finish(Operation op,JsonReply reply) {
+ // A journal write that was refused stops the operation but undoes nothing its provider did:
+ // files already uploaded stay uploaded, so the operation's state follows its files (#1579).
+ if(op.state()==OperationState::Failed&&op.error.code=="history_io"&&!op.cancelled&&!op.items.isEmpty()) {
+  int done=0;for(const auto& item:std::as_const(op.items))if(QStringList{"uploaded","skipped","local_only"}.contains(item.uploadStatus))++done;
+  if(done==op.items.size()){op.restore(OperationState::Completed);op.error={};}
+  else if(done>0)op.restore(OperationState::Partial);
+ }
  if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
  anticipated_.remove(op.id);clipboardImports_.remove(op.id);pumpCopies();
  // Its link is copied only when asked for (diagnostics.bundle copyLink).

@@ -271,13 +271,13 @@ private slots:
   QVERIFY(QDir().mkdir(fault));provider->completions.takeFirst()();
   PUTGD_TRY_COMPARE(ops.unsavedResultCount(),1);PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(ops.diagnostics()["unsavedResults"].toInt(),1);
   // What History shows meanwhile is the uploaded file, marked as not saved yet.
-  const auto shown=ops.withUnsavedResult({{"operationId",id},{"itemId",itemId},{"uploadStatus","uploading"}});QCOMPARE(shown["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(shown["resultUnsaved"].toObject()["code"].toString(),QString("history_io"));
+  const auto shown=ops.withUnsavedResult({{"operationId",id},{"itemId",itemId},{"uploadStatus","uploading"}});QCOMPARE(shown["uploadStatus"].toString(),QString("uploaded"));QVERIFY(!shown.contains("id"));QCOMPARE(shown["resultUnsaved"].toObject()["code"].toString(),QString("history_io"));
   // Nothing acts on the stale row: Retry would upload the file again.
   Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(retried.code,QString("history_io"));
   PUTGD_COMPARE_STEADY(ops.unsavedResultCount(),1,300);  // still refused, still kept
   QVERIFY(QDir().rmdir(fault));
   PUTGD_TRY_COMPARE(ops.unsavedResultCount(),0);
-  HistoryStore journal(ops.databasePath());const auto saved=journal.operation(id);QVERIFY(!saved.active());QCOMPARE(saved.items[0].uploadStatus,QString("uploaded"));QVERIFY(!saved.items[0].receipt.validate());QCOMPARE(journal.detail(itemId)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(provider->uploads.load(),1);
+  HistoryStore journal(ops.databasePath());const auto saved=journal.operation(id);QCOMPARE(saved.stateName(),QString("completed"));QCOMPARE(saved.items[0].uploadStatus,QString("uploaded"));QVERIFY(!saved.items[0].receipt.validate());QCOMPARE(journal.detail(itemId)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(provider->uploads.load(),1);
  }
  // A resident that stops before the journal takes the result does not wait for it. The next start finds the stale
  // "uploading" row and recovers it as after a crash: interrupted, its upload unknown, never published again (#1579).
