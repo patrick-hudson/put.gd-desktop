@@ -125,6 +125,47 @@ private slots:
         PUTGD_TRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
         QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
     }
+    // The resident asks for idle upload lanes every 100 ms while it waits, so one such update can
+    // cross the worker's result on the wire. The worker ignores it and still exits cleanly; a worker
+    // that exits with an error makes the resident discard a finished answer as "ended unexpectedly".
+    void lanesUpdateAfterTheResultDoesNotFailTheWorker() {
+        test::S3Fixture fixture;
+        const auto request = fixture.request("late-lanes.txt", QByteArray(1024, 'l'));
+        QProcess child;child.setProcessChannelMode(QProcess::SeparateChannels);
+        UiControl control(child);
+        const auto nonce = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        auto envelope = [&] {return QJsonObject{{"role", "s3-worker"}, {"nonce", nonce}, {"generation", "1"}};};
+        auto acknowledge = [&](const QString& kind,const QString& sequence,const QJsonObject& data) {
+            auto value=envelope();value["kind"]=kind;value["replyTo"]=sequence;value["data"]=data;
+            return !control.send("checkpointAccepted",value).isEmpty();
+        };
+        bool ready=false,wireFailed=false,terminal=false;QJsonObject result;
+        connect(&control,&UiControl::failed,this,[&](Error){wireFailed=true;});
+        connect(&control,&UiControl::frame,this,[&](const QString& type,const QString&,const QJsonObject& value) {
+            if(type=="ready"){ready=true;return;}
+            const auto kind=value["kind"].toString();
+            if(type=="observed"&&kind=="credentials")
+                acknowledge(kind,value["rpc"].toString(),{{"credentials",s3wire::encode(Credentials{"PUTGD_SYNTHETIC_ACCESS","putgd-synthetic-secret-not-a-real-key",{},1})}});
+            else if(type=="observed"&&kind=="readiness")
+                acknowledge(kind,value["rpc"].toString(),{{"error",s3wire::encode(Error{})}});
+            else if(type=="checkpoint"&&kind=="result") {
+                result=value["data"].toObject();terminal=true;
+                auto lanes=envelope();lanes["lanes"]=1;
+                control.send("lanes",lanes);
+                acknowledge("result","terminal",{});
+            }
+        });
+        child.start(QString::fromUtf8(S3_REAL_WORKER_PATH),{});QVERIFY(child.waitForStarted(5000));
+        auto boot=envelope();boot["build"]=QJsonDocument::fromJson(buildManifestJson()).object();
+        boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=S3Module::defaultPath();
+        QVERIFY(!control.send("bootstrap",boot).isEmpty());PUTGD_TRY_VERIFY_WITH_TIMEOUT(ready&&!wireFailed,5000);
+        auto active=envelope();active["method"]="upload";active["request"]=s3wire::encode(request);
+        QVERIFY(!control.send("activate",active).isEmpty());
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(terminal,10000);
+        QCOMPARE(result["status"].toString(),QString("uploaded"));
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
+        QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
+    }
     void faultyChildren_data() {
         QTest::addColumn<QString>("mode");
         for (const auto* mode : {"normal", "wrong_build", "duplicate_ready", "wrong_nonce", "normal_missing_terminal",

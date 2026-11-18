@@ -145,6 +145,9 @@ private:
    const auto lanes=object["lanes"].toDouble(-1);if(lanes<0||lanes>=s3MaximumPartLanes||lanes!=int(lanes)){fail();return;}
    extraLanes_->store(int(lanes));return;
   }
+  // The resident asks for idle lanes every 100 ms while it waits, so one request can cross the result on the
+  // wire. Nothing is left to lend then; failing here would make it throw a finished answer away.
+  if(type=="lanes"&&terminal_&&object.size()==4&&object["lanes"].isDouble())return;
   if(type!="activate"||!ready_||active_||object.size()!=5||!object["method"].isString()||!object["request"].isObject()||!s3wire::validateRequest(object["method"].toString(),object["request"].toObject())){fail();return;}
   active_=true;heartbeat_.start();if(object["method"]=="upload")progressTimer_.start();
   auto acknowledged=envelope();acknowledged["kind"]="activated";acknowledged["data"]=QJsonObject{{"method",object["method"].toString()}};
