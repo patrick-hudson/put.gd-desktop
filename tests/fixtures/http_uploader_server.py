@@ -20,6 +20,8 @@ Control: POST /__reset {auth, token, php, echo}, POST /__rules {rules}, GET /__s
 A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining",
 "drop": true (close without a reply), "store": true (store first; with drop or status this is a
 reply lost after the file was stored), "location" (a Location header for a status reply)}.
+A "file" rule can also hold its reply: "stall": seconds before it answers, as a stalled
+server does, or "barrier": a name it waits on until POST /__release {barrier} (at most 60 s).
 
 An upload rule can also bend the reply the way a careless or hostile server would:
   "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
@@ -43,6 +45,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOKEN = 'putgd-synthetic-uploader-token-not-real'
 lock = threading.RLock()
+barriers = {}
 OTHER_HOST = 'localhost'  # the same listener under another host name
 
 
@@ -187,6 +190,12 @@ class Handler(BaseHTTPRequestHandler):
         if parts[0] == 'f' and len(parts) >= 2:
             self.record('file')
             rule = self.rule('file')
+            if rule.get('stall'):
+                time.sleep(rule['stall'])
+            if rule.get('barrier'):
+                with lock:
+                    barrier = barriers.setdefault(rule['barrier'], threading.Event())
+                barrier.wait(60)
             if rule.get('status'):
                 return self.reply(rule['status'], rule.get('body', ''))
             # A "file" rule may cut the file's own reply short, as an upload rule does.
@@ -234,6 +243,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/__rules':
             with lock:
                 state['rules'] = json.loads(self.body())['rules']
+            return self.reply(200, {})
+        if self.path == '/__release':
+            name = json.loads(self.body())['barrier']
+            with lock:
+                barriers.setdefault(name, threading.Event()).set()
             return self.reply(200, {})
         if self.path.startswith('/upload/'):
             early = self.early()

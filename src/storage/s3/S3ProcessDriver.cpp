@@ -101,8 +101,9 @@ public:
   QJsonObject result;auto error=run("refreshLink",receipt.toJson(),receipt.destination,{}, {},result);
   StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
- void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
-  QJsonObject result;auto error=run("stat",receipt.toJson(),receipt.destination,{}, {},result);
+ void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{statForRemoval(receipt,{},std::move(callback));}
+ void statForRemoval(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> kill,std::function<void(StatResult)> callback)override{
+  QJsonObject result;auto error=run("stat",receipt.toJson(),receipt.destination,{}, {},result,{},kill);
   StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> callback)override{
@@ -110,7 +111,7 @@ public:
   StatResult value;if(error||!s3wire::decode(result,value))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> callback)override{
-  QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result);
+  QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result,{},request.kill);
   DeleteResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",noEffects(error)?request.progress:QJsonObject{},error?error:uncertain()};callback(std::move(value));
  }
  void abandon(const Destination& destination,const QJsonObject& journal,std::function<void(Error)> callback)override{
@@ -188,7 +189,7 @@ private:
   {std::lock_guard lock(pending_->mutex);if(!pending_->complete)return;error=pending_->error;pending_->closed=true;}
   answer("checkpoint",pendingRpc_,{{"error",s3wire::encode(error)}});pending_.reset();pendingRpc_.clear();activity_.restart();
  }
- Error run(const QString& method,const QJsonObject& request,const Destination& destination,const std::shared_ptr<std::atomic_bool>& cancellation,DurableCheckpoint checkpoint,QJsonObject& result,std::function<void(const UploadProgress&)> progress={}){
+ Error run(const QString& method,const QJsonObject& request,const Destination& destination,const std::shared_ptr<std::atomic_bool>& cancellation,DurableCheckpoint checkpoint,QJsonObject& result,std::function<void(const UploadProgress&)> progress={},const std::shared_ptr<std::atomic_bool>& kill={}){
   if(!s3wire::validateRequest(method,request))return invalidRequest(method,request);
   destination_=destination;checkpoint_=std::move(checkpoint);rpc_=0;activeMethod_=method;
   progress_=std::move(progress);uploadBytes_=method=="upload"?request["artifact"].toObject()["bytes"].toInteger():0;
@@ -216,6 +217,9 @@ private:
   QElapsedTimer lanesPoll;lanesPoll.start();int lentLanes=0;const bool borrows=lanes_&&parts>1;
   activated_=true;if(control_->send("activate",activate).isEmpty())failed_=true;
   while(process_->state()!=QProcess::NotRunning&&!failed_){
+   // Quit (#1602): the helper is killed, not asked to stop, so it sends nothing more;
+   // the work ends uncertain and keeps the last acknowledged progress.
+   if(kill&&kill->load()){process_->kill();process_->waitForFinished(5000);failed_=true;break;}
    flushAck();
    if(borrows&&activationAcknowledged_&&!terminal_&&lanesPoll.elapsed()>=100){
     lanesPoll.restart();int lent=0;try{lent=qBound(0,lanes_(s3MaximumPartLanes-1),s3MaximumPartLanes-1);}catch(...){}

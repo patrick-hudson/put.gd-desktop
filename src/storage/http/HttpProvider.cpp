@@ -112,7 +112,7 @@ Error HttpUploaderProvider::readiness(const Destination& destination) const {
 
 QJsonObject HttpUploaderProvider::call(const QString& method, const Destination& destination, QJsonObject params, Error& error, bool* uncertain,
                                        std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
-                                       DurableCheckpoint checkpoint) {
+                                       DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill) {
     if (uncertain) *uncertain = false;
     if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
     if (auto e = http::validateSettings(destination.settings)) { error = e; return {}; }
@@ -152,7 +152,7 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
         "The custom uploader helper ended without a result; the upload may or may not be stored on the server",
         {"remove", "testDestination"}};
     const auto final = worker::exchange(workerPath(), method, std::move(params), destination.settings["requestTimeoutMs"].toInt(600000),
-                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint);
+                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill);
     if (error) return {};
     if (uncertain) *uncertain = final["uncertain"].toBool();
     if (!final["ok"].toBool()) error = parseError(final["error"].toObject());
@@ -185,7 +185,7 @@ void HttpUploaderProvider::remove(const DeleteRequest& request, DurableCheckpoin
     Error e;
     bool uncertain = false;
     const auto r = call("remove", request.receipt.destination, {{"receipt", request.receipt.toJson()}, {"progress", request.progress}}, e, &uncertain,
-                        request.cancellation, {}, checkpoint);
+                        request.cancellation, {}, checkpoint, request.kill);
     auto status = r["status"].toString();
     if (status.isEmpty()) status = uncertain ? "unknown" : "failed";
     reply({status, r["progress"].toObject(), e});

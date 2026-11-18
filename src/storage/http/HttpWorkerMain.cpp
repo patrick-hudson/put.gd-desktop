@@ -955,6 +955,18 @@ private:
                                 .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
                     return {{"status", "failed"}, {"progress", progress}};
                 }
+                // Only a link that is gone, or serves something else now, shows the file
+                // went. Any other answer (a server error, no reply, a redirect) shows
+                // nothing either way: the intent stays journaled and Retry asks again.
+                const bool gone = after.status == 404 || after.status == 410;
+                if (!gone && !(after.status >= 200 && after.status < 300)) {
+                    uncertain = true;
+                    details["checkStatus"] = after.status;
+                    if (after.status == 0) details["checkTransport"] = after.detail;
+                    error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was inconclusive (%2). "
+                             "It may or may not be deleted; Retry asks again.").arg(r.status).arg(after.status ? QString("HTTP %1").arg(after.status) : after.detail), details};
+                    return {{"status", "unknown"}, {"progress", progress}};
+                }
             }
             return finish("removed");
         }

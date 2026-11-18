@@ -12,6 +12,8 @@ public:
     virtual void upload(const UploadRequest&, std::function<void(UploadResult)>) = 0;
     virtual void refreshLink(const StorageReceipt& value, std::function<void(StatResult)> reply) {reply({"unknown",value,{"unsupported","Link refresh unavailable",{}}});}
     virtual void stat(const StorageReceipt&, std::function<void(StatResult)>) = 0;
+    // A deletion's identity check; the process driver kills its helper on `kill` (#1602).
+    virtual void statForRemoval(const StorageReceipt& value, std::shared_ptr<std::atomic_bool>, std::function<void(StatResult)> reply) { stat(value, std::move(reply)); }
     virtual void reconcile(const UploadRequest&, std::function<void(StatResult)>) = 0;
     virtual void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) = 0;
     virtual void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) = 0;

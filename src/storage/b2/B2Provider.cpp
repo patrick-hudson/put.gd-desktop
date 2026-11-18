@@ -49,7 +49,7 @@ Error B2Provider::validateSettings(const QJsonObject& settings) const { return b
 
 QJsonObject B2Provider::call(const QString& method, const Destination& destination, QJsonObject params, Error& error, bool* uncertain,
                              std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
-                             DurableCheckpoint checkpoint) {
+                             DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill) {
     if (uncertain) *uncertain = false;
     if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
     if (auto e = b2::validateSettings(destination.settings)) { error = e; return {}; }
@@ -67,7 +67,7 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
         "The B2 helper ended without a confirmed result; reconcile before retrying",
         {"upload", "remove", "testDestination"}, method != "checkName" && method != "stat", true};
     const auto final = worker::exchange(workerPath(), method, std::move(params), destination.settings["requestTimeoutMs"].toInt(600000),
-                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint);
+                                        policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill);
     if (error) return {};
     if (!final["ok"].toBool()) {
         error = parseError(final["error"].toObject());
@@ -107,6 +107,11 @@ void B2Provider::stat(const StorageReceipt& receipt, std::function<void(StatResu
     const auto r = call("stat", receipt.destination, {{"receipt", receipt.toJson()}}, e);
     reply({e ? "unknown" : r["status"].toString("unknown"), StorageReceipt::fromJson(r["receipt"].toObject()), e});
 }
+void B2Provider::statForRemoval(const StorageReceipt& receipt, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)> reply) {
+    Error e;
+    const auto r = call("stat", receipt.destination, {{"receipt", receipt.toJson()}}, e, nullptr, {}, {}, {}, kill);
+    reply({e ? "unknown" : r["status"].toString("unknown"), StorageReceipt::fromJson(r["receipt"].toObject()), e});
+}
 void B2Provider::reconcile(const UploadRequest& request, std::function<void(StatResult)> reply) {
     Error e;
     const auto r = call("reconcile", request.destination,
@@ -118,7 +123,7 @@ void B2Provider::remove(const DeleteRequest& request, DurableCheckpoint checkpoi
     Error e;
     bool uncertain = false;
     const auto r = call("remove", request.receipt.destination, {{"receipt", request.receipt.toJson()}, {"progress", request.progress}}, e, &uncertain,
-                        request.cancellation, {}, checkpoint);
+                        request.cancellation, {}, checkpoint, request.kill);
     auto status = r["status"].toString();
     if (status.isEmpty()) status = uncertain ? "unknown" : "failed";
     reply({status, r["progress"].toObject(), e});

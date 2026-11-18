@@ -237,6 +237,12 @@ void S3Provider::stat(const StorageReceipt& expected, std::function<void(StatRes
         driver.stat(expected, reply);
     }, [reply](Error error) { reply({"unknown", {}, error}); });
 }
+void S3Provider::statForRemoval(const StorageReceipt& expected, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)> reply) {
+    reply = once(std::move(reply));
+    state_->run(*this, expected.destination, kill, [expected, kill, reply](S3Driver& driver) {
+        driver.statForRemoval(expected, kill, reply);
+    }, [reply](Error error) { reply({"unknown", {}, error}); });
+}
 void S3Provider::reconcile(const UploadRequest& request, std::function<void(StatResult)> reply) {
     reply = once(std::move(reply));
     state_->run(*this, request.destination, {}, [request, reply](S3Driver& driver) {
@@ -259,7 +265,8 @@ void S3Provider::remove(const DeleteRequest& request, DurableCheckpoint save, st
     reply = once(std::move(reply));
     // Delete may need to reconcile an earlier journal even after cancellation.
     // Preserve the driver state machine's checks before every destructive step.
-    state_->run(*this, request.receipt.destination, {}, [request, save, reply](S3Driver& driver) {
+    // A deletion queued behind other work does not start once put.gd quits (#1602).
+    state_->run(*this, request.receipt.destination, request.kill, [request, save, reply](S3Driver& driver) {
         driver.remove(request, save, reply);
     }, [request, reply](Error error) {
         const bool uncertain = error.code == "s3_transport_unknown";

@@ -2,6 +2,12 @@
 #include "core/Settings.h"
 #include "core/SettingsService.h"
 #include "fixtures/Waits.h"
+#include "fixtures/ChildProcesses.h"
+#include "fixtures/HttpControl.h"
+#include "storage/http/HttpCommon.h"
+#include "storage/http/HttpProvider.h"
+#include <QElapsedTimer>
+#include <QJsonArray>
 #include <QDir>
 #include <QDirIterator>
 #include <QJsonDocument>
@@ -69,6 +75,115 @@ private slots:
  }
  // The Cinnamon route's resident shortcuts and captures through its own X
  // connection; when the session's X server goes, the resident goes too.
+ // #1602. Quit while a custom-uploader deletion waits on its server: the resident ends
+ // within a few seconds, the deletion's helper is killed with it, and the next resident
+ // shows the deletion interrupted and unknown, which Retry then resolves.
+ void quitDuringAStalledDeletionEndsResident() {
+  if(qEnvironmentVariable("PUTGD_ISOLATED_RESIDENT_TEST")!="1")QSKIP("Requires its dedicated private-bus invocation");
+  const auto number=qEnvironmentVariable("PUTGD_TEST_XVFB_DISPLAY");QVERIFY(!number.isEmpty());
+  QTemporaryDir directory;QVERIFY(directory.isValid());
+  const auto runtime=directory.filePath("r"),socket=runtime+"/putgd/session.sock";
+  QVERIFY2(socket.toUtf8().size()<=107,"Resolved test socket exceeds Linux's limit");
+  QVERIFY(QDir().mkpath(runtime));
+  QVERIFY(QFile::setPermissions(runtime,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  // The receiver answers a deletion without deleting; it asks for no credential.
+  QProcess receiver;Stop stopReceiver{receiver};
+  receiver.start("python3",{PUTGD_HTTP_FIXTURE_PATH});
+  QVERIFY(receiver.waitForStarted()&&receiver.waitForReadyRead(5000));
+  const auto base="http://127.0.0.1:"+QString::fromUtf8(receiver.readLine()).trimmed();
+  // Control requests fail the test instead of ending it, so the processes it owns are stopped.
+  QVERIFY(test::tryHttpControl(base,"/__reset",{{"auth","none"}},true));
+  const auto rules=[&](const QJsonArray& list){return test::tryHttpControl(base,"/__rules",{{"rules",list}},true).has_value();};
+  const auto release=[&](const QString& name){return test::tryHttpControl(base,"/__release",{{"barrier",name}},true).has_value();};
+  const auto events=[&](const QString& call){const auto state=test::tryHttpControl(base,"/__state");if(!state)return -1;int count=0;for(const auto& e:(*state)["events"].toArray())if(e.toObject()["call"]==call)++count;return count;};
+  auto receiverSettings=http::defaults();
+  receiverSettings["requestUrl"]=base+"/upload/pretend";receiverSettings["responseUrl"]="{json:files[0].url}";receiverSettings["deletionUrl"]="{json:files[0].delete}";
+  receiverSettings["requestTimeoutMs"]=30000;receiverSettings["connectTimeoutMs"]=2000;
+  auto config=Settings::defaults();
+  config["profiles"]=QJsonArray{QJsonObject{{"id","receiver"},{"label","Scripted receiver"},{"provider","custom-http"},{"settings",receiverSettings},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}}};
+  CredentialStore credentials;ProviderRegistry registry;registry.add("custom-http",std::make_shared<HttpUploaderProvider>(credentials));
+  SettingsService settings(directory.filePath("c/putgd/config.json"),[&](auto id,auto value){return registry.validate(id,value);});
+  const auto saved=settings.save(config,{});
+  QVERIFY2(saved,qPrintable(saved.error.code+": "+saved.error.message));
+  const auto file=directory.filePath("note.txt");
+  {QFile out(file);QVERIFY(out.open(QIODevice::WriteOnly));out.write("synthetic note");}
+  QProcess xvfb;Stop stopX{xvfb};
+  xvfb.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+  xvfb.start(PUTGD_XVFB_PATH,{":"+number,"-displayfd","1","-screen","0","1280x800x24","-nolisten","tcp","-noreset"});
+  QVERIFY(xvfb.waitForStarted());
+  PUTGD_TRY_VERIFY(xvfb.canReadLine());
+  QCOMPARE(xvfb.readLine().trimmed(),number.toLatin1());
+  auto environment=QProcessEnvironment::systemEnvironment();
+  for(const auto& [key,value]:{std::pair{"XDG_CONFIG_HOME","c"},{"XDG_DATA_HOME","d"},{"XDG_CACHE_HOME","k"},{"XDG_STATE_HOME","s"}})
+   environment.insert(key,directory.filePath(value));
+  environment.insert("XDG_RUNTIME_DIR",runtime);
+  environment.insert("XDG_CURRENT_DESKTOP","X-Cinnamon");
+  environment.insert("XDG_SESSION_TYPE","x11");
+  environment.insert("DISPLAY",":"+number);
+  environment.remove("WAYLAND_DISPLAY");environment.remove("QT_QPA_PLATFORM");
+  const auto call=[&](const QString& method,const QJsonObject& params={}){
+   QProcess cli;cli.start(PUTGD_PRODUCT_CLI_PATH,{"--socket",socket,method,QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact))});
+   if(!cli.waitForFinished(10000))return QJsonObject{};
+   return QJsonDocument::fromJson(cli.readAllStandardOutput()).object();
+  };
+  const auto start=[&](QProcess& resident){
+   resident.setProcessEnvironment(environment);resident.setProcessChannelMode(QProcess::ForwardedChannels);
+   resident.start(PUTGD_PRODUCT_APP_PATH,{"--background"});
+   return resident.waitForStarted()&&test::waitFor([&]{return call("ui.snapshot")["result"].toObject()["operationsReady"].toBool();},10000);
+  };
+  QString deletion;
+  {
+   QProcess resident;Stop stopResident{resident};
+   QVERIFY(start(resident));
+   // Accepted once the resident has read its saved credentials.
+   QJsonObject upload;
+   // Asked again only while the resident answers "initializing": any other answer was
+   // a submission, and a second would upload the file twice.
+   QElapsedTimer accepting;accepting.start();
+   while(true) {
+    upload=call("upload.files",{{"paths",QJsonArray{file}},{"profileId","receiver"}});
+    if(upload["error"].toObject()["code"].toString()!="initializing"||accepting.elapsed()>10000)break;
+    test::settle(100);
+   }
+   const auto operation=upload["result"].toObject()["operationId"].toString();
+   QVERIFY2(!operation.isEmpty(),QJsonDocument(upload).toJson().constData());
+   QJsonObject inspected;
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT((inspected=call("operation.inspect",{{"id",operation}})["result"].toObject())["state"].toString()=="completed",15000);
+   const auto historyId=inspected["items"].toArray()[0].toObject()["artifact"].toObject()["id"].toString();
+   const auto prepared=call("delete.prepare",{{"ids",QJsonArray{historyId}}})["result"].toObject();
+   QVERIFY(!prepared["acknowledgement"].toString().isEmpty());
+   // The look at the link after the deletion is held until the test releases it.
+   const auto seen=events("file");
+   QVERIFY(rules(QJsonArray{QJsonObject{{"call","file"}},QJsonObject{{"call","file"},{"barrier","quit"}}}));
+   deletion=call("delete.confirm",{{"ids",QJsonArray{historyId}},{"acknowledgement",prepared["acknowledgement"]}})["result"].toObject()["deleteOperationId"].toString();
+   QVERIFY(!deletion.isEmpty());
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(events("file")==seen+2,15000);
+   const auto helpers=test::childProcesses("putgd-http-worker",resident.processId());
+   QCOMPARE(helpers.size(),1);
+   QElapsedTimer quit;quit.start();
+   QVERIFY(call("ui.quit")["ok"].toBool());
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(),QProcess::NotRunning,10000);
+   QVERIFY2(quit.elapsed()<3000,qPrintable(QString::number(quit.elapsed())));
+   QCOMPARE(resident.exitStatus(),QProcess::NormalExit);
+   QCOMPARE(resident.exitCode(),0);
+   QVERIFY(!test::processAlive(helpers[0]));
+   QVERIFY(release("quit"));
+  }
+  QVERIFY(rules({}));
+  {
+   QProcess resident;Stop stopResident{resident};
+   QVERIFY(start(resident));
+   auto journal=call("delete.inspect",{{"id",deletion}})["result"].toObject();
+   QCOMPARE(journal["state"].toString(),QString("interrupted"));
+   QCOMPARE(journal["items"].toArray()[0].toObject()["status"].toString(),QString("unknown"));
+   QCOMPARE(journal["items"].toArray()[0].toObject()["progress"].toObject()["phase"].toString(),QString("delete_intent"));
+   QVERIFY(call("delete.retry",{{"id",deletion}})["ok"].toBool());
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT((journal=call("delete.inspect",{{"id",deletion}})["result"].toObject())["state"].toString()=="completed",15000);
+   QCOMPARE(journal["items"].toArray()[0].toObject()["status"].toString(),QString("failed"));
+   QVERIFY(call("ui.quit")["ok"].toBool());
+   PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(),QProcess::NotRunning,10000);
+  }
+ }
  void displayLossEndsResident() {
   if(qEnvironmentVariable("PUTGD_ISOLATED_RESIDENT_TEST")!="1")QSKIP("Requires its dedicated private-bus invocation");
   const auto number=qEnvironmentVariable("PUTGD_TEST_XVFB_DISPLAY");QVERIFY(!number.isEmpty());

@@ -1420,7 +1420,9 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         if (!removed.IsSuccess()) {
             const bool unknown = ambiguous(removed.GetError());
             persist(unknown ? S3DeletePhase::VersionUnknown : S3DeletePhase::VersionFailed);
-            finish(progress.contains("markerVersionId") ? "hidden_version_retained" : (unknown ? "unknown" : "failed"), wireError(removed.GetError(), S3Stage::DeleteVersion, removeElapsedMs));
+            // A lost reply may have removed the version: unknown, with the marker and the
+            // version intent journaled for Retry. A refusal leaves the version hidden.
+            finish(unknown ? "unknown" : (progress.contains("markerVersionId") ? "hidden_version_retained" : "failed"), wireError(removed.GetError(), S3Stage::DeleteVersion, removeElapsedMs));
             return;
         }
     } else {

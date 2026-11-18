@@ -497,7 +497,9 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_HYPRLAND
  if(hyprland)QObject::connect(hyprland,&putgd::HyprlandSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
- const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
+ // Deletions stop first, before the UI helper is waited for: none is admitted from here
+ // on, and running ones have their helpers killed (#1602).
+ const auto quitApplication=[&]{history.stopDeletions();ui.shutdown([&]{app.quit();});};
  QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
  putgd::TrayController tray(operations,[&](const QString& requested,const QString& activationToken){startupRecovery.stop();ui.activate(requested,{},activationToken);},quitApplication);
  // Native shortcuts use the tray feedback with selection-safe re-entry handling.
@@ -672,7 +674,8 @@ int main(int argc,char* argv[]) {
   },[&portalStatus](putgd::Error,QJsonObject portal){portalStatus=portal;putgd::logging::info(putgd::logApp(),"Desktop portal availability",portal);});
 #endif
  }
- QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
+ // A quit that did not come through quitApplication (a signal) stops deletions here.
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{history.stopDeletions();proton->shutdown();operations.shutdown();});
  const int status=app.exec();
  putgd::logging::info(putgd::logApp(),"Resident stopped",{{"exitCode",status}});
 #ifdef Q_OS_LINUX

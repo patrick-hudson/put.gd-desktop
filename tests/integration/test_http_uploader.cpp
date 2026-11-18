@@ -3,6 +3,7 @@
 // the real operation and history services. Synthetic token and payloads only.
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/HttpControl.h"
+#include "fixtures/ChildProcesses.h"
 #include "fixtures/Waits.h"
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
@@ -375,6 +376,23 @@ private slots:
         QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
         QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. The server answers a deletion politely, and the check of the link
+    // after it gets a server error: nothing shows the file went, so it is unknown with
+    // its intent journaled, never removed.
+    void aDeletionWhoseCheckFailsIsUnknown() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        f.rules({{{"call", "file"}}, {{"call", "file"}, {"status", 503}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
     }
     // Deletion progress journaled for one upload is never applied to another.
@@ -786,6 +804,88 @@ private slots:
         QCOMPARE(f.fetch(operation.items[0].receipt.directUrl).second, QByteArray("synthetic report"));
         // The token is in no file the resident wrote: configuration, journal or artifacts.
         QVERIFY(!f.tokenOnDisk(f.directory.path()));
+    }
+    // #1602. Quit kills the helper of a deletion that waits on its server: Quit is quick,
+    // the helper is gone and sends nothing more, the deletion is unknown with its intent,
+    // and after the next start Retry resolves it. "answered": the server answered the
+    // deletion without deleting and the check after it stalls. "before-dispatch": the
+    // intent is acknowledged and the look at the link before the deletion stalls, so the
+    // deletion was never sent (#1603 review E2).
+    void quitKillsTheHelperOfAStalledDeletion_data() {
+        QTest::addColumn<QString>("style");
+        QTest::addColumn<int>("checks");
+        QTest::addColumn<int>("sent");
+        QTest::addColumn<QString>("retried");
+        QTest::newRow("answered") << QString("pretend") << 2 << 1 << QString("failed");
+        QTest::newRow("before-dispatch") << QString("json") << 1 << 0 << QString("removed");
+    }
+    void quitKillsTheHelperOfAStalledDeletion() {
+        QFETCH(QString, style);
+        QFETCH(int, checks);
+        QFETCH(int, sent);
+        QFETCH(QString, retried);
+        HttpFixture f;
+        f.reset();
+        f.destination.settings = f.settings(style);
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(f.credentials));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(configuration(f, "skip"), {}));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {fixture(f.directory.path(), "note.txt", "synthetic note")};
+        const auto data = f.directory.filePath("data");
+        QString deletion;
+        const auto item = [&](OperationService& operations) { return HistoryStore(operations.databasePath()).deletion(deletion)["items"].toArray()[0].toObject(); };
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            PUTGD_TRY_VERIFY(operations.ready());
+            QString id;
+            operations.invoke("clipboard", [&](auto error, auto result) { QVERIFY(!error); id = result["operationId"].toString(); });
+            PUTGD_TRY_VERIFY(!id.isEmpty());
+            const auto target = waitOperation(operations, id).items[0];
+            QCOMPARE(target.uploadStatus, QString("uploaded"));
+            QJsonObject preparation;
+            history.prepareDelete({target.artifact.id}, [&](Error e, QJsonObject data) { QVERIFY2(!e, qPrintable(e.code + ": " + e.message)); preparation = data; });
+            PUTGD_TRY_VERIFY(!preparation.isEmpty());
+            const auto seen = f.events("file").size();
+            if (checks == 2) f.rules({{{"call", "file"}}, {{"call", "file"}, {"stall", 3}}});
+            else f.rules({{{"call", "file"}, {"stall", 3}}});
+            history.deleteConfirmed({target.artifact.id}, preparation["acknowledgement"].toString(), [&](Error e, QJsonObject data) { QVERIFY2(!e, qPrintable(e.code + ": " + e.message)); deletion = data["deleteOperationId"].toString(); });
+            PUTGD_TRY_VERIFY_WITH_TIMEOUT(f.events("file").size() == seen + checks, 15000);
+            QCOMPARE(f.events("delete").size(), sent);
+            QCOMPARE(childProcesses("putgd-http-worker").size(), 1);
+            QElapsedTimer quit;
+            quit.start();
+            history.stopDeletions();
+            operations.shutdown();
+            QVERIFY2(quit.elapsed() < 2000, qPrintable(QString::number(quit.elapsed())));
+            QVERIFY(childProcesses("putgd-http-worker").isEmpty());
+            // No confirm or retry is admitted any more.
+            QString refused;
+            history.retryDelete(deletion, [&](Error e, QJsonObject) { refused = e.code; });
+            QCOMPARE(refused, QString("cancelled"));
+            QCOMPARE(item(operations)["status"].toString(), QString("unknown"));
+            QCOMPARE(item(operations)["progress"].toObject()["phase"].toString(), QString("delete_intent"));
+            // The dead helper sends nothing after the stall would have ended.
+            PUTGD_COMPARE_STEADY(f.events("delete").size(), sent, 3500);
+        }
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            PUTGD_TRY_VERIFY(operations.ready());
+            QCOMPARE(HistoryStore(operations.databasePath()).deletion(deletion)["state"].toString(), QString("interrupted"));
+            QCOMPARE(item(operations)["status"].toString(), QString("unknown"));
+            QCOMPARE(item(operations)["progress"].toObject()["phase"].toString(), QString("delete_intent"));
+            f.rules({});
+            bool accepted = false;
+            history.retryDelete(deletion, [&](Error e, QJsonObject value) { QVERIFY2(!e, qPrintable(e.code)); accepted = value["retryAccepted"].toBool(); });
+            PUTGD_TRY_VERIFY(accepted);
+            PUTGD_TRY_COMPARE_WITH_TIMEOUT(HistoryStore(operations.databasePath()).deletion(deletion)["state"].toString(), QString("completed"), 20000);
+            QCOMPARE(item(operations)["status"].toString(), retried);
+            QCOMPARE(f.stored(), retried == "removed" ? 0 : 1);
+        }
     }
     void sameNamesAreSeparateUploadsAndHistoryDeletesByReference() {
         HttpFixture f;
