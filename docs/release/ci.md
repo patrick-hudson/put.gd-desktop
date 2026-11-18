@@ -768,24 +768,69 @@ and dwz steps. It works in three layers:
 - **Stopped attempts.** An attempt that runs longer than `PUTGD_PKG_TIMEOUT`
   (900 s) or prints nothing for `PUTGD_PKG_STALL` seconds (600 s) is stopped
   (`timeout --kill-after=30s`, process group included) and counts as a failed
-  attempt, so the back-off and the snapshot apply. A stopped apt attempt is
-  followed by `dpkg --configure -a` before the retry. Downloaded packages stay
-  in the cache, so the retry resumes them. Inside an attempt, apt drops a
+  attempt, so the back-off and the snapshot apply. On apt the limits cover the
+  metadata update and the download only (`apt-get install --download-only`).
+  Once every archive is downloaded, the install of what was fetched
+  (`--no-download`) runs with no limit, so dpkg is never stopped halfway: the
+  source of the packages, mirror or snapshot, is chosen before dpkg starts. A
+  stopped attempt is followed by `dpkg --configure -a` before the retry.
+  Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
   download themselves. See [Stalled installs](#stalled-installs).
 - **Package snapshot.** The native package jobs restore
   `/var/cache/putgd-packages` from `actions/cache`, under the key
-  `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>`. It holds the
+  `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>` (ubuntu24.04 also hashes `tools/ci/appimage-packages.txt`). It holds the
   package metadata and exactly the packages of the last successful install.
   Online attempts start from a copy of it, so packages already in it aren't
   downloaded again. After an online success, the copy, pruned to the installed
   packages, replaces it. The cache is saved on that week's first run and when
   the dependency scripts change, never after a fallback. If all online attempts
   fail, the install runs once more offline from the snapshot
-  (`dnf --cacheonly`, `apt-get --no-download`). That builds against a package
+  (`dnf --cacheonly`, `apt-get --no-download`, again with no time limit on the
+  install itself). On apt a download that times out has changed nothing on the
+  system, so the snapshot installs onto the state the job started in. That builds against a package
   set at most a week old instead of failing the job. A dependency list that
   changed since the snapshot can't be satisfied offline, and the step fails.
+  On apt the snapshot also keeps the sources it was made with, and the offline
+  install reads the metadata through them, because apt names its metadata files
+  after the source URI.
+
+  The AppImage job restores the ubuntu24.04 snapshot and installs everything in
+  one `install-packages.sh` call, so it is one apt transaction: the base
+  dependencies, the packages in `tools/ci/appimage-packages.txt` (`#` starts a comment to the end of the line)
+  and `weston` (`install-native-deps.sh` takes them as `PUTGD_EXTRA_PACKAGES`). The list
+  includes the system libraries `jurplel/install-qt-action` would otherwise
+  install itself, so the action runs with `install-deps: false`. The transaction
+  comes entirely online or entirely from the snapshot, never a mix: a mirror
+  that moved on since the snapshot would otherwise give an online install newer
+  packages that an offline install of the rest can't satisfy. Nothing else in
+  that job runs `apt-get`.
+
+  The native ubuntu24.04 job adds the AppImage packages and `weston` to its
+  snapshot with one `--download-only` call after its own install, which runs
+  `install-native-deps.sh` itself (`PUTGD_INSTALL_OPTIONS`) with the AppImage
+  job's package list, so the base list and the extras can't drift apart. That call
+  never refreshes the indexes, on any attempt (`PUTGD_PKG_REUSE_METADATA=true`):
+  it downloads against the indexes the install before it fetched, so the
+  snapshot's indexes and packages match. If it can't download everything
+  against them, it has no offline fallback and fails with an error annotation,
+  the native build goes on, and that run saves no snapshot. The step has its own
+  small budget (2 attempts of 5 minutes, 15 minutes in all), so cache warming
+  can't use up the native job's time. It runs with `--reinstall`, which also
+  downloads archives of packages the image already had at the candidate version
+  (for example `git` and `ca-certificates`, which the bootstrap installs before
+  the snapshot exists), because a runner with an older version needs them offline. Only the ubuntu24.04
+  cache key includes `tools/ci/appimage-packages.txt`, so changing the list
+  rebuilds that snapshot and no other. Until the native job has saved it, an
+  AppImage run on the new key restores nothing, or the previous week's snapshot,
+  and has no fallback for packages it doesn't hold: that first run depends on
+  the mirrors.
+
+  The AppImage job also switches off the runner's non-Ubuntu apt sources
+  (`tools/ci/hosted_apt_mirrors.py`), so a 429 from `packages.microsoft.com`
+  can't fail the metadata refresh. `PUTGD_PKG_ATTEMPTS=0` skips the online
+  attempts, which exercises the fallback on demand.
 - **Reporting.** Each failed or stopped attempt, a retry that passed and a
   snapshot install are warning annotations and rows of a "Package install
   retries" table in the job summary. A stopped attempt's row says
