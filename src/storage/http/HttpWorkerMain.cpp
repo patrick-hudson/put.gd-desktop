@@ -937,57 +937,37 @@ private:
                 confirmed = true;
             }
         }
-        // Whatever the deletion and its confirmation answered (a polite 2xx, a redirect
-        // back to the site, a 404 from a confirmation route), the outcome comes only from
-        // a check of the file's link afterwards; the look before never stands in for it.
-        // A link that is gone shows the file went (it already was when the look before
-        // found it gone, on a first attempt). With two whole replies, other bytes than it
-        // served before show it was replaced, and the same bytes show it is still there
-        // (failed). Anything else shows nothing either way: a reply cut off or larger than
-        // the reply cap, an empty reply, an error or no reply. That is unknown, with the
-        // intent kept, and Retry asks again. A redirect of the deletion to another host is
-        // not followed, and is unknown too. Checks of the link follow one (a CDN), but a
-        // check that ended on another host proves removal only by a whole 404 or 410:
-        // other bytes there may be a login page, so they are unknown. A 404 or 410 counts
-        // only when its reply came whole.
+        // The outcome. Byte comparisons cannot tell a deleted file from a page that only
+        // changed (an error banner on an HTML host), so only these show anything:
+        // - removed: the deletion itself succeeded (a 2xx from the deletion URL, or from
+        //   its confirmation) and the link then answers a whole 404 or 410;
+        // - already missing: the deletion URL itself answers a whole 404 or 410 on a first
+        //   attempt, and so does the link (on a retry of a sent intent, that is removed);
+        // - failed: the link serves the whole same file, as a 200, before and after;
+        // - unknown, with the intent kept: anything else (other bytes, a partial or other
+        //   reply, an error, no reply). A redirect of the deletion URL to another host is
+        //   not followed and is unknown too (above). Checks of the link follow redirects,
+        //   such as to a CDN.
         if (confirmed || (r.status >= 200 && r.status < 400) || r.status == 404 || r.status == 410) {
             const auto after = client_.get(link, allowInsecure());
             details["checkStatus"] = after.status;
             details["checkBeforeStatus"] = before.status;
-            // Only whole replies count, a 404 or 410 among them.
             const auto whole = [](const auto& reply) { return !reply.cut && reply.received == reply.body.size(); };
             const auto gone = [&](const auto& reply) { return (reply.status == 404 || reply.status == 410) && whole(reply); };
-            // A check that ended on another host may have reached a page that is not the
-            // file (a login page): there, only a status or the very same file is proof.
-            const bool elsewhere = !sameHost(link, before.url) || !sameHost(link, after.url);
-            if (elsewhere) details["checkOffHost"] = true;
-            if (gone(after)) return finish(gone(before) && phase != "delete_intent" ? "missing" : "removed");
-            // Only a 200 carries the whole file; a 206 range or any other 2xx is not compared.
-            const bool compared = after.status == 200 && before.status == 200 && !before.body.isEmpty() && !after.body.isEmpty();
-            // Only two whole replies count: one cut off, or stopped at the reply cap, shows
-            // neither that the file is still there (a matching start) nor that it went (a
-            // differing one). For a file larger than the cap, only a link that is gone
-            // proves the deletion.
-            const bool complete = compared && whole(before) && whole(after);
-            if (complete && after.body == before.body) {
+            const bool deleted = r.status >= 200 && r.status < 300;
+            const bool alreadyGone = !confirmed && gone(r);
+            if (gone(after) && deleted) return finish("removed");
+            if (gone(after) && alreadyGone) return finish(phase == "delete_intent" ? "removed" : "missing");
+            if (before.status == 200 && after.status == 200 && whole(before) && whole(after) && !before.body.isEmpty() && after.body == before.body) {
                 // The whole file, byte for byte, is still there: the deletion did not work.
                 error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is deleted. "
                          "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; Retry checks again, or delete it on the server.").arg(r.status), details};
                 return {{"status", "failed"}, {"progress", progress}};
             }
-            // Other bytes show the file was replaced only when the link's own host served
-            // both checks.
-            if (complete && !elsewhere) return finish("removed");
-            if (compared && !complete) details["checkIncomplete"] = true;
             uncertain = true;
             if (after.status == 0) details["checkTransport"] = after.detail;
-            error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was inconclusive (%2). "
-                     "It may or may not be deleted; Retry asks again.").arg(r.status)
-                     .arg(after.status == 0 ? after.detail
-                          : after.body.isEmpty() || before.body.isEmpty() ? QString("HTTP %1 with nothing to compare").arg(after.status)
-                          : complete ? QString("HTTP %1 from another host, which may serve a different page than the file").arg(after.status)
-                          : compared ? QString("HTTP %1, but a reply was cut off or larger than %2 MB, so the whole file was not compared").arg(after.status).arg(maximumReplyBytes / (1024 * 1024))
-                          : QString("HTTP %1").arg(after.status)), details};
+            error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), and the link then answered %2, which shows neither that the file is gone nor that it is still there. "
+                     "Retry asks again, or remove it from History.").arg(r.status).arg(after.status ? QString("HTTP %1").arg(after.status) : after.detail), details};
             return {{"status", "unknown"}, {"progress", progress}};
         }
         if (r.status == 0) {

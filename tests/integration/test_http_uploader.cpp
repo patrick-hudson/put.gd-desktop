@@ -452,7 +452,6 @@ private slots:
         QCOMPARE(f.events("file").size(), 2);
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.error.code, QString("http_outcome_unknown"));
-        QCOMPARE(result.error.details["checkIncomplete"].toBool(), true);
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
     }
@@ -498,6 +497,49 @@ private slots:
         }
         if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. The outcome rule, on the shapes real hosts have.
+    // - "rejected-200"/"rejected-302": XBackBone 3.8.2 rejects a deletion with a 2xx page
+    //   (or a redirect back to the share page) and adds an error banner to the share page,
+    //   whose bytes then differ although the image is still public: unknown.
+    // - "unpublished": the host answers 404 to anonymous looks at an unpublished file and
+    //   to its deletion URL: already missing (a documented limit).
+    // - "normal": the deletion answers 200 and the link then 404: removed.
+    // - "same-file": the deletion answers 200 and the link still serves the same file:
+    //   failed.
+    void aDeletionOutcomeFollowsTheRule_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("rejected-200") << QString("rejected-200") << QString("unknown");
+        QTest::newRow("rejected-302") << QString("rejected-302") << QString("unknown");
+        QTest::newRow("unpublished") << QString("unpublished") << QString("missing");
+        QTest::newRow("normal") << QString("normal") << QString("removed");
+        QTest::newRow("same-file") << QString("same-file") << QString("failed");
+    }
+    void aDeletionOutcomeFollowsTheRule() {
+        QFETCH(QString, shape);
+        QFETCH(QString, expected);
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const QString page = "<html><body><img src=\"/raw/image.png\"></body></html>";
+        const QString banner = "<html><body><div class=\"alert\">You are not allowed to delete this file</div><img src=\"/raw/image.png\"></body></html>";
+        const QJsonObject sharePage{{"call", "file"}, {"status", 200}, {"body", page}};
+        const QJsonObject bannerPage{{"call", "file"}, {"status", 200}, {"body", banner}};
+        const QJsonObject notFound{{"call", "file"}, {"status", 404}, {"body", "not found"}};
+        if (shape == "rejected-200") f.rules({sharePage, {{"call", "delete"}, {"status", 200}, {"body", "<html>Error</html>"}}, bannerPage});
+        else if (shape == "rejected-302") f.rules({sharePage, {{"call", "delete"}, {"status", 302}, {"location", uploaded.receipt.directUrl}}, bannerPage, bannerPage});
+        else if (shape == "unpublished") f.rules({notFound, {{"call", "delete"}, {"status", 404}, {"body", "not found"}}, notFound});
+        else if (shape == "same-file") f.rules({{{"call", "delete"}, {"status", 200}, {"body", "{}"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        if (expected == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        }
+        if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QCOMPARE(f.stored(), expected == "removed" ? 0 : 1);
     }
     // Review of #1603. A deletion URL that names no stored value, and redirects to
     // another host: the redirect is not followed (the other host never sees the
