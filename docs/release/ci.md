@@ -768,9 +768,13 @@ and dwz steps. It works in three layers:
 - **Stopped attempts.** An attempt that runs longer than `PUTGD_PKG_TIMEOUT`
   (900 s) or prints nothing for `PUTGD_PKG_STALL` seconds (600 s) is stopped
   (`timeout --kill-after=30s`, process group included) and counts as a failed
-  attempt, so the back-off and the snapshot apply. A stopped apt attempt is
-  followed by `dpkg --configure -a` before the retry. Downloaded packages stay
-  in the cache, so the retry resumes them. Inside an attempt, apt drops a
+  attempt, so the back-off and the snapshot apply. On apt the limits cover the
+  metadata update and the download only (`apt-get install --download-only`).
+  Once every archive is downloaded, the install of what was fetched
+  (`--no-download`) runs with no limit, so dpkg is never stopped halfway: the
+  source of the packages, mirror or snapshot, is chosen before dpkg starts. A
+  stopped attempt is followed by `dpkg --configure -a` before the retry.
+  Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
   download themselves. See [Stalled installs](#stalled-installs).
@@ -783,7 +787,9 @@ and dwz steps. It works in three layers:
   packages, replaces it. The cache is saved on that week's first run and when
   the dependency scripts change, never after a fallback. If all online attempts
   fail, the install runs once more offline from the snapshot
-  (`dnf --cacheonly`, `apt-get --no-download`). That builds against a package
+  (`dnf --cacheonly`, `apt-get --no-download`, again with no time limit on the
+  install itself). On apt a download that times out has changed nothing on the
+  system, so the snapshot installs onto the state the job started in. That builds against a package
   set at most a week old instead of failing the job. A dependency list that
   changed since the snapshot can't be satisfied offline, and the step fails.
   On apt the snapshot also keeps the sources it was made with, and the offline
