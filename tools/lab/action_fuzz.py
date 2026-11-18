@@ -460,22 +460,27 @@ class Resident:
     # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
     # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
 
-    def handle(self):
-        """The resident's pidfd. Opened late if launch could not (the resident is not reaped before its session is clear, so its PID is still
-        its own)."""
+    def open_late(self):
+        """Open the resident's pidfd if launch could not (it is not reaped before its session is clear, so its PID is still its own)."""
         if self.pidfd is None and self.process is not None and self.process.returncode is None:
             try:
                 self.pidfd = os.pidfd_open(self.process.pid)
-            except OSError:
-                pass
+            except OSError as error:
+                self.pidfd_error = error
+        return self.pidfd is not None
+
+    def handle(self):
+        """The resident's pidfd. Without one (both opens failed, say on EMFILE) the harness cannot tell its resident from a reused PID
+        without reaping it, so it stops: a harness error, never a fallback to poll(), wait() or bare-PID signals."""
+        if self.process is not None and self.process.returncode is None and not self.open_late():
+            raise Finding('driver', 'no pidfd for the resident (pid %d): %s; the run stops' % (self.process.pid, getattr(self, 'pidfd_error', '?')))
         return self.pidfd
 
     def returncode(self):
         """The resident's exit status as Popen reports it (negative: the signal), or None while it runs. Never reaps it."""
         if self.process is None or self.process.returncode is not None:
             return None if self.process is None else self.process.returncode
-        if self.handle() is None:
-            return self.process.poll()
+        self.handle()
         try:
             info = os.waitid(os.P_PIDFD, self.pidfd, os.WEXITED | os.WNOHANG | os.WNOWAIT)
         except ChildProcessError:
@@ -491,18 +496,21 @@ class Resident:
         """Wait for the resident to exit, without reaping it. True when it has."""
         if self.process is None or self.returncode() is not None:
             return True
-        if self.handle() is None:
-            try:
-                self.process.wait(seconds)
-            except subprocess.TimeoutExpired:
-                pass
-            return self.returncode() is not None
         select.select([self.pidfd], [], [], seconds)  # a pidfd turns readable when its process exits
         return self.returncode() is not None
 
     def reap(self):
-        if self.process is not None and self.process.returncode is None:
+        if self.process is not None and self.process.returncode is None and self.pidfd is not None:  # without a pidfd it stays unreaped
             self.process.wait()
+
+    def kill_pinned_session(self, sig):
+        """No pidfd: SIGKILL the resident's process group by its ID. The resident leads that group and is not reaped, so the ID is still
+        its own; nothing is reaped afterwards, and the run stops with a harness error."""
+        try:
+            os.killpg(self.process.pid, sig)
+        except OSError:
+            pass
+        raise Finding('driver', 'no pidfd for the resident (pid %d): its process group was killed and the run stops' % self.process.pid)
 
     def owned(self, pid):
         """A pidfd on `pid` if that process belongs to this run's resident (its environment carries the run token), else None.
@@ -615,6 +623,8 @@ class Resident:
 
     def kill_tree(self, sig=signal.SIGKILL):
         """SIGKILL the resident and its helpers (exact PIDs found from /proc; never a pattern kill)."""
+        if self.process is not None and self.process.returncode is None and not self.open_late():
+            self.kill_pinned_session(sig)
         for _ in range(3):
             if self.process is not None and self.handle() is not None:
                 try:
@@ -1665,8 +1675,8 @@ class Fuzzer:
         for thread in threads:
             thread.start()
         time.sleep(rng.choice((0.3, 1.0, 2.5)))
-        self.faults.restore_nofile(self.resident_pids())
-        window[1] = self.resident.log_offset()  # the window closes with the limit restored
+        self.lift(self.faults.restore_nofile, self.resident_pids())  # raises a finding unless the original limit is back
+        window[1] = self.resident.log_offset()  # closed only now that the original limit is verified
         for thread in threads:
             thread.join(150)
 
@@ -1679,13 +1689,13 @@ class Fuzzer:
         if which in ('net', 'all') and self.faults.proxy:
             self.lift(self.faults.proxy.clear)
         if which == 'all':
-            self.faults.restore_nofile(self.resident_pids())
+            self.lift(self.faults.restore_nofile, self.resident_pids())
 
     def lift(self, clear, *args):
         """Lift faults; a proxy that cannot end a faulted connection would let an old fault reach the recovery check, so that is a finding."""
         try:
             clear(*args)
-        except fault_control.fault_proxy.ProxyStuck as error:
+        except (fault_control.fault_proxy.ProxyStuck, fault_control.NofileNotRestored) as error:
             raise Finding('driver', str(error))
 
     def resident_pids(self):
@@ -1816,8 +1826,9 @@ class Fuzzer:
             raise Finding('driver', 'the fault shim injected into processes that are not the resident: %s (resident PIDs %s)' % (foreign, sorted(self.resident.pids_seen)))
 
     def verify_unknown_kept(self):
-        """An upload that was unknown and whose copy is on the server must still say so (#1572): never plain failed, cancelled or vanished."""
-        stored = self.receiver.stored()
+        """An upload that was unknown and whose copy is on the server must still say so (#1572): never plain failed, cancelled or vanished.
+        "On the server" is what the receiver holds now: a copy that was uploaded and then deleted is no longer a reason to warn."""
+        stored = self.receiver.present()
         for row in self.rows():
             digest = row.get('sha256')
             if 'unknown' in self.seen.get(row.get('id'), ()) and row.get('uploadStatus') in ('failed', 'cancelled', 'canceled') and stored.get(digest) \

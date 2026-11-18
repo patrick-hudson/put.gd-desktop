@@ -32,6 +32,10 @@ FS_TARGETS = {
 }
 
 
+class NofileNotRestored(Exception):
+    """The original open-file limit could not be put back: the harness stops the run."""
+
+
 class FaultControl:
     def __init__(self, run, rng, classes, source_dir, target, log=None, seed=1, net_kinds=None):
         """target: the resident's executable, the only program the shim injects into."""
@@ -49,7 +53,8 @@ class FaultControl:
         self.proxy = None
         self.nofile_lowered = False
         self.nofile_events = 0
-        self.nofile_starts = set()   # the resident starts (Resident.starts) during which its open-file limit was lowered
+        self.nofile_starts = set()
+        self.saved_nofile = {}   # pid -> its (soft, hard) open-file limit before the first lowering   # the resident starts (Resident.starts) during which its open-file limit was lowered
         self.build_shim(source_dir)
         self.write_spec([])
 
@@ -140,7 +145,8 @@ class FaultControl:
         try:
             held = len(os.listdir('/proc/%d/fd' % pid))
             limit = held + headroom
-            _, hard = resource.prlimit(pid, resource.RLIMIT_NOFILE)
+            soft, hard = resource.prlimit(pid, resource.RLIMIT_NOFILE)
+            self.saved_nofile.setdefault(pid, (soft, hard))  # the original, restored exactly by restore_nofile
             resource.prlimit(pid, resource.RLIMIT_NOFILE, (min(limit, hard), hard))
             self.nofile_lowered = True
             self.nofile_events += 1
@@ -151,14 +157,24 @@ class FaultControl:
             return False
 
     def restore_nofile(self, pids):
+        """Give each process its original open-file limit back and check it took. A process that is gone needs nothing; any other
+        failure raises NofileNotRestored, because a resident left at a lowered limit would fail everything after it."""
         if not self.nofile_lowered:
             return
         for pid in pids:
+            saved = self.saved_nofile.get(pid)
+            if saved is None:
+                continue
             try:
-                _, hard = resource.prlimit(pid, resource.RLIMIT_NOFILE)
-                resource.prlimit(pid, resource.RLIMIT_NOFILE, (min(1024, hard), hard))
-            except (OSError, ValueError, ProcessLookupError):
-                pass
+                resource.prlimit(pid, resource.RLIMIT_NOFILE, saved)
+                now = resource.prlimit(pid, resource.RLIMIT_NOFILE)
+            except ProcessLookupError:
+                continue
+            except (OSError, ValueError) as error:
+                raise NofileNotRestored('could not restore the open-file limit %s of pid %d: %s' % (saved, pid, error))
+            if tuple(now) != tuple(saved):
+                raise NofileNotRestored('the open-file limit of pid %d is %s after restoring %s' % (pid, tuple(now), saved))
+            self.log('fault-nofile-restored', pid=pid, limit=saved)
         self.nofile_lowered = False
 
     # --- everything
