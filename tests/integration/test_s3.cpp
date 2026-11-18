@@ -37,9 +37,11 @@ private slots:
         QCOMPARE(renewed.status,QString("own"));
         QCOMPARE(renewed.receipt.destination.toJson(),uploaded.receipt.destination.toJson());
         QCOMPARE(renewed.receipt.publicationId,uploaded.receipt.publicationId);
-        bool done=false;Error error;QJsonObject result;
-        f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[&](auto value,auto e){result=value;error=e;done=true;});
-        PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
+        // The reply comes from the S3 worker thread: await hands the result and error back through a promise.
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        const auto& result=tested.first;const auto& error=tested.second;
+        QVERIFY2(!error,qPrintable(error.code));
         QVERIFY(result["presignedReachable"].toBool());QVERIFY(result["unsignedDenied"].toBool());
     }
 
