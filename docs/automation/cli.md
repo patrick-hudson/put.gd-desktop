@@ -28,9 +28,12 @@ Active `operation.inspect` and `operation.recent` results also expose an operati
 optional `bytesTotal`. A missing total means percentage is unknown. These are
 transient observations, not confirmed publication or final result evidence.
 A finished operation that still holds its slot (recording its link copy or cleaning
-up its source) carries `settling: true`; a Retry then answers `operation_settling`, and
-the same Retry succeeds once `settling` is gone. A running operation answers
-`operation_busy`.
+up its source) carries `settling: true`. A Retry or Retry local save then answers
+`operation_settling` with "This operation is still finishing; try Retry again in a
+moment." before any other check, and nothing is queued. Once `settling` is gone, send
+a new request: it faces the usual checks (`queue_full`, `artifact_missing`,
+`retry_would_upload`, cleanup) like any other. A running operation is refused as busy
+(`operation_busy`).
 
 The CLI waits 3 s to connect, 3 s to send and then a bounded time for the whole
 reply, at most 16 MiB: 15 s for most methods. Screen-recording commands that the
