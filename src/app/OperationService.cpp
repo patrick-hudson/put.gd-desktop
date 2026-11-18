@@ -1257,8 +1257,8 @@ Error OperationService::unsavedResultError(const QString& id) const {
  return {"history_io","This operation's result is not saved in History yet; put.gd keeps trying",{{"error",unsavedResults_.value(id).error.toJson()}}};
 }
 QJsonObject OperationService::withUnsavedResult(QJsonObject record) const {
- const auto kept=unsavedResults_.constFind(record["operationId"].toString());if(kept==unsavedResults_.cend())return record;
- const auto itemId=record["itemId"].toString(record["id"].toString());
+ const auto kept=unsavedResults_.constFind(record.value("operationId").toString());if(kept==unsavedResults_.cend())return record;
+ const auto itemId=record.value("itemId").toString(record.value("id").toString());
  for(const auto& item:kept->op.items)if(item.artifact.id==itemId){record["uploadStatus"]=item.uploadStatus;record["phase"]=item.uploadStatus;record["error"]=item.error.toJson();record["local"]=item.local.toJson();break;}
  record["resultUnsaved"]=kept->error.toJson();return record;
 }
