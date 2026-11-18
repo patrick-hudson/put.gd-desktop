@@ -456,31 +456,47 @@ private slots:
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
     }
-    // Review of #1603. A check of the link that is not the link's own whole answer proves
-    // nothing: "before-offhost" sends the look before the deletion to another host (a
-    // different page), and the look after serves the file; "cut-404" gets a 404 after the
-    // deletion whose reply is cut off. Both are unknown with the intent kept.
-    void aLinkCheckThatIsNotTheLinksAnswerIsUnknown_data() {
+    // Review of #1603. Checks of the link follow a redirect to another host (a CDN), where
+    // only a status or the very same file is proof. "login-page": the look before goes to
+    // another host's page, the look after serves the file: other bytes there prove
+    // nothing, so unknown. "cdn-gone": both looks go to the CDN, which answers a whole 404
+    // after the deletion: removed. "cdn-same": the CDN serves the whole file both times:
+    // the deletion did not work. "cut-404": a 404 after the deletion whose reply is cut
+    // off proves nothing: unknown.
+    void aLinkCheckIsWeighedByWhereItWasAnswered_data() {
         QTest::addColumn<QString>("shape");
-        QTest::newRow("before-offhost") << QString("before-offhost");
-        QTest::newRow("cut-404") << QString("cut-404");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("login-page") << QString("login-page") << QString("unknown");
+        QTest::newRow("cdn-gone") << QString("cdn-gone") << QString("removed");
+        QTest::newRow("cdn-same") << QString("cdn-same") << QString("failed");
+        QTest::newRow("cut-404") << QString("cut-404") << QString("unknown");
     }
-    void aLinkCheckThatIsNotTheLinksAnswerIsUnknown() {
+    void aLinkCheckIsWeighedByWhereItWasAnswered() {
         QFETCH(QString, shape);
+        QFETCH(QString, expected);
         HttpFixture f;
         f.reset();
         auto destination = f.destination;
         destination.settings = f.settings("pretend");
         const auto uploaded = f.upload(f.image(), destination);
         QCOMPARE(uploaded.status, QString("uploaded"));
-        const auto elsewhere = QString(f.base).replace("127.0.0.1", "localhost") + "/__state";
-        if (shape == "before-offhost") f.rules({{{"call", "file"}, {"status", 302}, {"location", elsewhere}}, {{"call", "file"}}});
-        else f.rules({{{"call", "file"}}, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}}});
+        // The same listener under another host name stands in for a CDN or a login site.
+        const auto otherHost = [&](const QString& path) { return QString(f.base).replace("127.0.0.1", "localhost") + path; };
+        const QJsonObject serve{{"call", "file"}};
+        const QJsonObject toCdn{{"call", "file"}, {"status", 302}, {"location", otherHost(QUrl(uploaded.receipt.directUrl).path(QUrl::FullyEncoded))}};
+        int checks = 2;
+        if (shape == "login-page") f.rules({{{"call", "file"}, {"status", 302}, {"location", otherHost("/__state")}}, serve});
+        else if (shape == "cdn-gone") { f.rules({toCdn, serve, toCdn, {{"call", "file"}, {"status", 404}, {"body", "gone"}}}); checks = 4; }
+        else if (shape == "cdn-same") { f.rules({toCdn, serve, toCdn, serve}); checks = 4; }
+        else f.rules({serve, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}}});
         const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(f.events("file").size(), 2);
-        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
-        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
-        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.events("file").size(), checks);
+        QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        if (expected == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        }
+        if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QCOMPARE(f.stored(), 1);
     }
     // Review of #1603. A check of the link whose reply was cut off before any of it came

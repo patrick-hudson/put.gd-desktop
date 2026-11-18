@@ -908,11 +908,10 @@ private:
         };
         // What the link serves now, to tell afterwards whether the file really went. The
         // link is fetched under the same rules as any address a reply named; one that
-        // may not be fetched is simply not compared. A redirect to another host (a login
-        // page, say) is not followed: what that host serves says nothing about the file.
+        // may not be fetched is simply not compared. A redirect to another host (a CDN, or
+        // a login page) is followed, and then weighed below.
         const QUrl link(expected.directUrl, QUrl::StrictMode);
-        QString beforeRefused;
-        const auto before = client_.get(link, allowInsecure(), &beforeRefused, true);
+        const auto before = client_.get(link, allowInsecure());
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         QString refused;
         auto r = client_.get(url, allowInsecure(), &refused, named);
@@ -943,45 +942,46 @@ private:
         // served before show it was replaced, and the same bytes show it is still there
         // (failed). Anything else shows nothing either way: a reply cut off or larger than
         // the reply cap, an empty reply, an error or no reply. That is unknown, with the
-        // intent kept, and Retry asks again. A redirect of the deletion, or of either check
-        // of the link, to another host is not followed, and is unknown too. A 404 or 410
-        // counts only when its reply came whole.
+        // intent kept, and Retry asks again. A redirect of the deletion to another host is
+        // not followed, and is unknown too. Checks of the link follow one (a CDN), but a
+        // check that ended on another host proves removal only by a whole 404 or 410:
+        // other bytes there may be a login page, so they are unknown. A 404 or 410 counts
+        // only when its reply came whole.
         if (confirmed || (r.status >= 200 && r.status < 400) || r.status == 404 || r.status == 410) {
-            QString afterRefused;
-            const auto after = client_.get(link, allowInsecure(), &afterRefused, true);
+            const auto after = client_.get(link, allowInsecure());
             details["checkStatus"] = after.status;
             details["checkBeforeStatus"] = before.status;
             // Only whole replies count, a 404 or 410 among them.
             const auto whole = [](const auto& reply) { return !reply.cut && reply.received == reply.body.size(); };
             const auto gone = [&](const auto& reply) { return (reply.status == 404 || reply.status == 410) && whole(reply); };
-            if (!beforeRefused.isEmpty() || !afterRefused.isEmpty()) {
-                // Either check was sent elsewhere: nothing is known of the file.
-                uncertain = true;
-                details["checkRedirected"] = true;
-                error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was not answered by the link's own host (%2). "
-                         "It may or may not be deleted; Retry asks again.").arg(r.status).arg(beforeRefused.isEmpty() ? afterRefused : beforeRefused), details};
-                return {{"status", "unknown"}, {"progress", progress}};
-            }
+            // A check that ended on another host may have reached a page that is not the
+            // file (a login page): there, only a status or the very same file is proof.
+            const bool elsewhere = !sameHost(link, before.url) || !sameHost(link, after.url);
+            if (elsewhere) details["checkOffHost"] = true;
             if (gone(after)) return finish(gone(before) && phase != "delete_intent" ? "missing" : "removed");
             const bool compared = after.status >= 200 && after.status < 300 && before.status >= 200 && before.status < 300 && !before.body.isEmpty() && !after.body.isEmpty();
             // Only two whole replies count: one cut off, or stopped at the reply cap, shows
             // neither that the file is still there (a matching start) nor that it went (a
             // differing one). For a file larger than the cap, only a link that is gone
             // proves the deletion.
-            if (compared && whole(before) && whole(after)) {
-                if (after.body != before.body) return finish("removed");
+            const bool complete = compared && whole(before) && whole(after);
+            if (complete && after.body == before.body) {
                 // The whole file, byte for byte, is still there: the deletion did not work.
                 error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is deleted. "
                          "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; Retry checks again, or delete it on the server.").arg(r.status), details};
                 return {{"status", "failed"}, {"progress", progress}};
             }
-            if (compared) details["checkIncomplete"] = true;
+            // Other bytes show the file was replaced only when the link's own host served
+            // both checks.
+            if (complete && !elsewhere) return finish("removed");
+            if (compared && !complete) details["checkIncomplete"] = true;
             uncertain = true;
             if (after.status == 0) details["checkTransport"] = after.detail;
             error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was inconclusive (%2). "
                      "It may or may not be deleted; Retry asks again.").arg(r.status)
                      .arg(after.status == 0 ? after.detail
                           : after.body.isEmpty() || before.body.isEmpty() ? QString("HTTP %1 with nothing to compare").arg(after.status)
+                          : complete ? QString("HTTP %1 from another host, which may serve a different page than the file").arg(after.status)
                           : compared ? QString("HTTP %1, but a reply was cut off or larger than %2 MB, so the whole file was not compared").arg(after.status).arg(maximumReplyBytes / (1024 * 1024))
                           : QString("HTTP %1").arg(after.status)), details};
             return {{"status", "unknown"}, {"progress", progress}};
