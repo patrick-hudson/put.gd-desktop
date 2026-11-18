@@ -243,23 +243,154 @@ private slots:
         QCOMPARE(count(f, "DELETE", "uploadId="), 0);
         QCOMPARE(count(f, "POST", "uploads"), 1);
     }
-    void uncertainCompletionResumesWithoutResendingParts() {
+    // #1627: a completion is sent once, and any answer but a clear success is settled by one
+    // HEAD of the key: ours there means uploaded, definitely absent means failed with the
+    // upload aborted, and a HEAD that can't tell keeps the item unknown with its parts.
+    void completionAnswerIsSettledByTheKey_data() {
+        QTest::addColumn<QJsonArray>("rules");QTest::addColumn<QString>("status");QTest::addColumn<int>("aborts");
+        // libcurl resent a completion whose reply was lost; the first published, the resend got 501.
+        QTest::newRow("published-then-refused") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"statusAfter", 501}, {"code", "NotImplemented"}}}
+                                                << QString("uploaded") << 0;
+        QTest::newRow("refused") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 501}, {"code", "NotImplemented"}}}
+                                 << QString("failed") << 1;
+        QTest::newRow("lost-reply-absent") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}}}
+                                           << QString("failed") << 1;
+        // The key is absent but S3 refuses the abort: the parts remain, so the item stays unknown.
+        QTest::newRow("absent-abort-refused") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 501}, {"code", "NotImplemented"}},
+                                                            QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}, {"code", "AccessDenied"}}}
+                                              << QString("unknown") << 1;
+        QTest::newRow("check-fails") << QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                                   QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}
+                                     << QString("unknown") << 0;
+    }
+    void completionAnswerIsSettledByTheKey() {
+        QFETCH(QJsonArray, rules);QFETCH(QString, status);QFETCH(int, aborts);
         S3Fixture f(policy);
         auto request = f.request("complete.bin", synthetic(11 * mib));
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}, {"remaining", 3}}}}});
-        Journal first;
-        first.attach(request);
-        const auto uncertain = f.upload(request);
-        QCOMPARE(uncertain.status, QString("unknown"));
-        QCOMPARE(count(f, "DELETE", "uploadId="), 0);
-        QCOMPARE(first.last()["phase"].toString(), QString("completing"));
-        f.control("/__clear_events", {}, true);
-        auto retry = request;
-        retry.resume = first.last();
-        const auto result = f.upload(retry);
-        QCOMPARE(result.status, QString("uploaded"));
-        QVERIFY(parts(f).isEmpty());
+        Journal journal;
+        journal.attach(request);
+        f.reset({{"rules", rules}});
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, status);
         QCOMPARE(count(f, "POST", "uploadId="), 1);
+        QCOMPARE(count(f, "DELETE", "uploadId="), aborts);
+        if (status == "unknown") QCOMPARE(journal.last()["phase"].toString(), QString("completing"));
+        else QVERIFY(journal.last().isEmpty());
+        if (status != "unknown") QVERIFY(f.state()["uploads"].toObject().isEmpty());
+    }
+    // An item left unknown by its completion: Retry checks the key and, finding it absent,
+    // aborts that upload and starts a new one. It never sends that completion again, so a
+    // service that keeps refusing it leaves no parts behind (M2).
+    void retryOfUncertainCompletionChecksFirstAndLeavesNoParts() {
+        S3Fixture f(policy);
+        auto request = f.request("complete.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(request);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}}});
+        QCOMPARE(f.upload(request).status, QString("unknown"));
+        QCOMPARE(journal.last()["phase"].toString(), QString("completing"));
+        request.resume = journal.last();
+        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 501}, {"code", "NotImplemented"}, {"remaining", 5}}}}}, true);
+        f.control("/__clear_events", {}, true);
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(count(f, "POST", "uploads"), 1);
+        QCOMPARE(count(f, "POST", "uploadId="), 1);
+        QVERIFY(f.state()["uploads"].toObject().isEmpty());
+        QVERIFY(journal.last().isEmpty());
+    }
+    // A resumed upload whose parts can't be listed sends them again; when S3 no longer has the
+    // upload because the earlier completion published, the key shows it is ours (M3).
+    void vanishedUploadIsSettledByTheKey() {
+        S3Fixture f(policy);
+        auto request = f.request("complete.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(request);
+        // The completion publishes but answers 500, and the check can't tell: unknown.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"statusAfter", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}}});
+        QCOMPARE(f.upload(request).status, QString("unknown"));
+        auto saved = journal.last();
+        saved["phase"] = "parts";
+        request.resume = saved;
+        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "uploadId="}, {"status", 403}}}}}, true);
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("uploaded"));
+        QVERIFY(journal.last().isEmpty());
+    }
+    // A completing journal for another key is aborted, and the new key's upload is settled like
+    // any other: a refused completion fails and keeps no parts (M4).
+    void completingJournalForAnotherKeyDoesNotMakeTheNewUploadUncertain() {
+        S3Fixture f(policy);
+        auto stale = f.request("old name.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(stale);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}}});
+        QCOMPARE(f.upload(stale).status, QString("unknown"));
+        QCOMPARE(journal.last()["phase"].toString(), QString("completing"));
+        auto renamed = f.request("new name.bin", synthetic(11 * mib));
+        renamed.resume = journal.last();
+        journal.attach(renamed);
+        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 501}, {"code", "NotImplemented"}}}}}, true);
+        const auto result = f.upload(renamed);
+        QCOMPARE(result.status, QString("failed"));
+        QVERIFY(f.state()["uploads"].toObject().isEmpty());
+    }
+    // M3: with parts on parallel lanes, a lane that finds the upload gone counts even when
+    // another lane's error came first. The upload had been completed by an earlier attempt,
+    // so the key shows put.gd's object.
+    void vanishedUploadSeenByAnyLaneIsSettledByTheKey() {
+        S3Fixture f(policy);
+        auto request = f.request("complete.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(request);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"statusAfter", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}}});
+        QCOMPARE(f.upload(request).status, QString("unknown"));
+        auto saved = journal.last();
+        saved["phase"] = "parts";
+        request.resume = saved;
+        request.extraLanes = [](int wanted) { return wanted; };
+        // Every part's body is sent first. Part 1 is then denied, and parts 2 and 3 find the
+        // upload gone just after, while the other lanes' error is already recorded.
+        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "uploadId="}, {"status", 403}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"delay", 0.2}, {"status", 403}, {"code", "AccessDenied"}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 0.22}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=3&"}, {"delay", 0.22}}}}}, true);
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("uploaded"));
+        QVERIFY(journal.last().isEmpty());
+    }
+    // M5: when the old upload can't be aborted, no new upload is created and its journal
+    // stays, so the record of its parts is never lost.
+    void unabortableOldUploadKeepsItsJournal() {
+        S3Fixture f(policy);
+        auto stale = f.request("old name.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(stale);
+        // An unclear completion, another object at the key, and an abort S3 refuses.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"competitor", true}},
+                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}, {"code", "AccessDenied"}, {"remaining", 20}}}}});
+        // Another object, but the abort is refused: unknown, not a collision (M8), journal kept.
+        const auto collided = f.upload(stale);
+        QCOMPARE(collided.status, QString("unknown"));
+        QVERIFY(collided.error.details["incompleteUpload"].toBool());
+        const auto kept = journal.last();
+        QVERIFY(!kept["uploadId"].toString().isEmpty());
+        // A later upload under another name with that journal (an item renamed before): the old
+        // upload's abort is refused again, so nothing new is created.
+        auto renamed = f.request("new name.bin", synthetic(11 * mib));
+        renamed.resume = kept;
+        journal.attach(renamed);
+        f.control("/__clear_events", {}, true);
+        const auto result = f.upload(renamed);
+        QCOMPARE(result.status, QString("unknown"));
+        QVERIFY(result.error.details["incompleteUpload"].toBool());
+        QCOMPARE(count(f, "POST", "uploads"), 0);
+        QCOMPARE(journal.last(), kept);
     }
     void journalForAnotherKeyIsAbortedNeverResumed() {
         S3Fixture f(policy);

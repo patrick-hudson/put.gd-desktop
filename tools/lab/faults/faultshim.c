@@ -177,13 +177,15 @@ static void reload_if_changed(void) {
         return;
     }
     if (st.st_mtim.tv_sec == spec_mtime.tv_sec && st.st_mtim.tv_nsec == spec_mtime.tv_nsec) return;
-    spec_mtime = st.st_mtim;
+    /* The new mtime is recorded only once the file was read: an open that fails (EMFILE while the harness holds the open-file limit
+     * low) leaves the old rules in force and is retried on the next check, so an empty spec always lifts the faults in the end. */
     int fd = (int)syscall(SYS_open, spec_path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) return;
     static char buf[16384];
     ssize_t n = syscall(SYS_read, fd, buf, sizeof buf - 1);
     syscall(SYS_close, fd);
     if (n < 0) return;
+    spec_mtime = st.st_mtim;
     buf[n] = 0;
     nrules = 0;
     load_comm();
