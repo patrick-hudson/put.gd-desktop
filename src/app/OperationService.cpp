@@ -288,6 +288,8 @@ QJsonArray OperationService::activeObservations() const {
 }
 void OperationService::clearObservation(const QString& id){std::lock_guard lock(observationsMutex_);observations_.remove(id);observationsDirty_.remove(id);}
 QJsonObject OperationService::currentObservation(QJsonObject document)const{
+ // A finished operation that still holds its slot says so: Retry waits for it to clear (#1578).
+ if(settling(document["id"].toString()))document["settling"]=true;
  if(QStringList{"completed","partial","failed","cancelled","interrupted"}.contains(document["state"].toString()))return document;
  QJsonObject live;{std::lock_guard lock(observationsMutex_);live=observations_.value(document["id"].toString());}if(live.isEmpty())return document;
  document["phase"]=live["phase"];auto items=document["items"].toArray();QHash<QString,QJsonObject> observedItems;
@@ -377,7 +379,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
    // A legacy adapter reports no independent helper during preparation. Keep
    // its ordinary interactive reservation; early terminal/drain can release it.
    if(owner->selectingId_==id&&(*earlyError||flag->load()||finished))owner->selectingId_.clear();
-   if(finished)owner->active_.remove(id);
+   if(finished){owner->active_.remove(id);owner->settled(id);}
   };
   if(QThread::currentThread()==owner->thread())release();
   else QMetaObject::invokeMethod(owner,std::move(release),Qt::QueuedConnection);
@@ -800,7 +802,7 @@ void OperationService::recognizeText(const QJsonObject& params,JsonReply reply) 
     if(!owner)return;
     auto release=[owner,id] {
      if(!owner||owner->stopping_||!owner->preparedOwners_.remove(id))return;
-     if(owner->finishedPrepared_.remove(id)){if(owner->selectingId_==id)owner->selectingId_.clear();owner->active_.remove(id);}
+     if(owner->finishedPrepared_.remove(id)){if(owner->selectingId_==id)owner->selectingId_.clear();owner->active_.remove(id);owner->settled(id);}
     };
     if(QThread::currentThread()==owner->thread())release();else QMetaObject::invokeMethod(owner.data(),std::move(release),Qt::QueuedConnection);
    };
@@ -1203,16 +1205,31 @@ Operation OperationService::run(Job job) {
 void OperationService::anticipate(const Operation& op) {
  if(const auto provider=providers_.find(op.destination.providerId))if(auto ready=provider->anticipate(op.destination))anticipated_.insert(op.id,std::move(ready));
 }
+namespace {
+Error settlingError() {return {"operation_settling","This operation is still finishing; try Retry again in a moment.",{}};}
+}
 void OperationService::releaseActive(const QString& id) {
  anticipated_.remove(id);
  // Durable completion and source drain can arrive in either order. Retain the
  // bounded operation slot until both have happened; never unlock a live helper.
  if(preparedOwners_.contains(id))finishedPrepared_.insert(id);
- else active_.remove(id);
+ else {active_.remove(id);settled(id);}
+}
+// Settling: the slot is still held, but the outcome is out. finish() has started, or the worker has already
+// stored and published the final state (run() saves it before finish() runs).
+bool OperationService::settling(const QString& id) const {
+ if(!active_.contains(id))return false;
+ if(finishing_.contains(id))return true;
+ std::lock_guard lock(observationsMutex_);const auto live=observations_.constFind(id);
+ return live!=observations_.cend()&&!(*live)["state"].toString().isEmpty()&&!Operation::activeState((*live)["state"].toString());
+}
+void OperationService::settled(const QString& id) {
+ if(finishing_.remove(id)){emit changed(id);emit observationsChanged();}
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
  anticipated_.remove(op.id);clipboardImports_.remove(op.id);pumpCopies();
+ finishing_.insert(op.id);
  // Its link is copied only when asked for (diagnostics.bundle copyLink).
  if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
  if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}
@@ -1362,11 +1379,13 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};if(!op.active()){e={"operation_inactive","This operation has finished; only an active operation can be cancelled",{{"state",op.stateName()}}};return QJsonObject{};}op.cancelled=true;op.advance(OperationState::Cancelled);op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
 }
 void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly) {
+ // This operation's own state answers first: a Retry refused as settling or busy is never queued behind cleanup or
+ // turned into queue_full (#1578).
+ if(active_.contains(id)) {reply(settling(id)?settlingError():Error{"operation_busy","Operation is already active",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
  if(!ready_) {reply(notReadyError(),{});return;}
  const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
- if(active_.contains(id)) {reply({"operation_busy","Operation is already active",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path,sharingOnly](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
@@ -1385,12 +1404,12 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  });
 }
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
+ if(active_.contains(id)){reply(settling(id)?settlingError():Error{"operation_busy","Operation is active",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
  if(!ready_){reply(notReadyError(),{});return;}
  const auto limits=settings_.snapshot().limits;
  if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Pending operation limit reached",{}},{});return;}
- if(active_.contains(id)){reply({"operation_busy","Operation is active",{}},{});return;}
  active_.insert(id,std::make_shared<std::atomic_bool>(false));
  // A local retry keeps its durable result; only its live observation is active.
  observe({{"id",id},{"state","running"},{"phase","saving_local"},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});

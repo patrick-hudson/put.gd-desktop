@@ -91,6 +91,8 @@ public:
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
+ // The operation has finished but still holds its slot; a Retry now is answered operation_settling (#1578).
+ bool operationSettling(const QString& id) const {return settling(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
@@ -247,6 +249,11 @@ private:
  QHash<QString,Error> previewFailures_;
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
+ // A finished operation keeps its slot until its link copy and source cleanup are done, while its outcome is already
+ // visible. A Retry then is answered operation_settling, which is worth repeating in a moment (#1578).
+ QSet<QString> finishing_;
+ bool settling(const QString& id) const;
+ void settled(const QString& id);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  // Which guard refused a copy, for the putgd.clipboard log record (#473): the
  // clipboard revision moved, the epoch/invocation moved (`epochGuard` names
