@@ -29,7 +29,7 @@ optional `bytesTotal`. A missing total means percentage is unknown. These are
 transient observations, not confirmed publication or final result evidence.
 `diagnostics.unsavedHistoryResults` counts operations for which a History write failed
 this session (#1579); their Retry and Retry local save answer `history_io` until put.gd
-restarts. After the restart a Retry faces the usual checks.
+restarts, even if a later write updated the row. After the restart a Retry faces the usual checks.
 A finished operation that still holds its slot (recording its link copy or cleaning
 up its source) carries `settling: true`. A Retry or Retry local save then answers
 `operation_settling` with "This operation is still finishing; try Retry again in a
