@@ -5,6 +5,8 @@
 #include "ui/QuickRedactRunner.h"
 #include "fixtures/Waits.h"
 #include <QElapsedTimer>
+#include <QTemporaryDir>
+#include <QFile>
 #include <QProcess>
 #include <QThread>
 #include <QTimer>
@@ -117,6 +119,43 @@ private slots:
   PUTGD_TRY_VERIFY(result.has_value());
   ui::setQuickRedactMatcherProgram(QStringLiteral(PUTGD_UI_BINARY));
   QCOMPARE(found(candidates,*result),QStringList{"list: Hammond"});QCOMPARE(result->skippedPatterns,QList<int>{0});
+ }
+ // Round 4 (S1): every outcome line is checked whole. A finished pattern with
+ // no hit list, a second outcome for one pattern, a range past its subject (or
+ // one whose start plus length would overflow) and a line cut short each leave
+ // that pattern skipped; a well-formed outcome lands.
+ void malformedOutcomesSkipTheirPattern() {
+  QTemporaryDir dir;QVERIFY(dir.isValid());
+  QFile script(dir.filePath("matcher"));QVERIFY(script.open(QIODevice::WriteOnly));
+  script.write("#!/bin/sh\n/bin/cat >/dev/null\n"
+   "printf '%s\\n' '{\"p\":0,\"f\":true}'\n"
+   "printf '%s\\n' '{\"p\":1,\"f\":true,\"h\":[[0,0,5]]}' '{\"p\":1,\"f\":true,\"h\":[[0,0,5]]}'\n"
+   "printf '%s\\n' '{\"p\":2,\"f\":true,\"h\":[[0,9223372036854775807,9223372036854775807]]}'\n"
+   "printf '%s\\n' '{\"p\":3,\"f\":true,\"h\":[[0,0,3]],\"x\":1}'\n"
+   "printf '%s\\n' '{\"p\":4,\"f\":true,\"h\":[[0,14,6]]}'\n"
+   "printf '%s' '{\"p\":5,\"f\":true,\"h\":[[0,0'\n");
+  script.close();QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  ui::setQuickRedactMatcherProgram(script.fileName());
+  const auto candidates=words("Hammond filed JIRA-9");
+  std::optional<quickRedact::Result> result;
+  ui::runQuickRedact(this,candidates,{"list"},quickRedact::Sources{{},{},{},{"a","b","c","d","e","f"}},[&](quickRedact::Result r){result=std::move(r);},1500);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.has_value(),5000);
+  ui::setQuickRedactMatcherProgram(QStringLiteral(PUTGD_UI_BINARY));
+  QCOMPARE(found(candidates,*result),QStringList{"list: JIRA-9"});
+  QCOMPARE(result->skippedPatterns,(QList<int>{0,1,2,3,5}));
+ }
+ // Round 4 (S3): pair hits that do not cross the break are left out in the
+ // child, so a pattern hitting every character of a large page still fits
+ // under the child's cap (lines alone: 80 000 hits; with every pair: 238 400).
+ void pairHitsDoNotFillTheCap() {
+  QStringList lines;
+  for(int l=0;l<100;++l){QStringList line;for(int w=0;w<40;++w)line.append(QString(20,QChar('a'+(w+l)%26)));lines.append(line.join(' '));}
+  const auto candidates=words(lines.join(" | "));
+  std::optional<quickRedact::Result> result;
+  ui::runQuickRedact(this,candidates,{"list"},quickRedact::Sources{{},{},{},{R"(\S)"}},[&](quickRedact::Result r){result=std::move(r);},10000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.has_value(),15000);
+  QCOMPARE(result->skippedPatterns,QList<int>{});
+  QCOMPARE(result->matches.size(),4000);
  }
  // M2, U6: exit cancels the worker, which kills the child within 50 ms.
  void exitKillsTheChild() {
