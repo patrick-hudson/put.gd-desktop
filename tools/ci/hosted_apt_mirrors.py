@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""Bypass the hosted runner's slow Azure Ubuntu mirror for AppImage (#500).
+"""Hand the AppImage job's Ubuntu sources to the shared mirror probe (#500, #1668).
 
-Keep Ubuntu's archive/security failover and APT's existing signing, suites and
-components. No package snapshot of its own: the shared Actions cache budget stays unchanged.
+The hosted runner names one Ubuntu mirror (its region's, or Azure's) through
+/etc/apt/apt-mirrors.txt. One slow mirror then stalls every install attempt.
+Write the Ubuntu archive and security sources as plain archive.ubuntu.com and
+security.ubuntu.com URIs, which `PUTGD_UBUNTU_MIRRORS` (the container jobs'
+probe) then replaces with its ranked list of four mirrors. Suites, components
+and Signed-By stay as they are, so apt verifies everything against the Ubuntu
+keyring as before. No package snapshot of its own: the shared Actions cache
+budget stays unchanged.
 
 Also switch off the runner's third-party APT sources (packages.microsoft.com). The job
 installs nothing from them, yet `apt-get update --error-on=any` fails the whole install
@@ -12,27 +18,20 @@ import argparse
 from pathlib import Path
 import re
 
-AZURE = re.compile(r'(?<!\S)https?://azure\.archive\.ubuntu\.com/ubuntu/?(?=\s|$)')
-ARCHIVE = 'https://archive.ubuntu.com/ubuntu/'
+# The Ubuntu archive in every form the runner image writes it: its mirror list, a regional or Azure host, https.
+UBUNTU_ARCHIVE = re.compile(r'(?<!\S)(?:mirror\+file:\S*/apt-mirrors\.txt'
+                            r'|https?://(?:[a-z0-9-]+\.)*archive\.ubuntu\.com/ubuntu/?)(?=\s|$)')
+UBUNTU_SECURITY = re.compile(r'(?<!\S)https?://security\.ubuntu\.com/ubuntu/?(?=\s|$)')
+# The exact forms PUTGD_UBUNTU_MIRRORS rewrites to its mirror list.
+ARCHIVE = 'http://archive.ubuntu.com/ubuntu/'
+SECURITY = 'http://security.ubuntu.com/ubuntu/'
 # The values apt reads as false for a deb822 boolean.
 DISABLED = frozenset({'no', 'false', 'without', 'off', 'disable', '0'})
 
 
 def configure(root):
-    """Handle both runner mirror+file sources and legacy direct source URIs."""
+    """Rewrite Ubuntu URIs in both `.list` and deb822 `.sources` files; returns the files changed."""
     updates = {}
-    mirrors = root / 'apt-mirrors.txt'
-    if mirrors.exists():
-        before = mirrors.read_text()
-        lines = before.splitlines(keepends=True)
-        after = ''.join(line for line in lines
-                        if not line.split() or not AZURE.fullmatch(line.split()[0]))
-        if after != before:
-            # Fail closed if the runner no longer supplies its official fallback.
-            if not any(line.split() and line.split()[0] == ARCHIVE
-                       for line in after.splitlines()):
-                raise ValueError('Azure mirror has no official Ubuntu archive fallback')
-            updates[mirrors] = after
     sources = [root / 'sources.list', *sorted((root / 'sources.list.d').glob('*.list')),
                *sorted((root / 'sources.list.d').glob('*.sources'))]
     for source in sources:
@@ -47,15 +46,16 @@ def configure(root):
                 continue
             if source.suffix == '.sources':
                 if not line[0].isspace():
-                    uris = line.startswith('URIs:')
+                    uris = line.partition(':')[0].strip().lower() == 'uris'
                 replace = uris
             else:
                 replace = re.match(r'^\s*deb(?:-src)?\s', line)
-            lines.append(AZURE.sub(ARCHIVE, line) if replace else line)
+            if replace:
+                line = UBUNTU_SECURITY.sub(SECURITY, UBUNTU_ARCHIVE.sub(ARCHIVE, line))
+            lines.append(line)
         after = ''.join(lines)
         if after != before:
             updates[source] = after
-    # Validate all inputs before writing any of them.
     for path, contents in updates.items():
         path.write_text(contents)
     return [str(path.relative_to(root)) for path in updates]
@@ -130,9 +130,9 @@ def main():
     args = parser.parse_args()
     changed = configure(args.apt_root)
     third_party = disable_third_party(args.apt_root)
-    print('AppImage APT: excluded Azure; kept official Ubuntu archive/security fallback; '
+    print('AppImage APT: Ubuntu sources handed to the shared mirror probe; '
           'signing settings unchanged; no additional Actions cache.')
-    print('Updated: ' + (', '.join(changed) or 'none (already configured or no Azure source)'))
+    print('Updated: ' + (', '.join(changed) or 'none (no Ubuntu source to rewrite)'))
     print('Third-party sources disabled: ' + (', '.join(third_party) or 'none'))
 
 

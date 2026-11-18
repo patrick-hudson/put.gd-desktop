@@ -33,6 +33,19 @@
 # (`--no-download`) and the offline install have no limit, so dpkg is never stopped halfway.
 # Downloaded packages stay in the cache, so the next attempt resumes. apt and dnf drop a connection that
 # moves nothing (apt) or under 1 kB/s (dnf) for 60 s and retry it themselves.
+# On apt, a failed attempt moves the first mirror of $PUTGD_APT_ROOT/putgd-mirrors.txt (the
+# PUTGD_UBUNTU_MIRRORS probe's ranked list) behind the other usable ones, so the next attempt
+# starts on another mirror.
+#   PUTGD_APT_LAST_RESORT_MIRRORS  (apt) URL of a list of mirrors, one URI a line, such as
+#                       http://mirrors.ubuntu.com/US.txt. Once the online attempts have failed,
+#                       the fastest few of them replace putgd-mirrors.txt (#1668). The snapshot
+#                       install then downloads the packages its indexes name but it lacks through
+#                       them, and with no snapshot, or one that can't serve the list, one more
+#                       online attempt runs through them with fresh metadata:
+#   PUTGD_PKG_LAST_RESORT_TIMEOUT  seconds that attempt may take (default 1800)
+# Every install is one apt transaction against one set of indexes: entirely online, or the
+# snapshot's own indexes with its packages and the ones it lacks, never a mix. apt checks every
+# file against the signed indexes, whichever mirror served it.
 # Every failed or stopped attempt and fallback is a warning annotation and a row in
 # $GITHUB_STEP_SUMMARY. The script fails when the snapshot cannot satisfy the
 # install either, and at once when a package name does not exist.
@@ -55,8 +68,9 @@ fi
 . /etc/os-release
 label="${PUTGD_PKG_LABEL:-$ID $VERSION_ID}, $manager"
 log=$(mktemp)
-trap 'rm -f "$log" "$log.stopped"' EXIT
+trap 'rm -f "$log" "$log.stopped" "$log.lacking"' EXIT
 apt_root=${PUTGD_APT_ROOT:-/etc/apt}
+mirror_list=$apt_root/putgd-mirrors.txt
 apt_network=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
 dnf_network=(--setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000)
 
@@ -148,8 +162,12 @@ save_sources() {
   rmdir "$1/sources" 2>/dev/null || true
 }
 
+# Install from the snapshot. On apt, packages its indexes name but it has no archive of (a snapshot
+# restored from an older package list) are downloaded first, against those same indexes, so the
+# whole transaction comes from one index generation. Returns 2 when it failed before dpkg started,
+# so a fresh online transaction can still run.
 offline() {
-  local extra=()
+  local extra=() uris lacking
   mapfile -t extra < <(cache_options "$snapshot")
   if [ "$manager" = apt-get ] && [ -d "$snapshot/sources" ]; then
     extra+=(-o Dir::Etc::sourcelist=/dev/null -o "Dir::Etc::sourceparts=$snapshot/sources")
@@ -158,9 +176,61 @@ offline() {
     bounded dnf install -y --cacheonly "${extra[@]}" "${options[@]}" "${packages[@]}"
   else
     [ -z "$interrupted" ] || dpkg --configure -a || return
+    # The archives the transaction needs that the snapshot lacks; it fails here, before anything is
+    # installed, when its indexes can't satisfy the list at all.
+    uris=$(DEBIAN_FRONTEND=noninteractive apt-get install -y --print-uris -qq "${extra[@]}" "${options[@]}" "${packages[@]}") ||
+      { printf '%s\n' "$uris"; return 2; }
+    if [ -n "$uris" ]; then
+      lacking=$(cut -d' ' -f2 <<< "$uris" | tr '\n' ' ')
+      echo "$(wc -l <<< "$uris") $lacking" > "$log.lacking"
+      echo "The package snapshot lacks $(wc -l <<< "$uris") archives; downloading them against its own indexes: $lacking"
+      use_last_resort_mirrors || true
+      DEBIAN_FRONTEND=noninteractive bounded apt-get install -y --download-only "${apt_network[@]}" \
+        "${extra[@]}" "${options[@]}" "${packages[@]}" ||
+        { echo "E: could not download the archives the package snapshot lacks: $lacking"; return 2; }
+    fi
     # Nothing is downloaded, so no time limit that could stop dpkg halfway.
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
   fi
+}
+
+# Move the first mirror behind the other usable ones (the rule of putgd_demote_mirror in the workflows).
+demote_mirror() {
+  local usable first
+  [ "$manager" = apt-get ] && [ -s "$mirror_list" ] || return 0
+  usable=$(cat "$mirror_list.usable" 2>/dev/null || true)
+  [ "${usable:-0}" -gt 0 ] || usable=$(wc -l < "$mirror_list")
+  [ "$usable" -gt 1 ] || return 0
+  first=$(head -n 1 "$mirror_list" | cut -f1)
+  cut -f1 "$mirror_list" | awk -v n="$usable" 'NR == 1 { first = $0; next } { print } NR == n { print first }' |
+    awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$mirror_list.new"
+  mv "$mirror_list.new" "$mirror_list"
+  echo "Ubuntu mirror moved behind the other usable mirrors: $first"
+}
+
+# Replace putgd-mirrors.txt with the fastest 8 of the first 60 mirrors of $PUTGD_APT_LAST_RESORT_MIRRORS,
+# once. Each is timed on 256 KB of this release's package index for this architecture, so a mirror without
+# it (a ports-only mirror) is left out. Fails when there is no such list or no mirror answers.
+use_last_resort_mirrors() {
+  local arch probe ranked
+  arch=$(dpkg --print-architecture 2>/dev/null || true)
+  probe=dists/$VERSION_CODENAME/main/binary-${arch:-amd64}/Packages.gz
+  [ "$manager" = apt-get ] && [ -n "${PUTGD_APT_LAST_RESORT_MIRRORS:-}" ] || return 1
+  [ ! -e "$mirror_list.last-resort" ] || return 0
+  # Only plain mirror URIs: the list comes from the network.
+  ranked=$(curl -fsS --max-time 60 "$PUTGD_APT_LAST_RESORT_MIRRORS" | tr -d '\r' |
+    grep -E '^https?://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9._~/-]*/$' | head -n 60 |
+    xargs -r -P 16 -n 1 bash -c 'speed=$(curl -fsS -o /dev/null --max-time 5 -r 0-262143 -w "%{speed_download}" "$2$1") && echo "${speed%.*} $2"' _ "$probe" |
+    sort -rn | head -n 8 | cut -d' ' -f2) || true
+  if [ -z "$ranked" ]; then
+    echo "E: no mirror of $PUTGD_APT_LAST_RESORT_MIRRORS answered"
+    return 1
+  fi
+  mkdir -p "$apt_root"
+  awk '{ printf "%s\tpriority:%d\n", $0, NR }' <<< "$ranked" > "$mirror_list"
+  rm -f "$mirror_list.usable"
+  echo "$PUTGD_APT_LAST_RESORT_MIRRORS" > "$mirror_list.last-resort"
+  echo "Last-resort mirrors from $PUTGD_APT_LAST_RESORT_MIRRORS, fastest first: $(tr '\n' ' ' <<< "$ranked")"
 }
 
 # Replace the snapshot with the live metadata and the installed packages only.
@@ -242,6 +312,7 @@ for ((attempt = 1; attempt <= attempts; attempt++)); do
     report error "$attempt of $attempts" '**failed**, not retried: a package does not exist' "${missing%%$'\n'*}"
     exit 1
   fi
+  demote_mirror
   if [ "$attempt" -lt "$attempts" ]; then
     report warning "$attempt of $attempts" "$outcome, retrying in $delay s with refreshed metadata" "$error"
     sleep "$delay"
@@ -253,18 +324,40 @@ done
 
 if [ ${#packages[@]} -eq 0 ]; then
   report error '-' '**failed**: package metadata could not be refreshed'
+  exit 1
 elif [[ " ${options[*]} " == *" --download-only "* ]]; then
   report error '-' '**failed**: the packages could not be downloaded into the snapshot'
-elif [ -n "$snapshot" ] && [ -f "$snapshot/putgd-snapshot" ]; then
+  exit 1
+fi
+if [ -n "$snapshot" ] && [ -f "$snapshot/putgd-snapshot" ]; then
   saved=$(cat "$snapshot/putgd-snapshot")
-  rm -f "$log.stopped"
+  rm -f "$log.stopped" "$log.lacking"
   deadline=$((SECONDS + limit))
-  if offline 2>&1 | tee "$log"; then
-    report warning snapshot "**installed offline from the package snapshot** saved $saved"
+  status=0
+  offline 2>&1 | tee "$log" || status=$?
+  if [ "$status" -eq 0 ]; then
+    if [ -e "$log.lacking" ]; then
+      read -r count lacking < "$log.lacking"
+      report warning snapshot "**installed offline from the package snapshot** saved $saved; archives it lacked, downloaded against its indexes: $count" "$lacking"
+    else
+      report warning snapshot "**installed offline from the package snapshot** saved $saved"
+    fi
     exit 0
   fi
   report error snapshot '**failed**' "$(failure)"
+  # dpkg started: never run a second transaction over a half-done one.
+  [ "$status" -eq 2 ] || exit 1
 else
   report error snapshot '**failed**: no package snapshot to install from'
+fi
+if [ "$manager" = apt-get ] && [ -n "${PUTGD_APT_LAST_RESORT_MIRRORS:-}" ]; then
+  rm -f "$log.stopped"
+  limit=${PUTGD_PKG_LAST_RESORT_TIMEOUT:-1800}
+  deadline=$((SECONDS + limit))
+  { use_last_resort_mirrors && online last-resort; } 2>&1 | tee "$log" && {
+    report warning last-resort "**installed online through the last-resort mirrors** from $PUTGD_APT_LAST_RESORT_MIRRORS"
+    exit 0
+  }
+  report error last-resort '**failed**' "$(failure)"
 fi
 exit 1
