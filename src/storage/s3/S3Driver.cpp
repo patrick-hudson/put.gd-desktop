@@ -492,7 +492,11 @@ Error abortMultipart(Client& client, const Aws::String& bucket, const QString& k
 // artifact, so memory stays bounded by one read buffer per lane whatever the file size.
 // Part requests never publish: an uncertain part is simply sent again under the
 // same number. Only CompleteMultipartUpload, sent with the item's create or replace
-// precondition, can publish, and only its uncertainty makes the item unknown.
+// precondition, can publish. It is sent once. Any answer but a clear success (a
+// refusal, a precondition failure, a vanished upload, a lost reply, or a reply to a
+// request libcurl resent on its own) is settled by one HEAD of the key (#1627): our
+// object there means uploaded; a definitely absent key means failed, and the upload
+// is aborted; a HEAD that can't tell keeps the item unknown with its parts.
 // Cancellation and every failure that ends this attempt abort the upload so no
 // parts keep using storage. A durable journal of the upload ID lets an attempt that
 // could not abort (a crash, or a lost worker) resume on retry from the parts S3 lists.
@@ -524,19 +528,46 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         }
         return {status, {}, error};
     };
+    // Another object holds the key. A collision lets History rename, skip or fail the item, so
+    // it is reported only once the upload is aborted: if S3 refuses the abort, the item stays
+    // unknown with its journal, which still names the parts (M8).
+    // The same for a definitely absent key and failed. While S3 keeps the parts, the item is
+    // unresolved either way.
+    auto unresolved = [](Error error) -> UploadResult {
+        error.details["incompleteUpload"] = true;
+        error.message += " The incomplete multipart upload could not be removed, so put.gd keeps its record and the item stays unresolved; Retry to try again, or allow s3:AbortMultipartUpload.";
+        return {"unknown", {}, error};
+    };
+    auto collided = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"collision", {}, error};
+        return unresolved(error);
+    };
+    auto absentKey = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"failed", {}, error};
+        return unresolved(error);
+    };
+    // What the key says once a completion's outcome is in doubt, or the upload vanished.
+    auto settle = [&](const Error& error, bool conflict) -> UploadResult {
+        const auto found = inspect(client, expected, true);
+        if (found.status == "own") {
+            save({});
+            return {"uploaded", found.receipt, {}};
+        }
+        // The HEAD can't tell: the item stays unknown, keeping its journal and parts.
+        if (found.status == "unknown") return {"unknown", {}, error};
+        if (found.status == "foreign") return collided(conflict ? error : Error{"precondition_changed", "Another object now uses the saved object key", {}});
+        return absentKey(error);
+    };
     std::map<int, Aws::String> done;
     qint64 completed = 0;
     const auto previous = request.resume["uploadId"].toString();
     // A created upload's journal names its phase. One this build cannot read is
     // never resumed: guessing could report a completed upload as a collision.
-    bool interruptedCompletion = false;
+    bool completing = false;
     if (!previous.isEmpty()) {
         const auto phase = s3UploadPhase(request.resume["phase"]);
         if (!phase) return {"failed", {}, {"s3_multipart_invalid", "The saved multipart upload has a phase this build cannot read", {}}};
-        switch (*phase) {
-        case S3UploadPhase::Parts: interruptedCompletion = false; break;
-        case S3UploadPhase::Completing: interruptedCompletion = true; break;
-        }
+        completing = *phase == S3UploadPhase::Completing;
     }
     if (!previous.isEmpty() &&
         (s3StoredKey(request.resume["key"].toString()) != key || request.resume["bytes"].toInteger() != bytes ||
@@ -544,7 +575,26 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         // A journal for another target or another artifact is never resumed. One whose key
         // has a "." or ".." part names nothing a request can reach, so it is left alone,
         // as the standalone abandon path refuses it.
-        if (s3KeyAddressable(request.resume["key"].toString())) abort(previous, s3StoredKey(request.resume["key"].toString()));
+        // If S3 refuses to abort it, nothing new is created: a new upload ID would replace the
+        // journal, and with it the only record of the old upload's parts.
+        if (s3KeyAddressable(request.resume["key"].toString()) && !abort(previous, s3StoredKey(request.resume["key"].toString()))) {
+            Error error{"publication_unknown", "An earlier multipart upload of this file could not be removed, so put.gd did not start a new one. Retry to try again, or allow s3:AbortMultipartUpload.", {}};
+            error.details["incompleteUpload"] = true;
+            return {"unknown", {}, error};
+        }
+    } else if (completing) {
+        // A completion was sent before and its outcome never settled. It is not sent again:
+        // the key decides, and only a definitely absent key starts a new upload.
+        uploadId = previous;
+        const auto found = inspect(client, expected, true);
+        if (found.status == "own") {
+            save({});
+            return {"uploaded", found.receipt, {}};
+        }
+        if (found.status == "unknown") return {"unknown", {}, found.error};
+        if (found.status == "foreign") return collided({"precondition_changed", "Another object now uses the saved object key", {}});
+        if (!abort(previous, key)) return unresolved({"publication_unknown", "The earlier multipart upload could not be removed.", {}});
+        uploadId.clear();
     } else if (!previous.isEmpty()) {
         uploadId = previous;
         Aws::S3::Model::ListPartsRequest list;
@@ -567,7 +617,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                     }
                     if (found.status == "unknown") return {"unknown", {}, found.error};
                     if (found.status == "foreign")
-                        return {interruptedCompletion ? "unknown" : "collision", {}, {"precondition_changed", "Another object now uses the saved object key", {}}};
+                        return {"collision", {}, {"precondition_changed", "Another object now uses the saved object key", {}}};
                     save({});
                     uploadId.clear();
                 } else if (status == 403) {
@@ -575,7 +625,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                     done.clear();
                 } else {
                     const auto error = partError(outcome.GetError(), S3Stage::UploadListParts, timer.elapsed(), 0);
-                    return {interruptedCompletion ? "unknown" : "failed", {}, error};
+                    return {"failed", {}, error};
                 }
                 break;
             }
@@ -633,7 +683,8 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         std::array<bool, s3MaximumPartLanes> busy{};
         std::array<qint64, s3MaximumPartLanes> sending{}; // bytes read of each lane's part in flight
         Error error;           // the first error that ends this attempt
-        bool vanished = false; // S3 no longer has the upload
+        bool vanished = false; // some lane found that S3 no longer has the upload
+        Error vanishedError;
         std::atomic_bool ended{false}; // error is set: parts in flight stop (#203)
     } lanes;
     auto progress = [&] { // lanes.mutex held
@@ -701,12 +752,14 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 }
                 return {true, outcome.GetResult().GetETag(), {}};
             }
+            // The upload vanished (completed, aborted elsewhere, or a lifecycle rule): reported even
+            // when another lane's error came first, because the key must then decide (#1627).
+            if (int(outcome.GetError().GetResponseCode()) == 404)
+                return {false, {}, partError(outcome.GetError(), S3Stage::UploadPart, timer.elapsed(), number), true};
             // A part cut on cancel or by another lane's error reports that, not its transport error.
             if (stopped(request.cancellation)) return {false, {}, cancelled()};
             if (lanes.ended.load()) return {};
             last = partError(outcome.GetError(), S3Stage::UploadPart, timer.elapsed(), number);
-            // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
-            if (int(outcome.GetError().GetResponseCode()) == 404) return {false, {}, last, true};
             if (!ambiguous(outcome.GetError())) return {false, {}, last};
         }
         return {false, {}, last};
@@ -725,11 +778,16 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 done[number] = sent.etag;
                 completed += qMin(partBytes, bytes - qint64(number - 1) * partBytes);
                 progress();
-            } else if (!lanes.error) {
-                // Another lane's error ends the attempt; this part is sent again on retry.
-                lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
-                lanes.vanished = sent.vanished;
-                lanes.ended = true;
+            } else {
+                if (sent.vanished && !lanes.vanished) {
+                    lanes.vanished = true;
+                    lanes.vanishedError = sent.error;
+                }
+                if (!lanes.error) {
+                    // Another lane's error ends the attempt; this part is sent again on retry.
+                    lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
+                    lanes.ended = true;
+                }
             }
         }
         lanes.busy[lane] = false;
@@ -766,11 +824,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     }
     for (auto& thread : threads)
         if (thread.joinable()) thread.join();
-    if (lanes.error) {
-        if (!lanes.vanished) return fail(lanes.error);
-        save({});
-        return {"failed", {}, lanes.error};
-    }
+    // S3 no longer has the upload, as any lane found: it may have been completed meanwhile,
+    // so the key decides, whatever error another lane reported first.
+    if (lanes.vanished) return settle(lanes.vanishedError, false);
+    if (lanes.error) return fail(lanes.error);
     if (int(done.size()) != parts) return fail({"s3_multipart_invalid", "A multipart part ended without a result", {}});
     report("uploading", completed);
     journal["phase"] = s3UploadPhaseName(S3UploadPhase::Completing);
@@ -797,50 +854,29 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     finish.SetMpuObjectSize(bytes);
     if (request.condition == "absent") finish.SetIfNoneMatch("*");
     else finish.SetIfMatch(aws(request.concurrencyToken));
-    bool uncertain = interruptedCompletion;
-    for (int attempt = 0; attempt < 3; ++attempt) {
-        ResponseIds ids;
-        watchIds(finish, ids);
-        QElapsedTimer timer;
-        timer.start();
-        const auto outcome = client.CompleteMultipartUpload(finish);
-        if (outcome.IsSuccess()) {
-            save({});
-            if (request.trace) {
-                try {
-                    request.trace(withIds({{"event", "complete"}, {"parts", int(done.size())}, {"bytes", double(bytes)}, {"attempt", attempt + 1},
-                                           {"elapsedMs", timer.elapsed()}}, ids, outcome.GetResult().GetRequestId()));
-                } catch (...) {}
-            }
-            const auto etag = qt(outcome.GetResult().GetETag());
-            // Plain-MD5 part ETags (no SSE-KMS) fix the object's ETag: MD5 of the part MD5s, a dash, the count.
-            const auto expectedEtag = QString::fromLatin1(composite.result().toHex()) + "-" + QString::number(done.size());
-            if (digestEtags && plainEtag(etag).contains('-') && plainEtag(etag) != expectedEtag)
-                return {"unknown", {}, {"s3_multipart_checksum_mismatch", "S3 completed the upload with a different part checksum than put.gd sent; inspect the object before relying on it", {}}};
-            return {"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, bytes, etag,
-                                        qt(outcome.GetResult().GetVersionId())), {}};
+    ResponseIds ids;
+    watchIds(finish, ids);
+    QElapsedTimer timer;
+    timer.start();
+    const auto outcome = client.CompleteMultipartUpload(finish);
+    if (outcome.IsSuccess()) {
+        save({});
+        if (request.trace) {
+            try {
+                request.trace(withIds({{"event", "complete"}, {"parts", int(done.size())}, {"bytes", double(bytes)}, {"attempt", 1},
+                                       {"elapsedMs", timer.elapsed()}}, ids, outcome.GetResult().GetRequestId()));
+            } catch (...) {}
         }
-        const auto error = partError(outcome.GetError(), S3Stage::UploadComplete, timer.elapsed(), 0);
-        const int status = int(outcome.GetError().GetResponseCode());
-        const bool conflict = status == 412 || status == 409;
-        uncertain = uncertain || ambiguous(outcome.GetError());
-        if (!ambiguous(outcome.GetError()) && !conflict && status != 404) return fail(error);
-        // A lost reply, a precondition failure or a vanished upload: check what the key holds.
-        const auto found = inspect(client, expected, true);
-        if (found.status == "own") {
-            save({});
-            return {"uploaded", found.receipt, {}};
-        }
-        if (found.status == "unknown") return {"unknown", {}, error};
-        if (found.status == "foreign") return fail(error, uncertain ? "unknown" : "collision");
-        if (conflict) return fail(error, uncertain ? "unknown" : "collision");
-        if (status == 404) {
-            save({});
-            return {uncertain ? "unknown" : "failed", {}, error};
-        }
-        // Missing after an uncertain completion: the upload still exists, so complete it again.
+        const auto etag = qt(outcome.GetResult().GetETag());
+        // Plain-MD5 part ETags (no SSE-KMS) fix the object's ETag: MD5 of the part MD5s, a dash, the count.
+        const auto expectedEtag = QString::fromLatin1(composite.result().toHex()) + "-" + QString::number(done.size());
+        if (digestEtags && plainEtag(etag).contains('-') && plainEtag(etag) != expectedEtag)
+            return {"unknown", {}, {"s3_multipart_checksum_mismatch", "S3 completed the upload with a different part checksum than put.gd sent; inspect the object before relying on it", {}}};
+        return {"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, bytes, etag,
+                                    qt(outcome.GetResult().GetVersionId())), {}};
     }
-    return {"unknown", {}, {"publication_unknown", "Publication remains uncertain at the saved object key", {}}};
+    const int status = int(outcome.GetError().GetResponseCode());
+    return settle(partError(outcome.GetError(), S3Stage::UploadComplete, timer.elapsed(), 0), status == 412 || status == 409);
 }
 // Test connection proves the extra multipart permissions on a synthetic key,
 // without sending a part: create (s3:PutObject), list (s3:ListMultipartUploadParts),
