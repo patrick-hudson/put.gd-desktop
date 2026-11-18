@@ -39,14 +39,25 @@ What is excused, and how:
   in the paragraph on the dependency-only lock-order report.
 - **Qt-internal races are not suppressed.** A `race:` rule would match its symbol anywhere in
   either access stack, or in a thread-creation stack, and could hide put.gd racing with Qt.
-  Reports are captured whole, and `tools/lab/tsan_summary.py` excuses only a diagnosed Qt
-  race (`KNOWN_QT_RACES`: Qt's `QThread::started` hand-off in `QNetworkAccessManager`, the
-  `QNetworkReply` destructor chain, QtDBus's own thread, and QtDBus's pending-call
-  bookkeeping) whose two racing accesses both start in a Qt library with no put.gd frame in
-  their top six frames. An entry that names a generic Qt function (`maybeSignalConnected`) also names the one Qt caller its
-  diagnosis covers (`QNetworkReplyHttpImplPrivate::postRequest`). A put.gd frame there, such as put.gd reading a `QNetworkReply` that
-  Qt destroys, makes the same report a put.gd one. Add an entry only after reading the report
-  and showing that both racing accesses are inside Qt. Never add a put.gd function.
+  Reports are captured whole, and `tools/lab/tsan_summary.py` excuses a report under one
+  strict rule, and nothing else:
+  - neither racing access stack contains a put.gd frame, in any of its frames (not only the
+    top ones);
+  - both stacks start in a Qt library;
+  - the report is a data race whose stack holds a diagnosed Qt race (`KNOWN_QT_RACES`: Qt's
+    `QThread::started` hand-off in `QNetworkAccessManager`, the `QNetworkReply` destructor
+    chain, QtDBus's own thread, and QtDBus's pending-call bookkeeping): its function is in the
+    top six frames of one stack, and its diagnosed Qt caller, when it names one (the generic
+    `maybeSignalConnected` counts only with `QNetworkReplyHttpImplPrivate::postRequest`), is in
+    that same stack.
+
+  The rule reads only the two racing access stacks (not thread-creation, mutex or allocation
+  stacks), and it does not prove that put.gd is uninvolved: it only refuses to excuse any
+  report in which put.gd code appears. One consequence is that a known Qt race whose
+  main-thread stack ends in put.gd's `main()` is reported, not excused. Every other report
+  fails a fuzzer seed, including a put.gd frame at any depth, such as put.gd reading a
+  `QNetworkReply` that Qt destroys. Add an entry only after reading the report. Never add a
+  put.gd function.
 
 The recording tests (`recording_storage_integration`, `recording_pipeline_throughput`)
 cannot be certified under ThreadSanitizer: GStreamer is not instrumented, and the one
@@ -61,13 +72,16 @@ and check the socket path first: a seed's session socket is `<out>/s<seed>/r/rt/
 and a Unix socket path has at most 107 bytes.
 
 ```sh
-out=/tmp/races-tsan-1   # new, short, private
-python3 -c 'import sys; p = sys.argv[1] + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out"
-export ACTION_FUZZ_SLOW=4          # every wait of the driver is multiplied by this
-python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt \
-  --tsan-prefix work/sanitizer-diagnosis --out "$out" \
-  --first-seed 1 --steps 120 --hours 3 --stress 2
+d=$(mktemp -d)        # a private parent (mode 0700)
+out="$d/tsan"         # a new child: race_loop.py makes it and refuses one that exists
+python3 -c 'import sys; p = sys.argv[1] + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out" &&
+  ACTION_FUZZ_SLOW=4 python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt \
+    --tsan-prefix work/sanitizer-diagnosis --out "$out" \
+    --first-seed 1 --steps 120 --hours 3 --stress 2
 ```
+
+`ACTION_FUZZ_SLOW` multiplies every wait of the driver. The launch runs only if the socket
+check passes.
 
 `--stress N` starts N busy loops of its own (stopped by PID) to shake the schedules. A seed
 that finds a report stops there and keeps `finding.json`, `steps.jsonl` and the reports in
@@ -94,15 +108,26 @@ the run:
 
 1. Coordinate with whoever else uses the host.
 2. Save the current value.
-3. Restore it on any exit or interrupt.
-4. Check that it was restored.
+3. Restore it when the run ends, however it ends.
+4. Read it back and fail loudly if it differs.
+
+Run the change and rr together in one subshell, so the restore cannot be skipped by leaving an
+interactive shell open:
 
 ```sh
-orig=$(cat /proc/sys/kernel/perf_event_paranoid)
-trap 'sudo -n sysctl -q kernel.perf_event_paranoid="$orig"; cat /proc/sys/kernel/perf_event_paranoid' EXIT
-trap 'exit 130' INT TERM
-sudo -n sysctl -q kernel.perf_event_paranoid=3   # the value rr named
-# ... rr runs ...
+(
+  orig=$(cat /proc/sys/kernel/perf_event_paranoid)
+  restore() {
+    sudo -n sysctl -q kernel.perf_event_paranoid="$orig"
+    now=$(cat /proc/sys/kernel/perf_event_paranoid)
+    [ "$now" = "$orig" ] || { echo "perf_event_paranoid is $now, not the saved $orig: restore it by hand" >&2; exit 99; }
+  }
+  trap restore EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  sudo -n sysctl -q kernel.perf_event_paranoid=3 || exit 1   # the value rr named
+  python3 -I tools/lab/rr_loop.py --rr ~/opt/rr-5.10.0/bin/rr ...   # or race_loop.py rr ...
+)
 ```
 
 **A pinned rr.** Use rr 5.10.0, not master, built into a private folder, not installed
@@ -125,9 +150,10 @@ which Qt issues for its data folders. That happens on any filesystem that answer
 and ext4 too (seen on k72's ext4 home). Put everything a recorded run writes on tmpfs, as
 absolute paths:
 
-- `TMPDIR`;
-- `--out` for `race_loop.py`;
-- `--run-dir` for `rr_loop.py` and for `action_fuzz.py`.
+- `--out` for `race_loop.py`, and `--run-dir` for `action_fuzz.py`. The fuzzer sets the
+  resident's `TMPDIR` to a private `tmp/` inside its run folder, so a tmpfs run folder covers it;
+- `--run-dir` and `TMPDIR` for `rr_loop.py`, which passes the caller's environment, `TMPDIR`
+  included, to the test it records.
 
 A per-user quota on `/dev/shm` (k72) can run out under rr traces: a seed then fails with
 "Disk quota exceeded" and its trace stays incomplete. Use a tmpfs without one, such as `/tmp` on k72.
@@ -143,8 +169,9 @@ A request timeout in the S3 worker (`curlCode` 28), a helper killed after its gr
 a Proton transport timeout under rr is most likely the slowdown. Raise the scale and compare
 with an unrecorded run before reporting it.
 
-**Finished traces.** A trace replays only if rr finished writing it: rr removes the
-`incomplete` marker from the trace folder when it does.
+**Finished traces.** A trace replays only if rr finished writing it. All three tools count a
+trace folder as complete only when it holds rr's `version` file and no `incomplete` marker,
+which rr removes when it finishes.
 
 - The fuzzer kills only rr's tracees, lets rr finish and exit, and reports each trace as
   complete or incomplete. It sends SIGTERM to rr only if rr does not exit by itself.
@@ -152,6 +179,16 @@ with an unrecorded run before reporting it.
   trace is replayable.
 - `race_loop.py` removes a clean seed's complete traces with `rr rm`, never the
   `latest-trace` link, and reports a removal that fails.
+
+**Stopping a loop.** Ctrl+C, or SIGTERM to the script alone, stops both loops cleanly:
+
+- `rr_loop.py` sends SIGTERM to its rr (through the pidfd it holds), waits for rr to finish
+  the trace, and says whether that trace is replayable.
+- `race_loop.py` forwards the signal to the running seed, which runs in a session of its own.
+  It waits until no process of that seed is left; the fuzzer inside stops its resident, rr and
+  receiver itself. Then it stops its busy loops.
+
+Both exit with 128 + the signal. The seed or run that was stopped is kept.
 
 **Replaying.** Let rr start GDB with your commands, so no server is left behind:
 
