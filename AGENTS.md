@@ -96,6 +96,11 @@ which CI checks with `contracts` alone. A doc edit pushed to a code pull request
 re-runs its whole build. Open the documentation pull request alongside its code
 pull request, link the two, and merge it after the code. `docs/release/build.md` and
 `docs/user/proton-drive.md` are package inputs and select every job anyway.
+Write PRs and issues in plain English, following `docs/automation/pr-and-issue-writing.md`:
+a title that names the behavior someone would notice (a conventional commit prefix on PR
+titles, the symptom on issue titles), one problem each, issues saying what happened, what
+was expected and how to reproduce it, and PR bodies giving **Problem.**, **Change.** and
+**Verification.**
 Promote `nightly` to `main` only through `tools/releases/promote.py --open` (a `release:
 promote nightly YY.MDD.N` pull request from `nightly`, merged with a merge commit);
 its merge tags the stable `vYY.MDD.N` and stages its draft. There is no candidate
