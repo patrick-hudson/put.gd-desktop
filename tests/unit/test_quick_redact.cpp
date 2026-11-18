@@ -275,6 +275,49 @@ private slots:
   QCOMPARE(out.at(0).hits,(QList<quickRedact::PatternHit>{{0,0,1},{0,1,1},{1,0,1},{1,1,1}}));
   QCOMPARE(out.at(1).hits,(QList<quickRedact::PatternHit>{{2,1,3}}));
  }
+ // Round 5 (M3): \K after \C leaves an empty match inside a surrogate pair;
+ // the retry starts on a whole character, so the pattern finishes and its
+ // ticket lands.
+ void emptyMatchInsideAPairStillFinishes() {
+  const auto candidates=words(QStringLiteral("😀 JIRA-1"));
+  const auto result=quickRedact::find(candidates,{"list"},patterns({QStringLiteral("JIRA-\\d|(?=😀)\\C\\K")}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),QStringList{"list: JIRA-1"});
+ }
+ // Round 5 (R1): an empty retry (\K after a letter) is never reported as a
+ // hit; the search moves on and finds the ticket.
+ void anEmptyRetryIsNeverAHit() {
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns({"a JIRA-1"},{R"((?=a)|a\K|JIRA-\d)"},[&](quickRedact::PatternOutcome outcome){out.append(outcome);});
+  QCOMPARE(out.size(),1);QVERIFY(out.first().finished);
+  QCOMPARE(out.first().hits,(QList<quickRedact::PatternHit>{{0,2,6}}));
+ }
+ // Round 5: ordinary patterns on text full of emoji and joined emoji
+ // sequences, on one line and across a wrap. Every hit lands, and every range
+ // starts and ends on a whole character at a word edge.
+ void ordinaryPatternsAmongEmoji() {
+  const QString family=QStringLiteral("👨‍👩‍👧"),flag=QStringLiteral("🏳️‍🌈");
+  const QString first=family+" JIRA-12 🎉JIRA-3 😀 quick",second="redact "+flag+" JIRA-77👍 x";
+  const QStringList list{R"(\bJIRA-\d+\b)",R"((?i)\bquick\sredact\b)"};
+  const auto candidates=words(first+" | "+second);
+  const auto result=quickRedact::find(candidates,{"list"},patterns(list));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),(QStringList{"list: JIRA-12",QStringLiteral("list: 🎉JIRA-3"),"list: quick redact",QStringLiteral("list: JIRA-77👍")}));
+  // The ranges themselves, over the subjects find sends: the two lines and their pair.
+  const QStringList subjects{first,second,first+"\n"+second};
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns(subjects,list,[&](quickRedact::PatternOutcome outcome){out.append(outcome);},{-1,-1,first.size()});
+  QStringList texts;
+  for(const auto& outcome:out){
+   QVERIFY(outcome.finished);
+   for(const auto& hit:outcome.hits){
+    const auto& text=subjects.at(hit.subject);const auto end=hit.start+hit.length;
+    QVERIFY(!text.at(hit.start).isLowSurrogate());QVERIFY(end==text.size()||!text.at(end).isLowSurrogate());
+    texts.append(text.mid(hit.start,hit.length));
+   }
+  }
+  QCOMPARE(texts,(QStringList{"JIRA-12","JIRA-3","JIRA-77","quick\nredact"}));
+ }
  // A pattern that does not compile is named as skipped, never silently empty.
  void aPatternThatDoesNotCompileIsSkipped() {
   const auto candidates=words("JIRA-1 TICKET2");

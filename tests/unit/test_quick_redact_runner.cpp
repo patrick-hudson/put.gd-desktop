@@ -144,6 +144,25 @@ private slots:
   QCOMPARE(found(candidates,*result),QStringList{"list: JIRA-9"});
   QCOMPARE(result->skippedPatterns,(QList<int>{0,1,2,3,5}));
  }
+ // Round 5 (S1): a malformed line still names its pattern. With a valid line
+ // for the same pattern before or after it, the pattern is skipped all the same.
+ void aMalformedLineSkipsItsPatternWhateverElseArrives() {
+  QTemporaryDir dir;QVERIFY(dir.isValid());
+  QFile script(dir.filePath("matcher"));QVERIFY(script.open(QIODevice::WriteOnly));
+  script.write("#!/bin/sh\n/bin/cat >/dev/null\n"
+   "printf '%s\\n' '{\"p\":0,\"f\":true}' '{\"p\":0,\"f\":true,\"h\":[[0,14,6]]}'\n"
+   "printf '%s\\n' '{\"p\":1,\"f\":true,\"h\":[[0,14,6]]}' '{\"p\":1,\"f\":true,\"h\":[[0,99,1]]}'\n"
+   "printf '%s\\n' '{\"p\":2,\"f\":true,\"h\":[[0,14,6]]}'\n");
+  script.close();QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  ui::setQuickRedactMatcherProgram(script.fileName());
+  const auto candidates=words("Hammond filed JIRA-9");
+  std::optional<quickRedact::Result> result;
+  ui::runQuickRedact(this,candidates,{"list"},quickRedact::Sources{{},{},{},{"a","b","c"}},[&](quickRedact::Result r){result=std::move(r);},1500);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.has_value(),5000);
+  ui::setQuickRedactMatcherProgram(QStringLiteral(PUTGD_UI_BINARY));
+  QCOMPARE(found(candidates,*result),QStringList{"list: JIRA-9"});
+  QCOMPARE(result->skippedPatterns,(QList<int>{0,1}));
+ }
  // Round 4 (S3): pair hits that do not cross the break are left out in the
  // child, so a pattern hitting every character of a large page still fits
  // under the child's cap (lines alone: 80 000 hits; with every pair: 238 400).

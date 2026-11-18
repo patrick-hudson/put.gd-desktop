@@ -612,15 +612,25 @@ void matchPatterns(const QStringList& subjects,const QStringList& patterns,const
   bool finished=pattern.isValid()&&longer.isValid();
   for(int s=0;finished&&s<subjects.size();++s){
    const auto& text=subjects.at(s);
-   for(qsizetype at=0;at<=text.size();){
+   // Global iteration as Qt's: the next start is the previous match's end;
+   // after an empty match, a non-empty one is tried at the same place
+   // (anchored, PCRE2_NOTEMPTY_ATSTART), else the start moves one whole code
+   // point. Every start, retries included, is first moved off the second half
+   // of a surrogate pair (\C and \K can leave a match there), and an empty
+   // match is never reported.
+   const auto whole=[&](qsizetype i){return lowSurrogateAt(text,i)?i+1:i;};
+   const auto nextPoint=[&](qsizetype i){return i+(i+1<text.size()&&text.at(i).isHighSurrogate()&&text.at(i+1).isLowSurrogate()?2:1);};
+   for(qsizetype at=0;(at=whole(at))<=text.size();){
     auto found=pattern.match(text,at);
     if(!found.isValid()){finished=false;break;}
     if(!found.hasMatch())break;
     if(found.capturedLength()==0){
-     const auto empty=found.capturedStart();
+     const auto empty=whole(found.capturedStart());
+     if(empty>text.size())break;
      const auto retry=longer.match(text,empty,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption);
      if(!retry.isValid()){finished=false;break;}
-     if(!retry.hasMatch()){at=empty+(lowSurrogateAt(text,empty+1)?2:1);continue;}
+     // An empty retry (\K can make one) counts as none: move on.
+     if(!retry.hasMatch()||retry.capturedLength()==0){at=nextPoint(empty);continue;}
      found=retry;
     }
     // A pair's hit counts only where it crosses the break (QuickRedact.h); the
@@ -628,8 +638,6 @@ void matchPatterns(const QStringList& subjects,const QStringList& patterns,const
     const auto lineBreak=lineBreaks.value(s,-1);
     if(lineBreak<0||(found.capturedStart()<=lineBreak&&found.capturedEnd()>lineBreak))outcome.hits.append({s,found.capturedStart(),found.capturedLength()});
     at=found.capturedEnd();
-    // \C can end a hit on half a character; the next search starts on a whole one.
-    if(lowSurrogateAt(text,at))++at;
    }
   }
   outcome.finished=finished;

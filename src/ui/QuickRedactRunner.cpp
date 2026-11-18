@@ -123,10 +123,14 @@ QList<editor::quickRedact::PatternOutcome> matchInChild(const QStringList& subje
   for(qsizetype end;(end=pending.indexOf('\n'))>=0;){
    QJsonParseError error{};const auto document=QJsonDocument::fromJson(pending.left(end),&error);pending.remove(0,end+1);
    if(error.error!=QJsonParseError::NoError||!document.isObject())continue;
-   auto outcome=outcomeFrom(document.object(),subjects);
-   if(outcome.pattern<0||outcome.pattern>=patterns.size())continue;
-   if(seen.contains(outcome.pattern)){seen[outcome.pattern].finished=false;seen[outcome.pattern].hits.clear();continue;}
-   seen.insert(outcome.pattern,std::move(outcome));
+   // The line's pattern as sent, read before the line is judged: a pattern
+   // with any malformed or second line is skipped, whatever else arrives.
+   const auto object=document.object();const auto raw=object["p"];
+   if(!raw.isDouble()||raw.toDouble()!=std::floor(raw.toDouble())||raw.toDouble()<0||raw.toDouble()>=double(patterns.size()))continue;
+   const int pattern=int(raw.toDouble());
+   auto outcome=outcomeFrom(object,subjects);
+   if(seen.contains(pattern)||outcome.pattern!=pattern){editor::quickRedact::PatternOutcome skipped;skipped.pattern=pattern;seen.insert(pattern,skipped);continue;}
+   seen.insert(pattern,std::move(outcome));
   }
  };
  while(process.state()!=QProcess::NotRunning&&seen.size()<patterns.size()&&!deadline.hasExpired()&&!cancel.load()){
