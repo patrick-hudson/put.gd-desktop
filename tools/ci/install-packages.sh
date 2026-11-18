@@ -20,6 +20,14 @@
 #                       offline attempt reads them through those sources, not the
 #                       host's, and a snapshot made in a container serves a runner.
 #   PUTGD_PKG_ATTEMPTS=0 skips the online attempts and installs from the snapshot.
+#   PUTGD_PKG_KEEP_SNAPSHOT=true leaves the snapshot as restored. A job that only
+#                       reads it sets this, so an online install early in the job
+#                       can't replace its metadata with newer metadata that its
+#                       .debs no longer match before a later install needs them.
+#   PUTGD_PKG_REUSE_METADATA=true (apt) makes a first attempt reuse the metadata an
+#                       earlier install of the same job downloaded, so packages added
+#                       to a snapshot match the packages already in it.
+# With --download-only (adding packages to a snapshot) there is no offline fallback.
 #   PUTGD_PKG_TIMEOUT   seconds one attempt may take (default 900)
 #   PUTGD_PKG_STALL     seconds an attempt may print nothing (default 600)
 # A stalled mirror connection can hang apt or dnf for good (#467): an attempt
@@ -104,7 +112,9 @@ online() {
   else
     # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
     [ -z "$interrupted" ] || bounded dpkg --configure -a || return
-    bounded apt-get update --error-on=any "${apt_network[@]}" "${extra[@]}" || return
+    if [ "$1" -gt 1 ] || [ -z "${PUTGD_PKG_REUSE_METADATA:-}" ] || ! compgen -G "$live/lists/*Packages*" >/dev/null; then
+      bounded apt-get update --error-on=any "${apt_network[@]}" "${extra[@]}" || return
+    fi
     [ ${#packages[@]} -eq 0 ] || DEBIAN_FRONTEND=noninteractive bounded apt-get install -y "${apt_network[@]}" \
       "${extra[@]}" "${options[@]}" "${packages[@]}"
   fi
@@ -203,7 +213,7 @@ for ((attempt = 1; attempt <= attempts; attempt++)); do
   deadline=$((SECONDS + limit))
   if online "$attempt" 2>&1 | tee "$log"; then
     [ "$attempt" -eq 1 ] || report notice "$attempt of $attempts" '**passed on retry**'
-    [ -z "$snapshot" ] || [ ${#packages[@]} -eq 0 ] || refresh_snapshot
+    [ -z "$snapshot" ] || [ ${#packages[@]} -eq 0 ] || [ -n "${PUTGD_PKG_KEEP_SNAPSHOT:-}" ] || refresh_snapshot
     exit 0
   fi
   error=$(failure)
@@ -225,6 +235,8 @@ done
 
 if [ ${#packages[@]} -eq 0 ]; then
   report error '-' '**failed**: package metadata could not be refreshed'
+elif [[ " ${options[*]} " == *" --download-only "* ]]; then
+  report error '-' '**failed**: the packages could not be downloaded into the snapshot'
 elif [ -n "$snapshot" ] && [ -f "$snapshot/putgd-snapshot" ]; then
   saved=$(cat "$snapshot/putgd-snapshot")
   rm -f "$log.stopped"

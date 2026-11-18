@@ -220,6 +220,60 @@ class InstallPackages(unittest.TestCase):
         self.assertIn('--no-download', calls[0])
         self.assertIn('installed offline from the package snapshot', summary)
 
+    def make_apt_snapshot(self):
+        (self.snapshot / 'lists').mkdir(parents=True)
+        (self.snapshot / 'archives').mkdir()
+        (self.snapshot / 'lists/ports_Packages').write_text('X 1.0\n')
+        (self.snapshot / 'archives/x_1.0_amd64.deb').write_text('x 1.0')
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+
+    def test_a_read_only_job_keeps_the_restored_snapshot_through_an_online_success(self):
+        # One install succeeds online after the mirror moved to X 2.0, the next finds every mirror down:
+        # the fallback must still see the snapshot's own metadata and .debs, not newer metadata.
+        self.make_apt_snapshot()
+        keep = dict(PUTGD_PKG_CACHE=str(self.snapshot), PUTGD_PKG_KEEP_SNAPSHOT='true')
+        result, calls, _ = self.run_script('apt-get', 'dwz', **keep)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn('autoclean', ' '.join(calls))
+        (self.snapshot.parent / (self.snapshot.name + '.live/lists/ports_Packages')).write_text('X 2.0\n')
+        self.assertFalse(self.github_env.exists())
+        self.calls.unlink()
+        (self.dir / 'count').unlink()
+        result, calls, _ = self.run_script('apt-get', 'extra', FAKE_FAILURES='9', **keep)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((self.snapshot / 'lists/ports_Packages').read_text(), 'X 1.0\n')
+        self.assertEqual((self.snapshot / 'archives/x_1.0_amd64.deb').read_text(), 'x 1.0')
+        self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', calls[-1])
+        self.assertIn('--no-download', calls[-1])
+
+    def test_an_editing_job_still_replaces_the_snapshot_after_an_online_success(self):
+        self.make_apt_snapshot()
+        result, calls, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('autoclean', ' '.join(calls))
+        self.assertEqual(self.github_env.read_text(), 'PUTGD_PKG_CACHE_REFRESHED=true\n')
+
+    def test_adding_packages_reuses_the_metadata_of_the_install_before_it(self):
+        self.make_apt_snapshot()
+        live = self.snapshot.parent / (self.snapshot.name + '.live/lists')
+        live.mkdir(parents=True)
+        (live / 'ports_Packages').write_text('X 1.0\n')
+        env = dict(PUTGD_PKG_CACHE=str(self.snapshot), PUTGD_PKG_REUSE_METADATA='true')
+        _, calls, _ = self.run_script('apt-get', '--download-only', 'dwz', **env)
+        self.assertEqual([call.split()[1] for call in calls], ['install', 'autoclean'])
+        self.assertIn('--download-only', calls[0])
+        self.calls.unlink()
+        _, calls, _ = self.run_script('apt-get', '--download-only', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(calls[0].split()[1], 'update')
+
+    def test_a_failed_download_into_the_snapshot_fails_and_never_installs_offline(self):
+        self.make_apt_snapshot()
+        result, calls, summary = self.run_script('apt-get', '--download-only', 'dwz', FAKE_FAILURES='9',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertNotIn('--no-download', ' '.join(calls))
+        self.assertIn('the packages could not be downloaded into the snapshot', summary)
+
     def assert_stalled_calls_were_stopped(self):
         for pid in (self.dir / 'pids').read_text().split():
             self.assertFalse(Path(f'/proc/{pid}').exists(), f'stalled package manager {pid} still runs')
