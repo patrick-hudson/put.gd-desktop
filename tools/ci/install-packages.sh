@@ -28,8 +28,10 @@
 #   PUTGD_PKG_TIMEOUT   seconds one attempt may take (default 900)
 #   PUTGD_PKG_STALL     seconds an attempt may print nothing (default 600)
 # A stalled mirror connection can hang apt or dnf for good (#467): an attempt
-# over either limit is stopped and counts as failed. Downloaded packages stay in
-# the cache, so the next attempt resumes. apt and dnf drop a connection that
+# over either limit is stopped and counts as failed. On apt that covers the update and
+# the download (`apt-get install --download-only`) only; the install of what was downloaded
+# (`--no-download`) and the offline install have no limit, so dpkg is never stopped halfway.
+# Downloaded packages stay in the cache, so the next attempt resumes. apt and dnf drop a connection that
 # moves nothing (apt) or under 1 kB/s (dnf) for 60 s and retry it themselves.
 # Every failed or stopped attempt and fallback is a warning annotation and a row in
 # $GITHUB_STEP_SUMMARY. The script fails when the snapshot cannot satisfy the
@@ -115,8 +117,13 @@ online() {
       echo 'E: no package indexes of an earlier install to reuse'
       return 1
     fi
-    [ ${#packages[@]} -eq 0 ] || DEBIAN_FRONTEND=noninteractive bounded apt-get install -y "${apt_network[@]}" \
-      "${extra[@]}" "${options[@]}" "${packages[@]}"
+    [ ${#packages[@]} -gt 0 ] || return 0
+    # Two phases, so the time limit can never stop dpkg halfway: a stopped download leaves the system
+    # untouched and the snapshot fallback starts from the state it was in, while a started install runs to the end.
+    DEBIAN_FRONTEND=noninteractive bounded apt-get install -y --download-only "${apt_network[@]}" \
+      "${extra[@]}" "${options[@]}" "${packages[@]}" || return
+    [[ " ${options[*]} " == *" --download-only "* ]] ||
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
   fi
 }
 
@@ -140,8 +147,9 @@ offline() {
   if [ "$manager" = dnf ]; then
     bounded dnf install -y --cacheonly "${extra[@]}" "${options[@]}" "${packages[@]}"
   else
-    [ -z "$interrupted" ] || bounded dpkg --configure -a || return
-    DEBIAN_FRONTEND=noninteractive bounded apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
+    [ -z "$interrupted" ] || dpkg --configure -a || return
+    # Nothing is downloaded, so no time limit that could stop dpkg halfway.
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
   fi
 }
 

@@ -62,7 +62,14 @@ case "$1" in
     count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
     if [ "$count" -le "${FAKE_STALLS:-0}" ]; then stall; fi
     if [ "$count" -le "${FAKE_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble/InRelease  Hash Sum mismatch'; exit 100; fi ;;
-  install) case " $* " in *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100 ;; esac
+  install)
+    # Only an install that is not --download-only changes the system: that is where dpkg runs.
+    case " $* " in
+      *' --download-only '*)
+        dcount=$(($(cat "$FAKE_COUNT.download" 2>/dev/null || echo 0) + 1)); echo "$dcount" > "$FAKE_COUNT.download"
+        if [ "$dcount" -le "${FAKE_DOWNLOAD_STALLS:-0}" ]; then stall; fi ;;
+      *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100; echo "installed: $*" >> "$FAKE_INSTALLED" ;;
+    esac
     icount=$(($(cat "$FAKE_COUNT.install" 2>/dev/null || echo 0) + 1)); echo "$icount" > "$FAKE_COUNT.install"
     if [ "$icount" -le "${FAKE_INSTALL_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/x.deb  Connection timed out'; exit 100; fi ;;
 esac
@@ -93,7 +100,7 @@ class InstallPackages(unittest.TestCase):
         env = {'PATH': str(self.bin), 'PUTGD_PKG_BACKOFF': '0', 'PUTGD_PKG_LABEL': 'native (test)',
                'GITHUB_STEP_SUMMARY': str(self.summary), 'GITHUB_ENV': str(self.github_env),
                'FAKE_CALLS': str(self.calls), 'FAKE_COUNT': str(self.dir / 'count'), 'FAKE_ERROR': MIRROR_ERROR,
-               'FAKE_PIDS': str(self.dir / 'pids'), 'STALL_LINE': STALL_LINE, **env}
+               'FAKE_PIDS': str(self.dir / 'pids'), 'FAKE_INSTALLED': str(self.dir / 'installed'), 'STALL_LINE': STALL_LINE, **env}
         result = subprocess.run([str(self.bin / 'bash'), str(SCRIPT), *args], env=env, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         calls = self.calls.read_text().splitlines() if self.calls.exists() else []
@@ -176,7 +183,10 @@ class InstallPackages(unittest.TestCase):
     def test_apt_retries_update_and_install_and_uses_the_snapshot_offline(self):
         result, calls, summary = self.run_script('apt-get', '--no-install-recommends', 'dwz', FAKE_FAILURES='1')
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual([call.split()[1] for call in calls], ['update', 'update', 'install'])
+        # Two phases: download everything, then install what was downloaded.
+        self.assertEqual([call.split()[1] for call in calls], ['update', 'update', 'install', 'install'])
+        self.assertIn('--download-only', calls[2])
+        self.assertIn('--no-download', calls[3])
         self.assertIn('--no-install-recommends dwz', calls[2])
         self.assertIn('Acquire::Retries=3', calls[0])
         self.assertIn('Hash Sum mismatch', summary)
@@ -273,6 +283,30 @@ class InstallPackages(unittest.TestCase):
         self.assertNotIn('--no-download', ' '.join(calls))
         self.assertIn('the packages could not be downloaded into the snapshot', summary)
 
+    def test_a_download_that_times_out_installs_nothing_and_the_snapshot_then_installs(self):
+        # The limit covers the download only. A timed-out download leaves dpkg untouched, so when every
+        # attempt fails the snapshot installs onto the system as it was, never onto a half-upgraded one.
+        self.make_apt_snapshot()
+        installed = self.dir / 'installed'
+        result, calls, summary = self.run_script('apt-get', 'dwz', FAKE_DOWNLOAD_STALLS='9', FAKE_STALL_MODE='trickle',
+                                                 PUTGD_PKG_ATTEMPTS='2', PUTGD_PKG_TIMEOUT='2',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assert_stalled_calls_were_stopped()
+        self.assertEqual([call.split()[1] for call in calls if '--configure' not in call],
+                         ['update', 'install', 'update', 'install', 'install'])
+        self.assertIn('--download-only', calls[1])
+        self.assertEqual(installed.read_text().count('installed:'), 1)
+        self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', installed.read_text())
+        self.assertIn('| 2 of 2 | **stopped** |', summary)
+        self.assertIn('installed offline from the package snapshot', summary)
+
+    def test_a_finished_download_is_installed_without_a_time_limit(self):
+        result, calls, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_TIMEOUT='1')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual([call.split()[1] for call in calls], ['update', 'install', 'install'])
+        self.assertEqual((self.dir / 'installed').read_text().count('installed:'), 1)
+
     def assert_stalled_calls_were_stopped(self):
         for pid in (self.dir / 'pids').read_text().split():
             self.assertFalse(Path(f'/proc/{pid}').exists(), f'stalled package manager {pid} still runs')
@@ -280,6 +314,8 @@ class InstallPackages(unittest.TestCase):
     def test_networked_calls_drop_dead_connections(self):
         _, calls, _ = self.run_script('apt-get', 'dwz')
         for call in calls:
+            if '--no-download' in call:
+                continue  # installs what was downloaded, no network
             self.assertIn('-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60', call)
         self.calls.unlink()
         _, calls, _ = self.run_script('dnf', 'mesa')
@@ -292,7 +328,7 @@ class InstallPackages(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 20)
         self.assert_stalled_calls_were_stopped()
         # The retry first finishes whatever dpkg work the stopped attempt left.
-        self.assertEqual([call.split()[1] for call in calls], ['update', '--configure', 'update', 'install'])
+        self.assertEqual([call.split()[1] for call in calls], ['update', '--configure', 'update', 'install', 'install'])
         self.assertIn('| 1 of 4 | **stopped**, retrying in 0 s with refreshed metadata | '
                       f'`printed nothing for 1 s after: {STALL_LINE}` |', summary)
         self.assertIn('| 2 of 4 | **passed on retry** |', summary)
@@ -351,7 +387,7 @@ class InstallPackages(unittest.TestCase):
         result, calls, summary = self.run_script('apt-get', 'dwz', **env)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn('https://archive.ubuntu.com/ubuntu/ noble InRelease', result.stdout)
-        self.assertEqual([call.split()[1] for call in calls], ['update', 'install'])
+        self.assertEqual([call.split()[1] for call in calls], ['update', 'install', 'install'])
         self.assertEqual(summary, '')
         self.assertFalse(self.github_env.exists())
 
