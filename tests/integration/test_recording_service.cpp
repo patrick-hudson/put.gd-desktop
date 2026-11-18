@@ -422,6 +422,31 @@ private slots:
   PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
   QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
  }
+ // V2: past an export's deadline the helper still exports: a second Upload or
+ // Save a copy is refused (recording_state) until its late result, so nothing is
+ // sent to the busy helper and the held answers stay held.
+ void noSecondExportWhileTheFirstIsFinishing(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;h.backend->deferExports=false;
+  const auto again=h.rec("upload",{{"id",id},{"revision",1}});
+  QCOMPARE(again.error.code,QString("recording_state"));QVERIFY(again.error.message.contains("still finishing"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","saveCopyRequested"},{"revision",1},{"path",h.dir.filePath("copy.mp4")}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("still finishing"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),0,200);
+  QCOMPARE(h.backend->exports,1);
+  h.backend->sink({{"id",id},{"event","lateResult"},{"command","export"},{"ok",false}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",2}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+ }
  // D32: Try again exports exactly the output of the failed press; once the
  // output changed it is refused (press Upload again), never exported with either.
  void retryExportsTheFailedRequestsOutput(){
