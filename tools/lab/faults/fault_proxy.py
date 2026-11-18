@@ -221,6 +221,10 @@ class Proxy:
                             state['c2s'] += keep
                         state['outcome'] = 'stalled'
                         time.sleep(plan.stall)
+                        # The connection then dies with a reset, as a timed-out path does. A clean close would look to a lenient server like a
+                        # request that ended after its headers.
+                        reset(source)
+                        reset(sink)
                         break
                     self.send(sink, data, plan, rng)
                     state['c2s'] += len(data)
