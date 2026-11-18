@@ -84,9 +84,9 @@ bool persistRemote(QSqlDatabase db,const QString& id,const QJsonObject& remote) 
 QString createHistory(const QString& table) {return "CREATE TABLE "+table+"(id TEXT PRIMARY KEY, operation_id TEXT NOT NULL,item_id TEXT NOT NULL,created TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,category TEXT NOT NULL,profile_id TEXT NOT NULL,upload_status TEXT NOT NULL,local_status TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,UNIQUE(operation_id,item_id))";}
 }
 QJsonObject HistoryPage::toJson() const {return {{"records",records},{"total",double(total)}};}
-HistoryStore::HistoryStore(QString path):root_(QFileInfo(path).absolutePath()) {
+HistoryStore::HistoryStore(QString path,int busyTimeoutMs):root_(QFileInfo(path).absolutePath()) {
  QDir().mkpath(QFileInfo(path).absolutePath()); QFile::setPermissions(QFileInfo(path).absolutePath(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
- connection_=QUuid::createUuid().toString();db_=QSqlDatabase::addDatabase("QSQLITE",connection_);db_.setDatabaseName(path);db_.setConnectOptions("QSQLITE_BUSY_TIMEOUT=10000");
+ connection_=QUuid::createUuid().toString();db_=QSqlDatabase::addDatabase("QSQLITE",connection_);db_.setDatabaseName(path);db_.setConnectOptions(QStringLiteral("QSQLITE_BUSY_TIMEOUT=%1").arg(busyTimeoutMs));
  if(!db_.open()) {error_=sqlError();return;} QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);error_=initialize();
 }
 HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::removeDatabase(connection_);}
