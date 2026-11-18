@@ -344,8 +344,9 @@ private:
  QString installation_;
  std::function<Error()> uploadGate_;
  Error startupError_;
- // Recovers the journal on a worker; a failure other than another resident owning it (a full disk, an I/O error, a database another tool
- // holds) is retried with a growing pause until it succeeds, so a fault that passes does not leave the resident dead until the next start.
+ // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile
+ // reports a stale lock it failed to remove the same way as a live owner) is retried with a growing pause until it succeeds, so a fault that
+ // passes does not leave the resident dead until the next start.
  void recoverJournal();
  int recoveryRetryMs_=2000,recoveryAttempts_=0;
 };

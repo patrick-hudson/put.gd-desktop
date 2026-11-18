@@ -269,6 +269,16 @@ private slots:
   QVERIFY(QDir().rmdir(root+"/history.sqlite"));  // the fault passes
   PUTGD_TRY_VERIFY(operations.ready());QVERIFY(!operations.notReadyError());
  }
+ // A lock that cannot be taken is retried too: QLockFile answers a stale lock it failed to remove (an I/O error) like a live owner, and a resident that
+ // starts while its predecessor is still leaving must not stay refused for good (#1576).
+ void journalLockHeldAtStartIsTakenOnceItIsReleased() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root));QLockFile owner(root+"/resident.lock");QVERIFY(owner.tryLock(0));
+  OperationService second(root,settings,registry,source);second.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(second.notReadyError().code=="journal_busy");QVERIFY(!second.ready());
+  owner.unlock();
+  PUTGD_TRY_VERIFY(second.ready());
+ }
  void committedAcquisitionRecoversAfterMissingItemCheckpoint() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5");Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));ArtifactStore artifacts(root+"/artifacts");auto acquired=artifacts.acquire(id,textPayload(),ResourceLimits{});QVERIFY(!acquired.error);Source source;source.payload=textPayload();OperationService ops(root,settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);QCOMPARE(recovered.items[0].artifact.sha256,acquired.artifacts[0].sha256);QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));QVERIFY(!store.operation(id).items[0].candidate.isEmpty());QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,0);
  }

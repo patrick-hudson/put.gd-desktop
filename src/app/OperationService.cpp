@@ -186,7 +186,7 @@ void OperationService::recoverJournal() {
 #endif
   emit initialized();
   if(ready_) {cleanupTimer_.start();QTimer::singleShot(cleanupSchedule_.startupDelayMs,this,&OperationService::cleanupExpired);}
-  else if(e.code!="journal_busy"&&!stopping_) {
+  else if(!stopping_) {
    const int pause=std::min(recoveryRetryMs_<<std::min(recoveryAttempts_,4),30000);
    ++recoveryAttempts_;
    QTimer::singleShot(pause,this,&OperationService::recoverJournal);
