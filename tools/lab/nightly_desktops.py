@@ -436,10 +436,6 @@ RECOVERY_SECONDS = 180
 # next cells run against a guest that cannot pass them, so the row stops.
 LOST_SESSION_ERRORS = frozenset(('resident quit transport unavailable; private session retained',
                                  'resident quit was rejected; private session retained'))
-# Cleanup errors that live only inside the guest, so retiring the guest resolves them. A lost
-# guest session also fails the `kill` of the notification monitor over the same dead transport,
-# so that message always arrives with the quit failure and must not block the recovery.
-GUEST_LOCAL_CLEANUP_ERRORS = LOST_SESSION_ERRORS | {'notification monitor cleanup unavailable'}
 
 
 def lost_guest_session(out):
@@ -576,7 +572,14 @@ def recover_guest(config, owner, out, cells):
     for path in evidence.glob('*/receipt.json'):
         environment = json.loads(path.read_text()).get('environment', {})
         errors = environment.get('cleanup_errors', [])
-        if (any(error not in GUEST_LOCAL_CLEANUP_ERRORS for error in errors) or
+        # A live destination that still holds an object or share link keeps its History row and credential
+        # reference in this guest. Retiring would discard the only way to remove it (never retire).
+        if environment.get('unresolved_live_cleanup'):
+            raise NotRun('guest retained: live remote cleanup unresolved in '+str(path)+'; resolve it before recovery')
+        # The receipt's own record of which cleanup errors only the guest holds (the guest was unreachable
+        # or its resident refused to quit). Retire only when every error is one of those.
+        guest_local = environment.get('guest_local_cleanup', [])
+        if (any(error not in guest_local for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
     if (run/'state.json').exists():
@@ -982,7 +985,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                     for receipt_path in rowout.glob('*/receipt.json'):
                         evidence = json.loads(receipt_path.read_text())
                         environment = evidence.get('environment', {})
-                        retained |= bool(environment.get('cleanup_errors'))
+                        retained |= bool(environment.get('cleanup_errors') or environment.get('unresolved_live_cleanup'))
                         retained |= 'retained' in str(environment.get('private_cleanup', ''))
                     if outstanding or retained:
                         reservation.update(retained=True, reason='guest retained; explicit cleanup recovery required')

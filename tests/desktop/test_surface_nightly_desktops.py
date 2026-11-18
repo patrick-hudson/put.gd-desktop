@@ -252,17 +252,29 @@ class NightlyTests(unittest.TestCase):
                 nightly.recover_row({}, reservation, 's', out, {})
             self.assertEqual(reservation, dict(run='/run'))
 
-    def test_guest_local_quit_loss_can_retire_but_unknown_cleanup_cannot(self):
-        for safe in (True, False):
-            with self.subTest(safe=safe), tempfile.TemporaryDirectory() as tmp:
+    def test_recovery_retires_only_when_every_cleanup_error_is_guest_local(self):
+        """The receipt says which errors only the guest holds; the wording of a message decides nothing."""
+        four = ['notification monitor cleanup unavailable',
+                'resident quit transport unavailable; private session retained',
+                'previous clipboard restoration unavailable; private session retained',
+                'exact mirrored KWin entry cleanup refused; private session retained']
+        cases = {
+            'one guest-unreachable error': (four[1:2], four[1:2], {}, True),
+            'four errors, the whole close unreachable': (four, four, {}, True),
+            'one error the guest answered': (four, four[:3], {}, False),
+            'unknown cleanup': (['fixture cleanup failed; publication outstanding'], four, {}, False),
+            'no structured record': (four[1:2], None, {}, False),
+            'unresolved live cleanup': (four, four, {'unresolved_live_cleanup': True}, False),
+            'live cleanup flag without errors': ([], [], {'unresolved_live_cleanup': True}, False),
+        }
+        for name, (errors, local, extra, safe) in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
-                # A lost session fails its notification monitor kill over the same dead transport.
-                messages = (['notification monitor cleanup unavailable',
-                             'resident quit transport unavailable; private session retained']
-                            if safe else ['fixture cleanup failed; publication outstanding'])
-                nightly.save(Path(owner['evidence'])/'flow/receipt.json', dict(environment=dict(
-                    cleanup_errors=messages, private_cleanup='not-owned-or-retained')))
+                environment = dict(cleanup_errors=errors, private_cleanup='not-owned-or-retained', **extra)
+                if local is not None:
+                    environment['guest_local_cleanup'] = local
+                nightly.save(Path(owner['evidence'])/'flow/receipt.json', dict(environment=environment))
                 with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
                         patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
                               proton if kw.get('resource') == 'proton' else desktop), \
@@ -272,7 +284,7 @@ class NightlyTests(unittest.TestCase):
                         retire.assert_called_once()
                         self.assertFalse(slot.exists())
                     else:
-                        with self.assertRaisesRegex(nightly.NotRun, 'private cleanup'):
+                        with self.assertRaisesRegex(nightly.NotRun, 'retained'):
                             nightly.recover_stale_guest(dict(host='d69'), out)
                         retire.assert_not_called()
                         self.assertTrue(slot.exists())
@@ -403,7 +415,8 @@ class NightlyTests(unittest.TestCase):
                 lock.return_value.release.assert_called_once()
                 self.assertFalse(slot.exists())
 
-    def lost_session_row(self, errors, rows=({'functional': 'blocked', 'note': 'target session command unavailable: LabError exit 255'},)):
+    def lost_session_row(self, errors, rows=({'functional': 'blocked', 'note': 'target session command unavailable: LabError exit 255'},),
+                         local=None, **extra):
         """Run a row whose first cell fails with the given cleanup errors (#1214)."""
         from tools.lab import lab, nightly_desktop_guest as guest
         with tempfile.TemporaryDirectory() as tmp:
@@ -430,7 +443,9 @@ class NightlyTests(unittest.TestCase):
                     cells.append(Path(argv[argv.index('--out')+1]).name)
                     target = Path(argv[argv.index('--out')+1])
                     target.mkdir()
-                    (target/'receipt.json').write_text(json.dumps(dict(environment=dict(cleanup_errors=errors), interactions=list(rows))))
+                    (target/'receipt.json').write_text(json.dumps(dict(environment=dict(
+                        cleanup_errors=errors, guest_local_cleanup=errors if local is None else local, **extra),
+                        interactions=list(rows))))
             observed = dict(nightly.cell(assertion='private target cleanup failed'),
                             observations=['target session command unavailable: LabError exit 255'])
             with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
@@ -464,12 +479,32 @@ class NightlyTests(unittest.TestCase):
         self.assertNotIn('cleanupBlocked', record)
 
     def test_lost_session_that_also_left_unsafe_cleanup_stays_retained(self):
-        record, cells, retire, slot = self.lost_session_row(['resident quit transport unavailable; private session retained',
-                                                             'previous clipboard restoration unavailable; private session retained'])
+        errors = ['resident quit transport unavailable; private session retained',
+                  'previous clipboard restoration unavailable; private session retained']
+        # The clipboard failure was an answer from the reachable guest, so the receipt does not call it guest-local.
+        record, cells, retire, slot = self.lost_session_row(errors, local=errors[:1])
         self.assertEqual(len(cells), 1)
         retire.assert_not_called()
         self.assertTrue(slot and record['cleanupBlocked'])
         self.assertTrue(record['notRunReason'].startswith('guest session lost in idle_memory attempt 1'))
+
+    def test_lost_session_with_every_cleanup_step_unreachable_is_retired(self):
+        record, cells, retire, slot = self.lost_session_row(
+            ['notification monitor cleanup unavailable',
+             'resident quit transport unavailable; private session retained',
+             'previous clipboard restoration unavailable; private session retained',
+             'exact mirrored KWin entry cleanup refused; private session retained'])
+        retire.assert_called_once()
+        self.assertFalse(slot)
+        self.assertNotIn('cleanupBlocked', record)
+
+    def test_unresolved_live_cleanup_keeps_the_guest_even_when_the_session_was_lost(self):
+        errors = ['notification monitor cleanup unavailable',
+                  'resident quit transport unavailable; private session retained']
+        record, cells, retire, slot = self.lost_session_row(errors, unresolved_live_cleanup=True)
+        retire.assert_not_called()
+        self.assertTrue(slot and record['cleanupBlocked'])
+        self.assertIn('live remote cleanup unresolved', record['notRunReason'])
 
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:

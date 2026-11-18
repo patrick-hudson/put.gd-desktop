@@ -111,6 +111,9 @@ def provider(scope):
     admit(ctx)
     ctx.fixture('app-profile')
     pending = {'remote': False}
+    # The run's receipt reads this dict at the end, so an unresolved remote object is recorded as a
+    # field of the receipt (recovery never retires a guest that holds its History and credential).
+    ctx.target.live_cleanup_pending = pending
     def guarded(function):
         def finish():
             if pending['remote']:

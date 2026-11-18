@@ -17,7 +17,7 @@ import time
 import uuid
 from tools.lab import lab, rfb
 from tools.lab.physical_host import PhysicalHost
-from .api import RecipeBlocked, RecipeFailed
+from .api import GuestUnreachable, RecipeBlocked, RecipeFailed
 from .catalog import image_modules
 from .critical import critical, entry
 
@@ -395,8 +395,8 @@ class Target:
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
             # Only the fixed exit status crosses the evidence boundary: 255 is SSH itself.
             status = re.search(r'\(exit (\d+)\)', str(error))
-            raise RecipeBlocked('target session command unavailable: ' + type(error).__name__ +
-                                (' exit ' + status[1] if status else '')) from error
+            raise GuestUnreachable('target session command unavailable: ' + type(error).__name__ +
+                                   (' exit ' + status[1] if status else '')) from error
 
     def identity(self):
         code="""import json,os,platform
@@ -783,7 +783,18 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         return self._rfb
 
     def close(self):
+        """Clean up; return the error messages. ``guest_local_cleanup`` lists those that only the guest holds.
+
+        A step records a message there when its failure is the guest being unreachable (or the resident
+        refusing to quit), because retiring the guest resolves it. Failures about anything else
+        (the host-side probe, VNC, a refused cleanup the guest answered) are errors only.
+        """
         errors=[]
+        self.guest_local_cleanup=local=[]
+        def record(message, guest_local):
+            errors.append(message)
+            if guest_local:
+                local.append(message)
         try:
             self._close_probe()
         except (OSError, subprocess.TimeoutExpired):
@@ -798,27 +809,28 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             try:
                 self.execute('kill '+str(self.monitor_pid)+' 2>/dev/null || true')
                 self.monitor_pid=None
-            except RecipeBlocked:
-                errors.append('notification monitor cleanup unavailable')
+            except RecipeBlocked as error:
+                record('notification monitor cleanup unavailable', isinstance(error, GuestUnreachable))
         if self.started:
             try:
                 result=self.cli('ui.quit')
                 if result['returncode']:
-                    errors.append('resident quit was rejected; private session retained')
+                    # The resident lives in the guest, so retiring the guest ends it.
+                    record('resident quit was rejected; private session retained', True)
                 else:
                     self.started=False
-            except RecipeBlocked:
-                errors.append('resident quit transport unavailable; private session retained')
+            except RecipeBlocked as error:
+                record('resident quit transport unavailable; private session retained', isinstance(error, GuestUnreachable))
         if getattr(self, 'clipboard_pid', None) or getattr(self, '_clipboard_lease', None):
             try:
                 self.restore_clipboard()
-            except RecipeBlocked:
-                errors.append('previous clipboard restoration unavailable; private session retained')
+            except RecipeBlocked as error:
+                record('previous clipboard restoration unavailable; private session retained', isinstance(error, GuestUnreachable))
         try:
             from .appimage import prepare
             prepare(self, cleanup=True)
-        except RecipeBlocked:
-            errors.append('exact mirrored KWin entry cleanup refused; private session retained')
+        except RecipeBlocked as error:
+            record('exact mirrored KWin entry cleanup refused; private session retained', isinstance(error, GuestUnreachable))
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.
@@ -852,6 +864,6 @@ shutil.rmtree(root)
                     self._created_root=False
                     self._owns_root=False
                     self.private_cleanup = 'resident-log-and-state-root-removed'
-            except RecipeBlocked:
-                errors.append('private session root cleanup unavailable')
+            except RecipeBlocked as error:
+                record('private session root cleanup unavailable', isinstance(error, GuestUnreachable))
         return errors

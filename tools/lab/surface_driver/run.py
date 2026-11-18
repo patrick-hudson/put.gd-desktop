@@ -813,6 +813,13 @@ def main(argv=None):
             clipboard_report = getattr(target, 'clipboard_report', None)
             if isinstance(clipboard_report, dict) and clipboard_report:
                 environment['clipboard_preservation'] = clipboard_report
+            # Structured recovery facts. Recovery trusts these, never the wording of an error or a note.
+            guest_local = getattr(target, 'guest_local_cleanup', None)
+            if cleanup:
+                environment['guest_local_cleanup'] = list(guest_local) if isinstance(guest_local, list) else []
+            live_pending = getattr(target, 'live_cleanup_pending', None)
+            if isinstance(live_pending, dict) and live_pending.get('remote'):
+                environment['unresolved_live_cleanup'] = True
             if cleanup:
                 environment['cleanup_errors']=cleanup
                 write_receipts(args.out,environment,rows,args.campaign,args.out/'coverage.json',evidence=evidence)
