@@ -490,10 +490,15 @@ class Resident:
     def third_party(path):
         """GStreamer's ORC JIT (the recording helper's probe) maps an executable file in XDG_RUNTIME_DIR and gets SIGBUS when that
         tmpfs is full. A helper dying on that is ORC's, not put.gd's; the resident and the run go on."""
-        try:
-            head = path.read_text(errors='replace')[:6000]
-        except OSError:
-            return False
+        head = ''
+        for _ in range(6):  # a report is written in pieces: wait for its stack before judging it
+            try:
+                head = path.read_text(errors='replace')[:6000]
+            except OSError:
+                return False
+            if 'ERROR: AddressSanitizer: BUS' not in head or 'orc_compiler_compile_program' in head or 'SUMMARY:' in head:
+                break
+            time.sleep(0.5)
         return 'ERROR: AddressSanitizer: BUS' in head and 'orc_compiler_compile_program' in head
 
     def log_problems(self):
@@ -657,6 +662,8 @@ class Fuzzer:
             return
         reply = self.resident.call('settings.importUploader', {'path': str(sxcu), 'expectedRevision': settings['metadata']['observedRevision'], 'credentialMode': 'session',
                                                                 'profileId': 'fuzz', 'label': 'Fuzz'})
+        if not isinstance(reply, dict) or 'profileId' not in reply:
+            raise Finding('setup', 'settings.importUploader did not import the receiver profile: %s' % str(reply)[:300])
         self.profile = reply['profileId']
         settings = self.resident.call('settings.get')
         self.resident.call('settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': str(self.run / 'archive')},
