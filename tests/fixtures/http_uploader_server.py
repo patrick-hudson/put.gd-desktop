@@ -61,6 +61,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def origin(self, host=None):
+        # PUTGD_HTTP_FIXTURE_TRUST_HOST: addresses name the host the request was sent to, so a fault proxy in front stays in the path of
+        # the file and deletion addresses too (the action-sequence fuzzer's fault mode).
+        sent_to = self.headers.get('Host') if os.environ.get('PUTGD_HTTP_FIXTURE_TRUST_HOST') and not host else None
+        if sent_to:
+            return 'http://' + sent_to
         return 'http://%s:%d' % (host or '127.0.0.1', self.server.server_address[1])
 
     def reply(self, code, body=b'', content_type='application/json', headers=None):

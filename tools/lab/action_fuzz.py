@@ -10,6 +10,11 @@ oracle, tests/fixtures/s3_server.py) and drives its session socket directly.
          bursts, outside edits of config.json, an unwritable archive, helpers killed or frozen on their own, graceful restarts
   crash  SIGKILL of the resident and its helpers at random points of uploads, deletions and settings writes (also a second
          kill during the recovery), then a restart and a check that it recovered
+  faults the OS and the network say no underneath the resident: an LD_PRELOAD shim (tools/lab/faults/faultshim.c) fails writes,
+         fsyncs, renames and opens with ENOSPC, EIO, EACCES, EROFS, EMFILE, short writes and a slow disk on the files of the
+         resident's roots; a TCP proxy (tools/lab/faults/fault_proxy.py) between it and the destination resets, cuts, stalls,
+         duplicates, throttles and delays; the open-file limit drops under it; an optional small filesystem is squeezed to
+         the brink of full. Every few steps the faults are lifted and the whole state is checked
 
 After every step it checks that the resident lives and the sanitizers wrote nothing; every few steps that History and the
 settings read back consistently; after every kill that config.json parses, history.sqlite passes its integrity check,
@@ -42,6 +47,9 @@ import time
 import urllib.request
 import zlib
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'faults'))  # python -I does not put the script's folder on the path
+import fault_control  # noqa: E402
+
 SOCKET_LIMIT = 107
 TOKEN = 'putgd-synthetic-uploader-token-not-real'
 # What a clean sanitizer run never writes: any of these in a log is a finding.
@@ -49,6 +57,8 @@ BAD_MARKERS = ('AddressSanitizer', 'LeakSanitizer', 'runtime error:', 'ThreadSan
                'Assertion', 'terminate called', 'Segmentation fault', 'QFATAL', 'Fatal:', 'double free', 'SUMMARY:')
 # Resident states that are not an answer to the call but the resident's own.
 BUSY_CODES = ('initializing', 'journal_busy')
+# A journal recovery that failed on an I/O error is retried by the resident (#1576) and answers with that error meanwhile.
+RETRYING_CODES = ('history_io',)
 
 
 class Finding(Exception):
@@ -260,6 +270,9 @@ class Resident:
             raise SystemExit('socket path %s is %d bytes (limit %d): use a shorter --run-dir' % (self.socket_path, len(self.socket_path.encode()), SOCKET_LIMIT))
         self.san = run / 'san'
         self.process = None
+        self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
+        self.memory_max = None  # fault mode: a memory cgroup limit (systemd-run --user --scope)
+        self.nofile = None    # fault mode: an open-file limit from the start
         self.starts = 0
         self.sequence = 0
         self.lock = threading.Lock()
@@ -270,28 +283,41 @@ class Resident:
         os.chmod(self.runtime, 0o700)
         self.san.mkdir(exist_ok=True)
         env = {k: os.environ[k] for k in ('PATH', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'XDG_DATA_DIRS') if k in os.environ}
+        env.update(self.extra_env)
         env.update(HOME=str(self.root / 'home'), XDG_CONFIG_HOME=str(self.root / 'config'), XDG_DATA_HOME=str(self.root / 'data'),
                    XDG_STATE_HOME=str(self.root / 'state'), XDG_CACHE_HOME=str(self.root / 'cache'), XDG_RUNTIME_DIR=str(self.runtime),
                    QT_QPA_PLATFORM='offscreen', PUTGD_STARTED_FOR_UPLOAD='1',
-                   ASAN_OPTIONS='halt_on_error=1:print_stacktrace=1:detect_leaks=1:detect_stack_use_after_return=1:strict_init_order=1:abort_on_error=0:log_path=%s/asan' % self.san,
+                   ASAN_OPTIONS='halt_on_error=1:print_stacktrace=1:detect_leaks=1:detect_stack_use_after_return=1:strict_init_order=1:abort_on_error=0:log_path=%s/asan%s' % (
+                       self.san, ':verify_asan_link_order=0' if 'LD_PRELOAD' in self.extra_env else ''),
                    UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=%s/ubsan' % self.san,
                    LSAN_OPTIONS='log_path=%s/lsan' % self.san)
         return env
+
+    def launch(self, log):
+        """Popen the resident, wrapped for a memory cgroup limit or an open-file limit when a fault mode asks for one."""
+        command, env = [str(self.build / 'putgd'), '--background'], self.environment()
+        if self.nofile:
+            command = ['prlimit', '--nofile=%d:%d' % (self.nofile, self.nofile), '--'] + command
+        if self.memory_max:
+            # A scope of the real user manager: it needs the real user bus, and the resident its private one, set by env(1) inside.
+            inner = ['env'] + ['%s=%s' % (k, v) for k, v in env.items()]
+            uid = os.getuid()
+            command = ['systemd-run', '--user', '--scope', '--quiet', '-p', 'MemoryMax=%s' % self.memory_max, '-p', 'MemorySwapMax=0', '--'] + inner + command
+            env = {'PATH': os.environ.get('PATH', ''), 'XDG_RUNTIME_DIR': '/run/user/%d' % uid, 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/%d/bus' % uid}
+        return subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
 
     def start_nowait(self):
         """Start the resident and return at once, for a kill during its recovery."""
         self.starts += 1
         log = open(self.run / 'logs' / ('resident-%d.log' % self.starts), 'w')
-        self.process = subprocess.Popen([str(self.build / 'putgd'), '--background'], env=self.environment(), stdin=subprocess.DEVNULL, stdout=log,
-                                        stderr=subprocess.STDOUT, start_new_session=True)
+        self.process = self.launch(log)
 
     def start(self):
         if self.process is not None and self.process.poll() is None:
             raise Finding('driver', 'start with a live resident')
         self.starts += 1
         log = open(self.run / 'logs' / ('resident-%d.log' % self.starts), 'w')
-        self.process = subprocess.Popen([str(self.build / 'putgd'), '--background'], env=self.environment(), stdin=subprocess.DEVNULL, stdout=log,
-                                        stderr=subprocess.STDOUT, start_new_session=True)
+        self.process = self.launch(log)
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
@@ -444,7 +470,10 @@ class Resident:
         for pid in self.children():
             try:
                 name = Path('/proc/%d/comm' % pid).read_text().strip()
-                reply = subprocess.run(['eu-stack', '-p', str(pid)], capture_output=True, text=True, timeout=120)
+                if shutil.which('eu-stack'):
+                    reply = subprocess.run(['eu-stack', '-p', str(pid)], capture_output=True, text=True, timeout=120)
+                else:  # a builder without elfutils: gdb attaches to the resident's own children
+                    reply = subprocess.run(['gdb', '-p', str(pid), '-batch', '-ex', 'thread apply all bt'], capture_output=True, text=True, timeout=180)
                 out.append('=== %s (%d)\n%s%s' % (name, pid, reply.stdout, reply.stderr[-300:]))
             except (OSError, subprocess.TimeoutExpired) as error:
                 out.append('=== pid %d: no stack (%s)' % (pid, error))
@@ -512,9 +541,22 @@ class Fuzzer:
         self.options = options
         self.rng = random.Random(options.seed)
         self.run = Path(options.run_dir)
-        for name in ('logs', 'fixtures', 'saves', 'archive'):
+        for name in ('logs', 'fixtures', 'saves') + (() if options.small_fs else ('archive',)):
             (self.run / name).mkdir(parents=True, exist_ok=True)
         self.resident = Resident(self.run, options.build)
+        self.faults = None
+        self.proxy_port = None
+        self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
+        for flag, folders in ((options.small_fs, ('config', 'data', 'state', 'cache')), (options.small_rt, ('rt',))):
+            if flag:
+                # The resident's roots (and the archive) live on a small filesystem, made by tools/lab/faults/smallfs.sh, that a fault fills.
+                self.resident.root.mkdir(parents=True, exist_ok=True)
+                for name in folders + (('archive',) if flag is options.small_fs else ()):
+                    target = Path(flag) / name
+                    target.mkdir(exist_ok=True)
+                    os.chmod(target, 0o700)
+                    link = (self.run if name == 'archive' else self.resident.root) / name
+                    link.symlink_to(target)
         self.receiver = None
         self.fixtures = {}
         self.profile = None
@@ -547,12 +589,16 @@ class Fuzzer:
             # Over put.gd's multipart threshold (64 MiB), so the multipart journal and its abort are exercised.
             (self.run / 'fixtures' / 'multi.bin').write_bytes(os.urandom(65 * 1024 * 1024))
             self.multi = self.run / 'fixtures' / 'multi.bin'
+        if self.options.mode == 'faults':
+            os.environ['PUTGD_HTTP_FIXTURE_TRUST_HOST'] = '1'  # the file and deletion addresses stay behind the proxy too
         source = Path(self.options.fixture_server) if self.options.fixture_server else Path(__file__).resolve().parents[2] / 'tests/fixtures/http_uploader_server.py'
         if self.options.destination == 's3':
             self.receiver = S3Receiver(source.with_name('s3_server.py'), self.run)
         else:
             self.receiver = Receiver(source, self.run)
         self.receiver.reset()
+        if self.options.mode == 'faults':
+            self.setup_faults()
         self.resident.start()
         if self.options.destination == 's3':
             self.add_s3_profile()
@@ -568,7 +614,7 @@ class Fuzzer:
         if not existing:
             profile = json.loads(json.dumps(self.resident.call('settings.developmentTemplate')['document']['profiles'][0]))
             profile.update(id='s3fuzz', label='S3 fuzz', credentials={'mode': 'session', 'reference': None})
-            profile['settings'].update(endpoint=self.receiver.base, bucket='isolated-fixture', region='eu-west-3', objectPrefix='p', aclMode='omit',
+            profile['settings'].update(endpoint=self.endpoint(), bucket='isolated-fixture', region='eu-west-3', objectPrefix='p', aclMode='omit',
                                        publicUrlBase=None, requestTimeoutMs=8000, connectTimeoutMs=1000)
             document['profiles'] = (document.get('profiles') or []) + [profile]
             self.resident.call('settings.save', {'document': document, 'expectedRevision': settings['metadata']['observedRevision']})
@@ -581,7 +627,7 @@ class Fuzzer:
     def import_uploader(self):
         sxcu = self.run / 'fuzz.sxcu'
         sxcu.write_text(json.dumps({'Version': '17.0.0', 'Name': 'fuzz receiver', 'DestinationType': 'ImageUploader, TextUploader, FileUploader',
-                                    'RequestMethod': 'POST', 'RequestURL': self.receiver.base + '/upload/json', 'Headers': {'Authorization': TOKEN},
+                                    'RequestMethod': 'POST', 'RequestURL': self.endpoint() + '/upload/json', 'Headers': {'Authorization': TOKEN},
                                     'Body': 'MultipartFormData', 'FileFormName': 'file', 'URL': '{json:files[0].url}',
                                     'DeletionURL': '{json:files[0].delete}'}))
         os.chmod(sxcu, 0o600)
@@ -668,6 +714,11 @@ class Fuzzer:
         error = reply.get('error') or {}
         if method == 'editor.open' and reply.get('ok') and (reply.get('result') or {}).get('operationId'):
             self.open_editors.add(reply['result']['operationId'])
+        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict):
+            self.retried.add(params.get('id'))
+        if method == 'upload.files' and isinstance(params, dict) and isinstance(params.get('paths'), list):
+            paths = [p for p in params['paths'] if isinstance(p, str)]
+            self.duplicate_names.update(Path(p).name for p in paths if paths.count(p) > 1)  # the same file twice in one call is two copies by request
         if method in ('editor.cancel', 'editor.submit') and reply.get('ok') and isinstance(params, dict):
             self.open_editors.discard(params.get('id'))
         key = '%s %s' % (method, 'ok' if reply.get('ok') else error.get('code'))
@@ -1218,6 +1269,8 @@ class Fuzzer:
 
     def a_restart(self):
         """A graceful restart in the middle of a sequence: ui.quit or a termination signal, then start again with the same roots."""
+        if self.faults and self.options.clean_restarts:
+            self.faults.write_spec([])  # the start itself is not under a file-system fault
         self.shutdown_and_check(self.rng.choice(('ui.quit', 'ui.quit', 'SIGTERM', 'SIGINT')))
         self.resident.start()
         self.import_uploader()
@@ -1312,6 +1365,168 @@ class Fuzzer:
             time.sleep(0.5)
         self.log('drain-timeout', seconds=seconds, active=self.active())
         return False
+
+
+    # --- fault mode: the OS and the network say no
+
+    def endpoint(self):
+        """Where put.gd sends its uploads: the fault proxy in front of the receiver in fault mode, else the receiver itself."""
+        return 'http://127.0.0.1:%d' % self.proxy_port if self.proxy_port else self.receiver.base
+
+    def setup_faults(self):
+        options = self.options
+        self.faults = fault_control.FaultControl(self.run, random.Random(options.seed ^ 0x5eed), self.fault_classes, Path(__file__).resolve().parent / 'faults',
+                                                 small_fs=options.small_fs, small_rt=options.small_rt, log=self.log, seed=options.seed)
+        self.resident.extra_env = self.faults.environment()
+        if options.nofile:
+            self.resident.nofile = options.nofile
+        if options.memory_max:
+            self.resident.memory_max = options.memory_max
+        if 'net' in self.fault_classes:
+            self.proxy_port = self.faults.start_proxy(self.receiver.port)
+
+    FAULT_ACTIONS = [('upload', 12), ('upload_cancel', 2), ('history', 4), ('detail', 3), ('delete', 6), ('settings', 8), ('operations', 6), ('burst', 3),
+                     ('receiver_rule', 4), ('restart', 1), ('editor_open', 1), ('editor_session', 2), ('editor_apply', 1), ('editor_end', 1), ('cache_clear', 1),
+                     ('upload_weird', 2), ('fault_fs', 6), ('fault_net', 6), ('fault_squeeze', 3), ('fault_res', 1), ('fault_clear', 4)]
+
+    def a_cache_clear(self):
+        self.call('cache.clear', {}, timeout=120)
+
+    def a_fault_fs(self):
+        if 'fs' in self.fault_classes:
+            self.faults.write_spec(self.faults.random_fs_rules())
+
+    def a_fault_net(self):
+        if 'net' in self.fault_classes:
+            self.faults.set_net(self.faults.random_net_profile())
+
+    def a_fault_squeeze(self):
+        small = self.faults.small_fs if 'fs' in self.fault_classes else None
+        if small:
+            # put.gd keeps 1 GiB of the disk free and refuses work below that with disk_space_insufficient; the interesting squeeze is the margin
+            # just above it, where the pre-flight passes and a write then runs out (or something else takes the space meanwhile).
+            keep = max(0, self.options.reserve + self.faults.rng.choice((-(1 << 20), 0, 16 * 1024, 200 * 1024, 1 << 20, 4 << 20, 32 << 20)))
+            small.squeeze(keep)
+            self.log('fault-squeeze', free=small.free())
+        small = self.faults.small_rt if 'res' in self.fault_classes else None
+        if small and self.faults.rng.random() < 0.5:
+            small.squeeze(self.faults.rng.choice((0, 4096)))
+
+    def a_fault_res(self):
+        """The resident hits its open-file limit for a moment, with an upload and a deletion starting under it, then gets its limit back."""
+        if 'res' not in self.fault_classes or not self.resident.alive():
+            return
+        rng = self.faults.rng
+        self.faults.lower_nofile(self.resident.process.pid, rng.choice((0, 1, 3, 8, 30)))
+        paths = [str(self.new_upload_file()) for _ in range(rng.choice((1, 2, 4)))]
+        threads = [threading.Thread(target=lambda: self.resident.call('upload.files', {'paths': paths, 'profileId': self.profile}, timeout=120, raw=True) and None, daemon=True)]
+        for thread in threads:
+            thread.start()
+        time.sleep(rng.choice((0.3, 1.0, 2.5)))
+        self.faults.restore_nofile(self.resident_pids())
+        for thread in threads:
+            thread.join(150)
+
+    def a_fault_clear(self):
+        """Lift one kind of fault, or all of them, the way a disk gets space again or a network comes back."""
+        rng = self.faults.rng
+        which = rng.choice(('fs', 'net', 'space', 'all'))
+        if which in ('fs', 'all'):
+            self.faults.write_spec([])
+        if which in ('net', 'all') and self.faults.proxy:
+            self.faults.proxy.clear()
+        if which in ('space', 'all'):
+            for small in (self.faults.small_fs, self.faults.small_rt):
+                if small:
+                    small.release()
+        if which == 'all':
+            self.faults.restore_nofile(self.resident_pids())
+
+    def resident_pids(self):
+        return [self.resident.process.pid] if self.resident.alive() else []
+
+    def run_faults(self):
+        self.setup()
+        names = [name for name, weight in self.FAULT_ACTIONS for _ in range(weight)]
+        try:
+            for self.step_index in range(1, self.options.steps + 1):
+                action = self.rng.choice(names)
+                self.log('step', name=action)
+                self.act(action)
+                time.sleep(self.rng.choice((0, 0, 0, 0, 0.02, 0.1, 0.5)))
+                self.sweep()
+                self.check_alive()
+                self.check_sanitizers()
+                if self.step_index % self.options.epoch == 0 and self.step_index < self.options.steps:
+                    self.epoch_check()
+            self.epoch_check(final=True)
+            self.shutdown_and_check()
+        except Finding:
+            self.keep_receiver_state()
+            raise
+        finally:
+            self.receiver.stop()
+            if self.faults:
+                self.faults.stop()
+            self.restore_permissions()
+
+    def keep_receiver_state(self):
+        """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
+        try:
+            state = self.receiver.state()
+            (self.run / 'receiver-state.json').write_text(json.dumps({'events': state.get('events'), 'files': state.get('files'), 'uploads': state.get('uploads')}, default=str)[:20_000_000])
+        except (OSError, ValueError):
+            pass
+
+    def epoch_check(self, final=False):
+        """Lift every fault and require the whole state to be sound: nothing stuck, the files intact, History agreeing with the server, and a
+        new upload, a settings write and a History write all working again (a full disk recovers once space is back)."""
+        self.log('epoch-check', final=final)
+        self.faults.clear_all(self.resident_pids())
+        self.receiver.rules([])
+        time.sleep(0.3)
+        self.wait_journal(120)  # a startup recovery that failed under a fault must finish once the fault is gone
+        for identifier in sorted(self.open_editors):  # an editor session waits for its user for ever: close them, the uploads are what is checked
+            self.call('editor.cancel', {'id': identifier}, timeout=60)
+        if not self.drain(120):
+            self.settle()
+        self.check_alive()
+        self.check_sanitizers()
+        self.check_files_after_kill()
+        self.verify_unknown_kept()
+        self.verify_rows()
+        self.probe_recovery()
+        self.check_sanitizers()
+        self.deep_check()
+        self.log('epoch-ok', rss=self.resident.rss_kib())
+
+    def verify_unknown_kept(self):
+        """An upload that was unknown and whose copy is on the server must still say so (#1572): never plain failed, cancelled or vanished."""
+        stored = self.receiver.stored()
+        for row in self.rows():
+            digest = row.get('sha256')
+            if 'unknown' in self.seen.get(row.get('id'), ()) and row.get('uploadStatus') in ('failed', 'cancelled', 'canceled') and stored.get(digest) \
+                    and not (row.get('receipt') or {}).get('directUrl'):
+                raise Finding('unknown-lost', 'History row %s was unknown and is now %s while the server holds its content %s: the warning that a copy may be on the server is gone\nrow: %s' % (
+                    row.get('id'), row.get('uploadStatus'), stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'error')}, default=str)))
+
+    def probe_recovery(self):
+        """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
+        before = self.receiver.upload_events()
+        path = self.new_upload_file('notes.txt')
+        reply = self.call('upload.files', {'paths': [str(path)], 'profileId': self.profile}, timeout=90)
+        if not reply.get('ok'):
+            raise Finding('not-recovered', 'upload.files fails after every fault was lifted: %s' % str(reply.get('error'))[:300])
+        operation = ((reply.get('result') or {}).get('operation') or {}).get('id')
+        if not self.drain(90):
+            raise Finding('not-recovered', 'the probe upload %s stays active 90 s after every fault was lifted' % operation)
+        rows = [row for row in self.rows() if row.get('operationId') == operation]
+        if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
+            raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
+                operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
+        patched = self.call('settings.patch', {'patch': {'retention': {'recentActivityLimit': 100 + self.step_index % 50}}, 'expectedRevision': self.revision()})
+        if not patched.get('ok'):
+            raise Finding('not-recovered', 'settings.patch fails after every fault was lifted: %s' % str(patched.get('error'))[:300])
 
     # --- the loop
 
@@ -1518,6 +1733,8 @@ class Fuzzer:
             for row in batch:
                 self.seen.setdefault(row.get('id'), set()).add(row.get('uploadStatus'))
                 self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
+                self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
+                self.digest_names.setdefault(row.get('sha256'), set()).add(row.get('name'))
             found.extend(batch)
             if len(batch) < 200:
                 return found
@@ -1533,7 +1750,7 @@ class Fuzzer:
                 if time.monotonic() - started > 20:
                     self.log('slow-journal-recovery', seconds=round(time.monotonic() - started, 1))
                 return
-            if (reply.get('error') or {}).get('code') not in BUSY_CODES:
+            if (reply.get('error') or {}).get('code') not in BUSY_CODES + RETRYING_CODES:
                 raise Finding('recovery', 'operation.recent fails after a kill: %s' % str(reply)[:300])
             time.sleep(0.3)
         holders = []
@@ -1561,11 +1778,34 @@ class Fuzzer:
         for operation in recent['result'].get('operations') or []:
             if operation.get('state') in ('accepted', 'acquiring', 'running', 'uploading', 'publishing'):
                 raise Finding('recovery', 'operation %s is %s/%s after the restart with nothing active' % (operation.get('id'), operation.get('state'), operation.get('phase')))
+        rows, stored, snapshot, by_status = self.verify_rows()
+        self.log('recovered', rows={k: len(v) for k, v in by_status.items()}, stored=len(stored))
+        if self.delete_operation:
+            self.finish_deletion(rows)
+        # Retry what the kill interrupted: every retried file must end up on the server once or be reported.
+        if self.rng.random() < 0.5 and self.operations_to_retry():
+            self.retry_interrupted({row.get('sha256'): row.get('uploadStatus') for row in rows}, {d: len(v) for d, v in stored.items()})
+        if self.options.destination == 's3' and self.rng.random() < 0.25:
+            self.check_multipart_cleanup()
+        self.check_sanitizers_after_kill()
+        self.deep_check()
+
+    def duplicate_allowed(self, digest):
+        """A second copy is explained by an unknown outcome the user retried (the custom uploader cannot look a file up)."""
+        return (digest in self.expected_duplicates or digest in self.retried_digests() or 'unknown' in self.seen_digest.get(digest, ())
+                or bool(self.digest_names.get(digest, set()) & self.duplicate_names))
+
+    def retried_digests(self):
+        return {d for d, operations in self.digest_operations.items() if operations & self.retried}
+
+    def verify_rows(self):
+        """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
+        server that History does not know, no unexplained second copy, deletions agreeing. Returns (rows, stored, snapshot, by_status)."""
         rows = self.rows()
         stored = self.receiver.stored()
         snapshot = self.receiver.snapshot()
         for digest, files in stored.items():
-            if len(files) > 1 and digest not in self.expected_duplicates:
+            if len(files) > 1 and not self.duplicate_allowed(digest):
                 raise Finding('duplicate-upload', 'the receiver stored the same content %d times (sha %s): %s' % (len(files), digest[:12], files))
         by_status = {}
         for row in rows:
@@ -1576,7 +1816,7 @@ class Fuzzer:
             digest = row.get('sha256')
             # A deletion that was tried (its outcome may be unknown after a lost reply) explains a file that is gone.
             removed = row.get('remoteStatus') not in ('not_requested', None) and self.receiver.remote(row, snapshot) == 'gone'
-            if status == 'uploaded' and digest and digest not in self.expected_duplicates and len(stored.get(digest, [])) != 1:
+            if status == 'uploaded' and digest and not self.duplicate_allowed(digest) and len(stored.get(digest, [])) != 1:
                 if not self.row_removed_by_delete(row) and not removed:
                     raise Finding('recovery', 'History row %s is uploaded but the receiver holds it %d times' % (row.get('id'), len(stored.get(digest, []))))
             # A retry that fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss.
@@ -1602,16 +1842,7 @@ class Fuzzer:
                 len(orphans), [d[:12] for d in orphans[:3]],
                 json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'name', 'sha256', 'bytes')} for row in rows]),
                 [self.receiver.describe(d) for d in orphans]))
-        self.log('recovered', rows={k: len(v) for k, v in by_status.items()}, stored=len(stored))
-        if self.delete_operation:
-            self.finish_deletion(rows)
-        # Retry what the kill interrupted: every retried file must end up on the server once or be reported.
-        if self.rng.random() < 0.5 and self.operations_to_retry():
-            self.retry_interrupted({row.get('sha256'): row.get('uploadStatus') for row in rows}, {d: len(v) for d, v in stored.items()})
-        if self.options.destination == 's3' and self.rng.random() < 0.25:
-            self.check_multipart_cleanup()
-        self.check_sanitizers_after_kill()
-        self.deep_check()
+        return rows, stored, snapshot, by_status
 
     def journal_ids(self):
         found = set()
@@ -1647,6 +1878,10 @@ class Fuzzer:
     deleting = set()
     seen = {}
     seen_digest = {}
+    digest_operations = {}
+    digest_names = {}
+    duplicate_names = set()
+    retried = set()
 
     def finish_deletion(self, rows):
         """The kill came during a deletion: inspect it, retry it, and require every chosen row removed on both sides."""
@@ -1725,6 +1960,9 @@ def write_finding(fuzzer, error):
               'rss_samples': fuzzer.rss[-20:]}
     if error.kind in ('hang', 'transport') and fuzzer.resident.alive():
         (run / 'stacks.txt').write_text(fuzzer.resident.stacks())
+    if getattr(fuzzer, 'faults', None):
+        record['fault_rules'] = fuzzer.faults.rules
+        record['fault_log_tail'] = fuzzer.faults.tail(60)
     (run / 'finding.json').write_text(json.dumps(record, indent=1))
     print('FINDING %s at step %d (seed %d): %s' % (error.kind, fuzzer.step_index, fuzzer.options.seed, str(error.detail)[:600]), flush=True)
     for path in fuzzer.resident.sanitizer_output()[:3]:
@@ -1734,7 +1972,7 @@ def write_finding(fuzzer, error):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('mode', choices=('run', 'crash'))
+    parser.add_argument('mode', choices=('run', 'crash', 'faults'))
     parser.add_argument('--build', required=True, help='the sanitizer build folder holding putgd, putgd-ui and the helpers')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--steps', type=int, default=300)
@@ -1743,6 +1981,15 @@ def main():
     parser.add_argument('--fixture-server', help='tests/fixtures/http_uploader_server.py when not run from the repository')
     parser.add_argument('--destination', choices=('http', 's3'), default='http', help='the loopback destination: the custom uploader or put.gd\'s S3 provider')
     parser.add_argument('--verbose', action='store_true')
+    faults = parser.add_argument_group('faults mode')
+    faults.add_argument('--fault-classes', default='fs,net', help='comma list of fs (the LD_PRELOAD shim and the small filesystem), net (the proxy), res (open files, runtime dir)')
+    faults.add_argument('--small-fs', help='a small filesystem (tools/lab/faults/smallfs.sh mount) the resident\'s config, data, state, cache and archive live on')
+    faults.add_argument('--small-rt', help='a small filesystem the resident\'s runtime directory lives on (keep the path short: the session socket is in it)')
+    faults.add_argument('--reserve', type=int, default=1 << 30, help='the free space put.gd keeps on its data disk (bytes); squeezes aim at the margin above it')
+    faults.add_argument('--clean-restarts', action='store_true', help='lift file-system faults before a restart, so a start under a fault (a known class of bugs) does not end every run')
+    faults.add_argument('--epoch', type=int, default=40, help='steps between lifting every fault and checking the whole state')
+    faults.add_argument('--nofile', type=int, help='start the resident with this open-file limit')
+    faults.add_argument('--memory-max', help='start the resident in a systemd-run --user scope with this MemoryMax (e.g. 600M)')
     options = parser.parse_args()
     if not options.run_dir:
         options.run_dir = str(Path.home() / 'work' / 'apptest-runs' / ('%s-%d' % (options.mode, options.seed)))
@@ -1753,7 +2000,7 @@ def main():
     print('seed %d mode %s steps %d run %s' % (options.seed, options.mode, options.steps, run), flush=True)
     fuzzer = Fuzzer(options)
     try:
-        fuzzer.run_sequence() if options.mode == 'run' else fuzzer.run_crash()
+        {'run': fuzzer.run_sequence, 'crash': fuzzer.run_crash, 'faults': fuzzer.run_faults}[options.mode]()
     except Finding as error:
         write_finding(fuzzer, error)
         if fuzzer.resident.alive():
