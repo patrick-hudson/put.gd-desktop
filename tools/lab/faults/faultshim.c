@@ -6,10 +6,12 @@
  *   PUTGD_FAULT_SPEC=/path/spec   the rule file; it is re-read when its mtime changes (at most every 50 ms), so a
  *                                 harness changes faults while the program runs. A missing file means no faults.
  *   PUTGD_FAULT_EXE=/path/putgd   the one executable the shim injects into. Any other program that loads the shim (prlimit,
- *                                 env, a helper) gets no fault. The first process of that executable binds the shim to its PID
- *                                 (PUTGD_FAULT_PID) and removes LD_PRELOAD, PUTGD_FAULT_SPEC and PUTGD_FAULT_EXE from its own
- *                                 environment, so the helpers it starts run without the shim. A helper that still gets it (the
- *                                 same executable, a fork, a copied environment) sees a different PID and gets no fault.
+ *                                 env, sh, a helper) gets no fault.
+ *   PUTGD_FAULT_PID=N             set by the launcher (sh -c 'PUTGD_FAULT_PID=$$ exec ...'): the PID the target runs as. The shim
+ *                                 binds only when it equals this process's PID; with no marker it never binds. The bound process
+ *                                 removes LD_PRELOAD, PUTGD_FAULT_SPEC and PUTGD_FAULT_EXE from its environment, so the helpers it
+ *                                 starts run without the shim; one that still gets it (a fork, an exec of the same executable with
+ *                                 a copy of the first environment) carries the target's marker under another PID and gets no fault.
  *
  * Spec lines (blank lines and # comments are ignored):
  *   seed N                          seeds the generator (xorshift, mixed with the process id)
@@ -257,19 +259,18 @@ static void forked_child(void) { __atomic_store_n(&enabled, 0, __ATOMIC_RELAXED)
  * process has one thread. */
 __attribute__((constructor)) static void faultshim_init(void) {
     const char *spec = getenv("PUTGD_FAULT_SPEC"), *exe = getenv("PUTGD_FAULT_EXE"), *pid_text = getenv("PUTGD_FAULT_PID");
-    if (!spec || !exe || !exe[0]) return;
+    if (!spec || !exe || !exe[0] || !pid_text || !pid_text[0]) return;   /* no marker: never bind */
     char self[512];
     ssize_t n = syscall(SYS_readlink, "/proc/self/exe", self, sizeof self - 1);
     if (n <= 0) return;
     self[n] = 0;
     if (strcmp(self, exe)) return;          /* prlimit, env, systemd-run, a helper: not the target */
     pid_t me = (pid_t)syscall(SYS_getpid);
-    if (pid_text && pid_text[0] && (pid_t)atol(pid_text) != me) return;   /* the same executable started by the target */
+    char *end = NULL;
+    long marked = strtol(pid_text, &end, 10);
+    if (!end || *end || (pid_t)marked != me) return;   /* the marker names another process: a fork or a copy of the environment */
     strncpy(spec_path, spec, sizeof spec_path - 1);
     bound_pid = me;
-    char pid_buf[24];
-    snprintf(pid_buf, sizeof pid_buf, "%d", (int)me);
-    setenv("PUTGD_FAULT_PID", pid_buf, 1);
     unsetenv("LD_PRELOAD");
     unsetenv("PUTGD_FAULT_SPEC");
     unsetenv("PUTGD_FAULT_EXE");

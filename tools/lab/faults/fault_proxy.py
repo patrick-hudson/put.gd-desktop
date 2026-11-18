@@ -20,9 +20,11 @@ HTTP, so it works the same for the custom uploader and the S3 wire. A profile (w
 connection is faulted at all) is set while the proxy runs; the plan of connection N is a function of (seed, N, profile) so a
 run replays the same failures for the same connection order. Every connection is logged to a JSON-lines file.
 
-A plan is fixed for the life of its connection, so clear() also retires every open connection whose plan is not a plain pass:
-it resets both of its sockets, wakes its stalls and waits for its pumps to end. After clear() returns no request can meet an
-old fault, whether on a stalled connection or a kept-alive one.
+A plan is fixed for the life of its connection. A connection takes its plan and registers in one step under the proxy's lock, the
+same lock a profile change takes, and every profile change starts a new generation. clear() then retires every open connection
+of an earlier generation whose plan is not a plain pass: it resets both of its sockets, wakes its stalls and waits for its pumps to
+end. When clear() returns, no request can meet an old fault, whether on a stalled connection or a kept-alive one; if a pump does
+not end within the wait, clear() raises ProxyStuck instead of returning.
 
 Library use: Proxy(upstream_port, seed, log_path).start(); proxy.port; proxy.set_profile({...}); proxy.clear(); proxy.stop().
 Command line: fault_proxy.py --upstream PORT [--listen PORT] [--seed N] [--log FILE] [--profile JSON]
@@ -40,11 +42,16 @@ KINDS = ('pass', 'reset_before', 'reset_request', 'reset_after_request', 'cut_re
 CHUNK = 16384
 
 
-class Connection:
-    """One accepted connection: its plan, its sockets and the thread serving it. `retired` wakes every wait of its pumps."""
+class ProxyStuck(Exception):
+    """clear() could not end a faulted connection within its wait."""
 
-    def __init__(self, number, plan, client):
-        self.number, self.plan, self.client, self.upstream = number, plan, client, None
+
+class Connection:
+    """One accepted connection: its plan, the profile generation it was planned under, its sockets and the thread serving it.
+    `retired` wakes every wait of its pumps."""
+
+    def __init__(self, number, plan, client, generation):
+        self.number, self.plan, self.client, self.upstream, self.generation = number, plan, client, None, generation
         self.retired = threading.Event()
         self.thread = threading.current_thread()
 
@@ -55,7 +62,7 @@ class Connection:
         self.retired.set()
         for sock in (self.client, self.upstream):
             if sock is not None:
-                reset(sock, wake=True)
+                reset(sock)
 
 
 class Plan:
@@ -72,18 +79,17 @@ class Plan:
         return {k: v for k, v in self.__dict__.items() if v or k == 'kind'}
 
 
-def reset(sock, wake=False):
-    """Close with an RST rather than a FIN. wake: another thread may be blocked reading it, and a close alone does not wake it; a
-    read shutdown does, and sends nothing."""
+def reset(sock):
+    """Close with an RST rather than a FIN. The other pump of the connection may be blocked reading this socket, and a close alone
+    does not wake it (it would wait for the peer or its 60 s idle timeout); a read shutdown first does, and sends nothing."""
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
     except OSError:
         pass
-    if wake:
-        try:
-            sock.shutdown(socket.SHUT_RD)
-        except OSError:
-            pass
+    try:
+        sock.shutdown(socket.SHUT_RD)
+    except OSError:
+        pass
     try:
         sock.close()
     except OSError:
@@ -96,7 +102,8 @@ class Proxy:
         self.seed = seed
         self.log_path = log_path
         self.profile = {'fault_rate': 0.0, 'weights': {}}
-        self.profile_lock = threading.Lock()
+        self.generation = 0
+        self.profile_lock = threading.RLock()  # the profile, its generation and the open connections change together
         self.counter = 0
         self.stats = {}
         self.listener = socket.socket()
@@ -108,7 +115,7 @@ class Proxy:
         self.log_lock = threading.Lock()
         self.live = set()
         self.connections = {}   # number -> Connection, while it is open
-        self.connections_lock = threading.Lock()
+        self.connections_lock = self.profile_lock
         self.thread = None
 
     # --- control
@@ -117,14 +124,16 @@ class Proxy:
         """profile: {'fault_rate': 0..1, 'weights': {kind: weight}, 'latency_ms': N, 'jitter_ms': N, 'stall': seconds, 'rate': bytes/s}"""
         with self.profile_lock:
             self.profile = dict(profile)
+            self.generation += 1
         self.write_log({'event': 'profile', 'profile': profile})
 
     def clear(self, wait=15.0):
         """No faults from now on: new connections pass, and open ones with a fault plan are retired and their pumps waited for.
         Returns the numbers of the connections it retired."""
-        self.set_profile({'fault_rate': 0.0, 'weights': {}})
-        with self.connections_lock:
-            doomed = [c for c in self.connections.values() if c.faulted()]
+        with self.profile_lock:
+            self.set_profile({'fault_rate': 0.0, 'weights': {}})
+            generation = self.generation
+            doomed = [c for c in self.connections.values() if c.generation < generation and c.faulted()]
         for connection in doomed:
             connection.retire()
         end = time.monotonic() + wait
@@ -132,6 +141,8 @@ class Proxy:
             connection.thread.join(max(0.0, end - time.monotonic()))
         stuck = [c.number for c in doomed if c.thread.is_alive()]
         self.write_log({'event': 'retired', 'connections': [c.number for c in doomed], 'still_running': stuck})
+        if stuck:
+            raise ProxyStuck('faulted proxy connections %s still run %.0f s after clear()' % (stuck, wait))
         return [c.number for c in doomed]
 
     def start(self):
@@ -146,7 +157,7 @@ class Proxy:
         except OSError:
             pass
         for sock in list(self.live):
-            reset(sock, wake=True)
+            reset(sock)
 
     def write_log(self, record):
         if not self.log_path:
@@ -191,13 +202,15 @@ class Proxy:
             threading.Thread(target=self.serve, args=(client, number), daemon=True).start()
 
     def serve(self, client, number):
-        plan = self.plan_for(number)
-        self.stats[plan.kind] = self.stats.get(plan.kind, 0) + 1
-        record = {'event': 'connection', 'n': number, 'plan': plan.as_dict()}
-        state = {'c2s': 0, 's2c': 0, 'outcome': 'closed'}
-        connection = Connection(number, plan, client)
-        with self.connections_lock:
+        # The plan is chosen and the connection registered in one step: a clear() either sees it (and retires it) or ran before it (and
+        # this plan comes from the cleared profile).
+        with self.profile_lock:
+            plan = self.plan_for(number)
+            connection = Connection(number, plan, client, self.generation)
             self.connections[number] = connection
+        self.stats[plan.kind] = self.stats.get(plan.kind, 0) + 1
+        record = {'event': 'connection', 'n': number, 'plan': plan.as_dict(), 'generation': connection.generation}
+        state = {'c2s': 0, 's2c': 0, 'outcome': 'closed'}
         self.live.add(client)
         try:
             if plan.kind == 'reset_before':

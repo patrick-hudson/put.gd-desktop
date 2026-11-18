@@ -13,8 +13,8 @@ oracle, tests/fixtures/s3_server.py) and drives its session socket directly.
   faults the OS and the network say no underneath the resident: an LD_PRELOAD shim (tools/lab/faults/faultshim.c) fails writes,
          fsyncs, renames and opens with ENOSPC, EIO, EACCES, EROFS, EMFILE, short writes and a slow disk on the files of the
          resident's roots; a TCP proxy (tools/lab/faults/fault_proxy.py) between it and the destination resets, cuts, stalls,
-         duplicates, throttles and delays; the open-file limit drops under it; an optional small filesystem is squeezed to
-         the brink of full. Every few steps the faults are lifted and the whole state is checked
+         duplicates, throttles and delays; the open-file limit drops under it. A full disk is a shim rule (ENOSPC, EDQUOT): the
+         harness mounts and fills nothing. Every few steps the faults are lifted and the whole state is checked
 
 After every step it checks that the resident lives and the sanitizers wrote nothing; every few steps that History and the
 settings read back consistently; after every kill that config.json parses, history.sqlite passes its integrity check,
@@ -185,12 +185,22 @@ class Receiver:
     def snapshot(self):
         return self.state()['files']
 
-    def holds(self, row, digest):
-        """None when the file the row's receipt names is on the receiver with exactly this content, else what is wrong."""
-        direct = ((row.get('receipt') or {}).get('directUrl') or '').split('/')
+    def present(self):
+        """content sha256 -> the receiver's ids of the copies it holds now (not deleted)."""
+        found = {}
+        for file_id, entry in self.state()['files'].items():
+            if not entry.get('deleted'):
+                found.setdefault(entry.get('sha256'), []).append(file_id)
+        return found
+
+    def holds(self, row, digest, base):
+        """None when the file the row's receipt names is on this receiver (at `base`, the address put.gd was given) with exactly this
+        content, else what is wrong."""
+        url = (row.get('receipt') or {}).get('directUrl') or ''
+        direct = url.split('/')
         file_id = direct[4] if len(direct) > 4 and direct[3] == 'f' else None
-        if not file_id:
-            return 'the receipt has no direct address of the receiver (%s)' % (row.get('receipt') or {}).get('directUrl')
+        if not file_id or '/'.join(direct[:3]) != base.rstrip('/'):
+            return 'the receipt does not name a file at %s (%s)' % (base, url)
         entry = self.state()['files'].get(file_id)
         if entry is None or entry.get('deleted'):
             return 'the receiver has no file %s' % file_id
@@ -254,13 +264,19 @@ class S3Receiver(Receiver):
     def snapshot(self):
         return self.state()['objects']
 
-    def holds(self, row, digest):
-        key = ((row.get('receipt') or {}).get('objectReference') or {}).get('key')
+    def present(self):
+        return self.stored()  # the oracle's objects are what it holds now
+
+    def holds(self, row, digest, base):
+        reference = (row.get('receipt') or {}).get('objectReference') or {}
+        key, version_id = reference.get('key'), reference.get('versionId')
         if not key:
             return 'the receipt names no object key'
-        versions = [v for v in self.snapshot().get(key, []) if not v.get('marker')]
+        versions = [v for v in self.snapshot().get(key, []) if not v.get('marker') and v.get('version') != 'competitor']
+        if version_id:  # a versioned receipt names one version: that one must hold the bytes
+            versions = [v for v in versions if v.get('version') == version_id]
         if not versions:
-            return 'the oracle has no object %s' % key
+            return 'the oracle has no object %s%s' % (key, ' version %s' % version_id if version_id else '')
         if self.sha(versions[-1]) != digest:
             return 'the object %s has content %s, not the probe\'s %s' % (key, self.sha(versions[-1])[:12], digest[:12])
         return None
@@ -342,6 +358,9 @@ class Resident:
         if self.process is not None and self.returncode() is not None:
             self.reap()  # the previous resident is gone and its session was cleared: release its PID now
         command, env = [str(self.build / 'putgd'), '--background'], self.environment()
+        if 'PUTGD_FAULT_EXE' in env:
+            # The shim binds only to the PID this marker names; sh sets it to its own PID and execs the resident in place, so it is exact.
+            command = ['/bin/sh', '-c', 'PUTGD_FAULT_PID=$$; export PUTGD_FAULT_PID; exec "$0" "$@"'] + command
         if self.nofile:
             command = ['prlimit', '--nofile=%d:%d' % (self.nofile, self.nofile), '--'] + command
         if self.memory_max:
@@ -350,13 +369,18 @@ class Resident:
             uid = os.getuid()
             command = ['systemd-run', '--user', '--scope', '--quiet', '-p', 'MemoryMax=%s' % self.memory_max, '-p', 'MemorySwapMax=0', '--'] + inner + command
             env = {'PATH': os.environ.get('PATH', ''), 'XDG_RUNTIME_DIR': '/run/user/%d' % uid, 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/%d/bus' % uid}
-        process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-        self.process = process  # at once, so the cleanup path knows it even if an interrupt lands right here
-        # Not reaped yet, so the PID is still this process: the pidfd names it for good.
-        if self.pidfd is not None:
-            os.close(self.pidfd)
-        self.pidfd = os.pidfd_open(process.pid)
-        self.pids_seen.add(process.pid)
+        # The process and its pidfd are published together: SIGINT and SIGTERM wait until both are set, so the cleanup path never sees a
+        # resident without its pidfd, or with the previous one's.
+        with signals_deferred():
+            process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            try:
+                pidfd = os.pidfd_open(process.pid)  # not reaped yet, so the PID is still this process: the pidfd names it for good
+            except OSError:
+                pidfd = None
+            previous, self.process, self.pidfd = self.pidfd, process, pidfd
+            if previous is not None:
+                os.close(previous)
+            self.pids_seen.add(process.pid)
         return process
 
     def opened_log(self):
@@ -427,7 +451,8 @@ class Resident:
             raise OSError('no reply to %s (connection closed)' % method)
         if reply.get('requestId') != request_id or reply.get('schemaVersion') != 1:
             raise Finding('protocol', 'reply to %s has a wrong envelope: %s' % (method, str(reply)[:200]))
-        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict) and isinstance(params.get('id'), str):
+        # A retry with scope "sharing" only finishes share links; it sends nothing again.
+        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict) and isinstance(params.get('id'), str) and 'scope' not in params:
             with self.lock:  # every accepted retry, from any step or burst thread: each may send its files once more
                 self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
         return reply if raw else reply.get('result')
@@ -435,10 +460,22 @@ class Resident:
     # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
     # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
 
+    def handle(self):
+        """The resident's pidfd. Opened late if launch could not (the resident is not reaped before its session is clear, so its PID is still
+        its own)."""
+        if self.pidfd is None and self.process is not None and self.process.returncode is None:
+            try:
+                self.pidfd = os.pidfd_open(self.process.pid)
+            except OSError:
+                pass
+        return self.pidfd
+
     def returncode(self):
         """The resident's exit status as Popen reports it (negative: the signal), or None while it runs. Never reaps it."""
         if self.process is None or self.process.returncode is not None:
             return None if self.process is None else self.process.returncode
+        if self.handle() is None:
+            return self.process.poll()
         try:
             info = os.waitid(os.P_PIDFD, self.pidfd, os.WEXITED | os.WNOHANG | os.WNOWAIT)
         except ChildProcessError:
@@ -454,6 +491,12 @@ class Resident:
         """Wait for the resident to exit, without reaping it. True when it has."""
         if self.process is None or self.returncode() is not None:
             return True
+        if self.handle() is None:
+            try:
+                self.process.wait(seconds)
+            except subprocess.TimeoutExpired:
+                pass
+            return self.returncode() is not None
         select.select([self.pidfd], [], [], seconds)  # a pidfd turns readable when its process exits
         return self.returncode() is not None
 
@@ -542,7 +585,7 @@ class Resident:
 
     def send(self, pid, sig):
         """Signal one process of the resident's tree through a checked pidfd. Returns False when it is not (or no longer) ours."""
-        if self.process is not None and pid == self.process.pid and self.pidfd is not None:
+        if self.process is not None and pid == self.process.pid and self.handle() is not None:
             try:
                 signal.pidfd_send_signal(self.pidfd, sig)
                 return True
@@ -573,7 +616,7 @@ class Resident:
     def kill_tree(self, sig=signal.SIGKILL):
         """SIGKILL the resident and its helpers (exact PIDs found from /proc; never a pattern kill)."""
         for _ in range(3):
-            if self.process is not None and self.pidfd is not None:
+            if self.process is not None and self.handle() is not None:
                 try:
                     signal.pidfd_send_signal(self.pidfd, sig)  # the resident itself, even if it no longer passes the environment check
                 except OSError:
@@ -647,8 +690,10 @@ class Resident:
             time.sleep(0.5)
         return 'ERROR: AddressSanitizer: BUS' in head and 'orc_compiler_compile_program' in head
 
-    # What UBSan says about a valid object when it cannot open the files it checks types with.
-    DESCRIPTOR_NOISE = ('which does not point to an object of type', 'invalid vptr')
+    # What UBSan says about a valid object when it cannot open the files it checks types with: a "does not point to an object of type"
+    # error whose note says the object has an invalid vptr. A report that names a wrong dynamic type ("object is of type") is a real one.
+    NOISE_ERROR = b'which does not point to an object of type'
+    NOISE_NOTE = b'invalid vptr'
 
     def log_path(self, start=None):
         return self.run / 'logs' / ('resident-%d.log' % (start or self.starts))
@@ -663,14 +708,20 @@ class Resident:
         """True when the resident log of that start has UBSan runtime errors, and every one is the invalid-vptr report written inside a
         window in which the harness held the resident at its open-file limit (a_fault_res, or the whole start under --nofile)."""
         windows = self.descriptor_windows.get(start) or []
+        lines = text.encode('utf-8', 'surrogateescape').splitlines(keepends=True)
         found, offset = False, 0
-        for line in text.encode('utf-8', 'surrogateescape').splitlines(keepends=True):
+        for index, line in enumerate(lines):
             begin, offset = offset, offset + len(line)
             if b'runtime error:' not in line:
                 continue
             found = True
             inside = any(first <= begin and (end is None or begin < end) for first, end in windows)
-            if not inside or not any(m.encode() in line for m in self.DESCRIPTOR_NOISE):
+            notes = []
+            for following in lines[index + 1:index + 12]:  # the report's own notes, up to the next report
+                if b'runtime error:' in following:
+                    break
+                notes.append(following)
+            if not inside or self.NOISE_ERROR not in line or not any(self.NOISE_NOTE in note for note in notes):
                 return False
         return found
 
@@ -741,33 +792,11 @@ class Fuzzer:
         self.run = Path(options.run_dir)
         self.receiver = None
         self.faults = None
-        self.small_fs = self.small_rt = None
-        if (options.small_fs or options.small_rt) and options.mode != 'faults':
-            raise SystemExit('--small-fs and --small-rt belong to the faults mode')
-        try:
-            # Nothing is written to a small filesystem before it is proven to be a fresh smallfs.sh mount (never a plain folder or the host's disk).
-            self.small_fs = fault_control.SmallFs.claim(options.small_fs) if options.small_fs else None
-            self.small_rt = fault_control.SmallFs.claim(options.small_rt) if options.small_rt else None
-        except fault_control.SmallFsRefused as error:
-            if self.small_fs:
-                self.small_fs.close()
-            raise SystemExit('refusing the small filesystem: %s' % error)
-        for name in ('logs', 'fixtures', 'saves') + (() if options.small_fs else ('archive',)):
+        for name in ('logs', 'fixtures', 'saves', 'archive'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
-        # The runtime directory on a small filesystem is the mount itself: Qt refuses a runtime directory that is a symbolic link.
-        self.resident = Resident(self.run, options.build, runtime=self.small_rt.path if self.small_rt else None)
+        self.resident = Resident(self.run, options.build)
         self.proxy_port = None
         self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
-        for small, folders in ((self.small_fs, ('config', 'data', 'state', 'cache')),):
-            if small:
-                # The resident's roots (and the archive) live on a small filesystem, made by tools/lab/faults/smallfs.sh, that a fault fills.
-                self.resident.root.mkdir(parents=True, exist_ok=True)
-                for name in folders + ('archive',):
-                    target = small.path / name
-                    target.mkdir(exist_ok=True)
-                    os.chmod(target, 0o700)
-                    link = (self.run if name == 'archive' else self.resident.root) / name
-                    link.symlink_to(target)
         self.fixtures = {}
         self.profile = None
         self.step_index = 0
@@ -1585,7 +1614,7 @@ class Fuzzer:
     def setup_faults(self):
         options = self.options
         self.faults = fault_control.FaultControl(self.run, random.Random(options.seed ^ 0x5eed), self.fault_classes, Path(__file__).resolve().parent / 'faults',
-                                                 self.resident.build / 'putgd', small_fs=self.small_fs, small_rt=self.small_rt, log=self.log, seed=options.seed,
+                                                 self.resident.build / 'putgd', log=self.log, seed=options.seed,
                                                  net_kinds=options.net_kinds.split(',') if options.net_kinds else None)
         self.resident.extra_env = self.faults.environment()
         if options.nofile:
@@ -1597,7 +1626,7 @@ class Fuzzer:
 
     FAULT_ACTIONS = [('upload', 12), ('upload_cancel', 2), ('history', 4), ('detail', 3), ('delete', 6), ('settings', 8), ('operations', 6), ('burst', 3),
                      ('receiver_rule', 4), ('restart', 1), ('editor_open', 1), ('editor_session', 2), ('editor_apply', 1), ('editor_end', 1), ('cache_clear', 1),
-                     ('upload_weird', 2), ('fault_fs', 6), ('fault_net', 6), ('fault_squeeze', 3), ('fault_res', 1), ('fault_clear', 4)]
+                     ('upload_weird', 2), ('fault_fs', 6), ('fault_net', 6), ('fault_disk_full', 3), ('fault_res', 1), ('fault_clear', 4)]
 
     def a_cache_clear(self):
         self.call('cache.clear', {}, timeout=120)
@@ -1610,17 +1639,16 @@ class Fuzzer:
         if 'net' in self.fault_classes:
             self.faults.set_net(self.faults.random_net_profile())
 
-    def a_fault_squeeze(self):
-        small = self.faults.small_fs if 'fs' in self.fault_classes else None
-        if small:
-            # put.gd keeps 1 GiB of the disk free and refuses work below that with disk_space_insufficient; the interesting squeeze is the margin
-            # just above it, where the pre-flight passes and a write then runs out (or something else takes the space meanwhile).
-            keep = max(0, self.options.reserve + self.faults.rng.choice((-(1 << 20), 0, 16 * 1024, 200 * 1024, 1 << 20, 4 << 20, 32 << 20)))
-            small.squeeze(keep)
-            self.log('fault-squeeze', free=small.free())
-        small = self.faults.small_rt if 'res' in self.fault_classes else None
-        if small and self.faults.rng.random() < 0.5:
-            small.squeeze(self.faults.rng.choice((0, 4096)))
+    def a_fault_disk_full(self):
+        """The disk fills up: writes, truncates and allocations under the resident's roots fail with ENOSPC or EDQUOT, on top of the
+        rules in force. A shim rule, not a filled filesystem: nothing on the host runs out of space."""
+        if 'fs' not in self.fault_classes:
+            return
+        rng = self.faults.rng
+        error = rng.choice(('ENOSPC', 'ENOSPC', 'EDQUOT'))
+        target = fault_control.FS_TARGETS[rng.choice(('everything', 'everything', 'database', 'data', 'archive', 'state', 'cache'))]
+        skip = rng.choice((0, 0, 3, 20))
+        self.faults.write_spec(self.faults.rules + ['rule write,truncate,fallocate %s %s %s%s' % (target, rng.choice((0.3, 1.0, 1.0)), error, ' skip=%d' % skip if skip else '')])
 
     def a_fault_res(self):
         """The resident hits its open-file limit for a moment, with an upload and a deletion starting under it, then gets its limit back."""
@@ -1638,25 +1666,27 @@ class Fuzzer:
             thread.start()
         time.sleep(rng.choice((0.3, 1.0, 2.5)))
         self.faults.restore_nofile(self.resident_pids())
+        window[1] = self.resident.log_offset()  # the window closes with the limit restored
         for thread in threads:
             thread.join(150)
-        time.sleep(1.0)  # what the exhaustion made the resident write lands in the window
-        window[1] = self.resident.log_offset() if start == self.resident.starts else None
 
     def a_fault_clear(self):
         """Lift one kind of fault, or all of them, the way a disk gets space again or a network comes back."""
         rng = self.faults.rng
-        which = rng.choice(('fs', 'net', 'space', 'all'))
+        which = rng.choice(('fs', 'net', 'fs', 'all'))
         if which in ('fs', 'all'):
             self.faults.write_spec([])
         if which in ('net', 'all') and self.faults.proxy:
-            self.faults.proxy.clear()
-        if which in ('space', 'all'):
-            for small in (self.faults.small_fs, self.faults.small_rt):
-                if small:
-                    small.release()
+            self.lift(self.faults.proxy.clear)
         if which == 'all':
             self.faults.restore_nofile(self.resident_pids())
+
+    def lift(self, clear, *args):
+        """Lift faults; a proxy that cannot end a faulted connection would let an old fault reach the recovery check, so that is a finding."""
+        try:
+            clear(*args)
+        except fault_control.fault_proxy.ProxyStuck as error:
+            raise Finding('driver', str(error))
 
     def resident_pids(self):
         return [self.resident.process.pid] if self.resident.alive() else []
@@ -1731,7 +1761,7 @@ class Fuzzer:
 
     def recover_from_abort(self):
         """The resident is gone: do what a restart after a crash must do, and check it like a restart after a kill."""
-        self.faults.clear_all([])
+        self.lift(self.faults.clear_all, [])
         self.resident.kill_tree()
         self.check_files_after_kill()
         self.resident.start()
@@ -1751,7 +1781,7 @@ class Fuzzer:
         """Lift every fault and require the whole state to be sound: nothing stuck, the files intact, History agreeing with the server, and a
         new upload, a settings write and a History write all working again (a full disk recovers once space is back)."""
         self.log('epoch-check', final=final)
-        self.faults.clear_all(self.resident_pids())
+        self.lift(self.faults.clear_all, self.resident_pids())
         self.receiver.rules([])
         time.sleep(0.3)
         self.wait_journal(120)  # a startup recovery that failed under a fault must finish once the fault is gone
@@ -1819,7 +1849,7 @@ class Fuzzer:
                 operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
         # "uploaded" is a claim: the receipt must name a file the receiver stored, with the probe's bytes.
         for row in rows:
-            wrong = self.receiver.holds(row, digest)
+            wrong = self.receiver.holds(row, digest, self.endpoint())
             if wrong:
                 raise Finding('not-recovered', 'the probe upload %s is uploaded in History but %s: %s' % (operation, wrong, json.dumps(row, default=str)[:600]))
         # A lock file a faulted unlink left behind is stale after 30 s (SettingsService), so config_busy may last that long and no longer.
@@ -1881,7 +1911,7 @@ class Fuzzer:
 
     def cleanup(self):
         """The one way out of every run, however it ends (a clean finish, a finding, any exception, SIGINT or SIGTERM): the resident and its
-        helpers, the receiver and the proxy stop, the filler gives its space back. Safe to call twice; a second signal does not cut it short."""
+        helpers, the receiver and the proxy stop. Safe to call twice; a second signal does not cut it short."""
         previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGTERM)}
         try:
             if self.resident.process is not None and (self.resident.alive() or self.resident.session_members()):
@@ -1893,9 +1923,6 @@ class Fuzzer:
                 self.receiver.stop()
             if self.faults:
                 self.faults.stop()
-            for small in (self.small_fs, self.small_rt):
-                if small:
-                    small.close()
             self.restore_permissions()
         finally:
             for sig, handler in previous.items():
@@ -2047,37 +2074,55 @@ class Fuzzer:
             if result != ['ok']:
                 raise Finding('history', 'history.sqlite integrity_check after a kill: %s' % result[:5])
 
+    LIVE_DB_DEADLINE = 60  # seconds for one consistent snapshot of the live database
+
     def check_live_database(self, database):
+        """A consistent snapshot of the running resident's database through SQLite's backup API, then integrity_check on it. The backup
+        retries a busy or locked step by itself, without end: a monotonic deadline in its progress callback stops it, and a database that
+        gives no snapshot within the deadline is a finding (a resident that holds its write lock that long blocks every History call)."""
         import sqlite3
         scratch = self.run / 'dbcheck'
         scratch.mkdir(exist_ok=True)
         target = scratch / 'live-snapshot.sqlite'
-        for attempt in range(10):
+        deadline = time.monotonic() + self.LIVE_DB_DEADLINE
+
+        class Overdue(Exception):
+            pass
+
+        def progress(status, remaining, total):
+            if time.monotonic() > deadline:
+                raise Overdue()
+
+        last, result = 'the deadline passed', None
+        while time.monotonic() < deadline:
             try:
                 target.unlink()
             except OSError:
                 pass
             try:
-                source = sqlite3.connect('file:%s?mode=ro' % database, uri=True, timeout=10)
+                source = sqlite3.connect('file:%s?mode=ro' % database, uri=True, timeout=max(0.1, min(5, deadline - time.monotonic())))
                 try:
                     copy = sqlite3.connect(str(target))
                     try:
-                        source.backup(copy)
+                        source.backup(copy, pages=64, progress=progress, sleep=0.1)
                         result = [row[0] for row in copy.execute('PRAGMA integrity_check')]
                     finally:
                         copy.close()
                 finally:
                     source.close()
                 break
+            except Overdue:
+                last = 'the backup did not finish'
+                break
             except sqlite3.OperationalError as error:
                 if 'locked' not in str(error) and 'busy' not in str(error):
                     raise Finding('history', 'history.sqlite cannot be read while the resident runs: %s' % error)
-                time.sleep(0.5)  # the resident holds a write lock: try again
+                last = str(error)
+                time.sleep(0.5)  # the resident holds a write lock: try again within the deadline
             except sqlite3.DatabaseError as error:
                 raise Finding('history', 'history.sqlite is not readable: %s' % error)
-        else:
-            self.log('db-check-busy', attempts=10)
-            return
+        if result is None:
+            raise Finding('history', 'no consistent snapshot of the live history.sqlite within %d s (%s)' % (self.LIVE_DB_DEADLINE, last))
         try:
             target.unlink()
         except OSError:
@@ -2182,6 +2227,7 @@ class Fuzzer:
         server that History does not know, no unexplained second copy, deletions agreeing. Returns (rows, stored, snapshot, by_status)."""
         rows = self.rows()
         stored = self.receiver.stored()
+        present = self.receiver.present()
         snapshot = self.receiver.snapshot()
         for digest, files in stored.items():
             allowed = max(1, self.allowed_copies(digest))  # content no row knows is an orphan, reported below
@@ -2199,8 +2245,9 @@ class Fuzzer:
             digest = row.get('sha256')
             # A deletion that was tried (its outcome may be unknown after a lost reply) explains a file that is gone.
             removed = row.get('remoteStatus') not in ('not_requested', None) and self.receiver.remote(row, snapshot) == 'gone'
-            # Presence is checked on its own: however many copies attempts explain, an uploaded row needs one on the server.
-            if status == 'uploaded' and digest and not stored.get(digest) and not self.row_removed_by_delete(row) and not removed:
+            # Presence is checked on its own, against what the server holds now: however many copies attempts explain, an uploaded row needs
+            # one that is still there.
+            if status == 'uploaded' and digest and not present.get(digest) and not self.row_removed_by_delete(row) and not removed:
                 raise Finding('recovery', 'History row %s is uploaded but the receiver holds no copy of it' % row.get('id'))
             # A retry that fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss.
             if status in ('stored', 'failed') and digest and stored.get(digest) and 'unknown' not in self.seen.get(row.get('id'), ()) and not row.get('receipt', {}).get('directUrl'):
@@ -2355,8 +2402,29 @@ class Interrupted(BaseException):
         self.signum = signum
 
 
+DEFERRAL = {'depth': 0, 'pending': None}
+
+
 def interrupted(signum, frame):
+    if DEFERRAL['depth']:
+        DEFERRAL['pending'] = signum  # raised when the section that must not be cut in half ends
+        return
     raise Interrupted(signum)
+
+
+class signals_deferred:
+    """SIGINT and SIGTERM inside this block are raised when it ends, so a step that must happen whole (start a process and publish its
+    pidfd) is never cut in half."""
+
+    def __enter__(self):
+        DEFERRAL['depth'] += 1
+
+    def __exit__(self, *exc):
+        DEFERRAL['depth'] -= 1
+        if not DEFERRAL['depth'] and DEFERRAL['pending'] is not None:
+            signum, DEFERRAL['pending'] = DEFERRAL['pending'], None
+            raise Interrupted(signum)
+        return False
 
 
 def main():
@@ -2371,10 +2439,7 @@ def main():
     parser.add_argument('--destination', choices=('http', 's3'), default='http', help='the loopback destination: the custom uploader or put.gd\'s S3 provider')
     parser.add_argument('--verbose', action='store_true')
     faults = parser.add_argument_group('faults mode')
-    faults.add_argument('--fault-classes', default='fs,net', help='comma list of fs (the LD_PRELOAD shim and the small filesystem), net (the proxy), res (open files, runtime dir)')
-    faults.add_argument('--small-fs', help='a small filesystem (tools/lab/faults/smallfs.sh mount) the resident\'s config, data, state, cache and archive live on')
-    faults.add_argument('--small-rt', help='a small filesystem the resident\'s runtime directory lives on (keep the path short: the session socket is in it)')
-    faults.add_argument('--reserve', type=int, default=1 << 30, help='the free space put.gd keeps on its data disk (bytes); squeezes aim at the margin above it')
+    faults.add_argument('--fault-classes', default='fs,net', help='comma list of fs (the LD_PRELOAD shim), net (the proxy), res (the open-file limit)')
     faults.add_argument('--clean-restarts', action='store_true', help='lift file-system faults before a restart, so a start under a fault (a known class of bugs) does not end every run')
     faults.add_argument('--net-kinds', help='only these proxy faults (reset_before, reset_request, reset_after_request, cut_response, stall, stall_response, dup_response, slow, latency)')
     faults.add_argument('--known-journal-stuck', action='store_true', help='count, and do not stop on, rows left uploading after a journal write fault (#1579)')
