@@ -230,10 +230,14 @@ action does not change it.
   output". Drags clamp to the clip and do not scroll. Delete on a selected cover in the
   viewer or timeline removes it; **Delete on a focused Edits row** removes that row's
   cover, except that with a time selection it cuts the selection instead.
-- **Trim** with the brackets or I and O at the playhead (the end action keeps the playhead
-  frame: its end is the next frame edge, round((*k* + 1) × 10⁶ / `fps`), from the frame's
-  index, bounded by the recording's end); Shift+I and
-  Shift+O retime the selected cover the same way. Dragging an edge of a cut or cover
+- **Trim** with the brackets or I and O at the playhead. The end actions (Set Out, O,
+  Shift+O, **Set to playhead** on a cover's end, `setOut`, `setCoverEdgeToPlayhead`,
+  `setMaskOut`) end after **the frame actually on screen**: the decoded frame's own time when
+  it was decoded for this playhead, otherwise the first frame at or after the playhead (a
+  playhead between frames shows the next one). The end is the next frame edge after that
+  frame, round((*k* + 1) × 10⁶ / `fps`) from its index, bounded by the recording's end.
+  `inspect.preview.shownUs` reports that frame's time. Shift+I and Shift+O retime the
+  selected cover the same way. Dragging an edge of a cut or cover
   retimes it.
 - **Keys.** The keys act on the window unless a text field has focus, which keeps its
   own. Space plays; `,` and `.` step a frame; ← and → move 0.1 s, with Shift 1 s, except
@@ -246,8 +250,9 @@ action does not change it.
   itself; a focused row of the Edits list activates (selects) the row; while a cover is
   being placed it places a centred cover (half the frame's width and height); with a cut
   selected it restores the cut; otherwise it uploads. Ctrl+Enter always uploads, and does
-  nothing with a menu open. Neither auto-repeats: a held Enter, which could otherwise
-  trigger a second action, is ignored.
+  nothing with a menu open. The initial press can upload; an **auto-repeated** Enter is
+  ignored (and Ctrl+Enter does not auto-repeat), so a held key cannot trigger a second
+  action.
 - **100 % view** shows source pixels: the helper decodes the clip at its own size rather
   than the 1280 px preview, so a cover and the picture can be checked pixel for pixel.
   Changing the zoom refreshes the paused frame or the skim frame at the new size, and
@@ -259,33 +264,38 @@ action does not change it.
   drops the nudge.
 - **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
   a keyboard nudge of a cover is proposed 350 ms after the last key. **Upload, Ctrl+Enter
-  and Enter do nothing during a drag** (the drag's edit has not been proposed), and
-  Upload is disabled while a cover is being placed. Otherwise they send a pending nudge
-  first, then **wait for every proposal's answer** from the resident, and send **that
-  revision** with the output the window shows: an upload exports exactly the revision it
-  started with, or it is refused. While the upload waits (`inspect` shows
-  `uploadWaiting`), **anything cancels it**:
-  - a mouse press, double-click, key press or wheel anywhere in the window, its dialogs or
-    menus (auto-repeating keys do not count);
-  - a dialog, menu or popup opening, including the destination menu and the **Save a
-    copy…** chooser;
-  - any `recording.review` action except `inspect`;
-  - a format or audio change, or an export starting;
-  - a push from the resident other than the awaited answer;
-  - a refusal of one of its proposals, or 2 s without an answer.
+  and Enter do nothing during a drag** (the drag's edit has not been proposed) or while a
+  cover is being placed. Otherwise they send a pending nudge first, then **wait for every
+  proposal's answer** from the resident, and send **that revision** with the output the
+  window shows: an upload exports exactly the revision it started with, or it is refused.
+  While it waits (`inspect` shows `uploadWaiting`) it is cancelled **only when what it
+  would export changes**:
+  - the edit's revision moves for anything other than the awaited answers (a later edit,
+    undo or redo, by the user or an agent);
+  - the output changes (format, codec, audio or size, from the window or the resident);
+  - one of its proposals is refused, or there is no answer for 2 s.
 
-  The status line then reads "Upload cancelled: … Press Upload again." (the reason fills
-  the gap: "you kept editing", what was not applied, and so on). It is not a dialog, and
-  it stays visible after the awaited answer arrives. The resident refuses an upload at any
-  other revision (`recording_stale`), with an output other than the one shown
-  (`recording_config`), and any export request while an export runs; it reopens the window
-  with the reason and **no Try again** (`retry: false`), since pressing Upload again is the
-  answer. A proposal the resident answers during an export is held and delivered when
-  review resumes. Nothing is dropped silently.
-- **Try again** after a failed Upload retries **that Upload's own revision**: if the edit
-  changed since, it is refused ("Press Upload to upload them"). It is refused while a cover
-  is being placed, and blocked while a change or gesture is still unanswered. A failed
-  **Save a copy…** is retried at the current revision.
+  Input, dialogs and menus opening, hover, `inspect`, `dismissStatus`, a raise and a
+  saved-copy push do **not** cancel it. A second Upload while one waits does nothing and
+  says "Upload already waiting for your last change to be saved." When it is cancelled the
+  status line reads "Upload cancelled: … Press Upload again." on a line of its own above
+  any other status line (so the row can hold two lines). It is not a dialog, has no
+  Dismiss, and stays until Upload is pressed again, including after the awaited answer
+  arrives. The resident refuses an upload at any other revision (`recording_stale`) and any
+  export request while an export runs, and reopens the window with the reason and **no Try
+  again** (`retry: false`), since pressing Upload again is the answer. For the window's own
+  upload it also refuses an output other than the one shown (`recording_config`), reopening
+  the same way; a direct `recording.upload` takes no output snapshot. A proposal answered
+  during an export is held and delivered when review resumes, and so are a format or audio
+  change made then; after an export timeout, answers and pushes stay held until the
+  helper's late result arrives. Nothing is dropped silently.
+- **Try again** after a failed export uses **the output and revision stored with the
+  failed press** (each export request stores the output current when it was pressed, with its
+  revision). A failed Upload is retried at its own revision, and if the edit changed since
+  it is refused ("Press Upload to upload them"); if the output changed since, it is refused
+  with `recording_config` ("Press Upload again", no Try again). A failed **Save a copy…** is
+  retried with its stored output at the current revision. Try again is refused while a cover
+  is being placed, and blocked while a change or gesture is still unanswered.
 - **Held keys.** An auto-repeated Enter is ignored, so a held key places or restores once
   and never uploads, and Ctrl+Enter does not auto-repeat.
 
@@ -307,15 +317,18 @@ action does not change it.
   council record's
   [`filmstrip-test`](https://github.com/patrick-hudson/put.gd-evidence/tree/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test)
   folder, which links the nightly's FFmpeg and runs the same keyframe method; they
-  are not measurements of the shipped review window, which `putgd-record --filmstrip`
-  measures. On m74 (i5-6500T) with a 3-minute 4K60 clip and the nightly's FFmpeg
+  are not measurements of the shipped review window or of the production worker.
+  `putgd-record --filmstrip` is a separate standalone worker benchmark (it runs the
+  production `Filmstrip` worker outside the window) and is how a build is rechecked
+  against these numbers. On m74 (i5-6500T) with a 3-minute 4K60 clip and the nightly's FFmpeg
   9.0.2: the two end thumbnails in 156 ms, 12 in 433 ms and 24 in 739 ms (p95, warm;
   490 ms and 846 ms cold), on one core and 55 MiB. Decoding every frame of that clip
   takes 24 s, which is why there is no whole-clip pass
   ([results](https://github.com/patrick-hudson/put.gd-evidence/blob/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test/results.md)).
 - **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once, but
-  only when the tile of the keyframe before that time is already cached; otherwise the
-  viewer keeps the playhead frame until the exact frame arrives. As a tile has no covers,
+  only when the tile of the keyframe before that time is already cached; on a miss the
+  viewer keeps what it showed, the playhead frame or an earlier skim picture, until the
+  exact frame arrives. As a tile has no covers,
   **the viewer can show a picture without its covers** until the next step. After about 120 ms at rest, one exact-frame request goes out (at most one in
   flight, cancelled when the pointer moves, the decoder kept open) and replaces the
   thumbnail when it arrives, with the covers active at that time applied; the time flag
@@ -327,14 +340,15 @@ action does not change it.
 ### Previews, edits and the resident
 
 Previews are rendered in the helper by `previewFrame`, which the CLI and MCP preview
-also use. The paused preview and the skim frame apply the covers active at the frame's
-own time **and** at the requested time, so a held frame never shows uncovered at a time
-the export covers. The export applies a cover to every output frame shown during its
-time, by output time or by the time the shown picture was captured (see
-[Covers](capture-and-export.md#kept-spans-cuts-and-frame-gaps)). **Playback is the one
-exception:** `FrameSequence` decodes frames in order on a worker and masks each frame at
+also use. The paused preview and the exact skim frame check a cover against **two
+instants**: the requested time and the captured time of the picture they show. The export
+checks those too and also display-interval overlap, so a preview can show a later picture
+where the export holds an earlier one, and a held picture in the export can come from inside
+a cut (see [Covers](capture-and-export.md#kept-spans-cuts-and-frame-gaps)). The preview
+and the export are separate renderers and do not promise the same frame at a given time.
+**Playback masks differently again:** `FrameSequence` decodes frames in order on a worker and masks each frame at
 its own time only, so a cover wholly inside a frame gap is not drawn on the still
-picture while playing. That is a limit of the local viewer; the export is correct. While
+picture while playing. That is a limit of the local viewer. While
 a cover is being dragged the pending area is drawn as a dashed rubber band. Play plays
 the kept footage silently from the playhead at the chosen speed and follows edits made
 while it plays (it resumes from the playhead, or pauses there when the edit leaves no
@@ -348,13 +362,15 @@ uploading sensitive footage:** the preview and the export are separate renderers
 window's controls as a user does, one action per call, in `reviewing` (and
 `inspect` while `exporting`). The answer is the window's state after the action plus
 the resident's `state` and `edit`. Not every control has an action: the Format menu's
-audio toggle (the footer's "with system audio") has none (see
+audio toggle (the footer's "with system audio") has none, and neither does a fresh Upload
+(`recording.upload`; see
 [Review window actions](agent-control-and-tests.md#review-window-actions)). Errors:
 
 - **`invalid_request`** for a value the window rejects (a missing or malformed field, a
   time outside the recording, an unknown ID) and for actions that need a selection the
   window does not have (`placeMask`, `strength`, `removeMask`, `useSolidCover`, `setMaskIn`
-  and `setMaskOut`), with the message the window shows.
+  and `setMaskOut`), and for `retryExport` when the window has no Try again to press, with
+  the message the window shows.
 - **`recording_state`** when the window's state refuses the action: no time selection
   for `cut`, no selected cover for `seekCoverStart`, `seekCoverEnd`, `setCoverEdge`,
   `setCoverEdgeToPlayhead` and `coverKind`, nothing to undo or redo, a cover being placed,
@@ -371,26 +387,37 @@ audio toggle (the footer's "with system audio") has none (see
   succeeds returns the window's state with the edit after it, so an agent can read the
   returned `edit.revision`; `recording.edit` returns the same refusal codes directly.
 
-The window never owns the edit: each change is proposed to the resident as an
-`edit {revision, commands}` event, the resident applies it to the authoritative
-model and its undo history (or refuses a stale or invalid proposal, with its code and message) and pushes the
-result back with the `setEdit` command, which names the proposal it answers and is also sent after every CLI/MCP
-edit. "Save a copy…" and "Upload" send `saveCopyRequested {path, revision}` and
-`uploadRequested {revision}`; the resident runs exactly the `saveCopy` and `upload`
-paths, so a stale revision or an animation over budget is refused and the window
-shows the resident's current edit again. Discard… and the window's Close button
-open the same confirmation; confirming, or Escape during selection, ends the operation as
-`cancelled`. Upload sends its request
-once the resident has accepted every pending proposal (see "Commit and upload" above),
-then closes the window at once and the export and upload continue in the background; the operation reports like any
-other upload (tray, history, `operation.inspect`), and the resident shuts the helper
-down when the export has been handed over. Save a copy keeps the window open with the
-controls disabled and the status showing progress, so the user can still upload
-afterwards. A refused export after Upload (a stale revision, or an animation over
-its limits) reopens the window with the resident's reason, so the session never sits
-silently in `reviewing`. `operation.cancel` on the recording's operation (the Activity
-window's Cancel) ends the session the same way `recording.cancel` does, discarding the
-working clip.
+The window never owns the edit. Its wire contract, between the helper and the resident:
+
+- **`edit {revision, commands, proposal}`** is a proposal at the revision the window showed,
+  numbered by `proposal`. The resident applies it to the authoritative model and its undo
+  history, or refuses it (stale revision, invalid commands, an export running), and answers
+  with the `setEdit` command: the current edit, the limits, and an `answer` object
+  `{proposal?, refused? {code, message, revision}, configSeq}`. `answer.proposal` names the
+  proposal answered, `refused` appears only for a refusal, and `configSeq` is the last output
+  choice (the `seq` of a `configChanged`) the resident applied. A `setEdit` is also pushed
+  after every CLI or MCP edit, and at once when the resident clamps the animation size
+  after a format change.
+- **`configChanged {config, seq}`** is the window's output choice; the window ignores any
+  older config in a push.
+- **`uploadRequested {revision, config}`** has one shape: the revision the upload started
+  with and the output the window shows. **`saveCopyRequested {path, revision}`** and
+  **`retryExportRequested`** (no fields) are the other two. The resident runs exactly the
+  `saveCopy` and `upload` paths (a retry uses the stored request), so a stale revision, a
+  changed output or an animation over budget is refused and the window shows the resident's
+  current edit again.
+
+Discard… and the window's Close button open the same confirmation; confirming, or Escape
+during selection, ends the operation as `cancelled`. Upload sends its request once the
+resident has accepted every pending proposal (see "Commit and upload" above), then closes
+the window at once and the export and upload continue in the background; the operation
+reports like any other upload (tray, history, `operation.inspect`), and the resident shuts
+the helper down when the export has been handed over. Save a copy keeps the window open with
+the controls disabled and the status showing progress, so the user can still upload
+afterwards. A refused export after Upload reopens the window with the resident's reason, so
+the session never sits silently in `reviewing`. `operation.cancel` on the recording's
+operation (the Activity window's Cancel) ends the session the same way `recording.cancel`
+does, discarding the working clip.
 
 Choosing GIF or WebP is a format choice, not a pixel count: when the output would
 exceed `limits.recordingAnimationEdge`, the resident sets `maxEdge` to the limit at
@@ -424,6 +451,6 @@ round of [removed tests](../../testing/removed-tests.md#second-round).
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review; after `budget` the resident sends the helper `notice {text}`, which the review window shows as its banner |
 | `cancelled` | Cancel on the bar, Discard in the review, the window closed |
 | `configChanged {config, microphoneRequested?, seq?}` | format/codec/audio changed on the bar (ready) or in review (where `seq` numbers the change; the resident echoes the last one it applied and the window ignores older config); `microphoneRequested` is the Microphone toggle as the user left it, which the resident remembers |
-| `edit {revision, commands}` | a review-window proposal at the revision it displayed |
-| `uploadRequested {revision, config}`, `saveCopyRequested {path, revision}` | the review's Upload (with the output it shows) / Save copy |
+| `edit {revision, commands, proposal}` | a review-window proposal at the revision it displayed, numbered by `proposal` |
+| `uploadRequested {revision, config}`, `saveCopyRequested {path, revision}`, `retryExportRequested` | the review's Upload (with the output it shows) / Save copy / Try again |
 | `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |

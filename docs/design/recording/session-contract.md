@@ -26,7 +26,9 @@ Part of [Screen recording](../recording.md).
   down, end up) and the trim **inward** (start up, end down; an end at the clip's end stays
   "no end"), so snapping never lets unwanted footage through or uncovers a frame. An edit
   that snapping would leave with less than one frame is refused. The reply shows the
-  snapped values.
+  snapped values. This is raw `recording.edit`; a review action such as `setCoverEdge` first
+  rounds the time to the **nearest** frame (as the window's own field does) and sends that
+  grid value, which the resident then keeps unchanged.
 - A **cut** leaves a stretch of source time out of the output but stays in the edit,
   so review can show it and restore it. Cuts are sorted by `start`, disjoint, never
   touching and inside `[0, duration)`: `addCut` and `updateCut` clamp the span to the
@@ -42,9 +44,10 @@ Part of [Screen recording](../recording.md).
 - The **kept spans** are `[trimStart, trimEnd)` minus every cut, sorted and disjoint;
   output time lays them end to end from zero (`recording::KeptSpans`). The total is the
   **kept time**: the length the review's output clock shows and the length the GIF and
-  WebP limit counts. Export lays the kept time on the output frame grid and the exported
-  length equals the clock's; the three durations (kept time, export grid time, exported
-  duration) and where each appears are in
+  WebP limit counts. Export lays the kept time on the output frame grid (whole ticks of
+  1/`fps`), so its length is the clock's rounded to a tick, not always equal to it; the
+  durations (source length, kept time, export grid time, exported duration) and where each
+  appears are in
   [Kept spans, cuts and frame gaps](capture-and-export.md#kept-spans-cuts-and-frame-gaps).
   Covers map through the kept spans the same way: each mask is intersected with them and
   mapped to output time, in as many parts as the cuts split it. Retaining 10–30 s with no
@@ -57,16 +60,23 @@ Part of [Screen recording](../recording.md).
 - Every accepted `edit` advances `revision`. `upload` and `edit` take the
   revision they were reviewed at and fail with `recording_stale` otherwise. An upload
   exports **exactly the revision it started with, or it is refused**: the resident refuses
-  an upload at any other revision (`recording_stale`), an upload whose output is not the
-  one the window shows (`recording_config`) and any export request while an export runs
-  (`recording_state`), and reopens the window with the reason and **no Try again**: pressing
-  Upload again is the answer. A proposal the resident answers during an export is held and
+  an upload at any other revision (`recording_stale`) and any export request while an
+  export runs (`recording_state`), and reopens the window with the reason and **no Try
+  again** (`retry: false`): pressing Upload again is the answer. For the window's
+  `uploadRequested` path only, the resident also refuses an upload whose output is not the
+  one the window shows (`recording_config`) and reopens the window the same way; a direct
+  `recording.upload` takes no output snapshot and exports the session's current output. A proposal the resident answers during an export is held and
   delivered when review resumes. Nothing is dropped silently.
 - **The window's output choice is authoritative.** The review's format, codec and audio
   choice reach the resident as `configChanged` events carrying a sequence number; the
-  resident applies them, echoes the last sequence it applied, and the window ignores any
-  older config it is sent. An upload carries the output the window shows, and the resident
-  refuses any other.
+  resident applies them, echoes the last sequence it applied as `setEdit` `answer.configSeq`
+  on every push, and the window ignores any older config it is sent. A format or audio
+  change made during an export is held and applied when review resumes. The window's upload
+  carries the output it shows, and the resident refuses any other (above). Each export
+  request stores the output current when it was pressed, with its revision; Try again exports
+  with that output, or is refused with `recording_config` ("Press Upload again", no Try
+  again) if the output changed since. After an export timeout, answers and pushes stay held
+  until the helper's late result arrives.
 - **Undo history.** The resident keeps one undo history per review session. Every
   accepted `edit` batch pushes the edit it replaced; at most 200 steps are kept (the
   oldest is dropped). A new batch clears the redo steps. `undo` and `redo` each go in a
@@ -78,8 +88,10 @@ Part of [Screen recording](../recording.md).
   for the current revision.
 - Animated exports (GIF, WebP) are silent and must fit
   `limits.recordingAnimationSeconds` (the kept time: the trim minus the cuts); a longer clip is
-  refused, never shortened. The file itself is never longer than the kept time: the
-  exporter caps an animation at it, and keeps at least one frame. An output whose long edge is over
+  refused, never shortened. The exporter caps an animation at whole frames of kept time,
+  but the export always has one tick for the whole export (not one per span), so an animation
+  of less than one frame's worth of kept time lasts one frame, which is longer than the kept
+  time. An output whose long edge is over
   `limits.recordingAnimationEdge` gets the recording's `maxEdge` set to that
   limit once the canvas is known (at `ready`, at stop, or when GIF or WebP is
   chosen in review), and `inspect` shows the new `maxEdge` and `outputSize`. A
@@ -127,9 +139,9 @@ it got over the export grid time (the kept time on the output frame grid), and `
 
 `lastExport` is the session's latest export: `{command, status, revision}`, plus
 `path` for a copy. `status` is `exporting`, then `saved` (with `bytes` and
-`durationUs`, the exported duration: the last encoded frame's end, which is the kept
-time on the output frame grid and equals the review clock's length; the reply that starts
-the export carries no duration) or `failed` (with `error`, for example `recording_export_failed`,
+`durationUs`, the exported duration: the end of the last output tick, which can differ
+from the review clock; only a completed local copy has it, and the reply that starts the
+export carries instead the session's source `durationUs` and the kept `retainedUs`) or `failed` (with `error`, for example `recording_export_failed`,
 `input_excessive` or `local_save_failed`). A failed export writes nothing and
 returns the session to `reviewing`. For a copy, poll `recording.inspect` until
 `state` is `reviewing` again. For an upload, `reviewing` with

@@ -239,9 +239,15 @@ can pass with the cut still in the clip.
   is no click at the join.
 - The decoded duration is compared with the expected number of output ticks within the
   container's timestamp precision (a GIF stores centiseconds, a Matroska file
-  milliseconds). For an edit on the frame grid it equals the review clock (kept time on
-  the output frame grid); a GIF or WebP is capped at whole frames of kept time, except
-  that the one-frame-per-span minimum can make it longer.
+  milliseconds). For an edit on the frame grid that is the review clock's kept time rounded
+  to a tick; a GIF or WebP is
+  capped at whole frames of kept time, except that the whole export keeps one tick, so an
+  animation with less than one frame's worth of kept time lasts one frame. A span of less
+  than one frame can have zero ticks.
+- Known limits, to record rather than fail: in a GIF, up to one centisecond of the previous
+  picture can stay at a cut seam (captured before the cover, so nothing covered shows); and
+  when the source audio has a millisecond timestamp gap, about 1 ms of audio can remain near
+  a cut edge under the 4 ms fade.
 - Fold the window below 1180×720 and use the **Edits** overlay.
 
 | Package | Desktop/session | Placement | What the row must show |
