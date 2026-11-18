@@ -65,9 +65,10 @@ back on findings that are wrong.
 
 1. Pick the newest Sol model from an `orchestrator_capabilities` result taken in this thread,
    never from a remembered or hardcoded id: a newer Sol can appear at any time. T3 allows one
-   capability lookup per thread, and another after an error or when Patrick names a new model
-   or provider; take the thread's lookup before its first loop, and look up again when one of
-   those happens. A long-running thread can therefore lag a release; the model named in each
+   capability lookup per thread, and another only after an error or when Patrick names a
+   different provider; take the thread's lookup before its first loop. When Patrick names a
+   newer Sol model, use the id he gave; if `delegate_task` rejects it, that error permits a
+   fresh lookup. A long-running thread can therefore lag a release; the model named in each
    findings comment shows which one reviewed. Keep the chosen model for every round of the
    loop. Use `reasoningEffort: high`. Record provider, model and effort.
 2. Every round is a new `delegate_task` with `role: "review"`, `mode: "async"`,
