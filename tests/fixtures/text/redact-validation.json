@@ -1,5 +1,5 @@
 {
- "description": "Quick redact list entries and patterns (#1618, round 2 of #1631, U8): the same inputs for the editor's C++ validator (tests/unit/test_text_protocol.cpp) and the MCP server (tests/integration/test_mcp.py). Rules, in order. Terms: a raw line break (\\n, \\r, U+2028, U+2029) is refused; then the value is trimmed; it must be non-empty, at most 100 code points, and contain a letter or digit. Patterns: a raw line break is refused; then trimmed, it must be non-empty, at most 500 code points, not start with (*, and not contain \\C; the raw value must compile, not match empty text, not refer back to a group (backreferences, recursion, subroutine calls), and not repeat without a bound a group that itself holds an unbounded repeat (unless every pass of the group starts or ends with a required character that its inner repeats cannot match). Rules compile, emptyMatch, backReference and nestedRepeat need PCRE2; a checker that has no PCRE2 may leave them to the editor. A compile error is Qt's message with its offset, so its rows give only errorPrefix.",
+ "description": "Quick redact list entries and patterns (#1618, round 3 of #1631): the same inputs for the editor's C++ validator (tests/unit/test_text_protocol.cpp) and the MCP server (tests/integration/test_mcp.py). Rules, in order. Terms: a raw line break (\\n, \\r, U+2028, U+2029) is refused; then the value is trimmed of what Qt's QChar::isSpace calls whitespace (U+0085 and U+00A0 included, U+001C not); it must be non-empty, at most 100 code points, and contain a letter or digit. Patterns: a raw line break is refused; then, trimmed the same way, it must be non-empty and at most 500 code points; the raw value must compile and not match empty text. A pattern's shape is not judged: the editor matches in a child process it kills at the deadline, so any pattern PCRE2 compiles is allowed, (* verbs, \\C, lookarounds and back references included. Rules compile and emptyMatch need PCRE2; a checker that has no PCRE2 may leave them to the editor. A compile error is Qt's message with its offset, so its rows give only errorPrefix.",
  "messages": {
   "termLineBreak": "An entry has a line break",
   "termEmpty": "An entry is empty",
@@ -8,12 +8,8 @@
   "patternLineBreak": "A pattern has a line break",
   "patternEmpty": "A pattern is empty",
   "patternLength": "A pattern is longer than 500 characters",
-  "patternLimits": "Patterns can't set their own matching limits",
-  "patternHalfCharacter": "Patterns can't match half a character",
   "patternCompilePrefix": "This pattern does not compile: ",
-  "patternEmptyMatch": "This pattern matches empty text",
-  "patternBackReference": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it.",
-  "patternNestedRepeat": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  "patternEmptyMatch": "This pattern matches empty text"
  },
  "terms": [
   {
@@ -142,6 +138,26 @@
    "error": "An entry needs a letter or digit"
   },
   {
+   "value": "word",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "#42",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "  ",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
    "value": "\u001cproject\u001d",
    "rule": "ok",
    "error": null
@@ -260,28 +276,29 @@
   },
   {
    "value": "(*LIMIT_MATCH=99999999)(a+)+$",
-   "rule": "limits",
-   "error": "Patterns can't set their own matching limits"
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(*UCP)\\w+",
-   "rule": "limits",
-   "error": "Patterns can't set their own matching limits"
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "  (*NO_JIT)x",
-   "rule": "limits",
-   "error": "Patterns can't set their own matching limits"
+   "rule": "compile",
+   "error": null,
+   "errorPrefix": "This pattern does not compile: "
   },
   {
    "value": "a\\Cb",
-   "rule": "halfCharacter",
-   "error": "Patterns can't match half a character"
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "\\C+",
-   "rule": "halfCharacter",
-   "error": "Patterns can't match half a character"
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(abc",
@@ -312,63 +329,123 @@
   },
   {
    "value": "(\\w)\\1",
-   "rule": "backReference",
-   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(?<n>\\w)\\k<n>",
-   "rule": "backReference",
-   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "\\((?:[^()]|(?R))+\\)",
-   "rule": "backReference",
-   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(a)(?1)",
-   "rule": "backReference",
-   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(a+)+",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(a*)*b",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(\\w+\\s?)*x",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(?:a+|b)+c",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(a+)+$",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "((ab)*c?)+d",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "(x+x+){2,}y",
-   "rule": "nestedRepeat",
-   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+   "rule": "ok",
+   "error": null
   },
   {
    "value": "((ab)*c)+d",
    "rule": "ok",
    "error": null
+  },
+  {
+   "value": "(?:(?=.*+)){3000}\\w{12}",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:(?=.*+).)+\\d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:(?=[^z]*+)){1000}\\w{12}",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?<=ID-)\\d+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\d+(?=%)",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:\\p{L}+-)+ID",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "ID[\\55_]\\d+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\c\\Q|\\C",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\u001c",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "  x  ",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": " 　",
+   "rule": "empty",
+   "error": "A pattern is empty"
   },
   {
    "value": "\u001c\u001dx",
