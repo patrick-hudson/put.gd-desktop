@@ -25,22 +25,24 @@ import sys
 
 TOP = 6  # frames of each racing access that must hold no put.gd code for a known race to apply
 
-# Functions of the Qt-internal races diagnosed in the race hunt (docs/testing/thread-sanitizer.md). A report is excused only when one of
-# these is in the top frames of a racing access and both racing accesses pass the Qt-only test (is_qt_only).
+# The Qt-internal races diagnosed in the race hunt (docs/testing/thread-sanitizer.md), as (function, anchor). A report is excused only
+# when the function is in the top frames of a racing access, the anchor (when given) is somewhere in the racing access stacks, and both
+# racing accesses pass the Qt-only test. The anchor ties a generic Qt function to the one Qt caller the diagnosis covers.
 KNOWN_QT_RACES = (
     # QNetworkAccessManager starts its HTTP thread, then connects to that QThread's started() from the calling thread; the new thread reads
     # the connection list with a relaxed load (qobject.cpp maybeSignalConnected) while connect() publishes it under the signal mutex.
-    'QThread::started',
+    ('QThread::started', None),
+    ('QObjectPrivate::maybeSignalConnected', 'QNetworkReplyHttpImplPrivate::postRequest'),
     # A QNetworkReply is deleted on its own thread while the access manager's HTTP thread still runs the QObject destructor chain of the
     # delegate (vptr report in ~QNetworkReply / ~QObject).
-    'QNetworkReply::~QNetworkReply',
+    ('QNetworkReply::~QNetworkReply', None),
     # QtDBus's own thread dispatches posted events while the main thread runs ~QCoreApplication at exit and clears QCoreApplication::self.
-    'QCoreApplication::~QCoreApplication',
+    ('QCoreApplication::~QCoreApplication', None),
     # The same QtDBus thread destroys QDBusPendingCallWatcherHelper (vptr reset) while it finishes a call.
-    'QDBusPendingCallWatcherHelper::~QDBusPendingCallWatcherHelper',
+    ('QDBusPendingCallWatcherHelper::~QDBusPendingCallWatcherHelper', None),
     # QtDBus completes a call on its own thread and the calling thread reads the reply after its wait.
-    'QDBusConnectionPrivate::processFinishedCall',
-    'QDBusConnectionPrivate::sendWithReply',
+    ('QDBusConnectionPrivate::processFinishedCall', None),
+    ('QDBusConnectionPrivate::sendWithReply', None),
 )
 
 
@@ -81,7 +83,8 @@ def classify(block, own_prefixes):
     qt_only = len(stacks) == 2 and all(frames and is_qt(frames[0]) and not any(is_own(l, own_prefixes) for l in frames[:TOP]) for frames in stacks)
     if qt_only and kind and kind.group(1) == 'data race':
         top = ' '.join(function(l) for frames in stacks for l in frames[:TOP])
-        if any(name in top for name in KNOWN_QT_RACES):
+        whole = ' '.join(function(l) for frames in stacks for l in frames)
+        if any(name in top and (anchor is None or anchor in whole) for name, anchor in KNOWN_QT_RACES):
             return 'qt-known', key
     return 'external', key
 
