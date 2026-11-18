@@ -1922,22 +1922,37 @@ class Fuzzer:
 
     def cleanup(self):
         """The one way out of every run, however it ends (a clean finish, a finding, any exception, SIGINT or SIGTERM): the resident and its
-        helpers, the receiver and the proxy stop. Safe to call twice; a second signal does not cut it short."""
+        helpers, the receiver and the proxy stop. Safe to call twice; a second signal does not cut it short. Every step runs whatever the
+        one before it met: a harness finding (no pidfd for the resident, a tree that would not die) is kept, the resident's process group
+        is still killed and the receiver still stopped, and the first such finding is raised once everything is done."""
         previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGTERM)}
+        met = []
         try:
-            if self.resident.process is not None and (self.resident.alive() or self.resident.session_members()):
+            if self.resident.process is not None:
                 try:
-                    self.resident.kill_tree()
-                except Finding as error:
-                    print('cleanup: %s' % error, file=sys.stderr, flush=True)
-            if self.receiver:
-                self.receiver.stop()
-            if self.faults:
-                self.faults.stop()
-            self.restore_permissions()
+                    running = self.resident.alive() or bool(self.resident.session_members())
+                except Finding as error:  # no pidfd: liveness is unknown, so the tree is killed anyway (kill_tree kills the pinned group)
+                    met.append(error)
+                    running = True
+                if running:
+                    try:
+                        self.resident.kill_tree()
+                    except Finding as error:
+                        met.append(error)
+            for stop in ((self.receiver.stop if self.receiver else None), (self.faults.stop if self.faults else None), self.restore_permissions):
+                if stop is None:
+                    continue
+                try:
+                    stop()
+                except Exception as error:  # noqa: BLE001 - the next step runs whatever this one met
+                    met.append(Finding('driver', 'cleanup: %s failed: %s' % (getattr(stop, '__qualname__', stop), error)))
         finally:
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
+        for error in met:
+            print('cleanup: %s' % error, file=sys.stderr, flush=True)
+        if met:
+            raise met[0]
 
     def restore_permissions(self):
         for path in [self.run / 'archive'] + sorted((self.run / 'archive').glob('*')):
@@ -2439,6 +2454,19 @@ class signals_deferred:
         return False
 
 
+def cleanup_finding(fuzzer, error, status):
+    """A finding met while cleaning up: the run's finding when it had none, else noted in the one it has. Returns the exit status."""
+    finding = fuzzer.run / 'finding.json'
+    if status is None or not finding.exists():
+        write_finding(fuzzer, error)
+        return 1 if status is None else status
+    record = json.loads(finding.read_text())
+    record['cleanup_finding'] = '%s: %s' % (error.kind, str(error.detail)[:2000])
+    finding.write_text(json.dumps(record, indent=1))
+    print('FINDING %s during cleanup: %s' % (error.kind, str(error.detail)[:600]), flush=True)
+    return status
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('mode', choices=('run', 'crash', 'faults'))
@@ -2471,19 +2499,24 @@ def main():
         raise SystemExit('%s exists: pick a new --run-dir (a failed run is evidence)' % run)
     run.mkdir(parents=True)
     print('seed %d mode %s steps %d run %s' % (options.seed, options.mode, options.steps, run), flush=True)
-    fuzzer = None
+    fuzzer, status = None, None
     try:
         fuzzer = Fuzzer(options)
         {'run': fuzzer.run_sequence, 'crash': fuzzer.run_crash, 'faults': fuzzer.run_faults}[options.mode]()
     except Finding as error:
         write_finding(fuzzer, error)
-        return 1
+        status = 1
     except Interrupted as stop:
         print('interrupted by %s at step %d: stopping the resident and the receiver' % (signal.Signals(stop.signum).name, fuzzer.step_index if fuzzer else 0), flush=True)
-        return 128 + stop.signum
+        status = 128 + stop.signum
     finally:
         if fuzzer:
-            fuzzer.cleanup()
+            try:
+                fuzzer.cleanup()
+            except Finding as error:  # cleanup did everything first, then raised what it met: a harness finding of its own
+                status = cleanup_finding(fuzzer, error, status)
+    if status is not None:
+        return status
     if os.environ.get('ACTION_FUZZ_STATS'):
         with open(os.environ['ACTION_FUZZ_STATS'], 'a') as out:
             out.write(json.dumps({'mode': options.mode, 'seed': options.seed, 'steps': options.steps, 'calls': fuzzer.stats,
