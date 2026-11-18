@@ -41,6 +41,8 @@ public:
     void setDuration(qint64 durationUs, int fps);
     void setEdit(const RecordingEdit&);
     void setPlayhead(qint64 sourceUs);
+    qint64 duration() const { return duration_; }
+    qint64 playhead() const { return playhead_; }
     void setPlaying(bool playing);  // no skimming while playing
     // At most one of these is shown: a time selection, or a selected cut or
     // cover. Setting one clears the other.
@@ -73,6 +75,13 @@ public:
     // {zoom, visible: {start, end}, selection, selectedEdit: {kind, id},
     //  skim: {time, exact} | null, lanes, hiddenCovers, tiles: {shown, placeholders}}
     QJsonObject inspect() const;
+    // The things a pointer or a screen reader can name: both trim handles, every
+    // cut, every shown cover bar, the "+n" chip, and the edge handles of the
+    // selected cut or cover. Tooltips and the accessible children come from it.
+    // kind: trim-start | trim-end | cut | cut-start | cut-end | cover |
+    // cover-start | cover-end | more.
+    struct Part { QString kind, id, name; QRect rect; };
+    QList<Part> parts() const;
     QSize sizeHint() const override;         // height 142 at normal text
     QSize minimumSizeHint() const override;
 signals:
@@ -115,6 +124,24 @@ protected:
     void resizeEvent(QResizeEvent*) override;
     bool event(QEvent*) override;  // tooltips
 private:
+    enum class Drag { None, Scrub, TrimStart, TrimEnd, CutStart, CutEnd, CoverStart, CoverEnd, Strip, Select };
+    struct Handle { Drag drag = Drag::None; QString id; };
+    Handle handleAt(QPointF) const;
+    QString cutAt(QPointF) const;
+    QString coverAt(QPointF) const;
+    qint64 frameUs() const;
+    qint64 snap(qint64 us) const;
+    qint64 visibleLength() const;
+    int stripLeft() const;
+    int stripWidth() const;
+    void setScroll(qint64 startUs);
+    void revealPlayhead();
+    void layoutCovers();
+    void selectLocally(const QString& kind, const QString& id);
+    void clearSkim();
+    void clearSelections();
+    void restartSkimTimer();
+    QRect laneRect(int lane) const;
     TileSource tiles_;
     std::shared_ptr<MaskNames> names_;
     qint64 duration_ = 1;
@@ -129,5 +156,12 @@ private:
     std::optional<qint64> skim_;
     bool skimExact_ = false;
     QTimer skimRest_;
+    Drag drag_ = Drag::None;
+    QString dragId_;
+    qint64 dragStart_ = 0, dragEnd_ = 0, anchorUs_ = 0;
+    qreal pressX_ = 0;
+    int wheelRemainder_ = 0;
+    QList<int> coverLane_;  // per edit_.masks entry: 0, 1, or -1 when hidden
+    int lanesUsed_ = 0, hiddenCovers_ = 0;
 };
 }
