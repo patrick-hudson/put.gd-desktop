@@ -69,6 +69,29 @@ private slots:
   detail={};history.detail(item.artifact.id,[&](Error e,QJsonObject r){QVERIFY(!e);detail=r;});PUTGD_TRY_VERIFY(!detail.isEmpty());QVERIFY(!detail["linkAvailable"].toBool());
   replied=false;QString code;history.copyLink(item.artifact.id,[&](Error e,QJsonObject){code=e.code;replied=true;});PUTGD_TRY_VERIFY(replied);QCOMPARE(code,QString("link_unavailable"));QCOMPARE(source.copies,copies);
  }
+ // A History row indexed under an older identity rule (#1582 changed how S3 keys are
+ // read) is indexed again once on startup, so an overwrite after the upgrade flags it.
+ void overwriteAcrossIdentityRuleChangeFlagsTheOldRow() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());doc["naming"]=QJsonObject{{"mode","original"},{"collisionPolicy","overwrite"}};QVERIFY(settings.save(doc,{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"same.txt","first synthetic version")};QString first,path;QJsonObject originalReceipt;
+  {OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());path=ops.databasePath();
+   ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);
+   originalReceipt=HistoryStore(path).operation(first).items[0].receipt.toJson();}
+  const auto identities=[&](const QString& connection){QStringList values;{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);if(db.open()){QSqlQuery q(db);
+   q.exec("SELECT publication_identity FROM history UNION ALL SELECT publication_identity FROM item_state");while(q.next())values.append(q.value(0).toString());}}QSqlDatabase::removeDatabase(connection);return values;};
+  const auto indexed=identities("identity-before");QCOMPARE(indexed.size(),2);QVERIFY(!indexed[0].isEmpty());QCOMPARE(indexed[1],indexed[0]);
+  {auto db=QSqlDatabase::addDatabase("QSQLITE","identity-downgrade");db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);
+   QVERIFY(q.exec("UPDATE history SET publication_identity='older-rule'"));QVERIFY(q.exec("UPDATE item_state SET publication_identity='older-rule'"));QVERIFY(q.exec("DROP TABLE history_markers"));}
+  QSqlDatabase::removeDatabase("identity-downgrade");
+  OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());
+  QCOMPARE(identities("identity-after"),indexed);
+  HistoryStore store(path);const auto original=store.operation(first).items[0];
+  QCOMPARE(store.detail(original.artifact.id)["receipt"].toObject(),originalReceipt);
+  source.payload.files={fixture(d.path(),"same.txt","replacement synthetic version")};QString second;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,2);
+  QCOMPARE(store.detail(original.artifact.id)["remoteStatus"].toString(),QString("superseded"));
+  QCOMPARE(store.detail(original.artifact.id)["supersededBy"].toString(),store.operation(second).items[0].artifact.id);
+ }
  void confirmedOverwriteMarksOnlyOriginalObjectHistory() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());doc["naming"]=QJsonObject{{"mode","original"},{"collisionPolicy","overwrite"}};QVERIFY(settings.save(doc,{}));
