@@ -354,6 +354,48 @@ private slots:
         QCOMPARE(f.remove(uploaded.receipt, journal).status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 1);
     }
+    // Garage: a version ID on every write, no versioning, and a request naming a version is answered with the object and no version ID.
+    // put.gd took that for another object ("changed") and never deleted what it had uploaded.
+    void versionIgnoringBucketChecksAndRemovesLikeUnversioned() {
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        QVERIFY(!uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(stat.status, QString("own"));
+        QCOMPARE(stat.receipt.objectReference, uploaded.receipt.objectReference);
+        QJsonObject journal;
+        const auto removed = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) {
+            journal = progress;
+            ack({});
+        });
+        QCOMPARE(removed.status, QString("removed"));
+        QVERIFY(journal["versionless"].toBool());
+        const auto deletes = f.events("DELETE");
+        QCOMPARE(deletes.size(), 1);
+        QVERIFY(!deletes[0].toObject()["path"].toString().contains("versionId"));
+        QCOMPARE(deletes[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
+    // The same answer from an object someone else wrote (other bytes) is still "changed", and nothing is sent.
+    void versionIgnoringBucketStillRefusesAReplacedObject() {
+        S3Fixture f;
+        f.reset({{"versionIgnored", true}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto objects = f.state()["objects"].toObject();
+        auto versions = objects["prefix é/a b.txt"].toArray();
+        auto replaced = versions.last().toObject();
+        replaced["etag"] = "\"someone-else\"";
+        versions.replace(versions.size() - 1, replaced);
+        objects["prefix é/a b.txt"] = versions;
+        QJsonObject configuration{{"objects", objects}, {"versionIgnored", true}};
+        f.reset(configuration);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("changed"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
         S3Fixture f;
         f.reset({{"versioning", "Enabled"}});

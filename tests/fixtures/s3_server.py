@@ -99,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.handle_wire(body)
             if self.path == '/__reset':
                 blobs.clear()
-                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'rules': [], 'sequence': 0, 'uploads': {}})
+                state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'versionIgnored': False, 'rules': [], 'sequence': 0, 'uploads': {}})
                 state.update(json.loads(body))
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
@@ -166,6 +166,8 @@ class Handler(BaseHTTPRequestHandler):
             # Like Cloudflare R2 (#145): writes return a version ID, but versions cannot be addressed.
             if state['versionless'] and 'versionId' in query:
                 self.error(501, 'NotImplemented'); return
+            # Like Garage: writes return a version ID, and a request naming one is served as if it named none (no version header in the reply).
+            if state.get('versionIgnored'): query.pop('versionId', None)
             versions = state['objects'].setdefault(key, []) if key else []
             if rule and rule.get('competitor'):
                 versions.append({'version': 'competitor', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False})
@@ -205,7 +207,7 @@ class Handler(BaseHTTPRequestHandler):
                 versions.append(value)
                 headers = {'ETag': value['etag']}
                 if version: headers['x-amz-version-id'] = version
-                elif state['versionless']: headers['x-amz-version-id'] = uuid.uuid4().hex
+                elif state['versionless'] or state.get('versionIgnored'): headers['x-amz-version-id'] = uuid.uuid4().hex
             else:
                 if self.headers.get('if-match') and (not selected or selected.get('marker') or selected['etag'] != self.headers['if-match']):
                     self.error(412, 'PreconditionFailed'); return

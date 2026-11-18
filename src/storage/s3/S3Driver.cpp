@@ -329,21 +329,27 @@ StatResult inspect(Client& client, const StorageReceipt& expected, bool current 
                             metadata(result, "putgd-sha256"), result.GetContentLength(),
                             qt(result.GetETag()), qt(result.GetVersionId())), {}};
 }
+StorageReceipt withoutVersion(StorageReceipt receipt) {
+    receipt.objectReference.remove("versionId");
+    return receipt;
+}
 // Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
-// a request naming a version gets 501, and the bucket reports no versioning status. A
-// bucket whose versioning was never enabled holds one object per key, so a receipt from
-// it is checked and removed like an unversioned one.
+// a request naming a version gets 501, and the bucket reports no versioning status. Garage
+// does the same without the 501: it answers a request naming a version with the object and
+// no version ID, which the identity check takes for another object. A bucket whose
+// versioning was never enabled holds one object per key, so a receipt from it is checked
+// and removed like an unversioned one.
 bool versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
     const auto version = expected.objectReference["versionId"].toString();
-    if (found.status != "unknown" || found.error.details["httpStatus"].toInt() != 501 || version.isEmpty() || version == "null") return false;
+    if (version.isEmpty() || version == "null") return false;
+    const bool refused = found.status == "unknown" && found.error.details["httpStatus"].toInt() == 501;
+    // Everything but the version ID matches the object that is current at the key.
+    const bool ignored = found.status == "foreign" && inspect(client, withoutVersion(expected), true).status == "own";
+    if (!refused && !ignored) return false;
     Aws::S3::Model::GetBucketVersioningRequest request;
     request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
     const auto outcome = client.GetBucketVersioning(request);
     return outcome.IsSuccess() && outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
-}
-StorageReceipt withoutVersion(StorageReceipt receipt) {
-    receipt.objectReference.remove("versionId");
-    return receipt;
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
