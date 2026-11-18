@@ -274,12 +274,18 @@ file`, until Omarchy ships OpenSSL 4. The install script handles this for new in
   like) it asks pacman whether the installed system has that OpenSSL (`pacman -T libcrypto.so=4-64`). If so
   it installs the pacman package. If not it installs the AppImage (`~/.local/bin/putgd.AppImage`)
   instead and says why. Any other pacman failure stops the install.
+- On every Arch-family system, Arch Linux included, it then runs the installed `putgd-cli --version`. If
+  that does not start (the same transaction can replace OpenSSL with a version the package does not
+  match), it removes the package with `sudo pacman -R --noconfirm putgd` and installs the AppImage.
 
-If the pacman package is already installed on such a system, switch to the AppImage with these two
-commands, in this order:
+The AppImage path adds no pacman repository or signing key and changes nothing of put.gd's on the system.
+On Omarchy the install script first runs Omarchy's own system update, which you agree to, and that update
+may sync a put.gd repository that was already configured; that is the update, not the fallback.
+
+If the pacman package is already installed on such a system, switch to the AppImage with this command. The
+package is removed only after the AppImage install succeeded, so a failed download leaves what you have:
 
 ```sh
-curl -fsSL https://app.put.gd/install | sh -s -- --appimage
-sudo pacman -R putgd
+curl -fsSL https://app.put.gd/install -o /tmp/putgd-install && sh /tmp/putgd-install --appimage && sudo pacman -R putgd
 ```
 The AUR recipe is a draft and has not been published.
