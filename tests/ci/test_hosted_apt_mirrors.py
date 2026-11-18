@@ -83,6 +83,38 @@ class HostedAptMirrors(unittest.TestCase):
         self.assertEqual(path.read_text(), original)
         self.assertIn('azure.archive.ubuntu.com', source.read_text())
 
+    def test_third_party_sources_are_disabled_and_ubuntu_sources_are_kept(self):
+        ubuntu = ('Types: deb\nURIs: mirror+file:/etc/apt/apt-mirrors.txt\nSuites: noble\nComponents: main\n'
+                  'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n\n'
+                  'Types: deb\nURIs: http://security.ubuntu.com/ubuntu/\nSuites: noble-security\nComponents: main\n')
+        legacy = self.root / 'sources.list.d/microsoft-prod.list'
+        legacy.write_text('# Microsoft\ndeb [arch=amd64,arm64 signed-by=/m.gpg] https://packages.microsoft.com/ubuntu/24.04/prod noble main\n')
+        vendor = self.root / 'sources.list.d/vendor.sources'
+        vendor.write_text('Types: deb\nURIs: https://vendor.example/apt\n https://mirror.example/apt\nSuites: stable\n')
+        keep = self.root / 'sources.list.d/ubuntu.sources'
+        keep.write_text(ubuntu)
+        main = self.root / 'sources.list'
+        main.write_text('deb http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble main\n'
+                        'deb https://packages.microsoft.com/repos/x noble main\n')
+        self.assertEqual(sorted(mirrors.disable_third_party(self.root)),
+                         ['sources.list', 'sources.list.d/microsoft-prod.list', 'sources.list.d/vendor.sources'])
+        self.assertEqual(keep.read_text(), ubuntu)
+        self.assertEqual(legacy.read_text().splitlines()[0:2],
+                         ['# Microsoft', '# disabled for the AppImage job: deb [arch=amd64,arm64 signed-by=/m.gpg] '
+                          'https://packages.microsoft.com/ubuntu/24.04/prod noble main'])
+        self.assertTrue(vendor.read_text().endswith('Suites: stable\nEnabled: no\n'))
+        self.assertEqual(main.read_text().splitlines(),
+                         ['deb http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble main',
+                          '# disabled for the AppImage job: deb https://packages.microsoft.com/repos/x noble main'])
+        self.assertEqual(mirrors.disable_third_party(self.root), [])
+
+    def test_an_ubuntu_look_alike_host_is_third_party(self):
+        path = self.root / 'sources.list'
+        path.write_text('deb https://archive.ubuntu.com.example.invalid/ubuntu noble main\n'
+                        'deb https://notubuntu.com/ubuntu noble main\n')
+        self.assertEqual(mirrors.disable_third_party(self.root), ['sources.list'])
+        self.assertEqual(path.read_text().count('# disabled for the AppImage job: '), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

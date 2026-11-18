@@ -15,6 +15,11 @@
 #                       replaced by that metadata and exactly the installed
 #                       packages. When every online attempt fails, one more attempt
 #                       installs offline from the snapshot's metadata and packages.
+#                       On apt the snapshot also keeps the sources it was built with:
+#                       apt names its metadata files after the source URI, so the
+#                       offline attempt reads them through those sources, not the
+#                       host's, and a snapshot made in a container serves a runner.
+#   PUTGD_PKG_ATTEMPTS=0 skips the online attempts and installs from the snapshot.
 #   PUTGD_PKG_TIMEOUT   seconds one attempt may take (default 900)
 #   PUTGD_PKG_STALL     seconds an attempt may print nothing (default 600)
 # A stalled mirror connection can hang apt or dnf for good (#467): an attempt
@@ -44,6 +49,7 @@ fi
 label="${PUTGD_PKG_LABEL:-$ID $VERSION_ID}, $manager"
 log=$(mktemp)
 trap 'rm -f "$log" "$log.stopped"' EXIT
+apt_root=${PUTGD_APT_ROOT:-/etc/apt}
 apt_network=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
 dnf_network=(--setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000)
 
@@ -104,9 +110,23 @@ online() {
   fi
 }
 
+# Keep the apt sources beside the metadata that was downloaded through them.
+save_sources() {
+  local file
+  mkdir -p "$1/sources"
+  rm -f "$1"/sources/*
+  [ ! -s "$apt_root/sources.list" ] || cp "$apt_root/sources.list" "$1/sources/00-sources-list.list"
+  for file in "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources; do
+    [ ! -f "$file" ] || cp "$file" "$1/sources/"
+  done
+}
+
 offline() {
   local extra=()
   mapfile -t extra < <(cache_options "$snapshot")
+  if [ "$manager" = apt-get ] && [ -d "$snapshot/sources" ]; then
+    extra+=(-o Dir::Etc::sourcelist=/dev/null -o "Dir::Etc::sourceparts=$snapshot/sources")
+  fi
   if [ "$manager" = dnf ]; then
     bounded dnf install -y --cacheonly "${extra[@]}" "${options[@]}" "${packages[@]}"
   else
@@ -128,6 +148,7 @@ refresh_snapshot() {
     local extra=()
     mapfile -t extra < <(cache_options "$live")
     apt-get autoclean "${extra[@]}" >/dev/null
+    save_sources "$live"
   fi
   rm -rf "$snapshot.new"
   # Hard links: nothing writes to the live cache after this.

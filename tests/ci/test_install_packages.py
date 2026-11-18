@@ -189,6 +189,37 @@ class InstallPackages(unittest.TestCase):
         self.assertIn('--no-download', calls[-1])
         self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', calls[-1])
 
+    def test_the_apt_snapshot_keeps_its_sources_and_the_offline_install_reads_through_them(self):
+        apt = self.dir / 'apt'
+        (apt / 'sources.list.d').mkdir(parents=True)
+        (apt / 'sources.list.d/ubuntu.sources').write_text('URIs: mirror+file:/etc/apt/putgd-mirrors.txt\n')
+        (apt / 'sources.list.d/vendor.list').write_text('deb https://vendor.example/apt noble main\n')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot), PUTGD_APT_ROOT=str(apt))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(sorted(p.name for p in (self.snapshot / 'sources').iterdir()),
+                         ['ubuntu.sources', 'vendor.list'])
+        self.assertIn('putgd-mirrors.txt', (self.snapshot / 'sources/ubuntu.sources').read_text())
+        self.calls.unlink()
+        (self.dir / 'count').unlink()
+        # A host whose own sources are named differently, as the runner's are.
+        (apt / 'sources.list.d/ubuntu.sources').write_text('URIs: mirror+file:/etc/apt/apt-mirrors.txt\n')
+        result, calls, _ = self.run_script('apt-get', 'dwz', FAKE_FAILURES='9', PUTGD_PKG_CACHE=str(self.snapshot),
+                                           PUTGD_APT_ROOT=str(apt))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('--no-download', calls[-1])
+        self.assertIn('-o Dir::Etc::sourcelist=/dev/null', calls[-1])
+        self.assertIn(f'-o Dir::Etc::sourceparts={self.snapshot}/sources', calls[-1])
+
+    def test_no_online_attempts_installs_from_the_snapshot_at_once(self):
+        self.snapshot.mkdir()
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+        result, calls, summary = self.run_script('apt-get', 'dwz', PUTGD_PKG_ATTEMPTS='0',
+                                                 PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(len(calls), 1)
+        self.assertIn('--no-download', calls[0])
+        self.assertIn('installed offline from the package snapshot', summary)
+
     def assert_stalled_calls_were_stopped(self):
         for pid in (self.dir / 'pids').read_text().split():
             self.assertFalse(Path(f'/proc/{pid}').exists(), f'stalled package manager {pid} still runs')
