@@ -2,6 +2,7 @@
 #include <QElapsedTimer>
 #include <QSignalSpy>
 #include <QtTest>
+#include "fixtures/Waits.h"
 #include <algorithm>
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -87,7 +88,7 @@ private slots:
         strip.open(clip_, seconds_ * second, {width, height});
         const QList<qint64> times{mid(5), mid(0), mid(3)};
         strip.request(times, {32, 18});
-        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 3, 10000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(ready.count(), 3, 10000);
         for (const auto& args : ready) {
             const qint64 requested = args[0].toLongLong(), keyframe = args[1].toLongLong();
             const auto tile = args[2].value<QImage>();
@@ -106,11 +107,11 @@ private slots:
         QSignalSpy ready(&strip, &Filmstrip::tileReady);
         strip.open(clip_, seconds_ * second, {width, height});
         strip.request({second + 200'000, second + 800'000}, {32, 18});
-        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 2, 10000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(ready.count(), 2, 10000);
         QCOMPARE(strip.stats().decoded, 1);
         // Asking again answers from the cache, queued, without another decode.
         strip.request({second + 500'000}, {32, 18});
-        QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 3, 10000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(ready.count(), 3, 10000);
         QCOMPARE(strip.stats().decoded, 1);
         QVERIFY(strip.stats().cached >= 1);
     }
@@ -123,7 +124,7 @@ private slots:
         strip.request(first, {32, 18});
         strip.request({mid(80)}, {32, 18});  // no event loop between: the worker is still opening
         QCOMPARE(strip.stats().replaced, 1);
-        QTRY_VERIFY_WITH_TIMEOUT(!strip.tile(mid(80)).isNull(), 10000);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(!strip.tile(mid(80)).isNull(), 10000);
         QVERIFY(strip.tile(mid(47)).isNull());
         QVERIFY(strip.stats().decoded < 48);
     }
@@ -153,9 +154,8 @@ private slots:
         QSignalSpy failed(&strip, &Filmstrip::failed);
         strip.open(dir_.filePath("absent.mkv"), second, {width, height});
         strip.request({0, second / 2}, {32, 18});
-        QTRY_COMPARE_WITH_TIMEOUT(failed.count(), 1, 10000);
-        QTest::qWait(100);
-        QCOMPARE(failed.count(), 1);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(failed.count(), 1, 10000);
+        PUTGD_COMPARE_STEADY(failed.count(), 1, 100);
     }
     void theSkimmerDecodesTheExactFrameWithCoversApplied() {
         FrameSkimmer skimmer;
@@ -171,7 +171,7 @@ private slots:
         edit.masks.append(solid);
         const qint64 at = second + 500'000;  // frame 45, 15 frames past its keyframe
         skimmer.request(at, edit, 64);
-        QTRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
         const auto args = frames.takeFirst();
         QCOMPARE(args[0].toLongLong(), at);
         QCOMPARE(args[1].toLongLong(), at);
@@ -183,7 +183,7 @@ private slots:
         QVERIFY(std::abs(grayOf(levelOf(45)) - grayOf(levelOf(30))) > 12);
         // Past the cover's end the same pixel is not covered.
         skimmer.request(4 * second + 100'000, edit, 64);
-        QTRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
         QVERIFY(qGray(frames.takeFirst()[2].value<QImage>().pixel(5, 5)) > 20);
     }
     void aCancelledSkimDropsItsAnswer() {
@@ -192,10 +192,9 @@ private slots:
         skimmer.open(clip_, {width, height});
         skimmer.request(60 * second, {}, 64);
         skimmer.cancel();
-        QTest::qWait(400);
-        QCOMPARE(frames.count(), 0);
+        PUTGD_COMPARE_STEADY(frames.count(), 0, 400);
         skimmer.request(2 * second, {}, 64);
-        QTRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(frames.count(), 1, 10000);
     }
 };
 

@@ -867,8 +867,16 @@ void FilmstripTimeline::mouseMoveEvent(QMouseEvent* e) {
     case Drag::Scrub: emit seekRequested(timeAt(clampedX)); return;
     case Drag::TrimStart: dragStart_ = std::clamp<qint64>(snap(timeAt(clampedX)), 0, std::max<qint64>(0, snap(dragEnd_ - minimum))); emit trimEdgeDragged(true, dragStart_); update(); return;
     case Drag::TrimEnd: dragEnd_ = std::clamp<qint64>(snap(timeAt(clampedX)), std::min(duration_, snap(dragStart_ + minimum)), duration_); emit trimEdgeDragged(false, dragEnd_); update(); return;
-    case Drag::CutStart: case Drag::CoverStart: dragStart_ = std::clamp<qint64>(snap(timeAt(clampedX)), 0, std::max<qint64>(0, snap(dragEnd_ - minimum))); update(); return;
-    case Drag::CutEnd: case Drag::CoverEnd: dragEnd_ = std::clamp<qint64>(snap(timeAt(clampedX)), std::min(duration_, snap(dragStart_ + minimum)), duration_); update(); return;
+    case Drag::CutStart: case Drag::CoverStart:
+        dragStart_ = std::clamp<qint64>(snap(timeAt(clampedX)), 0, std::max<qint64>(0, snap(dragEnd_ - minimum)));
+        emit editEdgeDragged(drag_ == Drag::CutStart ? QStringLiteral("cut") : QStringLiteral("cover"), dragId_, true, dragStart_);
+        update();
+        return;
+    case Drag::CutEnd: case Drag::CoverEnd:
+        dragEnd_ = std::clamp<qint64>(snap(timeAt(clampedX)), std::min(duration_, snap(dragStart_ + minimum)), duration_);
+        emit editEdgeDragged(drag_ == Drag::CutEnd ? QStringLiteral("cut") : QStringLiteral("cover"), dragId_, false, dragEnd_);
+        update();
+        return;
     case Drag::Strip:
         if (std::abs(pos.x() - pressX_) < QApplication::startDragDistance()) return;
         drag_ = Drag::Select;
@@ -891,12 +899,15 @@ void FilmstripTimeline::mouseReleaseEvent(QMouseEvent* e) {
     update();
     switch (drag) {
     case Drag::TrimStart: case Drag::TrimEnd:
+        emit edgeDragFinished();
         if (dragStart_ != edit_.trimStart || dragEnd_ != edit_.exportEnd(duration_)) emit trimProposed(dragStart_, dragEnd_);
         break;
     case Drag::CutStart: case Drag::CutEnd:
+        emit edgeDragFinished();
         for (const auto& cut : edit_.cuts) if (cut.id == id && (cut.start != dragStart_ || cut.end != dragEnd_)) emit cutAdjusted(id, dragStart_, dragEnd_);
         break;
     case Drag::CoverStart: case Drag::CoverEnd:
+        emit edgeDragFinished();
         for (const auto& mask : edit_.masks) if (mask.id == id && (mask.start != dragStart_ || mask.end != dragEnd_)) emit coverRetimed(id, dragStart_, dragEnd_);
         break;
     case Drag::Strip: {
