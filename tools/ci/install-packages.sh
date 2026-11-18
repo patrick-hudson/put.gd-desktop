@@ -15,11 +15,23 @@
 #                       replaced by that metadata and exactly the installed
 #                       packages. When every online attempt fails, one more attempt
 #                       installs offline from the snapshot's metadata and packages.
+#                       On apt the snapshot also keeps the sources it was built with:
+#                       apt names its metadata files after the source URI, so the
+#                       offline attempt reads them through those sources, not the
+#                       host's, and a snapshot made in a container serves a runner.
+#   PUTGD_PKG_ATTEMPTS=0 skips the online attempts and installs from the snapshot.
+#   PUTGD_PKG_REUSE_METADATA=true (apt) never refreshes the indexes: every attempt uses the
+#                       ones an earlier install of the same job downloaded, and fails when
+#                       there are none or a package can't be downloaded against them. Adding
+#                       packages to a snapshot this way keeps its indexes matching its .debs.
+# With --download-only (adding packages to a snapshot) there is no offline fallback.
 #   PUTGD_PKG_TIMEOUT   seconds one attempt may take (default 900)
 #   PUTGD_PKG_STALL     seconds an attempt may print nothing (default 600)
 # A stalled mirror connection can hang apt or dnf for good (#467): an attempt
-# over either limit is stopped and counts as failed. Downloaded packages stay in
-# the cache, so the next attempt resumes. apt and dnf drop a connection that
+# over either limit is stopped and counts as failed. On apt that covers the update and
+# the download (`apt-get install --download-only`) only; the install of what was downloaded
+# (`--no-download`) and the offline install have no limit, so dpkg is never stopped halfway.
+# Downloaded packages stay in the cache, so the next attempt resumes. apt and dnf drop a connection that
 # moves nothing (apt) or under 1 kB/s (dnf) for 60 s and retry it themselves.
 # Every failed or stopped attempt and fallback is a warning annotation and a row in
 # $GITHUB_STEP_SUMMARY. The script fails when the snapshot cannot satisfy the
@@ -44,6 +56,7 @@ fi
 label="${PUTGD_PKG_LABEL:-$ID $VERSION_ID}, $manager"
 log=$(mktemp)
 trap 'rm -f "$log" "$log.stopped"' EXIT
+apt_root=${PUTGD_APT_ROOT:-/etc/apt}
 apt_network=(-o Acquire::Retries=3 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=60)
 dnf_network=(--setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000)
 
@@ -98,20 +111,55 @@ online() {
   else
     # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
     [ -z "$interrupted" ] || bounded dpkg --configure -a || return
-    bounded apt-get update --error-on=any "${apt_network[@]}" "${extra[@]}" || return
-    [ ${#packages[@]} -eq 0 ] || DEBIAN_FRONTEND=noninteractive bounded apt-get install -y "${apt_network[@]}" \
-      "${extra[@]}" "${options[@]}" "${packages[@]}"
+    if [ -z "${PUTGD_PKG_REUSE_METADATA:-}" ]; then
+      bounded apt-get update --error-on=any "${apt_network[@]}" "${extra[@]}" || return
+    elif ! compgen -G "$live/lists/*Packages*" >/dev/null; then
+      echo 'E: no package indexes of an earlier install to reuse'
+      return 1
+    fi
+    [ ${#packages[@]} -gt 0 ] || return 0
+    # Two phases, so the time limit can never stop dpkg halfway: a stopped download leaves the system
+    # untouched and the snapshot fallback starts from the state it was in, while a started install runs to the end.
+    DEBIAN_FRONTEND=noninteractive bounded apt-get install -y --download-only "${apt_network[@]}" \
+      "${extra[@]}" "${options[@]}" "${packages[@]}" || return
+    [[ " ${options[*]} " == *" --download-only "* ]] ||
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
   fi
+}
+
+# Keep the apt sources beside the metadata that was downloaded through them.
+save_sources() {
+  local file list=$apt_root/sources.list parts=$apt_root/sources.list.d
+  # The sources apt really reads, so a custom APT_CONFIG is followed (PUTGD_APT_ROOT overrides, for tests).
+  if [ -z "${PUTGD_APT_ROOT:-}" ] && command -v apt-config >/dev/null; then
+    eval "$(apt-config shell list Dir::Etc::sourcelist/f parts Dir::Etc::sourceparts/d)"
+    parts=${parts%/}
+  fi
+  mkdir -p "$1/sources"
+  rm -f "$1"/sources/*
+  # apt picks the parser by the file name's extension: keep .sources for a deb822 main file.
+  if [ -s "$list" ]; then
+    case "$list" in *.sources) cp "$list" "$1/sources/00-sources-list.sources" ;; *) cp "$list" "$1/sources/00-sources-list.list" ;; esac
+  fi
+  for file in "$parts"/*.list "$parts"/*.sources; do
+    [ ! -f "$file" ] || cp "$file" "$1/sources/"
+  done
+  # No sources found: save none, so the offline install keeps the host's own instead of an empty set.
+  rmdir "$1/sources" 2>/dev/null || true
 }
 
 offline() {
   local extra=()
   mapfile -t extra < <(cache_options "$snapshot")
+  if [ "$manager" = apt-get ] && [ -d "$snapshot/sources" ]; then
+    extra+=(-o Dir::Etc::sourcelist=/dev/null -o "Dir::Etc::sourceparts=$snapshot/sources")
+  fi
   if [ "$manager" = dnf ]; then
     bounded dnf install -y --cacheonly "${extra[@]}" "${options[@]}" "${packages[@]}"
   else
-    [ -z "$interrupted" ] || bounded dpkg --configure -a || return
-    DEBIAN_FRONTEND=noninteractive bounded apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
+    [ -z "$interrupted" ] || dpkg --configure -a || return
+    # Nothing is downloaded, so no time limit that could stop dpkg halfway.
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${extra[@]}" "${options[@]}" "${packages[@]}"
   fi
 }
 
@@ -128,6 +176,7 @@ refresh_snapshot() {
     local extra=()
     mapfile -t extra < <(cache_options "$live")
     apt-get autoclean "${extra[@]}" >/dev/null
+    save_sources "$live"
   fi
   rm -rf "$snapshot.new"
   # Hard links: nothing writes to the live cache after this.
@@ -204,6 +253,8 @@ done
 
 if [ ${#packages[@]} -eq 0 ]; then
   report error '-' '**failed**: package metadata could not be refreshed'
+elif [[ " ${options[*]} " == *" --download-only "* ]]; then
+  report error '-' '**failed**: the packages could not be downloaded into the snapshot'
 elif [ -n "$snapshot" ] && [ -f "$snapshot/putgd-snapshot" ]; then
   saved=$(cat "$snapshot/putgd-snapshot")
   rm -f "$log.stopped"

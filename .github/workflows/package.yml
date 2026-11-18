@@ -192,8 +192,8 @@ jobs:
         id: pkg-cache
         with:
           path: /var/cache/putgd-packages
-          key: putgd-pkgs-v1-${{ matrix.name }}-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
-          restore-keys: putgd-pkgs-v1-${{ matrix.name }}-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
+          key: putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
+          restore-keys: putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
       - name: Standard distro dependencies
         env:
           PUTGD_PKG_CACHE: /var/cache/putgd-packages
@@ -201,9 +201,36 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash tools/releases/install-native-deps.sh
+      - name: Download the AppImage job's packages into the snapshot
+        # Download only: this build's packages stay as they are. The AppImage job restores the
+        # same snapshot and installs these from it when the mirrors fail (#1652). The snapshot is
+        # saved only when every download worked, so a failure here never fails this build.
+        id: appimage-prefetch
+        continue-on-error: true
+        # Its own small budget, so cache warming can't eat the native job's time: two attempts of five
+        # minutes, and the step itself stops at 15.
+        timeout-minutes: 15
+        if: matrix.name == 'ubuntu24.04' && env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true'
+        env:
+          PUTGD_PKG_CACHE: /var/cache/putgd-packages
+          PUTGD_PKG_LABEL: native (ubuntu24.04) AppImage packages
+          # Never refreshes the indexes: the packages are fetched against the ones the install above
+          # downloaded, so the snapshot's indexes and packages match.
+          PUTGD_PKG_REUSE_METADATA: 'true'
+          PUTGD_PKG_ATTEMPTS: '2'
+          PUTGD_PKG_BACKOFF: '10'
+          PUTGD_PKG_TIMEOUT: '300'
+          PUTGD_PKG_STALL: '120'
+        run: |
+          # The same list the AppImage job installs (the base list, the AppImage packages and weston), downloaded only.
+          # --reinstall also downloads packages this image already has at the candidate version, which the install
+          # above never fetched: the ones this job's bootstrap installed (git, ca-certificates) and the overlap with
+          # the list. A runner with an older version needs those archives for the offline install.
+          PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' tools/ci/appimage-packages.txt) weston" \
+            PUTGD_INSTALL_OPTIONS='--download-only --reinstall' bash tools/releases/install-native-deps.sh
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        # Only a snapshot an online install just refreshed, never one it fell back to.
-        if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        # Only a snapshot an online install just refreshed, never one it fell back to; for ubuntu24.04, with the AppImage packages in it.
+        if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (matrix.name != 'ubuntu24.04' || steps.appimage-prefetch.outcome == 'success') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           path: /var/cache/putgd-packages
           key: ${{ steps.pkg-cache.outputs.cache-primary-key }}
@@ -430,8 +457,8 @@ jobs:
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /var/cache/putgd-packages
-          key: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
-          restore-keys: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
+          key: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-${{ steps.pkg-key.outputs.week }}
+          restore-keys: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-
       - name: Standard build dependencies
         env:
           PUTGD_PKG_LABEL: appimage
@@ -439,16 +466,17 @@ jobs:
           PUTGD_PKG_STALL: '120'
           PUTGD_PKG_ATTEMPTS: '3'
         run: |
-          # Retried package installs (#368); sudo keeps the summary file for the retry report.
-          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh "$@"; }
+          # One apt transaction (#1652): the base dependencies, the packages in tools/ci/appimage-packages.txt
+          # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
+          # system libraries the Qt action would install) and weston. It installs entirely online or
+          # entirely from the package snapshot, never a mix of the two. sudo keeps the summary file for the retry report (#368).
+          PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' tools/ci/appimage-packages.txt) weston"
+          export PUTGD_EXTRA_PACKAGES
           # actions/cache stores this path relative to the container's shallower workspace,
           # so here it restores three levels above this workspace, not to /var/cache.
           PUTGD_PKG_CACHE=$(realpath -m "$GITHUB_WORKSPACE/../../../var/cache/putgd-packages")
           export PUTGD_PKG_CACHE
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
-          # patchelf and the bundled libraries, then screen recording: the pinned FFmpeg's build inputs and the GStreamer plugins the image bundles.
-          pkg_install patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev \
-            nasm libva-dev libvpx-dev libwebp-dev libopus-dev libffmpeg-nvenc-dev libx264-dev libx265-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-pulseaudio gstreamer1.0-vaapi
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_EXTRA_PACKAGES,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
       - name: The locked Qt version
         # Renovate updates it in the lock (#420), where the AppImage tools read it too.
         id: qt
@@ -458,6 +486,9 @@ jobs:
           LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
         with:
           version: ${{ steps.qt.outputs.version }}
+          # Its own apt-get update/install runs outside the snapshot fallback; its packages are in
+          # tools/ci/appimage-packages.txt and install in the one transaction above.
+          install-deps: false
           arch: linux_gcc_64
           modules: qtimageformats
           cache: true
@@ -507,8 +538,6 @@ jobs:
           # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
           npm_config_fetch_retries: '5'
         run: python3 tools/proton/provision_runtime.py
-      - name: Headless Wayland compositor for the image's start check
-        run: sudo --preserve-env=GITHUB_STEP_SUMMARY bash tools/ci/install-packages.sh --no-install-recommends weston
       - name: Restore release compiler cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
