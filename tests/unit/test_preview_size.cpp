@@ -50,6 +50,14 @@ private slots:
   QCOMPARE(result.picture, QSize(720, 180));
   QVERIFY(result.dialog.width() <= screen.width() - kPreviewScreenSlack);  // the fixed 1000x700 asked for 932 here
  }
+ // 1280x720 at 250% scaling is 512x288 logical pixels: too small for the 200x150 minimum, still the screen to fit.
+ void aSmallLogicalScreenIsFittedNotReplacedByTheDefault() {
+  const QSize screen(512, 288);
+  QCOMPARE(previewArea(QSize(0, 0), screen, margin, overhead), screen);
+  const auto result = plan(QSize(4000, 1000), QSize(0, 0), screen);
+  QVERIFY(result.dialog.width() <= screen.width() - kPreviewScreenSlack);   // the fixed 1000x700 asked for 932x338
+  QVERIFY(result.dialog.height() <= screen.height() - kPreviewScreenSlack);
+ }
  void aScreenThatIsUnknownGetsTheFixedDefault() {
   QCOMPARE(previewArea(QSize(), QSize(), margin, overhead), kPreviewFallbackArea);
   const auto result = plan(QSize(2560, 1440), QSize(), QSize());

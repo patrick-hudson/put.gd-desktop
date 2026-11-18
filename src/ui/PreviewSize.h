@@ -5,8 +5,8 @@
 namespace putgd::Ui {
 // How big the History window's expanded preview may be, apart from any widget so a test can give it the screens
 // that went wrong. A screen whose work area is empty (Cinnamon reports one while it lays its outputs out) or only a
-// strip (1920x48) leaves no room for a picture; the screen's whole geometry is the next choice, and a fixed size the
-// last, when the screen is unknown too.
+// strip (1920x48) leaves no room for a picture; the screen's whole geometry is the next choice, however small, and a
+// fixed size the last, when the screen is unknown too.
 inline constexpr QSize kPreviewMinimumPicture{200, 150};
 inline constexpr QSize kPreviewFallbackArea{1000, 700};
 inline constexpr int kPreviewScreenSlack = 48;  // the title bar and the frame the window manager adds
@@ -23,7 +23,8 @@ inline QSize previewArea(const QSize& workArea, const QSize& screenGeometry, int
             && area.height() - kPreviewScreenSlack - overhead >= kPreviewMinimumPicture.height();
     };
     if (roomFor(workArea)) return workArea;
-    if (roomFor(screenGeometry)) return screenGeometry;
+    // A known screen is always fitted to, even a small logical one (1280x720 at 250% is 512x288 to Qt).
+    if (!screenGeometry.isEmpty()) return screenGeometry;
     return kPreviewFallbackArea;
 }
 
