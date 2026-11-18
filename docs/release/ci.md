@@ -782,9 +782,11 @@ and dwz steps. It works in three layers:
   (`--no-download`) runs with no limit, so dpkg is never stopped halfway: the
   source of the packages, mirror or snapshot, is chosen before dpkg starts. A
   stopped attempt is followed by `dpkg --configure -a` before the retry. On apt,
-  every failed or stopped attempt also moves the first mirror of
-  `/etc/apt/putgd-mirrors.txt` behind the other usable ones, so the next attempt
-  starts on another mirror.
+  every failed or stopped attempt of `tools/ci/install-packages.sh` also moves the
+  first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
+  than one mirror answered the probe, so the next attempt starts on another mirror. (The
+  workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
+  than 128 MiB.)
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
