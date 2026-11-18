@@ -160,6 +160,11 @@ QString HistoryModel::remoteStateText(const QJsonObject& r){
 }
 bool HistoryModel::localCopyUnavailable(const QJsonObject& r){return (r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")&&!QFileInfo(r["local"].toObject()["path"].toString()).isFile();}
 QString HistoryModel::statusText(const QJsonObject& r){
+ // The resident reached this outcome but could not save it in History yet (#1579).
+ if(r.contains("resultUnsaved")||r["operation"].toObject().contains("resultUnsaved")){
+  auto plain=r;plain.remove("resultUnsaved");if(plain.contains("operation")){auto operation=plain["operation"].toObject();operation.remove("resultUnsaved");plain["operation"]=operation;}
+  return statusText(plain)+" · Not saved in History yet; put.gd keeps trying";
+ }
  const auto op=r["operation"].toObject();if(!op["note"].toString().isEmpty()){
   auto plain=r;auto operation=op;operation.remove("note");plain["operation"]=operation;
   if(active(r)||op["state"]=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled"||r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial"||localSaveFailed(r))return statusText(plain)+" · "+op["note"].toString();
