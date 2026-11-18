@@ -307,7 +307,7 @@ Error validateMask(const QJsonValue& value, RecordingMask& mask, qint64 duration
     return {};
 }
 }
-Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 duration, const QSize& canvas, int fps) {
+Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 duration, const QSize& canvas, int fps, RecordingEditHistory*) {
     if (commands.isEmpty() || commands.size() > maximumEditCommands) return invalid("Send 1 to 100 edit commands", "commands");
     RecordingEdit next = edit;
     const qint64 minimum = fps > 0 ? 1000000 / fps : 1;
