@@ -3,6 +3,7 @@
 #include <QList>
 #include <QRect>
 #include <QStringList>
+#include <atomic>
 #include <functional>
 
 // Quick redact (#1428, decision 5): suggested Redact marks over recognized
@@ -58,7 +59,9 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& categorie
 // The same, calling `progress` (on the calling thread) after the name and list
 // terms and after each pattern with everything found so far, the patterns not
 // yet finished counted as skipped: a caller that stops waiting can still use it.
-Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress);
+// `cancel`, when set, is read between searches: once true, the patterns not yet
+// run are skipped and find returns (within one search, QuickRedact.cpp).
+Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel=nullptr);
 // The Redact marks for a match: its word boxes, one box per line, padded by a
 // quarter of the line height above and below and by one and a half characters
 // either side, clamped to `bounds` (the image).
