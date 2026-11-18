@@ -189,6 +189,9 @@ public:
  // the list category. On failure `code` is edit_command_invalid and `message` names the
  // entry's position, never its text. Pure: it starts no recognition.
  static bool parseRedactText(const QJsonObject& entry,QStringList& categories,QStringList& terms,QStringList& patterns,QString& code,QString& message);
+ // How long Quick redact's result waits for a drag in progress before it gives up and adds nothing; the agent
+ // supervisor answers editor_timeout after about this long, so a late result must not add marks nobody asked for.
+ void setQuickRedactGestureWaitMs(int ms){quickRedactGestureWaitMs_=ms;}
  // The saved Quick redact words and patterns (Settings), from the bootstrap.
  void setRedactList(QStringList terms,QStringList patterns);
  // editor.apply: the commands as one undo step, answered with the ids created and the document's state. A pointer
@@ -282,6 +285,6 @@ private:
  QLabel *textState_=nullptr,*textTruncated_=nullptr,*textFeedback_=nullptr,*codesTitle_=nullptr;QPushButton *copySelection_=nullptr,*copyAllText_=nullptr;
  void syncText();void rebuildCodes();void textOutcome(const QString& what,Error error,int characters,TextDone done);
  QWidget* quickRedactRow_=nullptr;QToolButton* quickRedact_=nullptr;QLabel* quickRedactResult_=nullptr;bool quickRedacting_=false;
- QStringList redactTerms_,redactPatterns_;QAction *quickRedactList_=nullptr,*quickRedactRemove_=nullptr;QLabel* suggested_=nullptr;
+ QStringList redactTerms_,redactPatterns_;int quickRedactGestureWaitMs_=textjob::maximumDeadlineMs;QAction *quickRedactList_=nullptr,*quickRedactRemove_=nullptr;QLabel* suggested_=nullptr;
 };
 }
