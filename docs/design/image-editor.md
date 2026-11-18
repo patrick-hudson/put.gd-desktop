@@ -389,21 +389,23 @@ what the editor itself guarantees.
   addresses, Card numbers, Keys and tokens, **My username and name**, **My redaction list**, All
   of these and **Remove suggestions**.
   - **My username and name** matches the login name and the real name of the account that runs
-    the editor, read in the editor process and never sent anywhere. **My redaction list** matches
+    the editor, looked up for the editor process and kept in its memory. **My redaction list** matches
     the words and patterns saved in Settings → Capture → Text recognition, which reach the editor
     when it opens. It is disabled, with a tooltip that says where to add words, while nothing is
-    saved. Both are in All of these. Neither list nor name is logged, journaled or written to a
-    diagnostics package.
+    saved. Both are in All of these. Neither list nor name is logged or written to a
+    diagnostics package, and the editor sends the matcher no account-name field. The recognized
+    text, which may contain the name, is a subject for the pattern child when there are patterns.
   - A hit covers the **whole word box** it touches, as every kind does, so
     `/home/patrick/project` is covered entirely. Patterns run in a child process,
     `putgd-ui --match-patterns`, started only when there are patterns, so a slow pattern never
     freezes the editor. The editor kills the child at the deadline (2 s by default). Patterns that
     finished, the saved words and every other category still land, and an unfinished pattern is
-    named as skipped ("Pattern 3 took too long and was skipped."). A pattern sees each line, and
-    each pair of consecutive lines joined with a line break, so `quick\sredact` matches across a
-    wrapped line and a literal space does not. The child cannot write files, has a cleared
-    environment and no new privileges, closes inherited descriptors, and (best effort, with
-    Landlock) cannot read files once it has its input. It never logs and dies with the editor.
+    named as skipped ("Pattern 3 didn't finish and was skipped."; PCRE2's own limits can end a
+    pattern before the deadline). A pattern sees the OCR text as shown: each visual line, and each
+    pair of consecutive lines joined with a line break, so `quick\sredact` matches across a
+    wrapped line and a literal space does not. The child cannot write files, has an environment
+    of only `LC_ALL=C.UTF-8` and no new privileges, and (best effort, with Landlock) cannot open
+    files once it has its input, which it reads after those limits are in place. It never logs and dies with the editor.
     Closing the editor kills it.
   - **Each mark remembers why it was added**, by category and never by its text. A selected
     suggested mark says "Suggested: My username and name" (or the label of its category) in the
@@ -412,15 +414,20 @@ what the editor itself guarantees.
   - **Deleting one suggestion** works like deleting any mark (Select tool, Delete, or
     `remove {shapeId}`). Running Quick redact again on that edit does not add it back, and undoing
     the delete brings the mark back. The editor remembers deleted suggestions only in memory, for
-    that edit, by the unpadded box of the recognized words they were built from.
+    that edit, by category and the unpadded box of the recognized words they were built from: a
+    later run skips a mark of the same category whose box overlaps it by at least half of their
+    union, and a different category or a clearly different box can give a new mark.
   - **Remove suggestions** removes every suggested mark still there as one undo step and says
     "Removed 3 suggested redactions". Marks drawn by hand are never touched, and the removed
     marks are not remembered as deleted. It is off when there is no suggested mark. Agents use
     `editor.view` `removeSuggestions`.
-  - A result that lands during a drag waits for the drag to end and becomes its own undo step.
-    Switching tools or panning mid-drag abandons the drag and drops its half-drawn mark. A Redact
-    mark or crop change that was undone still counts as a change, so the result is `edit_stale`.
-    The worst case from the start of matching to the answer is the budget plus 1 s.
+  - Starting Quick redact mid-drag answers `editor_busy`. A result that lands during a drag
+    waits for the drag to end, for up to 20 s from the start of Quick redact, and becomes its own
+    undo step; if the drag is still active then, the command returns `editor_busy` and adds
+    nothing. Switching tools or panning mid-drag abandons the drag and drops its half-drawn mark.
+    A Redact mark or crop change that was undone still counts as a change, so the result is
+    `edit_stale`. The matcher answers within its budget plus 1 s, which is separate from the drag
+    wait.
   - While a pointer gesture is open, agent commands that change the document or the selection
     answer `editor_busy`: the `editor.apply` ops, `redactText`, `removeSuggestions` and the editing
     and selection `editor.view` actions.
@@ -458,10 +465,12 @@ this command, which are for this command only and
 need `list` in `categories`. A term or pattern that is empty, too long or has a line feed, carriage return,
 U+2028 or U+2029, a term with no letter or digit, or a pattern that is blank, does not compile or
 matches empty text (the shape of a pattern is not judged), fails the whole command with
-`edit_command_invalid` and the entry's index, never its text. It must be the only command in its batch,
+`edit_command_invalid` and the entry's index, never its text (through MCP, an invalid field or value is refused first as
+`invalid_request`). It must be the only command in its batch,
 or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is
 done, not at once, and returns the created shape IDs and counts per category, and `skippedPatterns`
-(0-based indexes) when a pattern ran out of time. A request for `list` alone with nothing saved and no
+(0-based indexes) when a pattern did not finish, and `nameUnchecked: true` when `name` was chosen and
+the account lookup did not answer within 1 s (the other categories ran without it). A request for `list` alone with nothing saved and no
 `terms` or `patterns` answers `created: []` and `counts: {list: 0}` at once, without recognition. Marks it adds report `suggested` in the shape's state; `add` cannot set
 it and `update` keeps it.
 A `result` that is no longer current is refused with `edit_stale` by every method that takes

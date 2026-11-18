@@ -516,25 +516,35 @@ other tool active it does not. The user's side is in the
     the hit keeps the words the earlier match left, so a name is not left bare because a
     neighbouring word was taken.
   - **Names and your own words (#1618).** `name` and `list` match literal text, not shapes, and
-    they work on the same unfiltered candidates, lines and wrapped lines as the other kinds.
+    words and names work on the same unfiltered candidates, lines and wrapped lines as the other
+    kinds. Patterns see lines as described under Patterns.
     - **Where the name comes from.** `name` reads the account of the process that runs the editor
       (`putgd-ui --edit-image`): the login name from `getpwuid_r(getuid())`, and the real name
       from the text before the first comma of its GECOS field, split on spaces into parts. It
       does not read `$USER`, which `sudo -E` or a changed environment can make wrong. If the
       GECOS name is empty it asks AccountsService for `RealName` on the system bus, without
       starting the service, with 250 ms for each of two calls; any failure leaves the real name
-      empty and the login still matches. The lookup runs on the matching worker thread, and only
-      when `name` is chosen, so it never waits on the interface thread; `getpwuid_r` retries with
-      a buffer doubled up to 1 MiB when the entry is larger than expected. Checked on 2026-11-18: GECOS is filled on f44, d69, k72
-      and m74, and empty on aurora-amd, where AccountsService has no name either, so there only
-      the login is matched. The name never crosses a process boundary and is never stored or
-      logged.
+      empty and the login still matches. The lookup runs on a thread of its own, once at a time for the
+      whole process, and only when `name` is chosen, so it never waits on the interface thread
+      (`getpwuid_r` retries with a buffer doubled up to 1 MiB when the entry is larger than
+      expected, and a directory service can be slow). The other categories wait for it at most 1
+      second. Without an answer by then they run on without `name`, the lookup goes on in the
+      background, and the result says so: `nameUnchecked: true`, and the line "My username and
+      name was not checked: the account lookup did not answer in time." A later run that starts
+      while a lookup is still going waits for that one rather than starting another. Checked on
+      2026-11-18: GECOS is filled on f44, d69, k72 and m74, and empty on aurora-amd, where
+      AccountsService has no name either, so there only the login is matched. The editor keeps
+      the lookup result in memory only and sends no separate account-name field to the matcher.
+      The recognized text, which may contain the name, does go to the pattern child as a subject
+      when the user has patterns. Nothing about the account is stored or logged.
     - **Where the list comes from.** `list` matches the saved words and patterns
       (`preferences.quickRedactTerms` and `preferences.quickRedactPatterns`, see
       [configuration](configuration.md)), plus the `terms` and `patterns` of one `redactText`
       command. The saved ones reach the editor in the bootstrap frame as `redactTerms` and
       `redactPatterns`, each sent only when it is not empty. An agent's own `terms` and `patterns`
-      stay in that request. Nothing here is written to a log, a journal or a diagnostics bundle.
+      stay in that request. They are never written to a log or a diagnostics bundle (the bundle drops both
+      keys wherever they appear, keeping only a count). The operation journal's copy of the settings
+      snapshot holds them, as local state with the same trust as `config.json`.
     - **How a word or phrase is compared.** Both the entry and the recognized text go through
       NFKC, case folding and one apostrophe for curly and straight. Case folding is the default
       one, so `kır` and `kir` stay apart, plus `ß` and `ẞ` as `ss` (`Straße` matches `STRASSE`). Accents are stripped only from Latin, Greek and Cyrillic letters; in other
@@ -576,62 +586,72 @@ other tool active it does not. The user's side is in the
       still counts inside a whole-name match; a single initial; and anything that needs
       edit-distance fuzziness. With the name `Patrick Hudson`, `Patricks`, `pattern`, `pat` and
       `hudsonia` get no mark. `Hudson` in `Hudson Bay` does, since it is the user's surname.
-    - **Patterns.** A pattern runs exactly as typed: ordinary PCRE2 search
-      (`QRegularExpression`) with Unicode properties on and nothing added to it. Case is as
-      written, and `(?i)` turns it off, which is the usual regex expectation and unlike a word,
-      which always ignores case. It runs over these subjects: each recognized line on its own,
-      its words joined by one space (NFKC-normalized; case and accents are kept), and each pair
-      of consecutive lines in reading order joined with `\n`. A pair's hit counts only where it
-      uses the break; a hit inside one line is found in that line, once. So `quick\sredact`
-      matches across a wrapped line, a literal space does not, and nothing spans three lines.
-      Each subject is searched once, from its start, as global matching does. Examples:
-      `\bJIRA-\d+\b` and `(?i)\b[a-z0-9-]+\.corp\.example\b`. A hit marks every word box it
-      touches. An empty hit marks nothing. A pattern that matches everything (`.+`) is allowed,
-      and the result says how many marks it added.
-    - **Limits and the save-time check.** Up to 200 words of 1 to 100 code points, and up to 50
-      patterns of up to 500 code points, counted after trimming. A word or pattern may not hold
-      a line feed, a carriage return, U+2028 or U+2029. Trimming is exactly Qt's
-      (`QChar::isSpace`), so U+001C to U+001F are kept. A word needs a letter or digit. A pattern
-      must not be blank, must compile, and must not match empty text. That is all: the shape of
-      a pattern is not judged, so `(*` verbs, `\C`, lookarounds, back references and nested
-      repeats are allowed. All of it is checked when the setting is saved and when an agent
-      sends it, with the same rules in the editor and the MCP helper (a shared table in
-      `tests/fixtures/text/redact-validation.json`; the helper checks the line break, trim,
-      length and letter rules and leaves compiling to the editor, whose answer is authoritative).
-      The schemas hold only loose bounds (no line break, at most 200 raw characters for a word
-      and 1000 for a pattern) and point to these rules.
+    - **Patterns.** A pattern is ordinary PCRE2 search (`QRegularExpression`) with Unicode
+      properties on. Case is as written, and `(?i)` turns it off, which is the usual regex
+      expectation and unlike a word, which always ignores case. At run time the matcher puts
+      `(*LIMIT_MATCH=10000)(*LIMIT_DEPTH=10000)` in front of it, which can stop a search but never
+      change a match, and the child's kill supplies the wall-clock bound (below); the save-time
+      check compiles the pattern as written. A pattern sees the OCR word text as shown, with no
+      NFKC, digit or case folding (those are for words and names only). Its subjects are each
+      visual line on its own, its words joined by one space, and each pair of consecutive visual
+      lines in reading order joined with `\n`. A pair's hit counts only where it uses the break;
+      a hit inside one line is found in that line, once. So `quick\sredact` matches across a
+      wrapped line, a literal space does not, and nothing spans three lines. Each subject is
+      searched once, from its start, as global matching does. Examples: `\bJIRA-\d+\b` and
+      `(?i)\b[a-z0-9-]+\.corp\.example\b`. A hit marks every word box it touches. An empty hit
+      marks nothing. A pattern that matches everything (`.+`) is allowed, and the result says
+      how many marks it added.
+    - **Limits and the save-time check.** Up to 200 words and up to 50 patterns. A word is 1 to
+      100 code points after trimming. A pattern is up to 500 code points as written: it is not
+      trimmed when it runs, so its spaces can matter, and trimming only decides whether it is
+      blank. A word or pattern may not hold a line feed, a carriage return, U+2028 or U+2029.
+      Trimming is exactly Qt's (`QChar::isSpace`), so U+001C to U+001F are kept. A word needs a
+      letter or digit. A pattern must not be blank, must compile, and must not match empty text.
+      That is all: the shape of a pattern is not judged, so `(*` verbs, `\C`, lookarounds, back
+      references and nested repeats are allowed. All of it is checked when the setting is saved
+      and when an agent sends it, with the same rules in Settings, the editor and the MCP helper
+      (a shared table in `tests/fixtures/text/redact-validation.json`). The MCP helper checks the
+      line break, trim, length and letter rules and leaves compiling and the empty-match test to
+      the editor, whose answer is authoritative. The schemas keep only the line-break rule, a
+      minimum length of 1, and 500 characters for a pattern; they have no length cap for a word.
     - **The pattern child.** Nothing bounds a regular expression's time inside a process, so user
       patterns run in a child, `putgd-ui --match-patterns`, started only when there are patterns,
-      and the editor kills it at the deadline (2 s by default). The editor is already `putgd-ui`,
-      so no new binary or package change is needed. The child gets the subject texts and the
-      patterns as JSON on stdin and writes one line per pattern as each ends: the pattern's index,
-      whether it finished, and (subject, start, length) ranges. Word ownership and the one-match-
-      per-word rule stay in the editor. Patterns that finished, the saved words and every other
-      category still land. A pattern the child did not finish, that did not compile, or that
-      stopped on PCRE2's own match or depth limits (`(a+)+$` stops in about 1 ms, so the next
-      pattern still runs) is named as skipped: "Pattern 3 took too long and was skipped." (the
+      and the editor kills it at the deadline (2 s by default, counted from the start of the
+      matching worker, which includes the account lookup's wait). The editor is already
+      `putgd-ui`, so no new binary or package change is needed. The child gets the subject
+      texts, the line-break offsets of the pair subjects and the patterns as JSON on stdin and
+      writes one line per pattern as each ends: the pattern's index, whether it finished, and
+      (subject, start, length) ranges. Word ownership and the one-match-per-word rule stay in
+      the editor. Patterns that finished, the saved words and every other category still land. A
+      pattern the child did not finish, that did not compile, or that stopped on PCRE2's own
+      match or depth limits (`(a+)+$` stops in about 1 ms, before the deadline, so the next
+      pattern still runs) is named as skipped: "Pattern 3 didn't finish and was skipped." (the
       first pattern is number 1). The result never says the page was fully checked. A missing
       `putgd-ui` skips only the patterns.
-    - **Confinement of the child.** It has no new privileges and is not dumpable, `RLIMIT_FSIZE`
-      0 (no file it can write), 16 file descriptors, no core dump and a 30 s CPU limit, and its
-      inherited descriptors are closed. Its environment is cleared. A best-effort Landlock ruleset
-      denies all file access once its input is read. It never logs, and the text crosses only the
+    - **Confinement of the child.** Before it reads its input from stdin it has no new
+      privileges and is not dumpable, `RLIMIT_FSIZE` 0 (no file it can write), 16 file
+      descriptors, no core dump and a 30 s CPU limit, and a best-effort Landlock ruleset denies
+      all file access (an older kernel keeps the other limits). Descriptors above 2 are marked
+      close-on-exec where the kernel has `close_range`. Its environment is replaced, not
+      inherited: it holds only `LC_ALL=C.UTF-8`. It never logs, and the text crosses only the
       pipe. It dies with the editor (`PR_SET_PDEATHSIG`).
     - **Timing.** Measured on m74 (i5-6500T, Qt 6.4.2, Debug build): starting the child takes
       about 20 to 30 ms (the slowest of five runs 30 to 40 ms with one pattern, against 10 ms
-      without patterns), and killing it at the deadline about 10 ms to kill and reap. The worst
-      case from start to answer is the budget plus 1 second: the matching worker's answer
-      comes when it ends or at that moment, whichever is first, with what it had by then.
+      without patterns), and killing it at the deadline about 10 ms to kill and reap. The matcher
+      answers within its budget plus 1 second: the editor takes the worker's answer when the
+      worker ends, or at that moment, whichever is first, with what it had by then. Applying
+      the marks then waits separately for an active drag (see Applying the marks).
       `(?:(?=.*+)){3000}\w{12}`, `(?:(?=.*+).)+\d` and `(a+)+$` on a long line were killed or
       stopped and named, and the email, the word and the `JIRA-\d` pattern before them still
       landed.
     - **Exit.** Closing the editor kills the child: `QApplication`'s destructor (a post routine)
       cancels every worker and waits at most 1 second, then lets a stuck worker end on its own.
-      A worker reads the cancel every 50 ms while the child runs and kills it, and the account
-      lookup checks the cancel after reading the password entry and before the AccountsService
-      call, so a cancelled worker never contacts the system bus. Measured with the child running:
-      a wait of 6 ms; with the lookup stuck past the limit, the process ends 960 ms after
-      quitting.
+      A worker reads the cancel every 50 ms while the child runs and kills it, and while it
+      waits for the account lookup. The lookup is told the process is exiting after the password
+      entry and before the AccountsService call, so a lookup that gets that far never contacts
+      the system bus; one stuck in the directory service is left behind. Measured with the child
+      running: a wait of 6 ms; with the lookup stuck past the limit, the process ends 960 ms
+      after quitting.
     - **Geometry.** A hit marks the whole word box it touches, as every kind does.
       `/home/patrick/project` is covered entirely, not only `patrick`. A sub-box estimated from
       character counts could leave part of a name visible in a proportional font, so none is made.
@@ -656,23 +676,31 @@ other tool active it does not. The user's side is in the
     and name" (or the label of its category) in the Redact panel, and `editor.inspect` shows
     `suggested` on the shape. A mark drawn by hand, or added with `editor.apply add`, has no such
     field, and `update` keeps it.
-  - **Applying the marks.** If recognition's result lands while a drag is in progress, the
-    marks wait for the drag to end and then join the document as an undo step of their own, so
-    Undo removes the suggestions and the drag separately. Staleness uses a counter that rises with
-    every Redact mark or crop change, so a change that was then undone is still a change, and
-    the result adds nothing (`edit_stale`). Switching tools, or a middle-button or space pan,
-    while a mark is being drawn, moved or resized abandons that drag and its document gesture
-    together, and the half-drawn mark is dropped. While a pointer gesture is open, a
-    document-changing agent command answers `editor_busy` and changes nothing: every
-    `editor.apply` op (`add`, `update`, `remove`, `crop`, `resetCrop`, `undo`, `redo` and
-    `redactText`) and the editing and selection `editor.view` actions (`removeMark`,
-    `removeSuggestions`, `place`, `geometry`, `applyCrop`, `blurStyle`, `stepNumber`, and
-    selection changes). Views that change nothing still answer.
+  - **Applying the marks.** Starting Quick redact while a mark is being dragged answers
+    `editor_busy` at once. If the matcher's result lands while a drag is in progress, the marks
+    wait for the drag to end and then join the document as an undo step of their own, so Undo
+    removes the suggestions and the drag separately. The wait is up to 20 seconds counted from the
+    start of Quick redact (the longest recognition deadline). If the drag is still active then,
+    the command returns `editor_busy` ("A mark was still being dragged while Quick redact
+    waited"), says "A mark was still being dragged, so nothing was added. Try again." and adds
+    nothing. Staleness uses a counter that rises with every Redact mark or crop change, so a
+    change that was then undone is still a change, and the result adds nothing (`edit_stale`).
+    Switching tools, or a middle-button or space pan, while a mark is being drawn, moved or
+    resized abandons that drag and its document gesture together, and the half-drawn mark is
+    dropped. While a pointer gesture is open, a document-changing agent command answers
+    `editor_busy` and changes nothing: every `editor.apply` op (`add`, `update`, `remove`,
+    `crop`, `resetCrop`, `undo`, `redo` and `redactText`) and the editing and selection
+    `editor.view` actions (`removeMark`, `removeSuggestions`, `place`, `geometry`, `applyCrop`,
+    `blurStyle`, `stepNumber`, and selection changes). Views that change nothing still answer.
   - **Deleting a suggestion.** Deleting a suggested mark, with the Select tool and Delete or
-    `remove {shapeId}`, records the unpadded box of the recognized words it was built from in the document's
-    history, so two neighbouring one-character words are not taken for one suggestion. Running
-    Quick redact again on the same edit does not add a mark at that box. Undoing the delete forgets
-    it. It is kept in memory only, for that edit, and `counts` counts only matches that added a mark.
+    `remove {shapeId}`, records the category and the unpadded box of the recognized words it was
+    built from in the document's history. Running Quick redact again on the same edit does not
+    add a mark of the same category whose unpadded box overlaps that one by at least half of
+    their union, since a later run reads the page with the other marks blacked out and its
+    boxes move a few pixels. A different category, or an OCR box that differs enough, can give a
+    new mark. Two neighbouring one-character words are not taken for one suggestion. Undoing the
+    delete forgets it. It is kept in memory only, for that edit, and `counts` counts only matches
+    that added a mark.
   - **Remove suggestions** removes every suggested mark that is still there as one undo step, and
     leaves marks drawn by hand alone. Agents have it as `editor.view` `removeSuggestions`, which
     answers `edit_shape_missing` when there are none and `editor_busy` mid-drag. It is off when there are none, and it does not record
@@ -756,7 +784,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | `editor.selectText` | `id`, `result`, and `from` with `to` (word indexes in reading order), or `all`, or `none` | The selection |
 | `editor.copyText` | `id`, `result`, `all?` (default false, the current selection) | `copyStatus` and the character count |
 | `editor.copyCode`, `editor.openCode` | `id`, `result`, `index` | `copyStatus`, or the launch result. Open is refused for anything but a valid http or https URL |
-| `editor.apply` command `redactText` | `categories` (1 to 7 of email, phone, ip, card, key, name, list); optional `terms` (1 to 200 words or phrases of 1 to 100 code points on one line, each with a letter or digit) and `patterns` (1 to 50 regular expressions of up to 500 code points on one line), both only with `list` in `categories` | Created shape IDs and counts per category, and `skippedPatterns` (the 0-based indexes in the combined saved and given patterns of any that did not finish at the deadline, did not compile or hit PCRE2's limits) when there are any. `terms` and `patterns` add to the saved list for this command only. A term or pattern that is empty, too long or has a line break, or a pattern that is blank, does not compile or matches empty text, refuses the whole command with `edit_command_invalid` naming the entry's index, never its text. It must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is done, not at once, within the recognition deadline plus a margin |
+| `editor.apply` command `redactText` | `categories` (1 to 7 of email, phone, ip, card, key, name, list); optional `terms` (1 to 200 words or phrases of 1 to 100 code points on one line, each with a letter or digit) and `patterns` (1 to 50 regular expressions of up to 500 code points on one line), both only with `list` in `categories` | Created shape IDs and counts per category, and `skippedPatterns` (the 0-based indexes in the combined saved and given patterns of any that did not finish at the deadline, did not compile or hit PCRE2's limits) and `nameUnchecked: true` when `name` was chosen and the account lookup did not answer within 1 second when there are any. `terms` and `patterns` add to the saved list for this command only. A term or pattern that is empty, too long or has a line break, or a pattern that is blank, does not compile or matches empty text, refuses the whole command with `edit_command_invalid` naming the entry's index, never its text (through MCP, an invalid field or value is refused first as `invalid_request`, and only a pattern that does not compile or matches empty text reaches the editor's indexed error). It must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is done, not at once, within the recognition deadline plus a margin |
 | `history.copyText` | `id`, `keepResult?` (default false) | `operationId` and `state`. Follows `text.inspect` |
 | `history.qr` | `id`, `mode` (`copy`, `save` or `show`), `path` (absolute, `save` only), `overwrite?` (`save` only) | Once the receipt refresh and the copy or write are done, under Copy link's deadline: `copyStatus`, the saved `path`, or the window state. `show` needs the History window open |
 
