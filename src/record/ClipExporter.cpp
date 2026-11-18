@@ -615,6 +615,13 @@ Error probeClip(const QString& path, qint64& durationUs, QSize& canvas) {
     durationUs = input.format->duration > 0 ? input.format->duration : (stream->duration > 0 ? av_rescale_q(stream->duration, stream->time_base, microseconds) : 0);
     return {};
 }
+Error renderPreviewFrame(const AVFrame* frame, const RecordingEdit& edit, qint64 frameUs, const QSize& canvas, int maxEdge, QImage& out) {
+    QImage image;
+    if (auto e = frameToImage(frame, image)) return e;
+    applyMasks(image, edit, frameUs, canvas);
+    out = fitPreview(image, maxEdge);
+    return {};
+}
 Error previewFrame(const QString& path, const RecordingEdit& edit, const RecordingConfig& config, qint64 timeUs, int maxEdge, const QSize& canvas, QImage& out, qint64* actualTimeUs) {
     Input input;
     if (auto e = input.open(path, false)) return e;
@@ -644,14 +651,10 @@ Error previewFrame(const QString& path, const RecordingEdit& edit, const Recordi
         }
     }
     if (!chosen) return {"recording_export_failed", "No frame could be decoded at this time", {}};
-    QImage image;
-    if (auto e = frameToImage(chosen.get(), image)) return e;
     const auto frameUs = av_rescale_q(chosen->best_effort_timestamp - origin, timeBase, microseconds);
     if (actualTimeUs) *actualTimeUs = frameUs;
-    applyMasks(image, edit, frameUs, canvas);
-    out = fitPreview(image, maxEdge);
     Q_UNUSED(config);
-    return {};
+    return renderPreviewFrame(chosen.get(), edit, frameUs, canvas, maxEdge, out);
 }
 
 struct FrameSequence::Private {
