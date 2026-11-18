@@ -550,9 +550,10 @@ other tool active it does not. The user's side is in the
       one, so `kır` and `kir` stay apart, plus `ß` and `ẞ` as `ss` (`Straße` matches `STRASSE`). Accents are stripped only from Latin, Greek and Cyrillic letters; in other
       scripts, such as an Indic vowel sign, a combining mark is a letter of its own and stays.
       Lengths and edges count Unicode code points, and a combining mark belongs to its word. Text
-      is never compared with a regular expression, so a typed `.` or `*` is only a character. An
+      is never compared with a regular expression, so `*`, `?` and brackets are only characters. An
       entry splits into parts at spaces, `-`, `_`, `.` and lower-to-upper case changes between its
-      letters and digits, so `PatrickHudson` has the parts `patrick` and `hudson`. Punctuation
+      letters and digits, so `PatrickHudson` has the parts `patrick` and `hudson`, and `srv.data`
+      also matches `srvdata`, `srv_data`, `srv-data` and `srv data`. Punctuation
       before the first letter or after the last stays part of the entry, so `.env` is not `env`
       and does not mark it; a space inside that edge punctuation is a join, so `# 42` matches
       `# 42` and `#42`. In the text the parts must come in order, joined by nothing, by up to
@@ -594,8 +595,10 @@ other tool active it does not. The user's side is in the
       check compiles the pattern as written. A pattern sees the OCR word text as shown, with no
       NFKC, digit or case folding (those are for words and names only). Its subjects are each
       visual line on its own, its words joined by one space, and each pair of consecutive visual
-      lines in reading order joined with `\n`. A pair's hit counts only where it uses the break;
-      a hit inside one line is found in that line, once. So `quick\sredact` matches across a
+      lines in reading order joined with `\n`. A pair's hit counts only if its matched span
+      includes the joining newline; a hit inside one line is found in that line, once. A use of
+      the break that is not part of the match, such as `foo(?=\nbar)`, matches the pair but adds no
+      mark. So `quick\sredact` matches across a
       wrapped line, a literal space does not, and nothing spans three lines. Each subject is
       searched once, from its start, as global matching does. Examples: `\bJIRA-\d+\b` and
       `(?i)\b[a-z0-9-]+\.corp\.example\b`. A hit marks every word box it touches. An empty hit
