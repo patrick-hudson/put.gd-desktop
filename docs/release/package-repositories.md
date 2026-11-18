@@ -275,20 +275,24 @@ fingerprint, imports and locally signs that key with `pacman-key`, writes
 supported. Existing repository choice is preserved. Native package removal
 leaves this administrator-owned repository configuration in place.
 
-The package depends on the OpenSSL soname its binaries link, which makepkg records from
-a bare `libcrypto.so` entry in `packaging/arch/PKGBUILD` (`libcrypto.so=4-64` for OpenSSL 4).
-`tools/releases/arch.py` fails the build when the entry stays unversioned, because a bare
-one is met by any OpenSSL. Arch derivatives that follow Arch with a delay (Omarchy)
-cannot meet a newer soname, so before installing, the installer asks pacman to resolve
-`putgd` (`pacman -Sp putgd`, or `-Syp` outside Omarchy's flow). When pacman answers
-`could not satisfy dependencies` the installer installs the AppImage, after the same
-checks and verification as `--appimage`; any other pacman failure stops the install.
-It adds the signed repository and key either way, and says so when the package is
-already installed. A package that is installed and has an unsatisfiable upgrade stops
-`pacman -Syu --noconfirm`, which is what `omarchy update` runs, until it is removed or
-listed in `IgnorePkg`. This repeats at every soname change Arch makes before its
-derivatives do; a second package built for a derivative's package set is the larger
-alternative ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
+The package keeps a plain `openssl` dependency. A versioned one (`libcrypto.so=4-64`) would make pacman
+refuse the package on a system with an older OpenSSL, but it would also make `pacman -Syu --noconfirm`,
+which is what `omarchy update` runs, fail as a whole once a newer put.gd needs an OpenSSL the system does
+not have: no update of anything would run. Arch derivatives that follow Arch with a delay (Omarchy)
+therefore can have an installed package whose `putgd-cli` and S3 libraries do not load
+([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
+
+Instead the installer decides, before it installs anything, using `arch_libcrypto` (for example
+`libcrypto.so=4-64`) at the top of `packaging/install.sh`. It asks `pacman -T` for that soname and,
+if that fails, resolves it against the repositories (`pacman -Sp --needed`, or `-Syp` outside Omarchy's
+flow), so a stale Arch system that `pacman -Syu` brings up to the new OpenSSL still gets the native
+package. When nothing provides it (`target not found`) the installer installs the AppImage, after the
+same checks and verification as `--appimage`; any other pacman failure stops the install. It adds the
+signed repository and key either way, and says so when the native package is already installed.
+`tools/releases/arch.py` fails the Arch build when `arch_libcrypto` differs from the OpenSSL the
+binaries link, and records the soname as `package.libcrypto` in the package receipt, so Arch moving to a
+new OpenSSL fails the build until the installer is bumped. A second package built for a derivative's
+package set is the larger alternative.
 
 To change channels, copy `/usr/share/putgd/repo/putgd-CHANNEL.conf` to
 `/etc/pacman.d/putgd.conf`, import `/usr/share/putgd/repo/putgd-CHANNEL.asc`, and

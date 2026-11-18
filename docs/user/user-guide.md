@@ -263,17 +263,15 @@ refuses a direct `pacman -Syu` unless told otherwise. Remove put.gd with `sudo p
 repository configuration remains administrator-owned. AppImage is also available;
 package availability does not imply acceptance of every derivative's compositor.
 
-The pacman package is built on current Arch and says which OpenSSL it needs
-(`libcrypto.so=4-64` while Arch ships OpenSSL 4). A system that follows Arch with a delay,
-Omarchy 4.5 with its OpenSSL 3.6 for one, cannot meet that. There the install script asks
-pacman before it installs anything, and when pacman cannot satisfy the package it installs
-the AppImage (`~/.local/bin/putgd.AppImage`) and says why. Run the script again after
-the system's OpenSSL catches up and, if you want the pacman package, remove the AppImage
-first.
+The pacman package is built on current Arch against its OpenSSL (OpenSSL 4 today). A system that
+follows Arch with a delay, Omarchy 4.5 with its OpenSSL 3.6 for one, cannot load it: there the native
+package's `putgd-cli` and its S3, B2 and R2 uploads fail with `libcrypto.so.4: cannot open shared object
+file`, until Omarchy ships OpenSSL 4. For a new install the install script checks this with pacman before
+it installs anything and installs the AppImage (`~/.local/bin/putgd.AppImage`) instead, saying why.
 
-If the pacman package is already installed on such a system, a newer put.gd that needs the
-newer OpenSSL stops `pacman -Syu` and `omarchy update` with `unable to satisfy dependency
-'libcrypto.so=4-64' required by putgd`, so no update of anything runs until you remove
-put.gd (`sudo pacman -R putgd`, then run the install script for the AppImage) or add
-`putgd` to `IgnorePkg` in `/etc/pacman.conf`.
+If the pacman package is already installed on such a system, switch to the AppImage with one line:
+
+```sh
+sudo pacman -R putgd && curl -fsSL https://app.put.gd/install | sh
+```
 The AUR recipe is a draft and has not been published.
