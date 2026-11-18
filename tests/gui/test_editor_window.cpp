@@ -151,6 +151,25 @@ private slots:
   QVERIFY(doc.find(boxId)->points.isEmpty()); // the rectangle was never treated as the stroke
   QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),1); // one stroke, one undo step
  }
+ // CodeRabbit 4613753548: keys that edit or change the selection wait for a pointer drag, so a nudge cannot join the drag's
+ // undo step and be rolled back with it when the drag is abandoned.
+ void keysDuringAPointerDragWaitForIt(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  Shape box;box.kind=Shape::Kind::Rectangle;box.rect=QRect(5,5,40,30);const auto boxId=doc.add(box);
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","arrow"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  window.canvas().setFocus();
+  const auto start=window.canvas().rect().center();
+  QTest::mousePress(&window.canvas(),Qt::LeftButton,{},start);QTest::mouseMove(&window.canvas(),start+QPoint(60,30));
+  QVERIFY(doc.inGesture());const auto drawing=window.canvas().selected();
+  QTest::keyClick(&window.canvas(),Qt::Key_BracketLeft);QTest::keyClick(&window.canvas(),Qt::Key_Right);QTest::keyClick(&window.canvas(),Qt::Key_Delete);
+  QCOMPARE(window.canvas().selected(),drawing);QCOMPARE(doc.find(boxId)->rect,QRect(5,5,40,30)); // not selected, not moved, not deleted
+  // A middle-button pan then drops only the unfinished arrow.
+  QTest::mousePress(&window.canvas(),Qt::MiddleButton,{},start+QPoint(60,30));
+  QVERIFY(!doc.inGesture());QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().id,boxId);QCOMPARE(doc.shapes().first().rect,QRect(5,5,40,30));
+  QTest::mouseRelease(&window.canvas(),Qt::MiddleButton,{},start+QPoint(60,30));QTest::mouseRelease(&window.canvas(),Qt::LeftButton,{},start+QPoint(60,30));
+  // Keys work again once nothing is being dragged.
+  window.canvas().select(boxId);QTest::keyClick(&window.canvas(),Qt::Key_Right);QCOMPARE(doc.find(boxId)->rect,QRect(6,5,40,30));
+ }
  // A crop drawn but not yet applied is applied before Upload exports the image.
  void uploadFinishesThePendingCrop(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));

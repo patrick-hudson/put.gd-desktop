@@ -239,6 +239,9 @@ private slots:
   QJsonArray patternsMany;for(int i=0;i<51;++i)patternsMany.append("p"+QString::number(i));
   refused(with({{"categories",QJsonArray{"list"}},{"patterns",patternsMany}}),"patterns are 1 to 50");
   refused(with({{"categories",QJsonArray{"list"}},{"terms",QJsonArray{3}}}),"entry 0");
+  // CodeRabbit 4613753597: a pattern is not trimmed when it runs, so its 500 code points are counted as written.
+  QCOMPARE(check(with({{"categories",QJsonArray{"list"}},{"patterns",QJsonArray{QString(500,'x')}}})),QString("ok"));
+  refused(with({{"categories",QJsonArray{"list"}},{"patterns",QJsonArray{QString(500,' ')+"x"}}}),"entry 0");
   // A term with a line break is refused by position, and its text is in no message.
   const auto term=refused(with({{"categories",QJsonArray{"list"}},{"terms",QJsonArray{"fine","Synthetic-Term-Not-Real\nsecond"}}}),"entry 1");
   QVERIFY(!term.contains("Synthetic-Term"));
@@ -345,6 +348,29 @@ private slots:
   // Deleting the first line's mark dismisses that line's box and not the other's.
   QVERIFY(doc.remove(upper.id));
   QVERIFY(doc.dismissed(QRect(100,60,5,20),"email"));QVERIFY(!doc.dismissed(QRect(96,71,15,20),"email"));
+ }
+ // CodeRabbit 4610684289: a drag that outlasts the wait ends it, and no marks are added late.
+ void resultWaitingForADragGivesUpAtItsDeadline() {
+  editor::EditDocument doc(capture());EditorWindow window(doc);useTerminal(window);window.setQuickRedactGestureWaitMs(200);
+  Shape arrow;arrow.kind=Shape::Kind::Arrow;arrow.from=QPoint(300,100);arrow.to=QPoint(350,150);const auto id=doc.add(arrow);
+  Error error{"pending","",{}};
+  window.quickRedact({"email"},[&](Error e,QJsonObject){error=e;});
+  window.text().whenRecognized([&](Error){doc.beginGesture();auto moved=*doc.find(id);moved.from=QPoint(310,110);doc.preview(moved);});
+  PUTGD_TRY_VERIFY(error.code!="pending");
+  QCOMPARE(error.code,QString("editor_busy"));
+  doc.commitGesture();
+  PUTGD_COMPARE_STEADY(doc.shapes().size(),1,300); // nothing was added after the drag ended
+  // Quick redact is free to run again.
+  QCOMPARE(run(window,{"email"})["created"].toArray().size(),1);
+ }
+ // CodeRabbit 4613753607: a pattern the matcher could not run is not reported as having taken too long.
+ void aPatternThatDidNotFinishIsReportedNeutrally() {
+  editor::EditDocument doc(capture());EditorWindow window(doc);useTerminal(window);
+  const auto result=run(window,{"list"},{},{"(unclosed"});
+  QCOMPARE(result["skippedPatterns"].toArray(),QJsonArray{0});
+  const auto text=window.findChild<QLabel*>("quickRedactResult")->text();
+  QVERIFY2(text.contains("Pattern 1 didn't finish and was skipped."),qPrintable(text));
+  QVERIFY(!text.contains("took too long"));
  }
  void wordUnderRedactMarkIsNeverReturned_data() {
   QTest::addColumn<QString>("change");

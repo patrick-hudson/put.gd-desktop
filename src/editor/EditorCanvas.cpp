@@ -637,6 +637,9 @@ void EditorCanvas::keyPressEvent(QKeyEvent* event){
  if(tool_==Tool::CopyText&&textKey(event))return;
  if(event->key()==Qt::Key_Space&&!event->isAutoRepeat()){space_=true;setCursor(Qt::OpenHandCursor);return;}
  if(event->key()==Qt::Key_Control){updateHoverCursor(mapFromGlobal(QCursor::pos()),Qt::ControlModifier);return;}
+ // A pointer gesture owns the document's current undo step: a key that edits or changes the selection now (a nudge, Delete, [ and ])
+ // would join it and be rolled back with the drag if it is abandoned. Modifier keys still reach the drag (Shift snaps, Alt).
+ if(doc_.inGesture()){if(event->key()!=Qt::Key_Shift&&event->key()!=Qt::Key_Alt)event->accept();return;}
  if(tool_==Tool::Crop){
   // Plain Enter applies only the pending crop; upload requires Ctrl+Enter.
   if((event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)&&!(event->modifiers()&Qt::ControlModifier)){applyCrop();return;}

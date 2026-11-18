@@ -72,7 +72,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         # line breaks, empty and too long values and words without a letter or digit are refused. Every other rule
         # (compiling, empty matches and whatever else the editor adds) is skipped by name, so the table can gain or
         # lose rules; the editor's edit_command_invalid stays authoritative.
-        table = json.loads((Path(__file__).resolve().parents[1] / 'fixtures/text/redact-validation.json').read_text())
+        table = json.loads((Path(__file__).resolve().parents[1] / 'fixtures/text/redact-validation.json').read_text(encoding='utf-8'))
         refused = {'lineBreak', 'empty', 'length', 'letter'}
         checked = 0
         for key in ('terms', 'patterns'):
@@ -86,6 +86,9 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                     continue
                 checked += 1
         self.assertGreater(checked, 30)
+        # A pattern is not trimmed when it runs, so its 500 code points are counted as written.
+        self.assertTrue(safe_commands([{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 500]}]))
+        self.assertFalse(safe_commands([{'op': 'redactText', 'categories': ['list'], 'patterns': [' ' * 500 + 'x']}]))
 
     async def test_review_controls_forward_their_fields(self):
         # #1613: each new review control reaches recording.review with the fields the window
@@ -378,7 +381,7 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(profile['credentials'], {'mode': 'session', 'reference': None})
                 # What the resident saved is what schemas/config.schema.json describes.
                 from jsonschema import Draft202012Validator
-                Draft202012Validator(json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())).validate(configuration['document'])
+                Draft202012Validator(json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))).validate(configuration['document'])
                 current = configuration['metadata']['observedRevision']
                 hint = await call('get_destination_credentials', {'profile_id': 'scripted', 'expected_revision': current})
                 self.assertEqual(hint['result']['storedValues'], ['headers/Authorization'])

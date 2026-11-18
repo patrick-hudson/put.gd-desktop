@@ -26,6 +26,7 @@
 #include <QComboBox>
 #include <QFontComboBox>
 #include <QMap>
+#include <QDeadlineTimer>
 #include <QPointer>
 #include <QAbstractSpinBox>
 #include <QDateTime>
@@ -1179,7 +1180,7 @@ bool EditorWindow::parseRedactText(const QJsonObject& entry,QStringList& categor
   }
   return true;
  };
- if(!strings("terms",terms,textjob::maxRedactTerms,textjob::redactTermError,"words or phrases of up to 100 characters on one line")||!strings("patterns",patterns,textjob::maxRedactPatterns,textjob::redactPatternError,"regular expressions of up to 500 characters"))return false;
+ if(!strings("terms",terms,textjob::maxRedactTerms,textjob::redactTermError,"words or phrases of up to 100 characters on one line")||!strings("patterns",patterns,textjob::maxRedactPatterns,Settings::quickRedactPatternError,"regular expressions of up to 500 characters"))return false;
  if((entry.contains("terms")||entry.contains("patterns"))&&!categories.contains("list"))return bad("redactText terms and patterns need the list category");
  return true;
 }
@@ -1213,7 +1214,8 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
   return;
  }
  quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
- text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,terms=std::move(terms),patterns=std::move(patterns)](Error error){
+ const QDeadlineTimer dragWait(quickRedactGestureWaitMs_);
+ text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns)](Error error){
   if(!g)return;
   const auto stopWith=[&](const QString& text,const char* role,Error failure){g->quickRedacting_=false;g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,role);g->refresh();if(done)done(failure,{});};
   if(g->busy_){stopWith("Quick redact added nothing: the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
@@ -1225,16 +1227,19 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
   // Matching runs off the UI thread: a pattern can be slow. The document may change meanwhile.
   const auto revision=g->text_->revision();
   const auto candidates=g->text_->candidates();
-  ui::runQuickRedact(g,candidates,categories,sources,[g=QPointer<EditorWindow>(g),candidates,categories,revision,done](editor::quickRedact::Result found){
+  ui::runQuickRedact(g,candidates,categories,sources,[g=QPointer<EditorWindow>(g),candidates,categories,revision,done,dragWait](editor::quickRedact::Result found){
    if(!g)return;
    // The marks join the document as one undo step of their own, so they wait for a drag in progress to end.
    // The revision is checked then, not now: a drag can add a Redact mark, and an edit that was undone is still a new revision.
    auto apply=std::make_shared<std::function<void()>>();
-   *apply=[g,candidates,categories,revision,done,found,self=std::weak_ptr<std::function<void()>>(apply)]{
+   *apply=[g,candidates,categories,revision,done,dragWait,found,self=std::weak_ptr<std::function<void()>>(apply)]{
     if(!g)return;
-    if(g->doc_.inGesture()){if(auto keep=self.lock())QTimer::singleShot(40,g.data(),[keep]{(*keep)();});return;}
+    // A drag that outlasts the wait ends it: the agent supervisor has answered editor_timeout by then, and marks added later
+    // would be ones nobody asked for.
+    if(g->doc_.inGesture()&&!dragWait.hasExpired()){if(auto keep=self.lock())QTimer::singleShot(40,g.data(),[keep]{(*keep)();});return;}
     g->quickRedacting_=false;
     const auto fail=[&](const QString& text,Error failure){g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(failure,{});};
+    if(g->doc_.inGesture()){fail("A mark was still being dragged, so nothing was added. Try again.",{"editor_busy","A mark was still being dragged while Quick redact waited",{}});return;}
     if(g->busy_){fail("Quick redact added nothing: the edit was already submitted.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
     if(g->text_->revision()!=revision){fail("A redaction or the crop changed, so nothing was added. Try again.",{"edit_stale","A Redact mark or the crop changed while Quick redact was matching",{}});return;}
     // Every match is ordinary Redact marks, all added as one undo step. A mark the user deleted from an earlier run is not added back.
@@ -1253,7 +1258,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     g->doc_.commitGesture();
     const auto added=created.size();
     QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
-    QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 took too long and was skipped.").arg(index+1);}
+    QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 didn't finish and was skipped.").arg(index+1);}
     // The account lookup did not answer in time: the other categories ran without it (#1618).
     if(found.nameUnchecked)lines<<QStringLiteral("My username and name was not checked: the account lookup did not answer in time.");
     g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");

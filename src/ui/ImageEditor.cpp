@@ -327,7 +327,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      if(!object[key].isArray()||list.isEmpty()||list.size()>most)return false;
      for(const auto& entry:list){if(!entry.isString()||!error(entry.toString()).isEmpty())return false;into.append(entry.toString());}
      return true;};
-    if(!read("redactTerms",redactTerms,textjob::maxRedactTerms,textjob::redactTermError)||!read("redactPatterns",redactPatterns,textjob::maxRedactPatterns,textjob::redactPatternError)){fail();return;}}
+    if(!read("redactTerms",redactTerms,textjob::maxRedactTerms,textjob::redactTermError)||!read("redactPatterns",redactPatterns,textjob::maxRedactPatterns,Settings::quickRedactPatternError)){fail();return;}}
    if(object.size()!=11+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
