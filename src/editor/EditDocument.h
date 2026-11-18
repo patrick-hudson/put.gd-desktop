@@ -17,6 +17,11 @@ struct Shape {
  enum class Kind {Redact,Blur,Arrow,Rectangle,Text,Highlight,Step,Pen,Ellipse,Line};
  Kind kind=Kind::Rectangle;
  quint64 id=0;
+ // Quick redact (#1618): the category that suggested this mark (name, list,
+ // email, ...), empty for a mark drawn by hand, and the box it was suggested
+ // at, which moving or resizing leaves alone. Never the recognized text.
+ QString suggested;
+ QRect suggestedAt;
  QRect rect;          // normalized box: Redact, Blur, Rectangle, Highlight, Text, Ellipse; a Step's square
  QPoint from,to;      // Arrow and Line ends (an arrow's head is at `to`)
  QColor color=QColor(220,38,38);
@@ -88,7 +93,14 @@ public:
 
  quint64 add(Shape);
  bool replace(const Shape&);  // same id; returns false when unknown or unchanged
+ // Removing a suggested mark remembers where it was suggested, in this
+ // document's history only: undoing the removal forgets it again.
  bool remove(quint64 id);
+ // Every suggested mark that is still there, as one undo step, without
+ // remembering any as dismissed. Marks drawn by hand stay. Returns how many.
+ int removeSuggested();
+ // True when the user removed a mark suggested at this box (Quick redact skips it).
+ bool dismissed(const QRect& suggestedAt) const {return state_.dismissed.contains(suggestedAt);}
  bool setCrop(const QRect&);
  // Live drags update without a history entry; commit once on release.
  void preview(const Shape&);
@@ -130,7 +142,7 @@ public:
  static void pixelateInPlace(QImage&,const QRect& area,const QPoint& origin,int block);
  static void paintAnnotation(class QPainter&,const Shape&,const QPainterPath* textPath=nullptr);
 private:
- struct State {QList<Shape> shapes;QRect crop;bool operator==(const State&) const=default;};
+ struct State {QList<Shape> shapes;QRect crop;QList<QRect> dismissed;bool operator==(const State&) const=default;};
  static qint64 bytesOf(const State&);
  void push(State before);
  void applyRedactions(QImage&,const QRect& within) const;

@@ -66,6 +66,21 @@ class ConfigurationSchema(unittest.TestCase):
         for rate in (0, 15, 24, 59, 61, 30.5, '60', None):
             self.assertFalse(validator.is_valid(legacy | {'recordingFrameRate': rate}))
 
+    def test_quick_redact_list(self):
+        # #1618: optional word and pattern lists, with the editor's limits; omitted means none.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        self.assertTrue(validator.is_valid(legacy))
+        for terms in ([], ['Project Aurora'], ['a' * 100], ['x'] * 200, ['one', 'two words', 'path/like-this']):
+            self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': terms}), terms)
+        for terms in ([''], ['a' * 101], ['x'] * 201, ['two\nlines'], ['carriage\rreturn'], [3], 'word', None, {'0': 'x'}):
+            self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': terms}), terms)
+        for patterns in ([], [r'\bJIRA-\d+\b'], [r'(?i)\b[a-z0-9-]+\.corp\.example\b'], ['a' * 500], ['x'] * 50):
+            self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
+        for patterns in ([''], ['a' * 501], ['x'] * 51, [3], 'pattern', None):
+            self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
+
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())

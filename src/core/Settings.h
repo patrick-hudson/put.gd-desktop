@@ -110,6 +110,11 @@ struct Settings {
     // identifiers for Copy text, in order. Empty: the desktop locale's language
     // when its data is installed, then English.
     QStringList textRecognitionLanguages;
+    // preferences.quickRedactTerms and quickRedactPatterns (#1618): the words,
+    // phrases and regular expressions Quick redact's "My redaction list" suggests
+    // covering. Terms are trimmed and unique ignoring case; both are empty by
+    // default. Plain config like folder names, never logged or put in a diagnostics bundle.
+    QStringList quickRedactTerms, quickRedactPatterns;
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;

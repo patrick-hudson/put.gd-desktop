@@ -1151,6 +1151,27 @@
           },
           "description": "Languages Copy text reads, as Tesseract language identifiers (eng, deu, chi_sim), in order. A language whose data is not installed is skipped when another loads. Omitted means the desktop locale's language when its data is installed, then English."
         },
+        "quickRedactTerms": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[^\\r\\n]*$"
+          },
+          "description": "Words or phrases Quick redact's My redaction list suggests covering, matched case-insensitively against recognized text. One entry per item, 1 to 100 characters after trimming, no line breaks; duplicates are dropped when saved. Never uploaded, logged or written to diagnostics bundles. Omitted means no list."
+        },
+        "quickRedactPatterns": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering, matched against the text of each recognized line. A pattern must compile and must not match empty text. Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns."
+        },
         "appearance": {
           "type": "object",
           "additionalProperties": false,

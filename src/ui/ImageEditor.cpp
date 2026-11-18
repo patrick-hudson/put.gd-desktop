@@ -103,7 +103,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
- Error submissionError;QString nonce,destination;QStringList recentColors,textLanguages;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ Error submissionError;QString nonce,destination;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  // Only startup is time limited; a legitimate edit may stay open indefinitely.
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
@@ -250,11 +250,10 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     const auto commands=params["commands"].toArray();qsizetype quick=0;for(const auto& entry:commands)quick+=entry.toObject()["op"]=="redactText";
     if(quick){
      if(commands.size()!=1)return denied("edit_command_invalid","redactText must be the only command in its batch");
-     const auto entry=commands.first().toObject();const auto list=entry["categories"].toArray();QStringList categories;
-     if(entry.size()!=2||!entry["categories"].isArray()||list.isEmpty()||list.size()>5)return denied("edit_command_invalid","redactText takes categories: 1 to 5 of email, phone, ip, card and key");
-     for(const auto& category:list){if(!category.isString()||!editor::quickRedact::categories().contains(category.toString())||categories.contains(category.toString()))return denied("edit_command_invalid","redactText takes categories: 1 to 5 of email, phone, ip, card and key");categories.append(category.toString());}
+     const auto entry=commands.first().toObject();QStringList categories,terms,patterns;
+     if(!EditorWindow::parseRedactText(entry,categories,terms,patterns,code,message))return {};
      deferred=true;
-     window->quickRedact(categories,[&document,done](Error error,QJsonObject result){if(error){done({},error.code,error.message);return;}result["state"]=editor::Commands::state(*document);done(result,{},{});});
+     window->quickRedact(categories,[&document,done](Error error,QJsonObject result){if(error){done({},error.code,error.message);return;}result["state"]=editor::Commands::state(*document);done(result,{},{});},terms,patterns);
      return {};
     }
    }
@@ -322,7 +321,15 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    // The saved text recognition languages (#1428); none means the locale's, then English.
    textLanguages.clear();for(const auto& language:object["textLanguages"].toArray())textLanguages.append(language.toString());
    if(!object["textLanguages"].isArray()||(!textLanguages.isEmpty()&&!textjob::validLanguages(textLanguages))){fail();return;}
-   if(object.size()!=(object.contains("submissionError")?12:11)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   // The saved Quick redact words and patterns (#1618), present only when not empty.
+   {redactTerms.clear();redactPatterns.clear();
+    const auto read=[&](const char* key,QStringList& into,int most,QString(*error)(const QString&)){
+     if(!object.contains(key))return true;const auto list=object[key].toArray();
+     if(!object[key].isArray()||list.isEmpty()||list.size()>most)return false;
+     for(const auto& entry:list){if(!entry.isString()||!error(entry.toString()).isEmpty())return false;into.append(entry.toString());}
+     return true;};
+    if(!read("redactTerms",redactTerms,textjob::maxRedactTerms,textjob::redactTermError)||!read("redactPatterns",redactPatterns,textjob::maxRedactPatterns,textjob::redactPatternError)){fail();return;}}
+   if(object.size()!=11+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -368,7 +375,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const auto image=reader.read();if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination);window->text().setLanguages(textLanguages);
+   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination);window->text().setLanguages(textLanguages);window->setRedactList(redactTerms,redactPatterns);
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    QObject::connect(window.get(),&EditorWindow::copyRequested,&app,[&]{startCopy({});});

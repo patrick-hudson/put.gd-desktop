@@ -78,6 +78,8 @@ public:
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}
  // The saved text recognition languages (#1428) for Copy text and Quick redact.
  EditorJob& withTextLanguages(QStringList languages){textLanguages_=std::move(languages);return *this;}
+ // #1618: Quick redact's saved words and patterns; each key reaches the editor only when its list is not empty.
+ EditorJob& withRedactList(QStringList terms,QStringList patterns){redactTerms_=std::move(terms);redactPatterns_=std::move(patterns);return *this;}
  // Writes `image` to private staging, then releases it before the helper
  // starts. Returns only bytes that pass identity and sanitized-PNG checks.
  EditorResult run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
@@ -87,7 +89,7 @@ public:
  static void discardStaging(const QString& stagingRoot);
 private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
- QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_;
+ QString root_,helperPath_,appearance_=QStringLiteral("dark");QStringList recentColors_,textLanguages_,redactTerms_,redactPatterns_;
  Error submissionError_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };
