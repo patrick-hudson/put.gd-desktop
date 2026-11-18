@@ -1,4 +1,5 @@
 #include "OperationService.h"
+#include "StorageLocations.h"
 #include "core/ImagePages.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
@@ -6,6 +7,7 @@
 #include "core/RunMarker.h"
 #include "core/ReleaseLink.h"
 #include <QBuffer>
+#include <QSysInfo>
 #include <QElapsedTimer>
 #include <QImageReader>
 #ifdef __GLIBC__
@@ -164,15 +166,25 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   ++imagePageReleaseCount_;
   imagePagesPending_=false;
  });
+ recoverJournal();
+}
+void OperationService::recoverJournal() {
+ if(stopping_)return;
  const auto path=databasePath(),artifactsRoot=root_+"/artifacts";
  background([this,path,artifactsRoot](Error& e) {
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
-  journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);
-  if(!journalOwner_->tryLock(0)) {e={"journal_busy","Another resident owns this operation journal",{}};return QJsonObject{};}
+  if(!journalOwner_||!journalOwner_->isLocked()) {journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);}
+  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {
+   // Qt removes a well-formed lock whose owner is gone; one it cannot verify as stale (malformed or unreadable) is left
+   // alone, with the manual step, and no owner is ever named (#1576).
+   e=journalOwner_->error()==QLockFile::LockFailedError?StorageLocations::journalLockBusy("journal_busy",root_+"/resident.lock"):Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};
+  }
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
   RecordingService::discardStaging(root_+"/recording");
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
+  // A recovery that failed partway is retried whole: a later write below must not clear its error (#1576).
+  if(e)return QJsonObject{};
   for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:std::as_const(batch.artifacts)) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
  },[this](Error e,QJsonObject) {
@@ -182,6 +194,11 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
 #endif
   emit initialized();
   if(ready_) {cleanupTimer_.start();QTimer::singleShot(cleanupSchedule_.startupDelayMs,this,&OperationService::cleanupExpired);}
+  else if(!stopping_) {
+   const int pause=std::min(recoveryRetryMs_<<std::min(recoveryAttempts_,4),30000);
+   ++recoveryAttempts_;
+   QTimer::singleShot(pause,this,&OperationService::recoverJournal);
+  }
  });
 }
 OperationService::~OperationService() {shutdown();}
@@ -271,6 +288,8 @@ QJsonArray OperationService::activeObservations() const {
 }
 void OperationService::clearObservation(const QString& id){std::lock_guard lock(observationsMutex_);observations_.remove(id);observationsDirty_.remove(id);}
 QJsonObject OperationService::currentObservation(QJsonObject document)const{
+ // A finished operation that still holds its slot says so: Retry waits for it to clear (#1578).
+ if(settling(document["id"].toString()))document["settling"]=true;
  if(QStringList{"completed","partial","failed","cancelled","interrupted"}.contains(document["state"].toString()))return document;
  QJsonObject live;{std::lock_guard lock(observationsMutex_);live=observations_.value(document["id"].toString());}if(live.isEmpty())return document;
  document["phase"]=live["phase"];auto items=document["items"].toArray();QHash<QString,QJsonObject> observedItems;
@@ -284,7 +303,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  auto stripped=requested;const auto activationToken=stripped.take("activationToken").toString();
  const QJsonObject options=stripped; // const: operator[] must not insert
  emit explicitRequest();
- if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_) {reply(notReadyError(),{});return;}
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
  if(action=="scroll"||(action=="edit"&&options["source"]=="scroll")){if((action=="scroll"&&!options.isEmpty())||(action=="edit"&&options.size()!=1)){reply({"invalid_request","Invalid scroll action parameters",{}},{});return;}scroll_->invoke(action=="edit",reply);return;}
@@ -360,7 +379,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
    // A legacy adapter reports no independent helper during preparation. Keep
    // its ordinary interactive reservation; early terminal/drain can release it.
    if(owner->selectingId_==id&&(*earlyError||flag->load()||finished))owner->selectingId_.clear();
-   if(finished)owner->active_.remove(id);
+   if(finished){owner->active_.remove(id);owner->settled(id);}
   };
   if(QThread::currentThread()==owner->thread())release();
   else QMetaObject::invokeMethod(owner,std::move(release),Qt::QueuedConnection);
@@ -443,7 +462,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  });
 }
 void OperationService::uploadDiagnostics(const QString& path,const QString& profileId,JsonReply accepted,std::function<void(const Operation&)> finished) {
- if(!ready_) {accepted(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_) {accepted(notReadyError(),{});return;}
  auto snapshot=settings_.snapshot();
  if(!snapshot.profiles.contains(profileId)){accepted({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {accepted({"queue_full","Pending operation limit reached",{}},{});return;}
@@ -471,7 +490,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
  // The installation identity comes first: one install's menu entry never
  // uploads through another install's resident, whatever it asks for.
  if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(error)}});reply(error,{});return;}
- if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_) {reply(notReadyError(),{});return;}
  if(uploadGate_)if(auto error=uploadGate_()){reply(error,{});return;}
  const auto snapshot=settings_.snapshot();const auto revision=settings_.revision();
  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
@@ -636,7 +655,7 @@ Error OperationService::acceptScroll(Operation& op) {
  return {};
 }
 Error OperationService::acceptText(Operation& op,const TextService::Acceptance& acceptance) {
- if(!ready_)return startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}};
+ if(!ready_)return notReadyError();
  // An interactive source holds the one interactive-acquisition slot, as a capture does.
  if(acceptance.interactive&&scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}};
  if(acceptance.interactive&&!selectingId_.isEmpty())return {"busy_selecting","Another interactive acquisition is active",{}};
@@ -783,7 +802,7 @@ void OperationService::recognizeText(const QJsonObject& params,JsonReply reply) 
     if(!owner)return;
     auto release=[owner,id] {
      if(!owner||owner->stopping_||!owner->preparedOwners_.remove(id))return;
-     if(owner->finishedPrepared_.remove(id)){if(owner->selectingId_==id)owner->selectingId_.clear();owner->active_.remove(id);}
+     if(owner->finishedPrepared_.remove(id)){if(owner->selectingId_==id)owner->selectingId_.clear();owner->active_.remove(id);owner->settled(id);}
     };
     if(QThread::currentThread()==owner->thread())release();else QMetaObject::invokeMethod(owner.data(),std::move(release),Qt::QueuedConnection);
    };
@@ -846,7 +865,7 @@ void OperationService::textCommand(const QString& command,const QJsonObject& par
 }
 Error OperationService::acceptRecording(Operation& op) {
  if(scroll_&&scroll_->active())return {"scroll_active","A scrolling capture is active",{}};
- if(!ready_)return startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}};
+ if(!ready_)return notReadyError();
  if(editor_)return {"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}};
  if(!selectingId_.isEmpty())return {"busy_selecting","Another interactive acquisition is active",{}};
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads)return {"queue_full","Pending operation limit reached",{}};
@@ -867,7 +886,7 @@ void OperationService::recordingCommand(const QString& command,const QJsonObject
  if(command=="prepare"&&scroll_->active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",scroll_->activeId()}}},{});return;}
  // recording.prepare opens the recording selector; the other commands drive the session it opened.
  if(command=="prepare")emit explicitRequest();
- if(!ready_&&command!="capabilities"&&command!="windows"&&command!="microphones") {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_&&command!="capabilities"&&command!="windows"&&command!="microphones") {reply(notReadyError(),{});return;}
  recording_->command(command,params,std::move(reply));
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
@@ -1186,16 +1205,31 @@ Operation OperationService::run(Job job) {
 void OperationService::anticipate(const Operation& op) {
  if(const auto provider=providers_.find(op.destination.providerId))if(auto ready=provider->anticipate(op.destination))anticipated_.insert(op.id,std::move(ready));
 }
+namespace {
+Error settlingError() {return {"operation_settling","This operation is still finishing; try Retry again in a moment.",{}};}
+}
 void OperationService::releaseActive(const QString& id) {
  anticipated_.remove(id);
  // Durable completion and source drain can arrive in either order. Retain the
  // bounded operation slot until both have happened; never unlock a live helper.
  if(preparedOwners_.contains(id))finishedPrepared_.insert(id);
- else active_.remove(id);
+ else {active_.remove(id);settled(id);}
+}
+// Settling: the slot is still held, but the outcome is out. finish() has started, or the worker has already
+// stored and published the final state (run() saves it before finish() runs).
+bool OperationService::settling(const QString& id) const {
+ if(!active_.contains(id))return false;
+ if(finishing_.contains(id))return true;
+ std::lock_guard lock(observationsMutex_);const auto live=observations_.constFind(id);
+ return live!=observations_.cend()&&!(*live)["state"].toString().isEmpty()&&!Operation::activeState((*live)["state"].toString());
+}
+void OperationService::settled(const QString& id) {
+ if(finishing_.remove(id)){emit changed(id);emit observationsChanged();}
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
  anticipated_.remove(op.id);clipboardImports_.remove(op.id);pumpCopies();
+ finishing_.insert(op.id);
  // Its link is copied only when asked for (diagnostics.bundle copyLink).
  if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
  if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}
@@ -1234,7 +1268,7 @@ void OperationService::queuePosters(const Operation& op) {
  pumpPosters();
 }
 void OperationService::makePreview(const QString& id,JsonReply reply,bool retry) {
- if(!ready_){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!ready_){reply(notReadyError(),{});return;}
  if(stopping_){reply({"cancelled","The resident is stopping",{}},{});return;}
  const auto snapshot=settings_.snapshot();
  if(snapshot.previewCacheBytes<=0){reply({"previews_disabled","Previews are turned off (retention.previewCacheBytes is 0)",{}},{});return;}
@@ -1345,11 +1379,13 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};if(!op.active()){e={"operation_inactive","This operation has finished; only an active operation can be cancelled",{{"state",op.stateName()}}};return QJsonObject{};}op.cancelled=true;op.advance(OperationState::Cancelled);op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
 }
 void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly) {
+ // This operation's own state answers first: a Retry refused as settling or busy is never queued behind cleanup or
+ // turned into queue_full (#1578).
+ if(active_.contains(id)) {reply(settling(id)?settlingError():Error{"operation_busy","Operation is already active",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
- if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_) {reply(notReadyError(),{});return;}
  const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
- if(active_.contains(id)) {reply({"operation_busy","Operation is already active",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path,sharingOnly](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
@@ -1368,12 +1404,12 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  });
 }
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
+ if(active_.contains(id)){reply(settling(id)?settlingError():Error{"operation_busy","Operation is active",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
- if(!ready_){reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(!ready_){reply(notReadyError(),{});return;}
  const auto limits=settings_.snapshot().limits;
  if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Pending operation limit reached",{}},{});return;}
- if(active_.contains(id)){reply({"operation_busy","Operation is active",{}},{});return;}
  active_.insert(id,std::make_shared<std::atomic_bool>(false));
  // A local retry keeps its durable result; only its live observation is active.
  observe({{"id",id},{"state","running"},{"phase","saving_local"},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});

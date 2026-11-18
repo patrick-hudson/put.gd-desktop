@@ -117,7 +117,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!request["schemaVersion"].isDouble()||request["schemaVersion"].toDouble()!=1) {reply({"unsupported_version","Request schemaVersion must be 1",{}},{});return;}
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
- if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"&&method!="recording.microphones"))) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear"||(method.startsWith("recording.")&&method!="recording.capabilities"&&method!="recording.windows"&&method!="recording.microphones"))) {reply(operations_.notReadyError(),{});return;}
  if(method=="ui.quit") {
   if(!p.isEmpty()){reply(invalid(),{});return;}
   if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}
@@ -278,7 +278,10 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="history.list") {
   const QStringList allowed{"limit","offset","search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};if(!fields(p,{},allowed)) {reply(invalid(),{});return;}
   for(auto it=p.begin();it!=p.end();++it) {if(it.key()=="limit"||it.key()=="offset") {if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()>INT_MAX||it.value().toDouble()<0) {reply(invalid(),{});return;}}else if(!it.value().isString()||it.value().toString().size()>256) {reply(invalid(),{});return;}}
-  HistoryQuery q;q.limit=p["limit"].toInt(50);q.offset=p["offset"].toInt();q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.list(q,reply);return;
+  HistoryQuery q;q.limit=p["limit"].toInt(50);q.offset=p["offset"].toInt();q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.list(q,[this,reply](Error e,QJsonObject page){
+   // History hides Retry and Finish share link while the row's operation still settles, whatever recent lists (#1578).
+   auto records=page["records"].toArray();for(qsizetype i=0;i<records.size();++i){auto record=records[i].toObject();if(operations_.operationSettling(record.value("operationId").toString())){record["settling"]=true;records[i]=record;}}
+   if(!e)page["records"]=records;reply(e,page);});return;
  }
  // History's counts: the same filters as history.list (no paging) and up to
  // 64 [from, to] day ranges; category totals ignore the filters.
@@ -295,7 +298,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.unlockLinkCredentials"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
   // history.preview alone takes an optional boolean retry (Retry preview).
-  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,reply);else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
+  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,[this,reply](Error e,QJsonObject data){if(!e&&operations_.operationSettling(data.value("operationId").toString()))data["settling"]=true;reply(e,data);});else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
  }
  if(method=="history.copyLinks") {
   if(!fields(p,{"ids"})||!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000) {reply(invalid(),{});return;}
@@ -444,6 +447,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!p.isEmpty()) {reply(invalid(),{});return;}
  if(method=="ui.snapshot"){
   QJsonObject snapshot{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}};
+  // Why the journal is unavailable, while it is: History shows this instead of a bare wait (#1576).
+  if(!operations_.ready())snapshot["operationsError"]=operations_.notReadyError().toJson();
   // A changed generation tells an open window that a credential read or store ended (#600).
   if(setup_)snapshot["credentials"]=QJsonObject{{"generation",double(setup_->credentialGeneration())}};
   reply({},snapshot);

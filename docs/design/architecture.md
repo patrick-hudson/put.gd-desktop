@@ -125,17 +125,15 @@ File-manager selections enter through `uploadFiles`; folder handling is describe
 in [file-manager upload](file-manager-upload.md).
 
 The operation journal and per-item history commit in one SQLite transaction.
-When the journal refuses an operation's final write (a full disk, an I/O error), the
-operation stays active, its slot held as while it ran, and the same final write
-(every item row and its publication identity, with the outcome the run chose) is
-tried again after 2 s, doubling to 30 s, until it lands. Meanwhile History and
-`operation.recent` show the saved row with the phase `finishing`; Retry, Cancel and
-Copy answer as for any active operation. A result that lands late is not copied to
-the clipboard. When the journal refuses the `uploading` checkpoint before an attempt,
-that attempt sends nothing: the item ends failed, or stays unknown on a resend to a
-provider that names its own objects. Shutdown drops the retry, and a retried write
-waits at most 1 s for a lock; the next start recovers the saved row as interrupted,
-its `uploading` items unknown (#1579).
+When History refuses a write an operation's run cannot continue without, or its
+final write (a full disk, an I/O error), the operation stops as after a crash: its
+slots are freed, its pending link copies and finish watcher dropped, and its result
+in memory discarded. Once History accepts a write again (tried after 2 s, doubling to
+30 s), the startup recovery is applied to that one operation: interrupted, its
+`uploading` items unknown, nothing sent again on its own. Until then History shows
+the saved row, Retry answers `history_io` and Cancel acknowledges without writing.
+Recovery also marks a finished operation whose copy is still `pending` as not copied,
+so no copy stays pending forever (#1579).
 An unknown publication has no invented URL or deletion target. Recovery marks
 interrupted uploads unknown and never automatically publishes. Explicit retry
 retains artifacts, candidate names, conditions and publication markers, reconciles

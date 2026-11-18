@@ -20,12 +20,13 @@ filenames, history URLs, authorization values or credential references.
 | `source_unavailable` | Fix the reported item index; invoke again; nothing was published |
 | `archive_failed` | Fix the original local folder, then retry local save; upload is independent |
 | `artifact_missing`, `artifact_changed` | Restore access or invoke a new action; mutable local copies are not retry sources |
+| `operation_settling` | "This operation is still finishing; try Retry again in a moment." The operation has finished but is still recording its outcome (its link copy, for example), and nothing was queued. Retry again once `operation.inspect` for the same operation ID no longer shows `settling: true` (`operation.recent` is a bounded list, and a newer operation can push this one out of it while it still settles); History hides Retry and Finish share link until then. The new Retry faces the usual checks |
 | `retry_would_upload` | Finish share link (a retry with `scope` `sharing`) only makes links, and a file of this upload still needs its upload (`details.itemId`). Use Retry upload, which finishes the links too |
 | `provider_unavailable` | Restore the adapter/credential access for the recorded destination |
 | `unsupported_capability` | Choose a provider/policy that supports the required safeguards |
 | `existence_unknown`, `collision_exhausted`, `precondition_changed` | Inspect the saved candidate and retry deliberately |
 | `unknown` upload / `publication_unknown` | Reconcile the saved publication identity before another PUT |
-| `history_io` | put.gd could not read or write its History database (a full disk, an I/O error). Free disk space and try again. An upload that ended while the database refused its result stays in progress as "Finishing · Saving the result to History…" and is saved by itself once the disk works; Retry and Cancel wait for that |
+| `history_io` | put.gd could not read or write its History database (a full disk, an I/O error). Free disk space and try again. An upload that was running then stops; once the disk works, put.gd records it as interrupted by itself (its upload outcome unknown if it was being sent), and Retry first checks the destination before sending anything. Until that is recorded, Retry answers `history_io` |
 | copy `suppressed` / `failed` | Explicitly copy the existing result; no new PUT is needed |
 | `delete_confirmation_changed`, `delete_target_changed` | Review the exact original targets/effects again |
 | remote `changed` | Replacement is preserved; no destructive request was sent |
