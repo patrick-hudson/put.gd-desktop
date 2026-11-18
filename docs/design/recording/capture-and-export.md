@@ -110,12 +110,14 @@ Export runs in the helper with the FFmpeg libraries on the working clip. It keep
 the **kept spans** (the trim minus every cut, see
 [Kept spans, cuts and frame gaps](#kept-spans-cuts-and-frame-gaps)) and lays them
 end to end. Each kept frame reaches the filter graph already stamped with its output
-time, so one chain serves every format: RGB conversion, per-cover
-`crop→avgblur→avgblur→overlay` (two box passes, as the preview draws them;
-`boxblur` is GPL-only in FFmpeg) or `drawbox` enabled on `gte(t,a)*lt(t,b)` over the
-cover's output intervals, optional `scale` to `maxEdge`, and `fps` (at most 15 for
-animations; it holds each frame until the next one's time and the last one until the
-output's end). The first encoder that opens comes from a preference list: MP4/H.264 tries
+tick, so one chain serves every format: RGB conversion, `fps` at the output rate (the
+clip's own rate, at most 15 for animations; it holds each frame until the next
+tick's and the last one until the output's end, so a gap becomes real repeated
+frames), then per-cover `crop→avgblur→avgblur→overlay` (two box passes, as the preview
+draws them; `boxblur` is GPL-only in FFmpeg) or `drawbox` enabled on
+`gte(t,a)*lt(t,b)` over the ticks the cover applies to, and an optional `scale` to
+`maxEdge`. Covers come after `fps` so that every output frame, a repeat inside a gap
+included, is covered on its own. The first encoder that opens comes from a preference list: MP4/H.264 tries
 `h264_nvenc` (NVIDIA GPU, system-memory frames), then `h264_vaapi` (Intel
 and AMD GPUs through libva), then `libx264` (`veryfast`, CRF 23) and
 `libopenh264`; H.265 tries `hevc_nvenc`, `hevc_vaapi`, then `libx265`
@@ -144,9 +146,10 @@ before the first sample becomes silence, see "Timestamps and A/V sync"),
 turned from the clip's timestamps into contiguous samples by `aresample`
 (`async=1`, 1 ms hard compensation), so a hole in the clip's audio (such as
 a pause leaves) becomes silence and an overlap is cut instead of later audio
-moving earlier (#130). It is then cut again to the same kept spans as the video, at
-the same instants, and joined: each side of a join fades over 4 ms so a join never
-clicks. It is encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
+moving earlier (#130). It is then cut to the edit's own kept spans and joined: only
+audio from the edit's kept time is heard, and whatever extra output time the video's
+frame grid needs at a span's edges is silence. Each side of a join fades over 4 ms so
+a join never clicks. It is encoded as AAC (MP4) or Opus (WebM). MP4 output is written with `faststart`.
 
 Opus packets are 20 ms. The last one carries the end trim as Matroska
 `DiscardPadding`, which `ffprobe` shows as `Skip Samples` side data, and
@@ -174,19 +177,31 @@ blur or a solid fill, so preview and export agree on timing and placement.
 
 The edit's `cuts` are stretches of source time left out of the output; the **kept
 spans** are `[trimStart, trimEnd)` minus every cut. `recording::KeptSpans` is the one
-map between source time and output time: playback, preview, export, the GIF and WebP
-limits, export progress and the review's clocks all read it, so they cannot disagree
-about what is in the clip.
+map between source time and output time for the review's clocks, the previews and the
+GIF and WebP limits; export builds a second map from it on the clip's frame grid
+(below). Three durations come out of that, and the docs name which one a field uses:
 
-**On the clip's frame grid.** A span keeps the frames whose timestamps fall inside
-it, so on the clip's own grid it starts on its first kept frame and ends where the
-first frame after it starts (or at the clip's end when none follows). A demux-only
-pass reads the frame times from the packets; nothing is decoded for it. Laid end to
-end on those bounds, each kept frame lasts as long as it did in the clip and a join is
-one ordinary frame step: nothing is repeated, dropped or shifted there. Frame
-selection, output timestamps, cover intervals, the audio cut points and progress all
-use this one snapped map, which differs from the edit's own by less than a frame per
-span bound. An export that keeps no frame is refused.
+| Duration | What it is | Where it appears |
+| --- | --- | --- |
+| **Kept time** | the length of the edit's own kept spans, in source-time microseconds | the review's output clock and length, `outputDurationUs`, `recording.preview`'s `outputTimeUs`, and the GIF and WebP length limit (checked by the resident) |
+| **Export grid time** | the kept spans snapped to frame boundaries and laid on output ticks: kept time on the frame grid, plus up to one frame per span; an animation is capped at kept time | what the exporter encodes, and the length `progress.exportFraction` runs over |
+| **Exported duration** | the last encoded frame's timestamp plus one frame | `lastExport.durationUs` once an export has finished |
+
+The first replies to `recording.upload` and `recording.saveCopy` carry none of these;
+they report the session entering `exporting`.
+
+**On the clip's frame grid.** A demux-only pass reads the frame times from the
+packets; nothing is decoded for it. For each kept span `[S, E)` it looks for the first
+frame at or after S and the first frame at or after E, and applies the rules below
+(1/15 s, the adaptive rate's floor interval `AdaptiveRate::floorFps`, is 66,666 µs). Each
+snapped span is then laid on the output grid of ticks of 1/`fps` seconds: it lasts its
+length rounded to whole ticks, and every frame in it lands on the tick nearest its time
+from the span's start. A join is therefore one ordinary frame step: nothing is repeated,
+dropped or shifted there, and millisecond-rounded Matroska timestamps at 60 fps cannot
+put two kept frames on one tick. Frame selection, output ticks, cover intervals, the
+audio layout and progress all use this snapped map. An export that keeps no frame is
+refused. An animation (GIF or WebP) always keeps at least one frame and never runs
+longer than the kept time.
 
 **When frames are far apart.** The frame grid has gaps, for two reasons. After the
 adaptive rate steps down, the encoder never sees `videorate`'s repeats
@@ -194,33 +209,45 @@ adaptive rate steps down, the encoder never sees `videorate`'s repeats
 PipeWire or wlr screen resends its picture only once per 1 s keepalive, so a still
 screen leaves gaps of about a second. Snapping a span to the nearest frame would then
 move its edge by up to a second, and drop the narration over the still picture. So the
-rule at a span's start S and end E uses 1/15 s, the adaptive rate's floor
-interval (`AdaptiveRate::floorFps`):
+rules at a span's start S and end E are:
 
-- **Start.** If the first frame at or after S comes within 1/15 s, the span snaps to
-  that frame. If it comes later, the span starts at S exactly and opens on the frame
-  that is on screen at S: the last frame before S, which may lie in a cut or before the
-  trim. That is the right picture for that moment, so audio, kept from S, stays in sync
-  with it. A span with no frame before its start at all snaps forward.
-- **End.** If the first frame after E (the trim end, or a cut's start) comes within
-  1/15 s, the span ends where that frame starts. If it comes later, the span ends at E
-  exactly: the last kept frame stays on screen until E and the audio stops there, so
-  nothing after E, above all nothing a cut removed, reaches the output. When the span
-  does snap, up to 1/15 s of audio that a cut removed can still be kept.
+- **Start S.** The first frame at or after S, if it comes within 1/15 s of S, starts
+  the span: the span snaps to that frame. If that frame is later than 1/15 s, and a
+  frame exists before S, the span starts at S exactly and opens on the frame on screen
+  at S: the last frame before S, which may lie in a cut or before the trim. That is
+  the right picture for that moment, and the cover rule below applies to it as to any
+  frame. If no frame exists before S, the span snaps forward to the first frame.
+  **Trailing gap.** If no frame exists at or after S at all, that span and every
+  later span are dropped: nothing after the last frame is kept.
+- **End E** (the trim end, or a cut's start). The first frame at or after E, if it
+  exists and comes within 1/15 s of E, ends the span at that frame's time, so the last
+  kept frame lasts as long as it did. If no such frame exists, or it comes later than
+  1/15 s, the span ends at E exactly: the last kept frame stays on screen until E.
+- **Audio** never follows the snap. Only audio from the edit's own kept time is
+  heard, so no sound from inside a cut, and none from before the trim or after its
+  end, reaches the output. The extra output time that snapping adds is silence, and a
+  gap in the clip's own audio (such as a pause leaves) stays silent without moving
+  the audio after it across a cut.
 
 **Seeking over cuts.** A decode pass reads on through a cut when the next span's
 keyframe lies before it (nothing is wasted), and seeks past the cut when the keyframe
 lies inside it. A span that opens on a held frame starts decoding from that frame.
 
-**Covers.** A cover is in source time and is mapped through the kept spans: its
-output intervals are its kept parts, abutting parts joined, so a cover over a cut is
-one interval, and a cover wholly inside a cut or outside the trim has none.
+**Covers.** A cover is in source time. It applies to an output frame, held or
+repeated ones included, when it is active at that frame's output display time (its time
+mapped through the kept spans, abutting parts joined, so a cover over a cut is one
+interval) **or** at the source time of the picture the frame shows. So a cover wholly
+inside a frame gap covers the picture that is held over it, a frame held across a cut
+from footage a cover covers stays covered, and a frame captured while a cover was
+active and shown after its end is covered there too. A cover wholly inside a cut or
+outside the trim has no frame to cover. To gather the frame times under each cover the
+exporter reads each cover's kept parts once more, demux only.
 
-**Durations and progress** are over the output's kept time: `recording.upload`'s and
-`saveCopy`'s results report the kept duration, `progress.exportFraction` is the output
-timestamp over that duration, and the GIF and WebP limits count kept time too (a cut
-can bring a long recording under the limit; see
-[Sessions, exports and settings](session-contract.md#time-geometry-and-the-edit-model)).
+**Previews.** `previewFrame` and the review's skim frame apply the covers active at the
+frame's own time and at the requested time, so a held frame never shows uncovered where
+the export covers it. Playback is the one exception: it masks each frame at its own time
+only, so a cover wholly inside a frame gap is not drawn on the still picture while
+playing. That is a limit of the local viewer; the export is correct.
 
 **GIF palette.** A GIF is two passes over the same kept frames. Pass one builds the
 palette from exactly the frames pass two encodes (only kept frames), with
@@ -229,7 +256,9 @@ colour a pixel changes *from*. A colour that appears and stays to the end (a cov
 that reaches the trim end, a last slide) would never be counted and would come out in
 the nearest earlier colour, so after the last frame one more goes in with every byte
 inverted. Every pixel changes, so the last frame is counted in full, and the inverted
-frame, followed by nothing, counts nothing.
+frame, followed by nothing, counts nothing. The palette builder takes each frame as it
+arrives, so the pass holds one frame at a time (a 60 s 720p GIF peaks near 175 MB, not
+2.7 GB).
 
 ### Selectors
 

@@ -206,11 +206,31 @@ each format brings its own media stack: the DEBs and the RPM use the distro's
 GStreamer and FFmpeg, while the AppImage carries its own and uses only the host's
 VA-API, PipeWire and GPU drivers. Each row installs the exact package (or runs
 the exact AppImage) and records a moving pattern through the production CLI:
-prepare, start, pause, resume, stop, edit (trim and a timed blur), preview,
-save copy and Upload to an isolated local destination, for MP4, WebM, GIF and
-WebP. It keeps screenshots of the ready, recording and review states, the
-capabilities JSON, the installed identity, and each clip's motion score next
-to a static control from the same desktop.
+prepare, start, pause, resume, stop, edit (a trim, a cut, a redaction over a time
+selection, then undo and redo of each), preview, save copy and Upload to an isolated
+local destination, for MP4, WebM, GIF and WebP. It keeps screenshots of the ready,
+recording and review states, the capabilities JSON, the installed identity, and each
+clip's motion score next to a static control from the same desktop. `putgd-record
+--motion` is that static-control comparison only; it reports a clip-wide average and
+can pass with the cut still in the clip.
+
+**Review exports.** The export is checked as frames and sound, not by one score:
+
+- The recorded pattern carries content that identifies its moment (a frame counter or a
+  timecode in the picture, and a distinct tone in the part to be cut), and a cut spans
+  part of it.
+- Decode the exported file with a decoder that reads that format, frame by frame. For
+  WebP that must be one that reads animated WebP (Pillow does; some FFmpeg `webp`
+  decoders read still images only and fail every packet).
+- At each join, the last frame before it and the first frame after it show the kept
+  neighbours, and no counter value from inside the cut appears anywhere.
+- A cover's area is covered in every frame shown during its time, including a frame
+  held over a still stretch or across a cut, and uncovered in frames outside it.
+- Audio carries the kept tone and none of the cut tone, with no click at the join.
+- The duration is compared with the expected export timing, not with the review's kept
+  time alone: kept time on the frame grid, plus up to one frame per span; a GIF or WebP
+  is never longer than the kept time.
+- Fold the window below 1180×720 and use the **Edits** overlay.
 
 | Package | Desktop/session | Placement | What the row must show |
 | --- | --- | --- | --- |
@@ -405,10 +425,9 @@ memory window and the coordinator's OK for each logout.
   - **Save a copy…** opens the desktop's portal chooser (the themed fallback only where no portal FileChooser exists), and the saved file exists.
   - The link is copied according to the clipboard setting: each link on every desktop, plus the list behaviour on at least one.
 - **E. Recording:** a moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
-  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut, a redaction over a time selection, and undo and redo of each.
-  - Fold the window below 1180×720 and use the **Edits** overlay.
-  - Export MP4, WebM, GIF and WebP and save one copy through the chooser. Each export contains motion with the cut removed: its duration is the kept time and `putgd-record --motion` reads movement across the join. The WebP is read with a decoder that supports animated WebP.
-  - Each clip's motion score is compared with a static control recorded on the same desktop.
+  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut over identifiable content, a redaction over a time selection, and undo and redo of each. Fold the window below 1180×720 and use the **Edits** overlay.
+  - Export MP4, WebM, GIF and WebP and save one copy through the chooser; check each export by the **Review exports** list under [Screen recording rows](#screen-recording-rows): frames at the join, covered frames, audio and expected duration.
+  - Each clip's motion score is compared with a static control recorded on the same desktop (the only use of `--motion`).
   - Record the live encoder (VA-API or the bundled x264).
   - On Plasma Wayland, AppRun's KWin entry gives `kde-screencast`, and the entry is removed on exit.
 - **F. Notifications:** the link-ready notification appears, and a real click on it opens the link in the desktop's real default browser, which loads the image.
@@ -707,9 +726,9 @@ On the accepted nightly, installed by item L.
   - The link is copied according to the clipboard setting.
 - **E. Recording:** the [recording row](#screen-recording-rows) for this package, with the distro's GStreamer and FFmpeg.
   - A moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
-  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut, a redaction over a time selection, and undo and redo of each. Fold the window below 1180×720 and use the **Edits** overlay.
-  - Export MP4, WebM, GIF and WebP and save one copy through the chooser. Each export contains motion with the cut removed: its duration is the kept time and `putgd-record --motion` reads movement across the join. The WebP is read with a decoder that supports animated WebP.
-  - Each clip's motion score is compared with a static control recorded on the same desktop.
+  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut over identifiable content, a redaction over a time selection, and undo and redo of each. Fold the window below 1180×720 and use the **Edits** overlay.
+  - Export MP4, WebM, GIF and WebP and save one copy through the chooser; check each export by the **Review exports** list under [Screen recording rows](#screen-recording-rows): frames at the join, covered frames, audio and expected duration.
+  - Each clip's motion score is compared with a static control recorded on the same desktop (the only use of `--motion`).
   - Record the capture source (`ximagesrc`, `kde-screencast`, `mutter-screencast` or the portal) and the live encoder.
   - On Plasma Wayland, `kde-screencast` comes from the installed `putgd-record.desktop`.
   - On k72, a second recording in the Plasma X11 session covers the row's `ximagesrc` and VA-API half. That's two extra logouts, each needing the coordinator's OK.

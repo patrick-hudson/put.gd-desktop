@@ -21,22 +21,29 @@ Part of [Screen recording](../recording.md).
   masks "Blur" and "Redact".
 - A **cut** leaves a stretch of source time out of the output but stays in the edit,
   so review can show it and restore it. Cuts are sorted by `start`, disjoint, never
-  touching and inside `[0, duration)`: `addCut` and `updateCut` clamp to the clip and
+  touching and inside `[0, duration)`: `addCut` and `updateCut` clamp the span to the
+  clip (a span that no longer overlaps the clip after clamping is `invalid_request`) and
   merge every cut they overlap or touch (an `addCut` that merges gets a new id;
-  `updateCut` keeps its id and absorbs the others). At least one frame (1/`fps`) of the
-  trimmed interval must stay kept; a cut (or a trim, while cuts exist) that would leave
-  less is refused with `recording_cut_empty`; a trim alone keeps its own
-  `invalid_request`. Changing the trim never moves a cut or a mask on the source
-  timeline.
+  `updateCut` keeps its id and absorbs the others). More than 64 cuts is
+  `invalid_request`. Two checks keep one frame (1/`fps`) kept, in this order: a
+  `setTrim` whose own interval is shorter than a frame is `invalid_request`, whatever
+  cuts exist; then, after the whole batch is applied, a batch that changed a cut or the
+  trim and leaves less than one frame once the cuts are subtracted, with cuts still
+  present, is `recording_cut_empty`. Changing the trim never moves a cut or a mask on
+  the source timeline.
 - The **kept spans** are `[trimStart, trimEnd)` minus every cut, sorted and disjoint;
-  output time lays them end to end from zero (`recording::KeptSpans`). The output
-  duration is their total, and it is the duration the GIF and WebP limit counts, the
-  one export progress runs over and the one the review's output clock shows. At export
-  each mask is intersected with the kept spans and mapped to output time, in as many
-  parts as the cuts split it: retaining 10–30 s with no cut makes a source mask at
-  12–15 s active at output 2–5 s, a cut at 13–14 s makes it active at 2–3 s and
-  3–4 s joined into one interval 2–4 s, and a mask wholly outside the kept spans is
-  dropped.
+  output time lays them end to end from zero (`recording::KeptSpans`). The total is the
+  **kept time**: the length the review's output clock shows and the length the GIF and
+  WebP limit counts. Export snaps each span to the frame grid, so its own lengths differ
+  slightly; the three durations (kept time, export grid time, exported duration) and
+  where each appears are in
+  [Kept spans, cuts and frame gaps](capture-and-export.md#kept-spans-cuts-and-frame-gaps).
+  Covers map through the kept spans the same way: each mask is intersected with them and
+  mapped to output time, in as many parts as the cuts split it. Retaining 10–30 s with no
+  cut makes a source mask at 12–15 s active at output 2–5 s, a cut at 13–14 s makes it
+  active at 2–3 s and 3–4 s joined into one interval 2–4 s, and a mask wholly outside the
+  kept spans is dropped. The export also covers frames *shown* during a cover whose
+  picture was captured at another time (see the same section).
 - Every accepted `edit` advances `revision`. `upload` and `edit` take the
   revision they were reviewed at and fail with `recording_stale` otherwise.
 - **Undo history.** The resident keeps one undo history per review session. Every
@@ -49,8 +56,9 @@ Part of [Screen recording](../recording.md).
   helper and ends with the session. The `edit` object reports `canUndo` and `canRedo`
   for the current revision.
 - Animated exports (GIF, WebP) are silent and must fit
-  `limits.recordingAnimationSeconds` (the kept duration: the trim minus the cuts); a longer clip is
-  refused, never shortened. An output whose long edge is over
+  `limits.recordingAnimationSeconds` (the kept time: the trim minus the cuts); a longer clip is
+  refused, never shortened. The file itself is never longer than the kept time: the
+  exporter caps an animation at it, and keeps at least one frame. An output whose long edge is over
   `limits.recordingAnimationEdge` gets the recording's `maxEdge` set to that
   limit once the canvas is known (at `ready`, at stop, or when GIF or WebP is
   chosen in review), and `inspect` shows the new `maxEdge` and `outputSize`. A
@@ -93,12 +101,14 @@ the export starts, like `prepare`. The reply is the session as `inspect` shows
 it: `state: exporting`, `pending: saveCopy|upload`. Edits, previews and other
 exports are refused with `recording_state` until the export ends; `cancel` still
 works and discards it. While it runs, `progress.exportFraction` reports how far
-it got, and `operation.inspect` reports phase `exporting` (copy) or `encoding`
+it got over the export grid time (the kept spans on the frame grid), and `operation.inspect` reports phase `exporting` (copy) or `encoding`
 (upload).
 
 `lastExport` is the session's latest export: `{command, status, revision}`, plus
 `path` for a copy. `status` is `exporting`, then `saved` (with `bytes` and
-`durationUs`) or `failed` (with `error`, for example `recording_export_failed`,
+`durationUs`, the exported duration: the last encoded frame's end, which is the kept time
+on the frame grid plus up to one frame per span, and for a GIF or WebP never more than the
+kept time; the reply that starts the export carries no duration) or `failed` (with `error`, for example `recording_export_failed`,
 `input_excessive` or `local_save_failed`). A failed export writes nothing and
 returns the session to `reviewing`. For a copy, poll `recording.inspect` until
 `state` is `reviewing` again. For an upload, `reviewing` with

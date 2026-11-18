@@ -143,14 +143,15 @@ Banners take space from the well along its top edge and never sit over the pictu
 ### Transport
 
 Play is a split button whose menu holds the speeds 0.5×–4× (1× by default).
-Previous and next frame (`,` and `.`, named in their tooltips) follow, then the
-two clocks: **output time / output length** (m:ss.s, what the exported clip will
-show), and beside it, muted, **clip time** (the source time the ruler and the
-trim brackets use) and "Preview is silent" with a speaker glyph. Last comes the
-timeline zoom button (magnifier and level: Fit, 2×, 4×, 8×, 16×; Ctrl+wheel zooms around
-the pointer). Playback skips every cut and the footage outside the trim: the
-output clock runs only over what the export keeps, and the preview never plays
-the audio.
+Previous and next frame (`,` and `.`, named in their tooltips) follow, then **one
+clock**: output time / output length (m:ss.s, the kept time, what the exported clip
+will show). Hover it for the recording time, the source time the ruler and the trim
+brackets use. Beside it a muted caption reads "clip time" (with "· Excluded from
+output" while the playhead is on footage the export drops), then "Preview is silent"
+with a speaker glyph. The timeline zoom button (magnifier and level) cycles Fit, 2×
+and 4× and back; Ctrl+wheel steps through Fit, 2×, 4×, 8× and 16×, around the
+pointer. Playback skips every cut and the footage outside the trim: the output clock
+runs only over what the export keeps, and the preview never plays the audio.
 
 ### Timeline
 
@@ -191,105 +192,164 @@ other rows show their verb on hover.
 ### Footer
 
 **Format ▾** ("MP4 · with system audio"; codec and limits inside the menu; GIF and
-WebP say "no sound") · **Discard…** (asks first) · **Save a copy…** · a destination
-menu that says what Upload produces ("Project archive · Shared link", or "· Private
-upload") · **Upload** (the default button; closes the window at once).
+WebP say "no sound") · **Discard…** (asks first; the window's Close button asks the
+same question) · **Save a copy…** · a destination menu that says what Upload produces
+("Project archive · Shared link", or "· Private upload") · **Upload** (the default
+button; once the resident has accepted the last change it closes the window).
+
+The Format menu also holds an **Include system audio** toggle (named for what was
+recorded) that sets whether the export carries the recorded sound. It has no review
+action: `inspect` reports it as `audioRequested` and `audioEffective`, and the format
+menu's `format` action does not change it.
 
 ### Interaction rules
 
 - The window opens paused on the first frame.
-- **Select time** by dragging on the filmstrip (a half-open source-time span) or with
-  `[` and `]` from the keyboard; with no selection, `[` and `]` run to the kept range's
-  other end. A click seeks and clears the selection; Esc clears it.
-- **Cut** (C, Delete or Backspace on a time selection; Delete and Backspace act only
-  in the viewer, the timeline and the Edits list, never in a focused field). The cut
-  stays in place, hatched; playback jumps it; the output length drops. After making a
-  cut the playhead lands 1 s before the join in output time, clamped to the first
-  kept frame. Delete never restores a cut: use Restore or Ctrl+Z. Clicking a cut
-  selects it, shows handles at its edges to adjust it, and offers Restore and Play
-  across. Selecting a cut from Edits seeks to the first kept frame after it (the last
-  kept frame before a trailing cut).
+- **Select time** by dragging on the filmstrip (a half-open source-time span), or with
+  `[` and `]` while the timeline has focus: `[` sets the selection's start at the
+  playhead and `]` its end, and with no selection the other end is the trim's start or
+  end. A click seeks and clears the selection; Esc clears it.
+- **Cut** (C, or Delete or Backspace on a time selection). Delete and Backspace act in
+  the viewer, the timeline and the Edits list, never in a focused field. The cut stays
+  in place, hatched; playback jumps it; the output length drops. After making a cut the
+  playhead lands 1 s before the join in output time, clamped to the first kept frame.
+  Delete never restores a cut: use Restore or Ctrl+Z. Clicking a cut selects it, shows
+  handles at its edges to adjust it, and offers Restore and Play across. Selecting a cut
+  from Edits seeks to the first kept frame after it (the last kept frame before a
+  trailing cut).
 - **Cover** (X Redact, B Blur): arms a cover for the time selection (snapped outward to
-  whole frames), or for the whole recording with no selection; the banner says which.
-  The viewer then pauses on the playhead frame if that lies in the selection's kept
-  footage, else on the first kept frame in it, else (all excluded) on its first source
-  frame marked "Excluded from output". Dragging a box places it; one command creates
-  the cover's rectangle and span. Delete removes a selected cover. Selecting a
-  cover seeks to its first visible frame; one wholly outside the kept footage shows
-  its start paused as "Excluded from output". Drags clamp to the clip and do not scroll.
-- **Trim** with the brackets or I and O at the playhead; Shift+I and Shift+O retime the
-  selected cover. Dragging an edge of a cut or cover retimes it.
-- **Keys.** Space plays; `,` and `.` step a frame; ← and → move 0.1 s, with Shift 1 s;
-  Home and End go to the selected cover's first and last frame, else the kept ends;
-  Alt+← and Alt+→ step through edits in any layout; Ctrl+Z undoes, Ctrl+Shift+Z or
-  Ctrl+Y redoes; Esc cancels a placement or clears a selection.
+  whole frames), or for the whole recording with no selection; the banner says which. An
+  agent's `addMask` does the same, so with nothing selected it covers the whole
+  recording. The viewer then pauses on the playhead frame if that lies in the selection's
+  kept footage, else on the first kept frame in it, else (all excluded) on its first
+  source frame marked "Excluded from output". Dragging a box places it; one command
+  creates the cover's rectangle and span. Selecting a cover seeks to its first visible
+  frame; one wholly outside the kept footage shows its start paused as "Excluded from
+  output". Drags clamp to the clip and do not scroll. Delete on a selected cover in the
+  viewer or timeline removes it; **Delete on a focused Edits row** removes that row's
+  cover, except that with a time selection it cuts the selection instead.
+- **Trim** with the brackets or I and O at the playhead (the end action keeps the playhead
+  frame, so it adds one frame interval, bounded by the recording's end); Shift+I and
+  Shift+O retime the selected cover the same way. Dragging an edge of a cut or cover
+  retimes it.
+- **Keys.** The keys act on the window unless a text field has focus, which keeps its
+  own. Space plays; `,` and `.` step a frame; ← and → move 0.1 s, with Shift 1 s, except
+  in the focused viewer, where the arrows move the selected cover (Shift+arrows resize
+  it, 1 px a step, 10 px with Ctrl) or, at 100 %, pan the picture. Home and End go to the
+  selected cover's first and last kept frame, else the kept ends. Alt+← and Alt+→ step
+  through edits in any layout. Ctrl+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes. Esc
+  cancels a placement, or clears a selection.
+- **Enter** depends on focus. A focused text field keeps it; a focused button presses
+  itself; while a cover is being placed it places a centred cover (half the frame's
+  width and height); with a cut selected it restores the cut; otherwise it uploads.
+  Ctrl+Enter always uploads, and does nothing with a menu open.
+- **100 % view** shows source pixels: the helper decodes the clip at its own size rather
+  than the 1280 px preview, so a cover and the picture can be checked pixel for pixel.
 - **Undo and redo** run in the resident: one step per committed gesture (a run of
   nudges is one), covering trim, cuts and covers only. Every undo or redo is a new
   revision (see [the edit model](session-contract.md#time-geometry-and-the-edit-model)).
-  Ctrl+Z while placing cancels the placement.
-- **Ctrl+Enter** finishes a pending drag or nudge and uploads the acknowledged
-  revision. It does nothing while a box is being placed or a menu is open.
+  Ctrl+Z while placing cancels the placement, and while a keyboard nudge is pending it
+  drops the nudge.
+- **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
+  a keyboard nudge of a cover is proposed 350 ms after the last key, or at once when
+  Ctrl+Enter, Enter or Upload commits it. **Upload, Ctrl+Enter and Enter do nothing during a drag** (the
+  drag's edit has not been proposed), and Upload is disabled while a cover is being
+  placed. Upload then waits until the resident has accepted every pending proposal and
+  sends the acknowledged revision. A refusal, or 2 s without an answer, cancels the
+  upload: the status line says what was not applied or "Upload didn't start", and
+  `inspect` shows `uploadWaiting` while it waits. **Try again** (`retryExport`) is
+  refused while a cover is being placed.
 
 ### Thumbnails and skimming
 
-- The filmstrip shows 12 thumbnails at Fit and up to 24 visible ones per zoom batch.
-  One cancellable worker opens the clip once, seeks backward to the keyframe before
-  each thumbnail's time, decodes only that keyframe packet and scales straight to
-  the thumbnail size; the two end thumbnails come first, and results are cached by
-  keyframe time. A placeholder shows until each arrives, and exact-time thumbnails
-  are made only lazily when zoomed. It never decodes the whole clip, and scrubbing,
-  playback and Upload never wait for it. It draws the recorded picture without
-  covers (`putgd-record --filmstrip` times it, see
-  [Capture and export](capture-and-export.md#lab-diagnostics)).
-- Measured on m74 (i5-6500T) with a 3-minute 4K60 clip and the nightly's FFmpeg 9.0.2:
-  the two end thumbnails in 156 ms, 12 in 433 ms and 24 in 739 ms (p95, warm; 490 ms
-  and 846 ms cold), on one core and 55 MiB. Decoding every frame of that clip takes
-  24 s, which is why there is no whole-clip pass
+- The number of thumbnails follows the strip's width at every zoom level: 12 at the
+  reference width (a 1120 px strip), at most 24. Zooming asks for thumbnails of the
+  newly visible range, again one keyframe tile each. One cancellable worker opens the
+  clip once, seeks backward to the keyframe before each thumbnail's time, decodes only
+  that keyframe packet and scales straight to the thumbnail size; the two end
+  thumbnails come first, and results are cached by keyframe time. A placeholder shows
+  until each arrives. Thumbnails are keyframe pictures, not exact frames: exact frames
+  come only from the skim worker, below. The strip never decodes the whole clip, and
+  scrubbing, playback and Upload never wait for it. It draws the recorded picture
+  **without covers**. (`putgd-record --filmstrip` times it on a build, see
+  [Lab diagnostics](capture-and-export.md#lab-diagnostics).)
+- The timings below come from a **separate benchmark harness**, `bench.cpp` in the
+  council record's
+  [`filmstrip-test`](https://github.com/patrick-hudson/put.gd-evidence/tree/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test)
+  folder, which links the nightly's FFmpeg and runs the same keyframe method; they
+  are not measurements of the shipped review window, which `putgd-record --filmstrip`
+  measures. On m74 (i5-6500T) with a 3-minute 4K60 clip and the nightly's FFmpeg
+  9.0.2: the two end thumbnails in 156 ms, 12 in 433 ms and 24 in 739 ms (p95, warm;
+  490 ms and 846 ms cold), on one core and 55 MiB. Decoding every frame of that clip
+  takes 24 s, which is why there is no whole-clip pass
   ([results](https://github.com/patrick-hudson/put.gd-evidence/blob/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test/results.md)).
-- **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once.
-  After about 120 ms at rest, one exact-frame request goes out (at most one in
+- **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once; as
+  it has no covers, **the viewer can show a picture without its covers** until the next
+  step. After about 120 ms at rest, one exact-frame request goes out (at most one in
   flight, cancelled when the pointer moves, the decoder kept open) and replaces the
-  thumbnail when it arrives; the time flag then drops its "≈". On m74 that frame
-  takes 217 ms median and 328 ms p95 at 4K (130 ms and 199 ms at 1080p). Leaving the
-  strip restores the playhead frame, and skimming never moves the playhead.
+  thumbnail when it arrives, with the covers active at that time applied; the time flag
+  then drops its "≈". On m74 that frame takes 217 ms median and 328 ms p95 at 4K
+  (130 ms and 199 ms at 1080p), measured in the same harness. Leaving the strip restores
+  the playhead frame, and skimming never moves the playhead. An edit made meanwhile
+  cancels the skim frame and asks for it again, so a stale frame is never marked exact.
 
 ### Previews, edits and the resident
 
-Previews are rendered in the helper by the same `previewFrame` the CLI and MCP
-preview use, so timing and placement agree with the export. While a cover is being
-dragged the pending area is drawn as a dashed rubber band. Play plays the kept
-footage silently from the playhead at the chosen speed: frames are decoded in order
-on a worker by `FrameSequence`, covers applied as the export renders them, and
-shown at their output time; a cut is jumped, and frames that
-fall behind the clock are decoded but not drawn, so a large clip keeps pace with
-dropped frames. Scrubbing or any edit control pauses playback. The audio track is
-not previewed (the export keeps it).
+Previews are rendered in the helper by `previewFrame`, which the CLI and MCP preview
+also use. The paused preview and the skim frame apply the covers active at the frame's
+own time **and** at the requested time, so a held frame never shows uncovered at a time
+the export covers. The export applies a cover to every output frame shown during its
+time, by output time or by the time the shown picture was captured (see
+[Covers](capture-and-export.md#kept-spans-cuts-and-frame-gaps)). **Playback is the one
+exception:** `FrameSequence` decodes frames in order on a worker and masks each frame at
+its own time only, so a cover wholly inside a frame gap is not drawn on the still
+picture while playing. That is a limit of the local viewer; the export is correct. While
+a cover is being dragged the pending area is drawn as a dashed rubber band. Play plays
+the kept footage silently from the playhead at the chosen speed and follows edits made
+while it plays: a cut is jumped, and frames that fall behind the clock are decoded but
+not drawn, so a large clip keeps pace with dropped frames. Scrubbing or any edit control
+pauses playback. The audio track is not previewed. **Check the saved export before
+uploading sensitive footage:** the preview and the export are separate renderers.
 
 `recording.review {id, action, ...}` (MCP `drive_recording_review`) works the
 window's controls as a user does, one action per call, in `reviewing` (and
-`inspect` while `exporting`). A refused action answers `invalid_request` with the
-message the window shows, and while the **Save a copy…** chooser is open (opened
-through the desktop's XDG portal or the themed fallback; see
-[file-dialogs.md](../file-dialogs.md)) the other actions answer `recording_state`,
-as the window takes no input then. The answer is the window's state after the
-action plus the resident's `state` and `edit`: an edit a control proposes reaches
-the resident as an `edit` event first, and the resident reads the window again
-after pushing the result back. Every control routes through the same handler as
-its UI.
+`inspect` while `exporting`). The answer is the window's state after the action plus
+the resident's `state` and `edit`. Not every control has an action: the Format menu's
+audio toggle (the footer's "with system audio") has none, and `retryExport` is handled
+by the resident, not the window (see
+[Review window actions](agent-control-and-tests.md#review-window-actions)). Errors:
 
-The actions and the fields `inspect` returns are listed in
-[Agent control and tests](agent-control-and-tests.md#review-window-actions).
+- **`invalid_request`** for a value the window rejects (a missing or malformed field, a
+  time outside the recording, an unknown ID) and for actions that need a selection the
+  window does not have (`placeMask`, `strength`, `removeMask`, `useSolidCover`, `setMaskIn`
+  and `setMaskOut`), with the message the window shows.
+- **`recording_state`** when the window's state refuses the action: no time selection
+  for `cut`, no selected cover for `seekCoverStart`, `seekCoverEnd`, `setCoverEdge`,
+  `setCoverEdgeToPlayhead` and `coverKind`, nothing to undo or redo, a cover being placed,
+  an export running, the discard confirmation or the **Save a copy…** chooser open (opened
+  through the desktop's XDG portal or the themed fallback; see
+  [file-dialogs.md](../file-dialogs.md)).
+- **The resident's refusal.** An edit a control proposes reaches the resident as an
+  `edit` event first. If the resident refuses it (a cut that would leave no frame, a
+  65th cut, a stale revision), the action answers with the refusal as its error: the
+  model's own code (for example `recording_cut_empty`, `recording_stale` or
+  `invalid_request`) and message, with `details {revision, proposal}`. The same refusal
+  stays in `inspect` as `lastRefusal {code, message, revision, proposal}`. An action that
+  succeeds returns the window's state with the edit after it, so an agent can read the
+  returned `edit.revision`; `recording.edit` returns the same refusal codes directly.
 
 The window never owns the edit: each change is proposed to the resident as an
 `edit {revision, commands}` event, the resident applies it to the authoritative
-model and its undo history (or refuses a stale or invalid proposal) and pushes the
-result back with the `setEdit` command, which is also sent after every CLI/MCP
+model and its undo history (or refuses a stale or invalid proposal, with its code and message) and pushes the
+result back with the `setEdit` command, which names the proposal it answers and is also sent after every CLI/MCP
 edit. "Save a copy…" and "Upload" send `saveCopyRequested {path, revision}` and
 `uploadRequested {revision}`; the resident runs exactly the `saveCopy` and `upload`
 paths, so a stale revision or an animation over budget is refused and the window
-shows the resident's current edit again. Discard, closing the window and Escape
-during selection end the operation as `cancelled`. Upload closes the window at once
-and the export and upload continue in the background; the operation reports like any
+shows the resident's current edit again. Discard… and the window's Close button
+open the same confirmation; confirming, or Escape during selection, ends the operation as
+`cancelled`. Upload sends its request
+once the resident has accepted every pending proposal (see "Commit and upload" above),
+then closes the window at once and the export and upload continue in the background; the operation reports like any
 other upload (tray, history, `operation.inspect`), and the resident shuts the helper
 down when the export has been handed over. Save a copy keeps the window open with the
 controls disabled and the status showing progress, so the user can still upload

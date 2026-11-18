@@ -126,28 +126,33 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `set_recording_audio` | id, microphone?, system? → recording.audio | Sets the ready bar's audio toggles as a click would, before start; an omitted one stays. The bar follows the sound server while ready (`progress.recordingMicrophone` in `get_recording`), so a microphone plugged in after `prepare_recording` is switched on here without starting over. Refused with `recording_unsupported` and the reason when no microphone can be opened, and with `recording_state` once recording has started; the user's remembered preference is not changed |
 | `edit_recording` | id, revision, commands → recording.edit | Atomic trim, cuts (`addCut`, `updateCut`, `removeCut`), timed blur/solid masks, `undo` and `redo` in microseconds and canvas pixels; `undo` and `redo` go alone in a batch and step the review's history as a new revision ([edit model](../design/recording/session-contract.md#time-geometry-and-the-edit-model)) |
 | `preview_recording` | id, time_us, max_edge → recording.preview | One frame with the masks active at that time applied, as an MCP image plus metadata: `retained` is whether the time is kept (inside the trim, outside every cut) and `outputTimeUs` its place in the output |
-| `drive_recording_review` | id, action, and the action's own fields → recording.review | Works the open review window's controls as a user does, one action per call, and inspects its state; every control routes through the same handler as the window's own UI, and edits go through the resident like the window's own. The action list and the fields of `inspect` are in the table below the tool list ([Review window](../design/recording/overlay-and-review.md#review-window)). `edit_recording` and `recording.review` share one edit history: `undo` and `redo` reach it from both |
+| `drive_recording_review` | id, action, and the action's own fields → recording.review | Works the open review window's controls as a user does, one action per call, and inspects its state; each action routes through the same handler as the window's own UI and its edits go through the resident like the window's own. The actions, their errors and the fields `inspect` returns are in [Review window actions](../design/recording/agent-control-and-tests.md#review-window-actions); the parameters are mapped below. `edit_recording` and `recording.review` share one edit history: `undo` and `redo` reach it from both |
 | `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload. Returns `exporting` when the export starts; poll `get_recording` until `reviewing` and read `lastExport` |
 | `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output. Returns `exporting` and the `operationId` when the export starts; a failed export returns the session to `reviewing` with `lastExport.error`, otherwise `get_operation` follows the upload |
 
-`drive_recording_review` takes `id`, `action` and the fields below; the action list, what
-each does, their errors and the fields `inspect` returns are in
-[Review window actions](../design/recording/agent-control-and-tests.md#review-window-actions).
-The tool validates types and sizes; the review window checks ranges and state. An invalid
-value is `invalid_request`, and a state that refuses the action is `recording_state`.
+`drive_recording_review` takes `id`, `action` and the fields below. The tool checks types,
+sizes and that an action's required fields are present (a missing or malformed one is
+`invalid_request` before anything is sent); the review window then checks ranges and
+state. Errors, by cause, are in
+[Review window actions](../design/recording/agent-control-and-tests.md#review-window-actions):
+`invalid_request` for a value or selection the window rejects, `recording_state` when
+the window's state refuses the action, and, when the resident refuses an edit the action
+proposed, that refusal's own code (`recording_cut_empty`, `recording_stale` and so on)
+with `details {revision, proposal}`. `retryExport` and the audio toggle are the two
+controls the review actions do not drive like the window.
 
 | MCP parameter | Session field | Used by |
 | --- | --- | --- |
-| `time_us` | `time` | `seek`, `skim` |
+| `time_us` | `time` | `seek`, `skim`, `setCoverEdge` |
 | `speed` | `speed` | `speed` (0.5, 1, 2, 4) |
 | `kind` | `kind` | `addMask`, `coverKind` (blur, solid); `selectEdit` (cut, cover, trim) |
 | `rect` | `rect` | `addMask`, `placeMask` (`[x, y, w, h]`, canvas pixels) |
 | `mask_id` | `maskId` | `selectMask` (omitted: clear) |
 | `strength`, `format`, `codec` | same | `strength`, `format` |
-| `start_us`, `end_us` | `start`, `end` | `selectRange`, `adjustCut`, `setTrim` (`end_us` omitted: the recording's end) |
+| `start_us`, `end_us` | `start`, `end` | `selectRange`, `adjustCut`, `setTrim`; **only `setTrim` accepts an omitted `end_us`** (the recording's end), the others need both |
 | `cut_id` | `cutId` | `selectCut`, `adjustCut`, `restoreCut`, `playAcross` |
 | `edit_id` | `editId` | `selectEdit` (none for a trim) |
-| `edge` | `edge` | `setCoverEdgeToPlayhead` (start, end) |
+| `edge` | `edge` | `setCoverEdge`, `setCoverEdgeToPlayhead` (start, end) |
 | `level` | `level` | `timelineZoom` (1, 2, 4, 8, 16) |
 | `mode` | `mode` | `viewerZoom` (fit, actual) |
 | `dx`, `dy` | `dx`, `dy` | `viewerPan` (source pixels) |
