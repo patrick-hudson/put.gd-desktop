@@ -38,6 +38,8 @@ Actual comment starts here.
    details: credentials, tokens, private hostnames and addresses, email addresses, file
    contents from test accounts.
 2. Write it to a file and preview the Markdown, so quoting and blank lines render as intended.
-   Post with `--body-file`, never an inline `--body` with shell quoting.
+   Post from that file, never an inline `--body` with shell quoting: `gh pr comment` and
+   `gh issue comment` take `--body-file <file>`, and inline review comments and replies go
+   through `gh api` with `-F body=@<file>` (or `--input <json-file>`).
 3. Check that GitHub returned the comment or review URL.
 4. Resolve a review thread only after its reply was posted successfully.
