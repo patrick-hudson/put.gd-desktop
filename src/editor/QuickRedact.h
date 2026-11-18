@@ -45,23 +45,46 @@ struct Sources {
 };
 struct Result {
  QList<Match> matches;
- QList<int> skippedPatterns; // indexes into Sources::patterns that ran out of budget
+ QList<int> skippedPatterns; // indexes into Sources::patterns that did not finish (time, limits, not compiling)
 };
+// Decision 6, round 3 of #1631: user patterns. A pattern runs exactly as typed
+// with ordinary PCRE2 search (QRegularExpression, Unicode properties, case as
+// written) over subjects:
+//  - each recognized line on its own: its words joined with one space;
+//  - each pair of consecutive lines in reading order, joined with "\n", so
+//    \s (or \n) matches across a wrapped line; a literal space does not. A
+//    pair's hit counts only where it crosses the line break: one inside a line
+//    is found in that line, once. Nothing spans three lines.
+// Each subject is searched once, from its start, as global matching does; a
+// hit marks every word it touches, and an empty hit marks nothing.
+struct PatternHit {int subject=0;qsizetype start=0,length=0;bool operator==(const PatternHit&) const=default;};
+// One pattern's result. `finished` false: it did not compile, or a search hit
+// PCRE2's limits; it is then reported as skipped.
+struct PatternOutcome {int pattern=0;bool finished=false;QList<PatternHit> hits;};
+// Runs patterns over subjects and returns the outcome of each pattern that
+// ended; one it never got to, or gave up on, is missing (and skipped). The
+// editor's runs one in a child process it kills at the deadline
+// (src/ui/QuickRedactRunner.h), since nothing bounds a regular expression's
+// time in process.
+using PatternMatcher=std::function<QList<PatternOutcome>(const QStringList& subjects,const QStringList& patterns)>;
+// The matching itself, in this process, calling `done` after each pattern in
+// order: what the child runs. Not bounded in time: the editor never calls it on
+// its own threads.
+void matchPatterns(const QStringList& subjects,const QStringList& patterns,const std::function<void(PatternOutcome)>& done);
 // Every match of the chosen categories. A word belongs to one match at most;
 // where kinds overlap the more specific one wins (key, email, card, ip, phone,
 // then name and list).
 QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& categories);
-// The same with the name and list sources. Patterns share `budgetMs` (2000 in
-// the editor); a pattern that runs out of it is skipped and named in the
-// result, and the matches found so far are kept. A budget of 0 or less skips
-// every pattern. Blocking: call it off the UI thread (src/ui/QuickRedactRunner.h).
+// The same with the name and list sources. Without a matcher, patterns run in
+// this process with matchPatterns, `budgetMs` checked between patterns (tests);
+// a budget of 0 or less skips every pattern. Blocking: call it off the UI
+// thread (src/ui/QuickRedactRunner.h).
 Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs=2000);
 // The same, calling `progress` (on the calling thread) after the name and list
-// terms and after each pattern with everything found so far, the patterns not
-// yet finished counted as skipped: a caller that stops waiting can still use it.
-// `cancel`, when set, is read between searches: once true, the patterns not yet
-// run are skipped and find returns (within one search, QuickRedact.cpp).
-Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel=nullptr);
+// terms and after the patterns, with everything found so far, the patterns not
+// yet finished counted as skipped. `cancel`, when set, is read between stages.
+// `matcher`, when set, runs the patterns.
+Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel=nullptr,const PatternMatcher& matcher={});
 // The Redact marks for a match: its word boxes, one box per line, padded by a
 // quarter of the line height above and below and by one and a half characters
 // either side, clamped to `bounds` (the image).

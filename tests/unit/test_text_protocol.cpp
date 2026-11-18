@@ -76,7 +76,7 @@ private slots:
   for(const auto& bad:{canary+"\n"+canary+"x",canary+"\r"+canary,canary+QChar(0x2028)+canary,canary+QString(maxRedactTermLength,'a'),QStringLiteral("..")}){
    const auto error=redactTermError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
   }
-  for(const auto& bad:{canary+"(abc",canary+"(a+)+",canary+"\\C",canary+"(\\w)\\1",canary+"("}){
+  for(const auto& bad:{canary+"(abc",canary+"[",canary+"(?<",canary+"\n",canary+"|",canary+"("}){
    const auto error=redactPatternError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
   }
   const auto unclosed=redactPatternError(canary+"(abc");
