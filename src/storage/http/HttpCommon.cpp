@@ -617,8 +617,10 @@ QString plainHttpNote() {
 bool repeatsCredential(const QString& text, const QStringList& recognised) {
     if (holdsRecognised(text, recognised)) return true;
     // A credential as an ID would write it: lower case, with "-" for anything else.
+    // Only a credential with letters or digits: one without would write as the default ID.
+    static const QRegularExpression alphanumeric("[A-Za-z0-9]");
     QStringList slugs;
-    for (const auto& needle : recognised) if (needle.size() >= 16) slugs.append(uploaderSlug(needle));
+    for (const auto& needle : recognised) if (needle.size() >= 16 && needle.contains(alphanumeric)) slugs.append(uploaderSlug(needle));
     return holdsRecognised(text, slugs);
 }
 SxcuImport importSxcu(const QByteArray& json) {
@@ -644,8 +646,10 @@ SxcuImport importSxcu(const QByteArray& json) {
         places.append({QStringLiteral("Name"), out.name});
         places.append({QStringLiteral("the destination ID"), uploaderSlug(out.name)});
         for (const auto& note : std::as_const(out.notes)) places.append({QStringLiteral("the import notes"), note});
+        // Values are matched as written; only the ID is also matched as an ID would write a
+        // credential.
         for (const auto& [field, text] : std::as_const(places))
-            if (repeatsCredential(text, recognised)) {
+            if (field == QLatin1String("the destination ID") ? repeatsCredential(text, recognised) : holdsRecognised(text, recognised)) {
                 out.error = sxcuError("sxcu_unsupported", "This file cannot be used: the import would keep a credential in " + field + ".");
                 break;
             }

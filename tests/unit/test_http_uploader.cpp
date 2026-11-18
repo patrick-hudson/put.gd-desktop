@@ -322,6 +322,16 @@ private slots:
         const auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
     }
+    // Sol round 5 of #1614: values are matched as written. A punctuation-only password
+    // would write as the default ID "uploader", and an ordinary /uploader path is fine.
+    void importMatchesValuesAsWritten() {
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/uploader"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"password", "!@#$%^&*()+-=;:,."}}},
+                               {"URL", "https://media.example.test/uploader/{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["responseUrl"].toString(), QString("https://media.example.test/uploader/{json:u}"));
+    }
     // A deletion URL that is left out keeps the keys taken out of it, stored and unused.
     void importKeepsTheKeysOfALeftOutDeletionUrl() {
         const QString key = token;
