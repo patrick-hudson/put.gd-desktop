@@ -38,9 +38,6 @@ bool localSaveFailed(const QJsonObject& r){
  return false;
 }
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
-// A file whose upload the destination confirmed (it has a receipt) is uploaded, even when its operation ended because
-// History could not record a later step (#1579).
-bool confirmedDespiteJournal(const QJsonObject& r){return r["uploadStatus"]=="uploaded"&&!r["receipt"].toObject()["objectReference"].toObject().isEmpty()&&r["operation"].toObject()["error"].toObject()["code"]=="history_io";}
 }
 // The locale's short time of day, never with seconds (the C locale's short form has them).
 static QString shortTime(const QTime& time){auto format=QLocale().timeFormat(QLocale::ShortFormat);format.remove(QStringLiteral(":ss"));format.remove(QStringLiteral(".ss"));return QLocale().toString(time,format);}
@@ -110,6 +107,11 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  if(!storedNothing(r)||r["operation"].toObject().isEmpty())return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="text"?"Text recognition failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
+}
+namespace {
+// A file whose upload the destination confirmed (it has a receipt) is uploaded, even when its operation ended because
+// History could not record a later step (#1579).
+bool confirmedDespiteJournal(const QJsonObject& r){return r["uploadStatus"]=="uploaded"&&!r["receipt"].toObject()["objectReference"].toObject().isEmpty()&&r["operation"].toObject()["error"].toObject()["code"]=="history_io";}
 }
 bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);if(confirmedDespiteJournal(r))return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial";}
 // An unknown outcome is retried like a failure, also after a crash left its operation interrupted: operation.retry accepts any non-active state (OperationService::retry).
