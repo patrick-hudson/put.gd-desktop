@@ -192,26 +192,27 @@ private slots:
         QCOMPARE(f.events().size(), 1);
     }
     // #1601: like Garage, the oracle checks the signature against the path as it arrives, and the
-    // SDK sends $ & , : = @ unencoded but signs them encoded. The name check says so plainly once
-    // an ordinary name shows the credentials work; a real permission problem keeps its own error.
-    void nameCharactersTheServiceCannotVerify_data() {
-        QTest::addColumn<QString>("name");QTest::addColumn<bool>("denied");QTest::addColumn<QString>("code");
-        QTest::newRow("colon") << QString("colon:.txt") << false << QString("s3_name_characters_unsupported");
-        QTest::newRow("at-dollar-comma") << QString("at@dollar$comma,.txt") << false << QString("s3_name_characters_unsupported");
-        QTest::newRow("amp-equals") << QString("amp&eq=.txt") << false << QString("s3_name_characters_unsupported");
-        QTest::newRow("denied-anyway") << QString("colon:.txt") << true << QString("s3_permission_denied");
+    // SDK sends $ & , : = @ unencoded but signs them encoded. The error keeps its code and
+    // message; a key (name or prefix) with those characters adds a hint, and no other does.
+    void nameCharactersAddAHintToTheError_data() {
+        QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("name");QTest::addColumn<bool>("denied");QTest::addColumn<bool>("hint");
+        QTest::newRow("colon") << QString("prefix é") << QString("colon:.txt") << false << true;
+        QTest::newRow("at-dollar-comma") << QString("prefix é") << QString("at@dollar$comma,.txt") << false << true;
+        QTest::newRow("amp-equals") << QString("prefix é") << QString("amp&eq=.txt") << false << true;
+        QTest::newRow("in-the-folder") << QString("team=a") << QString("plain.txt") << false << true;
+        QTest::newRow("plain-denied") << QString("prefix é") << QString("plain.txt") << true << false;
     }
-    void nameCharactersTheServiceCannotVerify() {
-        QFETCH(QString, name);QFETCH(bool, denied);QFETCH(QString, code);
+    void nameCharactersAddAHintToTheError() {
+        QFETCH(QString, prefix);QFETCH(QString, name);QFETCH(bool, denied);QFETCH(bool, hint);
         S3Fixture f;
-        f.reset(denied ? QJsonObject{{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"status", 403}, {"remaining", 10}}}}} : QJsonObject{});
+        f.destination.settings["objectPrefix"] = prefix;
+        f.reset(denied ? QJsonObject{{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"status", 403}}}}} : QJsonObject{});
         const auto checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, name, cb); });
         QCOMPARE(checked.status, QString("inconclusive"));
-        QCOMPARE(checked.error.code, code);
-        if (!denied) QVERIFY(checked.error.message.contains("Rename the file"));
-        QCOMPARE(f.events("PUT").size(), 0);
-        // An ordinary name with the same credentials works.
-        if (!denied) QCOMPARE(f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "plain.txt", cb); }).status, QString("absent"));
+        QCOMPARE(checked.error.code, QString("s3_permission_denied"));
+        QCOMPARE(checked.error.message.contains("such as Garage, can't verify names containing $ & , : = or @"), hint);
+        // Exactly one request: the hint costs nothing.
+        QCOMPARE(f.events().size(), 1);
     }
     // The SDK drops empty path segments, so the receipt, the link and the stored
     // object must all name the key the request reached (#1582).

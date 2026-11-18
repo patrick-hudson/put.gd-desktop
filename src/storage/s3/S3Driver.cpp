@@ -175,17 +175,16 @@ QJsonObject withIds(QJsonObject record, const ResponseIds& ids, const Aws::Strin
     return record;
 }
 // #1601: the SDK sends $ & , : = and @ in a key as they are but signs them percent-encoded.
-// AWS and most servers accept that; Garage checks the path as sent and answers 403. That
-// is not a permission problem, so it gets its own error, but only once a request for an
-// ordinary name has shown that the same credentials work.
-bool signingSensitiveName(const QString& key) {
+// AWS and most servers accept that; Garage checks the path as sent and answers 403. put.gd
+// can't tell that apart from a real denial, so the error stays as it is and gains a hint
+// when the key (prefix and name) contains one of those characters.
+Error withNameCharactersHint(Error error, const QString& key) {
+    if (error.code != "s3_permission_denied" && error.code != "s3_authentication_failed") return error;
     for (const auto character : QStringLiteral("$&,:=@"))
-        if (key.contains(character)) return true;
-    return false;
-}
-Error nameCharactersError(Error error) {
-    error.code = "s3_name_characters_unsupported";
-    error.message = "This S3 service can't verify file names containing $ & , : = or @. Rename the file, or change the naming template in Settings, under Capture, File names.";
+        if (key.contains(character)) {
+            error.message += " Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @; if this name or its folder in the bucket has them, try renaming it.";
+            break;
+        }
     return error;
 }
 template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedMs) {
@@ -953,14 +952,7 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
             reply({"absent", reference, {}, {}});
             return;
         }
-        auto error = wireError(outcome.GetError(), S3Stage::NameHead, requestTimer.elapsed());
-        // A HEAD reply has no body to name the cause. If a name without those characters is
-        // answered "not found", the credentials and permissions work and the name is the problem.
-        if (int(outcome.GetError().GetResponseCode()) == 403 && signingSensitiveName(key) && !stopped(cancellation)) {
-            const auto plain = head(*client, destination, objectKey(destination, "putgd-name-check-" + QUuid::createUuid().toString(QUuid::WithoutBraces)), {}, cancellation);
-            if (!plain.IsSuccess() && absent(plain.GetError())) error = nameCharactersError(error);
-        }
-        reply({"inconclusive", {}, {}, error});
+        reply({"inconclusive", {}, {}, withNameCharactersHint(wireError(outcome.GetError(), S3Stage::NameHead, requestTimer.elapsed()), key)});
     } else {
         reference["versionId"] = qt(outcome.GetResult().GetVersionId());
         reply({"present", reference, qt(outcome.GetResult().GetETag()), {}});
@@ -1129,9 +1121,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
                                          qt(outcome.GetResult().GetETag()), qt(outcome.GetResult().GetVersionId())), {}});
                                          return;
         }
-        auto error = wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed());
-        // The name check with these credentials passed, so a signature mismatch here is the name (#1601).
-        if (qt(outcome.GetError().GetExceptionName()) == "SignatureDoesNotMatch" && signingSensitiveName(key)) error = nameCharactersError(error);
+        const auto error = withNameCharactersHint(wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed()), key);
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
         if (!ambiguous(outcome.GetError()) && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
