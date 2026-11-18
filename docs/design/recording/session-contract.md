@@ -5,25 +5,105 @@ Part of [Screen recording](../recording.md).
 ## Time, geometry and the edit model
 
 - Time is an integer count of **microseconds on the recorded-clip timeline**
-  with pauses removed; intervals are half-open `[start, end)`. Export
-  places frames on a grid of 1/`fps` seconds that starts at the trim start (the
-  `fps` filter of the export graph; GIF and WebP use the lower of the recording's
-  `fps` and 15).
+  with pauses removed; intervals are half-open `[start, end)`. Export lays the
+  **kept spans** (below) end to end on the clip's own frame grid, so output time is
+  what the exported file shows; GIF and WebP use the lower of the recording's `fps`
+  and 15 for the final rate. How a span's edges meet the frame grid, and what
+  happens across a gap between frames, is in
+  [Kept spans, cuts and frame gaps](capture-and-export.md#kept-spans-cuts-and-frame-gaps).
 - The output canvas is fixed when the recording starts (`canvas: [w, h]`);
   masks use canvas pixels. A topology change during recording ends it with a
   helper failure rather than moving the canvas.
 - `edit` holds one contiguous trim (`trimStart`, `trimEnd` or null for the clip
-  end) and up to 64 masks `{id, kind: blur|solid, rect: [x,y,w,h], start, end,
-  strength}`. Masks are stored in source time. At export each mask is
-  intersected with the retained interval and rebased by the trim start:
-  retaining 10–30 s makes a source mask at 12–15 s active at output 2–5 s, and
-  a mask wholly outside the trim is dropped. Changing the trim never moves a
-  mask on the source timeline.
-- Every accepted `edit` advances `revision`. `upload` and `edit` take the
-  revision they were reviewed at and fail with `recording_stale` otherwise.
+  end), up to 64 `cuts` `{id, start, end}` and up to 64 masks `{id, kind: blur|solid,
+  rect: [x,y,w,h], start, end, strength}`. Masks and cuts are stored in source time.
+  The wire name for a cover is **mask**; the review window calls blur and solid
+  masks "Blur" and "Redact". A mask's rectangle must be at least 2 × 2 pixels
+  (`invalid_request` otherwise).
+- **Edits snap to the frame grid, in the safe direction.** An edit that arrives through
+  `recording.edit` (the review window already sends grid values) has its times snapped to
+  the grid of edges round(*k* × 10⁶ / `fps`) µs: a cover or a cut **outward** (start
+  down, end up) and the trim **inward** (start up, end down; an end at the clip's end stays
+  "no end"), so snapping never lets unwanted footage through or uncovers a frame. An edit
+  that snapping would leave with less than one frame is refused. The reply shows the
+  snapped values. This is raw `recording.edit`; a review action such as `setCoverEdge` first
+  rounds the time to the **nearest** frame (as the window's own field does) and sends that
+  grid value, which the resident then keeps unchanged.
+- A **cut** leaves a stretch of source time out of the output but stays in the edit,
+  so review can show it and restore it. Cuts are sorted by `start`, disjoint, never
+  touching and inside `[0, duration)`: `addCut` and `updateCut` clamp the span to the
+  clip (a span that no longer overlaps the clip after clamping is `invalid_request`) and
+  merge every cut they overlap or touch (an `addCut` that merges gets a new id;
+  `updateCut` keeps its id and absorbs the others). More than 64 cuts is
+  `invalid_request`. Two checks keep one frame (1/`fps`) kept, in this order: a
+  `setTrim` whose own interval is shorter than a frame is `invalid_request`, whatever
+  cuts exist; then, after the whole batch is applied, a batch that changed a cut or the
+  trim and leaves less than one frame once the cuts are subtracted, with cuts still
+  present, is `recording_cut_empty`. Changing the trim never moves a cut or a mask on
+  the source timeline.
+- The **kept spans** are `[trimStart, trimEnd)` minus every cut, sorted and disjoint;
+  output time lays them end to end from zero (`recording::KeptSpans`). The total is the
+  **kept time**: the length the review's output clock shows and the length the GIF and
+  WebP limit counts. Export lays the kept time on the output frame grid (whole ticks of
+  1/`fps`), so its length is the clock's rounded to a tick, not always equal to it; the
+  durations (source length, kept time, export grid time, exported duration) and where each
+  appears are in
+  [Kept spans, cuts and frame gaps](capture-and-export.md#kept-spans-cuts-and-frame-gaps).
+  Covers map through the kept spans the same way: each mask is intersected with them and
+  mapped to output time, in as many parts as the cuts split it. Retaining 10–30 s with no
+  cut makes a source mask at 12–15 s active at output 2–5 s, a cut at 13–14 s makes it
+  active at 2–3 s and 3–4 s joined into one interval 2–4 s, and a mask wholly outside the
+  kept spans is dropped from the *time* mapping. The export's cover rule is wider, and is one rule everywhere: a
+  frame is covered if its display interval overlaps the mapped cover, **or** its picture
+  was captured under the cover. That includes a cover wholly in a cut or outside the trim
+  whose picture is held into a kept span (see the same section).
+- Every accepted `edit` advances `revision`. `upload` and `edit` take the revision they
+  were reviewed at and fail with `recording_stale` otherwise. Only an upload checks it
+  among the exports: `recording.saveCopy` takes no revision and **exports the resident's
+  current edit** at the moment it starts (the window's `saveCopyRequested` carries a
+  revision, which the resident does not check). An upload exports **exactly the revision it
+  started with, or it is refused**: the resident refuses an upload at any other revision
+  (`recording_stale`). It also refuses an export request in **two different situations**,
+  both `recording_state`: while another export is running (on the window path the message
+  is "Another export is running, so this one didn't start. Try again when it finishes."; a
+  direct API call fails the ordinary `recording_state` check), and when an export timed out
+  but may still be finishing past its deadline ("An export is still finishing. Try again
+  when it's done.", for both paths). **On the window's own request path** it reopens the
+  window with the reason and **no Try again** (`retry: false`), since pressing Upload again
+  is the answer; retry your original action (Upload, Save a copy) once the export
+  finishes. A **direct API call** (`recording.upload`, `recording.saveCopy`) just gets the
+  error and reopens nothing. For the window's `uploadRequested` path only, the resident
+  also refuses an upload whose output is not the one the window shows (`recording_config`)
+  and reopens the window the same way; a direct `recording.upload` takes no output snapshot
+  and exports the session's current output. A proposal the resident answers during an
+  export is held and delivered when review resumes. Nothing is dropped silently.
+- **The window's output choice is authoritative.** The review's format, codec and audio
+  choice reach the resident as `configChanged` events carrying a sequence number; the
+  resident applies them, echoes the last sequence it applied as `setEdit` `answer.configSeq`
+  on every push, and the window ignores any older config it is sent. A format or audio
+  change made during an export is held and applied when review resumes. The window's upload
+  carries the output it shows, and the resident refuses any other (above). Each export
+  request stores the output current when it was pressed, with its revision; Try again exports
+  with that output, or is refused with `recording_config` if the output changed since,
+  whether it was an Upload ("Press Upload again") or a Save a copy ("Press Save a copy
+  again"); neither gets Try again. After an export timeout, answers and pushes stay held
+  until the helper's late result arrives.
+- **Undo history.** The resident keeps one undo history per review session. Every
+  accepted `edit` batch pushes the edit it replaced; at most 200 steps are kept (the
+  oldest is dropped). A new batch clears the redo steps. `undo` and `redo` each go in a
+  batch of their own, take no fields, and restore the stored edit as a **new revision**
+  (they advance `revision` like any edit, so a stale review is still refused). The
+  window sends one batch per gesture, so one drag or one run of nudges is one step.
+  History covers trim, cuts and masks only; it is never serialized, never sent to the
+  helper and ends with the session. The `edit` object reports `canUndo` and `canRedo`
+  for the current revision.
 - Animated exports (GIF, WebP) are silent and must fit
-  `limits.recordingAnimationSeconds` (retained duration); a longer clip is
-  refused, never shortened. An output whose long edge is over
+  `limits.recordingAnimationSeconds` (the kept time: the trim minus the cuts); a longer clip is
+  refused, never shortened. The exporter caps an animation at whole frames of kept time,
+  but the export always has one tick for the whole export (not one per span), so an animation
+  of less than one frame's worth of kept time lasts one frame, which is longer than the kept
+  time. A GIF stores centiseconds, which can extend it too: one 15 fps tick of 66.667 ms can
+  be stored as 70 ms. An output whose long edge is over
   `limits.recordingAnimationEdge` gets the recording's `maxEdge` set to that
   limit once the canvas is known (at `ready`, at stop, or when GIF or WebP is
   chosen in review), and `inspect` shows the new `maxEdge` and `outputSize`. A
@@ -45,11 +125,11 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`frameRate`, optional `frameRateReduced`, `framesDelivered`, `framesCaptured`; `exportFraction` while exporting; see [Frame rate](#frame-rate); `audioSources`, `recordingMicrophone`, `microphoneLost` and `clickHighlightsError`: see [Microphone and click highlights](microphone-and-clicks.md#what-a-session-reports)), `overlayExcluded`, `overlayPlacement`, `lastExport`, `window {identity, title, appId, rect}` for a window the resident resolved, `stopReason` (`user`, `budget`, `target_closed` when the recorded window closed, `source_lost` when its stream could not be reopened) once the capture stopped, and after a budget stop `stopDetails` (`reason` `disk_space` or `max_file_bytes`, `message`, `hint`, `budgetBytes`, `maxFileBytes`, `durationUs`, and for the disk `freeBytes`, `reserveBytes`, `availableBytes`; see [Capture and export engine](capture-and-export.md#capture-and-export-engine-x11)), error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.audio` | `{id, microphone?, system?}` (at least one) | the ready bar's audio toggles, set as a click sets them, while the session is `ready`; answers like `inspect`. `recording_unsupported` with the reason when no microphone can be opened, `recording_state` from Record on. See [Microphone and click highlights](microphone-and-clicks.md#what-a-session-reports) |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
-| `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
-| `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
-| `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?}`; `action` also `saveCopyDialog` / `closeFileDialog` | works one review-window control as a user does and answers with the window's state and the resident's edit (see [Review window](overlay-and-review.md#review-window)); `reviewing` only, `inspect` also while `exporting` |
+| `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}`, `addCut {start, end}`, `updateCut {cutId, start, end}`, `removeCut {cutId}`, `undo`, `redo`. `undo` and `redo` are sent alone and take no fields; with nothing to step they are `recording_history_empty`. More than 64 cuts is `invalid_request`, an unknown `cutId` is `recording_cut_unknown`, and a cut that leaves no frame is `recording_cut_empty` (see [the edit model](#time-geometry-and-the-edit-model)). The answer is the session as `inspect` shows it, with `edit.cuts`, `edit.canUndo` and `edit.canRedo` |
+| `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with the masks active then (a time outside the trim or inside a cut still renders), plus `retained` (the time is inside the trim and outside every cut), `outputTimeUs` (its place in the output through the kept spans; `null` when not retained) and `revision`; returned only to the requesting client |
+| `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?, start?, end?, cutId?, editId?, edge?, level?, mode?, dx?, dy?, delta?, open?, width?, height?}` | works one review-window control as a user does and answers with the window's state and the resident's edit; `reviewing` only, `inspect` also while `exporting`. Actions, fields and the `inspect` answer: [Review window actions](agent-control-and-tests.md#review-window-actions) |
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
-| `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
+| `recording.upload` | `{id, revision}` | the only action that starts a new upload (a failed Upload can be repeated with `recording.review` `retryExport`, which publishes too). Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
 
 If a helper budget-stop event reaches review before a pending `stop` command's
 reply, that reply returns the current finalized session, including an export
@@ -66,12 +146,14 @@ the export starts, like `prepare`. The reply is the session as `inspect` shows
 it: `state: exporting`, `pending: saveCopy|upload`. Edits, previews and other
 exports are refused with `recording_state` until the export ends; `cancel` still
 works and discards it. While it runs, `progress.exportFraction` reports how far
-it got, and `operation.inspect` reports phase `exporting` (copy) or `encoding`
+it got over the export grid time (the kept time on the output frame grid), and `operation.inspect` reports phase `exporting` (copy) or `encoding`
 (upload).
 
 `lastExport` is the session's latest export: `{command, status, revision}`, plus
 `path` for a copy. `status` is `exporting`, then `saved` (with `bytes` and
-`durationUs`) or `failed` (with `error`, for example `recording_export_failed`,
+`durationUs`, the exported duration: the end of the last output tick, which can differ
+from the review clock; only a completed local copy has it, and the reply that starts the
+export carries instead the session's source `durationUs` and the kept `retainedUs`) or `failed` (with `error`, for example `recording_export_failed`,
 `input_excessive` or `local_save_failed`). A failed export writes nothing and
 returns the session to `reviewing`. For a copy, poll `recording.inspect` until
 `state` is `reviewing` again. For an upload, `reviewing` with
@@ -92,7 +174,11 @@ missing image-copy global or a failed connection, named in the message; `inspect
 later commands on a recording that has ended return it with no reason),
 `disk_space_insufficient`, `recording_disk_full` (capture could not be finalized),
 `recording_unsupported`, `recording_active`, `recording_state`,
-`recording_busy`, `recording_stale`, `recording_mask_unknown`,
+`recording_busy`, `recording_stale`, `recording_config` (the upload's output no longer
+matches the window's), `recording_mask_unknown`,
+`recording_cut_unknown` (no cut has that `cutId`), `recording_cut_empty` (the cuts
+and trim would leave less than one frame), `recording_history_empty` (nothing to
+undo or redo),
 `region_unavailable` (a Wayland desktop without a region selector),
 `recording_animation_too_long`, `recording_animation_too_large`,
 `recording_export_failed`, `file_exists`, plus the shared `invalid_request`,

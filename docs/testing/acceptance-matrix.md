@@ -206,11 +206,64 @@ each format brings its own media stack: the DEBs and the RPM use the distro's
 GStreamer and FFmpeg, while the AppImage carries its own and uses only the host's
 VA-API, PipeWire and GPU drivers. Each row installs the exact package (or runs
 the exact AppImage) and records a moving pattern through the production CLI:
-prepare, start, pause, resume, stop, edit (trim and a timed blur), preview,
-save copy and Upload to an isolated local destination, for MP4, WebM, GIF and
-WebP. It keeps screenshots of the ready, recording and review states, the
-capabilities JSON, the installed identity, and each clip's motion score next
-to a static control from the same desktop.
+prepare, start, pause, resume, stop, edit (a trim, a cut, a redaction over a time
+selection, then undo and redo of each), preview, save copy and Upload to an isolated
+local destination, for MP4, WebM, GIF and WebP. It keeps screenshots of the ready,
+recording and review states, the capabilities JSON, the installed identity, and each
+clip's motion score next to a static control from the same desktop. `putgd-record
+--motion` is that static-control comparison only; it reports a clip-wide average and
+can pass with the cut still in the clip.
+
+**Review exports.** The export is checked as frames and sound, not by one score:
+
+- The recorded pattern is **continuous motion** with content that identifies its moment
+  (a frame counter or a timecode in the picture, and for MP4 and WebM a distinct tone in
+  the part to be cut), and a cut spans part of it. The strict counter check needs that
+  continuous motion; on a still or stepped pattern it proves nothing.
+- Decode the exported file with a decoder that reads that format, frame by frame. For
+  WebP that must be one that reads animated WebP (Pillow does; some FFmpeg `webp`
+  decoders read still images only and fail every packet).
+- At each join, the last frame before it and the first frame after it show the kept
+  neighbours, and no counter value from inside the cut appears anywhere. The one allowed
+  exception is a seam that intentionally opens on a **held picture from a cut**: where
+  frames are far apart, a span that starts in a gap opens on the picture on screen at its
+  start, which may come from inside the cut. Confirm from the working clip's packet
+  times that the seam really lies in a gap before accepting a counter value there. A GIF
+  or WebP samples at no more than 15 fps, so neighbouring pictures can merge; compare the
+  nearest sampled frame.
+- A cover's area is covered in every frame whose display interval overlaps the cover, or
+  whose picture was captured under it (one rule, including a picture held into a kept span
+  from a cover inside a cut or outside the trim), and uncovered in frames that neither
+  overlap nor were captured under it. **Judge each tick by the picture it actually shows:**
+  require the cover on every tick that shows a picture whose source display interval
+  (its stored time to the next stored time) overlaps a cover, even when that picture's
+  capture time and its exported interval lie outside the cover. The exception: where the
+  exporter moves a later picture onto a span's last tick, judge that tick by that later
+  picture. Allow these extra covered frames, which are not failures: a picture covered for
+  its display interval stays covered for as long as it is shown, up to the next shown
+  picture (there is no one-frame cap), and a capture time within the container's timestamp
+  tolerance of a cover's bound counts as inside. **GIF:** times are centiseconds, so within
+  a kept span require the cover wherever the ideal **or** the centisecond-rounded display
+  interval overlaps it (a 66.667 ms frame stored as 70 ms is covered for both). **GIF
+  allowance at a cut seam:** across a cut seam on a 66.667 ms tick the previous GIF picture
+  can stay visible until 70 ms, uncovered by a cover that starts in the next span; it was
+  captured before the cover, in the earlier span, so it shows nothing covered, and it
+  passes. Nothing else passes just because it was captured before the cover began.
+- Audio, for **MP4 and WebM with audio only** (GIF and WebP are always silent, so no
+  tone check applies to them): the kept tone is present, no cut tone is heard beyond the
+  allowance below, and there is no click at the join. **Audio exception:** when the source
+  audio has a millisecond timestamp gap, up to about 1 ms of audio near a cut edge can
+  remain, attenuated by the 4 ms fade with no guarantee of silence; a residue that short at
+  the seam passes, a longer one fails.
+- The decoded duration is compared with the expected number of output ticks within the
+  container's timestamp precision (a GIF stores centiseconds, a Matroska file
+  milliseconds). For an edit on the frame grid that is the review clock's kept time rounded
+  to a tick; a GIF or WebP is
+  capped at whole frames of kept time, except that the whole export keeps one tick, so an
+  animation with less than one frame's worth of kept time lasts one frame, and a GIF's
+  centisecond timestamps can extend it (one 15 fps tick of 66.667 ms can be stored as
+  70 ms). A span of less than one frame can have zero ticks.
+- Fold the window below 1180×720 and use the **Edits** overlay.
 
 | Package | Desktop/session | Placement | What the row must show |
 | --- | --- | --- | --- |
@@ -405,9 +458,9 @@ memory window and the coordinator's OK for each logout.
   - **Save a copy…** opens the desktop's portal chooser (the themed fallback only where no portal FileChooser exists), and the saved file exists.
   - The link is copied according to the clipboard setting: each link on every desktop, plus the list behaviour on at least one.
 - **E. Recording:** a moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
-  - In the Review window: a trim and a timed blur.
-  - Export MP4, WebM, GIF and WebP, and save one copy through the chooser.
-  - Each clip's motion score is compared with a static control recorded on the same desktop.
+  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut over identifiable content, a redaction over a time selection, and undo and redo of each. Fold the window below 1180×720 and use the **Edits** overlay.
+  - Export MP4, WebM, GIF and WebP and save one copy through the chooser; check each export by the **Review exports** list under [Screen recording rows](#screen-recording-rows): frames at the join, covered frames, audio and expected duration.
+  - Each clip's motion score is compared with a static control recorded on the same desktop (the only use of `--motion`).
   - Record the live encoder (VA-API or the bundled x264).
   - On Plasma Wayland, AppRun's KWin entry gives `kde-screencast`, and the entry is removed on exit.
 - **F. Notifications:** the link-ready notification appears, and a real click on it opens the link in the desktop's real default browser, which loads the image.
@@ -706,8 +759,9 @@ On the accepted nightly, installed by item L.
   - The link is copied according to the clipboard setting.
 - **E. Recording:** the [recording row](#screen-recording-rows) for this package, with the distro's GStreamer and FFmpeg.
   - A moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
-  - In the Review window: a trim and a timed blur. Export MP4, WebM, GIF and WebP, and save one copy through the chooser.
-  - Each clip's motion score is compared with a static control recorded on the same desktop.
+  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut over identifiable content, a redaction over a time selection, and undo and redo of each. Fold the window below 1180×720 and use the **Edits** overlay.
+  - Export MP4, WebM, GIF and WebP and save one copy through the chooser; check each export by the **Review exports** list under [Screen recording rows](#screen-recording-rows): frames at the join, covered frames, audio and expected duration.
+  - Each clip's motion score is compared with a static control recorded on the same desktop (the only use of `--motion`).
   - Record the capture source (`ximagesrc`, `kde-screencast`, `mutter-screencast` or the portal) and the live encoder.
   - On Plasma Wayland, `kde-screencast` comes from the installed `putgd-record.desktop`.
   - On k72, a second recording in the Plasma X11 session covers the row's `ximagesrc` and VA-API half. That's two extra logouts, each needing the coordinator's OK.
