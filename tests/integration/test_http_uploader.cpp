@@ -19,7 +19,6 @@
 #include <QUrl>
 #include <cerrno>
 #include <cstring>
-#include <sys/resource.h>
 using namespace putgd;
 using namespace putgd::test;
 namespace {
@@ -151,9 +150,10 @@ class HttpUploaderTest : public QObject {
         return result;
     }
 private slots:
-    // Review of #1598. A helper that did not start is advised by its cause: reinstall only
-    // when it is not a regular executable file, try again only for a shortage that passes,
-    // and both when the cause is unclear (an executable whose interpreter is missing).
+    // Review of #1598. A helper that did not start is advised only from facts that cannot
+    // change meanwhile: reinstall when it is not a regular executable file, try again for a
+    // shortage Qt names, and both otherwise. The message never repeats Qt's reason, which can
+    // name the wrong cause ("No such file or directory" for an existing helper).
     void helperStartAdviceFitsTheCause() {
         using worker::StartFailure;
         QTemporaryDir dir;
@@ -167,48 +167,31 @@ private slots:
         };
         const auto helper = script("putgd-helper", "#!/bin/sh\nexit 0\n");
         const auto noLoader = script("putgd-no-loader", "#!/nonexistent/putgd-interpreter\n");
-        // The start's reason, and how the failure is classed right after it (while a lowered
-        // descriptor limit still holds, as exchange() classes it).
-        const auto start = [](const QString& program, rlim_t descriptors = 0) {
-            rlimit saved{};
-            getrlimit(RLIMIT_NOFILE, &saved);
-            if (descriptors) { auto low = saved; low.rlim_cur = descriptors; setrlimit(RLIMIT_NOFILE, &low); }
+        const auto reason = [](const QString& program) {
             QProcess process;
             process.start(program, {"--stdio"});
-            const bool started = process.waitForStarted(10000);
-            const auto reason = started ? QString() : process.errorString();
-            const auto failure = worker::classifyStartFailure(program, reason);
-            if (descriptors) setrlimit(RLIMIT_NOFILE, &saved);
-            if (started) { process.kill(); process.waitForFinished(); }
-            return std::pair{reason, failure};
+            if (process.waitForStarted(10000)) { process.kill(); process.waitForFinished(); return QString(); }
+            return process.errorString();
         };
-        const auto reason = [&](const QString& program) { return start(program).first; };
-        // A searchable directory is executable, and still no helper.
+        const auto strerror = [](int code) { return QString::fromLocal8Bit(std::strerror(code)); };
+        // Not a helper: a searchable directory is executable too.
         QCOMPARE(worker::classifyStartFailure(dir.path(), reason(dir.path())), StartFailure::Installation);
         QCOMPARE(worker::classifyStartFailure(dir.filePath("missing"), reason(dir.filePath("missing"))), StartFailure::Installation);
-        // No descriptor left (only 0, 1 and 2 fit under the limit): the helper is fine.
-        const auto [exhausted, shortage] = start(helper, 3);
-        QVERIFY2(!exhausted.isEmpty(), "the helper started with no descriptor left");
-        QVERIFY2(shortage == StartFailure::Temporary, qPrintable(exhausted));
-        // A Qt that reports that shortage with an unrelated reason: the shortage is found all the same.
-        rlimit saved{};
-        getrlimit(RLIMIT_NOFILE, &saved);
-        auto low = saved;
-        low.rlim_cur = 3;
-        setrlimit(RLIMIT_NOFILE, &low);
-        const auto probed = worker::classifyStartFailure(helper, "execve: " + QString::fromLocal8Bit(std::strerror(ENOENT)));
-        setrlimit(RLIMIT_NOFILE, &saved);
-        QCOMPARE(probed, StartFailure::Temporary);
-        QCOMPARE(worker::classifyStartFailure(helper, "fork: " + QString::fromLocal8Bit(std::strerror(EAGAIN))), StartFailure::Temporary);
+        QCOMPARE(worker::startFailureMessage(StartFailure::Installation, "reinstall"), QString("reinstall"));
+        // A shortage Qt names, as it writes it.
+        for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
+            QCOMPARE(worker::classifyStartFailure(helper, "pipe: " + strerror(code)), StartFailure::Temporary);
+        const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "reinstall");
+        QVERIFY2(temporary.contains("too many open files or not enough memory; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
+        // Everything else: an executable whose interpreter is missing, and Qt's misleading
+        // "No such file or directory" for a helper that exists.
         const auto missing = reason(noLoader);
         QVERIFY2(!missing.isEmpty(), "a helper without its interpreter started");
-        QVERIFY2(worker::classifyStartFailure(noLoader, missing) == StartFailure::Unclear, qPrintable(missing));
-        // The messages: the policy's own for an installation, the reason named otherwise.
-        QCOMPARE(worker::startFailureMessage(StartFailure::Installation, "custom uploader", missing, "reinstall"), QString("reinstall"));
-        const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "custom uploader", exhausted, "reinstall");
-        QVERIFY2(temporary.contains(exhausted) && temporary.endsWith("; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
-        const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "custom uploader", missing, "reinstall");
-        QVERIFY2(unclear.contains(missing) && unclear.contains("Try again") && unclear.contains("reinstall put.gd"), qPrintable(unclear));
+        QCOMPARE(worker::classifyStartFailure(noLoader, missing), StartFailure::Unclear);
+        QCOMPARE(worker::classifyStartFailure(helper, "execve: " + strerror(ENOENT)), StartFailure::Unclear);
+        const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "reinstall");
+        QCOMPARE(unclear, QString("put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd."));
+        for (const auto& message : {temporary, unclear}) QVERIFY2(!message.contains(strerror(ENOENT)), qPrintable(message));
     }
     // A diagnostics package says which fields a destination sets and where its request
     // goes: never a row value, a path someone typed a key into, or a reply template's text.

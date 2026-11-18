@@ -5,20 +5,8 @@
 #include <QProcess>
 #include <cerrno>
 #include <cstring>
-#include <fcntl.h>
-#include <unistd.h>
 #include <future>
 namespace putgd::worker {
-namespace {
-// Whether this process can open no descriptor right now. Some Qt versions report a start
-// that ran out of descriptors with an unrelated reason ("No such file or directory" on
-// Ubuntu 24.04's Qt), so the shortage is also looked for directly.
-bool descriptorsExhausted() {
-    int pipe[2];
-    if (::pipe2(pipe, O_CLOEXEC) == 0) { ::close(pipe[0]); ::close(pipe[1]); return false; }
-    return errno == EMFILE || errno == ENFILE;
-}
-}
 StartFailure classifyStartFailure(const QString& program, const QString& reason) {
     // A directory or a missing file is not a helper: only a regular executable file is.
     const QFileInfo file(program);
@@ -27,13 +15,14 @@ StartFailure classifyStartFailure(const QString& program, const QString& reason)
     // threads (EAGAIN), and a program file that is being written just then (ETXTBSY).
     for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
         if (reason.contains(QString::fromLocal8Bit(std::strerror(code)), Qt::CaseInsensitive)) return StartFailure::Temporary;
-    return descriptorsExhausted() ? StartFailure::Temporary : StartFailure::Unclear;
+    return StartFailure::Unclear;
 }
-QString startFailureMessage(StartFailure failure, const QString& helperName, const QString& reason, const QString& installationMessage) {
+QString startFailureMessage(StartFailure failure, const QString& installationMessage) {
+    // Qt's own text stays in the error details: for an existing helper it can name the
+    // wrong cause ("No such file or directory" when Qt ran out of descriptors).
     if (failure == StartFailure::Installation) return installationMessage;
-    const auto start = "The " + helperName + " helper could not start (" + reason + ")";
-    if (failure == StartFailure::Temporary) return start + "; try again";
-    return start + ". Try again; if it keeps failing, reinstall put.gd";
+    if (failure == StartFailure::Temporary) return "put.gd couldn't start its upload helper: too many open files or not enough memory; try again.";
+    return "put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd.";
 }
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,
@@ -42,9 +31,9 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start(program, {"--stdio"});
     if (!process.waitForStarted(10000)) {
-        // A helper that is installed but cannot start right now is not a broken installation: say why, and whether trying again helps.
+        // A helper that is installed but cannot start right now is not a broken installation: say whether trying again helps, with Qt's reason in the details.
         const auto reason = process.errorString();
-        error = {policy.prefix + "_worker_start", startFailureMessage(classifyStartFailure(program, reason), policy.name, reason, policy.startMessage), {{"reason", reason}}};
+        error = {policy.prefix + "_worker_start", startFailureMessage(classifyStartFailure(program, reason), policy.startMessage), {{"reason", reason}}};
         return {};
     }
     auto bytes = QJsonDocument(params).toJson(QJsonDocument::Compact);
