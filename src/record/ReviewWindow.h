@@ -99,6 +99,9 @@ signals:
     void maskSelected(const QString& id);
     void retryRequested();
     void zoomChanged();
+    // A keyboard nudge, or a cover move or resize drag, began (an edit not yet proposed).
+    void nudgeStarted();
+    void editStarted();
 protected:
     bool event(QEvent*) override;
     void paintEvent(QPaintEvent*) override;
@@ -244,17 +247,16 @@ private:
     // with proposals unanswered, only once the resident accepted the last of
     // them (a refusal or 2 s without an answer cancels it, with a status line).
     void upload();
-    void sendUpload();
-    bool uploadBlocked() const;
-    void cancelQueuedUpload();
-    static StatusEntry keptEditing();
+    bool tryUpload();      // sends once nothing is unanswered; true when it did
+    void callOffUpload();  // a new local change: the waiting upload stops, with a status line
     int viewEdge() const;
     void refreshFrame();
     DriveResult driveAction(const QJsonObject& params);
     // Silent playback of the kept footage only: each kept span is opened at
     // its start (never decoded through a cut) and frames are shown at their
     // output time; the end of the trim stops it. Any seek or edit pauses it.
-    void startPlayback(std::optional<qint64> fromUs = std::nullopt);
+    // resume (a zoom, speed or edit restart): with nothing kept ahead it stays paused, never wrapping.
+    void startPlayback(std::optional<qint64> fromUs = std::nullopt, bool resume = false);
     void stopPlayback();
     void propose(const QJsonArray& commands);
     // Time and selection.
@@ -320,7 +322,8 @@ private:
     std::optional<recording::Span> pendingCut_;
     quint64 pendingCutProposal_ = 0;  // the cut's proposal; only its answer moves the playhead
     // Proposals sent and answered (numbered from 1); the one an upload waits for.
-    quint64 proposalSeq_ = 0, answeredSeq_ = 0, uploadAfter_ = 0;
+    quint64 proposalSeq_ = 0, answeredSeq_ = 0;
+    bool uploadWaiting_ = false;  // Upload pressed, its revision not yet fully answered
     bool proposalPending() const { return answeredSeq_ < proposalSeq_; }
     QTimer uploadWait_;
     int shownEdge_ = 1280;  // the long edge frames are decoded at (viewEdge())

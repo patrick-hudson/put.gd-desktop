@@ -1,5 +1,6 @@
 #include "ReviewWindowFixture.h"
 #include "fixtures/GopClip.h"
+#include <QThread>
 
 namespace {
 // Ctrl+Enter, as its window shortcut fires it.
@@ -575,7 +576,7 @@ private slots:
         QVERIFY(window.inspect()["uploadWaiting"].toBool());
         window.drive({{"action", "armRedact"}});
         QVERIFY(!window.inspect()["uploadWaiting"].toBool());
-        QVERIFY(window.inspect()["status"].toString().contains("kept editing"));
+        QVERIFY(window.inspect()["status"].toString().contains("changed the recording"));
         window.setEdit(edit, answer(1));
         QCOMPARE(uploads.size(), 0);
         window.drive({{"action", "cancelPlacement"}});
@@ -586,18 +587,29 @@ private slots:
         const QPoint handle = strip->trimHandleRect(true).center();
         QTest::mousePress(strip, Qt::LeftButton, {}, handle);
         QVERIFY(strip->dragging());
+        QVERIFY(!window.inspect()["uploadWaiting"].toBool());
         window.setEdit(edit, answer(2));
         QCOMPARE(uploads.size(), 0);
-        QVERIFY(window.inspect()["status"].toString().contains("kept editing"));
+        QVERIFY(window.inspect()["status"].toString().contains("changed the recording"));
         QTest::mouseRelease(strip, Qt::LeftButton, {}, handle);
-        // An export started before the answer arrives.
+        // U25: a keyboard nudge during the wait (a cover change not yet proposed).
+        auto covered = edit;
+        covered.masks = {mask("m1", "solid", 0, 12000000)};
+        window.setEdit(covered);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
         window.drive({{"action", "resetTrim"}});
         ctrlEnter(window);
-        window.setExporting(true, "Exporting MP4…");
-        window.setEdit(edit, answer(3));
+        QVERIFY(window.inspect()["uploadWaiting"].toBool());
+        QTest::keyClick(window.findChild<FrameView*>("frame"), Qt::Key_Right);
+        QVERIFY(!window.inspect()["uploadWaiting"].toBool());
+        QVERIFY(window.inspect()["status"].toString().contains("changed the recording"));
+        window.setEdit(covered, answer(3));
         QCOMPARE(uploads.size(), 0);
-        window.setExporting(false, {});
+        // Upload itself commits the nudge first and waits for that answer too.
+        ctrlEnter(window);
         QCOMPARE(uploads.size(), 0);
+        window.setEdit(covered, answer(4));
+        QCOMPARE(uploads.size(), 1);
     }
     // U18: a held Enter (auto-repeat) never reaches Upload; Ctrl+Enter does not repeat.
     void aHeldEnterNeverUploads() {
@@ -609,8 +621,10 @@ private slots:
         edit.revision = 2;
         edit.cuts = {RecordingCut{"c1", 1000000, 2000000}};
         window.setEdit(edit);
+        int found = 0;
         for (auto* shortcut : window.findChildren<QShortcut*>())
-            if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Return) || shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Enter)) QVERIFY(!shortcut->autoRepeat());
+            if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Return) || shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Enter)) { ++found; QVERIFY(!shortcut->autoRepeat()); }
+        QCOMPARE(found, 2);
         timeline(window)->setFocus();
         const auto repeat = [&] { QKeyEvent held(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier, QString(), true); QApplication::sendEvent(&window, &held); };
         window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
@@ -644,6 +658,44 @@ private slots:
         cut.cuts = {RecordingCut{"c1", 4000000, 6000000}};
         window.setEdit(cut, answer(2));
         QCOMPARE(window.inspect()["playheadUs"].toDouble(), 3000000.0);
+    }
+    // U27: the resident's retry asks only for the window's guard; the window
+    // then doesn't ask for a second retry itself.
+    void theResidentsRetryOnlyAsksTheGuard() {
+        ReviewWindow window(options(), config());
+        QSignalSpy retries(&window, &ReviewWindow::retryExportRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        window.showError("Export failed: synthetic");
+        QVERIFY(window.drive({{"action", "retryExport"}, {"residentRetries", true}}).code.isEmpty());
+        QCOMPARE(retries.size(), 0);
+        window.drive({{"action", "armBlur"}});
+        QCOMPARE(window.drive({{"action", "retryExport"}, {"residentRetries", true}}).code, QString("recording_state"));
+    }
+    // U29: a paused playback's queued frames and end are dropped: its end never
+    // seeks after the user paused.
+    void aPausedPlaybacksEndNeverSeeks() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 1, 320, 180));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 1000000;
+        o.canvas = QSize(320, 180);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.trimEnd = 300000;
+        window.setEdit(edit);
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 0.0);
+        QVERIFY(window.drive({{"action", "play"}}).code.isEmpty());
+        QThread::msleep(1200);  // the run plays out and queues its frames and its end
+        QVERIFY(window.drive({{"action", "pause"}}).code.isEmpty());
+        QTest::qWait(200);
+        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 0.0);
+        QVERIFY(!window.inspect()["playing"].toBool());
     }
     // While recording, Stop keeps the clip and Discard only asks.
     void stoppingKeepsTheClipAndDiscardStillAsks() {
