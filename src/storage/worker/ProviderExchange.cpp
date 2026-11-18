@@ -21,7 +21,7 @@ QString startFailureMessage(StartFailure failure, const QString& installationMes
     // Qt's own text stays in the error details: for an existing helper it can name the
     // wrong cause ("No such file or directory" when Qt ran out of descriptors).
     if (failure == StartFailure::Installation) return installationMessage;
-    if (failure == StartFailure::Temporary) return "put.gd couldn't start its upload helper: too many open files or not enough memory; try again.";
+    if (failure == StartFailure::Temporary) return "put.gd couldn't start its upload helper just now; try again.";
     return "put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd.";
 }
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,

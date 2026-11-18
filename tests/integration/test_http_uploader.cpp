@@ -182,7 +182,7 @@ private slots:
         for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
             QCOMPARE(worker::classifyStartFailure(helper, "pipe: " + strerror(code)), StartFailure::Temporary);
         const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "reinstall");
-        QVERIFY2(temporary.contains("too many open files or not enough memory; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
+        QVERIFY2(temporary.contains("just now; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
         // Everything else: an executable whose interpreter is missing, and Qt's misleading
         // "No such file or directory" for a helper that exists.
         const auto missing = reason(noLoader);
