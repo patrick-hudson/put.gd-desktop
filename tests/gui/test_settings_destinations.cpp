@@ -40,6 +40,9 @@ private slots:
   // The file repeats its token in the deletion URL, as XBackBone's does.
   const QByteArray file="{\"Version\":\"16.1.0\",\"Name\":\"Lab media\",\"DestinationType\":\"ImageUploader, FileUploader\",\"RequestMethod\":\"POST\",\"RequestURL\":\"https://media.example.test/upload\",\"Body\":\"MultipartFormData\",\"Arguments\":{\"file\":\"{filename}\",\"token\":\""+token+"\"},\"FileFormName\":\"upload\",\"URL\":\"{json:url}\",\"DeletionURL\":\"{json:url}/delete/"+token+"\"}";
   QVERIFY(!panel->importBytes(file));
+  // The notice says what happened and never repeats the file's Name (#1614).
+  auto* notice=window.findChild<QLabel*>("uploaderNotice");QVERIFY(notice);
+  QVERIFY2(notice->text().startsWith("Imported uploader.")&&!notice->text().contains("Lab media"),qPrintable(notice->text()));
   PUTGD_TRY_COMPARE(saved()["settings"].toObject()["requestUrl"].toString(),QString("https://media.example.test/upload"));
   const auto settings=saved()["settings"].toObject();
   QCOMPARE(settings["arguments"].toArray(),QJsonArray({QJsonObject{{"name","file"},{"secret",false},{"value","{filename}"}},QJsonObject{{"name","token"},{"secret",true}}}));

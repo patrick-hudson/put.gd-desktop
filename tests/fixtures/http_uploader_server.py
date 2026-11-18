@@ -54,6 +54,10 @@ state = fresh()
 blobs = {}
 
 
+class TruncatedRequest(Exception):
+    pass
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
 
@@ -61,6 +65,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def origin(self, host=None):
+        # PUTGD_HTTP_FIXTURE_TRUST_HOST: addresses name the host the request was sent to, so a fault proxy in front stays in the path of
+        # the file and deletion addresses too (the action-sequence fuzzer's fault mode).
+        sent_to = self.headers.get('Host') if os.environ.get('PUTGD_HTTP_FIXTURE_TRUST_HOST') and not host else None
+        if sent_to:
+            return 'http://' + sent_to
         return 'http://%s:%d' % (host or '127.0.0.1', self.server.server_address[1])
 
     def reply(self, code, body=b'', content_type='application/json', headers=None):
@@ -149,6 +158,10 @@ class Handler(BaseHTTPRequestHandler):
         while len(data) < length:
             chunk = self.rfile.read(min(65536, length - len(data)))
             if not chunk:
+                # PUTGD_HTTP_FIXTURE_STRICT_BODY: the connection ended inside the body (a reset, a cut by the fault proxy). A real server never
+                # answers a request it did not receive whole; this one must not store a half body and answer 200 either.
+                if os.environ.get('PUTGD_HTTP_FIXTURE_STRICT_BODY'):
+                    raise TruncatedRequest()
                 break
             data += chunk
         return data
@@ -332,6 +345,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer(('127.0.0.1', int(os.environ.get('PUTGD_HTTP_FIXTURE_PORT', '0'))), Handler)
     server.daemon_threads = True
+    handle_error = server.handle_error
+    server.handle_error = lambda request, client_address: None if isinstance(sys.exc_info()[1], TruncatedRequest) else handle_error(request, client_address)
     sys.stdout.write('%d\n' % server.server_address[1])
     sys.stdout.flush()
     server.serve_forever()

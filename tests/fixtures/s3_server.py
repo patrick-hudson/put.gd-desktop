@@ -46,7 +46,10 @@ def signature(handler, body):
         query = '&'.join(urllib.parse.quote(k, safe='-_.~') + '=' + urllib.parse.quote(v, safe='-_.~') for k, v in sorted(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)))
         payload = handler.headers['x-amz-content-sha256']
         assert payload == digest(body)
-        canonical = '\n'.join((handler.command, parsed.path, query, canonical_headers, parts['SignedHeaders'], payload))
+        # 'normalisePath': verify against the path encoded the way the SDK signs it, as AWS does;
+        # by default the path is checked as it arrives, like Garage (#1601).
+        path = urllib.parse.quote(urllib.parse.unquote(parsed.path), safe='/-_.~') if state.get('normalisePath') else parsed.path
+        canonical = '\n'.join((handler.command, path, query, canonical_headers, parts['SignedHeaders'], payload))
         scope = '/'.join((date, region, service, terminal))
         to_sign = 'AWS4-HMAC-SHA256\n' + handler.headers['x-amz-date'] + '\n' + scope + '\n' + digest(canonical.encode())
         key = ('AWS4' + SECRET).encode()
@@ -98,6 +101,7 @@ class Handler(BaseHTTPRequestHandler):
             if not self.path.startswith('/__'):
                 return self.handle_wire(body)
             if self.path == '/__reset':
+                state['normalisePath'] = False
                 blobs.clear()
                 state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}})
                 state.update(json.loads(body))

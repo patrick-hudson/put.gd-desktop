@@ -10,6 +10,11 @@ oracle, tests/fixtures/s3_server.py) and drives its session socket directly.
          bursts, outside edits of config.json, an unwritable archive, helpers killed or frozen on their own, graceful restarts
   crash  SIGKILL of the resident and its helpers at random points of uploads, deletions and settings writes (also a second
          kill during the recovery), then a restart and a check that it recovered
+  faults the OS and the network say no underneath the resident: an LD_PRELOAD shim (tools/lab/faults/faultshim.c) fails writes,
+         fsyncs, renames and opens with ENOSPC, EIO, EACCES, EROFS, EMFILE, short writes and a slow disk on the files of the
+         resident's roots; a TCP proxy (tools/lab/faults/fault_proxy.py) between it and the destination resets, cuts, stalls,
+         duplicates, throttles and delays; the open-file limit drops under it. A full disk is a shim rule (ENOSPC, EDQUOT): the
+         harness mounts and fills nothing. Every few steps the faults are lifted and the whole state is checked
 
 After every step it checks that the resident lives and the sanitizers wrote nothing; every few steps that History and the
 settings read back consistently; after every kill that config.json parses, history.sqlite passes its integrity check,
@@ -31,6 +36,8 @@ import json
 import os
 from pathlib import Path
 import random
+import secrets
+import select
 import shutil
 import signal
 import socket
@@ -42,6 +49,9 @@ import time
 import urllib.request
 import zlib
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'faults'))  # python -I does not put the script's folder on the path
+import fault_control  # noqa: E402
+
 SOCKET_LIMIT = 107
 TOKEN = 'putgd-synthetic-uploader-token-not-real'
 # What a clean sanitizer run never writes: any of these in a log is a finding.
@@ -49,6 +59,8 @@ BAD_MARKERS = ('AddressSanitizer', 'LeakSanitizer', 'runtime error:', 'ThreadSan
                'Assertion', 'terminate called', 'Segmentation fault', 'QFATAL', 'Fatal:', 'double free', 'SUMMARY:')
 # Resident states that are not an answer to the call but the resident's own.
 BUSY_CODES = ('initializing', 'journal_busy')
+# A journal recovery that failed on an I/O error is retried by the resident (#1576) and answers with that error meanwhile.
+RETRYING_CODES = ('history_io',)
 
 
 class Finding(Exception):
@@ -110,7 +122,12 @@ class Receiver:
     def __init__(self, source, run):
         self.process = subprocess.Popen([sys.executable, '-I', str(source)], stdout=subprocess.PIPE, stderr=open(run / 'receiver.log', 'w'),
                                         stdin=subprocess.DEVNULL, start_new_session=True)
-        self.port = int(self.process.stdout.readline())
+        try:
+            self.port = int(self.process.stdout.readline())
+        except BaseException:  # an interrupt or a broken start: the receiver is in its own session, so it is stopped here
+            self.process.kill()
+            self.process.wait(5)
+            raise
         self.base = 'http://127.0.0.1:%d' % self.port
 
     def post(self, path, body):
@@ -135,6 +152,7 @@ class Receiver:
                 self.process.wait(5)
             except subprocess.TimeoutExpired:
                 self.process.kill()
+                self.process.wait(5)
 
     # What the invariants ask of any receiver (the S3 one below answers the same questions).
     def upload_events(self):
@@ -166,6 +184,29 @@ class Receiver:
 
     def snapshot(self):
         return self.state()['files']
+
+    def present(self):
+        """content sha256 -> the receiver's ids of the copies it holds now (not deleted)."""
+        found = {}
+        for file_id, entry in self.state()['files'].items():
+            if not entry.get('deleted'):
+                found.setdefault(entry.get('sha256'), []).append(file_id)
+        return found
+
+    def holds(self, row, digest, base):
+        """None when the file the row's receipt names is on this receiver (at `base`, the address put.gd was given) with exactly this
+        content, else what is wrong."""
+        url = (row.get('receipt') or {}).get('directUrl') or ''
+        direct = url.split('/')
+        file_id = direct[4] if len(direct) > 4 and direct[3] == 'f' else None
+        if not file_id or '/'.join(direct[:3]) != base.rstrip('/'):
+            return 'the receipt does not name a file at %s (%s)' % (base, url)
+        entry = self.state()['files'].get(file_id)
+        if entry is None or entry.get('deleted'):
+            return 'the receiver has no file %s' % file_id
+        if entry.get('sha256') != digest:
+            return 'the receiver\'s file %s has content %s, not the probe\'s %s' % (file_id, str(entry.get('sha256'))[:12], digest[:12])
+        return None
 
     def describe(self, digest):
         return json.dumps([{k: e.get(k) for k in ('fileName', 'fileBytes', 'sha256', 'stored')} for e in self.state()['events'] if e.get('sha256') == digest])
@@ -223,6 +264,23 @@ class S3Receiver(Receiver):
     def snapshot(self):
         return self.state()['objects']
 
+    def present(self):
+        return self.stored()  # the oracle's objects are what it holds now
+
+    def holds(self, row, digest, base):
+        reference = (row.get('receipt') or {}).get('objectReference') or {}
+        key, version_id = reference.get('key'), reference.get('versionId')
+        if not key:
+            return 'the receipt names no object key'
+        versions = [v for v in self.snapshot().get(key, []) if not v.get('marker') and v.get('version') != 'competitor']
+        if version_id:  # a versioned receipt names one version: that one must hold the bytes
+            versions = [v for v in versions if v.get('version') == version_id]
+        if not versions:
+            return 'the oracle has no object %s%s' % (key, ' version %s' % version_id if version_id else '')
+        if self.sha(versions[-1]) != digest:
+            return 'the object %s has content %s, not the probe\'s %s' % (key, self.sha(versions[-1])[:12], digest[:12])
+        return None
+
     def names(self):
         found = {}
         for key, versions in self.state()['objects'].items():
@@ -251,51 +309,102 @@ class S3Receiver(Receiver):
 # ---------------------------------------------------------------------------------------------- resident
 
 class Resident:
-    def __init__(self, run, build):
+    def __init__(self, run, build, runtime=None):
         self.run, self.build = run, Path(build)
         self.root = run / 'r'
-        self.runtime = self.root / 'rt'
+        self.runtime = Path(runtime) if runtime else self.root / 'rt'
         self.socket_path = str(self.runtime / 'putgd' / 'session.sock')
         if len(self.socket_path.encode()) > SOCKET_LIMIT:
             raise SystemExit('socket path %s is %d bytes (limit %d): use a shorter --run-dir' % (self.socket_path, len(self.socket_path.encode()), SOCKET_LIMIT))
         self.san = run / 'san'
         self.process = None
+        self.pidfd = None     # a pidfd of the current resident, opened before it can be reaped: signals never reach a reused PID
+        # Every process of this run's resident carries this in its environment (helpers inherit it). A PID is acted on only after a pidfd
+        # is open on it and its environment shows the token, so a reused PID or session ID is never mistaken for one of ours.
+        self.token = 'PUTGD_FUZZ_RUN=%s' % secrets.token_hex(12)
+        self.pids_seen = set()   # every PID of the resident itself, for the shim's no-helper check
+        self.retries = {}        # operation id -> accepted operation.retry calls
+        self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
+        # Fault mode: start (self.starts) -> [(first byte, end byte or None)] of its log written while the harness held the resident at its
+        # open-file limit on purpose. Only there is UBSan's invalid-vptr report expected.
+        self.descriptor_windows = {}
+        self.judged_logs = set()  # resident logs of an abort the harness caused on purpose (the open-file limit) and judged by its recovery
+        self.memory_max = None  # fault mode: a memory cgroup limit (systemd-run --user --scope)
+        self.nofile = None    # fault mode: an open-file limit from the start
         self.starts = 0
         self.sequence = 0
         self.lock = threading.Lock()
 
     def environment(self):
-        for name in ('config', 'data', 'state', 'cache', 'rt', 'home'):
+        for name in ('config', 'data', 'state', 'cache', 'home'):
             (self.root / name).mkdir(parents=True, exist_ok=True)
+        self.runtime.mkdir(parents=True, exist_ok=True)
         os.chmod(self.runtime, 0o700)
         self.san.mkdir(exist_ok=True)
         env = {k: os.environ[k] for k in ('PATH', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'XDG_DATA_DIRS') if k in os.environ}
+        env.update(self.extra_env)
+        env[self.token.split('=', 1)[0]] = self.token.split('=', 1)[1]
         env.update(HOME=str(self.root / 'home'), XDG_CONFIG_HOME=str(self.root / 'config'), XDG_DATA_HOME=str(self.root / 'data'),
                    XDG_STATE_HOME=str(self.root / 'state'), XDG_CACHE_HOME=str(self.root / 'cache'), XDG_RUNTIME_DIR=str(self.runtime),
                    QT_QPA_PLATFORM='offscreen', PUTGD_STARTED_FOR_UPLOAD='1',
-                   ASAN_OPTIONS='halt_on_error=1:print_stacktrace=1:detect_leaks=1:detect_stack_use_after_return=1:strict_init_order=1:abort_on_error=0:log_path=%s/asan' % self.san,
+                   ASAN_OPTIONS='halt_on_error=1:print_stacktrace=1:detect_leaks=1:detect_stack_use_after_return=1:strict_init_order=1:abort_on_error=0:log_path=%s/asan%s' % (
+                       self.san, ':verify_asan_link_order=0' if 'LD_PRELOAD' in self.extra_env else ''),
                    UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=%s/ubsan' % self.san,
                    LSAN_OPTIONS='log_path=%s/lsan' % self.san)
         return env
 
+    def launch(self, log):
+        """Popen the resident, wrapped for a memory cgroup limit or an open-file limit when a fault mode asks for one."""
+        if self.process is not None and self.returncode() is not None:
+            self.reap()  # the previous resident is gone and its session was cleared: release its PID now
+        command, env = [str(self.build / 'putgd'), '--background'], self.environment()
+        if 'PUTGD_FAULT_EXE' in env:
+            # The shim binds only to the PID this marker names; sh sets it to its own PID and execs the resident in place, so it is exact.
+            command = ['/bin/sh', '-c', 'PUTGD_FAULT_PID=$$; export PUTGD_FAULT_PID; exec "$0" "$@"'] + command
+        if self.nofile:
+            command = ['prlimit', '--nofile=%d:%d' % (self.nofile, self.nofile), '--'] + command
+        if self.memory_max:
+            # A scope of the real user manager: it needs the real user bus, and the resident its private one, set by env(1) inside.
+            inner = ['env'] + ['%s=%s' % (k, v) for k, v in env.items()]
+            uid = os.getuid()
+            command = ['systemd-run', '--user', '--scope', '--quiet', '-p', 'MemoryMax=%s' % self.memory_max, '-p', 'MemorySwapMax=0', '--'] + inner + command
+            env = {'PATH': os.environ.get('PATH', ''), 'XDG_RUNTIME_DIR': '/run/user/%d' % uid, 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/%d/bus' % uid}
+        # The process and its pidfd are published together: SIGINT and SIGTERM wait until both are set, so the cleanup path never sees a
+        # resident without its pidfd, or with the previous one's.
+        with signals_deferred():
+            process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            try:
+                pidfd = os.pidfd_open(process.pid)  # not reaped yet, so the PID is still this process: the pidfd names it for good
+            except OSError:
+                pidfd = None
+            previous, self.process, self.pidfd = self.pidfd, process, pidfd
+            if previous is not None:
+                os.close(previous)
+            self.pids_seen.add(process.pid)
+        return process
+
+    def opened_log(self):
+        if self.nofile:
+            self.descriptor_windows[self.starts] = [(0, None)]  # started at its limit: the whole start is one window
+
     def start_nowait(self):
         """Start the resident and return at once, for a kill during its recovery."""
         self.starts += 1
+        self.opened_log()
         log = open(self.run / 'logs' / ('resident-%d.log' % self.starts), 'w')
-        self.process = subprocess.Popen([str(self.build / 'putgd'), '--background'], env=self.environment(), stdin=subprocess.DEVNULL, stdout=log,
-                                        stderr=subprocess.STDOUT, start_new_session=True)
+        self.process = self.launch(log)
 
     def start(self):
-        if self.process is not None and self.process.poll() is None:
+        if self.alive():
             raise Finding('driver', 'start with a live resident')
         self.starts += 1
+        self.opened_log()
         log = open(self.run / 'logs' / ('resident-%d.log' % self.starts), 'w')
-        self.process = subprocess.Popen([str(self.build / 'putgd'), '--background'], env=self.environment(), stdin=subprocess.DEVNULL, stdout=log,
-                                        stderr=subprocess.STDOUT, start_new_session=True)
+        self.process = self.launch(log)
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline:
-            if self.process.poll() is not None:
-                raise Finding('startup', 'the resident exited %s while starting' % self.process.returncode)
+            if self.returncode() is not None:
+                raise Finding('startup', 'the resident exited %s while starting' % self.returncode())
             try:
                 reply = self.call('capabilities', timeout=10, raw=True)
                 if reply.get('ok'):
@@ -342,14 +451,106 @@ class Resident:
             raise OSError('no reply to %s (connection closed)' % method)
         if reply.get('requestId') != request_id or reply.get('schemaVersion') != 1:
             raise Finding('protocol', 'reply to %s has a wrong envelope: %s' % (method, str(reply)[:200]))
+        # A retry with scope "sharing" only finishes share links; it sends nothing again.
+        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict) and isinstance(params.get('id'), str) and 'scope' not in params:
+            with self.lock:  # every accepted retry, from any step or burst thread: each may send its files once more
+                self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
         return reply if raw else reply.get('result')
 
+    # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
+    # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
+
+    def open_late(self):
+        """Open the resident's pidfd if launch could not (it is not reaped before its session is clear, so its PID is still its own)."""
+        if self.pidfd is None and self.process is not None and self.process.returncode is None:
+            try:
+                self.pidfd = os.pidfd_open(self.process.pid)
+            except OSError as error:
+                self.pidfd_error = error
+        return self.pidfd is not None
+
+    def handle(self):
+        """The resident's pidfd. Without one (both opens failed, say on EMFILE) the harness cannot tell its resident from a reused PID
+        without reaping it, so it stops: a harness error, never a fallback to poll(), wait() or bare-PID signals."""
+        if self.process is not None and self.process.returncode is None and not self.open_late():
+            raise Finding('driver', 'no pidfd for the resident (pid %d): %s; the run stops' % (self.process.pid, getattr(self, 'pidfd_error', '?')))
+        return self.pidfd
+
+    def returncode(self):
+        """The resident's exit status as Popen reports it (negative: the signal), or None while it runs. Never reaps it."""
+        if self.process is None or self.process.returncode is not None:
+            return None if self.process is None else self.process.returncode
+        self.handle()
+        try:
+            info = os.waitid(os.P_PIDFD, self.pidfd, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError:
+            return self.process.poll()
+        if info is None:
+            return None
+        return -info.si_status if info.si_code in (os.CLD_KILLED, os.CLD_DUMPED) else info.si_status
+
     def alive(self):
-        return self.process is not None and self.process.poll() is None
+        return self.process is not None and self.returncode() is None
+
+    def wait_exit(self, seconds):
+        """Wait for the resident to exit, without reaping it. True when it has."""
+        if self.process is None or self.returncode() is not None:
+            return True
+        select.select([self.pidfd], [], [], seconds)  # a pidfd turns readable when its process exits
+        return self.returncode() is not None
+
+    def reap(self):
+        if self.process is not None and self.process.returncode is None and self.pidfd is not None:  # without a pidfd it stays unreaped
+            self.process.wait()
+
+    def kill_pinned_session(self, sig):
+        """No pidfd: SIGKILL the resident's process group by its ID. The resident leads that group and is not reaped, so the ID is still
+        its own; nothing is reaped afterwards, and the run stops with a harness error."""
+        try:
+            os.killpg(self.process.pid, sig)
+        except OSError:
+            pass
+        raise Finding('driver', 'no pidfd for the resident (pid %d): its process group was killed and the run stops' % self.process.pid)
+
+    def owned(self, pid):
+        """A pidfd on `pid` if that process belongs to this run's resident (its environment carries the run token), else None.
+        The pidfd is opened first, then the environment read: a PID that was reused before the open fails the token check, and a
+        signal sent through the pidfd can only reach the process that was checked."""
+        try:
+            fd = os.pidfd_open(pid)
+        except OSError:
+            return None
+        try:
+            environ = Path('/proc/%d/environ' % pid).read_bytes()
+        except PermissionError:
+            environ = None  # a helper that made itself non-dumpable (the OCR helper, the clipboard keeper) hides its environment
+        except OSError:
+            environ = b''
+        if environ is None:
+            ours = self.session_pinned() and self.session_of(pid) == self.process.pid
+        else:
+            ours = self.token.encode() in environ.split(b'\0')
+        if not ours:
+            os.close(fd)
+            return None
+        return fd
+
+    def session_pinned(self):
+        """True while the resident is not reaped: its PID, the session ID, cannot belong to anyone else."""
+        return self.process is not None and self.process.returncode is None
+
+    @staticmethod
+    def session_of(pid):
+        try:
+            stat = Path('/proc/%d/stat' % pid).read_text()
+            return int(stat[stat.rindex(')') + 2:].split()[3])
+        except (OSError, ValueError, IndexError):
+            return None
 
     def children(self):
         """PIDs of the resident and everything it started, from /proc: children of every thread (a worker thread's child is not listed under the
-        main thread), and every process left in the resident's session, such as a vfork-fallback child that waits for a parent that is gone."""
+        main thread), and every process left in the resident's session, such as a vfork-fallback child that waits for a parent that is gone.
+        Only processes that carry the run token are listed."""
         if not self.alive():
             return self.session_members()
         pids, frontier = set(), [self.process.pid]
@@ -364,9 +565,17 @@ class Resident:
             except OSError:
                 pass
         pids.update(self.session_members())
-        return sorted(pids)
+        return sorted(pid for pid in pids if self.is_owned(pid))
+
+    def is_owned(self, pid):
+        fd = self.owned(pid)
+        if fd is None:
+            return False
+        os.close(fd)
+        return True
 
     def session_members(self):
+        """Living processes of the resident's session (the session ID is the resident's first PID) that carry the run token."""
         found = []
         if self.process is None:
             return found
@@ -376,11 +585,30 @@ class Resident:
             try:
                 stat = (entry / 'stat').read_text()
                 fields = stat[stat.rindex(')') + 2:].split()
-                if int(fields[3]) == self.process.pid:  # session id
+                if int(fields[3]) == self.process.pid and fields[0] != 'Z' and self.is_owned(int(entry.name)):  # session id
                     found.append(int(entry.name))
             except (OSError, ValueError, IndexError):
                 pass
         return found
+
+    def send(self, pid, sig):
+        """Signal one process of the resident's tree through a checked pidfd. Returns False when it is not (or no longer) ours."""
+        if self.process is not None and pid == self.process.pid and self.handle() is not None:
+            try:
+                signal.pidfd_send_signal(self.pidfd, sig)
+                return True
+            except OSError:
+                return False
+        fd = self.owned(pid)
+        if fd is None:
+            return False
+        try:
+            signal.pidfd_send_signal(fd, sig)
+            return True
+        except OSError:
+            return False
+        finally:
+            os.close(fd)
 
     def rss_kib(self):
         total = 0
@@ -395,20 +623,21 @@ class Resident:
 
     def kill_tree(self, sig=signal.SIGKILL):
         """SIGKILL the resident and its helpers (exact PIDs found from /proc; never a pattern kill)."""
+        if self.process is not None and self.process.returncode is None and not self.open_late():
+            self.kill_pinned_session(sig)
         for _ in range(3):
-            pids = self.children()
-            for pid in reversed(pids):
+            if self.process is not None and self.handle() is not None:
                 try:
-                    os.kill(pid, sig)
+                    signal.pidfd_send_signal(self.pidfd, sig)  # the resident itself, even if it no longer passes the environment check
                 except OSError:
                     pass
-            if self.process is not None:
-                try:
-                    self.process.wait(20)
-                except subprocess.TimeoutExpired:
-                    raise Finding('hang', 'the resident did not die after SIGKILL')
+            for pid in reversed(self.children()):
+                self.send(pid, sig)
+            if self.process is not None and not self.wait_exit(20):
+                raise Finding('hang', 'the resident did not die after SIGKILL')
             # Whatever the resident left behind in its session (a child it started in the last moment) dies too.
             if not self.session_members():
+                self.reap()
                 return
             time.sleep(0.05)
         raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
@@ -423,20 +652,19 @@ class Resident:
             except (OSError, Finding, ValueError):
                 pass
         else:
-            os.kill(self.process.pid, getattr(signal, how))
-        try:
-            self.process.wait(60)
-        except subprocess.TimeoutExpired:
+            self.send(self.process.pid, getattr(signal, how))
+        if not self.wait_exit(60):
             raise Finding('hang', 'the resident did not exit within 60 s of %s' % how)
         # After SIGTERM or SIGINT the status is the signal's or 0; a sanitizer abort is neither.
-        if self.process.returncode not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT):
-            raise Finding('exit', 'the resident exited with %s after %s' % (self.process.returncode, how))
+        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT):
+            raise Finding('exit', 'the resident exited with %s after %s' % (self.returncode(), how))
         # Helpers it started leave with it.
         end = time.monotonic() + 10
         while self.session_members() and time.monotonic() < end:
             time.sleep(0.1)
         if self.session_members():
             raise Finding('orphan', 'processes of the resident are still alive 10 s after it exited after %s: %s' % (how, self.session_members()))
+        self.reap()
 
     def stacks(self):
         """Symbolized stacks of the resident and its helpers (eu-stack, same user), for a hang report."""
@@ -444,24 +672,84 @@ class Resident:
         for pid in self.children():
             try:
                 name = Path('/proc/%d/comm' % pid).read_text().strip()
-                reply = subprocess.run(['eu-stack', '-p', str(pid)], capture_output=True, text=True, timeout=120)
+                if shutil.which('eu-stack'):
+                    reply = subprocess.run(['eu-stack', '-p', str(pid)], capture_output=True, text=True, timeout=120)
+                else:  # a builder without elfutils: gdb attaches to the resident's own children
+                    reply = subprocess.run(['gdb', '-p', str(pid), '-batch', '-ex', 'thread apply all bt'], capture_output=True, text=True, timeout=180)
                 out.append('=== %s (%d)\n%s%s' % (name, pid, reply.stdout, reply.stderr[-300:]))
             except (OSError, subprocess.TimeoutExpired) as error:
                 out.append('=== pid %d: no stack (%s)' % (pid, error))
         return '\n'.join(out)
 
     def sanitizer_output(self):
-        found = sorted(p for p in self.san.glob('*') if p.is_file())
+        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p))
+        return found
+
+    @staticmethod
+    def third_party(path):
+        """GStreamer's ORC JIT (the recording helper's probe) maps an executable file in XDG_RUNTIME_DIR and gets SIGBUS when that
+        tmpfs is full. A helper dying on that is ORC's, not put.gd's; the resident and the run go on."""
+        head = ''
+        for _ in range(6):  # a report is written in pieces: wait for its stack before judging it
+            try:
+                head = path.read_text(errors='replace')[:6000]
+            except OSError:
+                return False
+            if 'ERROR: AddressSanitizer: BUS' not in head or 'orc_compiler_compile_program' in head or 'SUMMARY:' in head:
+                break
+            time.sleep(0.5)
+        return 'ERROR: AddressSanitizer: BUS' in head and 'orc_compiler_compile_program' in head
+
+    # What UBSan says about a valid object when it cannot open the files it checks types with: a "does not point to an object of type"
+    # error whose note says the object has an invalid vptr. A report that names a wrong dynamic type ("object is of type") is a real one.
+    NOISE_ERROR = b'which does not point to an object of type'
+    NOISE_NOTE = b'invalid vptr'
+
+    def log_path(self, start=None):
+        return self.run / 'logs' / ('resident-%d.log' % (start or self.starts))
+
+    def log_offset(self):
+        try:
+            return self.log_path().stat().st_size
+        except OSError:
+            return 0
+
+    def descriptor_noise_only(self, text, start):
+        """True when the resident log of that start has UBSan runtime errors, and every one is the invalid-vptr report written inside a
+        window in which the harness held the resident at its open-file limit (a_fault_res, or the whole start under --nofile)."""
+        windows = self.descriptor_windows.get(start) or []
+        lines = text.encode('utf-8', 'surrogateescape').splitlines(keepends=True)
+        found, offset = False, 0
+        for index, line in enumerate(lines):
+            begin, offset = offset, offset + len(line)
+            if b'runtime error:' not in line:
+                continue
+            found = True
+            inside = any(first <= begin and (end is None or begin < end) for first, end in windows)
+            notes = []
+            for following in lines[index + 1:index + 12]:  # the report's own notes, up to the next report
+                if b'runtime error:' in following:
+                    break
+                notes.append(following)
+            if not inside or self.NOISE_ERROR not in line or not any(self.NOISE_NOTE in note for note in notes):
+                return False
         return found
 
     def log_problems(self):
         problems = []
         for path in sorted((self.run / 'logs').glob('resident-*.log')):
+            if path.name in self.judged_logs:
+                continue
             try:
-                text = path.read_text(errors='replace')
+                text = path.read_bytes().decode('utf-8', 'surrogateescape')  # byte offsets survive the round trip
             except OSError:
                 continue
+            start = int(path.stem.split('-')[-1]) if path.stem.split('-')[-1].isdigit() else None
             for marker in BAD_MARKERS:
+                # Invalid-vptr reports while the harness held the resident at its open-file limit are UBSan's own (it cannot read the files it checks
+                # types with); any other runtime error, or one outside such an event, is a finding.
+                if marker == 'runtime error:' and self.descriptor_noise_only(text, start):
+                    continue
                 if marker in text:
                     problems.append((path.name, marker))
         return problems
@@ -512,10 +800,13 @@ class Fuzzer:
         self.options = options
         self.rng = random.Random(options.seed)
         self.run = Path(options.run_dir)
+        self.receiver = None
+        self.faults = None
         for name in ('logs', 'fixtures', 'saves', 'archive'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
         self.resident = Resident(self.run, options.build)
-        self.receiver = None
+        self.proxy_port = None
+        self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
         self.fixtures = {}
         self.profile = None
         self.step_index = 0
@@ -547,12 +838,17 @@ class Fuzzer:
             # Over put.gd's multipart threshold (64 MiB), so the multipart journal and its abort are exercised.
             (self.run / 'fixtures' / 'multi.bin').write_bytes(os.urandom(65 * 1024 * 1024))
             self.multi = self.run / 'fixtures' / 'multi.bin'
+        if self.options.mode == 'faults':
+            os.environ['PUTGD_HTTP_FIXTURE_TRUST_HOST'] = '1'  # the file and deletion addresses stay behind the proxy too
+            os.environ['PUTGD_HTTP_FIXTURE_STRICT_BODY'] = '1'  # a request cut by the proxy is not answered as if it had arrived whole
         source = Path(self.options.fixture_server) if self.options.fixture_server else Path(__file__).resolve().parents[2] / 'tests/fixtures/http_uploader_server.py'
         if self.options.destination == 's3':
             self.receiver = S3Receiver(source.with_name('s3_server.py'), self.run)
         else:
             self.receiver = Receiver(source, self.run)
         self.receiver.reset()
+        if self.options.mode == 'faults':
+            self.setup_faults()
         self.resident.start()
         if self.options.destination == 's3':
             self.add_s3_profile()
@@ -568,7 +864,7 @@ class Fuzzer:
         if not existing:
             profile = json.loads(json.dumps(self.resident.call('settings.developmentTemplate')['document']['profiles'][0]))
             profile.update(id='s3fuzz', label='S3 fuzz', credentials={'mode': 'session', 'reference': None})
-            profile['settings'].update(endpoint=self.receiver.base, bucket='isolated-fixture', region='eu-west-3', objectPrefix='p', aclMode='omit',
+            profile['settings'].update(endpoint=self.endpoint(), bucket='isolated-fixture', region='eu-west-3', objectPrefix='p', aclMode='omit',
                                        publicUrlBase=None, requestTimeoutMs=8000, connectTimeoutMs=1000)
             document['profiles'] = (document.get('profiles') or []) + [profile]
             self.resident.call('settings.save', {'document': document, 'expectedRevision': settings['metadata']['observedRevision']})
@@ -581,7 +877,7 @@ class Fuzzer:
     def import_uploader(self):
         sxcu = self.run / 'fuzz.sxcu'
         sxcu.write_text(json.dumps({'Version': '17.0.0', 'Name': 'fuzz receiver', 'DestinationType': 'ImageUploader, TextUploader, FileUploader',
-                                    'RequestMethod': 'POST', 'RequestURL': self.receiver.base + '/upload/json', 'Headers': {'Authorization': TOKEN},
+                                    'RequestMethod': 'POST', 'RequestURL': self.endpoint() + '/upload/json', 'Headers': {'Authorization': TOKEN},
                                     'Body': 'MultipartFormData', 'FileFormName': 'file', 'URL': '{json:files[0].url}',
                                     'DeletionURL': '{json:files[0].delete}'}))
         os.chmod(sxcu, 0o600)
@@ -591,6 +887,8 @@ class Fuzzer:
             return
         reply = self.resident.call('settings.importUploader', {'path': str(sxcu), 'expectedRevision': settings['metadata']['observedRevision'], 'credentialMode': 'session',
                                                                 'profileId': 'fuzz', 'label': 'Fuzz'})
+        if not isinstance(reply, dict) or 'profileId' not in reply:
+            raise Finding('setup', 'settings.importUploader did not import the receiver profile: %s' % str(reply)[:300])
         self.profile = reply['profileId']
         settings = self.resident.call('settings.get')
         self.resident.call('settings.patch', {'patch': {'archive': {'keepUploads': True, 'root': str(self.run / 'archive')},
@@ -664,7 +962,7 @@ class Fuzzer:
         except OSError as error:
             if self.resident.alive():
                 raise Finding('transport', '%s: %s while the resident lives' % (method, error))
-            raise Finding('crash', '%s: %s and the resident is gone (exit %s)' % (method, error, self.resident.process.returncode))
+            raise Finding('crash', '%s: %s and the resident is gone (exit %s)' % (method, error, self.resident.returncode()))
         error = reply.get('error') or {}
         if method == 'editor.open' and reply.get('ok') and (reply.get('result') or {}).get('operationId'):
             self.open_editors.add(reply['result']['operationId'])
@@ -1006,6 +1304,7 @@ class Fuzzer:
                 self.operations.append(((result['result'] or {}).get('operation') or {}).get('id'))
             if isinstance(result, dict) and result.get('ok') and method == 'editor.open' and (result['result'] or {}).get('operationId'):
                 self.editors.append(result['result']['operationId'])
+                self.open_editors.add(result['result']['operationId'])  # the epoch check and settle() cancel it by id, not through the bounded activity list
         self.log('burst', methods=[m for m, _ in methods], oks=[r.get('ok') if isinstance(r, dict) else str(r) for r in results])
 
     def a_receiver_rule(self):
@@ -1127,16 +1426,16 @@ class Fuzzer:
         self.log('helper-chaos', helper=name, pid=pid, what=action)
         try:
             if action == 'kill':
-                os.kill(pid, signal.SIGKILL)
+                self.resident.send(pid, signal.SIGKILL)
             else:
-                os.kill(pid, signal.SIGSTOP)
+                self.resident.send(pid, signal.SIGSTOP)
                 hold = rng.choice((0.5, 3.0, 12.0))
                 end = time.monotonic() + hold
                 # The resident keeps answering while the helper is frozen.
                 while time.monotonic() < end:
                     self.call(rng.choice(('capabilities', 'history.list', 'operation.recent', 'settings.get')), {}, timeout=30)
                     time.sleep(0.3)
-                os.kill(pid, signal.SIGCONT)
+                self.resident.send(pid, signal.SIGCONT)
         except OSError:
             pass
 
@@ -1218,9 +1517,11 @@ class Fuzzer:
 
     def a_restart(self):
         """A graceful restart in the middle of a sequence: ui.quit or a termination signal, then start again with the same roots."""
+        if self.faults and self.options.clean_restarts:
+            self.faults.write_spec([])  # the start itself is not under a file-system fault
         self.shutdown_and_check(self.rng.choice(('ui.quit', 'ui.quit', 'SIGTERM', 'SIGINT')))
         self.resident.start()
-        self.import_uploader()
+        self.add_s3_profile() if self.options.destination == 's3' else self.import_uploader()
         self.credentials_check()
 
     def credentials_check(self):
@@ -1254,7 +1555,7 @@ class Fuzzer:
 
     def check_alive(self):
         if not self.resident.alive():
-            raise Finding('crash', 'the resident is gone (exit %s)' % self.resident.process.returncode)
+            raise Finding('crash', 'the resident is gone (exit %s)' % self.resident.returncode())
         # A helper that vanished from the tree is not visible; a dead putgd-ui reports through ui.* calls instead.
 
     def deep_check(self):
@@ -1296,7 +1597,7 @@ class Fuzzer:
                 raise Finding('history', 'history.list failed+unknown has total %s but history.counts says failed %s' % (failed['result'].get('total'), categories.get('failed')))
         for row in self.rows():
             if row.get('uploadStatus') not in self.TERMINAL:
-                if not self.active():
+                if not self.active() and not self.known_stuck(row):
                     raise Finding('history', 'History row %s is %r (phase %r) while no operation is active' % (row.get('id'), row.get('uploadStatus'), row.get('phase')))
 
     def active(self):
@@ -1312,6 +1613,265 @@ class Fuzzer:
             time.sleep(0.5)
         self.log('drain-timeout', seconds=seconds, active=self.active())
         return False
+
+
+    # --- fault mode: the OS and the network say no
+
+    def endpoint(self):
+        """Where put.gd sends its uploads: the fault proxy in front of the receiver in fault mode, else the receiver itself."""
+        return 'http://127.0.0.1:%d' % self.proxy_port if self.proxy_port else self.receiver.base
+
+    def setup_faults(self):
+        options = self.options
+        self.faults = fault_control.FaultControl(self.run, random.Random(options.seed ^ 0x5eed), self.fault_classes, Path(__file__).resolve().parent / 'faults',
+                                                 self.resident.build / 'putgd', log=self.log, seed=options.seed,
+                                                 net_kinds=options.net_kinds.split(',') if options.net_kinds else None)
+        self.resident.extra_env = self.faults.environment()
+        if options.nofile:
+            self.resident.nofile = options.nofile
+        if options.memory_max:
+            self.resident.memory_max = options.memory_max
+        if 'net' in self.fault_classes:
+            self.proxy_port = self.faults.start_proxy(self.receiver.port)
+
+    FAULT_ACTIONS = [('upload', 12), ('upload_cancel', 2), ('history', 4), ('detail', 3), ('delete', 6), ('settings', 8), ('operations', 6), ('burst', 3),
+                     ('receiver_rule', 4), ('restart', 1), ('editor_open', 1), ('editor_session', 2), ('editor_apply', 1), ('editor_end', 1), ('cache_clear', 1),
+                     ('upload_weird', 2), ('fault_fs', 6), ('fault_net', 6), ('fault_disk_full', 3), ('fault_res', 1), ('fault_clear', 4)]
+
+    def a_cache_clear(self):
+        self.call('cache.clear', {}, timeout=120)
+
+    def a_fault_fs(self):
+        if 'fs' in self.fault_classes:
+            self.faults.write_spec(self.faults.random_fs_rules())
+
+    def a_fault_net(self):
+        if 'net' in self.fault_classes:
+            self.faults.set_net(self.faults.random_net_profile())
+
+    def a_fault_disk_full(self):
+        """The disk fills up: writes, truncates and allocations under the resident's roots fail with ENOSPC or EDQUOT, on top of the
+        rules in force. A shim rule, not a filled filesystem: nothing on the host runs out of space."""
+        if 'fs' not in self.fault_classes:
+            return
+        rng = self.faults.rng
+        error = rng.choice(('ENOSPC', 'ENOSPC', 'EDQUOT'))
+        target = fault_control.FS_TARGETS[rng.choice(('everything', 'everything', 'database', 'data', 'archive', 'state', 'cache'))]
+        skip = rng.choice((0, 0, 3, 20))
+        self.faults.write_spec(self.faults.rules + ['rule write,truncate,fallocate %s %s %s%s' % (target, rng.choice((0.3, 1.0, 1.0)), error, ' skip=%d' % skip if skip else '')])
+
+    def a_fault_res(self):
+        """The resident hits its open-file limit for a moment, with an upload and a deletion starting under it, then gets its limit back."""
+        if 'res' not in self.fault_classes or not self.resident.alive():
+            return
+        rng = self.faults.rng
+        window, start = [self.resident.log_offset(), None], self.resident.starts
+        self.resident.descriptor_windows.setdefault(start, []).append(window)
+        if not self.faults.lower_nofile(self.resident.process.pid, rng.choice((0, 1, 3, 8, 30)), start=start):
+            self.resident.descriptor_windows[start].remove(window)
+            return
+        paths = [str(self.new_upload_file()) for _ in range(rng.choice((1, 2, 4)))]
+        threads = [threading.Thread(target=lambda: self.resident.call('upload.files', {'paths': paths, 'profileId': self.profile}, timeout=120, raw=True) and None, daemon=True)]
+        for thread in threads:
+            thread.start()
+        time.sleep(rng.choice((0.3, 1.0, 2.5)))
+        self.lift(self.faults.restore_nofile, self.resident_pids())  # raises a finding unless the original limit is back
+        window[1] = self.resident.log_offset()  # closed only now that the original limit is verified
+        for thread in threads:
+            thread.join(150)
+
+    def a_fault_clear(self):
+        """Lift one kind of fault, or all of them, the way a disk gets space again or a network comes back."""
+        rng = self.faults.rng
+        which = rng.choice(('fs', 'net', 'fs', 'all'))
+        if which in ('fs', 'all'):
+            self.faults.write_spec([])
+        if which in ('net', 'all') and self.faults.proxy:
+            self.lift(self.faults.proxy.clear)
+        if which == 'all':
+            self.lift(self.faults.restore_nofile, self.resident_pids())
+
+    def lift(self, clear, *args):
+        """Lift faults; a proxy that cannot end a faulted connection would let an old fault reach the recovery check, so that is a finding."""
+        try:
+            clear(*args)
+        except (fault_control.fault_proxy.ProxyStuck, fault_control.NofileNotRestored) as error:
+            raise Finding('driver', str(error))
+
+    def resident_pids(self):
+        return [self.resident.process.pid] if self.resident.alive() else []
+
+    def run_faults(self):
+        """The fault loop. Setup and every step run inside main()'s one cleanup path (Fuzzer.cleanup)."""
+        self.setup()
+        names = [name for name, weight in self.FAULT_ACTIONS for _ in range(weight)]
+        try:
+            for self.step_index in range(1, self.options.steps + 1):
+                action = self.rng.choice(names)
+                self.log('step', name=action)
+                try:
+                    self.act(action)
+                    time.sleep(self.rng.choice((0, 0, 0, 0, 0.02, 0.1, 0.5)))
+                    self.sweep()
+                    self.check_alive()
+                except Finding as error:
+                    if error.kind != 'crash' or not self.emfile_abort():
+                        raise
+                    self.recover_from_abort()
+                    continue
+                self.check_sanitizers()
+                if self.step_index % self.options.epoch == 0 and self.step_index < self.options.steps:
+                    self.guarded_epoch_check()
+            self.guarded_epoch_check(final=True)
+            self.shutdown_and_check()
+        except Finding:
+            self.keep_receiver_state()
+            raise
+
+    def guarded_epoch_check(self, final=False):
+        """The epoch check, with a resident that died on its own (an OOM kill, an open-files abort) judged by its restart like in a step."""
+        for attempt in range(3):
+            try:
+                if not self.resident.alive():
+                    self.check_alive()
+                return self.epoch_check(final)
+            except (Finding, OSError) as error:
+                crashed = isinstance(error, OSError) or error.kind == 'crash'
+                if not crashed or self.resident.alive() or not self.emfile_abort():
+                    raise
+                self.recover_from_abort()
+        raise Finding('epoch', 'the resident aborted during each of 3 epoch checks in a row; no epoch check completed')
+
+    def emfile_abort(self):
+        """Qt and GLib abort when a thread cannot get its wake-up pipe (GLib-ERROR, 'Too many open files'): that is what running out of file
+        descriptors does to any Qt program, not a defect to report. What matters is the restart."""
+        if self.resident.alive():
+            return False
+        log = self.resident.log_path()
+        text = log.read_bytes().decode('utf-8', 'surrogateescape') if log.exists() else ''
+        if self.options.memory_max and self.resident.returncode() == -signal.SIGKILL:
+            # The memory cgroup's OOM killer took it (--memory-max): the same as a SIGKILL, checked by the recovery that follows.
+            self.log('oom-kill', limit=self.options.memory_max)
+            self.resident.judged_logs.add(log.name)
+            return True
+        # Only an abort during a descriptor exhaustion the harness caused is expected, and only with nothing else wrong in its log.
+        start = self.resident.starts
+        if start not in self.resident.descriptor_windows:
+            return False
+        runtime_errors = 'runtime error:' in text
+        if runtime_errors and not self.resident.descriptor_noise_only(text, start):
+            return False
+        # UBSan, halting, reads files to check object types: with no descriptor left it reports valid objects as invalid and exits 1.
+        sanitizer_without_descriptors = self.resident.returncode() == 1 and runtime_errors
+        if 'Too many open files' not in text and not sanitizer_without_descriptors:
+            return False
+        self.log('emfile-abort', exit=self.resident.returncode(), first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
+        self.resident.judged_logs.add(log.name)
+        return True
+
+    def recover_from_abort(self):
+        """The resident is gone: do what a restart after a crash must do, and check it like a restart after a kill."""
+        self.lift(self.faults.clear_all, [])
+        self.resident.kill_tree()
+        self.check_files_after_kill()
+        self.resident.start()
+        self.credentials_check()
+        self.delete_operation = None
+        self.verify_recovery('abort')
+
+    def keep_receiver_state(self):
+        """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
+        try:
+            state = self.receiver.state()
+            (self.run / 'receiver-state.json').write_text(json.dumps({'events': state.get('events'), 'files': state.get('files'), 'uploads': state.get('uploads')}, default=str)[:20_000_000])
+        except (OSError, ValueError):
+            pass
+
+    def epoch_check(self, final=False):
+        """Lift every fault and require the whole state to be sound: nothing stuck, the files intact, History agreeing with the server, and a
+        new upload, a settings write and a History write all working again (a full disk recovers once space is back)."""
+        self.log('epoch-check', final=final)
+        self.lift(self.faults.clear_all, self.resident_pids())
+        self.receiver.rules([])
+        time.sleep(0.3)
+        self.wait_journal(120)  # a startup recovery that failed under a fault must finish once the fault is gone
+        # An editor session waits for its user for ever: close them (the ones this run opened and any other in the activity list); the uploads are what is checked.
+        recent = (self.resident.call('operation.recent', raw=True).get('result') or {}).get('operations', [])
+        editing = {o.get('id') for o in recent if o.get('action') == 'edit' and o.get('state') not in ('completed', 'failed', 'cancelled', 'interrupted', 'partial')}
+        for identifier in sorted(self.open_editors | editing):
+            self.call('editor.cancel', {'id': identifier}, timeout=60)
+        if not self.drain(120):
+            self.settle()
+        self.check_alive()
+        self.check_sanitizers()
+        self.check_files_after_kill(live=True)
+        self.check_no_helper_faulted()
+        self.verify_unknown_kept()
+        self.verify_rows()
+        self.probe_recovery()
+        self.check_sanitizers()
+        self.deep_check()
+        codes = {}
+        for row in self.rows():
+            if row.get('uploadStatus') in ('failed', 'unknown'):
+                key = '%s %s' % (row.get('uploadStatus'), (row.get('error') or {}).get('code') or '-')
+                codes[key] = codes.get(key, 0) + 1
+        self.log('epoch-ok', rss=self.resident.rss_kib(), error_codes=codes)  # the codes a user is shown, to be read for generic or misleading ones
+
+    def check_no_helper_faulted(self):
+        """The shim binds to the resident's executable and PID: a fault in any other process (an image, editor or upload helper) would be
+        blamed on the resident, so it is a harness defect."""
+        foreign = {pid: comm for pid, comm in self.faults.faulted_pids().items() if pid not in self.resident.pids_seen}
+        if foreign:
+            raise Finding('driver', 'the fault shim injected into processes that are not the resident: %s (resident PIDs %s)' % (foreign, sorted(self.resident.pids_seen)))
+
+    def verify_unknown_kept(self):
+        """An upload that was unknown and whose copy is on the server must still say so (#1572): never plain failed, cancelled or vanished.
+        "On the server" is what the receiver holds now: a copy that was uploaded and then deleted is no longer a reason to warn."""
+        stored = self.receiver.present()
+        for row in self.rows():
+            digest = row.get('sha256')
+            if 'unknown' in self.seen.get(row.get('id'), ()) and row.get('uploadStatus') in ('failed', 'cancelled', 'canceled') and stored.get(digest) \
+                    and not (row.get('receipt') or {}).get('directUrl'):
+                raise Finding('unknown-lost', 'History row %s was unknown and is now %s while the server holds its content %s: the warning that a copy may be on the server is gone\nrow: %s' % (
+                    row.get('id'), row.get('uploadStatus'), stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'error')}, default=str)))
+
+    def probe_recovery(self):
+        """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
+        before = self.receiver.upload_events()
+        # The run's own settings steps may have set a small limit (a_settings): back to the defaults, so only a fault can fail the probe.
+        self.call('settings.patch', {'patch': {'limits': {'pendingArtifactBytes': 'auto', 'maxFileBytes': 'auto'}}, 'expectedRevision': self.revision()})
+        path = self.new_upload_file('notes.txt')
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        reply = self.call('upload.files', {'paths': [str(path)], 'profileId': self.profile}, timeout=90)
+        if not reply.get('ok'):
+            raise Finding('not-recovered', 'upload.files fails after every fault was lifted: %s' % str(reply.get('error'))[:300])
+        operation = ((reply.get('result') or {}).get('operation') or {}).get('id')
+        if not self.drain(90):
+            raise Finding('not-recovered', 'the probe upload %s stays active 90 s after every fault was lifted' % operation)
+        rows = [row for row in self.rows() if row.get('operationId') == operation]
+        if rows and all((row.get('error') or {}).get('code') == 'credential_setup_required' for row in rows):
+            # Session-mode credentials live in memory only; whatever dropped them (a restart, a helper) is not the fault under test.
+            self.log('probe-credentials-lost')
+            self.credentials_check()
+            return self.probe_recovery()
+        if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
+            raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
+                operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
+        # "uploaded" is a claim: the receipt must name a file the receiver stored, with the probe's bytes.
+        for row in rows:
+            wrong = self.receiver.holds(row, digest, self.endpoint())
+            if wrong:
+                raise Finding('not-recovered', 'the probe upload %s is uploaded in History but %s: %s' % (operation, wrong, json.dumps(row, default=str)[:600]))
+        # A lock file a faulted unlink left behind is stale after 30 s (SettingsService), so config_busy may last that long and no longer.
+        end = time.monotonic() + 45
+        while True:
+            patched = self.call('settings.patch', {'patch': {'retention': {'recentActivityLimit': 100 + self.step_index % 50}}, 'expectedRevision': self.revision()})
+            if patched.get('ok') or (patched.get('error') or {}).get('code') != 'config_busy' or time.monotonic() > end:
+                break
+            time.sleep(2)
+        if not patched.get('ok'):
+            raise Finding('not-recovered', 'settings.patch fails after every fault was lifted: %s' % str(patched.get('error'))[:300])
 
     # --- the loop
 
@@ -1333,7 +1893,6 @@ class Fuzzer:
             self.deep_check()
             self.shutdown_and_check()
         finally:
-            self.receiver.stop()
             self.restore_permissions()
 
     def settle(self):
@@ -1361,6 +1920,40 @@ class Fuzzer:
             active = [(o.get('id'), o.get('state'), o.get('phase'), o.get('action')) for o in (reply.get('result') or {}).get('operations', []) if o.get('state') not in ('completed', 'failed', 'cancelled', 'interrupted', 'partial')]
             raise Finding('stuck', '%s operations are still active 60 s after every operation and editor was cancelled: %s' % (self.active(), active[:6]))
 
+    def cleanup(self):
+        """The one way out of every run, however it ends (a clean finish, a finding, any exception, SIGINT or SIGTERM): the resident and its
+        helpers, the receiver and the proxy stop. Safe to call twice; a second signal does not cut it short. Every step runs whatever the
+        one before it met: a harness finding (no pidfd for the resident, a tree that would not die) is kept, the resident's process group
+        is still killed and the receiver still stopped, and the first such finding is raised once everything is done."""
+        previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGTERM)}
+        met = []
+        try:
+            if self.resident.process is not None:
+                try:
+                    running = self.resident.alive() or bool(self.resident.session_members())
+                except Finding as error:  # no pidfd: liveness is unknown, so the tree is killed anyway (kill_tree kills the pinned group)
+                    met.append(error)
+                    running = True
+                if running:
+                    try:
+                        self.resident.kill_tree()
+                    except Finding as error:
+                        met.append(error)
+            for stop in ((self.receiver.stop if self.receiver else None), (self.faults.stop if self.faults else None), self.restore_permissions):
+                if stop is None:
+                    continue
+                try:
+                    stop()
+                except Exception as error:  # noqa: BLE001 - the next step runs whatever this one met
+                    met.append(Finding('driver', 'cleanup: %s failed: %s' % (getattr(stop, '__qualname__', stop), error)))
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+        for error in met:
+            print('cleanup: %s' % error, file=sys.stderr, flush=True)
+        if met:
+            raise met[0]
+
     def restore_permissions(self):
         for path in [self.run / 'archive'] + sorted((self.run / 'archive').glob('*')):
             try:
@@ -1370,13 +1963,10 @@ class Fuzzer:
 
     def run_crash(self):
         self.setup()
-        try:
-            for self.step_index in range(1, self.options.steps + 1):
-                self.crash_round()
-                self.sweep()
-            self.shutdown_and_check()
-        finally:
-            self.receiver.stop()
+        for self.step_index in range(1, self.options.steps + 1):
+            self.crash_round()
+            self.sweep()
+        self.shutdown_and_check()
 
     def wait_milestone(self, base_events, kind, extra):
         """Wait for the upload to reach a point a kill should land at; returns after at most 8 s."""
@@ -1467,8 +2057,10 @@ class Fuzzer:
         self.credentials_check()
         self.verify_recovery(scenario)
 
-    def check_files_after_kill(self):
-        """What a SIGKILL leaves on disk: the configuration still parses, the history database passes its own integrity check."""
+    def check_files_after_kill(self, live=False):
+        """What a SIGKILL leaves on disk: the configuration still parses, the history database passes its own integrity check.
+        live: the resident is running (the fault mode's epoch check). Its database is then read through SQLite's backup API, which takes
+        a consistent snapshot under SQLite's own locking; a stopped resident's files are copied as they are, journal and all."""
         path = self.config_path()
         if path.exists():
             try:
@@ -1479,7 +2071,9 @@ class Fuzzer:
             if stray.name not in ('config.json',) and not stray.name.endswith(('.lock',)):
                 self.log('stray-config-file', name=stray.name)
         database = self.resident.root / 'data' / 'putgd' / 'history.sqlite'
-        if database.exists():
+        if database.exists() and live:
+            self.check_live_database(database)
+        elif database.exists():
             import sqlite3
             # A killed WAL database needs write access to recover, so the check runs on a copy and never touches the resident's files.
             scratch = self.run / 'dbcheck'
@@ -1506,6 +2100,62 @@ class Fuzzer:
             if result != ['ok']:
                 raise Finding('history', 'history.sqlite integrity_check after a kill: %s' % result[:5])
 
+    LIVE_DB_DEADLINE = 60  # seconds for one consistent snapshot of the live database
+
+    def check_live_database(self, database):
+        """A consistent snapshot of the running resident's database through SQLite's backup API, then integrity_check on it. The backup
+        retries a busy or locked step by itself, without end: a monotonic deadline in its progress callback stops it, and a database that
+        gives no snapshot within the deadline is a finding (a resident that holds its write lock that long blocks every History call)."""
+        import sqlite3
+        scratch = self.run / 'dbcheck'
+        scratch.mkdir(exist_ok=True)
+        target = scratch / 'live-snapshot.sqlite'
+        deadline = time.monotonic() + self.LIVE_DB_DEADLINE
+
+        class Overdue(Exception):
+            pass
+
+        def progress(status, remaining, total):
+            if time.monotonic() > deadline:
+                raise Overdue()
+
+        last, result = 'the deadline passed', None
+        while time.monotonic() < deadline:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            try:
+                source = sqlite3.connect('file:%s?mode=ro' % database, uri=True, timeout=max(0.1, min(5, deadline - time.monotonic())))
+                try:
+                    copy = sqlite3.connect(str(target))
+                    try:
+                        source.backup(copy, pages=64, progress=progress, sleep=0.1)
+                        result = [row[0] for row in copy.execute('PRAGMA integrity_check')]
+                    finally:
+                        copy.close()
+                finally:
+                    source.close()
+                break
+            except Overdue:
+                last = 'the backup did not finish'
+                break
+            except sqlite3.OperationalError as error:
+                if 'locked' not in str(error) and 'busy' not in str(error):
+                    raise Finding('history', 'history.sqlite cannot be read while the resident runs: %s' % error)
+                last = str(error)
+                time.sleep(0.5)  # the resident holds a write lock: try again within the deadline
+            except sqlite3.DatabaseError as error:
+                raise Finding('history', 'history.sqlite is not readable: %s' % error)
+        if result is None:
+            raise Finding('history', 'no consistent snapshot of the live history.sqlite within %d s (%s)' % (self.LIVE_DB_DEADLINE, last))
+        try:
+            target.unlink()
+        except OSError:
+            pass
+        if result != ['ok']:
+            raise Finding('history', 'history.sqlite integrity_check (a backup of the live database): %s' % result[:5])
+
     TERMINAL = ('uploaded', 'failed', 'unknown', 'stored', 'cancelled', 'canceled', 'local_only', 'skipped', 'conflict')
 
     def rows(self):
@@ -1518,6 +2168,8 @@ class Fuzzer:
             for row in batch:
                 self.seen.setdefault(row.get('id'), set()).add(row.get('uploadStatus'))
                 self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
+                self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
+                self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
             found.extend(batch)
             if len(batch) < 200:
                 return found
@@ -1533,15 +2185,16 @@ class Fuzzer:
                 if time.monotonic() - started > 20:
                     self.log('slow-journal-recovery', seconds=round(time.monotonic() - started, 1))
                 return
-            if (reply.get('error') or {}).get('code') not in BUSY_CODES:
+            if (reply.get('error') or {}).get('code') not in BUSY_CODES + RETRYING_CODES:
                 raise Finding('recovery', 'operation.recent fails after a kill: %s' % str(reply)[:300])
             time.sleep(0.3)
         holders = []
+        lock = os.path.realpath(self.resident.root / 'data' / 'putgd' / 'resident.lock')  # this run's lock, not another run's on the host
         for entry in Path('/proc').iterdir():
             if entry.name.isdigit():
                 try:
                     for fd in (entry / 'fd').iterdir():
-                        if os.readlink(fd).endswith('resident.lock'):
+                        if os.readlink(fd) == lock:
                             holders.append((int(entry.name), (entry / 'comm').read_text().strip()))
                 except OSError:
                     pass
@@ -1561,24 +2214,68 @@ class Fuzzer:
         for operation in recent['result'].get('operations') or []:
             if operation.get('state') in ('accepted', 'acquiring', 'running', 'uploading', 'publishing'):
                 raise Finding('recovery', 'operation %s is %s/%s after the restart with nothing active' % (operation.get('id'), operation.get('state'), operation.get('phase')))
+        rows, stored, snapshot, by_status = self.verify_rows()
+        self.log('recovered', rows={k: len(v) for k, v in by_status.items()}, stored=len(stored))
+        if self.delete_operation:
+            self.finish_deletion(rows)
+        # Retry what the kill interrupted: every retried file must end up on the server once or be reported.
+        if self.rng.random() < 0.5 and self.operations_to_retry():
+            self.retry_interrupted({row.get('sha256'): row.get('uploadStatus') for row in rows}, {d: len(v) for d, v in stored.items()})
+        if self.options.destination == 's3' and self.rng.random() < 0.25:
+            self.check_multipart_cleanup()
+        self.check_sanitizers_after_kill()
+        self.deep_check()
+
+    def known_stuck(self, row):
+        """--known-journal-stuck: a row left 'uploading' after the journal refused a write (#1579) is counted once and no longer ends the run."""
+        if not self.options.known_journal_stuck or not self.faults:
+            return False
+        if self.faults.nofile_events or any('history.sqlite' in line for line in self.faults.tail(100000)):
+            if row.get('id') not in self.stuck_rows:
+                self.stuck_rows.add(row.get('id'))
+                self.log('known-stuck-row', row=row.get('id'), status=row.get('uploadStatus'), issue=1579)
+            return True
+        return False
+
+    stuck_rows = set()
+
+    def allowed_copies(self, digest):
+        """How many copies of this content the server may hold, counted from the upload attempts the run saw: one per History row that ever
+        had it (the same file twice in a call, or the same bytes under two names, are two rows), one more per accepted operation.retry of an
+        operation holding it, and one more per row that was ever unknown (its first attempt may have landed; the custom uploader cannot look
+        a file up before sending it again)."""
+        rows = self.digest_rows.get(digest, set())
+        retries = sum(self.resident.retries.get(operation, 0) for operation in self.digest_operations.get(digest, ()))
+        unknown = sum(1 for row in rows if 'unknown' in self.seen.get(row, ()))
+        return len(rows) + retries + unknown
+
+    def verify_rows(self):
+        """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
+        server that History does not know, no unexplained second copy, deletions agreeing. Returns (rows, stored, snapshot, by_status)."""
         rows = self.rows()
         stored = self.receiver.stored()
+        present = self.receiver.present()
         snapshot = self.receiver.snapshot()
         for digest, files in stored.items():
-            if len(files) > 1 and digest not in self.expected_duplicates:
-                raise Finding('duplicate-upload', 'the receiver stored the same content %d times (sha %s): %s' % (len(files), digest[:12], files))
+            allowed = max(1, self.allowed_copies(digest))  # content no row knows is an orphan, reported below
+            if len(files) > allowed:
+                raise Finding('duplicate-upload', 'the receiver stored the same content %d times (sha %s), more than the %d upload attempts the run made explain: %s' % (
+                    len(files), digest[:12], allowed, files))
         by_status = {}
         for row in rows:
             status = row.get('uploadStatus')
             by_status.setdefault(status, []).append(row)
             if status not in self.TERMINAL:
+                if self.known_stuck(row):
+                    continue
                 raise Finding('recovery', 'History row %s is %r (phase %r) after the restart' % (row.get('id'), status, row.get('phase')))
             digest = row.get('sha256')
             # A deletion that was tried (its outcome may be unknown after a lost reply) explains a file that is gone.
             removed = row.get('remoteStatus') not in ('not_requested', None) and self.receiver.remote(row, snapshot) == 'gone'
-            if status == 'uploaded' and digest and digest not in self.expected_duplicates and len(stored.get(digest, [])) != 1:
-                if not self.row_removed_by_delete(row) and not removed:
-                    raise Finding('recovery', 'History row %s is uploaded but the receiver holds it %d times' % (row.get('id'), len(stored.get(digest, []))))
+            # Presence is checked on its own, against what the server holds now: however many copies attempts explain, an uploaded row needs
+            # one that is still there.
+            if status == 'uploaded' and digest and not present.get(digest) and not self.row_removed_by_delete(row) and not removed:
+                raise Finding('recovery', 'History row %s is uploaded but the receiver holds no copy of it' % row.get('id'))
             # A retry that fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss.
             if status in ('stored', 'failed') and digest and stored.get(digest) and 'unknown' not in self.seen.get(row.get('id'), ()) and not row.get('receipt', {}).get('directUrl'):
                 raise Finding('lost-upload', 'History row %s is %s but the receiver stored its content (%s): the upload is on the server and not in History as uploaded or unknown\nrow: %s\nevents: %s' % (
@@ -1602,16 +2299,7 @@ class Fuzzer:
                 len(orphans), [d[:12] for d in orphans[:3]],
                 json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'name', 'sha256', 'bytes')} for row in rows]),
                 [self.receiver.describe(d) for d in orphans]))
-        self.log('recovered', rows={k: len(v) for k, v in by_status.items()}, stored=len(stored))
-        if self.delete_operation:
-            self.finish_deletion(rows)
-        # Retry what the kill interrupted: every retried file must end up on the server once or be reported.
-        if self.rng.random() < 0.5 and self.operations_to_retry():
-            self.retry_interrupted({row.get('sha256'): row.get('uploadStatus') for row in rows}, {d: len(v) for d, v in stored.items()})
-        if self.options.destination == 's3' and self.rng.random() < 0.25:
-            self.check_multipart_cleanup()
-        self.check_sanitizers_after_kill()
-        self.deep_check()
+        return rows, stored, snapshot, by_status
 
     def journal_ids(self):
         found = set()
@@ -1647,6 +2335,8 @@ class Fuzzer:
     deleting = set()
     seen = {}
     seen_digest = {}
+    digest_operations = {}
+    digest_rows = {}
 
     def finish_deletion(self, rows):
         """The kill came during a deletion: inspect it, retry it, and require every chosen row removed on both sides."""
@@ -1701,12 +2391,8 @@ class Fuzzer:
                     digest[:12], len(files), before_status.get(digest), files,
                     json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'publicationId')} for row in self.rows() if row.get('sha256') == digest]),
                     self.receiver.describe(digest)))
-            if len(files) > 1:
-                self.expected_duplicates.add(digest)
             if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) == 0 and before_status.get(digest) in ('uploaded',):
                 raise Finding('lost-upload', 'History had %s as uploaded with nothing on the server; a retry then stored it' % digest[:12])
-
-    expected_duplicates = set()
 
     def check_sanitizers_after_kill(self):
         # A SIGKILLed process leaves no report; anything that is there came from a process that ran its own checks.
@@ -1725,6 +2411,9 @@ def write_finding(fuzzer, error):
               'rss_samples': fuzzer.rss[-20:]}
     if error.kind in ('hang', 'transport') and fuzzer.resident.alive():
         (run / 'stacks.txt').write_text(fuzzer.resident.stacks())
+    if getattr(fuzzer, 'faults', None):
+        record['fault_rules'] = fuzzer.faults.rules
+        record['fault_log_tail'] = fuzzer.faults.tail(60)
     (run / 'finding.json').write_text(json.dumps(record, indent=1))
     print('FINDING %s at step %d (seed %d): %s' % (error.kind, fuzzer.step_index, fuzzer.options.seed, str(error.detail)[:600]), flush=True)
     for path in fuzzer.resident.sanitizer_output()[:3]:
@@ -1732,9 +2421,55 @@ def write_finding(fuzzer, error):
         print(path.read_text(errors='replace')[:6000])
 
 
+class Interrupted(BaseException):
+    """SIGINT or SIGTERM: not a finding; main() cleans up and exits 128 + the signal."""
+
+    def __init__(self, signum):
+        super().__init__(signum)
+        self.signum = signum
+
+
+DEFERRAL = {'depth': 0, 'pending': None}
+
+
+def interrupted(signum, frame):
+    if DEFERRAL['depth']:
+        DEFERRAL['pending'] = signum  # raised when the section that must not be cut in half ends
+        return
+    raise Interrupted(signum)
+
+
+class signals_deferred:
+    """SIGINT and SIGTERM inside this block are raised when it ends, so a step that must happen whole (start a process and publish its
+    pidfd) is never cut in half."""
+
+    def __enter__(self):
+        DEFERRAL['depth'] += 1
+
+    def __exit__(self, *exc):
+        DEFERRAL['depth'] -= 1
+        if not DEFERRAL['depth'] and DEFERRAL['pending'] is not None:
+            signum, DEFERRAL['pending'] = DEFERRAL['pending'], None
+            raise Interrupted(signum)
+        return False
+
+
+def cleanup_finding(fuzzer, error, status):
+    """A finding met while cleaning up: the run's finding when it had none, else noted in the one it has. Returns the exit status."""
+    finding = fuzzer.run / 'finding.json'
+    if status is None or not finding.exists():
+        write_finding(fuzzer, error)
+        return 1 if status is None else status
+    record = json.loads(finding.read_text())
+    record['cleanup_finding'] = '%s: %s' % (error.kind, str(error.detail)[:2000])
+    finding.write_text(json.dumps(record, indent=1))
+    print('FINDING %s during cleanup: %s' % (error.kind, str(error.detail)[:600]), flush=True)
+    return status
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('mode', choices=('run', 'crash'))
+    parser.add_argument('mode', choices=('run', 'crash', 'faults'))
     parser.add_argument('--build', required=True, help='the sanitizer build folder holding putgd, putgd-ui and the helpers')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--steps', type=int, default=300)
@@ -1743,7 +2478,20 @@ def main():
     parser.add_argument('--fixture-server', help='tests/fixtures/http_uploader_server.py when not run from the repository')
     parser.add_argument('--destination', choices=('http', 's3'), default='http', help='the loopback destination: the custom uploader or put.gd\'s S3 provider')
     parser.add_argument('--verbose', action='store_true')
+    faults = parser.add_argument_group('faults mode')
+    faults.add_argument('--fault-classes', default='fs,net', help='comma list of fs (the LD_PRELOAD shim), net (the proxy), res (the open-file limit)')
+    faults.add_argument('--clean-restarts', action='store_true', help='lift file-system faults before a restart, so a start under a fault (a known class of bugs) does not end every run')
+    faults.add_argument('--net-kinds', help='only these proxy faults (reset_before, reset_request, reset_after_request, cut_response, stall, stall_response, dup_response, slow, latency)')
+    faults.add_argument('--known-journal-stuck', action='store_true', help='count, and do not stop on, rows left uploading after a journal write fault (#1579)')
+    faults.add_argument('--epoch', type=int, default=40, help='steps between lifting every fault and checking the whole state')
+    faults.add_argument('--nofile', type=int, help='start the resident with this open-file limit')
+    faults.add_argument('--memory-max', help='start the resident in a systemd-run --user scope with this MemoryMax (e.g. 600M)')
     options = parser.parse_args()
+    # SIGINT and SIGTERM end the run through Fuzzer.cleanup: the resident and the receiver run in sessions of their own, so a Ctrl+C never
+    # reaches them and only the harness can stop them. A handler (unlike an inherited SIG_IGN, which a job started with & from a shell
+    # without job control has) is reset at exec, so the resident still gets the default action of the signals a graceful-stop step sends.
+    signal.signal(signal.SIGINT, interrupted)
+    signal.signal(signal.SIGTERM, interrupted)
     if not options.run_dir:
         options.run_dir = str(Path.home() / 'work' / 'apptest-runs' / ('%s-%d' % (options.mode, options.seed)))
     run = Path(options.run_dir)
@@ -1751,14 +2499,24 @@ def main():
         raise SystemExit('%s exists: pick a new --run-dir (a failed run is evidence)' % run)
     run.mkdir(parents=True)
     print('seed %d mode %s steps %d run %s' % (options.seed, options.mode, options.steps, run), flush=True)
-    fuzzer = Fuzzer(options)
+    fuzzer, status = None, None
     try:
-        fuzzer.run_sequence() if options.mode == 'run' else fuzzer.run_crash()
+        fuzzer = Fuzzer(options)
+        {'run': fuzzer.run_sequence, 'crash': fuzzer.run_crash, 'faults': fuzzer.run_faults}[options.mode]()
     except Finding as error:
         write_finding(fuzzer, error)
-        if fuzzer.resident.alive():
-            fuzzer.resident.kill_tree()
-        return 1
+        status = 1
+    except Interrupted as stop:
+        print('interrupted by %s at step %d: stopping the resident and the receiver' % (signal.Signals(stop.signum).name, fuzzer.step_index if fuzzer else 0), flush=True)
+        status = 128 + stop.signum
+    finally:
+        if fuzzer:
+            try:
+                fuzzer.cleanup()
+            except Finding as error:  # cleanup did everything first, then raised what it met: a harness finding of its own
+                status = cleanup_finding(fuzzer, error, status)
+    if status is not None:
+        return status
     if os.environ.get('ACTION_FUZZ_STATS'):
         with open(os.environ['ACTION_FUZZ_STATS'], 'a') as out:
             out.write(json.dumps({'mode': options.mode, 'seed': options.seed, 'steps': options.steps, 'calls': fuzzer.stats,

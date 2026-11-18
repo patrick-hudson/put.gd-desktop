@@ -18,9 +18,39 @@ the GNOME Shell extension. They live in `tests/fuzz/` and are built only with cl
 | `fuzz_journal` | `Operation`, `OperationItem`, `StorageReceipt` | What a damaged journal row reads as is written out and read again unchanged. |
 | `fuzz_gnome` | `GnomeProtocol::decodeTransfer` | Image bytes always start with a PNG header, so the decoder never starts the image helper process. |
 | `fuzz_hyprland` | `HyprlandIpc` | `luaString` always yields one Lua string literal; replies and event lines of any shape. |
+| `fuzz_httpimport` | `src/storage/http`: `importSxcu`, `validateSettings`, `namedCredentials`, the placeholder engine, `scrubStoredValues`, and `importUploaderFile` end to end against a real settings file | A refused `.sxcu` hands nothing on. What an import returns passes `validateSettings` (once plain HTTP is allowed) and `namedCredentials`. A credential-like stored value (20 to 200 letters, digits, `-` and `_`, with a letter and a digit), a key the import took out of an address and the value of a row that is not sent included, does not appear whole, at word boundaries, anywhere in the settings, notes or name. Text written with `escapeTemplate` renders back unchanged. A stored credential does not survive `scrubStoredValues`. An import answers once, and the profile it names is in the configuration. |
 
-Out of scope: the custom uploader parsers (`.sxcu`, templates, responses), which an
-earlier round fuzzed for 45 minutes without a finding.
+What `fuzz_httpimport` does not check:
+
+- A stored value that is short or has other characters (a password with spaces, a
+  six-letter key), or one longer than 200 characters, is not looked for in the settings.
+  A value is found only when it appears whole, at word boundaries: part of it, or the
+  whole value glued to other letters or digits, is not looked for.
+- Row values are taken from the `Headers`, `Parameters` and `Arguments` objects the import
+  reads, left-out rows included. A query value in the request URL that a `Parameters` row
+  replaces, and a `Data` body that is not sent, are not looked for separately; the unit
+  tests cover them.
+- "Answers once" means one answer by the time the import has answered and one more pass
+  of the event loop has run, not that no answer can ever follow.
+- `importUploaderFile` runs with session credentials only, in a new scratch directory
+  for each input, and reads only files in that directory. The keychain path is not
+  fuzzed; a run that reaches for the keychain stops.
+
+#1570 (a key the import took out of an address kept in clear text in the thumbnail URL
+or error message) was found by this target and is fixed. Its file and the shapes found in
+review (a key in a host or a placeholder, a replaced query value, a row name holding its
+value) are in the corpus.
+
+## Results so far
+
+| Target | Run | Edges at start, at end | Findings |
+| --- | --- | --- | --- |
+| `fuzz_journal` | 2 h 04 min, 7.6 million inputs, 3 workers | 1625 to 1638, flat for more than 90 minutes | #1564 (first round, fixed) |
+| `fuzz_settings` | 2 h 04 min, 122 million inputs, 3 workers | 2099 to 2113, flat for more than 90 minutes | none |
+| `fuzz_httpimport` | about 5.5 worker-hours, 9.6 million inputs | 7870 to 9420, still rising slowly | #1570 |
+
+More time on `fuzz_journal` and `fuzz_settings` is not worth it: their edges stop rising. Spend it
+on `fuzz_httpimport` and on a new target before re-running these two.
 
 ## Build and run
 
@@ -42,8 +72,8 @@ directory, so give each target its own directory.
 ## Corpora and regression tests
 
 `tests/fuzz/corpus/<target>/` holds the seed and regression inputs and
-`tests/fuzz/dict/<target>.dict` the dictionary. `ctest -R fuzz_` replays each corpus once in
-about five seconds (`-runs=0`), under the `clang-asan` preset's sanitizers and with a 5 s
+`tests/fuzz/dict/<target>.dict` the dictionary. From the repository root,
+`ctest --preset clang-asan -R '^fuzz_'` replays each corpus once in about five seconds (`-runs=0`), under the `clang-asan` preset's sanitizers and with a 5 s
 per-input limit, so an input that crashed or hung once keeps failing the build if it
 returns.
 

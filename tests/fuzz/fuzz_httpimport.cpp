@@ -73,16 +73,23 @@ bool credentialLike(const QString& value) {
     return letter && digit;
 }
 
-QStringList credentialValues(const QByteArray& json) {
+// Every credential-like row value in the file, or (`asRead`) those of the row lists the
+// import reads: of two spellings of one list name ("Headers", "headers") the last.
+QStringList credentialValues(const QByteArray& json, bool asRead = false) {
     QStringList out;
     const auto object = QJsonDocument::fromJson(json).object();
+    QHash<QString, QJsonObject> read;
     for (auto it = object.begin(); it != object.end(); ++it) {
         const auto key = it.key().toLower();
         if (key != "headers" && key != "parameters" && key != "arguments") continue;
+        if (asRead) { read.insert(key, it.value().toObject()); continue; }
         const auto rows = it.value().toObject();
         for (auto row = rows.begin(); row != rows.end(); ++row)
             if (row.value().isString() && credentialLike(row.value().toString())) out.append(row.value().toString());
     }
+    for (const auto& rows : std::as_const(read))
+        for (auto row = rows.begin(); row != rows.end(); ++row)
+            if (row.value().isString() && credentialLike(row.value().toString())) out.append(row.value().toString());
     return out;
 }
 
@@ -100,28 +107,20 @@ void sxcu(const QByteArray& json) {
     // once stored, stands nowhere in the settings, the notes or the destination's name,
     // which are what is kept in the configuration and shown. (As a whole word: a value
     // that merely begins like another is not that value.)
-    // An address is read from its first "/" on: what stands between the scheme and that
-    // (user information, a port) is no part of a path or a query, and the reader leaves it.
+    // Addresses are read whole, user information and host included.
     // Each place is looked at by itself, so that a failure can say where without saying what.
     QList<QPair<QString, QByteArray>> places; // where → text
     for (auto it = imported.settings.begin(); it != imported.settings.end(); ++it) {
-        auto text = it.value().isString() ? it.value().toString().toUtf8() : QJsonDocument(QJsonArray{it.value()}).toJson(QJsonDocument::Compact);
-        if (it.key().endsWith("Url") && it.value().isString()) {
-            const auto address = it.value().toString();
-            const auto scheme = address.indexOf("://");
-            const auto path = scheme < 0 ? -1 : address.indexOf('/', scheme + 3);
-            text = (scheme < 0 ? address : path < 0 ? QString() : address.mid(path)).toUtf8();
-        }
+        const auto text = it.value().isString() ? it.value().toString().toUtf8() : QJsonDocument(QJsonArray{it.value()}).toJson(QJsonDocument::Compact);
         places.append({"settings." + it.key(), text});
     }
     places.append({"notes", imported.notes.join('\n').toUtf8()});
     places.append({"name", imported.name.toUtf8()});
     // Only the place and the property are printed, never a value or the text around it.
-    const auto leaked = [&](const QString& value, const QStringList& skipped) {
+    const auto leaked = [&](const QString& value) {
         const auto needle = value.toUtf8();
         const auto word = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_'; };
         for (const auto& [where, shown] : std::as_const(places)) {
-            if (skipped.contains(where)) continue;
             for (qsizetype at = shown.indexOf(needle); at >= 0; at = shown.indexOf(needle, at + 1)) {
                 const auto end = at + needle.size();
                 if ((at > 0 && word(shown[at - 1])) || (end < shown.size() && word(shown[end]))) continue;
@@ -133,12 +132,11 @@ void sxcu(const QByteArray& json) {
     const auto keys = secretKeys(imported.settings);
     for (auto it = imported.secrets.cbegin(); it != imported.secrets.cend(); ++it) {
         FUZZ_REQUIRE(keys.contains(it.key()));
-        if (!credentialLike(it.value())) continue;
-        // A key the import takes out of an address ("secrets/...") may still stand in the
-        // thumbnail URL and the error message until #1570 is fixed; everywhere else it may not.
-        if (it.key().startsWith("secrets/")) leaked(it.value(), {"settings.thumbnailUrl", "settings.errorMessage"});
-        else leaked(it.value(), {});
+        // A key the import took out of an address ("secrets/...") included (#1570).
+        if (credentialLike(it.value())) leaked(it.value());
     }
+    // So is the value of a row that is not sent, and is therefore not stored.
+    for (const auto& value : credentialValues(json, true)) leaked(value);
     // What the import hands to importUploaderFile is what the destination's own rules take,
     // once the caller has allowed plain HTTP, which a file may need and may not decide for
     // itself (a refusal there is a reply to the person, so this is a property of the reader).
