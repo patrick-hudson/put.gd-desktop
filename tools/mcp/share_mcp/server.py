@@ -152,13 +152,14 @@ def safe_redact_term(value: Any) -> bool:
 
 
 def safe_redact_pattern(value: Any) -> bool:
-    # redactPatternError as far as it can be checked without PCRE2: no line break in the raw value; then,
-    # trimmed, not empty and at most 500 code points. Whether it compiles and whether it matches empty text
+    # redactPatternError as far as it can be checked without PCRE2: no line break in the raw value, not blank
+    # once trimmed, and at most 500 code points as written. Whether it compiles and whether it matches empty text
     # are the editor's to say (its edit_command_invalid is authoritative); a pattern runs in a child
     # process the editor stops at a deadline, so its shape is not restricted here.
     if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
         return False
-    return 0 < len(value.strip(QT_SPACE)) <= REDACT_PATTERN_LENGTH
+    # Not trimmed when it runs, so its length is counted as written; only a blank one is refused after trimming.
+    return bool(value.strip(QT_SPACE)) and len(value) <= REDACT_PATTERN_LENGTH
 
 
 def safe_redact_list(values: Any, most: int, entry_ok: Any) -> bool:
@@ -350,7 +351,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-7 of email, phone, ip, card, key, name, list, optional terms: up to 200 words or phrases of up to 100 characters each, on one line, with a letter or digit; optional patterns: up to 50 regular expressions of up to 500 characters each, on one line} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step. name is the account's username and real name; list is the saved list from Settings plus any terms and patterns given here, which are for this call only and need list in categories (a pattern that does not compile fails the command naming its index). It must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category (and skippedPatterns when a pattern took too long), and gives suggestions only: recognition can miss text. Marks it adds report suggested: <category> in editor state; update keeps that, add cannot set it."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-7 of email, phone, ip, card, key, name, list, optional terms: up to 200 words or phrases of up to 100 characters each, on one line, with a letter or digit; optional patterns: up to 50 regular expressions of up to 500 characters each, on one line} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step. name is the account's username and real name; list is the saved list from Settings plus any terms and patterns given here, which are for this call only and need list in categories (a pattern that does not compile fails the command naming its index). It must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category (skippedPatterns: the indexes of patterns that did not finish and were skipped; nameUnchecked: true when the account lookup for name did not answer in time, so name was not checked), and gives suggestions only: recognition can miss text. Marks it adds report suggested: <category> in editor state; update keeps that, add cannot set it."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})
