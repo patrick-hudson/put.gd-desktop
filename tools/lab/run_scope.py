@@ -43,7 +43,8 @@ class Scope:
         return ['systemd-run', '--user', '--scope', '--quiet', '--collect', '--unit=%s' % self.unit[:-len('.scope')], '--'] + list(argv)
 
     def launch(self, argv, wait=10.0, **popen):
-        """Start argv in this scope and check the scope came up. Raises ScopeError if systemd-run failed before the scope existed."""
+        """Start argv in this scope and check the scope came up. A job that already finished with status 0 started and ended (a scope
+        that is gone again is not an error). Raises ScopeError if the launcher failed before the scope existed."""
         process = subprocess.Popen(self.command(argv), **popen)
         end = time.monotonic() + wait
         while time.monotonic() < end:
@@ -52,7 +53,7 @@ class Scope:
             if process.poll() is not None:
                 break
             time.sleep(0.05)
-        if process.poll() is None and self.active():
+        if (process.poll() is None and self.active()) or process.poll() == 0:
             return process
         raise ScopeError('%s did not start (systemd-run exit %s)' % (self.unit, process.poll()))
 

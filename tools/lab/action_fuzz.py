@@ -787,20 +787,22 @@ class Resident:
 
     def tsan_exit_excused(self):
         """Exit 66 from a ThreadSanitizer resident means only that TSan reported something. It is accepted when the run has TSan report
-        files and every report in them is on tools/lab/tsan_summary.py's known list; anything else fails as before."""
+        files, they hold at least one recognised report, every report in them is on tools/lab/tsan_summary.py's known list, and no file
+        in san/ holds a fatal sanitizer line. Any other non-zero exit, and exit 66 without a recognised report, fails as before."""
         if self.returncode() != self.TSAN_REPORTED or self.options is None or not self.options.tsan_prefix:
             return False
         files = [p for p in self.san.glob('tsan.*') if p.is_file()]
         if not files or any(self.fatal_sanitizer_error(p) for p in self.san.glob('*') if p.is_file()):
             return False  # a fatal sanitizer error (an allocator diagnostic exits 66 too) is never excused
-        return all(self.known_qt_races_only(p) for p in files)
+        return all(self.known_qt_races_only(p) for p in files)  # each needs a recognised report, all of them known
 
-    FATAL = re.compile(r'ERROR: \w*Sanitizer')
+    # A sanitizer that stopped rather than reported: ERROR:/FATAL: lines, a failed internal CHECK, a deadly signal, a fatal-error banner.
+    FATAL = re.compile(r'(ERROR|FATAL): \w*Sanitizer|\w*Sanitizer: CHECK failed|\w*Sanitizer:DEADLYSIGNAL|Sanitizer has encountered a fatal error')
 
     @classmethod
     def fatal_sanitizer_error(cls, path):
-        """True when a report file holds a fatal sanitizer line (ERROR: ThreadSanitizer, ERROR: AddressSanitizer and the like), which
-        tsan_summary.py's report parser does not read: it reads only WARNING blocks."""
+        """True when a report file holds a fatal sanitizer line (ERROR: or FATAL: ThreadSanitizer, ThreadSanitizer: CHECK failed and the
+        like), which tsan_summary.py's report parser does not read: it reads only WARNING blocks."""
         try:
             return bool(cls.FATAL.search(path.read_text(errors='replace')))
         except OSError:

@@ -126,8 +126,39 @@ class TsanExit(unittest.TestCase):
         fatal = '==4242==ERROR: ThreadSanitizer: requested allocation size 0x7fffffffffff exceeds maximum supported size of 0x10000000000\n'
         self.assertFalse(self.excused(known + fatal))
 
+    def test_review_s3_fatal_check_and_signal_lines_are_never_excused(self):
+        first, second = HANDOFF
+        known = report(frames(first, THREAD), frames(second, CALLER + (('main', 'main'),)))
+        for line in ('FATAL: ThreadSanitizer: unexpected memory mapping 0x7b0000000000-0x7c0000000000\n',
+                     'ThreadSanitizer: CHECK failed: tsan_rtl.cpp:253 "((0)) != (0)" (0x0, 0x0) (tid=4242)\n',
+                     'ThreadSanitizer:DEADLYSIGNAL\n'):
+            self.assertFalse(self.excused(known + line), line)
+
+    def test_exit_66_without_a_recognised_report_is_a_failure(self):
+        self.assertFalse(self.excused(''))
+        self.assertFalse(self.excused('ThreadSanitizer: reported 1 warnings\n'))
+
 
 class Scopes(unittest.TestCase):
+    def plain(self):
+        """A scope that launches without systemd and is never seen active: what a job that finished before the first check looks like."""
+        import run_scope
+        scope = run_scope.Scope('job')
+        scope.command = lambda argv: list(argv)
+        scope.active = lambda: False
+        return run_scope, scope
+
+    def test_review_s18_a_job_that_already_finished_with_status_0_started(self):
+        run_scope, scope = self.plain()
+        process = scope.launch([sys.executable, '-c', 'pass'])
+        process.wait()
+        self.assertEqual(process.returncode, 0)
+
+    def test_a_launcher_that_failed_before_the_scope_existed_is_an_error(self):
+        run_scope, scope = self.plain()
+        with self.assertRaises(run_scope.ScopeError):
+            scope.launch([sys.executable, '-c', 'raise SystemExit(1)'])
+
     def test_review_s15_every_worker_gets_its_own_unit_named_after_this_loop(self):
         import os
         import run_scope
