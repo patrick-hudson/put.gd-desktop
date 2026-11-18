@@ -20,10 +20,10 @@ It is a lab tool, not acceptance evidence for any desktop.
 | `desktop.py` | What differs per desktop: the fence, the session processes, pointer acceleration, monitor changes, the clipboard, the portal's file chooser class and how to close a window put.gd did not open. `--desktop kde\|gnome\|cinnamon`, default from `XDG_CURRENT_DESKTOP`. Nothing else in the package names a compositor. |
 | `uinput.py` | A virtual keyboard and a relative mouse through `/dev/uinput` (the guest needs it writable). The mouse is flattened so one unit is one pixel: KWin's flat acceleration profile, or `gsettings` `accel-profile` on GNOME and Cinnamon. |
 | `fence.py` | KDE: a persistent KWin script that reports every window, popup, layer surface, output and the cursor 25 to 100 times a second. KWin's JS has no timer, so the script calls back over D-Bus and the receiver answers after 35 ms. |
-| `fence_gnome.py`, `witness.js`, `shell-extension/` | GNOME: put.gd's region selector, recording frame and countdown are St actors in the Shell, not windows, so the fence reads Mutter's side. `shell-extension/guifuzz@put.gd.test` exports `org.putgd.GuiFuzz.Eval` on the Shell's connection; the fence sends `witness.js` through it once and then polls it about 30 times a second for the Meta windows (stacking order), the Shell's chrome (panel, dock, message banner, overview, modal grab count), put.gd's actors, the monitors and the pointer. Changing `witness.js` needs no new login. |
-| `fence_x11.py` | Cinnamon: `_NET_CLIENT_LIST_STACKING`, `_NET_FRAME_EXTENTS`, the override-redirect windows that Qt's menus, tooltips and region selector are, RandR monitors and `QueryPointer`. Cinnamon's panel and notification bubbles are Clutter actors and invisible to X. |
-| `world.py` | put.gd's processes and windows, and the fence: the topmost window under a point must be put.gd's own (or its portal file chooser), unless the region selector covers the outputs. |
-| `actor.py` | Every input primitive, fenced and logged. A pointer jump that the compositor clamps never clicks. Keys come from an allow-list: no Meta, no Alt+Tab, no Alt+F4, no Ctrl+Alt chords (so no VT switch), no function keys but put.gd's own hotkeys, no Ctrl+Q. |
+| `fence_gnome.py`, `shell-extension/` | GNOME: put.gd's region selector, recording frame and countdown are St actors in the Shell, not windows, so the fence reads Mutter's side. `shell-extension/guifuzz@put.gd.test` exports `org.putgd.GuiFuzz` on the Shell's connection with three fixed methods and evaluates nothing it is sent: `Snapshot` (the Meta windows in stacking order, the Shell's chrome: panel, dock, message banner, overview and the modal grab holders, put.gd's actors, the monitors and the pointer; the fence polls it about 30 times a second), `SetClipboard` and `Close` (a window by id). It exports only while the marker file `$XDG_RUNTIME_DIR/putgd-guifuzz-lab` exists: the run creates it when it starts and, when it ends or is interrupted, removes it and disables the extension. |
+| `fence_x11.py`, `snapshot.py` | Cinnamon: `_NET_CLIENT_LIST_STACKING`, `_NET_FRAME_EXTENTS`, the override-redirect windows that Qt's menus, tooltips and region selector are, the X input focus, RandR monitors and `QueryPointer`. Cinnamon's panel and notification bubbles are Clutter actors and invisible to X, so the fence stands in for them: whatever part of a monitor lies outside `_NET_WORKAREA`, and a 420x200 corner at the top right and the bottom right of every monitor, are denied as if a foreign window lay there. |
+| `world.py` | put.gd's processes (every executable it ships) and windows, and the fence: the topmost window under a point must be put.gd's own, so a Shell overview, panel or notification above the selector denies the point. A portal file chooser counts only when it is transient for a put.gd window or first appeared while put.gd's own log said it had asked the portal for a chooser; a Nautilus window of the user's is not put.gd's. On KDE the region selector still opens every output, and the portal class is still accepted. |
+| `actor.py` | Every input primitive, fenced and logged. A pointer jump that the compositor clamps never clicks. Keys come from an allow-list: no Meta, no Alt+Tab, no Alt+F4, no Ctrl+Alt chords (so no VT switch), no function keys but put.gd's own hotkeys, no Ctrl+Q; plain keys go only to a put.gd window that has the focus. On GNOME and Cinnamon the selector counts as focus only when the fence has positive evidence (it holds the Shell's modal grab, or the X input focus is inside it), and when the backend cannot tell the key is denied. `--replay` is the exception: it re-issues the logged input without the fence and the allow-list, so run it only in a guest. |
 | `walk.py` | The walk: hotkeys, the tray menu through its dbusmenu, selector drags, clicks, drags, wheel, key chords, held and repeated keys, text, window resizes and moves, monitor hotplug and mode or scale changes, clipboard churn, rapid repeats and `putgd-cli` session methods. Odd seeds run in chaos mode (monitor churn and rapid repeats weighted up). |
 | `watch.py` | The watchdog and the findings. |
 | `ring.py` | On the QEMU host: a rolling QMP screen record, and `save` to cut the minute around a finding. |
@@ -40,15 +40,28 @@ cut the screen record. A fatal finding (resident, the shell or session gone, VT 
 GNOME adds three: a gnome-shell journal line that names put.gd or its extension and reports a script error
 (`shell_js_error`), `Main.modalCount` above zero for 8 s with no put.gd overlay up (`shell_modal_stuck`), and a
 Shell crash, which ends the session and turns user extensions off; `session_died` carries the put.gd lines of the
-journal and the core dump, so a crash that put.gd caused can be told from Mutter's own. `memory.jsonl` also samples
+journal and, when the Shell left one, the core dump of the Shell's own PID, so a crash that put.gd caused can be told from Mutter's own. `memory.jsonl` also samples
 the shell's size, to show a leak in put.gd's extension.
 
-A core dump of a desktop process (`nemo-desktop`, `plasmashell`) is recorded as `desktop_core_dump_<name>`, not as a
-put.gd finding. When the focus sits on an app the desktop started for one of put.gd's Open actions (a file with no
-handler opens the app store, a link a browser), the watchdog closes it as its title bar would and counts it in
-`foreign_windows_closed`; the walk cannot click it.
+On GNOME and Cinnamon a core dump of a process that is not one of put.gd's shipped executables (`putgd`, `putgd-ui`,
+`putgd-record`, `putgd-region`, `putgd-capture`, `putgd-ocr`, `putgd-cli`, `putgd-launcher`, `putgd-clipboard-keeper`
+and the three workers) is recorded as `desktop_core_dump_<name>`, not as a put.gd finding; each dump is read by its
+own PID. On Plasma every dump is a `core_dump` finding, as before.
 
-Every input is logged to `actions.jsonl`, so `--replay actions.jsonl` re-issues it. Process sizes go to
+On GNOME and Cinnamon, when the focus has been on a window that is not put.gd's for 6 s, `focus_left_putgd` is
+recorded first. Only then may the watchdog ask that window to close, as its title bar would: it must be an ordinary
+window that was not on screen when the walk began and that first appeared within 10 s after the walk's last input
+(a file with no handler opens the app store, a link a browser). A close counts in `foreign_windows_closed` only
+once the window is gone. Plasma never closes a window.
+
+A resident that exits is a finding and ends the walk (`resident_died`; `resident_exited` when its log says it stopped
+with exit code 0). On GNOME and Cinnamon the watchdog restarts it, records `resident_quit` and carries on only when the
+actor had just activated the tray's Quit item. The walk itself never does, so a resident that quit by some other
+click (a drag released on a menu's Quit) ends the run.
+
+Every input is logged to `actions.jsonl`, so `--replay actions.jsonl` re-issues it, without the fence (see `actor.py`
+above). A replay does not reproduce clipboard payloads: the clipboard churn the walk sets (text, an image, a file
+list, a clear) is logged as a note only, so the clipboard holds whatever it held before. Process sizes go to
 `memory.jsonl` every 15 s.
 
 ## Running
@@ -65,16 +78,16 @@ with SIGINT so the virtual devices are destroyed. Retire a guest whose state is 
 
 Per desktop:
 
-- **GNOME.** Install the nightly DEB (Ubuntu 26.04), copy `shell-extension/guifuzz@put.gd.test` to
+- **GNOME.** Install the nightly DEB (Ubuntu 26.04), copy `shell-extension/guifuzz@put.gd.test` (version 2) to
   `~/.local/share/gnome-shell/extensions/`, add `guifuzz@put.gd.test` beside `putgd@put.gd` in
   `org.gnome.shell enabled-extensions`, `sync` and reset the guest through QMP so the autologin starts a Shell that
   loads both. The golden's `lab` has `sudo` only for `apt-get`: run root commands through
   `sudo -n apt-get -o APT::Update::Pre-Invoke::="sh /tmp/script.sh" update`, which is how `/dev/uinput` is opened
   and `unattended-upgrades` masked (it holds the apt lock and moves the guest to a newer put.gd from `pkg.put.gd`).
-  Monitors change with `gdctl set`.
+  Monitors change with `gdctl set`. The run puts back the pointer's `gsettings` and the monitor layout it found, removes the marker file and disables the extension when it ends.
 - **Cinnamon.** Install the nightly DEB for Ubuntu 24.04, `apt-get install xclip` (`python3-xlib` ships in the
   golden), open `/dev/uinput` the same way, and set every action's `destination` to `local`: the golden's default
-  is `upload`. Monitors change with `xrandr`.
+  is `upload`. Monitors change with `xrandr`. The run puts back the pointer's `gsettings` and each monitor's mode and position, and stops the `xclip` that serves the last clipboard payload, when it ends.
 - **Disk.** The GNOME golden boots with 3 GB free. put.gd refuses an import when the data folder has less than its
   reserve (about 1.6 GiB on a 32 GiB disk) and answers `disk_space_insufficient`, so a run on it needs the data folder
   on another disk: attach a scratch qcow2 with QMP `device_add usb-storage` (the q35 bus has no PCIe hotplug),
