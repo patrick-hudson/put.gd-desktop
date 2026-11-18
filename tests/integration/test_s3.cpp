@@ -1,4 +1,5 @@
 #include "fixtures/S3Fixture.h"
+#include "storage/s3/PublicUrl.h"
 #include "fixtures/U2Fixtures.h"
 #include <QBuffer>
 #include <QUrlQuery>
@@ -36,9 +37,11 @@ private slots:
         QCOMPARE(renewed.status,QString("own"));
         QCOMPARE(renewed.receipt.destination.toJson(),uploaded.receipt.destination.toJson());
         QCOMPARE(renewed.receipt.publicationId,uploaded.receipt.publicationId);
-        bool done=false;Error error;QJsonObject result;
-        f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[&](auto value,auto e){result=value;error=e;done=true;});
-        PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
+        // The reply comes from the S3 worker thread: await hands the result and error back through a promise.
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        const auto& result=tested.first;const auto& error=tested.second;
+        QVERIFY2(!error,qPrintable(error.code));
         QVERIFY(result["presignedReachable"].toBool());QVERIFY(result["unsignedDenied"].toBool());
     }
 
@@ -187,6 +190,106 @@ private slots:
         checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "b", cb); });
         QCOMPARE(checked.error.code, QString("credential_setup_required"));
         QCOMPARE(f.events().size(), 1);
+    }
+
+    // The SDK drops empty path segments, so the receipt, the link and the stored
+    // object must all name the key the request reached (#1582).
+    void prefixKeyIsTheStoredKey_data() {
+        QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("stored");
+        QTest::newRow("doubled")<<"a//b/"<<"a/b/";QTest::newRow("trailing-doubled")<<"dir//"<<"dir/";
+        QTest::newRow("leading")<<"/lead"<<"lead/";QTest::newRow("only-slashes")<<"//"<<"";
+    }
+    void prefixKeyIsTheStoredKey() {
+        QFETCH(QString,prefix);QFETCH(QString,stored);
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]=prefix;
+        const auto uploaded=f.upload(f.request("p.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        QCOMPARE(uploaded.receipt.objectReference["key"].toString(),stored+"p.txt");
+        QCOMPARE(f.events("PUT")[0].toObject()["key"].toString(),stored+"p.txt");
+        QVERIFY(f.state()["objects"].toObject().contains(stored+"p.txt"));
+        QCOMPARE(uploaded.receipt.directUrl,f.endpoint+"/isolated-fixture/"+stored+"p.txt");
+        QCOMPARE(f.await<StatResult>([&](auto cb){f.provider.stat(uploaded.receipt,cb);}).status,QString("own"));
+        QCOMPARE(f.remove(uploaded.receipt).status,QString("removed"));
+        QVERIFY(f.state()["objects"].toObject()[stored+"p.txt"].toArray().isEmpty());
+    }
+    // History rows and journals made before #1582 hold the key as typed. They still
+    // check, delete, retry and abandon against the stored key.
+    void receiptsAndJournalsBeforeNormalisation() {
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]="a//b/";
+        const auto uploaded=f.upload(f.request("old.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        auto legacy=uploaded.receipt;legacy.objectReference["key"]="a//b/old.txt";
+        legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,"a//b/old.txt");
+        QCOMPARE(legacy.directUrl,f.endpoint+"/isolated-fixture/a//b/old.txt");
+        const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
+        QCOMPARE(stat.status,QString("own"));
+        // History compares the stat receipt with the row's own before deleting.
+        QCOMPARE(stat.receipt.objectReference,legacy.objectReference);
+        QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/old.txt"));
+        QCOMPARE(f.remove(legacy).status,QString("removed"));
+        QCOMPARE(f.events("DELETE")[0].toObject()["key"].toString(),QString("a/b/old.txt"));
+        QVERIFY(f.state()["objects"].toObject()["a/b/old.txt"].toArray().isEmpty());
+        // Retrying an interrupted upload whose journal holds the old key.
+        auto retry=f.request("retry.txt");retry.objectReference["key"]="a//b/retry.txt";
+        const auto retried=f.upload(retry);
+        QVERIFY2(retried.status=="uploaded",qPrintable(retried.error.code));
+        QCOMPARE(retried.receipt.objectReference["key"].toString(),QString("a/b/retry.txt"));
+        QVERIFY(f.state()["objects"].toObject().contains("a/b/retry.txt"));
+        // Abandoning a multipart upload whose journal holds the old key.
+        bool done=false;Error abandoned;
+        f.provider.abandonUpload(f.destination,{{"schemaVersion",1},{"partBytes",8*1024*1024},{"uploadId","synthetic-upload-old"},{"key","a//b/big.bin"},
+            {"bytes",double(64*1024*1024)},{"sha256",QString(64,'a')},{"phase","parts"}},[&](Error e){abandoned=e;done=true;});
+        PUTGD_TRY_VERIFY(done);
+        QVERIFY2(abandoned.code!="s3_multipart_invalid",qPrintable(abandoned.message));
+        QCOMPARE(f.events("DELETE").last().toObject()["key"].toString(),QString("a/b/big.bin"));
+    }
+    // An upload whose reply was lost, retried from a journal that holds the key as typed:
+    // reconciliation finds it and its first receipt names the stored key.
+    void reconciledReceiptNamesTheStoredKey() {
+        S3Fixture f;f.reset();f.destination.settings["objectPrefix"]="a//b/";
+        auto request=f.request("lost.txt");
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}},QJsonObject{{"method","HEAD"},{"status",503},{"code","ServiceUnavailable"},{"remaining",10}}}}});
+        QCOMPARE(f.upload(request).status,QString("unknown"));
+        f.reset({{"objects",f.state()["objects"]}});
+        auto retry=request;retry.objectReference["key"]="a//b/lost.txt";
+        const auto found=f.await<StatResult>([&](auto cb){f.provider.reconcile(retry,cb);});
+        QVERIFY2(found.status=="own",qPrintable(found.error.code));
+        QCOMPARE(found.receipt.objectReference["key"].toString(),QString("a/b/lost.txt"));
+        QCOMPARE(found.receipt.directUrl,f.endpoint+"/isolated-fixture/a/b/lost.txt");
+        QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/lost.txt"));
+    }
+    // A "." or ".." part is removed by libcurl after the SDK signed it, so no request
+    // names it exactly: new uploads are refused and old receipts are left alone.
+    void dotSegmentsAreNeverSent_data() {
+        QTest::addColumn<QString>("prefix");
+        for(const auto* prefix:{"a/./b/","a/../b/",".","..","/./"})QTest::newRow(prefix)<<QString(prefix);
+    }
+    void dotSegmentsAreNeverSent() {
+        QFETCH(QString,prefix);
+        S3Fixture f;f.reset();
+        const auto uploaded=f.upload(f.request("p.txt"));QCOMPARE(uploaded.status,QString("uploaded"));
+        f.reset({{"objects",f.state()["objects"]}});
+        f.destination.settings["objectPrefix"]=prefix;
+        const auto checked=f.await<NameCheck>([&](auto cb){f.provider.checkName(f.destination,"p.txt",cb);});
+        QCOMPARE(checked.status,QString("inconclusive"));
+        QCOMPARE(checked.error.code,QString("s3_settings_invalid"));
+        auto legacy=uploaded.receipt;const auto key=prefix+"/p.txt";legacy.objectReference["key"]=key;
+        legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,key);
+        const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
+        QCOMPARE(stat.status,QString("unknown"));QCOMPARE(stat.error.code,QString("s3_key_invalid"));
+        const auto removed=f.remove(legacy);
+        QCOMPARE(removed.status,QString("failed"));QCOMPARE(removed.error.code,QString("s3_key_invalid"));
+        auto retry=f.request("p.txt");retry.destination=uploaded.receipt.destination;retry.objectReference={{"schemaVersion",1},{"key",key}};
+        const auto retried=f.upload(retry);
+        QCOMPARE(retried.status,QString("failed"));QCOMPARE(retried.error.code,QString("s3_key_invalid"));
+        // A retry under the dot folder itself names the setting to fix, not the key.
+        retry.destination=f.destination;
+        const auto underFolder=f.upload(retry);
+        QCOMPARE(underFolder.status,QString("failed"));QCOMPARE(underFolder.error.code,QString("s3_settings_invalid"));
+        // So does the reconciliation that retrying an unknown upload starts with, which stays unknown.
+        const auto reconciled=f.await<StatResult>([&](auto cb){f.provider.reconcile(retry,cb);});
+        QCOMPARE(reconciled.status,QString("unknown"));QCOMPARE(reconciled.error.code,QString("s3_settings_invalid"));
+        QCOMPARE(f.events().size(),0);
     }
 };
 QTEST_GUILESS_MAIN(S3Test)

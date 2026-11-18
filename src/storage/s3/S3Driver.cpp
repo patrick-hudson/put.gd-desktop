@@ -55,11 +55,17 @@ void useHostCaFile(Aws::Client::ClientConfiguration& config) {
 }
 QString qt(const Aws::String& value) { return QString::fromUtf8(value.data(), int(value.size())); }
 QString objectKey(const Destination& destination, const QString& candidate) {
-    auto prefix = destination.settings["objectPrefix"].toString();
-    if (!prefix.isEmpty() && !prefix.endsWith('/')) prefix += '/';
-    return prefix + candidate;
+    return s3ObjectKey(destination.settings, candidate);
 }
 bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && token->load(); }
+// A "." or ".." folder makes libcurl send a path other than the one the SDK
+// signed, and the object would land under a key other than the recorded one (#1582).
+Error prefixError() {
+    return {"s3_settings_invalid", "Folder in bucket can't contain a \".\" or \"..\" part: S3 would store the file under a different name than put.gd shows. Remove that part in Settings.", {}};
+}
+Error unaddressableKey() {
+    return {"s3_key_invalid", "The recorded object key contains a \".\" or \"..\" part, which no S3 request can name exactly, so put.gd leaves that object alone. Check the bucket with another tool.", {}};
+}
 Error cancelled() {
     return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}};
 }
@@ -298,7 +304,7 @@ void signLink(Client& client, StorageReceipt& value) {
         if(status.IsSuccess()&&status.GetResult().GetStatus()==Aws::S3::Model::BucketVersioningStatus::NOT_SET)version.clear();
     }
     if(version.isEmpty())value.directUrl=qt(client.GeneratePresignedUrl(aws(value.destination.settings["bucket"].toString()),
-        aws(value.objectReference["key"].toString()),Aws::Http::HttpMethod::HTTP_GET,seconds));
+        aws(s3StoredKey(value.objectReference["key"].toString())),Aws::Http::HttpMethod::HTTP_GET,seconds));
     else {
         auto settings=value.destination.settings;settings["publicUrlBase"]=QJsonValue::Null;
         const QUrl url(publicObjectUrl(settings,value.objectReference["key"].toString()));
@@ -310,10 +316,12 @@ void signLink(Client& client, StorageReceipt& value) {
 }
 StatResult inspect(Client& client, const StorageReceipt& expected, bool current = false) {
     const auto key = expected.objectReference["key"].toString();
+    if (!s3KeyAddressable(key)) return {"unknown", {}, unaddressableKey()};
     const auto version = current ? QString{} : expected.objectReference["versionId"].toString();
     QElapsedTimer requestTimer;
     requestTimer.start();
-    const auto outcome = head(client, expected.destination, key, version);
+    // A receipt made before #1582 may hold the key as typed; the request names the stored key.
+    const auto outcome = head(client, expected.destination, s3StoredKey(key), version);
     if (!outcome.IsSuccess()) {
         if (absent(outcome.GetError())) return {"missing", {}, {}};
         return {"unknown", {}, wireError(outcome.GetError(), current ? S3Stage::CurrentHead : S3Stage::ObjectHead, requestTimer.elapsed())};
@@ -329,21 +337,40 @@ StatResult inspect(Client& client, const StorageReceipt& expected, bool current 
                             metadata(result, "putgd-sha256"), result.GetContentLength(),
                             qt(result.GetETag()), qt(result.GetVersionId())), {}};
 }
-// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
-// a request naming a version gets 501, and the bucket reports no versioning status. A
-// bucket whose versioning was never enabled holds one object per key, so a receipt from
-// it is checked and removed like an unversioned one.
-bool versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
-    const auto version = expected.objectReference["versionId"].toString();
-    if (found.status != "unknown" || found.error.details["httpStatus"].toInt() != 501 || version.isEmpty() || version == "null") return false;
-    Aws::S3::Model::GetBucketVersioningRequest request;
-    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
-    const auto outcome = client.GetBucketVersioning(request);
-    return outcome.IsSuccess() && outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
-}
 StorageReceipt withoutVersion(StorageReceipt receipt) {
     receipt.objectReference.remove("versionId");
     return receipt;
+}
+// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
+// a request naming a version gets 501, and the bucket reports no versioning status. Garage
+// returns an opaque version ID in the PutObject response header (its multipart completion
+// omits it) and has no versioning either; it answers a request naming that version with
+// the object and no version ID, which the identity check takes for another object. A
+// bucket whose versioning was never enabled holds one object per key, so a receipt from it
+// is checked and removed like an unversioned one.
+// Yes: check and remove it unversioned. No: the first answer stands. Unknown: a read
+// needed to tell a version-only mismatch from another object failed; the caller reports
+// unknown with this error, so a Retry checks again instead of settling on "changed".
+struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; };
+Versionless versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
+    const auto version = expected.objectReference["versionId"].toString();
+    if (version.isEmpty() || version == "null") return {};
+    const bool refused = found.status == "unknown" && found.error.details["httpStatus"].toInt() == 501;
+    if (!refused && found.status != "foreign") return {};
+    if (!refused) {
+        // Everything but the version ID must match the object that is current at the key.
+        const auto current = inspect(client, withoutVersion(expected), true);
+        if (current.status == "unknown") return {Versionless::Unknown, current.error};
+        if (current.status != "own") return {};
+    }
+    Aws::S3::Model::GetBucketVersioningRequest request;
+    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
+    QElapsedTimer timer;
+    timer.start();
+    const auto outcome = client.GetBucketVersioning(request);
+    // R2 keeps its earlier handling: its 501 already leaves the identity unknown.
+    if (!outcome.IsSuccess()) return refused ? Versionless{} : Versionless{Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
+    return {outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET ? Versionless::Yes : Versionless::No, {}};
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -499,10 +526,12 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         }
     }
     if (!previous.isEmpty() &&
-        (request.resume["key"].toString() != key || request.resume["bytes"].toInteger() != bytes ||
+        (s3StoredKey(request.resume["key"].toString()) != key || request.resume["bytes"].toInteger() != bytes ||
          request.resume["sha256"].toString() != request.artifact.sha256 || request.resume["partBytes"].toInteger() != partBytes)) {
-        // A journal for another target or another artifact is never resumed.
-        abort(previous, request.resume["key"].toString());
+        // A journal for another target or another artifact is never resumed. One whose key
+        // has a "." or ".." part names nothing a request can reach, so it is left alone,
+        // as the standalone abandon path refuses it.
+        if (s3KeyAddressable(request.resume["key"].toString())) abort(previous, s3StoredKey(request.resume["key"].toString()));
     } else if (!previous.isEmpty()) {
         uploadId = previous;
         Aws::S3::Model::ListPartsRequest list;
@@ -909,6 +938,10 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
         reply({"inconclusive", {}, {}, accessError()});
         return;
     }
+    if (!s3KeyAddressable(destination.settings["objectPrefix"].toString())) {
+        reply({"inconclusive", {}, {}, prefixError()});
+        return;
+    }
     const auto key = objectKey(destination, candidate);
     if (key.toUtf8().size() > 1024 || key.contains(QChar(0))) {
         reply({"inconclusive", {}, {}, {"s3_key_invalid", "S3 key exceeds its byte limit", {}}});
@@ -939,7 +972,12 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         return;
     }
     auto found = inspect(*client, expected);
-    if (versionless(*client, expected, found)) {
+    const auto check = versionless(*client, expected, found);
+    if (check.kind == Versionless::Unknown) {
+        reply({"unknown", {}, check.error});
+        return;
+    }
+    if (check.kind == Versionless::Yes) {
         found = inspect(*client, withoutVersion(expected), true);
         // The recorded ID names the only object the key can hold; keep the receipt as recorded.
         if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
@@ -958,7 +996,14 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
         reply({"unknown", {}, error});
         return;
     }
-    const auto expected = receipt(request.destination, request.objectReference["key"].toString(), request.publicationId,
+    // A retry of an unknown upload reconciles first; the saved folder is the setting to fix.
+    if (!s3KeyAddressable(request.destination.settings["objectPrefix"].toString())) {
+        reply({"unknown", {}, prefixError()});
+        return;
+    }
+    // The first receipt of an upload names the key it is stored under, even when the
+    // journal from before #1582 holds the key as typed.
+    const auto expected = receipt(request.destination, s3StoredKey(request.objectReference["key"].toString()), request.publicationId,
                                   request.artifact.sha256, request.artifact.bytes, {}, {});
     auto client = state_->client(request.destination);
     if (!client) {
@@ -994,7 +1039,19 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         reply({"failed", {}, cancelled()});
         return;
     }
-    const auto key = request.objectReference["key"].toString();
+    // A retry with a saved key skips checkName; the saved folder is still the setting to fix.
+    if (!s3KeyAddressable(request.destination.settings["objectPrefix"].toString())) {
+        reply({"failed", {}, prefixError()});
+        return;
+    }
+    const auto recorded = request.objectReference["key"].toString();
+    if (!s3KeyAddressable(recorded)) {
+        reply({"failed", {}, unaddressableKey()});
+        return;
+    }
+    // A journal made before #1582 may hold the key as typed: it names the same stored key,
+    // and the receipt records the key the object is stored under.
+    const auto key = s3StoredKey(recorded);
     if (key != objectKey(request.destination, request.candidate) || key.toUtf8().size() > 1024 ||
         (request.condition != "absent" && (request.condition != "match" || request.concurrencyToken.isEmpty()))) {
         reply({"failed", {}, {"s3_precondition_invalid", "Persist an exact object key and write precondition before upload", {}}});
@@ -1134,7 +1191,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     // A journal that found a versionless bucket (see versionless()) continues unversioned.
     auto expected = progress.value("versionless").toBool() ? withoutVersion(request.receipt) : request.receipt;
     const auto& destination = expected.destination;
-    const auto key = expected.objectReference["key"].toString();
+    const auto recorded = expected.objectReference["key"].toString();
+    if (!s3KeyAddressable(recorded)) {
+        finish("failed", unaddressableKey());
+        return;
+    }
+    // A receipt made before #1582 may hold the key as typed; requests name the stored key.
+    const auto key = s3StoredKey(recorded);
     auto version = expected.objectReference["versionId"].toString();
     if (key.isEmpty() || expected.publicationId.isEmpty() || expected.concurrencyToken.isEmpty() ||
         expected.objectReference["schemaVersion"].toInt() != 1) {
@@ -1176,7 +1239,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     auto identity = inspect(*client, expected);
-    if (phase == S3DeletePhase::None && immutable && versionless(*client, expected, identity)) {
+    const auto check = phase == S3DeletePhase::None && immutable ? versionless(*client, expected, identity) : Versionless{};
+    if (check.kind == Versionless::Unknown) {
+        finish("unknown", check.error);
+        return;
+    }
+    if (check.kind == Versionless::Yes) {
         progress["versionless"] = true;
         expected = withoutVersion(expected);
         version.clear();
@@ -1372,7 +1440,9 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     finish("removed");
 }
 void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject& journal, std::function<void(Error)> reply) {
-    const auto uploadId = journal["uploadId"].toString(), key = journal["key"].toString();
+    const auto uploadId = journal["uploadId"].toString(), recorded = journal["key"].toString();
+    // A journal made before #1582 may hold the key as typed; it names the stored key.
+    const auto key = s3StoredKey(recorded);
     if (uploadId.isEmpty()) {
         reply({});
         return;
@@ -1381,7 +1451,7 @@ void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject&
         reply(error);
         return;
     }
-    if (key.isEmpty() || key.toUtf8().size() > 1024 || !key.startsWith(objectKey(destination, {}))) {
+    if (key.isEmpty() || recorded.toUtf8().size() > 1024 || !s3KeyAddressable(recorded) || !key.startsWith(objectKey(destination, {}))) {
         reply({"s3_multipart_invalid", "The saved multipart upload does not belong to this destination", {}});
         return;
     }

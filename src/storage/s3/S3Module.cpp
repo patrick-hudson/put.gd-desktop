@@ -119,6 +119,8 @@ S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck re
             ++state_->liveDrivers;
             return driver;
         }
+        // The driver says why its worker did not start; keep that reason.
+        if (error) return nullptr;
     } catch (...) {}
 #else
     if (state_->load()) {

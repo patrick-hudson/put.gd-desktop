@@ -8,7 +8,19 @@ bool s3VirtualAddressing(const QJsonObject& settings) {
     const auto host = QUrl(settings["endpoint"].toString()).host();
     return host.endsWith("amazonaws.com") && !settings["bucket"].toString().contains('.');
 }
-QString publicObjectUrl(const QJsonObject& settings, const QString& key) {
+QString s3StoredKey(const QString& key) {
+    return key.split('/', Qt::SkipEmptyParts).join('/');
+}
+bool s3KeyAddressable(const QString& key) {
+    for (const auto& segment : key.split('/'))
+        if (segment == QLatin1String(".") || segment == QLatin1String("..")) return false;
+    return true;
+}
+QString s3ObjectKey(const QJsonObject& settings, const QString& candidate) {
+    const auto prefix = s3StoredKey(settings["objectPrefix"].toString());
+    return prefix.isEmpty() ? candidate : prefix + '/' + candidate;
+}
+QString s3LegacyPublicObjectUrl(const QJsonObject& settings, const QString& key) {
     QUrl base(settings["publicUrlBase"].isString() ? settings["publicUrlBase"].toString()
                                                     : settings["endpoint"].toString());
     QString encoded = base.toString(QUrl::FullyEncoded);
@@ -26,5 +38,8 @@ QString publicObjectUrl(const QJsonObject& settings, const QString& key) {
     for (const auto& segment : key.split('/'))
         segments.append(QString::fromLatin1(QUrl::toPercentEncoding(segment)));
     return encoded + "/" + segments.join('/');
+}
+QString publicObjectUrl(const QJsonObject& settings, const QString& key) {
+    return s3LegacyPublicObjectUrl(settings, s3StoredKey(key));
 }
 }

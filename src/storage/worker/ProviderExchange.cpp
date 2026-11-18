@@ -1,16 +1,41 @@
 #include "ProviderExchange.h"
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QProcess>
+#include <cerrno>
+#include <cstring>
 #include <future>
 namespace putgd::worker {
+StartFailure classifyStartFailure(const QString& program, const QString& reason) {
+    // A directory or a missing file is not a helper: only a regular executable file is.
+    const QFileInfo file(program);
+    if (!file.isFile() || !file.isExecutable()) return StartFailure::Installation;
+    // Shortages that pass: descriptors (EMFILE, ENFILE), memory (ENOMEM), processes or
+    // threads (EAGAIN), and a program file that is being written just then (ETXTBSY).
+    for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
+        if (reason.contains(QString::fromLocal8Bit(std::strerror(code)), Qt::CaseInsensitive)) return StartFailure::Temporary;
+    return StartFailure::Unclear;
+}
+QString startFailureMessage(StartFailure failure, const QString& installationMessage, const QString& subject) {
+    // Qt's own text stays in the error details: for an existing helper it can name the
+    // wrong cause ("No such file or directory" when Qt ran out of descriptors).
+    if (failure == StartFailure::Installation) return installationMessage;
+    if (failure == StartFailure::Temporary) return subject + " just now; try again.";
+    return subject + ". Try again; if it keeps failing, reinstall put.gd.";
+}
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress, DurableCheckpoint checkpoint) {
     QProcess process;
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start(program, {"--stdio"});
-    if (!process.waitForStarted(10000)) { error = {policy.prefix + "_worker_start", policy.startMessage, {}}; return {}; }
+    if (!process.waitForStarted(10000)) {
+        // A helper that is installed but cannot start right now is not a broken installation: say whether trying again helps, with Qt's reason in the details.
+        const auto reason = process.errorString();
+        error = {policy.prefix + "_worker_start", startFailureMessage(classifyStartFailure(program, reason), policy.startMessage), {{"reason", reason}}};
+        return {};
+    }
     auto bytes = QJsonDocument(params).toJson(QJsonDocument::Compact);
     params = {};
     bytes.append('\n');
