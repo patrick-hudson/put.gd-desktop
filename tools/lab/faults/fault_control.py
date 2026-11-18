@@ -8,8 +8,10 @@
 import json
 import os
 from pathlib import Path
+import re
 import resource
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -34,43 +36,128 @@ FS_TARGETS = {
 
 
 class SmallFs:
-    """A small filesystem prepared by tools/lab/faults/smallfs.sh (tmpfs or loop ext4). The harness fills it, never mounts it."""
+    """A small filesystem prepared by tools/lab/faults/smallfs.sh (tmpfs or loop ext4). The harness fills it, never mounts it.
+
+    claim() refuses anything but a fresh mount that smallfs.sh made: the folder must be a mount point of its own, match the record
+    smallfs.sh wrote next to it (DIR.smallfs: the tmpfs source name, or the loop image and its inode), be no larger than `limit`,
+    and hold nothing yet. Only then is the filler created, exclusively and without following a link, and the harness keeps its
+    descriptor: it never opens the filler by name again. A plain folder, the host's own filesystem or a planted .filler link is
+    refused before anything is written."""
+
+    LIMIT = 4 << 30
 
     def __init__(self, path):
-        self.path = Path(path)
+        self.path = Path(os.path.realpath(path))
         self.filler = self.path / '.filler'
+        self.fd = None
+
+    @staticmethod
+    def _unescape(field):
+        return re.sub(r'\\([0-7]{3})', lambda m: chr(int(m.group(1), 8)), field)
+
+    def mount_entry(self):
+        """(fstype, source) of the topmost mount exactly at the path, from /proc/self/mountinfo, or None."""
+        found = None
+        with open('/proc/self/mountinfo') as table:
+            for line in table:
+                left, _, right = line.partition(' - ')
+                fields, tail = left.split(), right.split()
+                if len(fields) >= 5 and len(tail) >= 2 and self._unescape(fields[4]) == str(self.path):
+                    found = (tail[0], self._unescape(tail[1]))
+        return found
+
+    def record(self):
+        path = Path(str(self.path) + '.smallfs')
+        st = path.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid():
+            raise SmallFsRefused('%s is not a record this user wrote' % path)
+        return dict(line.split('=', 1) for line in path.read_text().splitlines() if '=' in line)
+
+    def verify(self):
+        """Raise SmallFsRefused unless the path is the size-limited mount smallfs.sh made and recorded."""
+        entry = self.mount_entry()
+        if entry is None or os.stat(self.path).st_dev == os.stat(self.path.parent).st_dev:
+            raise SmallFsRefused('%s is not a mount point: make it with tools/lab/faults/smallfs.sh mount' % self.path)
+        fstype, source = entry
+        try:
+            record = self.record()
+        except (OSError, ValueError) as error:
+            raise SmallFsRefused('%s has no smallfs.sh record (%s): it was not mounted by smallfs.sh' % (self.path, error))
+        if record.get('kind') == 'tmpfs':
+            if fstype != 'tmpfs' or source != record.get('source'):
+                raise SmallFsRefused('the mount at %s (%s %s) is not the tmpfs smallfs.sh recorded (%s)' % (self.path, fstype, source, record.get('source')))
+        elif record.get('kind') == 'ext4':
+            image = record.get('image', '')
+            try:
+                backing = Path('/sys/block/%s/loop/backing_file' % os.path.basename(source)).read_text().strip()
+                image_st = os.stat(image)
+            except OSError as error:
+                raise SmallFsRefused('the mount at %s has no loop image to check (%s)' % (self.path, error))
+            if fstype != 'ext4' or backing != image or '%d:%d' % (image_st.st_dev, image_st.st_ino) != record.get('identity'):
+                raise SmallFsRefused('the mount at %s (%s on %s) is not the image smallfs.sh recorded (%s)' % (self.path, fstype, backing, image))
+        else:
+            raise SmallFsRefused('the smallfs.sh record of %s names no kind' % self.path)
+        st = os.statvfs(self.path)
+        if st.f_blocks * st.f_frsize > self.LIMIT:
+            raise SmallFsRefused('%s is %d MiB: more than a small filesystem (%d MiB)' % (self.path, st.f_blocks * st.f_frsize >> 20, self.LIMIT >> 20))
+
+    @classmethod
+    def claim(cls, path):
+        """Verify a fresh smallfs.sh mount and take it: create the filler and hold it open."""
+        small = cls(path)
+        small.verify()
+        left = sorted(set(os.listdir(small.path)) - {'lost+found'})
+        if left:
+            raise SmallFsRefused('%s is not fresh (it holds %s): mount a new one for each run' % (small.path, left[:5]))
+        try:
+            small.fd = os.open(small.filler, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        except OSError as error:
+            raise SmallFsRefused('cannot create the filler %s exclusively: %s' % (small.filler, error))
+        return small
 
     def free(self):
         st = os.statvfs(self.path)
         return st.f_bavail * st.f_frsize
 
     def squeeze(self, free_bytes):
-        """Leave about `free_bytes` of space: a filler file takes the rest."""
-        try:
-            held = self.filler.stat().st_size if self.filler.exists() else 0
-        except OSError:
-            held = 0
+        """Leave about `free_bytes` of space: the filler takes the rest."""
+        if self.fd is None:
+            return
+        held = os.fstat(self.fd).st_size
         want = max(0, held + self.free() - free_bytes)
         try:
-            fd = os.open(self.filler, os.O_WRONLY | os.O_CREAT, 0o600)
-            try:
-                os.ftruncate(fd, 0)
-                if want:
-                    os.posix_fallocate(fd, 0, want)
-            finally:
-                os.close(fd)
+            os.ftruncate(self.fd, 0)
+            if want:
+                os.posix_fallocate(self.fd, 0, want)
         except OSError:
             pass  # a full disk is the point: the filler took what there was
 
     def release(self):
+        if self.fd is None:
+            return
         try:
-            os.ftruncate(os.open(self.filler, os.O_WRONLY), 0)
+            os.ftruncate(self.fd, 0)
         except OSError:
             pass
 
+    def close(self):
+        """Give the space back and close the filler."""
+        if self.fd is None:
+            return
+        try:
+            self.release()
+        finally:
+            os.close(self.fd)
+            self.fd = None
+
+
+class SmallFsRefused(Exception):
+    pass
+
 
 class FaultControl:
-    def __init__(self, run, rng, classes, source_dir, small_fs=None, small_rt=None, log=None, seed=1, net_kinds=None):
+    def __init__(self, run, rng, classes, source_dir, target, small_fs=None, small_rt=None, log=None, seed=1, net_kinds=None):
+        """target: the resident's executable, the only program the shim injects into. small_fs, small_rt: SmallFs.claim() results."""
         self.run, self.rng, self.classes = run, rng, set(classes)
         self.log = log or (lambda *a, **k: None)
         self.dir = run / 'faults'
@@ -81,11 +168,12 @@ class FaultControl:
         self.seed = seed
         self.net_kinds = net_kinds
         self.rules = []
-        self.small_fs = SmallFs(small_fs) if small_fs else None
-        self.small_rt = SmallFs(small_rt) if small_rt else None
+        self.target = os.path.realpath(target)
+        self.small_fs, self.small_rt = small_fs, small_rt
         self.proxy = None
         self.nofile_lowered = False
         self.nofile_events = 0
+        self.nofile_starts = set()   # the resident starts (Resident.starts) during which its open-file limit was lowered
         self.build_shim(source_dir)
         self.write_spec([])
 
@@ -96,7 +184,18 @@ class FaultControl:
         subprocess.run(['gcc', '-O2', '-Wall', '-shared', '-fPIC', '-o', str(self.shim), str(source), '-ldl', '-lpthread'], check=True)
 
     def environment(self):
-        return {'LD_PRELOAD': str(self.shim), 'PUTGD_FAULT_SPEC': str(self.spec), 'PUTGD_FAULT_SHIM': '1'}
+        # The shim binds to the first process of the target executable and strips these from its environment, so helpers run without it.
+        return {'LD_PRELOAD': str(self.shim), 'PUTGD_FAULT_SPEC': str(self.spec), 'PUTGD_FAULT_EXE': self.target, 'PUTGD_FAULT_SHIM': '1'}
+
+    def faulted_pids(self):
+        """{pid: comm} of every process the shim injected a fault into, from its log."""
+        found = {}
+        if self.shim_log.exists():
+            for line in self.shim_log.read_text(errors='replace').splitlines():
+                fields = line.split(' ', 3)
+                if len(fields) >= 3 and fields[1].isdigit():
+                    found[int(fields[1])] = fields[2]
+        return found
 
     def write_spec(self, rules):
         """Atomically replace the rule file; the shim notices the new mtime within 50 ms."""
@@ -160,7 +259,7 @@ class FaultControl:
 
     # --- resources
 
-    def lower_nofile(self, pid, headroom):
+    def lower_nofile(self, pid, headroom, start=None):
         """Cap the open-file limit of a running process just above what it holds now (and so its next open fails with EMFILE)."""
         try:
             held = len(os.listdir('/proc/%d/fd' % pid))
@@ -169,9 +268,11 @@ class FaultControl:
             resource.prlimit(pid, resource.RLIMIT_NOFILE, (min(limit, hard), hard))
             self.nofile_lowered = True
             self.nofile_events += 1
+            self.nofile_starts.add(start)
             self.log('fault-nofile', pid=pid, held=held, limit=limit)
+            return True
         except (OSError, ValueError, ProcessLookupError):
-            pass
+            return False
 
     def restore_nofile(self, pids):
         if not self.nofile_lowered:
@@ -207,4 +308,4 @@ class FaultControl:
             self.proxy.stop()
         for small in (self.small_fs, self.small_rt):
             if small:
-                small.release()
+                small.close()

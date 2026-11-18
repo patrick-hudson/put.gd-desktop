@@ -5,6 +5,11 @@
  *
  *   PUTGD_FAULT_SPEC=/path/spec   the rule file; it is re-read when its mtime changes (at most every 50 ms), so a
  *                                 harness changes faults while the program runs. A missing file means no faults.
+ *   PUTGD_FAULT_EXE=/path/putgd   the one executable the shim injects into. Any other program that loads the shim (prlimit,
+ *                                 env, a helper) gets no fault. The first process of that executable binds the shim to its PID
+ *                                 (PUTGD_FAULT_PID) and removes LD_PRELOAD, PUTGD_FAULT_SPEC and PUTGD_FAULT_EXE from its own
+ *                                 environment, so the helpers it starts run without the shim. A helper that still gets it (the
+ *                                 same executable, a fork, a copied environment) sees a different PID and gets no fault.
  *
  * Spec lines (blank lines and # comments are ignored):
  *   seed N                          seeds the generator (xorshift, mixed with the process id)
@@ -57,14 +62,16 @@ struct rule {
 
 static struct rule rules[MAX_RULES];
 static int nrules;
-static char spec_path[512], log_path[512];
+static char spec_path[512], log_path[512];   /* spec_path is set once by the constructor, then only read */
 static struct timespec spec_mtime;
 static long long last_check_ns;
 static uint64_t rng_state;
 static uint64_t rng_seed;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static char my_comm[32];
-static int logfd = -1;
+static int logfd = -1;          /* written under the lock, read with __atomic_load_n */
+static int enabled;             /* set once by the constructor: this process is the bound target */
+static pid_t bound_pid;
 static __thread int busy;
 
 static const struct { const char *name; int value; } ERRNOS[] = {
@@ -116,8 +123,9 @@ static void parse_line(char *line) {
         char *v = strtok_r(NULL, " \t\r\n", &save);
         if (v && strcmp(v, log_path)) {
             strncpy(log_path, v, sizeof log_path - 1);
-            if (logfd >= 0) syscall(SYS_close, logfd);
-            logfd = (int)syscall(SYS_open, log_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
+            int old = __atomic_load_n(&logfd, __ATOMIC_ACQUIRE);
+            __atomic_store_n(&logfd, (int)syscall(SYS_open, log_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600), __ATOMIC_RELEASE);
+            if (old >= 0) syscall(SYS_close, old);
         }
         return;
     }
@@ -156,11 +164,7 @@ static void parse_line(char *line) {
 }
 
 static void reload_if_changed(void) {
-    if (!spec_path[0]) {
-        const char *p = getenv("PUTGD_FAULT_SPEC");
-        if (!p) return;
-        strncpy(spec_path, p, sizeof spec_path - 1);
-    }
+    if (!spec_path[0]) return;
     long long now = now_ns();
     if (now - last_check_ns < 50LL * 1000000LL) return;
     last_check_ns = now;
@@ -181,7 +185,8 @@ static void reload_if_changed(void) {
     buf[n] = 0;
     nrules = 0;
     load_comm();
-    for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
+    char *lines = NULL;
+    for (char *line = strtok_r(buf, "\n", &lines); line; line = strtok_r(NULL, "\n", &lines)) {
         char copy[512];
         strncpy(copy, line, sizeof copy - 1); copy[sizeof copy - 1] = 0;
         parse_line(copy);
@@ -189,12 +194,16 @@ static void reload_if_changed(void) {
 }
 
 static void log_fault(const char *op, const char *what, const char *path) {
-    if (logfd < 0) return;
+    int fd = __atomic_load_n(&logfd, __ATOMIC_ACQUIRE);
+    if (fd < 0) return;
     char line[700];
     struct timespec t;
     clock_gettime(CLOCK_REALTIME, &t);
     int n = snprintf(line, sizeof line, "%ld.%03ld %d %s %s %s %s\n", (long)t.tv_sec, t.tv_nsec / 1000000, (int)getpid(), my_comm, op, what, path ? path : "-");
-    if (n > 0) syscall(SYS_write, logfd, line, (size_t)n);
+    if (n <= 0) return;
+    /* snprintf returns the length it wanted: a long path is cut to what the buffer holds, ending in a newline. */
+    if ((size_t)n >= sizeof line) { n = (int)sizeof line - 1; line[n - 1] = '\n'; }
+    syscall(SYS_write, fd, line, (size_t)n);
 }
 
 static int path_matches(struct rule *r, const char *a, const char *b) {
@@ -206,9 +215,16 @@ static int path_matches(struct rule *r, const char *a, const char *b) {
     return 0;
 }
 
+static int active(void) {
+    /* Cheap pre-check so a process the shim is not bound to pays almost nothing. */
+    return __atomic_load_n(&enabled, __ATOMIC_RELAXED);
+}
+
 /* Returns 0 to proceed, or sets *err (an errno to fail with) / *short_write. */
 static int decide(int op, const char *path_a, const char *path_b, int *err, int *short_write) {
-    if (busy) return 0;
+    if (busy || !active()) return 0;
+    /* A child that shares the target's memory (vfork, clone) skips the fork handlers: the PID tells it apart. */
+    if ((pid_t)syscall(SYS_getpid) != bound_pid) return 0;
     busy = 1;
     int result = 0;
     pthread_mutex_lock(&lock);
@@ -234,15 +250,36 @@ static int decide(int op, const char *path_a, const char *path_b, int *err, int 
     return result;
 }
 
-static int active(void) {
-    /* Cheap pre-check so an unconfigured process pays almost nothing. */
-    if (!spec_path[0] && !getenv("PUTGD_FAULT_SPEC")) return 0;
-    return 1;
+/* A fork without exec is another process: it never gets a fault. */
+static void forked_child(void) { __atomic_store_n(&enabled, 0, __ATOMIC_RELAXED); }
+
+/* Bind the shim to one process: the executable named by PUTGD_FAULT_EXE, and the first PID of it. Runs before main(), while the
+ * process has one thread. */
+__attribute__((constructor)) static void faultshim_init(void) {
+    const char *spec = getenv("PUTGD_FAULT_SPEC"), *exe = getenv("PUTGD_FAULT_EXE"), *pid_text = getenv("PUTGD_FAULT_PID");
+    if (!spec || !exe || !exe[0]) return;
+    char self[512];
+    ssize_t n = syscall(SYS_readlink, "/proc/self/exe", self, sizeof self - 1);
+    if (n <= 0) return;
+    self[n] = 0;
+    if (strcmp(self, exe)) return;          /* prlimit, env, systemd-run, a helper: not the target */
+    pid_t me = (pid_t)syscall(SYS_getpid);
+    if (pid_text && pid_text[0] && (pid_t)atol(pid_text) != me) return;   /* the same executable started by the target */
+    strncpy(spec_path, spec, sizeof spec_path - 1);
+    bound_pid = me;
+    char pid_buf[24];
+    snprintf(pid_buf, sizeof pid_buf, "%d", (int)me);
+    setenv("PUTGD_FAULT_PID", pid_buf, 1);
+    unsetenv("LD_PRELOAD");
+    unsetenv("PUTGD_FAULT_SPEC");
+    unsetenv("PUTGD_FAULT_EXE");
+    pthread_atfork(NULL, NULL, forked_child);
+    __atomic_store_n(&enabled, 1, __ATOMIC_RELEASE);
 }
 
 /* The path behind a descriptor. Standard streams and the shim's own log are never faulted. */
 static int fd_path(int fd, char *buf, size_t size) {
-    if (fd < 3 || fd == logfd) return 0;
+    if (fd < 3 || fd == __atomic_load_n(&logfd, __ATOMIC_ACQUIRE)) return 0;
     char link[48];
     snprintf(link, sizeof link, "/proc/self/fd/%d", fd);
     ssize_t n = syscall(SYS_readlink, link, buf, size - 1);
@@ -251,7 +288,14 @@ static int fd_path(int fd, char *buf, size_t size) {
     return 1;
 }
 
-#define REAL(name) static __typeof__(&name) real_##name; if (!real_##name) real_##name = (__typeof__(&name))dlsym(RTLD_NEXT, #name)
+/* The libc function behind a wrapper, looked up once; two threads racing on the first call store the same pointer atomically. */
+#define REAL(name) \
+    static __typeof__(&name) real_##name##_cache; \
+    __typeof__(&name) real_##name = __atomic_load_n(&real_##name##_cache, __ATOMIC_ACQUIRE); \
+    if (!real_##name) { real_##name = (__typeof__(&name))dlsym(RTLD_NEXT, #name); __atomic_store_n(&real_##name##_cache, real_##name, __ATOMIC_RELEASE); }
+
+/* O_TMPFILE includes the O_DIRECTORY bit: only the whole mask means a mode argument follows. */
+#define NEEDS_MODE(flags) (((flags) & O_CREAT) || ((flags) & O_TMPFILE) == O_TMPFILE)
 
 /* ---- open family */
 #define OPEN_BODY(real_call, path) \
@@ -261,25 +305,25 @@ static int fd_path(int fd, char *buf, size_t size) {
 int open(const char *path, int flags, ...) {
     REAL(open);
     mode_t mode = 0;
-    if (flags & (O_CREAT | O_TMPFILE)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
+    if (NEEDS_MODE(flags)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
     OPEN_BODY(real_open(path, flags, mode), path);
 }
 int open64(const char *path, int flags, ...) {
     REAL(open64);
     mode_t mode = 0;
-    if (flags & (O_CREAT | O_TMPFILE)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
+    if (NEEDS_MODE(flags)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
     OPEN_BODY(real_open64(path, flags, mode), path);
 }
 int openat(int dirfd, const char *path, int flags, ...) {
     REAL(openat);
     mode_t mode = 0;
-    if (flags & (O_CREAT | O_TMPFILE)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
+    if (NEEDS_MODE(flags)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
     OPEN_BODY(real_openat(dirfd, path, flags, mode), path);
 }
 int openat64(int dirfd, const char *path, int flags, ...) {
     REAL(openat64);
     mode_t mode = 0;
-    if (flags & (O_CREAT | O_TMPFILE)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
+    if (NEEDS_MODE(flags)) { va_list ap; va_start(ap, flags); mode = va_arg(ap, mode_t); va_end(ap); }
     OPEN_BODY(real_openat64(dirfd, path, flags, mode), path);
 }
 int creat(const char *path, mode_t mode) { REAL(creat); OPEN_BODY(real_creat(path, mode), path); }
@@ -399,7 +443,7 @@ ssize_t sendfile64(int out, int in, off64_t *off, size_t count) {
 int close(int fd) {
     REAL(close);
     char fdp[512];
-    if (active() && fd > 2 && fd != logfd && !busy) {
+    if (active() && fd > 2 && fd != __atomic_load_n(&logfd, __ATOMIC_ACQUIRE) && !busy) {
         if (fd_path(fd, fdp, sizeof fdp)) {
             int err = 0, sh = 0;
             if (decide(OP_CLOSE, fdp, NULL, &err, &sh) == 1) { int r = real_close(fd); (void)r; errno = err; return -1; }
