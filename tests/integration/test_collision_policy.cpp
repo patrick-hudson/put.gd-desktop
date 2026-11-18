@@ -183,6 +183,10 @@ private slots:
         QTest::newRow("file-gone-object-there") << QString("file-gone-published") << QString("uploaded");
         QTest::newRow("file-gone-check-fails") << QString("file-gone-check-fails") << QString("unknown");
         QTest::newRow("credentials-locked") << QString("credentials-locked") << QString("unknown");
+        // While History's identity HEAD runs, the credentials lock or the retained file changes:
+        // the upload then fails before the provider settled anything, and the item stays unknown.
+        QTest::newRow("credentials-lock-after-check") << QString("credentials-lock-after-check") << QString("unknown");
+        QTest::newRow("file-changed-after-check") << QString("file-changed-after-check") << QString("unknown");
     }
     void retryOfUnknownCompletionNeverFailsOnALocalProblem() {
         QFETCH(QString, problem);QFETCH(QString, status);
@@ -194,7 +198,13 @@ private slots:
         QCOMPARE(journal["phase"].toString(), QString("completing"));
         if (problem.startsWith("file-gone")) QVERIFY(QFile::remove(before.items[0].artifact.path));
         if (problem == "file-gone-check-fails") u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}, {"remaining", 50}}}}}, true);
+        else if (problem.endsWith("after-check")) u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"delay", 0.8}}}}}, true);
         else u.f.control("/__rules", {{"rules", QJsonArray{}}}, true);
+        const auto artifact = before.items[0].artifact.path;
+        if (problem == "credentials-lock-after-check")
+            QTimer::singleShot(300, [&] { u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference); });
+        if (problem == "file-changed-after-check")
+            QTimer::singleShot(300, [artifact] { QFile file(artifact); file.setPermissions(QFile::ReadOwner | QFile::WriteOwner); if (file.open(QIODevice::WriteOnly)) file.write("changed"); });
         if (problem == "credentials-locked") u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference);
         const auto item = u.retry(before.id).items[0];
         QCOMPARE(item.uploadStatus, status);

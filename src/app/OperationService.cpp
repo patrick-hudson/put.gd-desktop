@@ -1025,7 +1025,11 @@ Operation OperationService::run(Job job) {
   }
   // A provider that settles its own uploads checks the key itself when it resumes a journaled
   // upload; checking it here as well could only overrule its answer (#1627).
-  if(item.uploadStatus=="unknown"&&capabilities.settlesUploads&&!item.uploadJournal.isEmpty()) {
+  // An unknown item with a journaled multipart upload stays unknown until the provider settles
+  // that upload: every settled outcome (uploaded, or a collision or failure after its abort)
+  // clears the journal, so a failure that leaves the journal in place happened before it.
+  const bool settling=item.uploadStatus=="unknown"&&capabilities.settlesUploads&&!item.uploadJournal.isEmpty();
+  if(settling) {
    // First the saved identity: it needs neither the local file nor a new upload, so a missing
    // file, locked credentials or a worker that won't start leave the item unknown with its
    // journal (the check itself fails), never failed. Only the provider's own check may then
@@ -1035,9 +1039,8 @@ Operation OperationService::run(Job job) {
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;return;}
    if(stat.status!="missing"&&stat.status!="foreign") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};commit(item,index);return;}
    if(auto error=artifacts.verify(item.artifact)) {item.phase="unknown";item.error=error;commit(item,index);return;}
-   item.uploadStatus="stored";if(!commit(item,index))return;
   }
-  if(item.uploadStatus=="unknown") {
+  if(item.uploadStatus=="unknown"&&!settling) {
    item.phase="reconciling";show(item,index);
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;return;}
@@ -1095,6 +1098,9 @@ Operation OperationService::run(Job job) {
     if(e) {item.uploadStatus="unknown";item.error=e;}else {item.receipt=uploaded.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};}if(!commit(item,index))return;break;
    }
    if(uploaded.status=="unknown") {item.uploadStatus="unknown";if(!commit(item,index))return;break;}
+   // A failure before the provider settled the journaled upload (its worker, credentials or the
+   // retained file) leaves the item unknown with its journal and this error, never failed.
+   if(settling&&uploaded.status=="failed"&&!item.uploadJournal.isEmpty()) {item.uploadStatus="unknown";item.phase="unknown";if(!commit(item,index))return;break;}
    // Cancelling one file leaves it pending for Retry; the rest of the batch continues.
    if(uploaded.status=="failed"&&cancel->load()&&!job.cancelled->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Upload cancelled; Retry uploads this file again",{}};commit(item,index);break;}
    if(uploaded.status!="collision") {item.uploadStatus=undone;if(!commit(item,index))return;break;}
