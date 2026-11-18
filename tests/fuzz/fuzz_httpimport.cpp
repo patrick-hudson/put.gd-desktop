@@ -107,18 +107,11 @@ void sxcu(const QByteArray& json) {
     // once stored, stands nowhere in the settings, the notes or the destination's name,
     // which are what is kept in the configuration and shown. (As a whole word: a value
     // that merely begins like another is not that value.)
-    // An address is read from its first "/" on: what stands between the scheme and that
-    // (user information, a port) is no part of a path or a query, and the reader leaves it.
+    // Addresses are read whole, user information and host included.
     // Each place is looked at by itself, so that a failure can say where without saying what.
     QList<QPair<QString, QByteArray>> places; // where → text
     for (auto it = imported.settings.begin(); it != imported.settings.end(); ++it) {
-        auto text = it.value().isString() ? it.value().toString().toUtf8() : QJsonDocument(QJsonArray{it.value()}).toJson(QJsonDocument::Compact);
-        if (it.key().endsWith("Url") && it.value().isString()) {
-            const auto address = it.value().toString();
-            const auto scheme = address.indexOf("://");
-            const auto path = scheme < 0 ? -1 : address.indexOf('/', scheme + 3);
-            text = (scheme < 0 ? address : path < 0 ? QString() : address.mid(path)).toUtf8();
-        }
+        const auto text = it.value().isString() ? it.value().toString().toUtf8() : QJsonDocument(QJsonArray{it.value()}).toJson(QJsonDocument::Compact);
         places.append({"settings." + it.key(), text});
     }
     places.append({"notes", imported.notes.join('\n').toUtf8()});

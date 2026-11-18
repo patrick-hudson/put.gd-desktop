@@ -651,7 +651,7 @@ SxcuImport readSxcu(const QByteArray& json) {
     if (method.isEmpty()) method = fieldText("RequestType").trimmed().toUpper(); // before 12.4
     if (method.isEmpty()) method = "POST";
     if (!QStringList{"GET", "POST", "PUT", "PATCH"}.contains(method)) {
-        out.error = sxcuError("sxcu_unsupported", QString("This uploader sends a %1 request, which put.gd does not support. Use GET, POST, PUT or PATCH.").arg(boundedMessage(method, 16)));
+        out.error = sxcuError("sxcu_unsupported", "This uploader's RequestMethod is not one put.gd supports. Use GET, POST, PUT or PATCH.");
         return out;
     }
 
@@ -713,20 +713,11 @@ SxcuImport readSxcu(const QByteArray& json) {
     // are looked for in what is shown and recorded like the stored ones. So is a query
     // value that a Parameters row of the same name replaced.
     QList<QPair<QString, QString>> unsent; // key → value
-    // A row is named in notes and messages by its name only when that name cannot be a
-    // credential: plain characters, no key-like run, and no value of the file in it.
-    // Otherwise by its place ("argument 3").
-    QStringList fileValues;
-    for (const auto& [key, value] : std::as_const(queryParameters)) fileValues.append(value);
-    for (const auto* list : {"Parameters", "Headers", "Arguments"}) for (const auto& value : field(list).toObject()) fileValues.append(text(value));
-    fileValues.append(fieldText("Data"));
+    // Notes and messages never quote the file: a row is named by its list and its place
+    // there ("argument 3"), a field by its ShareX name. Any text of the file could be a
+    // credential, a name included.
     QHash<QString, QString> labels; // stored or unsent key → what notes call it
-    const auto safeLabel = [&](const QString& list, const QString& name, int position) {
-        static const QRegularExpression plainName("^[A-Za-z0-9._-]{1,64}$"), keyRun("[A-Za-z0-9]{16,}|[A-Za-z0-9_-]{20,}");
-        bool safe = plainName.match(name).hasMatch() && !keyRun.match(name).hasMatch();
-        for (const auto& value : std::as_const(fileValues)) if (safe && value.trimmed().size() >= 4 && name.contains(value.trimmed())) safe = false;
-        return singular(list) + " " + (safe ? name : QString::number(position));
-    };
+    const auto placeLabel = [](const QString& list, int position) { return singular(list) + " " + QString::number(position); };
     for (const auto& [sxcuName, list] : QList<QPair<const char*, QString>>{{"Parameters", "parameters"}, {"Headers", "headers"}, {"Arguments", "arguments"}}) {
         if (!field(sxcuName).isUndefined() && !field(sxcuName).isNull() && !field(sxcuName).isObject()) {
             out.error = sxcuError("sxcu_invalid", QString("%1 must be an object of names and values.").arg(sxcuName));
@@ -739,8 +730,10 @@ SxcuImport readSxcu(const QByteArray& json) {
             bool replaced = false;
             for (auto& entry : entries)
                 if (entry.first == it.key()) {
+                    const auto label = placeLabel(list, int(&entry - entries.data()) + 1);
+                    if (entry.second.size() > maximumValueChars) { out.error = sxcuError("sxcu_unsupported", "The value of " + label + " is too long or has control characters."); return out; }
                     unsent.append({secretKey(list, entry.first), entry.second});
-                    labels.insert(secretKey(list, entry.first), safeLabel(list, entry.first, int(&entry - entries.data()) + 1));
+                    labels.insert(secretKey(list, entry.first), label);
                     entry.second = text(it.value());
                     replaced = true;
                 }
@@ -755,10 +748,10 @@ SxcuImport readSxcu(const QByteArray& json) {
         QSet<QString> seen;
         int position = 0;
         for (const auto& [name, raw] : std::as_const(entries)) {
-            const auto label = safeLabel(list, name, ++position);
+            const auto label = placeLabel(list, ++position);
             labels.insert(secretKey(list, name), label);
             if (!sent || (list == "headers" && (managedHeader(name) || (name.compare("content-type", Qt::CaseInsensitive) == 0 && body != "binary")))) {
-                if (sent) out.notes.append("The header " + boundedMessage(name, 64) + " is set by put.gd for this request and was left out.");
+                if (sent) out.notes.append("The " + label + " is one put.gd sets for this request and was left out.");
                 const auto value = migrate(raw);
                 if (value.size() > maximumValueChars) { out.error = sxcuError("sxcu_unsupported", "The value of " + label + " is too long or has control characters."); return out; }
                 unsent.append({secretKey(list, name), value});
@@ -771,7 +764,7 @@ SxcuImport readSxcu(const QByteArray& json) {
             seen.insert(unique);
             const auto value = migrate(raw);
             if (value.size() > maximumValueChars || (list == "headers" && !controlFree(value))) { out.error = sxcuError("sxcu_unsupported", "The value of " + label + " is too long or has control characters."); return out; }
-            if (const auto problem = templateProblem(value, TemplateUse::Request); !problem.isEmpty()) { out.error = sxcuError("sxcu_unsupported", "The " + label + " cannot be used: " + problem); return out; }
+            if (!templateProblem(value, TemplateUse::Request).isEmpty()) { out.error = sxcuError("sxcu_unsupported", "The value of " + label + " uses a placeholder put.gd cannot send, or writes one wrongly."); return out; }
             if (namePattern.match(value).hasMatch()) patterns = true;
             const auto plain = value.trimmed().toLower();
             // A value that is only the file name or the text placeholder holds no credential.
@@ -788,7 +781,9 @@ SxcuImport readSxcu(const QByteArray& json) {
 
     if (body != "json" && body != "xml") {
         // A body text that is not sent is still looked for, as a row that is not sent is.
-        if (const auto data = fieldText("Data"); !data.isEmpty() && data.size() <= maximumDataChars) unsent.append({dataSecretKey(), data});
+        const auto data = fieldText("Data");
+        if (data.size() > maximumDataChars) { out.error = sxcuError("sxcu_unsupported", "The file's request body text is too long."); return out; }
+        if (!data.isEmpty()) unsent.append({dataSecretKey(), data});
     } else {
         auto data = fieldText("Data");
         if (old) data.replace("$input$", "{input}", Qt::CaseInsensitive).replace("$filename$", "{filename}", Qt::CaseInsensitive);
@@ -878,6 +873,13 @@ SxcuImport readSxcu(const QByteArray& json) {
             if (secret.size() >= 16 && (value.contains(secret) || plain.contains(secret))) note(key);
         return found;
     };
+    // The same for text that is no template (a name): every character counts as written.
+    const auto holds = [&](const QString& value) {
+        QStringList found;
+        for (const auto& [secret, key] : std::as_const(known))
+            if (stands(value, secret) && !found.contains(labelOf(key))) found.append(labelOf(key));
+        return found;
+    };
     QJsonArray extra;
     bool tooManyKeys = false;
     QStringList moved; // the names of the stored values made from key-like runs
@@ -947,7 +949,7 @@ SxcuImport readSxcu(const QByteArray& json) {
         for (const auto& [secret, key] : std::as_const(known))
             if (split >= 0)
                 for (auto at = writtenRequestUrl.indexOf(secret); at >= 0; at = writtenRequestUrl.indexOf(secret, at + 1))
-                    if (at < split && at + secret.size() > split && !across.contains(labelOf(key))) across.append(labelOf(key));
+                    if (at < split && at + secret.size() > split && (secret.size() >= 16 || wordAt(writtenRequestUrl, at, secret.size())) && !across.contains(labelOf(key))) across.append(labelOf(key));
         auto held = repeated(requestUrl);
         for (const auto& label : std::as_const(across)) if (!held.contains(label)) held.append(label);
         if (!held.isEmpty()) {
@@ -959,6 +961,20 @@ SxcuImport readSxcu(const QByteArray& json) {
             out.notes.append(QString("DeletionURL repeated the value of %1 where put.gd cannot name it as a stored value, and was left out.").arg(deletion.join(", ")));
             settings["deletionUrl"] = QString();
         }
+        // A key taken out of an address that was then left out is still looked for (it was
+        // learnt above), but it is not stored: no address of the destination uses it.
+        auto referenced = secretReferences(settings["requestUrl"].toString());
+        referenced += secretReferences(settings["deletionUrl"].toString());
+        QJsonArray used;
+        QStringList usedMoved;
+        for (const auto& row : std::as_const(extra)) {
+            const auto name = row.toObject()["name"].toString();
+            if (!referenced.contains(secretKey(extraSecretsList(), name))) { out.secrets.remove(secretKey(extraSecretsList(), name)); continue; }
+            used.append(row);
+            usedMoved.append(name);
+        }
+        extra = used;
+        moved = usedMoved;
     }
     auto responseUrl = migrate(fieldText("URL"));
     if (const auto found = repeated(responseUrl); !found.isEmpty()) {
@@ -1010,14 +1026,14 @@ SxcuImport readSxcu(const QByteArray& json) {
             out.notes.append(QString("The %1 keeps part %2 after its host as written. If that is a key, move it to Other secret values and write {secret:secrets/name} in its place.").arg(what, positions.join(" and ")));
     settings[extraSecretsList()] = extra;
     // Names are kept in the configuration as written: none may repeat a credential.
-    if (const auto found = repeated(settings["fileFormName"].toString()); !found.isEmpty()) {
+    if (const auto found = holds(settings["fileFormName"].toString()); !found.isEmpty()) {
         out.error = sxcuError("sxcu_unsupported", QString("FileFormName repeats the value of %1. It is kept in the configuration, so it cannot contain a credential.").arg(found.join(", ")));
         return out;
     }
     for (const auto* list : {"parameters", "headers", "arguments"})
         for (const auto& row : settings[list].toArray()) {
             const auto name = row.toObject()["name"].toString();
-            if (const auto found = repeated(name); !found.isEmpty()) {
+            if (const auto found = holds(name); !found.isEmpty()) {
                 out.error = sxcuError("sxcu_unsupported", QString("The name of the %1 repeats the value of %2. Names are kept in the configuration, so they cannot contain a credential.").arg(labelOf(secretKey(list, name)), found.join(", ")));
                 return out;
             }
@@ -1025,22 +1041,32 @@ SxcuImport readSxcu(const QByteArray& json) {
     for (const auto& [key, sxcuName] : QList<QPair<const char*, const char*>>{{"responseUrl", "URL"}, {"thumbnailUrl", "ThumbnailURL"}, {"deletionUrl", "DeletionURL"}, {"errorMessage", "ErrorMessage"}}) {
         const auto value = settings[key].toString();
         if (value.size() > maximumTemplateChars || !controlFree(value)) { out.error = sxcuError("sxcu_unsupported", QString("%1 is too long or has control characters.").arg(sxcuName)); return out; }
-        if (const auto problem = templateProblem(value, TemplateUse::Response); !problem.isEmpty()) { out.error = sxcuError("sxcu_unsupported", QString("%1 cannot be used: %2").arg(sxcuName, problem)); return out; }
+        if (!templateProblem(value, TemplateUse::Response).isEmpty()) { out.error = sxcuError("sxcu_unsupported", QString("%1 uses a placeholder put.gd cannot read a reply with, or writes one wrongly.").arg(sxcuName)); return out; }
     }
 
     // Every rule but the transport one: a plain-HTTP address imports, and the destination
     // then says what to change.
     auto relaxed = settings;
     relaxed["allowInsecureHttp"] = true;
-    if (auto error = validateSettings(relaxed)) { out.error = sxcuError("sxcu_unsupported", error.message.replace("Invalid custom uploader settings: ", "This file cannot be used: ")); return out; }
+    if (auto error = validateSettings(relaxed)) {
+        // The rules' message can quote a name or a placeholder of the file; only the field is said.
+        static const QHash<QString, QString> fields{{"requestUrl", "RequestURL"}, {"responseUrl", "URL"}, {"thumbnailUrl", "ThumbnailURL"}, {"deletionUrl", "DeletionURL"},
+                                                    {"errorMessage", "ErrorMessage"}, {"fileFormName", "FileFormName"}, {"parameters", "Parameters"}, {"headers", "Headers"},
+                                                    {"arguments", "Arguments"}, {"secrets", "the addresses"}, {"data", "Data"}, {"body", "Body"}, {"requestMethod", "RequestMethod"}};
+        const auto where = fields.value(error.details["field"].toString(), QStringLiteral("its settings"));
+        out.error = sxcuError("sxcu_unsupported", QString("This file cannot be used: put.gd does not accept what it gives for %1.").arg(where));
+        return out;
+    }
     const auto url = sampleUrl(requestUrl);
     if (!transportAllowed(url, false)) out.notes.append(plainHttpNote());
     out.name = boundedMessage(fieldText("Name"), 96);
-    if (!out.name.isEmpty() && !repeated(out.name).isEmpty()) {
-        out.notes.append("The file's Name repeated a credential; the destination is named after its host instead.");
-        out.name.clear();
-    }
     if (out.name.isEmpty()) out.name = url.host();
+    // A fixed name in place of one that repeats a credential: the host is no safe
+    // fallback, as it is written in lower case and a credential may be too.
+    if (!holds(out.name).isEmpty()) {
+        out.notes.append("The file's Name repeated a credential; the destination is named Imported uploader instead.");
+        out.name = QStringLiteral("Imported uploader");
+    }
     out.settings = settings;
     return out;
 }
