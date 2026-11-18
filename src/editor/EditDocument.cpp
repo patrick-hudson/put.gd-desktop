@@ -143,7 +143,7 @@ QRectF textOutputBounds(const Shape& shape){
  return path.boundingRect().united(stroke.createStroke(path).boundingRect());
 }
 qint64 EditDocument::bytesOf(const State& state){
- qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape))+qint64(state.dismissed.size())*qint64(sizeof(QRect));
+ qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape))+qint64(state.dismissed.size())*qint64(sizeof(Dismissed));
  for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size()+shape.suggested.size())*qint64(sizeof(QChar))+qint64(shape.points.size())*qint64(sizeof(QPoint));
  return total;
 }
@@ -180,8 +180,18 @@ void EditDocument::preview(const Shape& shape){const bool live=gesture_;gesture_
 bool EditDocument::remove(quint64 id){
  for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){
   auto before=state_;const auto gone=state_.shapes[i];state_.shapes.removeAt(i);
-  if(!gone.suggested.isEmpty()&&gone.suggestedAt.isValid()&&!state_.dismissed.contains(gone.suggestedAt))state_.dismissed.append(gone.suggestedAt);
+  if(!gone.suggested.isEmpty()&&gone.suggestedAt.isValid()&&!state_.dismissed.contains(Dismissed{gone.suggestedAt,gone.suggested}))state_.dismissed.append({gone.suggestedAt,gone.suggested});
   ++generation_;if(!gesture_)push(std::move(before));return true;
+ }
+ return false;
+}
+bool EditDocument::dismissed(const QRect& suggestedAt,const QString& category) const{
+ const auto area=[](const QRect& r){return qint64(r.width())*r.height();};
+ for(const auto& gone:state_.dismissed){
+  if(gone.category!=category)continue;
+  const auto shared=area(gone.at.intersected(suggestedAt));
+  const auto together=area(gone.at)+area(suggestedAt)-shared;
+  if(shared>0&&together>0&&shared*2>=together)return true;
  }
  return false;
 }
