@@ -141,14 +141,13 @@ private slots:
  void nameAndListAnswerWithCounts() {
   editor::EditDocument doc(capture());EditorWindow window(doc);useTerminal(window);
   window.setRedactList({"build-host-7"},{});
-  // The login is found in the prompt and in the home path (aurora-like accounts have no real name, so only the login matches).
-  const bool hasLogin=!ui::currentAccount().login.isEmpty();
+  // The runner reads the account on its worker (round 1, M9): the login is
+  // found in the prompt and in the home path. A login under 3 characters
+  // builds no form of its own (decision 3), so it finds nothing.
+  const auto login=ui::currentAccount().login;
   const auto result=run(window,{"name","list"});
   const auto counts=result["counts"].toObject();
-  // The runner resolves the account itself (round 1, M9). Until that change is on this branch the name count is 0;
-  // tighten this to QCOMPARE(counts["name"].toInt(),2) when it lands.
-  const int names=counts["name"].toInt();
-  if(hasLogin)QVERIFY2(names==0||names==2,qPrintable(QString::number(names)));
+  QCOMPARE(counts["name"].toInt(),login.size()>=3?2:0);
   QCOMPARE(counts["list"].toInt(),1); // build-host-7, from the saved list
   for(const auto& shape:doc.shapes())QVERIFY(shape.suggested=="name"||shape.suggested=="list");
   // Words under a mark Quick redact already added are not read again, so a second run finds nothing new.
