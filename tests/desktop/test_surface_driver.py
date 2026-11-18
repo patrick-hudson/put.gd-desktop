@@ -226,11 +226,25 @@ class Running(unittest.TestCase):
         from tools.lab.surface_driver.collect import require_terminal
         self.assertEqual(require_terminal(self.path/'run')['exit_code'], 0)
         target.close=lambda:['cleanup incomplete']
+        target.guest_local_cleanup=['cleanup incomplete'];target.live_cleanup_pending={'remote':True}
         args[args.index('--out')+1]=str(self.path/'run-error')
         with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
-        self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
+        environment=json.loads((self.path/'run-error/receipt.json').read_text())['environment']
+        self.assertEqual(environment['cleanup_errors'],['cleanup incomplete'])
+        # Recovery reads these two fields: which errors only the guest holds, and a live object still on its destination.
+        self.assertEqual(environment['guest_local_cleanup'],['cleanup incomplete'])
+        self.assertIs(environment['unresolved_live_cleanup'],True)
         self.assertEqual(require_terminal(self.path/'run-error')['exit_code'], 2)
+        # A fixture that refused to start over an earlier marker never set its pending state; the file still counts.
+        target.live_cleanup_pending=None
+        (self.path/'live-cleanup-pending.json').write_text('{}')
+        args[args.index('--out')+1]=str(self.path/'run-marker')
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
+            self.assertEqual(main(args),2)
+        environment=json.loads((self.path/'run-marker/receipt.json').read_text())['environment']
+        self.assertIs(environment['unresolved_live_cleanup'],True)
+        (self.path/'live-cleanup-pending.json').unlink()
 
     def test_target_removes_only_its_private_session_root_after_exit(self):
         target=Target.__new__(Target)
@@ -252,6 +266,142 @@ class Running(unittest.TestCase):
         target.execute=lambda script,**kwargs:execute(script.replace("Path('/proc/self/mountinfo').read_text()",repr(mountinfo)),**kwargs)
         self.assertEqual(target.close(),['private session root cleanup refused'])
         self.assertTrue(Path(target.root).exists())
+
+    def closing_target(self, transport):
+        """A target with every cleanup step armed, whose guest commands all fail the same way."""
+        target=Target.__new__(Target)
+        target._rfb=None;target._probe_process=None;target.monitor_pid=7;target.started=True
+        target._clipboard_lease=object();target._kwin_entries=True;target.physical=None
+        target.root='/tmp/sd-none';target.socket=target.root+'/runtime/putgd/session.sock'
+        def fail(*args,**kwargs):
+            raise transport
+        target.execute=fail;target.cli=fail;target.restore_clipboard=fail
+        return target
+
+    def test_close_records_which_cleanup_errors_only_the_guest_holds(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        names=['notification monitor cleanup unavailable','resident quit transport unavailable; private session retained',
+               'previous clipboard restoration unavailable; private session retained',
+               'exact mirrored KWin entry cleanup refused; private session retained']
+        # The transport is down for the whole close: all four steps fail and all four are guest-local.
+        target=self.closing_target(GuestUnreachable('target session command unavailable: LabError exit 255'))
+        self.assertEqual(target.close(),names)
+        self.assertEqual(target.guest_local_cleanup,names)
+        # The same failures answered by a reachable guest are errors, but not guest-local.
+        target=self.closing_target(RecipeBlocked('refused by the guest'))
+        self.assertEqual(target.close(),names)
+        self.assertEqual(target.guest_local_cleanup,[])
+        # A quit the resident rejected is guest-local: retiring the guest ends the resident.
+        target=Target.__new__(Target)
+        target._rfb=None;target._probe_process=None;target.monitor_pid=None;target.started=True;target._created_root=False
+        target.cli=lambda *a,**kw:{'returncode':1}
+        self.assertEqual(target.close(),[names[1].replace('transport unavailable','was rejected')])
+        self.assertEqual(target.guest_local_cleanup,target.close())
+
+    def test_only_ssh_failure_or_a_host_timeout_means_the_guest_was_unreachable(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        cases=[(lab.LabError('ssh failed (exit 255)'),True),(subprocess.TimeoutExpired('ssh',70),True),
+               # A reachable shell whose command exits 1 (for example its own Python timeout): the guest answered.
+               (lab.LabError('ssh failed (exit 1)'),False),(ValueError('not json'),False)]
+        for failure,unreachable in cases:
+            with self.subTest(failure=repr(failure)):
+                target=self.closing_target(RecipeBlocked('unused'))
+                del target.execute
+                target.heartbeat=lambda force=False:None;target.prefix=lambda:''
+                def session(*args,**kwargs):
+                    raise failure
+                target.session=session
+                with self.assertRaises(RecipeBlocked) as caught:
+                    target.execute('true')
+                self.assertIs(isinstance(caught.exception,GuestUnreachable),unreachable)
+                # close() reports the failed monitor kill as guest-local only when the guest was unreachable.
+                target.cli=target.restore_clipboard=lambda *a,**kw:None
+                target._clipboard_lease=None;target._kwin_entries=False;target.started=False
+                self.assertEqual(target.close(),['notification monitor cleanup unavailable'])
+                self.assertEqual(target.guest_local_cleanup,['notification monitor cleanup unavailable'] if unreachable else [])
+
+    def test_a_remote_marker_is_written_before_publishing_and_removed_only_when_cleaned(self):
+        from tools.lab.surface_driver.fixtures.live_outcomes import RemotePending, capture_name
+        marker=self.path/'live-cleanup-pending.json'
+        prefix='acceptance/tier1-live/abc/'
+        template,key=capture_name(prefix)
+        # The key is known before publishing: the profile's capture template is this literal name.
+        self.assertEqual(key,prefix+template.replace('{ext}','png'))
+        self.assertRegex(key,r'^acceptance/tier1-live/abc/Tier1-[0-9a-f]{32}\.png$')
+        self.assertNotEqual(key,capture_name(prefix)[1])
+        pending=RemotePending(marker,dict(destination='s3',prefix=prefix,objectKey=key,runId='run-1'))
+        self.assertFalse(marker.exists())
+        # The recipe sets this just before opening the region selector, so before any publish call.
+        pending['remote']=True
+        document=json.loads(marker.read_text())
+        self.assertEqual((document['destination'],document['prefix'],document['objectKey'],document['runId']),
+                         ('s3',prefix,key,'run-1'))
+        self.assertEqual(sorted(document),['destination','objectKey','prefix','runId','schemaVersion'])
+        self.assertEqual(marker.stat().st_mode&0o777,0o600)
+        # The receipt's key keeps the marker current if the destination stored another name.
+        pending.record_key(key)
+        self.assertEqual(json.loads(marker.read_text())['objectKey'],key)
+        pending.record_key(prefix+'renamed.png')
+        self.assertEqual(json.loads(marker.read_text())['objectKey'],prefix+'renamed.png')
+        # A runner killed here leaves the marker; the next fixture in this run is blocked, not allowed to clear it.
+        with self.assertRaises(RecipeBlocked):
+            RemotePending(marker,{})
+        pending['remote']=False
+        self.assertFalse(marker.exists())
+        self.assertFalse(pending['remote'])
+        pending.record_key(prefix+'late.png')
+        self.assertFalse(marker.exists())
+
+    def test_an_answered_clipboard_refusal_is_not_erased_by_a_later_lost_connection(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        def restore_after(first):
+            def restore():
+                try:
+                    raise first
+                except RecipeBlocked:
+                    raise GuestUnreachable('exact stop lost ssh')
+            return restore
+        for first,local in ((RecipeBlocked('clipboard keeper failed to restore and exit'),[]),
+                            (GuestUnreachable('keeper pipe lost'),['previous clipboard restoration unavailable; private session retained'])):
+            with self.subTest(first=type(first).__name__):
+                target=Target.__new__(Target)
+                target._rfb=None;target._probe_process=None;target.monitor_pid=None;target.started=False
+                target._clipboard_lease=object();target._kwin_entries=False;target.restore_clipboard=restore_after(first)
+                self.assertEqual(target.close(),['previous clipboard restoration unavailable; private session retained'])
+                self.assertEqual(target.guest_local_cleanup,local)
+
+    def test_kwin_cleanup_stays_armed_after_a_restart_that_staged_nothing(self):
+        from tools.lab.surface_driver import appimage
+        target=self.closing_target(RecipeBlocked('unused'))
+        target.monitor_pid=None;target.started=False;target._clipboard_lease=None
+        target.execute=lambda script,**kwargs:{'returncode':0,'stdout':json.dumps({'files':['putgd-appimage-1.desktop']}),'stderr':''}
+        appimage.prepare(target)
+        # A later launch without APPIMAGE stages nothing, yet the first launch's mirrors still exist.
+        target.execute=lambda script,**kwargs:{'returncode':0,'stdout':'null','stderr':''}
+        appimage.prepare(target)
+        self.assertTrue(target._kwin_entries)
+
+    def test_a_guest_that_staged_no_kwin_entries_has_none_to_clean_up(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        from tools.lab.surface_driver import appimage
+        target=self.closing_target(GuestUnreachable('unreachable'))
+        target.monitor_pid=None;target.started=False;target._clipboard_lease=None
+        # A GNOME guest: staging ran, copied nothing and returned null.
+        target.execute=lambda script,**kwargs:{'returncode':0,'stdout':'null','stderr':''}
+        appimage.prepare(target)
+        self.assertFalse(target._kwin_entries)
+        def fail(*args,**kwargs):
+            raise GuestUnreachable('unreachable')
+        target.execute=fail
+        self.assertEqual(target.close(),[])
+        # A KDE guest that did stage entries still cleans them up, and reports an unreachable guest.
+        target._kwin_entries=False
+        target.execute=lambda script,**kwargs:{'returncode':0,'stdout':json.dumps({'files':['putgd-appimage-1.desktop']}),'stderr':''}
+        appimage.prepare(target)
+        self.assertTrue(target._kwin_entries)
+        target.execute=fail
+        self.assertEqual(target.close(),['exact mirrored KWin entry cleanup refused; private session retained'])
+        self.assertEqual(target.guest_local_cleanup,target.close() and ['exact mirrored KWin entry cleanup refused; private session retained'])
 
     def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
         from types import SimpleNamespace

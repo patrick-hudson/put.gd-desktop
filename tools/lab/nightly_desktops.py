@@ -523,12 +523,15 @@ def recover_guest(config, owner, out, cells):
     stays retained; destroying a disposable VM can resolve only guest-local loss.
     """
     from tools.lab.desktop_lock import Desktop
+    from tools.lab import lab
     run, evidence, session = Path(owner['run']), Path(owner['evidence']), owner['session']
     if run.parent != ROOT/'work/lab-runs' or not re.fullmatch(r'n[0-9a-f]{8}', run.name):
         raise NotRun('guest recovery refused: run is not an owned nightly overlay')
     from tools.lab.overlay_cleanup import _no_symlinks
     _no_symlinks(run)
     _no_symlinks(evidence)
+    if (run/lab.LIVE_CLEANUP_MARKER).exists():
+        raise NotRun('guest retained: live remote cleanup unresolved (marker in the run directory); resolve it before recovery')
     if guest_clients_live(run):
         raise NotRun('guest recovery refused: exact lend/recipe or missing-run QEMU is still live')
     locks = Path.home()/'putgd-lab/locks'
@@ -572,7 +575,14 @@ def recover_guest(config, owner, out, cells):
     for path in evidence.glob('*/receipt.json'):
         environment = json.loads(path.read_text()).get('environment', {})
         errors = environment.get('cleanup_errors', [])
-        if (any(error not in LOST_SESSION_ERRORS for error in errors) or
+        # A live destination that still holds an object or share link keeps its History row and credential
+        # reference in this guest. Retiring would discard the only way to remove it (never retire).
+        if environment.get('unresolved_live_cleanup'):
+            raise NotRun('guest retained: live remote cleanup unresolved in '+str(path)+'; resolve it before recovery')
+        # The receipt's own record of which cleanup errors only the guest holds (the guest was unreachable
+        # or its resident refused to quit). Retire only when every error is one of those.
+        guest_local = environment.get('guest_local_cleanup', [])
+        if (any(error not in guest_local for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
     if (run/'state.json').exists():
@@ -950,10 +960,13 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
                                 if not returned:
                                     raise NotRun('Proton guest provisioning did not complete; source check passed')
-                            if lost_guest_session(target):
-                                # The failing cell is the row's reported result (#1214).
+                            marker_left = (run/lab.LIVE_CLEANUP_MARKER).exists()
+                            if marker_left or lost_guest_session(target):
+                                # The failing cell is the row's reported result (#1214). A live cleanup that is
+                                # still unresolved stops the row the same way: no retry or Proton lend on this guest.
                                 note = failed_recipe_note(target, observed.get('assertion', ''))
-                                reason = f'guest session lost in {flow} attempt {attempt}: {note}'
+                                what = 'live remote cleanup unresolved' if marker_left else 'guest session lost'
+                                reason = f'{what} in {flow} attempt {attempt}: {note}'
                                 record['stoppedEarly'] = dict(flow=flow, attempt=attempt, reason=reason)
                                 record['notRunReason'] = reason
                                 cells[flow]['assertion'] = reason
@@ -978,8 +991,10 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                     for receipt_path in rowout.glob('*/receipt.json'):
                         evidence = json.loads(receipt_path.read_text())
                         environment = evidence.get('environment', {})
-                        retained |= bool(environment.get('cleanup_errors'))
+                        retained |= bool(environment.get('cleanup_errors') or environment.get('unresolved_live_cleanup'))
                         retained |= 'retained' in str(environment.get('private_cleanup', ''))
+                    # The marker outlives a killed runner, which writes no receipt flag.
+                    retained |= (run/lab.LIVE_CLEANUP_MARKER).exists()
                     if outstanding or retained:
                         reservation.update(retained=True, reason='guest retained; explicit cleanup recovery required')
                         recover_row(config, reservation, session, rowout, cells)
