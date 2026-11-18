@@ -83,10 +83,6 @@ struct RecordingEdit {
     // The output's length: the trimmed interval minus every cut inside it
     // (recording::KeptSpans::outputDuration).
     qint64 exportDuration(qint64 duration) const;
-    // A mask's interval in output time after trimming; absent when it lies
-    // wholly outside the retained interval. Ignores cuts: callers that export
-    // use KeptSpans::outputParts, which splits a mask at every cut.
-    static std::optional<std::pair<qint64, qint64>> exportInterval(const RecordingMask&, qint64 trimStart, qint64 trimEnd);
     QJsonObject toJson() const;  // also {cuts: [...], canUndo, canRedo}
 };
 // #1613: the resident's undo history for one review session. Each entry is the

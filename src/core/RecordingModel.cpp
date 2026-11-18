@@ -67,11 +67,6 @@ QJsonObject RecordingMask::toJson() const {
 }
 QJsonObject RecordingCut::toJson() const { return {{"id", id}, {"start", double(start)}, {"end", double(end)}}; }
 qint64 RecordingEdit::exportDuration(qint64 duration) const { return recording::KeptSpans(*this, duration).outputDuration(); }
-std::optional<std::pair<qint64, qint64>> RecordingEdit::exportInterval(const RecordingMask& mask, qint64 trimStart, qint64 trimEnd) {
-    const auto start = std::max(mask.start, trimStart), end = std::min(mask.end, trimEnd);
-    if (end <= start) return std::nullopt;
-    return std::make_pair(start - trimStart, end - trimStart);
-}
 QJsonObject RecordingEdit::toJson() const {
     QJsonArray array;
     for (const auto& mask : masks) array.append(mask.toJson());
