@@ -34,12 +34,6 @@ required safeguards fail explicitly. `checkName` returns absent, present or inco
 an opaque target reference and an opaque precondition. Denied/time-limited checks are
 never treated as available names. Conditional PUT is the final race protection.
 
-A destination whose service accepts the write precondition and then ignores it, as its
-Test connection found (Garage, Zenko CloudServer; #1583), declares
-`ignoresConditionalWrites`. A name check there can't be followed by a guarded PUT, so
-an available name gets a unique suffix before upload unless the collision policy is
-`overwrite`. A name that already ends in a UUID (a renamed or generated name) is kept.
-
 A destination whose server names each upload declares `serverNamesObjects` (#1361).
 It has no name to check, so `checkName` answers absent with a fresh nonce and contacts
 nothing, and the required conditional-create safeguard does not apply. `stat` and
