@@ -363,8 +363,8 @@ private slots:
         QCOMPARE(f.stored(), 0);
     }
     // A server that answers 200 to a deletion and deletes nothing is not believed: the
-    // file stays public, so History must not call it deleted. It is unknown, not failed:
-    // the server may serve a cached copy for a while, and Retry checks again.
+    // file stays public, so History must not call it deleted: the whole file, byte for
+    // byte, still served shows the deletion did not work.
     void aDeletionTheServerDidNotDoIsNotBelieved() {
         HttpFixture f;
         f.reset();
@@ -373,8 +373,7 @@ private slots:
         const auto uploaded = f.upload(f.image(), destination);
         QCOMPARE(uploaded.status, QString("uploaded"));
         const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.status, QString("unknown"));
-        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
         QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
@@ -907,7 +906,7 @@ private slots:
         QTest::addColumn<int>("checks");
         QTest::addColumn<int>("sent");
         QTest::addColumn<QString>("retried");
-        QTest::newRow("answered") << QString("pretend") << 2 << 1 << QString("unknown");
+        QTest::newRow("answered") << QString("pretend") << 2 << 1 << QString("failed");
         QTest::newRow("before-dispatch") << QString("json") << 1 << 0 << QString("removed");
     }
     void quitKillsTheHelperOfAStalledDeletion() {

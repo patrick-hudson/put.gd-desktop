@@ -179,8 +179,8 @@ private slots:
    QCOMPARE(journal["items"].toArray()[0].toObject()["progress"].toObject()["phase"].toString(),QString("delete_intent"));
    QVERIFY(call("delete.retry",{{"id",deletion}})["ok"].toBool());
    PUTGD_TRY_VERIFY_WITH_TIMEOUT((journal=call("delete.inspect",{{"id",deletion}})["result"].toObject())["state"].toString()=="completed",15000);
-   // The server still serves the file: Retry finds nothing deleted, and says so as unknown.
-   QCOMPARE(journal["items"].toArray()[0].toObject()["status"].toString(),QString("unknown"));
+   // The server still serves the whole file: Retry finds the deletion did not work.
+   QCOMPARE(journal["items"].toArray()[0].toObject()["status"].toString(),QString("failed"));
    QCOMPARE(journal["items"].toArray()[0].toObject()["error"].toObject()["code"].toString(),QString("http_delete_unconfirmed"));
    QVERIFY(call("ui.quit")["ok"].toBool());
    PUTGD_TRY_COMPARE_WITH_TIMEOUT(resident.state(),QProcess::NotRunning,10000);

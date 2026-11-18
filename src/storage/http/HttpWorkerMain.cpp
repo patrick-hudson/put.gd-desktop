@@ -955,11 +955,13 @@ private:
                 const auto common = qMin(before.body.size(), after.body.size());
                 const bool same = partial ? before.body.left(common) == after.body.left(common) : after.body == before.body;
                 if (!same) return finish("removed");
-                uncertain = true;
+                // The whole file, byte for byte, is still there: the deletion did not work.
+                // A reply cut short shows only as far as it came, which is not proof.
+                uncertain = partial;
                 error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
                          "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; Retry checks again, or delete it on the server.").arg(r.status)
                          .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
-                return {{"status", "unknown"}, {"progress", progress}};
+                return {{"status", partial ? "unknown" : "failed"}, {"progress", progress}};
             }
             uncertain = true;
             if (after.status == 0) details["checkTransport"] = after.detail;
