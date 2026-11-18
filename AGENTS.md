@@ -101,6 +101,10 @@ a title that names the behavior someone would notice (a conventional commit pref
 titles, the symptom on issue titles), one problem each, issues saying what happened, what
 was expected and how to reproduce it, and PR bodies giving **Problem.**, **Change.** and
 **Verification.**
+Before a pull request merges, run the Sol review loop in `docs/automation/sol-review-loop.md`
+(the `sol-loop` skill): an independent Sol review, fixes for what it finds, and a comment on the
+pull request listing each finding and what was done. Merge only when that comment says approved
+for the current head. CodeRabbit and cubic are optional.
 Promote `nightly` to `main` only through `tools/releases/promote.py --open` (a `release:
 promote nightly YY.MDD.N` pull request from `nightly`, merged with a merge commit);
 its merge tags the stable `vYY.MDD.N` and stages its draft. There is no candidate

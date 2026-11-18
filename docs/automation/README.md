@@ -16,3 +16,4 @@ Driving put.gd from an agent or a script.
 - [Resident JSON CLI](cli.md): `putgd-cli` methods, parameters and the request envelope.
 - [Optional local MCP helper](mcp.md): locked setup, tools and the separate integration suite.
 - [Writing pull requests and issues](pr-and-issue-writing.md): plain-English titles and bodies, with examples.
+- [Sol review loop](sol-review-loop.md): the required review of every pull request and the comment it leaves.
