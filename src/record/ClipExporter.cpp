@@ -1,4 +1,5 @@
 #include "VaapiFrames.h"
+#include "AdaptiveRate.h"
 #include "ClipExporter.h"
 #include "DebugLog.h"
 #include "core/KeptSpans.h"
@@ -8,6 +9,7 @@
 #include <QStringList>
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <optional>
 #include <set>
 #include <vector>
@@ -187,15 +189,31 @@ qint64 streamOrigin(const AVStream* stream) { return stream->start_time == AV_NO
 // repeated, dropped or shifted there. Video selection, output timestamps, mask
 // intervals, the audio cut points and progress all read this one map; it
 // differs from the edit's own KeptSpans by less than a frame per span bound.
+//
+// Frames do not always come at the capture rate: after the adaptive rate steps
+// down the encoder never sees videorate's repeats (#1045), and a static
+// compositor stream resends only once a second. When a span's first frame lies
+// more than one floor interval (1/AdaptiveRate::floorFps) past its start S,
+// snapping would drop the narration over that still picture, so the span
+// starts at S instead and opens on the frame on screen at S: the last frame
+// before S, which may lie in a cut or before the trim (`held`). That is the
+// right picture for that moment, so audio and video stay in sync. A span whose
+// start has no frame before it at all still snaps forward.
 struct FrameGrid {
     recording::KeptSpans map;       // snapped source spans and their output times
     std::vector<qint64> keyframes;  // keyframe times the scan saw (µs from the video origin), ascending
+    // Per map span: the time of the frame it opens on when that frame lies before its start.
+    std::vector<std::optional<qint64>> held;
     // The keyframe decoding has to start from to reach `us`.
     qint64 keyframeAtOrBefore(qint64 us) const {
         const auto it = std::upper_bound(keyframes.begin(), keyframes.end(), us);
         return it == keyframes.begin() ? std::numeric_limits<qint64>::min() : *std::prev(it);
     }
+    // The first frame time span i needs decoded: its held frame, or its start.
+    qint64 decodeFrom(qsizetype i) const { return held[size_t(i)] ? *held[size_t(i)] : map.spans()[i].start; }
 };
+// The longest wait for a span's first frame that still starts the span on it.
+constexpr qint64 floorIntervalUs = 1000000 / AdaptiveRate::floorFps;
 // Video frame times in microseconds from the clip's first frame (the timeline
 // every edit uses), read from the packets: a demux-only pass, nothing decoded.
 Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameGrid& grid);
@@ -393,22 +411,43 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameG
         return {};
     };
     QList<recording::Span> spans;
+    std::map<qint64, qint64> heldAt;  // span start -> the frame it opens on, for spans held at their start
+    qint64 lastEditEnd = 0;
     for (const auto& span : kept.spans()) {
         std::optional<qint64> start, end;
         if (auto e = firstFrameAtOrAfter(span.start, start)) return e;
         if (!start) break;  // no frame from here on: nothing later is kept either
+        // The scan holds every frame from the keyframe it sought to before span.start,
+        // so the one before the first frame found is the frame on screen at span.start.
+        if (*start - span.start > floorIntervalUs) {
+            if (const auto it = frames.lower_bound(span.start); it != frames.begin()) {
+                heldAt[span.start] = *std::prev(it);
+                start = span.start;
+                // The span before ran on to the frame after its end; with no frame
+                // in between it would now overlap this one. Its own end keeps the cut.
+                if (!spans.isEmpty() && spans.last().end > span.start) {
+                    spans.last().end = lastEditEnd;
+                    if (spans.last().empty()) spans.removeLast();
+                }
+            }
+        }
         if (auto e = firstFrameAtOrAfter(span.end, end)) return e;
         const qint64 stop = end ? *end : span.end;
-        if (stop > *start) spans.append({*start, stop});
+        if (stop > *start) { spans.append({*start, stop}); lastEditEnd = span.end; }
     }
-    debugLog(QStringLiteral("export grid: %1 kept spans -> %2 on frames, %3 scan seeks").arg(kept.spans().size()).arg(spans.size()).arg(seeks));
+    debugLog(QStringLiteral("export grid: %1 kept spans -> %2 on frames (%3 held at their start), %4 scan seeks").arg(kept.spans().size()).arg(spans.size()).arg(heldAt.size()).arg(seeks));
     grid.keyframes.assign(keys.begin(), keys.end());
+    grid.held.clear();
     if (spans.isEmpty()) { grid.map = {}; return {}; }
     RecordingEdit snapped;
     snapped.trimStart = spans.first().start;
     snapped.trimEnd = spans.last().end;
     for (int i = 0; i + 1 < spans.size(); ++i) if (spans[i].end < spans[i + 1].start) snapped.cuts.append({QString(), spans[i].end, spans[i + 1].start});
     grid.map = recording::KeptSpans(snapped, spans.last().end);
+    for (const auto& span : grid.map.spans()) {
+        const auto it = heldAt.find(span.start);
+        grid.held.push_back(it == heldAt.end() ? std::nullopt : std::optional<qint64>(it->second));
+    }
     return {};
 }
 
@@ -416,22 +455,25 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameG
 // time, handing every filtered frame to `consume`. Seeks to the keyframe at or
 // before the first span and, past a cut that holds the keyframe the next span
 // decodes from, to that keyframe: cut-out footage after it is never decoded.
+// A span held at its start (FrameGrid::held) first gets the frame on screen
+// there, the last one decoded before it, stamped at the span's output start.
 Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const std::atomic_bool& cancelled, const std::function<Error(AVFrame*)>& consume) {
     const auto& spans = grid.map.spans();
     if (spans.isEmpty()) return {"recording_export_failed", "The retained interval produced no frames", {}};
     // A fresh demuxer per pass: seeking a Matroska file back after EOF lands on a later keyframe.
     Input input;
     if (auto e = input.open(path, false)) return e;
-    input.seekTo(spans.first().start, path, false);
+    input.seekTo(grid.decodeFrom(0), path, false);
     if (!input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
     const auto timeBase = input.format->streams[input.videoIndex]->time_base;
     const auto origin = streamOrigin(input.format->streams[input.videoIndex]);
     PacketPtr packet(av_packet_alloc());
-    FramePtr frame(av_frame_alloc()), filtered(av_frame_alloc());
-    bool inputDone = false;
+    FramePtr frame(av_frame_alloc()), filtered(av_frame_alloc()), previous(av_frame_alloc());
+    bool inputDone = false, heldPushed = false;
     int pushed = 0, pulled = 0, seeks = 0, lastRc = 0;
     qsizetype span = 0;
     qint64 offset = 0;  // output time of the current span's start
+    qint64 previousAt = std::numeric_limits<qint64>::min();  // source time of `previous`, the last frame decoded
     auto drain = [&]() -> Error {
         for (;;) {
             const int rc = av_buffersink_get_frame(graph.sink, filtered.get());
@@ -454,6 +496,16 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
         return e;
     };
     auto decodeFailed = [&](int rc) { return fail("recording_export_failed", QStringLiteral("Decoding failed (%1, code %2)").arg(QString::fromUtf8(input.video->codec->name)).arg(rc), rc); };
+    // Hands one frame to the graph. Once trim has passed its end the graph
+    // reports EOF upstream and sourceEnded is set: nothing more is wanted.
+    bool sourceEnded = false;
+    auto push = [&](AVFrame* f) -> Error {
+        const int rc = av_buffersrc_add_frame_flags(graph.source, f, AV_BUFFERSRC_FLAG_KEEP_REF);
+        ++pushed;
+        if (rc == AVERROR_EOF) { sourceEnded = true; auto e = drain(); debugLog(QStringLiteral("drive: source EOF after pushed=%1 pulled=%2 seeks=%3 lastRc=%4").arg(pushed).arg(pulled).arg(seeks).arg(lastRc)); return e; }
+        if (rc < 0) return fail("recording_export_failed", "Filtering failed", rc);
+        return drain();
+    };
     while (!inputDone) {
         if (cancelled.load()) return {"cancelled", "Export canceled", {}};
         int rc = input.read(packet.get());
@@ -472,31 +524,44 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
             if (rc < 0) return decodeFailed(rc);
             const auto at = av_rescale_q(frame->best_effort_timestamp - origin, timeBase, microseconds);
             bool seek = false;
-            while (span < spans.size() && at >= spans[span].end) {
+            for (;;) {
+                // A held span opens on the last frame decoded before its start, once the
+                // first frame at or past that start shows it is the one on screen there.
+                if (const auto& held = grid.held[size_t(span)]; held && !heldPushed && at >= spans[span].start && previousAt >= *held && previousAt < spans[span].start) {
+                    heldPushed = true;
+                    previous->pts = offset;
+                    previous->duration = std::min<qint64>(at, spans[span].end) - spans[span].start;
+                    if (auto e = push(previous.get()); e || sourceEnded) { av_frame_unref(frame.get()); return e; }
+                }
+                if (at < spans[span].end) break;
                 offset += spans[span].length();
+                heldPushed = false;
                 // Decoding on through the cut wastes nothing when the next span's
                 // keyframe lies before the cut; when the cut holds it, jump there.
-                if (++span < spans.size()) seek = grid.keyframeAtOrBefore(spans[span].start) > spans[span - 1].end;
+                if (++span == spans.size()) break;
+                seek = grid.keyframeAtOrBefore(grid.decodeFrom(span)) > spans[span - 1].end;
             }
             if (span == spans.size()) { av_frame_unref(frame.get()); return finish("last span"); }
             if (seek) {
                 av_frame_unref(frame.get());
-                input.seekTo(spans[span].start, path, false);
+                av_frame_unref(previous.get());
+                previousAt = std::numeric_limits<qint64>::min();
+                input.seekTo(grid.decodeFrom(span), path, false);
                 if (!input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
                 ++seeks;
                 inputDone = false;
                 break;  // the decoder was flushed; read on from the keyframe
             }
+            av_frame_unref(previous.get());
+            if (av_frame_ref(previous.get(), frame.get()) < 0) { av_frame_unref(frame.get()); return fail("recording_export_failed", "Cannot keep a decoded frame"); }
+            previousAt = at;
             if (at < spans[span].start) { av_frame_unref(frame.get()); continue; }
             frame->pts = offset + (at - spans[span].start);
             frame->duration = av_rescale_q(frame->duration, timeBase, microseconds);
-            rc = av_buffersrc_add_frame_flags(graph.source, frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+            const auto e = push(frame.get());
             av_frame_unref(frame.get());
-            ++pushed;
             // Once trim has passed its end the graph reports EOF upstream: we are done.
-            if (rc == AVERROR_EOF) { auto e = drain(); debugLog(QStringLiteral("drive: source EOF after pushed=%1 pulled=%2 seeks=%3 lastRc=%4").arg(pushed).arg(pulled).arg(seeks).arg(lastRc)); return e; }
-            if (rc < 0) return fail("recording_export_failed", "Filtering failed", rc);
-            if (auto e = drain()) return e;
+            if (e || sourceEnded) return e;
         }
     }
     return finish("input done");
