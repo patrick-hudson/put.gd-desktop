@@ -99,6 +99,8 @@ private slots:
         if (!error.isEmpty()) { QCOMPARE(edit.revision, quint64(1)); return; }
         QCOMPARE(edit.trimStart, trim[0]);
         QCOMPARE(edit.trimEnd.value_or(-1), trim[1]);
+        QCOMPARE(edit.cuts.size(), qsizetype(cut.isEmpty() ? 0 : 1));
+        QCOMPARE(edit.masks.size(), qsizetype(cover.isEmpty() ? 0 : 1));
         if (!cut.isEmpty()) { QCOMPARE(edit.cuts.last().start, cut[0]); QCOMPARE(edit.cuts.last().end, cut[1]); }
         if (!cover.isEmpty()) { QCOMPARE(edit.masks.last().start, cover[0]); QCOMPARE(edit.masks.last().end, cover[1]); }
     }

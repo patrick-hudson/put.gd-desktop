@@ -844,7 +844,6 @@ void FilmstripTimeline::mousePressEvent(QMouseEvent* e) {
         if (drag_ == Drag::TrimStart || drag_ == Drag::TrimEnd) { dragStart_ = edit_.trimStart; dragEnd_ = edit_.exportEnd(duration_); }
         else if (drag_ == Drag::CutStart || drag_ == Drag::CutEnd) { for (const auto& cut : edit_.cuts) if (cut.id == dragId_) { dragStart_ = cut.start; dragEnd_ = cut.end; } }
         else { for (const auto& mask : edit_.masks) if (mask.id == dragId_) { dragStart_ = mask.start; dragEnd_ = mask.end; } }
-        emit edgeDragStarted();
         return;
     }
     const auto cover = coverAt(pos);

@@ -53,8 +53,8 @@ public:
  }
  void discard(const QString&) override {++discards;}
  bool deferStop=false;Reply pendingStop;
- // Every answer the resident gave a window proposal, in order.
- QList<QJsonObject> answers;
- void setEdit(const QString&,const RecordingEdit&,const RecordingConfig&,const QJsonObject&,const QJsonObject& answer={}) override {if(!answer.isEmpty())answers.append(answer);}
+ // Every answer the resident gave a window proposal, in order, and the last push of any kind.
+ QList<QJsonObject> answers;QJsonObject lastPush;RecordingConfig lastPushedConfig;int pushes=0;
+ void setEdit(const QString&,const RecordingEdit&,const RecordingConfig& config,const QJsonObject&,const QJsonObject& answer={}) override {++pushes;lastPush=answer;lastPushedConfig=config;if(answer.contains("proposal"))answers.append(answer);}
 };
 }

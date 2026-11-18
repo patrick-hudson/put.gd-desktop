@@ -477,10 +477,8 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
     }
     // The editor's steps: 1 px, 10 px with Ctrl; Shift resizes.
     step *= e->modifiers() & Qt::ControlModifier ? 10 : 1;
-    const bool starting = !nudging_;
-    if (starting) nudgeFrom_ = mask->rect;
+    if (!nudging_) nudgeFrom_ = mask->rect;
     nudging_ = true;
-    if (starting) emit nudgeStarted();
     const QRect all = bounds();
     QRect r = mask->rect;
     if (e->modifiers() & Qt::ShiftModifier) {
@@ -529,12 +527,11 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
     if (nearest) {
         selected_ = nearest->id; original_ = nearest->rect;
         drag_ = Drag::Resize; anchor_ = p;
-        emit editStarted();
         announce(); emit maskSelected(selected_); update(); return;
     }
     for (auto it = masks_.rbegin(); it != masks_.rend(); ++it) {
         if (it->id != selected_ && !(it->start <= timeUs_ && timeUs_ < it->end)) continue;
-        if (toView(it->rect).contains(p)) { selected_ = it->id; announce(); emit maskSelected(it->id); drag_ = Drag::Move; anchor_ = p; original_ = it->rect; emit editStarted(); update(); return; }
+        if (toView(it->rect).contains(p)) { selected_ = it->id; announce(); emit maskSelected(it->id); drag_ = Drag::Move; anchor_ = p; original_ = it->rect; update(); return; }
     }
     if (actual_) { drag_ = Drag::Pan; anchor_ = p; panFrom_ = pan_; setCursor(Qt::ClosedHandCursor); return; }
     if (!selected_.isEmpty()) {
@@ -960,12 +957,12 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id); });
     connect(timeline_, &FilmstripTimeline::trimEdgeDragged, this, [this](bool start, qint64 at) {
         stopPlayback();
-        edgePreview_ = start ? at : std::max<qint64>(0, at - frameUs());
+        edgePreview_ = start ? at : previousFrame(at);
         frameTimer_.start();
     });
     connect(timeline_, &FilmstripTimeline::editEdgeDragged, this, [this](const QString&, const QString&, bool start, qint64 at) {
         stopPlayback();
-        edgePreview_ = start ? at : std::max<qint64>(0, at - frameUs());
+        edgePreview_ = start ? at : previousFrame(at);
         frameTimer_.start();
     });
     connect(timeline_, &FilmstripTimeline::edgeDragFinished, this, [this] { edgePreview_.reset(); frameTimer_.start(); });
@@ -1016,9 +1013,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(view_, &FrameView::maskSelected, this, [this](const QString& id) { if (id.isEmpty()) clearSelection(); else selectCover(id, false); });
     connect(view_, &FrameView::zoomChanged, this, &ReviewWindow::refreshTools);
     // A nudge is a new edit: an upload waiting for an answer is called off.
-    connect(view_, &FrameView::nudgeStarted, this, &ReviewWindow::callOffUpload);
-    connect(view_, &FrameView::editStarted, this, &ReviewWindow::callOffUpload);
-    connect(timeline_, &FilmstripTimeline::edgeDragStarted, this, &ReviewWindow::callOffUpload);
 
     // Tools and transport.
     connect(select_, &QToolButton::clicked, this, [this] { cancelPlacement(); refreshTools(); });
@@ -1058,15 +1052,13 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         config_.format = value[0];
         config_.codec = value[1];
         applyAudio();
-        emit configChanged(config_);
-        refreshAll();
+        emitConfig();
     });
     connect(includeAudio_, &QAction::toggled, this, [this](bool on) {
         if (on == audioIntent_ || config_.silent()) return;
         audioIntent_ = on;
         applyAudio();
-        emit configChanged(config_);
-        refreshAll();
+        emitConfig();
     });
     // Upload hands the clip to the resident: the review closes at once and the
     // export and upload continue in the background, reported like any upload.
@@ -1087,14 +1079,13 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     // An upload waiting for its edit's answer gives up after 2 s and says so.
     uploadWait_.setSingleShot(true);
     uploadWait_.setInterval(2000);
-    connect(&uploadWait_, &QTimer::timeout, this, [this] {
-        if (!uploadWaiting_) return;
-        showError(QStringLiteral("Upload didn't start: your last change wasn't confirmed in time. Check the edits, then upload again."), false);
-    });
+    connect(&uploadWait_, &QTimer::timeout, this, [this] { cancelUpload(QStringLiteral("your last change wasn't confirmed in time")); });
     shortcut(QKeySequence(Qt::ALT | Qt::Key_Left), [this] { stepEdit(-1); });
     shortcut(QKeySequence(Qt::ALT | Qt::Key_Right), [this] { stepEdit(1); });
     view_->installEventFilter(this);
     timeline_->installEventFilter(this);
+    // While an Upload waits, any input in this window or its dialogs cancels it.
+    qApp->installEventFilter(this);
 
     frameTimer_.setSingleShot(true);
     frameTimer_.setInterval(qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") > 0 ? qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") : 60);
@@ -1128,6 +1119,11 @@ QSize ReviewWindow::minimumSizeHint() const {
 // ---- time ----
 qint64 ReviewWindow::frameUs() const { return std::max<qint64>(1, qRound64(1e6 / std::max(1, config_.fps))); }
 qint64 ReviewWindow::frameAt(qint64 index) const { return std::llround(double(index) * 1e6 / std::max(1, config_.fps)); }
+// Edges come from frame indexes (edge k = round(k·10⁶/fps)), never from adding
+// a rounded frame length: 33,333 + 33,333 is not frame 2's 66,667.
+qint64 ReviewWindow::frameIndex(qint64 us) const { return std::llround(double(us) * std::max(1, config_.fps) / 1e6); }
+qint64 ReviewWindow::nextFrameEdge(qint64 at) const { return std::min(options_.durationUs, frameAt(frameIndex(at) + 1)); }
+qint64 ReviewWindow::previousFrame(qint64 edge) const { return frameAt(std::max<qint64>(0, frameIndex(edge) - 1)); }
 // Frame times are rounded (30 fps: 66,667 µs is frame 2), so the estimate is
 // checked against the rounded times on both sides of it.
 std::optional<qint64> ReviewWindow::firstFrameIn(const recording::Span& span) const {
@@ -1282,7 +1278,6 @@ void ReviewWindow::stepEdit(int direction) {
 // ---- edits ----
 void ReviewWindow::propose(const QJsonArray& commands) {
     if (exporting_) return;
-    callOffUpload();
     emit editProposed(edit_.revision, commands, ++proposalSeq_);
 }
 void ReviewWindow::undoRedo(bool undo) {
@@ -1332,7 +1327,6 @@ void ReviewWindow::cutSelection() {
 }
 void ReviewWindow::arm(const QString& kind) {
     if (exporting_ || (kind != "solid" && kind != "blur")) return;
-    callOffUpload();
     stopPlayback();
     view_->commitNudge();
     // The time selection snapped outward to whole frames, or the whole recording.
@@ -1342,7 +1336,7 @@ void ReviewWindow::arm(const QString& kind) {
         const qint64 start = frameAt(qint64(std::floor(double(timeSelection_->start) * fps / 1e6 + 1e-9)));
         const qint64 end = std::min(options_.durationUs, frameAt(qint64(std::ceil(double(timeSelection_->end) * fps / 1e6 - 1e-9))));
         placement = {kind, {std::min(start, timeSelection_->start), std::max(end, std::min(options_.durationUs, timeSelection_->end))}, false};
-        if (placement.span.empty()) placement.span.end = std::min(options_.durationUs, placement.span.start + frameUs());
+        if (placement.span.empty()) placement.span.end = nextFrameEdge(placement.span.start);
     }
     placing_ = placement;
     selectedKind_.clear();
@@ -1421,7 +1415,7 @@ QString ReviewWindow::setTrimAt(bool start) {
         return {};
     }
     // The playhead frame is the last one kept.
-    const qint64 end = std::min(options_.durationUs, at + frameUs());
+    const qint64 end = nextFrameEdge(at);
     if (end <= edit_.trimStart) return refuse("Trim end must be after the trim start");
     propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(edit_.trimStart)}, {"end", end >= options_.durationUs ? QJsonValue(QJsonValue::Null) : QJsonValue(double(end))}}});
     return {};
@@ -1436,7 +1430,7 @@ QString ReviewWindow::setMaskAt(bool start, const QString& id) {
         updateCover(mask->id, [&](QJsonObject& m) { m["start"] = double(at); });
     } else {
         // Until the playhead: the frame shown stays covered.
-        const qint64 end = std::min(options_.durationUs, at + frameUs());
+        const qint64 end = nextFrameEdge(at);
         if (end <= mask->start) return refuse("The cover must end after it starts");
         updateCover(mask->id, [&](QJsonObject& m) { m["end"] = double(end); });
     }
@@ -1466,6 +1460,8 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     // ones with the reason (the edit is then the resident's unchanged one).
     const auto answered = quint64(std::max<qint64>(0, answer["proposal"].toInteger()));
     const auto refused = answer["refused"].toObject();
+    // Only the answer the upload waits for lets it go on; any other push cancels it.
+    if (!answer.contains("proposal")) cancelUpload();
     if (answered > answeredSeq_) answeredSeq_ = std::min(answered, proposalSeq_);
     if (!refused.isEmpty()) {
         lastRefusal_ = refused;
@@ -1517,19 +1513,27 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
         while (why.endsWith('.')) why.chop(1);
         showError(why.isEmpty() ? QStringLiteral("That change wasn't applied.") : QStringLiteral("That change wasn't applied: %1.").arg(why), false);
     }
-    if (!refused.isEmpty()) { uploadWaiting_ = false; uploadWait_.stop(); }
+    if (!refused.isEmpty()) cancelUpload(QStringLiteral("a change wasn't applied"));
     if (tryUpload()) return;
     refreshAll();
     frameTimer_.start();
 }
-void ReviewWindow::setConfig(const RecordingConfig& config) {
+bool ReviewWindow::setConfig(const RecordingConfig& config, quint64 seq) {
+    // The window's own output choice wins over a config sent before the resident saw it.
+    if (seq < configSeq_) return false;
+    auto shown = config_.toJson(), next = config.toJson();
+    shown.remove("budgetBytes"); next.remove("budgetBytes");
+    if (shown == next) return true;
+    cancelUpload();
     if (!config.silent()) audioIntent_ = config.audio.any();
     config_ = config;
     applyAudio();
     timeline_->setDuration(options_.durationUs, config_.fps);
     refreshAll();
+    return true;
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {
+    if (exporting) cancelUpload();
     stopPlayback();
     if (exporting) { cancelPlacement(); chooser_->cancel(); if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); } if (overlay_->isOpen()) overlay_->dismiss(); }
     if (exporting && discard_) answerDiscard(false);
@@ -1556,9 +1560,7 @@ void ReviewWindow::setSavedCopy(const QString& path, quint64 revision, const Rec
 void ReviewWindow::showError(const QString& message, bool retryExport) {
     message_ = message.isEmpty() ? StatusEntry{} : StatusEntry{message, QStringLiteral("error"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
     if (!message.isEmpty() && retryExport) message_.actions.prepend({QStringLiteral("Try again"), QJsonObject{{"action", "retryExport"}}});
-    // An upload waiting for an answer never goes ahead past an error.
-    uploadWaiting_ = false;
-    uploadWait_.stop();
+    cancelUpload();  // never past an error
     refreshAll();
 }
 void ReviewWindow::setNotice(const QString& text) {
@@ -1566,29 +1568,31 @@ void ReviewWindow::setNotice(const QString& text) {
     noticeBand_->setVisible(!text.isEmpty());
     refreshBanners();
 }
-void ReviewWindow::reopen(const QString& error) {
+void ReviewWindow::reopen(const QString& error, bool retry) {
     closing_ = false;
     show();
     raise();
     activateWindow();
-    if (!error.isEmpty()) showError(error);
+    if (!error.isEmpty()) showError(error, retry);
 }
 void ReviewWindow::setLimits(qint64 animationMaxUs, int animationMaxEdge) {
     animationMaxUs_ = animationMaxUs;
     animationMaxEdge_ = animationMaxEdge;
     refreshAll();
 }
-// The upload rule (#1635): an upload is sent for the revision at which every
-// local change was answered, and nothing else. Upload (Ctrl+Enter, Enter)
-// commits a pending nudge and waits for every answer; a new local change while
-// it waits (an edit, a nudge, a drag, a placement), a refusal or 2 s without an
-// answer calls it off with a status line. The resident refuses an upload at any
-// other revision, or while an export runs, and the window comes back with why.
+// The upload rule (#1635): Upload (Ctrl+Enter, Enter) commits a pending nudge
+// and waits until every proposal was accepted, then sends that revision with
+// the output the window shows. While it waits, anything that happens cancels
+// it through cancelUpload(): input in this window or its dialogs, an agent's
+// action, a format or sound change, a dialog or an export starting, a push from
+// the resident other than the awaited answer, a refusal or 2 s without an
+// answer. The resident refuses an upload at any other revision or output.
 void ReviewWindow::upload() {
     // Mid-gesture or placing there is a change not yet made: nothing to upload.
     if (exporting_ || closing_ || placing_ || view_->dragging() || timeline_->dragging()) return;
     stopPlayback();
     view_->commitNudge();
+    uploadNotice_ = {};
     uploadWaiting_ = true;
     uploadWait_.start();
     tryUpload();
@@ -1599,16 +1603,21 @@ bool ReviewWindow::tryUpload() {
     uploadWait_.stop();
     refreshAll();
     closing_ = true;
-    emit uploadRequested(edit_.revision);
+    emit uploadRequested(edit_.revision, config_);
     close();
     return true;
 }
-void ReviewWindow::callOffUpload() {
+void ReviewWindow::cancelUpload(const QString& why) {
     if (!uploadWaiting_) return;
     uploadWaiting_ = false;
     uploadWait_.stop();
-    if (exporting_) return;
-    message_ = {QStringLiteral("Upload cancelled because you changed the recording while it waited. Upload again when you're ready."), QStringLiteral("info"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
+    // Its own status line, kept when the awaited answer arrives.
+    uploadNotice_ = {QStringLiteral("Upload cancelled: %1. Press Upload again.").arg(why.isEmpty() ? QStringLiteral("you changed the clip") : why), QStringLiteral("warning"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
+    refreshAll();
+}
+void ReviewWindow::emitConfig() {
+    cancelUpload();
+    emit configChanged(config_, ++configSeq_);
     refreshAll();
 }
 // Fit keeps the 1280 px preview; 100 % asks for the source's own pixels.
@@ -1727,6 +1736,7 @@ void ReviewWindow::refreshBanners() {
 }
 QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     QList<StatusEntry> entries;
+    if (!uploadNotice_.text.isEmpty()) entries.append(uploadNotice_);
     if (!message_.text.isEmpty()) entries.append(message_);
     if (!savedPath_.isEmpty() && !savedDismissed_ && !exporting_)
         entries.append({(savedCurrent() ? QStringLiteral("Saved %1") : QStringLiteral("Earlier copy saved: %1")).arg(QFileInfo(savedPath_).fileName()),
@@ -1779,11 +1789,14 @@ void ReviewWindow::refreshStatus() {
                 entry.text.prepend(QStringLiteral("Couldn't export the recording: "));
         }
     }
-    // One line at a time, an error first; the other facts stay in inspect.
+    // One line at a time, an error first; the other facts stay in inspect. A
+    // cancelled upload says so on a line of its own above it.
+    if (!uploadNotice_.text.isEmpty()) entries.removeOne(uploadNotice_);
     if (!entries.isEmpty()) {
         const auto error = std::find_if(entries.cbegin(), entries.cend(), [](const auto& entry) { return entry.tone == "error"; });
         entries = {error == entries.cend() ? entries.first() : *error};
     }
+    if (!uploadNotice_.text.isEmpty()) entries.prepend(uploadNotice_);
     // Try again waits while a cover is being placed, as Save and Upload do.
     const auto guardRetry = [this] {
         for (auto* button : statusRow_->findChildren<QPushButton*>("statusAction"))
@@ -2005,6 +2018,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"selectedMaskName", mask ? QJsonValue(maskNames_->name(*mask)) : QJsonValue(QJsonValue::Null)},
         {"selection", selection}, {"selectedEdit", selectedEdit}, {"edits", panel["rows"]}, {"placement", placement},
         {"lastRefusal", lastRefusal_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(lastRefusal_)}, {"uploadWaiting", uploadWaiting_},
+        {"playbackQueuedEnd", bool(playEnded_ && playEnded_->load())},
         {"playhead", QJsonObject{{"sourceUs", double(playhead_)}, {"outputUs", double(kept_.toOutput(playhead_))}}},
         {"undo", QJsonObject{{"canUndo", edit_.canUndo}, {"canRedo", edit_.canRedo}}},
         {"viewer", QJsonObject{{"zoom", view_->actualSize() ? QStringLiteral("actual") : QStringLiteral("fit")}, {"percent", view_->zoomPercent()}, {"pan", pan}}},
@@ -2031,6 +2045,7 @@ QJsonObject ReviewWindow::inspect() const {
 // The state after an action that proposed edits lists them (proposals: [n, …]),
 // so the resident can tell whether it refused one: inspect's lastRefusal.proposal.
 ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
+    if (params["action"] != "inspect") cancelUpload();
     const quint64 before = proposalSeq_;
     auto result = driveAction(params);
     if (result.code.isEmpty() && proposalSeq_ != before) {
@@ -2066,8 +2081,9 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "discard") { askDiscard(); return done(); }
     if (action == "retryExport") {
         if (std::none_of(message_.actions.cbegin(), message_.actions.cend(), [](const auto& action) { return action.second["action"] == "retryExport"; })) return invalid("There is no failed export to retry");
-        // As Save and Upload: never while a cover is being placed.
+        // As Save and Upload: never while a cover is being placed or a change is unanswered.
         if (placing_) return {"recording_state", "Place or cancel the cover first", {}};
+        if (proposalPending() || view_->nudging() || view_->dragging() || timeline_->dragging()) return {"recording_state", "Wait until your last change is saved, then try again", {}};
         stopPlayback();
         // residentRetries: the resident asked for the check and retries itself (recording.review).
         if (!params["residentRetries"].toBool()) emit retryExportRequested();
@@ -2095,6 +2111,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     }
     if (action == "dismissStatus") {
         message_ = {};
+        uploadNotice_ = {};
         if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); }
         refreshAll();
         return done();
@@ -2384,6 +2401,8 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
     refreshTransport();
     auto stop = std::make_shared<std::atomic_bool>(false);
     playStop_ = stop;
+    auto ended = std::make_shared<std::atomic_bool>(false);
+    playEnded_ = ended;
     QPointer<ReviewWindow> guard(this);
     const QString clip = options_.workingClip;
     const QSize canvas = options_.canvas;
@@ -2391,7 +2410,7 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
     const auto kept = kept_;
     const double speed = std::max(0.1, speed_);
     const int edge = viewEdge();
-    auto* thread = QThread::create([guard, stop, clip, canvas, edit, kept, start, speed, edge] {
+    auto* thread = QThread::create([guard, stop, ended, clip, canvas, edit, kept, start, speed, edge] {
         QElapsedTimer clock;
         clock.start();
         const qint64 outputStart = kept.toOutput(start);
@@ -2432,6 +2451,7 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
             }
             if (stop->load()) { reachedEnd = false; break; }
         }
+        ended->store(reachedEnd);  // the run played to the end and queued it (inspect, tests)
         QMetaObject::invokeMethod(guard, [guard, stop, reachedEnd] {
             if (!guard || guard->playStop_ != stop) return;
             guard->stopPlayback();
@@ -2457,6 +2477,7 @@ void ReviewWindow::stopPlayback() {
 // ---- save, discard, close, keys ----
 bool ReviewWindow::chooseCopy() {
     if (exporting_ || placing_ || chooser_->isOpen()) return false;
+    cancelUpload();
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
@@ -2478,6 +2499,15 @@ void ReviewWindow::hideEvent(QHideEvent* e) {
     QWidget::hideEvent(e);
 }
 bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
+    if (uploadWaiting_) {
+        const auto type = event->type();
+        const bool input = type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick || type == QEvent::Wheel
+            || (type == QEvent::KeyPress && !static_cast<QKeyEvent*>(event)->isAutoRepeat());
+        auto* widget = qobject_cast<QWidget*>(watched);
+        // A dialog, menu or popup of this window opening counts as much as a click.
+        const bool opened = type == QEvent::Show && widget && widget->isWindow() && widget != this;
+        if (input || opened) for (auto* w = widget; w; w = w->parentWidget()) if (w == this) { cancelUpload(); break; }
+    }
     // Delete and Backspace cut or remove only from the viewer and the timeline
     // (the Edits list handles its own rows; a field keeps its own keys).
     if (event->type() == QEvent::KeyPress && (watched == view_ || watched == timeline_)) {

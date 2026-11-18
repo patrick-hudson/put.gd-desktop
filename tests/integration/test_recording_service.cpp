@@ -224,7 +224,7 @@ private slots:
   const auto propose=[&](int revision,int proposal,const QJsonObject& command){h.backend->sink({{"id",id},{"event","edit"},{"revision",revision},{"proposal",proposal},{"commands",QJsonArray{command}}});};
   propose(1,1,{{"op","addCut"},{"start",2000000},{"end",3000000}});
   PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
-  QCOMPARE(h.backend->answers[0],(QJsonObject{{"proposal",1}}));
+  QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QVERIFY(!h.backend->answers[0].contains("refused"));
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
   propose(1,2,{{"op","resetTrim"}});
   PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
@@ -306,6 +306,7 @@ private slots:
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",1}});
   PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
   QVERIFY(h.backend->lastControlParams["error"].toString().contains("nothing was uploaded"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));  // U35: no Try again
   QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));
   // During an export (a copy being saved), an upload is refused out loud.
   h.backend->deferExports=true;
@@ -315,10 +316,54 @@ private slots:
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2}});
   PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
   QVERIFY(h.backend->lastControlParams["error"].toString().contains("Another export is running"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  // U34: a proposal answered during the export reaches the window once review resumes.
+  const auto before=h.backend->answers.size();
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",2},{"proposal",7},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),before,200);
   QCOMPARE(h.backend->exports,1);
   h.backend->pendingExports.takeFirst()();
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QCOMPARE(h.backend->exports,1);
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),before+1);
+  QCOMPARE(h.backend->answers.last()["proposal"].toDouble(),7.0);
+  QCOMPARE(h.backend->answers.last()["refused"].toObject()["code"].toString(),QString("recording_state"));
+ }
+ // U31: Try again after a failed Upload retries that Upload's revision; once
+ // the edit changed it is refused (press Upload), never uploaded at the new one.
+ void retryKeepsTheFailedUploadsRevision(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}}).error);
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retried.error.code,QString("recording_stale"));QVERIFY(retried.error.message.contains("Press Upload"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Press Upload"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,1);
+ }
+ // U32: the upload carries the output the window shows; any other is refused.
+ // Pushes name the window's latest output choice the resident applied.
+ void anUploadMustCarryTheShownOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",3},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->lastPush["configSeq"].toDouble(),3.0);
+  h.backend->log.clear();
+  auto mp4=h.rec("inspect",{{"id",id}}).result["config"].toObject();mp4["format"]="mp4";mp4["codec"]="h264";
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",mp4}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("format or sound changed"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,0);
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",h.rec("inspect",{{"id",id}}).result["config"]}});
+  PUTGD_TRY_COMPARE(h.backend->exports,1);
  }
  // D16: the review's Format menu can leave captured sound out of the export,
  // but never adds a source that wasn't captured.
