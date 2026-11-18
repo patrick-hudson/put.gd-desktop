@@ -405,8 +405,9 @@ memory window and the coordinator's OK for each logout.
   - **Save a copy…** opens the desktop's portal chooser (the themed fallback only where no portal FileChooser exists), and the saved file exists.
   - The link is copied according to the clipboard setting: each link on every desktop, plus the list behaviour on at least one.
 - **E. Recording:** a moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
-  - In the Review window: a trim and a timed blur.
-  - Export MP4, WebM, GIF and WebP, and save one copy through the chooser.
+  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut, a redaction over a time selection, and undo and redo of each.
+  - Fold the window below 1180×720 and use the **Edits** overlay.
+  - Export MP4, WebM, GIF and WebP and save one copy through the chooser. Each export contains motion with the cut removed: its duration is the kept time and `putgd-record --motion` reads movement across the join. The WebP is read with a decoder that supports animated WebP.
   - Each clip's motion score is compared with a static control recorded on the same desktop.
   - Record the live encoder (VA-API or the bundled x264).
   - On Plasma Wayland, AppRun's KWin entry gives `kde-screencast`, and the entry is removed on exit.
@@ -706,7 +707,8 @@ On the accepted nightly, installed by item L.
   - The link is copied according to the clipboard setting.
 - **E. Recording:** the [recording row](#screen-recording-rows) for this package, with the distro's GStreamer and FFmpeg.
   - A moving pattern, recorded through the production path: prepare, start, pause, resume, stop.
-  - In the Review window: a trim and a timed blur. Export MP4, WebM, GIF and WebP, and save one copy through the chooser.
+  - In the Review window ([layout and rules](../design/recording/overlay-and-review.md#review-window)): a trim, a cut, a redaction over a time selection, and undo and redo of each. Fold the window below 1180×720 and use the **Edits** overlay.
+  - Export MP4, WebM, GIF and WebP and save one copy through the chooser. Each export contains motion with the cut removed: its duration is the kept time and `putgd-record --motion` reads movement across the join. The WebP is read with a decoder that supports animated WebP.
   - Each clip's motion score is compared with a static control recorded on the same desktop.
   - Record the capture source (`ximagesrc`, `kde-screencast`, `mutter-screencast` or the portal) and the live encoder.
   - On Plasma Wayland, `kde-screencast` comes from the installed `putgd-record.desktop`.

@@ -147,7 +147,7 @@ Previous and next frame (`,` and `.`, named in their tooltips) follow, then the
 two clocks: **output time / output length** (m:ss.s, what the exported clip will
 show), and beside it, muted, **clip time** (the source time the ruler and the
 trim brackets use) and "Preview is silent" with a speaker glyph. Last comes the
-timeline zoom button (magnifier and level: Fit, 2×, 4×; Ctrl+wheel zooms around
+timeline zoom button (magnifier and level: Fit, 2×, 4×, 8×, 16×; Ctrl+wheel zooms around
 the pointer). Playback skips every cut and the footage outside the trim: the
 output clock runs only over what the export keeps, and the preview never plays
 the audio.
@@ -277,9 +277,8 @@ the resident as an `edit` event first, and the resident reads the window again
 after pushing the result back. Every control routes through the same handler as
 its UI.
 
-> **TODO (#1613, coordinator):** the `recording.review` action list and the
-> fields of `inspect`'s answer go here, as a table, once the final list is
-> confirmed.
+The actions and the fields `inspect` returns are listed in
+[Agent control and tests](agent-control-and-tests.md#review-window-actions).
 
 The window never owns the edit: each change is proposed to the resident as an
 `edit {revision, commands}` event, the resident applies it to the authoritative

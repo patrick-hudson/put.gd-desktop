@@ -16,7 +16,7 @@ Part of [Screen recording](../recording.md).
 | `set_recording_audio` | `recording.audio` |
 | `edit_recording` (trim, cuts, covers, `undo`, `redo`) | `recording.edit` |
 | `preview_recording` (MCP image) | `recording.preview` |
-| `drive_recording_review` | `recording.review` (the action list: see below) |
+| `drive_recording_review` | `recording.review` ([the actions](#review-window-actions)) |
 | `save_recording_copy` | `recording.saveCopy` |
 | `upload_recording` | `recording.upload` |
 
@@ -27,10 +27,91 @@ Every interactive control of the review window is reachable through
 `recording.edit`; the model, limits and error codes are in
 [the edit model](session-contract.md#time-geometry-and-the-edit-model).
 
-> **TODO (#1613, coordinator):** the table of `recording.review` actions (name,
-> fields, what each does, and what `inspect` returns for the selection, cuts,
-> Edits list, zoom, panel state, placement banner and the source and output
-> playheads) goes here once the final list is confirmed.
+### Review window actions
+
+`recording.review {id, action, ...}` (MCP `drive_recording_review`) works one control
+per call. Each action calls the function its button, key or gesture calls; the checks
+only turn a refused state into an error. Times are integer microseconds on the
+recorded-clip timeline (source time), rectangles `[x, y, width, height]` in canvas
+pixels. Unknown actions, missing or malformed fields and out-of-range values are
+`invalid_request`; a state that refuses an action (nothing selected, nothing to undo,
+a cover being placed, an export running, the discard confirmation or the Save a copy…
+chooser open) is `recording_state`.
+
+| Action | Fields | What it does |
+| --- | --- | --- |
+| `inspect` | | the window's state, unchanged (below) |
+| `seek` | `time` | moves the playhead |
+| `play`, `pause` | | Space; `play` cancels a placement first |
+| `speed` | `speed` 0.5, 1, 2 or 4 | the Play menu's speed |
+| `frameStep` | `delta` 1 or −1 | `.` and `,`: one frame |
+| `setIn`, `setOut` | | I and O: the trim's start or end at the playhead |
+| `setTrim` | `start`, `end` (null or omitted: the recording's end) | the brackets, in one step; `start < end` within the recording |
+| `resetTrim` | | the Edits row's Reset |
+| `trimToLimit` | | trims the end so the kept time fits the GIF or WebP limit; refused when it already does |
+| `selectRange` | `start`, `end` | drags a time selection on the filmstrip; `start < end` within the recording |
+| `clearSelection` | | Esc: clears the time or edit selection |
+| `cut` | | C, or the Cut button: cuts the time selection (`recording_state` without one); the playhead then lands 1 s before the seam |
+| `selectCut` | `cutId` | clicks a cut |
+| `adjustCut` | `cutId`, `start`, `end` | drags a cut's edges |
+| `restoreCut` | `cutId` | Restore |
+| `playAcross` | `cutId` | plays from 1 s of kept footage before the cut |
+| `undo`, `redo` | | the resident's history (Ctrl+Z, Ctrl+Shift+Z); `undo` while placing a cover cancels the placement, `redo` then is refused; nothing to step is `recording_state` |
+| `armRedact`, `armBlur` | | X and B: arm a cover for the time selection, or for the whole recording |
+| `placeMask` | `rect` | while a cover is armed, draws its box as a drag does (one `addMask`); otherwise moves or resizes the selected cover |
+| `cancelPlacement` | | Esc, or the banner's Cancel; `recording_state` when nothing is being placed |
+| `addMask` | `kind` blur or solid, optional `rect` | arms and places in one step: the box (default: centred, half the frame) over the time selection or the whole recording |
+| `selectMask` | `maskId`, or null to clear | selects a cover |
+| `selectEdit` | `kind` cut, cover or trim, `editId` (none for a trim) | selects a row of the Edits list |
+| `nextEdit`, `previousEdit` | | Alt+→ and Alt+← |
+| `seekCoverStart`, `seekCoverEnd` | | Shows from → and Until →: the first or last *kept* covered frame of the selected cover (`recording_state` when it is excluded from the output) |
+| `setCoverEdgeToPlayhead` | `edge` start or end | Set to playhead for the selected cover |
+| `setMaskIn`, `setMaskOut` | | the selected cover's start or end at the playhead (Shift+I and Shift+O) |
+| `coverKind` | `kind` solid or blur | the panel's Redact \| Blur choice for the selected cover |
+| `useSolidCover` | | turns the selected blur, or an armed Blur, into a redaction |
+| `strength` | `strength` 2–64 | the selected blur's strength |
+| `removeMask` | | removes the selected cover |
+| `timelineZoom` | `level` 1 (Fit), 2, 4, 8 or 16 | the timeline's zoom |
+| `timelineFit` | | back to Fit |
+| `viewerZoom` | `mode` fit or actual | Fit or 100 % |
+| `viewerPan` | `dx`, `dy` (source pixels) | pans at 100 %; `recording_state` at Fit |
+| `skim`, `skimEnd` | `time` | paused hover on the timeline: the tile at once, the exact frame later; `skimEnd` leaves. `recording_state` while playing |
+| `panel` | `open` (boolean) | the folded Edits overlay; `recording_state` while the panel is beside the viewer |
+| `resize` | `width`, `height` (200–16000) | resizes the window, so the panel folds or unfolds |
+| `format` | `format`, `codec` | the output format menu |
+| `saveCopyDialog`, `closeFileDialog` | | opens **Save a copy…** as the button does, or closes it as a cancel |
+| `dismissStatus`, `showAdvice` | | clears the status line, or opens an error's details |
+| `showInFolder`, `copyPath`, `dismissSavedCopy` | | the saved-copy result's actions |
+| `retryExport`, `retryPreview` | | Try again after a failed Save a copy or Upload (an Upload retry publishes); decode the playhead frame again |
+| `discard`, `keepReviewing`, `confirmDiscard` | | Discard… asks; the other two answer it |
+
+The mask-options actions of the old window (`showMaskOptions`, `closeMaskOptions`,
+`nextMaskLanes`, `previousMaskLanes`, `dismissBlurTip`, `showFormatTips`) are
+removed: those controls no longer exist.
+
+**What `inspect` returns.** The answer is the window's state, plus the resident's
+`state` and `edit`:
+
+| Field | Meaning |
+| --- | --- |
+| `selection` | the time selection `{start, end, lengthUs}`, or `null`. **The shape changed in #1613:** it was `{kind, id, span?}` for any selection in the first redesign builds, and it now holds the time selection only; a selected cut, cover or trim is `selectedEdit` |
+| `selectedEdit` | `{kind: cut\|cover\|trim, id}`, or `null` |
+| `edits` | the Edits list in source order: `{kind, id, name, span {start, end}, selected}` |
+| `cuts`, `masks` | each with `id`, span and its rectangle on the timeline (`timeline`); masks also `name` and `kind` |
+| `trim` | `{start, end}` |
+| `playhead` | `{sourceUs, outputUs}`; `playheadUs` and `outputPlayheadUs` remain |
+| `outputDurationUs` | the kept length |
+| `undo` | `{canUndo, canRedo}` |
+| `viewer` | `{zoom: fit\|actual, percent, pan {x, y}}` |
+| `placement` | `null`, or `{kind, start, end, whole, banner}` while a box is being placed |
+| `warning` | the blur banner's text, or `null` |
+| `folded`, `panel` | whether the right panel is folded into the Edits overlay; `panel` holds `folded`, `overlayOpen`, `rows` and the visible buttons |
+| `size` | the window's `[width, height]` |
+| `timeline` | `zoom`, `visible {start, end}`, `skim {time, exact}` or `null`, `lanes`, `hiddenCovers`, `tiles {shown, placeholders}`, and the rectangles `rect`, `strip` and `ruler` (window coordinates) |
+
+The rest is unchanged: `visible`, `playing`, `speed`, `armed`, `selectedMaskId`, `status`,
+`statusRow`, `savedCopy`, `fileDialog`, `preview`, `video {rect, share}`, `format` and
+`discardConfirmation`.
 
 ## Verification
 
