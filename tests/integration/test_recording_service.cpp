@@ -389,6 +389,72 @@ private slots:
   const auto audio=h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject();
   QVERIFY(audio["system"].toBool());QVERIFY(!audio["microphone"].toBool());
  }
+ // U42: a format choice made while an export runs is applied when review
+ // resumes, and the next push names it, so window and resident agree.
+ void aChoiceMadeDuringAnExportIsApplied(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);QCOMPARE(h.state(id),QString("exporting"));
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",4},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
+  QTest::qWait(50);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->lastPush["configSeq"].toDouble(),4.0);
+ }
+ // U43: past the export's deadline the helper still exports and takes no edit:
+ // answers wait until its late result, not until the resident's timeout.
+ void answersWaitForTheHelperToLeaveItsExport(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  QTest::qWait(50);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",2},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",5000000},{"end",6000000}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),0,200);
+  h.backend->sink({{"id",id},{"event","lateResult"},{"command","export"},{"ok",true}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
+  QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
+ }
+ // D32: Try again exports exactly the output of the failed press; once the
+ // output changed it is refused (press Upload again), never exported with either.
+ void retryExportsTheFailedRequestsOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  const auto failed=h.backend->lastConfig;
+  QVERIFY(failed.audio.system);
+  h.backend->failExport=false;
+  // Unchanged: the retry exports with the failed request's output.
+  QVERIFY(!h.rec("review",{{"id",id},{"action","retryExport"}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+  QCOMPARE(h.backend->lastConfig.toJson(),failed.toJson());
+ }
+ void retryRefusesAChangedOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",1},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}}});
+  PUTGD_TRY_VERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool());
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retried.error.code,QString("recording_config"));QVERIFY(retried.error.message.contains("Press Upload"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,1);
+ }
  void lateStopReplyPreservesEditedPendingExport_data(){
   QTest::addColumn<QString>("command");QTest::addColumn<bool>("failedReply");
   QTest::newRow("save copy")<<QString("saveCopy")<<false;

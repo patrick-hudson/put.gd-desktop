@@ -17,6 +17,8 @@
 namespace putgd {
 namespace {
 Error invalid(const QString& message) { return {"invalid_request", message, {}}; }
+// What an export's output depends on: format, codec, size and the two sound sources.
+QJsonArray outputChoice(const QJsonObject& c) { return QJsonArray{c["format"], c["codec"], c["maxEdge"], c["audio"].toObject()["system"], c["audio"].toObject()["microphone"]}; }
 bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     if (!value.isDouble()) return false;
     const double number = value.toDouble();
@@ -230,9 +232,21 @@ void RecordingService::checkStep(Session& s, RecordingState to) {
 // latest output choice the resident has applied, so the window never takes an
 // older config over a newer choice of its own.
 void RecordingService::pushEdit(Session& s, QJsonObject answer) {
-    if (s.state == RecordingState::Exporting && answer.contains("proposal")) { s.heldAnswers.append(answer); return; }
+    // The helper takes no edit while it exports (even after its deadline passed):
+    // answers wait for it, and the latest edit goes out with them.
+    if (s.helperExporting) { if (answer.contains("proposal")) s.heldAnswers.append(answer); else s.pushHeld = true; return; }
     answer["configSeq"] = double(s.windowConfigSeq);
     backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s), answer);
+}
+// Once the helper has left its export and review resumes: a format or sound
+// choice made meanwhile, then the answers that waited.
+void RecordingService::resumeReview(Session& s) {
+    if (s.state != RecordingState::Reviewing || s.helperExporting) return;
+    if (auto held = std::exchange(s.heldConfig, {}); !held.isEmpty()) handleEvent(held);
+    if (!session_ || &*session_ != &s) return;
+    const auto answers = std::exchange(s.heldAnswers, {});
+    for (const auto& held : answers) pushEdit(s, held);
+    if (std::exchange(s.pushHeld, false) && answers.isEmpty()) pushEdit(s);
 }
 void RecordingService::transition(Session& s, RecordingState state, const QString& phase) {
     // A step the table does not list is still taken: refusing it would leave the
@@ -243,9 +257,6 @@ void RecordingService::transition(Session& s, RecordingState state, const QStrin
     logging::info(logRecording(), "Recording step", {{"operationId", s.op.id}, {"from", recording::stateName(s.state)}, {"state", name}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.state = state;
     s.pending.clear();
-    // Answers to the window's proposals that arrived during an export (the helper
-    // takes no edit then) go out once review resumes, so nothing waits on one.
-    if (state == RecordingState::Reviewing) for (const auto& held : std::exchange(s.heldAnswers, {})) pushEdit(s, held);
     s.op.phase = phase.isEmpty() ? name : phase;
     // Click highlights (#1364) follow the capture: on at Record, kept across a pause, off once it stops.
     if (state == RecordingState::Recording) watchClicks(s);
@@ -255,6 +266,7 @@ void RecordingService::transition(Session& s, RecordingState state, const QStrin
     else if (s.shellFrame && state != RecordingState::Ready && state != RecordingState::Starting && state != RecordingState::Stopping) closeShell(s);
     host_.observe(s.op);
     emit changed(s.op.id);
+    if (state == RecordingState::Reviewing) resumeReview(s);
 }
 RecordingBackend::Reply RecordingService::marshal(quint64 generation, std::function<void(Error, QJsonObject)> fn) {
     QPointer<RecordingService> guard(this);
@@ -367,6 +379,11 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         transition(s, RecordingState::Recording);
     } else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
+    else if (kind == "lateResult" && event["command"] == "export") {
+        // The helper finished an export after its deadline: it takes edits again.
+        s.helperExporting = false;
+        resumeReview(s);
+    }
     else if (kind == "lateResult" && event["ok"].toBool()) {
         // The helper finished a pause or resume after its deadline (#1443): its
         // caller had recording_helper_timeout, and the clip is now where the
@@ -383,6 +400,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         }
     }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
+    // A format or sound choice made while an export runs is applied when review resumes.
+    else if (kind == "configChanged" && s.state == RecordingState::Exporting) s.heldConfig = event;
     else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();
         for (const auto* key : {"mime", "budgetBytes"}) json.remove(key);
@@ -452,9 +471,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         };
         // An upload exports the output the window showed when Upload was pressed.
         const auto shown = event["config"].toObject();
-        const auto choice = [](const QJsonObject& c) { return QJsonArray{c["format"], c["codec"], c["maxEdge"], c["audio"].toObject()["system"], c["audio"].toObject()["microphone"]}; };
         if (s.state == RecordingState::Exporting) refused({"recording_state", "Another export is running, so this one didn't start. Try again when it finishes.", {}}, {});
-        else if (kind == "uploadRequested" && !shown.isEmpty() && choice(shown) != choice(s.config.toJson()))
+        else if (kind == "uploadRequested" && !shown.isEmpty() && outputChoice(shown) != outputChoice(s.config.toJson()))
             refused({"recording_config", "The format or sound changed before the upload started, so nothing was uploaded. Press Upload again.", {}}, {});
         else if (kind == "retryExportRequested") retryExport(refused, refused);
         else exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
@@ -1012,6 +1030,10 @@ void RecordingService::retryExport(JsonReply reply, JsonReply done) {
             return;
         }
     } else params["revision"] = double(s.edit.revision);
+    if (outputChoice(params["config"].toObject()) != outputChoice(s.config.toJson())) {
+        reply({"recording_config", QStringLiteral("The format or sound changed since the export failed, so it wasn't retried. Press %1 again.").arg(s.lastExport["command"] == "upload" ? QStringLiteral("Upload") : QStringLiteral("Save a copy")), {}}, {});
+        return;
+    }
     exportTo(s.lastExport["command"].toString(), params, std::move(reply), std::move(done));
 }
 void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done) {
@@ -1031,6 +1053,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edits changed after Upload was pressed, so nothing was uploaded. Check them, then upload again", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
     }
     s.lastExportRequest = params;
+    s.lastExportRequest["config"] = s.config.toJson();  // a retry exports exactly this output
     s.lastExport = {{"command", command}, {"status", "exporting"}, {"revision", double(s.edit.revision)}};
     if (command == "saveCopy") s.lastExport["path"] = destination;
     if (auto error = recording::checkExportBudget(s.config, s.edit, s.duration, s.canvas, limits(settings))) {
@@ -1050,8 +1073,11 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     // poll inspect: `lastExport` and the operation carry the outcome.
     reply({}, publicJson(s));
     if (!session_ || session_->generation != generation) return;
+    s.helperExporting = true;
     backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done](Error error, QJsonObject result) {
         auto& s = *session_;
+        // Past its deadline the helper may still be exporting; its late result says when it stops.
+        if (error.code != "recording_helper_timeout") s.helperExporting = false;
         const auto maximum = s.op.settings.limits.maxFileBytes;
         const QFileInfo file(output);
         auto failed = [&](const Error& cause) {
