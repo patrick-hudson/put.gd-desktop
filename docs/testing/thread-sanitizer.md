@@ -137,8 +137,9 @@ setarch x86_64 -R env QT_QPA_PLATFORM=offscreen \
 ```
 
 `ignore_noninstrumented_modules=1` keeps GStreamer, FFmpeg, libcurl, OpenSSL and the AWS SDK
-(distribution builds without TSan) from reporting races that exist only because TSan cannot see their
-atomics, and `GST_REGISTRY_FORK=no` keeps GStreamer's distribution plugin scanner from loading the
+(distribution builds without TSan) from reporting races that exist only because TSan cannot see into
+them. It also hides a race between put.gd and one of those libraries; see
+[race-hunting.md](race-hunting.md) for exactly what. `GST_REGISTRY_FORK=no` keeps GStreamer's distribution plugin scanner from loading the
 instrumented GLib. See [race-hunting.md](race-hunting.md) for the action fuzzer, report grouping and rr.
 
 The test Qt may build without Fontconfig when its development package is absent.

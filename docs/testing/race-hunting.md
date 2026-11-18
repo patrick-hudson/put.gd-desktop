@@ -21,15 +21,21 @@ Follow [thread-sanitizer.md](thread-sanitizer.md) for the instrumented Qt and th
 `ignore_noninstrumented_modules=1` and `GST_REGISTRY_FORK=no` in the command itself.
 
 `ignore_noninstrumented_modules=1` stops reports that exist only because GStreamer, FFmpeg,
-libcurl, OpenSSL or the AWS SDK are distribution builds: their threads synchronize with
-atomics TSan cannot see. It is an option, not a suppression; put.gd's own code is checked as
-before. `GST_REGISTRY_FORK=no` keeps GStreamer from starting its distribution
+libcurl, OpenSSL or the AWS SDK are distribution builds without TSan. It has a cost. TSan then
+ignores the memory and synchronization calls (`memcpy`, `free`, mutexes) those libraries make
+through its interceptors. So a race in which one access is put.gd's and the other happens
+inside such a library is not reported, and runs with the option do not cover those mixed races.
+The option stays because a run without it is unusable: on m74 a fuzzer seed failed at step 9 on
+12 reports from the recording helper's GStreamer plugins (mutex misuse, `new`/`delete` and
+`getrandom` races). With the option, the same seed ran to step 20. `GST_REGISTRY_FORK=no` keeps GStreamer from starting its distribution
 `gst-plugin-scanner`, which would load the instrumented GLib without libtsan and crash.
 `halt_on_error=0` with `log_path` collects every report of a run in its own file.
 
 The action fuzzer sets its own `TSAN_OPTIONS` (the same options, `halt_on_error=0`, and
 `log_path` under each seed's `san/`), so do not export them for it. A seed fails on any report
-except a known Qt-internal race (below).
+except one on the known list (below). GCC's TSan makes the resident exit with status 66 when
+it reported anything. The fuzzer accepts that exit only when the seed has TSan report files and
+every report in them is on the known list; any other exit status still fails the seed.
 
 What is excused, and how:
 
@@ -39,38 +45,33 @@ What is excused, and how:
   in the paragraph on the dependency-only lock-order report.
 - **Qt-internal races are not suppressed.** A `race:` rule would match its symbol anywhere in
   either access stack, or in a thread-creation stack, and could hide put.gd racing with Qt.
-  Reports are captured whole, and `tools/lab/tsan_summary.py` excuses a report under one
-  rule, and nothing else:
-  - it is a data race, and it matches one of the diagnosed Qt races in `KNOWN_QT_RACES`
-    (Qt's `QThread::started` hand-off in `QNetworkAccessManager`, the `QNetworkReply`
-    destructor chain, QtDBus's own thread against `~QCoreApplication`, and QtDBus's
-    pending-call bookkeeping);
-  - each of the two racing access stacks is read from the top (the racing access) down. Every
-    frame must be Qt or the C, C++ or TSan runtime until the walk reaches the bottom of the
-    stack, `main()`, or one of the public Qt entry points listed for that diagnosis;
-  - below that point anything may follow, put.gd code included: those frames only called a
-    public Qt function. A put.gd frame, or any other library's, above that point, at any
-    depth, means the report is shown;
-  - the diagnosed function is in the top six frames of one stack, and its anchor, when it has
-    one, is in that same stack above the stopping point. The generic `maybeSignalConnected`
-    counts only with `QThread::started`.
+  Reports are captured whole, and `tools/lab/tsan_summary.py` excuses only reports on an
+  exact, checked-in known list (`KNOWN_QT_RACES`). A report is excused when all of this holds:
+  - it is a data race with two racing access stacks;
+  - the top six frames of the first stack, and of the second, are exactly the symbols of one
+    known entry, in that order. Symbols are the demangled names TSan prints, with arguments,
+    never paths;
+  - neither stack has a put.gd frame above `main()`. A put.gd frame is one whose module is a
+    put.gd binary or library (`putgd`, `putgd-*`, `libputgd*`), or whose symbol is in the
+    `putgd` namespace. Frames below `main()` are not read.
 
-  Each diagnosis lists its own entry points, as few as it needs:
-  - both `QNetworkAccessManager` races: `get`, `post`, `put`, `head`, `deleteResource`,
-    `sendCustomRequest` and `createRequest`;
-  - the QtDBus pending-call races: the call methods of `QDBusConnection` and
-    `QDBusAbstractInterface`;
-  - the race at `~QCoreApplication`: none (its main-thread side is the destructor run from
-    `main()`).
+  Everything else is shown, and it fails a fuzzer seed. Thread-creation, mutex and allocation
+  stacks are not read.
 
-  An entry point that is not on the diagnosis's own list does not stop the walk.
+  The list starts with the three report shapes of the `QThread::started` hand-off in
+  `QNetworkAccessManager`, seen on m74 (Qt 6.4.2, GCC 13 TSan). Because no put.gd frame may
+  appear above `main()`, the same hand-off is shown whenever put.gd code (not `main()`
+  itself) started the request, which is how the resident starts requests.
 
-  The rule reads only the two racing access stacks, not thread-creation, mutex or allocation
-  stacks. It shows that no put.gd code ran between the racing access and the point where Qt
-  was entered. It does not prove that put.gd's earlier use of the object was correct. Every
-  other report fails a fuzzer seed, for example put.gd reading a `QNetworkReply` that Qt
-  destroys. Add a diagnosis, or an entry point to one, only after reading the report. Never
-  add a put.gd function.
+  To add an entry:
+  1. Diagnose the report and write the diagnosis down in
+     [thread-sanitizer.md](thread-sanitizer.md).
+  2. Print its signature with
+     `python3 -I tools/lab/tsan_summary.py --signatures "$report_dir"`.
+  3. Copy that signature into `KNOWN_QT_RACES` with a comment that names the diagnosis.
+
+  The list proves nothing beyond that exact match: a report with the same top frames, reached
+  another way, is excused too. Never add a report whose stacks hold put.gd code.
 
 The recording tests (`recording_storage_integration`, `recording_pipeline_throughput`)
 cannot be certified under ThreadSanitizer: GStreamer is not instrumented, and the one
@@ -85,28 +86,28 @@ and check the socket path first: a seed's session socket is `<out>/s<seed>/r/rt/
 and a Unix socket path has at most 107 bytes.
 
 ```sh
-d=$(mktemp -d)        # a private parent (mode 0700)
-out="$d/tsan"         # a new child: race_loop.py makes it and refuses one that exists
+d=$(mktemp -d) && out="$d/tsan" &&   # a private parent (mode 0700) and a new child; race_loop.py refuses an existing --out
 python3 -c 'import sys; p = sys.argv[1] + "/s99999/r/rt/putgd/session.sock"; n = len(p.encode()); print(n, p); sys.exit(n > 107)' "$out" &&
   ACTION_FUZZ_SLOW=4 python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt \
     --tsan-prefix work/sanitizer-diagnosis --out "$out" \
     --first-seed 1 --steps 120 --hours 3 --stress 2
 ```
 
-`ACTION_FUZZ_SLOW` multiplies every wait of the driver. The launch runs only if the socket
-check passes.
+`ACTION_FUZZ_SLOW` multiplies every wait of the driver. Each step runs only if the one before
+it succeeded: no launch without a private folder and a socket path that fits.
 
-`--stress N` starts N busy loops of its own (stopped by PID) to shake the schedules. A seed
+`--stress N` starts N busy loops, in a systemd user scope of their own, to shake the schedules. A seed
 that finds a report stops there and keeps `finding.json`, `steps.jsonl` and the reports in
 `san/`; a clean seed keeps only its small records. Group the reports of one run with
 
 ```sh
 report_dir="$out/s17/san"   # a folder of tsan.<pid> files: a seed's san/, or a CTest run's log_path folder
-python3 -I tools/lab/tsan_summary.py --source . "$report_dir"
+python3 -I tools/lab/tsan_summary.py "$report_dir"
 ```
 
-It lists reports with a put.gd frame first, then other reports, then the excused Qt-internal
-ones.
+It lists reports with a put.gd frame first, then other reports, then the excused known ones.
+`--signatures` prints the exact signature of each report that is not excused, ready to add to
+the known list once it is diagnosed.
 
 ## rr
 
@@ -129,10 +130,11 @@ interactive shell open:
 
 ```sh
 (
-  orig=$(cat /proc/sys/kernel/perf_event_paranoid)
+  orig=$(cat /proc/sys/kernel/perf_event_paranoid) && [ -n "$orig" ] || { echo "cannot read perf_event_paranoid: not changing it" >&2; exit 1; }
   restore() {
     sudo -n sysctl -q kernel.perf_event_paranoid="$orig"
-    now=$(cat /proc/sys/kernel/perf_event_paranoid)
+    now=$(cat /proc/sys/kernel/perf_event_paranoid) && [ -n "$now" ] ||
+      { echo "cannot read perf_event_paranoid back: check it by hand (saved value $orig)" >&2; exit 99; }
     [ "$now" = "$orig" ] || { echo "perf_event_paranoid is $now, not the saved $orig: restore it by hand" >&2; exit 99; }
   }
   trap restore EXIT
@@ -183,8 +185,8 @@ a Proton transport timeout under rr is most likely the slowdown. Raise the scale
 with an unrecorded run before reporting it.
 
 **Finished traces.** A trace replays only if rr finished writing it. All three tools count a
-trace folder as complete only when it holds rr's `version` file and no `incomplete` marker,
-which rr removes when it finishes.
+trace folder as complete only when its `version` is a regular file and there is no
+`incomplete` marker of any kind (rr removes that marker when it finishes).
 
 - The fuzzer kills only rr's tracees, lets rr finish and exit, and reports each trace as
   complete or incomplete. It sends SIGTERM to rr only if rr does not exit by itself.
@@ -193,15 +195,27 @@ which rr removes when it finishes.
 - `race_loop.py` removes a clean seed's complete traces with `rr rm`, never the
   `latest-trace` link, and reports a removal that fails.
 
-**Stopping a loop.** Ctrl+C, or SIGTERM to the script alone, stops both loops cleanly:
+**Stopping a loop, and what cleanup guarantees.** Both loops need a systemd user manager
+(`systemd-run --user --scope`) and refuse to start without one. Each seed of `race_loop.py`,
+its busy loops, and each recorded run of `rr_loop.py` runs in a transient user scope of its
+own, with a name unique to that job (`putgd-lab-*.scope`). Every process the job starts stays
+in that scope's cgroup, whatever session or parent it ends up with: rr's tracees, the
+resident's helpers, an orphan.
 
-- `rr_loop.py` sends SIGTERM to its rr (through the pidfd it holds), waits for rr to finish
-  the trace, and says whether that trace is replayable.
-- `race_loop.py` forwards the signal to the running seed, which runs in a session of its own.
-  It waits until no process of that seed is left; the fuzzer inside stops its resident, rr and
-  receiver itself. Then it stops its busy loops.
+- When a seed or run ends, however it ends, the loop stops its scope. Every process still in
+  it gets SIGTERM, then SIGKILL after the unit's stop timeout. The loop says how many were
+  left.
+- Ctrl+C, or SIGTERM to the script alone, first lets the job finish properly:
+  - `rr_loop.py` sends SIGTERM to its rr through the pidfd it holds, so rr can finish the
+    trace, then stops the scope.
+  - `race_loop.py` forwards the signal to the seed's process group, so the fuzzer stops its
+    resident and receiver, waits up to 300 s, then stops the seed's scope and the busy loops'
+    scope.
 
-Both exit with 128 + the signal. The seed or run that was stopped is kept.
+  Both exit with 128 + the signal, and the seed or run that was stopped is kept.
+- The guarantee needs the loop itself to run its cleanup. If the loop is killed with
+  SIGKILL, its scopes keep running. Stop them by hand with
+  `systemctl --user stop 'putgd-lab-*.scope'`.
 
 **Replaying.** Let rr start GDB with your commands, so no server is left behind:
 
