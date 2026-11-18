@@ -230,7 +230,8 @@ selection, output ticks, cover intervals, the audio layout and progress all use 
 snapped map. An export that keeps no frame is refused. An animation (GIF or WebP) is capped
 at whole frames of kept time, but the export always has **one tick for the whole export**
 (not one per span), so an animation of less than one frame's worth of kept time lasts one
-frame, which is longer than the kept time.
+frame, which is longer than the kept time. A GIF also stores times in centiseconds, which
+can extend an animation: one 15 fps tick of 66.667 ms can be stored as 70 ms.
 
 **When frames are far apart.** The frame grid has gaps, for two reasons. After the
 adaptive rate steps down, the encoder never sees `videorate`'s repeats
@@ -252,21 +253,20 @@ rules at a span's start S and end E are:
   exists and comes within 1/15 s of E, ends the span at that frame's time, so the last
   kept frame lasts as long as it did. If no such frame exists, or it comes later than
   1/15 s, the span ends at E exactly: the last kept frame stays on screen until E.
-- **Audio** never follows the snap. Only audio from the edit's own kept time is
-  heard, so no sound from inside a cut, and none from before the trim or after its
-  end, reaches the output. Two things differ: *placement*, where a kept range sits in
-  the output (laid end to end at its tick positions, the extra output time that
-  snapping adds being silence), and *audibility*, which samples of it are heard.
-  Audio pieces start at the snapped source start and fill their allocated ticks, while
-  the **original kept ranges** (the edit's own) gate audibility, so leading kept audio
-  before a snapped-forward start can be omitted. A kept range `[a, b)` is half-open on samples: it holds the first sample at or after `a`
-  up to, not including, the first sample at or after `b`. Because a stored audio time can
-  be half the audio container's tick off (24 samples at 48 kHz for Matroska's
-  millisecond), each kept range is heard from that many samples inside both its edges and
-  never from outside it. A gap in the clip's own audio (such as a pause leaves) stays
+- **Audio** is placed by the snapped map but gated by the edit's own kept ranges, in two
+  steps. *Placement* follows the snap: audio pieces start at the snapped source start and
+  fill their allocated ticks (the extra output time that snapping adds being silence), laid
+  end to end at their tick positions. *Audibility* follows the original kept ranges: only
+  audio inside the edit's own kept time is heard, so leading kept audio before a
+  snapped-forward start can be omitted, and audio from inside a cut, before the trim or
+  after its end is gated out. A kept range `[a, b)` is half-open on samples: it holds the
+  first sample at or after `a` up to, not including, the first sample at or after `b`.
+  Because a stored audio time can be half the audio container's tick off (24 samples at
+  48 kHz for Matroska's millisecond), each kept range is heard from that many samples
+  inside both its edges. A gap in the clip's own audio (such as a pause leaves) stays
   silent without moving the audio after it across a cut. **Known limit:** when the source
-  audio has a millisecond timestamp gap, up to about 1 ms of audio near a cut edge can stay,
-  under the seam's 4 ms fade. It is inaudible.
+  audio has a millisecond timestamp gap, up to about 1 ms of audio near a cut edge can
+  remain. The 4 ms fade at the seam attenuates it; there is no guarantee that it is silent.
 
 **Seeking over cuts.** A decode pass reads on through a cut when the next span's
 keyframe lies before it (nothing is wasted), and seeks past the cut when the keyframe
@@ -275,7 +275,10 @@ lies inside it. A span that opens on a held frame starts decoding from that fram
 **Covers.** A cover is in source time, and one rule applies everywhere: **a frame is
 covered if its display interval overlaps the cover mapped through the kept spans
 (abutting parts joined, so a cover over a cut is one interval), or if the picture it shows
-was captured under the cover.** Both parts hold for held and repeated frames. So a cover
+was captured under the cover.** (A source frame also counts as covered when its own
+display interval, from its stored time to the next frame's, overlaps the cover's source
+span at all, so a cover never misses a frame because of where inside a frame it starts or
+ends. Covers are outward-only: a cover can grow by up to one frame, never shrink.) Both parts hold for held and repeated frames. So a cover
 wholly inside a frame gap covers the picture held over it; a frame held across a cut
 from footage a cover covers stays covered; a frame captured while a cover was active and
 shown after its end is covered there too; and **a cover wholly inside a cut, or outside

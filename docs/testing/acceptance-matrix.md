@@ -233,21 +233,24 @@ can pass with the cut still in the clip.
   nearest sampled frame.
 - A cover's area is covered in every frame whose display interval overlaps the cover or
   whose picture was captured under it (one rule, including a picture held into a kept span
-  from a cover inside a cut or outside the trim), and uncovered in other frames.
+  from a cover inside a cut or outside the trim), and uncovered in other frames. **GIF
+  exception:** the frame before a cover starts may stay visible up to one centisecond
+  into the cover (GIF times are centiseconds); it was captured before the cover, so it shows
+  nothing covered, and it passes.
 - Audio, for **MP4 and WebM with audio only** (GIF and WebP are always silent, so no
-  tone check applies to them): the kept tone is present, no cut tone is heard, and there
-  is no click at the join.
+  tone check applies to them): the kept tone is present, no cut tone is heard beyond the
+  allowance below, and there is no click at the join. **Audio exception:** when the source
+  audio has a millisecond timestamp gap, up to about 1 ms of audio near a cut edge can
+  remain, attenuated by the 4 ms fade with no guarantee of silence; a residue that short at
+  the seam passes, a longer one fails.
 - The decoded duration is compared with the expected number of output ticks within the
   container's timestamp precision (a GIF stores centiseconds, a Matroska file
   milliseconds). For an edit on the frame grid that is the review clock's kept time rounded
   to a tick; a GIF or WebP is
   capped at whole frames of kept time, except that the whole export keeps one tick, so an
-  animation with less than one frame's worth of kept time lasts one frame. A span of less
-  than one frame can have zero ticks.
-- Known limits, to record rather than fail: in a GIF, up to one centisecond of the previous
-  picture can stay at a cut seam (captured before the cover, so nothing covered shows); and
-  when the source audio has a millisecond timestamp gap, about 1 ms of audio can remain near
-  a cut edge under the 4 ms fade.
+  animation with less than one frame's worth of kept time lasts one frame, and a GIF's
+  centisecond timestamps can extend it (one 15 fps tick of 66.667 ms can be stored as
+  70 ms). A span of less than one frame can have zero ticks.
 - Fold the window below 1180×720 and use the **Edits** overlay.
 
 | Package | Desktop/session | Placement | What the row must show |

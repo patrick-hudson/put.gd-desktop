@@ -57,16 +57,22 @@ Part of [Screen recording](../recording.md).
   frame is covered if its display interval overlaps the mapped cover, **or** its picture
   was captured under the cover. That includes a cover wholly in a cut or outside the trim
   whose picture is held into a kept span (see the same section).
-- Every accepted `edit` advances `revision`. `upload` and `edit` take the
-  revision they were reviewed at and fail with `recording_stale` otherwise. An upload
-  exports **exactly the revision it started with, or it is refused**: the resident refuses
-  an upload at any other revision (`recording_stale`) and any export request while an
-  export runs (`recording_state`), and reopens the window with the reason and **no Try
-  again** (`retry: false`): pressing Upload again is the answer. For the window's
-  `uploadRequested` path only, the resident also refuses an upload whose output is not the
-  one the window shows (`recording_config`) and reopens the window the same way; a direct
-  `recording.upload` takes no output snapshot and exports the session's current output. A proposal the resident answers during an export is held and
-  delivered when review resumes. Nothing is dropped silently.
+- Every accepted `edit` advances `revision`. `upload` and `edit` take the revision they
+  were reviewed at and fail with `recording_stale` otherwise. Only an upload checks it
+  among the exports: `recording.saveCopy` takes no revision and **exports the resident's
+  current edit** at the moment it starts (the window's `saveCopyRequested` carries a
+  revision, which the resident does not check). An upload exports **exactly the revision it
+  started with, or it is refused**: the resident refuses an upload at any other revision
+  (`recording_stale`), any export request while an export runs and any export request
+  while an earlier one may still be finishing past its deadline (`recording_state`, "An
+  export is still finishing"). **On the window's own request path** it then reopens the
+  window with the reason and **no Try again** (`retry: false`), since pressing Upload again
+  is the answer; a **direct API call** (`recording.upload`, `recording.saveCopy`) just gets
+  the error and reopens nothing. For the window's `uploadRequested` path only, the resident
+  also refuses an upload whose output is not the one the window shows (`recording_config`)
+  and reopens the window the same way; a direct `recording.upload` takes no output snapshot
+  and exports the session's current output. A proposal the resident answers during an
+  export is held and delivered when review resumes. Nothing is dropped silently.
 - **The window's output choice is authoritative.** The review's format, codec and audio
   choice reach the resident as `configChanged` events carrying a sequence number; the
   resident applies them, echoes the last sequence it applied as `setEdit` `answer.configSeq`
@@ -74,8 +80,9 @@ Part of [Screen recording](../recording.md).
   change made during an export is held and applied when review resumes. The window's upload
   carries the output it shows, and the resident refuses any other (above). Each export
   request stores the output current when it was pressed, with its revision; Try again exports
-  with that output, or is refused with `recording_config` ("Press Upload again", no Try
-  again) if the output changed since. After an export timeout, answers and pushes stay held
+  with that output, or is refused with `recording_config` if the output changed since,
+  whether it was an Upload ("Press Upload again") or a Save a copy ("Press Save a copy
+  again"); neither gets Try again. After an export timeout, answers and pushes stay held
   until the helper's late result arrives.
 - **Undo history.** The resident keeps one undo history per review session. Every
   accepted `edit` batch pushes the edit it replaced; at most 200 steps are kept (the
@@ -91,7 +98,8 @@ Part of [Screen recording](../recording.md).
   refused, never shortened. The exporter caps an animation at whole frames of kept time,
   but the export always has one tick for the whole export (not one per span), so an animation
   of less than one frame's worth of kept time lasts one frame, which is longer than the kept
-  time. An output whose long edge is over
+  time. A GIF stores centiseconds, which can extend it too: one 15 fps tick of 66.667 ms can
+  be stored as 70 ms. An output whose long edge is over
   `limits.recordingAnimationEdge` gets the recording's `maxEdge` set to that
   limit once the canvas is known (at `ready`, at stop, or when GIF or WebP is
   chosen in review), and `inspect` shows the new `maxEdge` and `outputSize`. A

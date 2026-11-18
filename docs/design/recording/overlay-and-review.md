@@ -232,13 +232,15 @@ action does not change it.
   cover, except that with a time selection it cuts the selection instead.
 - **Trim** with the brackets or I and O at the playhead. The end actions (Set Out, O,
   Shift+O, **Set to playhead** on a cover's end, `setOut`, `setCoverEdgeToPlayhead`,
-  `setMaskOut`) end after **the frame actually on screen**: the decoded frame's own time when
-  it was decoded for this playhead, otherwise the first frame at or after the playhead (a
-  playhead between frames shows the next one). The end is the next frame edge after that
-  frame, round((*k* + 1) × 10⁶ / `fps`) from its index, bounded by the recording's end.
-  `inspect.preview.shownUs` reports that frame's time. Shift+I and Shift+O retime the
-  selected cover the same way. Dragging an edge of a cut or cover
-  retimes it.
+  `setMaskOut`) end after **the frame on screen**. The window takes that frame's stored
+  time, rounds it to the nearest grid index (Matroska keeps 33,333 µs as 33,000, and the
+  exporter puts that frame on 33,333), and the end is the next frame edge,
+  round((*k* + 1) × 10⁶ / `fps`), bounded by the recording's end. If a seek has not been
+  shown yet, the window decodes the frame first; if there is still no frame shown for the
+  playhead it refuses with "The frame at the playhead isn't shown yet. Try again once it
+  is." and never falls back to a nominal frame. `inspect.preview.shownUs` reports the shown
+  frame's time. Shift+I and Shift+O retime the selected cover the same way. Dragging an edge
+  of a cut or cover retimes it.
 - **Keys.** The keys act on the window unless a text field has focus, which keeps its
   own. Space plays; `,` and `.` step a frame; ← and → move 0.1 s, with Shift 1 s, except
   in the focused viewer, where the arrows move the selected cover (Shift+arrows resize
@@ -263,41 +265,56 @@ action does not change it.
   Ctrl+Z while placing cancels the placement, and while a keyboard nudge is pending it
   drops the nudge.
 - **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
-  a keyboard nudge of a cover is proposed 350 ms after the last key. **Upload, Ctrl+Enter
-  and Enter do nothing during a drag** (the drag's edit has not been proposed) or while a
-  cover is being placed. Otherwise they send a pending nudge first, then **wait for every
-  proposal's answer** from the resident, and send **that revision** with the output the
-  window shows: an upload exports exactly the revision it started with, or it is refused.
-  While it waits (`inspect` shows `uploadWaiting`) it is cancelled **only when what it
-  would export changes**:
-  - the edit's revision moves for anything other than the awaited answers (a later edit,
-    undo or redo, by the user or an agent);
-  - the output changes (format, codec, audio or size, from the window or the resident);
-  - one of its proposals is refused, or there is no answer for 2 s.
+  a keyboard nudge of a cover is proposed 350 ms after the last key. Two different things
+  can stop an upload:
+  - **What blocks a new Upload press** (Upload, Ctrl+Enter, Enter): a cover being placed, a
+    drag in progress (its edit has not been proposed), an export running or the window
+    closing. Pressing does nothing then.
+  - **What cancels an Upload that is already waiting** (`inspect` shows `uploadWaiting`):
+    only a change to what it would export. That is the edit's revision moving for anything
+    other than the awaited answers (a later edit, undo or redo, by the user or an agent); the
+    output changing (format, codec, audio or size, from the window or the resident); **any
+    refusal received while it waits, including one for a later proposal**; a trim or cover
+    change the window itself refuses locally; and 2 s without an answer. The output change
+    counts even when the revision stays the same, because the helper applies the config
+    (with `answer.configSeq`) before it calls the window's `setEdit`. A drag or a
+    placement *started* after Upload was pressed does not cancel it: the upload exports
+    what you had when you pressed it (a drag that then finishes and is accepted moves the
+    revision, which does cancel).
 
-  Input, dialogs and menus opening, hover, `inspect`, `dismissStatus`, a raise and a
-  saved-copy push do **not** cancel it. A second Upload while one waits does nothing and
-  says "Upload already waiting for your last change to be saved." When it is cancelled the
+  A press sends a pending nudge first, then **waits for every proposal's answer** from the
+  resident, and sends **that revision** with the output the window shows: an upload exports
+  exactly the revision it started with, or it is refused. Input, dialogs and menus opening,
+  hover, `inspect`, `dismissStatus`, a raise and a saved-copy push do **not** cancel it. A
+  second Upload while one waits does nothing and says "Upload already waiting for your last
+  change to be saved." (the notice clears when the upload is sent). When it is cancelled the
   status line reads "Upload cancelled: … Press Upload again." on a line of its own above
   any other status line (so the row can hold two lines). It is not a dialog, has no
   Dismiss, and stays until Upload is pressed again, including after the awaited answer
-  arrives. The resident refuses an upload at any other revision (`recording_stale`) and any
-  export request while an export runs, and reopens the window with the reason and **no Try
-  again** (`retry: false`), since pressing Upload again is the answer. For the window's own
-  upload it also refuses an output other than the one shown (`recording_config`), reopening
-  the same way; a direct `recording.upload` takes no output snapshot. A proposal answered
-  during an export is held and delivered when review resumes, and so are a format or audio
-  change made then; after an export timeout, answers and pushes stay held until the
-  helper's late result arrives. Nothing is dropped silently.
+  arrives. **On the window path** the resident refuses an upload at any other revision
+  (`recording_stale`), an export request while an export runs or may still be finishing past
+  its deadline (`recording_state`, "An export is still finishing"), and, for the window's own
+  upload, an output other than the one shown (`recording_config`); it reopens the window with
+  the reason and **no Try again** (`retry: false`), since pressing Upload again is the answer.
+  A direct API call (`recording.upload`, `recording.saveCopy`) just gets the error, and
+  `recording.upload` takes no output snapshot. Upload and Save a copy are also refused while
+  an earlier export may still be finishing after its deadline. A proposal answered during an
+  export is held and delivered when review resumes, and so are a format or audio change made
+  then; after an export timeout, answers and pushes stay held until the helper's late result
+  arrives. Nothing is dropped silently.
 - **Try again** after a failed export uses **the output and revision stored with the
   failed press** (each export request stores the output current when it was pressed, with its
   revision). A failed Upload is retried at its own revision, and if the edit changed since
-  it is refused ("Press Upload to upload them"); if the output changed since, it is refused
-  with `recording_config` ("Press Upload again", no Try again). A failed **Save a copy…** is
-  retried with its stored output at the current revision. Try again is refused while a cover
-  is being placed, and blocked while a change or gesture is still unanswered.
-- **Held keys.** An auto-repeated Enter is ignored, so a held key places or restores once
-  and never uploads, and Ctrl+Enter does not auto-repeat.
+  it is refused ("Press Upload to upload them"). **Both an Upload and a Save a copy retry
+  need the output unchanged:** if the output changed since, it is refused with
+  `recording_config` and no Try again, with "Press Upload again" for an Upload and "Press
+  Save a copy again" for a copy. A failed **Save a copy…** is retried with its stored output
+  at the current revision. Try again is refused while a cover is being placed, and blocked
+  while a change or gesture is still unanswered.
+- **Held keys.** The first Enter press can place, restore or upload, as the Enter rules
+  above say, and on a focused Edits row it activates the row. An **auto-repeated** Enter is
+  ignored, so a held key acts once and never uploads on repeat, and Ctrl+Enter does not
+  auto-repeat.
 
 ### Thumbnails and skimming
 
@@ -392,8 +409,10 @@ The window never owns the edit. Its wire contract, between the helper and the re
 - **`edit {revision, commands, proposal}`** is a proposal at the revision the window showed,
   numbered by `proposal`. The resident applies it to the authoritative model and its undo
   history, or refuses it (stale revision, invalid commands, an export running), and answers
-  with the `setEdit` command: the current edit, the limits, and an `answer` object
-  `{proposal?, refused? {code, message, revision}, configSeq}`. `answer.proposal` names the
+  with the `setEdit` command, whose parameters are `{edit, config, limits, answer}`: the
+  current edit, the current output config, the limits, and an `answer` object
+  `{proposal?, refused? {code, message, revision}, configSeq}`. The helper applies `config`
+  (with `answer.configSeq`) before it calls the window's `setEdit()`. `answer.proposal` names the
   proposal answered, `refused` appears only for a refusal, and `configSeq` is the last output
   choice (the `seq` of a `configChanged`) the resident applied. A `setEdit` is also pushed
   after every CLI or MCP edit, and at once when the resident clamps the animation size
@@ -403,8 +422,10 @@ The window never owns the edit. Its wire contract, between the helper and the re
 - **`uploadRequested {revision, config}`** has one shape: the revision the upload started
   with and the output the window shows. **`saveCopyRequested {path, revision}`** and
   **`retryExportRequested`** (no fields) are the other two. The resident runs exactly the
-  `saveCopy` and `upload` paths (a retry uses the stored request), so a stale revision, a
-  changed output or an animation over budget is refused and the window shows the resident's
+  `saveCopy` and `upload` paths (a retry uses the stored request). Only an upload is refused
+  for a stale revision: **Save a copy exports the resident's current edit** at the moment the
+  resident handles the request, whatever revision the window sent. A changed output (for an
+  upload) or an animation over budget is also refused, and the window shows the resident's
   current edit again.
 
 Discard… and the window's Close button open the same confirmation; confirming, or Escape
