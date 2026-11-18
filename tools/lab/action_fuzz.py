@@ -1084,6 +1084,7 @@ class Fuzzer:
                 self.operations.append(((result['result'] or {}).get('operation') or {}).get('id'))
             if isinstance(result, dict) and result.get('ok') and method == 'editor.open' and (result['result'] or {}).get('operationId'):
                 self.editors.append(result['result']['operationId'])
+                self.open_editors.add(result['result']['operationId'])  # the epoch check and settle() cancel it by id, not through the bounded activity list
         self.log('burst', methods=[m for m, _ in methods], oks=[r.get('ok') if isinstance(r, dict) else str(r) for r in results])
 
     def a_receiver_rule(self):
