@@ -708,14 +708,31 @@ private slots:
         PUTGD_TRY_VERIFY(!detail.isEmpty());
         QCOMPARE(detail["uploadStatus"].toString(), QString("unknown"));
         QVERIFY(detail["capabilities"].toObject()["serverNamesObjects"].toBool());
+        // A retry the server refuses leaves the item unknown, never failed: the first
+        // request's copy may still be there, and History has to keep saying so.
+        f.rules({{{"call", "upload"}, {"status", 400}}});
+        bool refusedRetry = false;
+        operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); refusedRetry = true; });
+        PUTGD_TRY_VERIFY(refusedRetry);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(f.events("upload").size() == 2 && !Operation::activeState(HistoryStore(operations.databasePath()).operation(id).stateName()), 20000);
+        operation = HistoryStore(operations.databasePath()).operation(id);
+        QCOMPARE(operation.items[0].uploadStatus, QString("unknown"));
+        QCOMPARE(operation.items[0].error.code, QString("http_request_refused"));
+        QCOMPARE(f.stored(), 1);
+        detail = {};
+        history.detail(operation.items[0].artifact.id, [&](Error e, QJsonObject data) { QVERIFY(!e); detail = data; });
+        PUTGD_TRY_VERIFY(!detail.isEmpty());
+        QCOMPARE(detail["uploadStatus"].toString(), QString("unknown"));
         // The explicit retry sends the file again: the server now holds two copies.
         bool accepted = false;
         operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); accepted = true; });
         PUTGD_TRY_VERIFY(accepted);
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(HistoryStore(operations.databasePath()).operation(id).stateName() == "completed", 20000);
         operation = HistoryStore(operations.databasePath()).operation(id);
+        // A confirmed upload clears the unknown outcome; the refused request stored nothing.
         QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
-        QCOMPARE(f.events("upload").size(), 2);
+        QVERIFY(!operation.items[0].error);
+        QCOMPARE(f.events("upload").size(), 3);
         QCOMPARE(f.stored(), 2);
         QCOMPARE(f.fetch(operation.items[0].receipt.directUrl).second, QByteArray("synthetic report"));
         // The token is in no file the resident wrote: configuration, journal or artifacts.
