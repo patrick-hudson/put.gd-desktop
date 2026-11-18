@@ -46,12 +46,13 @@ struct Result {
  QList<int> skippedPatterns; // indexes into Sources::patterns that ran out of budget
 };
 // Every match of the chosen categories. A word belongs to one match at most;
-// where kinds overlap the more specific one wins (key, email, card, ip, phone).
+// where kinds overlap the more specific one wins (key, email, card, ip, phone,
+// then name and list).
 QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& categories);
 // The same with the name and list sources. Patterns share `budgetMs` (2000 in
 // the editor); a pattern that runs out of it is skipped and named in the
-// result, and the matches found so far are kept. Blocking: call it off the UI
-// thread (src/ui/QuickRedactRunner.h).
+// result, and the matches found so far are kept. A budget of 0 or less skips
+// every pattern. Blocking: call it off the UI thread (src/ui/QuickRedactRunner.h).
 Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs=2000);
 // The Redact marks for a match: its word boxes, one box per line, padded by a
 // quarter of the line height above and below and by one and a half characters

@@ -45,6 +45,30 @@ private slots:
   QVERIFY(validLanguages({"eng","deu","fra"}));
   QVERIFY(!validLanguages({}));QVERIFY(!validLanguages({"eng","deu","fra","spa"}));QVERIFY(!validLanguages({"eng","eng"}));QVERIFY(!validLanguages({"eng","../deu"}));
  }
+ // #1618: Quick redact's list entries and patterns, as Settings and redactText
+ // check them. A message never repeats the value.
+ void redactTermsAndPatternsAreChecked() {
+  const QString canary=QStringLiteral("zq1618canary");
+  QCOMPARE(redactTermError(canary),QString());QCOMPARE(redactTermError(" Patrick Hudson "),QString());QCOMPARE(redactTermError("x+y?"),QString());
+  QCOMPARE(redactTermError(""),QString("An entry is empty"));QCOMPARE(redactTermError("  \t"),QString("An entry is empty"));
+  QCOMPARE(redactTermError(QString(maxRedactTermLength,'a')),QString());
+  for(const auto& bad:{canary+"\n"+canary+"x",canary+"\r"+canary,canary+QChar(0x2028)+canary,canary+QString(maxRedactTermLength,'a')}){
+   const auto error=redactTermError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
+  }
+  QCOMPARE(redactTermError(canary+"\n"+canary+"x"),QString("An entry has a line break"));
+  QCOMPARE(redactTermError(QString(maxRedactTermLength+1,'a')),QString("An entry is longer than 100 characters"));
+  for(const auto* valid:{R"(\bJIRA-\d+\b)",R"((?i)\b[a-z0-9-]+\.corp\.example\b)",".+",R"(\p{Lu}{3}-\d{4})","(a+)+$"})QVERIFY2(redactPatternError(valid).isEmpty(),valid);
+  QCOMPARE(redactPatternError(""),QString("A pattern is empty"));
+  QCOMPARE(redactPatternError(QString(maxRedactPatternLength,'a')),QString());
+  QCOMPARE(redactPatternError(QString(maxRedactPatternLength+1,'a')),QString("A pattern is longer than 500 characters"));
+  for(const auto* empty:{"a*","^","x?","(?:)","|x"})QCOMPARE(redactPatternError(empty),QString("This pattern matches empty text"));
+  // Qt's message for the error and its offset, never the pattern.
+  const auto unclosed=redactPatternError(canary+"(abc");
+  QVERIFY2(unclosed.startsWith("This pattern does not compile: ")&&unclosed.endsWith(" at offset 16"),qPrintable(unclosed));
+  QVERIFY(!unclosed.contains(canary));QVERIFY(!unclosed.contains("abc"));
+  QVERIFY(redactPatternError("[z-a]").startsWith("This pattern does not compile: "));
+  QCOMPARE(redactPatternError(canary+"\n"),QString("A pattern has a line break"));
+ }
 };
 QTEST_APPLESS_MAIN(TextProtocolTest)
 #include "test_text_protocol.moc"
