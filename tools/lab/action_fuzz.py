@@ -277,7 +277,15 @@ class S3Receiver(Receiver):
         key, version_id = reference.get('key'), reference.get('versionId')
         if not key:
             return 'the receipt names no object key'
-        versions = [v for v in self.snapshot().get(key, []) if not v.get('marker') and v.get('version') != 'competitor']
+        stored = self.snapshot().get(key, [])
+        if not version_id and stored:
+            # An unversioned receipt is read as the newest entry (GET and HEAD without versionId): that one must be the probe's object.
+            newest = stored[-1]
+            if newest.get('marker'):
+                return 'the newest entry of %s is a delete marker: an unversioned read finds nothing' % key
+            if newest.get('version') == 'competitor':
+                return 'the newest entry of %s is a competitor\'s object: an unversioned read returns its bytes' % key
+        versions = [v for v in stored if not v.get('marker') and v.get('version') != 'competitor']
         if version_id:  # a versioned receipt names one version: that one must hold the bytes
             versions = [v for v in versions if v.get('version') == version_id]
         if not versions:
@@ -1907,11 +1915,27 @@ class Fuzzer:
             return False
         # UBSan, halting, reads files to check object types: with no descriptor left it reports valid objects as invalid and exits 1.
         sanitizer_without_descriptors = self.resident.returncode() == 1 and runtime_errors
-        if 'Too many open files' not in text and not sanitizer_without_descriptors:
+        if not sanitizer_without_descriptors and not self.exhaustion_ended_it(text, start):
             return False
         self.log('emfile-abort', exit=self.resident.returncode(), first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
         self.resident.judged_logs.add(log.name)
         return True
+
+    def exhaustion_ended_it(self, text, start):
+        """True when the log's own evidence says running out of descriptors ended the resident: a 'Too many open files' line written
+        inside a window in which the harness held the open-file limit low, and no other fatal marker after the last such line. An
+        earlier exhaustion does not excuse a later, unrelated crash."""
+        windows = self.resident.descriptor_windows.get(start) or []
+        lines = text.encode('utf-8', 'surrogateescape').splitlines(keepends=True)
+        offset, last = 0, None
+        for index, line in enumerate(lines):
+            begin, offset = offset, offset + len(line)
+            if b'Too many open files' in line and any(first <= begin and (end is None or begin < end) for first, end in windows):
+                last = index
+        if last is None:
+            return False
+        markers = [m.encode() for m in BAD_MARKERS if m != 'runtime error:']
+        return not any(m in line for line in lines[last + 1:] for m in markers)
 
     def recover_from_abort(self):
         """The resident is gone: do what a restart after a crash must do, and check it like a restart after a kill."""
@@ -1927,7 +1951,9 @@ class Fuzzer:
         """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
         try:
             state = self.receiver.state()
-            (self.run / 'receiver-state.json').write_text(json.dumps({'events': state.get('events'), 'files': state.get('files'), 'uploads': state.get('uploads')}, default=str)[:20_000_000])
+            # files: the custom uploader's; objects (every version): the S3 oracle's.
+            kept = {name: state.get(name) for name in ('events', 'files', 'objects', 'uploads')}
+            (self.run / 'receiver-state.json').write_text(json.dumps(kept, default=str)[:20_000_000])
         except (OSError, ValueError):
             pass
 
@@ -1980,7 +2006,9 @@ class Fuzzer:
                 raise Finding('unknown-lost', 'History row %s was unknown and is now %s while the server holds its content %s: the warning that a copy may be on the server is gone\nrow: %s' % (
                     row.get('id'), row.get('uploadStatus'), stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'error')}, default=str)))
 
-    def probe_recovery(self):
+    PROBE_CREDENTIAL_REFRESHES = 2
+
+    def probe_recovery(self, credential_refreshes=PROBE_CREDENTIAL_REFRESHES):
         """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
         before = self.receiver.upload_events()
         # The run's own settings steps may have set a small limit (a_settings): back to the defaults, so only a fault can fail the probe.
@@ -1997,8 +2025,11 @@ class Fuzzer:
         if rows and all((row.get('error') or {}).get('code') == 'credential_setup_required' for row in rows):
             # Session-mode credentials live in memory only; whatever dropped them (a restart, a helper) is not the fault under test.
             self.log('probe-credentials-lost')
+            if credential_refreshes <= 0:
+                raise Finding('not-recovered', 'the probe upload %s still needs credentials after %d refreshes: %s' % (
+                    operation, self.PROBE_CREDENTIAL_REFRESHES, json.dumps(rows, default=str)[:600]))
             self.credentials_check()
-            return self.probe_recovery()
+            return self.probe_recovery(credential_refreshes - 1)
         if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
             raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
                 operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
@@ -2386,12 +2417,10 @@ class Fuzzer:
     def allowed_copies(self, digest):
         """How many copies of this content the server may hold, counted from the upload attempts the run saw: one per History row that ever
         had it (the same file twice in a call, or the same bytes under two names, are two rows), one more per accepted operation.retry of an
-        operation holding it, and one more per row that was ever unknown (its first attempt may have landed; the custom uploader cannot look
-        a file up before sending it again)."""
+        operation holding it. An unknown outcome adds nothing by itself: put.gd sends again only on an explicit retry, which is counted."""
         rows = self.digest_rows.get(digest, set())
         retries = sum(self.resident.retries.get(operation, 0) for operation in self.digest_operations.get(digest, ()))
-        unknown = sum(1 for row in rows if 'unknown' in self.seen.get(row, ()))
-        return len(rows) + retries + unknown
+        return len(rows) + retries
 
     def verify_rows(self):
         """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
