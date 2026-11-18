@@ -1572,7 +1572,12 @@ class Fuzzer:
         self.probe_recovery()
         self.check_sanitizers()
         self.deep_check()
-        self.log('epoch-ok', rss=self.resident.rss_kib())
+        codes = {}
+        for row in self.rows():
+            if row.get('uploadStatus') in ('failed', 'unknown'):
+                key = '%s %s' % (row.get('uploadStatus'), (row.get('error') or {}).get('code') or '-')
+                codes[key] = codes.get(key, 0) + 1
+        self.log('epoch-ok', rss=self.resident.rss_kib(), error_codes=codes)  # the codes a user is shown, to be read for generic or misleading ones
 
     def verify_unknown_kept(self):
         """An upload that was unknown and whose copy is on the server must still say so (#1572): never plain failed, cancelled or vanished."""
