@@ -380,7 +380,12 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
   source_.setCaptureOutcome(action=="edit"?QStringLiteral("Opens the image editor"):upload?QStringLiteral("Uploads right away to %1 · %2").arg(output["destination"].toString(),output["sharingMode"]=="private"?QStringLiteral("Private upload"):QStringLiteral("Shared link")):QStringLiteral("Saves locally"));
   const bool screenshotFirst=snapshot.regionSelectionMode=="screenshot_first";
   source_.setRegionScreenshotFirst(screenshotFirst);
-  if(delay>0&&!(source=="region"&&!screenshotFirst)) {
+  if(const auto refused=SourceAdapter::knownPermissionRefusal(source_.capabilities(),source);refused) {
+   // The compositor is known to refuse: fail with its error now, as the
+   // capture would after a selection, and show no selector or countdown.
+   earlyTerminal(refused);released();
+   acquisition=[refused](const ResourceLimits&,std::function<void(PayloadResult)> deliver){deliver({{},refused});};
+  }else if(delay>0&&!(source=="region"&&!screenshotFirst)) {
    // The countdown runs first and the target is frozen when it ends: the window
    // then active, the monitor then under the pointer, the screen as it then is
    // (in screenshot-first mode, before the freeze). Nothing is prepared, shown

@@ -57,6 +57,17 @@ public:
  // Repeat last region (#1363): refusals shared by every adapter.
  static Error noLastRegion() { return {"repeat_unavailable","There is no region to repeat yet. Capture a region first.",{}}; }
  static Error lastRegionLayoutChanged() { return {"repeat_layout_changed","The monitor layout changed since the last region capture. Capture a region again.",{}}; }
+ // A capture the compositor is already known to refuse: the adapter reports
+ // the source unavailable with code capture_permission (KWin: no restricted
+ // entry for this executable, or a refusal already seen). The operation then
+ // fails at once with that error, before any selector or countdown is shown.
+ // An unknown permission state reports no such code and captures as before.
+ static Error knownPermissionRefusal(const QJsonObject& capabilities,const QString& source) {
+  const auto entry=capabilities.value(QLatin1String("capture")).toObject().value(source).toObject();
+  if(entry.value(QLatin1String("available")).toBool(true)||entry.value(QLatin1String("code")).toString()!=QLatin1String("capture_permission"))return {};
+  const auto message=entry.value(QLatin1String("error")).toString();
+  return {QStringLiteral("capture_permission"),message.isEmpty()?QStringLiteral("The compositor refuses screen capture to put.gd"):message,{}};
+ }
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence
