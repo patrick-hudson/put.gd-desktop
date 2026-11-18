@@ -222,6 +222,12 @@ private:
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
+ // An operation that has finished keeps its slot until its link copy and source cleanup are done, while History
+ // already shows its outcome. A Retry asked for in that gap waits here and runs once the slot is free (#1578).
+ QSet<QString> settling_;
+ QHash<QString,std::function<void()>> retryAfterRelease_;
+ void released(const QString& id);
+ bool deferRetry(const QString& id,std::function<void()> retry,const JsonReply& reply);
  void enqueue(Job);
  void pump();
  bool heapReclamationIdle() const;

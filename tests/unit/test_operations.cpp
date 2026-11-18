@@ -351,6 +351,33 @@ private slots:
   const auto op=journal.operation(id);QCOMPARE(op.stateName(),QString("completed"));QCOMPARE(op.items[0].shareStatus,QString("shared"));QVERIFY(!op.error);
   QCOMPARE(source.copies,1);QVERIFY(op.items[0].receipt.directUrl.startsWith("https://example.invalid/shared#"));QCOMPARE(source.copied.text,op.items[0].receipt.directUrl);
  }
+ // History offers Retry once the outcome is stored, while the operation still holds its slot until its link copy is
+ // recorded. A Retry in that gap waits and runs once the slot is free: never operation_busy, never twice (#1578).
+ void retryAskedForWhileTheOutcomeSettlesRunsOnceItIsReleased() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
+  source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("settle-%1.txt").arg(i),"synthetic batch"));
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();          // the first file is uploaded
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();  // the second fails
+  // The outcome is stored and History shows it, but the link copy is still waiting, so the operation holds its slot.
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("partial"));QVERIFY(source.pending);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),1);
+  provider->failUpload=false;provider->deferUploads=false;
+  bool answered=false;Error retried;operations.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});
+  Error second;bool secondAnswered=false;operations.retry(id,[&](Error e,QJsonObject){second=e;secondAnswered=true;});
+  PUTGD_TRY_VERIFY(secondAnswered);QCOMPARE(second.code,QString("operation_busy"));  // one Retry waits; another would run it twice
+  PUTGD_VERIFY_STEADY(!answered,200);                                                   // waiting, not refused
+  source.acknowledge();
+  PUTGD_TRY_VERIFY(answered);QVERIFY2(!retried,qPrintable(retried.code));
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(provider->uploads.load(),3);
+  if(source.pending)source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  // A Retry of an operation that is genuinely running is still refused.
+  provider->deferUploads=true;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  Error running;bool runningAnswered=false;operations.retry(id,[&](Error e,QJsonObject){running=e;runningAnswered=true;});PUTGD_TRY_VERIFY(runningAnswered);QCOMPARE(running.code,QString("operation_busy"));
+ }
  void zeroRetentionAndActiveRetryPreserveArtifacts() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto retention=doc["retention"].toObject();retention["failedArtifactDays"]=0;doc["retention"]=retention;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return store.operation(id).copyStatus=="no_result";})());HistoryStore store(ops.databasePath());auto op=store.operation(id);op.created="2000-01-01T00:00:00.000Z";QVERIFY(!store.saveOperation(op));const auto spool=op.items[0].artifact.path;bool cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["removedOperations"].toInt(),0);cleaned=true;});PUTGD_TRY_VERIFY(cleaned);QVERIFY(QFile::exists(spool));
   provider->failUpload=false;provider->deferUploads=true;provider->dispatcher=this;ops.retry(id,[](Error e,QJsonObject){QVERIFY(!e);});cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["removedOperations"].toInt(),0);cleaned=true;});PUTGD_TRY_VERIFY(cleaned);QVERIFY(QFile::exists(spool));PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_VERIFY(([&]{return store.operation(id).items[0].uploadStatus=="uploaded";})());

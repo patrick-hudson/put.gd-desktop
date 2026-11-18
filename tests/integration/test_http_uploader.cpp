@@ -711,9 +711,6 @@ private slots:
         // A retry the server refuses leaves the item unknown, never failed: the first
         // request's copy may still be there, and History has to keep saying so.
         f.rules({{{"call", "upload"}, {"status", 400}}});
-        // History shows the outcome as soon as it is stored; the operation stays active until its link copy has
-        // been recorded, and a Retry in between is refused as operation_busy.
-        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         bool refusedRetry = false;
         operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); refusedRetry = true; });
         PUTGD_TRY_VERIFY(refusedRetry);
@@ -727,7 +724,6 @@ private slots:
         PUTGD_TRY_VERIFY(!detail.isEmpty());
         QCOMPARE(detail["uploadStatus"].toString(), QString("unknown"));
         // The explicit retry sends the file again: the server now holds two copies.
-        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         bool accepted = false;
         operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); accepted = true; });
         PUTGD_TRY_VERIFY(accepted);
