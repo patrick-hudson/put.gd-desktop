@@ -299,6 +299,10 @@ class Handler(BaseHTTPRequestHandler):
         if state['versioning'] != 'Enabled': versions[:] = [v for v in versions if v['version'] != version]
         versions.append(value)
         del uploads[upload_id]
+        # Published, but the answer put.gd gets is an error: as when libcurl resends a
+        # completion whose first reply was lost and only the resend's refusal comes back.
+        if rule and rule.get('statusAfter'):
+            return self.error(rule['statusAfter'], rule.get('code', 'InternalError'))
         headers = {'x-amz-version-id': version} if version else ({'x-amz-version-id': uuid.uuid4().hex} if state['versionless'] else {})
         headers.update({'x-amz-request-id': 'SYNTHDONE0001', 'x-amz-id-2': 'synthetic+Complete/Id2='})
         return xml_reply(self, 'CompleteMultipartUploadResult', '<Key>' + key + '</Key><ETag>' + value['etag'].replace('"', '&quot;') + '</ETag>', headers)
