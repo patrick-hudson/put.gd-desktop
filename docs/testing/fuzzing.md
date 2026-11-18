@@ -18,13 +18,14 @@ the GNOME Shell extension. They live in `tests/fuzz/` and are built only with cl
 | `fuzz_journal` | `Operation`, `OperationItem`, `StorageReceipt` | What a damaged journal row reads as is written out and read again unchanged. |
 | `fuzz_gnome` | `GnomeProtocol::decodeTransfer` | Image bytes always start with a PNG header, so the decoder never starts the image helper process. |
 | `fuzz_hyprland` | `HyprlandIpc` | `luaString` always yields one Lua string literal; replies and event lines of any shape. |
-| `fuzz_httpimport` | `src/storage/http`: `importSxcu`, `validateSettings`, `namedCredentials`, the placeholder engine, `scrubStoredValues`, and `importUploaderFile` end to end against a real settings file | A refused `.sxcu` hands nothing on. What an import returns passes `validateSettings` (once plain HTTP is allowed) and `namedCredentials`. A credential-like stored value (twenty or more letters, digits, `-` and `_`, with a letter and a digit), a key the import took out of an address included, stands nowhere in the settings, notes or name as a whole word. Text written with `escapeTemplate` renders back unchanged. A stored credential does not survive `scrubStoredValues`. An import answers once, and the profile it names is in the configuration. |
+| `fuzz_httpimport` | `src/storage/http`: `importSxcu`, `validateSettings`, `namedCredentials`, the placeholder engine, `scrubStoredValues`, and `importUploaderFile` end to end against a real settings file | A refused `.sxcu` hands nothing on. What an import returns passes `validateSettings` (once plain HTTP is allowed) and `namedCredentials`. A credential-like stored value (20 to 200 letters, digits, `-` and `_`, with a letter and a digit), a key the import took out of an address included, does not appear whole, at word boundaries, anywhere in the settings, notes or name. Text written with `escapeTemplate` renders back unchanged. A stored credential does not survive `scrubStoredValues`. An import answers once, and the profile it names is in the configuration. |
 
 What `fuzz_httpimport` does not check:
 
 - A stored value that is short or has other characters (a password with spaces, a
-  six-letter key) is not looked for in the settings, and part of a value is found only
-  as a whole word.
+  six-letter key), or one longer than 200 characters, is not looked for in the settings.
+  A value is found only when it appears whole, at word boundaries: part of it, or the
+  whole value glued to other letters or digits, is not looked for.
 - An address is read from its first `/` after the scheme: user information, a host and a
   port are not looked at.
 - "Answers once" means one answer by the time the import has answered and one more pass
