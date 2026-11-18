@@ -280,6 +280,20 @@ class PerRowRecovery(unittest.TestCase):
         self.assertEqual(fake.row_retry_credit, {'row1': 1, 'row2': 2})
         self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 2)  # first send and the first retry; the third copy is a duplicate
 
+    def test_review_s5_an_older_reply_processed_late_does_not_undo_uploaded(self):
+        """Burst threads: the newer history.list reply (row1 uploaded) is processed first, the older one (row1 uploading) second. A later
+        retry of the failed sibling must still earn row1 no credit."""
+        fake = fuzzer(seen={}, seen_digest={}, digest_rows={}, digest_operations={}, row_operations={}, row_status={}, row_retry_credit={},
+                      resident=types.SimpleNamespace(retries={}))
+        bound(fake, *ACCOUNTING, 'note_rows')
+        sibling = {'id': 'row2', 'operationId': 'op1', 'uploadStatus': 'failed', 'sha256': 'e'}
+        fake.note_rows([{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'uploaded', 'sha256': 'd'}, sibling])  # newer
+        fake.note_rows([{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'uploading', 'sha256': 'd'}, sibling])  # older, late
+        self.assertEqual(fake.row_status['row1'], 'uploaded')
+        fake.credit_retry('op1')
+        self.assertEqual(fake.row_retry_credit, {'row1': 0, 'row2': 1})
+        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 1)
+
 class ReceiverSnapshot(unittest.TestCase):
     def keep(self, state):
         folder = tempfile.mkdtemp()

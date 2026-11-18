@@ -2394,7 +2394,10 @@ class Fuzzer:
                 # may have sent it again.
                 self.row_retry_credit[row.get('id')] = self.resident.retries.get(row.get('operationId'), 0)
             self.row_operations[row.get('id')] = row.get('operationId')
-            self.row_status[row.get('id')] = row.get('uploadStatus')
+            # Monotonic for retry credit: an older reply processed after a newer one (burst threads) never turns uploaded back into
+            # uploading, since a retry never sends an uploaded row again.
+            if self.row_status.get(row.get('id')) != 'uploaded':
+                self.row_status[row.get('id')] = row.get('uploadStatus')
 
     TERMINAL = ('uploaded', 'failed', 'unknown', 'stored', 'cancelled', 'canceled', 'local_only', 'skipped', 'conflict')
 
@@ -2598,7 +2601,7 @@ class Fuzzer:
     digest_operations = {}
     digest_rows = {}
     row_operations = {}
-    row_status = {}        # row id -> its latest listed uploadStatus
+    row_status = {}        # row id -> its latest listed uploadStatus, kept at uploaded once seen uploaded
     row_retry_credit = {}  # row id -> accepted retries of its operation that may have sent it again
 
     def finish_deletion(self, rows):
