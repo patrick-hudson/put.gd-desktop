@@ -92,20 +92,30 @@ constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},
 QStringList redactCategories(){return {"email","phone","ip","card","key","name","list"};}
 // #1618: Quick redact terms and patterns. A message never repeats the value,
 // since a configuration error may be logged and these are the user's own words.
+// Lengths count code points, and the line breaks are \n, \r, U+2028 and
+// U+2029, as in the schemas and the MCP server.
 namespace {
-bool lineBreak(QChar c) {return c=='\n'||c=='\r'||c==QChar(0x0b)||c==QChar(0x0c)||c==QChar(0x85)||c==QChar(0x2028)||c==QChar(0x2029);}
+bool lineBreak(QChar c) {return c=='\n'||c=='\r'||c==QChar(0x2028)||c==QChar(0x2029);}
+qsizetype codePoints(const QString& text) {return QStringView(text).toUcs4().size();}
 }
 QString redactTermError(const QString& term){
  const auto t=term.trimmed();
  if(t.isEmpty())return QStringLiteral("An entry is empty");
  if(std::any_of(t.cbegin(),t.cend(),lineBreak))return QStringLiteral("An entry has a line break");
- if(t.size()>maxRedactTermLength)return QStringLiteral("An entry is longer than %1 characters").arg(maxRedactTermLength);
+ if(codePoints(t)>maxRedactTermLength)return QStringLiteral("An entry is longer than %1 characters").arg(maxRedactTermLength);
+ // Matching splits an entry at its letters and digits; punctuation alone
+ // would match nothing reliably and everything nearby.
+ const auto points=QStringView(t).toUcs4();
+ if(std::none_of(points.cbegin(),points.cend(),[](uint c){return QChar::isLetterOrNumber(char32_t(c));}))return QStringLiteral("An entry needs a letter or digit");
  return {};
 }
 QString redactPatternError(const QString& pattern){
  if(pattern.trimmed().isEmpty())return QStringLiteral("A pattern is empty");
- if(pattern.size()>maxRedactPatternLength)return QStringLiteral("A pattern is longer than %1 characters").arg(maxRedactPatternLength);
  if(std::any_of(pattern.cbegin(),pattern.cend(),lineBreak))return QStringLiteral("A pattern has a line break");
+ if(codePoints(pattern)>maxRedactPatternLength)return QStringLiteral("A pattern is longer than %1 characters").arg(maxRedactPatternLength);
+ // Quick redact puts its own start-of-pattern items first (match and depth
+ // limits, no empty matches); one of the user's own could override them.
+ if(pattern.startsWith(QStringLiteral("(*")))return QStringLiteral("Patterns can't set their own matching limits");
  // Compiled as Quick redact runs it (src/editor/QuickRedact.cpp). PCRE2's
  // messages describe the syntax, not the text, and the offset counts from the
  // start of the pattern.

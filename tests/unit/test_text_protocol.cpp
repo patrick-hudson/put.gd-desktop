@@ -68,6 +68,24 @@ private slots:
   QVERIFY(!unclosed.contains(canary));QVERIFY(!unclosed.contains("abc"));
   QVERIFY(redactPatternError("[z-a]").startsWith("This pattern does not compile: "));
   QCOMPARE(redactPatternError(canary+"\n"),QString("A pattern has a line break"));
+  // Round 1 (#1631). Lengths count code points, as the schemas do: 100
+  // characters outside the BMP are 200 UTF-16 units and still fit.
+  const QString astral=QString::fromUcs4(U"\U0001D538");
+  QCOMPARE(redactTermError(astral.repeated(maxRedactTermLength)),QString());
+  QCOMPARE(redactTermError(astral.repeated(maxRedactTermLength+1)),QString("An entry is longer than 100 characters"));
+  QCOMPARE(redactPatternError(astral.repeated(maxRedactPatternLength)),QString());
+  QCOMPARE(redactPatternError(astral.repeated(maxRedactPatternLength+1)),QString("A pattern is longer than 500 characters"));
+  // The same four line breaks everywhere; other controls are not line breaks.
+  for(const auto brk:{QChar('\n'),QChar('\r'),QChar(0x2028),QChar(0x2029)}){
+   QCOMPARE(redactTermError(canary+brk+canary),QString("An entry has a line break"));
+   QCOMPARE(redactPatternError(canary+brk+canary),QString("A pattern has a line break"));
+  }
+  QCOMPARE(redactTermError(canary+QChar(0x85)+canary),QString());
+  // M1: a pattern's own start-of-pattern items could lift the limits.
+  for(const auto* own:{"(*LIMIT_MATCH=99999999)(a+)+$","(*LIMIT_DEPTH=99999999)x","(*LIMIT_HEAP=999999)x","(*NO_JIT)x","(*UCP)\\w+"})QCOMPARE(redactPatternError(own),QString("Patterns can't set their own matching limits"));
+  // M4: an entry needs a letter or digit; punctuation around one is fine.
+  for(const auto* bare:{".","--","*?","..."})QCOMPARE(redactTermError(bare),QString("An entry needs a letter or digit"));
+  for(const auto* edged:{".env","env.","-x-","#1"})QCOMPARE(redactTermError(edged),QString());
  }
 };
 QTEST_APPLESS_MAIN(TextProtocolTest)
