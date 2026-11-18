@@ -171,9 +171,6 @@ class Handler(BaseHTTPRequestHandler):
             versions = state['objects'].setdefault(key, []) if key else []
             if rule and rule.get('competitor'):
                 versions.append({'version': 'competitor', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False})
-            # Another client replaces the named key while this request (of any kind) is handled.
-            if rule and rule.get('replaceKey'):
-                state['objects'][rule['replaceKey']] = [{'version': '', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False}]
             current = versions[-1] if versions else None
             selected = next((v for v in versions if v['version'] == query['versionId'][0]), None) if 'versionId' in query else current
             if 'uploads' in query or 'uploadId' in query:
