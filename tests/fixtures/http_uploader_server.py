@@ -21,7 +21,9 @@ A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining",
 "drop": true (close without a reply), "store": true (store first; with drop or status this is a
 reply lost after the file was stored), "location" (a Location header for a status reply)}.
 A "file" rule can also hold its reply: "stall": seconds before it answers, as a stalled
-server does, or "barrier": a name it waits on until POST /__release {barrier} (at most 60 s).
+server does, or "barrier": a name it waits on until POST /__release {barrier} (at most 60 s),
+or answer 404 only to a request sending a cookie: "notFoundFor": "name=value". A "delete"
+rule can set one: "setCookie": "name=value".
 
 An upload rule can also bend the reply the way a careless or hostile server would:
   "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
@@ -201,6 +203,9 @@ class Handler(BaseHTTPRequestHandler):
                 with lock:
                     barrier = barriers.setdefault(rule['barrier'], threading.Event())
                 barrier.wait(60)
+            # "notFoundFor": the file is gone only for a visitor sending that cookie.
+            if rule.get('notFoundFor') and rule['notFoundFor'] in (self.headers.get('Cookie') or ''):
+                return self.reply(404, {'error': 'no such file'})
             # A "file" rule may cut its reply short (the file's own, or a "status" reply
             # with its "body"), as an upload rule does.
             self.cut = rule.get('cut')
@@ -231,9 +236,12 @@ class Handler(BaseHTTPRequestHandler):
                     entry['deleted'] = True
             if rule.get('drop'):
                 return self.drop()
+            headers = {'Location': rule['location']} if rule.get('location') else {}
+            if rule.get('setCookie'):
+                headers['Set-Cookie'] = rule['setCookie'] + '; Path=/'
             if rule.get('status'):
-                return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
-            return self.reply(200, {'deleted': True}) if valid else self.reply(404, {'error': 'no such file'})
+                return self.reply(rule['status'], rule.get('body', ''), headers=headers)
+            return self.reply(200, {'deleted': True}, headers=headers) if valid else self.reply(404, {'error': 'no such file'}, headers=headers)
         self.reply(404, {'error': 'unknown path'})
 
     def do_POST(self):

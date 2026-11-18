@@ -25,6 +25,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
+#include <QNetworkCookie>
+#include <QNetworkCookieJar>
 #include <QNetworkInterface>
 #include <QNetworkProxy>
 #include <QNetworkProxyFactory>
@@ -141,9 +143,17 @@ QString transportReason(QNetworkReply::NetworkError error) {
     }
 }
 
+// A cookie jar that keeps nothing: every request goes out as from a fresh visitor.
+class NoCookies final : public QNetworkCookieJar {
+public:
+    bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&) override { return false; }
+};
 class Client {
 public:
-    Client(int connectMs, int requestMs) : connectMs_(connectMs), requestMs_(requestMs) {}
+    // `anonymous`: no cookie is kept between requests (the checks of a link, #1603).
+    Client(int connectMs, int requestMs, bool anonymous = false) : connectMs_(connectMs), requestMs_(requestMs) {
+        if (anonymous) nam_.setCookieJar(new NoCookies);
+    }
     // Whether a reply may send this client to the machine it runs on: only when the
     // destination's own request URL is there.
     void setOrigin(const QUrl& origin) { origin_ = origin; }
@@ -437,11 +447,13 @@ Confirmation confirmationForm(const QString& html, const QUrl& page) {
 class Worker {
 public:
     Worker(const QJsonObject& request) : request_(request), destination_(Destination::fromJson(request["destination"].toObject())),
-          client_(destination_.settings["connectTimeoutMs"].toInt(10000), destination_.settings["requestTimeoutMs"].toInt(600000)) {
+          client_(destination_.settings["connectTimeoutMs"].toInt(10000), destination_.settings["requestTimeoutMs"].toInt(600000)),
+          visitor_(destination_.settings["connectTimeoutMs"].toInt(10000), destination_.settings["requestTimeoutMs"].toInt(600000), true) {
         const auto secrets = request_.take("secrets").toObject();
         for (auto it = secrets.begin(); it != secrets.end(); ++it) secrets_.insert(it.key(), it.value().toString());
         origin_ = requestOrigin(destination_.settings);
         client_.setOrigin(origin_);
+        visitor_.setOrigin(origin_);
     }
     ~Worker() { for (auto& value : secrets_) value.fill(QChar('\0')); }
     QJsonObject run(Error& error, bool& uncertain) {
@@ -458,6 +470,10 @@ private:
     QJsonObject request_;
     Destination destination_;
     Client client_;
+    // The checks of a file's link around a deletion: a visitor with no cookies and no
+    // stored values, so nothing of the deletion's own exchange (a session cookie its
+    // reply set) reaches them.
+    Client visitor_;
     QHash<QString, QString> secrets_;
     QUrl origin_;   // scheme, host and port of the request URL: the only place stored values go
     QJsonObject settings() const { return destination_.settings; }
@@ -911,7 +927,7 @@ private:
         // may not be fetched is simply not compared. A redirect to another host (a CDN, or
         // a login page) is followed, and then weighed below.
         const QUrl link(expected.directUrl, QUrl::StrictMode);
-        const auto before = client_.get(link, allowInsecure());
+        const auto before = visitor_.get(link, allowInsecure());
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         QString refused;
         // A redirect of the deletion URL to another host is never followed, with or
@@ -919,6 +935,8 @@ private:
         // deletion, and following it could carry the request somewhere it was not meant.
         auto r = client_.get(url, allowInsecure(), &refused, true);
         QJsonObject details{{"requestStage", "delete"}, {"httpStatus", r.status}};
+        // Whether the deletion URL itself gave this answer, not an address it led to.
+        const bool ownAnswer = r.url == url;
         if (!refused.isEmpty()) {
             // The server received the request and answered with a redirect that is not
             // followed: whether it deleted the file is not known. Retry asks again.
@@ -941,21 +959,22 @@ private:
         // changed (an error banner on an HTML host), so only these show anything:
         // - removed: the deletion itself succeeded (a 2xx from the deletion URL, or from
         //   its confirmation) and the link then answers a whole 404 or 410;
-        // - already missing: the deletion URL itself answers a whole 404 or 410 on a first
-        //   attempt, and so does the link (on a retry of a sent intent, that is removed);
+        // - already missing: the deletion URL itself (not an address it redirected to)
+        //   answers a whole 404 or 410 on a first attempt, and so does the link (on a retry
+        //   of a sent intent, that is removed);
         // - failed: the link serves the whole same file, as a 200, before and after;
         // - unknown, with the intent kept: anything else (other bytes, a partial or other
         //   reply, an error, no reply). A redirect of the deletion URL to another host is
         //   not followed and is unknown too (above). Checks of the link follow redirects,
         //   such as to a CDN.
         if (confirmed || (r.status >= 200 && r.status < 400) || r.status == 404 || r.status == 410) {
-            const auto after = client_.get(link, allowInsecure());
+            const auto after = visitor_.get(link, allowInsecure());
             details["checkStatus"] = after.status;
             details["checkBeforeStatus"] = before.status;
             const auto whole = [](const auto& reply) { return !reply.cut && reply.received == reply.body.size(); };
             const auto gone = [&](const auto& reply) { return (reply.status == 404 || reply.status == 410) && whole(reply); };
             const bool deleted = r.status >= 200 && r.status < 300;
-            const bool alreadyGone = !confirmed && gone(r);
+            const bool alreadyGone = !confirmed && ownAnswer && gone(r);
             if (gone(after) && deleted) return finish("removed");
             if (gone(after) && alreadyGone) return finish(phase == "delete_intent" ? "removed" : "missing");
             if (before.status == 200 && after.status == 200 && whole(before) && whole(after) && !before.body.isEmpty() && after.body == before.body) {

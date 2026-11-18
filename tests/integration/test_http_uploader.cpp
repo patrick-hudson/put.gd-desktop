@@ -507,6 +507,13 @@ private slots:
     // - "normal": the deletion answers 200 and the link then 404: removed.
     // - "same-file": the deletion answers 200 and the link still serves the same file:
     //   failed.
+    // - "session-cookie": a rejected deletion's reply sets a session cookie, for which the
+    //   link answers 404 while any other visitor still gets the file. The checks of the
+    //   link go out as a fresh visitor, so they get the file both times: failed, never
+    //   removed.
+    // - "redirected-404": the deletion URL redirects (on its own host) to an address that
+    //   answers 404, and the link 404s: the 404 is not the deletion URL's own, so it does
+    //   not show the file was already missing: unknown.
     void aDeletionOutcomeFollowsTheRule_data() {
         QTest::addColumn<QString>("shape");
         QTest::addColumn<QString>("expected");
@@ -515,6 +522,8 @@ private slots:
         QTest::newRow("unpublished") << QString("unpublished") << QString("missing");
         QTest::newRow("normal") << QString("normal") << QString("removed");
         QTest::newRow("same-file") << QString("same-file") << QString("failed");
+        QTest::newRow("session-cookie") << QString("session-cookie") << QString("failed");
+        QTest::newRow("redirected-404") << QString("redirected-404") << QString("unknown");
     }
     void aDeletionOutcomeFollowsTheRule() {
         QFETCH(QString, shape);
@@ -532,6 +541,9 @@ private slots:
         else if (shape == "rejected-302") f.rules({sharePage, {{"call", "delete"}, {"status", 302}, {"location", uploaded.receipt.directUrl}}, bannerPage, bannerPage});
         else if (shape == "unpublished") f.rules({notFound, {{"call", "delete"}, {"status", 404}, {"body", "not found"}}, notFound});
         else if (shape == "same-file") f.rules({{{"call", "delete"}, {"status", 200}, {"body", "{}"}}});
+        else if (shape == "session-cookie") f.rules({{{"call", "file"}}, {{"call", "delete"}, {"status", 200}, {"body", "<html>Rejected</html>"}, {"setCookie", "session=rejected-delete"}},
+                                                     {{"call", "file"}, {"notFoundFor", "session=rejected-delete"}}});
+        else if (shape == "redirected-404") f.rules({notFound, {{"call", "delete"}, {"status", 302}, {"location", f.base + "/gone"}}, notFound});
         const auto result = f.remove(uploaded.receipt);
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         if (expected == "unknown") {
