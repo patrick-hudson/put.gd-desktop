@@ -7,7 +7,7 @@ import re
 import threading
 import time
 
-from gui_fuzz.world import rss_kib, run
+from gui_fuzz.world import PUTGD_COMMS, rss_kib, run
 
 CRITICAL = re.compile(r'(QObject::|QWidget::|QPainter::|QBackingStore|QPixmap::|QFont::|QTimer::|QLayout::|QSocketNotifier|'
                       r'ASSERT|Assertion|terminate called|Segmentation|Fatal|fatal|Critical|CRITICAL|Cannot |cannot |'
@@ -233,7 +233,14 @@ class Watchdog(threading.Thread):
         count = self.count_cores()
         if count > self.cores:
             rc, out, _ = run(['coredumpctl', 'list', '--no-pager', '--no-legend'], 10)
-            self.findings.add('core_dump', out.splitlines()[-1][:200] if out else 'core dump', fatal=False)
+            lines = [line for line in out.splitlines() if line.strip() and not line.startswith('--')]
+            for line in lines[-(count - self.cores):]:
+                match = re.search(r'\s(/\S+)\s+\S+\s*$', line)
+                exe = os.path.basename(match.group(1)) if match else ''
+                # A put.gd process dumping core is a finding; the desktop's own crash (seen: nemo-desktop on RandR output churn) is recorded apart.
+                kind = 'core_dump' if exe in PUTGD_COMMS or not exe else 'desktop_core_dump_' + re.sub(r'\W', '_', exe)
+                rc, info, _ = run(['coredumpctl', 'info', '--no-pager', '-1'], 20)
+                self.findings.add(kind, line[:200], fatal=False, extra={'info': info[-3500:]})
             self.cores = count
 
     def scan_logs(self):
