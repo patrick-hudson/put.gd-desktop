@@ -137,7 +137,10 @@ save_sources() {
   fi
   mkdir -p "$1/sources"
   rm -f "$1"/sources/*
-  [ ! -s "$list" ] || cp "$list" "$1/sources/00-sources-list.list"
+  # apt picks the parser by the file name's extension: keep .sources for a deb822 main file.
+  if [ -s "$list" ]; then
+    case "$list" in *.sources) cp "$list" "$1/sources/00-sources-list.sources" ;; *) cp "$list" "$1/sources/00-sources-list.list" ;; esac
+  fi
   for file in "$parts"/*.list "$parts"/*.sources; do
     [ ! -f "$file" ] || cp "$file" "$1/sources/"
   done

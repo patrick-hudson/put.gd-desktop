@@ -238,6 +238,16 @@ class InstallPackages(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in (self.snapshot / 'sources').iterdir()),
                          ['00-sources-list.list', 'ubuntu.sources'])
 
+    def test_a_deb822_main_source_file_keeps_its_extension(self):
+        # apt picks the parser by extension: a .sources main file saved as .list would be read as legacy and rejected.
+        custom = self.dir / 'custom'
+        (custom / 'parts').mkdir(parents=True)
+        (custom / 'main.sources').write_text('Types: deb\nURIs: http://archive.ubuntu.com/ubuntu\n')
+        self.fake_apt_config(custom / 'main.sources', custom / 'parts')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual([p.name for p in (self.snapshot / 'sources').iterdir()], ['00-sources-list.sources'])
+
     def test_no_sources_found_saves_none_and_the_offline_install_keeps_the_hosts(self):
         empty = self.dir / 'empty'
         (empty / 'parts').mkdir(parents=True)

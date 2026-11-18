@@ -21,7 +21,10 @@ case "$ID" in
     # so one apt run either comes entirely online or entirely from the package snapshot (#1652).
     # shellcheck disable=SC2206
     packages+=(${PUTGD_EXTRA_PACKAGES:-})
-    bash "$install" "${packages[@]}"
+    # PUTGD_INSTALL_OPTIONS (words) goes to the install: the package snapshot prefetch runs this same list with
+    # --download-only --reinstall, so it can't drift from what the AppImage job installs.
+    # shellcheck disable=SC2086
+    bash "$install" ${PUTGD_INSTALL_OPTIONS:-} "${packages[@]}"
     ;;
   fedora)
     bash "$install" gcc-c++ ccache git ca-certificates python3 nodejs npm cmake ninja-build pkgconf-pkg-config tar gzip xz binutils file rpm-build cpio tesseract-devel leptonica-devel zxing-cpp-devel tesseract-langpack-eng qt6-qtbase-devel qt6-qtsvg-devel qt6-qtbase-private-devel qt6-qtwayland-devel qtkeychain-qt6-devel layer-shell-qt-devel libxcb-devel xcb-util-keysyms-devel xcb-util-devel xcb-util-image-devel libXcursor-devel libxkbcommon-devel libxkbcommon-x11-devel libcurl-devel openssl-devel zlib-devel wayland-devel wayland-protocols-devel gstreamer1-devel gstreamer1-plugins-base-devel ffmpeg-free-devel \

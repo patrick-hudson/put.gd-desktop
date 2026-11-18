@@ -222,10 +222,12 @@ jobs:
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
         run: |
+          # The same list the AppImage job installs (the base list, the AppImage packages and weston), downloaded only.
           # --reinstall also downloads packages this image already has at the candidate version, which the install
-          # above never fetched: the ones this job's bootstrap installed (git, ca-certificates) and any overlap
-          # with the list. A runner with an older version needs those archives for the offline install.
-          bash tools/ci/install-packages.sh --download-only --reinstall $(sed 's/#.*//' tools/ci/appimage-packages.txt) weston git ca-certificates
+          # above never fetched: the ones this job's bootstrap installed (git, ca-certificates) and the overlap with
+          # the list. A runner with an older version needs those archives for the offline install.
+          PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' tools/ci/appimage-packages.txt) weston" \
+            PUTGD_INSTALL_OPTIONS='--download-only --reinstall' bash tools/releases/install-native-deps.sh
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # Only a snapshot an online install just refreshed, never one it fell back to; for ubuntu24.04, with the AppImage packages in it.
         if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (matrix.name != 'ubuntu24.04' || steps.appimage-prefetch.outcome == 'success') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
