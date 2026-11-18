@@ -686,7 +686,17 @@ class Resident:
                 self.reap()
                 return
             time.sleep(0.05)
-        raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
+        # A wrapper such as rr leaves a process of its own that ends after the tracees: give it the time a recording needs.
+        end = time.monotonic() + (10 * SLOW if self.options is not None and self.options.wrap else 0)
+        while self.session_members() and time.monotonic() < end:
+            for pid in self.session_members():
+                try:
+                    os.kill(pid, sig)
+                except OSError:
+                    pass
+            time.sleep(0.2)
+        if self.session_members():
+            raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
 
     # Under rr a trace is complete once rr has written it: rr removes the `incomplete` marker of its trace folder at the end of recording.
     def kill_tracees(self, sig):
