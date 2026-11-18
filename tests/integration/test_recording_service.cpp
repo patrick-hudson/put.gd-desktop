@@ -397,7 +397,7 @@ private slots:
   h.backend->deferExports=true;h.backend->failExport=true;
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);QCOMPARE(h.state(id),QString("exporting"));
   h.backend->sink({{"id",id},{"event","configChanged"},{"seq",4},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
-  QTest::qWait(50);
+  putgd::test::settle(50);
   h.backend->pendingExports.takeFirst()();
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
@@ -413,7 +413,7 @@ private slots:
   h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
   h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
-  QTest::qWait(50);
+  putgd::test::settle(50);
   h.backend->pendingExports.takeFirst()();
   PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",2},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",5000000},{"end",6000000}}}}});

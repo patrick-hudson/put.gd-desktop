@@ -622,7 +622,7 @@ private slots:
         else if (trigger == "agent refusal") QCOMPARE(window.drive({{"action", "setCoverEdgeToPlayhead"}, {"edge", "end"}}).code, QString("recording_state"));  // no cover selected
         else if (trigger == "agent config change") { auto webm = config(); webm.format = "webm"; webm.codec = "vp9"; QVERIFY(window.setConfig(webm)); }
         else if (trigger == "refusal") window.setEdit(edit, answer(1, "invalid_request"));
-        else if (trigger == "timeout") QTest::qWait(2300);
+        else if (trigger == "timeout") putgd::test::settle(2300);
         else if (trigger == "hover") {
             // The pointer moves over Upload and rests: Qt asks it for its tooltip.
             auto* button = window.findChild<QPushButton*>("upload");
@@ -649,7 +649,7 @@ private slots:
         else if (trigger == "review action") { const auto result = window.drive({{"action", "frameStep"}, {"delta", 1}}); QVERIFY(result.code.isEmpty()); QCOMPARE(result.state["playheadUs"].toDouble(), 33333.0); }
         else if (trigger == "second upload") {
             // The second press keeps the first one's deadline.
-            QTest::qWait(1000);
+            putgd::test::settle(1000);
             ctrlEnter(window);
             QVERIFY2(status().contains("already waiting"), qPrintable(status()));
             const auto left = window.inspect()["uploadDeadlineMs"].toInt();
@@ -952,8 +952,8 @@ private slots:
         QThread::msleep(1200);  // the run plays out and queues its frames and its end
         QVERIFY(window.inspect()["playbackQueuedEnd"].toBool());
         QVERIFY(window.drive({{"action", "pause"}}).code.isEmpty());
-        QTest::qWait(200);
-        QCOMPARE(window.inspect()["playheadUs"].toDouble(), 0.0);
+        // The queued end must not move the playhead once paused, however the events drain.
+        PUTGD_COMPARE_STEADY(window.inspect()["playheadUs"].toDouble(), 0.0, 200);
         QVERIFY(!window.inspect()["playing"].toBool());
     }
     // While recording, Stop keeps the clip and Discard only asks.
