@@ -18,9 +18,21 @@ the GNOME Shell extension. They live in `tests/fuzz/` and are built only with cl
 | `fuzz_journal` | `Operation`, `OperationItem`, `StorageReceipt` | What a damaged journal row reads as is written out and read again unchanged. |
 | `fuzz_gnome` | `GnomeProtocol::decodeTransfer` | Image bytes always start with a PNG header, so the decoder never starts the image helper process. |
 | `fuzz_hyprland` | `HyprlandIpc` | `luaString` always yields one Lua string literal; replies and event lines of any shape. |
+| `fuzz_httpimport` | `src/storage/http`: `importSxcu`, `validateSettings`, `namedCredentials`, the placeholder engine, `scrubStoredValues`, and `importUploaderFile` end to end against a real settings file | A refused `.sxcu` hands nothing on. What an import returns passes `validateSettings` (once plain HTTP is allowed) and `namedCredentials`. A header, parameter or argument value that was stored stands nowhere in the settings or notes. Text written with `escapeTemplate` renders back unchanged. A stored credential does not survive `scrubStoredValues`. An import answers exactly once, and the profile it names is in the configuration. |
 
-Out of scope: the custom uploader parsers (`.sxcu`, templates, responses), which an
-earlier round fuzzed for 45 minutes without a finding.
+Known gap: `fuzz_httpimport` does not yet check the keys the import takes out of an address
+(`secrets/...`), because a token kept in a thumbnail URL or error message is #1570.
+
+## Results so far
+
+| Target | Run | Edges at start, at end | Findings |
+| --- | --- | --- | --- |
+| `fuzz_journal` | 2 h 04 min, 7.6 million inputs, 3 workers | 1625 to 1638, flat for more than 90 minutes | #1564 (first round, fixed) |
+| `fuzz_settings` | 2 h 04 min, 122 million inputs, 3 workers | 2099 to 2113, flat for more than 90 minutes | none |
+| `fuzz_httpimport` | about 5.5 worker-hours, 9.6 million inputs | 7870 to 9420, still rising slowly | #1570 |
+
+More time on `fuzz_journal` and `fuzz_settings` is not worth it: their edges stop rising. Spend it
+on `fuzz_httpimport` and on a new target before re-running these two.
 
 ## Build and run
 
