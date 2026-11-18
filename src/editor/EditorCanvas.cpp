@@ -134,16 +134,26 @@ EditorCanvas::EditorCanvas(EditDocument& doc,QWidget* parent):QWidget(parent),do
  announce();
 }
 
+// The one place a drag in progress is dropped without a release: switching tools, or a pan taking over from
+// it. A drag that edits the document holds a document gesture, which ends with it (the half-made change is
+// rolled back); left open it would keep every later edit out of the undo history until a release that never comes.
+void EditorCanvas::abandonDrag(){
+ if(drag_==Drag::Create||drag_==Drag::Move||drag_==Drag::Resize){
+  doc_.cancelGesture();moved_=false;editOnClick_=0;
+  if(selected_&&!doc_.find(selected_)){selected_=0;emit selectionChanged();}
+ }
+ drag_=Drag::None;
+}
 void EditorCanvas::setTool(Tool tool){
  if(textEditor_)finishText(true);
  // A newly chosen drawing tool starts unselected, so its style controls
  // configure the tool rather than restyling an earlier shape.
  const bool deselect=tool!=tool_&&tool!=Tool::Select&&selected_;
  if(tool_==Tool::Crop&&tool!=Tool::Crop)cancelCrop();
+ abandonDrag();
  tool_=tool;
  if(tool_==Tool::Crop){cropDraft_=doc_.crop();selected_=0;emit selectionChanged();}
  else if(deselect){selected_=0;emit selectionChanged();}
- drag_=Drag::None;
  setCursor(tool_==Tool::Select?Qt::ArrowCursor:tool_==Tool::CopyText?Qt::IBeamCursor:Qt::CrossCursor);
  if(fitted_)fit();else update();
  announce();
@@ -441,7 +451,7 @@ void EditorCanvas::paintEvent(QPaintEvent*){
 void EditorCanvas::mousePressEvent(QMouseEvent* event){
  setFocus();
  press_=last_=event->position();const auto image=toImage(press_);
- if(event->button()==Qt::MiddleButton||(event->button()==Qt::LeftButton&&space_)){drag_=Drag::Pan;setCursor(Qt::ClosedHandCursor);return;}
+ if(event->button()==Qt::MiddleButton||(event->button()==Qt::LeftButton&&space_)){abandonDrag();drag_=Drag::Pan;setCursor(Qt::ClosedHandCursor);return;}
  if(event->button()!=Qt::LeftButton)return;
  if(textEditor_){finishText(true);return;}
  if(tool_==Tool::Crop){
@@ -530,7 +540,8 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
   else if(shape.twoPoint())shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
   else if(shape.kind==Shape::Kind::Pen){
    // Each move adds a point once the pointer has travelled two screen pixels.
-   const auto* live=doc_.find(selected_);shape=live?*live:original_;
+   // The stroke being drawn, whatever is selected meanwhile (an agent can select another shape).
+   const auto* live=doc_.find(original_.id);shape=live?*live:original_;
    const QPoint point(int(std::lround(end.x())),int(std::lround(end.y())));
    if(QLineF(toWidget(QPointF(shape.points.last())),toWidget(QPointF(point))).length()>=2)shape.points.append(point);
   }else if(shape.kind==Shape::Kind::Step){
@@ -580,7 +591,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
  const auto kind=drag_;drag_=Drag::None;const auto edit=std::exchange(editOnClick_,0);
  if(kind==Drag::CropNew||kind==Drag::CropMove||kind==Drag::CropResize||kind==Drag::None)return;
  if(kind==Drag::Create){
-  const auto* shape=doc_.find(selected_);
+  const auto* shape=doc_.find(original_.id); // the shape the drag made, not whatever is selected now
   // A pen click leaves a dot and a step is placed by its click; neither is too small.
   const bool tiny=!shape||(shape->twoPoint()?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:shape->kind==Shape::Kind::Pen||shape->kind==Shape::Kind::Step?false:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
   if(shape&&shape->kind==Shape::Kind::Pen){auto next=*shape;next.points=smoothStroke(next.points);doc_.preview(next);}
@@ -626,6 +637,9 @@ void EditorCanvas::keyPressEvent(QKeyEvent* event){
  if(tool_==Tool::CopyText&&textKey(event))return;
  if(event->key()==Qt::Key_Space&&!event->isAutoRepeat()){space_=true;setCursor(Qt::OpenHandCursor);return;}
  if(event->key()==Qt::Key_Control){updateHoverCursor(mapFromGlobal(QCursor::pos()),Qt::ControlModifier);return;}
+ // A pointer gesture owns the document's current undo step: a key that edits or changes the selection now (a nudge, Delete, [ and ])
+ // would join it and be rolled back with the drag if it is abandoned. Modifier keys still reach the drag (Shift snaps, Alt).
+ if(doc_.inGesture()){if(event->key()!=Qt::Key_Shift&&event->key()!=Qt::Key_Alt)event->accept();return;}
  if(tool_==Tool::Crop){
   // Plain Enter applies only the pending crop; upload requires Ctrl+Enter.
   if((event->key()==Qt::Key_Return||event->key()==Qt::Key_Enter)&&!(event->modifiers()&Qt::ControlModifier)){applyCrop();return;}

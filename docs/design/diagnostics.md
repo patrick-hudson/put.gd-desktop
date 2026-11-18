@@ -503,7 +503,7 @@ and `invalid_request`.
 | `manifest.json` | Package `schemaVersion` 1, creation time, build manifest, `redaction`, `scope` (operation or window), every other file's path, size and SHA-256, log record counts (`records`, `eligibleRecords`, `droppedRecords`) and the size limit |
 | `environment.json` | `/etc/os-release` `ID`, `ID_LIKE`, `VERSION_ID`, `VERSION_CODENAME`, `VARIANT_ID`; kernel; architecture; desktop and session type; Qt compile-time and runtime versions; platform plugin and resident kind; tray and portal availability; locale; screen count with each screen's device pixel ratio and logical DPI (no pixels); total RAM; free bytes under the data folder |
 | `diagnostics.json` | The current `diagnostics` output, including each helper's `lastExit`, `logging` and `uncleanExit` |
-| `config.redacted.json` | The accepted settings. Credential references are reduced to their `mode`, a Proton share-password reference likewise. Buckets, endpoints, public URL bases, labels, Proton folder names and IDs are hashed; region, storage class, ACL mode, timeouts and other options stay. Archive folders keep their shape below `<home>` |
+| `config.redacted.json` | The accepted settings. Credential references are reduced to their `mode`, a Proton share-password reference likewise. Buckets, endpoints, public URL bases, labels, Proton folder names and IDs are hashed; region, storage class, ACL mode, timeouts and other options stay. Archive folders keep their shape below `<home>`. `preferences.quickRedactTerms` and `preferences.quickRedactPatterns` (the user's own Quick redact words and regular expressions) are always replaced by `{"count": N}`, with or without "include names", so no word or pattern is in the package |
 | `coredumps.json` | systemd-coredump's text stack traces for put.gd executables in the window, or `available: false` (see "systemd-coredump" above); never a core file |
 | `operations.json` | Each operation's ID, action, state, phase, creation time, cancellation, copy status, provider, profile and error, and per item its ID, MIME type, category, size, name, upload name, upload/share/remote status, phase, local-copy status, error (with HTTP status, provider code and S3 request IDs), object key, direct URL and the number of upload attempts in the log window |
 | `logs/putgd.jsonl` | The log records in the window, oldest first, with the package redaction applied |
@@ -513,8 +513,8 @@ rest, newest first, so when it would go over, the oldest records are dropped and
 counted in `droppedRecords`.
 
 **Never included:** credentials, secrets or tokens, keychain data, signed URLs,
-artifact or preview bytes, screenshots, clipboard content and the raw
-`history.sqlite` and core dumps.
+artifact or preview bytes, screenshots, clipboard content, recognized text, Quick redact's
+saved words and patterns, and the raw `history.sqlite` and core dumps.
 
 ### Redaction in packages
 

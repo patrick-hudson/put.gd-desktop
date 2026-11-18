@@ -143,8 +143,8 @@ QRectF textOutputBounds(const Shape& shape){
  return path.boundingRect().united(stroke.createStroke(path).boundingRect());
 }
 qint64 EditDocument::bytesOf(const State& state){
- qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape));
- for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size())*qint64(sizeof(QChar))+qint64(shape.points.size())*qint64(sizeof(QPoint));
+ qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape))+qint64(state.dismissed.size())*qint64(sizeof(Dismissed));
+ for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size()+shape.suggested.size())*qint64(sizeof(QChar))+qint64(shape.points.size())*qint64(sizeof(QPoint));
  return total;
 }
 
@@ -178,8 +178,27 @@ bool EditDocument::replace(const Shape& changed){
 }
 void EditDocument::preview(const Shape& shape){const bool live=gesture_;gesture_=true;replace(shape);gesture_=live;}
 bool EditDocument::remove(quint64 id){
- for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){auto before=state_;state_.shapes.removeAt(i);++generation_;if(!gesture_)push(std::move(before));return true;}
+ for(qsizetype i=0;i<state_.shapes.size();++i)if(state_.shapes[i].id==id){
+  auto before=state_;const auto gone=state_.shapes[i];state_.shapes.removeAt(i);
+  if(!gone.suggested.isEmpty()&&gone.suggestedAt.isValid()&&!state_.dismissed.contains(Dismissed{gone.suggestedAt,gone.suggested}))state_.dismissed.append({gone.suggestedAt,gone.suggested});
+  ++generation_;if(!gesture_)push(std::move(before));return true;
+ }
  return false;
+}
+bool EditDocument::dismissed(const QRect& suggestedAt,const QString& category) const{
+ const auto area=[](const QRect& r){return qint64(r.width())*r.height();};
+ for(const auto& gone:state_.dismissed){
+  if(gone.category!=category)continue;
+  const auto shared=area(gone.at.intersected(suggestedAt));
+  const auto together=area(gone.at)+area(suggestedAt)-shared;
+  if(shared>0&&together>0&&shared*2>=together)return true;
+ }
+ return false;
+}
+int EditDocument::removeSuggested(){
+ auto before=state_;const auto removed=state_.shapes.removeIf([](const Shape& shape){return !shape.suggested.isEmpty();});
+ if(!removed)return 0;
+ ++generation_;if(!gesture_)push(std::move(before));return int(removed);
 }
 bool EditDocument::setCrop(const QRect& requested){
  const auto crop=clampRect(requested,base_.rect());

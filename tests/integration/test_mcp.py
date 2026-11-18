@@ -18,7 +18,7 @@ import zlib
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from share_mcp.server import CliAdapter, create_server
+from share_mcp.server import CliAdapter, create_server, safe_commands
 
 
 def synthetic_png() -> bytes:
@@ -38,6 +38,24 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         server = create_server(adapter)
         for name, args in [
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email']}, {'op': 'undo'}]}),
+            # #1618: terms and patterns need the list category, stay inside their limits, and never carry a line break.
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email'], 'terms': ['Project Aurora']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': []}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['a\nb']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['x'] * 201}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['x' * 101]}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x'] * 51}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 501]}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': [3]}]}),
+            # The editor's rules, counted in code points: one line (even U+2028 and U+2029), a letter or digit in a word.
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['a\u2028b']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['...']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['\U0001F600' * 100 + 'x']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['a\u2029b']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['a\rb']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 500 + '\n']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['username']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list', 'email']}]}),
             ('perform_action', {'action': 'shell'}),
             ('delete_history_uploads', {'ids': [], 'acknowledgement': ''}),
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
@@ -47,6 +65,30 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             result = await server.call_tool(name, args)
             envelope = result.structured_content or json.loads(result.content[0].text)
             self.assertEqual(envelope['error']['code'], 'invalid_request', name)
+
+    def test_redact_terms_and_patterns_follow_the_shared_table(self):
+        # #1618: the editor's validation table (tests/fixtures/text/redact-validation.json) feeds the same inputs
+        # to this helper. Only the rules it can check without PCRE2 are held to it: valid rows are accepted, and
+        # line breaks, empty and too long values and words without a letter or digit are refused. Every other rule
+        # (compiling, empty matches and whatever else the editor adds) is skipped by name, so the table can gain or
+        # lose rules; the editor's edit_command_invalid stays authoritative.
+        table = json.loads((Path(__file__).resolve().parents[1] / 'fixtures/text/redact-validation.json').read_text(encoding='utf-8'))
+        refused = {'lineBreak', 'empty', 'length', 'letter'}
+        checked = 0
+        for key in ('terms', 'patterns'):
+            for row in table[key]:
+                accepted = safe_commands([{'op': 'redactText', 'categories': ['list'], key: [row['value']]}])
+                if row['rule'] == 'ok':
+                    self.assertTrue(accepted, (key, row['value'][:40]))
+                elif row['rule'] in refused:
+                    self.assertFalse(accepted, (key, row['rule'], row['value'][:40]))
+                else:
+                    continue
+                checked += 1
+        self.assertGreater(checked, 30)
+        # A pattern is not trimmed when it runs, so its 500 code points are counted as written.
+        self.assertTrue(safe_commands([{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 500]}]))
+        self.assertFalse(safe_commands([{'op': 'redactText', 'categories': ['list'], 'patterns': [' ' * 500 + 'x']}]))
 
     async def test_review_controls_forward_their_fields(self):
         # #1613: each new review control reaches recording.review with the fields the window
@@ -185,6 +227,17 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'editor.openCode', {'id': 'synthetic-operation', 'result': 3, 'index': 0}),
                     ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]},
                      'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]}),
+                    # #1618: a term of exactly 100 code points, 99 of them outside the BMP, is within the limit (the editor counts code points).
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['\U0001F600' * 99 + 'x']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['\U0001F600' * 99 + 'x']}]}),
+                    # #1618: Remove suggestions, one undo step, through the editor view.
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'removeSuggestions'},
+                     'editor.view', {'id': 'synthetic-operation', 'action': 'removeSuggestions'}),
+                    # #1618: the name and list categories, with this call's own terms and patterns.
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]}),
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list']}]}),
                     ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
                     ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
@@ -328,7 +381,7 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(profile['credentials'], {'mode': 'session', 'reference': None})
                 # What the resident saved is what schemas/config.schema.json describes.
                 from jsonschema import Draft202012Validator
-                Draft202012Validator(json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())).validate(configuration['document'])
+                Draft202012Validator(json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))).validate(configuration['document'])
                 current = configuration['metadata']['observedRevision']
                 hint = await call('get_destination_credentials', {'profile_id': 'scripted', 'expected_revision': current})
                 self.assertEqual(hint['result']['storedValues'], ['headers/Authorization'])

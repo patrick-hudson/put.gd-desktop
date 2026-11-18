@@ -2,7 +2,10 @@
 // row is recognized words in reading order ("|" starts a new line), the
 // categories asked for, and every match expected as "category: words".
 #include "editor/QuickRedact.h"
+#include "fixtures/Waits.h"
+#include <QElapsedTimer>
 #include <QtTest>
+#include <tuple>
 using namespace putgd::editor;
 namespace {
 QList<RecognizedWord> words(const QString& page) {
@@ -19,7 +22,16 @@ QStringList found(const QList<RecognizedWord>& candidates,const QStringList& cat
  return out;
 }
 const QStringList all{"email","phone","ip","card","key"};
+QStringList found(const QList<RecognizedWord>& candidates,const quickRedact::Result& result) {
+ QStringList out;
+ for(const auto& match:result.matches){QStringList text;for(const int w:match.words)text.append(candidates.at(w).text);out.append(match.category+": "+text.join(' '));}
+ return out;
 }
+quickRedact::Sources account(const QString& login,const QString& realName) {quickRedact::Sources s;s.login=login;s.realName=realName;return s;}
+quickRedact::Sources terms(const QStringList& list) {quickRedact::Sources s;s.terms=list;return s;}
+quickRedact::Sources patterns(const QStringList& list) {quickRedact::Sources s;s.patterns=list;return s;}
+}
+Q_DECLARE_METATYPE(putgd::editor::quickRedact::Sources)
 class QuickRedactTest final:public QObject {
  Q_OBJECT
 private slots:
@@ -106,6 +118,299 @@ private slots:
  void categoriesMatchTheirShapes() {
   QFETCH(QString,page);QFETCH(QStringList,categories);QFETCH(QStringList,expected);
   QCOMPARE(found(words(page),categories),expected);
+ }
+ // #1618, decision 3: the account's names and the user's own list. Words
+ // are literal, never a regex, compared ignoring case and accents.
+ void namesAndListsMatchTheirSpellings_data() {
+  QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");
+  const QStringList name{"name"},list{"list"};
+  const auto me=account("phudson","Patrick Hudson");const auto entry=terms({"Patrick Hudson"});
+  // The Patrick Hudson table: as a list entry and as the account's name.
+  for(const auto& [row,page,marked]:QList<std::tuple<const char*,QString,QString>>{
+   {"spaced","My name is Patrick Hudson","Patrick Hudson"},{"dashed","my github username is patrick-hudson","patrick-hudson"},
+   {"underscored","user patrick_hudson here","patrick_hudson"},{"run together","PatrickHudson","PatrickHudson"},
+   {"before an @","mail patrick.hudson@x.io today","patrick.hudson@x.io"},{"i read as l","Signed in as Patrlck Hudson","Patrlck Hudson"},
+   {"split by recognition","by patrick- hudson","patrick- hudson"},{"a spaced dash","Patrick - Hudson wrote","Patrick - Hudson"},
+   {"curly apostrophe","Patrick Hudson’s notes","Patrick Hudson’s"}}){
+   QTest::addRow("list entry: %s",row)<<page<<list<<entry<<QStringList{"list: "+marked};
+   QTest::addRow("name: %s",row)<<page<<name<<me<<QStringList{"name: "+marked};
+  }
+  QTest::newRow("name: last, first")<<"Author: Hudson, Patrick"<<name<<me<<QStringList{"name: Hudson, Patrick"};
+  QTest::newRow("name: initial and last name")<<"phudson p.hudson P. Hudson p-hudson"<<name<<me<<QStringList{"name: phudson","name: p.hudson","name: P. Hudson","name: p-hudson"};
+  QTest::newRow("name: up to four digits after a login")<<"phudson2 phudson1234 phudson12345"<<name<<me<<QStringList{"name: phudson2","name: phudson1234"};
+  QTest::newRow("name: each part alone")<<"Patrick wrote to Hudson"<<name<<me<<QStringList{"name: Patrick","name: Hudson"};
+  QTest::newRow("name: a part inside a path and a prompt")<<"cd /home/patrick/project | patrick@d69:~$ ls"<<name<<me<<QStringList{"name: /home/patrick/project","name: patrick@d69:~$"};
+  QTest::newRow("name: a wrapped line with the dash at its end")<<"see patrick- | hudson now"<<name<<me<<QStringList{"name: patrick- hudson"};
+  QTest::newRow("name: a wrapped line at the column")<<"ABCDEFGHIJKLMNO | PQRSTUVWXYZABCD | Contact Patrick | Hudson today"<<name<<me<<QStringList{"name: Patrick Hudson"};
+  QTest::newRow("name: lines without wrap evidence are separate")<<"Patrick | Hudson"<<list<<entry<<QStringList{};
+  // Near misses (the over-redaction guard): only the surname in Hudson Bay.
+  QTest::newRow("name: near misses")<<"Patricks studied the pattern of pat near Hudson Bay and hudsonia"<<name<<me<<QStringList{"name: Hudson"};
+  QTest::newRow("list entry: near misses")<<"patricks pattern pat hudsonia patrick-hudsonx"<<list<<entry<<QStringList{};
+  QTest::newRow("list entry: matched only whole")<<"Patrick alone, and Hudson, Patrick"<<list<<entry<<QStringList{};
+  QTest::newRow("name: a login")<<"cd /home/user/project | user@host:~$ | user, users username1 user1234 user12345"<<name<<account("user",{})
+   <<QStringList{"name: /home/user/project","name: user@host:~$","name: user,","name: user1234"};
+  QTest::newRow("name: a login and a real name the same")<<"patrick wrote"<<name<<account("patrick","patrick")<<QStringList{"name: patrick"};
+  QTest::newRow("name: a part of two letters is skipped")<<"Al went home with Smith and Al Smith"<<name<<account("asmith","Al Smith")<<QStringList{"name: Smith","name: Al Smith"};
+  QTest::newRow("name: no account")<<"Patrick Hudson"<<name<<account({},{})<<QStringList{};
+  QTest::newRow("accents either way")<<"Jose and José"<<list<<terms({"José"})<<QStringList{"list: Jose","list: José"};
+  QTest::newRow("accents in the text")<<"José wrote"<<list<<terms({"Jose"})<<QStringList{"list: José"};
+  QTest::newRow("regex characters are literal")<<"x+y? xxy [ACME]* ACME srvdata srv_data srvXdata"<<list<<terms({"x+y?","[ACME]*","srv.data"})
+   <<QStringList{"list: x+y?","list: [ACME]*","list: srvdata","list: srv_data"};
+  QTest::newRow("a short term is matched exactly")<<"B0b and Bob"<<list<<terms({"Bob"})<<QStringList{"list: Bob"};
+  QTest::newRow("a long term reads rn for m")<<"Harnmond and Hammond"<<list<<terms({"Hammond"})<<QStringList{"list: Harnmond","list: Hammond"};
+  QTest::newRow("an empty list")<<"Patrick Hudson and anything"<<list<<quickRedact::Sources{}<<QStringList{};
+  QTest::newRow("an email wins over a name")<<"mail patrick.hudson@x.io or Patrick"<<QStringList{"email","name","list"}<<quickRedact::Sources{"phudson","Patrick Hudson",{"Patrick Hudson"},{}}
+   <<QStringList{"email: patrick.hudson@x.io","name: Patrick"};
+  QTest::newRow("a word belongs to one match")<<"Patrick Hudson"<<QStringList{"name","list"}<<quickRedact::Sources{"phudson","Patrick Hudson",{"Hudson"},{}}<<QStringList{"name: Patrick Hudson"};
+  QTest::newRow("only the categories asked for")<<"Patrick Hudson"<<QStringList{"email"}<<me<<QStringList{};
+  // Decision 6: patterns, case as written, on the joined line text.
+  QTest::newRow("pattern: a ticket across a space")<<"see JIRA- 1234 now"<<list<<patterns({R"(\bJIRA-\s*\d+\b)"})<<QStringList{"list: JIRA- 1234"};
+  QTest::newRow("pattern: case as written")<<"ACME-12 acme-7"<<list<<patterns({R"(\bacme-\d+)"})<<QStringList{"list: acme-7"};
+  QTest::newRow("pattern: (?i)")<<"ACME-12 acme-7"<<list<<patterns({R"((?i)\bacme-\d+)"})<<QStringList{"list: ACME-12","list: acme-7"};
+  QTest::newRow("pattern: a hit spanning two words")<<"run build 42 ok"<<list<<patterns({R"(build \d+)"})<<QStringList{"list: build 42"};
+  QTest::newRow("pattern: a hit inside a word marks the word")<<"host db7.corp.example up"<<list<<patterns({R"((?i)\b[a-z0-9-]+\.corp\.example\b)"})<<QStringList{"list: db7.corp.example"};
+  QTest::newRow("pattern: zero-length hits are skipped")<<"abc 12 JIRA"<<list<<patterns({R"(\d*)",R"((?=JIRA))"})<<QStringList{"list: 12"};
+  QTest::newRow("pattern: \\s reaches the next line")<<"ticket ABC- | 99 | ticket ABC | 98"<<list<<patterns({R"(ABC-\n\d+)",R"(ABC\s+98)"})<<QStringList{"list: ABC- 99","list: ABC 98"};
+  QTest::newRow("pattern: Unicode properties")<<"Öffnung ÄRGER x"<<list<<patterns({R"(\b\p{Lu}{5}\b)"})<<QStringList{"list: ÄRGER"};
+  // Round 1 (#1631), one row per finding.
+  QTest::newRow("a pattern's own start-of-pattern items run as typed")<<"JIRA-1"<<list<<patterns({"(*LIMIT_MATCH=99999999)JIRA-\\d"})<<QStringList{"list: JIRA-1"};
+  QTest::newRow("M3: an empty alternative still finds the match at that position")<<"see JIRA-7"<<list<<patterns({R"(|JIRA-\d)"})<<QStringList{"list: JIRA-7"};
+  QTest::newRow("M3: patterns step over characters outside the BMP")<<QString::fromUtf8("\xF0\x9F\x98\x80 JIRA-5")<<list<<patterns({R"(\p{So}|JIRA-\d)"})
+   <<QStringList{QString::fromUtf8("list: \xF0\x9F\x98\x80"),"list: JIRA-5"};
+  QTest::newRow("M4: punctuation at an entry's edge stays")<<"env .env /app/.env envy"<<list<<terms({".env"})<<QStringList{"list: .env","list: /app/.env"};
+  QTest::newRow("M4: trailing punctuation too")<<"env env. env.x"<<list<<terms({"env."})<<QStringList{"list: env.","list: env.x"};
+  QTest::newRow("M4: an entry of punctuation alone matches nothing")<<". .. a.b"<<list<<terms({"."})<<QStringList{};
+  QTest::newRow("M5: the login follows the part rules")<<"jane-doe janedoe2 jane_doe jane.doex"<<name<<account("jane.doe",{})<<QStringList{"name: jane-doe","name: janedoe2","name: jane_doe"};
+  QTest::newRow("M5: a lone one-letter name builds no form")<<"J went to j and J."<<name<<account("zz","J")<<QStringList{};
+  QTest::newRow("M5: last, first leaves out a middle name")<<"Doe, Jane wrote"<<name<<account("zz","Jane Q Doe")<<QStringList{"name: Doe, Jane"};
+  QTest::newRow("M6: a doubled separator does not join")<<"Patrick -- Hudson and Patrick - - Hudson"<<list<<entry<<QStringList{};
+  QTest::newRow("M6: one separator between spaces joins")<<"Patrick - Hudson and Patrick _ Hudson"<<list<<entry<<QStringList{"list: Patrick - Hudson","list: Patrick _ Hudson"};
+  QTest::newRow("M7: overlapping occurrences")<<"ha ha ha"<<list<<terms({"ha ha"})<<QStringList{"list: ha ha","list: ha"};
+  QTest::newRow("M8: full case folding")<<QString::fromUtf8("STRASSE Strasse Stra\xC3\x9F" "e")<<list<<terms({QString::fromUtf8("Stra\xC3\x9F" "e")})
+   <<QStringList{"list: STRASSE","list: Strasse",QString::fromUtf8("list: Stra\xC3\x9F" "e")};
+  QTest::newRow("M8: an Indic vowel sign is a letter, not an accent")<<QString::fromUtf8("\xE0\xA4\x95 \xE0\xA4\x95\xE0\xA4\xBF")<<list<<terms({QString::fromUtf8("\xE0\xA4\x95\xE0\xA4\xBF")})
+   <<QStringList{QString::fromUtf8("list: \xE0\xA4\x95\xE0\xA4\xBF")};
+  QTest::newRow("M8: a term does not end inside a letter's vowel sign")<<QString::fromUtf8("\xE0\xA4\x95\xE0\xA4\xBF \xE0\xA4\x95")<<list<<terms({QString::fromUtf8("\xE0\xA4\x95")})
+   <<QStringList{QString::fromUtf8("list: \xE0\xA4\x95")};
+  QTest::newRow("M8: a letter outside the BMP is a word character")<<QString::fromUtf8("\xF0\xA0\x80\x80" "abc abc")<<list<<terms({"abc"})<<QStringList{"list: abc"};
+  // Round 2 (#1631), one row per finding.
+  QTest::newRow("M12: \\G anchors at the start of a search, as typed")<<"x ID-5 | ID-6 y"<<list<<patterns({R"(\GID-\d+)"})<<QStringList{"list: ID-6"};
+  QTest::newRow("M12: (*SKIP) skips what it passed")<<"ID-1 D-2"<<list<<patterns({R"(ID(*SKIP)(*FAIL)|D-\d)"})<<QStringList{"list: D-2"};
+  QTest::newRow("M4: a space inside an entry is a join")<<"see # 42 and #42 and #-42 and 42"<<list<<terms({"# 42"})<<QStringList{"list: # 42","list: #42","list: #-42"};
+  QTest::newRow("M8: default case folding keeps dotless i apart")<<QString::fromUtf8("kir k\xC4\xB1r KIR")<<list<<terms({QString::fromUtf8("k\xC4\xB1r")})<<QStringList{QString::fromUtf8("list: k\xC4\xB1r")};
+  QTest::newRow("M8: capital sharp s folds to ss")<<QString::fromUtf8("STRASSE STRA\xE1\xBA\x9E" "E")<<list<<terms({QString::fromUtf8("stra\xC3\x9F" "e")})<<QStringList{"list: STRASSE",QString::fromUtf8("list: STRA\xE1\xBA\x9E" "E")};
+  QTest::newRow("M11: up to two join characters")<<"patrick__hudson patrick--hudson patrick._hudson patrick - hudson patrick___hudson"<<list<<entry
+   <<QStringList{"list: patrick__hudson","list: patrick--hudson","list: patrick._hudson","list: patrick - hudson"};
+  // Round 3 (#1631).
+  QTest::newRow("M4: U+0085 inside an entry is a join too")<<QString::fromUtf8("see # 42 and #42")<<list<<terms({QString::fromUtf8("#\xC2\x85" "42")})<<QStringList{"list: # 42","list: #42"};
+  // Round 4 (S4): a lower-to-upper change outside the BMP splits an entry too.
+  QTest::newRow("S4: Deseret camel case")<<QString::fromUtf8("\xF0\x90\x90\xA8-\xF0\x90\x90\x81 and \xF0\x90\x90\xA8\xF0\x90\x90\x81")<<list<<terms({QString::fromUtf8("\xF0\x90\x90\xA8\xF0\x90\x90\x81")})
+   <<QStringList{QString::fromUtf8("list: \xF0\x90\x90\xA8-\xF0\x90\x90\x81"),QString::fromUtf8("list: \xF0\x90\x90\xA8\xF0\x90\x90\x81")};
+  QTest::newRow("terms and patterns together")<<"Hammond filed JIRA-9"<<list<<quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)"}}<<QStringList{"list: Hammond","list: JIRA-9"};
+ }
+ void namesAndListsMatchTheirSpellings() {
+  QFETCH(QString,page);QFETCH(QStringList,categories);QFETCH(quickRedact::Sources,sources);QFETCH(QStringList,expected);
+  const auto candidates=words(page);
+  const auto result=quickRedact::find(candidates,categories,sources);
+  QCOMPARE(found(candidates,result),expected);QCOMPARE(result.skippedPatterns,QList<int>{});
+ }
+ // A pattern that backtracks for minutes stops within the budget, is named as
+ // skipped, and the other patterns' marks are kept.
+ void runawayPatternIsSkipped() {
+  const auto page="JIRA-7 "+QString(5000,'a')+"b TICKET9 | "+QString(40,'a')+"b";
+  const auto candidates=words(page);
+  QElapsedTimer clock;clock.start();
+  const auto result=quickRedact::find(candidates,{"list"},patterns({R"(\bJIRA-\d+\b)","(a+)+$",R"(\bTICKET\d+\b)"}),2000);
+  QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
+  QCOMPARE(found(candidates,result),(QStringList{"list: JIRA-7","list: TICKET9"}));
+  QCOMPARE(result.skippedPatterns,QList<int>{1});
+ }
+ // Round 3 (M12, M13, M14): no windows. Each line is a subject, so a ticket
+ // anywhere on a long line is found, a lookbehind sees the real line, and
+ // repeated groups pair from the line's start.
+ void eachLineIsOneSubject() {
+  const auto filler=[](int n){return QString(n,'w');};
+  // Where round 2's 1000-character windows cut.
+  const auto lost=words(filler(245)+" "+filler(245)+" "+filler(245)+" "+filler(242)+" JIRA-7");
+  QCOMPARE(found(lost,quickRedact::find(lost,{"list"},patterns({R"(\bJIRA-\d+)"}))),QStringList{"list: JIRA-7"});
+  QStringList tagged;for(int i=0;i<300;++i)tagged.append(QStringLiteral("tag"));tagged.append("ID-4");
+  const auto behind=words("tag ID-3 | "+tagged.join(' '));
+  QCOMPARE(found(behind,quickRedact::find(behind,{"list"},patterns({R"((?<=^tag )ID-\d+)"}))),QStringList{"list: ID-3"});
+  QStringList digits;for(int i=0;i<201;++i)digits.append(QStringLiteral("123456"));
+  const auto pairs=words(digits.join(' '));
+  const auto paired=quickRedact::find(pairs,{"list"},patterns({R"(\d{6} \d{6})"}));
+  // 100 pairs from the start; the last number has no partner.
+  QCOMPARE(paired.matches.size(),100);
+  for(int i=0;i<100;++i)QCOMPARE(paired.matches.at(i).words,(QList<int>{2*i,2*i+1}));
+ }
+ // The lab recheck (31de163ea): an ordinary paragraph wrap carries no wrap
+ // evidence, yet \s must reach the next line. Each pair of consecutive lines is
+ // a subject joined with "\n"; a literal space does not match across a wrap
+ // (QuickRedact.h says so), and nothing spans three lines.
+ void patternsReachTheNextLine() {
+  const auto wrap=words("Then we used quick | redact on the capture");
+  QCOMPARE(found(wrap,quickRedact::find(wrap,{"list"},patterns({R"((?i)\bquick\sredact\b)"}))),QStringList{"list: quick redact"});
+  QCOMPARE(found(wrap,quickRedact::find(wrap,{"list"},patterns({"quick redact"}))),QStringList{});
+  const auto three=words("one ID- | 42 | and | ID- | x | 7");
+  QCOMPARE(found(three,quickRedact::find(three,{"list"},patterns({R"(ID-\s\d+)",R"(ID-\s\w\s\d)"}))),QStringList{"list: ID- 42"});
+  // A hit inside one line is claimed once, from the line: the pair adds none.
+  const auto inside=words("JIRA-1 JIRA-2 | JIRA-3");
+  const auto result=quickRedact::find(inside,{"list"},patterns({R"(JIRA-\d)"}));
+  QCOMPARE(found(inside,result),(QStringList{"list: JIRA-1","list: JIRA-2","list: JIRA-3"}));
+ }
+ // Round 4 (M3): \C can match half of a character outside the BMP; the next
+ // search starts on a whole one, so the pattern finishes and keeps its hits.
+ void halfCharacterHitsKeepThePattern() {
+  const auto candidates=words(QString::fromUtf8("\xF0\x9F\x98\x80x and JIRA-1"));
+  const auto result=quickRedact::find(candidates,{"list"},patterns({R"(\C)"}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),(QStringList{QString::fromUtf8("list: \xF0\x9F\x98\x80x"),"list: and","list: JIRA-1"}));
+ }
+ // Round 4 (S3): a pair's hits that do not cross its break are left out where
+ // they are found, so they never count toward a cap.
+ void pairHitsOutsideTheBreakAreLeftOut() {
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns({"ab","cd","ab\ncd"},{R"(\S)",R"(b\nc)"},[&](quickRedact::PatternOutcome outcome){out.append(outcome);},{-1,-1,2});
+  QCOMPARE(out.size(),2);
+  QCOMPARE(out.at(0).hits,(QList<quickRedact::PatternHit>{{0,0,1},{0,1,1},{1,0,1},{1,1,1}}));
+  QCOMPARE(out.at(1).hits,(QList<quickRedact::PatternHit>{{2,1,3}}));
+ }
+ // Round 5 (M3): \K after \C leaves an empty match inside a surrogate pair;
+ // the retry starts on a whole character, so the pattern finishes and its
+ // ticket lands.
+ void emptyMatchInsideAPairStillFinishes() {
+  const auto candidates=words(QStringLiteral("😀 JIRA-1"));
+  const auto result=quickRedact::find(candidates,{"list"},patterns({QStringLiteral("JIRA-\\d|(?=😀)\\C\\K")}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),QStringList{"list: JIRA-1"});
+ }
+ // Round 5 (R1): an empty retry (\K after a letter) is never reported as a
+ // hit; the search moves on and finds the ticket.
+ void anEmptyRetryIsNeverAHit() {
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns({"a JIRA-1"},{R"((?=a)|a\K|JIRA-\d)"},[&](quickRedact::PatternOutcome outcome){out.append(outcome);});
+  QCOMPARE(out.size(),1);QVERIFY(out.first().finished);
+  QCOMPARE(out.first().hits,(QList<quickRedact::PatternHit>{{0,2,6}}));
+ }
+ // Round 5: ordinary patterns on text full of emoji and joined emoji
+ // sequences, on one line and across a wrap. Every hit lands, and every range
+ // starts and ends on a whole character at a word edge.
+ void ordinaryPatternsAmongEmoji() {
+  const QString family=QStringLiteral("👨‍👩‍👧"),flag=QStringLiteral("🏳️‍🌈");
+  const QString first=family+" JIRA-12 🎉JIRA-3 😀 quick",second="redact "+flag+" JIRA-77👍 x";
+  const QStringList list{R"(\bJIRA-\d+\b)",R"((?i)\bquick\sredact\b)"};
+  const auto candidates=words(first+" | "+second);
+  const auto result=quickRedact::find(candidates,{"list"},patterns(list));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),(QStringList{"list: JIRA-12",QStringLiteral("list: 🎉JIRA-3"),"list: quick redact",QStringLiteral("list: JIRA-77👍")}));
+  // The ranges themselves, over the subjects find sends: the two lines and their pair.
+  const QStringList subjects{first,second,first+"\n"+second};
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns(subjects,list,[&](quickRedact::PatternOutcome outcome){out.append(outcome);},{-1,-1,first.size()});
+  QStringList texts;
+  for(const auto& outcome:out){
+   QVERIFY(outcome.finished);
+   for(const auto& hit:outcome.hits){
+    const auto& text=subjects.at(hit.subject);const auto end=hit.start+hit.length;
+    QVERIFY(!text.at(hit.start).isLowSurrogate());QVERIFY(end==text.size()||!text.at(end).isLowSurrogate());
+    texts.append(text.mid(hit.start,hit.length));
+   }
+  }
+  QCOMPARE(texts,(QStringList{"JIRA-12","JIRA-3","JIRA-77","quick\nredact"}));
+ }
+ // CodeRabbit 4612083918: a match across two visual rows makes two marks, one
+ // per row, even when recognition gave both rows one line id; each mark comes
+ // with its own words' box. One row with two line ids is one mark.
+ void marksFollowVisualRows() {
+  const QList<RecognizedWord> two{{"ALPHA-",QRect(0,0,48,20),90,0},{"BETA",QRect(200,40,32,20),90,0}};
+  const auto boxes=quickRedact::markBoxes(two,{"list",{0,1}},QRect(0,0,400,200));
+  QCOMPARE(boxes.size(),2);
+  QCOMPARE(boxes.at(0).words,QRect(0,0,48,20));QCOMPARE(boxes.at(1).words,QRect(200,40,32,20));
+  QVERIFY(!boxes.at(0).mark.intersects(boxes.at(1).mark));
+  const QList<RecognizedWord> one{{"split",QRect(0,0,40,20),90,0},{"line",QRect(48,1,32,20),90,1}};
+  const auto row=quickRedact::markBoxes(one,{"list",{0,1}},QRect(0,0,400,200));
+  QCOMPARE(row.size(),1);QCOMPARE(row.first().words,QRect(0,0,80,21));
+  QCOMPARE(quickRedact::marks(two,{"list",{0,1}},QRect(0,0,400,200)).size(),2);
+ }
+ // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
+ void anInitialOutsideTheBmp() {
+  const auto candidates=words(QStringLiteral("\U00010400Stone wrote"));
+  QCOMPARE(found(candidates,quickRedact::find(candidates,{"name"},account("zz",QStringLiteral("\U00010400\U00010401 Stone")))),QStringList{QStringLiteral("name: \U00010400Stone")});
+ }
+ // CodeRabbit 4613753585: patterns see the recognized text as shown, the exact
+ // regex as typed: case, accents and full-width digits are not folded for them.
+ void patternsSeeTheTextAsShown() {
+  const auto candidates=words(QStringLiteral("Café | cafe | abc-1 | XYZ-2 | １２３"));
+  const auto result=quickRedact::find(candidates,{"list"},patterns({QStringLiteral("^Café$"),R"([A-Z]{3}-\d+)",QStringLiteral("^１２３$")}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),(QStringList{QStringLiteral("list: Café"),"list: XYZ-2",QStringLiteral("list: １２３")}));
+ }
+ // CodeRabbit 4613753575: each subject is made valid once; a lone surrogate in
+ // it does not stop the pattern.
+ void aLoneSurrogateDoesNotStopAPattern() {
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns({QString(QChar(0xd800))+" JIRA-1"},{R"(JIRA-\d)"},[&](quickRedact::PatternOutcome outcome){out.append(outcome);});
+  QCOMPARE(out.size(),1);QVERIFY(out.first().finished);QCOMPARE(out.first().hits,(QList<quickRedact::PatternHit>{{0,2,6}}));
+ }
+ // A pattern that does not compile is named as skipped, never silently empty.
+ void aPatternThatDoesNotCompileIsSkipped() {
+  const auto candidates=words("JIRA-1 TICKET2");
+  const auto result=quickRedact::find(candidates,{"list"},patterns({"(abc",R"(TICKET\d)"}));
+  QCOMPARE(found(candidates,result),QStringList{"list: TICKET2"});QCOMPARE(result.skippedPatterns,QList<int>{0});
+ }
+ // The matcher hook: find sends the subjects and patterns and claims the
+ // ranges it gets back; a pattern it does not report is skipped.
+ void aMatcherRunsThePatterns() {
+  const auto candidates=words("Hammond filed JIRA-9 | and TICKET4");
+  QStringList seenSubjects,seenPatterns;
+  const quickRedact::PatternMatcher matcher=[&](const QStringList& subjects,const QList<qsizetype>& breaks,const QStringList& list){
+   seenSubjects=subjects;seenPatterns=list;
+   QList<quickRedact::PatternOutcome> out;
+   quickRedact::matchPatterns(subjects,list,[&](quickRedact::PatternOutcome outcome){if(outcome.pattern==0)out.append(outcome);},breaks);
+   return out;
+  };
+  const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)",R"(TICKET\d)"}},2000,{},nullptr,matcher);
+  QCOMPARE(seenSubjects,(QStringList{"Hammond filed JIRA-9","and TICKET4","Hammond filed JIRA-9\nand TICKET4"}));QCOMPARE(seenPatterns.size(),2);
+  QCOMPARE(found(candidates,result),(QStringList{"list: Hammond","list: JIRA-9"}));QCOMPARE(result.skippedPatterns,QList<int>{1});
+  // No patterns: the matcher is never asked.
+  bool asked=false;
+  quickRedact::find(candidates,{"list","name"},quickRedact::Sources{"someone","",{"Hammond"},{}},2000,{},nullptr,[&](const QStringList&,const QList<qsizetype>&,const QStringList&){asked=true;return QList<quickRedact::PatternOutcome>{};});
+  QVERIFY(!asked);
+ }
+ // M10: a long entry whose last part misses costs one pass, not one for each
+ // way of joining its parts.
+ void longNearMissIsFast() {
+  QStringList parts;for(char c='a';c<'a'+20;++c)parts.append(QString(QChar(c)));
+  const auto entry=parts.join(' ');
+  QStringList near=parts.mid(0,19);near.append("x");
+  QStringList page;for(int i=0;i<50;++i)page.append(near.join(' '));
+  const auto candidates=words(page.join(' '));
+  QElapsedTimer clock;clock.start();
+  const auto result=quickRedact::find(candidates,{"list"},terms({entry}));
+  QVERIFY2(clock.elapsed()<putgd::test::scaled(200),qPrintable(QString::number(clock.elapsed())));
+  QVERIFY(result.matches.isEmpty());
+ }
+ // M2: progress after the terms and after the patterns, the rest skipped, so a
+ // caller that stops waiting keeps what was found.
+ void progressCarriesFinishedPatterns() {
+  const auto candidates=words("Hammond filed JIRA-9 and TICKET4");
+  QList<quickRedact::Result> seen;
+  const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)",R"(TICKET\d)"}},2000,[&](const quickRedact::Result& partial){seen.append(partial);});
+  QCOMPARE(seen.size(),2);
+  QCOMPARE(found(candidates,seen.at(0)),QStringList{"list: Hammond"});QCOMPARE(seen.at(0).skippedPatterns,(QList<int>{0,1}));
+  QCOMPARE(seen.at(1).matches,result.matches);QCOMPARE(seen.at(1).skippedPatterns,QList<int>{});
+ }
+ void noBudgetSkipsEveryPattern() {
+  const auto candidates=words("Hammond filed JIRA-9");
+  const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)","x"}},0);
+  QCOMPARE(found(candidates,result),QStringList{"list: Hammond"});
+  QCOMPARE(result.skippedPatterns,(QList<int>{0,1}));
+ }
+ // The five kinds are unchanged with the new sources beside them.
+ void builtInKindsIgnoreTheSources() {
+  const auto candidates=words("Write to jane.doe@example.co.uk or call +44 20 7946 0958 | Patrick Hudson");
+  const auto result=quickRedact::find(candidates,all,quickRedact::Sources{"phudson","Patrick Hudson",{"Patrick Hudson"},{"Patrick"}});
+  QCOMPARE(result.matches,quickRedact::find(candidates,all));
  }
 };
 QTEST_APPLESS_MAIN(QuickRedactTest)

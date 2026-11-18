@@ -94,7 +94,14 @@ QStringList codeFormats(); // QRCode, MicroQRCode, DataMatrix, Aztec
 // Decision 5: the Quick redact categories of editor.apply's redactText, in
 // the plan's order: email addresses, phone numbers, IPv4 and IPv6 addresses,
 // card numbers, keys and tokens.
-QStringList redactCategories(); // email, phone, ip, card, key
+QStringList redactCategories(); // email, phone, ip, card, key, name, list
+// #1618: limits and checks for Quick redact terms and patterns, shared by
+// Settings (preferences.quickRedactTerms / quickRedactPatterns) and redactText.
+// The messages never repeat the value.
+inline constexpr int maxRedactTerms=200,maxRedactTermLength=100;
+inline constexpr int maxRedactPatterns=50,maxRedactPatternLength=500;
+QString redactTermError(const QString& term); // empty when valid
+QString redactPatternError(const QString& pattern); // empty when valid; compile errors give the offset
 QStringList childErrorCodes(); // decision 2, from the helper
 QStringList parentErrorCodes(); // decision 2, from the parent
 // The fixed message of a code; no paths or payload. language is named only for

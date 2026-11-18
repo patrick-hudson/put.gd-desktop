@@ -119,8 +119,8 @@ into one tall image. **Upload clipboard** sends whatever you copied, and
 
 **Mark it up first.** **Capture region & edit** opens an editor with crop, arrows,
 shapes, highlights, text and numbered steps. **Redact** removes pixels for good, and
-**Quick redact** suggests covers for email addresses, phone numbers, card numbers and
-keys (check them before you share). Nothing uploads until you click **Upload**.
+**Quick redact** suggests covers for email addresses, phone numbers, card numbers,
+keys, your own username and name, and words you list (check them before you share). Nothing uploads until you click **Upload**.
 [The editor →](https://app.put.gd/userguide/edit.html)
 
 <p align="center">

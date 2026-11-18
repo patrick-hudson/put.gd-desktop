@@ -26,6 +26,7 @@ const QStringList& nameKeys() {static const QStringList value{"name","candidate"
 const QStringList& urlKeys() {static const QStringList value{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl","requestUrl"};return value;}
 const QStringList& objectKeys() {static const QStringList value{"key","objectKey","objectPrefix"};return value;}
 const QStringList& idKeys() {static const QStringList value{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};return value;}
+const QStringList& quickRedactKeys() {static const QStringList value{"quickRedactTerms","quickRedactPatterns"};return value;}
 QString iso(const QDateTime& time) {return time.toUTC().toString(Qt::ISODateWithMs);}
 QByteArray compact(const QJsonValue& value) {return value.isArray()?QJsonDocument(value.toArray()).toJson(QJsonDocument::Indented):QJsonDocument(value.toObject()).toJson(QJsonDocument::Indented);}
 QString sha256(const QByteArray& bytes) {return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());}
@@ -131,6 +132,9 @@ QString PackageRedactor::text(const QString& input) const {
  return result+text.mid(last);
 }
 QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) const {
+ // Quick redact's word list and patterns (#1618) are the user's own words: no
+ // package carries them, with names or without, only how many there are.
+ if(quickRedactKeys().contains(key))return QJsonObject{{"count",value.isArray()?int(value.toArray().size()):value.isUndefined()||value.isNull()?0:1}};
  if(value.isString()) {
   const auto string=value.toString();
   if(string.isEmpty())return value;

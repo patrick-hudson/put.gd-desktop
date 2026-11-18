@@ -174,6 +174,8 @@ private:
  // the resident's capabilities, the saved choice, and why recognition is off.
  void showTextLanguages();
  QList<QComboBox*> textLanguages_;QLabel* textRecognitionStatus_=nullptr;QJsonObject textCapabilities_;
+ // #1618: Quick redact's saved words (one per line) and regular expressions (one per line).
+ QPlainTextEdit *quickRedactTerms_=nullptr,*quickRedactPatterns_=nullptr;
 public:
  // What `recording.microphones` and the capability's `clickHighlights` answered; public for the UI catalog.
  void showRecordingMicrophones(const QJsonObject& microphones);void showClickHighlights(const QJsonObject& capability);

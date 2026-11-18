@@ -105,7 +105,7 @@ target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state put
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp src/editor/HighlightFilter.cpp src/editor/TextLayer.cpp src/editor/QuickRedact.cpp)
 target_include_directories(putgd_editor PUBLIC src)
 target_link_libraries(putgd_editor PUBLIC Qt6::Widgets putgd_build_options putgd_visual)
-add_library(putgd_editor_window STATIC src/ui/EditorWindow.cpp src/ui/EditorText.cpp)
+add_library(putgd_editor_window STATIC src/ui/EditorWindow.cpp src/ui/EditorText.cpp src/ui/AccountName.cpp src/ui/QuickRedactRunner.cpp)
 target_link_libraries(putgd_editor_window PUBLIC putgd_editor putgd_ui putgd_visual PRIVATE putgd_host_open)
 add_library(putgd_ui_application STATIC src/ui/UiApplicationController.cpp)
 target_link_libraries(putgd_ui_application PUBLIC putgd_ui putgd_about putgd_ui_control)

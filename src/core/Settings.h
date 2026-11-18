@@ -110,6 +110,11 @@ struct Settings {
     // identifiers for Copy text, in order. Empty: the desktop locale's language
     // when its data is installed, then English.
     QStringList textRecognitionLanguages;
+    // preferences.quickRedactTerms and quickRedactPatterns (#1618): the words,
+    // phrases and regular expressions Quick redact's "My redaction list" suggests
+    // covering. Terms are trimmed and unique; both are empty by
+    // default. Plain config like folder names, never logged or put in a diagnostics bundle.
+    QStringList quickRedactTerms, quickRedactPatterns;
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;
@@ -165,6 +170,15 @@ struct Settings {
     // Adds absent edit and record actions inheriting the region route without a shortcut,
     // an absent monitor action copying the desktop route, and absent repeat and text keys.
     static QJsonObject normalized(const QJsonObject&);
+    // The document with Quick redact's saved lists in their stored form (#1618): words
+    // trimmed, patterns as written, each exact repeat kept once. Every save path writes
+    // this form, whoever supplied the document (the Settings window, settings.patch,
+    // the CLI or an agent); entries that are not strings are left for validation.
+    static QJsonObject withCleanRedactLists(const QJsonObject&);
+    // textjob::redactPatternError, plus the length counted on the pattern as it runs: a pattern is never trimmed
+    // when it is matched (its spaces can matter), so its 500 code points are the whole expression. Settings and
+    // redactText both use this. Empty when valid.
+    static QString quickRedactPatternError(const QString& pattern);
     // The document with its profiles in the given ID order. The order must name
     // every profile exactly once; nothing else in the document changes.
     static Error reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered);

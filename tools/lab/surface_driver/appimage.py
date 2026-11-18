@@ -140,6 +140,11 @@ def _prepare(target, *, cleanup=False):
     if result['returncode']:
         raise RecipeBlocked('AppImage KWin entry ' + ('cleanup' if cleanup else 'pre-capture staging') + ' refused', issue=961)
     receipt = json.loads(result['stdout'])
+    if (not cleanup and not (receipt and receipt.get('files'))
+            and not any(prior.get('files') for prior in getattr(target, 'kwin_entry_receipts', []))):
+        # Staging finished and copied nothing (a GNOME guest, or a package without entries): there is
+        # nothing to clean up, so closing must not reach into the guest for it.
+        target._kwin_entries = False
     if receipt and (receipt.get('files') or not cleanup):
         if not hasattr(target, 'kwin_entry_receipts'):
             target.kwin_entry_receipts = []
