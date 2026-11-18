@@ -251,6 +251,7 @@ int main(int argc, char** argv) {
             if (arg == "--codec" && i + 1 < argc) request.config.codec = QString::fromLocal8Bit(argv[++i]);
             else if (arg == "--max-edge" && i + 1 < argc) request.config.maxEdge = std::atoi(argv[++i]);
             else if (arg == "--trim" && i + 2 < argc) { request.edit.trimStart = std::atoll(argv[++i]); request.edit.trimEnd = std::atoll(argv[++i]); }
+            else if (arg == "--cut" && i + 2 < argc) { RecordingCut cut; cut.start = std::atoll(argv[++i]); cut.end = std::atoll(argv[++i]); request.edit.cuts.append(cut); }
             else if (arg == "--no-audio") request.config.audio.system = false;
             else { std::fprintf(stderr, "unknown export option %s\n", argv[i]); return 2; }
         }
