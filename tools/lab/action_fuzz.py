@@ -1605,7 +1605,13 @@ class Fuzzer:
         if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
             raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
                 operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
-        patched = self.call('settings.patch', {'patch': {'retention': {'recentActivityLimit': 100 + self.step_index % 50}}, 'expectedRevision': self.revision()})
+        # A lock file a faulted unlink left behind is stale after 30 s (SettingsService), so config_busy may last that long and no longer.
+        end = time.monotonic() + 45
+        while True:
+            patched = self.call('settings.patch', {'patch': {'retention': {'recentActivityLimit': 100 + self.step_index % 50}}, 'expectedRevision': self.revision()})
+            if patched.get('ok') or (patched.get('error') or {}).get('code') != 'config_busy' or time.monotonic() > end:
+                break
+            time.sleep(2)
         if not patched.get('ok'):
             raise Finding('not-recovered', 'settings.patch fails after every fault was lifted: %s' % str(patched.get('error'))[:300])
 
@@ -1875,7 +1881,7 @@ class Fuzzer:
         """--known-journal-stuck: a row left 'uploading' after the journal refused a write (#1579) is counted once and no longer ends the run."""
         if not self.options.known_journal_stuck or not self.faults:
             return False
-        if any('history.sqlite' in line for line in self.faults.tail(100000)):
+        if self.faults.nofile_events or any('history.sqlite' in line for line in self.faults.tail(100000)):
             if row.get('id') not in self.stuck_rows:
                 self.stuck_rows.add(row.get('id'))
                 self.log('known-stuck-row', row=row.get('id'), status=row.get('uploadStatus'), issue=1579)
