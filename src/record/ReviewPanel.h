@@ -4,10 +4,15 @@
 #include "MaskNames.h"
 #include <QFrame>
 #include <QJsonObject>
+#include <QPointer>
 #include <QWidget>
 #include <memory>
 #include <optional>
 
+class QVBoxLayout;
+class QKeyEvent;
+class QLayout;
+class QScrollArea;
 namespace putgd::record {
 // #1613: the review window's right panel, 280 px wide, from the tool row to the
 // footer. Spec: put.gd-evidence record 2026-11-17-recording-review-redesign,
@@ -50,6 +55,10 @@ public:
     QJsonObject inspect() const;
     // The button Enter presses in the current mode (Restore for a cut), or null.
     QWidget* defaultControl() const;
+    // The control the Edits overlay focuses: defaultControl(), else the first
+    // enabled control (a row of Edits, a field, a button), else null.
+    QWidget* firstControl() const;
+    QSize sizeHint() const override;
 signals:
     void cutRequested();                 // a time selection's Cut
     void coverRequested(const QString& kind);  // "solid" (Redact) | "blur"
@@ -66,10 +75,23 @@ signals:
     // A row's verb: Reset (trim), Restore (cut), Remove (cover).
     void resetTrim();
     void removeCover(const QString& id);
+protected:
+    void paintEvent(QPaintEvent*) override;
 private:
     void rebuild();
+    void buildTop(QVBoxLayout*);
+    void buildList(QVBoxLayout*);
+    void addEdge(QVBoxLayout*, const RecordingMask&, bool start);
+    const RecordingMask* selectedCover() const;
+    const RecordingCut* selectedCut() const;
+    bool anyEdit() const;
     std::shared_ptr<MaskNames> names_;
     State state_;
+    QString mode_ = QStringLiteral("empty"), title_;
+    QWidget *top_ = nullptr, *list_ = nullptr, *rule_ = nullptr;
+    QVBoxLayout* root_ = nullptr;
+    QWidget* defaultControl_ = nullptr;
+    bool building_ = false;
 };
 
 // #1613: below ~1180×720 the panel folds into the tool row's Edits toggle and
@@ -89,5 +111,19 @@ signals:
 protected:
     void keyPressEvent(QKeyEvent*) override;
     bool eventFilter(QObject*, QEvent*) override;
+    void paintEvent(QPaintEvent*) override;
+private:
+    void place();
+    void giveBack();
+    QPointer<QWidget> window_, toggle_, previousParent_;
+    QPointer<QLayout> previousLayout_;
+    QPointer<ReviewPanel> panel_;
+    QScrollArea* scroll_ = nullptr;
+    // Where the panel lived, to put it back: a box layout index and stretch, or
+    // a grid cell, and the width limits and visibility it had.
+    int boxIndex_ = -1, boxStretch_ = 0, gridRow_ = -1, gridColumn_ = 0, gridRowSpan_ = 1, gridColumnSpan_ = 1;
+    Qt::Alignment alignment_;
+    int minimumWidth_ = 0, maximumWidth_ = QWIDGETSIZE_MAX;
+    bool wasHidden_ = false;
 };
 }

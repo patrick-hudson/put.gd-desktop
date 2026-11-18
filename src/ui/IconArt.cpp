@@ -248,6 +248,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="select") {
   // 1.8 units on the 24-unit grid gives a 1.5 px stroke in 20 px tool icons.
   line(color,1.8);QPainterPath pointer;pointer.moveTo(5,3);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,21);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
+ } else if(name=="cut") {
+  // Scissors: two rings below, blades crossing up to the right.
+  line(color,1.8);p.drawEllipse(QPointF(6,6),2.8,2.8);p.drawEllipse(QPointF(6,18),2.8,2.8);
+  p.drawLine(QPointF(8.2,7.8),QPointF(20,18.5));p.drawLine(QPointF(8.2,16.2),QPointF(20,5.5));
  } else if(name=="redact") {
   line(color,1.2);p.drawLine(3,5,18,5);p.drawLine(3,9,21,9);p.drawLine(3,13,20,13);p.drawLine(3,17,21,17);p.drawLine(3,21,15,21);
   fill(color);rounded(7,7,10,12,1);
