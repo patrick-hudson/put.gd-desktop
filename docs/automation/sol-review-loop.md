@@ -63,8 +63,10 @@ back on findings that are wrong.
 
 ## 2. Start Sol
 
-1. Call `orchestrator_capabilities` once per thread and pick the latest Sol model the Codex
-   provider lists (no hardcoded id). Use `reasoningEffort: high`. Record provider, model and
+1. At the start of every loop, call `orchestrator_capabilities` again and pick the latest Sol
+   model the Codex provider lists. Never reuse a model id from an earlier loop or session, and
+   never hardcode one: a newer Sol can appear at any time. Keep that model for every round of
+   this loop. Use `reasoningEffort: high`. Record provider, model and
    effort.
 2. Every round is a new `delegate_task` with `role: "review"`, `mode: "async"`,
    `isolation: "worktree"`, a new `clientRequestId` and `target: {providerInstanceId: "codex",
