@@ -297,14 +297,20 @@ matters.
   verification as `--appimage`; any other exit stops the install. The asset is checked for the package
   that is chosen, after this decision, so a missing Arch asset cannot stop an AppImage install.
 - **Every Arch-family system, Arch Linux included**: after the native install, the installed
-  `putgd-cli --version` must start. `pacman -T` cannot predict what the same `pacman -Syu putgd` transaction
+  `/usr/bin/putgd-cli --version`, the binary the package installed, must start. `pacman -T` cannot predict what the same `pacman -Syu putgd` transaction
   replaces (an OpenSSL with another soname), so a `putgd-cli` that fails to start (a shared-library error)
   makes the installer run `sudo pacman -R --noconfirm putgd` and install the AppImage for the requested
   channel.
 
-The AppImage fallback adds no repository or signing key and makes no chmod, so a put.gd repository file
-stays as it was. Omarchy's own update, which the user agrees to before the decision, may sync an already
-configured put.gd repository; that is the update's doing. The fallback warns when the native package is
+The fallback chosen by the pre-install check adds no repository or signing key and makes no chmod, so a
+put.gd repository file stays as it was. Omarchy's own update comes first on purpose: the user agrees to it at
+the prompt, and the probe has to see the OpenSSL that update leaves behind. That update may sync an already
+configured put.gd repository, and it can upgrade an already installed native put.gd before the installer
+picks the AppImage (the accepted limit of keeping a plain `openssl` dependency); that is the update's
+doing. When the post-install proof is what falls back, the repository file, its `Include` line in
+`/etc/pacman.conf` and the channel's signing key stay configured after the package is removed
+(`sudo rm /etc/pacman.d/putgd.conf`, delete the `Include = /etc/pacman.d/putgd.conf` line, and
+`sudo pacman-key --delete <fingerprint>` remove them). The fallback warns when the native package is
 already installed. `tools/releases/arch.py` fails the Arch build when `arch_libcrypto` differs from the
 OpenSSL the binaries link, and records the soname as `package.libcrypto` in the package receipt, so Arch
 moving to a new OpenSSL fails the build until the installer is bumped. A second package built for a
