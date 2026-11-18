@@ -14,7 +14,7 @@ import time
 import dbus
 import dbus.bus
 
-from gui_fuzz.snapshot import pseudo
+from gui_fuzz.snapshot import pseudo, stamp_first_seen
 
 IFACE = 'org.putgd.GuiFuzz'
 SHELL_STYLES = ('rgba(0, 0, 0, 0.43)', 'rgba(255, 255, 255, 0.92)', 'rgba(0, 0, 0, 0.78)', 'rgba(0, 0, 0, 0)')
@@ -22,8 +22,10 @@ SHELL_STYLES = ('rgba(0, 0, 0, 0.43)', 'rgba(255, 255, 255, 0.92)', 'rgba(0, 0, 
 
 def convert(raw):
     """The witness's JSON into the fence snapshot: windows bottom to top, put.gd's Shell actors, then the Shell's chrome on top."""
-    # While put.gd's selector holds the Shell's modal grab it has the keyboard and the pointer, whichever window Meta calls focused.
-    grab = any(name.endswith('RegionSelector') for name in (raw.get('chrome') or {}).get('modal_actors', []))
+    # put.gd's selector has the keyboard and the pointer only while it is the top of Mutter's modal grab stack (the last entry): a Shell dialog,
+    # a menu or the overview grabbed above it means the input goes there, and the fence denies.
+    modal = (raw.get('chrome') or {}).get('modal_actors', [])
+    grab = bool(modal) and modal[-1].endswith('RegionSelector')
     windows = []
     for w in raw['windows']:
         w = dict(w, content=w['frame'])
@@ -56,7 +58,7 @@ def convert(raw):
         windows.append(pseudo('panel', 'gnome-shell-panel', chrome['panel'], top, kind='ShellChrome'))
     if chrome.get('banner'):
         windows.append(pseudo('banner', 'gnome-shell-banner', chrome['banner'], top + 1, kind='ShellChrome'))
-    if chrome.get('overview') or (chrome.get('modal') and not selector and not any(w['cls'] == 'putgd-shell-frame' for w in windows)):
+    if chrome.get('overview') or (chrome.get('modal') and not grab):  # a grab that is not the selector's, or the overview: input goes elsewhere
         for index, output in enumerate(raw['outputs']):
             windows.append(pseudo('modal%d' % index, 'gnome-shell-overview' if chrome.get('overview') else 'gnome-shell-modal', output['geom'], top + 2, kind='ShellChrome'))
     return {'windows': windows, 'outputs': raw['outputs'], 'cursor': raw['cursor'], 'chrome': chrome}
@@ -69,6 +71,7 @@ class GnomeFence:
         self.snapshot = {'windows': [], 'outputs': [], 'cursor': [0, 0], 'chrome': {}}
         self.stamp = 0.0
         self.serial = 0
+        self.first_seen = {}
         self.errors = 0
         self.last_error = ''
         self.lock = threading.Lock()
@@ -82,6 +85,7 @@ class GnomeFence:
 
     def update(self, snapshot):
         with self.lock:
+            stamp_first_seen(self.first_seen, self.serial + 1, snapshot['windows'])
             self.snapshot, self.stamp, self.serial = snapshot, time.time(), self.serial + 1
 
     def get(self):

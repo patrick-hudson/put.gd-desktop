@@ -31,3 +31,21 @@ def chrome_regions(monitors, workarea):
         regions.append([mx + mw - bw, my, bw, bh])
         regions.append([mx + mw - bw, my + mh - bh, bw, bh])
     return regions
+
+
+def stamp_first_seen(first, serial, windows):
+    """Give every window the number of the snapshot it was first in (`seq`). `first` maps window id -> that number and is kept by the fence;
+    ids no longer on screen are dropped, so an id that comes back is new."""
+    now = {w['id'] for w in windows}
+    for wid in [w for w in first if w not in now]:
+        del first[wid]
+    for w in windows:
+        w['seq'] = first.setdefault(w['id'], serial)
+
+
+def focus_active(windows, tops, focus_top):
+    """X11: the window that has the input focus is the only active one. `tops` maps a window's id to the root child that holds it, and
+    `focus_top` is the root child that holds the X input focus, or None when the focus is nobody's or cannot be resolved (then no window is
+    active and the fence denies keys). The window manager's own idea of the active window is never used."""
+    for w in windows:
+        w['active'] = focus_top is not None and tops.get(w['id']) == focus_top

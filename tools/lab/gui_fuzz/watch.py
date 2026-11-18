@@ -1,6 +1,5 @@
 """The watchdog: findings, hangs, crashes, stuck grabs, memory growth and log criticals."""
 import collections
-import datetime
 import glob
 import json
 import os
@@ -41,8 +40,8 @@ class Findings:
         self.marks = open(os.path.join(outdir, 'marks.log'), 'a', buffering=1)
         self.lock = threading.Lock()
 
-    def add(self, kind, detail, fatal=False, extra=None):
-        key = (kind, norm(detail)[:80])
+    def add(self, kind, detail, fatal=False, extra=None, unique=False):
+        key = (kind, detail[:200] if unique else norm(detail)[:80])  # a core dump is never folded into an earlier one that looks alike
         with self.lock:
             self.seen[key] = self.seen.get(key, 0) + 1
             if self.seen[key] > 1:
@@ -50,7 +49,7 @@ class Findings:
             number = len(self.seen)
         now = time.time()
         rc, journal, _ = run(['journalctl', '--user', '-n', '60', '--no-pager', '-o', 'short-precise'], 10)
-        rc, cores, _ = run(['coredumpctl', 'list', '--no-pager', '--no-legend'], 10)
+        cores = '' if kind.endswith('core_dump') or kind.startswith('desktop_core_dump') else run(['coredumpctl', 'list', '--no-pager', '--no-legend'], 10)[1]  # a core dump finding is the list's own
         record = {'kind': kind, 'detail': detail, 'time': now, 'seed': self.seed, 'step': self.log.step, 'fatal': fatal,
                   'recent_ops': self.log.tail(), 'windows': self.world.snapshot()['windows'], 'outputs': self.world.outputs(),
                   'processes': {str(p): [c, rss_kib(p)] for p, c in self.world.pids().items()},
@@ -76,7 +75,7 @@ class Watchdog(threading.Thread):
         self.session = {}
         self.vt = self.read_vt()
         self.focus_lost_since = None
-        self.cores = self.count_cores()
+        self.seen_cores = set()  # (pid, time) of each core dump already judged
         self.pings = {'n': 0, 'slow': 0, 'max_ms': 0}
         self.memory = open(os.path.join(outdir, 'memory.jsonl'), 'a', buffering=1)
         self.log_offsets = {}
@@ -88,7 +87,6 @@ class Watchdog(threading.Thread):
         self.foreign = {}
         self.quits = 0
         self.last_close = 0.0
-        self.born = {}  # window id -> (first seen, the time of the actor's last input then), or None for a window that was there at the start
         self.pending_close = {}  # window id -> (class, asked at)
 
     @staticmethod
@@ -100,9 +98,15 @@ class Watchdog(threading.Thread):
             return None
 
     @staticmethod
-    def count_cores():
+    def core_lines():
+        """One `coredumpctl list`: every dump the journal knows."""
         rc, out, _ = run(['coredumpctl', 'list', '--no-pager', '--no-legend'], 10)
-        return len(out.splitlines())
+        return [line for line in out.splitlines() if line.strip() and not line.startswith('--')]
+
+    @staticmethod
+    def core_key(line):
+        match = CORE_LINE.search(line)
+        return (int(match.group(1)), line[:match.start(1)].strip()) if match else (0, line.strip())
 
     def pid_of(self, comm):
         rc, out, _ = run(['pgrep', '-u', str(os.getuid()), '-x', comm], 5)
@@ -118,8 +122,8 @@ class Watchdog(threading.Thread):
                     self.log_offsets[path] = os.path.getsize(path)
                 except OSError:
                     pass
-        for window in self.world.snapshot()['windows']:  # what was on screen before the walk is not something the walk opened
-            self.born[window['id']] = None
+        for line in self.core_lines():  # dumps from before the walk are not its findings
+            self.seen_cores.add(self.core_key(line))
 
     def run(self):
         while not self.stop.is_set():
@@ -187,7 +191,6 @@ class Watchdog(threading.Thread):
         for other in self.world.snapshot()['windows']:  # a crash viewer opens after a desktop crash and takes the focus
             if other['cls'].startswith(self.desk.crash_viewers):
                 self.kill_crash_viewer(other)
-        self.observe_windows(now)
         chrome = self.world.snapshot().get('chrome') or {}
         if chrome.get('modal') and not chrome.get('overview') and not self.world.overlays():
             self.modal_since = getattr(self, 'modal_since', None) or now
@@ -197,6 +200,15 @@ class Watchdog(threading.Thread):
         else:
             self.modal_since = None
         self.focus_step(now)
+
+    def final_poll(self):
+        """One last look at everything the watchdog watches, after it has stopped and before the exit status is decided."""
+        now = time.time()
+        for step in (lambda: self.fast_checks(now), self.check_cores, self.scan_logs, self.scan_shell_journal if self.desk.journal_args else (lambda: None)):
+            try:
+                step()
+            except Exception as error:  # one failing look must not hide the others
+                print('final poll error', repr(error), flush=True)
 
     def kill_crash_viewer(self, window):
         """Kill a crash viewer by its exact PID, and only when the PID is real, alive and a process of the expected name."""
@@ -216,17 +228,11 @@ class Watchdog(threading.Thread):
             return False
         return True
 
-    def observe_windows(self, now):
-        """When each window first appeared, and when the actor last sent input before that."""
-        for window in self.world.snapshot()['windows']:
-            self.world.note_seen(window)
-            if window['id'] not in self.born:
-                self.born[window['id']] = (now, self.log.last_input)
-
     def opened_by_walk(self, window):
-        """A window that appeared within 10 s after the actor's input, and was not there when the walk began."""
-        birth = self.born.get(window['id'])
-        return bool(birth and birth[1] > 0 and 0 <= birth[0] - birth[1] <= 10)
+        """A window the fence first saw in a snapshot taken after some input of the actor's was sent, within about 13 s of snapshots of it. What
+        was on screen before the walk's first input, and what appeared on its own, was not opened by it."""
+        seq = window.get('seq') or 0
+        return any(0 < seq - sent <= 400 and seq > sent + 1 for sent in self.world.input_serials)
 
     def focus_step(self, now):
         windows = self.world.toplevels()
@@ -340,22 +346,23 @@ class Watchdog(threading.Thread):
         self.memory.write(json.dumps({'t': round(now, 1), 'rss': rows, 'windows': len(self.world.windows())}) + '\n')
 
     def check_cores(self):
-        count = self.count_cores()
-        if count > self.cores:
-            rc, out, _ = run(['coredumpctl', 'list', '--no-pager', '--no-legend'], 10)
+        """One list per poll; every dump not seen before (by PID and time, not by count) is a finding of its own."""
+        for line in self.core_lines():
+            key = self.core_key(line)
+            if key in self.seen_cores:
+                continue
+            self.seen_cores.add(key)
+            pid = key[0]
+            rc, info, _ = run(['coredumpctl', 'info', '--no-pager', str(pid)], 20) if pid else (0, '', '')
             if not self.desk.split_cores:
-                self.findings.add('core_dump', out.splitlines()[-1][:200] if out else 'core dump', fatal=False)
-            else:
-                lines = [line for line in out.splitlines() if line.strip() and not line.startswith('--')]
-                for line in lines[-(count - self.cores):]:
-                    match = CORE_LINE.search(line)
-                    pid, exe = (int(match.group(1)), os.path.basename(match.group(2))) if match else (0, '')
-                    # A put.gd process (every executable it ships) dumping core is a finding; a desktop process's crash (seen: nemo-desktop
-                    # on RandR output churn) is recorded apart. A line that cannot be read counts as put.gd's. Each dump is read by its own PID.
-                    kind = 'core_dump' if exe in PUTGD_COMMS or not exe else 'desktop_core_dump_' + re.sub(r'\W', '_', exe)
-                    rc, info, _ = run(['coredumpctl', 'info', '--no-pager', str(pid)], 20) if pid else (0, '', '')
-                    self.findings.add(kind, line[:200], fatal=False, extra={'info': info[-3500:]})
-            self.cores = count
+                self.findings.add('core_dump', line[:200], fatal=False, unique=True, extra={'info': info[-3500:]})
+                continue
+            match = CORE_LINE.search(line)
+            exe = os.path.basename(match.group(2)) if match else ''
+            # A put.gd process (every executable it ships) dumping core is a finding; a desktop process's crash (seen: nemo-desktop on RandR output
+            # churn) is recorded apart. A line that cannot be read counts as put.gd's.
+            kind = 'core_dump' if exe in PUTGD_COMMS or not exe else 'desktop_core_dump_' + re.sub(r'\W', '_', exe)
+            self.findings.add(kind, line[:200], fatal=False, unique=True, extra={'info': info[-3500:]})
 
     def scan_logs(self):
         for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*.jsonl')):
@@ -372,12 +379,6 @@ class Watchdog(threading.Thread):
                 except ValueError:
                     continue
                 message = record.get('message', '')
-                if self.desk.verify_portal and re.search(r'portal (OpenFile|SaveFile|SaveFiles)\b', message):
-                    try:  # put.gd's own log says it asked the portal for a chooser, and when
-                        stamp = datetime.datetime.strptime(record['time'][:23], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=datetime.timezone.utc).timestamp()
-                    except (KeyError, ValueError):
-                        stamp = time.time()
-                    self.world.expect_chooser(at=stamp)
                 if record.get('level') not in ('warning', 'error', 'critical', 'fatal'):
                     continue
                 if NOISE.search(message) or (self.desk.narrow_noise and PROBE_NOISE.match(message)):

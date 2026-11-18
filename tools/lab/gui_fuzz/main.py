@@ -39,6 +39,32 @@ def replay(path, actor):
             actor.sh(*record['a'])
 
 
+def stop_code(findings, args, log, started, now):
+    """What the walk does next. A fatal finding stops it (exit 3) before the step and time limits are even looked at, so a run that reaches its
+    time limit at the moment of a fatal finding still ends as failed. None means: take another step."""
+    if findings.fatal.is_set() and not args.keep_going:
+        return 3
+    if now - started >= args.minutes * 60 or (args.max_steps and log.step >= args.max_steps):
+        return 0
+    return None
+
+
+def exit_status(code, watch, findings, args):
+    """Stop the watchdog, give it one last look at everything it watches, then decide."""
+    watch.stop.set()
+    if watch.is_alive():
+        watch.join(3)
+    watch.final_poll()
+    return 3 if findings.fatal.is_set() and not args.keep_going else code
+
+
+def quietly(step, what):
+    try:
+        step()
+    except Exception as error:  # every cleanup step runs, whatever the one before it did
+        print('cleanup: %s failed: %r' % (what, error), flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=1)
@@ -55,34 +81,34 @@ def main():
     rng = random.Random(args.seed)
     desk = desktop.make(args.desktop)
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))  # an interruption ends the run the same way Ctrl+C does
-    desk.prepare()
-    fence = desk.make_fence()
-    try:
-        fence.start()
-    except Exception:
-        desk.finish()
-        raise
-    dev = Devices()
-    desk.flatten_acceleration(dev)
-    log = Log(os.path.join(args.out, 'actions.jsonl'), args.seed)
-    world = World(fence, desk)
-    desk.begin(world)
-    findings = Findings(args.out, log, world, args.seed)
-    watch = Watchdog(args.out, world, findings, log)
-    watch.prime()
-    watch.start()
-    actor = Actor(dev, world, log, rng, replaying=bool(args.replay))
-    walker = Walker(actor, world, watch, findings, rng, log, chaos=args.chaos or (args.seed % 2 == 1 and not args.calm))
+    fence = dev = watch = actor = walker = findings = log = None
     started = time.time()
     code = 0
     paused_since = None
+    # Everything that changes the session is created inside this try, so whatever fails, and whenever the signal arrives, finish() runs.
     try:
+        desk.prepare()
+        fence = desk.make_fence()
+        fence.start()
+        dev = Devices()
+        desk.flatten_acceleration(dev)
+        log = Log(os.path.join(args.out, 'actions.jsonl'), args.seed)
+        world = World(fence, desk)
+        desk.begin(world)
+        findings = Findings(args.out, log, world, args.seed)
+        watch = Watchdog(args.out, world, findings, log)
+        watch.prime()
+        watch.start()
+        actor = Actor(dev, world, log, rng, replaying=bool(args.replay))
+        walker = Walker(actor, world, watch, findings, rng, log, chaos=args.chaos or (args.seed % 2 == 1 and not args.calm))
+        started = time.time()
         if args.replay:
             replay(args.replay, actor)
         else:
-            while time.time() - started < args.minutes * 60 and not (args.max_steps and log.step >= args.max_steps):
-                if findings.fatal.is_set() and not args.keep_going:
-                    code = 3
+            while True:
+                stop = stop_code(findings, args, log, started, time.time())
+                if stop is not None:
+                    code = stop
                     break
                 if watch.paused_walk.is_set():
                     paused_since = paused_since or time.time()
@@ -97,19 +123,26 @@ def main():
         pass
     finally:
         try:
-            actor.release_all()
-        except OSError:
-            pass
-        watch.stop.set()
-        summary = {'desktop': desk.name, 'seed': args.seed, 'seconds': round(time.time() - started), 'steps': log.step, 'actions': walker.counts, 'denied': actor.denied,
-                   'harness_errors': walker.harness_errors, 'findings': {'%s|%s' % k: v for k, v in findings.seen.items()},
-                   'pings': watch.pings, 'log_warnings': watch.warnings, 'shell_warnings': watch.shell_warnings, 'foreign_windows_closed': watch.foreign}
-        with open(os.path.join(args.out, 'summary.json'), 'w') as stream:
-            json.dump(summary, stream, indent=1)
-        dev.close()
-        fence.stop()
-        desk.finish()
-        print(json.dumps({k: summary[k] for k in ('desktop', 'seed', 'seconds', 'steps', 'denied', 'harness_errors', 'findings')}), flush=True)
+            if watch is not None:
+                code = exit_status(code, watch, findings, args)
+            if walker is not None:
+                summary = {'desktop': desk.name, 'seed': args.seed, 'seconds': round(time.time() - started), 'steps': log.step, 'actions': walker.counts,
+                           'denied': actor.denied, 'harness_errors': walker.harness_errors, 'findings': {'%s|%s' % k: v for k, v in findings.seen.items()},
+                           'pings': watch.pings, 'log_warnings': watch.warnings, 'shell_warnings': watch.shell_warnings, 'foreign_windows_closed': watch.foreign}
+                with open(os.path.join(args.out, 'summary.json'), 'w') as stream:
+                    json.dump(summary, stream, indent=1)
+                print(json.dumps({k: summary[k] for k in ('desktop', 'seed', 'seconds', 'steps', 'denied', 'harness_errors', 'findings')}), flush=True)
+        except Exception as error:  # a failed summary must not skip the cleanup below
+            print('summary failed: %r' % (error,), flush=True)
+            code = code or 2
+        finally:
+            if actor is not None:
+                quietly(actor.release_all, 'release input')
+            if dev is not None:
+                quietly(dev.close, 'destroy the virtual devices')
+            if fence is not None:
+                quietly(fence.stop, 'stop the fence')
+            quietly(desk.finish, 'restore the session and take the witness down')
     return code
 
 

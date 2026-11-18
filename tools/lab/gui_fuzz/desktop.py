@@ -3,6 +3,7 @@
 The walk, the watchdog and the actor ask the Desktop; nothing else in the package names a compositor.
 """
 import os
+import re
 import subprocess
 import time
 
@@ -23,6 +24,55 @@ def host_run(args, timeout=15):
         return done.returncode, done.stdout, done.stderr
     except (OSError, subprocess.SubprocessError) as error:
         return -1, '', str(error)
+
+
+def parse_gdctl(text):
+    """`gdctl show` as {'logical': [{x, y, scale, transform, primary, monitors}], 'modes': {connector: current mode}}; None when it cannot be read."""
+    lines = [re.sub(r'^[│├└─\s]+', '', line).rstrip() for line in text.splitlines()]
+    modes, logical, section, connector, want_mode = {}, [], None, None, False
+    for line in lines:
+        if line == 'Monitors:':
+            section = 'monitors'
+        elif line == 'Logical monitors:':
+            section = 'logical'
+        elif section == 'monitors':
+            match = re.match(r'Monitor (\S+) ', line)
+            if match:
+                connector = match.group(1)
+            elif line == 'Current mode':
+                want_mode = True
+            elif want_mode and connector:
+                modes[connector] = line.split()[0]
+                want_mode = False
+        elif section == 'logical':
+            if line.startswith('Logical monitor'):
+                logical.append({'monitors': []})
+            elif logical:
+                current = logical[-1]
+                match = re.match(r'Position: \((-?\d+), (-?\d+)\)', line)
+                if match:
+                    current['x'], current['y'] = match.group(1), match.group(2)
+                elif line.startswith('Scale:'):
+                    current['scale'] = line.split()[1]
+                elif line.startswith('Transform:'):
+                    current['transform'] = line.split()[1]
+                elif line.startswith('Primary:'):
+                    current['primary'] = line.split()[1] == 'yes'
+                elif re.match(r'Virtual-\d+ |\S+ \(', line) and 'Monitors:' not in line:
+                    current['monitors'].append(line.split()[0])
+    if not logical or any('x' not in l or 'scale' not in l or not l['monitors'] for l in logical) or any(c not in modes for l in logical for c in l['monitors']):
+        return None
+    return {'logical': logical, 'modes': modes}
+
+
+def restore_args(layout):
+    """The `gdctl set` command that puts a parsed layout back exactly: positions, primary, scales, transforms and modes."""
+    args = ['gdctl', 'set']
+    for l in layout['logical']:
+        args += ['--logical-monitor'] + (['--primary'] if l.get('primary') else []) + ['--x', l['x'], '--y', l['y'], '--scale', l['scale'], '--transform', l.get('transform', 'normal')]
+        for connector in l['monitors']:
+            args += ['--monitor', connector, '--mode', layout['modes'][connector]]
+    return args
 
 
 class Desktop:
@@ -195,16 +245,16 @@ class Gnome(Desktop):
         time.sleep(1.0)
 
     def begin(self, world):
-        outs = world.outputs()
-        self.initial_layout = (len(outs), str(outs[0]['scale']) if outs else '1', str(outs[1]['scale']) if len(outs) > 1 else '1')
+        rc, out, _ = host_run(['gdctl', 'show'], 10)
+        self.saved_layout = parse_gdctl(out)  # positions, primary, scales, transforms and modes, as they are now
+        self.layout_changed = False
 
     def finish(self):
         schema, keys = self.POINTER
         for key, value in getattr(self, 'saved_pointer', {}).items():
             host_run(['gsettings', 'set', schema, key, value])
-        layout = getattr(self, 'initial_layout', None)
-        if layout:
-            self.apply_layout(*layout)
+        if getattr(self, 'layout_changed', False) and getattr(self, 'saved_layout', None):  # only a layout the run changed is put back
+            host_run(restore_args(self.saved_layout), 20)
         try:
             os.unlink(self.marker())
         except OSError:
@@ -231,12 +281,10 @@ class Gnome(Desktop):
             args += ['--logical-monitor', '--monitor', 'Virtual-2', '--right-of', 'Virtual-1', '--scale', scale2]
         return args
 
-    def apply_layout(self, heads, scale1='1', scale2='1'):
-        host_run(self.layout_args(heads, scale1, scale2), 20)
-
     def layout(self, walker, heads, scale1='1', scale2='1'):
         args = self.layout_args(heads, scale1, scale2)
         walker.log.write({'op': 'sh', 'a': args})
+        self.layout_changed = True
         host_run(args, 20)
         walker.a.sleep(1.5)
 
@@ -296,18 +344,15 @@ class Cinnamon(Desktop):
         schema, keys = self.POINTER
         for key, value in getattr(self, 'saved_pointer', {}).items():
             host_run(['gsettings', 'set', schema, key, value])
-        for name, geometry in getattr(self, 'initial_monitors', []):
+        for name, geometry in (getattr(self, 'initial_monitors', []) if getattr(self, 'monitors_changed', False) else []):  # only what the run changed
             if geometry is None:
                 host_run(['xrandr', '--output', name, '--off'], 15)
             else:
                 size, x, y = geometry.split('+')
                 host_run(['xrandr', '--output', name, '--mode', size, '--pos', '%sx%s' % (x, y)], 15)
-        rc, out, _ = host_run(['pgrep', '-u', str(os.getuid()), '-x', 'xclip'], 5)  # xclip forks to serve the selection and outlives us
-        for pid in out.split():
-            try:
-                os.kill(int(pid), 15)
-            except (OSError, ValueError):
-                pass
+        for proc in getattr(self, 'xclips', []):  # only the xclip processes this run started, by the handles it holds
+            if proc.poll() is None:
+                proc.terminate()
 
     def make_fence(self):
         from gui_fuzz.fence_x11 import X11Fence
@@ -323,6 +368,7 @@ class Cinnamon(Desktop):
 
     def xrandr(self, walker, *args):
         walker.log.write({'op': 'sh', 'a': ['xrandr'] + list(args)})
+        self.monitors_changed = True
         return host_run(['xrandr'] + list(args), 15)
 
     def modes(self, name):
@@ -363,13 +409,14 @@ class Cinnamon(Desktop):
     def set_clipboard(self, walker, kind, payload):
         walker.log.write({'op': 'note', 'action': 'xclip ' + kind})
         mime = {'text': 'UTF8_STRING', 'image': 'image/png', 'uris': 'text/uri-list'}.get(kind)
-        try:
-            if kind == 'clear':
-                subprocess.run(['xclip', '-selection', 'clipboard', '-i', '/dev/null'], timeout=10, env=host_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:  # xclip forks to serve the selection: it must not hold our pipes, or run() waits for it until the timeout
-                subprocess.run(['xclip', '-selection', 'clipboard', '-t', mime, '-i'], input=payload, timeout=10, env=host_env(),
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except (OSError, subprocess.SubprocessError) as error:
+        args = ['xclip', '-quiet', '-selection', 'clipboard', '-i', '/dev/null'] if kind == 'clear' else ['xclip', '-quiet', '-selection', 'clipboard', '-t', mime, '-i']
+        try:  # -quiet keeps xclip in the foreground, so this handle is the process that serves the selection and the run can stop it
+            proc = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=host_env())
+            self.xclips = [p for p in getattr(self, 'xclips', []) if p.poll() is None] + [proc]
+            if kind != 'clear':
+                proc.stdin.write(payload)
+            proc.stdin.close()
+        except (OSError, ValueError) as error:
             walker.log.write({'op': 'harness_error', 'action': 'clipboard', 'error': repr(error)[:160]})
 
 

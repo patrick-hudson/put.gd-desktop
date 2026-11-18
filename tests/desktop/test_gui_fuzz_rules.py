@@ -9,9 +9,10 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'lab'))
-from gui_fuzz import watch  # noqa: E402
+from gui_fuzz import main as fuzz_main, snapshot, watch  # noqa: E402
 from gui_fuzz.actor import Actor  # noqa: E402
-from gui_fuzz.desktop import Cinnamon, Gnome, Kde  # noqa: E402
+from gui_fuzz.desktop import Cinnamon, Gnome, Kde, parse_gdctl, restore_args  # noqa: E402
+from gui_fuzz.fence_gnome import convert  # noqa: E402
 from gui_fuzz.snapshot import chrome_regions, pseudo  # noqa: E402
 from gui_fuzz.world import Log, World  # noqa: E402
 
@@ -23,8 +24,12 @@ class FakeFence:
         self.snapshot = {'windows': windows, 'outputs': outputs or OUT, 'cursor': [0, 0], 'chrome': {}}
         self.closed = []
         self.before_close = None
+        self.serial = 0
+        self.on_get = None
 
     def get(self):
+        if self.on_get:
+            self.on_get()
         return self.snapshot, time.time()
 
     def close(self, window_id):
@@ -50,29 +55,18 @@ OURS = window('w-ours', 10, 'putgd-ui', [100, 100, 600, 400])
 
 
 class PortalWindows(unittest.TestCase):
-    """S2: a portal window is put.gd's chooser only on evidence."""
+    """S2: a portal window is put.gd's only when it is transient for a put.gd window. No time window, no pending request."""
 
     def nautilus(self, **extra):
         return window('w-nautilus', 77, 'org.gnome.Nautilus', [300, 200, 500, 300], **extra)
 
-    def test_a_users_nautilus_window_is_not_putgds(self):
-        w, _ = world([OURS, self.nautilus()], Gnome())
+    def test_a_users_nautilus_window_is_not_putgds_whatever_put_gd_asked_for(self):
+        w, fence = world([OURS], Gnome())
+        if hasattr(w, 'expect_chooser'):  # the previous head let a pending chooser request make a new portal window put.gd's
+            w.expect_chooser()
+        fence.snapshot['windows'] = [OURS, self.nautilus()]
         self.assertFalse(w.mine(self.nautilus()))
         self.assertFalse(w.inside(400, 300))
-
-    def test_a_chooser_that_opens_while_putgd_has_a_request_pending_is_putgds(self):
-        w, fence = world([OURS], Gnome())
-        w.expect_chooser()
-        fence.snapshot['windows'] = [OURS, self.nautilus()]
-        self.assertTrue(w.mine(self.nautilus()))
-        w.choosers.clear()  # the request is long over: the window stays accepted
-        self.assertTrue(w.mine(self.nautilus()))
-
-    def test_a_chooser_that_was_already_open_is_not(self):
-        w, fence = world([OURS, self.nautilus()], Gnome())
-        w.note_seen(self.nautilus())
-        w.expect_chooser(at=time.time() + 30)
-        self.assertFalse(w.mine(self.nautilus()))
 
     def test_transient_for_a_putgd_window_is_putgds_and_for_another_is_not(self):
         other = window('w-other', 55, 'firefox', [0, 0, 400, 300])
@@ -125,6 +119,148 @@ class StrictInput(unittest.TestCase):
         self.assertEqual(chrome_regions(monitors, None)[0], [0, 0, 1280, 800])  # an unknown work area denies everything
 
 
+class GrabStack(unittest.TestCase):
+    """S3 on GNOME: the selector is the input target only when it is the top of Mutter's modal stack."""
+
+    def raw(self, modal_actors):
+        selector = {'t': 'Gjs_putgd_put_gd_extension_RegionSelector', 'name': '', 'style': '', 'frame': [0, 0, 1280, 800], 'reactive': True}
+        return {'windows': [dict(window('w-ding', 5, 'gjs', [0, 0, 1280, 800], desktop=True, active=True), hidden=False)], 'actors': [selector], 'outputs': OUT,
+                'cursor': [5, 5], 'chrome': {'panel': None, 'overview': False, 'modal': len(modal_actors), 'banner': None, 'modal_actors': modal_actors}}
+
+    def mine_focused(self, raw):
+        snap = convert(raw)
+        w, fence = world(snap['windows'], Gnome())
+        fence.snapshot = dict(snap, cursor=[5, 5])
+        return Actor(None, w, mock.Mock(), None).mine_focused(), w
+
+    def test_the_selector_on_top_of_the_stack_has_the_input(self):
+        focused, w = self.mine_focused(self.raw(['Gjs_putgd_put_gd_extension_RegionSelector']))
+        self.assertTrue(focused)
+        self.assertTrue(w.inside(600, 400))
+
+    def test_a_foreign_grab_above_the_selector_denies_keys_and_pointer(self):
+        focused, w = self.mine_focused(self.raw(['Gjs_putgd_put_gd_extension_RegionSelector', 'Gjs_ui_modalDialog_ModalDialog']))
+        self.assertFalse(focused)
+        self.assertFalse(w.inside(600, 400))
+
+    def test_a_selector_below_a_foreign_grab_is_not_the_target_either(self):
+        focused, w = self.mine_focused(self.raw(['Gjs_ui_popupMenu_PopupMenu', 'Gjs_putgd_put_gd_extension_RegionSelector', 'Gjs_ui_popupMenu_PopupMenu']))
+        self.assertFalse(focused)
+
+
+class X11Focus(unittest.TestCase):
+    """S3 on Cinnamon: only the X input focus makes a window active."""
+
+    def test_no_resolvable_focus_means_no_active_window(self):
+        windows = [window('1', 10, 'putgd-ui', [0, 0, 100, 100], active=True), window('2', 99, 'firefox', [0, 0, 100, 100])]
+        snapshot.focus_active(windows, {'1': 100, '2': 200}, None)
+        self.assertEqual([w['active'] for w in windows], [False, False])
+
+    def test_a_foreign_focus_leaves_putgd_inactive_and_putgds_focus_activates_it(self):
+        windows = [window('1', 10, 'putgd-ui', [0, 0, 100, 100]), window('2', 99, 'firefox', [0, 0, 100, 100])]
+        snapshot.focus_active(windows, {'1': 100, '2': 200}, 200)
+        self.assertEqual([w['active'] for w in windows], [False, True])
+        w, _ = world(windows, Cinnamon())
+        self.assertFalse(Actor(None, w, mock.Mock(), None).mine_focused())
+        snapshot.focus_active(windows, {'1': 100, '2': 200}, 100)
+        self.assertTrue(Actor(None, w, mock.Mock(), None).mine_focused())
+
+    def test_a_focus_in_a_window_the_fence_does_not_list_activates_nothing(self):
+        windows = [window('1', 10, 'putgd-ui', [0, 0, 100, 100], active=True)]
+        snapshot.focus_active(windows, {'1': 100}, 777)
+        self.assertFalse(windows[0]['active'])
+
+
+class FakeDev:
+    """A pointer device: the fence's cursor follows the relative motion, and a hook can move things after an event."""
+
+    def __init__(self, fence):
+        self.fence = fence
+        self.down = set()
+        self.presses = 0
+        self.wheels = 0
+        self.after = None
+
+    def rel(self, dx, dy):
+        x, y = self.fence.snapshot['cursor']
+        self.fence.snapshot['cursor'] = [x + dx, y + dy]
+        if self.after:
+            self.after('rel')
+
+    def button(self, name, pressed):
+        self.presses += 1 if pressed else 0
+        if self.after:
+            self.after('button-down' if pressed else 'button-up')
+
+    def wheel(self, step, horizontal=False):
+        self.wheels += 1
+        if self.after:
+            self.after('wheel')
+
+    def key(self, name, pressed):
+        pass
+
+
+class PointerRechecks(unittest.TestCase):
+    """S11: the pointer is read again after each move and fenced before every press and wheel event, 1 px inside the window."""
+
+    def actor(self):
+        w, fence = world([OURS], Gnome())
+        w.freshness = 0.0
+        dev = FakeDev(fence)
+        actor = Actor(dev, w, mock.Mock(), __import__('random').Random(1))
+        return actor, dev, fence
+
+    def test_a_target_on_the_windows_edge_is_denied(self):
+        actor, dev, fence = self.actor()
+        with self.assertRaises(Exception):
+            actor.move(100, 200)          # the first column of the window
+        with self.assertRaises(Exception):
+            actor.move(699, 200)          # its last column
+        actor.move(101, 200)
+
+    def test_a_pointer_that_ends_up_elsewhere_after_the_move_is_denied(self):
+        actor, dev, fence = self.actor()
+        reads = {'n': 0, 'armed': False}
+
+        def arm(event):
+            reads['armed'] = True        # the pointer has reached the target
+        dev.after = arm
+
+        def warp():
+            if reads['armed']:
+                reads['n'] += 1
+                if reads['n'] >= 2:      # the read that finds the move converged is the first; the check after it finds the pointer elsewhere
+                    fence.snapshot['cursor'] = [900, 700]
+        fence.on_get = warp
+        with self.assertRaises(Exception):
+            actor.move(300, 300)
+        self.assertEqual(dev.presses, 0)
+
+    def test_every_press_of_a_multi_click_is_checked(self):
+        actor, dev, fence = self.actor()
+        actor.move(300, 300)
+
+        def vanish(event):
+            if event == 'button-up':
+                fence.snapshot['windows'] = []  # the window closes after the first click
+        dev.after = vanish
+        with self.assertRaises(Exception):
+            actor.click(300, 300, count=3)
+        self.assertEqual(dev.presses, 1)
+
+    def test_every_wheel_event_is_checked(self):
+        actor, dev, fence = self.actor()
+        actor.move(300, 300)
+
+        def vanish(event):
+            fence.snapshot['windows'] = []
+        dev.after = vanish
+        with self.assertRaises(Exception):
+            actor.wheel(5)
+        self.assertEqual(dev.wheels, 1)
+
+
 class Fixtures(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
@@ -161,53 +297,54 @@ class CrashViewers(Fixtures):
 
 
 class ForeignWindows(Fixtures):
-    """S5: close only what the walk opened; record the finding first; count a close once the window is gone."""
+    """S5: close only what the walk's input led to, by snapshot number; record the finding first; count a close once the window is gone."""
 
-    def foreign(self):
-        return window('w-store', 88, 'snap-store', [100, 100, 600, 400], active=True)
+    def foreign(self, seq):
+        return window('w-store', 88, 'snap-store', [100, 100, 600, 400], active=True, seq=seq)
 
-    def test_a_window_that_was_there_before_the_walk_is_never_closed(self):
-        old = self.foreign()
-        dog, w, fence, findings, log = self.watchdog([OURS, old])
-        log.last_input = time.time()
+    def test_a_window_that_was_there_before_the_walks_input_is_never_closed(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        w.input_serials.extend([50, 60])
+        fence.snapshot['windows'] = [OURS, self.foreign(seq=3)]   # first seen in snapshot 3, long before the first input
         now = time.time()
-        dog.observe_windows(now)
         for step in (0, 7):
             dog.focus_step(now + step)
         self.assertIn('focus_left_putgd', [k[0] for k in findings.seen])
         self.assertEqual(fence.closed, [])
 
-    def test_a_window_the_walk_opened_is_recorded_then_closed_and_counted_when_gone(self):
+    def test_a_window_first_seen_in_the_snapshot_of_the_input_is_not_closed_but_a_later_one_is(self):
         dog, w, fence, findings, log = self.watchdog([OURS])
-        new = self.foreign()
-        log.last_input = time.time()
-        fence.snapshot['windows'] = [OURS, new]
-        now = time.time()
-        dog.observe_windows(now)
+        w.input_serials.append(50)
+        for seq, expected in ((51, []), (52, ['w-store'])):
+            fence.closed.clear()
+            dog.pending_close.clear()
+            dog.last_close = 0
+            fence.snapshot['windows'] = [OURS, self.foreign(seq)]
+            dog.focus_lost_since = None
+            now = time.time()
+            dog.focus_step(now)
+            dog.focus_step(now + 7)
+            self.assertEqual(fence.closed, expected, seq)
+
+    def test_the_finding_comes_first_and_the_count_waits_for_the_window_to_go(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        w.input_serials.append(10)
+        fence.snapshot['windows'] = [OURS, self.foreign(seq=20)]
         fence.before_close = lambda: self.assertTrue(any(k[0] == 'focus_left_putgd' for k in findings.seen), 'closed before the finding was recorded')
+        now = time.time()
         dog.focus_step(now)
         dog.focus_step(now + 7)
         self.assertEqual(fence.closed, ['w-store'])
-        self.assertEqual(dog.foreign, {})  # asked, not yet gone
+        self.assertEqual(dog.foreign, {})
         fence.snapshot['windows'] = [OURS]
         dog.focus_step(now + 8)
         self.assertEqual(dog.foreign, {'snap-store': 1})
 
-    def test_a_window_nobody_input_explains_is_not_closed(self):
-        dog, w, fence, findings, log = self.watchdog([OURS])
-        fence.snapshot['windows'] = [OURS, self.foreign()]   # appeared with no input from the actor
-        now = time.time()
-        dog.observe_windows(now)
-        dog.focus_step(now)
-        dog.focus_step(now + 7)
-        self.assertEqual(fence.closed, [])
-
     def test_plasma_never_closes_anything(self):
         dog, w, fence, findings, log = self.watchdog([OURS], Kde())
-        log.last_input = time.time()
-        fence.snapshot['windows'] = [OURS, self.foreign()]
+        w.input_serials.append(10)
+        fence.snapshot['windows'] = [OURS, self.foreign(seq=20)]
         now = time.time()
-        dog.observe_windows(now)
         dog.focus_step(now)
         dog.focus_step(now + 7)
         self.assertEqual(fence.closed, [])
@@ -248,27 +385,70 @@ class ResidentExit(Fixtures):
         self.assertIn('resident_died', [k[0] for k in findings.seen])
 
 
+class StopAndStatus(Fixtures):
+    """S6: a fatal finding wins over the time limit, and a last poll runs before the exit status is decided."""
+
+    def args(self, **extra):
+        values = dict(minutes=1.0, max_steps=0, keep_going=False)
+        values.update(extra)
+        return mock.Mock(**values)
+
+    def test_fatal_before_time_and_step_limits(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        findings.fatal.set()
+        started = time.time() - 600   # long past the time limit
+        self.assertEqual(fuzz_main.stop_code(findings, self.args(), log, started, time.time()), 3)
+        self.assertEqual(fuzz_main.stop_code(findings, self.args(keep_going=True), log, started, time.time()), 0)
+        findings.fatal.clear()
+        self.assertIsNone(fuzz_main.stop_code(findings, self.args(), log, time.time(), time.time()))
+
+    def test_the_last_poll_can_turn_a_clean_run_into_a_failed_one(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        dog.final_poll = lambda: findings.fatal.set()
+        self.assertEqual(fuzz_main.exit_status(0, dog, findings, self.args()), 3)
+        findings.fatal.clear()
+        dog.final_poll = lambda: None
+        self.assertEqual(fuzz_main.exit_status(0, dog, findings, self.args()), 0)
+
+
 class CoreDumps(Fixtures):
-    """S7 and D4: every shipped executable is put.gd's, and each dump is read by its own PID."""
+    """S7 and D4: one list per poll, dumps tracked by PID and time, one finding each, every shipped executable put.gd's."""
 
-    LIST = ('Tue 2026-11-17 21:42:59 CST 1574 1000 1000 SIGABRT present /usr/bin/nemo-desktop 4.1M\n'
-            'Tue 2026-11-17 21:43:59 CST 2222 1000 1000 SIGSEGV present /usr/bin/putgd-region 1.2M\n')
+    NEMO = 'Tue 2026-11-17 21:42:59 CST 1574 1000 1000 SIGABRT present /usr/bin/nemo-desktop 4.1M'
+    REGION = 'Tue 2026-11-17 21:43:59 CST 2222 1000 1000 SIGSEGV present /usr/bin/putgd-region 1.2M'
+    UI = 'Tue 2026-11-17 21:44:59 CST 3333 1000 1000 SIGSEGV present /usr/bin/putgd-ui 1.0M'
+    UI2 = 'Tue 2026-11-17 21:45:59 CST 3334 1000 1000 SIGSEGV present /usr/bin/putgd-ui 1.0M'
 
-    def test_classification_and_pid_lookup(self):
+    def poll(self, dog, lines):
         calls = []
 
         def fake(args, timeout=10):
             calls.append(args)
-            return (0, self.LIST if args[1] == 'list' else 'PID: x', '')
-        dog, w, fence, findings, log = self.watchdog([OURS])
-        dog.cores = 0
+            return (0, '\n'.join(lines) if args[1] == 'list' else 'PID: x', '')
         with mock.patch.object(watch, 'run', side_effect=fake):
             dog.check_cores()
-        kinds = sorted(k[0] for k in findings.seen)
-        self.assertEqual(kinds, ['core_dump', 'desktop_core_dump_nemo_desktop'])
-        infos = [c[-1] for c in calls if c[1] == 'info']
-        self.assertEqual(sorted(infos), ['1574', '2222'])
-        self.assertNotIn('-1', infos)
+        return calls
+
+    def test_a_dump_that_replaces_one_in_the_journal_is_still_new(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        dog.seen_cores = {dog.core_key(self.NEMO)}
+        calls = self.poll(dog, [self.REGION])    # the old dump rotated out and a new one came in: the count is the same
+        self.assertEqual([k[0] for k in findings.seen], ['core_dump'])
+        self.assertEqual(sum(1 for c in calls if c[1] == 'list'), 1)
+        self.assertEqual([c[-1] for c in calls if c[1] == 'info'], ['2222'])
+        self.poll(dog, [self.REGION])
+        self.assertEqual(len(findings.seen), 1)  # not reported twice
+
+    def test_two_dumps_of_one_executable_are_two_findings_and_desktop_dumps_are_apart(self):
+        dog, w, fence, findings, log = self.watchdog([OURS])
+        self.poll(dog, [self.NEMO, self.UI, self.UI2])
+        self.assertEqual(sorted(k[0] for k in findings.seen), ['core_dump', 'core_dump', 'desktop_core_dump_nemo_desktop'])
+        self.assertEqual(len(findings.seen), 3)
+
+    def test_plasma_files_one_finding_per_new_dump_too(self):
+        dog, w, fence, findings, log = self.watchdog([OURS], Kde())
+        self.poll(dog, [self.NEMO, self.UI])
+        self.assertEqual(sorted(k[0] for k in findings.seen), ['core_dump', 'core_dump'])
 
     def test_the_shell_evidence_carries_only_that_pids_dump(self):
         dog, *_ = self.watchdog([OURS])
@@ -276,6 +456,46 @@ class CoreDumps(Fixtures):
             self.assertIn('4242', dog.shell_evidence(4242)['coredump_of_shell_pid'])
             self.assertEqual(dog.shell_evidence(999)['coredump_of_shell_pid'], '')
             self.assertEqual(dog.shell_evidence(None)['coredump_of_shell_pid'], '')
+
+
+class Layout(unittest.TestCase):
+    """S9: a GNOME layout is saved whole and put back exactly."""
+
+    SHOW = """Monitors:
+├──Monitor Virtual-1 (Red Hat, Inc. 15")
+│  ├──Current mode
+│  │   └──1280x800@74.994
+│  └──Preferences
+└──Monitor Virtual-2 (Red Hat, Inc. 15")
+   ├──Current mode
+   │   └──1280x800@74.994
+   └──Preferences
+
+Logical monitors:
+├──Logical monitor #1
+│  ├──Position: (0, 0)
+│  ├──Scale: 1.5
+│  ├──Transform: normal
+│  ├──Primary: yes
+│  └──Monitors: (1)
+│      └──Virtual-1 (Red Hat, Inc. 15")
+└──Logical monitor #2
+   ├──Position: (853, 0)
+   ├──Scale: 1.0
+   ├──Transform: normal
+   ├──Primary: no
+   └──Monitors: (1)
+       └──Virtual-2 (Red Hat, Inc. 15")
+"""
+
+    def test_positions_scales_primary_and_modes_survive_the_round_trip(self):
+        layout = parse_gdctl(self.SHOW)
+        args = ' '.join(restore_args(layout))
+        self.assertEqual(args, 'gdctl set --logical-monitor --primary --x 0 --y 0 --scale 1.5 --transform normal --monitor Virtual-1 --mode 1280x800@74.994 '
+                               '--logical-monitor --x 853 --y 0 --scale 1.0 --transform normal --monitor Virtual-2 --mode 1280x800@74.994')
+
+    def test_an_unreadable_layout_is_not_restored(self):
+        self.assertIsNone(parse_gdctl('gdctl: command not found'))
 
 
 class Noise(unittest.TestCase):

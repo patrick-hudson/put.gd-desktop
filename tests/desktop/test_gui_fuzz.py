@@ -62,7 +62,8 @@ class GnomeWitness(unittest.TestCase):
     def raw(self, actors):
         return {'windows': [dict(window(10, 'putgd-ui', [100, 100, 400, 300]), hidden=False)],
                 'actors': actors, 'outputs': [{'name': 'mon0', 'geom': [0, 0, 1000, 800], 'scale': 1}], 'cursor': [5, 5],
-                'chrome': {'panel': [0, 0, 1000, 32], 'overview': False, 'modal': 1, 'banner': [300, 32, 400, 100]}}
+                'chrome': {'panel': [0, 0, 1000, 32], 'overview': False, 'modal': 1, 'banner': [300, 32, 400, 100],
+                           'modal_actors': ['Gjs_putgd_put_gd_extension_RegionSelector'] if actors else ['Gjs_ui_modalDialog_ModalDialog']}}
 
     def test_selector_actor_is_an_overlay(self):
         selector = {'t': 'Gjs_putgd_put_gd_extension_RegionSelector', 'name': '', 'style': '', 'frame': [0, 0, 1000, 800], 'reactive': True}

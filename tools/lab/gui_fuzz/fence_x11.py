@@ -9,7 +9,7 @@ import time
 
 from Xlib import X, display, error
 
-from gui_fuzz.snapshot import chrome_regions, pseudo
+from gui_fuzz.snapshot import chrome_regions, focus_active, pseudo, stamp_first_seen
 
 OVERLAY_CLASSES = ('putgd-region',)
 POPUP_TYPES = ('MENU', 'POPUP_MENU', 'DROPDOWN_MENU', 'COMBO', 'TOOLTIP', 'NOTIFICATION')
@@ -19,6 +19,7 @@ class X11Fence:
         self.snapshot = {'windows': [], 'outputs': [], 'cursor': [0, 0]}
         self.stamp = 0.0
         self.serial = 0
+        self.first_seen = {}
         self.errors = 0
         self.last_error = ''
         self.lock = threading.Lock()
@@ -34,7 +35,7 @@ class X11Fence:
     def connect(self):
         self.d = display.Display()
         self.root = self.d.screen().root
-        names = ['_NET_CLIENT_LIST_STACKING', '_NET_ACTIVE_WINDOW', '_NET_WM_PID', '_NET_WM_NAME', '_NET_WM_WINDOW_TYPE', '_NET_WM_STATE',
+        names = ['_NET_CLIENT_LIST_STACKING', '_NET_WM_PID', '_NET_WM_NAME', '_NET_WM_WINDOW_TYPE', '_NET_WM_STATE',
                  '_NET_WM_STATE_HIDDEN', '_NET_WM_STATE_FULLSCREEN', '_NET_FRAME_EXTENTS', 'WM_TRANSIENT_FOR', 'UTF8_STRING', '_NET_WM_STATE_ABOVE', '_NET_WORKAREA']
         self.atom = {n: self.d.intern_atom(n) for n in names}
         self.type_names = {}
@@ -105,10 +106,9 @@ class X11Fence:
         d, root = self.d, self.root
         tree = root.query_tree().children
         order = {w.id: i for i, w in enumerate(tree)}
-        active = self.prop(root, '_NET_ACTIVE_WINDOW')
-        active_id = int(active[0]) if active is not None and len(active) else 0
         clients = self.prop(root, '_NET_CLIENT_LIST_STACKING')
         windows = []
+        tops = {}
         seen = set()
         for cid in (clients if clients is not None else []):
             cid = int(cid)
@@ -128,9 +128,10 @@ class X11Fence:
             types = info['types']
             frame = [x - left, y - top, geo.width + left + right, geo.height + top + bottom]
             seen.add(self.frame_of(window))
+            tops[str(cid)] = self.frame_of(window)
             windows.append((order.get(self.frame_of(window), -1), {
                 'id': str(cid), 'pid': info['pid'], 'cls': info['cls'], 'title': info['title'], 'frame': frame, 'content': [x, y, geo.width, geo.height],
-                'active': cid == active_id, 'min': attrs.map_state != X.IsViewable or '_NET_WM_STATE_HIDDEN' in states,
+                'active': False, 'min': attrs.map_state != X.IsViewable or '_NET_WM_STATE_HIDDEN' in states,
                 'popup': any(t in POPUP_TYPES for t in types), 'dock': 'DOCK' in types, 'desktop': 'DESKTOP' in types,
                 'normal': (not types or 'NORMAL' in types or 'DIALOG' in types), 'notif': 'NOTIFICATION' in types,
                 'fullscreen': '_NET_WM_STATE_FULLSCREEN' in states, 'tr': info['tr'], 'kind': 'X11Window', 'types': types, 'states': states}))
@@ -151,6 +152,7 @@ class X11Fence:
             if not info['pid']:
                 continue  # the compositor's own windows have no client
             frame = [origin.x, origin.y, geo.width, geo.height]
+            tops[str(window.id)] = window.id
             windows.append((order.get(window.id, 0), {
                 'id': str(window.id), 'pid': info['pid'], 'cls': info['cls'], 'title': info['title'], 'frame': frame, 'content': frame,
                 'active': False, 'min': False, 'popup': True, 'dock': False, 'desktop': False, 'normal': False, 'notif': False, 'fullscreen': False,
@@ -161,12 +163,12 @@ class X11Fence:
             if 'override-redirect' in w['states'] and any(fw >= 0.9 * m['geom'][2] and fh >= 0.9 * m['geom'][3] and abs(fx - m['geom'][0]) <= 8 and abs(fy - m['geom'][1]) <= 8
                                                          for m in monitors):
                 w['kind'], w['popup'] = 'X11Overlay', False
-        # An override-redirect overlay has input only when the X input focus is inside it; the window manager's active window is then not the target.
+        # Only the X input focus says who has the keyboard: the window it is in (override-redirect ones included). A focus that is nobody's in
+        # this list, or cannot be resolved, leaves no window active, and the window manager's _NET_ACTIVE_WINDOW is never consulted.
+        focus_top = None
         try:
-            focus = d.get_input_focus().focus
-            focus_top = None
-            current = focus
-            for _ in range(5):
+            current = d.get_input_focus().focus
+            for _ in range(6):
                 if not hasattr(current, 'id') or current.id in (0, 1):
                     break
                 if current.id in order:
@@ -175,11 +177,7 @@ class X11Fence:
                 current = current.query_tree().parent
         except (error.XError, AttributeError):
             focus_top = None
-        for _, w in windows:
-            if w['kind'] == 'X11Overlay' and focus_top is not None and w['id'] == str(focus_top):
-                for _, other in windows:
-                    other['active'] = False
-                w['active'] = True
+        focus_active([w for _, w in windows], tops, focus_top)
         windows.sort(key=lambda item: item[0])
         out = []
         for z, (_, w) in enumerate(windows):
@@ -199,6 +197,7 @@ class X11Fence:
     # -- the loop --------------------------------------------------------------------------------
     def update(self, snapshot):
         with self.lock:
+            stamp_first_seen(self.first_seen, self.serial + 1, snapshot['windows'])
             self.snapshot, self.stamp, self.serial = snapshot, time.time(), self.serial + 1
 
     def get(self):

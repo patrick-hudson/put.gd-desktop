@@ -57,29 +57,50 @@ class Actor:
         self.sleep(self.rng.uniform(low, high))
 
     # -- pointer ---------------------------------------------------------------------------------
+    def sent(self):
+        """Note the fence's snapshot number at the moment an input goes out: a window first seen in a later snapshot may be what it opened."""
+        self.world.input_serials.append(getattr(self.world.fence, 'serial', 0))
+        self.ops += 1
+
+    def checked(self, what):
+        """The pointer is where the fence says put.gd owns, read after the last input and 1 px inside the window; else the input is denied."""
+        if self.replaying:
+            return
+        x, y = self.world.fresh_cursor()
+        if not self.world.inside(x, y, margin=1):
+            self.denied += 1
+            raise Denied('%s with the pointer at %d,%d, which is not inside a put.gd window' % (what, x, y))
+
     def move(self, x, y, drag=False):
-        """Jump the pointer to (x, y) inside the fence, closed loop on KWin's own cursor position."""
+        """Jump the pointer to (x, y) inside the fence, closed loop on the compositor's own cursor position. The pointer's actual position
+        is read again afterwards and fenced: a jump that landed on an edge or on something else leaves nothing pressed."""
         x, y = int(x), int(y)
         if not self.replaying:
-            if not self.world.on_output(x, y) or not (drag or self.world.inside(x, y)):
+            if not self.world.on_output(x, y) or not (drag or self.world.inside(x, y, margin=1)):
                 self.denied += 1
                 raise Denied('pointer target outside the fence: %d,%d' % (x, y))
         self.log.write({'op': 'move', 'x': x, 'y': y, 'drag': drag})
-        self.ops += 1
+        self.sent()
         for _ in range(8):
             cx, cy = self.world.cursor()
             dx, dy = x - cx, y - cy
             if abs(dx) <= 1 and abs(dy) <= 1:
-                return
+                break
             self.dev.rel(dx, dy)
             time.sleep(0.045)
-        cx, cy = self.world.cursor()
-        if not drag and (abs(cx - x) > 3 or abs(cy - y) > 3):
-            self.missed = getattr(self, 'missed', 0) + 1  # KWin clamped the jump (a gap between outputs): never click there
-            raise Denied('pointer stopped at %d,%d, short of %d,%d' % (cx, cy, x, y))
+        else:
+            cx, cy = self.world.cursor()
+            if not drag and (abs(cx - x) > 3 or abs(cy - y) > 3):
+                self.missed = getattr(self, 'missed', 0) + 1  # the compositor clamped the jump (a gap between outputs): never click there
+                raise Denied('pointer stopped at %d,%d, short of %d,%d' % (cx, cy, x, y))
+        if not drag:
+            self.checked('pointer moved')
 
     def button(self, name, pressed):
+        if pressed:
+            self.checked('button press')  # the target is checked again before every press, a multi-click's second and third included
         self.log.write({'op': 'btn', 'b': name, 'down': pressed})
+        self.sent()
         self.dev.button(name, pressed)
 
     def click(self, x, y, button='left', count=1):
@@ -103,8 +124,13 @@ class Actor:
             self.button(button, False)
 
     def wheel(self, notches, horizontal=False):
+        """One wheel event at a time, each checked against the fence first."""
         self.log.write({'op': 'wheel', 'n': notches, 'h': horizontal})
-        self.dev.wheel(notches, horizontal)
+        step = 1 if notches > 0 else -1
+        for _ in range(abs(notches)):
+            self.checked('wheel')
+            self.sent()
+            self.dev.wheel(step, horizontal)
 
     # -- keys ------------------------------------------------------------------------------------
     def mine_focused(self):
@@ -128,6 +154,7 @@ class Actor:
         keys = text.split('+')
         ordered = [k for k in keys if k in MODIFIERS] + [k for k in keys if k not in MODIFIERS]
         self.log.write({'op': 'chord', 'k': text})
+        self.sent()
         for key in ordered:
             self.dev.key(key, True)
             time.sleep(0.004)
@@ -140,6 +167,7 @@ class Actor:
             self.denied += 1
             raise Denied('typing needs put.gd focus')
         self.log.write({'op': 'text', 'v': value})
+        self.sent()
         for char in value:
             lower = char.lower()
             name = {' ': 'space', '-': 'minus', '=': 'equal', ',': 'comma', '.': 'dot', '/': 'slash'}.get(char, lower)

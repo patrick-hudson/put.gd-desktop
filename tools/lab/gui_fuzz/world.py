@@ -74,18 +74,8 @@ class World:
         self.procs = procs
         self._procs = {}
         self._procs_at = 0.0
-        self.seen = {}  # window id -> when this fence first saw it
-        self.choosers = []  # (from, until) of each chooser request put.gd made
-        self.chooser_ok = set()  # portal windows accepted as put.gd's chooser
-
-    def expect_chooser(self, seconds=15.0, at=None):
-        """put.gd asked the desktop portal for a file chooser (its own log says so, with the time): a portal window that first appeared
-        within a second before that and `seconds` after it is put.gd's."""
-        at = time.time() if at is None else at
-        self.choosers = (self.choosers + [(at - 1.0, at + seconds)])[-50:]
-
-    def note_seen(self, window):
-        self.seen.setdefault(window['id'], time.time())
+        self.input_serials = collections.deque(maxlen=4000)  # the fence's snapshot number when each input was sent
+        self.freshness = 0.04  # a reading is fresh when its snapshot was taken at least this long after it was asked for
 
     def putgd_now(self):
         """put.gd's processes read from /proc now, not from the cache."""
@@ -104,31 +94,18 @@ class World:
         return window['pid'] in self.pids() or window['cls'].startswith('putgd')
 
     def mine(self, window):
-        """put.gd's own window, or (on KDE) a dialog the desktop portal opened for it. On GNOME and Cinnamon a portal window counts only when it is
-        transient for a put.gd window or first appeared while put.gd had a chooser request pending: a Nautilus window of the user's is not put.gd's."""
+        """put.gd's own window, or a window transient for one. On KDE the portal's file chooser is accepted by its class as well (put.gd opens it
+        with no parent when the toolkit has no handle to export). On GNOME and Cinnamon a portal window with no put.gd parent is not put.gd's:
+        the fence denies it, whatever it looks like."""
         if self.owned_by_putgd(window):
             return True
-        if window['cls'] in self.desk.portal_classes and window['normal']:
-            if not self.desk.verify_portal:
-                return True  # KDE: put.gd's file choosers (opened with no parent when the toolkit has no window handle to export)
-            return self.portal_ok(window)
+        if window['cls'] in self.desk.portal_classes and window['normal'] and not self.desk.verify_portal:
+            return True
         parent = window.get('tr')
         if parent:
             by_id = {x['id']: x for x in self.snapshot()['windows']}
             owner = by_id.get(parent)
             return bool(owner and self.owned_by_putgd(owner))
-        return False
-
-    def portal_ok(self, window):
-        wid = window['id']
-        if wid in self.chooser_ok:
-            return True
-        parent = window.get('tr')
-        owner = {x['id']: x for x in self.snapshot()['windows']}.get(parent) if parent else None
-        first = self.seen.setdefault(wid, time.time())
-        if (owner and self.owned_by_putgd(owner)) or any(low <= first <= high for low, high in self.choosers):
-            self.chooser_ok.add(wid)
-            return True
         return False
 
     def is_layer(self, window):
@@ -171,17 +148,29 @@ class World:
                 return window
         return None
 
-    def inside(self, x, y):
+    def inside(self, x, y, margin=0):
         """The fence: a point put.gd owns. On KDE, with the overlay up, that is every output; otherwise (and always on GNOME and Cinnamon) the
-        topmost window at the point must be put.gd's, so a Shell overview, panel or notification above the selector denies the point."""
+        topmost window at the point must be put.gd's, so a Shell overview, panel or notification above the selector denies the point.
+        With a margin the point must also lie that many pixels inside that window, never on its edge."""
         if self.overlays() and not self.desk.strict_input:
             return any(o['geom'][0] <= x < o['geom'][0] + o['geom'][2] and o['geom'][1] <= y < o['geom'][1] + o['geom'][3] for o in self.outputs())
         for w in reversed(self.snapshot()['windows']):  # the topmost window at the point must be put.gd's own
             fx, fy, fw, fh = w['frame']
             if w['min'] or not (fx <= x < fx + fw and fy <= y < fy + fh):
                 continue
-            return self.mine(w)
+            return self.mine(w) and fx + margin <= x < fx + fw - margin and fy + margin <= y < fy + fh - margin
         return False
+
+    def fresh_cursor(self):
+        """The cursor as the fence sees it in a snapshot taken after this call: what the last input really did."""
+        asked = time.time()
+        deadline = asked + 0.3
+        while time.time() < deadline:
+            snapshot, stamp = self.fence.get()
+            if stamp > asked + self.freshness:
+                return tuple(snapshot['cursor'])
+            time.sleep(0.005)
+        return self.cursor()
 
     def on_output(self, x, y):
         return any(o['geom'][0] <= x < o['geom'][0] + o['geom'][2] and o['geom'][1] <= y < o['geom'][1] + o['geom'][3] for o in self.outputs())
