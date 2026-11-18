@@ -821,7 +821,11 @@ class Fuzzer:
             elif op == 'crop':
                 command['rect'] = [self.rng.randrange(-5, 100), self.rng.randrange(-5, 100), self.rng.randrange(-5, 300), self.rng.randrange(-5, 300)]
             elif op == 'redactText':
-                command['categories'] = self.rng.sample(['email', 'phone', 'ip', 'card', 'key', 'bad'], self.rng.randrange(0, 4))
+                command['categories'] = self.rng.sample(['email', 'phone', 'ip', 'card', 'key', 'name', 'list', 'bad'], self.rng.randrange(0, 5))
+                if self.rng.randrange(3) == 0:
+                    command['terms'] = self.rng.choice((['fuzz term'], [], ['a' * 101], ['two\nlines'], 'x', ['  '], ['fuzz'] * 201))
+                if self.rng.randrange(3) == 0:
+                    command['patterns'] = self.rng.choice((['\\bFUZZ-\\d+\\b'], ['('], ['a*'], [], ['b' * 501], 'x', ['(a+)+$']))
             commands.append(command)
         self.call('editor.apply', {'id': identifier, 'commands': commands})
 

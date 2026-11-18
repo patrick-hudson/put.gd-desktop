@@ -118,6 +118,34 @@ private slots:
   QCOMPARE(ask(*session,"inspect").error.code,QString("editor_finalizing"));
  }
 
+ // #1618: the saved Quick redact words and patterns ride the bootstrap frame, only when
+ // not empty, and the editor accepts them (its exact key count allows both). redactText's own
+ // checks answer at once, before any recognition: terms and patterns need the list category.
+ void savedRedactListReachesTheEditorAndRedactTextChecksItsTerms_data(){
+  QTest::addColumn<QStringList>("terms");QTest::addColumn<QStringList>("patterns");
+  QTest::newRow("neither")<<QStringList{}<<QStringList{};
+  QTest::newRow("words only")<<QStringList{"build-host-7","Project Aurora"}<<QStringList{};
+  QTest::newRow("patterns only")<<QStringList{}<<QStringList{"\\bJIRA-\\d+\\b"};
+  QTest::newRow("both")<<QStringList{"build-host-7"}<<QStringList{"\\bJIRA-\\d+\\b"};
+  // A list the editor would refuse is never sent, so the editor still starts.
+  QTest::newRow("a word with a line break is dropped")<<QStringList{"two\nlines"}<<QStringList{};
+ }
+ void savedRedactListReachesTheEditorAndRedactTextChecksItsTerms(){
+  QFETCH(QStringList,terms);QFETCH(QStringList,patterns);
+  QTemporaryDir root;const auto staging=root.filePath("editing");
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({160,100},7);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withRedactList(terms,patterns).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const auto redact=[&](const QJsonObject& command){return ask(*session,"apply",{{"commands",QJsonArray{command}}});};
+  QCOMPARE(redact({{"op","redactText"},{"categories",QJsonArray{"email"}},{"terms",QJsonArray{"x"}}}).error.code,QString("edit_command_invalid"));
+  QCOMPARE(redact({{"op","redactText"},{"categories",QJsonArray{"username"}}}).error.code,QString("edit_command_invalid"));
+  QCOMPARE(redact({{"op","redactText"},{"categories",QJsonArray{"list"}},{"terms",QJsonArray{"two\nlines"}}}).error.code,QString("edit_command_invalid"));
+  const auto tooMany=redact({{"op","redactText"},{"categories",QJsonArray{"email","phone","ip","card","key","name","list","email"}}});
+  QCOMPARE(tooMany.error.code,QString("edit_command_invalid"));QVERIFY2(tooMany.error.message.contains("1 to 7"),qPrintable(tooMany.error.message));
+  QCOMPARE(ask(*session,"inspect").result["shapes"].toArray().size(),0);
+ }
+
  // #1362: Copy image hands the resident the same sanitized PNG as Save a copy
  // and Upload; the helper's staged copy never stays behind.
  void copyImageHandsTheSanitizedPngToTheClipboardOnly(){

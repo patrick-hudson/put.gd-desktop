@@ -8,10 +8,18 @@
 #include <QKeySequence>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <algorithm>
 #include <cmath>
 
 namespace putgd {
 namespace {
+// A validator's message as a sentence: one full stop at the end.
+QString sentence(QString text) {
+    text = text.trimmed();
+    if (!text.isEmpty() && !text.endsWith('.') && !text.endsWith('!') && !text.endsWith('?')) text += '.';
+    return text;
+}
+
 Error invalid(const QString& path, const QString& message) {
     return {QStringLiteral("config_invalid"), message, {{QStringLiteral("path"), path}}};
 }
@@ -316,7 +324,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
+    for (const auto* optional : {"scrollCaptureMaxHeight", "scrollCaptureFromTop", "scrollCaptureAutoScroll", "uploadClipboardBehavior", "regionSelectionMode", "captureDelaySeconds", "captureDelayShortcuts", "recordingFrameRate", "recordingMicrophone", "recordingMicrophoneDevice", "recordingClickHighlights", "unlockCredentialsAtStartup", "editorRecentColors", "textRecognitionLanguages", "quickRedactTerms", "quickRedactPatterns", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -393,6 +401,31 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (valid) for (const auto& language : languages.toArray()) { valid = valid && language.isString(); identifiers.append(language.toString()); }
         if (!valid || !textjob::validLanguages(identifiers))
             return invalid("/preferences/textRecognitionLanguages", "Text recognition languages are one to three different Tesseract language identifiers, such as eng or chi_sim.");
+    }
+    // #1618: Quick redact's saved words and patterns. Errors name the entry's position, never its text.
+    if (preferences.contains("quickRedactTerms")) {
+        const auto terms = preferences["quickRedactTerms"];
+        const char* const wrong = "Quick redact words are an array of at most 200 entries, each one word or phrase of 1 to 100 characters on one line.";
+        if (!terms.isArray() || terms.toArray().size() > textjob::maxRedactTerms) return invalid("/preferences/quickRedactTerms", wrong);
+        int index = 0;
+        for (const auto& term : terms.toArray()) {
+            ++index;
+            if (!term.isString()) return invalid("/preferences/quickRedactTerms", wrong);
+            const auto problem = textjob::redactTermError(term.toString());
+            if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactTerms/%1").arg(index - 1), QStringLiteral("Word %1: %2").arg(index).arg(sentence(problem)));
+        }
+    }
+    if (preferences.contains("quickRedactPatterns")) {
+        const auto patterns = preferences["quickRedactPatterns"];
+        const char* const wrong = "Quick redact patterns are an array of at most 50 regular expressions of up to 500 characters each.";
+        if (!patterns.isArray() || patterns.toArray().size() > textjob::maxRedactPatterns) return invalid("/preferences/quickRedactPatterns", wrong);
+        int index = 0;
+        for (const auto& pattern : patterns.toArray()) {
+            ++index;
+            if (!pattern.isString()) return invalid("/preferences/quickRedactPatterns", wrong);
+            const auto problem = textjob::redactPatternError(pattern.toString());
+            if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactPatterns/%1").arg(index - 1), QStringLiteral("Pattern %1: %2").arg(index).arg(sentence(problem)));
+        }
     }
     return {};
 }
@@ -488,6 +521,13 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.fileManagerMenu = doc["preferences"].toObject()["fileManagerMenu"].toBool(true);
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     for (const auto& language : doc["preferences"].toObject()["textRecognitionLanguages"].toArray()) settings.textRecognitionLanguages.append(language.toString());
+    // #1618: terms are trimmed and each is kept once (ignoring case), in the order written.
+    for (const auto& value : doc["preferences"].toObject()["quickRedactTerms"].toArray()) {
+        const auto term = value.toString().trimmed();
+        const bool known = std::any_of(settings.quickRedactTerms.cbegin(), settings.quickRedactTerms.cend(), [&](const QString& saved) { return saved.compare(term, Qt::CaseInsensitive) == 0; });
+        if (!term.isEmpty() && !known) settings.quickRedactTerms.append(term);
+    }
+    for (const auto& pattern : doc["preferences"].toObject()["quickRedactPatterns"].toArray()) if (!settings.quickRedactPatterns.contains(pattern.toString())) settings.quickRedactPatterns.append(pattern.toString());
     return settings;
 }
 Error Settings::reorderProfiles(const QJsonObject& document, const QJsonArray& order, QJsonObject& reordered) {

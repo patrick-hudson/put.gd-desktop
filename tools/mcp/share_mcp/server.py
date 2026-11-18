@@ -89,7 +89,10 @@ DESKTOP_SETUP_RECHECK_TIMEOUT = 100
 TEXT_SOURCES = {'region', 'window', 'monitor', 'desktop', 'clipboard', 'file', 'history'}
 TEXT_SCREEN_SOURCES = {'region', 'window', 'monitor', 'desktop'}
 TEXT_LANGUAGE = re.compile(r'[a-z]{3,4}(_[a-z0-9]+){0,2}')
-REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key'}
+REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key', 'name', 'list'}
+# Quick redact terms and patterns (#1618): the editor checks each pattern compiles.
+REDACT_TERMS_MAX, REDACT_TERM_LENGTH = 200, 100
+REDACT_PATTERNS_MAX, REDACT_PATTERN_LENGTH = 50, 500
 QR_MODES = {'copy', 'save', 'show'}
 
 
@@ -126,11 +129,22 @@ def result_identity(value: Any) -> bool:
     return type(value) is int and 1 <= value <= 2147483647
 
 
+def safe_redact_list(values: Any, most: int, length: int, one_line: bool) -> bool:
+    return (isinstance(values, list) and 1 <= len(values) <= most and
+            all(isinstance(value, str) and value.strip() and len(value.strip() if one_line else value) <= length and
+                not (one_line and ('\n' in value or '\r' in value)) for value in values))
+
+
 def safe_redact_text(command: Any) -> bool:
     categories = command.get('categories')
-    return (set(command) == {'op', 'categories'} and isinstance(categories, list) and 1 <= len(categories) <= 5 and
+    # terms and patterns add to the saved list for this run; they need the list category.
+    return (set(command) <= {'op', 'categories', 'terms', 'patterns'} and 'op' in command and 'categories' in command and
+            isinstance(categories, list) and 1 <= len(categories) <= 7 and
             all(isinstance(category, str) and category in REDACT_CATEGORIES for category in categories) and
-            len(set(categories)) == len(categories))
+            len(set(categories)) == len(categories) and
+            ('terms' not in command or safe_redact_list(command['terms'], REDACT_TERMS_MAX, REDACT_TERM_LENGTH, True)) and
+            ('patterns' not in command or safe_redact_list(command['patterns'], REDACT_PATTERNS_MAX, REDACT_PATTERN_LENGTH, False)) and
+            ('terms' not in command and 'patterns' not in command or 'list' in categories))
 
 
 def safe_commands(commands: Any) -> bool:
@@ -306,7 +320,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-5 of email, phone, ip, card, key} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step; it must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category, and gives suggestions only: recognition can miss text."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-7 of email, phone, ip, card, key, name, list, optional terms: up to 200 words or phrases of up to 100 characters, optional patterns: up to 50 regular expressions of up to 500 characters} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step. name is the account's username and real name; list is the saved list from Settings plus any terms and patterns given here, which are for this call only and need list in categories (a pattern that does not compile fails the command naming its index). It must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category (and skippedPatterns when a pattern took too long), and gives suggestions only: recognition can miss text. Marks it adds report suggested: <category> in editor state; update keeps that, add cannot set it."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})

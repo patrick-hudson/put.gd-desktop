@@ -144,6 +144,8 @@ QJsonObject shapeJson(const Shape& shape){
  if(shape.twoPoint()||shape.kind==Kind::Rectangle||shape.kind==Kind::Ellipse||shape.kind==Kind::Pen)result["width"]=shape.width;
  if(shape.kind==Kind::Blur){result["strength"]=shape.strength;result["style"]=shape.pixelate?"pixelate":"blur";}
  if(shape.kind==Kind::Step){result["number"]=shape.number;result["size"]=shape.rect.width();result["at"]=pointJson(stepCentre(shape.rect));}
+ // Quick redact marks say which category suggested them; hand-drawn marks have no field (#1618).
+ if(!shape.suggested.isEmpty())result["suggested"]=shape.suggested;
  if(shape.kind==Shape::Kind::Text){result["text"]=shape.text;result["fontPixels"]=shape.fontPixels;result["font"]=shape.fontFamily;result["at"]=pointJson(shape.rect.topLeft());}
  return result;
 }

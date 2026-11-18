@@ -38,6 +38,17 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         server = create_server(adapter)
         for name, args in [
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email']}, {'op': 'undo'}]}),
+            # #1618: terms and patterns need the list category, stay inside their limits, and never carry a line break.
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email'], 'terms': ['Project Aurora']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': []}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['a\nb']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['x'] * 201}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['x' * 101]}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x'] * 51}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 501]}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': [3]}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['username']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list', 'email']}]}),
             ('perform_action', {'action': 'shell'}),
             ('delete_history_uploads', {'ids': [], 'acknowledgement': ''}),
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
@@ -151,6 +162,11 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'editor.openCode', {'id': 'synthetic-operation', 'result': 3, 'index': 0}),
                     ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]},
                      'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]}),
+                    # #1618: the name and list categories, with this call's own terms and patterns.
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]}),
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list']}]}),
                     ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
                     ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
