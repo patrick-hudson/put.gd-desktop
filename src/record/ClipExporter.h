@@ -17,6 +17,9 @@ namespace putgd::record {
 // (half-open, source time). Export lays the kept spans end to end from zero on
 // the clip's own frame grid (#1613), video and audio cut at the same instants;
 // masks are enabled on gte(t, a) * lt(t, b) per output part of their interval.
+// A span whose first frame comes more than 1/AdaptiveRate::floorFps after its
+// start (a frame gap in a stepped-down or static capture) starts at its start
+// on the frame on screen there, so its narration is kept.
 struct ExportRequest {
     QString input;      // the working clip (Matroska, H.264 [+ AAC])
     QString output;     // final file; the extension is informational, the format decides
