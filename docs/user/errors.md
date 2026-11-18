@@ -20,6 +20,7 @@ filenames, history URLs, authorization values or credential references.
 | `source_unavailable` | Fix the reported item index; invoke again; nothing was published |
 | `archive_failed` | Fix the original local folder, then retry local save; upload is independent |
 | `artifact_missing`, `artifact_changed` | Restore access or invoke a new action; mutable local copies are not retry sources |
+| `operation_settling` | The operation has finished but is still recording its outcome (its link copy, for example). Retry again in a moment; `operation.inspect` and `operation.recent` show `settling: true` until then, and History shows Retry again once it clears |
 | `retry_would_upload` | Finish share link (a retry with `scope` `sharing`) only makes links, and a file of this upload still needs its upload (`details.itemId`). Use Retry upload, which finishes the links too |
 | `provider_unavailable` | Restore the adapter/credential access for the recorded destination |
 | `unsupported_capability` | Choose a provider/policy that supports the required safeguards |

@@ -27,6 +27,10 @@ Active `operation.inspect` and `operation.recent` results also expose an operati
 `phase` and per-item `phase`/optional `uploadProgress` with `bytesTransferred` and
 optional `bytesTotal`. A missing total means percentage is unknown. These are
 transient observations, not confirmed publication or final result evidence.
+A finished operation that still holds its slot (recording its link copy or cleaning
+up its source) carries `settling: true`; a Retry then answers `operation_settling`, and
+the same Retry succeeds once `settling` is gone. A running operation answers
+`operation_busy`.
 
 The CLI waits 3 s to connect, 3 s to send and then a bounded time for the whole
 reply, at most 16 MiB: 15 s for most methods. Screen-recording commands that the
