@@ -261,16 +261,17 @@ class S3Receiver(Receiver):
 # ---------------------------------------------------------------------------------------------- resident
 
 class Resident:
-    def __init__(self, run, build):
+    def __init__(self, run, build, runtime=None):
         self.run, self.build = run, Path(build)
         self.root = run / 'r'
-        self.runtime = self.root / 'rt'
+        self.runtime = Path(runtime) if runtime else self.root / 'rt'
         self.socket_path = str(self.runtime / 'putgd' / 'session.sock')
         if len(self.socket_path.encode()) > SOCKET_LIMIT:
             raise SystemExit('socket path %s is %d bytes (limit %d): use a shorter --run-dir' % (self.socket_path, len(self.socket_path.encode()), SOCKET_LIMIT))
         self.san = run / 'san'
         self.process = None
         self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
+        self.judged_logs = set()  # resident logs of an abort the harness caused on purpose (the open-file limit) and judged by its recovery
         self.memory_max = None  # fault mode: a memory cgroup limit (systemd-run --user --scope)
         self.nofile = None    # fault mode: an open-file limit from the start
         self.starts = 0
@@ -278,8 +279,9 @@ class Resident:
         self.lock = threading.Lock()
 
     def environment(self):
-        for name in ('config', 'data', 'state', 'cache', 'rt', 'home'):
+        for name in ('config', 'data', 'state', 'cache', 'home'):
             (self.root / name).mkdir(parents=True, exist_ok=True)
+        self.runtime.mkdir(parents=True, exist_ok=True)
         os.chmod(self.runtime, 0o700)
         self.san.mkdir(exist_ok=True)
         env = {k: os.environ[k] for k in ('PATH', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'XDG_DATA_DIRS') if k in os.environ}
@@ -480,12 +482,24 @@ class Resident:
         return '\n'.join(out)
 
     def sanitizer_output(self):
-        found = sorted(p for p in self.san.glob('*') if p.is_file())
+        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p))
         return found
+
+    @staticmethod
+    def third_party(path):
+        """GStreamer's ORC JIT (the recording helper's probe) maps an executable file in XDG_RUNTIME_DIR and gets SIGBUS when that
+        tmpfs is full. A helper dying on that is ORC's, not put.gd's; the resident and the run go on."""
+        try:
+            head = path.read_text(errors='replace')[:6000]
+        except OSError:
+            return False
+        return 'ERROR: AddressSanitizer: BUS' in head and 'orc_compiler_compile_program' in head
 
     def log_problems(self):
         problems = []
         for path in sorted((self.run / 'logs').glob('resident-*.log')):
+            if path.name in self.judged_logs:
+                continue
             try:
                 text = path.read_text(errors='replace')
             except OSError:
@@ -543,15 +557,16 @@ class Fuzzer:
         self.run = Path(options.run_dir)
         for name in ('logs', 'fixtures', 'saves') + (() if options.small_fs else ('archive',)):
             (self.run / name).mkdir(parents=True, exist_ok=True)
-        self.resident = Resident(self.run, options.build)
+        # The runtime directory on a small filesystem is the mount itself: Qt refuses a runtime directory that is a symbolic link.
+        self.resident = Resident(self.run, options.build, runtime=options.small_rt)
         self.faults = None
         self.proxy_port = None
         self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
-        for flag, folders in ((options.small_fs, ('config', 'data', 'state', 'cache')), (options.small_rt, ('rt',))):
+        for flag, folders in ((options.small_fs, ('config', 'data', 'state', 'cache')),):
             if flag:
                 # The resident's roots (and the archive) live on a small filesystem, made by tools/lab/faults/smallfs.sh, that a fault fills.
                 self.resident.root.mkdir(parents=True, exist_ok=True)
-                for name in folders + (('archive',) if flag is options.small_fs else ()):
+                for name in folders + ('archive',):
                     target = Path(flag) / name
                     target.mkdir(exist_ok=True)
                     os.chmod(target, 0o700)
@@ -591,6 +606,7 @@ class Fuzzer:
             self.multi = self.run / 'fixtures' / 'multi.bin'
         if self.options.mode == 'faults':
             os.environ['PUTGD_HTTP_FIXTURE_TRUST_HOST'] = '1'  # the file and deletion addresses stay behind the proxy too
+            os.environ['PUTGD_HTTP_FIXTURE_STRICT_BODY'] = '1'  # a request cut by the proxy is not answered as if it had arrived whole
         source = Path(self.options.fixture_server) if self.options.fixture_server else Path(__file__).resolve().parents[2] / 'tests/fixtures/http_uploader_server.py'
         if self.options.destination == 's3':
             self.receiver = S3Receiver(source.with_name('s3_server.py'), self.run)
@@ -1273,7 +1289,7 @@ class Fuzzer:
             self.faults.write_spec([])  # the start itself is not under a file-system fault
         self.shutdown_and_check(self.rng.choice(('ui.quit', 'ui.quit', 'SIGTERM', 'SIGINT')))
         self.resident.start()
-        self.import_uploader()
+        self.add_s3_profile() if self.options.destination == 's3' else self.import_uploader()
         self.credentials_check()
 
     def credentials_check(self):
@@ -1349,7 +1365,7 @@ class Fuzzer:
                 raise Finding('history', 'history.list failed+unknown has total %s but history.counts says failed %s' % (failed['result'].get('total'), categories.get('failed')))
         for row in self.rows():
             if row.get('uploadStatus') not in self.TERMINAL:
-                if not self.active():
+                if not self.active() and not self.known_stuck(row):
                     raise Finding('history', 'History row %s is %r (phase %r) while no operation is active' % (row.get('id'), row.get('uploadStatus'), row.get('phase')))
 
     def active(self):
@@ -1376,7 +1392,8 @@ class Fuzzer:
     def setup_faults(self):
         options = self.options
         self.faults = fault_control.FaultControl(self.run, random.Random(options.seed ^ 0x5eed), self.fault_classes, Path(__file__).resolve().parent / 'faults',
-                                                 small_fs=options.small_fs, small_rt=options.small_rt, log=self.log, seed=options.seed)
+                                                 small_fs=options.small_fs, small_rt=options.small_rt, log=self.log, seed=options.seed,
+                                                 net_kinds=options.net_kinds.split(',') if options.net_kinds else None)
         self.resident.extra_env = self.faults.environment()
         if options.nofile:
             self.resident.nofile = options.nofile
@@ -1452,10 +1469,16 @@ class Fuzzer:
             for self.step_index in range(1, self.options.steps + 1):
                 action = self.rng.choice(names)
                 self.log('step', name=action)
-                self.act(action)
-                time.sleep(self.rng.choice((0, 0, 0, 0, 0.02, 0.1, 0.5)))
-                self.sweep()
-                self.check_alive()
+                try:
+                    self.act(action)
+                    time.sleep(self.rng.choice((0, 0, 0, 0, 0.02, 0.1, 0.5)))
+                    self.sweep()
+                    self.check_alive()
+                except Finding as error:
+                    if error.kind != 'crash' or not self.emfile_abort():
+                        raise
+                    self.recover_from_abort()
+                    continue
                 self.check_sanitizers()
                 if self.step_index % self.options.epoch == 0 and self.step_index < self.options.steps:
                     self.epoch_check()
@@ -1469,6 +1492,29 @@ class Fuzzer:
             if self.faults:
                 self.faults.stop()
             self.restore_permissions()
+
+    def emfile_abort(self):
+        """Qt and GLib abort when a thread cannot get its wake-up pipe (GLib-ERROR, 'Too many open files'): that is what running out of file
+        descriptors does to any Qt program, not a defect to report. What matters is the restart."""
+        if self.resident.alive():
+            return False
+        log = self.run / 'logs' / ('resident-%d.log' % self.resident.starts)
+        text = log.read_text(errors='replace') if log.exists() else ''
+        if 'Too many open files' not in text:
+            return False
+        self.log('emfile-abort', exit=self.resident.process.returncode, first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
+        self.resident.judged_logs.add(log.name)
+        return True
+
+    def recover_from_abort(self):
+        """The resident is gone: do what a restart after a crash must do, and check it like a restart after a kill."""
+        self.faults.clear_all([])
+        self.resident.kill_tree()
+        self.check_files_after_kill()
+        self.resident.start()
+        self.credentials_check()
+        self.delete_operation = None
+        self.verify_recovery('abort')
 
     def keep_receiver_state(self):
         """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
@@ -1521,6 +1567,11 @@ class Fuzzer:
         if not self.drain(90):
             raise Finding('not-recovered', 'the probe upload %s stays active 90 s after every fault was lifted' % operation)
         rows = [row for row in self.rows() if row.get('operationId') == operation]
+        if rows and all((row.get('error') or {}).get('code') == 'credential_setup_required' for row in rows):
+            # Session-mode credentials live in memory only; whatever dropped them (a restart, a helper) is not the fault under test.
+            self.log('probe-credentials-lost')
+            self.credentials_check()
+            return self.probe_recovery()
         if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
             raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
                 operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
@@ -1790,6 +1841,19 @@ class Fuzzer:
         self.check_sanitizers_after_kill()
         self.deep_check()
 
+    def known_stuck(self, row):
+        """--known-journal-stuck: a row left 'uploading' after the journal refused a write (#1579) is counted once and no longer ends the run."""
+        if not self.options.known_journal_stuck or not self.faults:
+            return False
+        if any('history.sqlite' in line for line in self.faults.tail(100000)):
+            if row.get('id') not in self.stuck_rows:
+                self.stuck_rows.add(row.get('id'))
+                self.log('known-stuck-row', row=row.get('id'), status=row.get('uploadStatus'), issue=1579)
+            return True
+        return False
+
+    stuck_rows = set()
+
     def duplicate_allowed(self, digest):
         """A second copy is explained by an unknown outcome the user retried (the custom uploader cannot look a file up)."""
         return (digest in self.expected_duplicates or digest in self.retried_digests() or 'unknown' in self.seen_digest.get(digest, ())
@@ -1812,6 +1876,8 @@ class Fuzzer:
             status = row.get('uploadStatus')
             by_status.setdefault(status, []).append(row)
             if status not in self.TERMINAL:
+                if self.known_stuck(row):
+                    continue
                 raise Finding('recovery', 'History row %s is %r (phase %r) after the restart' % (row.get('id'), status, row.get('phase')))
             digest = row.get('sha256')
             # A deletion that was tried (its outcome may be unknown after a lost reply) explains a file that is gone.
@@ -1987,10 +2053,14 @@ def main():
     faults.add_argument('--small-rt', help='a small filesystem the resident\'s runtime directory lives on (keep the path short: the session socket is in it)')
     faults.add_argument('--reserve', type=int, default=1 << 30, help='the free space put.gd keeps on its data disk (bytes); squeezes aim at the margin above it')
     faults.add_argument('--clean-restarts', action='store_true', help='lift file-system faults before a restart, so a start under a fault (a known class of bugs) does not end every run')
+    faults.add_argument('--net-kinds', help='only these proxy faults (reset_before, reset_request, reset_after_request, cut_response, stall, stall_response, dup_response, slow, latency)')
+    faults.add_argument('--known-journal-stuck', action='store_true', help='count, and do not stop on, rows left uploading after a journal write fault (#1579)')
     faults.add_argument('--epoch', type=int, default=40, help='steps between lifting every fault and checking the whole state')
     faults.add_argument('--nofile', type=int, help='start the resident with this open-file limit')
     faults.add_argument('--memory-max', help='start the resident in a systemd-run --user scope with this MemoryMax (e.g. 600M)')
     options = parser.parse_args()
+    # A job started with & from a shell without job control inherits SIGINT ignored, and so would the resident: a graceful-stop step would then wait for ever.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     if not options.run_dir:
         options.run_dir = str(Path.home() / 'work' / 'apptest-runs' / ('%s-%d' % (options.mode, options.seed)))
     run = Path(options.run_dir)

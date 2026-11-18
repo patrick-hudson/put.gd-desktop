@@ -28,7 +28,7 @@ FS_TARGETS = {
     'data': '/data/',
     'cache': '/cache/',
     'source': '/fixtures/u',
-    'runtime': '/rt/',
+    'runtime': '/srt/|/rt/',
     'everything': '/r/|/archive/',
 }
 
@@ -70,7 +70,7 @@ class SmallFs:
 
 
 class FaultControl:
-    def __init__(self, run, rng, classes, source_dir, small_fs=None, small_rt=None, log=None, seed=1):
+    def __init__(self, run, rng, classes, source_dir, small_fs=None, small_rt=None, log=None, seed=1, net_kinds=None):
         self.run, self.rng, self.classes = run, rng, set(classes)
         self.log = log or (lambda *a, **k: None)
         self.dir = run / 'faults'
@@ -79,6 +79,7 @@ class FaultControl:
         self.shim_log = run / 'logs' / 'faultshim.log'
         self.shim = self.dir / 'faultshim.so'
         self.seed = seed
+        self.net_kinds = net_kinds
         self.rules = []
         self.small_fs = SmallFs(small_fs) if small_fs else None
         self.small_rt = SmallFs(small_rt) if small_rt else None
@@ -146,8 +147,8 @@ class FaultControl:
 
     def random_net_profile(self):
         rng = self.rng
-        kinds = ['reset_before', 'reset_request', 'reset_after_request', 'cut_response', 'stall', 'stall_response', 'dup_response', 'slow', 'latency']
-        chosen = rng.sample(kinds, rng.choice((1, 2, 3, 5)))
+        kinds = self.net_kinds or ['reset_before', 'reset_request', 'reset_after_request', 'cut_response', 'stall', 'stall_response', 'dup_response', 'slow', 'latency']
+        chosen = rng.sample(kinds, min(len(kinds), rng.choice((1, 2, 3, 5))))
         return {'fault_rate': rng.choice((0.1, 0.3, 0.6, 1.0)), 'weights': {k: rng.choice((1, 2, 4)) for k in chosen},
                 'latency_ms': rng.choice((0, 0, 5, 40, 200)), 'jitter_ms': rng.choice((0, 0, 5, 40)), 'stall': rng.choice((3, 6, 12))}
 
