@@ -8,6 +8,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 
 struct AVFrame;
 namespace putgd::record {
@@ -15,8 +16,10 @@ namespace putgd::record {
 // time t is retained when t lies in a kept span (the trim minus every cut,
 // recording::KeptSpans), and a mask applies while mask.start <= t < mask.end
 // (half-open, source time). Export lays the kept spans end to end from zero on
-// the clip's own frame grid (#1613), video and audio cut at the same instants;
-// masks are enabled on gte(t, a) * lt(t, b) per output part of their interval.
+// the clip's own frame grid (#1613), video and audio cut at the same instants.
+// A mask covers an output frame while it is active at that frame's time or at
+// the source time of the picture the frame shows (#1635), so a still picture
+// held across a frame gap or a seam keeps the cover it was captured under.
 // A span whose first frame comes more than 1/AdaptiveRate::floorFps after its
 // start (a frame gap in a stepped-down or static capture) starts at its start
 // on the frame on screen there, so its narration is kept; likewise a span whose
@@ -37,13 +40,15 @@ struct ExportResult {
 };
 // progress runs 0..1 over the output (kept) duration.
 Error exportClip(const ExportRequest&, ExportResult&, const std::atomic_bool& cancelled, const std::function<void(double)>& progress = {});
-// One decoded frame at clip time with the masks active at that time applied,
-// scaled so the long edge is at most maxEdge. Trimmed-out times still render.
+// One decoded frame at clip time with the masks active at that time or at the
+// frame's own time applied (as the export covers it), scaled so the long edge
+// is at most maxEdge. Trimmed-out times still render.
 Error previewFrame(const QString& input, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, const QSize& canvas, QImage& out, qint64* actualTimeUs = nullptr);
 // One decoded frame (any pixel format) as an image with the masks active at
-// frameUs applied (the way previewFrame renders them), long edge at most maxEdge.
+// frameUs, or at requestedUs (the time it is shown for), applied the way
+// previewFrame renders them, long edge at most maxEdge.
 // Shared by previewFrame and the review window's FrameSkimmer.
-Error renderPreviewFrame(const AVFrame* frame, const RecordingEdit&, qint64 frameUs, const QSize& canvas, int maxEdge, QImage& out);
+Error renderPreviewFrame(const AVFrame* frame, const RecordingEdit&, qint64 frameUs, const QSize& canvas, int maxEdge, QImage& out, std::optional<qint64> requestedUs = std::nullopt);
 // The working clip's duration and frame size (lab diagnostics and tests).
 Error probeClip(const QString& input, qint64& durationUs, QSize& canvas);
 // Sequential frames for review playback: opened at a clip time, each call
