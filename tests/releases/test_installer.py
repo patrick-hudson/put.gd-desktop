@@ -45,6 +45,10 @@ class Installer(unittest.TestCase):
                       "f.write(json.dumps(sys.argv) + '\\n')")
         with (self.bin / 'sudo').open('a') as f:
             f.write("import subprocess\nsys.exit(subprocess.call(sys.argv[1:]))\n")
+        # `pacman -Q putgd` asks whether the package is installed; INSTALLED=1 says it is. Not a recorded call.
+        pacman = self.bin / 'pacman'
+        pacman.write_text(pacman.read_text().replace(
+            'import json, os, sys\n', "import json, os, sys\nif sys.argv[1:2] == ['-Q']: sys.exit(0 if os.environ.get('INSTALLED') == '1' else 1)\n", 1))
         with (self.bin / 'pacman').open('a') as f:
             # The installer asks pacman to resolve putgd (-Sp, or -Syp) before it installs anything.
             f.write('''if sys.argv[1:2] in (['-Sp'], ['-Syp']) and os.environ.get('RESOLVE') == 'unsatisfied':
@@ -302,6 +306,14 @@ else:
         probes = [call[-1] for call in self.calls() if '--write-out' in call]
         self.assertEqual(probes, ['https://app.put.gd/dl/nightly/archlinux', 'https://app.put.gd/dl/nightly/appimage'])
         self.assertFalse(list(self.root.glob('putgd-install.*')))
+
+    def test_arch_fallback_warns_when_the_package_is_already_installed(self):
+        self.arch_cannot_satisfy()
+        self.assertNotIn('sudo pacman -R putgd', self.run_script('--channel', 'nightly'))
+        self.env['INSTALLED'] = '1'
+        out = self.run_script('--channel', 'nightly')
+        self.assertIn('sudo pacman -R putgd', out)
+        self.assertIn('block system updates', out)
 
     def test_omarchy_falls_back_to_appimage_after_its_update(self):
         self.arch_cannot_satisfy(updater=True)

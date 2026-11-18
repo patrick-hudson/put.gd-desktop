@@ -254,6 +254,11 @@ HELP
                     check_download
                     fetch_package
                     install_appimage
+                    # pacman -Syu stops on a package it cannot upgrade, which blocks the whole system update
+                    # (omarchy update included) until the package is removed or ignored.
+                    if pacman -Q putgd >/dev/null 2>&1; then
+                        note 'The put.gd pacman package installed here cannot be upgraded and will block system updates. Remove it with: sudo pacman -R putgd (or add putgd to IgnorePkg in /etc/pacman.conf).'
+                    fi
                     ;;
                 *) exit "$arch_status" ;;
             esac
