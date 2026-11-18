@@ -63,11 +63,13 @@ back on findings that are wrong.
 
 ## 2. Start Sol
 
-1. At the start of every loop, call `orchestrator_capabilities` again and pick the latest Sol
-   model the Codex provider lists. Never reuse a model id from an earlier loop or session, and
-   never hardcode one: a newer Sol can appear at any time. Keep that model for every round of
-   this loop. Use `reasoningEffort: high`. Record provider, model and
-   effort.
+1. Pick the newest Sol model from an `orchestrator_capabilities` result taken in this thread,
+   never from a remembered or hardcoded id: a newer Sol can appear at any time. T3 allows one
+   capability lookup per thread, and another after an error or when Patrick names a new model
+   or provider; take the thread's lookup before its first loop, and look up again when one of
+   those happens. A long-running thread can therefore lag a release; the model named in each
+   findings comment shows which one reviewed. Keep the chosen model for every round of the
+   loop. Use `reasoningEffort: high`. Record provider, model and effort.
 2. Every round is a new `delegate_task` with `role: "review"`, `mode: "async"`,
    `isolation: "worktree"`, a new `clientRequestId` and `target: {providerInstanceId: "codex",
    model: <Sol>, options: {reasoningEffort: "high"}}`. Save the `taskId`. T3 prepares the
@@ -170,7 +172,8 @@ If no findings came back, say so in one line under the heading. If the loop is s
 both sides of each disputed item.
 
 A pull request merges only when its latest Sol review comment says approved for its current
-head. A push after that comment needs another round on the new commits and a new comment.
+head. A push after that comment starts a new loop: pick the model again as in step 2.1, review
+the new commits, and post a new comment.
 Docs-only pull requests start with a single round, plus a short round on any fix.
 
 Remove the review worktree when the pull request is merged or closed.
