@@ -143,9 +143,17 @@ scans them with Grype ([SBOMs and vulnerability scans](release.md#sboms-and-vuln
 With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
 
-The AppImage job excludes the hosted runner's Azure Ubuntu mirror before APT
-installation (#500). It keeps the runner's official archive/security fallback
-and signing settings, including legacy direct and folded deb822 source URIs.
+The hosted runner names one Ubuntu mirror, its region's or Azure's, through
+`/etc/apt/apt-mirrors.txt`. When that mirror stalled, every attempt stalled with it
+([#1668](https://github.com/patrick-hudson/put.gd-desktop/issues/1668)). So the AppImage and
+`appimage-sources` jobs write the Ubuntu archive and security sources as plain
+`archive.ubuntu.com` and `security.ubuntu.com` URIs (`tools/ci/hosted_apt_mirrors.py`, legacy
+direct and folded deb822 URIs included). Then they run the container jobs' mirror probe
+(`PUTGD_UBUNTU_MIRRORS`), which ranks `us.archive.ubuntu.com`, `mirrors.edge.kernel.org`,
+`azure.archive.ubuntu.com` and `archive.ubuntu.com` by a timed download into
+`/etc/apt/putgd-mirrors.txt`. The step fails if the sources don't then use that list. Suites,
+components and `Signed-By` don't change, so apt verifies everything against the Ubuntu keyring
+as before (#500).
 Its standard build-dependency attempts have a 300-second deadline, a 120-second
 silence limit and three attempts; the shared installer records failures and retry outcomes. It
 adds no AppImage package snapshot to the shared 10 GB cache: it restores
@@ -773,7 +781,12 @@ and dwz steps. It works in three layers:
   Once every archive is downloaded, the install of what was fetched
   (`--no-download`) runs with no limit, so dpkg is never stopped halfway: the
   source of the packages, mirror or snapshot, is chosen before dpkg starts. A
-  stopped attempt is followed by `dpkg --configure -a` before the retry.
+  stopped attempt is followed by `dpkg --configure -a` before the retry. On apt,
+  every failed or stopped attempt of `tools/ci/install-packages.sh` also moves the
+  first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
+  than one mirror answered the probe, so the next attempt starts on another mirror. (The
+  workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
+  than 128 MiB.)
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
@@ -785,16 +798,46 @@ and dwz steps. It works in three layers:
   Online attempts start from a copy of it, so packages already in it aren't
   downloaded again. After an online success, the copy, pruned to the installed
   packages, replaces it. The cache is saved on that week's first run and when
-  the dependency scripts change, never after a fallback. If all online attempts
+  the dependency scripts change, never after a fallback. When no snapshot has the
+  exact key, the newest snapshot under the same hash is restored, and then the newest of
+  the target at all (`putgd-pkgs-v1-<target>-`), so new dependency scripts still have
+  one to fall back to. Snapshots are refreshed weekly, but a restored older snapshot
+  can be older than a week: there is no age limit, and the cache keeps it until it
+  is pruned or evicted. If all online attempts
   fail, the install runs once more offline from the snapshot
   (`dnf --cacheonly`, `apt-get --no-download`, again with no time limit on the
   install itself). On apt a download that times out has changed nothing on the
   system, so the snapshot installs onto the state the job started in. That builds against a package
-  set at most a week old instead of failing the job. A dependency list that
-  changed since the snapshot can't be satisfied offline, and the step fails.
+  set as old as the restored snapshot instead of failing the job. On apt, a snapshot from an
+  older list can lack archives the new list needs. The install first asks apt for
+  the archives the transaction needs that the snapshot doesn't hold
+  (`apt-get install --print-uris`, against the snapshot's own indexes), downloads
+  those against the same indexes, and then installs with `--no-download`. So the
+  whole transaction uses one set of indexes and never mixes in a mirror's newer
+  ones. If the snapshot's indexes can't satisfy the list, or a lacking archive
+  can't be downloaded, nothing is installed and the error names the archives. On
+  dnf, a dependency list that changed since the snapshot can't be satisfied
+  offline, and the step fails.
   On apt the snapshot also keeps the sources it was made with, and the offline
   install reads the metadata through them, because apt names its metadata files
   after the source URI.
+
+  **Last-resort mirrors.** The AppImage job sets `PUTGD_APT_LAST_RESORT_MIRRORS`
+  to `tools/ci/apt-last-resort-mirrors.txt`, a checked-in list of ten public HTTPS
+  Ubuntu mirrors from Ubuntu's US list, other than the four the probe ranks. Nothing
+  fetched at run time chooses where the runner connects, and only `https://` lines
+  with a host name are used (no IP literal, no port). After the online attempts
+  have failed, each is timed on 256 KB of this release's amd64 package index (5 s
+  limit, HTTPS only). The fastest 8 that answer replace `/etc/apt/putgd-mirrors.txt`. The snapshot install downloads the archives it
+  lacks through them. With no snapshot, or when the snapshot can't serve the list
+  before dpkg starts, one more online transaction runs through them with fresh
+  metadata (`PUTGD_PKG_LAST_RESORT_TIMEOUT`, 1800 s, and the same silence limit).
+  apt checks every file against the signed indexes, whichever mirror served it. If
+  the gap fill fails, the snapshot's summary row names the archives it lacked. The
+  dated `snapshot.ubuntu.com` archive was the first choice, but at about 18:37 UTC on
+  2026-11-18, the archive paths probed from the workstation and k72 answered
+  `401 Unauthorized` (HTTP Basic auth). By about 20:00 UTC they answered 200 again,
+  `InRelease` included. A source that can be down for a while isn't a last resort.
 
   The AppImage job restores the ubuntu24.04 snapshot and installs everything in
   one `install-packages.sh` call, so it is one apt transaction: the base
@@ -822,10 +865,14 @@ and dwz steps. It works in three layers:
   (for example `git` and `ca-certificates`, which the bootstrap installs before
   the snapshot exists), because a runner with an older version needs them offline. Only the ubuntu24.04
   cache key includes `tools/ci/appimage-packages.txt`, so changing the list
-  rebuilds that snapshot and no other. Until the native job has saved it, an
-  AppImage run on the new key restores nothing, or the previous week's snapshot,
-  and has no fallback for packages it doesn't hold: that first run depends on
-  the mirrors.
+  rebuilds that snapshot and no other. The native job saves it in parallel with
+  the AppImage job, so the first AppImage run on a new key restores the newest
+  older snapshot instead. The archives that snapshot lacks are downloaded against
+  its own indexes, and when it can't serve the new list, the last-resort mirrors
+  install it online.
+
+  The `appimage-sources` job writes its `deb-src` source before the mirror probe, so
+  the source indexes come through the ranked list too.
 
   The AppImage job also switches off the runner's non-Ubuntu apt sources
   (`tools/ci/hosted_apt_mirrors.py`), so a 429 from `packages.microsoft.com`
@@ -863,9 +910,14 @@ attempt takes 1–4 minutes. On 2026-10-22 and 2026-10-23, though, the hosted
 runner's Azure mirror served 40–55 kB/s, and five green AppImage installs took
 26 to 113 minutes. The longest silence in them was 8.2 minutes, a 27 MB
 package, so the stall limit is 10 minutes. The AppImage install has no
-snapshot, so its attempts get 30 minutes (`PUTGD_PKG_TIMEOUT=1800`) and resume
-each other's downloads. A snapshot or another mirror for it is
-[#500](https://github.com/patrick-hudson/put.gd-desktop/issues/500).
+snapshot, so its attempts got 30 minutes (`PUTGD_PKG_TIMEOUT=1800`) and resumed
+each other's downloads. It now has the package snapshot, four ranked mirrors and the
+last-resort mirrors, so its attempts are limited to 300 s with a 120 s silence limit, and
+a stopped attempt moves on to the next mirror
+([#500](https://github.com/patrick-hudson/put.gd-desktop/issues/500),
+[#1668](https://github.com/patrick-hudson/put.gd-desktop/issues/1668)). The 120 s limit stays: a
+mirror that is slow but moving prints a `Get:` line for each package, and the 27 MB
+package above takes under 110 s at 250 kB/s.
 
 Every Linux job with a network step has a `timeout-minutes` above its normal
 run time and above its worst bounded install path (four stopped attempts plus
