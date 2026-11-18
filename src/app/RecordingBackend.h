@@ -49,7 +49,9 @@ public:
     virtual void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) = 0;
     // Pushes the authoritative edit (and config) to the helper's review window.
     // limits: {animationSeconds, animationEdge} so the review can warn before an export is refused.
-    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) { Q_UNUSED(limits); }
+    // answer, when the push answers a window proposal: {proposal} once applied,
+    // plus refused {code, message, revision} when it was not.
+    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits, const QJsonObject& answer = {}) { Q_UNUSED(limits); Q_UNUSED(answer); }
     // Releases helper/staging ownership for the id without an upload.
     virtual void discard(const QString& id) = 0;
     // The process that owns the session's windows (the control bar), or 0.

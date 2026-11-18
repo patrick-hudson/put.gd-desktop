@@ -1,4 +1,19 @@
 #include "ReviewWindowFixture.h"
+#include "fixtures/GopClip.h"
+
+namespace {
+// Ctrl+Enter, as its window shortcut fires it.
+void ctrlEnter(ReviewWindow& window) {
+    for (auto* shortcut : window.findChildren<QShortcut*>())
+        if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Return)) { emit shortcut->activated(); return; }
+    QFAIL("no Ctrl+Enter shortcut");
+}
+QJsonObject answer(quint64 proposal, const QString& refusedCode = {}) {
+    QJsonObject a{{"proposal", double(proposal)}};
+    if (!refusedCode.isEmpty()) a["refused"] = QJsonObject{{"code", refusedCode}, {"message", "At most 64 masks are supported"}, {"revision", 2}};
+    return a;
+}
+}
 
 // Discarding a recording is irreversible: it happens only after the explicit
 // confirmation, never from the first click, Escape or the window's close button.
@@ -273,6 +288,229 @@ private slots:
         QVERIFY(!window.drive({{"action", "panel"}, {"open", false}}).state["panel"].toObject()["overlayOpen"].toBool());
         QVERIFY(!window.drive({{"action", "resize"}, {"width", 1440}, {"height", 900}}).state["folded"].toBool());
         QCOMPARE(window.drive({{"action", "resize"}, {"width", 10}, {"height", 900}}).code, QString("invalid_request"));
+    }
+    // U1: Ctrl+Enter uploads only once the resident accepted the change just
+    // made. A refusal or no answer within 2 s cancels the upload with a status
+    // line, so a refused cover or cut is never uploaded without the user knowing.
+    void uploadWaitsForTheChangeToBeAccepted() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        window.drive({{"action", "selectRange"}, {"start", 4000000}, {"end", 6000000}});
+        QVERIFY(window.drive({{"action", "cut"}}).state["proposals"].toArray() == QJsonArray{1});
+        QCOMPARE(proposals.last().at(2).toULongLong(), 1ull);
+        ctrlEnter(window);
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.inspect()["uploadWaiting"].toBool());
+        window.setEdit(edit, answer(1, "invalid_request"));
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.isVisible());
+        auto state = window.inspect();
+        QVERIFY2(state["status"].toString().contains("wasn't applied"), qPrintable(state["status"].toString()));
+        QCOMPARE(state["lastRefusal"].toObject()["proposal"].toDouble(), 1.0);
+        QCOMPARE(state["lastRefusal"].toObject()["code"].toString(), QString("invalid_request"));
+        QVERIFY(!state["uploadWaiting"].toBool());
+        PUTGD_COMPARE_STEADY(uploads.size(), 0, 2300);
+        // No answer at all: after 2 s the upload is called off and says so.
+        window.drive({{"action", "selectRange"}, {"start", 4000000}, {"end", 6000000}});
+        window.drive({{"action", "cut"}});
+        window.findChild<QPushButton*>("upload")->click();
+        QCOMPARE(uploads.size(), 0);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(window.inspect()["status"].toString().contains("wasn't confirmed"), 4000);
+        QCOMPARE(uploads.size(), 0);
+        // Accepted: the upload goes ahead at the revision that holds the change.
+        window.drive({{"action", "selectRange"}, {"start", 4000000}, {"end", 6000000}});
+        window.drive({{"action", "cut"}});
+        ctrlEnter(window);
+        auto cut = edit;
+        cut.revision = 3;
+        cut.cuts = {RecordingCut{"c1", 4000000, 6000000}};
+        window.setEdit(cut, answer(2));
+        QCOMPARE(uploads.size(), 0);  // proposal 3 is still unanswered
+        window.setEdit(cut, answer(3));
+        QCOMPARE(uploads.size(), 1);
+        QCOMPARE(uploads[0][0].toULongLong(), 3ull);
+    }
+    // U2: Ctrl+Enter during a pointer drag does nothing: the drag's edit is not
+    // proposed until release.
+    void ctrlEnterWaitsOutAPointerDrag() {
+        ReviewWindow window(options(), config());
+        QSignalSpy uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        auto* strip = timeline(window);
+        const QPoint handle = strip->trimHandleRect(true).center();
+        QTest::mousePress(strip, Qt::LeftButton, {}, handle);
+        QTest::mouseMove(strip, QPoint(strip->xFor(3000000), handle.y()));
+        QVERIFY(strip->dragging());
+        ctrlEnter(window);
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(!window.inspect()["uploadWaiting"].toBool());
+        QTest::mouseRelease(strip, Qt::LeftButton, {}, QPoint(strip->xFor(3000000), handle.y()));
+        QCOMPARE(uploads.size(), 0);
+    }
+    // U3: Try again waits while a cover is being placed, as Save and Upload do.
+    void tryAgainWaitsWhilePlacing() {
+        ReviewWindow window(options(), config());
+        QSignalSpy retries(&window, &ReviewWindow::retryExportRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        window.showError("Export failed: synthetic");
+        QVERIFY(window.drive({{"action", "armRedact"}}).code.isEmpty());
+        QCOMPARE(window.drive({{"action", "retryExport"}}).code, QString("recording_state"));
+        QCOMPARE(retries.size(), 0);
+        for (auto* button : window.findChildren<QPushButton*>("statusAction"))
+            if (button->property("driveAction").toJsonObject()["action"] == "retryExport") QVERIFY(!button->isEnabled());
+        window.drive({{"action", "cancelPlacement"}});
+        QVERIFY(window.drive({{"action", "retryExport"}}).code.isEmpty());
+        QCOMPARE(retries.size(), 1);
+    }
+    // U7: Ctrl+Z during a nudge not yet proposed drops the nudge locally and
+    // undoes at the current revision; the nudge is never sent.
+    void undoDropsAPendingNudge() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit = twoMasks(6);
+        edit.canUndo = true;
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m-solid"}});
+        auto* view = window.findChild<FrameView*>("frame");
+        QTest::keyClick(view, Qt::Key_Right);
+        QVERIFY(view->nudging());
+        for (auto* shortcut : window.findChildren<QShortcut*>()) if (shortcut->key() == QKeySequence(Qt::CTRL | Qt::Key_Z)) emit shortcut->activated();
+        QVERIFY(!view->nudging());
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposals[0].at(0).toULongLong(), 6ull);
+        QCOMPARE(proposals[0].at(1).toJsonArray(), (QJsonArray{QJsonObject{{"op", "undo"}}}));
+    }
+    // U8: Shows from finds a one-frame cover whose start is a rounded frame time
+    // (30 fps: frame 2 is 66,667 µs).
+    void showsFromFindsAOneFrameCoverAtARoundedTime() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 66667, 100000)};
+        window.setEdit(edit);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        const auto result = window.drive({{"action", "seekCoverStart"}});
+        QVERIFY2(result.code.isEmpty(), qPrintable(result.message));
+        QCOMPARE(result.state["playheadUs"].toDouble(), 66667.0);
+        QCOMPARE(window.drive({{"action", "seekCoverEnd"}}).state["playheadUs"].toDouble(), 66667.0);
+    }
+    // U11: setCoverEdge types a time into Shows from / Until: frame-snapped,
+    // proposed as the field's commit proposes it.
+    void setCoverEdgeIsTheTimeFieldsCommit() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 4000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "clearSelection"}});
+        QCOMPARE(window.drive({{"action", "setCoverEdge"}, {"edge", "start"}, {"time", 5010000}}).code, QString("recording_state"));
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        QCOMPARE(window.drive({{"action", "setCoverEdge"}, {"edge", "middle"}, {"time", 5010000}}).code, QString("invalid_request"));
+        QVERIFY(window.drive({{"action", "setCoverEdge"}, {"edge", "start"}, {"time", 5010000}}).code.isEmpty());
+        QCOMPARE(proposed(proposals)["op"].toString(), QString("updateMask"));
+        QCOMPARE(proposed(proposals)["mask"].toObject()["start"].toDouble(), 5000000.0);
+        auto* field = window.findChild<QLineEdit*>("reviewPanelUntilTime");
+        QVERIFY(field);
+        field->setText("0:07.0");
+        emit field->editingFinished();
+        const auto typed = proposals.last().at(1).toJsonArray();
+        QVERIFY(window.drive({{"action", "setCoverEdge"}, {"edge", "end"}, {"time", 7000000}}).code.isEmpty());
+        QCOMPARE(proposals.last().at(1).toJsonArray(), typed);
+    }
+    // U13: Enter by focus and state: placing, it places the centred cover; a
+    // selected cut, Restore; a focused time field keeps it; otherwise Upload.
+    void enterFollowsFocusAndState() {
+        ReviewWindow window(options(), config());
+        QSignalSpy proposals(&window, &ReviewWindow::editProposed), uploads(&window, &ReviewWindow::uploadRequested);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.cuts = {RecordingCut{"c1", 1000000, 2000000}};
+        edit.masks = {mask("m1", "solid", 4000000, 8000000)};
+        window.setEdit(edit);
+        window.drive({{"action", "armBlur"}});
+        QTest::keyClick(&window, Qt::Key_Return);
+        QCOMPARE(proposals.size(), 1);
+        QCOMPARE(proposed(proposals)["op"].toString(), QString("addMask"));
+        QCOMPARE(proposed(proposals)["mask"].toObject()["rect"].toArray(), (QJsonArray{320, 180, 640, 360}));
+        window.drive({{"action", "selectCut"}, {"cutId", "c1"}});
+        timeline(window)->setFocus();
+        QTest::keyClick(&window, Qt::Key_Enter);
+        QCOMPARE(proposals.size(), 2);
+        QCOMPARE(proposed(proposals)["op"].toString(), QString("removeCut"));
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        auto* field = window.findChild<QLineEdit*>("reviewPanelShowsFromTime");
+        QVERIFY(field);
+        window.activateWindow();
+        field->setFocus();
+        const auto before = proposals.size();
+        QTest::keyClick(field, Qt::Key_Return);
+        QCOMPARE(proposals.size(), before);
+        QCOMPARE(uploads.size(), 0);
+        QVERIFY(window.isVisible());
+        // Nothing selected, every proposal answered: Enter uploads.
+        window.setEdit(edit, answer(proposals.last().at(2).toULongLong()));
+        window.drive({{"action", "clearSelection"}});
+        timeline(window)->setFocus();
+        QTest::keyClick(&window, Qt::Key_Return);
+        QCOMPARE(uploads.size(), 1);
+    }
+    // U9, U10 on a real clip: an exact skim frame stays exact only for the
+    // revision it was decoded at, and 100 % decodes source pixels.
+    void skimAndZoomFollowTheEditAndTheSource() {
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("gops.mkv");
+        QVERIFY(test::gopclip::write(clip, 3, 1600, 900));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 3000000;
+        o.canvas = QSize(1600, 900);
+        ReviewWindow window(o, config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        window.setEdit(edit);
+        const auto frameSize = [&] { return window.inspect()["preview"].toObject()["frameSize"].toArray(); };
+        PUTGD_TRY_COMPARE(frameSize(), (QJsonArray{1280, 720}));
+        window.drive({{"action", "viewerZoom"}, {"mode", "actual"}});
+        PUTGD_TRY_COMPARE(frameSize(), (QJsonArray{1600, 900}));
+        window.drive({{"action", "frameStep"}, {"delta", 1}});
+        PUTGD_TRY_COMPARE(window.inspect()["preview"].toObject()["frameTimeUs"].toDouble(), window.inspect()["playheadUs"].toDouble());
+        QCOMPARE(frameSize(), (QJsonArray{1600, 900}));
+        window.drive({{"action", "viewerZoom"}, {"mode", "fit"}});
+        const auto exact = [&] { return window.inspect()["timeline"].toObject()["skim"].toObject()["exact"].toBool(); };
+        window.drive({{"action", "skim"}, {"time", 1500000}});
+        PUTGD_TRY_VERIFY(exact());
+        auto covered = edit;
+        covered.revision = 3;
+        covered.masks = {mask("m1", "solid", 0, 3000000)};
+        window.setEdit(covered);
+        QVERIFY(!exact());
+        PUTGD_TRY_VERIFY(exact());
+        window.drive({{"action", "seek"}, {"time", 500000}});
+        QVERIFY(!exact());
     }
     // While recording, Stop keeps the clip and Discard only asks.
     void stoppingKeepsTheClipAndDiscardStillAsks() {

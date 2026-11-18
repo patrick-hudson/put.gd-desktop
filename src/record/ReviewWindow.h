@@ -60,6 +60,7 @@ public:
     bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
+    QSize frameSize() const { return frame_.size(); }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void armCreate(const QString& kind);
@@ -85,7 +86,11 @@ public:
     QRect defaultMaskRect() const;
     // Proposes a keyboard nudge that is still waiting for the keys to stop.
     void commitNudge();
+    // Drops a nudge not yet proposed: the cover goes back to where it was.
+    void cancelNudge();
     bool nudging() const { return nudging_; }
+    // A pointer drag (draw, move, resize or pan) is in progress.
+    bool dragging() const { return drag_ != Drag::None; }
     QSize sizeHint() const override { return {640, 360}; }
 signals:
     void maskCreated(const QString& kind, const QRect& rect);
@@ -155,7 +160,10 @@ public:
         bool systemRecorded = false, microphoneRecorded = false; };
     ReviewWindow(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
     ~ReviewWindow() override;
-    void setEdit(const RecordingEdit&);
+    // The resident's edit. answer, when this push answers one of the window's
+    // proposals: {proposal: n} once proposal n was applied, plus refused:
+    // {code, message, revision} when it was not (the edit is then unchanged).
+    void setEdit(const RecordingEdit&, const QJsonObject& answer = {});
     void setConfig(const RecordingConfig&);
     void setExporting(bool exporting, const QString& label);
     void setSavedCopy(const QString& path, quint64 revision, const RecordingConfig& config);
@@ -176,10 +184,12 @@ public:
     // closeFileDialog|discard|keepReviewing|confirmDiscard, and (#1613) selectRange|
     // clearSelection|cut|selectCut|adjustCut|restoreCut|playAcross|undo|redo|armRedact|
     // armBlur|cancelPlacement|selectEdit|nextEdit|previousEdit|seekCoverStart|
-    // seekCoverEnd|setCoverEdgeToPlayhead|coverKind|timelineZoom|timelineFit|
-    // viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, ...}.
+    // seekCoverEnd|setCoverEdgeToPlayhead|setCoverEdge|coverKind|timelineZoom|
+    // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
-    // window's state (inspect) after the action, or an error.
+    // window's state (inspect) after the action, or an error. A state that
+    // proposed edits carries their numbers in "proposals"; inspect's lastRefusal
+    // {code, message, revision, proposal} names the last one the resident refused.
     struct DriveResult { QString code, message; QJsonObject state; };
     DriveResult drive(const QJsonObject& params);
     QJsonObject inspect() const;
@@ -189,7 +199,8 @@ public:
     // Below this the right panel folds into the Edits toggle.
     static QSize foldBelow() { return {1180, 720}; }
 signals:
-    void editProposed(quint64 revision, const QJsonArray& commands);
+    // proposal numbers the window's proposals 1, 2, …; the resident's answer names it.
+    void editProposed(quint64 revision, const QJsonArray& commands, quint64 proposal);
     void configChanged(const RecordingConfig&);
     void uploadRequested(quint64 revision);
     void retryExportRequested();
@@ -228,8 +239,14 @@ private:
     void answerDiscard(bool discard);
     // Save a copy…: the desktop's chooser (#259); false while one is open or exporting.
     bool chooseCopy();
+    // Upload, Ctrl+Enter and Enter: never during a pointer drag or while placing;
+    // with proposals unanswered, only once the resident accepted the last of
+    // them (a refusal or 2 s without an answer cancels it, with a status line).
     void upload();
+    void sendUpload();
+    int viewEdge() const;
     void refreshFrame();
+    DriveResult driveAction(const QJsonObject& params);
     // Silent playback of the kept footage only: each kept span is opened at
     // its start (never decoded through a cut) and frames are shown at their
     // output time; the end of the trim stops it. Any seek or edit pauses it.
@@ -297,7 +314,15 @@ private:
     // After making a cut, the playhead lands 1 s before its seam once the
     // resident answers (unless something else moved the playhead first).
     std::optional<recording::Span> pendingCut_;
-    bool proposalPending_ = false, uploadAfterAnswer_ = false;
+    // Proposals sent and answered (numbered from 1); the one an upload waits for.
+    quint64 proposalSeq_ = 0, answeredSeq_ = 0, uploadAfter_ = 0;
+    bool proposalPending() const { return answeredSeq_ < proposalSeq_; }
+    QTimer uploadWait_;
+    int shownEdge_ = 1280;  // the long edge frames are decoded at (viewEdge())
+    QJsonObject lastRefusal_;
+    // The exact skim frame asked for: its time and the edit revision it was asked at.
+    std::optional<std::pair<qint64, quint64>> skimAsked_;
+    void askSkimFrame(qint64 at);
     std::optional<qint64> edgePreview_;  // a dragged bracket or edge: the frame shown
     std::optional<qint64> skimUs_;
     QString savedPath_;

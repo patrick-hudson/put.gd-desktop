@@ -397,13 +397,22 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             host_.observe(s.op);
             emit changed(s.op.id);
         }
-    } else if (kind == "edit" && s.state == RecordingState::Reviewing) {
+    } else if (kind == "edit" && (s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting)) {
         // The review window proposes commands at the revision it showed; the
-        // resident's answer (setEdit) is what it displays, accepted or not.
-        qint64 revision = 0;
-        if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
-            if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) { host_.observe(s.op); emit changed(s.op.id); }
-        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
+        // resident's answer (setEdit) is what it displays. It names the
+        // proposal, and a refusal says why, so the window never takes an
+        // unchanged edit for its own and uploads without the change.
+        qint64 revision = 0, proposal = 0;
+        QJsonObject answer;
+        if (integer(event["proposal"], 1, 1LL << 52, &proposal)) answer["proposal"] = double(proposal);
+        Error refusal;
+        if (s.state != RecordingState::Reviewing) refusal = {"recording_state", "An export is running, so the change wasn't applied", {}};
+        else if (!integer(event["revision"], 1, 1LL << 52, &revision) || !event["commands"].isArray()) refusal = invalid("The edit proposal is malformed");
+        else if (quint64(revision) != s.edit.revision) refusal = {"recording_stale", "The edits changed before this change arrived, so it wasn't applied", {{"currentRevision", double(s.edit.revision)}}};
+        else if (auto error = recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) refusal = error;
+        else { host_.observe(s.op); emit changed(s.op.id); }
+        if (refusal) answer["refused"] = QJsonObject{{"code", refusal.code}, {"message", refusal.message}, {"revision", double(revision)}};
+        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s), answer);
     } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && s.state == RecordingState::Reviewing) {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
@@ -906,7 +915,14 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         // applied the proposal (or refused it) and pushed the result to the
         // window, so the window is read once more: the reply's window state and
         // edit are the ones after the action.
-        if (params["action"] == "retryExport") { retryExport(reply); return; }
+        if (params["action"] == "retryExport") {
+            // As the window's Try again: refused while a cover is being placed there.
+            backend_->control(s.op.id, "review", {{"action", "inspect"}}, marshal(s.generation, [this, reply](Error error, QJsonObject window) {
+                if (!error && window["placement"].isObject()) { reply({"recording_state", "Place or cancel the cover first", {}}, {}); return; }
+                retryExport(reply);
+            }));
+            return;
+        }
         auto forwarded = params;
         forwarded.remove("id");
         const bool inspect = forwarded["action"].toString() == "inspect";
@@ -920,9 +936,20 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         };
         backend_->control(s.op.id, "review", forwarded, marshal(generation, [this, answer, generation, inspect](Error error, QJsonObject result) {
             if (error || inspect) { answer(error, result); return; }
-            QMetaObject::invokeMethod(this, [this, answer, generation] {
+            const auto proposals = result["proposals"].toArray();
+            QMetaObject::invokeMethod(this, [this, answer, generation, proposals] {
                 if (!session_ || session_->generation != generation) { answer({"recording_unavailable", "The recording ended", {}}, {}); return; }
-                backend_->control(session_->op.id, "review", {{"action", "inspect"}}, marshal(generation, answer));
+                backend_->control(session_->op.id, "review", {{"action", "inspect"}}, marshal(generation, [answer, proposals](Error error, QJsonObject state) {
+                    // An edit this action proposed and the resident refused is the action's error.
+                    const auto refusal = state["lastRefusal"].toObject();
+                    if (!error && !refusal.isEmpty() && proposals.contains(refusal["proposal"])) {
+                        const auto code = refusal["code"].toString();
+                        answer({code.isEmpty() ? QStringLiteral("recording_refused") : code, refusal["message"].toString(), {{"revision", refusal["revision"]}, {"proposal", refusal["proposal"]}}}, {});
+                        return;
+                    }
+                    if (!error && !proposals.isEmpty()) state["proposals"] = proposals;
+                    answer(error, state);
+                }));
             }, Qt::QueuedConnection);
         }));
         return;

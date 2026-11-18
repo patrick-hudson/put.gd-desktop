@@ -213,6 +213,50 @@ private slots:
   PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));
   QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.size(),1);
  }
+ // U1: every review-window proposal is answered by its number; a refused one
+ // carries its code, message and the revision it was proposed at, and a
+ // recording.review action whose own proposal was refused returns that refusal.
+ void windowProposalsAreAnsweredAndRefusalsReachAgents(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  const auto propose=[&](int revision,int proposal,const QJsonObject& command){h.backend->sink({{"id",id},{"event","edit"},{"revision",revision},{"proposal",proposal},{"commands",QJsonArray{command}}});};
+  propose(1,1,{{"op","addCut"},{"start",2000000},{"end",3000000}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->answers[0],(QJsonObject{{"proposal",1}}));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
+  propose(1,2,{{"op","resetTrim"}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
+  QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
+  QCOMPARE(h.backend->answers[1]["refused"].toObject()["code"].toString(),QString("recording_stale"));
+  QCOMPARE(h.backend->answers[1]["refused"].toObject()["revision"].toDouble(),1.0);
+  propose(2,3,{{"op","setTrim"},{"start",1000000},{"end",1000001}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),3);
+  const auto refused=h.backend->answers[2]["refused"].toObject();
+  QCOMPARE(refused["code"].toString(),QString("invalid_request"));QVERIFY(!refused["message"].toString().isEmpty());QCOMPARE(refused["revision"].toDouble(),2.0);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
+  // The window answers the action with the proposals it made, then (re-read) its last refusal.
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{4}}},QJsonObject{{"lastRefusal",QJsonObject{{"code","invalid_request"},{"message","At most 64 masks are supported"},{"revision",2},{"proposal",4}}}}};
+  const auto cut=h.rec("review",{{"id",id},{"action","cut"}});
+  QCOMPARE(cut.error.code,QString("invalid_request"));QCOMPARE(cut.error.message,QString("At most 64 masks are supported"));QCOMPARE(cut.error.details["proposal"].toDouble(),4.0);
+  // An older refusal is not this action's.
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{5}}},QJsonObject{{"lastRefusal",QJsonObject{{"code","invalid_request"},{"message","x"},{"revision",2},{"proposal",4}}}}};
+  const auto accepted=h.rec("review",{{"id",id},{"action","cut"}});
+  QVERIFY2(!accepted.error,qPrintable(accepted.error.message));QCOMPARE(accepted.result["proposals"].toArray(),(QJsonArray{5}));
+ }
+ // U3: recording.review retryExport waits, as the window's Try again does,
+ // while a cover is being placed in the window.
+ void retryExportWaitsForAPlacementInTheWindow(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  h.backend->reviewReplies={QJsonObject{{"placement",QJsonObject{{"kind","solid"},{"whole",true}}}}};
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  QCOMPARE(h.backend->exports,1);
+  QVERIFY(!h.rec("review",{{"id",id},{"action","retryExport"}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+ }
  void lateStopReplyPreservesEditedPendingExport_data(){
   QTest::addColumn<QString>("command");QTest::addColumn<bool>("failedReply");
   QTest::newRow("save copy")<<QString("saveCopy")<<false;

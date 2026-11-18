@@ -117,7 +117,8 @@ private:
 
 // One entry of Edits: icon, name and span; a selected row (or a hovered or
 // focused one) shows its verb in place of the span. Enter or a click selects
-// it; Up / Down move between rows; Delete on a cover removes it.
+// it; Up / Down move between rows; Delete cuts a time selection, else removes
+// a cover (never restores a cut).
 class EditRow final : public QWidget {
     Q_OBJECT
 public:
@@ -164,10 +165,7 @@ protected:
             if (at >= 0 && at < rows.size()) rows[at]->setFocus(Qt::TabFocusReason);
             break;
         }
-        case Qt::Key_Delete: case Qt::Key_Backspace:
-            if (kind_ == "cover") emit removeKey();  // never restores a cut
-            else event->ignore();
-            break;
+        case Qt::Key_Delete: case Qt::Key_Backspace: emit removeKey(); break;  // the panel decides
         default: QWidget::keyPressEvent(event);
         }
     }
@@ -566,11 +564,7 @@ void ReviewPanel::addEdge(QVBoxLayout* v, const RecordingMask& mask, bool start)
         if (field->text().trimmed() == shown) return;
         const auto parsed = parseClock(field->text());
         if (!parsed) { field->setText(shown); return; }
-        const qint64 snapped = snapToFrame(*parsed, state_.fps, state_.durationUs);
-        field->setText(clockText(snapped));
-        field->setProperty("shown", field->text());
-        field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(snapped, state_.fps)));
-        emit coverEdgeEdited(id, start, snapped);
+        commitEdge(field, id, start, *parsed);
     });
     fieldRow->addWidget(field);
     auto* playhead = makeButton(top_, QStringLiteral("Set to playhead"), {}, nullptr, QStringLiteral("Set %1 to playhead").arg(edge), QStringLiteral("reviewPanel") + key + QStringLiteral("Playhead"));
@@ -580,6 +574,22 @@ void ReviewPanel::addEdge(QVBoxLayout* v, const RecordingMask& mask, bool start)
     fieldRow->addWidget(playhead);
     fieldRow->addStretch(1);
     v->addLayout(fieldRow);
+}
+
+void ReviewPanel::commitEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs) {
+    const qint64 snapped = snapToFrame(sourceUs, state_.fps, state_.durationUs);
+    field->setText(clockText(snapped));
+    field->setProperty("shown", field->text());
+    field->setToolTip(QStringLiteral("Frame %1").arg(frameOf(snapped, state_.fps)));
+    emit coverEdgeEdited(id, start, snapped);
+}
+bool ReviewPanel::commitCoverEdge(bool start, qint64 sourceUs) {
+    const auto* mask = selectedCover();
+    auto* field = top_ ? top_->findChild<QLineEdit*>(start ? QStringLiteral("reviewPanelShowsFromTime") : QStringLiteral("reviewPanelUntilTime")) : nullptr;
+    if (!mask || !field) return false;
+    if (snapToFrame(sourceUs, state_.fps, state_.durationUs) == (start ? mask->start : mask->end)) return true;  // already there
+    commitEdge(field, mask->id, start, sourceUs);
+    return true;
 }
 
 void ReviewPanel::buildList(QVBoxLayout* v) {
@@ -616,7 +626,12 @@ void ReviewPanel::buildList(QVBoxLayout* v) {
             else if (kind == "cut") emit restoreCut(id);
             else emit removeCover(id);
         });
-        connect(row, &EditRow::removeKey, this, [this, id] { emit removeCover(id); });
+        // Delete is selection-aware, as in the viewer and the timeline: a time
+        // selection is cut; without one a cover row's cover is removed.
+        connect(row, &EditRow::removeKey, this, [this, kind, id] {
+            if (state_.timeSelection && !state_.timeSelection->empty()) emit cutRequested();
+            else if (kind == "cover") emit removeCover(id);
+        });
         column->addWidget(row);
     }
     v->addWidget(rows);

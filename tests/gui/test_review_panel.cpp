@@ -287,6 +287,22 @@ private slots:
         QCOMPARE(restore.size() + reset.size(), 0);
     }
 
+    // U4: with a time selection, Delete on any row cuts the selection (as in the
+    // viewer and the timeline) and never removes the row's cover.
+    void deleteOnARowCutsATimeSelection() {
+        ReviewPanel panel(std::make_shared<MaskNames>());
+        panel.resize(280, 900);
+        auto s = edited();
+        s.timeSelection = recording::Span{3 * second, 5 * second};
+        panel.setState(s);
+        QSignalSpy remove(&panel, &ReviewPanel::removeCover), cut(&panel, &ReviewPanel::cutRequested);
+        QVERIFY(row(panel, "cover/m1"));
+        QTest::keyClick(row(panel, "cover/m1"), Qt::Key_Delete);
+        QTest::keyClick(row(panel, "cut/c1"), Qt::Key_Backspace);
+        QCOMPARE(remove.size(), 0);
+        QCOMPARE(cut.size(), 2);
+    }
+
     // The overlay lends the window's one panel and gives it back: same parent,
     // same place in its layout, focus on the toggle.
     void overlayReturnsThePanelAndFocus() {

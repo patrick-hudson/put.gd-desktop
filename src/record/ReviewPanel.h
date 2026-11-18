@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 
+class QLineEdit;
 class QVBoxLayout;
 class QKeyEvent;
 class QLayout;
@@ -58,6 +59,10 @@ public:
     // The control the Edits overlay focuses: defaultControl(), else the first
     // enabled control (a row of Edits, a field, a button), else null.
     QWidget* firstControl() const;
+    // recording.review setCoverEdge: commits a time to the selected cover's
+    // Shows from (start) or Until field as typing it does (frame snapping, then
+    // coverEdgeEdited). False when no cover's fields are shown.
+    bool commitCoverEdge(bool start, qint64 sourceUs);
     QSize sizeHint() const override;
 signals:
     void cutRequested();                 // a time selection's Cut
@@ -82,6 +87,7 @@ private:
     void buildTop(QVBoxLayout*);
     void buildList(QVBoxLayout*);
     void addEdge(QVBoxLayout*, const RecordingMask&, bool start);
+    void commitEdge(QLineEdit* field, const QString& id, bool start, qint64 sourceUs);
     const RecordingMask* selectedCover() const;
     const RecordingCut* selectedCut() const;
     bool anyEdit() const;
