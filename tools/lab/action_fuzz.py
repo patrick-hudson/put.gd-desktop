@@ -1486,8 +1486,8 @@ class Fuzzer:
                     continue
                 self.check_sanitizers()
                 if self.step_index % self.options.epoch == 0 and self.step_index < self.options.steps:
-                    self.epoch_check()
-            self.epoch_check(final=True)
+                    self.guarded_epoch_check()
+            self.guarded_epoch_check(final=True)
             self.shutdown_and_check()
         except Finding:
             self.keep_receiver_state()
@@ -1497,6 +1497,19 @@ class Fuzzer:
             if self.faults:
                 self.faults.stop()
             self.restore_permissions()
+
+    def guarded_epoch_check(self, final=False):
+        """The epoch check, with a resident that died on its own (an OOM kill, an open-files abort) judged by its restart like in a step."""
+        for attempt in range(3):
+            try:
+                if not self.resident.alive():
+                    self.check_alive()
+                return self.epoch_check(final)
+            except (Finding, OSError) as error:
+                crashed = isinstance(error, OSError) or error.kind == 'crash'
+                if not crashed or self.resident.alive() or not self.emfile_abort():
+                    raise
+                self.recover_from_abort()
 
     def emfile_abort(self):
         """Qt and GLib abort when a thread cannot get its wake-up pipe (GLib-ERROR, 'Too many open files'): that is what running out of file
