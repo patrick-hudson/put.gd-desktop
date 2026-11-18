@@ -11,7 +11,7 @@ connection, picks a seeded plan: pass through, or one of the network failures an
   cut_response          N bytes of the answer arrive, then the connection closes (a cut-off reply)
   stall                 after N request bytes nothing moves for `stall` seconds, then the connection closes
   stall_response        the request goes through, the answer is held for `stall` seconds (past the client's timeout)
-  dup_response          every chunk of the answer is sent twice
+  dup_response          the first chunk of the answer is sent twice
   slow                  the connection is throttled to `rate` bytes per second in both directions
   latency               only the latency below
 
@@ -20,7 +20,11 @@ HTTP, so it works the same for the custom uploader and the S3 wire. A profile (w
 connection is faulted at all) is set while the proxy runs; the plan of connection N is a function of (seed, N, profile) so a
 run replays the same failures for the same connection order. Every connection is logged to a JSON-lines file.
 
-Library use: Proxy(upstream_port, seed, log_path).start(); proxy.port; proxy.set_profile({...}); proxy.stop().
+A plan is fixed for the life of its connection, so clear() also retires every open connection whose plan is not a plain pass:
+it resets both of its sockets, wakes its stalls and waits for its pumps to end. After clear() returns no request can meet an
+old fault, whether on a stalled connection or a kept-alive one.
+
+Library use: Proxy(upstream_port, seed, log_path).start(); proxy.port; proxy.set_profile({...}); proxy.clear(); proxy.stop().
 Command line: fault_proxy.py --upstream PORT [--listen PORT] [--seed N] [--log FILE] [--profile JSON]
 """
 import argparse
@@ -34,6 +38,24 @@ import time
 
 KINDS = ('pass', 'reset_before', 'reset_request', 'reset_after_request', 'cut_response', 'stall', 'stall_response', 'dup_response', 'slow', 'latency')
 CHUNK = 16384
+
+
+class Connection:
+    """One accepted connection: its plan, its sockets and the thread serving it. `retired` wakes every wait of its pumps."""
+
+    def __init__(self, number, plan, client):
+        self.number, self.plan, self.client, self.upstream = number, plan, client, None
+        self.retired = threading.Event()
+        self.thread = threading.current_thread()
+
+    def faulted(self):
+        return self.plan.kind != 'pass' or self.plan.latency_ms or self.plan.jitter_ms
+
+    def retire(self):
+        self.retired.set()
+        for sock in (self.client, self.upstream):
+            if sock is not None:
+                reset(sock, wake=True)
 
 
 class Plan:
@@ -50,12 +72,18 @@ class Plan:
         return {k: v for k, v in self.__dict__.items() if v or k == 'kind'}
 
 
-def reset(sock):
-    """Close with an RST rather than a FIN."""
+def reset(sock, wake=False):
+    """Close with an RST rather than a FIN. wake: another thread may be blocked reading it, and a close alone does not wake it; a
+    read shutdown does, and sends nothing."""
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
     except OSError:
         pass
+    if wake:
+        try:
+            sock.shutdown(socket.SHUT_RD)
+        except OSError:
+            pass
     try:
         sock.close()
     except OSError:
@@ -79,6 +107,8 @@ class Proxy:
         self.stopped = False
         self.log_lock = threading.Lock()
         self.live = set()
+        self.connections = {}   # number -> Connection, while it is open
+        self.connections_lock = threading.Lock()
         self.thread = None
 
     # --- control
@@ -89,8 +119,20 @@ class Proxy:
             self.profile = dict(profile)
         self.write_log({'event': 'profile', 'profile': profile})
 
-    def clear(self):
+    def clear(self, wait=15.0):
+        """No faults from now on: new connections pass, and open ones with a fault plan are retired and their pumps waited for.
+        Returns the numbers of the connections it retired."""
         self.set_profile({'fault_rate': 0.0, 'weights': {}})
+        with self.connections_lock:
+            doomed = [c for c in self.connections.values() if c.faulted()]
+        for connection in doomed:
+            connection.retire()
+        end = time.monotonic() + wait
+        for connection in doomed:
+            connection.thread.join(max(0.0, end - time.monotonic()))
+        stuck = [c.number for c in doomed if c.thread.is_alive()]
+        self.write_log({'event': 'retired', 'connections': [c.number for c in doomed], 'still_running': stuck})
+        return [c.number for c in doomed]
 
     def start(self):
         self.thread = threading.Thread(target=self.accept_loop, daemon=True)
@@ -104,7 +146,7 @@ class Proxy:
         except OSError:
             pass
         for sock in list(self.live):
-            reset(sock)
+            reset(sock, wake=True)
 
     def write_log(self, record):
         if not self.log_path:
@@ -153,6 +195,9 @@ class Proxy:
         self.stats[plan.kind] = self.stats.get(plan.kind, 0) + 1
         record = {'event': 'connection', 'n': number, 'plan': plan.as_dict()}
         state = {'c2s': 0, 's2c': 0, 'outcome': 'closed'}
+        connection = Connection(number, plan, client)
+        with self.connections_lock:
+            self.connections[number] = connection
         self.live.add(client)
         try:
             if plan.kind == 'reset_before':
@@ -166,9 +211,11 @@ class Proxy:
                 reset(client)
                 return
             self.live.add(upstream)
-            done = threading.Event()
-            threads = [threading.Thread(target=self.pump, args=(client, upstream, plan, state, 'c2s', done), daemon=True),
-                       threading.Thread(target=self.pump, args=(upstream, client, plan, state, 's2c', done), daemon=True)]
+            connection.upstream = upstream
+            if connection.retired.is_set():
+                reset(upstream)
+            threads = [threading.Thread(target=self.pump, args=(client, upstream, plan, state, 'c2s', connection.retired), daemon=True),
+                       threading.Thread(target=self.pump, args=(upstream, client, plan, state, 's2c', connection.retired), daemon=True)]
             for thread in threads:
                 thread.start()
             for thread in threads:
@@ -181,14 +228,19 @@ class Proxy:
             self.live.discard(upstream)
         finally:
             self.live.discard(client)
+            with self.connections_lock:
+                self.connections.pop(number, None)
+            if connection.retired.is_set():
+                state['outcome'] += ' (retired)'
             record.update(c2s=state['c2s'], s2c=state['s2c'], outcome=state['outcome'])
             self.write_log(record)
 
-    def delay(self, plan, rng):
+    def delay(self, plan, rng, retired):
         if plan.latency_ms or plan.jitter_ms:
-            time.sleep(max(0.0, (plan.latency_ms + rng.uniform(-plan.jitter_ms, plan.jitter_ms)) / 1000.0))
+            retired.wait(max(0.0, (plan.latency_ms + rng.uniform(-plan.jitter_ms, plan.jitter_ms)) / 1000.0))
 
-    def pump(self, source, sink, plan, state, direction, done):
+    def pump(self, source, sink, plan, state, direction, retired):
+        """Copy one direction. `retired` (the connection's) cuts every wait short; the pump then ends on its reset sockets."""
         rng = random.Random(plan.c2s_limit * 31 + plan.s2c_limit + (1 if direction == 'c2s' else 2))
         sent_dup = False
         try:
@@ -203,12 +255,14 @@ class Proxy:
                     break
                 if not data:
                     break
-                self.delay(plan, rng)
+                if retired.is_set():
+                    break
+                self.delay(plan, rng, retired)
                 if direction == 'c2s':
                     if plan.kind == 'reset_request' and state['c2s'] + len(data) > plan.c2s_limit:
                         keep = max(0, plan.c2s_limit - state['c2s'])
                         if keep:
-                            self.send(sink, data[:keep], plan, rng)
+                            self.send(sink, data[:keep], plan, rng, retired)
                             state['c2s'] += keep
                         state['outcome'] = 'reset-request'
                         reset(source)
@@ -217,16 +271,16 @@ class Proxy:
                     if plan.kind == 'stall' and state['c2s'] + len(data) > plan.c2s_limit:
                         keep = max(0, plan.c2s_limit - state['c2s'])
                         if keep:
-                            self.send(sink, data[:keep], plan, rng)
+                            self.send(sink, data[:keep], plan, rng, retired)
                             state['c2s'] += keep
                         state['outcome'] = 'stalled'
-                        time.sleep(plan.stall)
+                        retired.wait(plan.stall)
                         # The connection then dies with a reset, as a timed-out path does. A clean close would look to a lenient server like a
                         # request that ended after its headers.
                         reset(source)
                         reset(sink)
                         break
-                    self.send(sink, data, plan, rng)
+                    self.send(sink, data, plan, rng, retired)
                     state['c2s'] += len(data)
                 else:
                     if plan.kind == 'reset_after_request':
@@ -237,11 +291,13 @@ class Proxy:
                     if plan.kind == 'stall_response' and not state.get('held'):
                         state['held'] = True
                         state['outcome'] = 'response-held'
-                        time.sleep(plan.stall)
+                        retired.wait(plan.stall)
+                        if retired.is_set():
+                            break
                     if plan.kind == 'cut_response' and state['s2c'] + len(data) > plan.s2c_limit:
                         keep = max(0, plan.s2c_limit - state['s2c'])
                         if keep:
-                            self.send(sink, data[:keep], plan, rng)
+                            self.send(sink, data[:keep], plan, rng, retired)
                             state['s2c'] += keep
                         state['outcome'] = 'response-cut'
                         try:
@@ -249,16 +305,15 @@ class Proxy:
                         except OSError:
                             pass
                         break
-                    self.send(sink, data, plan, rng)
+                    self.send(sink, data, plan, rng, retired)
                     state['s2c'] += len(data)
                     if plan.kind == 'dup_response' and not sent_dup:
                         sent_dup = True
-                        self.send(sink, data, plan, rng)
+                        self.send(sink, data, plan, rng, retired)
                         state['outcome'] = 'response-duplicated'
         except OSError:
             pass
         finally:
-            done.set()
             # Half-close so the other side's pump ends; a reset already closed both.
             for sock, how in ((sink, socket.SHUT_WR), (source, socket.SHUT_RD)):
                 try:
@@ -266,13 +321,15 @@ class Proxy:
                 except OSError:
                     pass
 
-    def send(self, sink, data, plan, rng):
+    def send(self, sink, data, plan, rng, retired):
         if plan.kind == 'slow' and plan.rate:
             step = max(512, plan.rate // 20)
             for offset in range(0, len(data), step):
+                if retired.is_set():
+                    raise OSError('retired')
                 piece = data[offset:offset + step]
                 sink.sendall(piece)
-                time.sleep(len(piece) / plan.rate)
+                retired.wait(len(piece) / plan.rate)
         else:
             sink.sendall(data)
 
