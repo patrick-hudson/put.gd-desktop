@@ -142,6 +142,66 @@ private slots:
         QVERIFY(!refused.error.message.contains(key));
         QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
     }
+    // #1570: a key the import takes out of an address, and the value of a row that is not
+    // sent, are credentials like a stored row: what is shown or recorded never repeats them.
+    // The thumbnail URL and the error message are left out with a note; a link that repeats
+    // one is refused, as for a stored row (it would be refused at every upload).
+    void importKeepsExtractedAndUnsentValuesOutOfWhatIsShown_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("label"); // the value the notes and the refusal name
+        const QString key = token;
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "https://media.example.test/{json:u}"},
+                               {"ThumbnailURL", "{json:thumb}?t=" + key}, {"ErrorMessage", "{json:error} (" + key + ")"},
+                               {"DeletionURL", "https://media.example.test/delete/{json:id}/" + key}};
+        // The issue's file: the token is taken out of the deletion URL.
+        QTest::newRow("deletion URL key") << file << "secret value deletion-key";
+        auto request = file;
+        request["RequestURL"] = "https://media.example.test/upload/" + key;
+        QTest::newRow("request URL key") << request << "secret value url-key";
+        // An argument that is not sent, because the file has no body, is not stored.
+        auto argument = file;
+        argument["Body"] = "None";
+        argument["Arguments"] = QJsonObject{{"token", key}};
+        argument.remove("DeletionURL");
+        QTest::newRow("unsent argument") << argument << "argument token";
+        // Nor is a header put.gd sets itself, here Content-Type without a binary body.
+        auto header = argument;
+        header.remove("Arguments");
+        header["Headers"] = QJsonObject{{"Content-Type", key}};
+        QTest::newRow("unsent header") << header << "header Content-Type";
+    }
+    void importKeepsExtractedAndUnsentValuesOutOfWhatIsShown() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, label);
+        const QString key = token;
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["thumbnailUrl"].toString(), QString());
+        QCOMPARE(result.settings["errorMessage"].toString(), QString());
+        const auto notes = result.notes.join(' ');
+        QVERIFY2(notes.contains("ThumbnailURL repeated the value of " + label) && notes.contains("ErrorMessage repeated the value of " + label), qPrintable(notes));
+        QVERIFY(!notes.contains(key));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(key.toUtf8()));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+        auto shared = file;
+        shared["URL"] = "https://media.example.test/{json:u}?t=" + key;
+        const auto refused = importSxcu(sxcu(shared));
+        QCOMPARE(refused.error.code, QString("sxcu_unsupported"));
+        QVERIFY2(refused.error.message.contains("URL repeats the value of " + label), qPrintable(refused.error.message));
+        QVERIFY(!refused.error.message.contains(key));
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
+    }
+    // A key taken out of the request URL is named in the deletion URL, not stored twice.
+    void importNamesARequestUrlKeyInTheDeletionUrl() {
+        const QString key = token;
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload/" + key},
+                               {"Body", "Binary"}, {"URL", "{json:url}"}, {"DeletionURL", "https://media.example.test/delete/{json:id}/" + key}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}/{secret:secrets/url-key}"));
+        QCOMPARE(result.secrets.keys(), QStringList({"secrets/url-key"}));
+    }
     // By hand as well: only the deletion URL may name a stored value among the reply values.
     void storedValuesStayOutOfWhatIsShownOrRecorded() {
         auto settings = defaults();

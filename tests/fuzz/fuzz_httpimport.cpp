@@ -117,11 +117,10 @@ void sxcu(const QByteArray& json) {
     places.append({"notes", imported.notes.join('\n').toUtf8()});
     places.append({"name", imported.name.toUtf8()});
     // Only the place and the property are printed, never a value or the text around it.
-    const auto leaked = [&](const QString& value, const QStringList& skipped) {
+    const auto leaked = [&](const QString& value) {
         const auto needle = value.toUtf8();
         const auto word = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_'; };
         for (const auto& [where, shown] : std::as_const(places)) {
-            if (skipped.contains(where)) continue;
             for (qsizetype at = shown.indexOf(needle); at >= 0; at = shown.indexOf(needle, at + 1)) {
                 const auto end = at + needle.size();
                 if ((at > 0 && word(shown[at - 1])) || (end < shown.size() && word(shown[end]))) continue;
@@ -133,11 +132,8 @@ void sxcu(const QByteArray& json) {
     const auto keys = secretKeys(imported.settings);
     for (auto it = imported.secrets.cbegin(); it != imported.secrets.cend(); ++it) {
         FUZZ_REQUIRE(keys.contains(it.key()));
-        if (!credentialLike(it.value())) continue;
-        // A key the import takes out of an address ("secrets/...") may still stand in the
-        // thumbnail URL and the error message until #1570 is fixed; everywhere else it may not.
-        if (it.key().startsWith("secrets/")) leaked(it.value(), {"settings.thumbnailUrl", "settings.errorMessage"});
-        else leaked(it.value(), {});
+        // A key the import took out of an address ("secrets/...") included (#1570).
+        if (credentialLike(it.value())) leaked(it.value());
     }
     // What the import hands to importUploaderFile is what the destination's own rules take,
     // once the caller has allowed plain HTTP, which a file may need and may not decide for

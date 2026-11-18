@@ -704,6 +704,9 @@ SxcuImport readSxcu(const QByteArray& json) {
     qsizetype secretBytes = 0;
     static const QRegularExpression namePattern("%(?:y|yy|mo|mon|mon2|d|h|mi|s|ms|pm|w|w2|wy|unix|i|ia|ib|ix|rn|ra|rna|rx|guid|radjective|ranimal|remoji|rf|width|height|t|pn|un|uln|cn|n)\\b");
     bool patterns = false;
+    // Rows that are not sent are not stored, but their values are still credentials: they
+    // are looked for in what is shown and recorded like the stored ones.
+    QList<QPair<QString, QString>> unsent; // key → value
     for (const auto& [sxcuName, list] : QList<QPair<const char*, QString>>{{"Parameters", "parameters"}, {"Headers", "headers"}, {"Arguments", "arguments"}}) {
         if (!field(sxcuName).isUndefined() && !field(sxcuName).isNull() && !field(sxcuName).isObject()) {
             out.error = sxcuError("sxcu_invalid", QString("%1 must be an object of names and values.").arg(sxcuName));
@@ -720,6 +723,7 @@ SxcuImport readSxcu(const QByteArray& json) {
         // Arguments are form fields: other bodies have none.
         if (list == "arguments" && body != "multipart" && body != "form") {
             if (!entries.isEmpty()) out.notes.append("The file's Arguments are not sent with this request body.");
+            for (const auto& [name, raw] : std::as_const(entries)) unsent.append({secretKey(list, name), migrate(raw)});
             entries.clear();
         }
         if (entries.size() > maximumRows) { out.error = sxcuError("sxcu_unsupported", QString("This file has more than %1 %2.").arg(maximumRows).arg(list)); return out; }
@@ -731,6 +735,7 @@ SxcuImport readSxcu(const QByteArray& json) {
             if (list == "headers") {
                 if (managedHeader(name) || (name.compare("content-type", Qt::CaseInsensitive) == 0 && body != "binary")) {
                     out.notes.append("The header " + boundedMessage(name, 64) + " is set by put.gd for this request and was left out.");
+                    unsent.append({secretKey(list, name), migrate(raw)});
                     continue;
                 }
                 if (!headerName(name)) { out.error = sxcuError("sxcu_invalid", "The " + label + " is not a valid header name."); return out; }
@@ -773,16 +778,20 @@ SxcuImport readSxcu(const QByteArray& json) {
     // pattern, and a host name is no key. What counts as a credential is what is looked
     // for in a server's replies (credentialTexts): a folder name that an argument also
     // holds stays an ordinary word in every address. `whole` are the values that can be
-    // named in their own place; `known` adds the key-like parts of longer values.
+    // named in their own place; `known` adds the key-like parts of longer values, the
+    // values of rows that are not sent, and the keys taken out of an address below.
     QList<QPair<QString, QString>> known, whole; // text → key, longest first
-    static const QRegularExpression syntax("[{}|\\\\]");
-    for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it)
-        for (const auto& text : credentialTexts(it.key(), it.value())) {
+    const auto learn = [&](const QString& key, const QString& value, bool stored) {
+        static const QRegularExpression syntax("[{}|\\\\]");
+        for (const auto& text : credentialTexts(key, value)) {
             if (text.contains(syntax)) continue;
-            known.append({text, it.key()});
-            if (text == it.value() && it.key() != dataSecretKey()) whole.append({text, it.key()});
+            known.append({text, key});
+            if (stored && text == value && key != dataSecretKey()) whole.append({text, key});
         }
-    for (auto* list : {&known, &whole}) std::sort(list->begin(), list->end(), [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
+        for (auto* list : {&known, &whole}) std::stable_sort(list->begin(), list->end(), [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
+    };
+    for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it) learn(it.key(), it.value(), true);
+    for (const auto& [key, value] : std::as_const(unsent)) learn(key, value, false);
     // The host ends at the path, or at "?" or "#" when the address has none.
     const auto afterHost = [](const QString& value) { return afterAuthority(value); };
     // Walks the literal text of a template from `from` on. `met` is told of each text of
@@ -863,11 +872,29 @@ SxcuImport readSxcu(const QByteArray& json) {
             return "{secret:" + secretKey(extraSecretsList(), row) + "}";
         });
     };
+    // A key taken out of an address is a stored value like any other from then on: the
+    // deletion URL names it, and the link, its thumbnail and an error message may not
+    // repeat it. (Learnt after each address, as `parts` walks `known`.)
+    qsizetype learnt = 0;
+    const auto learnMoved = [&] {
+        for (; learnt < moved.size(); ++learnt) {
+            const auto key = secretKey(extraSecretsList(), moved[learnt]);
+            learn(key, out.secrets.value(key), true);
+        }
+    };
     {
         auto address = parts(named(requestUrl), "url-key");
         address = opaque(address, "url-key", afterHost(address));
         if (address != requestUrl) { settings["requestUrl"] = address; requestUrl = address; }
     }
+    learnMoved();
+    {
+        auto deletion = parts(named(migrate(fieldText("DeletionURL"))), "deletion-key");
+        // After the host: the host name itself is no key.
+        deletion = opaque(deletion, "deletion-key", afterHost(deletion));
+        settings["deletionUrl"] = deletion;
+    }
+    learnMoved();
     auto responseUrl = migrate(fieldText("URL"));
     if (const auto labels = repeated(responseUrl); !labels.isEmpty()) {
         out.error = sxcuError("sxcu_unsupported", QString("URL repeats the value of %1. put.gd records and shares the link, so it cannot contain a credential. Remove that value from the file's URL. "
@@ -888,12 +915,6 @@ SxcuImport readSxcu(const QByteArray& json) {
             value.clear();
         }
         settings[key] = value;
-    }
-    {
-        auto deletion = parts(named(migrate(fieldText("DeletionURL"))), "deletion-key");
-        // After the host: the host name itself is no key.
-        deletion = opaque(deletion, "deletion-key", afterHost(deletion));
-        settings["deletionUrl"] = deletion;
     }
     if (tooManyKeys) { out.error = sxcuError("sxcu_unsupported", "The file's addresses hold more key-like values than a destination can store."); return out; }
     // Said because no rule can tell a key from an album or a user ID of the same shape,
