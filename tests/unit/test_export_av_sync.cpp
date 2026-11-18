@@ -541,14 +541,16 @@ QList<int> unwrap(const QList<cutclip::Decoded::Frame>& frames) {
     }
     return out;
 }
-Error write(const QString& path, int fps, int frames, const std::function<double(qint64)>& signal = {}, qint64 holeFromUs = 0, qint64 holeToUs = 0, const QList<qint64>& timesMs = {}) {
+// muxer and videoRate pick another container and video clock (AVI at 1/30 s:
+// a time base coarser than Matroska's millisecond).
+Error write(const QString& path, int fps, int frames, const std::function<double(qint64)>& signal = {}, qint64 holeFromUs = 0, qint64 holeToUs = 0, const QList<qint64>& timesMs = {}, const char* muxer = "matroska", int videoRate = 1000) {
     AVFormatContext* out = nullptr;
-    if (avformat_alloc_output_context2(&out, nullptr, "matroska", QFile::encodeName(path).constData()) < 0 || !out) return {"fixture", "no muxer", {}};
+    if (avformat_alloc_output_context2(&out, nullptr, muxer, QFile::encodeName(path).constData()) < 0 || !out) return {"fixture", "no muxer", {}};
     struct Closer { AVFormatContext*& f; ~Closer() { if (f && !(f->oformat->flags & AVFMT_NOFILE)) avio_closep(&f->pb); avformat_free_context(f); } } closer{out};
     AVCodecContext *video = avcodec_alloc_context3(avcodec_find_encoder(AV_CODEC_ID_MPEG4)), *audio = signal ? avcodec_alloc_context3(avcodec_find_encoder(AV_CODEC_ID_PCM_S16LE)) : nullptr;
     struct Contexts { AVCodecContext*& v; AVCodecContext*& a; ~Contexts() { avcodec_free_context(&v); avcodec_free_context(&a); } } contexts{video, audio};
     if (!video || (signal && !audio)) return {"fixture", "no encoder", {}};
-    video->width = width; video->height = height; video->time_base = {1, 1000}; video->framerate = {fps, 1};
+    video->width = width; video->height = height; video->time_base = {1, videoRate}; video->framerate = {fps, 1};
     video->pix_fmt = AV_PIX_FMT_YUV420P; video->gop_size = 15; video->max_b_frames = 0;
     video->flags |= AV_CODEC_FLAG_QSCALE; video->global_quality = FF_QP2LAMBDA * 3;
     av_opt_set_int(video->priv_data, "sc_threshold", 1000000000, 0);
@@ -589,7 +591,7 @@ Error write(const QString& path, int fps, int frames, const std::function<double
         }
         for (int plane = 1; plane < 3; ++plane) for (int y = 0; y < height / 2; ++y) std::fill_n(frame->data[plane] + qint64(y) * frame->linesize[plane], width / 2, uint8_t(128));
         auto timeUs = [&](int k) { return timesMs.isEmpty() ? frameUs(fps, k) : k < timesMs.size() ? timesMs[k] * 1000 : timesMs.last() * 1000 + 1'000'000 / fps; };
-        frame->pts = timeUs(index) / 1000;
+        frame->pts = av_rescale(timeUs(index), videoRate, 1'000'000);
         if (auto e = encode(0, frame)) return e;
         if (!audio) continue;
         const qint64 until = timeUs(index + 1) * rate / 1'000'000;
@@ -830,8 +832,10 @@ private slots:
                 QVERIFY2(kept.kept(frameUs(source)), qPrintable(QStringLiteral("output frame %1 shows clip frame %2, which the edit leaves out").arg(i).arg(source)));
                 if (i > 0) QVERIFY2(source > frames[i - 1].source, qPrintable(QStringLiteral("clip frame %1 after %2").arg(source).arg(frames[i - 1].source)));
                 if (i > 0) for (int skipped = frames[i - 1].source + 1; skipped < source; ++skipped) QVERIFY2(!kept.kept(frameUs(skipped)) || !kept.kept(frameUs(skipped + 1)), qPrintable(QStringLiteral("kept clip frame %1 missing inside its span").arg(skipped)));
+                // A stored time within half a millisecond of a bound may be either
+                // side of it, so it is covered (#1635 E18): frame 90, at 3.000 s.
                 const qint64 sourceUs = frameUs(source);
-                const bool cover = sourceUs >= spanningFrom && sourceUs < spanningTo;
+                const bool cover = sourceUs >= spanningFrom - 500 && sourceUs < spanningTo + 500;
                 QVERIFY2(frames[i].spanningCovered == cover, qPrintable(QStringLiteral("clip frame %1: cover %2, expected %3").arg(source).arg(frames[i].spanningCovered).arg(cover)));
             }
         }
@@ -954,6 +958,14 @@ private slots:
         const auto failure = cutclip::analyse(request.output, decoded);
         if (format == "webp" && failure == "cannot set up a decoder") QSKIP("this FFmpeg has no WebP decoder: only the duration and progress were checked");
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        // #1635 E22: a GIF ends on its last tick's rounded centisecond, not one
+        // frame delay after the frame before it.
+        if (format == "gif") {
+            const qint64 ticks = std::max<qint64>(1, KeptSpans(edit, durationUs).outputDuration() * outputFps / 1'000'000);
+            const auto& last = decoded.frames.last();
+            const qint64 endUs = last.us - decoded.frames.first().us + last.durationUs;
+            QVERIFY2(endUs == av_rescale(ticks, 100, outputFps) * 10'000, qPrintable(QStringLiteral("the GIF ends at %1 us, expected %2").arg(endUs).arg(av_rescale(ticks, 100, outputFps) * 10'000)));
+        }
         // Checked on the output grid by each frame's time and duration: libwebp
         // merges identical frames, so a held picture decodes as one long frame.
         const auto shown = cutclip::onGrid(decoded.frames, outputFps);
@@ -1038,8 +1050,12 @@ private slots:
             // The cut holds frame 47; the span from 2.0 s opens on it.
             QTest::newRow(qPrintable("cover in a cut on the held frame, " + format)) << format << qint64(0) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'600'000);
             QTest::newRow(qPrintable("cover ending in a gap, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(1'000'000) << qint64(2'000'000);
-            // The output opens at 1.6 s on frame 47, held; the cover runs 68-80 ms into it.
+            // The output opens at 1.6 s on frame 47, held; the cover runs 68-80 ms
+            // into it, inside the first GIF frame as the file shows it (0-70 ms).
             QTest::newRow(qPrintable("cover between two ticks, " + format)) << format << qint64(1'600'000) << qint64(-1) << qint64(-1) << qint64(1'668'000) << qint64(1'680'000);
+            // E18: frame 47 is stored at 1567 ms for 1566.667 ms, 0.1 ms past this
+            // cover's end: within the container's half-millisecond, so covered.
+            QTest::newRow(qPrintable("cover ending just before a stored frame time, " + format)) << format << qint64(0) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'566'900);
         }
     }
     void coversFollowTheShownPicture() {
@@ -1077,16 +1093,19 @@ private slots:
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
         const int outputFps = format == "gif" ? 15 : fps;
         const qint64 step = 1'000'000 / outputFps;
-        const auto shown = cutclip::onGrid(decoded.frames, outputFps);
+        // #1635 E19: the frames as the file presents them (a GIF in
+        // centiseconds), not snapped back to the ideal grid.
+        const auto& shown = decoded.frames;
         QVERIFY(shown.size() > 10);
         const putgd::recording::Span cover{coverFrom, coverTo};
         auto distance = [&](qint64 t) { return t < cover.start ? cover.start - t : t >= cover.end ? t - cover.end + 1 : 0; };
         const auto coverParts = kept.outputParts(coverFrom, coverTo);
         int mustCover = 0;
         for (const auto& f : shown) {
-            const qint64 t = f.us - shown.first().us, picture = frameUs(f.source), at = kept.toSource(t);
-            const bool overlaps = std::any_of(coverParts.begin(), coverParts.end(), [&](const putgd::recording::Span& part) { return part.start < t + step && t < part.end; });
-            if (cover.contains(picture) || overlaps) {
+            const qint64 t = f.us - shown.first().us, until = t + (f.durationUs > 0 ? f.durationUs : step), picture = frameUs(f.source), at = kept.toSource(t);
+            const bool overlaps = std::any_of(coverParts.begin(), coverParts.end(), [&](const putgd::recording::Span& part) { return part.start < until && t < part.end; });
+            // A stored picture time within half a millisecond of a bound may lie on either side: covered.
+            if ((picture >= cover.start - 500 && picture < cover.end + 500) || overlaps) {
                 ++mustCover;
                 QVERIFY2(f.spanningCovered, qPrintable(QStringLiteral("output %1 us shows clip frame %2 (%3 us) at source %4 us uncovered").arg(t).arg(f.source).arg(picture).arg(at)));
             } else if (distance(picture) > step && distance(at) > step) {
@@ -1419,8 +1438,13 @@ private slots:
     void audioKeepsNoSampleBeforeAKeptStart() {
         constexpr int fps = 30;
         const auto path = dir_.filePath("impulse.mkv");
-        // Sample 47760 (0.995 s) is the impulse.
-        const auto written = plainclip::write(path, fps, 90, [](qint64 us) { return us == 995'000 ? 0.9 : 0.0; });
+        // Sample 47760 (0.995 s) is the impulse; a 1 kHz tone plays over 0.1-0.85 s
+        // and 2.15-2.9 s, kept time on both sides of it.
+        const auto written = plainclip::write(path, fps, 90, [](qint64 us) {
+            if (us == 995'000) return 0.9;
+            const bool tone = (us >= 100'000 && us < 850'000) || (us >= 2'150'000 && us < 2'900'000);
+            return tone ? 0.25 * std::sin(2.0 * M_PI * 1000.0 * double(us) / 1e6) : 0.0;
+        });
         QVERIFY2(!written, qPrintable(written.message));
         ExportRequest request;
         request.input = path;
@@ -1442,9 +1466,145 @@ private slots:
         cutclip::Decoded decoded;
         const auto failure = cutclip::analyse(request.output, decoded);
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        // #1635 E23: the kept tone survives on both sides (output 0.5 s, and 1.5 s
+        // for 2.5 s: the second span starts on output frame 30)...
+        for (const qint64 t : {500'000LL, 1'500'000LL}) QVERIFY2(cutclip::toneAt(decoded.audio, t, 1000.0) > 0.15, qPrintable(QStringLiteral("kept tone missing at %1 us of output").arg(t)));
+        // ...while nothing of the impulse is heard where it would land (0.995 s).
         float peak = 0;
-        for (const float v : decoded.audio) peak = std::max(peak, std::abs(v));
+        for (qint64 n = 920'000 * 48 / 1000; n < 1'080'000 * 48 / 1000 && n < qint64(decoded.audio.size()); ++n) peak = std::max(peak, std::abs(decoded.audio[size_t(n)]));
         QVERIFY2(peak < 0.02, qPrintable(QStringLiteral("a sample from inside the cut reached the output (peak %1)").arg(peak)));
+    }
+    // #1635 E20: a span shorter than one output frame gets no frame reserved
+    // for it; its time rounds into the running total. At 15 fps, a 16.7 ms span
+    // between two of 500 ms leaves the third span starting at its clock time
+    // (0.517 s, output frame 8), where reserving a frame for the short span
+    // pushed it a frame later.
+    void subFrameSpansReserveNoFrame() {
+        constexpr int fps = 60;
+        putgd::RecordingEdit edit;
+        edit.trimEnd = plainclip::gridUs(fps, 72);
+        edit.cuts = {{"a", plainclip::gridUs(fps, 30), plainclip::gridUs(fps, 36)}, {"b", plainclip::gridUs(fps, 37), plainclip::gridUs(fps, 42)}};
+        const KeptSpans kept(edit, plainclip::frameUs(fps, 150));
+        QCOMPARE(kept.spans().size(), 3);
+        ExportRequest request;
+        request.input = sixty_;
+        request.output = dir_.filePath("short-span.gif");
+        request.durationUs = plainclip::frameUs(fps, 150);
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit = edit;
+        request.config.format = "gif";
+        request.config.fps = fps;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("gif export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        const auto third = std::find_if(decoded.frames.begin(), decoded.frames.end(), [](const cutclip::Decoded::Frame& f) { return f.source >= 42; });
+        QVERIFY(third != decoded.frames.end());
+        const qint64 at = third->us - decoded.frames.first().us, clock = kept.toOutput(plainclip::gridUs(fps, 42));
+        QVERIFY2(std::abs(at - clock) <= 1'000'000 / 30, qPrintable(QStringLiteral("the third span starts at %1 us of output, its clock time is %2").arg(at).arg(clock)));
+    }
+    // #1635 E21: audio takes the trim start and the cuts from one sample
+    // origin, and keeps clear of the container's rounding at every kept edge. A
+    // trim start at 1.833333 s, inside a frame gap (the output opens on the
+    // picture from 1.567 s), sits a third of a millisecond after an impulse in
+    // the trimmed-off audio. The audio frame holding it follows a hole and
+    // starts at 1832.5 ms, which Matroska stores as 1833 ms: placed by that
+    // time, the impulse lands just after the trim start, and the trim taken in
+    // seconds on the rounded times let it in at the very first sample.
+    void heldTrimStartTakesNoTrimmedAudio() {
+        const auto path = dir_.filePath("held-impulse.mkv");
+        QList<qint64> times;
+        for (int k = 0; k < gapclip::frames; ++k) times << gapclip::frameMs(k);
+        // Sample 87984 (1.833 s) is the impulse; a tone plays from 1.9 s.
+        const auto written = plainclip::write(path, 30, gapclip::frames, [](qint64 us) {
+            if (us == 1'833'000) return 0.9;
+            return us >= 1'900'000 ? 0.25 * std::sin(2.0 * M_PI * 1000.0 * double(us) / 1e6) : 0.0;
+        }, 1'800'000, 1'832'500, times);
+        QVERIFY2(!written, qPrintable(written.message));
+        ExportRequest request;
+        request.input = path;
+        request.output = dir_.filePath("held-impulse.mp4");
+        request.durationUs = gapclip::durationUs;
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit.trimStart = plainclip::gridUs(30, 55);
+        request.edit.trimEnd = 3'000'000;
+        request.config.format = "mp4";
+        request.config.codec = "h264";
+        request.config.fps = 30;
+        request.config.audio.system = true;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("mp4 export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QCOMPARE(decoded.frames.first().source, gapclip::held);
+        float peak = 0;
+        for (qint64 n = 0; n < 30 * 48 && n < qint64(decoded.audio.size()); ++n) peak = std::max(peak, std::abs(decoded.audio[size_t(n)]));
+        QVERIFY2(peak < 0.02, qPrintable(QStringLiteral("trimmed-off audio at the start (peak %1)").arg(peak)));
+        QVERIFY2(cutclip::toneAt(decoded.audio, 400'000, 1000.0) > 0.15, "the kept tone is missing");
+    }
+    // #1635 E17: the half-millisecond slack belongs to put.gd's own Matroska,
+    // where a stored frame time is its grid time rounded to the millisecond.
+    // A coarser clock promises nothing of the kind, so its bounds are strict: in
+    // an AVI clip at 1/30 s a trim starting 3 ms after frame 10 starts on frame 11,
+    // never on the trimmed-off frame 10.
+    void coarseTimeBaseUsesStrictBounds() {
+        const auto path = dir_.filePath("coarse.avi");
+        const auto written = plainclip::write(path, 30, 90, {}, 0, 0, {}, "avi", 30);
+        QVERIFY2(!written, qPrintable(written.message));
+        ExportRequest request;
+        request.input = path;
+        request.output = dir_.filePath("coarse.mp4");
+        request.durationUs = 3'000'000;
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit.trimStart = plainclip::gridUs(30, 10) + 3000;
+        request.config.format = "mp4";
+        request.config.codec = "h264";
+        request.config.fps = 30;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("mp4 export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QCOMPARE(decoded.frames.first().source, 11);
+    }
+    // #1635 E22: a GIF ends on its last tick's rounded centisecond. 32 frames
+    // at 15 fps end at 213 cs (2.1333 s); the last frame's 6 cs delay is not the
+    // 7 cs of one frame step, which would end it at 214 cs.
+    void gifEndsOnItsLastTick() {
+        constexpr int fps = 60;
+        ExportRequest request;
+        request.input = sixty_;
+        request.output = dir_.filePath("end.gif");
+        request.durationUs = plainclip::frameUs(fps, 150);
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit.trimEnd = plainclip::gridUs(fps, 129);  // 2.15 s: 32 frames at 15 fps
+        request.config.format = "gif";
+        request.config.fps = fps;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("gif export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        QCOMPARE(result.frames, 32);
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        const auto& last = decoded.frames.last();
+        QCOMPARE(last.us - decoded.frames.first().us + last.durationUs, qint64(2'130'000));
     }
     void webmAudioDecodesEveryPacket_data() {
         QTest::addColumn<QString>("decoder");
