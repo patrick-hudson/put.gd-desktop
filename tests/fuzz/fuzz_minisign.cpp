@@ -37,7 +37,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     const auto mode = in.byte() % 4;
     const auto message = in.part();
     auto trusted = in.part();
-    trusted.replace('\n', ' ');
+    // minisign ends each line at \n and drops a trailing \r, so neither can be part of a genuine comment.
+    trusted.replace('\n', ' ').replace('\r', ' ');
     const bool prehashed = in.byte() & 1;
     const auto comment = QString::fromUtf8(trusted);
     const auto publicFile = key->publicFile();
