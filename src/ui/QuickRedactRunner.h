@@ -9,8 +9,10 @@
 // thread and calls `done` on the UI thread. It never blocks the editor.
 // `context` going away drops the callback.
 //
-// With `name` chosen and no `sources.login`, the account is read on the worker
-// (src/ui/AccountName.h).
+// With `name` chosen and no `sources.login`, the account is read off the
+// interface thread (src/ui/AccountName.h), one lookup at a time for the whole
+// process. The other categories wait for it at most quickRedactAccountWaitMs;
+// without an answer they run on and Result::nameUnchecked is set.
 //
 // User patterns run in a child process, `putgd-ui --match-patterns`, which the
 // worker kills at the deadline (`budgetMs` from the call): nothing bounds a
@@ -28,12 +30,17 @@
 // what it had finished by then.
 //
 // Exit has one owner: QApplication's destructor cancels every worker (each
-// stops after the password entry, before the AccountsService call, and within
-// 50 ms while the child runs, killing it) and waits at most
-// quickRedactExitWaitMs, then lets any still running end on its own.
+// stops while it waits for the account, and within 50 ms while the child runs,
+// killing it) and waits at most quickRedactExitWaitMs, then lets any still
+// running end on its own. An account lookup still running then never reaches
+// the system bus.
 namespace putgd::ui {
 inline constexpr int quickRedactGraceMs=1000;
 inline constexpr int quickRedactExitWaitMs=1000;
+// The longest the other categories wait for the account lookup (#1618): it
+// then goes on in the background, and Result::nameUnchecked says the name was
+// not checked. One lookup at a time for the whole process.
+inline constexpr int quickRedactAccountWaitMs=1000;
 void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QStringList categories,editor::quickRedact::Sources sources,std::function<void(editor::quickRedact::Result)> done,int budgetMs=2000);
 // Cancels every running worker and waits, on the interface thread, until all
 // have ended or `limit` passes. Whether all ended. QApplication's destructor
@@ -49,6 +56,8 @@ void setQuickRedactAccountLookup(AccountLookup);
 void setQuickRedactMatcherProgram(QString path);
 // How many matcher children this process has started.
 int quickRedactMatcherStarts();
+// Whether an account lookup is still running (tests wait for it to end).
+bool quickRedactAccountLookupRunning();
 // The child's side, `putgd-ui --match-patterns`: reads the request on stdin,
 // writes one line a pattern on stdout, and exits.
 int runQuickRedactMatcher();
