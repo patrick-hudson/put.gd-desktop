@@ -293,7 +293,7 @@ private slots:
    file.seek((rootPage-1)*pageSize);return file.write(QByteArray(1,readable?char(0x0d):char(0)))==1&&file.flush();};
   QVERIFY(page(false));
   Source source;OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
-  PUTGD_TRY_VERIFY(ops.notReadyError().code=="history_io");QTest::qWait(200);QVERIFY(!ops.ready());
+  PUTGD_TRY_VERIFY(ops.notReadyError().code=="history_io");PUTGD_VERIFY_STEADY(!ops.ready(),200);
   QVERIFY(page(true));
   PUTGD_TRY_VERIFY(ops.ready());HistoryStore store(root+"/history.sqlite");const auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);
  }
