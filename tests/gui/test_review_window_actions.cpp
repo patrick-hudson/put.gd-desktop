@@ -1,5 +1,7 @@
 #include "ReviewWindowFixture.h"
 #include "fixtures/GopClip.h"
+#include "record/ClipExporter.h"
+#include <atomic>
 #include <QThread>
 #include <QToolTip>
 
@@ -576,7 +578,7 @@ private slots:
     void aWaitingUploadIsCancelledOnlyByAChange_data() {
         QTest::addColumn<QString>("trigger");
         QTest::addColumn<bool>("cancels");
-        for (const char* row : {"accepted edit", "undo", "redo", "agent edit", "format change", "audio change", "agent config change", "refusal", "timeout"})
+        for (const char* row : {"accepted edit", "undo", "redo", "agent edit", "format change", "audio change", "agent config change", "local refusal", "refusal", "timeout"})
             QTest::newRow(row) << QString::fromLatin1(row) << true;
         for (const char* row : {"hover", "save a copy dialog", "discard dialog", "menu", "inspect", "dismissStatus", "raise", "saved copy", "unchanged push", "key press", "review action", "second upload"})
             QTest::newRow(row) << QString::fromLatin1(row) << false;
@@ -586,14 +588,20 @@ private slots:
         QFETCH(bool, cancels);
         qputenv("PUTGD_FILE_DIALOG", "fallback");
         const auto restore = qScopeGuard([] { qunsetenv("PUTGD_FILE_DIALOG"); });
-        ReviewWindow window(options(), config());
-        QSignalSpy uploads(&window, &ReviewWindow::uploadRequested), saves(&window, &ReviewWindow::saveCopyRequested), retries(&window, &ReviewWindow::retryExportRequested), proposals(&window, &ReviewWindow::editProposed);
+        // System audio was recorded, so the audio row changes what would export.
+        auto o = options();
+        o.audioRecorded = o.systemRecorded = true;
+        auto c = config();
+        c.audio.system = true;
+        ReviewWindow window(o, c);
+        QSignalSpy uploads(&window, &ReviewWindow::uploadRequested), saves(&window, &ReviewWindow::saveCopyRequested), retries(&window, &ReviewWindow::retryExportRequested), proposals(&window, &ReviewWindow::editProposed), configs(&window, &ReviewWindow::configChanged);
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         RecordingEdit edit;
         edit.revision = 2;
         edit.canUndo = edit.canRedo = true;
         window.setEdit(edit);
+        if (trigger == "dismissStatus") window.showError("Export failed: synthetic", false);
         window.drive({{"action", "resetTrim"}});
         ctrlEnter(window);
         QVERIFY(window.inspect()["uploadWaiting"].toBool());
@@ -604,22 +612,48 @@ private slots:
         else if (trigger == "redo") window.findChild<QToolButton*>("toolRedo")->click();
         else if (trigger == "agent edit") { auto other = edit; other.revision = 3; window.setEdit(other); }
         else if (trigger == "format change") { for (auto* action : window.findChild<QMenu*>("formatMenu")->actions()) if (action->data().toStringList().value(0) == "webm") action->trigger(); }
-        else if (trigger == "audio change") window.findChild<QAction*>("includeAudio")->toggle();
+        else if (trigger == "audio change") {
+            QVERIFY(window.inspect()["audioEffective"].toBool());
+            window.findChild<QAction*>("includeAudio")->toggle();
+            QCOMPARE(configs.size(), 1);
+            QVERIFY(!configs.last().at(0).value<RecordingConfig>().audio.system);
+        }
+        else if (trigger == "local refusal") QTest::keyClick(&window, Qt::Key_O, Qt::ShiftModifier);  // no cover selected: refused here, never proposed
         else if (trigger == "agent config change") { auto webm = config(); webm.format = "webm"; webm.codec = "vp9"; QVERIFY(window.setConfig(webm)); }
         else if (trigger == "refusal") window.setEdit(edit, answer(1, "invalid_request"));
         else if (trigger == "timeout") QTest::qWait(2300);
-        else if (trigger == "hover") QToolTip::showText(window.findChild<QPushButton*>("upload")->mapToGlobal(QPoint(4, 4)), "Upload", window.findChild<QPushButton*>("upload"));
+        else if (trigger == "hover") {
+            // The pointer moves over Upload and rests: Qt asks it for its tooltip.
+            auto* button = window.findChild<QPushButton*>("upload");
+            const QPoint at = button->rect().center();
+            QTest::mouseMove(button, at);
+            QHelpEvent rest(QEvent::ToolTip, at, button->mapToGlobal(at));
+            QApplication::sendEvent(button, &rest);
+            PUTGD_TRY_VERIFY(QToolTip::isVisible());
+            QCOMPARE(QToolTip::text(), button->toolTip());
+        }
         else if (trigger == "save a copy dialog") { window.findChild<QPushButton*>("saveCopy")->click(); QVERIFY(window.inspect()["fileDialog"].toObject()["open"].toBool()); }
         else if (trigger == "discard dialog") { window.drive({{"action", "discard"}}); QVERIFY(window.inspect()["discardConfirmation"].toObject()["open"].toBool()); }
-        else if (trigger == "menu") window.findChild<QToolButton*>("uploadDestinationMenu")->menu()->popup(window.mapToGlobal(QPoint(20, 20)));
+        else if (trigger == "menu") { auto* menu = window.findChild<QToolButton*>("uploadDestinationMenu")->menu(); menu->popup(window.mapToGlobal(QPoint(20, 20))); PUTGD_TRY_VERIFY(menu->isVisible()); }
         else if (trigger == "inspect") QVERIFY(window.drive({{"action", "inspect"}}).code.isEmpty());
-        else if (trigger == "dismissStatus") QVERIFY(window.drive({{"action", "dismissStatus"}}).code.isEmpty());
-        else if (trigger == "raise") window.reopen({});
-        else if (trigger == "saved copy") window.setSavedCopy("/tmp/putgd-review-copy.mp4", 2, config());
+        else if (trigger == "dismissStatus") {
+            QVERIFY(status().contains("synthetic"));
+            QVERIFY(window.drive({{"action", "dismissStatus"}}).code.isEmpty());
+            QVERIFY2(!status().contains("synthetic"), qPrintable(status()));
+        }
+        else if (trigger == "raise") { window.hide(); QVERIFY(!window.isVisible()); window.reopen({}); QVERIFY(window.isVisible()); }
+        else if (trigger == "saved copy") { window.setSavedCopy("/tmp/putgd-review-copy.mp4", 2, c); QCOMPARE(window.inspect()["savedCopy"].toObject()["path"].toString(), QString("/tmp/putgd-review-copy.mp4")); }
         else if (trigger == "unchanged push") window.setEdit(edit);
-        else if (trigger == "key press") QTest::keyClick(&window, Qt::Key_Period);
-        else if (trigger == "review action") QVERIFY(window.drive({{"action", "frameStep"}, {"delta", 1}}).code.isEmpty());
-        else if (trigger == "second upload") { ctrlEnter(window); QVERIFY2(status().contains("already waiting"), qPrintable(status())); }
+        else if (trigger == "key press") { QTest::keyClick(&window, Qt::Key_Period); QCOMPARE(window.inspect()["playheadUs"].toDouble(), 33333.0); }
+        else if (trigger == "review action") { const auto result = window.drive({{"action", "frameStep"}, {"delta", 1}}); QVERIFY(result.code.isEmpty()); QCOMPARE(result.state["playheadUs"].toDouble(), 33333.0); }
+        else if (trigger == "second upload") {
+            // The second press keeps the first one's deadline.
+            QTest::qWait(1000);
+            ctrlEnter(window);
+            QVERIFY2(status().contains("already waiting"), qPrintable(status()));
+            const auto left = window.inspect()["uploadDeadlineMs"].toInt();
+            QVERIFY2(left > 0 && left < 1100, qPrintable(QString::number(left)));
+        }
         else QFAIL("unknown trigger");
         // Proposal 1's answer, then the answer to a proposal the trigger made.
         auto accepted = edit;
@@ -632,11 +666,12 @@ private slots:
             QCOMPARE(retries.size(), 0);
             QVERIFY2(status().contains("Upload cancelled"), qPrintable(status()));
             if (trigger == "timeout") QVERIFY2(status().contains("wasn't confirmed in time"), qPrintable(status()));
-            if (trigger == "refusal") QVERIFY2(status().contains("wasn't applied"), qPrintable(status()));
+            if (trigger == "refusal" || trigger == "local refusal") QVERIFY2(status().contains("wasn't applied"), qPrintable(status()));
         } else {
             QCOMPARE(uploads.size(), 1);
             QCOMPARE(uploads[0][0].toULongLong(), 3ull);
             QCOMPARE(saves.size() + retries.size(), 0);
+            QVERIFY2(!status().contains("already waiting"), qPrintable(status()));  // V4: gone once sent
         }
         if (auto* menu = window.findChild<QToolButton*>("uploadDestinationMenu")->menu()) menu->close();
         QToolTip::hideText();
@@ -655,40 +690,6 @@ private slots:
         QVERIFY(window.drive({{"action", "dismissStatus"}}).code.isEmpty());
         QVERIFY(window.inspect()["status"].toString().contains("Upload cancelled"));
         QVERIFY(!window.inspect()["status"].toString().contains("That change wasn't applied"));
-    }
-    // U44 (privacy): "Set to playhead", Set Out and the cover's end edge keep the
-    // frame the viewer shows. At an off-grid playhead that is the frame after it
-    // (30 fps, 40 ms shows frame 2 at 66,667 µs), never the nominal one.
-    void endEdgesKeepTheFrameShownAtAnOffGridPlayhead_data() {
-        QTest::addColumn<int>("fps");
-        QTest::addColumn<qint64>("playhead");
-        QTest::addColumn<qint64>("end");
-        QTest::newRow("30 fps at 40 ms") << 30 << qint64(40000) << qint64(100000);
-        QTest::newRow("30 fps at 1.01 s") << 30 << qint64(1010000) << qint64(1066667);
-        QTest::newRow("60 fps at 20 ms") << 60 << qint64(20000) << qint64(50000);
-        QTest::newRow("60 fps at 1.01 s") << 60 << qint64(1010000) << qint64(1033333);
-    }
-    void endEdgesKeepTheFrameShownAtAnOffGridPlayhead() {
-        QFETCH(int, fps);
-        QFETCH(qint64, playhead);
-        QFETCH(qint64, end);
-        auto c = config();
-        c.fps = fps;
-        ReviewWindow window(options(), c);
-        QSignalSpy proposals(&window, &ReviewWindow::editProposed);
-        window.show();
-        QVERIFY(putgd::test::waitForWindowExposed(&window));
-        RecordingEdit edit;
-        edit.revision = 2;
-        edit.masks = {mask("m1", "solid", 0, 12000000)};
-        window.setEdit(edit);
-        QVERIFY(window.drive({{"action", "seek"}, {"time", double(playhead)}}).code.isEmpty());
-        QVERIFY(window.drive({{"action", "setOut"}}).code.isEmpty());
-        QCOMPARE(proposed(proposals)["end"].toDouble(), double(end));
-        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
-        window.drive({{"action", "seek"}, {"time", double(playhead)}});
-        QVERIFY(window.drive({{"action", "setCoverEdgeToPlayhead"}, {"edge", "end"}}).code.isEmpty());
-        QCOMPARE(proposed(proposals)["mask"].toObject()["end"].toDouble(), double(end));
     }
     // U44 on a real clip: the decoded frame's own time decides, so the cover set
     // to the playhead covers the frame on screen.
@@ -767,39 +768,96 @@ private slots:
         for (const auto& line : window.inspect()["statusRow"].toArray())
             for (const auto& action : line.toObject()["actions"].toArray()) QVERIFY(action.toObject()["drive"].toObject()["action"] != "retryExport");
     }
-    // E24: at 30 and 60 fps, Set Out at frame k keeps frame k, and a cover set to
-    // the playhead ends exactly at edge k+1 = round((k+1)·10⁶/fps).
-    void endEdgesComeFromTheFrameIndex_data() {
+    // E24, U44, V1 (privacy): Set Out and Set to playhead end after the frame on
+    // screen, from that frame's stored time rounded to its grid frame, also for
+    // a seek not yet shown; checked through the exporter: the frame on screen is
+    // the trim's last kept frame and is covered.
+    void endEdgesKeepTheFrameOnScreen_data() {
         QTest::addColumn<int>("fps");
-        QTest::addColumn<int>("frame");
-        QTest::newRow("30 fps frame 1") << 30 << 1;
-        QTest::newRow("30 fps frame 2") << 30 << 2;
-        QTest::newRow("30 fps frame 100") << 30 << 100;
-        QTest::newRow("60 fps frame 1") << 60 << 1;
-        QTest::newRow("60 fps frame 2") << 60 << 2;
-        QTest::newRow("60 fps frame 301") << 60 << 301;
+        QTest::addColumn<QString>("timeline");
+        QTest::addColumn<qint64>("seek");
+        QTest::addColumn<qint64>("shownUs");
+        QTest::newRow("30 fps frame 1 stored at 33 ms") << 30 << "even" << qint64(33333) << qint64(33000);
+        QTest::newRow("30 fps playhead at 40 ms") << 30 << "even" << qint64(40000) << qint64(67000);
+        QTest::newRow("30 fps frame 100") << 30 << "even" << qint64(3333333) << qint64(3333000);
+        QTest::newRow("60 fps frame 1 stored at 17 ms") << 60 << "even" << qint64(16667) << qint64(17000);
+        QTest::newRow("60 fps frame 1 stored at 16 ms") << 60 << "floor" << qint64(16000) << qint64(16000);
+        QTest::newRow("60 fps frame 301") << 60 << "even" << qint64(5016667) << qint64(5017000);
+        QTest::newRow("30 fps seek into a frame gap") << 30 << "gap" << qint64(120000) << qint64(200000);
     }
-    void endEdgesComeFromTheFrameIndex() {
+    void endEdgesKeepTheFrameOnScreen() {
         QFETCH(int, fps);
-        QFETCH(int, frame);
+        QFETCH(QString, timeline);
+        QFETCH(qint64, seek);
+        QFETCH(qint64, shownUs);
+        QTemporaryDir dir;
+        const QString clip = dir.filePath("clip.mkv");
+        // Frame i stored at its time in whole ms (rounded, floored, or after a 100 ms gap).
+        const auto pts = [&](int i) -> qint64 {
+            if (timeline == "floor") return qint64(std::floor(i * 1000.0 / fps));
+            if (timeline == "gap") return std::llround((i < 3 ? i : i + 3) * 1000.0 / fps);
+            return std::llround(i * 1000.0 / fps);
+        };
+        const auto level = [](int i) { return 20 + (i * 9) % 200; };  // neighbours differ visibly
+        QVERIFY(test::gopclip::write(clip, 6, 320, 180, fps, pts, level));
+        auto o = options();
+        o.workingClip = clip;
+        o.durationUs = 6000000;
+        o.canvas = QSize(320, 180);
         auto c = config();
         c.fps = fps;
-        ReviewWindow window(options(), c);
+        ReviewWindow window(o, c);
         QSignalSpy proposals(&window, &ReviewWindow::editProposed);
         window.show();
         QVERIFY(putgd::test::waitForWindowExposed(&window));
         RecordingEdit edit;
         edit.revision = 2;
-        edit.masks = {mask("m1", "solid", 0, 12000000)};
+        edit.masks = {mask("m1", "solid", 0, 6000000)};
+        edit.masks[0].rect = QRect(10, 10, 100, 60);
         window.setEdit(edit);
-        const auto edgeAt = [&](qint64 k) { return double(std::llround(double(k) * 1e6 / fps)); };
-        QVERIFY(window.drive({{"action", "seek"}, {"time", edgeAt(frame)}}).code.isEmpty());
-        QVERIFY(window.drive({{"action", "setOut"}}).code.isEmpty());
-        QCOMPARE(proposed(proposals)["end"].toDouble(), edgeAt(frame + 1));
         window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
-        window.drive({{"action", "seek"}, {"time", edgeAt(frame)}});
+        // Proposed at once after the seek, before its frame was shown.
+        QVERIFY(window.drive({{"action", "seek"}, {"time", double(seek)}}).code.isEmpty());
+        QVERIFY(window.drive({{"action", "setOut"}}).code.isEmpty());
+        QCOMPARE(window.inspect()["preview"].toObject()["shownUs"].toDouble(), double(shownUs));
+        const qint64 k = std::llround(double(shownUs) * fps / 1e6);
+        const qint64 end = std::llround(double(k + 1) * 1e6 / fps);
+        QCOMPARE(qint64(proposed(proposals)["end"].toDouble()), end);
+        QVERIFY(window.drive({{"action", "seek"}, {"time", double(seek)}}).code.isEmpty());
         QVERIFY(window.drive({{"action", "setCoverEdgeToPlayhead"}, {"edge", "end"}}).code.isEmpty());
-        QCOMPARE(proposed(proposals)["mask"].toObject()["end"].toDouble(), edgeAt(frame + 1));
+        QCOMPARE(qint64(proposed(proposals)["mask"].toObject()["end"].toDouble()), end);
+        // Through the exporter: its frame k is the frame on screen, kept by the trim and covered.
+        int ordinal = 0;
+        while (pts(ordinal) * 1000 != shownUs) ++ordinal;
+        const auto exported = [&](const QString& name, const RecordingEdit& e, QImage& last) {
+            ExportRequest request;
+            request.input = clip;
+            request.output = dir.filePath(name);
+            request.edit = e;
+            request.config = c;
+            request.durationUs = o.durationUs;
+            request.canvas = o.canvas;
+            ExportResult result;
+            std::atomic_bool cancelled{false};
+            if (const auto error = exportClip(request, result, cancelled)) return error.code == "recording_unsupported" ? QStringLiteral("skip") : error.message;
+            if (auto error = previewFrame(request.output, {}, c, std::llround(double(k) * 1e6 / fps), 64, {}, last)) return error.message;
+            return QString();
+        };
+        RecordingEdit trimmed;
+        trimmed.trimEnd = end;
+        QImage last;
+        auto failure = exported("trim.mp4", trimmed, last);
+        if (failure == "skip") QSKIP("No MP4 encoder in this FFmpeg");
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        const int grey = test::gopclip::grayOf(level(ordinal));
+        QVERIFY2(std::abs(qGray(last.pixel(last.width() - 4, last.height() - 4)) - grey) <= 3, qPrintable(QStringLiteral("the trim's last frame is grey %1, the frame on screen %2").arg(qGray(last.pixel(last.width() - 4, last.height() - 4))).arg(grey)));
+        RecordingEdit covered;
+        auto cover = edit.masks[0];
+        cover.end = end;
+        covered.masks = {cover};
+        failure = exported("cover.mp4", covered, last);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QVERIFY2(qGray(last.pixel(10, 10)) <= 8, qPrintable(QStringLiteral("the frame on screen is not covered (grey %1)").arg(qGray(last.pixel(10, 10)))));
     }
     // U18: a held Enter (auto-repeat) never reaches Upload; Ctrl+Enter does not repeat.
     void aHeldEnterNeverUploads() {

@@ -1038,6 +1038,8 @@ void RecordingService::retryExport(JsonReply reply, JsonReply done) {
 }
 void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done) {
     auto& s = *session_;
+    // Past its deadline the helper may still be exporting: no second export until its late result.
+    if (s.helperExporting) { reply({"recording_state", "An export is still finishing. Try again when it's done.", {}}, {}); return; }
     const auto settings = s.op.settings;
     QString destination;
     bool overwrite = false;

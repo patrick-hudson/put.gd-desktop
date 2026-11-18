@@ -271,7 +271,8 @@ private:
     qint64 frameIndex(qint64 us) const;
     qint64 nextFrameEdge(qint64 at) const;   // the edge after the frame at `at`
     qint64 previousFrame(qint64 edge) const; // the frame before an end edge
-    qint64 shownFrameEnd() const;            // the edge after the frame shown at the playhead
+    std::optional<qint64> shownFrameEnd();   // the edge after the frame shown at the playhead
+    QString refuseChange(const QString& message);
     qint64 frameAt(qint64 index) const;
     std::optional<qint64> firstFrameIn(const recording::Span&) const;
     std::optional<qint64> lastFrameIn(const recording::Span&) const;

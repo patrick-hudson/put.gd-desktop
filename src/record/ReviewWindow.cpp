@@ -1121,16 +1121,17 @@ qint64 ReviewWindow::frameAt(qint64 index) const { return std::llround(double(in
 // a rounded frame length: 33,333 + 33,333 is not frame 2's 66,667.
 qint64 ReviewWindow::frameIndex(qint64 us) const { return std::llround(double(us) * std::max(1, config_.fps) / 1e6); }
 qint64 ReviewWindow::nextFrameEdge(qint64 at) const { return std::min(options_.durationUs, frameAt(frameIndex(at) + 1)); }
-// The edge after the frame the viewer shows for the playhead: the decoded
-// frame's own time when it was decoded for this playhead, else the frame a
-// preview there shows (the first at or after it). Never the nominal playhead
-// frame: at 30 fps a playhead at 40 ms shows the frame at 66,667 µs (#1635 U44).
-qint64 ReviewWindow::shownFrameEnd() const {
-    const qint64 at = shownFor_ == playhead_ && shownActual_ >= 0 ? shownActual_ : playhead_;
-    qint64 k = std::max<qint64>(0, frameIndex(at) - 1);
-    if (shownFor_ == playhead_ && shownActual_ >= 0) { while (frameAt(k + 1) <= at) ++k; }
-    else while (frameAt(k) < at) ++k;
-    return std::min(options_.durationUs, frameAt(k + 1));
+// The edge after the frame the viewer shows for the playhead, from that
+// frame's own time, never the nominal playhead frame (#1635 U44, V1): at 30 fps
+// a playhead at 40 ms shows the frame at 66,667 µs. A stored time is rounded to
+// its nearest grid frame (Matroska keeps 33,333 as 33,000, and the exporter puts
+// that frame on 33,333). A seek not yet shown is decoded now; with no frame
+// shown for the playhead there is no end (the caller refuses).
+std::optional<qint64> ReviewWindow::shownFrameEnd() {
+    const auto resolved = [this] { return shownFor_ == playhead_ && shownActual_ >= 0 && !edgePreview_; };
+    if (!resolved()) { frameTimer_.stop(); refreshFrame(); }
+    if (!resolved()) return std::nullopt;
+    return std::min(options_.durationUs, frameAt(frameIndex(shownActual_) + 1));
 }
 qint64 ReviewWindow::previousFrame(qint64 edge) const { return frameAt(std::max<qint64>(0, frameIndex(edge) - 1)); }
 // Frame times are rounded (30 fps: 66,667 µs is frame 2), so the estimate is
@@ -1415,22 +1416,31 @@ void ReviewWindow::seekCoverEdge(const QString& id, bool start) {
     const auto at = start ? firstKeptFrame(mask->start, mask->end) : lastKeptFrame(mask->start, mask->end);
     if (at) seek(*at);
 }
+// A change refused here was never proposed: a waiting Upload is cancelled so
+// it never goes out without it (#1635 V3).
+QString ReviewWindow::refuseChange(const QString& message) {
+    cancelUpload(QStringLiteral("a change wasn't applied"));
+    showError(message, false);
+    return message;
+}
 QString ReviewWindow::setTrimAt(bool start) {
     const qint64 at = playhead_;
-    const auto refuse = [this](const QString& message) { showError(message, false); return message; };
+    const auto refuse = [this](const QString& message) { return refuseChange(message); };
     if (start) {
         if (at >= edit_.exportEnd(options_.durationUs)) return refuse("Trim start must be before the trim end");
         propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(at)}, {"end", edit_.trimEnd ? QJsonValue(double(*edit_.trimEnd)) : QJsonValue(QJsonValue::Null)}}});
         return {};
     }
     // The frame shown at the playhead is the last one kept.
-    const qint64 end = shownFrameEnd();
+    const auto shown = shownFrameEnd();
+    if (!shown) return refuse("The frame at the playhead isn't shown yet. Try again once it is.");
+    const qint64 end = *shown;
     if (end <= edit_.trimStart) return refuse("Trim end must be after the trim start");
     propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(edit_.trimStart)}, {"end", end >= options_.durationUs ? QJsonValue(QJsonValue::Null) : QJsonValue(double(end))}}});
     return {};
 }
 QString ReviewWindow::setMaskAt(bool start, const QString& id) {
-    const auto refuse = [this](const QString& message) { showError(message, false); return message; };
+    const auto refuse = [this](const QString& message) { return refuseChange(message); };
     const auto* mask = id.isEmpty() ? selectedMask() : maskById(id);
     if (!mask) return refuse("Select a cover to set its times");
     const qint64 at = playhead_;
@@ -1439,7 +1449,9 @@ QString ReviewWindow::setMaskAt(bool start, const QString& id) {
         updateCover(mask->id, [&](QJsonObject& m) { m["start"] = double(at); });
     } else {
         // Until the playhead: the frame shown stays covered.
-        const qint64 end = shownFrameEnd();
+        const auto shown = shownFrameEnd();
+        if (!shown) return refuse("The frame at the playhead isn't shown yet. Try again once it is.");
+        const qint64 end = *shown;
         if (end <= mask->start) return refuse("The cover must end after it starts");
         updateCover(mask->id, [&](QJsonObject& m) { m["end"] = double(end); });
     }
@@ -1616,6 +1628,7 @@ bool ReviewWindow::tryUpload() {
     if (!uploadWaiting_ || proposalPending()) return false;
     uploadWaiting_ = false;
     uploadWait_.stop();
+    uploadNotice_ = {};  // "already waiting" is over once it is sent
     refreshAll();
     closing_ = true;
     emit uploadRequested(edit_.revision, config_);
@@ -2032,7 +2045,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"cuts", cuts}, {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"selectedMaskName", mask ? QJsonValue(maskNames_->name(*mask)) : QJsonValue(QJsonValue::Null)},
         {"selection", selection}, {"selectedEdit", selectedEdit}, {"edits", panel["rows"]}, {"placement", placement},
-        {"lastRefusal", lastRefusal_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(lastRefusal_)}, {"uploadWaiting", uploadWaiting_},
+        {"lastRefusal", lastRefusal_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(lastRefusal_)}, {"uploadWaiting", uploadWaiting_}, {"uploadDeadlineMs", uploadWait_.isActive() ? uploadWait_.remainingTime() : -1},
         {"playbackQueuedEnd", bool(playEnded_ && playEnded_->load())},
         {"playhead", QJsonObject{{"sourceUs", double(playhead_)}, {"outputUs", double(kept_.toOutput(playhead_))}}},
         {"undo", QJsonObject{{"canUndo", edit_.canUndo}, {"canRedo", edit_.canRedo}}},
