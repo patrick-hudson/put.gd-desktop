@@ -372,7 +372,7 @@ private slots:
   source.acknowledge();
   PUTGD_TRY_VERIFY(answered);QVERIFY2(!retried,qPrintable(retried.code));
   PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(provider->uploads.load(),3);
-  if(source.pending)source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  PUTGD_TRY_VERIFY([&]{if(source.pending)source.acknowledge();return operations.diagnostics()["activeOperations"].toInt()==0;}());
   // A Retry of an operation that is genuinely running is still refused.
   provider->deferUploads=true;
   operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
