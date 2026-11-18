@@ -563,8 +563,12 @@ private slots:
   OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
   QSignalSpy failures(&ops,&OperationService::operationError);
-  const auto fault=ops.databasePath()+"-journal";QVERIFY(QDir().mkdir(fault));auto lift=qScopeGuard([&]{QDir().rmdir(fault);});
-  Error error;bool answered=false;ops.retryLocalSave(id,[&](Error e,QJsonObject){error=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(error.code,QString("history_io"));
+  // Another connection holds the write lock: the Retry local save can read the operation, and its write is refused
+  // once SQLite's 10 s busy wait ends.
+  const auto name=QUuid::createUuid().toString();auto release=qScopeGuard([&]{QSqlDatabase::removeDatabase(name);});
+  {auto holder=QSqlDatabase::addDatabase("QSQLITE",name);holder.setDatabaseName(ops.databasePath());QVERIFY(holder.open());QVERIFY(QSqlQuery(holder).exec("BEGIN IMMEDIATE"));}
+  Error error;bool answered=false;ops.retryLocalSave(id,[&](Error e,QJsonObject){error=e;answered=true;});PUTGD_TRY_VERIFY_WITH_TIMEOUT(answered,30000);QCOMPARE(error.code,QString("history_io"));
+  {auto holder=QSqlDatabase::database(name,false);QSqlQuery(holder).exec("ROLLBACK");holder.close();}
   QCOMPARE(failures.count(),1);const auto snapshot=failures.first().at(1).toJsonObject();
   QCOMPARE(snapshot["id"].toString(),id);QCOMPARE(snapshot["items"].toArray().size(),1);QVERIFY(!snapshot.contains("writeFailed"));
   QCOMPARE(ops.diagnostics()["unsavedHistoryResults"].toInt(),1);
