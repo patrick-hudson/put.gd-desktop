@@ -89,6 +89,13 @@ QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
 bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit", "text"}.contains(action); }
 bool Settings::delayableEditSource(const QString& source) { return QStringList{"region", "window", "desktop"}.contains(source); }
 
+QString Settings::quickRedactPatternError(const QString& pattern) {
+    const auto problem = textjob::redactPatternError(pattern);
+    if (!problem.isEmpty()) return problem;
+    if (QStringView(pattern).toUcs4().size() > textjob::maxRedactPatternLength) return QStringLiteral("A pattern is longer than %1 characters").arg(textjob::maxRedactPatternLength);
+    return {};
+}
+
 QJsonObject Settings::withCleanRedactLists(const QJsonObject& original) {
     if (!original.value("preferences").isObject()) return original;
     auto preferences = original.value("preferences").toObject();
@@ -100,9 +107,9 @@ QJsonObject Settings::withCleanRedactLists(const QJsonObject& original) {
         for (const auto& entry : preferences.value(key).toArray()) {
             if (!entry.isString()) { out.append(entry); continue; }
             const auto text = words ? entry.toString().trimmed() : entry.toString();
-            const auto folded = words ? text.toCaseFolded() : text;
-            if (seen.contains(folded)) continue;
-            seen << folded;
+            // Exact repeats only: entries that differ in case can still be matched differently (ProjectAlpha also reads as Project Alpha).
+            if (seen.contains(text)) continue;
+            seen << text;
             out.append(text);
         }
         if (out != preferences.value(key).toArray()) { preferences[key] = out; changed = true; }
@@ -449,7 +456,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         for (const auto& pattern : patterns.toArray()) {
             ++index;
             if (!pattern.isString()) return invalid("/preferences/quickRedactPatterns", wrong);
-            const auto problem = textjob::redactPatternError(pattern.toString());
+            const auto problem = quickRedactPatternError(pattern.toString());
             if (!problem.isEmpty()) return invalid(QStringLiteral("/preferences/quickRedactPatterns/%1").arg(index - 1), QStringLiteral("Pattern %1: %2").arg(index).arg(sentence(problem)));
         }
     }
@@ -547,11 +554,10 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.fileManagerMenu = doc["preferences"].toObject()["fileManagerMenu"].toBool(true);
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     for (const auto& language : doc["preferences"].toObject()["textRecognitionLanguages"].toArray()) settings.textRecognitionLanguages.append(language.toString());
-    // #1618: terms are trimmed and each is kept once (ignoring case), in the order written.
+    // #1618: terms are trimmed and each exact repeat is dropped, in the order written.
     for (const auto& value : doc["preferences"].toObject()["quickRedactTerms"].toArray()) {
         const auto term = value.toString().trimmed();
-        const bool known = std::any_of(settings.quickRedactTerms.cbegin(), settings.quickRedactTerms.cend(), [&](const QString& saved) { return saved.compare(term, Qt::CaseInsensitive) == 0; });
-        if (!term.isEmpty() && !known) settings.quickRedactTerms.append(term);
+        if (!term.isEmpty() && !settings.quickRedactTerms.contains(term)) settings.quickRedactTerms.append(term);
     }
     for (const auto& pattern : doc["preferences"].toObject()["quickRedactPatterns"].toArray()) if (!settings.quickRedactPatterns.contains(pattern.toString())) settings.quickRedactPatterns.append(pattern.toString());
     return settings;

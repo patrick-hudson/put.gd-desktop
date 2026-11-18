@@ -166,15 +166,16 @@ private slots:
         const auto path = dir.filePath("config.json");
         putgd::SettingsService service(path);
         QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
-        const auto patched = service.patch({{"preferences", QJsonObject{{"quickRedactTerms", QJsonArray{"  Project Aurora ", "project aurora", "d69", "d69 ", "acme"}},
+        const auto patched = service.patch({{"preferences", QJsonObject{{"quickRedactTerms", QJsonArray{"  Project Aurora ", "Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "d69 ", "acme"}},
                                                                         {"quickRedactPatterns", QJsonArray{"\\bJIRA-\\d+\\b", "\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}}}}},
                                           service.metadata()["observedRevision"].toString());
         QVERIFY2(!patched.error, qPrintable(patched.error.message));
         const auto saved = QJsonDocument::fromJson(read(path)).object()["preferences"].toObject();
-        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"Project Aurora", "d69", "acme"}));
+        // Only exact repeats go: entries that differ in case can match differently (ProjectAlpha also reads as Project Alpha).
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "acme"}));
         // A pattern's spaces are part of it, so only exact repeats go.
         QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}));
-        QCOMPARE(service.snapshot().quickRedactTerms, (QStringList{"Project Aurora", "d69", "acme"}));
+        QCOMPARE(service.snapshot().quickRedactTerms, (QStringList{"Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "acme"}));
     }
     // Round 2 (U12): the limits apply to what was sent, before repeats are dropped.
     void quickRedactListLimitsCountRepeatsToo() {
@@ -196,6 +197,21 @@ private slots:
         const auto saved = QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject();
         QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"same"}));
         QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bsame\\b"}));
+    }
+    // CodeRabbit 4613753597: a pattern is never trimmed when it runs, so its length is counted as written.
+    void quickRedactPatternLengthCountsThePatternAsWritten() {
+        const auto withPattern = [](const QString& pattern) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences["quickRedactPatterns"] = QJsonArray{pattern};
+            document["preferences"] = preferences;
+            return putgd::Settings::validate(document);
+        };
+        QVERIFY(!withPattern(QString(500, 'x')));
+        const auto error = withPattern(QString(500, ' ') + "x");
+        QCOMPARE(error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns/0"));
+        QVERIFY(error.message.startsWith("Pattern 1:"));
     }
     void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
         auto document = putgd::Settings::defaults();
@@ -559,13 +575,13 @@ private slots:
         QVERIFY(none.quickRedactPatterns.isEmpty());
         auto document = defaults;
         auto preferences = document["preferences"].toObject();
-        // Terms are trimmed and each is kept once, ignoring case, in the order written.
-        preferences["quickRedactTerms"] = QJsonArray{"Project Aurora", "  acme.corp  ", "PROJECT aurora", "d69"};
+        // Terms are trimmed and each exact repeat is dropped, in the order written; a different case is a different entry.
+        preferences["quickRedactTerms"] = QJsonArray{"Project Aurora", "  acme.corp  ", "Project Aurora ", "PROJECT aurora", "d69"};
         preferences["quickRedactPatterns"] = QJsonArray{"\\bJIRA-\\d+\\b", "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b"};
         document["preferences"] = preferences;
         QVERIFY(!putgd::Settings::validate(document));
         const auto settings = putgd::Settings::fromValidated(document);
-        QCOMPARE(settings.quickRedactTerms, (QStringList{"Project Aurora", "acme.corp", "d69"}));
+        QCOMPARE(settings.quickRedactTerms, (QStringList{"Project Aurora", "acme.corp", "PROJECT aurora", "d69"}));
         QCOMPARE(settings.quickRedactPatterns, (QStringList{"\\bJIRA-\\d+\\b", "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b"}));
         QVERIFY(!putgd::Settings::validate(putgd::Settings::normalized(document)));
     }

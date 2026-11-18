@@ -165,7 +165,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   // Only a list the editor would accept, and only when it is not empty.
   const auto sound=[](const QStringList& list,int most,QString(*error)(const QString&)){if(list.isEmpty()||list.size()>most)return false;for(const auto& entry:list)if(!error(entry).isEmpty())return false;return true;};
   if(sound(redactTerms_,textjob::maxRedactTerms,textjob::redactTermError))request["redactTerms"]=QJsonArray::fromStringList(redactTerms_);
-  if(sound(redactPatterns_,textjob::maxRedactPatterns,textjob::redactPatternError))request["redactPatterns"]=QJsonArray::fromStringList(redactPatterns_);
+  if(sound(redactPatterns_,textjob::maxRedactPatterns,Settings::quickRedactPatternError))request["redactPatterns"]=QJsonArray::fromStringList(redactPatterns_);
  }
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
