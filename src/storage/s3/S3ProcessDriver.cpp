@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -47,8 +48,11 @@ class ProcessDriver final:public S3Driver {
 public:
  ProcessDriver(QString path,CredentialLookup credentials,ReadinessCheck readiness,S3ProcessLimits limits):path_(std::move(path)),credentials_(std::move(credentials)),readiness_(std::move(readiness)),limits_(limits){}
  ~ProcessDriver()override{closePrepared();}
+ // Why the last prepare() failed, in words the user can act on.
+ Error startFailure()const{return startError_?startError_:unavailable();}
  bool prepare(){
   if(process_)return ready_&&!failed_;
+  startError_={};
   ready_=activated_=activationAcknowledged_=terminal_=failed_=cancelSent_=checkpointException_=false;reply_={};pending_.reset();
   nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;
   process_=std::make_unique<QProcess>();process_->setProcessChannelMode(QProcess::SeparateChannels);
@@ -64,7 +68,13 @@ public:
   environment.insert("PUTGD_AWS_LOG_LEVEL",logging::debug()?"info":"warn");environment.insert("QT_FORCE_STDERR_LOGGING","1");
   process_->setProcessEnvironment(environment);
   process_->start(helperPath(),{});
-  if(!process_->waitForStarted(10000)){output_.failedToStart(process_->errorString());failed_=true;resetProcess();return false;}
+  if(!process_->waitForStarted(10000)){
+   // An installed worker that cannot start right now (no descriptors or memory left) is not a
+   // missing or incompatible one: say why, and that trying again helps.
+   const auto reason=process_->errorString();output_.failedToStart(reason);
+   if(QFileInfo(helperPath()).isExecutable())startError_={"s3_module_unavailable","S3 support could not start ("+reason+"); try again",{{"reason",reason}}};
+   failed_=true;resetProcess();return false;
+  }
   output_.started(process_->processId(),{{"generation",qint64(generation_)}});
   auto boot=envelope();boot["build"]=build();boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=path_;
   if(control_->send("bootstrap",boot).isEmpty())failed_=true;
@@ -181,7 +191,7 @@ private:
   if(!s3wire::validateRequest(method,request))return invalidRequest(method,request);
   destination_=destination;checkpoint_=std::move(checkpoint);rpc_=0;activeMethod_=method;
   progress_=std::move(progress);uploadBytes_=method=="upload"?request["artifact"].toObject()["bytes"].toInteger():0;
-  if(!prepare()){progress_={};return unavailable();}
+  if(!prepare()){progress_={};return startFailure();}
   auto activate=envelope();activate["method"]=method;activate["request"]=request;
   // SDK CURL bounds each HTTP exchange; allow the complete driver's bounded
   // call chain, slow local artifact hashing and durable persistence separately.
@@ -243,11 +253,12 @@ private:
  std::function<void(const UploadProgress&)> progress_;qint64 uploadBytes_=0;
  std::function<int(int)> lanes_;std::function<void(const QJsonObject&)> trace_;
  bool ready_=false,activated_=false,activationAcknowledged_=false,terminal_=false,failed_=false,cancelSent_=false,checkpointException_=false;qint64 stderrBytes_=0;
+ Error startError_;
  HelperOutput output_{"putgd-s3-worker",logS3(),true};
 };
 }
 S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits){
  auto driver=std::make_unique<ProcessDriver>(path,std::move(credentials),std::move(readiness),limits);
- if(!driver->prepare()){error=unavailable();return nullptr;}return driver.release();
+ if(!driver->prepare()){error=driver->startFailure();return nullptr;}return driver.release();
 }
 }
