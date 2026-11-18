@@ -73,16 +73,23 @@ bool credentialLike(const QString& value) {
     return letter && digit;
 }
 
-QStringList credentialValues(const QByteArray& json) {
+// Every credential-like row value in the file, or (`asRead`) those of the row lists the
+// import reads: of two spellings of one list name ("Headers", "headers") the last.
+QStringList credentialValues(const QByteArray& json, bool asRead = false) {
     QStringList out;
     const auto object = QJsonDocument::fromJson(json).object();
+    QHash<QString, QJsonObject> read;
     for (auto it = object.begin(); it != object.end(); ++it) {
         const auto key = it.key().toLower();
         if (key != "headers" && key != "parameters" && key != "arguments") continue;
+        if (asRead) { read.insert(key, it.value().toObject()); continue; }
         const auto rows = it.value().toObject();
         for (auto row = rows.begin(); row != rows.end(); ++row)
             if (row.value().isString() && credentialLike(row.value().toString())) out.append(row.value().toString());
     }
+    for (const auto& rows : std::as_const(read))
+        for (auto row = rows.begin(); row != rows.end(); ++row)
+            if (row.value().isString() && credentialLike(row.value().toString())) out.append(row.value().toString());
     return out;
 }
 
@@ -135,6 +142,8 @@ void sxcu(const QByteArray& json) {
         // A key the import took out of an address ("secrets/...") included (#1570).
         if (credentialLike(it.value())) leaked(it.value());
     }
+    // So is the value of a row that is not sent, and is therefore not stored.
+    for (const auto& value : credentialValues(json, true)) leaked(value);
     // What the import hands to importUploaderFile is what the destination's own rules take,
     // once the caller has allowed plain HTTP, which a file may need and may not decide for
     // itself (a refusal there is a reply to the person, so this is a property of the reader).

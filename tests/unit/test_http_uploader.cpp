@@ -192,15 +192,117 @@ private slots:
         QVERIFY(!refused.error.message.contains(key));
         QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
     }
-    // A key taken out of the request URL is named in the deletion URL, not stored twice.
-    void importNamesARequestUrlKeyInTheDeletionUrl() {
+    // Sol review of #1614: the whole text that is kept counts, and a credential is named
+    // only by a label that cannot hold it.
+    void importLeavesOutWhatRepeatsACredential_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("field"); // the setting that is left out
+        QTest::addColumn<QString>("note");
         const QString key = token;
-        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload/" + key},
-                               {"Body", "Binary"}, {"URL", "{json:url}"}, {"DeletionURL", "https://media.example.test/delete/{json:id}/" + key}};
+        const QJsonObject base{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"}};
+        auto help = base;
+        help["ErrorMessage"] = "{json:error} (" + key + ") see https://help.example.test/errors";
+        QTest::newRow("error message before an address") << help << "errorMessage" << "ErrorMessage repeated the value of argument token";
+        auto host = base;
+        host["ThumbnailURL"] = "https://" + key + ".cdn.example.test/{json:t}";
+        QTest::newRow("thumbnail host") << host << "thumbnailUrl" << "ThumbnailURL repeated the value of argument token";
+        auto inside = base;
+        inside["ThumbnailURL"] = "{json:files." + key + "}";
+        QTest::newRow("inside a placeholder") << inside << "thumbnailUrl" << "ThumbnailURL repeated the value of argument token";
+        auto escaped = base;
+        escaped["ThumbnailURL"] = "{json:t}?k=" + key.left(10) + "\\" + key.mid(10);
+        QTest::newRow("across an escape") << escaped << "thumbnailUrl" << "ThumbnailURL repeated the value of argument token";
+        auto deletion = base;
+        deletion["DeletionURL"] = "{json:url}/delete?k={json:" + key + "}";
+        QTest::newRow("deletion URL placeholder") << deletion << "deletionUrl" << "DeletionURL repeated the value of argument token";
+        // A query value a Parameters row of the same name replaced is still a credential.
+        auto displaced = base;
+        displaced.remove("Arguments");
+        displaced["RequestURL"] = "https://media.example.test/upload?token=" + key;
+        displaced["Parameters"] = QJsonObject{{"token", "replacement-value"}};
+        displaced["ThumbnailURL"] = "{json:t}?k=" + key;
+        QTest::newRow("displaced query value") << displaced << "thumbnailUrl" << "ThumbnailURL repeated the value of parameter token";
+        // A form body text that is not sent is looked for too.
+        auto data = base;
+        data["Data"] = "{\"token\":\"" + key + "\"}";
+        data.remove("Arguments");
+        data["ErrorMessage"] = "{json:error} " + key;
+        QTest::newRow("unsent body text") << data << "errorMessage" << "ErrorMessage repeated the value of request body";
+    }
+    void importLeavesOutWhatRepeatsACredential() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, field);
+        QFETCH(QString, note);
+        const QString key = token;
         const auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
-        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}/{secret:secrets/url-key}"));
-        QCOMPARE(result.secrets.keys(), QStringList({"secrets/url-key"}));
+        QCOMPARE(result.settings[field].toString(), QString());
+        const auto notes = result.notes.join(' ');
+        QVERIFY2(notes.contains(note), qPrintable(notes));
+        QVERIFY(!notes.contains(key) && !result.name.contains(key));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(key.toUtf8()));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+    }
+    void importRefusesWhatRepeatsACredential_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("message");
+        const QString key = token;
+        const QJsonObject base{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"}};
+        auto user = base;
+        user["URL"] = "https://" + key + "@media.example.test/{json:u}";
+        QTest::newRow("link user information") << user << "URL repeats the value of argument token";
+        auto request = base;
+        request["RequestURL"] = "https://upload:" + key + "@media.example.test/upload";
+        QTest::newRow("request URL user information") << request << "RequestURL repeats the value of argument token";
+        // A credential that runs across the "?" the request URL is split at.
+        auto across = base;
+        across["Headers"] = QJsonObject{{"X-Api-Key", "segment123?q=v"}};
+        across["RequestURL"] = "https://media.example.test/segment123?q=v";
+        QTest::newRow("across the query") << across << "RequestURL repeats the value of header X-Api-Key";
+        // The row's name holds its own value: it is named by its place.
+        auto named = base;
+        named["Arguments"] = QJsonObject{{key, key}};
+        named["URL"] = "{json:u}?k=" + key;
+        QTest::newRow("label holds the credential") << named << "URL repeats the value of argument 1";
+        auto form = base;
+        form["FileFormName"] = key;
+        QTest::newRow("file form name") << form << "FileFormName repeats the value of argument token";
+        auto rowName = base;
+        rowName["Headers"] = QJsonObject{{"X-" + key, "on"}};
+        QTest::newRow("row name") << rowName << "The name of the header 1 repeats the value of argument token";
+        // Rows that are not sent count toward the limit, so their number is bounded.
+        QJsonObject many;
+        for (int i = 0; i <= maximumRows; ++i) many["a" + QString::number(i)] = "v";
+        auto unsent = base;
+        unsent["Body"] = "None";
+        unsent["Arguments"] = many;
+        QTest::newRow("too many unsent arguments") << unsent << "more than 32 arguments";
+    }
+    void importRefusesWhatRepeatsACredential() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, message);
+        const auto refused = importSxcu(sxcu(file));
+        QVERIFY2(refused.error.message.contains(message), qPrintable(refused.error.message));
+        QVERIFY(!refused.error.message.contains(QString(token)));
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
+    }
+    // A key the deletion URL shares with the request URL is stored for each, and a
+    // deletion key that only begins like the request key stays whole.
+    void importStoresADeletionKeyApartFromTheRequestKey() {
+        const QString first = "a1b2c3d4e5f60718", longer = first + "9z8y7x6w"; // synthetic runs
+        QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload/" + first},
+                         {"Body", "Binary"}, {"URL", "{json:url}"}, {"DeletionURL", "https://media.example.test/delete/{json:id}/" + longer}};
+        auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}/{secret:secrets/deletion-key-2}"));
+        QCOMPARE(result.secrets.value("secrets/url-key"), first);
+        QCOMPARE(result.secrets.value("secrets/deletion-key-2"), longer);
+        file["DeletionURL"] = "https://media.example.test/delete/{json:id}/" + first;
+        result = importSxcu(sxcu(file));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}/{secret:secrets/deletion-key-2}"));
+        QCOMPARE(result.secrets.value("secrets/deletion-key-2"), first);
     }
     // By hand as well: only the deletion URL may name a stored value among the reply values.
     void storedValuesStayOutOfWhatIsShownOrRecorded() {
