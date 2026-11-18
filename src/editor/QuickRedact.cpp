@@ -425,8 +425,9 @@ QStringList termParts(const QString& term) {
  // Punctuation before the first letter or after the last stays literal: an
  // entry ".env" is not "env". Whitespace there is a join like any other, so
  // "# 42" is the parts "#" and "42" and matches "# 42" and "#42".
- static const QRegularExpression space(QStringLiteral("\\s+"));
- auto lead=text.left(first).split(space),trail=text.mid(last+1).split(space);
+ // One whitespace test everywhere, Qt's (as the validator trims): U+0085 too.
+ const auto chunks=[](const QString& edge){QStringList out{QString()};for(const auto c:edge){if(c.isSpace())out.append(QString());else out.last()+=c;}return out;};
+ auto lead=chunks(text.left(first)),trail=chunks(text.mid(last+1));
  parts.first().prepend(lead.takeLast());parts.last().append(trail.takeFirst());
  lead.removeAll(QString());trail.removeAll(QString());
  parts=lead+parts+trail;
@@ -525,7 +526,8 @@ QList<QList<int>> formHits(const Joined& joined,const Form& form) {
 QList<Form> nameForms(const QString& login,const QString& realName) {
  QList<Form> out;
  const auto add=[&](Form f){if(!f.parts.isEmpty()&&(f.parts.size()>1||points(f.parts.first())>=3))out.append(std::move(f));};
- const auto words=normalized(realName).split(QRegularExpression(QStringLiteral("\\s+")),Qt::SkipEmptyParts);
+ QStringList words{QString()};for(const auto c:normalized(realName)){if(c.isSpace())words.append(QString());else words.last()+=c;}
+ words.removeAll(QString());
  if(!words.isEmpty()){
   add(form(termParts(realName)));
   if(words.size()>=2){
@@ -554,25 +556,18 @@ void claim(const QString& category,QList<int> words,QSet<int>& taken,QList<Match
  for(const int w:words)taken.insert(w);
  matches.append({category,words});
 }
-// Decision 6: what a pattern sees. Each line's words joined with one space, and
-// the next line after "\n" only where the wrap evidence joins them; elsewhere a
-// line starts a new text. A text longer than patternSubjectLimit is searched in
-// windows of at most that many characters that overlap by patternOverlap, cut
-// between words where it can be. A hit that starts at a window's cut start or
-// ends at its cut end is dropped, since there ^, $, \b and the like would see
-// the cut and not the text; the overlapping window finds it with its real
-// neighbours. So a match longer than the overlap that crosses a window's edge
-// is not found, and a lookaround does not see past a window's edges. A lone
-// surrogate becomes U+FFFD (it can match nothing either way).
-constexpr qsizetype patternSubjectLimit=1000,patternOverlap=200;
-struct Window {Joined text;bool cutBefore=false,cutAfter=false;};
-Joined slice(const Joined& text,qsizetype from,qsizetype to) {return {text.text.mid(from,to-from),text.owner.mid(from,to-from)};}
-QList<Window> patternTexts(const QList<QString>& plain,const QList<RecognizedWord>& candidates,const QSet<int>& full) {
+// Decision 6: the subjects a pattern sees (QuickRedact.h): every line, then
+// every pair of consecutive lines in reading order, joined with "\n". A pair's
+// hit counts only when it crosses that break, so a hit inside one line is
+// claimed once, from the line, and pairs inside a line come out as they do in
+// the line alone. A lone surrogate becomes U+FFFD (it can match nothing either
+// way).
+struct Subject {Joined text;qsizetype lineBreak=-1;};
+QList<Subject> patternSubjects(const QList<QString>& plain,const QList<RecognizedWord>& candidates) {
  QList<Joined> lines;
  for(int i=0;i<plain.size();++i){
-  const bool boundary=i>0&&candidates.at(i).line!=candidates.at(i-1).line;
-  if(i==0||(boundary&&!wrapEvidence(plain.at(i-1),plain.at(i),QStringLiteral("list"),full.contains(candidates.at(i-1).line))))lines.append(Joined{});
-  else{lines.last().text+=boundary?'\n':' ';lines.last().owner.append(-1);}
+  if(i==0||candidates.at(i).line!=candidates.at(i-1).line)lines.append(Joined{});
+  else{lines.last().text+=' ';lines.last().owner.append(-1);}
   auto word=plain.at(i);
   for(qsizetype k=0;k<word.size();++k){
    const bool paired=(word.at(k).isHighSurrogate()&&k+1<word.size()&&word.at(k+1).isLowSurrogate())||(word.at(k).isLowSurrogate()&&k>0&&word.at(k-1).isHighSurrogate());
@@ -580,65 +575,60 @@ QList<Window> patternTexts(const QList<QString>& plain,const QList<RecognizedWor
   }
   lines.last().text+=word;for(qsizetype k=0;k<word.size();++k)lines.last().owner.append(i);
  }
- QList<Window> out;
- for(const auto& text:std::as_const(lines)){
-  const auto size=text.text.size();
-  if(size<=patternSubjectLimit){out.append({text});continue;}
-  for(qsizetype start=0;;){
-   auto end=qMin(size,start+patternSubjectLimit);
-   if(end<size){
-    // End at a word gap in the last part of the window, if there is one.
-    for(qsizetype k=end;k>end-patternOverlap/2;--k)if(text.owner.at(k)<0){end=k;break;}
-    if(insidePair(text.text,end))--end;
-   }
-   out.append({slice(text,start,end),start>0,end<size});
-   if(end>=size)break;
-   // The next window starts the overlap before, at a word if one starts there.
-   auto next=qMax(start+1,end-patternOverlap);
-   for(qsizetype k=next;k<end;++k)if(text.owner.at(k)<0){next=k+1;break;}
-   if(insidePair(text.text,next))++next;
-   start=next;
-  }
+ QList<Subject> out;
+ for(const auto& line:std::as_const(lines))out.append({line});
+ for(qsizetype k=0;k+1<lines.size();++k){
+  Subject pair{lines.at(k),lines.at(k).text.size()};
+  pair.text.text+='\n';pair.text.owner.append(-1);pair.text.text+=lines.at(k+1).text;pair.text.owner+=lines.at(k+1).owner;
+  out.append(pair);
  }
  return out;
 }
-// Runaway patterns (decision 6). A user's pattern runs exactly as typed, with
-// ordinary PCRE2 search; only start-of-pattern limits come before it, which
-// can stop a search but never change a match.
-//
-// Qt sets no PCRE2 limits, and libpcre2-16 cannot be linked in every shipped
-// build (the AppImage's official Qt 6.12 has PCRE2 built into QtCore). PCRE2's
-// own (*LIMIT_MATCH) and (*LIMIT_DEPTH) set the same limits from inside the
-// pattern and can only lower the library's; the validator refuses a pattern
-// that starts with "(*", so a user cannot raise them. A search that reaches a
-// limit stops with an error, which Qt reports as an invalid match: the pattern
-// is then skipped and named, and what it found before is kept.
-//
-// PCRE2 counts the match limit again at every start position of one search,
-// so a search costs at most its subject's length times the limit. Subjects are
-// at most patternSubjectLimit characters (above), and the limit is 10 000.
-// Measured on m74 (Mint 22.3, Qt 6.4.2, i5-6500T) over 1000-character
-// subjects shaped so every start position costs just under the limit, with
-// patterns the validator allows ((a|aa)+$, (?:a|aa)*b{2}, (\w+\s?){1,10}$,
-// (.*a){20}, a lookahead repeated 1000 times): at most 6 ms a search with
-// JIT and 33 ms on PCRE2's interpreter. With a limit of 100 000 the
-// interpreter took 2.5 s, so the limit stays at 10 000. Ordinary patterns
-// (\bJIRA-\d+\b and the like) take about 0.05 ms a search. The validator also
-// refuses the shapes that make most searches run to the limit (a repeated
-// group inside a repeat, back references).
-//
-// Between searches the clock and the cancel flag are checked, so all patterns
-// together end within the budget plus one search, and a cancelled run within
-// one search.
-const QString& patternLimits() {static const QString value=QStringLiteral("(*LIMIT_MATCH=10000)(*LIMIT_DEPTH=10000)");return value;}
-// A start-of-pattern item of the user's own could override the limits.
-bool ownLimits(const QString& pattern) {return pattern.startsWith(QStringLiteral("(*"));}
 // The matches mapped back to the caller's word order, sorted by first word.
 Result mapped(Result result,const QList<int>& original) {
  for(auto& match:result.matches){for(auto& word:match.words)word=original.at(word);std::sort(match.words.begin(),match.words.end());}
  std::sort(result.matches.begin(),result.matches.end(),[](const Match& a,const Match& b){return a.words.first()<b.words.first();});
  return result;
 }
+bool lowSurrogateAt(const QString& text,qsizetype i) {return i>0&&i<text.size()&&text.at(i).isLowSurrogate()&&text.at(i-1).isHighSurrogate();}
+}
+// PCRE2's own start-of-pattern limits come first: they can stop a search, never
+// change a match, and stop the classic runaway shapes ((a+)+$) in about a
+// millisecond, so the patterns after one still run. The time bound is the
+// child's deadline kill (src/ui/QuickRedactRunner.h), not these.
+void matchPatterns(const QStringList& subjects,const QStringList& patterns,const std::function<void(PatternOutcome)>& done) {
+ static const QString limits=QStringLiteral("(*LIMIT_MATCH=10000)(*LIMIT_DEPTH=10000)");
+ for(int p=0;p<patterns.size();++p){
+  PatternOutcome outcome;outcome.pattern=p;
+  const auto options=QRegularExpression::UseUnicodePropertiesOption;
+  const QRegularExpression pattern(limits+patterns.at(p),options);
+  // After an empty match, global matching tries for a longer one at the same
+  // place (PCRE2_NOTEMPTY_ATSTART, anchored) before moving on, as
+  // QRegularExpression::globalMatch does; its iterator cannot tell a stopped
+  // search from the end, so the loop is written out.
+  const QRegularExpression longer(limits+QStringLiteral("(*NOTEMPTY_ATSTART)")+patterns.at(p),options);
+  bool finished=pattern.isValid()&&longer.isValid();
+  for(int s=0;finished&&s<subjects.size();++s){
+   const auto& text=subjects.at(s);
+   for(qsizetype at=0;at<=text.size();){
+    auto found=pattern.match(text,at);
+    if(!found.isValid()){finished=false;break;}
+    if(!found.hasMatch())break;
+    if(found.capturedLength()==0){
+     const auto empty=found.capturedStart();
+     const auto retry=longer.match(text,empty,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption);
+     if(!retry.isValid()){finished=false;break;}
+     if(!retry.hasMatch()){at=empty+(lowSurrogateAt(text,empty+1)?2:1);continue;}
+     found=retry;
+    }
+    outcome.hits.append({s,found.capturedStart(),found.capturedLength()});
+    at=found.capturedEnd();
+   }
+  }
+  outcome.finished=finished;
+  if(!finished)outcome.hits.clear();
+  if(done)done(std::move(outcome));
+ }
 }
 QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& chosen) {return find(candidates,chosen,{},0).matches;}
 Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs) {return find(candidates,chosen,sources,budgetMs,{});}
@@ -646,7 +636,7 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
 // line arrives after the lines below it. Matching runs over lines as they
 // appear: words grouped by the height of their centres (within half the
 // median word height) and ordered left to right; the matches are mapped back.
-Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel) {
+Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs,const std::function<void(const Result&)>& progress,const std::atomic_bool* cancel,const PatternMatcher& matcher) {
  QElapsedTimer clock;clock.start();
  const auto cancelled=[cancel]{return cancel&&cancel->load(std::memory_order_relaxed);};
  QList<int> order(candidates.size());std::iota(order.begin(),order.end(),0);
@@ -669,14 +659,14 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
  // #1618: name, then list, after the five kinds; a word belongs to one match.
  const bool name=chosen.contains("name"),list=chosen.contains("list");
  const int patternCount=list?int(sources.patterns.size()):0;
+ const auto skipRest=[&](int from){for(int p=from;p<patternCount;++p)if(!result.skippedPatterns.contains(p))result.skippedPatterns.append(p);};
  // What is found so far, with every pattern not yet finished counted as skipped.
- const auto publish=[&](int finished){
+ const auto publish=[&](bool patternsDone){
   if(!progress)return;
   auto partial=mapped(result,original);
-  for(int p=finished;p<patternCount;++p)partial.skippedPatterns.append(p);
+  if(!patternsDone)for(int p=0;p<patternCount;++p)partial.skippedPatterns.append(p);
   progress(partial);
  };
- const auto skipRest=[&](int from){for(int p=from;p<patternCount;++p)result.skippedPatterns.append(p);};
  if(name||list){
   QSet<int> taken;for(const auto& match:std::as_const(result.matches))for(const int w:match.words)taken.insert(w);
   const auto full=wrappingLines(ordered);
@@ -693,53 +683,35 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
    for(const auto& f:std::as_const(forms)){if(cancelled())break;for(const auto& words:formHits(joined,f))claim("list",words,taken,result.matches);}
   }
   if(cancelled()){skipRest(0);return mapped(std::move(result),original);}
-  publish(0);
-  if(list&&patternCount){
-   // Patterns: case as written, Unicode properties, empty hits skipped; a hit
-   // marks every word it touches. See patternLimits() for the bound.
-   const auto texts=patternTexts(plain,ordered,full);
-   // No budget left (or none given) skips every pattern still to run.
-   const auto late=[&]{return budgetMs<=0||clock.hasExpired(budgetMs)||cancelled();};
-   bool expired=false;
-   for(int p=0;p<patternCount;++p){
-    const auto& source=sources.patterns.at(p);
-    if(expired||late()){expired=true;result.skippedPatterns.append(p);publish(p+1);continue;}
-    const auto options=QRegularExpression::UseUnicodePropertiesOption;
-    // Patterns arrive validated; one that is not, or sets its own limits, is left out.
-    const QRegularExpression pattern(patternLimits()+source,options);
-    if(ownLimits(source)||!pattern.isValid()){publish(p+1);continue;}
-    // After an empty match, PCRE2's global matching tries for a longer one at
-    // the same place (PCRE2_NOTEMPTY_ATSTART, anchored) before moving on, as
-    // QRegularExpression::globalMatch does; Qt does not offer that option
-    // apart from its iterator, which cannot tell a stopped search from the end.
-    const QRegularExpression longer(patternLimits()+QStringLiteral("(*NOTEMPTY_ATSTART)")+source,options);
-    bool stopped=false;
-    for(const auto& window:texts){
-     const auto& text=window.text;
-     for(qsizetype at=0;at<=text.text.size();){
-      if(late()){stopped=expired=true;break;}
-      auto found=pattern.match(text.text,at);
-      // A search that ran into the limits is invalid: the pattern is skipped,
-      // and what it found before is kept.
-      if(!found.isValid()){stopped=true;break;}
-      if(!found.hasMatch())break;
-      if(found.capturedLength()==0){
-       const auto empty=found.capturedStart();
-       if(late()){stopped=expired=true;break;}
-       const auto retry=longer.match(text.text,empty,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption);
-       if(!retry.isValid()){stopped=true;break;}
-       if(!retry.hasMatch()){at=empty+(insidePair(text.text,empty+1)?2:1);continue;}
-       found=retry;
-      }
-      const bool cut=(window.cutBefore&&found.capturedStart()==0)||(window.cutAfter&&found.capturedEnd()==text.text.size());
-      if(!cut)claim("list",owners(text,found.capturedStart(),found.capturedLength()),taken,result.matches);
-      at=found.capturedEnd();
-     }
-     if(stopped)break;
+  publish(false);
+  if(patternCount){
+   const auto subjects=patternSubjects(plain,ordered);
+   QStringList texts;for(const auto& subject:subjects)texts.append(subject.text.text);
+   // The outcomes, by pattern. In process (no matcher), the budget is read
+   // between patterns; a pattern still running is not stopped.
+   QHash<int,PatternOutcome> outcomes;
+   if(matcher){for(auto& outcome:matcher(texts,sources.patterns))if(outcome.pattern>=0&&outcome.pattern<patternCount)outcomes.insert(outcome.pattern,std::move(outcome));}
+   else{
+    QStringList pending=sources.patterns;
+    for(int p=0;p<patternCount;++p){
+     if(budgetMs<=0||clock.hasExpired(budgetMs)||cancelled())break;
+     matchPatterns(texts,{pending.at(p)},[&](PatternOutcome outcome){outcome.pattern=p;outcomes.insert(p,std::move(outcome));});
     }
-    if(stopped)result.skippedPatterns.append(p);
-    publish(p+1);
    }
+   // Claimed in pattern order, so an earlier pattern's hit wins a word.
+   for(int p=0;p<patternCount;++p){
+    const auto it=outcomes.constFind(p);
+    if(it==outcomes.cend()||!it->finished){result.skippedPatterns.append(p);continue;}
+    for(const auto& hit:it->hits){
+     if(hit.subject<0||hit.subject>=subjects.size())continue;
+     const auto& subject=subjects.at(hit.subject);
+     if(hit.start<0||hit.length<=0||hit.start+hit.length>subject.text.text.size())continue;
+     // A pair's hit only when it crosses the line break.
+     if(subject.lineBreak>=0&&!(hit.start<=subject.lineBreak&&hit.start+hit.length>subject.lineBreak))continue;
+     claim("list",owners(subject.text,hit.start,hit.length),taken,result.matches);
+    }
+   }
+   publish(true);
   }
  }
  return mapped(std::move(result),original);
