@@ -50,6 +50,7 @@ FACTORIES={
     'destinations-empty':partial(destinations.destinations,kind='empty'),
     'destination':destinations.destination,
     'recording':recordings.recording,
+    'recording-copy':recordings.copy_recording,
     'recording-review':lambda scope:scope.ctx.fixture('recording'),
     'recording-lifecycle':lifecycle.recording,
     'review-controls':recordings.controls,

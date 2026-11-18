@@ -70,13 +70,13 @@ def _frame(ctx, label, backend, mode=None):
     ctx.frame(label, window='putgdFileDialog' if reference else None, reference=reference)
 
 
-def _ready(ctx, inspect, backend, mode):
+def _ready(ctx, inspect, backend, mode, *, check_fallback_reason=True):
     state = ctx.wait(lambda: (s if s.get('open') and s.get('backend') else None)
                      if (s := inspect()) else None, 'chooser prepared', timeout=12)
     if state['backend'] != backend:
         ctx.blocked('Requested ' + backend + ', got ' + state['backend'] +
                     '; fallbackReason=' + str(state.get('fallbackReason')), issue=671)
-    if backend == 'fallback':
+    if backend == 'fallback' and check_fallback_reason:
         expected = ctx.profile['dialogs']['backends'][backend]['expected_reason']
         if state.get('fallbackReason') != expected:
             ctx.blocked('Fallback launch did not apply the profile environment; reason=' +
@@ -203,6 +203,64 @@ def _input(ctx, backend, path, mode, inspect):
                     _same_path(last.get('path'), path, mode)):
                 raise
             ctx.note('Return completed the exact choice before the optional accept key')
+
+
+def _paste_review_path(ctx, path, state, stage_path):
+    # Per-character entry can make Qt's Wayland completer take the focus as
+    # a separate toplevel. Paste once into the verified, focused filename.
+    pid = ctx.geometry('putgdFileDialog')['pid']
+    query = {'pid': pid, 'owned': True, 'visible': True, 'showing': True,
+             'states': {'focused': True, 'editable': True}}
+
+    def fields():
+        return [node for node in ctx.accessible(query)
+                if node['window'] == state['title'] and node['role'] in ('text', 'entry')]
+
+    ctx.wait(lambda: len(fields()) == 1, 'the owned Qt chooser has one focused filename field')
+    ctx.keys('Ctrl+A')
+    stage_path(path)
+    ctx.keys('Ctrl+V')
+    ctx.wait(lambda: len(nodes := fields()) == 1 and nodes[0].get('text') == path,
+             'the chooser contains the exact pasted path')
+    _frame(ctx, 'path-entered', 'fallback')
+    ctx.keys('Return')
+
+
+def choose_review_copy(ctx, identity, path, *, stage_path=None):
+    """Complete the review's own save event using the observed chooser backend."""
+    params={'id':identity}
+    def inspect():
+        return ctx.call('recording.review',dict(params,action='inspect'))['fileDialog']
+
+    ctx.call('recording.review',dict(params,action='saveCopyDialog'))
+    try:
+        opened=ctx.wait(lambda: (s if s['open'] and s.get('backend') else None)
+                        if (s := inspect()) else None, 'review save chooser opened')
+        backend=opened['backend']
+        try:
+            _ready(ctx,inspect,backend,'save',check_fallback_reason=False)
+        except RecipeBlocked:
+            current=inspect()
+            # A portal timeout may replace the window during readiness. No
+            # input has been sent. Bind the new, owned chooser from scratch.
+            if backend!='portal' or not current['open'] or current.get('backend')!='fallback':
+                raise
+            backend='fallback'
+            ctx.note('Review chooser switched to fallback: '+str(current.get('fallbackReason')))
+            _ready(ctx,inspect,backend,'save',check_fallback_reason=False)
+        if stage_path is not None and backend == 'fallback':
+            _paste_review_path(ctx,path,inspect(),stage_path)
+        else:
+            _input(ctx,backend,path,'save',inspect)
+        final=ctx.wait(lambda: (s if not s['open'] else None) if (s := inspect()) else None,
+                       'review save chooser accepted')
+        last=final.get('last') or {}
+        ctx.expect(last.get('status')=='chosen' and last.get('path')==path,
+                   'the live chooser accepted the exact private path')
+    finally:
+        if inspect()['open']:
+            ctx.call('recording.review',dict(params,action='closeFileDialog'))
+    ctx.view('recording.review',dict(params,action='inspect'))
 
 
 def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):

@@ -8,8 +8,8 @@
   "notification_server": "plasmashell",
   "default_browser_kind": "firefox",
   "at_spi": {
-    "available": false,
-    "reason": "Qt 6.4 AT-SPI does not expose reliable Wayland widget geometry"
+    "available": true,
+    "reason": ""
   },
   "session": "wayland",
   "known_gaps": [
@@ -33,9 +33,10 @@
   },
   "catalog_windows": {},
   "focus": {
-    "backend": "profile-compositor",
+    "backend": "compositor-witness",
     "raise_before_input": false,
-    "reason": "Requires compositor_script returning verified focus/stacking; public resident view-state does not expose focus"
+    "reason": "KWin stacking order, active window and clientGeometry from a read-only KWin script; no Wayland raise",
+    "desktop_hit_test": "kwin-shell-at-spi"
   },
   "notifications": {
     "accessible": {
@@ -125,6 +126,11 @@
       }
     }
   },
+  "compositor": {
+    "kind": "kwin-script",
+    "shell_application": "",
+    "stage": "none: a one-shot read-only KWin script loaded over org.kde.KWin /Scripting per observation"
+  },
   "evidence": {
     "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
     "notification_areas": [
@@ -157,6 +163,7 @@
     ]
   },
   "recording": {
+    "review_copy_chooser": "fallback",
     "consent": {
       "kind": "portal-dialog",
       "reason": "KWin's zkde_screencast native path needs no consent; the portal fallback shows xdg-desktop-portal-kde's screen chooser. Its dialog title and prompt are not yet observed on a lab guest, so only the backend process and accept button are pinned (#791, #822)",

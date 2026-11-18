@@ -12,6 +12,8 @@ they had when it started. Every directory it creates is mode 0700.
 The directory is private run evidence, never repository content or coverage:
 a run directory inside the checkout must be git-ignored. Secret-safe export
 (#726) is not applied here; the media is the synthetic moving test pattern.
+Review fixtures can keep raw media in a separate private sibling directory,
+outside the receipts audit. Encoders can write vendor URLs into the media bytes.
 """
 import hashlib
 import json
@@ -28,19 +30,21 @@ SUFFIXES = ('.mkv', '.mp4', '.webm', '.gif', '.webp')
 ROOT = Path(__file__).resolve().parents[4]
 
 
-def private_root(ctx):
+def private_root(ctx, *, outside_receipts=False):
     """The run's private media directory, or None with a reason."""
     out = getattr(ctx, 'out', None)
     if out is None:
         return None, 'run has no output directory'
     out = Path(out).resolve()
-    if out.is_relative_to(ROOT):
-        probe = out / 'private-media'
-        ignored = subprocess.run(['git', '-C', str(ROOT), 'check-ignore', '-q', str(probe)],
+    directory = out.with_name(out.name + '-private-media') if outside_receipts else out / 'private-media'
+    if directory.is_symlink():
+        return None, 'private media path is a symlink'
+    if directory.is_relative_to(ROOT):
+        ignored = subprocess.run(['git', '-C', str(ROOT), 'check-ignore', '-q', str(directory)],
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ignored.returncode != 0:
             return None, 'run directory is inside the checkout and not git-ignored'
-    return out / 'private-media', None
+    return directory, None
 
 
 def inventory(scope):
@@ -89,7 +93,7 @@ def _private_dirs(path):
         os.chmod(level, 0o700)
 
 
-def retain(scope):
+def retain(scope, *, outside_receipts=False):
     """Copy, verify and list this scope's media within its own time budget."""
     ctx = scope.ctx
     if not scope.initialized:
@@ -100,16 +104,16 @@ def retain(scope):
     if previous is not None:
         ctx._deadline = min(previous, until)
     try:
-        return _retain(scope, until)
+        return _retain(scope, until, outside_receipts=outside_receipts)
     finally:
         if previous is not None:
             # Later finalizers keep the budget they had before retention ran.
             ctx._deadline = time.monotonic() + max(0, previous - started)
 
 
-def _retain(scope, until):
+def _retain(scope, until, *, outside_receipts):
     ctx = scope.ctx
-    directory, reason = private_root(ctx)
+    directory, reason = private_root(ctx, outside_receipts=outside_receipts)
     recipe = getattr(getattr(ctx, 'recipe', None), 'name', None) or 'setup'
     if directory is None:
         getattr(ctx, 'note', print)('recording media not retained: ' + reason)
@@ -170,9 +174,9 @@ def _retain(scope, until):
     return manifest
 
 
-def register(scope):
+def register(scope, *, outside_receipts=False):
     """Retain once per scope, before every other recording finalizer."""
     if scope.values.get('_media_retention'):
         return
     scope.values['_media_retention'] = True
-    scope.defer('retain recording media', lambda: retain(scope), priority=1000)
+    scope.defer('retain recording media', lambda: retain(scope, outside_receipts=outside_receipts), priority=1000)

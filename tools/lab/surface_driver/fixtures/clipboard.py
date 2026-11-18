@@ -1,5 +1,6 @@
 """Synthetic guest clipboard owners with tool and ownership preflight."""
 import shlex
+from pathlib import PurePosixPath
 
 from ..api import RecipeBlocked
 
@@ -35,6 +36,23 @@ def owner(scope, path, mime, *, name):
     ctx=scope.ctx
     if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
         raise RecipeBlocked('clipboard owner requires a disposable nested guest',issue=682)
+    return _owner(scope, path, mime, name=name)
+
+
+def stage_chooser_path(scope, path):
+    """Offer one owned synthetic filename while the runner holds a clipboard snapshot."""
+    ctx=scope.ctx
+    path=PurePosixPath(path)
+    if ('..' in path.parts or not path.parent.is_relative_to(PurePosixPath(scope.root)/'out')
+            or ctx.profile['session']!='wayland' or not getattr(ctx.target,'clipboard_report',{}).get('ready')):
+        raise RecipeBlocked('chooser paste needs an owned output path and a preserved Wayland clipboard')
+    staged=scope.root+'/chooser-path.txt'
+    scope.write(staged,str(path).encode())
+    _owner(scope,staged,'text/plain;charset=utf-8',name='chooser-clipboard')
+
+
+def _owner(scope, path, mime, *, name):
+    ctx=scope.ctx
     scope.initialize()
     wayland=ctx.profile['session']=='wayland'
     executable=tool(scope,'wl-copy' if wayland else 'xclip')

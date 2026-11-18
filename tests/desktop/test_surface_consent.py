@@ -23,6 +23,7 @@ from tools.lab.surface_driver.fixtures import consent, media
 from tools.lab.surface_driver.fixtures.base import Scope
 from tools.lab.surface_driver.probe import portal_request_path
 from tools.lab.surface_driver.profiles import load_profile
+from tools.lab.surface_driver.redact import scan_run
 
 OURS = ':1.80'
 FRONTEND = ':1.20'
@@ -245,6 +246,19 @@ class Retention(unittest.TestCase):
         self.ctx._retained_media_bytes = media.RUN_CAP
         manifest = media.retain(self.scope)
         self.assertIn('per-run cap', manifest['files'][0]['reason'])
+
+    def test_private_review_media_is_separate_from_audited_receipts(self):
+        clip = b'mp4 vendor https://example.invalid/encoder'
+        self.scope.write(self.scope.root + '/out/review-check.mp4', clip)
+        media.register(self.scope, outside_receipts=True)
+        self.assertEqual(self.scope.close(), [])
+        private = self.out.with_name('run-private-media')
+        [copy] = private.glob('review.playback/*/out/review-check.mp4')
+        self.assertEqual(copy.read_bytes(), clip)
+        self.assertEqual(private.stat().st_mode & 0o777, 0o700)
+        self.assertTrue(scan_run(self.out)['passed'])
+        (self.out / 'note.txt').write_bytes(clip)
+        self.assertFalse(scan_run(self.out)['passed'])
 
     def test_every_created_directory_level_is_private(self):
         self.scope.write(self.scope.root + '/out/videos/clip.mp4', b'mp4')
