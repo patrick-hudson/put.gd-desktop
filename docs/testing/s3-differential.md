@@ -2,7 +2,7 @@
 
 `tools/lab/s3_differential.py` runs one seeded sequence of uploads, deletes and existence checks through the real resident against several S3-compatible servers and compares what put.gd reports with what each server holds. Real servers differ on multipart, odd keys, error codes, ETags, listing permission and conditional writes, and put.gd has to behave correctly on all of them. [Live S3 acceptance](live-s3.md) proves one destination end to end; this finds the differences between destinations.
 
-It is a lab tool, not a CI job: it needs podman and a loopback port per server, and the cloud columns need the builder's `~/Documents/creds.txt`. Run it on a build server, never on the workstation.
+It is a lab tool, not a CI job: it needs podman and a loopback port per server, and the cloud columns need the builder's `~/Documents/creds.txt`. Run it on a build server, never on the workstation. The harness reads the credentials into memory; never put their contents on a command line or in a log, diagnostic, result file or exported evidence.
 
 ## Servers
 
@@ -17,13 +17,15 @@ It is a lab tool, not a CI job: it needs podman and a loopback port per server, 
 | `rustfs` | `docker.io/rustfs/rustfs` | 19005 |
 | `zenko` | `docker.io/zenko/cloudserver` (an old Scality CloudServer, in memory) | 19006 |
 
-The offline oracle `tests/fixtures/s3_server.py` is the seventh server and starts by itself. Ceph RGW is left out: its demo image is not published any more. `aws`, `aws1` and `r2` use the builder's credentials in memory (key set 2 for `aws`; `aws1` is key set 1, which has no `ListBucket`, and is used for the listing-denied case only). Their prefix is unique to the run, each case deletes exactly the objects it made and aborts its own multipart uploads, and the run ends by listing its prefix again.
+The offline oracle `tests/fixtures/s3_server.py` is the seventh server and starts by itself. Ceph RGW is left out: its demo image is not published any more. `aws`, `aws1` and `r2` use the builder's credentials in memory (key set 2 for `aws`; `aws1` is key set 1, which has no `ListBucket`, and is used for the listing-denied case only). Their prefix is unique to the run, each case deletes exactly the objects it made and aborts its own multipart uploads, and the run ends by listing its prefix again. Before it writes anything, a cloud run refuses a bucket whose versioning is enabled, suspended or unreadable, and then runs no cleanup at all. Cleanup and the final check cover both the run's prefix and its leading-slash twin (`/<prefix>`). A delete or abort that fails, an upload listing the server won't give, or anything still listed at the end makes the command exit 1: investigate and remove what is left before calling the run clean.
+
+Use a short, new, private output directory, such as `/tmp/s3d-<run>`. The resident's socket ends up at `<out>/work/<server>/r/rt/putgd/session.sock`, and AGENTS.md requires checking the UTF-8 length of every such resolved path before launch: reject anything over 107 bytes.
 
 ```sh
 python3 -I tools/lab/s3_servers.py start minio versitygw garage seaweedfs rustfs zenko
-dbus-run-session -- python3 -I tools/lab/s3_differential.py --build build/release --out RUN run \
+dbus-run-session -- python3 -I tools/lab/s3_differential.py --build build/release --out /tmp/s3d-1 run \
     --servers oracle,minio,versitygw,garage,seaweedfs,rustfs,zenko
-python3 -I tools/lab/s3_differential.py --out RUN report
+python3 -I tools/lab/s3_differential.py --out /tmp/s3d-1 report
 python3 -I tools/lab/s3_servers.py stop minio versitygw garage seaweedfs rustfs zenko
 ```
 
@@ -56,3 +58,11 @@ Server behaviours worth knowing when something fails on one of them, none of the
 ## Minisign
 
 `tools/lab/minisign_differential.py` checks put.gd's verifier (`src/cli/Minisign.cpp`) against the reference `minisign` tool: genuine signatures of seven messages (empty included, #1561) with seven trusted comments in both the prehashed (`ED`) and legacy (`Ed`) forms, wrong keys, tampered messages, hand-made mutations of the signature and key files, and seeded byte-level mutations, each verified by both and compared. `tools/lab/minisign_verify_driver.cpp` is the batch front end to the verifier. No input is accepted by put.gd for a message or comment other than the one that was signed. put.gd is laxer than the reference about framing that no signature covers (the untrusted comment's prefix, unpadded or whitespace-trimmed base64, the key line placed before the comment) and, as of the CRLF fix, no stricter on line endings.
+
+Run it with a build that has `libputgd_minisign.a` (build the `test_minisign` target first), the reference `minisign` on `PATH` or given with `--minisign`, and a new empty `--work` directory:
+
+```sh
+python3 -I tools/lab/minisign_differential.py --build build/release --work /tmp/msd-1 --seed 1 --mutations 1500
+```
+
+Each case where the two tools disagree is printed as a `DIFFERENCE` line, followed by a JSON summary (`put_gd_accepts_more` counts cases put.gd accepts and the reference refuses), and the command then exits 1.
