@@ -295,6 +295,10 @@ private slots:
         auto longData = base;
         longData["Data"] = QString(maximumDataChars + 1, 'd');
         QTest::newRow("long unsent body") << longData << "request body text is too long";
+        // A credential with template punctuation is still one in a name.
+        auto punctuation = base;
+        punctuation["Arguments"] = QJsonObject{{"token", "demo|key"}, {"demo|key", "on"}};
+        QTest::newRow("name with template punctuation") << punctuation << "The name of the argument 1 repeats the value of argument 2";
         // Rows that are not sent count toward the limit, so their number is bounded.
         QJsonObject many;
         for (int i = 0; i <= maximumRows; ++i) many["a" + QString::number(i)] = "v";
@@ -337,16 +341,84 @@ private slots:
     void importNamesADestinationWithoutACredential() {
         const QString lower = "abcd1234efgh5678ijkl";
         const QJsonObject file{{"Version", "17.0.0"}, {"Name", lower}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
-                               {"RequestURL", "https://" + lower.toUpper() + ".example.test/upload"}, {"Body", "MultipartFormData"}, {"FileFormName", "file"},
+                               {"RequestURL", "https://media.example.test/upload"}, {"Body", "MultipartFormData"}, {"FileFormName", "file"},
                                {"Arguments", QJsonObject{{"token", lower}}}, {"URL", "{json:u}"}};
         auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
         QCOMPARE(result.name, QString("Imported uploader"));
+        // A host that holds the credential in capitals is caught by the last check.
         auto unnamed = file;
         unnamed.remove("Name");
+        unnamed["RequestURL"] = "https://" + lower.toUpper() + ".example.test/upload";
         result = importSxcu(sxcu(unnamed));
+        QCOMPARE(result.error.message, QString("This file cannot be used: the import would keep a credential in RequestURL."));
+        QVERIFY(result.name.isEmpty());
+    }
+    // Sol round 3 of #1614: the Name is looked at whole and in any letter case.
+    void importNamesADestinationWithoutACredentialInAnyCase_data() {
+        QTest::addColumn<QString>("credential");
+        QTest::addColumn<QString>("name");
+        const QString lower = "abcd1234efgh5678ijkl", longRun = QString("a1").repeated(50);
+        QTest::newRow("another letter case") << lower << lower.toUpper();
+        // Longer than a name may be: what is shortened still holds most of it.
+        QTest::newRow("longer than a name") << longRun << longRun;
+    }
+    void importNamesADestinationWithoutACredentialInAnyCase() {
+        QFETCH(QString, credential);
+        QFETCH(QString, name);
+        const QJsonObject file{{"Version", "17.0.0"}, {"Name", name}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                               {"RequestURL", "https://media.example.test/upload"}, {"Body", "MultipartFormData"}, {"FileFormName", "file"},
+                               {"Arguments", QJsonObject{{"token", credential}}}, {"URL", "{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
         QCOMPARE(result.name, QString("Imported uploader"));
+    }
+    // A deletion URL that is left out keeps a key that another kept value still names.
+    void importKeepsAKeyThatAKeptValueNames() {
+        const QString key = token;
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}, {"sig", "{secret:secrets/deletion-key}"}}},
+                               {"URL", "{json:u}"}, {"DeletionURL", "https://media.example.test/delete/a1b2c3d4e5f60718293a/{json:" + key + "}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString());
+        QVERIFY(result.secrets.contains("secrets/deletion-key"));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+    }
+    // The last check: a recognised credential in any letter case, in any field the import
+    // keeps or shows, refuses the file and names only the field.
+    void importRefusesACredentialInAnyKeptField_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("field");
+        const QString key = token, lower = QString(token).toLower();
+        const QJsonObject base{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"}};
+        auto link = base;
+        link["URL"] = "{json:u}?k=" + lower;
+        QTest::newRow("URL") << link << "URL";
+        auto thumbnail = base;
+        thumbnail["ThumbnailURL"] = "{json:t}?k=" + lower;
+        QTest::newRow("ThumbnailURL") << thumbnail << "ThumbnailURL";
+        auto error = base;
+        error["ErrorMessage"] = "{json:error} " + lower;
+        QTest::newRow("ErrorMessage") << error << "ErrorMessage";
+        auto request = base;
+        request["RequestURL"] = "https://" + lower + ".example.test/upload";
+        QTest::newRow("RequestURL") << request << "RequestURL";
+        auto deletion = base;
+        deletion["DeletionURL"] = "https://" + lower + "@media.example.test/delete/{json:id}";
+        QTest::newRow("DeletionURL") << deletion << "DeletionURL";
+        // The ID the destination is saved under is made from the Name.
+        auto id = base;
+        id["Name"] = QString(key).replace('-', ' ');
+        QTest::newRow("destination ID") << id << "the destination ID";
+    }
+    void importRefusesACredentialInAnyKeptField() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, field);
+        const auto refused = importSxcu(sxcu(file));
+        QCOMPARE(refused.error.message, "This file cannot be used: the import would keep a credential in " + field + ".");
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty() && refused.name.isEmpty());
     }
     // A key the deletion URL shares with the request URL is stored for each, and a
     // deletion key that only begins like the request key stays whole.

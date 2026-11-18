@@ -32,16 +32,6 @@ QSet<QString>& unsettled() {
     static QSet<QString> names;
     return names;
 }
-// A profile ID from the uploader's name: lower-case letters, digits and hyphens.
-QString slug(const QString& name) {
-    QString out;
-    for (const auto c : name.toLower()) {
-        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) out.append(c);
-        else if (!out.isEmpty() && !out.endsWith('-')) out.append('-');
-    }
-    while (out.endsWith('-')) out.chop(1);
-    return out.left(40).isEmpty() ? QStringLiteral("uploader") : out.left(40);
-}
 }
 Error namedCredentials(const QJsonObject& profile, const QMap<QString, QString>& values, QStringList* names) {
     if (profile["provider"] != providerId) return {"setup_unsupported", "This destination does not store named values", {}};
@@ -127,7 +117,7 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
         return;
     }
     if (id.isEmpty()) {
-        const auto base = slug(imported.name);
+        const auto base = uploaderSlug(imported.name);
         id = base;
         for (int n = 2; ids.contains(id) || taken(id); ++n) id = base + "-" + QString::number(n);
     }

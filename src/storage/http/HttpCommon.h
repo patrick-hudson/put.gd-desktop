@@ -123,4 +123,6 @@ struct SxcuImport {
     QStringList notes;               // what was adapted or left out, for the user
 };
 SxcuImport importSxcu(const QByteArray& json);
+// The destination ID an import derives from a name: lower-case letters, digits and "-".
+QString uploaderSlug(const QString& name);
 }
