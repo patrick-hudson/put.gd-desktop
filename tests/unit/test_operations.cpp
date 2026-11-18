@@ -280,19 +280,21 @@ private slots:
   owner.unlock();
   PUTGD_TRY_VERIFY(second.ready());
  }
- // A recovery that fails partway (here its sharing scan) is retried whole: the artifacts it recovered before the
+ // A recovery that fails partway (here its deletion scan) is retried whole: the artifacts it recovered before the
  // failure are written, but that write must not clear the error and leave the resident ready with records unrecovered (#1576).
  void recoveryThatFailsAfterRecoveringArtifactsIsNotReady() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("6f1d1f8e-5b0e-4f2b-9a51-0c7c2f0d6b11");
   {Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));
    ArtifactStore artifacts(root+"/artifacts");QVERIFY(!artifacts.acquire(id,textPayload(),ResourceLimits{}).error);
-   // A sharing record SQLite cannot read: the sharing scan fails after the operations were recovered.
   }
-  const auto sql=[&](const QString& statement){const auto name=QUuid::createUuid().toString();bool ok=false;{auto db=QSqlDatabase::addDatabase("QSQLITE",name);db.setDatabaseName(root+"/history.sqlite");ok=db.open()&&QSqlQuery(db).exec(statement);}QSqlDatabase::removeDatabase(name);return ok;};
-  QVERIFY(sql("INSERT INTO sharing_operations VALUES('unreadable','history','{not json')"));
+  // The deletion table's page becomes unreadable, as on a disk read error: its scan fails after the operations were recovered.
+  const auto page=[&](bool readable){int rootPage=0;const auto name=QUuid::createUuid().toString();{auto db=QSqlDatabase::addDatabase("QSQLITE",name);db.setDatabaseName(d.filePath("data/history.sqlite"));if(db.open()){QSqlQuery q(db);if(q.exec("SELECT rootpage FROM sqlite_master WHERE type='table' AND name='deletions'")&&q.next())rootPage=q.value(0).toInt();}}QSqlDatabase::removeDatabase(name);
+   QFile file(d.filePath("data/history.sqlite"));if(rootPage<2||!file.open(QIODevice::ReadWrite))return false;file.seek(16);const auto size=file.read(2);const qint64 pageSize=size.size()==2?((uchar(size[0])<<8)|uchar(size[1])):0;if(pageSize<512)return false;
+   file.seek((rootPage-1)*pageSize);return file.write(QByteArray(1,readable?char(0x0d):char(0)))==1&&file.flush();};
+  QVERIFY(page(false));
   Source source;OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
   PUTGD_TRY_VERIFY(ops.notReadyError().code=="history_io");QTest::qWait(200);QVERIFY(!ops.ready());
-  QVERIFY(sql("DELETE FROM sharing_operations WHERE id='unreadable'"));
+  QVERIFY(page(true));
   PUTGD_TRY_VERIFY(ops.ready());HistoryStore store(root+"/history.sqlite");const auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);
  }
  void committedAcquisitionRecoversAfterMissingItemCheckpoint() {
