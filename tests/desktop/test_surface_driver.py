@@ -289,6 +289,45 @@ class Running(unittest.TestCase):
         self.assertEqual(target.close(),[names[1].replace('transport unavailable','was rejected')])
         self.assertEqual(target.guest_local_cleanup,target.close())
 
+    def test_only_ssh_failure_or_a_host_timeout_means_the_guest_was_unreachable(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        cases=[(lab.LabError('ssh failed (exit 255)'),True),(subprocess.TimeoutExpired('ssh',70),True),
+               # A reachable shell whose command exits 1 (for example its own Python timeout): the guest answered.
+               (lab.LabError('ssh failed (exit 1)'),False),(ValueError('not json'),False)]
+        for failure,unreachable in cases:
+            with self.subTest(failure=repr(failure)):
+                target=self.closing_target(RecipeBlocked('unused'))
+                del target.execute
+                target.heartbeat=lambda force=False:None;target.prefix=lambda:''
+                def session(*args,**kwargs):
+                    raise failure
+                target.session=session
+                with self.assertRaises(RecipeBlocked) as caught:
+                    target.execute('true')
+                self.assertIs(isinstance(caught.exception,GuestUnreachable),unreachable)
+                # close() reports the failed monitor kill as guest-local only when the guest was unreachable.
+                target.cli=target.restore_clipboard=lambda *a,**kw:None
+                target._clipboard_lease=None;target._kwin_entries=False;target.started=False
+                self.assertEqual(target.close(),['notification monitor cleanup unavailable'])
+                self.assertEqual(target.guest_local_cleanup,['notification monitor cleanup unavailable'] if unreachable else [])
+
+    def test_a_remote_marker_is_written_before_publishing_and_removed_only_when_cleaned(self):
+        from tools.lab.surface_driver.fixtures.live_outcomes import RemotePending
+        marker=self.path/'live-cleanup-pending.json'
+        pending=RemotePending(marker,dict(destination='s3',prefix='acceptance/tier1-live/abc/',runId='run-1'))
+        self.assertFalse(marker.exists())
+        pending['remote']=True
+        document=json.loads(marker.read_text())
+        self.assertEqual((document['destination'],document['prefix'],document['runId']),('s3','acceptance/tier1-live/abc/','run-1'))
+        self.assertEqual(sorted(document),['destination','prefix','runId','schemaVersion'])
+        self.assertEqual(marker.stat().st_mode&0o777,0o600)
+        # A runner killed here leaves the marker; the next fixture in this run is blocked, not allowed to clear it.
+        with self.assertRaises(RecipeBlocked):
+            RemotePending(marker,{})
+        pending['remote']=False
+        self.assertFalse(marker.exists())
+        self.assertFalse(pending['remote'])
+
     def test_a_guest_that_staged_no_kwin_entries_has_none_to_clean_up(self):
         from tools.lab.surface_driver.api import GuestUnreachable
         from tools.lab.surface_driver import appimage

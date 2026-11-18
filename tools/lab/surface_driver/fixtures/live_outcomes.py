@@ -11,6 +11,32 @@ from ..api import RecipeBlocked
 from .base import Fixture
 
 
+class RemotePending(dict):
+    """``pending['remote']``, with a host-side marker file in the run directory while it is true.
+
+    The marker names the destination, the object prefix and the run id, never a credential. It is written
+    before publishing and removed only when the remote cleanup is confirmed, so a runner killed after
+    publishing still leaves it for recovery (tools/lab/lab.py refuses to stop or retire such a guest).
+    """
+
+    def __init__(self, marker, details):
+        super().__init__(remote=False)
+        self.marker, self.details = Path(marker), details
+        if self.marker.exists():
+            raise RecipeBlocked('an earlier live remote cleanup in this run is unresolved; preserve the guest')
+
+    def __setitem__(self, key, value):
+        if key == 'remote':
+            if value:
+                temporary = self.marker.with_suffix('.tmp')
+                with open(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as stream:
+                    json.dump(dict(schemaVersion=1, **self.details), stream)
+                temporary.replace(self.marker)
+            else:
+                self.marker.unlink(missing_ok=True)
+        super().__setitem__(key, value)
+
+
 def key_set_two(text):
     """Select the sole bare AWS pair before other providers; settings are set 1's.
 
@@ -110,9 +136,12 @@ def provider(scope):
     ctx = scope.ctx
     admit(ctx)
     ctx.fixture('app-profile')
-    pending = {'remote': False}
-    # The run's receipt reads this dict at the end, so an unresolved remote object is recorded as a
-    # field of the receipt (recovery never retires a guest that holds its History and credential).
+    profile_id = 'tier1-live'
+    prefix = ('acceptance/tier1-live/' if ctx.destination == 's3' else 'putgd-tier1-')+uuid.uuid4().hex+'/'
+    from tools.lab import lab
+    pending = RemotePending(Path(ctx.target.run)/lab.LIVE_CLEANUP_MARKER,
+                            dict(destination=ctx.destination, prefix=prefix, runId=ctx.target.info['id']))
+    # The run's receipt reads this at the end, so an unresolved remote object is also a field of the receipt.
     ctx.target.live_cleanup_pending = pending
     def guarded(function):
         def finish():
@@ -125,8 +154,6 @@ def provider(scope):
     scope.finalizers[:] = [(priority, label, guarded(function) if label in
                            ('owned history and cache', 'accepted settings', 'owned directory') else function)
                           for priority, label, function in scope.finalizers]
-    profile_id = 'tier1-live'
-    prefix = ('acceptance/tier1-live/' if ctx.destination == 's3' else 'putgd-tier1-')+uuid.uuid4().hex+'/'
     fixture = Fixture(profile_id=profile_id, prefix=prefix, pending=pending)
     if ctx.destination == 's3':
         from tools.lab import provision_live_credentials as bridge

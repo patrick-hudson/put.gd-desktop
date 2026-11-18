@@ -523,12 +523,15 @@ def recover_guest(config, owner, out, cells):
     stays retained; destroying a disposable VM can resolve only guest-local loss.
     """
     from tools.lab.desktop_lock import Desktop
+    from tools.lab import lab
     run, evidence, session = Path(owner['run']), Path(owner['evidence']), owner['session']
     if run.parent != ROOT/'work/lab-runs' or not re.fullmatch(r'n[0-9a-f]{8}', run.name):
         raise NotRun('guest recovery refused: run is not an owned nightly overlay')
     from tools.lab.overlay_cleanup import _no_symlinks
     _no_symlinks(run)
     _no_symlinks(evidence)
+    if (run/lab.LIVE_CLEANUP_MARKER).exists():
+        raise NotRun('guest retained: live remote cleanup unresolved (marker in the run directory); resolve it before recovery')
     if guest_clients_live(run):
         raise NotRun('guest recovery refused: exact lend/recipe or missing-run QEMU is still live')
     locks = Path.home()/'putgd-lab/locks'
@@ -987,6 +990,8 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                         environment = evidence.get('environment', {})
                         retained |= bool(environment.get('cleanup_errors') or environment.get('unresolved_live_cleanup'))
                         retained |= 'retained' in str(environment.get('private_cleanup', ''))
+                    # The marker outlives a killed runner, which writes no receipt flag.
+                    retained |= (run/lab.LIVE_CLEANUP_MARKER).exists()
                     if outstanding or retained:
                         reservation.update(retained=True, reason='guest retained; explicit cleanup recovery required')
                         recover_row(config, reservation, session, rowout, cells)

@@ -43,7 +43,20 @@ def lifecycle_operation(function):
     return locked
 
 
+# A live fixture writes this file in the run directory before it publishes to a real destination and
+# removes it once the remote cleanup is confirmed. While it exists the guest holds the only History row
+# and credential reference that can remove the remote object, so nothing may stop or retire the guest.
+LIVE_CLEANUP_MARKER = 'live-cleanup-pending.json'
+
+
+def require_no_live_cleanup(run):
+    if (Path(run) / LIVE_CLEANUP_MARKER).exists():
+        raise LabError('live remote cleanup unresolved; the guest is kept with its History and credential reference')
+
+
 def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False, images_root=None):
+    if not dry_run:
+        require_no_live_cleanup(run)
     try:
         return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run,
                                        images_root=images_root)
@@ -910,6 +923,7 @@ def hash_file(path):
 @lifecycle_operation
 def reset(run):
     run = Path(run)
+    require_no_live_cleanup(run)
     info = state(run)
     pid = info.get('pid')
     # Never kill a reused PID: verify both executable and owned disk argument.

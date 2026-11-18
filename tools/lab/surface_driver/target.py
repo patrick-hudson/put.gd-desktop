@@ -395,8 +395,11 @@ class Target:
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
             # Only the fixed exit status crosses the evidence boundary: 255 is SSH itself.
             status = re.search(r'\(exit (\d+)\)', str(error))
-            raise GuestUnreachable('target session command unavailable: ' + type(error).__name__ +
-                                   (' exit ' + status[1] if status else '')) from error
+            # Only ssh's own connection failure (exit 255) or a timeout the host detects means the guest was
+            # not reached. Any other exit is the remote command's, so the guest answered.
+            unreachable = isinstance(error, subprocess.TimeoutExpired) or bool(status and status[1] == '255')
+            raise (GuestUnreachable if unreachable else RecipeBlocked)(
+                'target session command unavailable: ' + type(error).__name__ + (' exit ' + status[1] if status else '')) from error
 
     def identity(self):
         code="""import json,os,platform

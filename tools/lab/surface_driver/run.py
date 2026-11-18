@@ -818,7 +818,7 @@ def main(argv=None):
             if cleanup:
                 environment['guest_local_cleanup'] = list(guest_local) if isinstance(guest_local, list) else []
             live_pending = getattr(target, 'live_cleanup_pending', None)
-            if isinstance(live_pending, dict) and live_pending.get('remote'):
+            if isinstance(live_pending, dict) and (live_pending.get('remote') or getattr(live_pending, 'marker', Path()).exists()):
                 environment['unresolved_live_cleanup'] = True
             if cleanup:
                 environment['cleanup_errors']=cleanup
