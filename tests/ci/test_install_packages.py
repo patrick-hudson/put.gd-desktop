@@ -62,7 +62,9 @@ case "$1" in
     count=$(($(cat "$FAKE_COUNT" 2>/dev/null || echo 0) + 1)); echo "$count" > "$FAKE_COUNT"
     if [ "$count" -le "${FAKE_STALLS:-0}" ]; then stall; fi
     if [ "$count" -le "${FAKE_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/dists/noble/InRelease  Hash Sum mismatch'; exit 100; fi ;;
-  install) case " $* " in *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100 ;; esac ;;
+  install) case " $* " in *' --no-download '*) [ "${FAKE_OFFLINE:-ok}" = ok ] || exit 100 ;; esac
+    icount=$(($(cat "$FAKE_COUNT.install" 2>/dev/null || echo 0) + 1)); echo "$icount" > "$FAKE_COUNT.install"
+    if [ "$icount" -le "${FAKE_INSTALL_FAILURES:-0}" ]; then echo 'E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/x.deb  Connection timed out'; exit 100; fi ;;
 esac
 exit 0
 '''
@@ -227,33 +229,14 @@ class InstallPackages(unittest.TestCase):
         (self.snapshot / 'archives/x_1.0_amd64.deb').write_text('x 1.0')
         (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
 
-    def test_a_read_only_job_keeps_the_restored_snapshot_through_an_online_success(self):
-        # One install succeeds online after the mirror moved to X 2.0, the next finds every mirror down:
-        # the fallback must still see the snapshot's own metadata and .debs, not newer metadata.
-        self.make_apt_snapshot()
-        keep = dict(PUTGD_PKG_CACHE=str(self.snapshot), PUTGD_PKG_KEEP_SNAPSHOT='true')
-        result, calls, _ = self.run_script('apt-get', 'dwz', **keep)
-        self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertNotIn('autoclean', ' '.join(calls))
-        (self.snapshot.parent / (self.snapshot.name + '.live/lists/ports_Packages')).write_text('X 2.0\n')
-        self.assertFalse(self.github_env.exists())
-        self.calls.unlink()
-        (self.dir / 'count').unlink()
-        result, calls, _ = self.run_script('apt-get', 'extra', FAKE_FAILURES='9', **keep)
-        self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((self.snapshot / 'lists/ports_Packages').read_text(), 'X 1.0\n')
-        self.assertEqual((self.snapshot / 'archives/x_1.0_amd64.deb').read_text(), 'x 1.0')
-        self.assertIn(f'Dir::State::Lists={self.snapshot}/lists/', calls[-1])
-        self.assertIn('--no-download', calls[-1])
-
-    def test_an_editing_job_still_replaces_the_snapshot_after_an_online_success(self):
+    def test_an_online_success_replaces_the_snapshot_with_the_metadata_it_installed_from(self):
         self.make_apt_snapshot()
         result, calls, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn('autoclean', ' '.join(calls))
         self.assertEqual(self.github_env.read_text(), 'PUTGD_PKG_CACHE_REFRESHED=true\n')
 
-    def test_adding_packages_reuses_the_metadata_of_the_install_before_it(self):
+    def test_adding_packages_never_refreshes_the_indexes_on_any_attempt(self):
         self.make_apt_snapshot()
         live = self.snapshot.parent / (self.snapshot.name + '.live/lists')
         live.mkdir(parents=True)
@@ -262,9 +245,25 @@ class InstallPackages(unittest.TestCase):
         _, calls, _ = self.run_script('apt-get', '--download-only', 'dwz', **env)
         self.assertEqual([call.split()[1] for call in calls], ['install', 'autoclean'])
         self.assertIn('--download-only', calls[0])
+        # A retry downloads again against the same indexes; the indexes stay as the install before it left them.
         self.calls.unlink()
-        _, calls, _ = self.run_script('apt-get', '--download-only', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
-        self.assertEqual(calls[0].split()[1], 'update')
+        (self.dir / 'count.install').unlink(missing_ok=True)
+        self.run_script('apt-get', '--download-only', 'dwz', FAKE_INSTALL_FAILURES='2', **env)
+        calls = self.calls.read_text().splitlines()
+        self.assertEqual([call.split()[1] for call in calls if 'dpkg' not in call],
+                         ['install', 'install', 'install', 'autoclean'])
+        self.assertEqual((live / 'ports_Packages').read_text(), 'X 1.0\n')
+
+    def test_adding_packages_without_indexes_to_reuse_fails_and_saves_nothing(self):
+        self.snapshot.mkdir()
+        (self.snapshot / 'putgd-snapshot').write_text('2026-10-20T04:00Z\n')
+        result, calls, summary = self.run_script('apt-get', '--download-only', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot),
+                                                 PUTGD_PKG_REUSE_METADATA='true')
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertEqual(calls, [])
+        self.assertIn('no package indexes of an earlier install to reuse', result.stdout)
+        self.assertIn('the packages could not be downloaded into the snapshot', summary)
+        self.assertFalse(self.github_env.exists())
 
     def test_a_failed_download_into_the_snapshot_fails_and_never_installs_offline(self):
         self.make_apt_snapshot()

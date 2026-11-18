@@ -17,6 +17,10 @@ case "$ID" in
     if [ "$ID:$VERSION_ID" = 'ubuntu:24.04' ] || [ "$ID:$VERSION_ID" = 'debian:13' ]; then
       packages+=(qtbase5-dev qtbase5-dev-tools)
     fi
+    # The AppImage job installs its own packages in this same transaction (PUTGD_EXTRA_PACKAGES, words),
+    # so one apt run either comes entirely online or entirely from the package snapshot (#1652).
+    # shellcheck disable=SC2206
+    packages+=(${PUTGD_EXTRA_PACKAGES:-})
     bash "$install" "${packages[@]}"
     ;;
   fedora)

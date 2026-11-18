@@ -20,13 +20,10 @@
 #                       offline attempt reads them through those sources, not the
 #                       host's, and a snapshot made in a container serves a runner.
 #   PUTGD_PKG_ATTEMPTS=0 skips the online attempts and installs from the snapshot.
-#   PUTGD_PKG_KEEP_SNAPSHOT=true leaves the snapshot as restored. A job that only
-#                       reads it sets this, so an online install early in the job
-#                       can't replace its metadata with newer metadata that its
-#                       .debs no longer match before a later install needs them.
-#   PUTGD_PKG_REUSE_METADATA=true (apt) makes a first attempt reuse the metadata an
-#                       earlier install of the same job downloaded, so packages added
-#                       to a snapshot match the packages already in it.
+#   PUTGD_PKG_REUSE_METADATA=true (apt) never refreshes the indexes: every attempt uses the
+#                       ones an earlier install of the same job downloaded, and fails when
+#                       there are none or a package can't be downloaded against them. Adding
+#                       packages to a snapshot this way keeps its indexes matching its .debs.
 # With --download-only (adding packages to a snapshot) there is no offline fallback.
 #   PUTGD_PKG_TIMEOUT   seconds one attempt may take (default 900)
 #   PUTGD_PKG_STALL     seconds an attempt may print nothing (default 600)
@@ -112,8 +109,11 @@ online() {
   else
     # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
     [ -z "$interrupted" ] || bounded dpkg --configure -a || return
-    if [ "$1" -gt 1 ] || [ -z "${PUTGD_PKG_REUSE_METADATA:-}" ] || ! compgen -G "$live/lists/*Packages*" >/dev/null; then
+    if [ -z "${PUTGD_PKG_REUSE_METADATA:-}" ]; then
       bounded apt-get update --error-on=any "${apt_network[@]}" "${extra[@]}" || return
+    elif ! compgen -G "$live/lists/*Packages*" >/dev/null; then
+      echo 'E: no package indexes of an earlier install to reuse'
+      return 1
     fi
     [ ${#packages[@]} -eq 0 ] || DEBIAN_FRONTEND=noninteractive bounded apt-get install -y "${apt_network[@]}" \
       "${extra[@]}" "${options[@]}" "${packages[@]}"
@@ -213,7 +213,7 @@ for ((attempt = 1; attempt <= attempts; attempt++)); do
   deadline=$((SECONDS + limit))
   if online "$attempt" 2>&1 | tee "$log"; then
     [ "$attempt" -eq 1 ] || report notice "$attempt of $attempts" '**passed on retry**'
-    [ -z "$snapshot" ] || [ ${#packages[@]} -eq 0 ] || [ -n "${PUTGD_PKG_KEEP_SNAPSHOT:-}" ] || refresh_snapshot
+    [ -z "$snapshot" ] || [ ${#packages[@]} -eq 0 ] || refresh_snapshot
     exit 0
   fi
   error=$(failure)

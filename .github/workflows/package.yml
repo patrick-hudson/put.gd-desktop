@@ -211,11 +211,10 @@ jobs:
         env:
           PUTGD_PKG_CACHE: /var/cache/putgd-packages
           PUTGD_PKG_LABEL: native (ubuntu24.04) AppImage packages
-          # The same package lists as the install above, so the packages match the snapshot.
+          # Never refreshes the indexes: the packages are fetched against the ones the install above
+          # downloaded, so the snapshot's indexes and packages match.
           PUTGD_PKG_REUSE_METADATA: 'true'
-        run: |
-          bash tools/ci/install-packages.sh --download-only $(grep -hv '^#' tools/ci/appimage-packages.txt)
-          bash tools/ci/install-packages.sh --download-only --no-install-recommends weston
+        run: bash tools/ci/install-packages.sh --download-only $(grep -hv '^#' tools/ci/appimage-packages.txt) weston
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # Only a snapshot an online install just refreshed, never one it fell back to; for ubuntu24.04, with the AppImage packages in it.
         if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (matrix.name != 'ubuntu24.04' || steps.appimage-prefetch.outcome == 'success') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -453,20 +452,18 @@ jobs:
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
           PUTGD_PKG_ATTEMPTS: '3'
-          # This job only reads the snapshot: an online install must not replace what later installs fall back to.
-          PUTGD_PKG_KEEP_SNAPSHOT: 'true'
         run: |
-          # Retried package installs (#368); sudo keeps the summary file for the retry report.
-          # The package snapshot is on every install here, so each can fall back to it.
-          pkg_install() { sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_KEEP_SNAPSHOT,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh "$@"; }
+          # One apt transaction (#1652): the base dependencies, the packages in tools/ci/appimage-packages.txt
+          # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
+          # system libraries the Qt action would install) and weston. It installs entirely online or
+          # entirely from the package snapshot, never a mix of the two. sudo keeps the summary file for the retry report (#368).
+          PUTGD_EXTRA_PACKAGES="$(grep -hv '^#' tools/ci/appimage-packages.txt) weston"
+          export PUTGD_EXTRA_PACKAGES
           # actions/cache stores this path relative to the container's shallower workspace,
           # so here it restores three levels above this workspace, not to /var/cache.
           PUTGD_PKG_CACHE=$(realpath -m "$GITHUB_WORKSPACE/../../../var/cache/putgd-packages")
           export PUTGD_PKG_CACHE
-          echo "PUTGD_PKG_CACHE=$PUTGD_PKG_CACHE" >> "$GITHUB_ENV"
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_KEEP_SNAPSHOT,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
-          # patchelf, the bundled libraries, screen recording build inputs and GStreamer plugins (tools/ci/appimage-packages.txt).
-          pkg_install $(grep -hv '^#' tools/ci/appimage-packages.txt)
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_EXTRA_PACKAGES,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
       - name: The locked Qt version
         # Renovate updates it in the lock (#420), where the AppImage tools read it too.
         id: qt
@@ -477,7 +474,7 @@ jobs:
         with:
           version: ${{ steps.qt.outputs.version }}
           # Its own apt-get update/install runs outside the snapshot fallback; its packages are in
-          # tools/ci/appimage-packages.txt and install with the other AppImage packages above.
+          # tools/ci/appimage-packages.txt and install in the one transaction above.
           install-deps: false
           arch: linux_gcc_64
           modules: qtimageformats
@@ -528,15 +525,6 @@ jobs:
           # npm's own per-request retries for registry errors (#368); #332's exit 152 is a CPU-time kill, not this.
           npm_config_fetch_retries: '5'
         run: python3 tools/proton/provision_runtime.py
-      - name: Headless Wayland compositor for the image's start check
-        env:
-          PUTGD_PKG_LABEL: appimage
-          PUTGD_PKG_TIMEOUT: '300'
-          PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '3'
-          # This job only reads the snapshot: an online install must not replace what later installs fall back to.
-          PUTGD_PKG_KEEP_SNAPSHOT: 'true'
-        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_KEEP_SNAPSHOT,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh --no-install-recommends weston
       - name: Restore release compiler cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
