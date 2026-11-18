@@ -151,7 +151,8 @@ public:
  // Shared services run SQL, encoding, and file/network work on workers. Each
  // finished worker arms the idle heap reclamation once the resident is ready.
  void background(std::function<QJsonObject(Error&)>,JsonReply);
- std::shared_ptr<std::mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
+ // A timed mutex, so a deletion can stop waiting for it when put.gd quits (#1602).
+ std::shared_ptr<std::timed_mutex> objectLock(const Destination&,const QJsonObject&,const QString& candidate);
  // A provider that takes one request at a time for a destination (its credential
  // reference) is leased to one operation's provider work at a time.
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
@@ -320,7 +321,7 @@ private:
  std::shared_ptr<std::atomic<qint64>> payloadBytes_=std::make_shared<std::atomic<qint64>>(0);
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
  QHash<QString,std::function<void(const Operation&)>> finishWatchers_;
- QHash<QString,std::weak_ptr<std::mutex>> locks_;
+ QHash<QString,std::weak_ptr<std::timed_mutex>> locks_;
  QHash<QString,std::weak_ptr<DestinationLease>> leases_;
  std::mutex locksMutex_;
  // Upload slots shared by every operation, and each active item's own cancellation.

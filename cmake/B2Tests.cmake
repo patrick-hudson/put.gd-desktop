@@ -1,7 +1,7 @@
 if(BUILD_TESTING)
   add_executable(test_b2 tests/integration/test_b2.cpp)
   target_include_directories(test_b2 PRIVATE tests)
-  target_link_libraries(test_b2 PRIVATE putgd_b2 Qt6::Test Qt6::Network)
+  target_link_libraries(test_b2 PRIVATE putgd_b2 putgd_app Qt6::Test Qt6::Network Qt6::Sql)
   target_compile_definitions(test_b2 PRIVATE B2_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/b2_server.py")
   add_dependencies(test_b2 putgd-b2-worker)
   add_test(NAME b2_integration COMMAND test_b2)

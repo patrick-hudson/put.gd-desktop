@@ -50,7 +50,9 @@ public:
  ~ProcessDriver()override{closePrepared();}
  // Why the last prepare() failed, in words the user can act on.
  Error startFailure()const{return startError_?startError_:unavailable();}
- bool prepare(){
+ // `kill` and `cancellation` stop the startup handshake too: the helper is killed, and
+ // startFailure() then says it was stopped (Quit, #1602), never that S3 is missing.
+ bool prepare(const std::shared_ptr<std::atomic_bool>& kill={},const std::shared_ptr<std::atomic_bool>& cancellation={}){
   if(process_)return ready_&&!failed_;
   startError_={};
   ready_=activated_=activationAcknowledged_=terminal_=failed_=cancelSent_=checkpointException_=false;reply_={};pending_.reset();
@@ -80,7 +82,11 @@ public:
   auto boot=envelope();boot["build"]=build();boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=path_;
   if(control_->send("bootstrap",boot).isEmpty())failed_=true;
   QElapsedTimer clock;clock.start();
-  while(!ready_&&!failed_&&process_->state()!=QProcess::NotRunning&&clock.elapsed()<10000)process_->waitForReadyRead(20);
+  const auto stop=[&]{return (kill&&kill->load())||(cancellation&&cancellation->load());};
+  while(!ready_&&!failed_&&process_->state()!=QProcess::NotRunning&&clock.elapsed()<10000){
+   if(stop()){process_->kill();process_->waitForFinished(5000);startError_={"cancelled","Stopped before S3 support started; nothing was sent",{}};failed_=true;break;}
+   process_->waitForReadyRead(20);
+  }
   if(!ready_||failed_){failed_=true;resetProcess();return false;}
   return true;
  }
@@ -97,12 +103,14 @@ public:
   lanes_={};trace_={};
   UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
- void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
-  QJsonObject result;auto error=run("refreshLink",receipt.toJson(),receipt.destination,{}, {},result);
+ void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{refreshLinkForCopy(receipt,{},std::move(callback));}
+ void refreshLinkForCopy(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> kill,std::function<void(StatResult)> callback)override{
+  QJsonObject result;auto error=run("refreshLink",receipt.toJson(),receipt.destination,{}, {},result,{},kill);
   StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
- void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
-  QJsonObject result;auto error=run("stat",receipt.toJson(),receipt.destination,{}, {},result);
+ void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{statForRemoval(receipt,{},std::move(callback));}
+ void statForRemoval(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> kill,std::function<void(StatResult)> callback)override{
+  QJsonObject result;auto error=run("stat",receipt.toJson(),receipt.destination,{}, {},result,{},kill);
   StatResult value;if(error||!s3wire::decode(result,value,receipt))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> callback)override{
@@ -110,7 +118,7 @@ public:
   StatResult value;if(error||!s3wire::decode(result,value))value={"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> callback)override{
-  QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result);
+  QJsonObject result;auto error=run("remove",s3wire::encode(request),request.receipt.destination,request.cancellation,std::move(checkpoint),result,{},request.kill);
   DeleteResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",noEffects(error)?request.progress:QJsonObject{},error?error:uncertain()};callback(std::move(value));
  }
  void abandon(const Destination& destination,const QJsonObject& journal,std::function<void(Error)> callback)override{
@@ -188,11 +196,11 @@ private:
   {std::lock_guard lock(pending_->mutex);if(!pending_->complete)return;error=pending_->error;pending_->closed=true;}
   answer("checkpoint",pendingRpc_,{{"error",s3wire::encode(error)}});pending_.reset();pendingRpc_.clear();activity_.restart();
  }
- Error run(const QString& method,const QJsonObject& request,const Destination& destination,const std::shared_ptr<std::atomic_bool>& cancellation,DurableCheckpoint checkpoint,QJsonObject& result,std::function<void(const UploadProgress&)> progress={}){
+ Error run(const QString& method,const QJsonObject& request,const Destination& destination,const std::shared_ptr<std::atomic_bool>& cancellation,DurableCheckpoint checkpoint,QJsonObject& result,std::function<void(const UploadProgress&)> progress={},const std::shared_ptr<std::atomic_bool>& kill={}){
   if(!s3wire::validateRequest(method,request))return invalidRequest(method,request);
   destination_=destination;checkpoint_=std::move(checkpoint);rpc_=0;activeMethod_=method;
   progress_=std::move(progress);uploadBytes_=method=="upload"?request["artifact"].toObject()["bytes"].toInteger():0;
-  if(!prepare()){progress_={};return startFailure();}
+  if(!prepare(kill,cancellation)){progress_={};return startFailure();}
   auto activate=envelope();activate["method"]=method;activate["request"]=request;
   // SDK CURL bounds each HTTP exchange; allow the complete driver's bounded
   // call chain, slow local artifact hashing and durable persistence separately.
@@ -216,6 +224,9 @@ private:
   QElapsedTimer lanesPoll;lanesPoll.start();int lentLanes=0;const bool borrows=lanes_&&parts>1;
   activated_=true;if(control_->send("activate",activate).isEmpty())failed_=true;
   while(process_->state()!=QProcess::NotRunning&&!failed_){
+   // Quit (#1602): the helper is killed, not asked to stop, so it sends nothing more;
+   // the work ends uncertain and keeps the last acknowledged progress.
+   if(kill&&kill->load()){process_->kill();process_->waitForFinished(5000);failed_=true;break;}
    flushAck();
    if(borrows&&activationAcknowledged_&&!terminal_&&lanesPoll.elapsed()>=100){
     lanesPoll.restart();int lent=0;try{lent=qBound(0,lanes_(s3MaximumPartLanes-1),s3MaximumPartLanes-1);}catch(...){}
@@ -258,8 +269,8 @@ private:
  HelperOutput output_{"putgd-s3-worker",logS3(),true};
 };
 }
-S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits){
+S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits,std::shared_ptr<std::atomic_bool> stop){
  auto driver=std::make_unique<ProcessDriver>(path,std::move(credentials),std::move(readiness),limits);
- if(!driver->prepare()){error=driver->startFailure();return nullptr;}return driver.release();
+ if(!driver->prepare(stop)){error=driver->startFailure();return nullptr;}return driver.release();
 }
 }

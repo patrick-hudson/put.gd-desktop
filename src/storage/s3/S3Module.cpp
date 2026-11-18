@@ -108,14 +108,14 @@ void S3Module::post(std::function<void()> work) {
     state_->queue.push_back(std::move(work));
     state_->changed.notify_one();
 }
-S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck readiness, Error& error) {
+S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck readiness, Error& error, std::shared_ptr<std::atomic_bool> stop) {
     if (std::this_thread::get_id() != state_->worker.get_id()) {
         error = unavailable();
         return nullptr;
     }
 #if defined(Q_OS_LINUX) && !defined(PUTGD_S3_WORKER_HOST)
     try {
-        if (auto driver = createS3ProcessDriver(state_->path, std::move(credentials), std::move(readiness), error)) {
+        if (auto driver = createS3ProcessDriver(state_->path, std::move(credentials), std::move(readiness), error, {}, stop)) {
             ++state_->liveDrivers;
             return driver;
         }
@@ -123,6 +123,7 @@ S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck re
         if (error) return nullptr;
     } catch (...) {}
 #else
+    (void)stop;
     if (state_->load()) {
         try {
             if (auto driver = state_->api->create(std::move(credentials), std::move(readiness))) {

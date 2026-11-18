@@ -1,5 +1,6 @@
 #include "fixtures/S3Fixture.h"
 #include "fixtures/U2Fixtures.h"
+#include "fixtures/ChildProcesses.h"
 #include <QSqlQuery>
 #include "fixtures/Waits.h"
 using namespace putgd::test;
@@ -348,6 +349,83 @@ private slots:
         for (auto event : events) {
             QVERIFY(event.toObject()["signatureValid"].toBool());
             QCOMPARE(event.toObject()["bucket"].toString(), QString("isolated-fixture"));
+        }
+    }
+    // #1602. Quit kills the helper of a deletion whose DELETE the server holds, while an
+    // overwrite of the same key waits for the object behind it (#1603 review E3). Quit is
+    // quick, the helper is gone, the overwrite sends nothing, and the deletion is unknown
+    // with its intent. The server then deletes; after the next start Retry finds it gone.
+    void quitKillsTheHelperOfAHeldDeletion() {
+        S3Fixture f;
+        f.reset();
+        ProviderRegistry registry;
+        registry.add("s3", std::make_shared<S3Provider>(f.credentials));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(configuration(f, "overwrite"), {}));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {putgd::test::fixture(f.directory.path(), "quit.txt", "synthetic quit deletion")};
+        const auto data = f.directory.filePath("data");
+        QString deletionId, historyId, key;
+        QJsonObject intent;
+        const auto item = [&](OperationService& operations) { return HistoryStore(operations.databasePath()).deletion(deletionId)["items"].toArray()[0].toObject(); };
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            PUTGD_TRY_VERIFY(operations.ready());
+            QString operationId;
+            operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); operationId = value["operationId"].toString(); });
+            PUTGD_TRY_VERIFY(!operationId.isEmpty());
+            const auto uploaded = waitOperation(operations, operationId).items[0];
+            QCOMPARE(uploaded.uploadStatus, QString("uploaded"));
+            historyId = uploaded.artifact.id;
+            key = uploaded.receipt.objectReference["key"].toString();
+            QJsonObject preview;
+            history.prepareDelete({historyId}, [&](auto error, auto value) { QVERIFY(!error); preview = value; });
+            PUTGD_TRY_VERIFY(!preview.isEmpty());
+            f.reset({{"objects", f.state()["objects"]}, {"rules", QJsonArray{QJsonObject{{"method", "DELETE"}, {"barrier", "quit"}}}}});
+            history.deleteConfirmed({historyId}, preview["acknowledgement"].toString(), [&](auto error, auto value) {
+                QVERIFY(!error); deletionId = value["deleteOperationId"].toString();
+            });
+            PUTGD_TRY_VERIFY(!deletionId.isEmpty());
+            PUTGD_TRY_COMPARE(f.events("DELETE").size(), 1);
+            intent = item(operations)["progress"].toObject();
+            QVERIFY2(intent["phase"].toString().endsWith("intent"), qPrintable(QJsonDocument(intent).toJson(QJsonDocument::Compact)));
+            // The same file again overwrites the same key, and waits behind the deletion.
+            const auto puts = f.events("PUT").size();
+            QString overwrite;
+            operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); overwrite = value["operationId"].toString(); });
+            PUTGD_TRY_VERIFY(!overwrite.isEmpty());
+            PUTGD_COMPARE_STEADY(f.events("PUT").size(), puts, 500);
+            const auto helpers = putgd::test::childProcesses("putgd-s3-worker");
+            QVERIFY(!helpers.isEmpty());
+            QElapsedTimer quit;
+            quit.start();
+            history.stopDeletions();
+            operations.shutdown();
+            QVERIFY2(quit.elapsed() < 2000, qPrintable(QString::number(quit.elapsed())));
+            for (const auto pid : helpers) QVERIFY2(!putgd::test::childProcesses("putgd-s3-worker").contains(pid), qPrintable(QString::number(pid)));
+            QCOMPARE(f.events("PUT").size(), puts);
+            QCOMPARE(item(operations)["status"].toString(), QString("unknown"));
+            QCOMPARE(item(operations)["progress"].toObject(), intent);
+            QVERIFY(!f.state()["objects"].toObject()[key].toArray().isEmpty());
+        }
+        // The server carries out the DELETE it had received.
+        f.control("/__release", {{"barrier", "quit"}}, true);
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(f.state()["objects"].toObject()[key].toArray().isEmpty(), 20000);
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            PUTGD_TRY_VERIFY(operations.ready());
+            HistoryStore reopened(operations.databasePath());
+            QCOMPARE(reopened.deletion(deletionId)["state"].toString(), QString("interrupted"));
+            QCOMPARE(item(operations)["status"].toString(), QString("unknown"));
+            QCOMPARE(item(operations)["progress"].toObject(), intent);
+            bool accepted = false;
+            history.retryDelete(deletionId, [&](auto error, auto value) { QVERIFY(!error); accepted = value["retryAccepted"].toBool(); });
+            PUTGD_TRY_VERIFY(accepted);
+            PUTGD_TRY_COMPARE(reopened.deletion(deletionId)["state"].toString(), QString("completed"));
+            QCOMPARE(reopened.detail(historyId)["remoteStatus"].toString(), QString("removed"));
         }
     }
     void failedDeletionCheckpointRemainsRetryableAfterReopen_data() {

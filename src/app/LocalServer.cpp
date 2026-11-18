@@ -121,6 +121,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="ui.quit") {
   if(!p.isEmpty()){reply(invalid(),{});return;}
   if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}
+  // No deletion is admitted once the quit is accepted, not only once it runs (#1602).
+  history_.stopDeletions();
   const auto quit=uiQuit_;QPointer<LocalServer> guarded(this);
   reply({},{{"quitting",true}});
   if(guarded)QTimer::singleShot(0,guarded,quit);
