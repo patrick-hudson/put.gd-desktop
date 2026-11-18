@@ -198,7 +198,11 @@ qint64 streamOrigin(const AVStream* stream) { return stream->start_time == AV_NO
 // starts at S instead and opens on the frame on screen at S: the last frame
 // before S, which may lie in a cut or before the trim (`held`). That is the
 // right picture for that moment, so audio and video stay in sync. A span whose
-// start has no frame before it at all still snaps forward.
+// start has no frame before it at all still snaps forward. The mirror holds at
+// a span's end E (the trim end, or a cut's start): when the frame after E comes
+// more than one floor interval later, the span ends at E exactly, the last kept
+// frame shown until E and the audio stopped there, so nothing after E (above
+// all, nothing a cut removed) reaches the output.
 struct FrameGrid {
     recording::KeptSpans map;       // snapped source spans and their output times
     std::vector<qint64> keyframes;  // keyframe times the scan saw (µs from the video origin), ascending
@@ -212,7 +216,8 @@ struct FrameGrid {
     // The first frame time span i needs decoded: its held frame, or its start.
     qint64 decodeFrom(qsizetype i) const { return held[size_t(i)] ? *held[size_t(i)] : map.spans()[i].start; }
 };
-// The longest wait for a span's first frame that still starts the span on it.
+// The longest wait for a span's first frame that still starts the span on it,
+// and the longest a span's last frame runs past its end.
 constexpr qint64 floorIntervalUs = 1000000 / AdaptiveRate::floorFps;
 // Video frame times in microseconds from the clip's first frame (the timeline
 // every edit uses), read from the packets: a demux-only pass, nothing decoded.
@@ -368,6 +373,59 @@ struct FrameDeleter { void operator()(AVFrame* f) const { av_frame_free(&f); } }
 struct PacketDeleter { void operator()(AVPacket* p) const { av_packet_free(&p); } };
 using FramePtr = std::unique_ptr<AVFrame, FrameDeleter>;
 using PacketPtr = std::unique_ptr<AVPacket, PacketDeleter>;
+// The GIF palette from the frames pass two encodes. palettegen's diff mode
+// counts the first frame in full and then, wherever a pixel changes, the colour
+// it changes from (FFmpeg 8.0 vf_palettegen.c, update_histogram_diff), so a
+// colour that appears and stays to the end (a cover reaching the trim end, a
+// last slide) was never counted and came out in the nearest earlier colour.
+// After the last frame one more goes in with every byte inverted: every pixel
+// changes, so the last frame is counted in full too, and the inverted frame,
+// never followed by another, counts nothing.
+struct PaletteStats {
+    AVFilterGraph* graph = nullptr;
+    AVFilterContext* source = nullptr;
+    AVFilterContext* sink = nullptr;
+    FramePtr last;
+    ~PaletteStats() { if (graph) avfilter_graph_free(&graph); }
+    // Frames arrive as packed RGB24 (the palette pass ends on format=rgb24).
+    Error add(const AVFrame* frame, AVRational timeBase) {
+        if (!graph) {
+            graph = avfilter_graph_alloc();
+            if (!graph) return fail("recording_export_failed", "Cannot allocate a filter graph");
+            const auto args = QStringLiteral("video_size=%1x%2:pix_fmt=%3:time_base=%4/%5:pixel_aspect=1/1").arg(frame->width).arg(frame->height).arg(frame->format).arg(timeBase.num).arg(timeBase.den);
+            int rc = avfilter_graph_create_filter(&source, avfilter_get_by_name("buffer"), "in", args.toUtf8().constData(), nullptr, graph);
+            AVFilterContext* palettegen = nullptr;
+            if (rc >= 0) rc = avfilter_graph_create_filter(&palettegen, avfilter_get_by_name("palettegen"), "palettegen", "stats_mode=diff:max_colors=256", nullptr, graph);
+            if (rc >= 0) rc = avfilter_graph_create_filter(&sink, avfilter_get_by_name("buffersink"), "out", nullptr, nullptr, graph);
+            if (rc >= 0) rc = avfilter_link(source, 0, palettegen, 0);
+            if (rc >= 0) rc = avfilter_link(palettegen, 0, sink, 0);
+            if (rc >= 0) rc = avfilter_graph_config(graph, nullptr);
+            if (rc < 0) return fail("recording_export_failed", "Cannot build the GIF palette graph", rc);
+        }
+        last.reset(av_frame_clone(frame));
+        if (!last) return fail("recording_export_failed", "Cannot keep a frame for the GIF palette");
+        const int rc = av_buffersrc_add_frame_flags(source, last.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+        return rc < 0 ? fail("recording_export_failed", "Cannot build the GIF palette", rc) : Error{};
+    }
+    Error finish(FramePtr& palette) {
+        if (!last) return {"recording_export_failed", "The retained interval produced no frames", {}};
+        if (last->format != AV_PIX_FMT_RGB24) return {"recording_export_failed", "Unexpected GIF palette frame format", {}};
+        FramePtr inverted(av_frame_alloc());
+        inverted->format = last->format; inverted->width = last->width; inverted->height = last->height;
+        if (av_frame_get_buffer(inverted.get(), 0) < 0) return {"recording_export_failed", "Cannot allocate a frame for the GIF palette", {}};
+        for (int y = 0; y < last->height; ++y) {
+            const uint8_t* from = last->data[0] + qint64(y) * last->linesize[0];
+            uint8_t* to = inverted->data[0] + qint64(y) * inverted->linesize[0];
+            for (int x = 0; x < last->width * 3; ++x) to[x] = uint8_t(~from[x]);
+        }
+        inverted->pts = last->pts + 1;
+        int rc = av_buffersrc_add_frame_flags(source, inverted.get(), 0);
+        if (rc >= 0) rc = flushSource(source);
+        if (rc >= 0) { palette.reset(av_frame_alloc()); rc = av_buffersink_get_frame(sink, palette.get()); }
+        if (rc < 0) { palette.reset(); return fail("recording_export_failed", "Cannot build the GIF palette", rc); }
+        return {};
+    }
+};
 
 Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameGrid& grid) {
     Input input;
@@ -412,7 +470,6 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameG
     };
     QList<recording::Span> spans;
     std::map<qint64, qint64> heldAt;  // span start -> the frame it opens on, for spans held at their start
-    qint64 lastEditEnd = 0;
     for (const auto& span : kept.spans()) {
         std::optional<qint64> start, end;
         if (auto e = firstFrameAtOrAfter(span.start, start)) return e;
@@ -423,17 +480,15 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameG
             if (const auto it = frames.lower_bound(span.start); it != frames.begin()) {
                 heldAt[span.start] = *std::prev(it);
                 start = span.start;
-                // The span before ran on to the frame after its end; with no frame
-                // in between it would now overlap this one. Its own end keeps the cut.
-                if (!spans.isEmpty() && spans.last().end > span.start) {
-                    spans.last().end = lastEditEnd;
-                    if (spans.last().empty()) spans.removeLast();
-                }
             }
         }
+        // The last kept frame lasts until the next frame: kept to there when that
+        // is within a floor interval of the span's end, cut at the end otherwise.
+        // (A span before a held one then always ends before it: no frame lies
+        // between the two, so the next frame is over a floor interval away.)
         if (auto e = firstFrameAtOrAfter(span.end, end)) return e;
-        const qint64 stop = end ? *end : span.end;
-        if (stop > *start) { spans.append({*start, stop}); lastEditEnd = span.end; }
+        const qint64 stop = end && *end - span.end <= floorIntervalUs ? *end : span.end;
+        if (stop > *start) spans.append({*start, stop});
     }
     debugLog(QStringLiteral("export grid: %1 kept spans -> %2 on frames (%3 held at their start), %4 scan seeks").arg(kept.spans().size()).arg(spans.size()).arg(heldAt.size()).arg(seeks));
     grid.keyframes.assign(keys.begin(), keys.end());
@@ -656,9 +711,11 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     if (request.config.format == "gif") {
         // Pass one builds the palette from the exact frames pass two encodes.
         Graph paletteGraph;
-        if (auto e = paletteGraph.build(base + ",palettegen=stats_mode=diff:max_colors=256[out]", input.video, microseconds, false)) return e;
-        if (auto e = driveVideo(request.input, paletteGraph, grid, cancelled, [&](AVFrame* frame) -> Error { paletteFrame.reset(av_frame_clone(frame)); return {}; })) return e;
-        if (!paletteFrame) return {"recording_export_failed", "The retained interval produced no frames", {}};
+        if (auto e = paletteGraph.build(base + ",format=rgb24[out]", input.video, microseconds, false)) return e;
+        PaletteStats stats;
+        const auto statsTimeBase = av_buffersink_get_time_base(paletteGraph.sink);
+        if (auto e = driveVideo(request.input, paletteGraph, grid, cancelled, [&](AVFrame* frame) { return stats.add(frame, statsTimeBase); })) return e;
+        if (auto e = stats.finish(paletteFrame)) return e;
     }
     Graph graph;
     const auto description = request.config.format == "gif" ? base + "[pv];[pv][pal]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle[out]" : base + tail + "[out]";
