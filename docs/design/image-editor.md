@@ -395,10 +395,16 @@ what the editor itself guarantees.
     saved. Both are in All of these. Neither list nor name is logged, journaled or written to a
     diagnostics package.
   - A hit covers the **whole word box** it touches, as every kind does, so
-    `/home/patrick/project` is covered entirely. Matching with patterns runs on a worker thread,
-    so a slow pattern never freezes the editor. A pattern that runs out of its time budget is
-    skipped and named ("Pattern 3 took too long and was skipped."), and the marks found so far
-    stay.
+    `/home/patrick/project` is covered entirely. Patterns run in a child process,
+    `putgd-ui --match-patterns`, started only when there are patterns, so a slow pattern never
+    freezes the editor. The editor kills the child at the deadline (2 s by default). Patterns that
+    finished, the saved words and every other category still land, and an unfinished pattern is
+    named as skipped ("Pattern 3 took too long and was skipped."). A pattern sees each line, and
+    each pair of consecutive lines joined with a line break, so `quick\sredact` matches across a
+    wrapped line and a literal space does not. The child cannot write files, has a cleared
+    environment and no new privileges, closes inherited descriptors, and (best effort, with
+    Landlock) cannot read files once it has its input. It never logs and dies with the editor.
+    Closing the editor kills it.
   - **Each mark remembers why it was added**, by category and never by its text. A selected
     suggested mark says "Suggested: My username and name" (or the label of its category) in the
     Redact panel, and `editor.inspect` shows `suggested: "<category>"` on the shape. Moving or
@@ -406,15 +412,18 @@ what the editor itself guarantees.
   - **Deleting one suggestion** works like deleting any mark (Select tool, Delete, or
     `remove {shapeId}`). Running Quick redact again on that edit does not add it back, and undoing
     the delete brings the mark back. The editor remembers deleted suggestions only in memory, for
-    that edit, by their word box.
+    that edit, by the unpadded box of the recognized words they were built from.
   - **Remove suggestions** removes every suggested mark still there as one undo step and says
     "Removed 3 suggested redactions". Marks drawn by hand are never touched, and the removed
     marks are not remembered as deleted. It is off when there is no suggested mark. Agents use
     `editor.view` `removeSuggestions`.
-  - A result that lands during a drag waits for the drag to end and becomes its own undo step. A
-    Redact mark or crop change that was undone still counts as a change, so the result is
-    `edit_stale`. A pattern's time is bounded: the budget (2 s) plus one attempt, and the editor is
-    answered at the budget plus 1 s with every hit found so far.
+  - A result that lands during a drag waits for the drag to end and becomes its own undo step.
+    Switching tools or panning mid-drag abandons the drag and drops its half-drawn mark. A Redact
+    mark or crop change that was undone still counts as a change, so the result is `edit_stale`.
+    The worst case from the start of matching to the answer is the budget plus 1 s.
+  - While a pointer gesture is open, agent commands that change the document or the selection
+    answer `editor_busy`: the `editor.apply` ops, `redactText`, `removeSuggestions` and the editing
+    and selection `editor.view` actions.
 - Recognition runs in `putgd-ocr`, started by `putgd-ui --edit-image` as its own child. The
   editor process does not link Tesseract, Leptonica or ZXing-cpp.
 
@@ -444,11 +453,11 @@ Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 `redactText` is Quick redact: `categories` is 1 to 7 of `email`, `phone`, `ip`, `card`, `key`, `name`
 and `list`. `name` is the account's username and real name. `list` is the saved list from Settings
 plus the optional `terms` (up to 200 words or phrases of up to 100 code points, each with a letter or
-digit) and `patterns` (up to 50 regular expressions of up to 500 code points, none starting with `(*`) of
+digit) and `patterns` (up to 50 regular expressions of up to 500 code points) of
 this command, which are for this command only and
 need `list` in `categories`. A term or pattern that is empty, too long or has a line feed, carriage return,
-U+2028 or U+2029, a term with no letter or digit, or a pattern that starts with `(*`, does not compile or
-matches empty text, fails the whole command with
+U+2028 or U+2029, a term with no letter or digit, or a pattern that is blank, does not compile or
+matches empty text (the shape of a pattern is not judged), fails the whole command with
 `edit_command_invalid` and the entry's index, never its text. It must be the only command in its batch,
 or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is
 done, not at once, and returns the created shape IDs and counts per category, and `skippedPatterns`
@@ -462,7 +471,8 @@ Style buttons; it restyles a selected blur) and `stepNumber {number}` (Next
 number, or the selected step's Number); its state reports `nextStepNumber`,
 `style.blurStyle`, `style.stepSize`, `copying` and `lastCopy`. `editor.view` `removeSuggestions` (MCP
 `drive_editor`) is Quick redact's Remove suggestions: every suggested mark still there, as one undo step,
-and `edit_shape_missing` when there are none.
+`edit_shape_missing` when there are none, and `editor_busy` mid-drag. During a drag every document-changing
+or selection-changing `editor.apply` op and `editor.view` action answers `editor_busy`.
 
 | Shape kind | Geometry | Optional style |
 | --- | --- | --- |
