@@ -40,3 +40,5 @@ putgd_fuzz_target(gnome LIBS putgd_core SOURCES src/platform/gnome/GnomeProtocol
 # Compiled in directly: each needs only Qt Core, not the libraries around it.
 putgd_fuzz_target(localipc LIBS putgd_log SOURCES src/app/LocalIpc.cpp)
 putgd_fuzz_target(hyprland LIBS putgd_core SOURCES src/platform/hyprland/HyprlandIpc.cpp)
+# The custom uploader reader and rules, and the import (HttpImport.cpp) that runs them on a file.
+putgd_fuzz_target(httpimport LIBS putgd_http_rules putgd_core putgd_credentials SOURCES src/storage/http/HttpImport.cpp)
