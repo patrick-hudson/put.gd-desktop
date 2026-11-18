@@ -19,7 +19,8 @@ namespace putgd::record {
 // masks are enabled on gte(t, a) * lt(t, b) per output part of their interval.
 // A span whose first frame comes more than 1/AdaptiveRate::floorFps after its
 // start (a frame gap in a stepped-down or static capture) starts at its start
-// on the frame on screen there, so its narration is kept.
+// on the frame on screen there, so its narration is kept; likewise a span whose
+// last frame would run more than that past its end stops at its end.
 struct ExportRequest {
     QString input;      // the working clip (Matroska, H.264 [+ AAC])
     QString output;     // final file; the extension is informational, the format decides

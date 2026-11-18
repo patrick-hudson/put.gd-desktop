@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <utility>
 #include <vector>
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -151,6 +152,7 @@ struct Decoded {
     QList<Frame> frames;
     QList<qint64> bursts;  // onset times in the output, µs
     int audioFrameSize = 1024;
+    qint64 audioEndUs = 0;  // where the decoded audio ends, in output time (0 without audio)
 };
 QString analyse(const QString& path, Decoded& result) {
     AVFormatContext* format = nullptr;
@@ -232,6 +234,7 @@ QString analyse(const QString& path, Decoded& result) {
     }
     for (int i = 0; i < 2; ++i) if (decoders[i] && avcodec_send_packet(decoders[i], nullptr) >= 0) receive(i);
     sws_freeContext(scaler);
+    if (audioStarted) result.audioEndUs = audioStartUs + qint64(mono.size()) * 1'000'000 / rate;
     // Burst onsets: a 1 ms window over 0.05 RMS after at least 20 ms under 0.02.
     const int window = rate / 1000;
     int quiet = 0;
@@ -614,7 +617,10 @@ private slots:
     // the frame on screen there, with the audio from that instant: the
     // narration over a still slide is kept and stays in sync, at the trim start
     // and at a seam after a cut alike. A span starting less than a floor
-    // interval before a frame still starts on that frame.
+    // interval before a frame still starts on that frame. The mirror at a span's
+    // end: a trim end or cut start inside the gap ends the span there exactly,
+    // so nothing after it (no audio, no frame) leaks into the output. A cover
+    // across the gap is drawn where the same map puts it, held frames included.
     void frameGapsKeepTheSpanStart_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("codec");
@@ -622,17 +628,28 @@ private slots:
         QTest::addColumn<qint64>("cutStart");
         QTest::addColumn<qint64>("cutEnd");
         QTest::addColumn<qint64>("keptFrom");  // where the output really starts
+        QTest::addColumn<qint64>("trimEnd");
         constexpr qint64 none = -1, floorIntervalUs = 1'000'000 / AdaptiveRate::floorFps;
         static_assert(gapclip::resumeMs * 1000 - 2'000'000 > floorIntervalUs && gapclip::resumeMs * 1000 - 2'560'000 < floorIntervalUs);
         // 0.8 s before frame 48: opens on frame 47, shown from before the trim.
-        QTest::newRow("trim in a gap, mp4") << "mp4" << "h264" << qint64(1'800'000) << none << none << qint64(1'800'000);
-        QTest::newRow("trim in a gap, webm") << "webm" << "vp9" << qint64(1'800'000) << none << none << qint64(1'800'000);
-        QTest::newRow("trim in a gap, gif") << "gif" << "" << qint64(1'800'000) << none << none << qint64(1'800'000);
+        QTest::newRow("trim in a gap, mp4") << "mp4" << "h264" << qint64(1'800'000) << none << none << qint64(1'800'000) << qint64(4'000'000);
+        QTest::newRow("trim in a gap, webm") << "webm" << "vp9" << qint64(1'800'000) << none << none << qint64(1'800'000) << qint64(4'000'000);
+        QTest::newRow("trim in a gap, gif") << "gif" << "" << qint64(1'800'000) << none << none << qint64(1'800'000) << qint64(4'000'000);
         // The cut holds frame 47 and ends 0.6 s before frame 48: the seam opens on 47.
-        QTest::newRow("cut ending in a gap, mp4") << "mp4" << "h264" << qint64(0) << qint64(800'000) << qint64(2'000'000) << qint64(0);
-        QTest::newRow("cut ending in a gap, gif") << "gif" << "" << qint64(0) << qint64(800'000) << qint64(2'000'000) << qint64(0);
+        QTest::newRow("cut ending in a gap, mp4") << "mp4" << "h264" << qint64(0) << qint64(800'000) << qint64(2'000'000) << qint64(0) << qint64(4'000'000);
+        QTest::newRow("cut ending in a gap, gif") << "gif" << "" << qint64(0) << qint64(800'000) << qint64(2'000'000) << qint64(0) << qint64(4'000'000);
         // 40 ms before frame 48, under the 66.7 ms floor interval: starts on frame 48.
-        QTest::newRow("trim just before a frame, mp4") << "mp4" << "h264" << qint64(2'560'000) << none << none << qint64(2'600'000);
+        QTest::newRow("trim just before a frame, mp4") << "mp4" << "h264" << qint64(2'560'000) << none << none << qint64(2'600'000) << qint64(4'000'000);
+        // A trim end 0.6 s before frame 48 ends the export at 2.0 s on frame 47;
+        // running on to frame 48 would keep the burst at 2.2 s after the trim end.
+        // A cut from 1.8 s (0.8 s before frame 48) to 3.2 s (on frame 66) likewise
+        // ends the first span at 1.8 s: none of the cut's burst at 2.2 s, nor its frames.
+        static_assert(gapclip::resumeMs * 1000 - 2'000'000 > floorIntervalUs && gapclip::resumeMs * 1000 - 1'800'000 > floorIntervalUs);
+        for (const auto& [format, codec] : {std::pair<QString, QString>{"mp4", "h264"}, {"webm", "vp9"}, {"gif", ""}, {"webp", ""}}) {
+            QTest::newRow(qPrintable("trim end in a gap, " + format)) << format << codec << qint64(0) << none << none << qint64(0) << qint64(2'000'000);
+            QTest::newRow(qPrintable("cut starting in a gap, " + format)) << format << codec << qint64(0) << qint64(1'800'000) << qint64(3'200'000) << qint64(0) << qint64(4'000'000);
+        }
+        QTest::newRow("trim in a gap, webp") << "webp" << "" << qint64(1'800'000) << none << none << qint64(1'800'000) << qint64(4'000'000);
     }
     void frameGapsKeepTheSpanStart() {
         QFETCH(QString, format);
@@ -641,23 +658,29 @@ private slots:
         QFETCH(qint64, cutStart);
         QFETCH(qint64, cutEnd);
         QFETCH(qint64, keptFrom);
+        QFETCH(qint64, trimEnd);
         using namespace gapclip;
         putgd::RecordingEdit edit;
         edit.trimStart = trimStart;
-        edit.trimEnd = 4'000'000;  // on frame 90
+        edit.trimEnd = trimEnd;  // 4.0 s is on frame 90
         if (cutStart >= 0) edit.cuts = {{"gap", cutStart, cutEnd}};
+        // A cover over the gap, from 1.0 s to 3.5 s.
+        constexpr qint64 coverFrom = 1'000'000, coverTo = 3'500'000;
+        putgd::RecordingMask cover;
+        cover.kind = "solid"; cover.rect = cutclip::spanningMask; cover.start = coverFrom; cover.end = coverTo;
+        edit.masks = {cover};
         putgd::RecordingEdit expectedEdit = edit;
         expectedEdit.trimStart = keptFrom;
         const KeptSpans expected(expectedEdit, durationUs);
         ExportRequest request;
         request.input = frameGap_;
-        request.output = dir_.filePath(QStringLiteral("gap-%1-%2.%3").arg(trimStart).arg(cutStart).arg(format));
+        request.output = dir_.filePath(QStringLiteral("gap-%1-%2-%3.%4").arg(trimStart).arg(cutStart).arg(trimEnd).arg(format));
         request.durationUs = durationUs;
         request.canvas = {width, height};
         request.edit = edit;
         request.config.format = format;
         request.config.codec = codec;
-        request.config.audio.system = format != "gif";
+        request.config.audio.system = format == "mp4" || format == "webm";
         ExportResult result;
         std::atomic_bool cancelled{false};
         QList<double> progress;
@@ -666,13 +689,14 @@ private slots:
         QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
         const int outputFps = format == "gif" ? 15 : fps;
         const qint64 step = 1'000'000 / outputFps;
-        // The output grows by exactly the time kept at the span start, and progress runs over it.
-        QVERIFY2(std::abs(result.durationUs - expected.outputDuration()) <= step, qPrintable(QStringLiteral("%1 us, expected %2").arg(result.durationUs).arg(expected.outputDuration())));
+        // The output lasts exactly the time kept, whole output frames here, and progress runs over it.
+        QVERIFY2(std::abs(result.durationUs - expected.outputDuration()) <= 1000, qPrintable(QStringLiteral("%1 us, expected %2").arg(result.durationUs).arg(expected.outputDuration())));
         QVERIFY(!progress.isEmpty() && progress.last() > 0.95);
         for (qsizetype i = 1; i < progress.size(); ++i) QVERIFY(progress[i] >= progress[i - 1]);
 
         cutclip::Decoded decoded;
         const auto failure = cutclip::analyse(request.output, decoded);
+        if (format == "webp" && failure == "cannot set up a decoder") QSKIP("this FFmpeg cannot decode animated WebP: only the duration and progress were checked");
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
         const auto& shown = decoded.frames;
         QVERIFY(shown.size() > 10);
@@ -693,21 +717,35 @@ private slots:
         for (const qint64 seam : expected.seams()) {
             const auto after = std::find_if(shown.begin(), shown.end(), [&](const cutclip::Decoded::Frame& f) { return f.us - first >= seam; });
             QVERIFY(after != shown.end());
-            QCOMPARE(after->source, onScreen(expected.toSource(seam)));
+            // GIF's 15 fps step may keep the frame after the first one there.
+            const int opens = onScreen(expected.toSource(seam)), next = onScreen(expected.toSource(seam + step / 2));
+            QVERIFY2(after->source == opens || (format == "gif" && after->source == next), qPrintable(QStringLiteral("the seam at %1 us opens on clip frame %2, expected %3").arg(seam).arg(after->source).arg(opens)));
         }
-        // The first frame after the gap lands where it belongs in the output.
-        const auto resumed = std::find_if(shown.begin(), shown.end(), [](const cutclip::Decoded::Frame& f) { return f.source > held; });
-        QVERIFY(resumed != shown.end());
-        const qint64 resumedUs = expected.toOutput(resumeMs * 1000);
-        QVERIFY2(std::abs(resumed->us - first - resumedUs) <= step, qPrintable(QStringLiteral("frame %1 at %2 us, expected %3").arg(resumed->source).arg(resumed->us - first).arg(resumedUs)));
+        // The first frame after the gap, when kept, lands where it belongs in the output.
+        if (expected.kept(resumeMs * 1000)) {
+            const auto resumed = std::find_if(shown.begin(), shown.end(), [](const cutclip::Decoded::Frame& f) { return f.source > held; });
+            QVERIFY(resumed != shown.end());
+            const qint64 resumedUs = expected.toOutput(resumeMs * 1000);
+            QVERIFY2(std::abs(resumed->us - first - resumedUs) <= step, qPrintable(QStringLiteral("frame %1 at %2 us, expected %3").arg(resumed->source).arg(resumed->us - first).arg(resumedUs)));
+        }
+        // The cover on exactly the output the map gives it. A frame stamped within
+        // one output step of a bound may land either side after the rate filter.
+        const auto coverParts = expected.outputParts(coverFrom, coverTo);
+        for (const auto& f : shown) {
+            const qint64 t = f.us - first;
+            bool inside = false, nearBound = false;
+            for (const auto& part : coverParts) { inside = inside || part.contains(t); nearBound = nearBound || std::abs(t - part.start) < step || std::abs(t - part.end) < step; }
+            if (!nearBound) QVERIFY2(f.spanningCovered == inside, qPrintable(QStringLiteral("output %1 us (clip frame %2): cover %3, expected %4").arg(t).arg(f.source).arg(f.spanningCovered).arg(inside)));
+        }
         QList<qint64> flashes, expectedFlashes;
         for (qsizetype i = 0; i < shown.size(); ++i) if (shown[i].white && (i == 0 || !shown[i - 1].white)) flashes << shown[i].us - first;
         for (int f : flashFrames) if (expected.kept(frameUs(f))) expectedFlashes << expected.toOutput(frameUs(f));
         QCOMPARE(flashes.size(), expectedFlashes.size());
         for (qsizetype i = 0; i < flashes.size(); ++i) QVERIFY2(std::abs(flashes[i] - expectedFlashes[i]) <= step, qPrintable(QStringLiteral("flash %1 at %2 us, expected %3").arg(i).arg(flashes[i]).arg(expectedFlashes[i])));
-        if (format == "gif") return;
+        if (!request.config.audio.system) return;
         // Every kept burst, the one over the still frame included, at its output
-        // time: within one audio frame, as its flash is within one video frame.
+        // time: within one audio frame, as its flash is within one video frame,
+        // and no audio past the output's end (an end inside the gap stops it there).
         QList<qint64> expectedBursts;
         for (qint64 us : burstsUs()) if (expected.kept(us)) expectedBursts << expected.toOutput(us);
         QCOMPARE(decoded.bursts.size(), expectedBursts.size());
@@ -716,6 +754,7 @@ private slots:
             const qint64 offset = decoded.bursts[i] - first - expectedBursts[i];
             QVERIFY2(std::abs(offset) <= audioFrameUs, qPrintable(QStringLiteral("burst %1 is %2 us from %3").arg(i).arg(offset).arg(expectedBursts[i])));
         }
+        QVERIFY2(decoded.audioEndUs - first <= expected.outputDuration() + audioFrameUs, qPrintable(QStringLiteral("audio runs to %1 us of %2").arg(decoded.audioEndUs - first).arg(expected.outputDuration())));
     }
     void webmAudioDecodesEveryPacket_data() {
         QTest::addColumn<QString>("decoder");
