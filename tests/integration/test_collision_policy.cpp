@@ -198,15 +198,26 @@ private slots:
         QCOMPARE(journal["phase"].toString(), QString("completing"));
         if (problem.startsWith("file-gone")) QVERIFY(QFile::remove(before.items[0].artifact.path));
         if (problem == "file-gone-check-fails") u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}, {"remaining", 50}}}}}, true);
+        // The identity HEAD waits at a barrier until the test has locked the credentials.
+        else if (problem == "credentials-lock-after-check") u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"barrier", "identity-check"}}}}}, true);
         else if (problem.endsWith("after-check")) u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"delay", 0.8}}}}}, true);
         else u.f.control("/__rules", {{"rules", QJsonArray{}}}, true);
         const auto artifact = before.items[0].artifact.path;
-        if (problem == "credentials-lock-after-check")
-            QTimer::singleShot(300, [&] { u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference); });
         if (problem == "file-changed-after-check")
             QTimer::singleShot(300, [artifact] { QFile file(artifact); file.setPermissions(QFile::ReadOwner | QFile::WriteOwner); if (file.open(QIODevice::WriteOnly)) file.write("changed"); });
         if (problem == "credentials-locked") u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference);
-        const auto item = u.retry(before.id).items[0];
+        OperationItem item;
+        if (problem == "credentials-lock-after-check") {
+            u.f.control("/__clear_events", {}, true);
+            bool accepted = false;
+            u.operations->retry(before.id, [&](auto error, auto) { accepted = !error; });
+            PUTGD_TRY_VERIFY(accepted);
+            PUTGD_TRY_COMPARE(u.f.events("HEAD").size(), 1);
+            u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference);
+            u.f.control("/__release", {{"barrier", "identity-check"}}, true);
+            PUTGD_TRY_COMPARE(u.operations->diagnostics()["activeOperations"].toInt(), 0);
+            item = HistoryStore(u.operations->databasePath()).operation(before.id).items[0];
+        } else item = u.retry(before.id).items[0];
         QCOMPARE(item.uploadStatus, status);
         if (status == "unknown") {
             QCOMPARE(item.uploadJournal, journal);
