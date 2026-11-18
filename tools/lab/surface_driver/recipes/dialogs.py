@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import re
 import shlex
+from pathlib import PurePosixPath
+from uuid import uuid4
 
 from tools.lab.surface_driver.api import RecipeBlocked, recipe
 
@@ -70,13 +72,13 @@ def _frame(ctx, label, backend, mode=None):
     ctx.frame(label, window='putgdFileDialog' if reference else None, reference=reference)
 
 
-def _ready(ctx, inspect, backend, mode, *, check_fallback_reason=True):
+def _ready(ctx, inspect, backend, mode):
     state = ctx.wait(lambda: (s if s.get('open') and s.get('backend') else None)
                      if (s := inspect()) else None, 'chooser prepared', timeout=12)
     if state['backend'] != backend:
         ctx.blocked('Requested ' + backend + ', got ' + state['backend'] +
                     '; fallbackReason=' + str(state.get('fallbackReason')), issue=671)
-    if backend == 'fallback' and check_fallback_reason:
+    if backend == 'fallback':
         expected = ctx.profile['dialogs']['backends'][backend]['expected_reason']
         if state.get('fallbackReason') != expected:
             ctx.blocked('Fallback launch did not apply the profile environment; reason=' +
@@ -205,62 +207,102 @@ def _input(ctx, backend, path, mode, inspect):
             ctx.note('Return completed the exact choice before the optional accept key')
 
 
-def _paste_review_path(ctx, path, state, stage_path):
-    # Per-character entry can make Qt's Wayland completer take the focus as
-    # a separate toplevel. Paste once into the verified, focused filename.
+def _review_filename(ctx, title):
     pid = ctx.geometry('putgdFileDialog')['pid']
     query = {'pid': pid, 'owned': True, 'visible': True, 'showing': True,
              'states': {'focused': True, 'editable': True}}
+    fields = [node for node in ctx.accessible(query)
+              if node['window'] == title and node['role'] in ('text', 'entry')]
+    return fields[0] if len(fields) == 1 else None
 
-    def fields():
-        return [node for node in ctx.accessible(query)
-                if node['window'] == state['title'] and node['role'] in ('text', 'entry')]
 
-    ctx.wait(lambda: len(fields()) == 1, 'the owned Qt chooser has one focused filename field')
+def _type_review_filename(ctx, path, title):
+    ctx.wait(lambda: _review_filename(ctx, title), 'the owned chooser filename field is focused')
     ctx.keys('Ctrl+A')
-    stage_path(path)
-    ctx.keys('Ctrl+V')
-    ctx.wait(lambda: len(nodes := fields()) == 1 and nodes[0].get('text') == path,
-             'the chooser contains the exact pasted path')
+    ctx.type_text(path)
+    ctx.wait(lambda: (_review_filename(ctx, title) or {}).get('text') == path,
+             'the filename field contains the exact requested text')
+
+
+def _enter_review_path(ctx, path, title):
+    # Avoid completing each partial absolute path in Qt on Wayland. Enter an
+    # unused relative prefix first, then remove it when the full folder is ready.
+    folder = str(path.parent)
+    marker = 'where-' + uuid4().hex[:8]
+    ctx.expect(ctx.shell('mkdir -m 700 -- ' + shlex.quote(folder + '/' + marker))['returncode'] == 0,
+               'the owned output directory has a unique navigation witness')
+    prefix = '!'
+    ctx.expect(ctx.shell('test ! -e "$HOME/!" && test ! -L "$HOME/!"')['returncode'] == 0,
+               'the temporary filename prefix has no matching directory')
+    _type_review_filename(ctx, prefix + folder, title)
+    ctx.keys('Home', 'Delete')
+    ctx.wait(lambda: (_review_filename(ctx, title) or {}).get('text') == folder,
+             'the filename field contains the exact private folder')
+    ctx.click('text:Open', window='putgdFileDialog')
+    ctx.click('text:Detail View', window='putgdFileDialog')
+    pid = ctx.geometry('putgdFileDialog')['pid']
+    def has_witness():
+        rows = ctx.accessible({'name': marker, 'pid': pid, 'owned': True, 'window': title})
+        return any(node['showing'] and any(parent['name'] == 'Files' and parent['role'] in ('tree', 'tree table', 'table', 'list')
+                                           for parent in node['ancestors']) for node in rows)
+
+    if not has_witness():
+        # Qt's completer may consume the first pointer click to dismiss itself.
+        # Open again only with the same verified directory still in the field.
+        ctx.click('class:QLineEdit', window='putgdFileDialog')
+        ctx.wait(lambda: (_review_filename(ctx, title) or {}).get('text') == folder,
+                 'the folder path remains in the owned chooser after the completion list closes')
+        ctx.click('text:Open', window='putgdFileDialog')
+    _frame(ctx, 'directory-navigation', 'fallback')
+    ctx.wait(has_witness, 'the chooser file list shows the private output directory witness')
+    ctx.click('class:QLineEdit', window='putgdFileDialog')
+    _type_review_filename(ctx, path.name, title)
     _frame(ctx, 'path-entered', 'fallback')
     ctx.keys('Return')
 
 
-def choose_review_copy(ctx, identity, path, *, stage_path=None):
-    """Complete the review's own save event using the observed chooser backend."""
-    params={'id':identity}
-    def inspect():
-        return ctx.call('recording.review',dict(params,action='inspect'))['fileDialog']
+def choose_review_copy(ctx, identity, path, *, output_dir, check_cancel=False):
+    """Use the app-owned chooser and verify the exact private output path."""
+    target = PurePosixPath(path)
+    ctx.expect(target.is_absolute() and '..' not in target.parts and target.parent == PurePosixPath(output_dir),
+               'review copy targets a file directly inside the owned output directory')
+    ctx.expect(ctx.shell('test ! -e ' + shlex.quote(path) + ' && test ! -L ' + shlex.quote(path))['returncode'] == 0,
+               'review copy uses a fresh filename')
+    params = {'id': identity}
 
-    ctx.call('recording.review',dict(params,action='saveCopyDialog'))
+    def command(action):
+        return ctx.call('recording.review', dict(params, action=action))['fileDialog']
+
+    def inspect():
+        return command('inspect')
+
+    before = ctx.call('recording.review', dict(params, action='inspect')) if check_cancel else None
+    command('saveCopyDialog')
     try:
-        opened=ctx.wait(lambda: (s if s['open'] and s.get('backend') else None)
-                        if (s := inspect()) else None, 'review save chooser opened')
-        backend=opened['backend']
-        try:
-            _ready(ctx,inspect,backend,'save',check_fallback_reason=False)
-        except RecipeBlocked:
-            current=inspect()
-            # A portal timeout may replace the window during readiness. No
-            # input has been sent. Bind the new, owned chooser from scratch.
-            if backend!='portal' or not current['open'] or current.get('backend')!='fallback':
-                raise
-            backend='fallback'
-            ctx.note('Review chooser switched to fallback: '+str(current.get('fallbackReason')))
-            _ready(ctx,inspect,backend,'save',check_fallback_reason=False)
-        if stage_path is not None and backend == 'fallback':
-            _paste_review_path(ctx,path,inspect(),stage_path)
+        state = _ready(ctx, inspect, 'fallback', 'save')
+        if check_cancel:
+            ctx.keys('Escape')
+            ctx.wait(lambda: not inspect()['open'], 'Escape closes the owned chooser')
+            ctx.expect(inspect()['last']['status'] == 'cancelled', 'the chooser reports cancellation')
+            after = ctx.call('recording.review', dict(params, action='inspect'))
+            ctx.expect(all(after[key] == before[key] for key in ('edit', 'savedCopy')),
+                       'cancel preserves the edit and saved-copy state')
+            command('saveCopyDialog')
+            state = _ready(ctx, inspect, 'fallback', 'save')
+        if ctx.profile['session'] == 'wayland':
+            _enter_review_path(ctx, target, state['title'])
         else:
-            _input(ctx,backend,path,'save',inspect)
-        final=ctx.wait(lambda: (s if not s['open'] else None) if (s := inspect()) else None,
-                       'review save chooser accepted')
-        last=final.get('last') or {}
-        ctx.expect(last.get('status')=='chosen' and last.get('path')==path,
-                   'the live chooser accepted the exact private path')
+            _type_review_filename(ctx, path, state['title'])
+            _frame(ctx, 'path-entered', 'fallback')
+            ctx.keys('Return')
+        final = ctx.wait(lambda: (s if not (s := inspect())['open'] else None), 'review save chooser accepted')
+        last = final.get('last') or {}
+        ctx.expect(last.get('status') == 'chosen' and last.get('backend') == 'fallback'
+                   and last.get('path') == path, 'the Qt chooser accepted the exact private path')
     finally:
         if inspect()['open']:
-            ctx.call('recording.review',dict(params,action='closeFileDialog'))
-    ctx.view('recording.review',dict(params,action='inspect'))
+            command('closeFileDialog')
+    ctx.view('recording.review', dict(params, action='inspect'))
 
 
 def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
@@ -357,10 +399,12 @@ def _run(ctx, backend, scenario):
     if scenario == 'failure-strip':
         ctx.fixture('chooser-failure')
         ctx.blocked('Chooser failure fixture did not provide a production Failed result', issue=671)
+    if scenario == 'review-save-copy' and backend != 'fallback':
+        ctx.blocked('Review Save a copy uses the owned Qt chooser. Portal input needs a request-bound window witness.', issue=671)
     _backend(ctx, backend)
     if scenario in BACKENDS and scenario != backend:
         ctx.blocked(scenario + ' backend state does not exist in a ' + backend + ' run', issue=671)
-    files = _files(ctx)
+    files = None if scenario == 'review-save-copy' else _files(ctx)
     if scenario in ('output-folder', 'portal', 'fallback', 'cancel', 'mcp.file-dialogs'):
         _output(ctx, backend, files, mcp=scenario == 'mcp.file-dialogs', cancel_only=scenario == 'cancel',
                 single=scenario in BACKENDS)
@@ -410,26 +454,14 @@ def _run(ctx, backend, scenario):
         finally:
             ctx.call('editor.cancel', {'id': op})
     elif scenario == 'review-save-copy':
-        fixture = ctx.fixture('recording')
+        fixture = ctx.fixture('recording-copy')
         op = fixture.id
         ctx.view('recording.review', {'id': op, 'action': 'inspect'})
-        path = files['root'] + '/Recording copy.mp4'
-        def consumer():
-            state = ctx.call('recording.review', {'id': op, 'action': 'inspect'})
-            return {'savedCopy': state['savedCopy'], 'edit': state['edit']}
-        # Review exposes its chooser under its own surface method, not ui.fileDialog.
-        class ReviewContext:
-            def __getattr__(self, name):
-                return getattr(ctx, name)
-            def call(self, method, params=None):
-                if method == 'recording.review.dialog':
-                    actions = {'open': 'saveCopyDialog', 'inspect': 'inspect', 'cancel': 'closeFileDialog'}
-                    return ctx.call('recording.review', {'id': op, 'action': actions[params['action']]})['fileDialog']
-                return ctx.call(method, params)
-        _exercise(ReviewContext(), backend, 'save', ('recording.review.dialog', {}), consumer, path)
-        ctx.wait(lambda: consumer()['savedCopy']['path'] == path, 'review reports saved copy')
+        path = fixture['output_dir'] + '/dialog-copy.mp4'
+        choose_review_copy(ctx, op, path, output_dir=fixture['output_dir'], check_cancel=True)
+        ctx.wait(lambda: ctx.call('recording.review', {'id': op, 'action': 'inspect'})['savedCopy']['path'] == path,
+                 'review reports the chosen saved copy')
         _shell(ctx, 'test -s ' + shlex.quote(path))
-        ctx.note('Saved recording: ' + _shell(ctx, 'sha256sum -- ' + shlex.quote(path)))
         _frame(ctx, 'after', backend)
     elif scenario == 'edit-image':
         ctx.view('ui.show', {'view': 'history'})
@@ -460,14 +492,14 @@ def _register(scenario, backend):
     if scenario == 'history-save-as':
         needs.append('history')
     if scenario == 'review-save-copy':
-        needs.append('recording')
+        needs = ['recording-copy'] if backend == 'fallback' else []
     interaction = scenario if scenario.startswith('mcp.') else 'dialog.' + scenario
 
     # Five independent folder fields require ten guarded chooser lifecycles.
     # AT-SPI ownership checks run before every typed character, so give this
     # composite row its measured workload budget without changing core limits.
     @recipe(interaction, needs=needs, destinations=('local',), desktop_drawn=backend == 'portal',
-            timeout=900 if scenario == 'output-folder' else 300)
+            timeout=900 if scenario == 'output-folder' else 600 if scenario == 'review-save-copy' else 300)
     def run(ctx):
         _run(ctx, backend, scenario)
     run.__name__ = scenario.replace('.', '_').replace('-', '_') + '_' + backend

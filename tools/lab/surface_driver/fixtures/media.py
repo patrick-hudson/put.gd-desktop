@@ -15,6 +15,7 @@ a run directory inside the checkout must be git-ignored. Secret-safe export
 Review fixtures can keep raw media in a separate private sibling directory,
 outside the receipts audit. Encoders can write vendor URLs into the media bytes.
 """
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -28,6 +29,7 @@ CHUNK = 3 * 1024 * 1024
 BUDGET_SECONDS = 60
 SUFFIXES = ('.mkv', '.mp4', '.webm', '.gif', '.webp')
 ROOT = Path(__file__).resolve().parents[4]
+DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 
 
 def private_root(ctx, *, outside_receipts=False):
@@ -35,10 +37,10 @@ def private_root(ctx, *, outside_receipts=False):
     out = getattr(ctx, 'out', None)
     if out is None:
         return None, 'run has no output directory'
-    out = Path(out).resolve()
+    out = Path(out).absolute()
+    if out.resolve() != out:
+        return None, 'run directory does not have a canonical path'
     directory = out.with_name(out.name + '-private-media') if outside_receipts else out / 'private-media'
-    if directory.is_symlink():
-        return None, 'private media path is a symlink'
     if directory.is_relative_to(ROOT):
         ignored = subprocess.run(['git', '-C', str(ROOT), 'check-ignore', '-q', str(directory)],
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -82,15 +84,49 @@ with open(p,'rb') as f:
     return base64.b64decode(data)
 
 
-def _private_dirs(path):
-    """Create each missing level of path with mode 0700 (umask-proof)."""
-    missing = []
-    while not path.exists():
-        missing.append(path)
-        path = path.parent
-    for level in reversed(missing):
-        os.mkdir(level, 0o700)
-        os.chmod(level, 0o700)
+def _identity(fd):
+    info = os.fstat(fd)
+    return info.st_dev, info.st_ino
+
+
+@contextmanager
+def _private_dirs(directory, parts, owned):
+    """Walk only directories exclusively created by this run, relative to open FDs."""
+    fd = os.open(directory, DIR_FLAGS)
+    try:
+        if _identity(fd) != owned[()]:
+            raise OSError('private media root changed')
+        for index, name in enumerate(parts, 1):
+            key = parts[:index]
+            fresh = key not in owned
+            if fresh:
+                os.mkdir(name, 0o700, dir_fd=fd)
+            child = os.open(name, DIR_FLAGS, dir_fd=fd)
+            os.close(fd)
+            fd = child
+            if fresh:
+                os.fchmod(fd, 0o700)
+                owned[key] = _identity(fd)
+            elif _identity(fd) != owned[key]:
+                raise OSError('private media directory changed')
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def _reserve(ctx, directory):
+    roots = getattr(ctx, '_private_media_roots', None)
+    if roots is None:
+        roots = ctx._private_media_roots = {}
+    if directory not in roots:
+        directory.mkdir(mode=0o700)
+        fd = os.open(directory, DIR_FLAGS)
+        try:
+            os.fchmod(fd, 0o700)
+            roots[directory] = {(): _identity(fd)}
+        finally:
+            os.close(fd)
+    return roots[directory]
 
 
 def retain(scope, *, outside_receipts=False):
@@ -118,17 +154,16 @@ def _retain(scope, until, *, outside_receipts):
     if directory is None:
         getattr(ctx, 'note', print)('recording media not retained: ' + reason)
         return None
-    destination = directory / recipe.replace('/', '_') / scope.token[:8]
-    for attempt in range(2, 100):
-        if not destination.exists():
-            break
-        destination = destination.with_name(scope.token[:8] + '-' + str(attempt))
+    owned = _reserve(ctx, directory)
+    parts = (recipe.replace('/', '_'), scope.token[:8])
+    if parts in owned:
+        # Retain can be called twice for the same scope by the contract harness.
+        parts = (parts[0], parts[1] + '-' + str(len(owned)))
+    with _private_dirs(directory, parts, owned):
+        pass
+    destination = directory.joinpath(*parts)
     rows = inventory(scope)
     used = getattr(ctx, '_retained_media_bytes', 0)
-    _private_dirs(destination.parent)
-    os.chmod(directory, 0o700)
-    os.mkdir(destination, 0o700)
-    os.chmod(destination, 0o700)
     for row in rows:
         relative = PurePosixPath(row['path'])
         if relative.is_absolute() or '..' in relative.parts:
@@ -144,31 +179,35 @@ def _retain(scope, until, *, outside_receipts):
             row.update(retained=False, reason='retention time budget of %d s exceeded' % BUDGET_SECONDS)
             continue
         target = destination / Path(*relative.parts)
-        _private_dirs(target.parent)
         digest, complete = hashlib.sha256(), True
-        with open(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb') as stream:
-            for offset in range(0, row['size'], CHUNK):
-                if time.monotonic() >= until:
-                    complete = False
-                    break
-                block = _read(scope, row['path'], offset, min(CHUNK, row['size'] - offset))
-                digest.update(block)
-                stream.write(block)
-        if not complete:
-            target.unlink()
-            row.update(retained=False, reason='retention time budget of %d s exceeded' % BUDGET_SECONDS)
-            continue
-        if digest.hexdigest() != row['sha256'] or target.stat().st_size != row['size']:
-            target.unlink()
-            row.update(retained=False, reason='host copy does not match the guest SHA-256')
-            continue
+        with _private_dirs(directory, parts + relative.parts[:-1], owned) as folder:
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+            with open(os.open(relative.name, flags, 0o600, dir_fd=folder), 'wb') as stream:
+                for offset in range(0, row['size'], CHUNK):
+                    if time.monotonic() >= until:
+                        complete = False
+                        break
+                    block = _read(scope, str(relative), offset, min(CHUNK, row['size'] - offset))
+                    digest.update(block)
+                    stream.write(block)
+                size = stream.tell()
+            if not complete:
+                os.unlink(relative.name, dir_fd=folder)
+                row.update(retained=False, reason='retention time budget of %d s exceeded' % BUDGET_SECONDS)
+                continue
+            if digest.hexdigest() != row['sha256'] or size != row['size']:
+                os.unlink(relative.name, dir_fd=folder)
+                row.update(retained=False, reason='host copy does not match the guest SHA-256')
+                continue
         used += row['size']
         row.update(retained=True, host_path=str(target.relative_to(directory.parent)))
     ctx._retained_media_bytes = used
     manifest = {'schema': 1, 'private': True, 'recipe': recipe, 'synthetic': True,
                 'caps': {'file_bytes': FILE_CAP, 'run_bytes': RUN_CAP}, 'files': rows}
-    with open(os.open(destination / 'manifest.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as stream:
-        json.dump(manifest, stream, indent=1, sort_keys=True)
+    with _private_dirs(directory, parts, owned) as folder:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+        with open(os.open('manifest.json', flags, 0o600, dir_fd=folder), 'w') as stream:
+            json.dump(manifest, stream, indent=1, sort_keys=True)
     kept = sum(1 for r in rows if r.get('retained'))
     ctx.note('recording media retained privately: %d/%d files (%s)' % (kept, len(rows), destination.relative_to(directory.parent)))
     return manifest

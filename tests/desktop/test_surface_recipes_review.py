@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from tools.lab.surface_driver.api import RecipeBlocked
-from tools.lab.surface_driver.fixtures import clipboard, recordings
+from tools.lab.surface_driver.fixtures import recordings
 from tools.lab.surface_driver.recipes import dialogs, review
 
 
@@ -51,86 +51,62 @@ class Verifier(unittest.TestCase):
 
 
 class ChooserSave(unittest.TestCase):
-    def test_profile_can_select_owned_chooser_before_recording(self):
+    def test_review_fixture_forces_owned_chooser_before_recording(self):
         scope = Mock()
-        scope.ctx.profile = {'session': 'wayland', 'recording': {'review_copy_chooser': 'fallback'}}
-        scope.ctx.fixture.return_value = recordings.Fixture(id='current')
-        fixture = recordings.copy_recording(scope)
-        self.assertTrue(callable(fixture['stage_save_path']))
+        recordings.copy_recording(scope)
         self.assertEqual([call.args[0] for call in scope.ctx.fixture.call_args_list],
                          ['file-dialog-fallback', 'recording'])
 
-    def test_native_chooser_paste_observes_exact_focused_entry(self):
+    def test_review_copy_observes_exact_owned_chooser_result(self):
         ctx = Mock()
-        ctx.geometry.return_value = {'pid': 937}
+        ctx.profile = {'session': 'wayland'}
+        ctx.shell.return_value = {'returncode': 0}
+        ctx.wait.side_effect = lambda predicate, *_args, **_kwargs: predicate()
+        ctx.expect.side_effect = self.assertTrue
+        path = '/tmp/private/out/retry.mp4'
+        choice = {'open': False, 'last': {'status': 'chosen', 'backend': 'fallback', 'path': path}}
+        ctx.call.return_value = {'fileDialog': choice}
+        with patch.object(dialogs, '_ready', return_value={'title': 'Save a copy'}) as ready, \
+             patch.object(dialogs, '_enter_review_path') as enter:
+            dialogs.choose_review_copy(ctx, 'current', path, output_dir='/tmp/private/out')
+        self.assertEqual(ready.call_args.args[2:], ('fallback', 'save'))
+        enter.assert_called_once_with(ctx, dialogs.PurePosixPath(path), 'Save a copy')
+
+    def test_foreign_portal_is_refused_without_review_input(self):
+        ctx = Mock()
+        ctx.shell.return_value = {'returncode': 0}
+        ctx.expect.side_effect = self.assertTrue
+        ctx.wait.return_value = {'open': True, 'backend': 'portal'}
+        ctx.blocked.side_effect = RecipeBlocked('foreign chooser')
+        ctx.call.return_value = {'fileDialog': {'open': True, 'backend': 'portal'}}
+        with self.assertRaisesRegex(RecipeBlocked, 'foreign chooser'):
+            dialogs.choose_review_copy(ctx, 'current', '/tmp/private/out/a.mp4', output_dir='/tmp/private/out')
+        ctx.keys.assert_not_called()
+        ctx.type_text.assert_not_called()
+        ctx.click.assert_not_called()
+
+    def test_copy_path_requires_clipboard_to_change(self):
+        ctx = Mock()
         ctx.wait.side_effect = lambda predicate, *_args: self.assertTrue(predicate())
-        path = '/tmp/private/out/retry.mp4'
-        entry = {'role': 'text', 'window': 'Save a copy'}
-        ctx.accessible.side_effect = [[entry], [dict(entry, text=path)]]
-        stage = Mock()
-        dialogs._paste_review_path(ctx, path, {'title': 'Save a copy'}, stage)
-        stage.assert_called_once_with(path)
-        self.assertEqual([call.args[0] for call in ctx.keys.call_args_list], ['Ctrl+A', 'Ctrl+V', 'Return'])
-
-    def test_chooser_clipboard_refuses_unowned_paths_or_missing_snapshot(self):
-        scope = Mock(root='/tmp/private')
-        scope.ctx.profile = {'session': 'wayland'}
-        for path, ready in (('/tmp/peer/out/retry.mp4', True), ('/tmp/private/out/retry.mp4', False)):
-            with self.subTest(path=path, ready=ready):
-                scope.ctx.target.clipboard_report = {'ready': ready}
-                with self.assertRaises(RecipeBlocked):
-                    clipboard.stage_chooser_path(scope, path)
-        scope.write.assert_not_called()
-
-    def test_review_fixture_selects_exact_path_through_native_chooser(self):
-        ctx = Mock()
-        ctx.wait.side_effect = lambda predicate, *_args, **_kwargs: predicate()
         ctx.expect.side_effect = self.assertTrue
         path = '/tmp/private/out/retry.mp4'
-        choice = {'open': False, 'last': {'status': 'chosen', 'path': path}}
-        states = iter(({'open': True, 'backend': 'portal'}, choice, choice))
+        ctx.clipboard_text.side_effect = [None, path]
+        with patch.object(review, '_saved_copy_actions', return_value={'copyPath', 'showInFolder', 'dismissSavedCopy'}), \
+             patch.object(review, '_drive') as drive:
+            review._check_saved_actions(ctx, 'current', path)
+        self.assertEqual([call.args[2] for call in drive.call_args_list], ['copyPath', 'dismissSavedCopy'])
 
-        def call(method, params):
-            self.assertEqual(method, 'recording.review')
-            self.assertEqual(params['id'], 'current')
-            if params['action'] == 'inspect':
-                return {'fileDialog': next(states)}
-            self.assertEqual(params['action'], 'saveCopyDialog')
-
-        ctx.call.side_effect = call
-        with patch.object(dialogs, '_ready') as ready, patch.object(dialogs, '_input') as enter:
-            dialogs.choose_review_copy(ctx, 'current', path)
-        self.assertEqual(ready.call_args.args[2:], ('portal', 'save'))
-        self.assertEqual(enter.call_args.args[1:4], ('portal', path, 'save'))
-        ctx.view.assert_called_once_with('recording.review', {'id': 'current', 'action': 'inspect'})
-
-    def test_review_chooser_rebinds_after_portal_timeout_before_input(self):
+    def test_copy_path_refuses_preexisting_clipboard_value(self):
         ctx = Mock()
-        ctx.wait.side_effect = lambda predicate, *_args, **_kwargs: predicate()
+        ctx.wait.side_effect = lambda predicate, *_args: self.assertTrue(predicate())
         ctx.expect.side_effect = self.assertTrue
         path = '/tmp/private/out/retry.mp4'
-        state = {'open': True, 'backend': 'portal'}
-
-        def call(method, params):
-            self.assertEqual(method, 'recording.review')
-            if params['action'] == 'inspect':
-                return {'fileDialog': state.copy()}
-
-        def ready(_ctx, _inspect, backend, _mode, **_options):
-            if backend == 'portal':
-                state.update(backend='fallback', fallbackReason='NoReply')
-                raise dialogs.RecipeBlocked('portal changed backend')
-
-        def enter(_ctx, backend, target, _mode, _inspect):
-            self.assertEqual((backend, target), ('fallback', path))
-            state.update(open=False, last={'status': 'chosen', 'path': path})
-
-        ctx.call.side_effect = call
-        with patch.object(dialogs, '_ready', side_effect=ready) as prepare, \
-             patch.object(dialogs, '_input', side_effect=enter) as choose:
-            dialogs.choose_review_copy(ctx, 'current', path)
-        self.assertEqual([call.args[2] for call in prepare.call_args_list], ['portal', 'fallback'])
-        choose.assert_called_once()
+        ctx.clipboard_text.return_value = path
+        with patch.object(review, '_saved_copy_actions', return_value={'copyPath', 'showInFolder', 'dismissSavedCopy'}), \
+             patch.object(review, '_drive') as drive:
+            with self.assertRaises(AssertionError):
+                review._check_saved_actions(ctx, 'current', path)
+        drive.assert_not_called()
 
     def test_export_fault_restores_owned_working_file_on_input_error(self):
         scope = Mock()

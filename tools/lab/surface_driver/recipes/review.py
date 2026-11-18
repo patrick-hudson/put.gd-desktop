@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import shlex
+import time
 from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import recipe
@@ -152,15 +153,32 @@ def _select_mask(ctx, rid, mask):
     ctx.expect(_drive(ctx, rid, 'selectEdit', kind='cover', editId=mask['id'])['selectedEdit']['id'] == mask['id'], 'Edits selects the cover')
 
 
+FORMAT_SELECTORS = {
+    ('mp4', 'h264'): 'text:Compatible video — MP4 (H.264) · Recommended',
+    ('mp4', 'h265'): 'text:Smaller video — MP4 (H.265)',
+    ('webm', 'vp9'): 'text:Browser video — WebM (VP9)',
+    ('gif', ''): 'text-glob:Animated GIF · no sound · at most *',
+    ('webp', ''): 'text-glob:Animated WebP · no sound · at most *',
+}
+
+
+def _menu_choice(ctx, menu, selector):
+    ctx.profile.setdefault('windows', {})[menu] = {'owner': 'review', 'popup': True, 'title': '.*'}
+    ctx.click(selector, window=menu)
+
+
 def _choose_format(ctx, rid, fmt, codec=''):
-    # The review exposes the same choice through its live action. Observe the
-    # window and the resident, since the window sends configuration asynchronously.
+    ctx.click('text:Output format', window='review')
+    _menu_choice(ctx, 'reviewFormatMenu', FORMAT_SELECTORS[fmt, codec])
     choice = {'format': fmt, 'codec': codec}
-    ctx.expect(_drive(ctx, rid, 'format', **choice)['format'] == choice, 'window accepts format choice')
+    ctx.wait(lambda: _state(ctx, rid)['format'] == choice, 'the window accepts the menu selection')
+
     def accepted():
         config = _inspect(ctx, rid)['config']
         return config['format'] == fmt and config.get('codec', '') == codec
+
     ctx.wait(accepted, 'resident accepts format choice')
+
 
 def kept_spans(edit, duration):
     """Source-time spans [start, end] (microseconds) an export keeps: the trim, minus every cut."""
@@ -417,11 +435,24 @@ def _export(ctx, rid, name='review-check'):
 def playback(ctx):
     rid = _open(ctx)
     ctx.expect(_state(ctx, rid)['speed'] == 1, 'playback starts at 1x')
-    ctx.expect(_drive(ctx, rid, 'speed', speed=2)['speed'] == 2, '2x playback selected')
+    # The split button's last 26 logical pixels open its speed menu.
+    ctx.click('play', window='review', offset=(51, 16))
+    _menu_choice(ctx, 'reviewSpeedMenu', 'text:2×')
+    ctx.wait(lambda: _state(ctx, rid)['speed'] == 2, 'the speed menu selected 2×')
     ctx.click_at(*_video(ctx, rid, .05, .05))
-    at = _state(ctx, rid)['playheadUs']
     ctx.keys('Space')
-    ctx.wait(lambda: (s := _state(ctx, rid))['playing'] and s['playheadUs'] > at, 'playhead advances')
+
+    def sample():
+        before = time.monotonic()
+        state = _state(ctx, rid)
+        return (state['playheadUs'], (before + time.monotonic()) / 2) if state['playing'] else None
+
+    first = ctx.wait(sample, 'playback begins')
+    last = ctx.wait(lambda: point if (point := sample()) and point[1] - first[1] >= .75 else None,
+                    'a second playing sample spans at least 750 ms', timeout=3)
+    rate = (last[0] - first[0]) / ((last[1] - first[1]) * 1_000_000)
+    ctx.note(f'Native 2× playback measured {rate:.2f}× over {last[1] - first[1]:.3f} s')
+    ctx.expect(1.55 <= rate <= 2.45, 'playhead advances at twice elapsed time')
     ctx.keys('Space')
     ctx.wait(lambda: not _state(ctx, rid)['playing'], 'Space pauses playback')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'playback remains private')
@@ -655,7 +686,7 @@ def save_copy(ctx):
     info = _inspect(ctx, rid)
     fixture = ctx.fixture('recording-copy')
     path = str(PurePosixPath(fixture['output_dir']) / ('user-copy.' + info['config']['format']))
-    choose_review_copy(ctx, rid, path, stage_path=fixture.get('stage_save_path'))
+    choose_review_copy(ctx, rid, path, output_dir=fixture['output_dir'])
     info = _saved(ctx, rid, path)
     ctx.expect(info['lastExport']['path'] == path, 'chooser exports to chosen absolute path')
     ctx.wait(lambda: (s := _state(ctx, rid))['visible'] and (s.get('savedCopy') or {}).get('current'),
@@ -670,8 +701,10 @@ def save_copy(ctx):
 def _check_saved_actions(ctx, rid, path):
     ctx.wait(lambda: {'copyPath', 'showInFolder', 'dismissSavedCopy'} <= _saved_copy_actions(_state(ctx, rid)),
              'the saved copy offers Copy path, Show in folder and Dismiss')
+    before = ctx.clipboard_text(allow_absent=True)
+    ctx.expect(before != path, 'the clipboard differs from the fresh output before Copy path')
     _drive(ctx, rid, 'copyPath')
-    ctx.expect(ctx.clipboard_text() == path, 'Copy path copies the saved output path')
+    ctx.wait(lambda: ctx.clipboard_text(allow_absent=True) == path, 'Copy path changes the clipboard to the saved output path')
     _drive(ctx, rid, 'dismissSavedCopy')
 
 
@@ -686,6 +719,7 @@ def status_actions(ctx):
     _check_saved_actions(ctx, rid, path)
     ctx.wait(lambda: not _saved_copy_actions(_state(ctx, rid)), 'Dismiss removes the retry result and its actions')
     _frame(ctx, 'after')
+    ctx.blocked('Retry, Copy path and Dismiss passed. Show in folder and size/format recovery still need live checks.', issue=672)
 
 
 @recipe('review.destination-menu', 'review.upload', needs=('recording', 'destination'),
@@ -782,6 +816,7 @@ def advice(ctx):
     _saved(ctx, rid, path, retry=True)
     ctx.view('recording.review', {'id': rid, 'action': 'inspect'})
     _frame(ctx, 'after')
+    ctx.blocked('Export failed Details and Retry passed. The Recording error dialog still needs a live check.', issue=672)
 
 
 @recipe('review.notice', needs=('recording-budget-stop',), timeout=240)

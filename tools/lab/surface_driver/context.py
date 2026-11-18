@@ -1024,10 +1024,14 @@ asyncio.run(main())
     def tray(self):
         return self._probe('tray', {})
 
-    def clipboard_text(self, *, expected_json=None):
+    def clipboard_text(self, *, expected_json=None, allow_absent=False):
         command = 'wl-paste --no-newline --type text' if self.profile['session']=='wayland' else 'xclip -selection clipboard -out'
-        result = self.shell(command)
+        result = self.shell('LC_ALL=C ' + command)
         if result['returncode']:
+            absent = 'Nothing is copied' if self.profile['session']=='wayland' else 'Error: target STRING not available'
+            if (allow_absent and expected_json is None and result['returncode'] == 1
+                    and not result['stdout'] and result['stderr'].strip() == absent):
+                return None
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
         value, verified = result['stdout'], False
         if expected_json is not None:

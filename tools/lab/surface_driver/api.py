@@ -287,12 +287,13 @@ class Context:
         """
         raise NotImplementedError
 
-    def clipboard_text(self, *, expected_json: Optional[dict] = None) -> str:
+    def clipboard_text(self, *, expected_json: Optional[dict] = None, allow_absent: bool = False) -> Optional[str]:
         """Read clipboard text, registering unknown content as opaque secrets.
 
         expected_json must be a production observation of the exact copied
         receipt. A matching local copy uses structured secret-field/link
         registration; live copies remain opaque. A mismatch fails closed.
+        allow_absent accepts the native reader’s explicit no-selection result.
         """
         raise NotImplementedError
 

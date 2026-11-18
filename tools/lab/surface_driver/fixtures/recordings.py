@@ -5,7 +5,7 @@ import shlex
 import time
 
 from ..api import RecipeBlocked, RecipeFailed
-from . import clipboard, consent, media
+from . import consent, media
 from .base import Fixture
 from .uploads import track
 
@@ -173,15 +173,8 @@ def controls(scope):
 
 def copy_recording(scope):
     ctx=scope.ctx
-    # A profile can use the private Qt chooser when its desktop portal has
-    # no observable input target. Dedicated portal recipes still use the portal.
-    fallback = ctx.profile.get('recording', {}).get('review_copy_chooser') == 'fallback'
-    if fallback:
-        ctx.fixture('file-dialog-fallback')
-    fixture = ctx.fixture('recording')
-    if fallback and ctx.profile.get('session') == 'wayland':
-        return Fixture(fixture, stage_save_path=lambda path: clipboard.stage_chooser_path(scope, path))
-    return fixture
+    ctx.fixture('file-dialog-fallback')
+    return ctx.fixture('recording')
 
 
 def _replace_working(scope, identity):
@@ -233,7 +226,7 @@ def export_failure(scope):
     try:
         # Only a chooser save tells the review to show a failed export banner.
         # Force the worker to fail inside that event, with a valid save path.
-        choose_review_copy(scope.ctx,value.id,path,stage_path=value.get('stage_save_path'))
+        choose_review_copy(scope.ctx,value.id,path,output_dir=value['output_dir'])
         def failed():
             result=scope.ctx.call('recording.inspect',{'id':value.id}).get('lastExport') or {}
             return result.get('status')=='failed' and result.get('path')==path

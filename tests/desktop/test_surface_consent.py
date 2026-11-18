@@ -61,6 +61,17 @@ class Ownership(unittest.TestCase):
         kind, reason = consent.decision(consent.analyse([public_start(), impl_start(), impl_start(FOREIGN_HANDLE)]), POLICY)
         self.assertEqual(kind, 'blocked')
 
+    def test_loaded_debian_profile_refuses_portal_consent(self):
+        profile = load_profile('debian-kde-wayland')
+        request = impl_start(exe='xdg-desktop-portal-kde')
+        policy = consent.policy(profile)
+        state = consent.analyse([public_start(), request])
+        self.assertEqual(consent.decision(state, policy)[0], 'blocked')
+        # Refusal also holds when a guest reaches drive directly.
+        watch = SimpleNamespace(ctx=SimpleNamespace(profile=profile), consent=policy)
+        with self.assertRaisesRegex(RecipeBlocked, 'automatic ScreenCast consent is disabled'):
+            consent.drive(watch, request)
+
     def test_response_counts_only_from_the_forwarding_frontend(self):
         spoofed = consent.analyse([public_start(), impl_start(), response(sender=':1.66')])
         self.assertEqual(consent.decision(spoofed, POLICY)[0], 'dialog')
@@ -259,6 +270,31 @@ class Retention(unittest.TestCase):
         self.assertTrue(scan_run(self.out)['passed'])
         (self.out / 'note.txt').write_bytes(clip)
         self.assertFalse(scan_run(self.out)['passed'])
+
+    def test_preexisting_private_sibling_is_refused_without_chmod(self):
+        private = self.out.with_name('run-private-media')
+        private.mkdir(mode=0o755)
+        with self.assertRaises(FileExistsError):
+            media.retain(self.scope, outside_receipts=True)
+        self.assertEqual(private.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(list(private.iterdir()), [])
+
+    def test_symlinked_descendant_cannot_redirect_media(self):
+        private = self.out.with_name('run-private-media')
+        outside = self.out.parent / 'outside'
+        outside.mkdir()
+        self.scope.write(self.scope.root + '/out/clip.mp4', b'clip')
+        real_inventory = media.inventory
+
+        def replace_descendant(scope):
+            destination = private / self.ctx.recipe.name / scope.token[:8]
+            (destination / 'out').symlink_to(outside, target_is_directory=True)
+            return real_inventory(scope)
+
+        with patch.object(media, 'inventory', side_effect=replace_descendant):
+            with self.assertRaises(OSError):
+                media.retain(self.scope, outside_receipts=True)
+        self.assertEqual(list(outside.iterdir()), [])
 
     def test_every_created_directory_level_is_private(self):
         self.scope.write(self.scope.root + '/out/videos/clip.mp4', b'mp4')
