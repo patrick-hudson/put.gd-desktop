@@ -125,11 +125,16 @@ File-manager selections enter through `uploadFiles`; folder handling is describe
 in [file-manager upload](file-manager-upload.md).
 
 The operation journal and per-item history commit in one SQLite transaction.
-If History refuses an operation's final write (a full disk, an I/O error), its row
+If History refuses any write an operation makes (a full disk, an I/O error), its row
 keeps its last saved state for the rest of the session; that is a known limit. put.gd
-remembers the operation, says once per session that a restart finishes saving such
-results, and refuses its Retry with `history_io` until then, since the row is stale.
-The restart's recovery then fixes the row as it does after a crash (#1579).
+remembers the operation even if a later write succeeds, says once per session that a
+restart finishes saving such results (a notification that follows the notifications
+preference), and refuses its Retry with `history_io` until then, since the row is
+stale. A failed read does not count. After the restart the row shows what recovery
+could establish, which may be an unknown upload; a later Retry still faces the
+destination's usual checks. A local save that created its file but could not record
+it is not recovered: the earlier copy may already be in the folder, so check there
+before saving again (#1579).
 An unknown publication has no invented URL or deletion target. Recovery marks
 interrupted uploads unknown and never automatically publishes. Explicit retry
 retains artifacts, candidate names, conditions and publication markers, reconciles
