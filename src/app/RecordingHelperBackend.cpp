@@ -99,8 +99,10 @@ void RecordingHelperBackend::preview(const QString& id, const RecordingEdit& edi
 void RecordingHelperBackend::exportClip(const QString& id, const RecordingEdit& edit, const RecordingConfig& config, const QString& outputPath, Reply reply) {
     helper_.command(id, "export", {{"edit", edit.toJson()}, {"config", config.toJson()}, {"output", outputPath}}, exportMs_, std::move(reply));
 }
-void RecordingHelperBackend::setEdit(const QString& id, const RecordingEdit& edit, const RecordingConfig& config, const QJsonObject& limits) {
+void RecordingHelperBackend::setEdit(const QString& id, const RecordingEdit& edit, const RecordingConfig& config, const QJsonObject& limits, const QJsonObject& answer) {
     // Fire and forget: a helper that is not running, or not this session's, ignores it.
-    helper_.command(id, "setEdit", {{"edit", edit.toJson()}, {"config", config.toJson()}, {"limits", limits}}, commandMs_, [](Error, QJsonObject) {});
+    QJsonObject params{{"edit", edit.toJson()}, {"config", config.toJson()}, {"limits", limits}};
+    if (!answer.isEmpty()) params["answer"] = answer;
+    helper_.command(id, "setEdit", params, commandMs_, [](Error, QJsonObject) {});
 }
 }

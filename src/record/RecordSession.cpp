@@ -249,11 +249,15 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         auto configJson = params["config"].toObject();
         for (const auto* key : {"mime", "budgetBytes"}) configJson.remove(key);
         RecordingConfig config;
-        if (!configJson.isEmpty() && !recording::parseConfig(configJson, config)) { config.budgetBytes = config_.budgetBytes; config_ = config; if (review_) review_->setConfig(config_); }
+        // configSeq: the window's latest output choice the resident applied; an
+        // older config never replaces a newer choice in the window (#1635).
+        const auto configSeq = quint64(std::max(0.0, params["answer"].toObject()["configSeq"].toDouble()));
+        if (!configJson.isEmpty() && !recording::parseConfig(configJson, config)) { config.budgetBytes = config_.budgetBytes; if (!review_ || review_->setConfig(config, configSeq)) config_ = config; }
         if (review_) {
             const auto limits = params["limits"].toObject();
             if (!limits.isEmpty()) review_->setLimits(qint64(limits["animationSeconds"].toDouble()) * 1000000, limits["animationEdge"].toInt());
-            review_->setEdit(edit);
+            // answer: {proposal, refused?} when this push answers the window's proposal.
+            review_->setEdit(edit, params["answer"].toObject());
         }
         reply({}, {});
         return;
@@ -261,7 +265,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
     if (command == "raise") {
         barHidden_ = false;
         if (bar_) { if (reviewing()) bar_->hide(); else { bar_->show(); bar_->raise(); } }
-        if (review_) review_->reopen(params["error"].toString());
+        if (review_) review_->reopen(params["error"].toString(), params["retry"].toBool(true));
         reply({}, {});
         return;
     }
@@ -941,15 +945,15 @@ void RecordSession::openReview() {
     options.microphoneRecorded = capturedMicrophone_;
     review_ = new ReviewWindow(options, config_);
     QPointer<RecordSession> guard(this);
-    connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}}); });
-    connect(review_, &ReviewWindow::configChanged, this, [guard](const RecordingConfig& config) {
+    connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands, quint64 proposal) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}, {"proposal", double(proposal)}}); });
+    connect(review_, &ReviewWindow::configChanged, this, [guard](const RecordingConfig& config, quint64 seq) {
         if (!guard) return;
         const auto budget = guard->config_.budgetBytes;
         guard->config_ = config;
         guard->config_.budgetBytes = budget;
-        emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}});
+        emit guard->event({{"event", "configChanged"}, {"config", config.toJson()}, {"seq", double(seq)}});
     });
-    connect(review_, &ReviewWindow::uploadRequested, this, [guard](quint64 revision) { if (guard) emit guard->event({{"event", "uploadRequested"}, {"revision", double(revision)}}); });
+    connect(review_, &ReviewWindow::uploadRequested, this, [guard](quint64 revision, const RecordingConfig& config) { if (guard) emit guard->event({{"event", "uploadRequested"}, {"revision", double(revision)}, {"config", config.toJson()}}); });
     connect(review_, &ReviewWindow::retryExportRequested, this, [guard] { if (guard) emit guard->event({{"event", "retryExportRequested"}}); });
     connect(review_, &ReviewWindow::saveCopyRequested, this, [guard](const QString& path, quint64 revision) { if (guard) emit guard->event({{"event", "saveCopyRequested"}, {"path", path}, {"revision", double(revision)}}); });
     connect(review_, &ReviewWindow::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
@@ -987,6 +991,21 @@ bool RecordSession::parseEdit(const QJsonObject& json, RecordingEdit& edit) cons
         mask.strength = int(strength);
         edit.masks.append(mask);
     }
+    // #1613: cuts are optional so an older resident's edit still parses.
+    if (json.contains("cuts")) {
+        if (!json["cuts"].isArray()) return false;
+        for (const auto& value : json["cuts"].toArray()) {
+            if (!value.isObject()) return false;
+            const auto c = value.toObject();
+            RecordingCut cut;
+            if (!c["id"].isString() || !integer(c["start"], 0, durationUs_, &cut.start) || !integer(c["end"], 0, durationUs_, &cut.end) || cut.end <= cut.start) return false;
+            cut.id = c["id"].toString();
+            edit.cuts.append(cut);
+        }
+    }
+    for (const auto* key : {"canUndo", "canRedo"}) if (json.contains(key) && !json[key].isBool()) return false;
+    edit.canUndo = json["canUndo"].toBool();
+    edit.canRedo = json["canRedo"].toBool();
     return true;
 }
 void RecordSession::preview(const QJsonObject& params, Reply reply) {

@@ -3,6 +3,7 @@
 #include "core/RecordingClicks.h"
 #include "core/Operation.h"
 #include <QElapsedTimer>
+#include <QMap>
 #include <QObject>
 #include <QPointer>
 #include <functional>
@@ -78,10 +79,23 @@ private:
         QSize canvas;
         qint64 duration = 0;
         RecordingEdit edit;
+        // #1613: the review's undo and redo steps; reset with the edit when review starts.
+        RecordingEditHistory history;
         QJsonObject progress;
         // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
         QJsonObject lastExport;
         QJsonObject lastExportRequest;
+        // Each answered review-window proposal by number: {} when applied, else
+        // its refusal {code, message, revision}. recording.review reads its own
+        // proposals' outcomes here; the newest 128 are kept.
+        QMap<quint64, QJsonObject> proposalOutcomes;
+        // While the helper exports (it takes no edit then): proposal answers and
+        // whether another push waits, and a format or sound choice made meanwhile.
+        bool helperExporting = false, pushHeld = false;
+        QList<QJsonObject> heldAnswers;
+        QJsonObject heldConfig;
+        // The window's latest output choice (its configChanged seq) applied here.
+        quint64 windowConfigSeq = 0;
         std::optional<bool> overlayExcluded;
         // outside | inside | hidden | compositor: where the control bar ended up.
         QString overlayPlacement;
@@ -114,6 +128,8 @@ private:
     QJsonObject publicJson(const Session&) const;
     // The phase defaults to the state; Upload's export reports as `encoding`.
     void transition(Session&, RecordingState, const QString& phase = {});
+    void pushEdit(Session&, QJsonObject answer = {});
+    void resumeReview(Session&);
     // Logs, once per session, a step outside the from/to table; the step is taken all the same.
     void checkStep(Session&, RecordingState to);
     QJsonObject limitsJson(const Session&) const;

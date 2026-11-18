@@ -63,12 +63,19 @@ RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
 RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
 RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
-RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
+RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask', 'addCut', 'updateCut', 'removeCut', 'undo', 'redo'}
 # The review window's controls (#283), one per drive_recording_review call.
-REVIEW_ACTIONS = {'inspect', 'seek', 'play', 'pause', 'speed', 'setIn', 'setOut', 'resetTrim', 'addMask', 'showMaskOptions', 'closeMaskOptions', 'nextMaskLanes', 'previousMaskLanes', 'selectMask',
+REVIEW_ACTIONS = {'inspect', 'seek', 'play', 'pause', 'speed', 'setIn', 'setOut', 'resetTrim', 'addMask', 'selectMask',
                   'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format', 'saveCopyDialog', 'closeFileDialog',
-                  'placeMask', 'useSolidCover', 'trimToLimit', 'dismissStatus', 'dismissBlurTip', 'showAdvice', 'showFormatTips', 'showInFolder', 'copyPath', 'dismissSavedCopy', 'retryExport', 'retryPreview', 'discard', 'keepReviewing',
-                  'confirmDiscard'}
+                  'placeMask', 'useSolidCover', 'trimToLimit', 'dismissStatus', 'showAdvice', 'showInFolder', 'copyPath', 'dismissSavedCopy', 'retryExport', 'retryPreview', 'discard', 'keepReviewing',
+                  'confirmDiscard',
+                  # #1613: the redesigned window's controls.
+                  'selectRange', 'clearSelection', 'cut', 'selectCut', 'adjustCut', 'restoreCut', 'playAcross', 'undo', 'redo',
+                  'armRedact', 'armBlur', 'cancelPlacement', 'selectEdit', 'nextEdit', 'previousEdit', 'seekCoverStart',
+                  'seekCoverEnd', 'setCoverEdgeToPlayhead', 'setCoverEdge', 'coverKind', 'timelineZoom', 'timelineFit', 'viewerZoom',
+                  'viewerPan', 'frameStep', 'skim', 'skimEnd', 'panel', 'resize', 'setTrim'}
+REVIEW_EDIT_KINDS = {'cut', 'cover', 'trim'}
+REVIEW_TIMELINE_ZOOMS = {1, 2, 4, 8, 16}
 REVIEW_SPEEDS = {0.5, 1, 2, 4}
 # The put.gd window's file choosers (#259) and the actions on each.
 FILE_DIALOGS = {'editImage', 'historySaveAs', 'outputFolder', 'diagnosticsFolder'}
@@ -621,7 +628,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_recording(id: str, revision: int, commands: list[Json]) -> Json:
-        """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}; mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A stale revision is refused."""
+        """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels, at least 2x2. Every time snaps to the recording's frame grid (frame k at round(k*1e6/fps)) in the direction that lets no unwanted footage through: mask and cut starts snap down and their ends up (they only grow), the trim start snaps up and its end down (the kept clip only shrinks); the returned edit shows the snapped times, and an edit that snapping would leave with less than one frame is refused. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}, addCut {start, end}, updateCut {cutId, start, end}, removeCut {cutId}, undo, redo (each alone in its batch); mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A cut leaves a stretch of the clip out of the export but keeps it in the edit (edit.cuts, source times, never overlapping or touching: a new cut merges with the ones it meets, an addCut that merges gets a new id); the output is the trimmed interval minus the cuts, and at least one frame must stay. undo and redo step the review's history (edit.canUndo / edit.canRedo) and still advance the revision; with nothing to step they are refused as recording_history_empty. A stale revision is refused."""
         if not identifier(id) or type(revision) is not int or revision < 1 or not safe_recording_commands(commands):
             return invalid()
         return await adapter.call('recording.edit', {'id': id, 'revision': revision, 'commands': commands})
@@ -629,8 +636,13 @@ def create_server(adapter: CliAdapter) -> MCPServer:
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def drive_recording_review(id: str, action: str, time_us: int | None = None, speed: float | None = None,
                                      kind: str | None = None, rect: list[int] | None = None, mask_id: str | None = None,
-                                     strength: int | None = None, format: str | None = None, codec: str | None = None) -> Json:
-        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, which contextual mask controls show, status, size, the unobscured video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, optional rect [x,y,w,h] canvas pixels, else centred at half the frame's width and height as Enter places it; starts at the playhead, runs to the trim end}, showMaskOptions / closeMaskOptions (opens or closes blur radius and Delete mask), nextMaskLanes / previousMaskLanes (scrolls two lanes without changing selection), selectMask {mask_id, or none to clear}, placeMask {rect; the selected mask's rectangle, as a drag or the frame's arrow keys set it}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete), useSolidCover (the visible Use Redact action: turns the selected blur, or an armed Add blur, into a redaction; serialized kind stays solid), format {format, codec}, trimToLimit (keeps the first part a GIF/WebP length limit allows), dismissStatus (clears an error or result in the status row), dismissBlurTip (Got it on the blur privacy guidance, hidden for the rest of this review; inspect's statusRow lists each line's text, tone and its actions as the drive calls they make), retryExport (Try again: repeats the last failed Save a copy target or explicit Upload; an Upload retry publishes), retryPreview (decodes the playhead frame again; inspect's preview shows error, stale and frameTimeUs), discard (asks as Discard… and the close button do; inspect's discardConfirmation), keepReviewing / confirmDiscard (answer it; control_recording cancel discards without asking), saveCopyDialog (opens Save copy… as the button does: the desktop's file chooser through the XDG portal, or the themed fallback dialog; inspect's fileDialog shows open, backend portal|fallback, fallbackReason and the last result, and a file picked there is saved like recording.saveCopy) and closeFileDialog (closes it as a cancel); showAdvice opens error details when an error is present; showFormatTips opens compatibility and audio guidance; showInFolder and copyPath open the saved copy in its folder or copy its absolute path; dismissSavedCopy hides that result. Inspect includes savedCopy (path, revision, current and folder-open result), formatAdvice (the compact format tips control) and stable mask names. Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it. Only retryExport can repeat a previously requested Upload; use upload_recording for a new upload."""
+                                     strength: int | None = None, format: str | None = None, codec: str | None = None,
+                                     start_us: int | None = None, end_us: int | None = None, cut_id: str | None = None,
+                                     edit_id: str | None = None, edge: str | None = None, level: int | None = None,
+                                     mode: str | None = None, dx: float | None = None, dy: float | None = None,
+                                     delta: int | None = None, panel_open: bool | None = None,
+                                     width: int | None = None, height: int | None = None) -> Json:
+        """Work the open Review recording window's controls as a user does, one action per call: inspect (playhead, playing, speed, trim, masks with their timeline bars, selectedMaskId, status, size, the unobscured video's rect and share of the window), seek {time_us}, play, pause, speed {0.5|1|2|4}, setIn / setOut (trim start/end at the playhead, keys I/O), resetTrim, addMask {kind blur|solid, optional rect [x,y,w,h] canvas pixels, else centred at half the frame's width and height; as X/B then drawing the box: the cover spans the time selection snapped to whole frames, or the whole recording}, selectMask {mask_id, or none to clear}, placeMask {rect; the selected mask's rectangle, as a drag or the frame's arrow keys set it}, setMaskIn / setMaskOut (the selected mask's start/end at the playhead, Shift+I/O), strength {2-64, selected blur}, removeMask (selected, Delete), useSolidCover (the panel's Redact choice: turns the selected blur, or an armed Blur, into a redaction; serialized kind stays solid), format {format, codec}, trimToLimit (trims the end so the kept clip, after cuts, fits a GIF/WebP length limit), dismissStatus (clears an error or result in the status line; inspect's statusRow lists each line's text, tone and its actions as the drive calls they make), retryExport (Try again: repeats the last failed Save a copy target or explicit Upload; an Upload retry publishes), retryPreview (decodes the playhead frame again; inspect's preview shows error, stale and frameTimeUs), discard (asks as Discard… and the close button do; inspect's discardConfirmation), keepReviewing / confirmDiscard (answer it; control_recording cancel discards without asking), saveCopyDialog (opens Save copy… as the button does: the desktop's file chooser through the XDG portal, or the themed fallback dialog; inspect's fileDialog shows open, backend portal|fallback, fallbackReason and the last result, and a file picked there is saved like recording.saveCopy) and closeFileDialog (closes it as a cancel); showAdvice opens error details when an error is present; showInFolder and copyPath open the saved copy in its folder or copy its absolute path; dismissSavedCopy hides that result. The redesigned window's controls, each the code its button, key or gesture runs: selectRange {start_us, end_us} (a drag on the filmstrip: a half-open source-time selection) / clearSelection (Esc); cut (C: the selected time, once the resident accepts it the playhead lands 1 s before the seam); selectCut {cut_id} (a click on the cut), adjustCut {cut_id, start_us, end_us} (drag its edges), restoreCut {cut_id} (Restore), playAcross {cut_id}; undo / redo (the resident's history; undo while placing cancels the placement); armRedact / armBlur (X / B: arm a cover for the selection or the whole recording; then placeMask {rect} draws its box as a drag does, one addMask) and cancelPlacement (Esc, the banner's Cancel); selectEdit {kind cut|cover|trim, edit_id; none for a trim} (a row of Edits), nextEdit / previousEdit (Alt+Right / Alt+Left); seekCoverStart / seekCoverEnd (Shows from / Until: the first / last kept covered frame of the selected cover), setCoverEdgeToPlayhead {edge start|end} (Set to playhead), setCoverEdge {edge start|end, time_us} (types a time into Shows from / Until: snapped to a whole frame), coverKind {kind solid|blur} (Redact | Blur for the selected cover); timelineZoom {level 1|2|4|8|16} / timelineFit; viewerZoom {mode fit|actual}, viewerPan {dx, dy} (source pixels, at actual); frameStep {delta 1|-1} (, and .); skim {time_us} / skimEnd (paused hover on the timeline: the tile at once, the exact frame arrives later; inspect timeline.skim shows time and exact); panel {panel_open} (the folded Edits overlay; refused while the panel is beside the viewer); resize {width, height} (the window, to fold or unfold the panel); setTrim {start_us, end_us optional: the recording's end} (the brackets). Invalid values are invalid_request; a state that refuses the action (nothing selected, nothing to undo, placing a cover) is recording_state. Inspect includes selection (the time span or null), selectedEdit {kind, id}, cuts, edits (the Edits rows), timeline (zoom, visible span, skim, tiles), viewer {zoom, percent, pan}, panel (folded, overlayOpen, mode, buttons), placement (with its banner), warning (the blur banner text), undo {canUndo, canRedo}, outputDurationUs, playhead {sourceUs, outputUs}, size and folded, plus savedCopy (path, revision, current and folder-open result), the output playhead and duration, and stable mask names. Edits go through the resident like the window's own; the reply is the window state plus the resident's edit after it, or the resident's refusal of the edit as the error (inspect's lastRefusal keeps the last one). Only retryExport can repeat a previously requested Upload; use upload_recording for a new upload."""
         if not identifier(id) or action not in REVIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}
@@ -643,7 +655,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                 return invalid()
             params['speed'] = speed
         if kind is not None:
-            if kind not in {'blur', 'solid'}:
+            if kind not in (REVIEW_EDIT_KINDS if action == 'selectEdit' else {'blur', 'solid'}):
                 return invalid()
             params['kind'] = kind
         if rect is not None:
@@ -665,8 +677,62 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                 return invalid()
             params['format'] = format
             params['codec'] = codec or ''
-        required = {'seek': 'time', 'speed': 'speed', 'addMask': 'kind', 'placeMask': 'rect', 'strength': 'strength', 'format': 'format'}
-        if action in required and required[action] not in params:
+        # The redesigned window's controls (#1613). The resident's window checks ranges; this keeps types small.
+        def whole(value: Any) -> bool:
+            return type(value) is int and 0 <= value < 2 ** 53
+        if start_us is not None:
+            if not whole(start_us):
+                return invalid()
+            params['start'] = start_us
+        if end_us is not None:
+            if not whole(end_us):
+                return invalid()
+            params['end'] = end_us
+        elif action == 'setTrim':
+            params['end'] = None
+        for name, value in (('cutId', cut_id), ('editId', edit_id)):
+            if value is not None:
+                if not identifier(value):
+                    return invalid()
+                params[name] = value
+        if edge is not None:
+            if edge not in ('start', 'end'):
+                return invalid()
+            params['edge'] = edge
+        if level is not None:
+            if type(level) is not int or level not in REVIEW_TIMELINE_ZOOMS:
+                return invalid()
+            params['level'] = level
+        if mode is not None:
+            if mode not in ('fit', 'actual'):
+                return invalid()
+            params['mode'] = mode
+        for name, value in (('dx', dx), ('dy', dy)):
+            if value is not None:
+                if type(value) not in (int, float) or isinstance(value, bool) or not math.isfinite(value) or abs(value) > 1e6:
+                    return invalid()
+                params[name] = value
+        if delta is not None:
+            if type(delta) is not int or delta not in (-1, 1):
+                return invalid()
+            params['delta'] = delta
+        if panel_open is not None:
+            if type(panel_open) is not bool:
+                return invalid()
+            params['open'] = panel_open
+        for name, value in (('width', width), ('height', height)):
+            if value is not None:
+                if type(value) is not int or not 200 <= value <= 16000:
+                    return invalid()
+                params[name] = value
+        required = {'seek': ('time',), 'speed': ('speed',), 'addMask': ('kind',), 'placeMask': ('rect',), 'strength': ('strength',),
+                    'format': ('format',), 'selectRange': ('start', 'end'), 'adjustCut': ('cutId', 'start', 'end'), 'setTrim': ('start',),
+                    'selectCut': ('cutId',), 'restoreCut': ('cutId',), 'playAcross': ('cutId',), 'selectEdit': ('kind',),
+                    'setCoverEdgeToPlayhead': ('edge',), 'setCoverEdge': ('edge', 'time'), 'coverKind': ('kind',), 'timelineZoom': ('level',), 'viewerZoom': ('mode',),
+                    'viewerPan': ('dx', 'dy'), 'frameStep': ('delta',), 'skim': ('time',), 'panel': ('open',), 'resize': ('width', 'height')}
+        if any(name not in params for name in required.get(action, ())):
+            return invalid()
+        if action == 'selectEdit' and params['kind'] != 'trim' and 'editId' not in params:
             return invalid()
         return await adapter.call('recording.review', params)
 
