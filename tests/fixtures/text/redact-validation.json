@@ -1,0 +1,364 @@
+{
+ "description": "Quick redact list entries and patterns (#1618, round 2 of #1631, U8): the same inputs for the editor's C++ validator (tests/unit/test_text_protocol.cpp) and the MCP server (tests/integration/test_mcp.py). Rules, in order. Terms: a raw line break (\\n, \\r, U+2028, U+2029) is refused; then the value is trimmed; it must be non-empty, at most 100 code points, and contain a letter or digit. Patterns: a raw line break is refused; then trimmed, it must be non-empty, at most 500 code points, not start with (*, and not contain \\C; the raw value must compile, not match empty text, not refer back to a group (backreferences, recursion, subroutine calls), and not repeat without a bound a group that itself holds an unbounded repeat (unless every pass of the group starts or ends with a required character that its inner repeats cannot match). Rules compile, emptyMatch, backReference and nestedRepeat need PCRE2; a checker that has no PCRE2 may leave them to the editor. A compile error is Qt's message with its offset, so its rows give only errorPrefix.",
+ "messages": {
+  "termLineBreak": "An entry has a line break",
+  "termEmpty": "An entry is empty",
+  "termLength": "An entry is longer than 100 characters",
+  "termLetter": "An entry needs a letter or digit",
+  "patternLineBreak": "A pattern has a line break",
+  "patternEmpty": "A pattern is empty",
+  "patternLength": "A pattern is longer than 500 characters",
+  "patternLimits": "Patterns can't set their own matching limits",
+  "patternHalfCharacter": "Patterns can't match half a character",
+  "patternCompilePrefix": "This pattern does not compile: ",
+  "patternEmptyMatch": "This pattern matches empty text",
+  "patternBackReference": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it.",
+  "patternNestedRepeat": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+ },
+ "terms": [
+  {
+   "value": "Patrick Hudson",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "  Patrick Hudson  ",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": ".env",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "env.",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "# 42",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "x+y?",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "[ACME]*",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "ab",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": " aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "word\n",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "a\rb",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "\nword",
+   "rule": "lineBreak",
+   "error": "An entry has a line break"
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "   ",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "\t",
+   "rule": "empty",
+   "error": "An entry is empty"
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "length",
+   "error": "An entry is longer than 100 characters"
+  },
+  {
+   "value": "𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸",
+   "rule": "length",
+   "error": "An entry is longer than 100 characters"
+  },
+  {
+   "value": ".",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": "--",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": "*?",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": " ... ",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
+  }
+ ],
+ "patterns": [
+  {
+   "value": "\\bJIRA-\\d+\\b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?i)\\b[a-z0-9-]+\\.corp\\b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(foo|bar)+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "[a-z0-9-]+(?:\\.[a-z0-9-]+)+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:[a-z0-9-]+\\.)+example\\.com",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:\\w+\\s)+done",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\p{Lu}{3}-\\d{4}",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": ".+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\\\C",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "[A-Z]{2,}-\\d+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "(?:ab)+c",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\\d{3}(?:-\\d{4})+",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "x\n",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "a\rb",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "a b",
+   "rule": "lineBreak",
+   "error": "A pattern has a line break"
+  },
+  {
+   "value": "",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": "   ",
+   "rule": "empty",
+   "error": "A pattern is empty"
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "rule": "length",
+   "error": "A pattern is longer than 500 characters"
+  },
+  {
+   "value": "(*LIMIT_MATCH=99999999)(a+)+$",
+   "rule": "limits",
+   "error": "Patterns can't set their own matching limits"
+  },
+  {
+   "value": "(*UCP)\\w+",
+   "rule": "limits",
+   "error": "Patterns can't set their own matching limits"
+  },
+  {
+   "value": "  (*NO_JIT)x",
+   "rule": "limits",
+   "error": "Patterns can't set their own matching limits"
+  },
+  {
+   "value": "a\\Cb",
+   "rule": "halfCharacter",
+   "error": "Patterns can't match half a character"
+  },
+  {
+   "value": "\\C+",
+   "rule": "halfCharacter",
+   "error": "Patterns can't match half a character"
+  },
+  {
+   "value": "(abc",
+   "rule": "compile",
+   "error": null,
+   "errorPrefix": "This pattern does not compile: "
+  },
+  {
+   "value": "[z-a]",
+   "rule": "compile",
+   "error": null,
+   "errorPrefix": "This pattern does not compile: "
+  },
+  {
+   "value": "a*",
+   "rule": "emptyMatch",
+   "error": "This pattern matches empty text"
+  },
+  {
+   "value": "^",
+   "rule": "emptyMatch",
+   "error": "This pattern matches empty text"
+  },
+  {
+   "value": "|x",
+   "rule": "emptyMatch",
+   "error": "This pattern matches empty text"
+  },
+  {
+   "value": "(\\w)\\1",
+   "rule": "backReference",
+   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+  },
+  {
+   "value": "(?<n>\\w)\\k<n>",
+   "rule": "backReference",
+   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+  },
+  {
+   "value": "\\((?:[^()]|(?R))+\\)",
+   "rule": "backReference",
+   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+  },
+  {
+   "value": "(a)(?1)",
+   "rule": "backReference",
+   "error": "This pattern refers back to an earlier group, which can run for a very long time. Simplify it."
+  },
+  {
+   "value": "(a+)+",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "(a*)*b",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "(\\w+\\s?)*x",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "(?:a+|b)+c",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "(a+)+$",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "((ab)*c?)+d",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "(x+x+){2,}y",
+   "rule": "nestedRepeat",
+   "error": "This pattern can run for a very long time (a repeated group inside a repeat). Simplify it."
+  },
+  {
+   "value": "((ab)*c)+d",
+   "rule": "ok",
+   "error": null
+  }
+ ]
+}

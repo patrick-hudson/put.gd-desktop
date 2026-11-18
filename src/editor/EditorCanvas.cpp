@@ -140,6 +140,12 @@ void EditorCanvas::setTool(Tool tool){
  // configure the tool rather than restyling an earlier shape.
  const bool deselect=tool!=tool_&&tool!=Tool::Select&&selected_;
  if(tool_==Tool::Crop&&tool!=Tool::Crop)cancelCrop();
+ // A drag in progress is abandoned, and so is its document gesture: left open it would hold every
+ // later edit (Quick redact's marks among them) out of the undo history until a release that never comes.
+ if(drag_==Drag::Create||drag_==Drag::Move||drag_==Drag::Resize){
+  doc_.cancelGesture();moved_=false;editOnClick_=0;
+  if(selected_&&!doc_.find(selected_)){selected_=0;emit selectionChanged();}
+ }
  tool_=tool;
  if(tool_==Tool::Crop){cropDraft_=doc_.crop();selected_=0;emit selectionChanged();}
  else if(deselect){selected_=0;emit selectionChanged();}

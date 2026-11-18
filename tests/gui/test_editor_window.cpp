@@ -74,6 +74,19 @@ private slots:
   QTest::keyClick(text,Qt::Key_Return);QCOMPARE(uploads.size(),0);QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().text,QString("Ready"));
   QTest::keyClick(&window,Qt::Key_Return,Qt::ControlModifier);QCOMPARE(uploads.size(),1);
  }
+ // Round 2 (U1): switching tools while a mark is being drawn abandons the drag, and its document gesture with it.
+ // Left open, the gesture would hold every later edit (Quick redact's marks among them) out of the undo history.
+ void switchingToolsDuringADragEndsTheDocumentGesture(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","redact"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  const auto center=window.canvas().rect().center();
+  QTest::mousePress(&window.canvas(),Qt::LeftButton,{},center);QTest::mouseMove(&window.canvas(),center+QPoint(60,30));
+  QVERIFY(doc.inGesture()); // the half-drawn mark is a gesture of the document
+  window.viewCommand({{"action","tool"},{"tool","select"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  QVERIFY(!doc.inGesture());QVERIFY(doc.shapes().isEmpty()); // abandoned, not kept
+  QTest::mouseRelease(&window.canvas(),Qt::LeftButton,{},center+QPoint(60,30));
+  QVERIFY(!doc.inGesture());QVERIFY(doc.shapes().isEmpty());
+ }
  // A crop drawn but not yet applied is applied before Upload exports the image.
  void uploadFinishesThePendingCrop(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
