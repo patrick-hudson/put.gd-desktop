@@ -1,14 +1,12 @@
 #pragma once
-// Offscreen widget contract for the review window (#283): the video takes the
-// window, one timeline sets the trim and mask times, mask controls show only
-// when they apply, and recording.review drives the same controls. Not desktop
-// proof; the lab captures are in the docs.
+// Offscreen widget contract for the review window (#283, #1613): the window's
+// gestures propose the edits design.md names, and recording.review drives the
+// same controls. Not desktop proof; the lab captures are in the docs.
 #include <QSet>
 #include <algorithm>
 #include "record/ReviewWindow.h"
 #include "record/Duration.h"
-#include "record/MaskBox.h"
-#include "record/FormatBox.h"
+#include "record/FilmstripTimeline.h"
 #include "record/Overlays.h"
 #include "ui/RegionOverlay.h"
 #include <QAccessible>
@@ -103,9 +101,7 @@ class ReviewWindowFixture : public QObject {
 protected:
     QFont baselineFont_;
     Theme::Scheme baselineScheme_;
-    // One pixel of the timeline is duration / track width; edges land within two.
-    static qint64 slack(const ReviewTimeline& t) { return 2 * duration / t.trackRect().width() + 1; }
-    static ReviewTimeline* timeline(ReviewWindow& w) { return w.findChild<ReviewTimeline*>("timeline"); }
+    static FilmstripTimeline* timeline(ReviewWindow& w) { return w.findChild<FilmstripTimeline*>("timeline"); }
 private slots:
     void initTestCase() {
         // A case must never restore Qt's pre-install font after the app style's lazy

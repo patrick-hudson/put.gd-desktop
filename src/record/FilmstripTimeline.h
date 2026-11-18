@@ -103,6 +103,12 @@ signals:
     // Dragging a selected cut's edge, or a selected cover bar's end, on release.
     void cutAdjusted(const QString& id, qint64 startUs, qint64 endUs);
     void coverRetimed(const QString& id, qint64 startUs, qint64 endUs);
+    // Dragging a selected cut's edge or a selected cover bar's end: kind "cut" |
+    // "cover", the edge time while dragging (the viewer shows that frame, as
+    // trimEdgeDragged does for the brackets).
+    void editEdgeDragged(const QString& kind, const QString& id, bool start, qint64 sourceUs);
+    // Any edge drag (trim, cut or cover) was released, changed or not.
+    void edgeDragFinished();
     // Paused hover over the ruler or strip. skimMoved at once with the time
     // under the pointer (the window shows the tile); skimRested after ~120 ms
     // without movement (the window asks FrameSkimmer for the exact frame);
