@@ -80,6 +80,19 @@ class ConfigurationSchema(unittest.TestCase):
             self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
         for patterns in ([''], ['a' * 501], ['x'] * 51, [3], 'pattern', None):
             self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
+        # Counted in code points, not UTF-16 units: 100 and 500 characters outside the BMP fit.
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': ['\U0001F600' * 100]}))
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': ['\U0001F600' * 101]}))
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 500]}))
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 501]}))
+        # One line: no line feed, carriage return, U+2028 or U+2029, even at the end of an entry.
+        for breaker in ('\n', '\r', '\u2028', '\u2029'):
+            for entry in (f'a{breaker}b', f'a{breaker}', f'{breaker}a'):
+                self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': [entry]}), repr(entry))
+                self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': [entry]}), repr(entry))
+        # A pattern cannot start with a (* verb, which could set its own matching limits.
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': ['(*LIMIT_MATCH=1000000000)a+']}))
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['a(*)b', '\\(*']}))
 
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.

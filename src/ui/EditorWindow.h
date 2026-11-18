@@ -42,6 +42,8 @@ public:
  Error error() const {return error_;}
  // The identity of the current result; 0 without one. It changes with every result.
  quint64 identity() const {return layer_.identity();}
+ // Counts every change to what recognition reads (a Redact mark or the crop), so a change that is undone is still a new revision.
+ quint64 revision() const {return revision_;}
  editor::TextLayer& layer() {return layer_;}
  const editor::TextLayer& layer() const {return layer_;}
  // Every recognized word, unfiltered, with what touches a Redact mark dropped (Quick redact).

@@ -1158,9 +1158,9 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "pattern": "^[^\\r\\n]*$"
+            "not": {"pattern": "[\\r\\n\u2028\u2029]"}
           },
-          "description": "Words or phrases Quick redact's My redaction list suggests covering, matched case-insensitively against recognized text. One entry per item, 1 to 100 characters after trimming, no line breaks; duplicates are dropped when saved. Never uploaded, logged or written to diagnostics bundles. Omitted means no list."
+          "description": "Words or phrases Quick redact's My redaction list suggests covering, matched case-insensitively against recognized text. One entry per item: 1 to 100 characters (counted as Unicode code points) after trimming, on one line (no line feed, carriage return, U+2028 or U+2029), with at least one letter or digit; duplicates are dropped when saved. Never uploaded, logged or written to diagnostics bundles. Omitted means no list."
         },
         "quickRedactPatterns": {
           "type": "array",
@@ -1168,9 +1168,10 @@
           "items": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 500
+            "maxLength": 500,
+            "not": {"pattern": "[\\r\\n\u2028\u2029]|^\\(\\*"}
           },
-          "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering, matched against the text of each recognized line. A pattern must compile and must not match empty text. Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns."
+          "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering, matched against the text of each recognized line. A pattern is up to 500 code points on one line, must compile and must not match empty text, and cannot start with (* (patterns can't set their own matching limits). Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns."
         },
         "appearance": {
           "type": "object",

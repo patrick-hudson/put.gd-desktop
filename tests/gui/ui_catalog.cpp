@@ -544,6 +544,11 @@ int main(int argc,char** argv){
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list-empty"))return 2;
  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");window.findChild<QPlainTextEdit*>("quickRedactPatterns")->setPlainText("\\bJIRA-\\d+\\b\n(?i)\\b[a-z0-9-]+\\.corp\\.example\\b");
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list"))return 2;
+ // A no-break space inside a word is kept as typed (the draft reads each line's own text), and blank lines and repeats go.
+ {const QString nbsp(QChar(0xA0));
+  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("Project"+nbsp+"Aurora\n\nproject"+nbsp+"aurora\n  acme  ");
+  const auto kept=window.settings()->saveViewState()["draft"].toObject()["preferences"].toObject()["quickRedactTerms"].toArray();if(kept!=QJsonArray{"Project"+nbsp+"Aurora","acme"})return 2;}
+ window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingFrameRate"),0,160);if(!save("settings-recording-frame-rate"))return 2;
  // #1364: the microphone choice and click highlights, as the resident answers for this desktop.
  window.settings()->showRecordingMicrophones({{"available",true},{"device",QJsonObject{{"id","alsa_input.usb-Example_Microphone-00.mono-fallback"},{"label","Example USB Microphone"}}},{"devices",QJsonArray{QJsonObject{{"id","alsa_input.usb-Example_Microphone-00.mono-fallback"},{"label","Example USB Microphone"},{"default",true}},QJsonObject{{"id","alsa_input.pci-0000_00_1f.3.analog-stereo"},{"label","Built-in Audio Analog Stereo"},{"default",false}}}},{"defaultIsMonitor",false}});

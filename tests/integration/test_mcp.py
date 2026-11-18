@@ -47,6 +47,14 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x'] * 51}]}),
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 501]}]}),
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': [3]}]}),
+            # The editor's rules, counted in code points: one line (even U+2028 and U+2029), a letter or digit in a word, no leading (* in a pattern.
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['a\u2028b']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['...']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['\U0001F600' * 100 + 'x']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['a\u2029b']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['a\rb']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['(*LIMIT_MATCH=1000000000)a+']}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'patterns': ['x' * 500 + '\n']}]}),
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['username']}]}),
             ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list', 'email']}]}),
             ('perform_action', {'action': 'shell'}),
@@ -162,6 +170,12 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'editor.openCode', {'id': 'synthetic-operation', 'result': 3, 'index': 0}),
                     ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]},
                      'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'key']}]}),
+                    # #1618: a term of exactly 100 code points, 99 of them outside the BMP, is within the limit (the editor counts code points).
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['\U0001F600' * 99 + 'x']}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['list'], 'terms': ['\U0001F600' * 99 + 'x']}]}),
+                    # #1618: Remove suggestions, one undo step, through the editor view.
+                    ('drive_editor', {'id': 'synthetic-operation', 'action': 'removeSuggestions'},
+                     'editor.view', {'id': 'synthetic-operation', 'action': 'removeSuggestions'}),
                     # #1618: the name and list categories, with this call's own terms and patterns.
                     ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]},
                      'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]}),
