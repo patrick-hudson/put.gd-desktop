@@ -38,10 +38,11 @@ it reported anything, and also after a fatal error such as an allocator diagnost
 accepts exit 66 only when all of this holds:
 - the seed has TSan report files;
 - every report in them is on the known list;
-- no file in its `san/` holds a fatal sanitizer line (`ERROR: ThreadSanitizer`,
-  `ERROR: AddressSanitizer` and the like).
+- no file in its `san/` holds a line that shows a sanitizer stopped rather than reported:
+  `ERROR:` or `FATAL:` followed by a sanitizer name, `<X>Sanitizer: CHECK failed`,
+  `<X>Sanitizer:DEADLYSIGNAL`, or `Sanitizer has encountered a fatal error`.
 
-Any other exit status still fails the seed.
+Exit 66 with no recognised report, and any other non-zero exit, still fails the seed.
 
 What is excused, and how:
 
@@ -205,7 +206,8 @@ trace folder as complete only when its `version` is a regular file and there is 
 (`systemd-run --user --scope`) and refuse to start without one. Each seed of `race_loop.py`,
 every one of its busy loops, and each recorded run of `rr_loop.py` runs in a transient user
 scope of its own, named `putgd-lab-<the loop's PID>-<job>-<random>.scope`. Each launch is
-checked: a scope that does not come up stops the run. Every process the job starts stays
+checked: a scope that does not come up stops the run. A job that has already finished with
+status 0 when it is first checked counts as started. Every process the job starts stays
 in that scope's cgroup, whatever session or parent it ends up with: rr's tracees, the
 resident's helpers, an orphan.
 
@@ -213,7 +215,8 @@ resident's helpers, an orphan.
   starts right after the launch. SIGINT and SIGTERM are held while the stop runs. Every process
   still in the scope gets SIGTERM, then SIGKILL after the unit's stop timeout. The loop says how
   many were still there. If `systemctl --user stop` fails, or the scope is still there
-  afterwards, the loop reports that and stops with status 2; it never calls that a stop.
+  afterwards, the loop reports that, and normally stops with status 2. It never calls that a
+  stop. Two exceptions are listed under "Known limits" below.
 - Ctrl+C, or SIGTERM to the script alone, first lets the job finish properly:
   - `rr_loop.py` sends SIGTERM to its rr through the pidfd it holds, so rr can finish the
     trace, then stops the scope.
@@ -231,6 +234,18 @@ resident's helpers, an orphan.
   systemctl --user list-units --all --no-legend "putgd-lab-$pid-*.scope"
   systemctl --user stop "putgd-lab-$pid-*.scope"
   ```
+
+**Known limits of the cleanup.** In these cases a scope can be left behind without the loop
+naming it:
+
+- A SIGTERM that arrives while a scope's stop has just failed, or while a job is still being
+  launched, ends the loop with status 143. The loop does not say which scope it left.
+- A `systemd-run` that took too long to answer can register its scope after the loop has
+  already cleaned up, so that scope is never stopped.
+
+The recovery is the same in both cases. List that loop's scopes with
+`systemctl --user list-units 'putgd-lab-<loop PID>-*'`, and stop exactly those (the commands
+above). Never stop every `putgd-lab-*` scope of the user.
 
 **Replaying.** Let rr start GDB with your commands, so no server is left behind:
 
