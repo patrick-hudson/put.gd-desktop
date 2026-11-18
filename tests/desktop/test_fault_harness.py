@@ -95,11 +95,58 @@ class Fuzzer(unittest.TestCase):
             fake = fuzzer(run=Path(folder), receiver=types.SimpleNamespace(state=lambda: state))
             action_fuzz.Fuzzer.keep_receiver_state(fake)
             kept = json.loads((Path(folder) / 'receiver-state.json').read_text())
-        self.assertEqual(kept['objects'], state['objects'])
+        self.assertEqual(kept['objects'], {'p/a.txt': [{'version': '1', 'marker': False, 'etag': None, 'size': None, 'sha256': 'abc'}]})
+
+    def test_review_s4_large_s3_objects_are_saved_as_metadata_in_complete_json(self):
+        """Three 6 MiB bodies inline used to hit the 20M-character cap and cut the JSON."""
+        import base64
+        import hashlib
+        body = os.urandom(6 << 20)
+        objects = {'p/%d.bin' % n: [{'version': str(n), 'body': base64.b64encode(body).decode(), 'etag': '"e%d"' % n, 'marker': False, 'metadata': {}}]
+                   for n in range(3)}
+        with tempfile.TemporaryDirectory() as folder:
+            fake = fuzzer(run=Path(folder), receiver=types.SimpleNamespace(state=lambda: {'events': [], 'objects': objects, 'uploads': {}}))
+            action_fuzz.Fuzzer.keep_receiver_state(fake)
+            text = (Path(folder) / 'receiver-state.json').read_text()
+        kept = json.loads(text)  # a complete document
+        self.assertLess(len(text), 10000)
+        self.assertEqual(kept['objects']['p/1.bin'], [{'version': '1', 'marker': False, 'etag': '"e1"', 'size': 6 << 20, 'sha256': hashlib.sha256(body).hexdigest()}])
+
+    def test_review_s2_one_retry_may_resend_every_row_of_its_operation(self):
+        """The same file twice in one call (two rows of one operation), retried once: four sends, so four copies may be stored."""
+        fake = fuzzer(digest_rows={'d': {'row1', 'row2'}}, digest_operations={'d': {'op1'}}, row_operations={'row1': 'op1', 'row2': 'op1'}, seen={},
+                      resident=types.SimpleNamespace(retries={'op1': 1}))
+        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 4)
+
+    def test_review_s3_only_an_accepted_retry_earns_credit(self):
+        """A copy-only success of operation.retry sends nothing again; only result.retryAccepted earns a retry's extra copy."""
+        import socket
+        import threading
+        def answer(result):
+            with tempfile.TemporaryDirectory(dir='/tmp') as folder:
+                path = os.path.join(folder, 's')
+                server = socket.socket(socket.AF_UNIX)
+                server.bind(path)
+                server.listen(1)
+                def serve():
+                    connection, _ = server.accept()
+                    request = json.loads(connection.makefile().readline())
+                    connection.sendall(json.dumps({'schemaVersion': 1, 'requestId': request['requestId'], 'ok': True, 'result': result}).encode() + b'\n')
+                    connection.close()
+                thread = threading.Thread(target=serve)
+                thread.start()
+                resident = action_fuzz.Resident.__new__(action_fuzz.Resident)
+                resident.socket_path, resident.lock, resident.sequence, resident.retries = path, threading.Lock(), 0, {}
+                resident.call('operation.retry', {'id': 'op1'}, timeout=10, raw=True)
+                thread.join()
+                server.close()
+                return resident.retries
+        self.assertEqual(answer({'operationId': 'op1'}), {})  # copied, not re-sent
+        self.assertEqual(answer({'operationId': 'op1', 'retryAccepted': True}), {'op1': 1})
 
     def test_an_unknown_row_without_a_send_allows_no_extra_copy(self):
         """One row, unknown once, retried once: two sends, so two copies at most (it used to allow three)."""
-        fake = fuzzer(digest_rows={'d': {'row1'}}, digest_operations={'d': {'op1'}}, seen={'row1': {'unknown', 'failed'}},
+        fake = fuzzer(digest_rows={'d': {'row1'}}, digest_operations={'d': {'op1'}}, row_operations={'row1': 'op1'}, seen={'row1': {'unknown', 'failed'}},
                       resident=types.SimpleNamespace(retries={'op1': 1}))
         self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 2)
 
@@ -119,22 +166,31 @@ class S3Holds(unittest.TestCase):
 
 
 class EmfileAbort(unittest.TestCase):
-    def judge(self, text, windows):
+    def judge(self, text, windows, status=-5):
         with tempfile.TemporaryDirectory() as folder:
             run = Path(folder)
             (run / 'logs').mkdir()
             (run / 'logs' / 'resident-1.log').write_bytes(text)
             resident = action_fuzz.Resident.__new__(action_fuzz.Resident)
             resident.run, resident.starts, resident.descriptor_windows, resident.judged_logs = run, 1, {1: windows}, set()
-            resident.alive, resident.returncode = (lambda: False), (lambda: -6)
-            fake = fuzzer(resident=resident, options=types.SimpleNamespace(memory_max=None), faults=None)
+            resident.alive, resident.returncode = (lambda: False), (lambda: status)
+            fake = fuzzer(resident=resident, options=types.SimpleNamespace(memory_max=None), faults=None, GIVE_UP=getattr(action_fuzz.Fuzzer, 'GIVE_UP', ()))
             fake.exhaustion_ended_it = lambda text, start: action_fuzz.Fuzzer.exhaustion_ended_it(fake, text, start)
             return action_fuzz.Fuzzer.emfile_abort(fake)
 
     EXHAUSTED = b'(process:42): GLib-ERROR **: Creating pipes for GWakeup: Too many open files\n'
 
     def test_an_abort_while_descriptors_ran_out_is_excused(self):
-        self.assertTrue(self.judge(b'started\n' + self.EXHAUSTED, [(0, None)]))
+        self.assertTrue(self.judge(b'started\n' + self.EXHAUSTED, [(0, None)]))  # GLib's g_error ends in a breakpoint trap (-5)
+        qt = b'QEventDispatcherUNIXPrivate(): Can not continue without a thread pipe\n'
+        self.assertTrue(self.judge(b'started\n' + qt, [(0, None)], status=-6))  # Qt's qFatal aborts (-6)
+
+    def test_a_give_up_line_with_another_exit_excuses_nothing(self):
+        self.assertFalse(self.judge(b'started\n' + self.EXHAUSTED, [(0, None)], status=-11))
+
+    def test_review_s1_a_handled_emfile_warning_does_not_excuse_a_silent_abort(self):
+        warning = b'QSocketNotifier: Can not create notifier: Too many open files\n'
+        self.assertFalse(self.judge(b'started\n' + warning + b'recovered\n', [(0, None)], status=-6))
 
     def test_an_earlier_exhaustion_does_not_excuse_a_later_crash(self):
         text = b'started\n' + self.EXHAUSTED + b'restored\n' + b"terminate called after throwing an instance of 'std::logic_error'\n"

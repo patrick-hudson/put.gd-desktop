@@ -500,11 +500,18 @@ class Resident:
             raise OSError('no reply to %s (connection closed)' % method)
         if reply.get('requestId') != request_id or reply.get('schemaVersion') != 1:
             raise Finding('protocol', 'reply to %s has a wrong envelope: %s' % (method, str(reply)[:200]))
-        # A retry with scope "sharing" only finishes share links; it sends nothing again.
-        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict) and isinstance(params.get('id'), str) and 'scope' not in params:
-            with self.lock:  # every accepted retry, from any step or burst thread: each may send its files once more
-                self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
+        self.note_retry(method, params, reply)
         return reply if raw else reply.get('result')
+
+    def note_retry(self, method, params, reply):
+        """Count an operation.retry that put.gd accepted (result.retryAccepted true): each may send its files once more. A copy-only
+        success, or a retry with scope "sharing" (it only finishes share links), sends nothing again."""
+        if method != 'operation.retry' or not reply.get('ok') or not isinstance(params, dict) or not isinstance(params.get('id'), str):
+            return
+        if 'scope' in params or (reply.get('result') or {}).get('retryAccepted') is not True:
+            return
+        with self.lock:  # from any step or burst thread
+            self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
 
     # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
     # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
@@ -1921,17 +1928,23 @@ class Fuzzer:
         self.resident.judged_logs.add(log.name)
         return True
 
+    # The lines a library inside the resident prints when it gives up for want of a descriptor, and the exit each one ends in (put.gd has no
+    # such line of its own). A plain EMFILE warning (an open that failed and was handled) is not one of them and excuses nothing.
+    GIVE_UP = ((b'Creating pipes for GWakeup: Too many open files', -signal.SIGTRAP),     # GLib's g_error: a breakpoint trap
+               (b'Can not continue without a thread pipe', -signal.SIGABRT))              # Qt's qFatal in QEventDispatcherUNIX
+
     def exhaustion_ended_it(self, text, start):
-        """True when the log's own evidence says running out of descriptors ended the resident: a 'Too many open files' line written
-        inside a window in which the harness held the open-file limit low, and no other fatal marker after the last such line. An
-        earlier exhaustion does not excuse a later, unrelated crash."""
+        """True when the resident's own give-up line (GIVE_UP) was written inside a window in which the harness held the open-file limit
+        low, the exit status is the one that line ends in, and no other fatal marker follows it. A warning about a failed open, or an
+        earlier exhaustion the resident survived, never excuses a later crash."""
         windows = self.resident.descriptor_windows.get(start) or []
         lines = text.encode('utf-8', 'surrogateescape').splitlines(keepends=True)
         offset, last = 0, None
         for index, line in enumerate(lines):
             begin, offset = offset, offset + len(line)
-            if b'Too many open files' in line and any(first <= begin and (end is None or begin < end) for first, end in windows):
-                last = index
+            for marker, status in self.GIVE_UP:
+                if marker in line and status == self.resident.returncode() and any(first <= begin and (end is None or begin < end) for first, end in windows):
+                    last = index
         if last is None:
             return False
         markers = [m.encode() for m in BAD_MARKERS if m != 'runtime error:']
@@ -1951,9 +1964,11 @@ class Fuzzer:
         """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
         try:
             state = self.receiver.state()
-            # files: the custom uploader's; objects (every version): the S3 oracle's.
-            kept = {name: state.get(name) for name in ('events', 'files', 'objects', 'uploads')}
-            (self.run / 'receiver-state.json').write_text(json.dumps(kept, default=str)[:20_000_000])
+            # files: the custom uploader's; objects: the S3 oracle's, as metadata and digests only (never the bodies), so the file stays a
+            # small, complete JSON document however much was uploaded.
+            kept = {name: state.get(name) for name in ('events', 'files', 'uploads')}
+            kept['objects'] = {key: [Fuzzer.object_summary(v) for v in versions] for key, versions in (state.get('objects') or {}).items()}
+            (self.run / 'receiver-state.json').write_text(json.dumps(kept, default=str))
         except (OSError, ValueError):
             pass
 
@@ -2007,6 +2022,14 @@ class Fuzzer:
                     row.get('id'), row.get('uploadStatus'), stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'error')}, default=str)))
 
     PROBE_CREDENTIAL_REFRESHES = 2
+
+    @staticmethod
+    def object_summary(version):
+        """An S3 oracle object version without its body: key data a finding is judged by."""
+        body = base64.b64decode(version.get('body') or '') if version.get('body') else b''
+        return {'version': version.get('version'), 'marker': bool(version.get('marker')), 'etag': version.get('etag'),
+                'size': len(body) if version.get('body') else version.get('size'),
+                'sha256': version.get('blob') or (hashlib.sha256(body).hexdigest() if version.get('body') else None)}
 
     def probe_recovery(self, credential_refreshes=PROBE_CREDENTIAL_REFRESHES):
         """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
@@ -2345,6 +2368,7 @@ class Fuzzer:
                 self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
                 self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
                 self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
+                self.row_operations[row.get('id')] = row.get('operationId')
             found.extend(batch)
             if len(batch) < 200:
                 return found
@@ -2415,12 +2439,12 @@ class Fuzzer:
     stuck_rows = set()
 
     def allowed_copies(self, digest):
-        """How many copies of this content the server may hold, counted from the upload attempts the run saw: one per History row that ever
-        had it (the same file twice in a call, or the same bytes under two names, are two rows), one more per accepted operation.retry of an
-        operation holding it. An unknown outcome adds nothing by itself: put.gd sends again only on an explicit retry, which is counted."""
+        """How many copies of this content the server may hold, counted per History row that ever had it: one for its first send, and one
+        more for every accepted operation.retry of that row's operation (a retry may send each of its rows again, so the same file twice in
+        one call, retried once, may leave four copies). An unknown outcome adds nothing by itself: put.gd sends again only on an explicit
+        retry, which is counted."""
         rows = self.digest_rows.get(digest, set())
-        retries = sum(self.resident.retries.get(operation, 0) for operation in self.digest_operations.get(digest, ()))
-        return len(rows) + retries
+        return sum(1 + self.resident.retries.get(self.row_operations.get(row), 0) for row in rows)
 
     def verify_rows(self):
         """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
@@ -2510,6 +2534,7 @@ class Fuzzer:
     seen_digest = {}
     digest_operations = {}
     digest_rows = {}
+    row_operations = {}
 
     def finish_deletion(self, rows):
         """The kill came during a deletion: inspect it, retry it, and require every chosen row removed on both sides."""
