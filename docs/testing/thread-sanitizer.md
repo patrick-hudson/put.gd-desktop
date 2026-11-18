@@ -78,13 +78,22 @@ setarch x86_64 -R meson install -C "$putgd_tsan_root/libsecret-tsan-build"
 ```
 
 The application's icon target (`packaging/linux/icons`) also needs Qt Svg, which this recipe does not
-build. Build the thread checks with that one `add_subdirectory(icons)` line in
-`packaging/linux/CMakeLists.txt` commented out in the scratch copy; no thread-check target uses the icons.
+build. Do not edit the checkout for it. Build the thread checks from a disposable source export
+outside any git checkout, and drop the icons there:
 
-Run the suites with `ignore_noninstrumented_modules=1` in `TSAN_OPTIONS` as well, so that GStreamer,
-FFmpeg, libcurl, OpenSSL and the AWS SDK (distribution builds without TSan) do not report races that
-exist only because TSan cannot see their atomics. See [race-hunting.md](race-hunting.md) for the full
-`TSAN_OPTIONS`, the action fuzzer and rr.
+```sh
+checkout=$PWD
+export_dir=$(mktemp -d /tmp/putgd-tsan-src.XXXXXX)   # not inside a git checkout
+git archive --format=tar HEAD | tar -x -C "$export_dir"
+sed -i 's/^add_subdirectory(icons)$/# add_subdirectory(icons)  # no instrumented Qt Svg/' "$export_dir/packaging/linux/CMakeLists.txt"
+mkdir -p "$export_dir/build"
+ln -s "$checkout/work" "$export_dir/work"            # the instrumented dependencies built above
+ln -s "$checkout/build/sdk" "$export_dir/build/sdk"
+cd "$export_dir"
+```
+
+Run the configure, build and CTest commands below from `"$export_dir"`. Record with the results
+that the `desktop_icon_assets` test was not built or run. No other thread-check target uses the icons.
 
 Configure Qt in a fresh build directory so cached system GLib discovery cannot
 replace the instrumented dependency. Keep GLib enabled: libsecret requires its
@@ -122,9 +131,15 @@ setarch x86_64 -R cmake --build build/tsan-instrumented-qt --parallel 2
 setarch x86_64 -R env QT_QPA_PLATFORM=offscreen \
   QT_QPA_FONTDIR=/usr/share/fonts/truetype/dejavu \
   PATH="$putgd_tsan_deps/bin:$PATH" LD_LIBRARY_PATH="$putgd_tsan_deps/lib" \
-  TSAN_OPTIONS="halt_on_error=1:suppressions=$PWD/tests/sanitizer/tsan.supp" \
+  TSAN_OPTIONS="halt_on_error=1:ignore_noninstrumented_modules=1:suppressions=$PWD/tests/sanitizer/tsan.supp" \
+  GST_REGISTRY_FORK=no \
   ctest --test-dir build/tsan-instrumented-qt --output-on-failure
 ```
+
+`ignore_noninstrumented_modules=1` keeps GStreamer, FFmpeg, libcurl, OpenSSL and the AWS SDK
+(distribution builds without TSan) from reporting races that exist only because TSan cannot see their
+atomics, and `GST_REGISTRY_FORK=no` keeps GStreamer's distribution plugin scanner from loading the
+instrumented GLib. See [race-hunting.md](race-hunting.md) for the action fuzzer, report grouping and rr.
 
 The test Qt may build without Fontconfig when its development package is absent.
 Set `QT_QPA_FONTDIR` to an installed font directory in that case; the example uses
