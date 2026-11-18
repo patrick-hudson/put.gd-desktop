@@ -292,7 +292,11 @@ that kept time may come from inside the cut. Container timestamp rounding does n
 matter: a GIF counts centiseconds and shows a frame at 70 ms instead of 66.7 ms, and a
 frame is covered when **either** its ideal display interval **or** its centisecond-rounded one
 overlaps the cover; a capture time within the timestamp tolerance of the cover's bound
-counts as inside (uncertainty is covered). To gather the frame times under each cover the exporter reads
+counts as inside (uncertainty is covered). **Known limit, at cut seams only:** within a kept
+span the exporter checks both the ideal and the centisecond-rounded display intervals, but
+across a cut seam on a 66.667 ms tick the previous GIF picture can stay visible until 70 ms,
+uncovered by a cover that starts in the next span. That picture was captured before the
+cover, in the earlier span, so it shows nothing covered. To gather the frame times under each cover the exporter reads
 each cover's kept parts once more, demux only.
 
 **Previews.** `previewFrame` and the review's exact skim frame check the cover against

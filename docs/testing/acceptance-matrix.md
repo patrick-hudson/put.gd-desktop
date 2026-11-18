@@ -234,13 +234,21 @@ can pass with the cut still in the clip.
 - A cover's area is covered in every frame whose display interval overlaps the cover, or
   whose picture was captured under it (one rule, including a picture held into a kept span
   from a cover inside a cut or outside the trim), and uncovered in frames that neither
-  overlap nor were captured under it. Allow these extra covered frames, which are not
-  failures: a picture covered for its display interval stays covered for as long as it is
-  shown, up to the next shown picture (there is no one-frame cap), and a capture time within
-  the container's timestamp tolerance of a cover's bound counts as inside. **GIF:** times are
-  centiseconds, so require the cover wherever the ideal **or** the centisecond-rounded
-  display interval overlaps it (a 66.667 ms frame stored as 70 ms is covered for both). A
-  frame does not pass because it was captured before the cover began.
+  overlap nor were captured under it. **Judge each tick by the picture it actually shows:**
+  require the cover on every tick that shows a picture whose source display interval
+  (its stored time to the next stored time) overlaps a cover, even when that picture's
+  capture time and its exported interval lie outside the cover. The exception: where the
+  exporter moves a later picture onto a span's last tick, judge that tick by that later
+  picture. Allow these extra covered frames, which are not failures: a picture covered for
+  its display interval stays covered for as long as it is shown, up to the next shown
+  picture (there is no one-frame cap), and a capture time within the container's timestamp
+  tolerance of a cover's bound counts as inside. **GIF:** times are centiseconds, so within
+  a kept span require the cover wherever the ideal **or** the centisecond-rounded display
+  interval overlaps it (a 66.667 ms frame stored as 70 ms is covered for both). **GIF
+  allowance at a cut seam:** across a cut seam on a 66.667 ms tick the previous GIF picture
+  can stay visible until 70 ms, uncovered by a cover that starts in the next span; it was
+  captured before the cover, in the earlier span, so it shows nothing covered, and it
+  passes. Nothing else passes just because it was captured before the cover began.
 - Audio, for **MP4 and WebM with audio only** (GIF and WebP are always silent, so no
   tone check applies to them): the kept tone is present, no cut tone is heard beyond the
   allowance below, and there is no click at the join. **Audio exception:** when the source

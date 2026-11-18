@@ -295,9 +295,11 @@ action does not change it.
   any other status line (so the row can hold two lines). It is not a dialog, has no
   Dismiss, and stays until Upload is pressed again, including after the awaited answer
   arrives. **An agent's refused edit cancels it too:** any edit-proposing `recording.review`
-  action that is refused (bad values, nothing selected, a dialog open, an export running)
-  cancels a waiting Upload through the same path as a refused gesture, and keeps its own
-  error code. The actions are `setIn`, `setOut`, `resetTrim`, `addMask`, `placeMask`,
+  action that is refused **by the window, in `drive()`** (bad values, nothing selected, a
+  dialog open) cancels a waiting Upload through the same path as a refused gesture, and
+  keeps its own error code. During an active export the resident rejects these API calls
+  before `drive()` runs, so that refusal does not cancel a waiting Upload (an Upload cannot
+  be sent during an export anyway). The actions are `setIn`, `setOut`, `resetTrim`, `addMask`, `placeMask`,
   `useSolidCover`, `trimToLimit`, `setMaskIn`, `setMaskOut`, `strength`, `removeMask`, `cut`,
   `adjustCut`, `restoreCut`, `undo`, `redo`, `setCoverEdge`, `setCoverEdgeToPlayhead`,
   `coverKind` and `setTrim`.
