@@ -91,6 +91,8 @@ public:
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
+ // The operation has finished but still holds its slot; a Retry now is answered operation_settling (#1578).
+ bool operationSettling(const QString& id) const {return settling(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;

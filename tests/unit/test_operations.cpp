@@ -317,6 +317,34 @@ private slots:
   provider->deferUploads=true;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
   Error running;answered=false;operations.retry(id,[&](Error e,QJsonObject){running=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(running.code,QString("operation_busy"));
  }
+ // A Retry of a settling operation is answered by that operation's own state before anything else: not queue_full when
+ // the slots are full, and never queued behind an artifact cleanup to run later without a second request (#1578).
+ void settlingRetryIsRefusedBeforeCapacityAndNeverQueuedBehindCleanup() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto document=configuration(d.path());auto limits=document["limits"].toObject();limits["pendingOperations"]=1;limits["concurrentUploads"]=1;document["limits"]=limits;QVERIFY(settings.save(document,{}));
+  DeferredClipboardSource source;source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("order-%1.txt").arg(i),"synthetic batch"));
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});
+  QString settlingId;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);settlingId=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();provider->failUpload=false;
+  PUTGD_TRY_COMPARE(journal.operation(settlingId).stateName(),QString("partial"));QVERIFY(source.pending);   // settling: its link copy waits
+  // A second operation fills the last slot.
+  source.payload=textPayload();QString runningId;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);runningId=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);
+  const auto ask=[&](auto call){Error error;bool answered=false;call([&](Error e,QJsonObject){error=e;answered=true;});return std::make_pair(answered,error);};
+  {auto [answered,error]=ask([&](JsonReply r){operations.retry(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  {auto [answered,error]=ask([&](JsonReply r){operations.retryLocalSave(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  {auto [answered,error]=ask([&](JsonReply r){operations.retry(runningId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_busy"));}
+  // An automatic cleanup pass is running: the Retry is still answered at once, not queued behind it.
+  operations.cleanupExpired();
+  {auto [answered,error]=ask([&](JsonReply r){operations.retry(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  {auto [answered,error]=ask([&](JsonReply r){operations.retryLocalSave(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();
+  PUTGD_TRY_VERIFY([&]{if(source.pending)source.acknowledge();return operations.diagnostics()["activeOperations"].toInt()==0;}());
+  PUTGD_COMPARE_STEADY(provider->uploads.load(),3,300);   // nothing that was refused ran later
+ }
  // #202: retention applies without the user, on the resident's own clock.
  void automaticCleanupAppliesRetentionWithoutTheUser() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenFail=true;registry.add("opaque",provider);

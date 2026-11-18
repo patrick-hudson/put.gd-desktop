@@ -38,6 +38,9 @@ bool localSaveFailed(const QJsonObject& r){
  return false;
 }
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
+// The row's operation has finished but still holds its slot: Retry and Finish share link wait until it clears (#1578).
+// The resident marks the History rows themselves, so a row older than the recent list is covered too.
+bool settlingRow(const QJsonObject& r){if(r["settling"].toBool()||r["operation"].toObject()["settling"].toBool())return true;for(const auto& v:r["records"].toArray())if(v.toObject()["settling"].toBool())return true;return false;}
 }
 // The locale's short time of day, never with seconds (the C locale's short form has them).
 static QString shortTime(const QTime& time){auto format=QLocale().timeFormat(QLocale::ShortFormat);format.remove(QStringLiteral(":ss"));format.remove(QStringLiteral(".ss"));return QLocale().toString(time,format);}
@@ -110,7 +113,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
 }
 bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial";}
 // An unknown outcome is retried like a failure, also after a crash left its operation interrupted: operation.retry accepts any non-active state (OperationService::retry).
-bool HistoryModel::retryUpload(const QJsonObject& r){return !r["operation"].toObject()["settling"].toBool()&&(r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
+bool HistoryModel::retryUpload(const QJsonObject& r){return !settlingRow(r)&&(r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
 namespace {
 bool terminalUpload(const QString& s){return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
 // The operation's own items when History has them (a filter or page can hide some files), else the row's files.
@@ -120,7 +123,7 @@ QJsonArray rowFiles(const QJsonObject& r){auto files=r["records"].toArray();if(f
 // The resident refuses the link-only retry when any file of the operation still needs
 // its upload, so a row this rule misjudges never uploads anything.
 bool HistoryModel::finishShareLink(const QJsonObject& r){
- if(active(r)||r["operationId"].toString().isEmpty()||retryUpload(r))return false;
+ if(active(r)||settlingRow(r)||r["operationId"].toString().isEmpty()||retryUpload(r))return false;
  for(const auto& v:operationFiles(r))if(!terminalUpload(v.toObject()["uploadStatus"].toString()))return false;
  bool finishable=false;for(const auto& v:rowFiles(r)){const auto f=v.toObject();if(!terminalUpload(f["uploadStatus"].toString()))return false;if(f["shareStatus"]=="pending")return false;finishable|=f["linkFinishable"].toBool();}
  return finishable;
@@ -135,7 +138,7 @@ QString HistoryModel::finishShareLabel(const QJsonObject& r){
 }
 // Any failed local copy can be saved again from the retained artifact,
 // including one whose upload succeeded.
-bool HistoryModel::retryLocalSave(const QJsonObject& r){return !r["operation"].toObject()["settling"].toBool()&&localSaveFailed(r)&&!active(r)&&!r["operationId"].toString().isEmpty();}
+bool HistoryModel::retryLocalSave(const QJsonObject& r){return !settlingRow(r)&&localSaveFailed(r)&&!active(r)&&!r["operationId"].toString().isEmpty();}
 bool HistoryModel::copyLocalResult(const QJsonObject& r){return r["uploadStatus"]=="local_only"&&!localSaveFailed(r)&&r["local"].toObject()["status"]=="saved"&&!active(r)&&!r["operationId"].toString().isEmpty();}
 // delete.prepare accepts confirmed uploads whose remote outcome is settled;
 // a target already gone has nothing left to delete.
