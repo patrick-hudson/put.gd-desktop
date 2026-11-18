@@ -277,7 +277,15 @@ class S3Receiver(Receiver):
         key, version_id = reference.get('key'), reference.get('versionId')
         if not key:
             return 'the receipt names no object key'
-        versions = [v for v in self.snapshot().get(key, []) if not v.get('marker') and v.get('version') != 'competitor']
+        stored = self.snapshot().get(key, [])
+        if not version_id and stored:
+            # An unversioned receipt is read as the newest entry (GET and HEAD without versionId): that one must be the probe's object.
+            newest = stored[-1]
+            if newest.get('marker'):
+                return 'the newest entry of %s is a delete marker: an unversioned read finds nothing' % key
+            if newest.get('version') == 'competitor':
+                return 'the newest entry of %s is a competitor\'s object: an unversioned read returns its bytes' % key
+        versions = [v for v in stored if not v.get('marker') and v.get('version') != 'competitor']
         if version_id:  # a versioned receipt names one version: that one must hold the bytes
             versions = [v for v in versions if v.get('version') == version_id]
         if not versions:
@@ -331,6 +339,8 @@ class Resident:
         self.token = 'PUTGD_FUZZ_RUN=%s' % secrets.token_hex(12)
         self.pids_seen = set()   # every PID of the resident itself, for the shim's no-helper check
         self.retries = {}        # operation id -> accepted operation.retry calls
+        self.on_retry = None     # called with the operation id of every accepted retry (the fuzzer credits that operation's rows)
+        self.on_rows = None      # called with the records of every history.list reply, whoever asked (the fuzzer's row caches)
         self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
         # Fault mode: start (self.starts) -> [(first byte, end byte or None)] of its log written while the harness held the resident at its
         # open-file limit on purpose. Only there is UBSan's invalid-vptr report expected.
@@ -492,11 +502,30 @@ class Resident:
             raise OSError('no reply to %s (connection closed)' % method)
         if reply.get('requestId') != request_id or reply.get('schemaVersion') != 1:
             raise Finding('protocol', 'reply to %s has a wrong envelope: %s' % (method, str(reply)[:200]))
-        # A retry with scope "sharing" only finishes share links; it sends nothing again.
-        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict) and isinstance(params.get('id'), str) and 'scope' not in params:
-            with self.lock:  # every accepted retry, from any step or burst thread: each may send its files once more
-                self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
+        self.note_retry(method, params, reply)
+        self.note_rows(method, reply)
         return reply if raw else reply.get('result')
+
+    def note_rows(self, method, reply):
+        """Hand every row a history.list reply shows to on_rows, so each reader of a row's status (a step, a burst thread, a check)
+        updates the same caches that retry credit reads."""
+        if method != 'history.list' or not reply.get('ok') or not getattr(self, 'on_rows', None):
+            return
+        records = [row for row in (reply.get('result') or {}).get('records') or [] if isinstance(row, dict) and row.get('id')]
+        with self.lock:  # from any step or burst thread, never at the same time as a retry's credit
+            self.on_rows(records)
+
+    def note_retry(self, method, params, reply):
+        """Count an operation.retry that put.gd accepted (result.retryAccepted true): each may send its files once more. A copy-only
+        success, or a retry with scope "sharing" (it only finishes share links), sends nothing again."""
+        if method != 'operation.retry' or not reply.get('ok') or not isinstance(params, dict) or not isinstance(params.get('id'), str):
+            return
+        if 'scope' in params or (reply.get('result') or {}).get('retryAccepted') is not True:
+            return
+        with self.lock:  # from any step or burst thread
+            self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
+            if getattr(self, 'on_retry', None):
+                self.on_retry(params['id'])
 
     # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
     # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
@@ -940,6 +969,8 @@ class Fuzzer:
         for name in ('logs', 'fixtures', 'saves', 'archive'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
         self.resident = Resident(self.run, options.build, options=options)
+        self.resident.on_retry = self.credit_retry
+        self.resident.on_rows = self.note_rows
         self.proxy_port = None
         self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
         self.fixtures = {}
@@ -1907,11 +1938,33 @@ class Fuzzer:
             return False
         # UBSan, halting, reads files to check object types: with no descriptor left it reports valid objects as invalid and exits 1.
         sanitizer_without_descriptors = self.resident.returncode() == 1 and runtime_errors
-        if 'Too many open files' not in text and not sanitizer_without_descriptors:
+        if not sanitizer_without_descriptors and not self.exhaustion_ended_it(text, start):
             return False
         self.log('emfile-abort', exit=self.resident.returncode(), first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
         self.resident.judged_logs.add(log.name)
         return True
+
+    # The lines a library inside the resident prints when it gives up for want of a descriptor, and the exit each one ends in (put.gd has no
+    # such line of its own). A plain EMFILE warning (an open that failed and was handled) is not one of them and excuses nothing.
+    GIVE_UP = ((b'Creating pipes for GWakeup: Too many open files', -signal.SIGTRAP),     # GLib's g_error: a breakpoint trap
+               (b'Can not continue without a thread pipe', -signal.SIGABRT))              # Qt's qFatal in QEventDispatcherUNIX
+
+    def exhaustion_ended_it(self, text, start):
+        """True when the resident's own give-up line (GIVE_UP) was written inside a window in which the harness held the open-file limit
+        low, the exit status is the one that line ends in, and no other fatal marker follows it. A warning about a failed open, or an
+        earlier exhaustion the resident survived, never excuses a later crash."""
+        windows = self.resident.descriptor_windows.get(start) or []
+        lines = text.encode('utf-8', 'surrogateescape').splitlines(keepends=True)
+        offset, last = 0, None
+        for index, line in enumerate(lines):
+            begin, offset = offset, offset + len(line)
+            for marker, status in self.GIVE_UP:
+                if marker in line and status == self.resident.returncode() and any(first <= begin and (end is None or begin < end) for first, end in windows):
+                    last = index
+        if last is None:
+            return False
+        markers = [m.encode() for m in BAD_MARKERS if m != 'runtime error:']
+        return not any(m in line for line in lines[last + 1:] for m in markers)
 
     def recover_from_abort(self):
         """The resident is gone: do what a restart after a crash must do, and check it like a restart after a kill."""
@@ -1927,7 +1980,22 @@ class Fuzzer:
         """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
         try:
             state = self.receiver.state()
-            (self.run / 'receiver-state.json').write_text(json.dumps({'events': state.get('events'), 'files': state.get('files'), 'uploads': state.get('uploads')}, default=str)[:20_000_000])
+            # files: the custom uploader's; objects: the S3 oracle's, as metadata and digests only (never the bodies), so the file stays a
+            # small, complete JSON document however much was uploaded.
+            # Request events keep their metadata and digests (bodyBytes, bodySha256), never an inline body.
+            kept = {name: state.get(name) for name in ('files', 'uploads')}
+            kept['events'] = [{k: v for k, v in event.items() if k != 'body'} if isinstance(event, dict) else event for event in state.get('events') or []]
+            kept['objects'] = {key: [Fuzzer.object_summary(v) for v in versions] for key, versions in (state.get('objects') or {}).items()}
+            # Written whole to a temporary file and renamed into place: a failed write leaves no file, never a cut one.
+            final = self.run / 'receiver-state.json'
+            temporary = self.run / 'receiver-state.json.partial'
+            try:
+                with open(temporary, 'w') as out:
+                    json.dump(kept, out, default=str)
+                os.replace(temporary, final)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
         except (OSError, ValueError):
             pass
 
@@ -1980,7 +2048,17 @@ class Fuzzer:
                 raise Finding('unknown-lost', 'History row %s was unknown and is now %s while the server holds its content %s: the warning that a copy may be on the server is gone\nrow: %s' % (
                     row.get('id'), row.get('uploadStatus'), stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'error')}, default=str)))
 
-    def probe_recovery(self):
+    PROBE_CREDENTIAL_REFRESHES = 2
+
+    @staticmethod
+    def object_summary(version):
+        """An S3 oracle object version without its body: key data a finding is judged by."""
+        body = base64.b64decode(version.get('body') or '') if version.get('body') else b''
+        return {'version': version.get('version'), 'marker': bool(version.get('marker')), 'etag': version.get('etag'),
+                'size': len(body) if version.get('body') else version.get('size'),
+                'sha256': version.get('blob') or (hashlib.sha256(body).hexdigest() if version.get('body') else None)}
+
+    def probe_recovery(self, credential_refreshes=PROBE_CREDENTIAL_REFRESHES):
         """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
         before = self.receiver.upload_events()
         # The run's own settings steps may have set a small limit (a_settings): back to the defaults, so only a fault can fail the probe.
@@ -1997,8 +2075,11 @@ class Fuzzer:
         if rows and all((row.get('error') or {}).get('code') == 'credential_setup_required' for row in rows):
             # Session-mode credentials live in memory only; whatever dropped them (a restart, a helper) is not the fault under test.
             self.log('probe-credentials-lost')
+            if credential_refreshes <= 0:
+                raise Finding('not-recovered', 'the probe upload %s still needs credentials after %d refreshes: %s' % (
+                    operation, self.PROBE_CREDENTIAL_REFRESHES, json.dumps(rows, default=str)[:600]))
             self.credentials_check()
-            return self.probe_recovery()
+            return self.probe_recovery(credential_refreshes - 1)
         if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
             raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
                 operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
@@ -2300,6 +2381,24 @@ class Fuzzer:
         if result != ['ok']:
             raise Finding('history', 'history.sqlite integrity_check (a backup of the live database): %s' % result[:5])
 
+    def note_rows(self, batch):
+        """The row caches, from rows a history.list reply shows. Resident.call runs this for every history.list reply, whichever step, burst
+        thread or check asked, so a row's latest status is the one retry credit (credit_retry) reads."""
+        for row in batch:
+            self.seen.setdefault(row.get('id'), set()).add(row.get('uploadStatus'))
+            self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
+            self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
+            self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
+            if row.get('id') not in self.row_operations:
+                # Listed for the first time: its status when its operation's earlier retries were accepted is unknown, so each of them
+                # may have sent it again.
+                self.row_retry_credit[row.get('id')] = self.resident.retries.get(row.get('operationId'), 0)
+            self.row_operations[row.get('id')] = row.get('operationId')
+            # Monotonic for retry credit: an older reply processed after a newer one (burst threads) never turns uploaded back into
+            # uploading, since a retry never sends an uploaded row again.
+            if self.row_status.get(row.get('id')) != 'uploaded':
+                self.row_status[row.get('id')] = row.get('uploadStatus')
+
     TERMINAL = ('uploaded', 'failed', 'unknown', 'stored', 'cancelled', 'canceled', 'local_only', 'skipped', 'conflict')
 
     def rows(self):
@@ -2308,12 +2407,7 @@ class Fuzzer:
             reply = self.resident.call('history.list', {'limit': 200, 'offset': offset}, raw=True)
             if not reply.get('ok'):
                 raise Finding('recovery', 'history.list fails after a kill: %s' % str(reply)[:300])
-            batch = reply['result'].get('records') or []
-            for row in batch:
-                self.seen.setdefault(row.get('id'), set()).add(row.get('uploadStatus'))
-                self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
-                self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
-                self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
+            batch = reply['result'].get('records') or []  # the resident's on_rows hook has noted them (note_rows)
             found.extend(batch)
             if len(batch) < 200:
                 return found
@@ -2384,14 +2478,37 @@ class Fuzzer:
     stuck_rows = set()
 
     def allowed_copies(self, digest):
-        """How many copies of this content the server may hold, counted from the upload attempts the run saw: one per History row that ever
-        had it (the same file twice in a call, or the same bytes under two names, are two rows), one more per accepted operation.retry of an
-        operation holding it, and one more per row that was ever unknown (its first attempt may have landed; the custom uploader cannot look
-        a file up before sending it again)."""
-        rows = self.digest_rows.get(digest, set())
-        retries = sum(self.resident.retries.get(operation, 0) for operation in self.digest_operations.get(digest, ()))
-        unknown = sum(1 for row in rows if 'unknown' in self.seen.get(row, ()))
-        return len(rows) + retries + unknown
+        """How many copies of this content the server may hold, counted per History row that ever had it: one for its first send, and one
+        more for every accepted operation.retry of that row's operation that came while the row was not uploaded (a retry may send each of
+        those rows again, so the same file twice in one call, retried once, may leave four copies; it never sends an uploaded row again).
+        An unknown outcome adds nothing by itself: put.gd sends again only on an explicit retry, which is counted."""
+        return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()))
+
+    def row_allowance(self, row):
+        """The copies one History row may account for on the server: its first send plus one per accepted retry of its operation that came
+        while the row was not uploaded. A retry never sends an uploaded row again, so a second copy of one is a duplicate."""
+        return 1 + self.row_retry_credit.get(row, 0)
+
+    def credit_retry(self, operation):
+        """An accepted retry of `operation`: every row of it not uploaded at that moment (by its latest listed status) may be sent again."""
+        for row, owner in list(self.row_operations.items()):
+            if owner == operation and self.row_status.get(row) != 'uploaded':
+                self.row_retry_credit[row] = self.row_retry_credit.get(row, 0) + 1
+
+    def refused(self, row):
+        """A row put.gd settled as not on the server: failed or stored, never unknown, and with no direct address."""
+        return row.get('uploadStatus') in ('stored', 'failed') and 'unknown' not in self.seen.get(row.get('id'), ()) \
+            and not (row.get('receipt') or {}).get('directUrl')
+
+    def copies_explained_without_refused(self, digest, rows):
+        """The copies of this content that rows other than refused ones account for, row by row (rows no longer listed count as not refused)."""
+        listed = {row.get('id'): row for row in rows}
+        return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()) if not (row in listed and self.refused(listed[row])))
+
+    def lost_to_refusal(self, row, stored, rows):
+        """A refused row whose content the server holds more copies of than the other rows of that content account for: a lost upload."""
+        digest = row.get('sha256')
+        return bool(digest) and self.refused(row) and len(stored.get(digest, [])) > self.copies_explained_without_refused(digest, rows)
 
     def verify_rows(self):
         """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
@@ -2420,8 +2537,10 @@ class Fuzzer:
             # one that is still there.
             if status == 'uploaded' and digest and not present.get(digest) and not self.row_removed_by_delete(row) and not removed:
                 raise Finding('recovery', 'History row %s is uploaded but the receiver holds no copy of it' % row.get('id'))
-            # A retry that fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss.
-            if status in ('stored', 'failed') and digest and stored.get(digest) and 'unknown' not in self.seen.get(row.get('id'), ()) and not row.get('receipt', {}).get('directUrl'):
+            # A refused row is not expected on the server: it is a loss only when the server holds more copies than the other rows of the
+            # same content account for, row by row (one row of a duplicate-file batch uploaded, the other refused, is fine). A retry that
+            # fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss, so not refused.
+            if self.lost_to_refusal(row, stored, rows):
                 raise Finding('lost-upload', 'History row %s is %s but the receiver stored its content (%s): the upload is on the server and not in History as uploaded or unknown\nrow: %s\nevents: %s' % (
                     row.get('id'), status, stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'name', 'sha256', 'bytes', 'error', 'uploadJournal')}, default=str),
                     self.receiver.describe(digest)))
@@ -2481,6 +2600,9 @@ class Fuzzer:
     seen_digest = {}
     digest_operations = {}
     digest_rows = {}
+    row_operations = {}
+    row_status = {}        # row id -> its latest listed uploadStatus, kept at uploaded once seen uploaded
+    row_retry_credit = {}  # row id -> accepted retries of its operation that may have sent it again
 
     def finish_deletion(self, rows):
         """The kill came during a deletion: inspect it, retry it, and require every chosen row removed on both sides."""
@@ -2526,15 +2648,21 @@ class Fuzzer:
         if not self.drain(90):
             raise Finding('recovery', 'a retry stays active 90 s')
         stored = self.receiver.stored()
-        statuses = {row.get('sha256'): row.get('uploadStatus') for row in self.rows()}
+        listed = self.rows()
         for digest, files in stored.items():
-            # An unknown outcome may legitimately send a second copy (the custom uploader cannot look a file up);
-            # a file History already showed as uploaded, or never sent, must not.
-            if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) >= 1 and 'unknown' not in self.seen_digest.get(digest, ()):
-                raise Finding('duplicate-upload', 'a retry stored content %s %d times although History had it as %r (%s)\nrows: %s\nevents: %s' % (
-                    digest[:12], len(files), before_status.get(digest), files,
-                    json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'publicationId')} for row in self.rows() if row.get('sha256') == digest]),
+            # Every row is capped at its allowance (allowed_copies): an unknown row retried once may leave two copies, never three.
+            if len(files) > max(1, self.allowed_copies(digest)):
+                raise Finding('duplicate-upload', 'a retry stored content %s %d times, more than the %d sends its rows account for; History had it as %r (%s)\nrows: %s\nevents: %s' % (
+                    digest[:12], len(files), self.allowed_copies(digest), before_status.get(digest), files,
+                    json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'publicationId')} for row in listed if row.get('sha256') == digest]),
                     self.receiver.describe(digest)))
+            # The same refused-row rule as the History check: a row the retry left failed or stored, never unknown, while the server
+            # holds its content beyond what the other rows account for, is an upload History lost.
+            for row in listed:
+                if row.get('sha256') == digest and self.lost_to_refusal(row, stored, listed):
+                    raise Finding('lost-upload', 'after a retry, History row %s is %s but the receiver stored its content (%s)\nrow: %s\nevents: %s' % (
+                        row.get('id'), row.get('uploadStatus'), files, json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'error')}, default=str),
+                        self.receiver.describe(digest)))
             if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) == 0 and before_status.get(digest) in ('uploaded',):
                 raise Finding('lost-upload', 'History had %s as uploaded with nothing on the server; a retry then stored it' % digest[:12])
 

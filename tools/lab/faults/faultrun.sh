@@ -4,7 +4,7 @@
 # e.g. faultrun.sh build/asan /tmp/fr1 1 20 200 http fs,net,res
 # OUT holds runs/f-<dest>-<seed>. Keep OUT short: the session socket lives at OUT/runs/f-DEST-SEED/r/rt/putgd/session.sock, and a
 # socket path has at most 107 bytes. Nothing is mounted: a full disk is a shim rule (ENOSPC, EDQUOT).
-# A finding stops that seed (its folder is kept), the loop goes on, and the exit status is the number of findings.
+# A finding stops that seed (its folder is kept), the loop goes on; the script prints how many seeds had findings and exits 1 if any did.
 # Each harness runs in a session (and process group) of its own, under setsid. SIGINT or SIGTERM to this script (Ctrl+C, or a kill of this
 # script alone) is forwarded to that group, also when it arrives while the harness is being launched; the script then waits until every
 # process of the group is gone (not only dbus-run-session), up to GROUP_WAIT seconds, and exits with 128 + the signal. It never kills the
@@ -52,4 +52,7 @@ for seed in $(seq "$first" "$last"); do
   [ "$status" -ge 128 ] && exit "$status"
   [ "$status" -ne 0 ] && findings=$((findings + 1))
 done
-exit "$findings"
+echo "faultrun: $findings seeds with findings"
+# A count would wrap at 256 (exit statuses are 8 bits) and 256 findings would read as success: 1 means "there were findings".
+[ "$findings" -eq 0 ] && exit 0
+exit 1
