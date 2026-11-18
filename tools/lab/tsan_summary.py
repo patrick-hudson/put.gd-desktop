@@ -143,6 +143,11 @@ def classify(block, own_modules=OWN_MODULES):
     return 'other', key
 
 
+def own_modules(extra=()):
+    """The built-in put.gd module prefixes plus any extra ones: an extra prefix adds to them, never replaces them."""
+    return OWN_MODULES + tuple(m for m in extra if m not in OWN_MODULES)
+
+
 def unexplained(path, own_modules=OWN_MODULES):
     """The reports in one tsan.<pid> file that are not on the known list."""
     return [block for block in reports(Path(path).read_text(errors='replace')) if classify(block, own_modules)[0] != 'known']
@@ -151,10 +156,10 @@ def unexplained(path, own_modules=OWN_MODULES):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     parser.add_argument('folder', type=Path)
-    parser.add_argument('--own-module', action='append', help='a module name prefix of put.gd code (default: %s)' % ', '.join(OWN_MODULES))
+    parser.add_argument('--own-module', action='append', default=[], help='another module name prefix of put.gd code, added to %s' % ', '.join(OWN_MODULES))
     parser.add_argument('--signatures', action='store_true', help='print the signature of every report that is not excused')
     options = parser.parse_args()
-    own = tuple(options.own_module) if options.own_module else OWN_MODULES
+    own = own_modules(options.own_module)
     groups = {name: collections.defaultdict(list) for name in ('put.gd', 'other', 'known')}
     for report in sorted(options.folder.glob('tsan.*')):
         for block in reports(report.read_text(errors='replace')):

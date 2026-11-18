@@ -88,9 +88,9 @@ def interrupted(signum, frame):
     raise Interrupted(signum)
 
 
-def stop_seed(process, scope, signum):
+def let_seed_finish(process, scope, signum):
     """Forward a signal to a seed's process group (pinned while its leader is unreaped), so the fuzzer stops its resident and receiver
-    itself, and wait for it (bounded). Then stop the seed's scope, which ends whatever is still in it, rr's processes included."""
+    itself, and wait for it (bounded). The caller then stops the seed's scope, which ends whatever is still in it."""
     previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGTERM)}
     try:
         try:
@@ -104,14 +104,20 @@ def stop_seed(process, scope, signum):
             time.sleep(0.5)
         if scope.running(b'action_fuzz.py'):
             print('race_loop: the seed did not stop within 300 s of %s; stopping its scope' % signal.Signals(signum).name, flush=True)
-        left = scope.stop()
-        if left:
-            print('race_loop: %d processes were left in %s and were stopped with it' % (left, scope.unit), flush=True)
-        if process.returncode is None:
-            process.wait()
     finally:
         for sig, handler in previous.items():
             signal.signal(sig, handler)
+
+
+def stop_scope(scope, what):
+    """Stop a scope and say what happened; returns a problem line or None. A stop that failed is reported, never called a stop."""
+    try:
+        left = scope.stop()
+    except run_scope.ScopeError as error:
+        return 'cleanup: %s: %s' % (what, error)
+    if left:
+        print('race_loop: stopped %s: %d processes were still in %s' % (what, left, scope.unit), flush=True)
+    return None
 
 
 def main():
@@ -147,11 +153,14 @@ def main():
     fuzz = Path(__file__).resolve().parent / 'action_fuzz.py'
     traces = options.out / 'traces'
     traces.mkdir()
-    stress = run_scope.Scope('stress')  # every busy loop in one scope, stopped as one
-    hogs = [subprocess.Popen(stress.command([sys.executable, '-c', HOG]), stdin=subprocess.DEVNULL) for _ in range(options.stress)]
     deadline = time.monotonic() + options.hours * 3600
     seed, findings, clean = options.first_seed, 0, 0
+    stress, hogs, cleanup_failed = [], [], []
     try:
+        for index in range(options.stress):  # one scope per busy loop; each launch must come up, or the run stops
+            scope = run_scope.Scope('stress%d' % index)
+            stress.append(scope)
+            hogs.append(scope.launch([sys.executable, '-c', HOG], stdin=subprocess.DEVNULL))
         while time.monotonic() < deadline and findings < options.max_findings:
             run = options.out / ('s%d' % seed)
             command = [sys.executable, '-I', str(fuzz), '--build', options.build, '--seed', str(seed), '--steps', str(options.steps),
@@ -167,20 +176,30 @@ def main():
             with open(options.out / ('s%d.log' % seed), 'w') as log:
                 process, scope = None, run_scope.Scope('seed%d' % seed)
                 try:
-                    process = subprocess.Popen(scope.command(['dbus-run-session', '--'] + command), stdin=subprocess.DEVNULL, stdout=log,
-                                               stderr=subprocess.STDOUT, start_new_session=True)
+                    process = scope.launch(['dbus-run-session', '--'] + command, stdin=subprocess.DEVNULL, stdout=log,
+                                           stderr=subprocess.STDOUT, start_new_session=True)
                     code = process.wait()
                 except Interrupted as stop:
                     if process is not None:
-                        stop_seed(process, scope, stop.signum)
-                    else:
-                        scope.stop()
+                        let_seed_finish(process, scope, stop.signum)
                     print('seed %d: interrupted by %s (kept %s)' % (seed, signal.Signals(stop.signum).name, run), flush=True)
                     raise
-            left = scope.stop()  # the seed is done: nothing of it may outlive it
+                finally:
+                    # However the seed ended (done, interrupted, a launch or wait that failed), its scope is stopped, with signals held
+                    # during the stop; a stop that fails is reported and stops the run.
+                    held = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM})
+                    try:
+                        problem = stop_scope(scope, 'seed %d' % seed)
+                    finally:
+                        signal.pthread_sigmask(signal.SIG_SETMASK, held)
+                    if problem:
+                        print(problem, flush=True)
+                        cleanup_failed.append(problem)
+                    if process is not None and process.returncode is None and not problem:
+                        process.wait()
+            if cleanup_failed:
+                break
             note = 'seed %d: %s in %.0f s' % (seed, 'clean' if code == 0 else 'FINDING (exit %d)' % code, time.monotonic() - started)
-            if left:
-                note += ' (%d processes were left in its scope and were stopped)' % left
             if code == 0:
                 clean += 1
                 problems = remove_traces(traces / ('s%d' % seed), options.rr) if options.kind == 'rr' else []
@@ -199,14 +218,25 @@ def main():
             seed += 1
     except Interrupted as stop:
         status = 128 + stop.signum
+    except run_scope.ScopeError as error:
+        print('race_loop: %s' % error, flush=True)
+        status = 2
     else:
         status = None
     finally:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        stress.stop()  # every busy loop at once, through their scope
-        for hog in hogs:
-            hog.wait()
+        for index, scope in enumerate(stress):  # every busy loop that was started, through its own scope
+            problem = stop_scope(scope, 'busy loop %d' % index)
+            if problem:
+                print(problem, flush=True)
+                cleanup_failed.append(problem)
+        if not cleanup_failed:
+            for hog in hogs:
+                hog.wait()
+    if cleanup_failed:
+        print('race_loop: %d scopes could not be stopped; stop them with systemctl --user stop %s' % (len(cleanup_failed), run_scope.pattern()), flush=True)
+        return 2
     if status is not None:
         return status
     print('%d clean, %d findings, seeds %d-%d' % (clean, findings, options.first_seed, seed - 1), flush=True)

@@ -114,10 +114,10 @@ def main():
         argv = [options.rr, 'record', '-o', str(trace)] + ([] if options.no_chaos else ['--chaos']) + command + extra
         started = time.monotonic()
         with open(log, 'w') as out:
-            process, handle, stopped_by, scope = None, None, None, run_scope.Scope('rr%03d' % index)
+            process, handle, stopped_by, scope, cleanup_failed = None, None, None, run_scope.Scope('rr%03d' % index), None
             try:
-                process = subprocess.Popen(scope.command(argv), cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
-                                           start_new_session=True)
+                process = scope.launch(argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
+                                       start_new_session=True)
                 handle = os.pidfd_open(process.pid)  # rr itself, not reaped until wait() below, so this names it for good
                 code = process.wait(options.timeout)
             except subprocess.TimeoutExpired:
@@ -130,13 +130,26 @@ def main():
                     handle = os.pidfd_open(process.pid)  # still unreaped, so the PID is still rr's
                 code = stop_recording(process, handle, 'interrupted by %s' % signal.Signals(stop.signum).name)
             finally:
-                if handle is not None:
-                    os.close(handle)
-                left = scope.stop()  # rr has finished or been stopped: nothing it recorded may outlive the run
-                if left:
-                    print('run %d: %d processes were left in %s and were stopped with it' % (index, left, scope.unit), flush=True)
-                if process is not None and process.returncode is None:
-                    process.wait()
+                # rr has finished or been stopped: nothing it recorded may outlive the run. Signals are held during the stop, and a stop
+                # that fails is reported (never called a stop) and ends the loop.
+                held = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM})
+                try:
+                    if handle is not None:
+                        os.close(handle)
+                    try:
+                        left = scope.stop()
+                    except run_scope.ScopeError as error:
+                        cleanup_failed = error
+                        left = 0
+                    if left:
+                        print('run %d: %d processes were left in %s and were stopped with it' % (index, left, scope.unit), flush=True)
+                    if process is not None and process.returncode is None and cleanup_failed is None:
+                        process.wait()
+                finally:
+                    signal.pthread_sigmask(signal.SIG_SETMASK, held)
+        if cleanup_failed is not None:
+            print('run %d: cleanup failed: %s; stop it with systemctl --user stop %s' % (index, cleanup_failed, run_scope.pattern()), flush=True)
+            return 2
         if stopped_by is not None:
             replayable = (trace / 'version').is_file() and not os.path.lexists(trace / 'incomplete')
             print('run %d: %s; trace %s (%s)' % (index, code, trace, 'rr replay %s' % trace if replayable else 'INCOMPLETE, not replayable'), flush=True)

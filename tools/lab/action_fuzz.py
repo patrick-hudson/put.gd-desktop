@@ -36,6 +36,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import secrets
 import select
 import shutil
@@ -790,7 +791,20 @@ class Resident:
         if self.returncode() != self.TSAN_REPORTED or self.options is None or not self.options.tsan_prefix:
             return False
         files = [p for p in self.san.glob('tsan.*') if p.is_file()]
-        return bool(files) and all(self.known_qt_races_only(p) for p in files)
+        if not files or any(self.fatal_sanitizer_error(p) for p in self.san.glob('*') if p.is_file()):
+            return False  # a fatal sanitizer error (an allocator diagnostic exits 66 too) is never excused
+        return all(self.known_qt_races_only(p) for p in files)
+
+    FATAL = re.compile(r'ERROR: \w*Sanitizer')
+
+    @classmethod
+    def fatal_sanitizer_error(cls, path):
+        """True when a report file holds a fatal sanitizer line (ERROR: ThreadSanitizer, ERROR: AddressSanitizer and the like), which
+        tsan_summary.py's report parser does not read: it reads only WARNING blocks."""
+        try:
+            return bool(cls.FATAL.search(path.read_text(errors='replace')))
+        except OSError:
+            return True
 
     @staticmethod
     def known_qt_races_only(path):

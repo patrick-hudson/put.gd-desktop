@@ -94,6 +94,48 @@ class Classifier(unittest.TestCase):
         unrelated = ('QTimer::start()', 'QMetaObject::activate(QObject*, QMetaObject const*, int, void**)', 'QThread::started(QThread::QPrivateSignal)')
         self.assertEqual(self.kind(frames(unrelated, THREAD), frames(('QTimer::stop()', 'QObject::killTimer(int)'), CALLER)), 'other')
 
+    def test_review_s17_an_extra_own_module_adds_to_the_built_in_ones(self):
+        first, second = HANDOFF
+        anonymous = own('(anonymous namespace)::UploadTask::run()', 8)  # putgd-http-worker, no putgd:: namespace
+        block = list(tsan_summary.reports(report(frames(first, THREAD), frames(second, CALLER) + '\n' + anonymous)))[0]
+        self.assertEqual(tsan_summary.classify(block, tsan_summary.own_modules(['test_client']))[0], 'put.gd')
+        self.assertTrue(set(tsan_summary.OWN_MODULES) <= set(tsan_summary.own_modules(['test_client'])))
+
+
+class TsanExit(unittest.TestCase):
+    """GCC TSan exits 66 when it reported anything, and also after a fatal error such as an allocator diagnostic."""
+
+    def excused(self, text):
+        import tempfile
+        import types
+        sys.path.insert(0, str(ROOT / 'tools' / 'lab' / 'faults'))
+        import action_fuzz
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / 'tsan.4242').write_text(text)
+            resident = action_fuzz.Resident.__new__(action_fuzz.Resident)
+            resident.san, resident.options, resident.returncode = Path(folder), types.SimpleNamespace(tsan_prefix='x'), lambda: 66
+            return resident.tsan_exit_excused()
+
+    def test_known_reports_alone_excuse_exit_66(self):
+        first, second = HANDOFF
+        self.assertTrue(self.excused(report(frames(first, THREAD), frames(second, CALLER + (('main', 'main'),)))))
+
+    def test_review_s3_a_fatal_sanitizer_error_is_never_excused(self):
+        first, second = HANDOFF
+        known = report(frames(first, THREAD), frames(second, CALLER + (('main', 'main'),)))
+        fatal = '==4242==ERROR: ThreadSanitizer: requested allocation size 0x7fffffffffff exceeds maximum supported size of 0x10000000000\n'
+        self.assertFalse(self.excused(known + fatal))
+
+
+class Scopes(unittest.TestCase):
+    def test_review_s15_every_worker_gets_its_own_unit_named_after_this_loop(self):
+        import os
+        import run_scope
+        units = {run_scope.Scope('stress%d' % index).unit for index in range(2)} | {run_scope.Scope('stress0').unit}
+        self.assertEqual(len(units), 3)
+        for unit in units:
+            self.assertTrue(unit.startswith('putgd-lab-%d-' % os.getpid()) and unit.endswith('.scope'), unit)
+
 
 if __name__ == '__main__':
     unittest.main()
