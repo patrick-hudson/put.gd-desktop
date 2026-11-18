@@ -64,8 +64,9 @@ public:
  bool ok()const{return request_>=0&&events_>=0;}
  QStringList requests(){std::lock_guard lock(mutex_);return log_;}
  QJsonArray binds(){std::lock_guard lock(mutex_);return binds_;}
- int ownCount(){int n=0;for(const auto& b:binds())if(HyprlandShortcuts::ownDescription(b.toObject()["description"].toString()))++n;return n;}
- int count(const QString& prefix){int n=0;for(const auto& r:requests())if(r.startsWith(prefix))++n;return n;}
+ // The server thread appends to these under the lock; a copy iterated outside it would detach its shared data unlocked.
+ int ownCount(){std::lock_guard lock(mutex_);int n=0;for(const auto& b:std::as_const(binds_))if(HyprlandShortcuts::ownDescription(b.toObject()["description"].toString()))++n;return n;}
+ int count(const QString& prefix){std::lock_guard lock(mutex_);int n=0;for(const auto& r:std::as_const(log_))if(r.startsWith(prefix))++n;return n;}
  // An Omarchy theme change: Hyprland reloads by itself.
  void externalReload(){std::lock_guard lock(mutex_);reload();}
  void addBind(const QJsonObject& bind){std::lock_guard lock(mutex_);binds_.append(bind);}

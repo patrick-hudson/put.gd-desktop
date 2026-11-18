@@ -1,3 +1,4 @@
+#include <atomic>
 #include "fixtures/S3Fixture.h"
 #include "fixtures/U2Fixtures.h"
 #include <QBuffer>
@@ -36,7 +37,8 @@ private slots:
         QCOMPARE(renewed.status,QString("own"));
         QCOMPARE(renewed.receipt.destination.toJson(),uploaded.receipt.destination.toJson());
         QCOMPARE(renewed.receipt.publicationId,uploaded.receipt.publicationId);
-        bool done=false;Error error;QJsonObject result;
+        // The reply comes from the S3 worker thread: result and error are published by the atomic flag.
+        std::atomic_bool done{false};Error error;QJsonObject result;
         f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[&](auto value,auto e){result=value;error=e;done=true;});
         PUTGD_TRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
         QVERIFY(result["presignedReachable"].toBool());QVERIFY(result["unsignedDenied"].toBool());
