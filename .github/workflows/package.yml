@@ -452,7 +452,7 @@ jobs:
           PUTGD_PKG_LABEL: appimage
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '0'
+          PUTGD_PKG_ATTEMPTS: '3'
           # This job only reads the snapshot: an online install must not replace what later installs fall back to.
           PUTGD_PKG_KEEP_SNAPSHOT: 'true'
         run: |
@@ -533,7 +533,7 @@ jobs:
           PUTGD_PKG_LABEL: appimage
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '0'
+          PUTGD_PKG_ATTEMPTS: '3'
           # This job only reads the snapshot: an online install must not replace what later installs fall back to.
           PUTGD_PKG_KEEP_SNAPSHOT: 'true'
         run: sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_PKG_KEEP_SNAPSHOT,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh --no-install-recommends weston
