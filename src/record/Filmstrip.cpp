@@ -408,7 +408,7 @@ struct FrameSkimmer::Private final : QThread {
             if (abort()) continue;
             const qint64 frameUs = source.clipTime(pts);
             QImage image;
-            if (renderPreviewFrame(frame.get(), edit, frameUs, canvasSize, edge, image)) continue;
+            if (renderPreviewFrame(frame.get(), edit, frameUs, canvasSize, edge, image, time)) continue;
             av_frame_unref(frame.get());
             if (abort()) continue;
             // A cancel that lands after the post still drops the answer: checked again on delivery.
