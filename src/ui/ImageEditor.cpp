@@ -257,8 +257,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
      return {};
     }
    }
-   QJsonArray created;if(!editor::Commands::apply(*document,params["commands"].toArray(),created,code,message))return {};
-   window->documentEdited();return {{"created",created},{"state",editor::Commands::state(*document)}};
+   return window->applyCommands(params["commands"].toArray(),code,message);
   }
   if(name=="preview"){
    int edge=1024;

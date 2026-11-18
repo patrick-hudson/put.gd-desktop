@@ -140,6 +140,16 @@
    "value": " ... ",
    "rule": "letter",
    "error": "An entry needs a letter or digit"
+  },
+  {
+   "value": "\u001cproject\u001d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\u001c\u001f",
+   "rule": "letter",
+   "error": "An entry needs a letter or digit"
   }
  ],
  "patterns": [
@@ -357,6 +367,11 @@
   },
   {
    "value": "((ab)*c)+d",
+   "rule": "ok",
+   "error": null
+  },
+  {
+   "value": "\u001c\u001dx",
    "rule": "ok",
    "error": null
   }

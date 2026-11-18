@@ -130,23 +130,9 @@ def result_identity(value: Any) -> bool:
 
 
 REDACT_BREAKS = {'\n', '\r', '\u2028', '\u2029'}
-
-
-def has_wide_escape(pattern: str) -> bool:
-    # PCRE2's \C matches one code unit, which can be half a character. A backslash escapes the next
-    # character (so \\C is a literal backslash and a C), and \Q...\E quotes its text.
-    i = 0
-    while i < len(pattern):
-        if pattern[i] != '\\':
-            i += 1
-        elif pattern.startswith('\\Q', i):
-            end = pattern.find('\\E', i + 2)
-            i = len(pattern) if end < 0 else end + 2
-        elif pattern.startswith('\\C', i):
-            return True
-        else:
-            i += 2
-    return False
+# What Qt's QChar::isSpace (so QString::trimmed) treats as white space. Python's str.strip() also removes
+# U+001C to U+001F, which Qt keeps, so a value is trimmed by this set instead.
+QT_SPACE = ''.join(map(chr, [*range(0x09, 0x0E), 0x20, 0x85, 0xA0, 0x1680, *range(0x2000, 0x200B), 0x2028, 0x2029, 0x202F, 0x205F, 0x3000]))
 
 
 def safe_redact_term(value: Any) -> bool:
@@ -154,19 +140,18 @@ def safe_redact_term(value: Any) -> bool:
     # trimmed; what is left is 1 to 100 code points with a letter or digit.
     if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
         return False
-    term = value.strip()
+    term = value.strip(QT_SPACE)
     return 0 < len(term) <= REDACT_TERM_LENGTH and any(c.isalnum() for c in term)
 
 
 def safe_redact_pattern(value: Any) -> bool:
     # redactPatternError as far as it can be checked without PCRE2: no line break in the raw value; then,
-    # trimmed, not empty, at most 500 code points, no leading (* verb (it could set the pattern's own
-    # matching limits) and no \C (half a character). Compiling, empty matches, back references and nested
-    # unbounded repeats such as (a+)+ are the editor's to refuse; its edit_command_invalid stays authoritative.
+    # trimmed, not empty and at most 500 code points. Whether it compiles and whether it matches empty text
+    # are the editor's to say (its edit_command_invalid is authoritative); a pattern runs in a child
+    # process the editor stops at a deadline, so its shape is not restricted here.
     if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
         return False
-    pattern = value.strip()
-    return 0 < len(pattern) <= REDACT_PATTERN_LENGTH and not pattern.startswith('(*') and not has_wide_escape(pattern)
+    return 0 < len(value.strip(QT_SPACE)) <= REDACT_PATTERN_LENGTH
 
 
 def safe_redact_list(values: Any, most: int, entry_ok: Any) -> bool:
@@ -358,7 +343,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-7 of email, phone, ip, card, key, name, list, optional terms: up to 200 words or phrases of up to 100 characters each, on one line, with a letter or digit; optional patterns: up to 50 regular expressions of up to 500 characters each, on one line, not starting with (*} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step. name is the account's username and real name; list is the saved list from Settings plus any terms and patterns given here, which are for this call only and need list in categories (a pattern that does not compile fails the command naming its index). It must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category (and skippedPatterns when a pattern took too long), and gives suggestions only: recognition can miss text. Marks it adds report suggested: <category> in editor state; update keeps that, add cannot set it."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-7 of email, phone, ip, card, key, name, list, optional terms: up to 200 words or phrases of up to 100 characters each, on one line, with a letter or digit; optional patterns: up to 50 regular expressions of up to 500 characters each, on one line} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step. name is the account's username and real name; list is the saved list from Settings plus any terms and patterns given here, which are for this call only and need list in categories (a pattern that does not compile fails the command naming its index). It must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category (and skippedPatterns when a pattern took too long), and gives suggestions only: recognition can miss text. Marks it adds report suggested: <category> in editor state; update keeps that, add cannot set it."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})

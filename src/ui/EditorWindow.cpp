@@ -61,6 +61,27 @@ QString quickRedactLabel(const QString& category){
  static const QHash<QString,QString> labels{{"email","Email addresses"},{"phone","Phone numbers"},{"ip","IP addresses"},{"card","Card numbers"},{"key","Keys and tokens"},{"name","My username and name"},{"list","My redaction list"}};
  return labels.value(category,category);
 }
+// quickRedact::marks(), each mark with the union of the recognized words' boxes on its line (unpadded). marks() makes one mark
+// per line of the match in line order, so they pair by position; a mark left out (its line outside the image) falls back to
+// the word box it contains.
+QList<QPair<QRect,QRect>> markedWords(const QList<editor::RecognizedWord>& candidates,const editor::quickRedact::Match& match,const QRect& bounds){
+ QMap<int,QRect> lines;
+ for(const int index:match.words)if(index>=0&&index<candidates.size())lines[candidates.at(index).line]=lines.value(candidates.at(index).line).united(candidates.at(index).rect);
+ const auto marks=editor::quickRedact::marks(candidates,match,bounds);
+ QList<QPair<QRect,QRect>> out;
+ if(marks.size()==lines.size()){int i=0;for(const auto& words:std::as_const(lines))out.append({marks.at(i++),words});return out;}
+ for(const auto& mark:marks){
+  // The line whose words the mark contains (the larger one first), else the one it overlaps most.
+  QRect words;qint64 best=-1;
+  for(const auto& line:std::as_const(lines)){
+   const auto shared=line.intersected(mark);
+   const qint64 score=(mark.contains(line)?qint64(1)<<40:0)+qint64(shared.width())*shared.height();
+   if(score>best){best=score;words=line;}
+  }
+  out.append({mark,words});
+ }
+ return out;
+}
 QFrame* separator(QWidget* parent){auto* line=Ui::rule(parent,Qt::Vertical);line->setFixedHeight(Ui::scaled(22));return line;}
 // A colour choice: its colour in a rounded square, a ring when chosen, the
 // accent ring under keyboard focus. The custom picker stays neutral.
@@ -950,6 +971,9 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  const auto action=params["action"].toString("inspect");
  if(action=="inspect"){if(!only({}))return fail("invalid_request","inspect has no other parameters");return viewState();}
  if(busy_)return fail("editor_finalizing","The edit was already submitted or discarded");
+ // A drag in progress owns the document's current undo step: a change made now would join it, and abandoning the drag
+ // would roll it back after the agent was told it worked. Every action that edits the document waits for the drag.
+ if(QStringList{"removeMark","removeSuggestions","place","geometry","applyCrop","blurStyle","stepNumber"}.contains(action)&&doc_.inGesture())return fail("editor_busy","A mark is being dragged; try again when the drag ends");
  // Keep editing answers the discard question, else dismisses a preparation
  // failure: both buttons carry that label.
  if(action=="keepEditing"||action=="confirmDiscard"){
@@ -981,8 +1005,6 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  }else if(action=="removeSuggestions"){
   // Quick redact's "Remove suggestions": every suggested mark, one undo step; marks drawn by hand stay (#1618).
   if(!only({}))return fail("invalid_request","removeSuggestions has no other parameters");
-  // A drag in progress owns the document's undo step: removing now would join it, and cancelling the drag would bring the marks back.
-  if(doc_.inGesture())return fail("editor_busy","A mark is being dragged; try again when the drag ends");
   if(removeSuggestions()==0)return fail("edit_shape_missing","There are no suggested marks to remove");
  }else if(action=="selectAffectedText"){
   if(!only({}))return fail("invalid_request","selectAffectedText has no other parameters");
@@ -1175,6 +1197,13 @@ bool EditorWindow::parseRedactText(const QJsonObject& entry,QStringList& categor
  if((entry.contains("terms")||entry.contains("patterns"))&&!categories.contains("list"))return bad("redactText terms and patterns need the list category");
  return true;
 }
+QJsonObject EditorWindow::applyCommands(const QJsonArray& commands,QString& code,QString& message){
+ if(doc_.inGesture()){code="editor_busy";message="A mark is being dragged; try again when the drag ends";return {};}
+ QJsonArray created;
+ if(!editor::Commands::apply(doc_,commands,created,code,message))return {};
+ documentEdited();
+ return {{"created",created},{"state",editor::Commands::state(doc_)}};
+}
 void EditorWindow::setRedactList(QStringList terms,QStringList patterns){
  redactTerms_=std::move(terms);redactPatterns_=std::move(patterns);
  // Nothing saved: the entry says where to add words and stays off (agents can still pass terms).
@@ -1189,6 +1218,7 @@ int EditorWindow::removeSuggestions(){
 }
 void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns){
  if(quickRedacting_){if(done)done({"editor_busy","Quick redact is already waiting for recognition",{}},{});return;}
+ if(doc_.inGesture()){if(done)done({"editor_busy","A mark is being dragged; try again when the drag ends",{}},{});return;}
  // The list alone, with nothing saved and nothing given: there is nothing to find, so no recognition starts (and none can fail).
  if(categories==QStringList{"list"}&&redactTerms_.isEmpty()&&redactPatterns_.isEmpty()&&terms.isEmpty()&&patterns.isEmpty()){
   if(busy_){if(done)done({"editor_finalizing","The edit was already submitted or discarded",{}},{});return;}
@@ -1226,12 +1256,9 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     g->doc_.beginGesture();
     for(const auto& match:found.matches){
      bool any=false;
-     // What a deleted suggestion is remembered by: the recognized words' own boxes on that line, never the padded mark (padding
-    // would make two neighbouring one-character words look like one suggestion).
-    QMap<int,QRect> lines;for(const int index:match.words)if(index>=0&&index<candidates.size())lines[candidates.at(index).line]=lines.value(candidates.at(index).line).united(candidates.at(index).rect);
-    for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){
-      QRect words;qint64 best=-1;
-      for(const auto& line:std::as_const(lines)){const auto shared=qint64(line.intersected(rect).width())*line.intersected(rect).height();if(shared>best){best=shared;words=line;}}
+     // Each padded mark comes with the recognized words' own box it was built from: that, never the padded mark, is what a
+    // deleted suggestion is remembered by (padding makes two neighbouring one-character words look like one suggestion).
+    for(const auto& [rect,words]:markedWords(candidates,match,g->doc_.imageRect())){
       if(g->doc_.dismissed(words,match.category))continue;
       editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=words;created.append(double(g->doc_.add(shape)));any=true;
      }

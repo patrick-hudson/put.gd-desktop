@@ -1,5 +1,6 @@
 #pragma once
 #include "editor/EditorCanvas.h"
+#include "editor/EditorCommands.h"
 #include "core/Error.h"
 #include "core/TextJob.h"
 #include "editor/QuickRedact.h"
@@ -190,6 +191,10 @@ public:
  static bool parseRedactText(const QJsonObject& entry,QStringList& categories,QStringList& terms,QStringList& patterns,QString& code,QString& message);
  // The saved Quick redact words and patterns (Settings), from the bootstrap.
  void setRedactList(QStringList terms,QStringList patterns);
+ // editor.apply: the commands as one undo step, answered with the ids created and the document's state. A pointer
+ // drag in progress owns the document's current undo step, so any change an agent asks for meanwhile answers
+ // editor_busy instead of joining a step the drag may roll back (U13). On failure `code` and `message` say why.
+ QJsonObject applyCommands(const QJsonArray& commands,QString& code,QString& message);
  // Removes every suggested mark as one undo step; hand-drawn marks stay. Returns how many.
  int removeSuggestions();
 signals:
