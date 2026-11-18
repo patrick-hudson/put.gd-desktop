@@ -128,7 +128,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `preview_recording` | id, time_us, max_edge → recording.preview | One frame with the masks active at that time applied, as an MCP image plus metadata: `retained` is whether the time is kept (inside the trim, outside every cut) and `outputTimeUs` its place in the output |
 | `drive_recording_review` | id, action, and the action's own fields → recording.review | Works the open review window's controls as a user does, one action per call, and inspects its state; each action routes through the same handler as the window's own UI and its edits go through the resident like the window's own. The actions, their errors and the fields `inspect` returns are in [Review window actions](../design/recording/agent-control-and-tests.md#review-window-actions); the parameters are mapped below. `edit_recording` and `recording.review` share one edit history: `undo` and `redo` reach it from both |
 | `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload. Returns `exporting` when the export starts; poll `get_recording` until `reviewing` and read `lastExport` |
-| `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output. Returns `exporting` and the `operationId` when the export starts; a failed export returns the session to `reviewing` with `lastExport.error`, otherwise `get_operation` follows the upload |
+| `upload_recording` | id, revision → recording.upload | The only action that starts a new upload; sends the validated export through the configured output. A failed Upload can be repeated with `drive_recording_review` `retryExport` (the window's Try again), which also publishes. Returns `exporting` and the `operationId` when the export starts; a failed export returns the session to `reviewing` with `lastExport.error`, otherwise `get_operation` follows the upload |
 
 `drive_recording_review` takes `id`, `action` and the fields below. The tool checks types,
 sizes and that an action's required fields are present (a missing or malformed one is
@@ -140,9 +140,11 @@ the window's state refuses the action, and, when the resident refuses an edit th
 proposed, that refusal's own code (`recording_cut_empty`, `recording_stale` and so on)
 with `details {revision, proposal}`; a proposal that was never answered is
 `recording_state`. Each action reports only its own proposals, and `lastRefusal` in
-`inspect` is for display. `retryExport` goes through the window like the other controls and
-answers with the window's state, so poll `lastExport`; the Format menu's audio toggle is
-the one control with no action.
+`inspect` is for display. Proposals are applied individually, so after any error `inspect`
+again before exporting or repeating the action. `retryExport` has two layers of outcome:
+the window's guard first, then the resident's own export-start state or refusal; check both
+and poll `lastExport`. Two controls have no review action: the Format menu's audio toggle
+and a fresh Upload (`upload_recording`).
 
 | MCP parameter | Session field | Used by |
 | --- | --- | --- |

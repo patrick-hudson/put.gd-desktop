@@ -183,31 +183,43 @@ GIF and WebP limits; export builds a second map from it on the clip's frame grid
 
 | Duration | What it is | Where it appears |
 | --- | --- | --- |
-| **Kept time** | the length of the edit's own kept spans | the review's output clock and length, `outputDurationUs`, `recording.preview`'s `outputTimeUs`, and the GIF and WebP length limit (checked by the resident) |
-| **Export grid time** | the kept time laid on the output frame grid: whole ticks of 1/`fps`. It equals the review clock's length, and an animation is capped at whole frames of kept time | what the exporter encodes, and the length `progress.exportFraction` runs over |
-| **Exported duration** | the last encoded frame's timestamp plus one frame; the export grid time | `lastExport.durationUs` once an export has finished |
+| **Source length** | the working clip's length | `durationUs` in the session |
+| **Kept time** | the length of the edit's own kept spans | the review's output clock and length, `outputDurationUs`, `retainedUs` in the session, and the GIF and WebP length limit (checked by the resident) |
+| **Export grid time** | the kept time laid on the output frame grid: whole ticks of 1/`fps`. It equals the review clock's length for an edit on the grid; an animation is capped at whole frames of kept time (see below) | what the exporter encodes, and the length `progress.exportFraction` runs over |
+| **Exported duration** | the last encoded frame's timestamp plus one frame: the export grid time | `lastExport.durationUs`, set for a completed local copy (a finished upload ends the session, which no longer answers) |
 
-The first replies to `recording.upload` and `recording.saveCopy` carry none of these;
-they report the session entering `exporting`.
+`recording.preview`'s `outputTimeUs` is a **position** in the output, not a duration. The
+first replies to `recording.upload` and `recording.saveCopy` are the session as `inspect`
+shows it: `state: exporting`, with `retainedUs` (kept time) and the source `durationUs`;
+no exported duration exists yet.
 
 **On the clip's frame grid.** A demux-only pass reads the frame times from the
 packets; nothing is decoded for it. For each kept span `[S, E)` it looks for the first
 frame at or after S and the first frame at or after E, and applies the rules below
 (1/15 s, the adaptive rate's floor interval `AdaptiveRate::floorFps`, is 66,666 µs).
-Frame times are compared with the edit's edges with half a container tick of slack
-(0.5 ms for Matroska, capped at 5 ms), so a frame-exact edge from the review never lets
-the first cut frame, or the frame past the trim end, through. An edge that lies between
-two frames (only the agent API can make one) may drop a kept frame whose time rounds
-away, at most one per span end. The snapped spans are then laid on the output grid of
-ticks of 1/`fps` seconds: span *i* ends on output tick round(kept time up to its end
-× `fps`), and the last span ends on the clock total, so the exported length equals the
-review clock (kept time on the output frame grid). Each frame in a span lands on the
-tick nearest its time from the span's start. A join is one ordinary frame step: nothing
-is repeated, dropped or shifted there, and millisecond-rounded Matroska timestamps at
-60 fps cannot put two kept frames on one tick. Frame selection, output ticks, cover
-intervals, the audio layout and progress all use this snapped map. An export that keeps
-no frame is refused. An animation (GIF or WebP) is capped at whole frames of kept time,
-and every span keeps at least one frame while the total allows.
+Frame times are compared with the edit's edges with a **timestamp tolerance**. The
+review's edges sit on the grid edge *k*, round(*k* × 10⁶ / `fps`) µs, while a Matroska
+container stores whole milliseconds, so a stored frame can lie up to half a container
+tick before the edge it truly belongs to (frame 154 of a 30 fps clip is stored at
+5133 ms for 5.133333 s). The tolerance is half the video container tick, 0.5 ms for
+Matroska, when that tick is a millisecond or finer; a coarser time base has none and the
+bounds are strict. Inside it a frame counts as on the edge, so a frame-exact edge from the
+review never lets the first cut frame, or the frame past the trim end, through. An edge
+that lies between two frames (only the agent API can make one, and it snaps to the grid
+first, see [the edit model](session-contract.md#time-geometry-and-the-edit-model)) may drop
+a kept frame whose time rounds away, at most one per span end. The snapped spans are then
+laid on the output grid of ticks of 1/`fps` seconds: span *i* ends on output tick
+round(kept time up to its end × `fps`), and the last span ends on the clock total, so the
+exported length equals the review clock (kept time on the output frame grid). Each frame
+in a span lands on the tick nearest its time from the span's start. At the clip's own rate
+a join is one ordinary frame step, and millisecond-rounded Matroska timestamps at 60 fps
+cannot put two kept frames on one tick. A join does not always keep each adjacent picture:
+a GIF or WebP samples the grid at no more than 15 fps and a downscale re-samples, so
+neighbouring pictures can merge. Frame selection, output ticks, cover intervals, the audio
+layout and progress all use this snapped map. An export that keeps no frame is refused.
+An animation (GIF or WebP) is capped at whole frames of kept time, and every span keeps at
+least one frame while the total allows. That one-frame minimum can make an animation
+**longer** than the kept time when there are more spans than whole frames in it.
 
 **When frames are far apart.** The frame grid has gaps, for two reasons. After the
 adaptive rate steps down, the encoder never sees `videorate`'s repeats
@@ -231,31 +243,42 @@ rules at a span's start S and end E are:
   1/15 s, the span ends at E exactly: the last kept frame stays on screen until E.
 - **Audio** never follows the snap. Only audio from the edit's own kept time is
   heard, so no sound from inside a cut, and none from before the trim or after its
-  end, reaches the output. Audio starts on the first sample at or after each kept edge. The extra output time that snapping adds is silence, and a
-  gap in the clip's own audio (such as a pause leaves) stays silent without moving
-  the audio after it across a cut.
+  end, reaches the output. Two things differ: *placement*, where a kept range sits in
+  the output (laid end to end at its tick positions, the extra output time that
+  snapping adds being silence), and *audibility*, which samples of it are heard.
+  A kept range `[a, b)` is half-open on samples: it holds the first sample at or after `a`
+  up to, not including, the first sample at or after `b`. Because a stored audio time can
+  be half the audio container's tick off (24 samples at 48 kHz for Matroska's
+  millisecond), each kept range is heard from that many samples inside both its edges and
+  never from outside it. A gap in the clip's own audio (such as a pause leaves) stays
+  silent without moving the audio after it across a cut.
 
 **Seeking over cuts.** A decode pass reads on through a cut when the next span's
 keyframe lies before it (nothing is wasted), and seeks past the cut when the keyframe
 lies inside it. A span that opens on a held frame starts decoding from that frame.
 
-**Covers.** A cover is in source time. It applies to an output frame, held or
-repeated ones included, when the frame's display interval overlaps the cover (the
-cover's time mapped through the kept spans, abutting parts joined, so a cover over a cut
-is one interval) **or** the capture time of the picture the frame shows lies inside it.
-So a cover wholly inside a frame gap covers the picture that is held over it, a frame
-held across a cut from footage a cover covers stays covered, and a frame captured while a
-cover was active and shown after its end is covered there too. Container timestamp
-rounding does not matter: a GIF that shows a frame at 70 ms instead of 66.7 ms covers it
-the same. A cover wholly inside a cut or outside the trim has no frame to cover. To
-gather the frame times under each cover the exporter reads each cover's kept parts once
-more, demux only.
+**Covers.** A cover is in source time, and one rule applies everywhere: **a frame is
+covered if its display interval overlaps the cover mapped through the kept spans
+(abutting parts joined, so a cover over a cut is one interval), or if the picture it shows
+was captured under the cover.** Both parts hold for held and repeated frames. So a cover
+wholly inside a frame gap covers the picture held over it; a frame held across a cut
+from footage a cover covers stays covered; a frame captured while a cover was active and
+shown after its end is covered there too; and **a cover wholly inside a cut, or outside
+the trim, still covers a picture that is held into a kept span**: the picture on screen at
+that kept time may come from inside the cut. Container timestamp rounding does not
+matter: a GIF that shows a frame at 70 ms instead of 66.7 ms covers it the same, and a
+capture time within the timestamp tolerance of the cover's bound counts as inside
+(uncertainty is covered). To gather the frame times under each cover the exporter reads
+each cover's kept parts once more, demux only.
 
-**Previews.** `previewFrame` and the review's skim frame apply the covers active at the
-frame's own time and at the requested time, so a held frame never shows uncovered where
-the export covers it. Playback is the one exception: it masks each frame at its own time
-only, so a cover wholly inside a frame gap is not drawn on the still picture while
-playing. That is a limit of the local viewer; the export is correct.
+**Previews.** `previewFrame` and the review's exact skim frame check the cover against
+**two instants**: the requested time and the captured time of the picture they show. The
+export also checks display-interval overlap, so the preview can show a later picture
+where the export holds an earlier one, and a held picture in the export can come from
+inside a cut (the picture on screen at that kept time). Playback masks each frame at its
+own time only, so a cover wholly inside a frame gap is not drawn on the still picture
+while playing. That is a limit of the local viewer; the export is the one to check before
+sharing sensitive footage.
 
 **GIF palette.** A GIF is two passes over the same kept frames. Pass one builds the
 palette from exactly the frames pass two encodes (only kept frames), with
@@ -288,11 +311,13 @@ traces (an export adds a line per export grid and per decode pass),
 [--trim startUs endUs] [--cut startUs endUs]... [--no-audio]` exports a kept clip the
 way the review does and prints the encoder, frame count, bytes and wall time; `--cut`
 takes source microseconds and repeats, one per cut, so a lab run can export a cut or a
-frame-gap case without a review window. `putgd-record --filmstrip CLIP N [TILE_WIDTH]`
-asks the review's filmstrip for N tiles (1–48, tile width 8–1024, default 128)
-spread across the clip, the two ends first, and prints one JSON line: `first_two_ms`
-and `all_ms` from opening the clip, `tiles`, `decoded`, `cached`, `peak_rss_kib`, the
-clip's `duration_ms` and `canvas`; it is how the thumbnail timings in
+frame-gap case without a review window; the times go to the exporter as given, without the
+resident's snap to the frame grid. `putgd-record --filmstrip CLIP N [TILE_WIDTH]` runs the
+production thumbnail worker (`Filmstrip`) in a standalone diagnostic, not through the
+review window: it asks for N tiles (1–48, tile width 8–1024, default 128) spread across the
+clip, the two ends first, and prints one JSON line: `tiles`, `tile` (the tile size,
+`"WxH"`), `first_two_ms` and `all_ms` from opening the clip, `decoded`, `cached`,
+`peak_rss_kib`, the clip's `duration_ms` and `canvas`. It is how the thumbnail timings in
 [Thumbnails and skimming](overlay-and-review.md#thumbnails-and-skimming) are rechecked on a
 build.
 `PUTGD_RECORD_EXPORT_ENCODERS=<comma list>` replaces the encoder preference

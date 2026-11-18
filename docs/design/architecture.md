@@ -84,7 +84,7 @@ See [image editor](image-editor.md) and [image worker](image-worker.md).
 previews and FFmpeg export. `RecordingService` owns the authoritative session,
 durable intent and edit revision. Stop opens private review; preview, editing,
 Save a copy, cancellation and restart never authorize upload. Only explicit
-Upload admits a validated export to `OperationService`. The editor and recording
+Upload (or Try again on a failed one) admits a validated export to `OperationService`. The editor and recording
 session exclude one another. A [scrolling capture](scroll-capture.md) is a second
 session kind of the same helper, owned by `ScrollCaptureService`; it excludes recording,
 the editor and any other selection, and its stitched PNG enters the pipeline as an

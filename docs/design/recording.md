@@ -37,7 +37,9 @@ clipboard). Cancel is available in every non-terminal state and uploads nothing.
 - Stop **always** opens the private review, including an unedited clip and a
   stop while paused. No recording bytes reach the artifact store, archive or
   a destination before the separate `upload` command; preview, edits, local
-  copies, closing the review, cancel and restart never authorize it.
+  copies, closing the review, cancel and restart never authorize it. The only other
+  route that publishes is the user's Try again on a failed Upload (`recording.review`
+  `retryExport`), which repeats an upload that was already asked for.
 - One recording session exists at a time, and it excludes the still-image
   editor (`recording_active` / `editor_active`). Its ID equals the operation
   ID that the journal holds in state `recording`. A restart turns that

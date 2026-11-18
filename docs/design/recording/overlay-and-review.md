@@ -198,9 +198,11 @@ same question) · **Save a copy…** · a destination menu that says what Upload
 button; once the resident has accepted the last change it closes the window).
 
 The Format menu also holds an **Include system audio** toggle (named for what was
-recorded) that sets whether the export carries the recorded sound. It has no review
-action: `inspect` reports it as `audioRequested` and `audioEffective`, and the format
-menu's `format` action does not change it.
+recorded) that sets whether the export carries the captured sound: turning it off
+removes captured system audio or microphone from the export, and a source is kept only
+when it was captured **and** the window asks for it. It has no review action: `inspect`
+reports it as `audioRequested` and `audioEffective`, and the format menu's `format`
+action does not change it.
 
 ### Interaction rules
 
@@ -240,9 +242,11 @@ menu's `format` action does not change it.
   through edits in any layout. Ctrl+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes. Esc
   cancels a placement, or clears a selection.
 - **Enter** depends on focus. A focused text field keeps it; a focused button presses
-  itself; while a cover is being placed it places a centred cover (half the frame's
-  width and height); with a cut selected it restores the cut; otherwise it uploads.
-  Ctrl+Enter always uploads, and does nothing with a menu open.
+  itself; a focused row of the Edits list activates (selects) the row; while a cover is
+  being placed it places a centred cover (half the frame's width and height); with a cut
+  selected it restores the cut; otherwise it uploads. Ctrl+Enter always uploads, and does
+  nothing with a menu open. Neither auto-repeats: a held Enter, which could otherwise
+  trigger a second action, is ignored.
 - **100 % view** shows source pixels: the helper decodes the clip at its own size rather
   than the 1280 px preview, so a cover and the picture can be checked pixel for pixel.
   Changing the zoom refreshes the paused frame or the skim frame at the new size, and
@@ -253,15 +257,21 @@ menu's `format` action does not change it.
   Ctrl+Z while placing cancels the placement, and while a keyboard nudge is pending it
   drops the nudge.
 - **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
-  a keyboard nudge of a cover is proposed 350 ms after the last key, or at once when
-  Ctrl+Enter, Enter or Upload commits it. **Upload, Ctrl+Enter and Enter do nothing during a drag** (the
-  drag's edit has not been proposed), and Upload is disabled while a cover is being
-  placed. Upload then waits until the resident has accepted every pending proposal and
-  sends the acknowledged revision. A refusal, or 2 s without an answer, cancels the
-  upload: the status line says what was not applied or "Upload didn't start". So does
-  more editing, placing a cover or an export starting while it waits: the status line then
-  says "Upload cancelled because you kept editing." `inspect` shows `uploadWaiting` while
-  it waits. **Try again** (`retryExport`) is refused while a cover is being placed.
+  a keyboard nudge of a cover is proposed 350 ms after the last key. **Upload, Ctrl+Enter
+  and Enter do nothing during a drag** (the drag's edit has not been proposed), and
+  Upload is disabled while a cover is being placed. Otherwise they commit a pending
+  nudge, wait for every proposal's answer from the resident, then send **that revision**:
+  an upload exports exactly the revision it started with, or it is refused. While the
+  upload waits (`inspect` shows `uploadWaiting`), it is cancelled by:
+  - any new local change: an edit, a nudge, a cover move or resize, an edge drag or a
+    placement; the status line says "Upload cancelled because you kept editing.";
+  - a refusal of one of its proposals; the status line says what was not applied;
+  - 2 s without an answer; the status line says "Upload didn't start";
+  - an export starting.
+
+  The resident refuses an upload at any other revision (`recording_stale`) and any export
+  request while an export runs, and reopens the window with the reason; nothing is dropped
+  silently. **Try again** (`retryExport`) is refused while a cover is being placed.
 - **Held keys.** An auto-repeated Enter is ignored, so a held key places or restores once
   and never uploads, and Ctrl+Enter does not auto-repeat.
 
@@ -276,7 +286,8 @@ menu's `format` action does not change it.
   until each arrives. Thumbnails are keyframe pictures, not exact frames: exact frames
   come only from the skim worker, below. The strip never decodes the whole clip, and
   scrubbing, playback and Upload never wait for it. It draws the recorded picture
-  **without covers**. (`putgd-record --filmstrip` times it on a build, see
+  **without covers**. (`putgd-record --filmstrip` times the production worker on a build
+  in a standalone diagnostic, not through the review window, see
   [Lab diagnostics](capture-and-export.md#lab-diagnostics).)
 - The timings below come from a **separate benchmark harness**, `bench.cpp` in the
   council record's
@@ -288,9 +299,10 @@ menu's `format` action does not change it.
   490 ms and 846 ms cold), on one core and 55 MiB. Decoding every frame of that clip
   takes 24 s, which is why there is no whole-clip pass
   ([results](https://github.com/patrick-hudson/put.gd-evidence/blob/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test/results.md)).
-- **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once; as
-  it has no covers, **the viewer can show a picture without its covers** until the next
-  step. After about 120 ms at rest, one exact-frame request goes out (at most one in
+- **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once, but
+  only when the tile of the keyframe before that time is already cached; otherwise the
+  viewer keeps the playhead frame until the exact frame arrives. As a tile has no covers,
+  **the viewer can show a picture without its covers** until the next step. After about 120 ms at rest, one exact-frame request goes out (at most one in
   flight, cancelled when the pointer moves, the decoder kept open) and replaces the
   thumbnail when it arrives, with the covers active at that time applied; the time flag
   then drops its "≈". On m74 that frame takes 217 ms median and 328 ms p95 at 4K
@@ -312,9 +324,10 @@ picture while playing. That is a limit of the local viewer; the export is correc
 a cover is being dragged the pending area is drawn as a dashed rubber band. Play plays
 the kept footage silently from the playhead at the chosen speed and follows edits made
 while it plays (it resumes from the playhead, or pauses there when the edit leaves no
-kept footage ahead of it): a cut is jumped, and frames that fall behind the clock are decoded but
-not drawn, so a large clip keeps pace with dropped frames. Scrubbing or any edit control
-pauses playback. The audio track is not previewed. **Check the saved export before
+kept footage ahead of it; zoom, speed and edit restarts resume from the playhead, and only
+Play itself wraps to the start): a cut is jumped, and frames that fall behind the clock are decoded but
+not drawn, so a large clip keeps pace with dropped frames. Stopping playback drops its
+queued frames. Scrubbing or any edit control pauses playback. The audio track is not previewed. **Check the saved export before
 uploading sensitive footage:** the preview and the export are separate renderers.
 
 `recording.review {id, action, ...}` (MCP `drive_recording_review`) works the

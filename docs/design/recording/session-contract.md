@@ -18,7 +18,15 @@ Part of [Screen recording](../recording.md).
   end), up to 64 `cuts` `{id, start, end}` and up to 64 masks `{id, kind: blur|solid,
   rect: [x,y,w,h], start, end, strength}`. Masks and cuts are stored in source time.
   The wire name for a cover is **mask**; the review window calls blur and solid
-  masks "Blur" and "Redact".
+  masks "Blur" and "Redact". A mask's rectangle must be at least 2 × 2 pixels
+  (`invalid_request` otherwise).
+- **Edits snap to the frame grid, in the safe direction.** An edit that arrives through
+  `recording.edit` (the review window already sends grid values) has its times snapped to
+  the grid of edges round(*k* × 10⁶ / `fps`) µs: a cover or a cut **outward** (start
+  down, end up) and the trim **inward** (start up, end down; an end at the clip's end stays
+  "no end"), so snapping never lets unwanted footage through or uncovers a frame. An edit
+  that snapping would leave with less than one frame is refused. The reply shows the
+  snapped values.
 - A **cut** leaves a stretch of source time out of the output but stays in the edit,
   so review can show it and restore it. Cuts are sorted by `start`, disjoint, never
   touching and inside `[0, duration)`: `addCut` and `updateCut` clamp the span to the
@@ -42,10 +50,15 @@ Part of [Screen recording](../recording.md).
   mapped to output time, in as many parts as the cuts split it. Retaining 10–30 s with no
   cut makes a source mask at 12–15 s active at output 2–5 s, a cut at 13–14 s makes it
   active at 2–3 s and 3–4 s joined into one interval 2–4 s, and a mask wholly outside the
-  kept spans is dropped. The export also covers frames *shown* during a cover whose
-  picture was captured at another time (see the same section).
+  kept spans is dropped from the *time* mapping. The export's cover rule is wider, and is one rule everywhere: a
+  frame is covered if its display interval overlaps the mapped cover, **or** its picture
+  was captured under the cover. That includes a cover wholly in a cut or outside the trim
+  whose picture is held into a kept span (see the same section).
 - Every accepted `edit` advances `revision`. `upload` and `edit` take the
-  revision they were reviewed at and fail with `recording_stale` otherwise.
+  revision they were reviewed at and fail with `recording_stale` otherwise. An upload
+  exports **exactly the revision it started with, or it is refused**: the resident refuses
+  an upload at any other revision (`recording_stale`) and any export request while an
+  export runs, and reopens the window with the reason. Nothing is dropped silently.
 - **Undo history.** The resident keeps one undo history per review session. Every
   accepted `edit` batch pushes the edit it replaced; at most 200 steps are kept (the
   oldest is dropped). A new batch clears the redo steps. `undo` and `redo` each go in a
@@ -84,7 +97,7 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with the masks active then (a time outside the trim or inside a cut still renders), plus `retained` (the time is inside the trim and outside every cut), `outputTimeUs` (its place in the output through the kept spans; `null` when not retained) and `revision`; returned only to the requesting client |
 | `recording.review` | `{id, action, time?, speed?, kind?, rect?, maskId?, strength?, format?, codec?, start?, end?, cutId?, editId?, edge?, level?, mode?, dx?, dy?, delta?, open?, width?, height?}` | works one review-window control as a user does and answers with the window's state and the resident's edit; `reviewing` only, `inspect` also while `exporting`. Actions, fields and the `inspect` answer: [Review window actions](agent-control-and-tests.md#review-window-actions) |
 | `recording.saveCopy` | `{id, path, overwrite?}` | exports to an absolute path with the format's extension; no upload. Replies once the export starts with `state: exporting`; poll `inspect` until `reviewing`, then `lastExport.status` is `saved` or `failed` |
-| `recording.upload` | `{id, revision}` | the only publishing action. Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
+| `recording.upload` | `{id, revision}` | the only action that starts a new upload (a failed Upload can be repeated with `recording.review` `retryExport`, which publishes too). Replies once the export starts with `state: exporting` and the linked `operationId`; see "Exports" below |
 
 If a helper budget-stop event reaches review before a pending `stop` command's
 reply, that reply returns the current finalized session, including an export

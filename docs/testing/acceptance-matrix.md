@@ -216,19 +216,32 @@ can pass with the cut still in the clip.
 
 **Review exports.** The export is checked as frames and sound, not by one score:
 
-- The recorded pattern carries content that identifies its moment (a frame counter or a
-  timecode in the picture, and a distinct tone in the part to be cut), and a cut spans
-  part of it.
+- The recorded pattern is **continuous motion** with content that identifies its moment
+  (a frame counter or a timecode in the picture, and for MP4 and WebM a distinct tone in
+  the part to be cut), and a cut spans part of it. The strict counter check needs that
+  continuous motion; on a still or stepped pattern it proves nothing.
 - Decode the exported file with a decoder that reads that format, frame by frame. For
   WebP that must be one that reads animated WebP (Pillow does; some FFmpeg `webp`
   decoders read still images only and fail every packet).
 - At each join, the last frame before it and the first frame after it show the kept
-  neighbours, and no counter value from inside the cut appears anywhere.
-- A cover's area is covered in every frame shown during its time, including a frame
-  held over a still stretch or across a cut, and uncovered in frames outside it.
-- Audio carries the kept tone and none of the cut tone, with no click at the join.
-- The duration equals the review clock (kept time on the output frame grid); a GIF or
-  WebP is never longer than the kept time.
+  neighbours, and no counter value from inside the cut appears anywhere. The one allowed
+  exception is a seam that intentionally opens on a **held picture from a cut**: where
+  frames are far apart, a span that starts in a gap opens on the picture on screen at its
+  start, which may come from inside the cut. Confirm from the working clip's packet
+  times that the seam really lies in a gap before accepting a counter value there. A GIF
+  or WebP samples at no more than 15 fps, so neighbouring pictures can merge; compare the
+  nearest sampled frame.
+- A cover's area is covered in every frame whose display interval overlaps the cover or
+  whose picture was captured under it (one rule, including a picture held into a kept span
+  from a cover inside a cut or outside the trim), and uncovered in other frames.
+- Audio, for **MP4 and WebM with audio only** (GIF and WebP are always silent, so no
+  tone check applies to them): the kept tone is present, no cut tone is heard, and there
+  is no click at the join.
+- The decoded duration is compared with the expected number of output ticks within the
+  container's timestamp precision (a GIF stores centiseconds, a Matroska file
+  milliseconds). For an edit on the frame grid it equals the review clock (kept time on
+  the output frame grid); a GIF or WebP is capped at whole frames of kept time, except
+  that the one-frame-per-span minimum can make it longer.
 - Fold the window below 1180×720 and use the **Edits** overlay.
 
 | Package | Desktop/session | Placement | What the row must show |

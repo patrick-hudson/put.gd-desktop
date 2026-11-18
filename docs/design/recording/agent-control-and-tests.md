@@ -22,9 +22,11 @@ Part of [Screen recording](../recording.md).
 
 The review window's controls are reachable through `recording.review`, and each action
 routes through the same handler as its UI (the rule in
-[AGENTS.md](../../../AGENTS.md)), with one exception: the Format menu's **audio
+[AGENTS.md](../../../AGENTS.md)), with two exceptions: the Format menu's **audio
 toggle** has no review action (it is a footer control that changes whether the export
-carries system audio). The edit operations themselves (`addCut`, `updateCut`,
+carries the captured audio), and there is **no fresh-Upload action**: a new upload is
+`recording.upload` (`upload_recording`), and a failed one is repeated with `retryExport`.
+The edit operations themselves (`addCut`, `updateCut`,
 `removeCut`, `undo`, `redo` beside the trim and cover ones) go through `recording.edit`;
 the model, limits and error codes are in
 [the edit model](session-contract.md#time-geometry-and-the-edit-model).
@@ -52,19 +54,26 @@ pixels.
   placement to cancel, an excluded cover (`seekCoverStart`, `seekCoverEnd`), playing
   (`skim`), a panel that is not folded (`panel`), the picture at Fit (`viewerPan`), an
   export running, the discard confirmation or the **Save a copy…** chooser open.
-- **The outcome of the action's own proposals** is its result. Each action reports only
-  the proposals it made: a proposal the resident refused is the action's error, and a
-  proposal that was never answered is `recording_state` ("The edit was not answered").
-  An action that
-  proposes an edit (`cut`, `adjustCut`, `restoreCut`, `setTrim`, `setIn`, `setOut`,
-  `resetTrim`, `trimToLimit`, `addMask`, `placeMask`, `setMaskIn`, `setMaskOut`,
-  `setCoverEdge`, `setCoverEdgeToPlayhead`, `coverKind`, `strength`, `removeMask`,
-  `undo`, `redo`) answers with the model's code and message and `details {revision,
-  proposal}`: for example `recording_cut_empty` for a cut that would leave less than one
-  frame, `invalid_request` for a 65th cut, `recording_stale` for a stale revision. The
-  edit is unchanged. `lastRefusal` in `inspect` is for display only: it is the latest
-  refusal the window saw, which a later proposal may have replaced, so an agent reads its
-  own action's error, not `lastRefusal`.
+- **The outcome of the action's own proposals** is its result. Proposals are applied
+  **individually**, and each action reports only the proposals it made: a proposal the
+  resident refused is the action's error (the model's code and message, with
+  `details {revision, proposal}`: for example `recording_cut_empty` for a cut that
+  would leave less than one frame, `invalid_request` for a 65th cut, `recording_stale`
+  for a stale revision), and a proposal that was never answered is `recording_state`
+  ("The edit was not answered"). On success the answer lists the proposals the action made
+  as `proposals: [n, ...]`. An action that proposes an edit is `cut`, `adjustCut`,
+  `restoreCut`, `setTrim`, `setIn`, `setOut`, `resetTrim`, `trimToLimit`, `addMask`,
+  `placeMask`, `setMaskIn`, `setMaskOut`, `setCoverEdge`, `setCoverEdgeToPlayhead`,
+  `coverKind`, `strength`, `removeMask`, `undo` and `redo`. An error does not mean no
+  proposal was applied (an action may have made several, applied one by one): **after any
+  error, `inspect` again and read the edit and revision before exporting or repeating the
+  action.** `lastRefusal` in `inspect` is for display only: it is the latest refusal the
+  window saw, which a later proposal may have replaced.
+- **Snapping.** Times an action proposes are snapped by the resident to the frame grid in
+  the safe direction (covers and cuts outward, the trim inward); the answer's `edit` shows
+  the snapped values, and an edit that snapping would leave with less than one frame is
+  refused. A mask must be at least 2 × 2 pixels (`invalid_request`). See
+  [the edit model](session-contract.md#time-geometry-and-the-edit-model).
 
 | Action | Fields | What it does |
 | --- | --- | --- |
@@ -75,7 +84,7 @@ pixels.
 | `frameStep` | `delta` 1 or −1 | `.` and `,`: one frame |
 | `setIn` | | I: the trim's start at the playhead |
 | `setOut` | | O: the trim's end at the playhead **plus one nominal frame interval** (bounded by the recording's end), so the playhead frame stays in the clip |
-| `setTrim` | `start`, `end` (null or omitted: the recording's end) | the brackets, in one step. Two checks: the window needs `start < end` within the recording (`invalid_request`), then the resident refuses a trim that leaves less than one frame (`invalid_request`, or `recording_cut_empty` while cuts exist) |
+| `setTrim` | `start`, `end` (null or omitted: the recording's end) | the brackets, in one step. The window needs `start < end` within the recording (`invalid_request`). A trim shorter than one nominal frame is always `invalid_request`; a trim long enough by itself that leaves less than one frame once the cuts are subtracted is `recording_cut_empty` |
 | `resetTrim` | | the Edits row's Reset |
 | `trimToLimit` | | trims the end so the kept time fits the GIF or WebP limit; refused when it already does |
 | `selectRange` | `start`, `end` | drags a time selection on the filmstrip; `start < end` within the recording |
@@ -94,7 +103,7 @@ pixels.
 | `selectEdit` | `kind` cut, cover or trim, `editId` (none for a trim) | selects a row of the Edits list |
 | `nextEdit`, `previousEdit` | | Alt+→ and Alt+← |
 | `seekCoverStart`, `seekCoverEnd` | | Shows from → and Until →: the first or last *kept* covered frame of the selected cover |
-| `setCoverEdge` | `edge` start or end, `time` | types a time into the cover's **Shows from** or **Until** field and commits it, with the field's snap to a whole frame; needs the cover's time fields to exist (`recording_state` when they are not shown) |
+| `setCoverEdge` | `edge` start or end, `time` | types a time into the cover's **Shows from** or **Until** field and commits it, with the field's snap to a whole frame. It changes nothing (and succeeds) when the time snaps to the edge the cover already has, and is `invalid_request` when it snaps to or across the cover's other edge. Needs the cover's time fields to exist (`recording_state` when they are not shown) |
 | `setCoverEdgeToPlayhead` | `edge` start or end | Set to playhead for the selected cover; `edge: end` adds one nominal frame interval like `setOut`, so the playhead frame stays covered |
 | `setMaskIn`, `setMaskOut` | | the selected cover's start, or its end plus one frame interval, at the playhead (Shift+I and Shift+O) |
 | `coverKind` | `kind` solid or blur | the panel's Redact \| Blur choice for the selected cover |
@@ -109,13 +118,13 @@ pixels.
 | `skimEnd` | none | leaves the skim and restores the playhead frame; takes no time and also clears a skim while playing |
 | `panel` | `open` (boolean) | the folded Edits overlay; `recording_state` while the panel is beside the viewer |
 | `resize` | `width`, `height` (200–16000) | resizes the window, so the panel folds or unfolds |
-| `format` | `format`, `codec` | the output format menu |
+| `format` | `format`, `codec` | the output format menu. Offered combinations: `mp4` with `h264` or `h265`, `webm` with `vp9`, and `gif` or `webp` with an empty or omitted `codec`; anything else is `invalid_request` |
 | `saveCopyDialog`, `closeFileDialog` | | opens **Save a copy…** as the button does, or closes it as a cancel |
 | `dismissStatus`, `showAdvice` | | clears the status line, or opens an error's details |
 | `showInFolder`, `copyPath`, `dismissSavedCopy` | | the saved-copy result's actions |
-| `retryExport` | | Try again, through the window like every other control: the window asks the resident to repeat the last failed **Save a copy…** or Upload with the same path or destination at the **current** revision. It **answers with the window's state**, not the export-start reply: the export starts from the window's request, and the agent polls `lastExport` (and `recording.inspect`) as for any export. If the failed request was an Upload, **this publishes**. Refused (`recording_state`) when nothing failed, while a cover is being placed, or when the window can't be asked |
+| `retryExport` | | Try again. It has **two layers of outcome, and an agent checks both**: first the window's guard (`recording_state` when nothing failed or a cover is being placed), then the resident's own result, the export-start reply (`state: exporting`, `pending`) or its refusal (`recording_stale` and so on), as `recording.saveCopy` and `recording.upload` reply. The last failed **Save a copy…** or Upload is repeated with the same path or destination at the **current** revision, and the agent then polls `lastExport`. If the failed request was an Upload, **this publishes** |
 | `retryPreview` | | decodes the playhead frame again |
-| `discard`, `keepReviewing`, `confirmDiscard` | | Discard… asks; the other two answer it |
+| `discard`, `keepReviewing`, `confirmDiscard` | | Discard… asks; the other two answer it. `confirmDiscard` ends the session, so its reply can time out after the recording was discarded: verify with `operation.inspect` (the operation ends `cancelled`) |
 
 The mask-options actions of the old window (`showMaskOptions`, `closeMaskOptions`,
 `nextMaskLanes`, `previousMaskLanes`, `dismissBlurTip`, `showFormatTips`) are
@@ -145,7 +154,9 @@ removed: those controls no longer exist.
 | `timeline` | `zoom`, `visible {start, end}`, `selection {start, end}` or `null`, `selectedEdit {kind, id}` (empty strings when nothing is selected), `skim {time, exact}` or `null`, `lanes`, `hiddenCovers`, `tiles {shown, placeholders}`, and the rectangles `rect`, `strip` and `ruler` (window coordinates) |
 | `lastRefusal` | `null`, or `{code, message, revision, proposal}` for the latest edit the resident refused |
 | `uploadWaiting` | true while an Upload waits for the resident to accept pending proposals; a refusal, 2 s without an answer, more editing, a cover being placed or an export starting cancels it |
-| `preview` | `{error, stale, frameTimeUs, frameSize [w, h]}`: the shown frame's error, whether it is an earlier frame, its time and its size in pixels (at 100 % the source size) |
+| `preview` | `{error, stale, frameTimeUs, frameSize [w, h], skimSize [w, h]}`: the shown frame's error, whether it is an earlier frame, its time (`null` before the first frame) and its size in pixels (at 100 % the source size), and the size of the skim picture in the viewer (`[0, 0]` when not skimming) |
+| `timeline.skim` | `null`, or `{time, exact}`: the skimmed time and whether the exact frame has arrived (`false` while only the tile shows) |
+| `statusFacts` | every status fact that holds for the current state, as `{text, tone, actions}` (each action is the drive call it makes). The window shows one line at a time, an error first: `statusRow` is that line |
 
 The rest is unchanged: `visible`, `playing`, `speed`, `armed`, `audio`, `audioRequested`, `audioEffective`, `selectedMaskId`, `status`,
 `statusRow`, `savedCopy`, `fileDialog`, `video {rect, share}`, `format` and
