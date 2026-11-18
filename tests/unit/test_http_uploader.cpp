@@ -129,7 +129,7 @@ private slots:
         QCOMPARE(result.settings["thumbnailUrl"].toString(), QString());
         QCOMPARE(result.settings["errorMessage"].toString(), QString());
         const auto notes = result.notes.join(' ');
-        QVERIFY2(notes.contains("ThumbnailURL repeated the value of argument token") && notes.contains("ErrorMessage repeated the value of argument token"), qPrintable(notes));
+        QVERIFY2(notes.contains("ThumbnailURL repeated the value of argument 3") && notes.contains("ErrorMessage repeated the value of argument 3"), qPrintable(notes));
         QVERIFY(!notes.contains(key));
         QVERIFY(!QJsonDocument(result.settings).toJson().contains(key.toUtf8()));
         QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
@@ -138,9 +138,319 @@ private slots:
         shared["URL"] = "https://media.example.test/{json:name}?t=" + key;
         const auto refused = importSxcu(sxcu(shared));
         QCOMPARE(refused.error.code, QString("sxcu_unsupported"));
-        QVERIFY2(refused.error.message.contains("URL repeats the value of argument token"), qPrintable(refused.error.message));
+        QVERIFY2(refused.error.message.contains("URL repeats the value of argument 3"), qPrintable(refused.error.message));
         QVERIFY(!refused.error.message.contains(key));
         QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
+    }
+    // #1570: a key the import takes out of an address, and the value of a row that is not
+    // sent, are credentials like a stored row: what is shown or recorded never repeats them.
+    // The thumbnail URL and the error message are left out with a note; a link that repeats
+    // one is refused, as for a stored row (it would be refused at every upload).
+    void importKeepsExtractedAndUnsentValuesOutOfWhatIsShown_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("label"); // the value the notes and the refusal name
+        const QString key = token;
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "https://media.example.test/{json:u}"},
+                               {"ThumbnailURL", "{json:thumb}?t=" + key}, {"ErrorMessage", "{json:error} (" + key + ")"},
+                               {"DeletionURL", "https://media.example.test/delete/{json:id}/" + key}};
+        // The issue's file: the token is taken out of the deletion URL.
+        QTest::newRow("deletion URL key") << file << "secret value deletion-key";
+        auto request = file;
+        request["RequestURL"] = "https://media.example.test/upload/" + key;
+        QTest::newRow("request URL key") << request << "secret value url-key";
+        // An argument that is not sent, because the file has no body, is not stored.
+        auto argument = file;
+        argument["Body"] = "None";
+        argument["Arguments"] = QJsonObject{{"token", key}};
+        argument.remove("DeletionURL");
+        QTest::newRow("unsent argument") << argument << "argument 1";
+        // Nor is a header put.gd sets itself, here Content-Type without a binary body.
+        auto header = argument;
+        header.remove("Arguments");
+        header["Headers"] = QJsonObject{{"Content-Type", key}};
+        QTest::newRow("unsent header") << header << "header 1";
+    }
+    void importKeepsExtractedAndUnsentValuesOutOfWhatIsShown() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, label);
+        const QString key = token;
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["thumbnailUrl"].toString(), QString());
+        QCOMPARE(result.settings["errorMessage"].toString(), QString());
+        const auto notes = result.notes.join(' ');
+        QVERIFY2(notes.contains("ThumbnailURL repeated the value of " + label) && notes.contains("ErrorMessage repeated the value of " + label), qPrintable(notes));
+        QVERIFY(!notes.contains(key));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(key.toUtf8()));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+        auto shared = file;
+        shared["URL"] = "https://media.example.test/{json:u}?t=" + key;
+        const auto refused = importSxcu(sxcu(shared));
+        QCOMPARE(refused.error.code, QString("sxcu_unsupported"));
+        QVERIFY2(refused.error.message.contains("URL repeats the value of " + label), qPrintable(refused.error.message));
+        QVERIFY(!refused.error.message.contains(key));
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
+    }
+    // Sol review of #1614: the whole text that is kept counts, and a credential is named
+    // only by a label that cannot hold it.
+    void importLeavesOutWhatRepeatsACredential_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("field"); // the setting that is left out
+        QTest::addColumn<QString>("note");
+        const QString key = token;
+        const QJsonObject base{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"}};
+        auto help = base;
+        help["ErrorMessage"] = "{json:error} (" + key + ") see https://help.example.test/errors";
+        QTest::newRow("error message before an address") << help << "errorMessage" << "ErrorMessage repeated the value of argument 1";
+        auto host = base;
+        host["ThumbnailURL"] = "https://" + key + ".cdn.example.test/{json:t}";
+        QTest::newRow("thumbnail host") << host << "thumbnailUrl" << "ThumbnailURL repeated the value of argument 1";
+        auto inside = base;
+        inside["ThumbnailURL"] = "{json:files." + key + "}";
+        QTest::newRow("inside a placeholder") << inside << "thumbnailUrl" << "ThumbnailURL repeated the value of argument 1";
+        auto escaped = base;
+        escaped["ThumbnailURL"] = "{json:t}?k=" + key.left(10) + "\\" + key.mid(10);
+        QTest::newRow("across an escape") << escaped << "thumbnailUrl" << "ThumbnailURL repeated the value of argument 1";
+        auto deletion = base;
+        deletion["DeletionURL"] = "{json:url}/delete?k={json:" + key + "}";
+        QTest::newRow("deletion URL placeholder") << deletion << "deletionUrl" << "DeletionURL repeated the value of argument 1";
+        // A query value a Parameters row of the same name replaced is still a credential.
+        auto displaced = base;
+        displaced.remove("Arguments");
+        displaced["RequestURL"] = "https://media.example.test/upload?token=" + key;
+        displaced["Parameters"] = QJsonObject{{"token", "replacement-value"}};
+        displaced["ThumbnailURL"] = "{json:t}?k=" + key;
+        QTest::newRow("displaced query value") << displaced << "thumbnailUrl" << "ThumbnailURL repeated the value of parameter 1";
+        // A form body text that is not sent is looked for too.
+        auto data = base;
+        data["Data"] = "{\"token\":\"" + key + "\"}";
+        data.remove("Arguments");
+        data["ErrorMessage"] = "{json:error} " + key;
+        QTest::newRow("unsent body text") << data << "errorMessage" << "ErrorMessage repeated the value of request body";
+    }
+    void importLeavesOutWhatRepeatsACredential() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, field);
+        QFETCH(QString, note);
+        const QString key = token;
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings[field].toString(), QString());
+        const auto notes = result.notes.join(' ');
+        QVERIFY2(notes.contains(note), qPrintable(notes));
+        QVERIFY(!notes.contains(key) && !result.name.contains(key));
+        QVERIFY(!QJsonDocument(result.settings).toJson().contains(key.toUtf8()));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+    }
+    void importRefusesWhatRepeatsACredential_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("message");
+        const QString key = token;
+        const QJsonObject base{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"}};
+        auto user = base;
+        user["URL"] = "https://" + key + "@media.example.test/{json:u}";
+        QTest::newRow("link user information") << user << "URL repeats the value of argument 1";
+        auto request = base;
+        request["RequestURL"] = "https://upload:" + key + "@media.example.test/upload";
+        QTest::newRow("request URL user information") << request << "RequestURL repeats the value of argument 1";
+        // A credential that runs across the "?" the request URL is split at.
+        auto across = base;
+        across["Headers"] = QJsonObject{{"X-Api-Key", "segment123?q=v"}};
+        across["RequestURL"] = "https://media.example.test/segment123?q=v";
+        QTest::newRow("across the query") << across << "RequestURL repeats the value of header 1";
+        // The row's name holds its own value: it is named by its place.
+        auto named = base;
+        named["Arguments"] = QJsonObject{{key, key}};
+        named["URL"] = "{json:u}?k=" + key;
+        QTest::newRow("label holds the credential") << named << "URL repeats the value of argument 1";
+        auto form = base;
+        form["FileFormName"] = key;
+        QTest::newRow("file form name") << form << "FileFormName repeats the value of argument 1";
+        auto rowName = base;
+        rowName["Headers"] = QJsonObject{{"X-" + key, "on"}};
+        QTest::newRow("row name") << rowName << "The name of the header 1 repeats the value of argument 1";
+        // A name is text, not a template: braces in it are looked through.
+        auto braces = base;
+        braces["Arguments"] = QJsonObject{{"token", "Bearer demo1234"}, {"f{demo1234}", "on"}};
+        QTest::newRow("row name in braces") << braces << "The name of the argument 1 repeats the value of argument 2";
+        // No text of the file is quoted, a placeholder's name included.
+        auto unknown = base;
+        unknown["Headers"] = QJsonObject{{"X-Mode", "{" + key + "}"}};
+        QTest::newRow("unknown placeholder") << unknown << "value of header 1 uses a placeholder put.gd cannot send";
+        auto shortName = base;
+        shortName["Arguments"] = QJsonObject{{"token", "Bearer demo1234"}};
+        shortName["Headers"] = QJsonObject{{"X-demo1234", "on"}};
+        QTest::newRow("short credential in a name") << shortName << "The name of the header 1 repeats the value of argument 1";
+        auto method = base;
+        method["RequestMethod"] = key;
+        QTest::newRow("method") << method << "RequestMethod is not one put.gd supports";
+        // A replaced query value and a body text that is not sent have the row limits.
+        auto longQuery = base;
+        longQuery["RequestURL"] = "https://media.example.test/upload?token=" + QString(maximumValueChars + 1, 'q');
+        longQuery["Parameters"] = QJsonObject{{"token", "replacement-value"}};
+        QTest::newRow("long replaced query value") << longQuery << "value of parameter 1 is too long";
+        auto longData = base;
+        longData["Data"] = QString(maximumDataChars + 1, 'd');
+        QTest::newRow("long unsent body") << longData << "request body text is too long";
+        // A credential with template punctuation is still one in a name.
+        auto punctuation = base;
+        punctuation["Arguments"] = QJsonObject{{"token", "demo|key"}, {"demo|key", "on"}};
+        QTest::newRow("name with template punctuation") << punctuation << "The name of the argument 1 repeats the value of argument 2";
+        // Rows that are not sent count toward the limit, so their number is bounded.
+        QJsonObject many;
+        for (int i = 0; i <= maximumRows; ++i) many["a" + QString::number(i)] = "v";
+        auto unsent = base;
+        unsent["Body"] = "None";
+        unsent["Arguments"] = many;
+        QTest::newRow("too many unsent arguments") << unsent << "more than 32 arguments";
+    }
+    void importRefusesWhatRepeatsACredential() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, message);
+        const auto refused = importSxcu(sxcu(file));
+        QVERIFY2(refused.error.message.contains(message), qPrintable(refused.error.message));
+        QVERIFY(!refused.error.message.contains(QString(token).left(16)) && !refused.error.message.contains("demo1234"));
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty());
+    }
+    // The query split is looked across with the whole-word rule for short values.
+    void importDoesNotRefuseAShortValueInsideAWordAcrossTheQuery() {
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/multipart?query=x"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Headers", QJsonObject{{"X-Api-Key", "part?q"}}}, {"URL", "{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+    }
+    // Sol round 5 of #1614: values are matched as written. A punctuation-only password
+    // would write as the default ID "uploader", and an ordinary /uploader path is fine.
+    void importMatchesValuesAsWritten() {
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/uploader"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"password", "!@#$%^&*()+-=;:,."}}},
+                               {"URL", "https://media.example.test/uploader/{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["responseUrl"].toString(), QString("https://media.example.test/uploader/{json:u}"));
+    }
+    // A deletion URL that is left out keeps the keys taken out of it, stored and unused.
+    void importKeepsTheKeysOfALeftOutDeletionUrl() {
+        const QString key = token;
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"},
+                               {"DeletionURL", "https://media.example.test/delete/a1b2c3d4e5f60718293a/{json:" + key + "}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString());
+        QCOMPARE(result.secrets.keys(), QStringList({"arguments/token", "secrets/deletion-key"}));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+    }
+    // The last check reads values, not a field's JSON: a credential that happens to be a
+    // property name of the settings ("name") refuses nothing.
+    void importLastCheckReadsValuesOnly() {
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"password", "secret"}, {"title", "{filename}"}}}, {"URL", "{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+    }
+    // A Name that repeats a credential gives way to a fixed name, not to the host, which is
+    // written in lower case and may repeat a credential written that way.
+    void importNamesADestinationWithoutACredential() {
+        const QString lower = "abcd1234efgh5678ijkl";
+        const QJsonObject file{{"Version", "17.0.0"}, {"Name", lower}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                               {"RequestURL", "https://media.example.test/upload"}, {"Body", "MultipartFormData"}, {"FileFormName", "file"},
+                               {"Arguments", QJsonObject{{"token", lower}}}, {"URL", "{json:u}"}};
+        auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.name, QString("Imported uploader"));
+        // A host that holds the credential in capitals is caught by the last check.
+        auto unnamed = file;
+        unnamed.remove("Name");
+        unnamed["RequestURL"] = "https://" + lower.toUpper() + ".example.test/upload";
+        result = importSxcu(sxcu(unnamed));
+        QCOMPARE(result.error.message, QString("This file cannot be used: the import would keep a credential in RequestURL."));
+        QVERIFY(result.name.isEmpty());
+    }
+    // Sol round 3 of #1614: the Name is looked at whole and in any letter case.
+    void importNamesADestinationWithoutACredentialInAnyCase_data() {
+        QTest::addColumn<QString>("credential");
+        QTest::addColumn<QString>("name");
+        const QString lower = "abcd1234efgh5678ijkl", longRun = QString("a1").repeated(50);
+        QTest::newRow("another letter case") << lower << lower.toUpper();
+        // Longer than a name may be: what is shortened still holds most of it.
+        QTest::newRow("longer than a name") << longRun << longRun;
+    }
+    void importNamesADestinationWithoutACredentialInAnyCase() {
+        QFETCH(QString, credential);
+        QFETCH(QString, name);
+        const QJsonObject file{{"Version", "17.0.0"}, {"Name", name}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                               {"RequestURL", "https://media.example.test/upload"}, {"Body", "MultipartFormData"}, {"FileFormName", "file"},
+                               {"Arguments", QJsonObject{{"token", credential}}}, {"URL", "{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.name, QString("Imported uploader"));
+    }
+    // A deletion URL that is left out keeps a key that another kept value still names.
+    void importKeepsAKeyThatAKeptValueNames() {
+        const QString key = token;
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}, {"sig", "{secret:secrets/deletion-key}"}}},
+                               {"URL", "{json:u}"}, {"DeletionURL", "https://media.example.test/delete/a1b2c3d4e5f60718293a/{json:" + key + "}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString());
+        QVERIFY(result.secrets.contains("secrets/deletion-key"));
+        QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+    }
+    // The last check: a recognised credential in any letter case, in any field the import
+    // keeps or shows, refuses the file and names only the field.
+    void importRefusesACredentialInAnyKeptField_data() {
+        QTest::addColumn<QJsonObject>("file");
+        QTest::addColumn<QString>("field");
+        const QString key = token, lower = QString(token).toLower();
+        const QJsonObject base{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"}};
+        auto link = base;
+        link["URL"] = "{json:u}?k=" + lower;
+        QTest::newRow("URL") << link << "URL";
+        auto thumbnail = base;
+        thumbnail["ThumbnailURL"] = "{json:t}?k=" + lower;
+        QTest::newRow("ThumbnailURL") << thumbnail << "ThumbnailURL";
+        auto error = base;
+        error["ErrorMessage"] = "{json:error} " + lower;
+        QTest::newRow("ErrorMessage") << error << "ErrorMessage";
+        auto request = base;
+        request["RequestURL"] = "https://" + lower + ".example.test/upload";
+        QTest::newRow("RequestURL") << request << "RequestURL";
+        auto deletion = base;
+        deletion["DeletionURL"] = "https://" + lower + "@media.example.test/delete/{json:id}";
+        QTest::newRow("DeletionURL") << deletion << "DeletionURL";
+        // The ID the destination is saved under is made from the Name.
+        auto id = base;
+        id["Name"] = QString(key).replace('-', ' ');
+        QTest::newRow("destination ID") << id << "the destination ID";
+    }
+    void importRefusesACredentialInAnyKeptField() {
+        QFETCH(QJsonObject, file);
+        QFETCH(QString, field);
+        const auto refused = importSxcu(sxcu(file));
+        QCOMPARE(refused.error.message, "This file cannot be used: the import would keep a credential in " + field + ".");
+        QVERIFY(refused.secrets.isEmpty() && refused.settings.isEmpty() && refused.name.isEmpty());
+    }
+    // A key the deletion URL shares with the request URL is stored for each, and a
+    // deletion key that only begins like the request key stays whole.
+    void importStoresADeletionKeyApartFromTheRequestKey() {
+        const QString first = "a1b2c3d4e5f60718", longer = first + "9z8y7x6w"; // synthetic runs
+        QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload/" + first},
+                         {"Body", "Binary"}, {"URL", "{json:url}"}, {"DeletionURL", "https://media.example.test/delete/{json:id}/" + longer}};
+        auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}/{secret:secrets/deletion-key-2}"));
+        QCOMPARE(result.secrets.value("secrets/url-key"), first);
+        QCOMPARE(result.secrets.value("secrets/deletion-key-2"), longer);
+        file["DeletionURL"] = "https://media.example.test/delete/{json:id}/" + first;
+        result = importSxcu(sxcu(file));
+        QCOMPARE(result.settings["deletionUrl"].toString(), QString("https://media.example.test/delete/{json:id}/{secret:secrets/deletion-key-2}"));
+        QCOMPARE(result.secrets.value("secrets/deletion-key-2"), first);
     }
     // By hand as well: only the deletion URL may name a stored value among the reply values.
     void storedValuesStayOutOfWhatIsShownOrRecorded() {
@@ -275,7 +585,7 @@ private slots:
         auto base = zipline();
         const auto with = [&](std::initializer_list<QPair<QString, QJsonValue>> changes) { auto o = base; for (const auto& [k, v] : changes) { if (v.isUndefined()) o.remove(k); else o[k] = v; } return sxcu(o); };
         QTest::newRow("truncated") << sxcu(base).left(40) << "sxcu_invalid" << "JSON object";
-        QTest::newRow("select") << with({{"Arguments", QJsonObject{{"album", "{select:a|b}"}}}}) << "sxcu_unsupported" << "asks the user";
+        QTest::newRow("select") << with({{"Arguments", QJsonObject{{"album", "{select:a|b}"}}}}) << "sxcu_unsupported" << "value of argument 1 uses a placeholder put.gd cannot send";
         QTest::newRow("managed header") << with({{"Headers", QJsonObject{{"Content-Length", "12"}, {"authorization", token}}}}) << "" << "left out";
     }
     void importCases() {
