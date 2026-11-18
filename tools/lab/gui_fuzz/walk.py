@@ -33,6 +33,7 @@ def png(width=96, height=64):
 class Walker:
     def __init__(self, actor, world, watch, findings, rng, log, checkpoint_every=(18, 40), chaos=False):
         self.chaos = chaos
+        self.desk = world.desk
         self.a, self.w, self.watch, self.findings, self.rng, self.log = actor, world, watch, findings, rng, log
         self.bus = dbus.SessionBus(private=True)
         self.counts = {}
@@ -179,7 +180,7 @@ class Walker:
             self.hotkey(self.rng.choice(list(HOTKEYS)))  # another hotkey while the selector is open
 
     def tray(self):
-        names = [n for n in self.bus.list_names() if n.startswith('org.kde.StatusNotifierItem.putgd')]
+        names = [n for n in self.bus.list_names() if n.startswith(self.desk.tray_prefix)]
         if not names:
             raise Denied('no put.gd tray item')
         item = self.bus.get_object(names[0], '/StatusNotifierItem', introspect=False)
@@ -232,40 +233,18 @@ class Walker:
             self.a.drag([(x + w // 2, y + 8), (x + w // 2 + self.rng.randint(-250, 250), y + 8 + self.rng.randint(-60, 120))])
 
     def outputs(self):
-        names = [o['name'] for o in self.w.outputs()]
-        choice = self.rng.randint(0, 3)
-        if choice == 0 and 'Virtual-2' in names or (choice == 1 and 'Virtual-2' not in names):
-            self.a.sh('kscreen-doctor', 'output.Virtual-2.disable')
-        elif choice == 1:
-            self.a.sh('kscreen-doctor', 'output.Virtual-2.enable')
-        elif choice == 2:
-            self.a.sh('kscreen-doctor', 'output.Virtual-1.scale.%s' % self.rng.choice(['1', '1.25', '1.5', '2']))
-        else:
-            self.a.sh('kscreen-doctor', 'output.Virtual-2.enable')
-            self.a.sh('kscreen-doctor', 'output.Virtual-2.scale.%s' % self.rng.choice(['1', '1.5']))
-        self.a.sleep(1.5)
-        self.close_gap()
-
-    def close_gap(self):
-        """Keep the two outputs side by side: a gap between them stops the pointer at the edge of the first."""
-        outs = {o['name']: o['geom'] for o in self.w.outputs()}
-        if 'Virtual-1' in outs and 'Virtual-2' in outs and outs['Virtual-2'][0] != outs['Virtual-1'][2]:
-            self.a.sh('kscreen-doctor', 'output.Virtual-2.position.%d,0' % outs['Virtual-1'][2])
-            self.a.sleep(1.0)
+        self.desk.churn_outputs(self)
 
     def clipboard(self):
         choice = self.rng.randint(0, 3)
         if choice == 0:
-            self.a.sh('busctl', '--user', 'call', 'org.kde.klipper', '/klipper', 'org.kde.klipper.klipper', 'setClipboardContents', 's', self.rng.choice(WORDS) or 'x')
+            self.desk.set_clipboard(self, 'text', (self.rng.choice(WORDS) or 'x').encode())
         elif choice == 1:
-            self.log.write({'op': 'note', 'action': 'wl-copy image'})
-            subprocess.run(['wl-copy', '--type', 'image/png'], input=png(self.rng.choice([32, 96, 640]), self.rng.choice([32, 64, 360])),
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+            self.desk.set_clipboard(self, 'image', png(self.rng.choice([32, 96, 640]), self.rng.choice([32, 64, 360])))
         elif choice == 2:
-            self.log.write({'op': 'note', 'action': 'wl-copy uri-list'})
-            subprocess.run(['wl-copy', '--type', 'text/uri-list'], input=b'file:///etc/hostname\r\n', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+            self.desk.set_clipboard(self, 'uris', b'file:///etc/hostname\r\n')
         else:
-            self.a.sh('wl-copy', '--clear')
+            self.desk.set_clipboard(self, 'clear', b'')
 
     def rapid(self):
         if not self.last:
@@ -305,8 +284,9 @@ class Walker:
             self.counts[name] = self.counts.get(name, 0) + 1
         except Denied as why:
             self.counts['denied'] = self.counts.get('denied', 0) + 1
-            self.log.write({'op': 'denied', 'why': str(why)})
-        except (dbus.DBusException, KeyError, IndexError, OSError, subprocess.SubprocessError, ValueError) as error:
+            active = self.w.active()
+            self.log.write({'op': 'denied', 'why': str(why), 'active': active and active['cls'], 'stack': [w['cls'] + ('*' if self.w.mine(w) else '') for w in self.w.snapshot()['windows'] if not w['min']][-6:]})
+        except (dbus.DBusException, KeyError, IndexError, OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError) as error:
             self.harness_errors += 1
             self.log.write({'op': 'harness_error', 'action': name, 'error': repr(error)[:200]})
         self.a.pause(0.0, 0.12) if self.chaos else self.a.pause(0.05, 0.5)
@@ -352,15 +332,19 @@ class Walker:
                     pass
                 time.sleep(0.8)
         time.sleep(2.0)
+        for _ in range(2 if self.desk.late_selector_escape else 0):  # a capture started a moment before the checkpoint shows its selector late
+            if not self.watch.settle_checks(self.a):
+                break
+            try:
+                self.a.chord('esc')
+            except Denied:
+                pass
+            time.sleep(2.0)
         for problem in self.watch.settle_checks(self.a):
             helper = [open('/proc/%d/cmdline' % p, 'rb').read().replace(b'\0', b' ').decode()[:200] for p, c in self.w.pids().items() if c == 'putgd-record']
             self.findings.add('stuck_grab', problem, extra={'helpers': helper, 'recording': (self.a.cli('recording.capabilities').get('result') or {}).get('active'),
                                                             'operations': [o.get('action') + ':' + o.get('state', '') for o in ((self.a.cli('operation.recent').get('result') or {}).get('operations') or [])[:5]]})
-        names = [o['name'] for o in self.w.outputs()]
-        if 'Virtual-2' not in names:  # keep two monitors for most of the run
-            self.a.sh('kscreen-doctor', 'output.Virtual-2.enable')
-            self.a.sleep(1.5)
-        self.close_gap()
+        self.desk.restore_outputs(self)  # keep two monitors for most of the run
         counts = self.cli_check(self.a.cli('history.counts'), 'history.counts')
         listing = self.cli_check(self.a.cli('history.list', {'limit': 200}), 'history.list')
         self.consistency(counts, listing)

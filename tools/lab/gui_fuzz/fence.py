@@ -14,6 +14,8 @@ import dbus.mainloop.glib
 import dbus.service
 from gi.repository import GLib
 
+from gui_fuzz.snapshot import stamp_first_seen
+
 SCRIPT = r"""
 const R = %(receiver)s, P = '/fence', I = 'org.putgd.Fuzz';
 const rect = g => [Math.round(g.x), Math.round(g.y), Math.round(g.width), Math.round(g.height)];
@@ -57,6 +59,7 @@ class Fence:
         self.snapshot = {'windows': [], 'outputs': [], 'cursor': [0, 0]}
         self.stamp = 0.0
         self.serial = 0
+        self.first_seen = {}
         self.lock = threading.Lock()
         self.receiver = Receiver(self.bus, '/fence', self)
         self.loop = GLib.MainLoop()
@@ -66,6 +69,7 @@ class Fence:
 
     def update(self, snapshot):
         with self.lock:
+            stamp_first_seen(self.first_seen, self.serial + 1, snapshot['windows'])
             self.snapshot, self.stamp, self.serial = snapshot, time.time(), self.serial + 1
 
     def get(self):

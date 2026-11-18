@@ -1,0 +1,445 @@
+"""What differs between desktops: the fence, the session processes, pointer acceleration, monitor churn, clipboard.
+
+The walk, the watchdog and the actor ask the Desktop; nothing else in the package names a compositor.
+"""
+import os
+import re
+import subprocess
+import time
+
+from gui_fuzz.world import run
+
+
+def host_env():
+    """The session's environment for desktop settings tools: put.gd's private XDG dirs would point gsettings at a different dconf."""
+    env = dict(os.environ)
+    for name in ('XDG_CONFIG_HOME', 'XDG_DATA_HOME'):
+        env.pop(name, None)
+    return env
+
+
+def host_run(args, timeout=15):
+    try:
+        # Its own session: a signal sent to the run's process group (a terminal's Ctrl+C, a supervisor's kill) must not kill a restore command halfway.
+        done = subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=host_env(), start_new_session=True)
+        return done.returncode, done.stdout, done.stderr
+    except (OSError, subprocess.SubprocessError) as error:
+        return -1, '', str(error)
+
+
+def parse_gdctl(text):
+    """`gdctl show` as {'logical': [{x, y, scale, transform, primary, monitors}], 'modes': {connector: current mode}}; None when it cannot be read."""
+    lines = [re.sub(r'^[│├└─\s]+', '', line).rstrip() for line in text.splitlines()]
+    modes, logical, section, connector, want_mode = {}, [], None, None, False
+    for line in lines:
+        if line == 'Monitors:':
+            section = 'monitors'
+        elif line == 'Logical monitors:':
+            section = 'logical'
+        elif section == 'monitors':
+            match = re.match(r'Monitor (\S+) ', line)
+            if match:
+                connector = match.group(1)
+            elif line == 'Current mode':
+                want_mode = True
+            elif want_mode and connector:
+                modes[connector] = line.split()[0]
+                want_mode = False
+        elif section == 'logical':
+            if line.startswith('Logical monitor'):
+                logical.append({'monitors': []})
+            elif logical:
+                current = logical[-1]
+                match = re.match(r'Position: \((-?\d+), (-?\d+)\)', line)
+                if match:
+                    current['x'], current['y'] = match.group(1), match.group(2)
+                elif line.startswith('Scale:'):
+                    current['scale'] = line.split()[1]
+                elif line.startswith('Transform:'):
+                    current['transform'] = line.split()[1]
+                elif line.startswith('Primary:'):
+                    current['primary'] = line.split()[1] == 'yes'
+                elif re.match(r'Virtual-\d+ |\S+ \(', line) and 'Monitors:' not in line:
+                    current['monitors'].append(line.split()[0])
+    if not logical or any('x' not in l or 'scale' not in l or not l['monitors'] for l in logical) or any(c not in modes for l in logical for c in l['monitors']):
+        return None
+    return {'logical': logical, 'modes': modes}
+
+
+def restore_args(layout):
+    """The `gdctl set` command that puts a parsed layout back exactly: positions, primary, scales, transforms and modes."""
+    args = ['gdctl', 'set']
+    for l in layout['logical']:
+        args += ['--logical-monitor'] + (['--primary'] if l.get('primary') else []) + ['--x', l['x'], '--y', l['y'], '--scale', l['scale'], '--transform', l.get('transform', 'normal')]
+        for connector in l['monitors']:
+            args += ['--monitor', connector, '--mode', layout['modes'][connector]]
+    return args
+
+
+class Desktop:
+    name = ''
+    session_procs = ()  # losing the first ends the session; the rest are restartable shells
+    restartable = ()
+    layer_kinds = frozenset()
+    shell_focus_classes = ('',)
+    crash_viewers = ()
+    tray_prefix = 'org.kde.StatusNotifierItem.putgd'
+    edge = 8
+    shell_label = 'the compositor'
+    unresponsive_kind = 'shell_unresponsive'
+    session_env_process = ''
+    journal_args = ()  # journalctl selectors for the shell's own log
+    crash_viewer_comms = ()  # process names (comm) a crash viewer may have: only such a process is ever killed
+    # Rules the GNOME and Cinnamon backends added. Plasma keeps what it had, so each is off here.
+    strict_input = False        # input only with positive evidence that put.gd owns the target; deny when the backend cannot tell
+    closes_foreign = False      # close an app that opened soon after the walk's input and holds the focus
+    restarts_resident = False   # restart the resident after the Quit item the actor activated
+    split_cores = False         # a core dump of a process that is not put.gd's is recorded apart
+    narrow_noise = False        # known ffmpeg probe lines are noise; nothing wider
+    late_selector_escape = False  # a checkpoint gives a late selector another Escape before calling it stuck
+    skip_old_logs = False       # a seed judges only the log lines written after it started
+
+    def replayed(self, args):
+        """A recorded shell command is being re-run by --replay: note it if it changes monitors, so finish() puts the layout back."""
+
+    def prepare(self):
+        """Before the fence starts: whatever the backend needs in the session."""
+
+    def begin(self, world):
+        """The fence is up: remember the session settings the run will change."""
+
+    def finish(self):
+        """The run is over (normal end or interruption): put back what it changed and take the witness down."""
+
+    def make_fence(self):
+        raise NotImplementedError
+
+    def flatten_acceleration(self, dev):
+        return None
+
+    def churn_outputs(self, walker):
+        """One monitor change: hotplug or scale."""
+
+    def restore_outputs(self, walker):
+        """Back to two monitors side by side."""
+
+    def set_clipboard(self, walker, kind, payload):
+        """kind: text, image, uris, clear. payload: bytes."""
+
+    def shell_restart_check(self, now):
+        """Return a problem text once the restarted shell should have put.gd back, or None."""
+        return None
+
+    fence = None
+
+    def close_window(self, window):
+        """Close a window put.gd did not open (an app the desktop started for an Open action). False when this desktop cannot."""
+        close = getattr(self.fence, 'close', None)
+        if not close:
+            return False
+        try:
+            close(window['id'])
+            return True
+        except Exception:
+            return False
+
+
+class Kde(Desktop):
+    name = 'kde'
+    session_procs = ('kwin_wayland', 'plasmashell')
+    restartable = ('plasmashell',)
+    layer_kinds = frozenset({'KWin::LayerShellV1Window'})
+    shell_focus_classes = ('plasmashell', 'org.kde.plasmashell', '')
+    crash_viewers = ('org.kde.drkonqi',)
+    crash_viewer_comms = ('drkonqi',)
+    shell_label = 'KWin'
+    unresponsive_kind = 'kwin_unresponsive'
+    session_env_process = 'plasmashell'
+
+    def make_fence(self):
+        from gui_fuzz.fence import Fence
+        return Fence()
+
+    def flatten_acceleration(self, dev):
+        return dev.flatten_acceleration()
+
+    def churn_outputs(self, walker):
+        a, rng = walker.a, walker.rng
+        names = [o['name'] for o in walker.w.outputs()]
+        choice = rng.randint(0, 3)
+        if choice == 0 and 'Virtual-2' in names or (choice == 1 and 'Virtual-2' not in names):
+            a.sh('kscreen-doctor', 'output.Virtual-2.disable')
+        elif choice == 1:
+            a.sh('kscreen-doctor', 'output.Virtual-2.enable')
+        elif choice == 2:
+            a.sh('kscreen-doctor', 'output.Virtual-1.scale.%s' % rng.choice(['1', '1.25', '1.5', '2']))
+        else:
+            a.sh('kscreen-doctor', 'output.Virtual-2.enable')
+            a.sh('kscreen-doctor', 'output.Virtual-2.scale.%s' % rng.choice(['1', '1.5']))
+        a.sleep(1.5)
+        self.close_gap(walker)
+
+    def close_gap(self, walker):
+        """Keep the two outputs side by side: a gap between them stops the pointer at the edge of the first."""
+        outs = {o['name']: o['geom'] for o in walker.w.outputs()}
+        if 'Virtual-1' in outs and 'Virtual-2' in outs and outs['Virtual-2'][0] != outs['Virtual-1'][2]:
+            walker.a.sh('kscreen-doctor', 'output.Virtual-2.position.%d,0' % outs['Virtual-1'][2])
+            walker.a.sleep(1.0)
+
+    def restore_outputs(self, walker):
+        names = [o['name'] for o in walker.w.outputs()]
+        if 'Virtual-2' not in names:
+            walker.a.sh('kscreen-doctor', 'output.Virtual-2.enable')
+            walker.a.sleep(1.5)
+        self.close_gap(walker)
+
+    def set_clipboard(self, walker, kind, payload):
+        if kind == 'text':
+            walker.a.sh('busctl', '--user', 'call', 'org.kde.klipper', '/klipper', 'org.kde.klipper.klipper', 'setClipboardContents', 's', payload.decode() or 'x')
+        elif kind == 'image':
+            walker.log.write({'op': 'note', 'action': 'wl-copy image'})
+            _wl_copy(['--type', 'image/png'], payload)
+        elif kind == 'uris':
+            walker.log.write({'op': 'note', 'action': 'wl-copy uri-list'})
+            _wl_copy(['--type', 'text/uri-list'], payload)
+        else:
+            walker.a.sh('wl-copy', '--clear')
+
+    def shell_restart_check(self, now):
+        rc, out, _ = run(['busctl', '--user', 'get-property', 'org.kde.StatusNotifierWatcher', '/StatusNotifierWatcher',
+                          'org.kde.StatusNotifierWatcher', 'RegisteredStatusNotifierItems'], 8)
+        if 'putgd' not in out:
+            return 'put.gd is not among the registered tray items 30 s after plasmashell restarted: ' + out[:200]
+        return None
+
+
+def _wl_copy(args, payload):
+    subprocess.run(['wl-copy'] + args, input=payload, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+
+
+class Gnome(Desktop):
+    name = 'gnome'
+    session_procs = ('gnome-shell',)
+    restartable = ()
+    layer_kinds = frozenset({'ShellOverlay'})
+    shell_focus_classes = ('', 'gjs')  # Shell actors take no Meta focus; Desktop Icons NG is a desktop window of class gjs
+    crash_viewers = ('apport', 'Apport')
+    crash_viewer_comms = ('apport-gtk',)
+    shell_label = 'Mutter'
+    session_env_process = 'gnome-shell'
+    journal_args = ('-t', 'gnome-shell')
+    strict_input = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
+    EXTENSION = 'guifuzz@put.gd.test'
+    POINTER = ('org.gnome.desktop.peripherals.mouse', ('accel-profile', 'speed'))
+
+    @staticmethod
+    def marker():
+        return os.path.join(os.environ.get('XDG_RUNTIME_DIR') or '/run/user/%d' % os.getuid(), 'putgd-guifuzz-lab')
+
+    def prepare(self):
+        """The extension exports its methods only while the marker file exists."""
+        with open(self.marker(), 'w') as stream:
+            stream.write('%d\n' % os.getpid())
+        host_run(['gnome-extensions', 'enable', self.EXTENSION])
+        time.sleep(1.0)
+
+    def begin(self, world):
+        rc, out, _ = host_run(['gdctl', 'show'], 10)
+        self.saved_layout = parse_gdctl(out)  # positions, primary, scales, transforms and modes, as they are now
+        self.layout_changed = False
+
+    def finish(self):
+        schema, keys = self.POINTER
+        for key, value in getattr(self, 'saved_pointer', {}).items():
+            host_run(['gsettings', 'set', schema, key, value])
+        if getattr(self, 'layout_changed', False) and getattr(self, 'saved_layout', None):  # only a layout the run changed is put back
+            host_run(restore_args(self.saved_layout), 20)
+        try:
+            os.unlink(self.marker())
+        except OSError:
+            pass
+        host_run(['gnome-extensions', 'disable', self.EXTENSION])
+
+    def make_fence(self):
+        from gui_fuzz.fence_gnome import GnomeFence
+        self.fence = GnomeFence()
+        return self.fence
+
+    def flatten_acceleration(self, dev):
+        schema, keys = self.POINTER
+        self.saved_pointer = {key: host_run(['gsettings', 'get', schema, key])[1].strip() for key in keys}
+        host_run(['gsettings', 'set', schema, 'accel-profile', 'flat'])
+        host_run(['gsettings', 'set', schema, 'speed', '0'])
+        return 'gsettings'
+
+    @staticmethod
+    def layout_args(heads, scale1='1', scale2='1'):
+        """gdctl: Virtual-1 primary at 0,0, Virtual-2 to its right."""
+        args = ['gdctl', 'set', '--logical-monitor', '--primary', '--monitor', 'Virtual-1', '--scale', scale1]
+        if heads > 1:
+            args += ['--logical-monitor', '--monitor', 'Virtual-2', '--right-of', 'Virtual-1', '--scale', scale2]
+        return args
+
+    def replayed(self, args):
+        if list(args[:2]) == ['gdctl', 'set']:
+            self.layout_changed = True
+
+    def layout(self, walker, heads, scale1='1', scale2='1'):
+        args = self.layout_args(heads, scale1, scale2)
+        walker.log.write({'op': 'sh', 'a': args})
+        self.layout_changed = True
+        host_run(args, 20)
+        walker.a.sleep(1.5)
+
+    def churn_outputs(self, walker):
+        rng = walker.rng
+        heads = len(walker.w.outputs())
+        choice = rng.randint(0, 3)
+        if choice == 0:
+            self.layout(walker, 1 if heads > 1 else 2)
+        elif choice == 1:
+            self.layout(walker, heads, scale1=rng.choice(['1', '1.25', '1.5', '2']))
+        elif choice == 2:
+            self.layout(walker, 2, scale2=rng.choice(['1', '1.5']))
+        else:
+            self.layout(walker, 2)
+
+    def restore_outputs(self, walker):
+        outs = walker.w.outputs()
+        if len(outs) < 2 or outs[0]['scale'] != 1:
+            self.layout(walker, 2)
+
+    def set_clipboard(self, walker, kind, payload):
+        walker.log.write({'op': 'note', 'action': 'clipboard ' + kind})
+        mime = {'image': 'image/png', 'uris': 'text/uri-list'}.get(kind, kind)
+        try:
+            self.fence.clipboard(mime, payload)
+        except Exception as error:  # the Shell may be busy: the walk goes on
+            walker.log.write({'op': 'harness_error', 'action': 'clipboard', 'error': repr(error)[:160]})
+
+
+class Cinnamon(Desktop):
+    """Cinnamon (Muffin) on X11: the window tree from the X server, xrandr for monitors, xclip for the clipboard."""
+    name = 'cinnamon'
+    session_procs = ('cinnamon',)
+    restartable = ('cinnamon',)
+    layer_kinds = frozenset({'X11Overlay'})
+    shell_focus_classes = ('', 'nemo-desktop', 'cinnamon')
+    crash_viewers = ('apport', 'mintreport')
+    crash_viewer_comms = ('apport-gtk',)
+    shell_label = 'the X server'
+    session_env_process = 'cinnamon'
+    journal_args = ('-t', 'cinnamon')
+    strict_input = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
+    POINTER = ('org.cinnamon.desktop.peripherals.mouse', ('accel-profile', 'speed'))
+
+    def begin(self, world):
+        rc, out, _ = host_run(['xrandr', '--current'], 10)
+        self.initial_monitors = []
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] == 'connected':
+                geometry = next((p for p in parts[2:4] if 'x' in p and '+' in p), None)
+                self.initial_monitors.append((parts[0], geometry))
+
+    def finish(self):
+        schema, keys = self.POINTER
+        for key, value in getattr(self, 'saved_pointer', {}).items():
+            host_run(['gsettings', 'set', schema, key, value])
+        for name, geometry in (getattr(self, 'initial_monitors', []) if getattr(self, 'monitors_changed', False) else []):  # only what the run changed
+            if geometry is None:
+                host_run(['xrandr', '--output', name, '--off'], 15)
+            else:
+                size, x, y = geometry.split('+')
+                host_run(['xrandr', '--output', name, '--mode', size, '--pos', '%sx%s' % (x, y)], 15)
+        for proc in getattr(self, 'xclips', []):  # only the xclip processes this run started, by the handles it holds
+            if proc.poll() is None:
+                proc.terminate()
+
+    def make_fence(self):
+        from gui_fuzz.fence_x11 import X11Fence
+        self.fence = X11Fence()
+        return self.fence
+
+    def flatten_acceleration(self, dev):
+        schema, keys = self.POINTER
+        self.saved_pointer = {key: host_run(['gsettings', 'get', schema, key])[1].strip() for key in keys}
+        host_run(['gsettings', 'set', schema, 'accel-profile', 'flat'])
+        host_run(['gsettings', 'set', schema, 'speed', '0'])
+        return 'gsettings'
+
+    def replayed(self, args):
+        if args and args[0] == 'xrandr':
+            self.monitors_changed = True
+
+    def xrandr(self, walker, *args):
+        walker.log.write({'op': 'sh', 'a': ['xrandr'] + list(args)})
+        self.monitors_changed = True
+        return host_run(['xrandr'] + list(args), 15)
+
+    def modes(self, name):
+        rc, out, _ = host_run(['xrandr'], 10)
+        found, on = [], False
+        for line in out.splitlines():
+            if not line.startswith(' '):
+                on = line.startswith(name + ' ')
+            elif on:
+                found.append(line.split()[0])
+        return found
+
+    def churn_outputs(self, walker):
+        rng = walker.rng
+        names = [o['name'] for o in walker.w.outputs()]
+        choice = rng.randint(0, 3)
+        if choice == 0 and 'Virtual-2' in names or (choice == 1 and 'Virtual-2' not in names):
+            self.xrandr(walker, '--output', 'Virtual-2', '--off')
+        elif choice == 1:
+            self.xrandr(walker, '--output', 'Virtual-2', '--auto', '--right-of', 'Virtual-1')
+        elif choice == 2:
+            modes = self.modes('Virtual-1')
+            if modes:
+                self.xrandr(walker, '--output', 'Virtual-1', '--mode', rng.choice(modes))
+        else:
+            self.xrandr(walker, '--output', 'Virtual-2', '--auto', '--right-of', 'Virtual-1')
+            modes = self.modes('Virtual-2')
+            if modes:
+                self.xrandr(walker, '--output', 'Virtual-2', '--mode', rng.choice(modes))
+        walker.a.sleep(1.5)
+
+    def restore_outputs(self, walker):
+        outs = walker.w.outputs()
+        if len(outs) < 2:
+            self.xrandr(walker, '--output', 'Virtual-2', '--auto', '--right-of', 'Virtual-1')
+            walker.a.sleep(1.5)
+
+    def set_clipboard(self, walker, kind, payload):
+        walker.log.write({'op': 'note', 'action': 'xclip ' + kind})
+        mime = {'text': 'UTF8_STRING', 'image': 'image/png', 'uris': 'text/uri-list'}.get(kind)
+        args = ['xclip', '-quiet', '-selection', 'clipboard', '-i', '/dev/null'] if kind == 'clear' else ['xclip', '-quiet', '-selection', 'clipboard', '-t', mime, '-i']
+        try:  # -quiet keeps xclip in the foreground, so this handle is the process that serves the selection and the run can stop it
+            proc = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=host_env())
+            self.xclips = [p for p in getattr(self, 'xclips', []) if p.poll() is None] + [proc]
+            if kind != 'clear':
+                proc.stdin.write(payload)
+            proc.stdin.close()
+        except (OSError, ValueError) as error:
+            walker.log.write({'op': 'harness_error', 'action': 'clipboard', 'error': repr(error)[:160]})
+
+
+DESKTOPS = {'kde': Kde, 'gnome': Gnome, 'cinnamon': Cinnamon}
+
+
+def detect():
+    current = os.environ.get('XDG_CURRENT_DESKTOP', '').upper()
+    if 'GNOME' in current:
+        return 'gnome'
+    if 'CINNAMON' in current:
+        return 'cinnamon'
+    if 'KDE' in current:
+        return 'kde'
+    return 'kde'
+
+
+def make(name=None):
+    name = name or detect()
+    return DESKTOPS[name]()

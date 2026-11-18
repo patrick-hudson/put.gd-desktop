@@ -40,6 +40,50 @@ class CollisionTest : public QObject {
         QTest::qFail("Operation did not reach a terminal state within the 15-second budget",__FILE__,__LINE__);
         return result;
     }
+    // #1627: the S3 driver settles an unclear multipart completion by checking the key itself;
+    // History takes its answer instead of checking again.
+    struct LargeUpload {
+        S3Fixture f;
+        ProviderRegistry registry;
+        std::unique_ptr<SettingsService> settings;
+        Source source;
+        std::unique_ptr<OperationService> operations;
+        explicit LargeUpload(CollisionTest& test, const QString& policy = "rename") {
+            constexpr qint64 mib = 1024 * 1024;
+            registry.add("s3", std::make_shared<S3Provider>(f.credentials, S3UploadPolicy{6 * mib, 5 * mib}));
+            settings = std::make_unique<SettingsService>(f.directory.filePath("config.json"), [this](auto id, auto value) { return registry.validate(id, value); });
+            settings->save(test.configuration(f, policy), {});
+            source.payload.kind = "files";
+            source.payload.files = {putgd::test::fixture(f.directory.path(), "big.bin", QByteArray(11 * mib, 'x'))};
+            operations = std::make_unique<OperationService>(f.directory.filePath("data"), *settings, registry, source);
+        }
+        // An upload whose completion stays unknown: the reply is unclear and the key check fails.
+        // With published, the completion did publish before its unclear answer.
+        Operation unknownCompletion(bool published) {
+            const QString original = "prefix é/big.bin";
+            QJsonObject completion{{"method", "POST"}, {"query", "uploadId="}, {"code", "InternalError"}};
+            completion[published ? "statusAfter" : "status"] = 500;
+            f.reset({{"rules", QJsonArray{completion, QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"status", 503}, {"code", "SlowDown"}}}}});
+            const auto id = start();
+            putgd::test::waitFor([&] { return QStringList{"completed", "partial", "failed", "cancelled"}.contains(HistoryStore(operations->databasePath()).operation(id).stateName()); }, 15000);
+            putgd::test::waitFor([&] { return operations->diagnostics()["activeOperations"].toInt() == 0; }, 5000);
+            return HistoryStore(operations->databasePath()).operation(id);
+        }
+        Operation retry(const QString& id) {
+            bool accepted = false;
+            operations->retry(id, [&](auto error, auto) { accepted = !error; });
+            putgd::test::waitFor([&] { return accepted; }, 5000);
+            putgd::test::waitFor([&] { return operations->diagnostics()["activeOperations"].toInt() > 0; }, 1000);
+            putgd::test::waitFor([&] { return operations->diagnostics()["activeOperations"].toInt() == 0; }, 15000);
+            return HistoryStore(operations->databasePath()).operation(id);
+        }
+        QString start() {
+            QString id;
+            operations->invoke("clipboard", [&](auto error, auto value) { if (!error) id = value["operationId"].toString(); });
+            putgd::test::waitFor([&] { return !id.isEmpty(); }, 5000);
+            return id;
+        }
+    };
 private slots:
     void existingKeyPolicies_data() {
         QTest::addColumn<QString>("policy");
@@ -92,6 +136,109 @@ private slots:
             QCOMPARE(QByteArray::fromBase64(objects[key].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("new fixture"));
             if (policy == "rename") QCOMPARE(QByteArray::fromBase64(objects["prefix é/report.pdf"].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("original fixture"));
         }
+    }
+    // M7: the driver's HEAD found another object, so the file is renamed; a second HEAD of the
+    // key, which would fail, is never sent.
+    void driverSettledCollisionIsNotCheckedAgain() {
+        LargeUpload u(*this);
+        PUTGD_TRY_VERIFY(u.operations->ready());
+        const QString original = "prefix é/big.bin";
+        u.f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                        QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"competitor", true}},
+                                        QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"status", 503}, {"code", "SlowDown"}}}}});
+        const auto id = u.start();
+        QVERIFY(!id.isEmpty());
+        const auto item = waitOperation(*u.operations, id).items[0];
+        QCOMPARE(item.uploadStatus, QString("uploaded"));
+        QVERIFY(item.candidate.startsWith("big-"));
+        QCOMPARE(QByteArray::fromBase64(u.f.state()["objects"].toObject()[original].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("competitor"));
+    }
+    // M6: Retry of an item whose completion stayed unknown goes through the driver's check. Another
+    // object now holds the key, so the file is renamed and uploaded instead of staying unknown.
+    void retryOfSavedCompletionUsesTheDriversCheck() {
+        LargeUpload u(*this);
+        PUTGD_TRY_VERIFY(u.operations->ready());
+        const QString original = "prefix é/big.bin";
+        u.f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                        QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"status", 503}, {"code", "SlowDown"}}}}});
+        const auto id = u.start();
+        QVERIFY(!id.isEmpty());
+        const auto unknown = waitOperation(*u.operations, id).items[0];
+        QCOMPARE(unknown.uploadStatus, QString("unknown"));
+        QCOMPARE(unknown.uploadJournal["phase"].toString(), QString("completing"));
+        u.f.control("/__replace", {{"key", original}}, true);
+        PUTGD_TRY_COMPARE(u.operations->diagnostics()["activeOperations"].toInt(), 0);
+        bool accepted = false;
+        u.operations->retry(id, [&](auto error, auto) { QVERIFY(!error); accepted = true; });
+        PUTGD_TRY_VERIFY(accepted);
+        PUTGD_TRY_COMPARE(HistoryStore(u.operations->databasePath()).operation(id).items[0].uploadStatus, QString("uploaded"));
+        const auto item = waitOperation(*u.operations, id).items[0];
+        QVERIFY(item.candidate.startsWith("big-"));
+        QVERIFY(item.uploadJournal.isEmpty());
+    }
+    // M6: a Retry of an unknown completion checks the saved identity first, without the local
+    // file, and a local or setup problem leaves the item unknown with its journal, never failed.
+    void retryOfUnknownCompletionNeverFailsOnALocalProblem_data() {
+        QTest::addColumn<QString>("problem");QTest::addColumn<QString>("status");
+        QTest::newRow("file-gone-object-there") << QString("file-gone-published") << QString("uploaded");
+        QTest::newRow("file-gone-check-fails") << QString("file-gone-check-fails") << QString("unknown");
+        QTest::newRow("credentials-locked") << QString("credentials-locked") << QString("unknown");
+        // While History's identity HEAD runs, the credentials lock or the retained file changes:
+        // the upload then fails before the provider settled anything, and the item stays unknown.
+        QTest::newRow("credentials-lock-after-check") << QString("credentials-lock-after-check") << QString("unknown");
+        QTest::newRow("file-changed-after-check") << QString("file-changed-after-check") << QString("unknown");
+    }
+    void retryOfUnknownCompletionNeverFailsOnALocalProblem() {
+        QFETCH(QString, problem);QFETCH(QString, status);
+        LargeUpload u(*this);
+        PUTGD_TRY_VERIFY(u.operations->ready());
+        const auto before = u.unknownCompletion(problem == "file-gone-published");
+        QCOMPARE(before.items[0].uploadStatus, QString("unknown"));
+        const auto journal = before.items[0].uploadJournal;
+        QCOMPARE(journal["phase"].toString(), QString("completing"));
+        if (problem.startsWith("file-gone")) QVERIFY(QFile::remove(before.items[0].artifact.path));
+        if (problem == "file-gone-check-fails") u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}, {"remaining", 50}}}}}, true);
+        // The identity HEAD waits at a barrier until the test has locked the credentials.
+        else if (problem == "credentials-lock-after-check") u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"barrier", "identity-check"}}}}}, true);
+        else if (problem.endsWith("after-check")) u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"delay", 0.8}}}}}, true);
+        else u.f.control("/__rules", {{"rules", QJsonArray{}}}, true);
+        const auto artifact = before.items[0].artifact.path;
+        if (problem == "file-changed-after-check")
+            QTimer::singleShot(300, [artifact] { QFile file(artifact); file.setPermissions(QFile::ReadOwner | QFile::WriteOwner); if (file.open(QIODevice::WriteOnly)) file.write("changed"); });
+        if (problem == "credentials-locked") u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference);
+        OperationItem item;
+        if (problem == "credentials-lock-after-check") {
+            u.f.control("/__clear_events", {}, true);
+            bool accepted = false;
+            u.operations->retry(before.id, [&](auto error, auto) { accepted = !error; });
+            PUTGD_TRY_VERIFY(accepted);
+            PUTGD_TRY_COMPARE(u.f.events("HEAD").size(), 1);
+            u.f.credentials.forget(u.f.destination.profileId, u.f.destination.credentialReference);
+            u.f.control("/__release", {{"barrier", "identity-check"}}, true);
+            PUTGD_TRY_COMPARE(u.operations->diagnostics()["activeOperations"].toInt(), 0);
+            item = HistoryStore(u.operations->databasePath()).operation(before.id).items[0];
+        } else item = u.retry(before.id).items[0];
+        QCOMPARE(item.uploadStatus, status);
+        if (status == "unknown") {
+            QCOMPARE(item.uploadJournal, journal);
+            QVERIFY(!item.error.code.isEmpty());
+        } else QVERIFY(item.uploadJournal.isEmpty());
+        QCOMPARE(u.f.events("DELETE").size(), 0);
+    }
+    // M8: the provider finds another object at the key but S3 refuses to abort the upload. The
+    // item stays unknown with its journal, instead of the skip policy recording it skipped.
+    void unabortableCollisionStaysUnknownBeforeThePolicy() {
+        LargeUpload u(*this, "skip");
+        PUTGD_TRY_VERIFY(u.operations->ready());
+        const auto before = u.unknownCompletion(false);
+        QCOMPARE(before.items[0].uploadStatus, QString("unknown"));
+        const auto journal = before.items[0].uploadJournal;
+        u.f.control("/__replace", {{"key", "prefix é/big.bin"}}, true);
+        u.f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}, {"code", "AccessDenied"}, {"remaining", 20}}}}}, true);
+        const auto item = u.retry(before.id).items[0];
+        QCOMPARE(item.uploadStatus, QString("unknown"));
+        QCOMPARE(item.uploadJournal, journal);
+        QVERIFY(item.error.details["incompleteUpload"].toBool());
     }
     void partialBatchRetriesOnlyFailedAndRetainsArchives() {
         S3Fixture f;
