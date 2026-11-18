@@ -327,7 +327,20 @@ struct FrameGrid {
             // cover never misses a frame because of where inside a frame it
             // starts or ends, or because the slack placed the frame on an edge.
             const auto covers = [&](qint64 picture, std::set<qint64>::const_iterator next) { return active(picture) || (picture < mask.end && (next == frames.end() || *next > mask.start)); };
-            if (const auto& h = held[size_t(i)]; h && covers(*h, frames.upper_bound(*h))) parts.append({first, shownFrom(frames.lower_bound(span.start))});
+            // The ticks a picture covered only for its display (not its capture
+            // time) holds on screen: up to the next picture's tick, or up to the
+            // span's last tick when the next picture rounds past the span and
+            // driveVideo moves the span's last picture onto that tick. A capture-
+            // time cover keeps its whole interval, so this only trims what the
+            // display rule adds.
+            const auto occupied = [&](qint64 picture, qint64 tick, std::set<qint64>::const_iterator next) {
+                if (!active(picture) && next != frames.end() && *next < span.end && tickOf(i, *next) >= end && tick < end - 1) return end - 1;
+                return shownFrom(next);
+            };
+            if (const auto& h = held[size_t(i)]; h && covers(*h, frames.upper_bound(*h))) {
+                const auto opens = frames.lower_bound(span.start);
+                parts.append({first, occupied(*h, first, opens)});
+            }
             // From the earlier of the frame on screen at the cover's start and the first within the slack of it.
             auto it = frames.lower_bound(std::max(mask.start - slackUs, span.start));
             if (auto on = frames.upper_bound(std::max(mask.start, span.start)); on != frames.begin() && *std::prev(on) >= span.start && *std::prev(on) < (it == frames.end() ? std::numeric_limits<qint64>::max() : *it)) it = std::prev(on);
@@ -337,7 +350,7 @@ struct FrameGrid {
                 const qint64 tick = tickOf(i, *it);
                 // The span's last picture, rounded past its end, may take its last tick (driveVideo).
                 if (tick >= end) { if (next == frames.end() || *next >= span.end) parts.append({end - 1, end}); continue; }
-                const recording::Span shown{tick, shownFrom(next)};
+                const recording::Span shown{tick, occupied(*it, tick, next)};
                 if (!shown.empty()) parts.append(shown);
             }
         }

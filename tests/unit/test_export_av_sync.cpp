@@ -1040,34 +1040,40 @@ private slots:
     void coversFollowTheShownPicture_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<qint64>("trimStart");
+        QTest::addColumn<qint64>("trimEnd");
         QTest::addColumn<qint64>("cutStart");
         QTest::addColumn<qint64>("cutEnd");
         QTest::addColumn<qint64>("coverFrom");
         QTest::addColumn<qint64>("coverTo");
         for (const QString format : {"mp4", "gif"}) {
             // Frame 47 (1.567 s) is on screen until 2.6 s.
-            QTest::newRow(qPrintable("cover inside a gap, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(1'800'000) << qint64(2'200'000);
+            QTest::newRow(qPrintable("cover inside a gap, " + format)) << format << qint64(0) << qint64(4'000'000) << qint64(-1) << qint64(-1) << qint64(1'800'000) << qint64(2'200'000);
             // The cut holds frame 47; the span from 2.0 s opens on it.
-            QTest::newRow(qPrintable("cover in a cut on the held frame, " + format)) << format << qint64(0) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'600'000);
-            QTest::newRow(qPrintable("cover ending in a gap, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(1'000'000) << qint64(2'000'000);
+            QTest::newRow(qPrintable("cover in a cut on the held frame, " + format)) << format << qint64(0) << qint64(4'000'000) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'600'000);
+            QTest::newRow(qPrintable("cover ending in a gap, " + format)) << format << qint64(0) << qint64(4'000'000) << qint64(-1) << qint64(-1) << qint64(1'000'000) << qint64(2'000'000);
             // The output opens at 1.6 s on frame 47, held; the cover runs 68-80 ms
             // into it, inside the first GIF frame as the file shows it (0-70 ms).
-            QTest::newRow(qPrintable("cover between two ticks, " + format)) << format << qint64(1'600'000) << qint64(-1) << qint64(-1) << qint64(1'668'000) << qint64(1'680'000);
+            QTest::newRow(qPrintable("cover between two ticks, " + format)) << format << qint64(1'600'000) << qint64(4'000'000) << qint64(-1) << qint64(-1) << qint64(1'668'000) << qint64(1'680'000);
             // E18: frame 47 is stored at 1567 ms for 1566.667 ms, 0.1 ms past this
             // cover's end: within the container's half-millisecond, so covered.
-            QTest::newRow(qPrintable("cover ending just before a stored frame time, " + format)) << format << qint64(0) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'566'900);
+            QTest::newRow(qPrintable("cover ending just before a stored frame time, " + format)) << format << qint64(0) << qint64(4'000'000) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'566'900);
             // A cover is drawn on every picture whose display, from its own time to
             // the next frame's, overlaps it. Frame 1 is stored at 33 ms, grid frame
             // 1 at 33.333 ms: a cover ending on that grid edge still covers it.
-            QTest::newRow(qPrintable("cover ending on the grid edge of an early stored frame, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(0) << qint64(33'333);
+            QTest::newRow(qPrintable("cover ending on the grid edge of an early stored frame, " + format)) << format << qint64(0) << qint64(4'000'000) << qint64(-1) << qint64(-1) << qint64(0) << qint64(33'333);
             // A cover in a cut, ending (and starting) inside frame 47's display
             // (1.567-2.6 s): frame 47 is shown on both sides of the cut, covered.
-            QTest::newRow(qPrintable("cover ending inside a frame's display, in a cut, " + format)) << format << qint64(0) << qint64(1'800'000) << qint64(2'400'000) << qint64(1'900'000) << qint64(2'000'000);
+            // W4: as in the cut below, only the display rule reaches the cover: it
+            // lies after the trim end (1.8 s), inside the display of frame 47,
+            // which the output shows to its end.
+            QTest::newRow(qPrintable("cover after the trim end inside the last picture's display, " + format)) << format << qint64(0) << qint64(1'800'000) << qint64(-1) << qint64(-1) << qint64(1'900'000) << qint64(2'000'000);
+            QTest::newRow(qPrintable("cover ending inside a frame's display, in a cut, " + format)) << format << qint64(0) << qint64(4'000'000) << qint64(1'800'000) << qint64(2'400'000) << qint64(1'900'000) << qint64(2'000'000);
         }
     }
     void coversFollowTheShownPicture() {
         QFETCH(QString, format);
         QFETCH(qint64, trimStart);
+        QFETCH(qint64, trimEnd);
         QFETCH(qint64, cutStart);
         QFETCH(qint64, cutEnd);
         QFETCH(qint64, coverFrom);
@@ -1075,7 +1081,7 @@ private slots:
         using namespace gapclip;
         putgd::RecordingEdit edit;
         edit.trimStart = trimStart;
-        edit.trimEnd = 4'000'000;
+        edit.trimEnd = trimEnd;
         if (cutStart >= 0) edit.cuts = {{"cut", cutStart, cutEnd}};
         putgd::RecordingMask mask;
         mask.kind = "solid"; mask.rect = cutclip::spanningMask; mask.start = coverFrom; mask.end = coverTo;
@@ -1083,7 +1089,7 @@ private slots:
         const KeptSpans kept(edit, durationUs);
         ExportRequest request;
         request.input = frameGap_;
-        request.output = dir_.filePath(QStringLiteral("cover-%1-%2-%3-%4.%5").arg(trimStart).arg(cutStart).arg(coverFrom).arg(coverTo).arg(format));
+        request.output = dir_.filePath(QStringLiteral("cover-%1-%2-%3-%4-%5.%6").arg(trimStart).arg(trimEnd).arg(cutStart).arg(coverFrom).arg(coverTo).arg(format));
         request.durationUs = durationUs;
         request.canvas = {width, height};
         request.edit = edit;
@@ -1615,6 +1621,61 @@ private slots:
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
         const auto& last = decoded.frames.last();
         QCOMPARE(last.us - decoded.frames.first().us + last.durationUs, qint64(2'130'000));
+    }
+    // #1635 W1: the display rule covers only the picture that occupies each
+    // output tick. A 60 fps clip holds its picture at 1.000 s until 1.100 s, then
+    // runs 1.100, 1.117, 1.133 s; trimmed to 0.8-1.15 s it makes a 15 fps GIF of
+    // 5 frames, the fourth showing 1.000 s. 1.100-1.133 s all round past the
+    // last frame, so driveVideo shows 1.133 s there. A cover at 1.017-1.033 s
+    // lies in the 1.000 s picture's display: that picture is covered, the 1.133 s
+    // one is not. Nothing the output-time or capture-time rule covers is lost.
+    void displayCoverStopsAtTheNextShownPicture() {
+        constexpr int fps = 60;
+        QList<qint64> times;
+        for (int k = 0; k <= 60; ++k) times << av_rescale(k, 1000, fps);
+        for (int k = 66; k <= 100; ++k) times << av_rescale(k, 1000, fps);
+        const int held = 60, last = 63;  // clip frames at 1.000 s and 1.133 s
+        QCOMPARE(times[held], qint64(1000));
+        QCOMPARE(times[last], qint64(1133));
+        const auto path = dir_.filePath("vfr60.mkv");
+        const auto written = plainclip::write(path, fps, int(times.size()), {}, 0, 0, times);
+        QVERIFY2(!written, qPrintable(written.message));
+        putgd::RecordingEdit edit;
+        edit.trimStart = plainclip::gridUs(fps, 48);
+        edit.trimEnd = plainclip::gridUs(fps, 69);
+        putgd::RecordingMask mask;
+        mask.kind = "solid"; mask.rect = cutclip::spanningMask; mask.start = plainclip::gridUs(fps, 61); mask.end = plainclip::gridUs(fps, 62);
+        edit.masks = {mask};
+        const KeptSpans kept(edit, 1'700'000);
+        ExportRequest request;
+        request.input = path;
+        request.output = dir_.filePath("vfr60.gif");
+        request.durationUs = 1'700'000;
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit = edit;
+        request.config.format = "gif";
+        request.config.fps = fps;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("gif export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QCOMPARE(decoded.frames.size(), 5);
+        const auto parts = kept.outputParts(mask.start, mask.end);
+        bool sawHeld = false, sawLast = false;
+        for (const auto& f : decoded.frames) {
+            const qint64 t = f.us - decoded.frames.first().us, until = t + f.durationUs, picture = times[f.source] * 1000;
+            // The output-time and capture-time rules: never covered less than they cover.
+            const bool before = std::any_of(parts.begin(), parts.end(), [&](const putgd::recording::Span& p) { return p.start < until && t < p.end; }) || (picture >= mask.start - 500 && picture < mask.end + 500);
+            if (before) QVERIFY2(f.spanningCovered, qPrintable(QStringLiteral("output %1 us (clip frame %2): the cover's own rules cover it, the export does not").arg(t).arg(f.source)));
+            if (f.source == held) { sawHeld = true; QVERIFY2(f.spanningCovered, "the 1.000 s picture, on screen under the cover, is uncovered"); }
+            if (f.source == last) { sawLast = true; QVERIFY2(!f.spanningCovered, "the 1.133 s picture, captured after the cover, is covered"); }
+        }
+        QVERIFY(sawHeld && sawLast);
     }
     void webmAudioDecodesEveryPacket_data() {
         QTest::addColumn<QString>("decoder");
