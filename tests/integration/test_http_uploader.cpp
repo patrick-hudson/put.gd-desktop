@@ -7,6 +7,7 @@
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
 #include "storage/http/HttpTemplate.h"
+#include "storage/worker/ProviderExchange.h"
 #include <QDirIterator>
 #include <QElapsedTimer>
 #include <QJsonArray>
@@ -16,6 +17,9 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUrl>
+#include <cerrno>
+#include <cstring>
+#include <sys/resource.h>
 using namespace putgd;
 using namespace putgd::test;
 namespace {
@@ -147,6 +151,51 @@ class HttpUploaderTest : public QObject {
         return result;
     }
 private slots:
+    // Review of #1598. A helper that did not start is advised by its cause: reinstall only
+    // when it is not a regular executable file, try again only for a shortage that passes,
+    // and both when the cause is unclear (an executable whose interpreter is missing).
+    void helperStartAdviceFitsTheCause() {
+        using worker::StartFailure;
+        QTemporaryDir dir;
+        const auto script = [&](const QString& name, const QByteArray& text) {
+            const auto path = dir.filePath(name);
+            QFile file(path);
+            if (!file.open(QIODevice::WriteOnly) || file.write(text) != text.size()) qFatal("cannot write the synthetic helper");
+            file.close();
+            file.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+            return path;
+        };
+        const auto helper = script("putgd-helper", "#!/bin/sh\nexit 0\n");
+        const auto noLoader = script("putgd-no-loader", "#!/nonexistent/putgd-interpreter\n");
+        const auto reason = [](const QString& program, rlim_t descriptors = 0) {
+            rlimit saved{};
+            getrlimit(RLIMIT_NOFILE, &saved);
+            if (descriptors) { auto low = saved; low.rlim_cur = descriptors; setrlimit(RLIMIT_NOFILE, &low); }
+            QProcess process;
+            process.start(program, {"--stdio"});
+            const bool started = process.waitForStarted(10000);
+            if (descriptors) setrlimit(RLIMIT_NOFILE, &saved);
+            if (started) { process.kill(); process.waitForFinished(); return QString(); }
+            return process.errorString();
+        };
+        // A searchable directory is executable, and still no helper.
+        QCOMPARE(worker::classifyStartFailure(dir.path(), reason(dir.path())), StartFailure::Installation);
+        QCOMPARE(worker::classifyStartFailure(dir.filePath("missing"), reason(dir.filePath("missing"))), StartFailure::Installation);
+        // No descriptor left (only 0, 1 and 2 fit under the limit): the helper is fine.
+        const auto exhausted = reason(helper, 3);
+        QVERIFY2(!exhausted.isEmpty(), "the helper started with no descriptor left");
+        QVERIFY2(worker::classifyStartFailure(helper, exhausted) == StartFailure::Temporary, qPrintable(exhausted));
+        QCOMPARE(worker::classifyStartFailure(helper, "fork: " + QString::fromLocal8Bit(std::strerror(EAGAIN))), StartFailure::Temporary);
+        const auto missing = reason(noLoader);
+        QVERIFY2(!missing.isEmpty(), "a helper without its interpreter started");
+        QVERIFY2(worker::classifyStartFailure(noLoader, missing) == StartFailure::Unclear, qPrintable(missing));
+        // The messages: the policy's own for an installation, the reason named otherwise.
+        QCOMPARE(worker::startFailureMessage(StartFailure::Installation, "custom uploader", missing, "reinstall"), QString("reinstall"));
+        const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "custom uploader", exhausted, "reinstall");
+        QVERIFY2(temporary.contains(exhausted) && temporary.endsWith("; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
+        const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "custom uploader", missing, "reinstall");
+        QVERIFY2(unclear.contains(missing) && unclear.contains("Try again") && unclear.contains("reinstall put.gd"), qPrintable(unclear));
+    }
     // A diagnostics package says which fields a destination sets and where its request
     // goes: never a row value, a path someone typed a key into, or a reply template's text.
     void diagnosticsShowTheShapeOfSettingsNotTheirText() {
