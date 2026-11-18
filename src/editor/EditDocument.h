@@ -99,8 +99,11 @@ public:
  // Every suggested mark that is still there, as one undo step, without
  // remembering any as dismissed. Marks drawn by hand stay. Returns how many.
  int removeSuggested();
- // True when the user removed a mark suggested at this box (Quick redact skips it).
- bool dismissed(const QRect& suggestedAt) const {return state_.dismissed.contains(suggestedAt);}
+ // True when the user removed a mark of this category suggested at about this box:
+ // a later run reads the page with the other marks blacked out, so its boxes move
+ // a few pixels and shrink a little. Two boxes are the same suggestion when their
+ // intersection is at least half of their union. Quick redact skips such a mark.
+ bool dismissed(const QRect& suggestedAt,const QString& category) const;
  bool setCrop(const QRect&);
  // Live drags update without a history entry; commit once on release.
  void preview(const Shape&);
@@ -144,7 +147,8 @@ public:
  static void pixelateInPlace(QImage&,const QRect& area,const QPoint& origin,int block);
  static void paintAnnotation(class QPainter&,const Shape&,const QPainterPath* textPath=nullptr);
 private:
- struct State {QList<Shape> shapes;QRect crop;QList<QRect> dismissed;bool operator==(const State&) const=default;};
+ struct Dismissed {QRect at;QString category;bool operator==(const Dismissed&) const=default;};
+ struct State {QList<Shape> shapes;QRect crop;QList<Dismissed> dismissed;bool operator==(const State&) const=default;};
  static qint64 bytesOf(const State&);
  void push(State before);
  void applyRedactions(QImage&,const QRect& within) const;

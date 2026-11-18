@@ -1224,7 +1224,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     for(const auto& match:found.matches){
      bool any=false;
      for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){
-      if(g->doc_.dismissed(rect))continue;
+      if(g->doc_.dismissed(rect,match.category))continue;
       editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=rect;created.append(double(g->doc_.add(shape)));any=true;
      }
      if(any)counts[match.category]=counts[match.category].toInt()+1;

@@ -111,14 +111,53 @@ private slots:
   const auto id=quint64(first["created"].toArray().first().toDouble());const auto at=doc.find(id)->suggestedAt;
   // Even after it was moved: the memory is by where it was suggested.
   auto moved=*doc.find(id);moved.rect=moved.rect.translated(0,60);QVERIFY(doc.replace(moved));
-  QVERIFY(doc.remove(id));QVERIFY(doc.shapes().isEmpty());QVERIFY(doc.dismissed(at));
+  QVERIFY(doc.remove(id));QVERIFY(doc.shapes().isEmpty());QVERIFY(doc.dismissed(at,"email"));
   const auto again=run(window,{"email"});
   QCOMPARE(again["created"].toArray().size(),0);QCOMPARE(again["counts"].toObject()["email"].toInt(),0);QVERIFY(doc.shapes().isEmpty());
   // Undoing the delete: the mark is back and is no longer remembered as deleted.
-  QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().suggested,QString("email"));QVERIFY(!doc.dismissed(at));
+  QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().suggested,QString("email"));QVERIFY(!doc.dismissed(at,"email"));
   // Undoing the whole run is not a delete: the next run adds it again.
-  QVERIFY(doc.undo());QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());QVERIFY(!doc.dismissed(at));
+  QVERIFY(doc.undo());QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());QVERIFY(!doc.dismissed(at,"email"));
   const auto third=run(window,{"email"});QCOMPARE(third["created"].toArray().size(),1);
+ }
+ // Lab finding F1: a later run reads the page with the other marks blacked out, so the
+ // recognized boxes move a few pixels and shrink a little. A deleted suggestion is still
+ // skipped then, and it is the same only for the same category.
+ void deletedSuggestionIsSkippedWhenTheNextRunsBoxMoves_data() {
+  QTest::addColumn<QRect>("second");
+  QTest::newRow("shifted 1 px")<<QRect(11,11,150,20);
+  QTest::newRow("shifted 2 px and 1 px, a little shorter")<<QRect(12,11,148,17);
+  QTest::newRow("shifted 5 px, shorter and narrower")<<QRect(15,15,144,16);
+  QTest::newRow("shifted up and left")<<QRect(6,7,150,20);
+ }
+ void deletedSuggestionIsSkippedWhenTheNextRunsBoxMoves() {
+  QFETCH(QRect,second);
+  editor::EditDocument doc(capture());EditorWindow window(doc);
+  std::atomic_int reads{0};
+  window.text().setRunner([&](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){
+   auto result=found();result.candidates={{"jane@example.test",reads.fetch_add(1)==0?QRect(10,10,150,20):second,95}};return result;
+  });
+  const auto first=run(window,{"email"});QCOMPARE(doc.shapes().size(),1);
+  const auto id=quint64(first["created"].toArray().first().toDouble());const auto firstBox=doc.find(id)->rect,at=doc.find(id)->suggestedAt;
+  QVERIFY(doc.remove(id));
+  const auto again=run(window,{"email"});
+  QVERIFY2(reads.load()>=2,"the second run read the page again");
+  QCOMPARE(again["created"].toArray().size(),0);QCOMPARE(again["counts"].toObject()["email"].toInt(),0);QVERIFY(doc.shapes().isEmpty());
+  // Undo of the delete brings the deleted mark itself back, not a new one.
+  QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),1);QCOMPARE(doc.shapes().first().id,id);QCOMPARE(doc.shapes().first().rect,firstBox);
+  QVERIFY(doc.redo());QVERIFY(doc.shapes().isEmpty());QVERIFY(doc.dismissed(at,"email"));
+ }
+ // What counts as the same suggestion: the same category, and boxes that overlap by at least half their union.
+ void dismissalMatchesByCategoryAndOverlap() {
+  editor::EditDocument doc(capture());
+  Shape mark=redaction(QRect(100,100,200,40));mark.suggested="email";mark.suggestedAt=mark.rect;
+  const auto id=doc.add(mark);QVERIFY(doc.remove(id));
+  QVERIFY(doc.dismissed(QRect(100,100,200,40),"email"));
+  QVERIFY(doc.dismissed(QRect(103,101,196,34),"email"));
+  QVERIFY(!doc.dismissed(QRect(103,101,196,34),"name")); // another category is another suggestion
+  QVERIFY(!doc.dismissed(QRect(100,100,90,40),"email")); // a different, shorter match inside the line
+  QVERIFY(!doc.dismissed(QRect(100,150,200,40),"email")); // the next line
+  QVERIFY(!doc.dismissed(QRect(400,100,200,40),"email"));
  }
  // "Remove suggestions" takes back every suggestion still there as one undo
  // step, leaves marks drawn by hand alone, and does not count as deleting.
