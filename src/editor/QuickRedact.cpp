@@ -415,11 +415,13 @@ QStringList termParts(const QString& term) {
  if(first<0)return {};
  if(text.at(last).isHighSurrogate())++last;
  QStringList parts;QString current;
- for(qsizetype i=first;i<=last;++i){
-  const auto c=text.at(i);
-  if(c.isSpace()||c=='-'||c=='_'||c=='.'){if(!current.isEmpty())parts.append(current);current.clear();continue;}
-  if(c.isUpper()&&i>0&&text.at(i-1).isLower()&&!current.isEmpty()){parts.append(current);current.clear();}
-  current+=c;
+ // By code point, so a lower-to-upper change outside the BMP (Deseret 𐐨𐐁) splits too.
+ char32_t previous=0;
+ for(qsizetype i=first;i<=last;){
+  const auto c=pointAt(text,i);const qsizetype width=c>0xffff?2:1;
+  if(QChar::isSpace(c)||c=='-'||c=='_'||c=='.'){if(!current.isEmpty())parts.append(current);current.clear();previous=c;i+=width;continue;}
+  if(QChar::isUpper(c)&&QChar::isLower(previous)&&!current.isEmpty()){parts.append(current);current.clear();}
+  current+=text.mid(i,width);previous=c;i+=width;
  }
  if(!current.isEmpty())parts.append(current);
  // Punctuation before the first letter or after the last stays literal: an
@@ -596,7 +598,7 @@ bool lowSurrogateAt(const QString& text,qsizetype i) {return i>0&&i<text.size()&
 // change a match, and stop the classic runaway shapes ((a+)+$) in about a
 // millisecond, so the patterns after one still run. The time bound is the
 // child's deadline kill (src/ui/QuickRedactRunner.h), not these.
-void matchPatterns(const QStringList& subjects,const QStringList& patterns,const std::function<void(PatternOutcome)>& done) {
+void matchPatterns(const QStringList& subjects,const QStringList& patterns,const std::function<void(PatternOutcome)>& done,const QList<qsizetype>& lineBreaks) {
  static const QString limits=QStringLiteral("(*LIMIT_MATCH=10000)(*LIMIT_DEPTH=10000)");
  for(int p=0;p<patterns.size();++p){
   PatternOutcome outcome;outcome.pattern=p;
@@ -621,8 +623,13 @@ void matchPatterns(const QStringList& subjects,const QStringList& patterns,const
      if(!retry.hasMatch()){at=empty+(lowSurrogateAt(text,empty+1)?2:1);continue;}
      found=retry;
     }
-    outcome.hits.append({s,found.capturedStart(),found.capturedLength()});
+    // A pair's hit counts only where it crosses the break (QuickRedact.h); the
+    // rest are left out here, so they never count toward a caller's cap.
+    const auto lineBreak=lineBreaks.value(s,-1);
+    if(lineBreak<0||(found.capturedStart()<=lineBreak&&found.capturedEnd()>lineBreak))outcome.hits.append({s,found.capturedStart(),found.capturedLength()});
     at=found.capturedEnd();
+    // \C can end a hit on half a character; the next search starts on a whole one.
+    if(lowSurrogateAt(text,at))++at;
    }
   }
   outcome.finished=finished;
@@ -686,16 +693,16 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
   publish(false);
   if(patternCount){
    const auto subjects=patternSubjects(plain,ordered);
-   QStringList texts;for(const auto& subject:subjects)texts.append(subject.text.text);
+   QStringList texts;QList<qsizetype> breaks;for(const auto& subject:subjects){texts.append(subject.text.text);breaks.append(subject.lineBreak);}
    // The outcomes, by pattern. In process (no matcher), the budget is read
    // between patterns; a pattern still running is not stopped.
    QHash<int,PatternOutcome> outcomes;
-   if(matcher){for(auto& outcome:matcher(texts,sources.patterns))if(outcome.pattern>=0&&outcome.pattern<patternCount)outcomes.insert(outcome.pattern,std::move(outcome));}
+   if(matcher){for(auto& outcome:matcher(texts,breaks,sources.patterns))if(outcome.pattern>=0&&outcome.pattern<patternCount)outcomes.insert(outcome.pattern,std::move(outcome));}
    else{
     QStringList pending=sources.patterns;
     for(int p=0;p<patternCount;++p){
      if(budgetMs<=0||clock.hasExpired(budgetMs)||cancelled())break;
-     matchPatterns(texts,{pending.at(p)},[&](PatternOutcome outcome){outcome.pattern=p;outcomes.insert(p,std::move(outcome));});
+     matchPatterns(texts,{pending.at(p)},[&](PatternOutcome outcome){outcome.pattern=p;outcomes.insert(p,std::move(outcome));},breaks);
     }
    }
    // Claimed in pattern order, so an earlier pattern's hit wins a word.

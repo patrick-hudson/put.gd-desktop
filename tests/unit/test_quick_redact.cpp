@@ -203,6 +203,9 @@ private slots:
    <<QStringList{"list: patrick__hudson","list: patrick--hudson","list: patrick._hudson","list: patrick - hudson"};
   // Round 3 (#1631).
   QTest::newRow("M4: U+0085 inside an entry is a join too")<<QString::fromUtf8("see # 42 and #42")<<list<<terms({QString::fromUtf8("#\xC2\x85" "42")})<<QStringList{"list: # 42","list: #42"};
+  // Round 4 (S4): a lower-to-upper change outside the BMP splits an entry too.
+  QTest::newRow("S4: Deseret camel case")<<QString::fromUtf8("\xF0\x90\x90\xA8-\xF0\x90\x90\x81 and \xF0\x90\x90\xA8\xF0\x90\x90\x81")<<list<<terms({QString::fromUtf8("\xF0\x90\x90\xA8\xF0\x90\x90\x81")})
+   <<QStringList{QString::fromUtf8("list: \xF0\x90\x90\xA8-\xF0\x90\x90\x81"),QString::fromUtf8("list: \xF0\x90\x90\xA8\xF0\x90\x90\x81")};
   QTest::newRow("terms and patterns together")<<"Hammond filed JIRA-9"<<list<<quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)"}}<<QStringList{"list: Hammond","list: JIRA-9"};
  }
  void namesAndListsMatchTheirSpellings() {
@@ -255,6 +258,23 @@ private slots:
   const auto result=quickRedact::find(inside,{"list"},patterns({R"(JIRA-\d)"}));
   QCOMPARE(found(inside,result),(QStringList{"list: JIRA-1","list: JIRA-2","list: JIRA-3"}));
  }
+ // Round 4 (M3): \C can match half of a character outside the BMP; the next
+ // search starts on a whole one, so the pattern finishes and keeps its hits.
+ void halfCharacterHitsKeepThePattern() {
+  const auto candidates=words(QString::fromUtf8("\xF0\x9F\x98\x80x and JIRA-1"));
+  const auto result=quickRedact::find(candidates,{"list"},patterns({R"(\C)"}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),(QStringList{QString::fromUtf8("list: \xF0\x9F\x98\x80x"),"list: and","list: JIRA-1"}));
+ }
+ // Round 4 (S3): a pair's hits that do not cross its break are left out where
+ // they are found, so they never count toward a cap.
+ void pairHitsOutsideTheBreakAreLeftOut() {
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns({"ab","cd","ab\ncd"},{R"(\S)",R"(b\nc)"},[&](quickRedact::PatternOutcome outcome){out.append(outcome);},{-1,-1,2});
+  QCOMPARE(out.size(),2);
+  QCOMPARE(out.at(0).hits,(QList<quickRedact::PatternHit>{{0,0,1},{0,1,1},{1,0,1},{1,1,1}}));
+  QCOMPARE(out.at(1).hits,(QList<quickRedact::PatternHit>{{2,1,3}}));
+ }
  // A pattern that does not compile is named as skipped, never silently empty.
  void aPatternThatDoesNotCompileIsSkipped() {
   const auto candidates=words("JIRA-1 TICKET2");
@@ -266,10 +286,10 @@ private slots:
  void aMatcherRunsThePatterns() {
   const auto candidates=words("Hammond filed JIRA-9 | and TICKET4");
   QStringList seenSubjects,seenPatterns;
-  const quickRedact::PatternMatcher matcher=[&](const QStringList& subjects,const QStringList& list){
+  const quickRedact::PatternMatcher matcher=[&](const QStringList& subjects,const QList<qsizetype>& breaks,const QStringList& list){
    seenSubjects=subjects;seenPatterns=list;
    QList<quickRedact::PatternOutcome> out;
-   quickRedact::matchPatterns(subjects,list,[&](quickRedact::PatternOutcome outcome){if(outcome.pattern==0)out.append(outcome);});
+   quickRedact::matchPatterns(subjects,list,[&](quickRedact::PatternOutcome outcome){if(outcome.pattern==0)out.append(outcome);},breaks);
    return out;
   };
   const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)",R"(TICKET\d)"}},2000,{},nullptr,matcher);
@@ -277,7 +297,7 @@ private slots:
   QCOMPARE(found(candidates,result),(QStringList{"list: Hammond","list: JIRA-9"}));QCOMPARE(result.skippedPatterns,QList<int>{1});
   // No patterns: the matcher is never asked.
   bool asked=false;
-  quickRedact::find(candidates,{"list","name"},quickRedact::Sources{"someone","",{"Hammond"},{}},2000,{},nullptr,[&](const QStringList&,const QStringList&){asked=true;return QList<quickRedact::PatternOutcome>{};});
+  quickRedact::find(candidates,{"list","name"},quickRedact::Sources{"someone","",{"Hammond"},{}},2000,{},nullptr,[&](const QStringList&,const QList<qsizetype>&,const QStringList&){asked=true;return QList<quickRedact::PatternOutcome>{};});
   QVERIFY(!asked);
  }
  // M10: a long entry whose last part misses costs one pass, not one for each

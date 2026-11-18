@@ -66,11 +66,16 @@ struct PatternOutcome {int pattern=0;bool finished=false;QList<PatternHit> hits;
 // editor's runs one in a child process it kills at the deadline
 // (src/ui/QuickRedactRunner.h), since nothing bounds a regular expression's
 // time in process.
-using PatternMatcher=std::function<QList<PatternOutcome>(const QStringList& subjects,const QStringList& patterns)>;
+// `lineBreaks` holds, for each subject, the offset of a pair's line break, or
+// -1 for a single line.
+using PatternMatcher=std::function<QList<PatternOutcome>(const QStringList& subjects,const QList<qsizetype>& lineBreaks,const QStringList& patterns)>;
 // The matching itself, in this process, calling `done` after each pattern in
 // order: what the child runs. Not bounded in time: the editor never calls it on
 // its own threads.
-void matchPatterns(const QStringList& subjects,const QStringList& patterns,const std::function<void(PatternOutcome)>& done);
+// With `lineBreaks`, a pair subject's hits that do not cross its break are left
+// out. After a hit, the next search starts on a whole character, even after \C
+// matched half of one.
+void matchPatterns(const QStringList& subjects,const QStringList& patterns,const std::function<void(PatternOutcome)>& done,const QList<qsizetype>& lineBreaks={});
 // Every match of the chosen categories. A word belongs to one match at most;
 // where kinds overlap the more specific one wins (key, email, card, ip, phone,
 // then name and list).

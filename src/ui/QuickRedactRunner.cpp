@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QProcess>
@@ -15,6 +16,7 @@
 #include <QTimer>
 #include <atomic>
 #include <cerrno>
+#include <cmath>
 #include <cstdio>
 #include <memory>
 #include <numeric>
@@ -68,7 +70,30 @@ QString program() {
 // It reports each pattern as it ends, so the ones it finished survive a kill;
 // the rest are missing, and find reports them skipped. Nothing about the
 // patterns or the text is logged; they cross only the pipe.
-QList<editor::quickRedact::PatternOutcome> matchInChild(const QStringList& subjects,const QStringList& patterns,QDeadlineTimer deadline,const std::atomic_bool& cancel) {
+// One outcome line from the child, checked whole: exactly {p, f, h}, p a pattern
+// index, f a bool, h a list of [subject, start, length] with 0 <= start <=
+// size and 1 <= length <= size - start. Anything else is not finished.
+editor::quickRedact::PatternOutcome outcomeFrom(const QJsonObject& line,const QStringList& subjects) {
+ editor::quickRedact::PatternOutcome outcome;outcome.pattern=-1;
+ const auto whole=[](const QJsonValue& value,qint64 most,qint64& out){
+  if(!value.isDouble())return false;const double d=value.toDouble();
+  if(!(d>=0&&d<=double(most))||d!=std::floor(d))return false;out=qint64(d);return true;
+ };
+ qint64 pattern=0;
+ if(line.size()!=3||!whole(line["p"],1<<20,pattern)||!line["f"].isBool()||!line["h"].isArray())return outcome;
+ outcome.pattern=int(pattern);
+ if(!line["f"].toBool())return outcome;
+ for(const auto& value:line["h"].toArray()){
+  const auto hit=value.toArray();qint64 subject=0,start=0,length=0;
+  if(!value.isArray()||hit.size()!=3||!whole(hit.at(0),qint64(subjects.size())-1,subject))return outcome;
+  const qint64 size=subjects.at(subject).size();
+  if(!whole(hit.at(1),size,start)||!whole(hit.at(2),size-start,length)||length<1)return outcome;
+  outcome.hits.append({int(subject),qsizetype(start),qsizetype(length)});
+ }
+ outcome.finished=true;
+ return outcome;
+}
+QList<editor::quickRedact::PatternOutcome> matchInChild(const QStringList& subjects,const QList<qsizetype>& lineBreaks,const QStringList& patterns,QDeadlineTimer deadline,const std::atomic_bool& cancel) {
  QList<editor::quickRedact::PatternOutcome> out;
  if(deadline.hasExpired()||cancel.load())return out;
  QProcess process;
@@ -87,31 +112,38 @@ QList<editor::quickRedact::PatternOutcome> matchInChild(const QStringList& subje
  process.start(program(),{QStringLiteral("--match-patterns")});
  if(!process.waitForStarted(int(qBound(qint64(1),deadline.remainingTime(),qint64(2000))))){process.kill();process.waitForFinished(1000);return out;}
  ++starts;
- QJsonObject request{{"subjects",QJsonArray::fromStringList(subjects)},{"patterns",QJsonArray::fromStringList(patterns)}};
+ QJsonArray breaks;for(const auto offset:lineBreaks)breaks.append(qint64(offset));
+ QJsonObject request{{"subjects",QJsonArray::fromStringList(subjects)},{"lineBreaks",breaks},{"patterns",QJsonArray::fromStringList(patterns)}};
  process.write(QJsonDocument(request).toJson(QJsonDocument::Compact));process.closeWriteChannel();
- QByteArray pending;
+ // Each pattern counts once: a second outcome for it makes it not finished, and
+ // a line cut short by the kill is no outcome at all.
+ QByteArray pending;QHash<int,editor::quickRedact::PatternOutcome> seen;
  const auto take=[&]{
   pending+=process.readAllStandardOutput();
   for(qsizetype end;(end=pending.indexOf('\n'))>=0;){
-   const auto line=QJsonDocument::fromJson(pending.left(end)).object();pending.remove(0,end+1);
-   editor::quickRedact::PatternOutcome outcome;outcome.pattern=line["p"].toInt(-1);outcome.finished=line["f"].toBool();
+   QJsonParseError error{};const auto document=QJsonDocument::fromJson(pending.left(end),&error);pending.remove(0,end+1);
+   if(error.error!=QJsonParseError::NoError||!document.isObject())continue;
+   auto outcome=outcomeFrom(document.object(),subjects);
    if(outcome.pattern<0||outcome.pattern>=patterns.size())continue;
-   for(const auto& value:line["h"].toArray()){const auto hit=value.toArray();outcome.hits.append({hit.at(0).toInt(-1),qsizetype(hit.at(1).toInteger(-1)),qsizetype(hit.at(2).toInteger(-1))});}
-   out.append(std::move(outcome));
+   if(seen.contains(outcome.pattern)){seen[outcome.pattern].finished=false;seen[outcome.pattern].hits.clear();continue;}
+   seen.insert(outcome.pattern,std::move(outcome));
   }
  };
- while(process.state()!=QProcess::NotRunning&&out.size()<patterns.size()&&!deadline.hasExpired()&&!cancel.load()){
+ while(process.state()!=QProcess::NotRunning&&seen.size()<patterns.size()&&!deadline.hasExpired()&&!cancel.load()){
   process.waitForReadyRead(int(qBound(qint64(1),deadline.remainingTime(),qint64(50))));
   take();
  }
  take();
  if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(1000);}
+ // What reached the pipe before the kill still counts.
+ take();
+ for(auto it=seen.begin();it!=seen.end();++it)out.append(std::move(it.value()));
  return out;
 }
 #if defined(SYS_landlock_create_ruleset)&&defined(LANDLOCK_CREATE_RULESET_VERSION)
-// Landlock with every file-system right handled and none granted: the child
-// can open no file at all once its input is read. Best effort: an older kernel
-// keeps the other limits.
+// Landlock with every file-system right handled and none granted, applied
+// before the child reads its input: from then on it can open no file at all.
+// Best effort: an older kernel keeps the other limits.
 void denyFiles() {
  const long abi=::syscall(SYS_landlock_create_ruleset,nullptr,0,LANDLOCK_CREATE_RULESET_VERSION);
  if(abi<1)return;
@@ -153,7 +185,7 @@ void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QS
   if(categories.contains(QStringLiteral("name"))&&sources.login.isEmpty()){const auto account=read(stopped);sources.login=account.login;sources.realName=account.realName;}
   // The editor may have closed meanwhile.
   if(stopped())return;
-  const editor::quickRedact::PatternMatcher matcher=[&](const QStringList& subjects,const QStringList& patterns){return matchInChild(subjects,patterns,deadline,progress->cancel);};
+  const editor::quickRedact::PatternMatcher matcher=[&](const QStringList& subjects,const QList<qsizetype>& lineBreaks,const QStringList& patterns){return matchInChild(subjects,lineBreaks,patterns,deadline,progress->cancel);};
   auto result=editor::quickRedact::find(candidates,categories,sources,budgetMs,[&progress](const editor::quickRedact::Result& partial){
    QMutexLocker lock(&progress->mutex);progress->result=partial;
   },&progress->cancel,matcher);
@@ -194,18 +226,20 @@ int runQuickRedactMatcher() {
   input.append(buffer,count);if(input.size()>64*1024*1024)return 2;
  }
  const auto request=QJsonDocument::fromJson(input).object();
- QStringList subjects,patterns;
+ QStringList subjects,patterns;QList<qsizetype> lineBreaks;
  for(const auto& value:request["subjects"].toArray())subjects.append(value.toString());
+ for(const auto& value:request["lineBreaks"].toArray())lineBreaks.append(qsizetype(value.toInteger(-1)));
  for(const auto& value:request["patterns"].toArray())patterns.append(value.toString());
  // One line a pattern, written as it ends. A pattern with more hits than
- // could ever be words is reported unfinished rather than flooding the pipe.
+ // could ever be words is reported unfinished rather than flooding the pipe;
+ // a pair's hits that do not cross its break are left out first (lineBreaks).
  constexpr qsizetype maximumHits=200000;
  editor::quickRedact::matchPatterns(subjects,patterns,[](editor::quickRedact::PatternOutcome outcome){
   if(outcome.hits.size()>maximumHits){outcome.finished=false;outcome.hits.clear();}
   QJsonArray hits;for(const auto& hit:outcome.hits)hits.append(QJsonArray{hit.subject,qint64(hit.start),qint64(hit.length)});
   const auto line=QJsonDocument(QJsonObject{{"p",outcome.pattern},{"f",outcome.finished},{"h",hits}}).toJson(QJsonDocument::Compact)+'\n';
   std::fwrite(line.constData(),1,size_t(line.size()),stdout);std::fflush(stdout);
- });
+ },lineBreaks);
  std::fflush(stdout);
  ::_exit(0);
 }
