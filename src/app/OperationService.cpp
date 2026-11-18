@@ -1437,11 +1437,12 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
    if(auto error=artifacts.verify(item.artifact)){item.local.status="failed";item.local.error=error;}
    else item.local=LocalArchive::save(item.artifact,op.settings.archive);
   }
-  e=store.saveOperation(op);if(e)return QJsonObject{{"writeFailed",true}};return op.publicJson();
- },[this,id,reply](Error e,QJsonObject r) {
+  e=store.saveOperation(op);return QJsonObject{{"operation",op.publicJson()},{"writeFailed",bool(e)}};
+ },[this,id,reply](Error e,QJsonObject result) {
   // A failed read of the operation changed nothing; only a failed write of its outcome marks it (#1579).
-  if(e.code=="history_io"&&r["writeFailed"].toBool())rememberUnsavedHistory(id);
-  if(e)r={};
+  // The snapshot stays with the failure: the tray names the files that failed from it.
+  if(e.code=="history_io"&&result["writeFailed"].toBool())rememberUnsavedHistory(id);
+  const auto r=result["operation"].toObject();
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
   if(failed)emit operationError(id,r);

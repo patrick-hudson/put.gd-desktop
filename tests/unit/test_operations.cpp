@@ -541,6 +541,34 @@ private slots:
   Error error;bool answered=false;ops.retryLocalSave(id,[&](Error e,QJsonObject){error=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(error.code,QString("history_io"));
   PUTGD_COMPARE_STEADY(ops.diagnostics()["unsavedHistoryResults"].toInt(),0,200);
  }
+ // The automatic copy's outcome is the only History write that fails: it still marks the operation, sends the notice
+ // and makes Retry refuse it (#1579).
+ void refusedCopyOutcomeWriteIsRemembered() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
+  OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QSignalSpy notified(&ops,&OperationService::historyResultsUnsaved);HistoryStore journal(ops.databasePath());
+  const auto fault=ops.databasePath()+"-journal";auto lift=qScopeGuard([&]{QDir().rmdir(fault);if(source.pending)source.acknowledge();});
+  QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_VERIFY(source.pending);PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(ops.diagnostics()["unsavedHistoryResults"].toInt(),0);
+  QVERIFY(QDir().mkdir(fault));source.acknowledge();
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);PUTGD_TRY_COMPARE(ops.diagnostics()["unsavedHistoryResults"].toInt(),1);QCOMPARE(notified.count(),1);
+  QVERIFY(QDir().rmdir(fault));
+  Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});QVERIFY(answered);QCOMPARE(retried.code,QString("history_io"));
+ }
+ // A Retry local save whose outcome write is refused still reports the operation as it was, so the tray can name the
+ // files that failed; the write failure is carried apart from it (#1579).
+ void refusedLocalSaveWriteKeepsTheOperationSnapshot() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());
+  QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
+  QSignalSpy failures(&ops,&OperationService::operationError);
+  const auto fault=ops.databasePath()+"-journal";QVERIFY(QDir().mkdir(fault));auto lift=qScopeGuard([&]{QDir().rmdir(fault);});
+  Error error;bool answered=false;ops.retryLocalSave(id,[&](Error e,QJsonObject){error=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(error.code,QString("history_io"));
+  QCOMPARE(failures.count(),1);const auto snapshot=failures.first().at(1).toJsonObject();
+  QCOMPARE(snapshot["id"].toString(),id);QCOMPARE(snapshot["items"].toArray().size(),1);QVERIFY(!snapshot.contains("writeFailed"));
+  QCOMPARE(ops.diagnostics()["unsavedHistoryResults"].toInt(),1);
+ }
  void zeroRetentionAndActiveRetryPreserveArtifacts() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto retention=doc["retention"].toObject();retention["failedArtifactDays"]=0;doc["retention"]=retention;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return store.operation(id).copyStatus=="no_result";})());HistoryStore store(ops.databasePath());auto op=store.operation(id);op.created="2000-01-01T00:00:00.000Z";QVERIFY(!store.saveOperation(op));const auto spool=op.items[0].artifact.path;bool cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["removedOperations"].toInt(),0);cleaned=true;});PUTGD_TRY_VERIFY(cleaned);QVERIFY(QFile::exists(spool));
   provider->failUpload=false;provider->deferUploads=true;provider->dispatcher=this;ops.retry(id,[](Error e,QJsonObject){QVERIFY(!e);});cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["removedOperations"].toInt(),0);cleaned=true;});PUTGD_TRY_VERIFY(cleaned);QVERIFY(QFile::exists(spool));PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_VERIFY(([&]{return store.operation(id).items[0].uploadStatus=="uploaded";})());
