@@ -192,6 +192,9 @@ private slots:
         const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "reinstall");
         QCOMPARE(unclear, QString("put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd."));
         for (const auto& message : {temporary, unclear}) QVERIFY2(!message.contains(strerror(ENOENT)), qPrintable(message));
+        // The S3 worker gives the same advice under its own name.
+        QCOMPARE(worker::startFailureMessage(StartFailure::Temporary, "reinstall", "S3 support couldn't start"), QString("S3 support couldn't start just now; try again."));
+        QCOMPARE(worker::startFailureMessage(StartFailure::Unclear, "reinstall", "S3 support couldn't start"), QString("S3 support couldn't start. Try again; if it keeps failing, reinstall put.gd."));
     }
     // A diagnostics package says which fields a destination sets and where its request
     // goes: never a row value, a path someone typed a key into, or a reply template's text.
