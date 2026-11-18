@@ -26,8 +26,10 @@ What `fuzz_httpimport` does not check:
   six-letter key), or one longer than 200 characters, is not looked for in the settings.
   A value is found only when it appears whole, at word boundaries: part of it, or the
   whole value glued to other letters or digits, is not looked for.
-- An address is read from its first `/` after the scheme: user information, a host and a
-  port are not looked at.
+- Row values are taken from the `Headers`, `Parameters` and `Arguments` objects the import
+  reads, left-out rows included. A query value in the request URL that a `Parameters` row
+  replaces, and a `Data` body that is not sent, are not looked for separately; the unit
+  tests cover them.
 - "Answers once" means one answer by the time the import has answered and one more pass
   of the event loop has run, not that no answer can ever follow.
 - `importUploaderFile` runs with session credentials only, in a new scratch directory
