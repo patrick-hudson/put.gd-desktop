@@ -102,9 +102,9 @@ QJsonObject RecordingService::capabilities() const {
     result["states"] = QJsonArray::fromStringList(recording::states());
     result["timeUnit"] = "microseconds";
     result["maskKinds"] = QJsonArray{"blur", "solid"};
-    result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
+    result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask", "addCut", "updateCut", "removeCut", "undo", "redo"};
     result["limits"] = QJsonObject{{"animationMaxUs", double(limit.animationMaxUs)}, {"animationMaxEdge", limit.animationMaxEdge},
-        {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
+        {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}, {"maxCuts", recording::maximumCuts}};
     result["commands"] = QJsonArray{"windows", "microphones", "prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "audio", "edit", "preview", "review", "saveCopy", "upload"};
     // recording.windows lists the identities a window target takes (KDE, GNOME Wayland).
     result["windowList"] = windows_ != nullptr;
@@ -329,7 +329,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         qint64 duration = 0;
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
         s.duration = duration;
-        s.edit = {};
+        s.edit = {}; s.history = {};
         s.captureStopped = true;
         noteCaptured(s, event, false);
         s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
@@ -401,7 +401,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         // resident's answer (setEdit) is what it displays, accepted or not.
         qint64 revision = 0;
         if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
-            if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { host_.observe(s.op); emit changed(s.op.id); }
+            if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) { host_.observe(s.op); emit changed(s.op.id); }
         backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
     } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && s.state == RecordingState::Reviewing) {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
@@ -855,7 +855,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 qint64 duration = 0;
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
                 s.duration = duration;
-                s.edit = {};
+                s.edit = {}; s.history = {};
                 s.captureStopped = true;
                 noteCaptured(s, result, false);
                 s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
@@ -873,7 +873,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         qint64 revision = 0;
         if (!integer(params["revision"], 1, 1LL << 52, &revision) || !params["commands"].isArray()) { reply(invalid("edit takes the current revision and 1 to 100 commands"), {}); return; }
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
-        if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { reply(error, {}); return; }
+        if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) { reply(error, {}); return; }
         backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
         host_.observe(s.op);
         emit changed(s.op.id);
