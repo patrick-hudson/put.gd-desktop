@@ -40,6 +40,8 @@ import time
 
 KINDS = ('pass', 'reset_before', 'reset_request', 'reset_after_request', 'cut_response', 'stall', 'stall_response', 'dup_response', 'slow', 'latency')
 CHUNK = 16384
+POLL = 0.5      # every blocking socket call of a pump returns at least this often, so a retired connection ends within it
+IDLE = 60.0     # a direction that moves nothing for this long ends (idle-timeout)
 
 
 class ProxyStuck(Exception):
@@ -253,19 +255,27 @@ class Proxy:
             retired.wait(max(0.0, (plan.latency_ms + rng.uniform(-plan.jitter_ms, plan.jitter_ms)) / 1000.0))
 
     def pump(self, source, sink, plan, state, direction, retired):
-        """Copy one direction. `retired` (the connection's) cuts every wait short; the pump then ends on its reset sockets."""
+        """Copy one direction. No socket call blocks longer than POLL, and `retired` (the connection's) is checked after each one and cuts
+        every wait short, so a retired connection's pumps end within about POLL whatever they were doing."""
         rng = random.Random(plan.c2s_limit * 31 + plan.s2c_limit + (1 if direction == 'c2s' else 2))
         sent_dup = False
         try:
-            source.settimeout(60)
+            source.settimeout(POLL)
+            idle = 0.0
             while True:
                 try:
                     data = source.recv(CHUNK)
                 except socket.timeout:
-                    state['outcome'] = 'idle-timeout'
-                    break
+                    if retired.is_set():
+                        break
+                    idle += POLL
+                    if idle >= IDLE:
+                        state['outcome'] = 'idle-timeout'
+                        break
+                    continue
                 except OSError:
                     break
+                idle = 0.0
                 if not data:
                     break
                 if retired.is_set():
@@ -338,13 +348,28 @@ class Proxy:
         if plan.kind == 'slow' and plan.rate:
             step = max(512, plan.rate // 20)
             for offset in range(0, len(data), step):
-                if retired.is_set():
-                    raise OSError('retired')
                 piece = data[offset:offset + step]
-                sink.sendall(piece)
+                self.send_all(sink, piece, retired)
                 retired.wait(len(piece) / plan.rate)
         else:
-            sink.sendall(data)
+            self.send_all(sink, data, retired)
+
+    @staticmethod
+    def send_all(sink, data, retired):
+        """sendall that gives up when the connection is retired: a peer that stops reading cannot hold a pump longer than POLL after that."""
+        sink.settimeout(POLL)
+        view, waited = memoryview(data), 0.0
+        while view:
+            if retired.is_set():
+                raise OSError('retired')
+            try:
+                sent = sink.send(view)
+            except socket.timeout:
+                waited += POLL
+                if waited >= IDLE:
+                    raise OSError('peer stopped reading')
+                continue
+            view, waited = view[sent:], 0.0
 
 
 def main():
