@@ -582,7 +582,7 @@ QList<Joined> patternTexts(const QList<QString>& plain,const QList<RecognizedWor
 // surrogate pair. The text is valid UTF-16 (patternTexts), so Qt does not
 // check it again on every call; that check alone cost 25 µs a position.
 //
-// Measured on m74 (Mint 22.3, Qt 6.4.2, Ryzen): an ordinary pattern costs about
+// Measured on m74 (Mint 22.3, Qt 6.4.2, i5-6500T): an ordinary pattern costs about
 // 0.2 µs a position (4 ms over 20 000 characters); the slowest single call,
 // a runaway pattern stopped by the limit, 0.8 ms with JIT and 9 ms on the
 // interpreter. All patterns together therefore end within the budget plus one
