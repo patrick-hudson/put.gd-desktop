@@ -278,7 +278,7 @@ for local endpoints). `objectPrefix` is at most 1022 UTF-8 bytes; the final pref
 is limited to 1024 bytes. Empty path segments of the prefix are dropped, as the SDK
 drops them from the request path, and one separator joins a nonempty prefix to the
 name (#1582). A prefix with a `.` or `..` segment passes this validation, so a saved
-configuration still loads, but uploads and Test connection refuse it with
+configuration still loads, but uploads and Test upload and link refuse it with
 `s3_settings_invalid`.
 `storageClass` accepts STANDARD, REDUCED_REDUNDANCY, STANDARD_IA, ONEZONE_IA,
 INTELLIGENT_TIERING, GLACIER, DEEP_ARCHIVE or GLACIER_IR. Cold storage may not support
