@@ -40,26 +40,37 @@ What is excused, and how:
 - **Qt-internal races are not suppressed.** A `race:` rule would match its symbol anywhere in
   either access stack, or in a thread-creation stack, and could hide put.gd racing with Qt.
   Reports are captured whole, and `tools/lab/tsan_summary.py` excuses a report under one
-  strict rule, and nothing else:
-  - neither racing access stack contains a put.gd frame, in any of its frames (not only the
-    top ones). The one exception is the bottom-most frame when it is put.gd's `main()`, the
-    root of every main-thread stack. A put.gd frame directly above `main()` still counts;
-  - both stacks start in a Qt library;
-  - the report is a data race whose stack holds a diagnosed Qt race (`KNOWN_QT_RACES`: Qt's
-    `QThread::started` hand-off in `QNetworkAccessManager`, the `QNetworkReply` destructor
-    chain, QtDBus's own thread, and QtDBus's pending-call bookkeeping): its function is in the
-    top six frames of one stack, and its anchor, when it names one, is in that same stack. The
-    generic `maybeSignalConnected` counts only with `QThread::started`, the emission the
-    diagnosis covers.
+  rule, and nothing else:
+  - it is a data race, and it matches one of the diagnosed Qt races in `KNOWN_QT_RACES`
+    (Qt's `QThread::started` hand-off in `QNetworkAccessManager`, the `QNetworkReply`
+    destructor chain, QtDBus's own thread against `~QCoreApplication`, and QtDBus's
+    pending-call bookkeeping);
+  - each of the two racing access stacks is read from the top (the racing access) down. Every
+    frame must be Qt or the C, C++ or TSan runtime until the walk reaches the bottom of the
+    stack, `main()`, or one of the public Qt entry points listed for that diagnosis;
+  - below that point anything may follow, put.gd code included: those frames only called a
+    public Qt function. A put.gd frame, or any other library's, above that point, at any
+    depth, means the report is shown;
+  - the diagnosed function is in the top six frames of one stack, and its anchor, when it has
+    one, is in that same stack above the stopping point. The generic `maybeSignalConnected`
+    counts only with `QThread::started`.
 
-  The rule reads only the two racing access stacks (not thread-creation, mutex or allocation
-  stacks), and it does not prove that put.gd is uninvolved: it only refuses to excuse any
-  report in which put.gd code appears. One consequence is that a known Qt race is excused only
-  when put.gd's code is nowhere in its stacks. For example, the `QThread::started` hand-off is
-  reported when put.gd code above `main()` called `QNetworkAccessManager::get`. Every other
-  report fails a fuzzer seed, including a put.gd frame at any depth, such as put.gd reading a
-  `QNetworkReply` that Qt destroys. Add an entry only after reading the report. Never add a
-  put.gd function.
+  Each diagnosis lists its own entry points, as few as it needs:
+  - both `QNetworkAccessManager` races: `get`, `post`, `put`, `head`, `deleteResource`,
+    `sendCustomRequest` and `createRequest`;
+  - the QtDBus pending-call races: the call methods of `QDBusConnection` and
+    `QDBusAbstractInterface`;
+  - the race at `~QCoreApplication`: none (its main-thread side is the destructor run from
+    `main()`).
+
+  An entry point that is not on the diagnosis's own list does not stop the walk.
+
+  The rule reads only the two racing access stacks, not thread-creation, mutex or allocation
+  stacks. It shows that no put.gd code ran between the racing access and the point where Qt
+  was entered. It does not prove that put.gd's earlier use of the object was correct. Every
+  other report fails a fuzzer seed, for example put.gd reading a `QNetworkReply` that Qt
+  destroys. Add a diagnosis, or an entry point to one, only after reading the report. Never
+  add a put.gd function.
 
 The recording tests (`recording_storage_integration`, `recording_pipeline_throughput`)
 cannot be certified under ThreadSanitizer: GStreamer is not instrumented, and the one
