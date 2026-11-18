@@ -167,6 +167,19 @@ class RawS3:
     def abort(self, key, upload_id):
         return self.request('DELETE', key, {'uploadId': upload_id})
 
+    def versioning(self):
+        """The bucket's versioning state: '' (never configured), 'Enabled' or 'Suspended'; None when it cannot be read.
+        A server that does not implement the call (R2 answers 501) keeps no versions."""
+        reply = self.request('GET', query={'versioning': ''})
+        if reply.status == 501:
+            return ''
+        if reply.status != 200:
+            return None
+        try:
+            return ElementTree.fromstring(reply.body).findtext(NS + 'Status') or ElementTree.fromstring(reply.body).findtext('Status') or ''
+        except ElementTree.ParseError:
+            return None
+
 
 # ---------------------------------------------------------------------------------------------- containers
 

@@ -12,6 +12,8 @@ multipart uploads, stray keys). `report` then lines the servers up per case and 
 
 Servers: `oracle` (tests/fixtures/s3_server.py) starts by itself; the containers come from tools/lab/s3_servers.py (start them
 first); `aws` and `r2` read ~/Documents/creds.txt in memory (key set 2 for AWS) and use a unique prefix they remove again.
+A cloud run refuses a bucket whose versioning is enabled or suspended, before it writes anything. Cleanup covers each case's prefix and its
+leading-slash twin ('/<prefix>'), checks every delete and multipart abort, and the command exits 1 when anything of the run is left.
 Every request of the local servers goes through the fault proxy (tools/lab/s3_fault_proxy.py), which also records what put.gd sent.
 
 Run it on a build server, under `dbus-run-session`, with --out on disk. Synthetic payloads only. Credentials never reach a
@@ -89,10 +91,31 @@ class Target:
         raise NotImplementedError
 
     # backend: what is stored, independently of put.gd
+    #
+    # A prefix names a case's namespace and, next to it, the same text with a leading slash: put.gd can send a key that starts with '/'
+    # (objectPrefix '/x/'), which S3 stores as a different key from 'x/...'. Every listing, cleanup and leftover check covers both.
+    @staticmethod
+    def namespaces(prefix):
+        return [prefix, '/' + prefix]
+
     def stored(self, prefix):
-        raise NotImplementedError
+        return [entry for namespace in self.namespaces(prefix) for entry in self.stored_in(namespace)]
+
+    def raw_keys(self, prefix):
+        return [entry for namespace in self.namespaces(prefix) for entry in self.raw_keys_in(namespace)]
 
     def uploads(self, prefix):
+        """Incomplete multipart uploads under the prefix (and its leading-slash twin); None when the server cannot list them."""
+        found = [self.uploads_in(namespace) for namespace in self.namespaces(prefix)]
+        return None if any(entry is None for entry in found) else [upload for entries in found for upload in entries]
+
+    def stored_in(self, prefix):
+        raise NotImplementedError
+
+    def raw_keys_in(self, prefix):
+        raise NotImplementedError
+
+    def uploads_in(self, prefix):
         raise NotImplementedError
 
     def seed(self, key, body, headers=None):
@@ -104,17 +127,35 @@ class Target:
     def head(self, key):
         raise NotImplementedError
 
+    def abort(self, key, upload):
+        raise NotImplementedError
+
+    def require_unversioned(self):
+        """Cloud runs write only into a bucket that never keeps versions: cleanup deletes current objects, and on a versioned bucket that
+        would leave versions and delete markers behind. Refused before anything is written."""
+        raise NotImplementedError
+
     def cleanup(self, prefix):
-        """Delete exactly what is under this case's prefix and abort its incomplete uploads; report what could not be removed."""
+        """Delete exactly what is under this case's prefix (and its leading-slash twin), abort its incomplete uploads and check that both
+        are really gone. Raises with what could not be removed."""
         failed = []
         for key, _size, _etag in self.raw_keys(prefix):
             status = self.remove(key)
             if status not in (200, 204):
-                failed.append((key[-60:], status))
+                failed.append(('delete', key[-60:], status))
         for key, upload in self.uploads(prefix) or []:
-            self.abort(key, upload)
+            status = self.abort(key, upload)
+            # 404 is an upload that is already gone (NoSuchUpload); any other answer means it may still be there.
+            if status not in (200, 204, 404):
+                failed.append(('abort', key[-60:], status))
+        remaining_keys = self.raw_keys(prefix)
+        remaining_uploads = self.uploads(prefix) or []
+        if remaining_keys:
+            failed.append(('still-stored', [k[-60:] for k, _s, _e in remaining_keys[:3]], len(remaining_keys)))
+        if remaining_uploads:
+            failed.append(('still-incomplete', [k[-60:] for k, _u in remaining_uploads[:3]], len(remaining_uploads)))
         if failed:
-            raise RuntimeError('could not remove %d key(s): %s' % (len(failed), failed[:3]))
+            raise RuntimeError('cleanup of %s left %d problem(s): %s' % (prefix[-40:], len(failed), failed[:3]))
 
     def credentials(self):
         raise NotImplementedError
@@ -152,10 +193,10 @@ class RawTarget(Target):
         base.update(extra)
         return base
 
-    def raw_keys(self, prefix):
+    def raw_keys_in(self, prefix):
         return self.raw.list_keys(prefix)
 
-    def stored(self, prefix):
+    def stored_in(self, prefix):
         found = []
         cache = self.__dict__.setdefault('_cache', {})
         for key, size, etag in self.raw.list_keys(prefix):
@@ -169,11 +210,20 @@ class RawTarget(Target):
                           'metadata': {k[len('x-amz-meta-'):]: v for k, v in reply.headers.items() if k.startswith('x-amz-meta-')}})
         return found
 
-    def uploads(self, prefix):
+    def uploads_in(self, prefix):
         return self.raw.list_uploads(prefix)
 
     def abort(self, key, upload):
-        self.raw.abort(key, upload)
+        return self.raw.abort(key, upload).status
+
+    def require_unversioned(self):
+        if not self.cloud:
+            return  # a throwaway local server: its data goes away with the container
+        status = self.raw.versioning()
+        if status is None:
+            raise SystemExit('%s: cannot read the bucket versioning state, so cleanup cannot be proven complete; refusing to write' % self.name)
+        if status:
+            raise SystemExit('%s: bucket versioning is %s; the harness deletes current objects only, which would leave versions and delete markers. Refusing to write' % (self.name, status))
 
     def seed(self, key, body, headers=None):
         reply = self.raw.put(key, body, headers)
@@ -217,7 +267,7 @@ class OracleTarget(RawTarget):
     def state(self):
         return self.receiver.state()
 
-    def stored(self, prefix):
+    def stored_in(self, prefix):
         found = []
         for key, versions in self.state()['objects'].items():
             live = [v for v in versions if not v.get('marker')]
@@ -229,10 +279,10 @@ class OracleTarget(RawTarget):
                               'content_type': value.get('contentType', ''), 'metadata': value.get('metadata', {})})
         return found
 
-    def raw_keys(self, prefix):
-        return [(e['key'], e['size'], e['etag']) for e in self.stored(prefix)]
+    def raw_keys_in(self, prefix):
+        return [(e['key'], e['size'], e['etag']) for e in self.stored_in(prefix)]
 
-    def uploads(self, prefix):
+    def uploads_in(self, prefix):
         return [(u['key'], uid) for uid, u in self.state()['uploads'].items() if u['key'].startswith(prefix)]
 
     def close(self):
@@ -489,7 +539,12 @@ class Recorder:
 
 
 def relative(prefix, key):
-    return key[len(prefix):] if key.startswith(prefix) else key
+    """A key relative to the case prefix; one in the leading-slash twin namespace keeps its slash ('/ls/x.txt'), so it stays distinct."""
+    if key.startswith(prefix):
+        return key[len(prefix):]
+    if key.startswith('/' + prefix):
+        return '/' + key[len(prefix) + 1:]
+    return key
 
 
 # ---------------------------------------------------------------------------------------------- cases
@@ -1092,11 +1147,13 @@ def run_case(lab, name):
     try:
         lab.target.cleanup(prefix)
     except Exception as error:  # noqa: BLE001
-        result['cleanup_error'] = repr(error)[:200]
+        result['cleanup_error'] = repr(error)[:400]
     return result
 
 
 def run_server(options, name, run_id):
+    """Run the selected cases against one server. Returns (results, clean): clean is False when a case's cleanup failed or anything of
+    this run is still on the server at the end (including keys that start with '/'), so the command can exit non-zero."""
     run = Path(options.work) / name / 'oracle-run'
     run.mkdir(parents=True, exist_ok=True)
     (run / 'logs').mkdir(exist_ok=True)
@@ -1104,7 +1161,10 @@ def run_server(options, name, run_id):
     lab = Lab(options, target, run_id)
     selected = [c for c in (options.cases.split(',') if options.cases else CASES) if c in CASES]
     results = []
+    clean = True
     try:
+        # A cloud bucket that keeps versions would keep what cleanup deletes: refuse before the first byte is written.
+        target.require_unversioned()
         lab.start()
         for case_name in selected:
             print('[%s] %s ...' % (name, case_name), flush=True)
@@ -1112,36 +1172,95 @@ def run_server(options, name, run_id):
             path = lab.root / ('%s.json' % case_name)
             path.write_text(json.dumps(result, indent=1, default=str))
             flags = len(result.get('violations') or [])
+            if result.get('cleanup_error'):
+                clean = False
+                print('[%s] %s: CLEANUP FAILED %s' % (name, case_name, result['cleanup_error']), flush=True)
             print('[%s] %s: %s%s' % (name, case_name, 'harness error ' + result['harness_error'] if result.get('harness_error') else 'ok', ', %d flag(s)' % flags if flags else ''), flush=True)
             results.append(result)
     finally:
         lab.stop()
-        # leftovers: whatever is still under this run's prefix on the server (cloud runs must leave nothing)
-        try:
-            leftovers = target.stored('%s/%s/' % (target.root_prefix, run_id))
-            uploads = target.uploads('%s/%s/' % (target.root_prefix, run_id))
-            (lab.root / 'leftovers.json').write_text(json.dumps({'keys': [e['key'] for e in leftovers], 'uploads': uploads}))
-            print('[%s] leftovers: %d keys, %s incomplete uploads' % (name, len(leftovers), len(uploads) if uploads is not None else 'unlisted'))
-        except Exception as error:  # noqa: BLE001
-            print('[%s] leftover check failed: %r' % (name, error))
+        clean = final_leftover_check(target, lab, name, run_id) and clean
         target.close()
-    return results
+    return results, clean
+
+
+def final_leftover_check(target, lab, name, run_id):
+    """Whatever is still under this run's namespace (its prefix and the leading-slash twin): recorded, removed, and reported as a failure.
+    Cloud runs must leave nothing; a failed check is a failure too."""
+    root = '%s/%s/' % (target.root_prefix, run_id)
+    try:
+        leftovers = target.stored(root)
+        uploads = target.uploads(root)
+        (lab.root / 'leftovers.json').write_text(json.dumps({'keys': [e['key'] for e in leftovers], 'uploads': uploads}))
+        print('[%s] leftovers: %d keys, %s incomplete uploads' % (name, len(leftovers), len(uploads) if uploads is not None else 'unlisted'), flush=True)
+        found = bool(leftovers) or bool(uploads)
+        if found:
+            try:
+                target.cleanup(root)
+                print('[%s] LEFTOVERS removed (exact keys and upload IDs of this run)' % name, flush=True)
+            except Exception as error:  # noqa: BLE001
+                print('[%s] LEFTOVERS NOT REMOVED: %r' % (name, error), flush=True)
+        return not found
+    except Exception as error:  # noqa: BLE001
+        print('[%s] leftover check failed: %r' % (name, error), flush=True)
+        return False
 
 
 # ---------------------------------------------------------------------------------------------- report
 
+GENERATED_SUFFIX = re.compile(r'-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+
+
+def normalise_key(key):
+    """put.gd's collision rename appends a random UUID ('name-<uuid>.txt'): the same behaviour must give the same text on every server."""
+    return GENERATED_SUFFIX.sub('-<uuid>', key or '')
+
+
+def deletion_outcome(record):
+    """What a deletion record says, without its identities (IDs, times, acknowledgement, profile revision, endpoint)."""
+    if not isinstance(record, dict):
+        return None
+    record = record.get('deletion') or record
+    if record.get('confirmError') is not None:
+        return {'confirmError': (record['confirmError'] or {}).get('code')}
+    items = []
+    for item in record.get('items') or []:
+        error = item.get('error') or {}
+        items.append({'status': item.get('status'), 'phase': (item.get('progress') or {}).get('phase'), 'errorCode': error.get('code') or '',
+                      'requestStage': (error.get('details') or {}).get('requestStage')})
+    return {'state': record.get('state'), 'cancelled': record.get('cancelled'), 'items': items}
+
+
 def signature(result):
-    """What differs between servers for one case, normalised: per item status/error/key shape and stored content flags."""
+    """What differs between servers for one case, normalised: per item status/error/key shape, stored content flags, and the recorded
+    deletion outcomes, lost-delete retry and receipt-key HEAD results."""
     rows = []
     prefix = result.get('prefix', '')
+    stored_keys = {e['key'] for e in result.get('stored') or []}
     for op in result.get('ops') or []:
         for item in op.get('items') or []:
-            rows.append((item.get('name'), item.get('uploadStatus'), item.get('errorCode'), item.get('requestStage'), relative(prefix, item.get('key') or ''), bool(item.get('directUrl'))))
+            key = item.get('key') or ''
+            # The receipt must name an object the server really holds: compared on the raw keys, shown on the normalised ones.
+            named = bool(key) and key in stored_keys
+            rows.append((item.get('name'), item.get('uploadStatus'), item.get('errorCode'), item.get('requestStage'), normalise_key(relative(prefix, key)),
+                         bool(item.get('directUrl')), named if item.get('uploadStatus') == 'uploaded' else None))
         if op.get('error'):
             rows.append(('op-error', (op['error'] or {}).get('code')))
     # The oracle keeps no content type of a single-request upload, so it stays out of the comparison (content-and-metadata lists it per server).
-    stored = sorted((relative(prefix, e['key']), e['size'], e['sha256'][:12]) for e in (result.get('stored') or []))
-    return {'items': rows, 'stored': stored, 'orphans': len(result.get('uploads') or []), 'flags': sorted(v['code'] for v in result.get('violations') or [])}
+    stored = sorted((normalise_key(relative(prefix, e['key'])), e['size'], e['sha256'][:12]) for e in (result.get('stored') or []))
+    signed = {'items': rows, 'stored': stored, 'orphans': len(result.get('uploads') or []), 'flags': sorted(v['code'] for v in result.get('violations') or [])}
+    deletions = {name: {'prepare': entry.get('prepare'), 'outcome': deletion_outcome(entry.get('final'))} for name, entry in sorted((result.get('deletions') or {}).items())}
+    if deletions:
+        signed['deletions'] = deletions
+    if 'lost_delete' in result:
+        retry = result.get('lost_delete_retry') or {}
+        signed['lost_delete'] = {'first': deletion_outcome(result['lost_delete']),
+                                 'retry': {'ok': retry.get('ok'), 'error': (retry.get('error') or {}).get('code') if isinstance(retry.get('error'), dict) else retry.get('error'),
+                                           'outcome': deletion_outcome(retry.get('final'))} if retry else None}
+    heads = {shape: {'receiptKey': normalise_key(entry.get('receiptKey')), 'head': entry.get('head')} for shape, entry in sorted((result.get('receipt_key_head') or {}).items())}
+    if heads:
+        signed['receipt_key_head'] = heads
+    return signed
 
 
 def report(options):
@@ -1181,7 +1300,9 @@ def report(options):
             groups.setdefault(json.dumps(sig, sort_keys=True, default=str), []).append(server_name)
         for blob, members in groups.items():
             sig = json.loads(blob)
-            lines.append('- **%s**: items=%d, stored=%d, orphans=%d, flags=%s' % (', '.join(members), len(sig['items']), len(sig['stored']), sig['orphans'], sig['flags']))
+            more = [name for name in ('deletions', 'lost_delete', 'receipt_key_head') if name in sig]
+            lines.append('- **%s**: items=%d, stored=%d, orphans=%d, flags=%s%s' % (', '.join(members), len(sig['items']), len(sig['stored']), sig['orphans'], sig['flags'],
+                                                                                 ', also compared: ' + ', '.join(more) if more else ''))
         lines.append('')
     text = '\n'.join(lines)
     (base / 'REPORT.md').write_text(text)
@@ -1211,9 +1332,12 @@ def main():
         report(options)
         return 0
     run_id = options.run_id or time.strftime('%m%d%H%M%S') + '-' + '%04x' % random.randrange(1 << 16)
+    clean = True
     for name in options.servers.split(','):
-        run_server(options, name, run_id)
-    return 0
+        clean = run_server(options, name, run_id)[1] and clean
+    if not clean:
+        print('FAILED: this run left something on a server or could not remove it (see the CLEANUP FAILED / LEFTOVERS lines above)', file=sys.stderr)
+    return 0 if clean else 1
 
 
 if __name__ == '__main__':
