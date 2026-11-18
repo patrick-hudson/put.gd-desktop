@@ -15,3 +15,4 @@ Driving put.gd from an agent or a script.
 - [Working as an agent](agents.md): the source, workflow and acceptance maps.
 - [Resident JSON CLI](cli.md): `putgd-cli` methods, parameters and the request envelope.
 - [Optional local MCP helper](mcp.md): locked setup, tools and the separate integration suite.
+- [Writing pull requests and issues](pr-and-issue-writing.md): plain-English titles and bodies, with examples.
