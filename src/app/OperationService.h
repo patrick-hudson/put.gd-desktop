@@ -222,12 +222,6 @@ private:
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
- // An operation that has finished keeps its slot until its link copy and source cleanup are done, while History
- // already shows its outcome. A Retry asked for in that gap waits here and runs once the slot is free (#1578).
- QSet<QString> settling_;
- QHash<QString,std::function<void()>> retryAfterRelease_;
- void released(const QString& id);
- bool deferRetry(const QString& id,std::function<void()> retry,const JsonReply& reply);
  void enqueue(Job);
  void pump();
  bool heapReclamationIdle() const;
@@ -248,6 +242,12 @@ private:
  QHash<QString,Error> previewFailures_;
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
+ // An operation that has finished keeps its slot until its link copy and source cleanup are done, while History
+ // already shows its outcome. A Retry asked for in that gap waits here and runs once the slot is free (#1578).
+ QSet<QString> settling_;
+ QHash<QString,std::function<void()>> retryAfterRelease_;
+ void released(const QString& id);
+ bool deferRetry(const QString& id,std::function<void()> retry,const JsonReply& reply);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  // Which guard refused a copy, for the putgd.clipboard log record (#473): the
  // clipboard revision moved, the epoch/invocation moved (`epochGuard` names
