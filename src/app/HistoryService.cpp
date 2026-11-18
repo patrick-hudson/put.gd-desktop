@@ -12,16 +12,6 @@
 #include <QPointer>
 #include <QUuid>
 namespace putgd {
-namespace {
-// Every link History hands out goes through the provider's currentLink (#1582).
-void currentLink(const ProviderRegistry& providers,QJsonObject& data) {
- auto receipt=data["receipt"].toObject();const auto recorded=receipt["directUrl"].toString();if(recorded.isEmpty())return;
- const auto value=StorageReceipt::fromJson(receipt);const auto provider=providers.find(value.destination.providerId);if(!provider)return;
- const auto link=provider->currentLink(value);if(link==recorded)return;
- receipt["directUrl"]=link;data["receipt"]=receipt;
- if(link.isEmpty()){data["linkAvailable"]=false;data["linkRefreshable"]=false;}
-}
-}
 HistoryService::HistoryService(OperationService& operations,QObject* parent):QObject(parent),operations_(operations) {
  connect(&operations_,&OperationService::sharingStopped,this,&HistoryService::recordStoppedSharing);
  notification_.setSingleShot(true);notification_.setInterval(25);connect(&notification_,&QTimer::timeout,this,&HistoryService::changed);
@@ -36,11 +26,9 @@ void HistoryService::expireConfigured() {
  const int days=operations_.settingsSnapshot().historyRetentionDays;if(days<=0||!operations_.ready())return;
  const auto before=QDateTime::currentDateTimeUtc().addDays(-days).toString(Qt::ISODateWithMs),path=operations_.databasePath();operations_.background([before,path](Error& e) {HistoryStore store(path);e=store.expireBefore(before);return QJsonObject{};},[this](Error e,QJsonObject) {if(!e)notifyChanged();});
 }
-void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([this,path,query](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;
- for(int index=0;index<page.records.size();++index){auto record=page.records[index].toObject();currentLink(operations_.providers(),record);page.records[index]=record;}
- return page.toJson();},std::move(reply));}
+void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,query](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;return page.toJson();},std::move(reply));}
 void HistoryService::counts(const HistoryQuery& query,const QList<std::pair<QString,QString>>& days,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,query,days](Error& e) {HistoryStore store(path);return store.counts(query,days,&e);},std::move(reply));}
-void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([this,path,id](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e)currentLink(operations_.providers(),data);if(!e){auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
+void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([this,path,id](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
   // No receipt yet (a failed upload, or one whose outcome is unknown): the operation's destination says what its provider can do.
   else{Error ignored;const auto operation=store.operation(data["operationId"].toString(),&ignored);if(!ignored)if(auto planned=operations_.providers().find(operation.destination.providerId))data["capabilities"]=planned->capabilities(operation.destination).toJson();}}return data;},reply);}
 void HistoryService::preview(const QString& id,JsonReply reply,bool retry) {operations_.makePreview(id,std::move(reply),retry);}
@@ -62,7 +50,6 @@ QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
     data=store.detail(id,&e);
    }
   }
-  if(!e)currentLink(operations_.providers(),data);
   return data;
 
 }

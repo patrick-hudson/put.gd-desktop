@@ -44,23 +44,6 @@ private slots:
    replied=false;ops.copyResult(op.id,[&](Error,QJsonObject){replied=true;});PUTGD_TRY_VERIFY(replied);QCOMPARE(source.copies,0);
   }
  }
- // Every link History hands out is the provider's current one, and none when it has none (#1582).
- void historyLinksComeFromTheProvider() {
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
-  Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);PUTGD_TRY_VERIFY(ops.ready());
-  QString operation;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);operation=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);
-  HistoryStore store(ops.databasePath());const auto item=store.operation(operation).items[0];const auto recorded=item.receipt.directUrl;QVERIFY(!recorded.isEmpty());
-  const QString corrected("https://example.invalid/corrected");provider->link=[&](const StorageReceipt& r){return r.directUrl==recorded?corrected:r.directUrl;};
-  QJsonObject detail;history.detail(item.artifact.id,[&](Error e,QJsonObject r){QVERIFY(!e);detail=r;});PUTGD_TRY_VERIFY(!detail.isEmpty());
-  QCOMPARE(detail["receipt"].toObject()["directUrl"].toString(),corrected);QVERIFY(detail["linkAvailable"].toBool());
-  QJsonObject page;history.list({},[&](Error e,QJsonObject r){QVERIFY(!e);page=r;});PUTGD_TRY_VERIFY(!page.isEmpty());
-  QCOMPARE(page["records"].toArray()[0].toObject()["receipt"].toObject()["directUrl"].toString(),corrected);
-  bool replied=false;history.copyLink(item.artifact.id,[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);QCOMPARE(source.copied.text,corrected);
-  QCOMPARE(store.detail(item.artifact.id)["receipt"].toObject()["directUrl"].toString(),recorded);
-  provider->link=[](const StorageReceipt&){return QString{};};const auto copies=source.copies;
-  detail={};history.detail(item.artifact.id,[&](Error e,QJsonObject r){QVERIFY(!e);detail=r;});PUTGD_TRY_VERIFY(!detail.isEmpty());QVERIFY(!detail["linkAvailable"].toBool());
-  replied=false;QString code;history.copyLink(item.artifact.id,[&](Error e,QJsonObject){code=e.code;replied=true;});PUTGD_TRY_VERIFY(replied);QCOMPARE(code,QString("link_unavailable"));QCOMPARE(source.copies,copies);
- }
  void confirmedOverwriteMarksOnlyOriginalObjectHistory() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());doc["naming"]=QJsonObject{{"mode","original"},{"collisionPolicy","overwrite"}};QVERIFY(settings.save(doc,{}));

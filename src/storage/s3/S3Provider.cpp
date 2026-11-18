@@ -186,17 +186,6 @@ QString S3Provider::serializationKey(const Destination& destination, const QJson
     return destination.settings["endpoint"].toString() + "/" + destination.settings["bucket"].toString() + "/" +
            (object["key"].isString() ? s3StoredKey(object["key"].toString()) : objectKey(destination, candidate));
 }
-QString S3Provider::currentLink(const StorageReceipt& receipt) const {
-    // Public links recorded before #1582 kept an empty or leading path segment that
-    // the stored key does not have, so they named no object. A browser drops a "." or
-    // ".." part as libcurl does, so no link reaches a key that has one.
-    const auto key = receipt.objectReference["key"].toString();
-    const auto& settings = receipt.destination.settings;
-    if (!s3KeyAddressable(key)) return {};
-    if (settings.value("linkMode") == "presigned" || s3StoredKey(key) == key ||
-        receipt.directUrl != s3LegacyPublicObjectUrl(settings, key)) return receipt.directUrl;
-    return publicObjectUrl(settings, key);
-}
 Error S3Provider::validateSettings(const QJsonObject& settings) const {
     const QStringList fields{"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase", "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"};
     auto bad = [] { return Error{"s3_settings_invalid", "Invalid S3 settings; use a supported endpoint, addressing, ACL, storage class and positive timeouts", {}}; };
