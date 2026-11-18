@@ -74,25 +74,33 @@ class ConfigurationSchema(unittest.TestCase):
         self.assertTrue(validator.is_valid(legacy))
         for terms in ([], ['Project Aurora'], ['a' * 100], ['x'] * 200, ['one', 'two words', 'path/like-this']):
             self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': terms}), terms)
-        for terms in ([''], ['a' * 101], ['x'] * 201, ['two\nlines'], ['carriage\rreturn'], [3], 'word', None, {'0': 'x'}):
+        for terms in ([''], ['a' * 201], ['x'] * 201, ['two\nlines'], ['carriage\rreturn'], [3], 'word', None, {'0': 'x'}):
             self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': terms}), terms)
         for patterns in ([], [r'\bJIRA-\d+\b'], [r'(?i)\b[a-z0-9-]+\.corp\.example\b'], ['a' * 500], ['x'] * 50):
             self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
-        for patterns in ([''], ['a' * 501], ['x'] * 51, [3], 'pattern', None):
+        for patterns in ([''], ['a' * 1001], ['x'] * 51, [3], 'pattern', None):
             self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': patterns}), patterns)
-        # Counted in code points, not UTF-16 units: 100 and 500 characters outside the BMP fit.
-        self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': ['\U0001F600' * 100]}))
-        self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': ['\U0001F600' * 101]}))
-        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 500]}))
-        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 501]}))
+        # Loose bounds, counted in code points: 200 and 1000 raw characters, also outside the BMP.
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactTerms': ['\U0001F600' * 200]}))
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': ['\U0001F600' * 201]}))
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 1000]}))
+        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': ['\U0001F600' * 1001]}))
         # One line: no line feed, carriage return, U+2028 or U+2029, even at the end of an entry.
         for breaker in ('\n', '\r', '\u2028', '\u2029'):
             for entry in (f'a{breaker}b', f'a{breaker}', f'{breaker}a'):
                 self.assertFalse(validator.is_valid(legacy | {'quickRedactTerms': [entry]}), repr(entry))
                 self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': [entry]}), repr(entry))
-        # A pattern cannot start with a (* verb, which could set its own matching limits.
-        self.assertFalse(validator.is_valid(legacy | {'quickRedactPatterns': ['(*LIMIT_MATCH=1000000000)a+']}))
-        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['a(*)b', '\\(*']}))
+        # The schemas keep only loose bounds (raw line breaks, 200 and 1000 characters); the editor applies the
+        # full rules, which tests/fixtures/text/redact-validation.json states for both sides.
+        table = json.loads((Path(__file__).resolve().parents[1] / 'fixtures/text/redact-validation.json').read_text())
+        for kind, key in (('terms', 'quickRedactTerms'), ('patterns', 'quickRedactPatterns')):
+            for row in table[kind]:
+                accepted = validator.is_valid(legacy | {key: [row['value']]})
+                if row['rule'] == 'lineBreak':
+                    self.assertFalse(accepted, (kind, repr(row['value'][:40])))
+                elif row['rule'] == 'ok':
+                    self.assertTrue(accepted, (kind, row['value'][:40]))
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['(*LIMIT_MATCH=1000000000)a+']}))  # the editor refuses it, not the schema
 
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
