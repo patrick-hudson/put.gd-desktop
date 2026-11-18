@@ -159,7 +159,7 @@ def bound(fake, *names):
     return fake
 
 
-ACCOUNTING = ('allowed_copies', 'row_allowance', 'refused', 'copies_explained_without_refused', 'credit_retry')
+ACCOUNTING = ('allowed_copies', 'row_allowance', 'refused', 'copies_explained_without_refused', 'credit_retry', 'lost_to_refusal')
 
 
 class PerRowRecovery(unittest.TestCase):
@@ -217,6 +217,68 @@ class PerRowRecovery(unittest.TestCase):
         self.assertEqual(caught.exception.kind, 'duplicate-upload')
         self.assertIn(' d', ' ' + caught.exception.detail.split('stored content ')[1][:2])
 
+
+    def test_review_s2_a_retried_row_still_failed_with_its_content_stored_is_a_lost_upload(self):
+        """One row failed (never unknown, no receipt), retried once: the receiver now holds its content but History still says failed."""
+        rows = [{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'failed', 'sha256': 'd', 'receipt': {}}]
+        fake = self.recovery(rows, {'d': ['f1']}, retries={'op1': 1}, seen={'row1': {'failed'}})
+        fake.operations_to_retry = lambda: [{'id': 'op1'}]
+        fake.call = lambda method, params=None, timeout=60: {'ok': True, 'result': {'operationId': 'op1', 'retryAccepted': True}}
+        fake.drain = lambda seconds: True
+        with self.assertRaises(action_fuzz.Finding) as caught:
+            action_fuzz.Fuzzer.retry_interrupted(fake, {'d': 'failed'}, {'d': 0})
+        self.assertEqual(caught.exception.kind, 'lost-upload')
+
+    def test_review_s5_a_status_read_by_the_history_action_stops_later_credit(self):
+        """op1 has an unknown row (content d) and a failed one (e). A retry resolves the unknown row; the randomized History action is
+        what lists it as uploaded; a later retry of the failed sibling sends nothing for d, so a third copy of d is a duplicate."""
+        import random
+        import socket
+        import threading
+        rows = {'row1': {'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'unknown', 'sha256': 'd', 'receipt': {}},
+                'row2': {'id': 'row2', 'operationId': 'op1', 'uploadStatus': 'failed', 'sha256': 'e', 'receipt': {}}}
+        with tempfile.TemporaryDirectory(dir='/tmp') as folder:
+            path = os.path.join(folder, 's')
+            server = socket.socket(socket.AF_UNIX)
+            server.bind(path)
+            server.listen(8)
+
+            def serve():
+                while True:
+                    try:
+                        connection, _ = server.accept()
+                    except OSError:
+                        return
+                    request = json.loads(connection.makefile().readline())
+                    result = {'operationId': 'op1', 'retryAccepted': True} if request['method'] == 'operation.retry' else \
+                        {'records': [dict(row) for row in rows.values()], 'total': len(rows)}
+                    connection.sendall(json.dumps({'schemaVersion': 1, 'requestId': request['requestId'], 'ok': True, 'result': result}).encode() + b'\n')
+                    connection.close()
+            thread = threading.Thread(target=serve, daemon=True)
+            thread.start()
+            resident = action_fuzz.Resident.__new__(action_fuzz.Resident)
+            resident.socket_path, resident.lock, resident.sequence, resident.retries = path, threading.Lock(), 0, {}
+            fake = fuzzer(resident=resident, seen={}, seen_digest={}, digest_rows={}, digest_operations={}, row_operations={}, row_status={},
+                          row_retry_credit={}, history_ids=[], rng=random.Random(0))
+            bound(fake, *ACCOUNTING, 'note_rows')
+            resident.on_retry = fake.credit_retry
+            resident.on_rows = getattr(fake, 'note_rows', None)
+            fake.call = lambda method, params=None, timeout=60: resident.call(method, params, timeout=timeout, raw=True)
+            # The rows as the harness first lists them (rows() in a real run; the same reply path here).
+            if not hasattr(fake, 'note_rows'):  # a harness without the shared hook updated its caches in rows() only
+                action_fuzz.Fuzzer.rows(bound(fake, 'rows'))
+            else:
+                fake.call('history.list', {'limit': 200, 'offset': 0})
+            fake.call('operation.retry', {'id': 'op1'})  # resolves row1 and leaves row2 failed
+            rows['row1']['uploadStatus'] = 'uploaded'
+            fake.rng.choice = lambda values: 'history.list' if 'history.counts' in values else values[0]  # the History action lists rows
+            fake.rng.random = lambda: 1.0
+            action_fuzz.Fuzzer.a_history(fake)
+            self.assertEqual(fake.row_status.get('row1'), 'uploaded')
+            fake.call('operation.retry', {'id': 'op1'})  # for the failed sibling
+            server.close()
+        self.assertEqual(fake.row_retry_credit, {'row1': 1, 'row2': 2})
+        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 2)  # first send and the first retry; the third copy is a duplicate
 
 class ReceiverSnapshot(unittest.TestCase):
     def keep(self, state):
