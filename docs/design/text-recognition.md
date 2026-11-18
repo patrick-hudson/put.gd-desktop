@@ -16,7 +16,7 @@ never link or load Tesseract, Leptonica or ZXing-cpp.
 | Where | What | Starts from |
 | --- | --- | --- |
 | The Copy text action | Select a region, copy its text and QR code contents to the clipboard, and say how much in a notification | The command band, the tray, a hotkey, `action.invoke {"action":"text"}` |
-| The editor's Copy text tool | Select recognized words on the canvas and copy them. List the codes found. Quick redact adds Redact marks over text of five kinds | The tool (G) at the end of the toolbar, `editor.recognize` |
+| The editor's Copy text tool | Select recognized words on the canvas and copy them. List the codes found. Quick redact adds Redact marks over text of five kinds, the account's own name and the user's saved list | The tool (G) at the end of the toolbar, `editor.recognize` |
 | History's Copy text | The same as the action, read from an image's retained local copy | An image item's inspector and menu, `history.copyText` |
 | History's Show QR code | A QR code of the item's link, with Copy image and Save | A link item's inspector and menu, `history.qr` |
 | `text.recognize` | Recognition for an agent from a region, a window, a monitor, the desktop, the clipboard, a file or a History item | The session methods, `putgd-cli` and MCP |
@@ -475,8 +475,9 @@ other tool active it does not. The user's side is in the
   Open link is pressed. Open link then opens it at once through the desktop portal, with no
   dialog. A binary code's row shows its kind and length only, with Copy and Open link disabled.
 - **Quick redact** is a menu in the Redact tool's panel (Email addresses, Phone numbers, IP
-  addresses, Card numbers, Keys and tokens, All of these) with "Suggestions only. Recognition can
-  miss text." always beside it.
+  addresses, Card numbers, Keys and tokens, My username and name, My redaction list, All of
+  these, and Remove suggestions) with "Suggestions only. Recognition can miss text." always
+  beside it.
   - Matching runs over the unfiltered candidates, on lines as they appear (words grouped by
     height and ordered left to right), after whitespace and Unicode digits are normalized. Emails,
     phone numbers, card numbers and addresses match across adjacent words and wrapped lines. A
@@ -505,23 +506,119 @@ other tool active it does not. The user's side is in the
     version such as 26.1112.4660 is not suggested. A group of more than ten unbroken digits counts as a
     phone number only with a leading `+`, so the tail of a UUID is not taken for one.
   - Categories: `email`, `phone` (international and national forms, at least 7 digits), `ip`
-    (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid) and `key`. Keys and
-    tokens means these shapes, listed in the tool's help: AWS access key IDs, GitHub, GitLab, Slack
-    and Stripe prefixed tokens, JWTs, PEM private-key blocks, and unbroken hex or base64 runs of 32
-    characters or more.
+    (IPv4 and IPv6), `card` (13 to 19 digits with spaces or dashes, Luhn-valid), `key`, `name` and
+    `list`. Keys and tokens means these shapes, listed in the tool's help: AWS access key IDs,
+    GitHub, GitLab, Slack and Stripe prefixed tokens, JWTs, PEM private-key blocks, and unbroken
+    hex or base64 runs of 32 characters or more. `name` and `list` are described below.
   - A word belongs to one match at most. Where kinds overlap the more specific wins, in the order
-    key, email, card, ip, phone.
+    key, email, card, ip, phone, name, list. A login inside an email address stays part of the
+    email match. Where `name` or `list` would take a word that an earlier match already has,
+    the hit keeps the words the earlier match left, so a name is not left bare because a
+    neighbouring word was taken.
+  - **Names and your own words (#1618).** `name` and `list` match literal text, not shapes, and
+    they work on the same unfiltered candidates, lines and wrapped lines as the other kinds.
+    - **Where the name comes from.** `name` reads the account of the process that runs the editor
+      (`putgd-ui --edit-image`): the login name from `getpwuid_r(getuid())`, and the real name
+      from the text before the first comma of its GECOS field, split on spaces into parts. It
+      does not read `$USER`, which `sudo -E` or a changed environment can make wrong. If the
+      GECOS name is empty it asks AccountsService for `RealName` on the system bus, without
+      starting the service, with 250 ms for each of two calls; any failure leaves the real name
+      empty and the login still matches. Checked on 2026-11-18: GECOS is filled on f44, d69, k72
+      and m74, and empty on aurora-amd, where AccountsService has no name either, so there only
+      the login is matched. The name never crosses a process boundary and is never stored or
+      logged.
+    - **Where the list comes from.** `list` matches the saved words and patterns
+      (`preferences.quickRedactTerms` and `preferences.quickRedactPatterns`, see
+      [configuration](configuration.md)), plus the `terms` and `patterns` of one `redactText`
+      command. The saved ones reach the editor in the bootstrap frame as `redactTerms` and
+      `redactPatterns`, each sent only when it is not empty. An agent's own `terms` and `patterns`
+      stay in that request. Nothing here is written to a log, a journal or a diagnostics bundle.
+    - **How a word or phrase is compared.** Both the entry and the recognized text go through
+      NFKC, accent stripping and case folding, and curly and straight apostrophes count as one.
+      Text is never compared with a regular expression, so a typed `.` or `*` is only a
+      character. An entry splits into parts at spaces, `-`, `_`, `.` and lower-to-upper case
+      changes, so `PatrickHudson` has the parts `patrick` and `hudson`. In the text the parts
+      must come in order, joined by nothing or by at most two characters from space, `-`, `_`
+      and `.`. The space between two recognized words counts as nothing, and a wrapped line joins
+      where the wrap evidence above joins lines (a line that ends or starts with `-`, `_` or `.`,
+      or a wrapped column). So `Patrick Hudson` matches `Patrick Hudson`, `patrick-hudson`,
+      `patrick_hudson`, `PatrickHudson`, `Patrick - Hudson` and the part of `patrick.hudson@x.io`
+      before the `@`.
+    - **Edges.** A term starts and ends at a word edge or beside a character that is not a letter
+      or digit. `patrick` matches `/home/patrick/x`, `patrick@d69:~$`, `Patrick's` and
+      `Patrick,`, but not `patricks` or `pattern`.
+    - **Misreads.** A term with 6 letters or more also reads `I`, `l`, `1` and `|` as one
+      character, `O` and `0` as one, and `rn` as `m`, on both sides. A shorter term must match
+      exactly, since folding it hits ordinary words. There is no edit-distance matching, so a
+      misread beyond these folds is missed.
+    - **A list entry matches only whole.** `Patrick Hudson` in the list does not match `Patrick`
+      alone; the user adds `Patrick` as its own line for that.
+    - **`name` knows which part is which.** It matches the whole real name as an entry would, "last,
+      first" (`Hudson, Patrick`), the first initial and the last name (`phudson`, `p.hudson`,
+      `P. Hudson`, `p-hudson`), each part of 3 characters or more on its own (`Patrick`,
+      `Hudson`), and the login name when it is 3 characters or more. The login and the
+      initial-plus-last forms may end in up to 4 digits, so `phudson2` matches. The longest form
+      is tried first, so a whole name is one match and not one per part.
+    - **Never matched.** A part shorter than 3 characters on its own (`Li`, `Al`), though it
+      still counts inside a whole-name match; a single initial; and anything that needs
+      edit-distance fuzziness. With the name `Patrick Hudson`, `Patricks`, `pattern`, `pat` and
+      `hudsonia` get no mark. `Hudson` in `Hudson Bay` does, since it is the user's surname.
+    - **Patterns.** A pattern is a `QRegularExpression` (PCRE2) with Unicode properties on. Case
+      is as written, and `(?i)` turns it off, which is the usual regex expectation and unlike a
+      word, which always ignores case. A pattern sees one text for each recognized line, its
+      words joined by one space (NFKC-normalized; case and accents are kept), and the next line after `\n` only
+      where the wrap evidence joins them; elsewhere a line is a text of its own. Examples:
+      `\bJIRA-\d+\b` and `(?i)\b[a-z0-9-]+\.corp\.example\b`. A hit marks every word box it
+      touches. A hit that is empty is skipped.
+    - **Limits.** Up to 200 words of 1 to 100 characters, and up to 50 patterns of up to 500
+      characters, with no line break in either. A pattern must compile and must not match empty
+      text; both are checked when the setting is saved and when an agent sends it. A pattern
+      that matches everything (`.+`) is allowed, and the result says how many marks it added.
+    - **Runaway patterns.** `QRegularExpression` cannot set PCRE2's limits from code, and not
+      every shipped Qt links `libpcre2-16` (the AppImage's Qt carries PCRE2 inside QtCore). So the
+      matcher puts `(*LIMIT_MATCH=1000000)(*LIMIT_DEPTH=100000)` in front of each pattern. A
+      pattern that reaches them stops at once and is reported skipped, and the marks it found
+      before that stay. On aurora-amd `(a+)+$` over 5000 `a` and a `b` took 1 to 2 ms with these
+      limits under Qt 6.11 and the AppImage's Qt 6.12, and 12 to 21 ms with PCRE2's default limit.
+      All patterns together have a 2 second budget, checked between matches; a pattern that finds
+      none left is skipped and named. Matching with patterns runs on a worker thread, so the
+      editor never freezes. The editor first finds everything that needs no pattern, so if the
+      worker has not answered 1 second after the budget the editor gives up on it, adds those
+      marks, and reports every pattern skipped. The result is "Pattern 3 took too long and was
+      skipped." (the first pattern is number 1), and never says the page was fully checked.
+    - **Geometry.** A hit marks the whole word box it touches, as every kind does.
+      `/home/patrick/project` is covered entirely, not only `patrick`. A sub-box estimated from
+      character counts could leave part of a name visible in a proportional font, so none is made.
+    - **No list saved.** "My redaction list" is disabled in the menu with the tooltip "Add words
+      or patterns in Settings → Capture → Text recognition." when the saved words and patterns are
+      both empty. A `redactText` asking for `list` with nothing to match (no saved list, no
+      `terms`, no `patterns`) returns `counts.list` 0, not an error.
   - A match becomes Redact marks over its word boxes, one box per line, padded by a quarter of the
     line height above and below and by one and a half characters on each side, clamped to the
     image. Recognition boxes can stop a whole glyph short, which the side padding covers. A mark can
     also take in an ordinary word joined to a token, such as a label with digits ("sha256"), the
     words after a prefixed token up to its usual length, or the rest of a PEM BEGIN or END line.
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
-    suggested redactions" or "No matches found. Text can still be there.". There is no "safe"
-    verdict and no upload confirmation.
+    suggested redactions" or "No matches found. Text can still be there.", with a line for each
+    skipped pattern. There is no "safe" verdict and no upload confirmation.
+  - **Each mark remembers why it was added.** A mark Quick redact adds carries its category
+    (`name`, `list`, `email`, and so on), never the recognized text, and the box it was suggested
+    at. Moving or resizing it keeps both. A selected suggested mark shows "Suggested: My username
+    and name" (or the label of its category) in the Redact panel, and `editor.inspect` shows
+    `suggested` on the shape. A mark drawn by hand, or added with `editor.apply add`, has no such
+    field, and `update` keeps it.
+  - **Deleting a suggestion.** Deleting a suggested mark, with the Select tool and Delete or
+    `remove {shapeId}`, records its original box in the document's history. Running Quick
+    redact again on the same edit does not add a mark at that box. Undoing the delete forgets
+    it. It is kept in memory only, for that edit, and `counts` counts only matches that added a mark.
+  - **Remove suggestions** removes every suggested mark that is still there as one undo step, and
+    leaves marks drawn by hand alone. It is off when there are none, and it does not record
+    anything as deleted. It says "Removed 3 suggested redactions". Removing a mark gives its
+    pixels back to the export through the same redaction path as any other mark.
   - Choosing a category with no result for the current revision starts recognition and waits for
     it, or joins the job already running, under that job's deadline. If a Redact mark or the crop
-    changes while it waits, it ends with `edit_stale` and adds nothing.
+    changes while it waits, or while the matcher runs afterwards, it ends with `edit_stale` and
+    adds nothing.
   - A match is a suggestion. Redact is what removes pixels. If the edit was already submitted or
     discarded when it finishes, it adds nothing, says "Quick redact added nothing: the edit was
     already submitted." and returns `editor_finalizing`.
@@ -596,7 +693,7 @@ followed through `inspect`, as for scrolling capture and recording.
 | `editor.selectText` | `id`, `result`, and `from` with `to` (word indexes in reading order), or `all`, or `none` | The selection |
 | `editor.copyText` | `id`, `result`, `all?` (default false, the current selection) | `copyStatus` and the character count |
 | `editor.copyCode`, `editor.openCode` | `id`, `result`, `index` | `copyStatus`, or the launch result. Open is refused for anything but a valid http or https URL |
-| `editor.apply` command `redactText` | `categories` (1 to 5 of email, phone, ip, card, key) | Created shape IDs and counts per category. It must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is done, not at once, within the recognition deadline plus a margin |
+| `editor.apply` command `redactText` | `categories` (1 to 7 of email, phone, ip, card, key, name, list); optional `terms` (1 to 200 words or phrases of 1 to 100 characters on one line) and `patterns` (1 to 50 regular expressions of up to 500 characters), both only with `list` in `categories` | Created shape IDs and counts per category, and `skippedPatterns` (the 0-based indexes in the combined saved and given patterns of any that ran out of the time budget) when there are any. `terms` and `patterns` add to the saved list for this command only. A term or pattern that is empty, too long or has a line break, or a pattern that does not compile or matches empty text, refuses the whole command with `edit_command_invalid` naming the entry's index, never its text. It must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is done, not at once, within the recognition deadline plus a margin |
 | `history.copyText` | `id`, `keepResult?` (default false) | `operationId` and `state`. Follows `text.inspect` |
 | `history.qr` | `id`, `mode` (`copy`, `save` or `show`), `path` (absolute, `save` only), `overwrite?` (`save` only) | Once the receipt refresh and the copy or write are done, under Copy link's deadline: `copyStatus`, the saved `path`, or the window state. `show` needs the History window open |
 
@@ -945,7 +1042,9 @@ desktop), every one of the 24 item pages covered 17 of 17, the hashes page 30 of
 - A code with no quiet zone, such as a dark one that a white page touches, is not read. The same
   code with a black frame is. On the busy multi-code page the original read 3 of 4 codes and the framed
   page 4 of 4. Of 183 contract-safe code fixtures, 182 decoded.
-- Quick redact suggests only. A number made of repeated digits is miscounted by recognition (a
+- Quick redact suggests only. `name` and `list` find only the spellings described above, so a
+  nickname or a misread beyond the folds is missed. A hit covers the whole word box, so more than the name is covered. A pattern that
+  backtracks too long is skipped and named. A number made of repeated digits is miscounted by recognition (a
   16-digit card number of repeated digits at 13 px was counted wrong at every scale tried), and a card
   number read with one digit too many fails the Luhn check, so those can be missed. Held-out pages
   covered 303 of 304 items.

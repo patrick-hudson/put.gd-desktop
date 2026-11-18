@@ -30,7 +30,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - [Screen recording](recording.md): the recording contract, helper, review, export and packages.
 - [Scrolling capture](scroll-capture.md): a region scrolled with injected wheel events and stitched into one tall image: the helper session, frames and injectors per desktop, the control loop, proof rules, limits and end reasons.
 - [Image editor](image-editor.md): the Capture region & edit workflow, privacy boundaries and agent control.
-- [Text recognition and QR codes](text-recognition.md): Copy text from a capture, the editor's text tools and Quick redact, History's Copy text and Show QR code, the confined `putgd-ocr` helper, untrusted content, languages, the clipboard rules and the agent contract.
+- [Text recognition and QR codes](text-recognition.md): Copy text from a capture, the editor's text tools and Quick redact (its five kinds, the account's name and the user's saved list), History's Copy text and Show QR code, the confined `putgd-ocr` helper, untrusted content, languages, the clipboard rules and the agent contract.
 - [Capture monitor, delay and repeat](capture-delay.md): the monitor under the pointer, the capture countdown and Repeat last region.
 - [File dialogs](file-dialogs.md): open, save and folder dialogs through `putgd::FileDialog`.
 - [File manager upload](file-manager-upload.md): **Upload with put.gd** from a file manager.

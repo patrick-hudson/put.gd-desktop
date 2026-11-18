@@ -357,7 +357,8 @@ Flameshot informed the interaction design; no code was copied from them.
 
 The Copy text tool (G) reads the text and QR codes in the image and lets the user select and
 copy them. Quick redact, a menu in the Redact tool's panel, adds Redact marks over text of five
-kinds. Both are specified in [text recognition](text-recognition.md#the-editor). This section is
+kinds, over the account's own username and name, and over the user's saved list of words and
+patterns. Both are specified in [text recognition](text-recognition.md#the-editor). This section is
 what the editor itself guarantees.
 
 - Choosing the tool starts recognition for the current revision. Nothing is recognized before
@@ -383,8 +384,32 @@ what the editor itself guarantees.
 - **Quick redact** adds ordinary Redact marks as one undo step and says "Added 3 suggested
   redactions" or "No matches found. Text can still be there.". It always carries "Suggestions only.
   Recognition can miss text.". It never says a page is safe. **Redact is what removes pixels.** If a
-  Redact mark or the crop changes while Quick redact waits for recognition, it ends with
-  `edit_stale` and adds nothing.
+  Redact mark or the crop changes while Quick redact waits for recognition or while it matches, it
+  ends with `edit_stale` and adds nothing. Its menu is Email addresses, Phone numbers, IP
+  addresses, Card numbers, Keys and tokens, **My username and name**, **My redaction list**, All
+  of these and **Remove suggestions**.
+  - **My username and name** matches the login name and the real name of the account that runs
+    the editor, read in the editor process and never sent anywhere. **My redaction list** matches
+    the words and patterns saved in Settings → Capture → Text recognition, which reach the editor
+    when it opens. It is disabled, with a tooltip that says where to add words, while nothing is
+    saved. Both are in All of these. Neither list nor name is logged, journaled or written to a
+    diagnostics package.
+  - A hit covers the **whole word box** it touches, as every kind does, so
+    `/home/patrick/project` is covered entirely. Matching with patterns runs on a worker thread,
+    so a slow pattern never freezes the editor. A pattern that runs out of its time budget is
+    skipped and named ("Pattern 3 took too long and was skipped."), and the marks found so far
+    stay.
+  - **Each mark remembers why it was added**, by category and never by its text. A selected
+    suggested mark says "Suggested: My username and name" (or the label of its category) in the
+    Redact panel, and `editor.inspect` shows `suggested: "<category>"` on the shape. Moving or
+    resizing it keeps that.
+  - **Deleting one suggestion** works like deleting any mark (Select tool, Delete, or
+    `remove {shapeId}`). Running Quick redact again on that edit does not add it back, and undoing
+    the delete brings the mark back. The editor remembers deleted suggestions only in memory, for
+    that edit, by their word box.
+  - **Remove suggestions** removes every suggested mark still there as one undo step and says
+    "Removed 3 suggested redactions". Marks drawn by hand are never touched, and the removed
+    marks are not remembered as deleted. It is off when there is no suggested mark.
 - Recognition runs in `putgd-ocr`, started by `putgd-ui --edit-image` as its own child. The
   editor process does not link Tesseract, Leptonica or ZXing-cpp.
 
@@ -411,10 +436,19 @@ Every editor capability is available through session methods, the production
 
 Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 `crop {rect}`, `resetCrop`, `undo`, `redo`, `redactText {categories}`. Rectangles are `[x, y, width, height]`.
-`redactText` is Quick redact: `categories` is 1 to 5 of `email`, `phone`, `ip`, `card` and `key`. It
-must be the only command in its batch, or the batch is refused with `edit_command_invalid` before any
-recognition. It answers when it is done, not at once, and returns the created shape IDs and counts per
-category. A `result` that is no longer current is refused with `edit_stale` by every method that takes
+`redactText` is Quick redact: `categories` is 1 to 7 of `email`, `phone`, `ip`, `card`, `key`, `name`
+and `list`. `name` is the account's username and real name. `list` is the saved list from Settings
+plus the optional `terms` (up to 200 words or phrases of up to 100 characters) and `patterns` (up to 50
+regular expressions of up to 500 characters) of this command, which are for this command only and
+need `list` in `categories`. A term or pattern that is empty, too long or has a line break, or a
+pattern that does not compile or matches empty text, fails the whole command with
+`edit_command_invalid` and the entry's index, never its text. It must be the only command in its batch,
+or the batch is refused with `edit_command_invalid` before any recognition. It answers when it is
+done, not at once, and returns the created shape IDs and counts per category, and `skippedPatterns`
+(0-based indexes) when a pattern ran out of time. A `list` request with nothing to match returns
+`counts.list` 0, not an error. Marks it adds report `suggested` in the shape's state; `add` cannot set
+it and `update` keeps it.
+A `result` that is no longer current is refused with `edit_stale` by every method that takes
 one, before anything is copied.
 `editor.view` also takes `blurStyle {style: blur|pixelate}` (the Blur tool's
 Style buttons; it restyles a selected blur) and `stepNumber {number}` (Next
