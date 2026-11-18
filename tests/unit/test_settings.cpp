@@ -159,6 +159,23 @@ private slots:
         const auto saved = QJsonDocument::fromJson(read(path)).object();
         QCOMPARE(saved["limits"].toObject()["maxFileBytes"], QJsonValue("auto"));
     }
+    // #1618: settings.patch, the CLI and agents write Quick redact's lists as given; the file
+    // always holds them trimmed and without repeats, the way the Settings window writes them.
+    void quickRedactListsAreStoredTrimmedAndOnceWhoeverSendsThem() {
+        QTemporaryDir dir;
+        const auto path = dir.filePath("config.json");
+        putgd::SettingsService service(path);
+        QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
+        const auto patched = service.patch({{"preferences", QJsonObject{{"quickRedactTerms", QJsonArray{"  Project Aurora ", "project aurora", "d69", "d69 ", "acme"}},
+                                                                        {"quickRedactPatterns", QJsonArray{"\\bJIRA-\\d+\\b", "\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}}}}},
+                                          service.metadata()["observedRevision"].toString());
+        QVERIFY2(!patched.error, qPrintable(patched.error.message));
+        const auto saved = QJsonDocument::fromJson(read(path)).object()["preferences"].toObject();
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"Project Aurora", "d69", "acme"}));
+        // A pattern's spaces are part of it, so only exact repeats go.
+        QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}));
+        QCOMPARE(service.snapshot().quickRedactTerms, (QStringList{"Project Aurora", "d69", "acme"}));
+    }
     void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
         auto document = putgd::Settings::defaults();
         QCOMPARE(document["naming"].toObject()["mode"].toString(), QString("original"));

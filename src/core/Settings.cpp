@@ -89,6 +89,32 @@ QList<int> Settings::captureDelayChoices() { return {0, 3, 5, 10}; }
 bool Settings::delayableAction(const QString& action) { return QStringList{"region", "window", "monitor", "desktop", "repeat", "edit", "text"}.contains(action); }
 bool Settings::delayableEditSource(const QString& source) { return QStringList{"region", "window", "desktop"}.contains(source); }
 
+QJsonObject Settings::withCleanRedactLists(const QJsonObject& original) {
+    if (!original.value("preferences").isObject()) return original;
+    auto preferences = original.value("preferences").toObject();
+    bool changed = false;
+    const auto clean = [&](const char* key, bool words) {
+        if (!preferences.value(key).isArray()) return;
+        QJsonArray out;
+        QStringList seen;
+        for (const auto& entry : preferences.value(key).toArray()) {
+            if (!entry.isString()) { out.append(entry); continue; }
+            const auto text = words ? entry.toString().trimmed() : entry.toString();
+            const auto folded = words ? text.toCaseFolded() : text;
+            if (seen.contains(folded)) continue;
+            seen << folded;
+            out.append(text);
+        }
+        if (out != preferences.value(key).toArray()) { preferences[key] = out; changed = true; }
+    };
+    clean("quickRedactTerms", true);
+    clean("quickRedactPatterns", false);
+    if (!changed) return original;
+    auto result = original;
+    result["preferences"] = preferences;
+    return result;
+}
+
 QJsonObject Settings::normalized(const QJsonObject& original) {
     auto doc = original;
     // Before "auto" existed every configuration saved the 2 GiB default

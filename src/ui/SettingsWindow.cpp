@@ -78,6 +78,7 @@
 #include <QFontMetricsF>
 #include <QtMath>
 #include <QTextLayout>
+#include <QTextBlock>
 #include <QTextDocument>
 #include <QTextCursor>
 #include <QAbstractTextDocumentLayout>
@@ -1534,7 +1535,8 @@ QJsonObject SettingsWindow::candidate() const {
  {QJsonArray languages;for(auto* combo:textLanguages_){const auto id=combo->currentData().toString();if(id.isEmpty()){if(combo==textLanguages_.first())break;continue;}if(!languages.contains(id))languages.append(id);}
   if(languages.isEmpty())preferences.remove("textRecognitionLanguages");else preferences["textRecognitionLanguages"]=languages;}
  // #1618: one entry per line; blank lines are dropped, words are trimmed, and each entry is kept once. An empty box keeps no key.
- {const auto entries=[](QPlainTextEdit* edit,bool words){QJsonArray out;QStringList seen;for(auto line:edit->toPlainText().split('\n')){if(line.endsWith('\r'))line.chop(1);if(words)line=line.trimmed();if(line.trimmed().isEmpty())continue;const auto key=words?line.toCaseFolded():line;if(seen.contains(key))continue;seen<<key;out.append(line);}return out;};
+ {// Each line's own text: toPlainText() would turn a no-break space into an ordinary one, changing what a word matches.
+  const auto entries=[](QPlainTextEdit* edit,bool words){QJsonArray out;QStringList seen;for(auto block=edit->document()->begin();block.isValid();block=block.next()){auto line=block.text();if(line.endsWith('\r'))line.chop(1);if(words)line=line.trimmed();if(line.trimmed().isEmpty())continue;const auto key=words?line.toCaseFolded():line;if(seen.contains(key))continue;seen<<key;out.append(line);}return out;};
   const auto terms=entries(quickRedactTerms_,true),patterns=entries(quickRedactPatterns_,false);
   if(terms.isEmpty())preferences.remove("quickRedactTerms");else preferences["quickRedactTerms"]=terms;
   if(patterns.isEmpty())preferences.remove("quickRedactPatterns");else preferences["quickRedactPatterns"]=patterns;}
