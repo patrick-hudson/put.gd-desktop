@@ -268,6 +268,10 @@ private slots:
         auto retry=f.request("p.txt");retry.destination=uploaded.receipt.destination;retry.objectReference={{"schemaVersion",1},{"key",key}};
         const auto retried=f.upload(retry);
         QCOMPARE(retried.status,QString("failed"));QCOMPARE(retried.error.code,QString("s3_key_invalid"));
+        // A retry under the dot folder itself names the setting to fix, not the key.
+        retry.destination=f.destination;
+        const auto underFolder=f.upload(retry);
+        QCOMPARE(underFolder.status,QString("failed"));QCOMPARE(underFolder.error.code,QString("s3_settings_invalid"));
         QCOMPARE(f.events().size(),0);
     }
 };

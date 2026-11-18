@@ -1006,6 +1006,11 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         reply({"failed", {}, cancelled()});
         return;
     }
+    // A retry with a saved key skips checkName; the saved folder is still the setting to fix.
+    if (!s3KeyAddressable(request.destination.settings["objectPrefix"].toString())) {
+        reply({"failed", {}, prefixError()});
+        return;
+    }
     const auto recorded = request.objectReference["key"].toString();
     if (!s3KeyAddressable(recorded)) {
         reply({"failed", {}, unaddressableKey()});
