@@ -1893,7 +1893,8 @@ class Fuzzer:
     def duplicate_allowed(self, digest):
         """A second copy is explained by an unknown outcome the user retried (the custom uploader cannot look a file up)."""
         return (digest in self.expected_duplicates or digest in self.retried_digests() or 'unknown' in self.seen_digest.get(digest, ())
-                or bool(self.digest_names.get(digest, set()) & self.duplicate_names))
+                or bool(self.digest_names.get(digest, set()) & self.duplicate_names)
+                or len(self.digest_names.get(digest, ())) > 1)  # two files of different names with the same bytes (the weird-names step) are two uploads
 
     def retried_digests(self):
         return {d for d, operations in self.digest_operations.items() if operations & self.retried}
