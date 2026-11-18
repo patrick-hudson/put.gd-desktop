@@ -201,10 +201,11 @@ class Handler(BaseHTTPRequestHandler):
                 with lock:
                     barrier = barriers.setdefault(rule['barrier'], threading.Event())
                 barrier.wait(60)
+            # A "file" rule may cut its reply short (the file's own, or a "status" reply
+            # with its "body"), as an upload rule does.
+            self.cut = rule.get('cut')
             if rule.get('status'):
                 return self.reply(rule['status'], rule.get('body', ''))
-            # A "file" rule may cut the file's own reply short, as an upload rule does.
-            self.cut = rule.get('cut')
             with lock:
                 entry = state['files'].get(parts[1])
             if not entry or entry.get('deleted'):
@@ -259,6 +260,9 @@ class Handler(BaseHTTPRequestHandler):
             if early:
                 return early()
             return self.upload(self.body())
+        # Read the body first: left on a kept-alive connection, it would be parsed as the
+        # start of the next request (which then fails as an unsupported method, 501).
+        self.body()
         self.reply(404, {'error': 'unknown path'})
 
     do_PUT = do_POST

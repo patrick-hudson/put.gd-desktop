@@ -410,7 +410,8 @@ private slots:
     }
     // Review of #1603. A deletion URL answers with a confirmation page, and its form posts
     // to a route that answers 404, while the file still serves. The 404 is not proof:
-    // only the check of the file's link is, and it shows nothing deleted.
+    // only the check of the file's link is, and it serves the whole file still, so the
+    // deletion did not work.
     void aConfirmationAnsweredNotFoundIsNotProof() {
         HttpFixture f;
         f.reset();
@@ -418,11 +419,41 @@ private slots:
         QCOMPARE(uploaded.status, QString("uploaded"));
         f.rules({{{"call", "delete"}, {"status", 200}, {"body", "<form method=\"post\" action=\"?confirm=1\"><input type=\"hidden\" name=\"go\" value=\"1\"></form>"}}});
         const auto result = f.remove(uploaded.receipt);
-        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QCOMPARE(result.error.details["checkStatus"].toInt(), 200);
         QCOMPARE(result.error.details["confirmed"].toBool(), true);
         QCOMPARE(result.error.details["httpStatus"].toInt(), 404);
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. Only two whole replies of the link are compared. A file larger than
+    // the 4 MiB reply cap matches only as far as the cap ("large-prefix"), and two replies
+    // cut off differ only as far as they came ("cut-differing"): neither shows the file is
+    // still there or gone, so the deletion is unknown with its intent kept.
+    void aDeletionWithoutTwoWholeRepliesIsUnknown_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::newRow("large-prefix") << QString("large-prefix");
+        QTest::newRow("cut-differing") << QString("cut-differing");
+    }
+    void aDeletionWithoutTwoWholeRepliesIsUnknown() {
+        QFETCH(QString, shape);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const bool large = shape == "large-prefix";
+        const auto artifact = large ? f.artifact("large.bin", QByteArray(4 * 1024 * 1024 + 64 * 1024, 'x'), "application/octet-stream", "other") : f.image();
+        const auto uploaded = f.upload(artifact, destination);
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        if (!large) f.rules({{{"call", "file"}, {"cut", "length"}}, {{"call", "file"}, {"status", 200}, {"body", "another file entirely"}, {"cut", "length"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.error.details["checkIncomplete"].toBool(), true);
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
     }
     // Review of #1603. A check of the link whose reply was cut off before any of it came
@@ -753,7 +784,7 @@ private slots:
         f.rules({cut, whole});
         const auto result = f.remove(uploaded.receipt);
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
-        QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
         QCOMPARE(f.stored(), 1);
     }
     // Two imports in flight must not share a destination's stored values: the second is

@@ -937,11 +937,12 @@ private:
         // back to the site, a 404 from a confirmation route), the outcome comes only from
         // a check of the file's link afterwards; the look before never stands in for it.
         // A link that is gone shows the file went (it already was when the look before
-        // found it gone, on a first attempt); one that now serves other bytes than it
-        // served before shows it was replaced. Anything else shows nothing either way:
-        // the same bytes (a server may serve a cached copy for a while), an empty or
-        // cut-off reply, an error or no reply. That is unknown, with the intent kept, and
-        // Retry asks again.
+        // found it gone, on a first attempt). With two whole replies, other bytes than it
+        // served before show it was replaced, and the same bytes show it is still there
+        // (failed). Anything else shows nothing either way: a reply cut off or larger than
+        // the reply cap, an empty reply, an error or no reply. That is unknown, with the
+        // intent kept, and Retry asks again. A redirect to another host is not followed
+        // and is unknown too (above).
         if (confirmed || (r.status >= 200 && r.status < 400) || r.status == 404 || r.status == 410) {
             const auto after = client_.get(link, allowInsecure());
             const auto gone = [](int status) { return status == 404 || status == 410; };
@@ -949,25 +950,27 @@ private:
             details["checkStatus"] = after.status;
             details["checkBeforeStatus"] = before.status;
             const bool compared = after.status >= 200 && after.status < 300 && before.status >= 200 && before.status < 300 && !before.body.isEmpty() && !after.body.isEmpty();
-            if (compared) {
-                // A reply that was cut short is held against the other as far as it came.
-                const bool partial = before.cut || after.cut;
-                const auto common = qMin(before.body.size(), after.body.size());
-                const bool same = partial ? before.body.left(common) == after.body.left(common) : after.body == before.body;
-                if (!same) return finish("removed");
+            // Only two whole replies count: one cut off, or stopped at the reply cap, shows
+            // neither that the file is still there (a matching start) nor that it went (a
+            // differing one). For a file larger than the cap, only a link that is gone
+            // proves the deletion.
+            const auto whole = [](const auto& reply) { return !reply.cut && reply.received == reply.body.size(); };
+            if (compared && whole(before) && whole(after)) {
+                if (after.body != before.body) return finish("removed");
                 // The whole file, byte for byte, is still there: the deletion did not work.
-                // A reply cut short shows only as far as it came, which is not proof.
-                uncertain = partial;
-                error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
-                         "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; Retry checks again, or delete it on the server.").arg(r.status)
-                         .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
-                return {{"status", partial ? "unknown" : "failed"}, {"progress", progress}};
+                error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is deleted. "
+                         "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; Retry checks again, or delete it on the server.").arg(r.status), details};
+                return {{"status", "failed"}, {"progress", progress}};
             }
+            if (compared) details["checkIncomplete"] = true;
             uncertain = true;
             if (after.status == 0) details["checkTransport"] = after.detail;
             error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was inconclusive (%2). "
                      "It may or may not be deleted; Retry asks again.").arg(r.status)
-                     .arg(after.status == 0 ? after.detail : after.body.isEmpty() || before.body.isEmpty() ? QString("HTTP %1 with nothing to compare").arg(after.status) : QString("HTTP %1").arg(after.status)), details};
+                     .arg(after.status == 0 ? after.detail
+                          : after.body.isEmpty() || before.body.isEmpty() ? QString("HTTP %1 with nothing to compare").arg(after.status)
+                          : compared ? QString("HTTP %1, but a reply was cut off or larger than %2 MB, so the whole file was not compared").arg(after.status).arg(maximumReplyBytes / (1024 * 1024))
+                          : QString("HTTP %1").arg(after.status)), details};
             return {{"status", "unknown"}, {"progress", progress}};
         }
         if (r.status == 0) {
