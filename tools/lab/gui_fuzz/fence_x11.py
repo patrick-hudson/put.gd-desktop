@@ -9,11 +9,11 @@ import time
 
 from Xlib import X, display, error
 
+from gui_fuzz.snapshot import chrome_regions, pseudo
+
 OVERLAY_CLASSES = ('putgd-region',)
 POPUP_TYPES = ('MENU', 'POPUP_MENU', 'DROPDOWN_MENU', 'COMBO', 'TOOLTIP', 'NOTIFICATION')
 STATIC_TTL = 1.5
-
-
 class X11Fence:
     def __init__(self):
         self.snapshot = {'windows': [], 'outputs': [], 'cursor': [0, 0]}
@@ -35,7 +35,7 @@ class X11Fence:
         self.d = display.Display()
         self.root = self.d.screen().root
         names = ['_NET_CLIENT_LIST_STACKING', '_NET_ACTIVE_WINDOW', '_NET_WM_PID', '_NET_WM_NAME', '_NET_WM_WINDOW_TYPE', '_NET_WM_STATE',
-                 '_NET_WM_STATE_HIDDEN', '_NET_WM_STATE_FULLSCREEN', '_NET_FRAME_EXTENTS', 'WM_TRANSIENT_FOR', 'UTF8_STRING', '_NET_WM_STATE_ABOVE']
+                 '_NET_WM_STATE_HIDDEN', '_NET_WM_STATE_FULLSCREEN', '_NET_FRAME_EXTENTS', 'WM_TRANSIENT_FOR', 'UTF8_STRING', '_NET_WM_STATE_ABOVE', '_NET_WORKAREA']
         self.atom = {n: self.d.intern_atom(n) for n in names}
         self.type_names = {}
 
@@ -161,11 +161,35 @@ class X11Fence:
             if 'override-redirect' in w['states'] and any(fw >= 0.9 * m['geom'][2] and fh >= 0.9 * m['geom'][3] and abs(fx - m['geom'][0]) <= 8 and abs(fy - m['geom'][1]) <= 8
                                                          for m in monitors):
                 w['kind'], w['popup'] = 'X11Overlay', False
+        # An override-redirect overlay has input only when the X input focus is inside it; the window manager's active window is then not the target.
+        try:
+            focus = d.get_input_focus().focus
+            focus_top = None
+            current = focus
+            for _ in range(5):
+                if not hasattr(current, 'id') or current.id in (0, 1):
+                    break
+                if current.id in order:
+                    focus_top = current.id
+                    break
+                current = current.query_tree().parent
+        except (error.XError, AttributeError):
+            focus_top = None
+        for _, w in windows:
+            if w['kind'] == 'X11Overlay' and focus_top is not None and w['id'] == str(focus_top):
+                for _, other in windows:
+                    other['active'] = False
+                w['active'] = True
         windows.sort(key=lambda item: item[0])
         out = []
         for z, (_, w) in enumerate(windows):
             w['z'] = z
             out.append(w)
+        area = self.prop(root, '_NET_WORKAREA')
+        workarea = [int(v) for v in area[:4]] if area is not None and len(area) >= 4 else None
+        for index, frame in enumerate(chrome_regions(monitors, workarea)):  # on top of every window: the fence denies them
+            region = pseudo('chrome%d' % index, 'cinnamon-chrome', frame, len(out), kind='ShellChrome')
+            out.append(region)
         pointer = root.query_pointer()
         if len(self.static) > 400:
             self.static = {k: v for k, v in self.static.items() if now - v[0] < 30}

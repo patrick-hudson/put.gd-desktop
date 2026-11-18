@@ -108,10 +108,18 @@ class Actor:
 
     # -- keys ------------------------------------------------------------------------------------
     def mine_focused(self):
-        if self.world.overlays():
+        """Keys go to put.gd only on positive evidence. KDE: the selector counts as focus while it is up. GNOME and Cinnamon: a put.gd window
+        has the focus, or the selector holds the Shell's modal grab or the X input focus (the fence marks it active); when the backend
+        cannot tell, the answer is no."""
+        if not self.world.desk.strict_input and self.world.overlays():
             return True  # the selector is put.gd's, whichever surface KWin calls active
         active = self.world.active()
         return bool(active and self.world.mine(active))
+
+    def quit_item(self):
+        """Note that the next resident exit is the Quit item the actor activated."""
+        self.log.last_quit_at = time.time()
+        self.log.write({'op': 'note', 'action': 'quit item'})
 
     def chord(self, text, hold=0.03):
         if not self.replaying and not chord_allowed(text, self.mine_focused()):

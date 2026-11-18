@@ -332,7 +332,7 @@ class Walker:
                     pass
                 time.sleep(0.8)
         time.sleep(2.0)
-        for _ in range(2):  # a capture started a moment before the checkpoint shows its selector late: give it its Escape too
+        for _ in range(2 if self.desk.late_selector_escape else 0):  # a capture started a moment before the checkpoint shows its selector late
             if not self.watch.settle_checks(self.a):
                 break
             try:

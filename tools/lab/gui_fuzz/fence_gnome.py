@@ -1,10 +1,11 @@
 """Mutter's view of the desktop, read through the test-only Shell extension (shell-extension/guifuzz@put.gd.test).
 
-The extension exports Eval(code) on the Shell's connection; witness.js, sent through it once, installs the snapshot
-function that this fence polls about 30 times a second. A snapshot holds Meta windows (stacking order), the Shell's own
+The extension exports three fixed methods on the Shell's connection while the lab marker file exists (Snapshot, SetClipboard,
+Close); this fence polls Snapshot about 30 times a second. It evaluates nothing it is sent. A snapshot holds Meta windows (stacking order), the Shell's own
 chrome (panel, dock, message banner, overview) and put.gd's St actors (the region selector, the recording frame, the
 countdown), which on GNOME are not windows. They are turned into the same dictionaries the KWin fence reports.
 """
+import base64
 import json
 import os
 import threading
@@ -13,24 +14,23 @@ import time
 import dbus
 import dbus.bus
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+from gui_fuzz.snapshot import pseudo
+
 IFACE = 'org.putgd.GuiFuzz'
 SHELL_STYLES = ('rgba(0, 0, 0, 0.43)', 'rgba(255, 255, 255, 0.92)', 'rgba(0, 0, 0, 0.78)', 'rgba(0, 0, 0, 0)')
 
 
-def pseudo(ident, cls, frame, z, kind='ShellOverlay', title=''):
-    frame = [int(v or 0) for v in frame]
-    return {'id': ident, 'pid': 0, 'cls': cls, 'title': title, 'frame': frame, 'content': frame, 'active': False, 'min': False, 'popup': False,
-            'dock': False, 'desktop': False, 'normal': False, 'notif': False, 'fullscreen': False, 'tr': None, 'kind': kind, 'z': z}
-
-
 def convert(raw):
     """The witness's JSON into the fence snapshot: windows bottom to top, put.gd's Shell actors, then the Shell's chrome on top."""
+    # While put.gd's selector holds the Shell's modal grab it has the keyboard and the pointer, whichever window Meta calls focused.
+    grab = any(name.endswith('RegionSelector') for name in (raw.get('chrome') or {}).get('modal_actors', []))
     windows = []
     for w in raw['windows']:
         w = dict(w, content=w['frame'])
         if w.pop('hidden', False):
             w['min'] = True
+        if grab:
+            w['active'] = False
         windows.append(w)
     z = len(windows)
     selector = False
@@ -38,7 +38,7 @@ def convert(raw):
         style = actor.get('style', '')
         if actor['t'].endswith('RegionSelector'):
             selector = True
-            windows.append(pseudo('sel%d' % index, 'putgd-shell-selector', actor['frame'], z))
+            windows.append(pseudo('sel%d' % index, 'putgd-shell-selector', actor['frame'], z, active=grab))
             for kid in actor.get('kids', []):
                 if kid['name'] or kid.get('text'):
                     windows.append(pseudo('selk%d' % z, 'putgd-shell-selector-part', kid['frame'], z + 1, title=kid['name'] or kid.get('text', '')))
@@ -80,15 +80,6 @@ class GnomeFence:
         bus = dbus.bus.BusConnection(dbus.bus.BUS_SESSION)
         self.proxy = dbus.Interface(bus.get_object('org.gnome.Shell', '/org/putgd/GuiFuzz', introspect=False), IFACE)
 
-    def eval(self, code, timeout=3):
-        return str(self.proxy.Eval(code, timeout=timeout))
-
-    def install(self):
-        with open(os.path.join(HERE, 'witness.js')) as stream:
-            reply = self.eval(stream.read())
-        if reply != 'installed':
-            raise RuntimeError('witness.js: ' + reply[:300])
-
     def update(self, snapshot):
         with self.lock:
             self.snapshot, self.stamp, self.serial = snapshot, time.time(), self.serial + 1
@@ -101,8 +92,8 @@ class GnomeFence:
         while not self.stopping.is_set():
             started = time.time()
             try:
-                text = self.eval('return ctx.store.snap()', timeout=2)
-                if text.startswith('ERROR') or text.startswith('TypeError'):
+                text = str(self.proxy.Snapshot(timeout=2))
+                if text.startswith('ERROR'):
                     raise RuntimeError(text[:200])
                 self.update(convert(json.loads(text)))
             except dbus.DBusException as error:
@@ -113,15 +104,11 @@ class GnomeFence:
             except (RuntimeError, ValueError, KeyError) as error:
                 self.errors += 1
                 self.last_error = str(error)[:200]
-                try:  # the Shell restarted its extension: send the witness again
-                    self.install()
-                except (dbus.DBusException, RuntimeError):
-                    time.sleep(0.5)
+                time.sleep(0.2)
             self.stopping.wait(max(0.0, 0.03 - (time.time() - started)))
 
     def start(self):
         self.connect()
-        self.install()
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
         deadline = time.time() + 5
@@ -134,8 +121,7 @@ class GnomeFence:
         self.stopping.set()
 
     def clipboard(self, kind, payload=b''):
-        import base64
-        return self.eval('return ctx.store.setClipboard(%s, %s)' % (json.dumps(kind), json.dumps(base64.b64encode(payload).decode())), timeout=5)
+        return str(self.proxy.SetClipboard(kind, base64.b64encode(payload).decode(), timeout=5))
 
     def close(self, window_id):
-        return self.eval('return ctx.store.close(%s)' % json.dumps(str(window_id)), timeout=4)
+        return str(self.proxy.Close(str(window_id), timeout=4))

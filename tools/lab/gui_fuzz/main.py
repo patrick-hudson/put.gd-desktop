@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import random
+import signal
 import sys
 import time
 
@@ -53,12 +54,19 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     rng = random.Random(args.seed)
     desk = desktop.make(args.desktop)
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))  # an interruption ends the run the same way Ctrl+C does
+    desk.prepare()
     fence = desk.make_fence()
-    fence.start()
+    try:
+        fence.start()
+    except Exception:
+        desk.finish()
+        raise
     dev = Devices()
     desk.flatten_acceleration(dev)
     log = Log(os.path.join(args.out, 'actions.jsonl'), args.seed)
     world = World(fence, desk)
+    desk.begin(world)
     findings = Findings(args.out, log, world, args.seed)
     watch = Watchdog(args.out, world, findings, log)
     watch.prime()
@@ -100,6 +108,7 @@ def main():
             json.dump(summary, stream, indent=1)
         dev.close()
         fence.stop()
+        desk.finish()
         print(json.dumps({k: summary[k] for k in ('desktop', 'seed', 'seconds', 'steps', 'denied', 'harness_errors', 'findings')}), flush=True)
     return code
 

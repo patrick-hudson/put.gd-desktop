@@ -1,5 +1,6 @@
 """The watchdog: findings, hangs, crashes, stuck grabs, memory growth and log criticals."""
 import collections
+import datetime
 import glob
 import json
 import os
@@ -14,8 +15,12 @@ CRITICAL = re.compile(r'(QObject::|QWidget::|QPainter::|QBackingStore|QPixmap::|
                       r'ASSERT|Assertion|terminate called|Segmentation|Fatal|fatal|Critical|CRITICAL|Cannot |cannot |'
                       r'Unhandled|uncaught|double free|corrupt|stack smashing|invalid pointer|bad_alloc)')
 # Known lab/desktop noise that says nothing about put.gd (extend with the exact text, never a wide pattern).
-NOISE = re.compile(r'(Failed to register with host portal|Could not register app ID|QFSFileEngine::open: No file name|'
-                   r'\[h264_nvenc @ 0x[0-9a-f]+\] Cannot load libcuda\.so\.1|\[(VAAPI|AVHWDeviceContext) @ 0x[0-9a-f]+\] )')
+NOISE = re.compile(r'(Failed to register with host portal|Could not register app ID|QFSFileEngine::open: No file name)')
+# ffmpeg's encoder probes in a VM without a GPU: these three exact messages and nothing wider (GNOME and Cinnamon runs).
+PROBE_NOISE = re.compile(r'^(\[h264_nvenc @ 0x[0-9a-f]+\] Cannot load libcuda\.so\.1|'
+                         r'\[VAAPI @ 0x[0-9a-f]+\] libva: /usr/lib/x86_64-linux-gnu/dri/virtio_gpu_drv_video\.so init failed|'
+                         r'\[VAAPI @ 0x[0-9a-f]+\] Failed to initialise VAAPI connection: 2 \(resource allocation failed\)\.)$')
+CORE_LINE = re.compile(r'\s(\d+)\s+\d+\s+\d+\s+SIG\w+\s+\S+\s+(/\S+)')
 
 
 SHELL_ERROR = re.compile(r'(JS ERROR|JS LOG: .*[Ee]rror|Gjs-CRITICAL|Gjs-WARNING|CRITICAL|TypeError|ReferenceError|RangeError|SyntaxError|is not a function|'
@@ -83,6 +88,8 @@ class Watchdog(threading.Thread):
         self.foreign = {}
         self.quits = 0
         self.last_close = 0.0
+        self.born = {}  # window id -> (first seen, the time of the actor's last input then), or None for a window that was there at the start
+        self.pending_close = {}  # window id -> (class, asked at)
 
     @staticmethod
     def read_vt():
@@ -105,11 +112,14 @@ class Watchdog(threading.Thread):
         residents = [p for p, c in self.world.pids().items() if c == 'putgd']
         self.resident = residents[0] if residents else None
         self.session = {name: (self.pid_of(name) or [None])[0] for name in self.desk.session_procs}
-        for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*.jsonl')):  # earlier seeds' lines were judged then
-            try:
-                self.log_offsets[path] = os.path.getsize(path)
-            except OSError:
-                pass
+        if self.desk.skip_old_logs:
+            for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*.jsonl')):  # earlier seeds' lines were judged then
+                try:
+                    self.log_offsets[path] = os.path.getsize(path)
+                except OSError:
+                    pass
+        for window in self.world.snapshot()['windows']:  # what was on screen before the walk is not something the walk opened
+            self.born[window['id']] = None
 
     def run(self):
         while not self.stop.is_set():
@@ -140,8 +150,10 @@ class Watchdog(threading.Thread):
         if now - stamp > 3:
             self.fence_stale_since = self.fence_stale_since or now
             if now - self.fence_stale_since > 3:
-                self.findings.add('shell_unresponsive', '%s has not reported for %.1f s (%d errors, last: %s)' % (self.desk.shell_label, now - stamp, getattr(self.world.fence, 'errors', 0),
-                                                                                                getattr(self.world.fence, 'last_error', '')), fatal=True)
+                detail = '%s has not reported for %.1f s' % (self.desk.shell_label, now - stamp)
+                if hasattr(self.world.fence, 'errors'):
+                    detail += ' (%d errors, last: %s)' % (self.world.fence.errors, self.world.fence.last_error)
+                self.findings.add(self.desk.unresponsive_kind, detail, fatal=True)
         else:
             self.fence_stale_since = None
         for name, pid in list(self.session.items()):
@@ -156,12 +168,12 @@ class Watchdog(threading.Thread):
                 if restartable and fresh:
                     # A shell crash on output churn is the desktop's own bug (seen: QWaylandXdgSurface::applyConfigure in plasmashell 6.8.2).
                     self.findings.add('desktop_%s_restarted' % name.replace('-', '_'), '%s %d is gone, %d runs now' % (name, pid, fresh[0]),
-                                      extra=self.shell_evidence())
+                                      extra=self.shell_evidence(pid))
                     self.session[name] = fresh[0]
                     self.shell_down_since = None
                     self.shell_restarted_at = now
                     continue
-                self.findings.add('session_died', '%s (pid %d) is gone' % (name, pid), fatal=True, extra=self.shell_evidence())
+                self.findings.add('session_died', '%s (pid %d) is gone' % (name, pid), fatal=True, extra=self.shell_evidence(pid))
         restarted = getattr(self, 'shell_restarted_at', None)
         if restarted and now - restarted > 30:
             self.shell_restarted_at = None
@@ -171,16 +183,11 @@ class Watchdog(threading.Thread):
         if self.read_vt() != self.vt:
             self.findings.add('vt_changed', 'tty0 active %s -> %s' % (self.vt, self.read_vt()), fatal=True)
         if self.resident and not os.path.exists('/proc/%d' % self.resident):
-            if self.clean_quit(self.resident) and self.quits < 30:
-                self.restart_resident(now)  # the walk reached a Quit item (a menu's, or a drag released on one): not a crash
-            else:
-                self.findings.add('resident_died', 'resident pid %d is gone' % self.resident, fatal=True)
+            self.resident_gone(now)
         for other in self.world.snapshot()['windows']:  # a crash viewer opens after a desktop crash and takes the focus
-            if other['cls'].startswith(self.desk.crash_viewers) and other['pid'] != os.getpid():
-                try:
-                    os.kill(other['pid'], 9)
-                except OSError:
-                    pass
+            if other['cls'].startswith(self.desk.crash_viewers):
+                self.kill_crash_viewer(other)
+        self.observe_windows(now)
         chrome = self.world.snapshot().get('chrome') or {}
         if chrome.get('modal') and not chrome.get('overview') and not self.world.overlays():
             self.modal_since = getattr(self, 'modal_since', None) or now
@@ -189,6 +196,39 @@ class Watchdog(threading.Thread):
                                   extra={'chrome': chrome})
         else:
             self.modal_since = None
+        self.focus_step(now)
+
+    def kill_crash_viewer(self, window):
+        """Kill a crash viewer by its exact PID, and only when the PID is real, alive and a process of the expected name."""
+        pid = window.get('pid') or 0
+        if not isinstance(pid, int) or pid <= 0 or pid == os.getpid():
+            return False
+        try:
+            with open('/proc/%d/comm' % pid) as stream:
+                comm = stream.read().strip()
+        except OSError:
+            return False
+        if comm not in self.desk.crash_viewer_comms:
+            return False
+        try:
+            os.kill(pid, 9)
+        except OSError:
+            return False
+        return True
+
+    def observe_windows(self, now):
+        """When each window first appeared, and when the actor last sent input before that."""
+        for window in self.world.snapshot()['windows']:
+            self.world.note_seen(window)
+            if window['id'] not in self.born:
+                self.born[window['id']] = (now, self.log.last_input)
+
+    def opened_by_walk(self, window):
+        """A window that appeared within 10 s after the actor's input, and was not there when the walk began."""
+        birth = self.born.get(window['id'])
+        return bool(birth and birth[1] > 0 and 0 <= birth[0] - birth[1] <= 10)
+
+    def focus_step(self, now):
         windows = self.world.toplevels()
         active = self.world.active()
         cls = (active or {}).get('cls', '')
@@ -196,19 +236,49 @@ class Watchdog(threading.Thread):
         if windows and not self.world.overlays() and not (active and self.world.mine(active)) and cls not in self.desk.shell_focus_classes:
             self.focus_lost_since = self.focus_lost_since or now
             self.paused_walk.set()
-            # An app the desktop started for one of put.gd's Open actions (a file with no handler opens the app store, a link a browser)
-            # holds the focus: close it as its own title bar would and count it; the walk cannot click it.
-            if (active and active['normal'] and not active['popup'] and now - self.focus_lost_since > 2 and now - self.last_close > 2
-                    and not self.world.mine(active)):
-                self.last_close = now
-                if self.desk.close_window(active):
-                    self.foreign[cls] = self.foreign.get(cls, 0) + 1
-                    self.log.write({'op': 'note', 'action': 'closed foreign window', 'cls': cls, 'title': active.get('title', '')[:60]})
-            if now - self.focus_lost_since > 12:
+            if now - self.focus_lost_since > 6:
+                # Recorded first, whatever happens to the window next.
                 self.findings.add('focus_left_putgd', 'focus is on %s for %.0f s while put.gd shows %d windows' % (cls, now - self.focus_lost_since, len(windows)))
+                if self.desk.closes_foreign:
+                    self.close_foreign(active, now)
         else:
             self.focus_lost_since = None
             self.paused_walk.clear()
+        self.settle_closes(now)
+
+    def close_foreign(self, window, now):
+        """Ask an app the walk's input opened (a file with no handler opens the app store, a link a browser) to close, as its title bar would.
+        A window that was there before, that nobody's input explains, or that is not an ordinary window is left alone."""
+        if (not window or not window['normal'] or window['popup'] or self.world.mine(window) or not self.opened_by_walk(window)
+                or window['id'] in self.pending_close or now - self.last_close < 2):
+            return
+        self.last_close = now
+        if self.desk.close_window(window):
+            self.pending_close[window['id']] = (window['cls'], now)
+            self.log.write({'op': 'note', 'action': 'asked foreign window to close', 'cls': window['cls'], 'title': window.get('title', '')[:60]})
+
+    def settle_closes(self, now):
+        """A close counts only once the window is gone."""
+        present = {w['id'] for w in self.world.snapshot()['windows']}
+        for wid, (cls, asked) in list(self.pending_close.items()):
+            if wid not in present:
+                self.foreign[cls] = self.foreign.get(cls, 0) + 1
+                self.log.write({'op': 'note', 'action': 'closed foreign window', 'cls': cls})
+                del self.pending_close[wid]
+            elif now - asked > 10:
+                self.log.write({'op': 'note', 'action': 'foreign window did not close', 'cls': cls})
+                del self.pending_close[wid]
+
+    def resident_gone(self, now):
+        """The resident's process is gone. A restart needs the actor to have just activated the Quit item and the resident's own log to say it
+        stopped with exit code 0; any other exit is a finding and ends the walk."""
+        quit_asked = self.log.last_quit_at > 0 and now - self.log.last_quit_at < 15
+        if self.desk.restarts_resident and quit_asked and self.clean_quit(self.resident) and self.quits < 30:
+            self.restart_resident(now)
+        elif self.desk.restarts_resident and self.clean_quit(self.resident):
+            self.findings.add('resident_exited', 'resident pid %d exited with code 0 without the Quit item being used' % self.resident, fatal=True)
+        else:
+            self.findings.add('resident_died', 'resident pid %d is gone' % self.resident, fatal=True)
 
     def clean_quit(self, pid):
         """True when the resident's own log says it stopped with exit code 0."""
@@ -227,7 +297,7 @@ class Watchdog(threading.Thread):
     def restart_resident(self, now):
         """Start the installed resident again as the lab does (putgd-launcher --background) and wait for it to answer."""
         self.quits += 1
-        self.findings.add('resident_quit', 'resident pid %d stopped with exit code 0 (a Quit item was activated); restarted' % self.resident)
+        self.findings.add('resident_quit', 'resident pid %d stopped with exit code 0 after the Quit item; restarted' % self.resident)
         self.paused_walk.set()
         subprocess.Popen(['putgd-launcher', '--background'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         deadline = time.time() + 40
@@ -237,21 +307,20 @@ class Watchdog(threading.Thread):
             fresh = [p for p, c in self.world.putgd_now().items() if c == 'putgd']
             if rc == 0 and fresh:
                 self.resident = fresh[0]
-                for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*.jsonl')):
-                    try:
-                        self.log_offsets[path] = os.path.getsize(path)
-                    except OSError:
-                        pass
                 self.paused_walk.clear()
                 return
         self.findings.add('resident_died', 'the resident did not come back 40 s after a clean quit', fatal=True)
 
-    def shell_evidence(self):
-        """Who crashed the shell: its core dump and every journal line that names put.gd or its extension."""
+    def shell_evidence(self, pid=None):
+        """Who ended the shell: the journal lines that name put.gd or its extension, and the core dump of that shell's own PID when it left one."""
         rc, journal, _ = run(['journalctl', '--user', '-b', '--no-pager', '-n', '4000', '-o', 'short-precise'], 20)
         lines = [line for line in journal.splitlines() if re.search(r'putgd|put\.gd|guifuzz', line, re.I)]
-        rc, info, _ = run(['coredumpctl', 'info', '--no-pager', '-1'], 20)
-        return {'putgd_journal_lines': lines[-40:], 'last_coredump': info[-3000:]}
+        dump = ''
+        if isinstance(pid, int) and pid > 0:
+            rc, info, _ = run(['coredumpctl', 'info', '--no-pager', str(pid)], 20)
+            if rc == 0 and ('PID: %d ' % pid) in info:
+                dump = info[-3000:]
+        return {'putgd_journal_lines': lines[-40:], 'coredump_of_shell_pid': dump}
 
     def ping(self):
         started = time.time()
@@ -274,14 +343,18 @@ class Watchdog(threading.Thread):
         count = self.count_cores()
         if count > self.cores:
             rc, out, _ = run(['coredumpctl', 'list', '--no-pager', '--no-legend'], 10)
-            lines = [line for line in out.splitlines() if line.strip() and not line.startswith('--')]
-            for line in lines[-(count - self.cores):]:
-                match = re.search(r'\s(/\S+)\s+\S+\s*$', line)
-                exe = os.path.basename(match.group(1)) if match else ''
-                # A put.gd process dumping core is a finding; the desktop's own crash (seen: nemo-desktop on RandR output churn) is recorded apart.
-                kind = 'core_dump' if exe in PUTGD_COMMS or not exe else 'desktop_core_dump_' + re.sub(r'\W', '_', exe)
-                rc, info, _ = run(['coredumpctl', 'info', '--no-pager', '-1'], 20)
-                self.findings.add(kind, line[:200], fatal=False, extra={'info': info[-3500:]})
+            if not self.desk.split_cores:
+                self.findings.add('core_dump', out.splitlines()[-1][:200] if out else 'core dump', fatal=False)
+            else:
+                lines = [line for line in out.splitlines() if line.strip() and not line.startswith('--')]
+                for line in lines[-(count - self.cores):]:
+                    match = CORE_LINE.search(line)
+                    pid, exe = (int(match.group(1)), os.path.basename(match.group(2))) if match else (0, '')
+                    # A put.gd process (every executable it ships) dumping core is a finding; a desktop process's crash (seen: nemo-desktop
+                    # on RandR output churn) is recorded apart. A line that cannot be read counts as put.gd's. Each dump is read by its own PID.
+                    kind = 'core_dump' if exe in PUTGD_COMMS or not exe else 'desktop_core_dump_' + re.sub(r'\W', '_', exe)
+                    rc, info, _ = run(['coredumpctl', 'info', '--no-pager', str(pid)], 20) if pid else (0, '', '')
+                    self.findings.add(kind, line[:200], fatal=False, extra={'info': info[-3500:]})
             self.cores = count
 
     def scan_logs(self):
@@ -298,10 +371,16 @@ class Watchdog(threading.Thread):
                     record = json.loads(line)
                 except ValueError:
                     continue
+                message = record.get('message', '')
+                if self.desk.verify_portal and re.search(r'portal (OpenFile|SaveFile|SaveFiles)\b', message):
+                    try:  # put.gd's own log says it asked the portal for a chooser, and when
+                        stamp = datetime.datetime.strptime(record['time'][:23], '%Y-%m-%dT%H:%M:%S.%f').replace(tzinfo=datetime.timezone.utc).timestamp()
+                    except (KeyError, ValueError):
+                        stamp = time.time()
+                    self.world.expect_chooser(at=stamp)
                 if record.get('level') not in ('warning', 'error', 'critical', 'fatal'):
                     continue
-                message = record.get('message', '')
-                if NOISE.search(message):
+                if NOISE.search(message) or (self.desk.narrow_noise and PROBE_NOISE.match(message)):
                     continue
                 key = norm(message)
                 self.warnings[key] = self.warnings.get(key, 0) + 1

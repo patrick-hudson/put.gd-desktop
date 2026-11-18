@@ -6,7 +6,9 @@ import subprocess
 import threading
 import time
 
-PUTGD_COMMS = ('putgd', 'putgd-ui', 'putgd-record', 'putgd-ocr', 'putgd-capture')
+# Every executable put.gd ships (cmake/Executables.cmake and the launcher): a dump or a window of any of them is put.gd's.
+PUTGD_COMMS = ('putgd', 'putgd-launcher', 'putgd-cli', 'putgd-ui', 'putgd-record', 'putgd-region', 'putgd-capture', 'putgd-ocr',
+               'putgd-clipboard-keeper', 'putgd-s3-worker', 'putgd-b2-worker', 'putgd-http-worker')
 
 
 def putgd_processes():
@@ -47,11 +49,15 @@ class Log:
         self.lock = threading.Lock()
         self.recent = collections.deque(maxlen=60)
         self.step = 0
+        self.last_input = 0.0   # the time of the last input the actor sent (a window that appears soon after may be what it opened)
+        self.last_quit_at = 0.0  # the time the actor last activated a Quit item
         self.t0 = time.time()
         self.write({'op': 'start', 'seed': seed, 'epoch': self.t0})
 
     def write(self, record):
         record = dict(record, t=round(time.time(), 3), step=self.step)
+        if record.get('op') in ('move', 'btn', 'wheel', 'chord', 'text', 'cli'):
+            self.last_input = record['t']
         with self.lock:
             self.recent.append(record)
             self.stream.write(json.dumps(record, separators=(',', ':')) + '\n')
@@ -68,6 +74,18 @@ class World:
         self.procs = procs
         self._procs = {}
         self._procs_at = 0.0
+        self.seen = {}  # window id -> when this fence first saw it
+        self.choosers = []  # (from, until) of each chooser request put.gd made
+        self.chooser_ok = set()  # portal windows accepted as put.gd's chooser
+
+    def expect_chooser(self, seconds=15.0, at=None):
+        """put.gd asked the desktop portal for a file chooser (its own log says so, with the time): a portal window that first appeared
+        within a second before that and `seconds` after it is put.gd's."""
+        at = time.time() if at is None else at
+        self.choosers = (self.choosers + [(at - 1.0, at + seconds)])[-50:]
+
+    def note_seen(self, window):
+        self.seen.setdefault(window['id'], time.time())
 
     def putgd_now(self):
         """put.gd's processes read from /proc now, not from the cache."""
@@ -82,17 +100,35 @@ class World:
     def snapshot(self):
         return self.fence.get()[0]
 
+    def owned_by_putgd(self, window):
+        return window['pid'] in self.pids() or window['cls'].startswith('putgd')
+
     def mine(self, window):
-        """put.gd's own window, or a dialog (the desktop portal's file chooser) that put.gd opened over one of its windows."""
-        if window['pid'] in self.pids() or window['cls'].startswith('putgd'):
+        """put.gd's own window, or (on KDE) a dialog the desktop portal opened for it. On GNOME and Cinnamon a portal window counts only when it is
+        transient for a put.gd window or first appeared while put.gd had a chooser request pending: a Nautilus window of the user's is not put.gd's."""
+        if self.owned_by_putgd(window):
             return True
         if window['cls'] in self.desk.portal_classes and window['normal']:
-            return True  # put.gd's file choosers (opened with no parent when the toolkit has no window handle to export)
+            if not self.desk.verify_portal:
+                return True  # KDE: put.gd's file choosers (opened with no parent when the toolkit has no window handle to export)
+            return self.portal_ok(window)
         parent = window.get('tr')
         if parent:
             by_id = {x['id']: x for x in self.snapshot()['windows']}
             owner = by_id.get(parent)
-            return bool(owner and (owner['pid'] in self.pids() or owner['cls'].startswith('putgd')))
+            return bool(owner and self.owned_by_putgd(owner))
+        return False
+
+    def portal_ok(self, window):
+        wid = window['id']
+        if wid in self.chooser_ok:
+            return True
+        parent = window.get('tr')
+        owner = {x['id']: x for x in self.snapshot()['windows']}.get(parent) if parent else None
+        first = self.seen.setdefault(wid, time.time())
+        if (owner and self.owned_by_putgd(owner)) or any(low <= first <= high for low, high in self.choosers):
+            self.chooser_ok.add(wid)
+            return True
         return False
 
     def is_layer(self, window):
@@ -136,8 +172,9 @@ class World:
         return None
 
     def inside(self, x, y):
-        """The fence: a point put.gd owns. With the overlay up that is every output; otherwise the windows."""
-        if self.overlays():
+        """The fence: a point put.gd owns. On KDE, with the overlay up, that is every output; otherwise (and always on GNOME and Cinnamon) the
+        topmost window at the point must be put.gd's, so a Shell overview, panel or notification above the selector denies the point."""
+        if self.overlays() and not self.desk.strict_input:
             return any(o['geom'][0] <= x < o['geom'][0] + o['geom'][2] and o['geom'][1] <= y < o['geom'][1] + o['geom'][3] for o in self.outputs())
         for w in reversed(self.snapshot()['windows']):  # the topmost window at the point must be put.gd's own
             fx, fy, fw, fh = w['frame']

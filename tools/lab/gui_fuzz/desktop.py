@@ -36,8 +36,28 @@ class Desktop:
     tray_prefix = 'org.kde.StatusNotifierItem.putgd'
     edge = 8
     shell_label = 'the compositor'
+    unresponsive_kind = 'shell_unresponsive'
     session_env_process = ''
     journal_args = ()  # journalctl selectors for the shell's own log
+    crash_viewer_comms = ()  # process names (comm) a crash viewer may have: only such a process is ever killed
+    # Rules the GNOME and Cinnamon backends added. Plasma keeps what it had, so each is off here.
+    strict_input = False        # input only with positive evidence that put.gd owns the target; deny when the backend cannot tell
+    verify_portal = False       # a portal window is put.gd's only if transient for a put.gd window or opened while put.gd's chooser request was pending
+    closes_foreign = False      # close an app that opened soon after the walk's input and holds the focus
+    restarts_resident = False   # restart the resident after the Quit item the actor activated
+    split_cores = False         # a core dump of a process that is not put.gd's is recorded apart
+    narrow_noise = False        # known ffmpeg probe lines are noise; nothing wider
+    late_selector_escape = False  # a checkpoint gives a late selector another Escape before calling it stuck
+    skip_old_logs = False       # a seed judges only the log lines written after it started
+
+    def prepare(self):
+        """Before the fence starts: whatever the backend needs in the session."""
+
+    def begin(self, world):
+        """The fence is up: remember the session settings the run will change."""
+
+    def finish(self):
+        """The run is over (normal end or interruption): put back what it changed and take the witness down."""
 
     def make_fence(self):
         raise NotImplementedError
@@ -80,7 +100,9 @@ class Kde(Desktop):
     portal_classes = frozenset({'org.freedesktop.impl.portal.desktop.kde'})
     shell_focus_classes = ('plasmashell', 'org.kde.plasmashell', '')
     crash_viewers = ('org.kde.drkonqi',)
+    crash_viewer_comms = ('drkonqi',)
     shell_label = 'KWin'
+    unresponsive_kind = 'kwin_unresponsive'
     session_env_process = 'plasmashell'
 
     def make_fence(self):
@@ -153,9 +175,41 @@ class Gnome(Desktop):
     portal_classes = frozenset({'org.gnome.Nautilus', 'xdg-desktop-portal-gnome', 'org.freedesktop.impl.portal.desktop.gnome', 'org.gnome.Shell.Extensions'})
     shell_focus_classes = ('', 'gjs')  # Shell actors take no Meta focus; Desktop Icons NG is a desktop window of class gjs
     crash_viewers = ('apport', 'Apport')
+    crash_viewer_comms = ('apport-gtk',)
     shell_label = 'Mutter'
     session_env_process = 'gnome-shell'
     journal_args = ('-t', 'gnome-shell')
+    strict_input = verify_portal = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
+    EXTENSION = 'guifuzz@put.gd.test'
+    POINTER = ('org.gnome.desktop.peripherals.mouse', ('accel-profile', 'speed'))
+
+    @staticmethod
+    def marker():
+        return os.path.join(os.environ.get('XDG_RUNTIME_DIR') or '/run/user/%d' % os.getuid(), 'putgd-guifuzz-lab')
+
+    def prepare(self):
+        """The extension exports its methods only while the marker file exists."""
+        with open(self.marker(), 'w') as stream:
+            stream.write('%d\n' % os.getpid())
+        host_run(['gnome-extensions', 'enable', self.EXTENSION])
+        time.sleep(1.0)
+
+    def begin(self, world):
+        outs = world.outputs()
+        self.initial_layout = (len(outs), str(outs[0]['scale']) if outs else '1', str(outs[1]['scale']) if len(outs) > 1 else '1')
+
+    def finish(self):
+        schema, keys = self.POINTER
+        for key, value in getattr(self, 'saved_pointer', {}).items():
+            host_run(['gsettings', 'set', schema, key, value])
+        layout = getattr(self, 'initial_layout', None)
+        if layout:
+            self.apply_layout(*layout)
+        try:
+            os.unlink(self.marker())
+        except OSError:
+            pass
+        host_run(['gnome-extensions', 'disable', self.EXTENSION])
 
     def make_fence(self):
         from gui_fuzz.fence_gnome import GnomeFence
@@ -163,15 +217,25 @@ class Gnome(Desktop):
         return self.fence
 
     def flatten_acceleration(self, dev):
-        host_run(['gsettings', 'set', 'org.gnome.desktop.peripherals.mouse', 'accel-profile', 'flat'])
-        host_run(['gsettings', 'set', 'org.gnome.desktop.peripherals.mouse', 'speed', '0'])
+        schema, keys = self.POINTER
+        self.saved_pointer = {key: host_run(['gsettings', 'get', schema, key])[1].strip() for key in keys}
+        host_run(['gsettings', 'set', schema, 'accel-profile', 'flat'])
+        host_run(['gsettings', 'set', schema, 'speed', '0'])
         return 'gsettings'
 
-    def layout(self, walker, heads, scale1='1', scale2='1'):
+    @staticmethod
+    def layout_args(heads, scale1='1', scale2='1'):
         """gdctl: Virtual-1 primary at 0,0, Virtual-2 to its right."""
         args = ['gdctl', 'set', '--logical-monitor', '--primary', '--monitor', 'Virtual-1', '--scale', scale1]
         if heads > 1:
             args += ['--logical-monitor', '--monitor', 'Virtual-2', '--right-of', 'Virtual-1', '--scale', scale2]
+        return args
+
+    def apply_layout(self, heads, scale1='1', scale2='1'):
+        host_run(self.layout_args(heads, scale1, scale2), 20)
+
+    def layout(self, walker, heads, scale1='1', scale2='1'):
+        args = self.layout_args(heads, scale1, scale2)
         walker.log.write({'op': 'sh', 'a': args})
         host_run(args, 20)
         walker.a.sleep(1.5)
@@ -212,9 +276,38 @@ class Cinnamon(Desktop):
     portal_classes = frozenset({'xdg-desktop-portal-gtk', 'xdg-desktop-portal-xapp'})
     shell_focus_classes = ('', 'nemo-desktop', 'cinnamon')
     crash_viewers = ('apport', 'mintreport')
+    crash_viewer_comms = ('apport-gtk',)
     shell_label = 'the X server'
     session_env_process = 'cinnamon'
     journal_args = ('-t', 'cinnamon')
+    strict_input = verify_portal = closes_foreign = restarts_resident = split_cores = narrow_noise = late_selector_escape = skip_old_logs = True
+    POINTER = ('org.cinnamon.desktop.peripherals.mouse', ('accel-profile', 'speed'))
+
+    def begin(self, world):
+        rc, out, _ = host_run(['xrandr', '--current'], 10)
+        self.initial_monitors = []
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] == 'connected':
+                geometry = next((p for p in parts[2:4] if 'x' in p and '+' in p), None)
+                self.initial_monitors.append((parts[0], geometry))
+
+    def finish(self):
+        schema, keys = self.POINTER
+        for key, value in getattr(self, 'saved_pointer', {}).items():
+            host_run(['gsettings', 'set', schema, key, value])
+        for name, geometry in getattr(self, 'initial_monitors', []):
+            if geometry is None:
+                host_run(['xrandr', '--output', name, '--off'], 15)
+            else:
+                size, x, y = geometry.split('+')
+                host_run(['xrandr', '--output', name, '--mode', size, '--pos', '%sx%s' % (x, y)], 15)
+        rc, out, _ = host_run(['pgrep', '-u', str(os.getuid()), '-x', 'xclip'], 5)  # xclip forks to serve the selection and outlives us
+        for pid in out.split():
+            try:
+                os.kill(int(pid), 15)
+            except (OSError, ValueError):
+                pass
 
     def make_fence(self):
         from gui_fuzz.fence_x11 import X11Fence
@@ -222,9 +315,10 @@ class Cinnamon(Desktop):
         return self.fence
 
     def flatten_acceleration(self, dev):
-        for schema in ('org.cinnamon.desktop.peripherals.mouse',):
-            host_run(['gsettings', 'set', schema, 'accel-profile', 'flat'])
-            host_run(['gsettings', 'set', schema, 'speed', '0'])
+        schema, keys = self.POINTER
+        self.saved_pointer = {key: host_run(['gsettings', 'get', schema, key])[1].strip() for key in keys}
+        host_run(['gsettings', 'set', schema, 'accel-profile', 'flat'])
+        host_run(['gsettings', 'set', schema, 'speed', '0'])
         return 'gsettings'
 
     def xrandr(self, walker, *args):
