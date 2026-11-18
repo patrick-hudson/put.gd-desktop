@@ -212,7 +212,7 @@ private slots:
         QCOMPARE(f.events("PUT").size(), 0);
         // An ordinary name with the same credentials works.
         if (!denied) QCOMPARE(f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "plain.txt", cb); }).status, QString("absent"));
-
+    }
     // The SDK drops empty path segments, so the receipt, the link and the stored
     // object must all name the key the request reached (#1582).
     void prefixKeyIsTheStoredKey_data() {
