@@ -509,8 +509,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     if (!previous.isEmpty() &&
         (s3StoredKey(request.resume["key"].toString()) != key || request.resume["bytes"].toInteger() != bytes ||
          request.resume["sha256"].toString() != request.artifact.sha256 || request.resume["partBytes"].toInteger() != partBytes)) {
-        // A journal for another target or another artifact is never resumed.
-        abort(previous, s3StoredKey(request.resume["key"].toString()));
+        // A journal for another target or another artifact is never resumed. One whose key
+        // has a "." or ".." part names nothing a request can reach, so it is left alone,
+        // as the standalone abandon path refuses it.
+        if (s3KeyAddressable(request.resume["key"].toString())) abort(previous, s3StoredKey(request.resume["key"].toString()));
     } else if (!previous.isEmpty()) {
         uploadId = previous;
         Aws::S3::Model::ListPartsRequest list;

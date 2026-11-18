@@ -230,6 +230,19 @@ private slots:
         QCOMPARE(parts(f, "4").size(), 1);
         QCOMPARE(f.state()["objects"].toObject()["a/b/resume.bin"].toArray().last().toObject()["blob"].toString(), request.artifact.sha256);
     }
+    // A journal for another key is aborted, but one whose key has a "." or ".." part
+    // names nothing a request can reach, so no abort is sent for it.
+    void journalWithADotKeyIsNeverAborted() {
+        S3Fixture f(policy);
+        auto request = f.request("fresh.bin", synthetic(11 * mib));
+        f.control("/__clear_events", {}, true);
+        request.resume = {{"schemaVersion", 1}, {"partBytes", double(5 * mib)}, {"uploadId", "synthetic-upload-dot"},
+                          {"key", "prefix é/../fresh.bin"}, {"bytes", double(11 * mib)}, {"sha256", request.artifact.sha256}, {"phase", "parts"}};
+        const auto result = f.upload(request);
+        QVERIFY2(result.status == "uploaded", qPrintable(result.error.code + ": " + result.error.message));
+        QCOMPARE(count(f, "DELETE", "uploadId="), 0);
+        QCOMPARE(count(f, "POST", "uploads"), 1);
+    }
     void uncertainCompletionResumesWithoutResendingParts() {
         S3Fixture f(policy);
         auto request = f.request("complete.bin", synthetic(11 * mib));
