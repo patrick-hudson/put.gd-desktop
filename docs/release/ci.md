@@ -799,12 +799,14 @@ and dwz steps. It works in three layers:
   the dependency scripts change, never after a fallback. When no snapshot has the
   exact key, the newest snapshot under the same hash is restored, and then the newest of
   the target at all (`putgd-pkgs-v1-<target>-`), so new dependency scripts still have
-  one to fall back to. If all online attempts
+  one to fall back to. Snapshots are refreshed weekly, but a restored older snapshot
+  can be older than a week: there is no age limit, and the cache keeps it until it
+  is pruned or evicted. If all online attempts
   fail, the install runs once more offline from the snapshot
   (`dnf --cacheonly`, `apt-get --no-download`, again with no time limit on the
   install itself). On apt a download that times out has changed nothing on the
   system, so the snapshot installs onto the state the job started in. That builds against a package
-  set at most a week old instead of failing the job. On apt, a snapshot from an
+  set as old as the restored snapshot instead of failing the job. On apt, a snapshot from an
   older list can lack archives the new list needs. The install first asks apt for
   the archives the transaction needs that the snapshot doesn't hold
   (`apt-get install --print-uris`, against the snapshot's own indexes), downloads
@@ -819,17 +821,21 @@ and dwz steps. It works in three layers:
   after the source URI.
 
   **Last-resort mirrors.** The AppImage job sets `PUTGD_APT_LAST_RESORT_MIRRORS`
-  to `http://mirrors.ubuntu.com/US.txt`, Ubuntu's published list of US mirrors.
-  After the online attempts have failed, the first 60 mirrors of that list are
-  each timed on 256 KB of this release's amd64 package index (5 s limit, 16 at a
-  time; that also leaves out mirrors without amd64, such as ports mirrors). The fastest
-  8 replace `/etc/apt/putgd-mirrors.txt`. The snapshot install downloads the archives it
+  to `tools/ci/apt-last-resort-mirrors.txt`, a checked-in list of ten public HTTPS
+  Ubuntu mirrors from Ubuntu's US list, other than the four the probe ranks. Nothing
+  fetched at run time chooses where the runner connects, and only `https://` lines
+  with a host name are used (no IP literal, no port). After the online attempts
+  have failed, each is timed on 256 KB of this release's amd64 package index (5 s
+  limit, HTTPS only). The fastest 8 that answer replace `/etc/apt/putgd-mirrors.txt`. The snapshot install downloads the archives it
   lacks through them. With no snapshot, or when the snapshot can't serve the list
   before dpkg starts, one more online transaction runs through them with fresh
   metadata (`PUTGD_PKG_LAST_RESORT_TIMEOUT`, 1800 s, and the same silence limit).
-  apt checks every file against the signed indexes, whichever mirror served it. The
-  dated `snapshot.ubuntu.com` archive was the first choice, but on 2026-11-18 it
-  answered `401 Unauthorized` (HTTP Basic auth) for every archive path.
+  apt checks every file against the signed indexes, whichever mirror served it. If
+  the gap fill fails, the snapshot's summary row names the archives it lacked. The
+  dated `snapshot.ubuntu.com` archive was the first choice, but at about 18:37 UTC on
+  2026-11-18, the archive paths probed from the workstation and k72 answered
+  `401 Unauthorized` (HTTP Basic auth). By about 20:00 UTC they answered 200 again,
+  `InRelease` included. A source that can be down for a while isn't a last resort.
 
   The AppImage job restores the ubuntu24.04 snapshot and installs everything in
   one `install-packages.sh` call, so it is one apt transaction: the base
@@ -862,6 +868,9 @@ and dwz steps. It works in three layers:
   older snapshot instead. The archives that snapshot lacks are downloaded against
   its own indexes, and when it can't serve the new list, the last-resort mirrors
   install it online.
+
+  The `appimage-sources` job writes its `deb-src` source before the mirror probe, so
+  the source indexes come through the ranked list too.
 
   The AppImage job also switches off the runner's non-Ubuntu apt sources
   (`tools/ci/hosted_apt_mirrors.py`), so a 429 from `packages.microsoft.com`
