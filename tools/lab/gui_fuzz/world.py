@@ -69,6 +69,11 @@ class World:
         self._procs = {}
         self._procs_at = 0.0
 
+    def putgd_now(self):
+        """put.gd's processes read from /proc now, not from the cache."""
+        self._procs, self._procs_at = self.procs(), time.time()
+        return self._procs
+
     def pids(self):
         if time.time() - self._procs_at > 0.5:
             self._procs, self._procs_at = self.procs(), time.time()

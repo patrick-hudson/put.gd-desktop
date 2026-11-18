@@ -4,6 +4,7 @@ import glob
 import json
 import os
 import re
+import subprocess
 import threading
 import time
 
@@ -80,6 +81,7 @@ class Watchdog(threading.Thread):
         self.shell_seen = collections.deque(maxlen=4000)
         self.shell_warnings = {}
         self.foreign = {}
+        self.quits = 0
         self.last_close = 0.0
 
     @staticmethod
@@ -169,7 +171,10 @@ class Watchdog(threading.Thread):
         if self.read_vt() != self.vt:
             self.findings.add('vt_changed', 'tty0 active %s -> %s' % (self.vt, self.read_vt()), fatal=True)
         if self.resident and not os.path.exists('/proc/%d' % self.resident):
-            self.findings.add('resident_died', 'resident pid %d is gone' % self.resident, fatal=True)
+            if self.clean_quit(self.resident) and self.quits < 30:
+                self.restart_resident(now)  # the walk reached a Quit item (a menu's, or a drag released on one): not a crash
+            else:
+                self.findings.add('resident_died', 'resident pid %d is gone' % self.resident, fatal=True)
         for other in self.world.snapshot()['windows']:  # a crash viewer opens after a desktop crash and takes the focus
             if other['cls'].startswith(self.desk.crash_viewers) and other['pid'] != os.getpid():
                 try:
@@ -204,6 +209,42 @@ class Watchdog(threading.Thread):
         else:
             self.focus_lost_since = None
             self.paused_walk.clear()
+
+    def clean_quit(self, pid):
+        """True when the resident's own log says it stopped with exit code 0."""
+        for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*-%d-*.jsonl' % pid)):
+            try:
+                with open(path, 'rb') as stream:
+                    stream.seek(0, os.SEEK_END)
+                    stream.seek(max(0, stream.tell() - 4000))
+                    tail = stream.read().decode('utf-8', 'replace')
+            except OSError:
+                continue
+            if '"message":"Resident stopped"' in tail and '"exitCode":0' in tail:
+                return True
+        return False
+
+    def restart_resident(self, now):
+        """Start the installed resident again as the lab does (putgd-launcher --background) and wait for it to answer."""
+        self.quits += 1
+        self.findings.add('resident_quit', 'resident pid %d stopped with exit code 0 (a Quit item was activated); restarted' % self.resident)
+        self.paused_walk.set()
+        subprocess.Popen(['putgd-launcher', '--background'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.time() + 40
+        while time.time() < deadline:
+            time.sleep(1.0)
+            rc, out, _ = run(['putgd-cli', 'ui.viewState'], 8)
+            fresh = [p for p, c in self.world.putgd_now().items() if c == 'putgd']
+            if rc == 0 and fresh:
+                self.resident = fresh[0]
+                for path in glob.glob(os.path.expanduser('~/.local/state/putgd/logs/*.jsonl')):
+                    try:
+                        self.log_offsets[path] = os.path.getsize(path)
+                    except OSError:
+                        pass
+                self.paused_walk.clear()
+                return
+        self.findings.add('resident_died', 'the resident did not come back 40 s after a clean quit', fatal=True)
 
     def shell_evidence(self):
         """Who crashed the shell: its core dump and every journal line that names put.gd or its extension."""
