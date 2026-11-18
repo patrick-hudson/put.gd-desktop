@@ -264,53 +264,58 @@ private slots:
  void resumableUploadJournalSurvivesForRetry() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenUnknown=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
   Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());
-  HistoryStore store(ops.databasePath());bool earlyAnswered=false;Error earlyError;QJsonObject journal;QString earlyStatus;
-  // Retry as soon as the durable result is visible, while finish() still holds the operation for its copy
-  // bookkeeping: the Retry waits for the release instead of being refused as busy (#1578), then resumes the
-  // multipart journal the first attempt saved.
+  HistoryStore store(ops.databasePath());bool earlyAnswered=false;Error earlyError;
+  // Synchronously observe the durable result before finish() can release its
+  // owner. This forces the ordering that the old inspect/poll occasionally saw
+  // under contention, without sleeps or a production scheduling hook.
   const auto connection=connect(&ops,&OperationService::changed,this,[&](const QString& changed){
-   if(earlyAnswered||!journal.isEmpty()||store.operation(changed).stateName()!="partial")return;
-   const auto saved=store.operation(changed);earlyStatus=saved.items[0].uploadStatus;journal=saved.items[0].uploadJournal;
-   provider->journalThenUnknown=false;
+   if(earlyAnswered||store.operation(changed).stateName()!="partial")return;
    ops.retry(changed,[&](Error error,QJsonObject){earlyError=error;earlyAnswered=true;});
   });
   const auto disconnectEarly=qScopeGuard([&]{disconnect(connection);});
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   PUTGD_TRY_VERIFY(earlyAnswered);disconnect(connection);
-  QVERIFY2(!earlyError,qPrintable(earlyError.code));
-  QCOMPARE(earlyStatus,QString("unknown"));QCOMPARE(journal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
-  PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
-  QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="completed";}());
+  QCOMPARE(earlyError.code,QString("operation_settling"));  // the outcome is out, the slot not yet free (#1578)
+  QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="partial";}());
+  QCOMPARE(op["items"].toArray()[0].toObject()["uploadStatus"].toString(),QString("unknown"));
   // The journal is durable on the item but never part of the public operation.
   QVERIFY(!op["items"].toArray()[0].toObject().contains("uploadJournal"));
-  QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],journal);
+  Error error;const auto saved=store.operation(id,&error);QVERIFY(!error);
+  QCOMPARE(saved.items[0].uploadJournal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
+  // The worker's durable partial state precedes finish()/clipboard bookkeeping.
+  // Wait for the owner to release the operation, rather than racing retry()
+  // against that separate completion (which answers operation_settling).
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
+  provider->journalThenUnknown=false;bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);
+  PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
+  QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],saved.items[0].uploadJournal);
  }
  // History offers Retry once the outcome is stored, while the operation still holds its slot until its link copy is
- // recorded. A Retry in that gap waits and runs once the slot is free: never operation_busy, never twice (#1578).
- void retryAskedForWhileTheOutcomeSettlesRunsOnceItIsReleased() {
+ // recorded. A Retry in that gap is answered operation_settling (try again in a moment), the operation reports
+ // settling meanwhile, and the same Retry succeeds once the slot is free. A running operation stays operation_busy (#1578).
+ void retryWhileTheOutcomeSettlesIsAnsweredSettlingThenSucceeds() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
   source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("settle-%1.txt").arg(i),"synthetic batch"));
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
-  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();          // the first file is uploaded
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();                         // the first file is uploaded
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();  // the second fails
-  // The outcome is stored and History shows it, but the link copy is still waiting, so the operation holds its slot.
-  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("partial"));QVERIFY(source.pending);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),1);
+  // The outcome is stored and visible; the link copy still waits, so the operation holds its slot.
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("partial"));QVERIFY(source.pending);
   provider->failUpload=false;provider->deferUploads=false;
-  bool answered=false;Error retried;operations.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});
-  Error second;bool secondAnswered=false;operations.retry(id,[&](Error e,QJsonObject){second=e;secondAnswered=true;});
-  PUTGD_TRY_VERIFY(secondAnswered);QCOMPARE(second.code,QString("operation_busy"));  // one Retry waits; another would run it twice
-  PUTGD_VERIFY_STEADY(!answered,200);                                                   // waiting, not refused
-  source.acknowledge();
-  PUTGD_TRY_VERIFY(answered);QVERIFY2(!retried,qPrintable(retried.code));
+  const auto inspect=[&]{QJsonObject op;bool done=false;operations.inspect(id,[&](Error,QJsonObject r){op=r;done=true;});return putgd::test::waitFor([&]{return done;})?op:QJsonObject{};};
+  QVERIFY(inspect()["settling"].toBool());
+  Error early;bool answered=false;operations.retry(id,[&](Error e,QJsonObject){early=e;answered=true;});
+  PUTGD_TRY_VERIFY(answered);QCOMPARE(early.code,QString("operation_settling"));QCOMPARE(provider->uploads.load(),2);
+  source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QVERIFY(!inspect().contains("settling"));
+  Error again;answered=false;operations.retry(id,[&](Error e,QJsonObject){again=e;answered=true;});PUTGD_TRY_VERIFY(answered);QVERIFY2(!again,qPrintable(again.code));
   PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(provider->uploads.load(),3);
   PUTGD_TRY_VERIFY([&]{if(source.pending)source.acknowledge();return operations.diagnostics()["activeOperations"].toInt()==0;}());
-  // A Retry of an operation that is genuinely running is still refused.
-  provider->deferUploads=true;
-  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
-  Error running;bool runningAnswered=false;operations.retry(id,[&](Error e,QJsonObject){running=e;runningAnswered=true;});PUTGD_TRY_VERIFY(runningAnswered);QCOMPARE(running.code,QString("operation_busy"));
+  // A Retry of an operation that is genuinely running is still operation_busy.
+  provider->deferUploads=true;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  Error running;answered=false;operations.retry(id,[&](Error e,QJsonObject){running=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(running.code,QString("operation_busy"));
  }
  // #202: retention applies without the user, on the resident's own clock.
  void automaticCleanupAppliesRetentionWithoutTheUser() {
