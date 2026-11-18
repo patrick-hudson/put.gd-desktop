@@ -34,7 +34,7 @@ Error interrupted() {return {"storage_migration_interrupted","Moving put.gd file
 Error releaseStaleJournal(const QString& root) {
  if(!present(root+"/resident.lock"))return {};
  QLockFile owner(root+"/resident.lock");owner.setStaleLockTime(0);
- if(!owner.tryLock(0))return StorageLocations::journalLockBusy("storage_busy",root+"/resident.lock",{{"path",root}});
+ if(!owner.tryLock(0))return StorageLocations::journalLockFailure(owner,"storage_busy",root+"/resident.lock",{{"path",root}});
  owner.unlock();return {};
 }
 // Renames each staged entry into the root. An entry the root already has stays
@@ -97,7 +97,7 @@ StorageLocations StorageLocations::prepare(const QString& genericConfig,const QS
   // running resident of this layout; it is released before the journal opens.
   if(!QDir().mkpath(data)) {result.error={"storage_unavailable","Cannot create the put.gd data folder",{{"path",data}}};return result;}
   QLockFile owner(data+"/resident.lock");owner.setStaleLockTime(0);
-  if(!owner.tryLock(5000)) {result.error=journalLockBusy("storage_busy",data+"/resident.lock",{{"path",data}});return result;}
+  if(!owner.tryLock(5000)) {result.error=journalLockFailure(owner,"storage_busy",data+"/resident.lock",{{"path",data}});return result;}
   // Caller-supplied generic locations may share one root; migrate it once.
   const bool shared=config==data;
   result.dataRoot=prepareRoot(data,shared?QStringList{"history.sqlite","config.json"}:QStringList{"history.sqlite"},hook,dataReport,result.error);
@@ -110,5 +110,10 @@ StorageLocations StorageLocations::prepare(const QString& genericConfig,const QS
 Error StorageLocations::journalLockBusy(const QString& code,const QString& lockPath,const QJsonObject& details) {
  const auto path=QDir::toNativeSeparators(lockPath);auto fields=details;fields["lockPath"]=path;
  return {code,"The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove "+path+" and start it again.",fields};
+}
+Error StorageLocations::journalLockFailure(const QLockFile& lock,const QString& code,const QString& lockPath,const QJsonObject& details) {
+ if(lock.error()==QLockFile::LockFailedError)return journalLockBusy(code,lockPath,details);
+ auto fields=details;fields["lockPath"]=QDir::toNativeSeparators(lockPath);
+ return {"storage_unavailable","Cannot create the journal lock file",fields};
 }
 }
