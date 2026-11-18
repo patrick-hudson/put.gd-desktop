@@ -50,7 +50,9 @@ import urllib.request
 import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'faults'))  # python -I does not put the script's folder on the path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fault_control  # noqa: E402
+import tsan_summary  # noqa: E402
 
 SOCKET_LIMIT = 107
 # Every wait scales with it: rr record --chaos runs several times slower than a plain run (ACTION_FUZZ_SLOW=5), ThreadSanitizer about three.
@@ -441,7 +443,10 @@ class Resident:
         # "initializing" resolves on its own; wait for a settled snapshot.
         end = time.monotonic() + 60 * SLOW
         while time.monotonic() < end:
-            reply = self.call('settings.get', raw=True)
+            try:
+                reply = self.call('settings.get', raw=True)
+            except OSError as error:  # the resident (or the recorder it runs under) went away right after it answered
+                raise Finding('startup', 'settings.get failed while the resident started: %s (exit %s)' % (error, self.returncode()))
             if reply.get('ok'):
                 return
             if (reply.get('error') or {}).get('code') not in BUSY_CODES:
@@ -690,13 +695,11 @@ class Resident:
         end = time.monotonic() + (10 * SLOW if self.options is not None and self.options.wrap else 0)
         while self.session_members() and time.monotonic() < end:
             for pid in self.session_members():
-                try:
-                    os.kill(pid, sig)
-                except OSError:
-                    pass
+                self.send(pid, sig)
             time.sleep(0.2)
         if self.session_members():
             raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
+        self.reap()
 
     # Under rr a trace is complete once rr has written it: rr removes the `incomplete` marker of its trace folder at the end of recording.
     def kill_tracees(self, sig):
@@ -763,8 +766,20 @@ class Resident:
         return '\n'.join(out)
 
     def sanitizer_output(self):
-        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p))
+        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p) and not self.known_qt_races_only(p))
         return found
+
+    @staticmethod
+    def known_qt_races_only(path):
+        """A TSan report file holding nothing but diagnosed Qt-internal races (tools/lab/tsan_summary.py: both racing accesses inside Qt in
+        their top frames). Every other report, a put.gd frame near the top of either access included, is a finding."""
+        if not path.name.startswith('tsan.'):
+            return False
+        try:
+            text = path.read_text(errors='replace')
+        except OSError:
+            return False
+        return 'WARNING: ThreadSanitizer' in text and not tsan_summary.unexplained(path, Path(__file__).resolve().parents[2])
 
     @staticmethod
     def third_party(path):

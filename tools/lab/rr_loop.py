@@ -6,13 +6,16 @@ within a few runs and a failing run replays exactly (`rr replay`, reverse-contin
 iteration; a passing trace is removed with `rr rm`, a failing trace is kept and printed.
 
   python3 -I tools/lab/rr_loop.py --build build/rrb --test http_uploader_integration --iterations 50 \\
-      --run-dir ~/work/races-1/rr-http -- -testcase lostReplyWaitsForAnExplicitRetryThatMayDuplicate
+      --run-dir ~/work/races-1/rr-http -- lostReplyWaitsForAnExplicitRetryThatMayDuplicate
 
 The test command, environment and working directory come from `ctest --show-only=json-v1`, so the run is the CTest one.
 Arguments after `--` are appended to the test's command line (a QtTest function name, for one case). Extra
---env NAME=VALUE entries go into the test's environment. Use a RelWithDebInfo or Debug build and run on a build server:
-rr needs `kernel.perf_event_paranoid <= 1` and real performance counters (a VM often has none).
-Only processes this script starts are waited for; nothing is killed by pattern.
+--env NAME=VALUE entries go into the test's environment. --build and --run-dir are made absolute first. Use a RelWithDebInfo or
+Debug build and run on a build server: rr needs real performance counters (a VM often has none) and a kernel.perf_event_paranoid
+it accepts (rr 5.9+ on Linux 6.10+ works at 2). --timeout is how long one recorded run may take before it is stopped and counted as
+a possible slowdown or hang; --time-scale (PUTGD_TEST_TIME_SCALE) stretches the test's own waits for rr's slower schedule.
+A run that is stopped gets SIGTERM on rr itself, so rr finishes the trace; a trace is reported replayable only when rr completed it
+(no `incomplete` marker). Only processes this script starts are signalled; nothing is killed by pattern.
 """
 import argparse
 import json
@@ -53,8 +56,10 @@ def main():
     parser.add_argument('--env', action='append', default=[])
     parser.add_argument('--no-chaos', action='store_true')
     parser.add_argument('--stop-after', type=int, default=1, help='stop after this many failing runs')
+    parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
     parser.add_argument('extra', nargs=argparse.REMAINDER)
     options = parser.parse_args()
+    options.build, options.run_dir = options.build.absolute(), options.run_dir.absolute()
     extra = options.extra[1:] if options.extra[:1] == ['--'] else options.extra
     options.run_dir.mkdir(parents=True)
     command, env, cwd = test_definition(options.build, options.test)
@@ -69,28 +74,36 @@ def main():
     for index in range(1, options.iterations + 1):
         trace = options.run_dir / ('trace-%03d' % index)
         log = options.run_dir / ('run-%03d.log' % index)
-        argv = ['rr', 'record', '-o', str(trace)] + ([] if options.no_chaos else ['--chaos']) + command + extra
+        argv = [options.rr, 'record', '-o', str(trace)] + ([] if options.no_chaos else ['--chaos']) + command + extra
         started = time.monotonic()
         with open(log, 'w') as out:
             process = subprocess.Popen(argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
                                        start_new_session=True)
+            handle = os.pidfd_open(process.pid)  # rr itself, not reaped until wait() below, so this names it for good
             try:
                 code = process.wait(options.timeout)
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGTERM)  # rr records the tree; its own process group is ours alone
+                # SIGTERM to rr alone: it stops its tracees and finishes the trace. Only if it does not, its process group (ours alone, and
+                # pinned while rr is unreaped) gets SIGKILL, and that trace stays incomplete.
+                signal.pidfd_send_signal(handle, signal.SIGTERM)
                 try:
-                    process.wait(30)
+                    process.wait(120)
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGKILL)
                     process.wait()
-                code = 'timeout'
+                code = 'stopped after %.0f s: a possible slowdown or hang' % options.timeout
+            finally:
+                os.close(handle)
         seconds = time.monotonic() - started
         if code == 0:
-            subprocess.run(['rr', 'rm', str(trace)], capture_output=True)
-            print('run %d: passed in %.1f s' % (index, seconds), flush=True)
+            removed = subprocess.run([options.rr, 'rm', str(trace)], capture_output=True, text=True)
+            note = '' if removed.returncode == 0 else ' (rr rm failed: %s)' % removed.stderr.strip()[-200:]
+            print('run %d: passed in %.1f s%s' % (index, seconds, note), flush=True)
             continue
         failures += 1
-        print('run %d: FAILED (%s) in %.1f s: log %s, trace %s (rr replay %s)' % (index, code, seconds, log, trace, trace), flush=True)
+        replayable = (trace / 'version').exists() and not (trace / 'incomplete').exists()
+        print('run %d: FAILED (%s) in %.1f s: log %s, trace %s (%s)' % (
+            index, code, seconds, log, trace, 'rr replay %s' % trace if replayable else 'INCOMPLETE: rr did not finish it, not replayable'), flush=True)
         if failures >= options.stop_after:
             break
     print('%d failing run(s) in %d' % (failures, index), flush=True)

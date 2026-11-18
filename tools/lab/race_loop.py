@@ -4,16 +4,19 @@
   tsan  --build build/tsan-qt --tsan-prefix work/sanitizer-diagnosis   the instrumented Qt build of docs/testing/thread-sanitizer.md
   rr    --build build/rrb                                              a RelWithDebInfo build, recorded with rr's chaos mode
 
-Each seed runs `action_fuzz.py run` in its own run folder inside a private session bus. A clean seed is removed (for rr, its traces are
-removed with `rr rm`); a finding keeps the run folder (finding.json, steps.jsonl, the TSan reports in san/) and, for rr, the traces
-under <out>/traces. --stress N starts N busy loops (this script's own processes, stopped by PID) to shake the schedules. The loop stops
+Each seed runs `action_fuzz.py run` in its own run folder inside a private session bus. A clean seed keeps only its small records
+(steps.jsonl, logs/, san/): the payloads it made (fixtures/, saves/, archive/) are deleted file by file, and its rr traces are removed
+with `rr rm`, only for folders that are complete rr traces (a `version` file, no `incomplete` marker, not the `latest-trace` link). A
+cleanup that fails is reported. A finding keeps the run folder whole (finding.json, steps.jsonl, the TSan reports in san/) and, for
+rr, the traces under <out>/traces. --stress N starts N busy loops (this script's own processes, stopped by PID) to shake the schedules. The loop stops
 at --hours or --max-findings.
 
   python3 -I tools/lab/race_loop.py tsan --build build/tsan-qt --tsan-prefix work/sanitizer-diagnosis --out ~/work/races-1/tsan \\
       --first-seed 1 --steps 150 --hours 3 --stress 2
 
-On a build server, with --out on disk; rr needs `kernel.perf_event_paranoid <= 1`, real performance counters and a filesystem whose ioctls
-it knows (rr 5.10 aborts on btrfs's subvolume-info ioctl: put --out on tmpfs or ext4).
+On a build server, with --out on disk (it is made absolute first); rr needs real performance counters, a kernel.perf_event_paranoid it
+accepts (rr 5.9+ on Linux 6.10+ works at 2; see docs/testing/thread-sanitizer.md) and a filesystem whose ioctls it knows (rr 5.10 aborts
+on btrfs's subvolume-info ioctl: put --out on tmpfs or ext4).
 """
 import argparse
 import os
@@ -24,6 +27,50 @@ import sys
 import time
 
 HOG = 'import signal\nsignal.signal(signal.SIGTERM, signal.SIG_DFL)\nwhile True:\n    pass\n'
+PAYLOADS = ('fixtures', 'saves', 'archive')  # what a clean seed made and does not need to keep
+
+
+def prune_clean_run(run):
+    """Delete a clean seed's payload files one by one (never a whole tree); return (bytes kept, errors)."""
+    errors = []
+    for name in PAYLOADS:
+        top = run / name
+        if not top.is_dir() or top.is_symlink():
+            continue
+        for folder, subfolders, files in os.walk(top, topdown=False):
+            for file in files:
+                try:
+                    os.chmod(folder, 0o700)
+                    os.unlink(os.path.join(folder, file))
+                except OSError as error:
+                    errors.append('%s: %s' % (os.path.join(folder, file), error))
+            try:
+                os.rmdir(folder)
+            except OSError as error:
+                errors.append('%s: %s' % (folder, error))
+    kept = 0
+    for folder, _, files in os.walk(run):
+        for file in files:
+            try:
+                kept += os.lstat(os.path.join(folder, file)).st_size
+            except OSError:
+                pass
+    return kept, errors
+
+
+def remove_traces(root, rr):
+    """`rr rm` each complete trace folder under root; return the errors."""
+    errors = []
+    for trace in sorted(root.glob('*')):
+        if trace.is_symlink() or not trace.is_dir():
+            continue  # latest-trace is a link to a trace, not one
+        if not (trace / 'version').exists() or (trace / 'incomplete').exists():
+            errors.append('%s: not a complete rr trace, left in place' % trace)
+            continue
+        done = subprocess.run([rr, 'rm', str(trace)], capture_output=True, text=True)
+        if done.returncode != 0:
+            errors.append('%s: rr rm failed (%d) %s' % (trace, done.returncode, done.stderr.strip()[-200:]))
+    return errors
 
 
 def main():
@@ -39,7 +86,14 @@ def main():
     parser.add_argument('--stress', type=int, default=0)
     parser.add_argument('--destination', choices=('http', 's3'), default='http')
     parser.add_argument('--mode', choices=('run', 'crash'), default='run')
+    parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
+    parser.add_argument('--keep-limit', type=int, default=16, help='MiB a clean seed may keep after pruning; more is reported')
     options = parser.parse_args()
+    # Absolute before anything uses them: rr, the fuzzer and this script may resolve a relative path from different folders.
+    options.out = options.out.absolute()
+    options.build = os.path.abspath(options.build)
+    if options.tsan_prefix:
+        options.tsan_prefix = os.path.abspath(options.tsan_prefix)
     if options.kind == 'tsan' and not options.tsan_prefix:
         raise SystemExit('tsan needs --tsan-prefix')
     options.out.mkdir(parents=True)
@@ -59,7 +113,7 @@ def main():
             else:
                 trace_root = traces / ('s%d' % seed)
                 trace_root.mkdir()
-                command += ['--wrap', 'rr record --chaos', '--env', '_RR_TRACE_DIR=%s' % trace_root]
+                command += ['--wrap', '%s record --chaos' % options.rr, '--env', '_RR_TRACE_DIR=%s' % trace_root]
             command += [options.mode]
             started = time.monotonic()
             with open(options.out / ('s%d.log' % seed), 'w') as log:
@@ -67,10 +121,15 @@ def main():
             note = 'seed %d: %s in %.0f s' % (seed, 'clean' if code == 0 else 'FINDING (exit %d)' % code, time.monotonic() - started)
             if code == 0:
                 clean += 1
-                if options.kind == 'rr':
-                    for trace in sorted((traces / ('s%d' % seed)).glob('*-*')):
-                        subprocess.run(['rr', 'rm', str(trace)], capture_output=True)
-                (options.out / ('s%d.log' % seed)).unlink()
+                problems = remove_traces(traces / ('s%d' % seed), options.rr) if options.kind == 'rr' else []
+                kept, errors = prune_clean_run(run)
+                problems += errors
+                if kept > options.keep_limit << 20:
+                    problems.append('%s keeps %.1f MiB after pruning (limit %d MiB)' % (run, kept / 1048576, options.keep_limit))
+                for problem in problems:
+                    print('cleanup: %s' % problem, flush=True)
+                if not problems:
+                    (options.out / ('s%d.log' % seed)).unlink()
             else:
                 findings += 1
                 note += ' (kept %s)' % run

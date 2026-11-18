@@ -11,21 +11,6 @@ deadlock:_dbus_connection_new_for_transport
 # interceptors, such as malloc and pthread_mutex_lock, then report only for calls from instrumented code).
 # That is an option, not a suppression: put.gd's own code is checked as before.
 
-# Qt 6.4 internals found by the race hunt, none involving put.gd code in the racing accesses.
-# QNetworkAccessManager starts its HTTP thread and then connects to that QThread's started() signal from the
-# calling thread (qnetworkreplyhttpimpl.cpp postRequest); the new thread emits started() and reads the
-# connection list with a relaxed load (qobject.cpp maybeSignalConnected) while connect() publishes it
-# under the signal mutex. Qt designed the list to be read that way.
-race:QThread::started
-# A QNetworkReply is deleted on its own thread while the access manager's HTTP thread still runs the
-# QObject destructor chain of the delegate (vptr report in ~QNetworkReply / ~QObject).
-race:QNetworkReply::~QNetworkReply
-# QtDBus owns a thread (QDBusConnectionManager) that dispatches posted events while the main thread runs
-# ~QCoreApplication at process exit and clears QCoreApplication::self.
-race:QCoreApplication::~QCoreApplication
-# The same QtDBus thread destroys QDBusPendingCallWatcherHelper (vptr reset) while it finishes a call.
-race:QDBusPendingCallWatcherHelper::~QDBusPendingCallWatcherHelper
-# QtDBus completes a call on its own thread (QDBusConnectionPrivate::processFinishedCall moves the reply message
-# and appends to the pending-call list) and the calling thread reads them in sendWithReply after its wait.
-race:QDBusConnectionPrivate::processFinishedCall
-race:QDBusConnectionPrivate::sendWithReply
+# The Qt-internal races the race hunt found are not suppressed here: a race: rule matches its symbol anywhere in either access stack
+# or a thread-creation stack, so it could hide put.gd racing with Qt. Reports are captured whole, and tools/lab/tsan_summary.py
+# excuses only a diagnosed Qt race whose two racing accesses are inside Qt in their top frames.
