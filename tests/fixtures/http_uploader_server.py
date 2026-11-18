@@ -20,6 +20,10 @@ Control: POST /__reset {auth, token, php, echo}, POST /__rules {rules}, GET /__s
 A rule: {"call": "upload" | "delete" | "file", "status", "body", "remaining",
 "drop": true (close without a reply), "store": true (store first; with drop or status this is a
 reply lost after the file was stored), "location" (a Location header for a status reply)}.
+A "file" rule can also hold its reply: "stall": seconds before it answers, as a stalled
+server does, or "barrier": a name it waits on until POST /__release {barrier} (at most 60 s),
+or answer 404 only to a request sending a cookie: "notFoundFor": "name=value". A "delete"
+rule can set one: "setCookie": "name=value".
 
 An upload rule can also bend the reply the way a careless or hostile server would:
   "echo": "url" | "thumb" | "delete"   that address repeats the credential the request offered
@@ -27,6 +31,7 @@ An upload rule can also bend the reply the way a careless or hostile server woul
   "elsewhere": "url" | "thumb" | "delete"   that address is on another host name
                                        (this listener as "localhost")
   "cut": "length"                      the reply ends early: a Content-Length it does not fulfil
+         "empty"                       the headers promise the body, and the connection closes before any of it
          "chunk"                       a chunked reply with every byte of the body but no last chunk
   "early": true                        with "status": the reply is sent before the body is
                                        read, and the connection then closes with most of
@@ -43,6 +48,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOKEN = 'putgd-synthetic-uploader-token-not-real'
 lock = threading.RLock()
+barriers = {}
 OTHER_HOST = 'localhost'  # the same listener under another host name
 
 
@@ -93,6 +99,10 @@ class Handler(BaseHTTPRequestHandler):
             for name, value in (headers or {}).items():
                 self.send_header(name, value)
             self.end_headers()
+            if cut == 'empty':
+                self.wfile.flush()
+                self.close_connection = True
+                return
             if chunked:
                 def chunk(data):
                     return b'%x\r\n' % len(data) + data + b'\r\n'
@@ -187,10 +197,20 @@ class Handler(BaseHTTPRequestHandler):
         if parts[0] == 'f' and len(parts) >= 2:
             self.record('file')
             rule = self.rule('file')
-            if rule.get('status'):
-                return self.reply(rule['status'], rule.get('body', ''))
-            # A "file" rule may cut the file's own reply short, as an upload rule does.
+            if rule.get('stall'):
+                time.sleep(rule['stall'])
+            if rule.get('barrier'):
+                with lock:
+                    barrier = barriers.setdefault(rule['barrier'], threading.Event())
+                barrier.wait(60)
+            # "notFoundFor": the file is gone only for a visitor sending that cookie.
+            if rule.get('notFoundFor') and rule['notFoundFor'] in (self.headers.get('Cookie') or ''):
+                return self.reply(404, {'error': 'no such file'})
+            # A "file" rule may cut its reply short (the file's own, or a "status" reply
+            # with its "body"), as an upload rule does.
             self.cut = rule.get('cut')
+            if rule.get('status'):
+                return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
             with lock:
                 entry = state['files'].get(parts[1])
             if not entry or entry.get('deleted'):
@@ -216,9 +236,12 @@ class Handler(BaseHTTPRequestHandler):
                     entry['deleted'] = True
             if rule.get('drop'):
                 return self.drop()
+            headers = {'Location': rule['location']} if rule.get('location') else {}
+            if rule.get('setCookie'):
+                headers['Set-Cookie'] = rule['setCookie'] + '; Path=/'
             if rule.get('status'):
-                return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
-            return self.reply(200, {'deleted': True}) if valid else self.reply(404, {'error': 'no such file'})
+                return self.reply(rule['status'], rule.get('body', ''), headers=headers)
+            return self.reply(200, {'deleted': True}, headers=headers) if valid else self.reply(404, {'error': 'no such file'}, headers=headers)
         self.reply(404, {'error': 'unknown path'})
 
     def do_POST(self):
@@ -235,11 +258,19 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 state['rules'] = json.loads(self.body())['rules']
             return self.reply(200, {})
+        if self.path == '/__release':
+            name = json.loads(self.body())['barrier']
+            with lock:
+                barriers.setdefault(name, threading.Event()).set()
+            return self.reply(200, {})
         if self.path.startswith('/upload/'):
             early = self.early()
             if early:
                 return early()
             return self.upload(self.body())
+        # Read the body first: left on a kept-alive connection, it would be parsed as the
+        # start of the next request (which then fails as an unsupported method, 501).
+        self.body()
         self.reply(404, {'error': 'unknown path'})
 
     do_PUT = do_POST

@@ -28,6 +28,8 @@
 #include <csignal>
 #endif
 #include "fixtures/Waits.h"
+#include "fixtures/ChildProcesses.h"
+#include <sys/stat.h>
 
 using namespace putgd;
 namespace {
@@ -409,6 +411,36 @@ private slots:
         QCOMPARE(invalidKey.error.code, QString("s3_key_invalid"));
         QCOMPARE(callbacks, 4);
         QCOMPARE(fixture.events().size(), before);
+    }
+    // #1602, review of #1603. A cold S3 lane starts its helper, and the helper's start
+    // stalls (its module is a FIFO nobody writes, so loading it blocks). Quit or Cancel
+    // stops that wait at once: the helper is killed and the start reports cancelled,
+    // instead of waiting out the 10 s handshake. Copy Link renewals and deletions reach
+    // a cold lane this way.
+    void stopEndsAStalledHelperStart() {
+        QTemporaryDir directory;
+        const auto module = directory.filePath("stalled-module.so");
+        QVERIFY(::mkfifo(module.toLocal8Bit().constData(), 0600) == 0);
+        auto stop = std::make_shared<std::atomic_bool>(false);
+        std::atomic_bool done{false};
+        Error error;
+        S3Driver* driver = nullptr;
+        std::thread starter([&] {
+            driver = createS3ProcessDriver(module, [](auto, auto) -> std::optional<Credentials> { return {}; }, [](auto) { return Error{}; }, error, {}, stop);
+            done = true;
+        });
+        PUTGD_TRY_VERIFY(!test::childProcesses("putgd-s3-worker").isEmpty());
+        PUTGD_VERIFY_STEADY(!done.load(), 500);
+        QElapsedTimer stopping;
+        stopping.start();
+        stop->store(true);
+        starter.join();
+        const auto elapsed = stopping.elapsed();
+        std::unique_ptr<S3Driver> owned(driver);
+        QVERIFY2(elapsed < 3000, qPrintable(QString::number(elapsed)));
+        QVERIFY(!owned);
+        QCOMPARE(error.code, QString("cancelled"));
+        QVERIFY(test::childProcesses("putgd-s3-worker").isEmpty());
     }
     void isolatedInvalidRequest() {
         if (qEnvironmentVariable("PUTGD_S3_FAULT_CHILD") != "1") QSKIP("Runs only in the relocated isolated child");

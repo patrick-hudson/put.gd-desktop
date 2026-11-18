@@ -82,6 +82,10 @@ struct DeleteRequest {
  QString id; StorageReceipt receipt;
  QJsonObject progress;
  std::shared_ptr<std::atomic_bool> cancellation;
+ // Quit (#1602): the helper process doing this deletion is killed at once, with no
+ // cancel exchange, so it sends nothing more. A request it had sent may or may not have
+ // reached the server: the result is unknown, with the last acknowledged progress kept.
+ std::shared_ptr<std::atomic_bool> kill={};
 };
 struct DeleteResult { QString status; QJsonObject progress; Error error; }; // removed, missing, changed, failed, unknown, hidden_version_retained
 // A driver must await a successful durable checkpoint callback BEFORE the associated
@@ -104,6 +108,9 @@ public:
  virtual ~StorageProvider()=default;
  // Explicit user action only: never called by refreshLink or background history reads.
  virtual void unlockLinkCredentials(const StorageReceipt&,std::function<void(Error)> reply) {reply({"link_refresh_unsupported","No saved link credentials are available",{}});}
+ // Copy Link's renewal of an expiring link. A provider whose renewal runs in a helper
+ // kills it when `kill` is set (quit, #1602) and answers unknown: the recorded link stays.
+ virtual void refreshLinkForCopy(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> /*kill*/,std::function<void(StatResult)> reply) {refreshLink(receipt,std::move(reply));}
  // Explicit copy-time renewal. Implementations use only this saved receipt and cached credentials.
  virtual void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> reply) {
   reply({"unknown",receipt,{"link_refresh_unsupported","This provider cannot refresh an expiring link",{}}});
@@ -149,6 +156,9 @@ public:
  virtual void checkName(const Destination&,const QString&,std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {})=0;
  virtual void upload(const UploadRequest&,std::function<void(UploadResult)>)=0;
  virtual void stat(const StorageReceipt&,std::function<void(StatResult)>)=0;
+ // The identity check before a deletion. A provider whose check runs in a helper kills it
+ // when `kill` is set (quit, #1602) and answers unknown.
+ virtual void statForRemoval(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> /*kill*/,std::function<void(StatResult)> reply) {stat(receipt,std::move(reply));}
  virtual void reconcile(const UploadRequest&,std::function<void(StatResult)>)=0;
  virtual void remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)>)=0;
  // Removes the remote state a failed upload's journal (UploadRequest::resume) still

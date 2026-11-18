@@ -1,6 +1,7 @@
 #include "HistoryService.h"
 #include "core/QrImage.h"
 #include <QFileInfo>
+#include <chrono>
 #include <QSaveFile>
 #include <QTemporaryFile>
 #include <unistd.h>
@@ -44,7 +45,8 @@ QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
    data=store.detail(id,&e);if(e)return QJsonObject{};
    if(data["linkRefreshable"].toBool()) {
     receipt=StorageReceipt::fromJson(data["receipt"].toObject());
-    auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLink(receipt,cb);});
+    // Quit kills a renewal helper waiting on a stalled server; a link not renewed stays as recorded (#1602).
+    auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLinkForCopy(receipt,quitting_,cb);});
     if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","The original uploaded object is no longer available",{}};return QJsonObject{};}
     if((e=store.refreshLink(id,receipt,result.receipt)))return QJsonObject{};
     data=store.detail(id,&e);
@@ -158,12 +160,18 @@ QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
  return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Copies already cached by browsers or a CDN can stay visible for a while"}};
 }
 void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}operations_.background([this,ids](Error& e) {return prepare(ids,e);},reply);}
+namespace {Error quittingError() {return {"cancelled","put.gd is quitting; delete or retry after it starts again",{}};}}
+void HistoryService::stopDeletions() {quitting_->store(true);}
 void HistoryService::deleteConfirmed(const QStringList& ids,const QString& acknowledgement,JsonReply reply) {
+ if(quitting_->load()) {reply(quittingError(),{});return;}
  operations_.background([this,ids,acknowledgement](Error& e) {auto preview=prepare(ids,e);if(e)return QJsonObject{};if(acknowledgement.isEmpty()||preview["acknowledgement"]!=acknowledgement) {e={"delete_confirmation_changed","Acknowledge the current exact target set and effect",{}};return QJsonObject{};}
   QJsonArray items;for(auto target:preview["targets"].toArray()) {auto item=target.toObject();item["status"]="pending";item["progress"]=QJsonObject{{"schemaVersion",1}};items.append(item);}
   QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},{"state","accepted"},{"acknowledgement",acknowledgement},{"items",items},{"cancelled",false}};
   HistoryStore store(operations_.databasePath());e=store.saveDeletion(doc);return doc;
- },[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}notifyChanged();const auto id=doc["id"].toString();auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"deletion",doc}});runDelete(doc,flag);});
+ },[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}notifyChanged();
+  // Accepted but not started: the next start recovers it as interrupted.
+  if(quitting_->load()) {reply(quittingError(),{});return;}
+  const auto id=doc["id"].toString();auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"deletion",doc}});runDelete(doc,flag);});
 }
 void HistoryService::inspectSharing(const QString& id,JsonReply reply){if(stoppedSharing_.contains(id)){reply({},stoppedSharing_.value(id));return;}const auto path=operations_.databasePath();operations_.background([path,id](Error& e){HistoryStore store(path);return store.sharing(id,&e);},std::move(reply));}
 void HistoryService::changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply reply){
@@ -221,7 +229,8 @@ void HistoryService::runSharing(QJsonObject doc,std::shared_ptr<std::atomic_bool
   }
   if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
   if(result.status!="shared")result.receipt.directUrl.clear();
-  doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();e=store.saveSharing(doc);return doc;
+  doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();// An unknown result without progress (a helper stopped by shutdown) keeps the last durable checkpoint.
+  if(!(result.status=="unknown"&&result.progress.isEmpty()))doc["progress"]=result.progress;doc["error"]=result.error.toJson();e=store.saveSharing(doc);return doc;
  },[this,id](Error e,QJsonObject doc){
   if(e)recordStoppedSharing(doc,e);
   active_.remove(id);notifyChanged();
@@ -233,54 +242,94 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
  const auto committed=[owner=QPointer<HistoryService>(this)] {
   if(owner)QMetaObject::invokeMethod(owner,[owner]{if(owner)owner->notifyChanged();},Qt::QueuedConnection);
  };
- operations_.background([this,doc,cancelled,committed](Error& error) mutable {
+ const auto quitting=quitting_;
+ operations_.background([this,doc,cancelled,committed,quitting](Error& error) mutable {
   const auto path=operations_.databasePath();HistoryStore store(path);doc["state"]="running";if((error=store.saveDeletion(doc)))return doc;committed();
   auto items=doc["items"].toArray();
   for(int index=0;index<items.size();++index) {
    auto item=items[index].toObject();auto status=item["status"].toString();if(status=="removed"||status=="already_missing"||status=="changed")continue;
    if(cancelled->load()) {doc["cancelled"]=true;break;}
+   // Quit: the rest is left as journaled; the next start recovers it as interrupted.
+   if(quitting->load())return doc;
    const auto receipt=StorageReceipt::fromJson(item["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
    Error e;QString outcome;QJsonObject progress=item["progress"].toObject();
    if(!provider) {e={"provider_unavailable","Restore access to the recorded destination",{}};outcome="failed";}
    else if(!provider->receiptCapabilities(receipt).safeRemoval()) {e={"unsupported_capability","This provider can't safely delete this recorded target",{}};outcome="failed";}
    else {
-    auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
+    // Another job on the same object (a link refresh, a sharing change) may hold it on
+    // a stalled request: Quit stops this wait and leaves the item as it was.
+    auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock,std::defer_lock);
+    while(!guard.try_lock_for(std::chrono::milliseconds(100)))if(quitting->load())return doc;
     const bool driverReconciles=provider->reconcilesDeleteProgress() && progress.contains("phase");
     // A reference the upload returned addresses exactly that upload: there is nothing to stat (#1361).
     const bool byReference=provider->receiptCapabilities(receipt).referenceDelete;
-    auto stat=driverReconciles||byReference ? StatResult{"own",receipt,{}} : awaitProvider<StatResult>([&](auto cb) {provider->stat(receipt,cb);});
+    auto stat=driverReconciles||byReference ? StatResult{"own",receipt,{}} : awaitProvider<StatResult>([&](auto cb) {provider->statForRemoval(receipt,quitting,cb);});
+    // A lookup killed at quit sent nothing that deletes: the item stays as it was.
+    if(stat.status=="unknown"&&quitting->load())return doc;
     if(stat.status=="missing")outcome="already_missing";
     else if(stat.status=="foreign")outcome="changed";
     else if(stat.status!="own"||stat.error) {outcome="unknown";e=stat.error?stat.error:Error{"delete_unknown","Couldn't reconcile the recorded object identity",{}};}
     else if(stat.receipt.publicationId!=receipt.publicationId||stat.receipt.objectReference!=receipt.objectReference||stat.receipt.concurrencyToken!=receipt.concurrencyToken||stat.receipt.destination.toJson()!=receipt.destination.toJson()) {outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
     else {
+     const auto before=items[index].toObject();
      item["status"]="deleting";items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
+     // Whether this attempt's driver got a checkpoint acknowledged: none send a
+     // destructive request before one (see DurableCheckpoint).
+     auto acknowledged=std::make_shared<std::atomic_bool>(false);
      // Callback may run on the provider's worker. It creates a connection on that
      // thread, commits progress, then acknowledges; no Qt SQL connection crosses threads.
-     auto checkpoint=[path,&doc,&items,index,committed](const QJsonObject& checkpoint,std::function<void(Error)> ack) {
+     auto checkpoint=[path,&doc,&items,index,committed,acknowledged,quitting](const QJsonObject& checkpoint,std::function<void(Error)> ack) {
       if(!checkpoint["schemaVersion"].isDouble()||checkpoint["schemaVersion"].toInt()<1) {ack({"delete_checkpoint_invalid","Driver progress requires a version",{}});return;}
       auto proposedItems=items;
       auto target=proposedItems[index].toObject();target["progress"]=checkpoint;proposedItems[index]=target;
       auto proposedDoc=doc;proposedDoc["items"]=proposedItems;
       HistoryStore durable(path);const auto e=durable.saveDeletion(proposedDoc);
+      // Quit: the acknowledgement is withheld, so the helper takes no further step
+      // (#1602). An intent (a driver's "..._intent" phase) only asks permission for the
+      // next request, so the journal goes back to the checkpoint before it. Any other
+      // checkpoint records what the server already did (S3's marker_done and its marker
+      // ID): it is kept, for Retry. An acknowledgement sent just before Quit may have
+      // been delivered: that attempt counts as acknowledged.
+      if(!e&&quitting->load()) {
+       if(checkpoint["phase"].toString().endsWith("intent")) {if(!durable.saveDeletion(doc))committed();}
+       else {items=std::move(proposedItems);doc=std::move(proposedDoc);committed();acknowledged->store(true);}
+       ack({"cancelled","put.gd is quitting",{}});return;
+      }
       // Empty provider results may reuse this state, so only retain acknowledged progress.
-      if(!e) {items=std::move(proposedItems);doc=std::move(proposedDoc);committed();}
+      if(!e) {items=std::move(proposedItems);doc=std::move(proposedDoc);committed();acknowledged->store(true);}
       ack(e);
      };
-     DeleteRequest request{doc["id"].toString(),receipt,progress,cancelled};
+     DeleteRequest request{doc["id"].toString(),receipt,progress,cancelled,quitting};
      auto result=awaitProvider<DeleteResult>([&](auto cb) {provider->remove(request,checkpoint,cb);});outcome=result.status=="missing"?"already_missing":result.status;progress=result.progress.isEmpty()?items[index].toObject()["progress"].toObject():result.progress;e=result.error;
      const QStringList allowed{"removed","already_missing","changed","failed","unknown","hidden_version_retained","version_retained","unsupported_safe_removal"};if(!allowed.contains(outcome)) {outcome="unknown";e={"delete_unknown","Provider returned an unrecognized deletion result",{}};}
+     // Killed at quit before any checkpoint of this attempt: nothing was sent that
+     // deletes, so the item goes back to what it recorded before (pending, or an
+     // earlier attempt's unknown with its intent).
+     if(quitting->load()&&!acknowledged->load()&&(outcome=="unknown"||outcome=="failed")) {
+      items[index]=before;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();return doc;
+     }
+     // A result read after Quit began cannot show that the server did nothing (its
+     // helper was killed or stopped): failed is recorded unknown, with the last
+     // acknowledged intent. A result that shows the outcome (gone, changed, a version
+     // retained) stands.
+     if(quitting->load()&&outcome=="failed") {
+      outcome="unknown";progress=items[index].toObject()["progress"].toObject();
+      e={"delete_unknown","put.gd quit before this deletion's outcome was known; Retry asks again",{{"reportedError",e.toJson()}}};
+     }
     }
    }
    item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
   }
+  // Quit: the deletion stays running in its journal; the next start marks it interrupted.
+  if(quitting->load())return doc;
   doc["state"]=cancelled->load()?"cancelled":"completed";doc["items"]=items;error=store.saveDeletion(doc);if(!error)committed();return doc;
  },[this,id=doc["id"].toString()](Error,QJsonObject) {active_.remove(id);});
 }
 void HistoryService::inspectDelete(const QString& id,JsonReply reply) {const auto path=operations_.databasePath();operations_.background([path,id](Error& e) {HistoryStore store(path);return store.deletion(id,&e);},reply);}
 void HistoryService::retryDelete(const QString& id,JsonReply reply) {
+ if(quitting_->load()) {reply(quittingError(),{});return;}
  if(active_.contains(id)) {reply({"delete_busy","Deletion is active",{}},{});return;}
- inspectDelete(id,[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}auto id=doc["id"].toString();if(active_.contains(id)) {reply({"delete_busy","Deletion is active",{}},{});return;}auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"retryAccepted",true}});runDelete(doc,flag);});
+ inspectDelete(id,[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}if(quitting_->load()) {reply(quittingError(),{});return;}auto id=doc["id"].toString();if(active_.contains(id)) {reply({"delete_busy","Deletion is active",{}},{});return;}auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"retryAccepted",true}});runDelete(doc,flag);});
 }
 void HistoryService::cancelDelete(const QString& id,JsonReply reply) {if(active_.contains(id)) {active_[id]->store(true);reply({},{{"deleteOperationId",id},{"cancellationRequested",true},{"effect","Already sent deletion can't be rolled back"}});return;}reply({"delete_not_active","Deletion is not active",{}},{});}
 }

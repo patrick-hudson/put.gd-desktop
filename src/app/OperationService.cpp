@@ -225,7 +225,9 @@ void OperationService::requestImagePageRelease() {
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
- threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {
+ threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread=QPointer<QThread>(thread)] {
+  // shutdown() may have waited for and deleted it already.
+  if(!thread)return;
   threads_.removeOne(thread);thread->deleteLater();
   // Every worker opens its own journal connection and frees its page cache and
   // query results on exit, read-only ones included (#1184). Arm the idle gate
@@ -234,7 +236,7 @@ void OperationService::background(std::function<QJsonObject(Error&)> work,JsonRe
   scheduleHeapReclamation();
  });thread->start();
 }
-std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d,const QJsonObject& object,const QString& name) {
+std::shared_ptr<std::timed_mutex> OperationService::objectLock(const Destination& d,const QJsonObject& object,const QString& name) {
  // Adapters supply their real destination/object identity, independent of profile revisions.
  auto provider=providers_.find(d.providerId);
  const auto key=provider?provider->serializationKey(d,object,name):d.providerId+name;
@@ -245,7 +247,7 @@ std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d,co
  }
  auto lock=locks_.value(key).lock();
  if(!lock) {
-  lock=std::make_shared<std::mutex>();
+  lock=std::make_shared<std::timed_mutex>();
   locks_.insert(key,lock);
  }
  return lock;
@@ -1139,7 +1141,7 @@ Operation OperationService::run(Job job) {
    auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
    if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
    if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
-   guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::mutex>(*lock);
+   guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::timed_mutex>(*lock);
    if(attempts==31) {item.uploadStatus=undone;item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}
   }
  };
