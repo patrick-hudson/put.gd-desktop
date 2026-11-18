@@ -451,7 +451,7 @@ jobs:
           PUTGD_PKG_LABEL: appimage
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '0'
+          PUTGD_PKG_ATTEMPTS: '3'
         run: |
           # One apt transaction (#1652): the base dependencies, the packages in tools/ci/appimage-packages.txt
           # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
