@@ -7,6 +7,7 @@
 #include <QElapsedTimer>
 #include <QThread>
 #include <QtTest>
+#include <atomic>
 #include <optional>
 using namespace putgd;
 using namespace putgd::editor;
@@ -24,13 +25,14 @@ QStringList found(const QList<RecognizedWord>& candidates,const quickRedact::Res
  for(const auto& match:result.matches){QStringList text;for(const int w:match.words)text.append(candidates.at(w).text);out.append(match.category+": "+text.join(' '));}
  return out;
 }
-// Every start position costs just under PCRE2's limit: these run until the budget.
+// Every start position costs just under PCRE2's limit (15 a's with (a|aa)+$,
+// 2.3 ms a 1000-character search on m74): these run until the budget.
 quickRedact::Sources slowPatterns(int count) {
  quickRedact::Sources sources;sources.patterns.append(R"(JIRA-\d)");
- for(int i=0;i<count;++i)sources.patterns.append("(a+)+$");
+ for(int i=0;i<count;++i)sources.patterns.append("(a|aa)+$");
  return sources;
 }
-QString slowPage() {QString line;for(int i=0;i<1000;++i)line+=QString(14,'a')+"b ";return line+" | JIRA-3";}
+QString slowPage() {QString line;for(int i=0;i<1000;++i)line+=QString(15,'a')+"b ";return line+" | JIRA-3";}
 }
 class QuickRedactRunnerTest final:public QObject {
  Q_OBJECT
@@ -43,7 +45,7 @@ private slots:
   PUTGD_TRY_VERIFY(result.has_value());
   QCOMPARE(thread,QThread::currentThread());
   QCOMPARE(found(candidates,*result),(QStringList{"list: Hammond","list: JIRA-9"}));
-  QVERIFY(ui::quickRedactWorkersEnded(QDeadlineTimer(5000)));
+  QVERIFY(ui::stopQuickRedactWorkers(QDeadlineTimer(5000)));
  }
  // M9: with no login given, the worker reads the account itself.
  void readsTheAccountOnTheWorker() {
@@ -68,19 +70,43 @@ private slots:
   QCOMPARE(found(candidates,*result),QStringList{"list: JIRA-3"});
   QVERIFY(result->skippedPatterns.contains(20));QVERIFY(!result->skippedPatterns.contains(0));
  }
- // M2: the exit wait (QApplication's destructor) returns once the worker ends,
- // which is within the budget plus the grace even for runaway patterns.
- void exitWaitIsBounded() {
-  constexpr int budget=300;
+ // M2, U6: exit cancels the worker, which stops before its next search, so
+ // the wait ends well within quickRedactExitWaitMs even mid-way through
+ // patterns that would run for seconds.
+ void exitCancelsBetweenSearches() {
   auto* context=new QObject;bool called=false;
-  ui::runQuickRedact(context,words(slowPage()),{"list"},slowPatterns(20),[&](quickRedact::Result){called=true;},budget);
-  // The editor closes at once: its window (the context) goes first.
+  // The account lookup tells when the worker is under way; matching follows at once.
+  std::atomic_bool started{false};
+  ui::setQuickRedactAccountLookup([&started]{started=true;return ui::Account{QStringLiteral("someone"),{}};});
+  ui::runQuickRedact(context,words(slowPage()),{"name","list"},slowPatterns(20),[&](quickRedact::Result){called=true;},5000);
+  ui::setQuickRedactAccountLookup({});
+  PUTGD_TRY_VERIFY(started.load());
+  // The editor closes mid-way: its window (the context) goes first.
   delete context;
   QElapsedTimer clock;clock.start();
-  QVERIFY(ui::quickRedactWorkersEnded(QDeadlineTimer(QDeadlineTimer::Forever)));
-  QVERIFY2(clock.elapsed()<budget+ui::quickRedactGraceMs,qPrintable(QString::number(clock.elapsed())));
-  // Nothing is delivered to a context that is gone.
+  QVERIFY(ui::stopQuickRedactWorkers(QDeadlineTimer(ui::quickRedactExitWaitMs)));
+  // One search is at most 33 ms (QuickRedact.cpp); the slack is for a loaded runner.
+  qInfo("exit wait after cancel: %lld ms",qint64(clock.elapsed()));
+  QVERIFY2(clock.elapsed()<test::scaled(200),qPrintable(QString::number(clock.elapsed())));
   PUTGD_VERIFY_STEADY(!called,200);
+ }
+ // M2, U6: the timeout path itself. A worker stuck in the account lookup (a
+ // directory service that does not answer) is waited for only up to the limit,
+ // then left to end on its own; when the lookup returns it sees the cancel and
+ // matches nothing.
+ void exitStopsWaitingAtTheLimit() {
+  std::atomic_bool returned{false};
+  ui::setQuickRedactAccountLookup([&returned]{QThread::msleep(1500);returned=true;return ui::Account{QStringLiteral("someone"),{}};});
+  std::optional<quickRedact::Result> result;
+  ui::runQuickRedact(this,words("someone filed JIRA-9"),{"name","list"},slowPatterns(0),[&](quickRedact::Result r){result=std::move(r);});
+  ui::setQuickRedactAccountLookup({});
+  QElapsedTimer clock;clock.start();
+  QVERIFY(!ui::stopQuickRedactWorkers(QDeadlineTimer(200)));
+  QVERIFY2(clock.elapsed()>=200&&clock.elapsed()<test::scaled(400),qPrintable(QString::number(clock.elapsed())));
+  QVERIFY(!returned);
+  // Detached, it ends by itself once the lookup returns, without matching.
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.has_value(),5000);
+  QVERIFY(returned);QVERIFY(result->matches.isEmpty());QCOMPARE(result->skippedPatterns,QList<int>{0});
  }
 };
 QTEST_GUILESS_MAIN(QuickRedactRunnerTest)

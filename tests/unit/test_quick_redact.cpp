@@ -194,6 +194,14 @@ private slots:
   QTest::newRow("M8: a term does not end inside a letter's vowel sign")<<QString::fromUtf8("\xE0\xA4\x95\xE0\xA4\xBF \xE0\xA4\x95")<<list<<terms({QString::fromUtf8("\xE0\xA4\x95")})
    <<QStringList{QString::fromUtf8("list: \xE0\xA4\x95")};
   QTest::newRow("M8: a letter outside the BMP is a word character")<<QString::fromUtf8("\xF0\xA0\x80\x80" "abc abc")<<list<<terms({"abc"})<<QStringList{"list: abc"};
+  // Round 2 (#1631), one row per finding.
+  QTest::newRow("M12: \\G anchors at the start of a search, as typed")<<"x ID-5 | ID-6 y"<<list<<patterns({R"(\GID-\d+)"})<<QStringList{"list: ID-6"};
+  QTest::newRow("M12: (*SKIP) skips what it passed")<<"ID-1 D-2"<<list<<patterns({R"(ID(*SKIP)(*FAIL)|D-\d)"})<<QStringList{"list: D-2"};
+  QTest::newRow("M4: a space inside an entry is a join")<<"see # 42 and #42 and #-42 and 42"<<list<<terms({"# 42"})<<QStringList{"list: # 42","list: #42","list: #-42"};
+  QTest::newRow("M8: default case folding keeps dotless i apart")<<QString::fromUtf8("kir k\xC4\xB1r KIR")<<list<<terms({QString::fromUtf8("k\xC4\xB1r")})<<QStringList{QString::fromUtf8("list: k\xC4\xB1r")};
+  QTest::newRow("M8: capital sharp s folds to ss")<<QString::fromUtf8("STRASSE STRA\xE1\xBA\x9E" "E")<<list<<terms({QString::fromUtf8("stra\xC3\x9F" "e")})<<QStringList{"list: STRASSE",QString::fromUtf8("list: STRA\xE1\xBA\x9E" "E")};
+  QTest::newRow("M11: up to two join characters")<<"patrick__hudson patrick--hudson patrick._hudson patrick - hudson patrick___hudson"<<list<<entry
+   <<QStringList{"list: patrick__hudson","list: patrick--hudson","list: patrick._hudson","list: patrick - hudson"};
   QTest::newRow("terms and patterns together")<<"Hammond filed JIRA-9"<<list<<quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)"}}<<QStringList{"list: Hammond","list: JIRA-9"};
  }
  void namesAndListsMatchTheirSpellings() {
@@ -217,29 +225,56 @@ private slots:
  // even when every start position costs just under PCRE2's limit (its count
  // starts again at each position of one unanchored call).
  void patternTimeIsBounded() {
-  // 8000 runs on one line: one unanchored call over it took 1.7 s on
-  // m74, which only stepping through the start positions can interrupt.
-  QString line;for(int i=0;i<8000;++i)line+=QString(14,'a')+"b ";
+  // Round 2 (M2, M12): ordinary searches over subjects of at most 1000
+  // characters, so one search is bounded; 15 a's keep every start position just
+  // under the 10 000 limit with (a|aa)+$ (2.3 ms a search on m74; 18 reach it
+  // at once), so these patterns run until the budget.
+  QString line;for(int i=0;i<8000;++i)line+=QString(15,'a')+"b ";
   const auto candidates=words(line+" | JIRA-3");
-  QStringList slow;for(int i=0;i<20;++i)slow.append("(a+)+$");
+  QStringList slow;for(int i=0;i<20;++i)slow.append("(a|aa)+$");
   slow.prepend(R"(JIRA-\d)");
   constexpr int budget=300;
   QElapsedTimer clock;clock.start();
   const auto result=quickRedact::find(candidates,{"list"},patterns(slow),budget);
-  // 14 a's keep every position just under the limit (15 cost 0.4 s a pattern
-  // on m74, 16 reach it at once), so this ran until the budget...
   QVERIFY2(clock.elapsed()>=budget,qPrintable(QString::number(clock.elapsed())));
-  // ...and the bound is the budget plus one match call; the slack is for a loaded runner.
+  // The bound is the budget plus one search; the slack is for a loaded runner.
   QVERIFY2(clock.elapsed()<budget+putgd::test::scaled(250),qPrintable(QString::number(clock.elapsed())));
   QCOMPARE(found(candidates,result),QStringList{"list: JIRA-3"});
   QVERIFY(result.skippedPatterns.contains(20));QVERIFY(!result.skippedPatterns.contains(0));
-  // Short runs on one long line: before stepping, one call took a second.
+  // A search that reaches the limit stops the pattern at once.
   QString runs;for(int i=0;i<300;++i)runs+=QString(18,'a')+"b ";
   const auto many=words(runs+" TICKET9");
   clock.restart();
   const auto stopped=quickRedact::find(many,{"list"},patterns({"(a+)+$",R"(TICKET\d)"}),2000);
-  QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
-  QCOMPARE(found(many,stopped),QStringList{"list: TICKET9"});
+  QVERIFY2(clock.elapsed()<putgd::test::scaled(250),qPrintable(QString::number(clock.elapsed())));
+  QCOMPARE(found(many,stopped),QStringList{"list: TICKET9"});QCOMPARE(stopped.skippedPatterns,QList<int>{0});
+ }
+ // M2: a long line is searched in overlapping windows, so a match far into it
+ // and one across a window's edge are both found.
+ void longLinesAreSearchedInWindows() {
+  QStringList filler;for(int i=0;i<400;++i)filler.append(QStringLiteral("word%1").arg(i));
+  const auto candidates=words(filler.join(' ')+" JIRA- 77 end "+filler.join(' ')+" TICKET9");
+  const auto result=quickRedact::find(candidates,{"list"},patterns({R"(JIRA-\s\d+)",R"(TICKET\d)"}));
+  QCOMPARE(found(candidates,result),(QStringList{"list: JIRA- 77","list: TICKET9"}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+
+  // A window starts at a cut, not at the line's start: ^ still means the line.
+  QStringList b;for(int i=0;i<400;++i)b.append(QStringLiteral("bword%1").arg(i));
+  const auto line=words(b.join(' '));
+  QCOMPARE(found(line,quickRedact::find(line,{"list"},patterns({R"(^b\w+)",R"(bword\d+$)"}))),(QStringList{"list: bword0","list: bword399"}));
+ }
+ // M10: a long entry whose last part misses costs one pass, not one for each
+ // way of joining its parts.
+ void longNearMissIsFast() {
+  QStringList parts;for(char c='a';c<'a'+20;++c)parts.append(QString(QChar(c)));
+  const auto entry=parts.join(' ');
+  QStringList near=parts.mid(0,19);near.append("x");
+  QStringList page;for(int i=0;i<50;++i)page.append(near.join(' '));
+  const auto candidates=words(page.join(' '));
+  QElapsedTimer clock;clock.start();
+  const auto result=quickRedact::find(candidates,{"list"},terms({entry}));
+  QVERIFY2(clock.elapsed()<putgd::test::scaled(200),qPrintable(QString::number(clock.elapsed())));
+  QVERIFY(result.matches.isEmpty());
  }
  // M2: progress after the terms and after each pattern, the rest skipped, so a
  // caller that stops waiting keeps what was found.
