@@ -158,6 +158,19 @@ private slots:
  }
  // The resident cleans up once a day as well as at startup and rotation: a
  // log that ages past logDays while it runs is removed without either.
+ // The writer thread reads the retention while a settings change replaces it. The assertions hold in any
+ // build; ThreadSanitizer (docs/testing/thread-sanitizer.md) reports the unlocked read this guards against.
+ void retentionChangesWhileRecordsAreWritten() {
+  QTemporaryDir dir;logging::open(dir.path(),{14,1024*1024});
+  const auto filler=QString("lorem ipsum ").repeated(75);
+  for(int round=0;round<40;++round) {
+   for(int index=0;index<50;++index)logging::info(logApp(),filler,{{"index",index}});
+   logging::setRetention({1+round%14,qint64(256*1024)+qint64(round%7)*64*1024});
+   QVERIFY(logging::status()["rotationBytes"].toInteger()>=64*1024);
+  }
+  logging::flush();
+  QVERIFY(logging::status()["bytes"].toInteger()>0);
+ }
  void dailyCleanupEnforcesRetention() {
   QTemporaryDir dir;const auto logs=dir.filePath("logs");logging::open(logs);
   SettingsService settings(dir.filePath("config.json"));QVERIFY(settings.save(Settings::defaults(),{}));
