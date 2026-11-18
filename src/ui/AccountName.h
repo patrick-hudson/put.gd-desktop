@@ -7,7 +7,7 @@
 namespace putgd::ui {
 struct Account {
  QString login; // pw_name
- QString realName; // pw_gecos before the first comma, trimmed; empty when unset
+ QString realName; // pw_gecos before the first comma, trimmed; else AccountsService's RealName; may be empty
 };
 Account currentAccount();
 }

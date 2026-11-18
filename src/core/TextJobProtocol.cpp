@@ -90,9 +90,30 @@ struct Tongue {const char* locale;const char* language;};
 constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},{"bg","bul"},{"bn","ben"},{"ca","cat"},{"cs","ces"},{"cy","cym"},{"da","dan"},{"de","deu"},{"el","ell"},{"en","eng"},{"es","spa"},{"et","est"},{"eu","eus"},{"fa","fas"},{"fi","fin"},{"fr","fra"},{"ga","gle"},{"gl","glg"},{"he","heb"},{"hi","hin"},{"hr","hrv"},{"hu","hun"},{"hy","hye"},{"id","ind"},{"is","isl"},{"it","ita"},{"ja","jpn"},{"ka","kat"},{"kk","kaz"},{"ko","kor"},{"lt","lit"},{"lv","lav"},{"mk","mkd"},{"ms","msa"},{"mt","mlt"},{"nb","nor"},{"nl","nld"},{"nn","nor"},{"no","nor"},{"pl","pol"},{"pt","por"},{"ro","ron"},{"ru","rus"},{"sk","slk"},{"sl","slv"},{"sq","sqi"},{"sr","srp"},{"sv","swe"},{"sw","swa"},{"ta","tam"},{"te","tel"},{"th","tha"},{"tr","tur"},{"uk","ukr"},{"ur","urd"},{"uz","uzb"},{"vi","vie"}};
 }
 QStringList redactCategories(){return {"email","phone","ip","card","key","name","list"};}
-// #1618 stubs: the matcher worker replaces them.
-QString redactTermError(const QString& term){const auto t=term.trimmed();if(t.isEmpty())return QStringLiteral("An entry is empty");if(t.size()>maxRedactTermLength)return QStringLiteral("An entry is longer than 100 characters");if(t.contains('\n')||t.contains('\r'))return QStringLiteral("An entry has a line break");return {};}
-QString redactPatternError(const QString& pattern){if(pattern.isEmpty())return QStringLiteral("A pattern is empty");if(pattern.size()>maxRedactPatternLength)return QStringLiteral("A pattern is longer than 500 characters");return {};}
+// #1618: Quick redact terms and patterns. A message never repeats the value,
+// since a configuration error may be logged and these are the user's own words.
+namespace {
+bool lineBreak(QChar c) {return c=='\n'||c=='\r'||c==QChar(0x0b)||c==QChar(0x0c)||c==QChar(0x85)||c==QChar(0x2028)||c==QChar(0x2029);}
+}
+QString redactTermError(const QString& term){
+ const auto t=term.trimmed();
+ if(t.isEmpty())return QStringLiteral("An entry is empty");
+ if(std::any_of(t.cbegin(),t.cend(),lineBreak))return QStringLiteral("An entry has a line break");
+ if(t.size()>maxRedactTermLength)return QStringLiteral("An entry is longer than %1 characters").arg(maxRedactTermLength);
+ return {};
+}
+QString redactPatternError(const QString& pattern){
+ if(pattern.trimmed().isEmpty())return QStringLiteral("A pattern is empty");
+ if(pattern.size()>maxRedactPatternLength)return QStringLiteral("A pattern is longer than %1 characters").arg(maxRedactPatternLength);
+ if(std::any_of(pattern.cbegin(),pattern.cend(),lineBreak))return QStringLiteral("A pattern has a line break");
+ // Compiled as Quick redact runs it (src/editor/QuickRedact.cpp). PCRE2's
+ // messages describe the syntax, not the text, and the offset counts from the
+ // start of the pattern.
+ const QRegularExpression compiled(pattern,QRegularExpression::UseUnicodePropertiesOption);
+ if(!compiled.isValid())return QStringLiteral("This pattern does not compile: %1 at offset %2").arg(compiled.errorString()).arg(compiled.patternErrorOffset());
+ if(compiled.match(QString()).hasMatch())return QStringLiteral("This pattern matches empty text");
+ return {};
+}
 QStringList childErrorCodes(){return {"input_excessive","text_job_io","language_unavailable","engine_unavailable","helper_sandbox_unavailable"};}
 QStringList parentErrorCodes(){return {"text_job_timeout","text_job_failed","text_incompatible","text_busy","text_helper_missing"};}
 Error failure(const QString& code,const QString& language){

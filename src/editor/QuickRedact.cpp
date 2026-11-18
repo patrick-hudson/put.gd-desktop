@@ -1,4 +1,5 @@
 #include "QuickRedact.h"
+#include <QElapsedTimer>
 #include <QHash>
 #include <QMap>
 #include <QPair>
@@ -82,7 +83,9 @@ QSet<int> wrappingLines(const QList<RecognizedWord>& candidates) {
 bool wrapEvidence(const QString& left,const QString& right,const QString& category,bool full) {
  if(left.isEmpty()||right.isEmpty())return false;
  if(full)return true;
- const QString punctuation=category=="email"?QStringLiteral("@.-_+"):category=="ip"?QStringLiteral(".:"):category=="phone"||category=="card"?QStringLiteral(" .-()"):QString();
+ // Name and list terms (#1618) join across a line that ends or starts with a
+ // character that joins their parts.
+ const QString punctuation=category=="email"?QStringLiteral("@.-_+"):category=="ip"?QStringLiteral(".:"):category=="phone"||category=="card"?QStringLiteral(" .-()"):category=="name"||category=="list"?QStringLiteral("-_."):QString();
  if(punctuation.contains(left.back())||punctuation.contains(right.front()))return true;
  if(category!="key")return false;
  static const QRegularExpression alphabet(QStringLiteral("^[A-Za-z0-9+/_=.-]+$"));
@@ -355,12 +358,6 @@ const QList<Rule>& rules() {
 }
 }
 QStringList categories() {return {"email","phone","ip","card","key","name","list"};}
-// #1618 stub: the integration branch's shared interface; the matcher worker
-// replaces it.
-Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources&,int) {
- QStringList builtIn;for(const auto& c:chosen)if(c!="name"&&c!="list")builtIn.append(c);
- return {find(candidates,builtIn),{}};
-}
 QStringList keyShapes() {return {"AWS access key IDs","GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_, github_pat_)","GitLab tokens (glpat- and the other gl prefixes)","Slack tokens (xox…, xapp-)","Stripe keys (sk_, pk_, rk_, whsec_)","JSON web tokens","PEM private-key blocks","Unbroken hex or base64 runs of 32 characters or more"};}
 bool luhn(const QString& number) {
  int sum=0;bool twice=false;int count=0;
@@ -372,12 +369,171 @@ bool luhn(const QString& number) {
 }
 namespace {
 QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringList& chosen);
+// #1618, decision 3: name and list terms. Literal text, never a regex: an
+// entry's parts (split at spaces, - _ . and lower-to-upper changes) must
+// appear in order, joined by nothing or by at most two of space - _ . (the
+// space between two recognized words counts as nothing), starting and ending at
+// a word edge or beside a character that is not a letter or digit. Both sides
+// are compared after NFKC, accent stripping, case folding and one apostrophe;
+// a term of 6 letters or more also folds the usual recognition confusions.
+QString literalView(const QString& word) {
+ QList<uint> kept;
+ for(const auto c:normalized(word).normalized(QString::NormalizationForm_KD).toUcs4()){
+  const auto category=QChar::category(char32_t(c));
+  if(category==QChar::Mark_NonSpacing||category==QChar::Mark_SpacingCombining||category==QChar::Mark_Enclosing)continue;
+  kept.append(c==0x2019||c==0x2018||c==0x02bc||c==0x201b||c==0x2032||c==0xff07?'\'':c);
+ }
+ return QString::fromUcs4(reinterpret_cast<const char32_t*>(kept.constData()),kept.size()).toCaseFolded();
 }
+// I, l, 1 and | read as one character, as do O and 0 (case is already folded).
+QChar confusion(QChar c) {return c=='i'||c=='l'||c=='1'||c=='|'?QChar('l'):c=='o'||c=='0'?QChar('o'):c;}
+QStringList termParts(const QString& term) {
+ QStringList parts;QString current;
+ const auto text=normalized(term);
+ for(qsizetype i=0;i<text.size();++i){
+  const auto c=text.at(i);
+  if(c.isSpace()||c=='-'||c=='_'||c=='.'){if(!current.isEmpty())parts.append(current);current.clear();continue;}
+  if(c.isUpper()&&i>0&&text.at(i-1).isLower()&&!current.isEmpty()){parts.append(current);current.clear();}
+  current+=c;
+ }
+ if(!current.isEmpty())parts.append(current);
+ for(auto& part:parts)part=literalView(part);
+ parts.removeAll(QString());
+ return parts;
+}
+// One spelling to look for: its parts, whether the join before each part
+// after the first is a comma ("Hudson, Patrick"), and whether up to four digits
+// may follow (usernames often end in digits).
+struct Form {QStringList parts;QList<bool> comma;bool digits=false;bool fold=false;qsizetype weight=0;};
+Form form(QStringList parts,bool digits=false,QList<bool> comma={}) {
+ Form out;out.parts=std::move(parts);out.digits=digits;
+ while(out.comma.size()+1<out.parts.size())out.comma.append(comma.value(out.comma.size(),false));
+ qsizetype letters=0;for(const auto& part:std::as_const(out.parts)){out.weight+=part.size();for(const auto c:part)if(c.isLetter())++letters;}
+ out.fold=letters>=6;
+ return out;
+}
+bool real(const Joined& joined,qsizetype i) {return i>=0&&i<joined.text.size()&&joined.owner.at(i)>=0;}
+bool wordCharacter(const Joined& joined,qsizetype i) {return real(joined,i)&&joined.text.at(i).isLetterOrNumber();}
+// Where a part starting at `at` can end: the comparison, with `rn` and `m`
+// read for each other when folding.
+void partEnds(const Joined& joined,qsizetype at,const QString& part,qsizetype k,bool fold,QList<qsizetype>& out) {
+ if(k==part.size()){out.append(at);return;}
+ if(!real(joined,at))return;
+ const auto c=joined.text.at(at);
+ if(fold){
+  if(part.at(k)=='m'&&c=='r'&&real(joined,at+1)&&joined.text.at(at+1)=='n')partEnds(joined,at+2,part,k+1,fold,out);
+  if(c=='m'&&k+1<part.size()&&part.at(k)=='r'&&part.at(k+1)=='n')partEnds(joined,at+1,part,k+2,fold,out);
+  if(confusion(c)==confusion(part.at(k)))partEnds(joined,at+1,part,k+1,fold,out);
+ }else if(c==part.at(k))partEnds(joined,at+1,part,k+1,fold,out);
+}
+// Where the next part may start after a join at `at`: nothing, or at most two
+// of space - _ . (word gaps free); with `comma`, one comma among spaces.
+QList<qsizetype> joinEnds(const Joined& joined,qsizetype at,bool comma) {
+ QList<qsizetype> out;int counted=0;bool seenComma=false;
+ for(qsizetype i=at;;++i){
+  if(!comma||seenComma)out.append(i);
+  if(i>=joined.text.size())break;
+  const auto c=joined.text.at(i);
+  if(!real(joined,i)){if(c=='\n')break;continue;}
+  if(comma&&c==','&&!seenComma){seenComma=true;counted=0;continue;}
+  if(!(comma?c==' ':QStringLiteral(" -_.").contains(c)))break;
+  if(++counted>2)break;
+ }
+ return out;
+}
+// The longest end of `form` starting at `at`, or -1.
+qsizetype formEnd(const Joined& joined,qsizetype at,const Form& form,int part=0) {
+ QList<qsizetype> ends;partEnds(joined,at,form.parts.at(part),0,form.fold,ends);
+ qsizetype best=-1;
+ for(const auto end:std::as_const(ends)){
+  if(part+1<form.parts.size()){for(const auto next:joinEnds(joined,end,form.comma.at(part)))best=qMax(best,formEnd(joined,next,form,part+1));continue;}
+  auto stop=end;
+  if(form.digits)for(int d=0;d<4&&real(joined,stop)&&joined.text.at(stop).isDigit();++d)++stop;
+  // A term ends at a word edge or beside a character that is not a letter or digit.
+  if(!wordCharacter(joined,stop)||!wordCharacter(joined,stop-1))best=qMax(best,stop);
+ }
+ return best;
+}
+QList<QList<int>> formHits(const Joined& joined,const Form& form) {
+ QList<QList<int>> out;
+ if(form.parts.isEmpty())return out;
+ for(qsizetype at=0;at<joined.text.size();){
+  if(!real(joined,at)||(wordCharacter(joined,at-1)&&wordCharacter(joined,at))){++at;continue;}
+  const auto end=formEnd(joined,at,form);
+  if(end<=at){++at;continue;}
+  out.append(owners(joined,at,end-at));at=end;
+ }
+ return out;
+}
+// Decision 3's name forms: the whole name, "last, first", first initial plus
+// last name, the login, and each part of 3 characters or more on its own. The
+// login and initial-plus-last forms may end in up to four digits.
+QList<Form> nameForms(const QString& login,const QString& realName) {
+ QList<Form> out;
+ const auto words=normalized(realName).split(QRegularExpression(QStringLiteral("\\s+")),Qt::SkipEmptyParts);
+ if(!words.isEmpty()){
+  out.append(form(termParts(realName)));
+  if(words.size()>=2){
+   const auto last=termParts(words.last()),first=termParts(QStringList(words.mid(0,words.size()-1)).join(' '));
+   if(!last.isEmpty()&&!first.isEmpty()){
+    QList<bool> comma(last.size()-1,false);comma.append(true);
+    out.append(form(last+first,false,comma));
+    const auto initial=literalView(words.first()).left(1);
+    if(!initial.isEmpty()&&initial.at(0).isLetter()&&last.join(QString()).size()>=3)out.append(form(QStringList{initial}+last,true));
+   }
+  }
+  for(const auto& word:words)for(const auto& part:termParts(word))if(part.size()>=3)out.append(form({part}));
+ }
+ const auto account=literalView(login.trimmed());
+ if(account.size()>=3)out.append(form({account},true));
+ // Longest first, so a whole name is one match rather than one per part.
+ std::stable_sort(out.begin(),out.end(),[](const Form& a,const Form& b){return a.weight>b.weight;});
+ return out;
+}
+// A hit keeps the words no earlier match claimed, as for keys: dropping it
+// would leave a name bare because a neighbour took one of its words.
+void claim(const QString& category,QList<int> words,QSet<int>& taken,QList<Match>& matches) {
+ words.erase(std::remove_if(words.begin(),words.end(),[&](int w){return taken.contains(w);}),words.end());
+ if(words.isEmpty())return;
+ std::sort(words.begin(),words.end());words.erase(std::unique(words.begin(),words.end()),words.end());
+ for(const int w:words)taken.insert(w);
+ matches.append({category,words});
+}
+// Decision 6: a pattern sees each line's words joined with one space, and the
+// next line after "\n" only where the wrap evidence joins them; elsewhere a
+// line starts a new text.
+QList<Joined> patternTexts(const QList<QString>& plain,const QList<RecognizedWord>& candidates,const QSet<int>& full) {
+ QList<Joined> out;
+ for(int i=0;i<plain.size();++i){
+  const bool boundary=i>0&&candidates.at(i).line!=candidates.at(i-1).line;
+  if(i==0||(boundary&&!wrapEvidence(plain.at(i-1),plain.at(i),QStringLiteral("list"),full.contains(candidates.at(i-1).line))))out.append(Joined{});
+  else{out.last().text+=boundary?'\n':' ';out.last().owner.append(-1);}
+  out.last().text+=plain.at(i);for(qsizetype k=0;k<plain.at(i).size();++k)out.last().owner.append(i);
+ }
+ return out;
+}
+// Runaway patterns (decision 6). QRegularExpression is PCRE2 and gives no
+// way to set pcre2_set_match_limit or pcre2_set_depth_limit, and linking
+// libpcre2-16 directly is not possible in every shipped build: the AppImage
+// carries the official Qt 6.12 binaries, whose QtCore has PCRE2 built in and
+// ships no libpcre2-16 (the native packages' Qt links the distribution's).
+// PCRE2's own start-of-pattern items set the same two limits from inside the
+// pattern, and they can only lower the library's. A pattern that reaches them
+// stops at once with an error, which Qt reports as an invalid match. Measured
+// on aurora-amd against `(a+)+$` over 5000 "a" and a "b": 1 to 2 ms with these
+// limits under both Qt 6.11 (system PCRE2) and the AppImage's Qt 6.12, 12 to
+// 21 ms with PCRE2's default limit. Between calls the clock is checked, so all
+// patterns together stay within the budget; QuickRedactRunner still runs this
+// off the interface thread and gives up waiting at the deadline.
+const QString& patternLimits() {static const QString value=QStringLiteral("(*LIMIT_MATCH=1000000)(*LIMIT_DEPTH=100000)");return value;}
+}
+QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& chosen) {return find(candidates,chosen,{},0).matches;}
 // Recognition may give one visual line as two layout blocks, so the end of a
 // line arrives after the lines below it. Matching runs over lines as they
 // appear: words grouped by the height of their centres (within half the
 // median word height) and ordered left to right; the matches are mapped back.
-QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& chosen) {
+Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources& sources,int budgetMs) {
+ QElapsedTimer clock;clock.start();
  QList<int> order(candidates.size());std::iota(order.begin(),order.end(),0);
  QList<int> heights;for(const auto& word:candidates)heights.append(word.rect.height());std::sort(heights.begin(),heights.end());
  const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
@@ -393,10 +549,56 @@ QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& cho
   auto row=rows.at(r);std::stable_sort(row.begin(),row.end(),[&](int a,int b){return candidates.at(a).rect.left()<candidates.at(b).rect.left();});
   for(const int i:row){auto word=candidates.at(i);word.line=r;ordered.append(word);original.append(i);}
  }
- auto matches=findOrdered(ordered,chosen);
- for(auto& match:matches){for(auto& word:match.words)word=original.at(word);std::sort(match.words.begin(),match.words.end());}
- std::sort(matches.begin(),matches.end(),[](const Match& a,const Match& b){return a.words.first()<b.words.first();});
- return matches;
+ Result result;
+ result.matches=findOrdered(ordered,chosen);
+ // #1618: name, then list, after the five kinds; a word belongs to one match.
+ const bool name=chosen.contains("name"),list=chosen.contains("list");
+ if(name||list){
+  QSet<int> taken;for(const auto& match:std::as_const(result.matches))for(const int w:match.words)taken.insert(w);
+  const auto full=wrappingLines(ordered);
+  QList<QString> plain,literal;for(const auto& word:ordered){plain.append(normalized(word.text));literal.append(literalView(word.text));}
+  if(name){
+   const auto joined=join(literal,ordered,false,QStringLiteral("name"),full);
+   for(const auto& f:nameForms(sources.login,sources.realName))for(const auto& words:formHits(joined,f))claim("name",words,taken,result.matches);
+  }
+  if(list){
+   // A list entry matches only whole, with the variations above.
+   const auto joined=join(literal,ordered,false,QStringLiteral("list"),full);
+   QList<Form> forms;for(const auto& term:sources.terms){auto f=form(termParts(term));if(!f.parts.isEmpty())forms.append(f);}
+   std::stable_sort(forms.begin(),forms.end(),[](const Form& a,const Form& b){return a.weight>b.weight;});
+   for(const auto& f:std::as_const(forms))for(const auto& words:formHits(joined,f))claim("list",words,taken,result.matches);
+   // Patterns: case as written, Unicode properties, zero-length hits skipped;
+   // a hit marks every word it touches.
+   const auto texts=patternTexts(plain,ordered,full);
+   // No budget left (or none given) skips every pattern still to run.
+   const auto late=[&]{return budgetMs<=0||clock.hasExpired(budgetMs);};
+   bool expired=false;
+   for(int p=0;p<sources.patterns.size();++p){
+    if(expired||late()){expired=true;result.skippedPatterns.append(p);continue;}
+    const QRegularExpression pattern(patternLimits()+sources.patterns.at(p),QRegularExpression::UseUnicodePropertiesOption);
+    if(!pattern.isValid())continue;
+    bool stopped=false;
+    for(const auto& text:texts){
+     for(qsizetype offset=0;offset<=text.text.size();){
+      if(late()){stopped=expired=true;break;}
+      const auto found=pattern.match(text.text,offset);
+      // A match that ran into the limits is invalid: the pattern is skipped,
+      // and what it found before is kept.
+      if(!found.isValid()){stopped=true;break;}
+      if(!found.hasMatch())break;
+      if(found.capturedLength()==0){offset=found.capturedStart()+1;continue;}
+      claim("list",owners(text,found.capturedStart(),found.capturedLength()),taken,result.matches);
+      offset=found.capturedEnd();
+     }
+     if(stopped)break;
+    }
+    if(stopped)result.skippedPatterns.append(p);
+   }
+  }
+ }
+ for(auto& match:result.matches){for(auto& word:match.words)word=original.at(word);std::sort(match.words.begin(),match.words.end());}
+ std::sort(result.matches.begin(),result.matches.end(),[](const Match& a,const Match& b){return a.words.first()<b.words.first();});
+ return result;
 }
 namespace {
 QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringList& chosen) {

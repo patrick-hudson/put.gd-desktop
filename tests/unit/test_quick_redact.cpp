@@ -2,7 +2,9 @@
 // row is recognized words in reading order ("|" starts a new line), the
 // categories asked for, and every match expected as "category: words".
 #include "editor/QuickRedact.h"
+#include <QElapsedTimer>
 #include <QtTest>
+#include <tuple>
 using namespace putgd::editor;
 namespace {
 QList<RecognizedWord> words(const QString& page) {
@@ -19,7 +21,16 @@ QStringList found(const QList<RecognizedWord>& candidates,const QStringList& cat
  return out;
 }
 const QStringList all{"email","phone","ip","card","key"};
+QStringList found(const QList<RecognizedWord>& candidates,const quickRedact::Result& result) {
+ QStringList out;
+ for(const auto& match:result.matches){QStringList text;for(const int w:match.words)text.append(candidates.at(w).text);out.append(match.category+": "+text.join(' '));}
+ return out;
 }
+quickRedact::Sources account(const QString& login,const QString& realName) {quickRedact::Sources s;s.login=login;s.realName=realName;return s;}
+quickRedact::Sources terms(const QStringList& list) {quickRedact::Sources s;s.terms=list;return s;}
+quickRedact::Sources patterns(const QStringList& list) {quickRedact::Sources s;s.patterns=list;return s;}
+}
+Q_DECLARE_METATYPE(putgd::editor::quickRedact::Sources)
 class QuickRedactTest final:public QObject {
  Q_OBJECT
 private slots:
@@ -106,6 +117,91 @@ private slots:
  void categoriesMatchTheirShapes() {
   QFETCH(QString,page);QFETCH(QStringList,categories);QFETCH(QStringList,expected);
   QCOMPARE(found(words(page),categories),expected);
+ }
+ // #1618, decision 3: the account's names and the user's own list. Words
+ // are literal, never a regex, compared ignoring case and accents.
+ void namesAndListsMatchTheirSpellings_data() {
+  QTest::addColumn<QString>("page");QTest::addColumn<QStringList>("categories");QTest::addColumn<quickRedact::Sources>("sources");QTest::addColumn<QStringList>("expected");
+  const QStringList name{"name"},list{"list"};
+  const auto me=account("phudson","Patrick Hudson");const auto entry=terms({"Patrick Hudson"});
+  // The Patrick Hudson table: as a list entry and as the account's name.
+  for(const auto& [row,page,marked]:QList<std::tuple<const char*,QString,QString>>{
+   {"spaced","My name is Patrick Hudson","Patrick Hudson"},{"dashed","my github username is patrick-hudson","patrick-hudson"},
+   {"underscored","user patrick_hudson here","patrick_hudson"},{"run together","PatrickHudson","PatrickHudson"},
+   {"before an @","mail patrick.hudson@x.io today","patrick.hudson@x.io"},{"i read as l","Signed in as Patrlck Hudson","Patrlck Hudson"},
+   {"split by recognition","by patrick- hudson","patrick- hudson"},{"a spaced dash","Patrick - Hudson wrote","Patrick - Hudson"},
+   {"curly apostrophe","Patrick Hudson’s notes","Patrick Hudson’s"}}){
+   QTest::addRow("list entry: %s",row)<<page<<list<<entry<<QStringList{"list: "+marked};
+   QTest::addRow("name: %s",row)<<page<<name<<me<<QStringList{"name: "+marked};
+  }
+  QTest::newRow("name: last, first")<<"Author: Hudson, Patrick"<<name<<me<<QStringList{"name: Hudson, Patrick"};
+  QTest::newRow("name: initial and last name")<<"phudson p.hudson P. Hudson p-hudson"<<name<<me<<QStringList{"name: phudson","name: p.hudson","name: P. Hudson","name: p-hudson"};
+  QTest::newRow("name: up to four digits after a login")<<"phudson2 phudson1234 phudson12345"<<name<<me<<QStringList{"name: phudson2","name: phudson1234"};
+  QTest::newRow("name: each part alone")<<"Patrick wrote to Hudson"<<name<<me<<QStringList{"name: Patrick","name: Hudson"};
+  QTest::newRow("name: a part inside a path and a prompt")<<"cd /home/patrick/project | patrick@d69:~$ ls"<<name<<me<<QStringList{"name: /home/patrick/project","name: patrick@d69:~$"};
+  QTest::newRow("name: a wrapped line with the dash at its end")<<"see patrick- | hudson now"<<name<<me<<QStringList{"name: patrick- hudson"};
+  QTest::newRow("name: a wrapped line at the column")<<"ABCDEFGHIJKLMNO | PQRSTUVWXYZABCD | Contact Patrick | Hudson today"<<name<<me<<QStringList{"name: Patrick Hudson"};
+  QTest::newRow("name: lines without wrap evidence are separate")<<"Patrick | Hudson"<<list<<entry<<QStringList{};
+  // Near misses (the over-redaction guard): only the surname in Hudson Bay.
+  QTest::newRow("name: near misses")<<"Patricks studied the pattern of pat near Hudson Bay and hudsonia"<<name<<me<<QStringList{"name: Hudson"};
+  QTest::newRow("list entry: near misses")<<"patricks pattern pat hudsonia patrick-hudsonx"<<list<<entry<<QStringList{};
+  QTest::newRow("list entry: matched only whole")<<"Patrick alone, and Hudson, Patrick"<<list<<entry<<QStringList{};
+  QTest::newRow("name: a login")<<"cd /home/user/project | user@host:~$ | user, users username1 user1234 user12345"<<name<<account("user",{})
+   <<QStringList{"name: /home/user/project","name: user@host:~$","name: user,","name: user1234"};
+  QTest::newRow("name: a login and a real name the same")<<"patrick wrote"<<name<<account("patrick","patrick")<<QStringList{"name: patrick"};
+  QTest::newRow("name: a part of two letters is skipped")<<"Al went home with Smith and Al Smith"<<name<<account("asmith","Al Smith")<<QStringList{"name: Smith","name: Al Smith"};
+  QTest::newRow("name: no account")<<"Patrick Hudson"<<name<<account({},{})<<QStringList{};
+  QTest::newRow("accents either way")<<"Jose and José"<<list<<terms({"José"})<<QStringList{"list: Jose","list: José"};
+  QTest::newRow("accents in the text")<<"José wrote"<<list<<terms({"Jose"})<<QStringList{"list: José"};
+  QTest::newRow("regex characters are literal")<<"x+y? xxy [ACME]* ACME srvdata srv_data srvXdata"<<list<<terms({"x+y?","[ACME]*","srv.data"})
+   <<QStringList{"list: x+y?","list: [ACME]*","list: srvdata","list: srv_data"};
+  QTest::newRow("a short term is matched exactly")<<"B0b and Bob"<<list<<terms({"Bob"})<<QStringList{"list: Bob"};
+  QTest::newRow("a long term reads rn for m")<<"Harnmond and Hammond"<<list<<terms({"Hammond"})<<QStringList{"list: Harnmond","list: Hammond"};
+  QTest::newRow("an empty list")<<"Patrick Hudson and anything"<<list<<quickRedact::Sources{}<<QStringList{};
+  QTest::newRow("an email wins over a name")<<"mail patrick.hudson@x.io or Patrick"<<QStringList{"email","name","list"}<<quickRedact::Sources{"phudson","Patrick Hudson",{"Patrick Hudson"},{}}
+   <<QStringList{"email: patrick.hudson@x.io","name: Patrick"};
+  QTest::newRow("a word belongs to one match")<<"Patrick Hudson"<<QStringList{"name","list"}<<quickRedact::Sources{"phudson","Patrick Hudson",{"Hudson"},{}}<<QStringList{"name: Patrick Hudson"};
+  QTest::newRow("only the categories asked for")<<"Patrick Hudson"<<QStringList{"email"}<<me<<QStringList{};
+  // Decision 6: patterns, case as written, on the joined line text.
+  QTest::newRow("pattern: a ticket across a space")<<"see JIRA- 1234 now"<<list<<patterns({R"(\bJIRA-\s*\d+\b)"})<<QStringList{"list: JIRA- 1234"};
+  QTest::newRow("pattern: case as written")<<"ACME-12 acme-7"<<list<<patterns({R"(\bacme-\d+)"})<<QStringList{"list: acme-7"};
+  QTest::newRow("pattern: (?i)")<<"ACME-12 acme-7"<<list<<patterns({R"((?i)\bacme-\d+)"})<<QStringList{"list: ACME-12","list: acme-7"};
+  QTest::newRow("pattern: a hit spanning two words")<<"run build 42 ok"<<list<<patterns({R"(build \d+)"})<<QStringList{"list: build 42"};
+  QTest::newRow("pattern: a hit inside a word marks the word")<<"host db7.corp.example up"<<list<<patterns({R"((?i)\b[a-z0-9-]+\.corp\.example\b)"})<<QStringList{"list: db7.corp.example"};
+  QTest::newRow("pattern: zero-length hits are skipped")<<"abc 12 JIRA"<<list<<patterns({R"(\d*)",R"((?=JIRA))"})<<QStringList{"list: 12"};
+  QTest::newRow("pattern: lines join only on wrap evidence")<<"ticket ABC- | 99 | ticket ABC | 98"<<list<<patterns({R"(ABC-\n\d+)",R"(ABC\s+98)"})<<QStringList{"list: ABC- 99"};
+  QTest::newRow("pattern: one that does not compile matches nothing")<<"JIRA-1"<<list<<patterns({"(abc"})<<QStringList{};
+  QTest::newRow("pattern: Unicode properties")<<"Öffnung ÄRGER x"<<list<<patterns({R"(\b\p{Lu}{5}\b)"})<<QStringList{"list: ÄRGER"};
+  QTest::newRow("terms and patterns together")<<"Hammond filed JIRA-9"<<list<<quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)"}}<<QStringList{"list: Hammond","list: JIRA-9"};
+ }
+ void namesAndListsMatchTheirSpellings() {
+  QFETCH(QString,page);QFETCH(QStringList,categories);QFETCH(quickRedact::Sources,sources);QFETCH(QStringList,expected);
+  const auto candidates=words(page);
+  const auto result=quickRedact::find(candidates,categories,sources);
+  QCOMPARE(found(candidates,result),expected);QCOMPARE(result.skippedPatterns,QList<int>{});
+ }
+ // A pattern that backtracks for minutes stops within the budget, is named as
+ // skipped, and the other patterns' marks are kept.
+ void runawayPatternIsSkipped() {
+  const auto page="JIRA-7 "+QString(5000,'a')+"b TICKET9 | "+QString(40,'a')+"b";
+  const auto candidates=words(page);
+  QElapsedTimer clock;clock.start();
+  const auto result=quickRedact::find(candidates,{"list"},patterns({R"(\bJIRA-\d+\b)","(a+)+$",R"(\bTICKET\d+\b)"}),2000);
+  QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
+  QCOMPARE(found(candidates,result),(QStringList{"list: JIRA-7","list: TICKET9"}));
+  QCOMPARE(result.skippedPatterns,QList<int>{1});
+ }
+ void noBudgetSkipsEveryPattern() {
+  const auto candidates=words("Hammond filed JIRA-9");
+  const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)","x"}},0);
+  QCOMPARE(found(candidates,result),QStringList{"list: Hammond"});
+  QCOMPARE(result.skippedPatterns,(QList<int>{0,1}));
+ }
+ // The five kinds are unchanged with the new sources beside them.
+ void builtInKindsIgnoreTheSources() {
+  const auto candidates=words("Write to jane.doe@example.co.uk or call +44 20 7946 0958 | Patrick Hudson");
+  const auto result=quickRedact::find(candidates,all,quickRedact::Sources{"phudson","Patrick Hudson",{"Patrick Hudson"},{"Patrick"}});
+  QCOMPARE(result.matches,quickRedact::find(candidates,all));
  }
 };
 QTEST_APPLESS_MAIN(QuickRedactTest)

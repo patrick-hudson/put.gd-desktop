@@ -5,6 +5,7 @@
 #include "fixtures/U2Fixtures.h"
 #include <QCryptographicHash>
 #include <QDir>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLocalServer>
@@ -179,6 +180,34 @@ private slots:
   QVERIFY(everything.contains("synthetic-private-bucket"));
   // An existing file is never replaced.
   QCOMPARE(build(context(),request,error)["path"].toString(),QString());QCOMPARE(error.code,QString("diagnostics_output_exists"));
+ }
+ // #1618: Quick redact's word list and patterns never leave the machine in a
+ // package, with names or without; config.redacted.json keeps only the counts.
+ // The keys are set on the settings document directly, so the test does not
+ // depend on the configuration schema.
+ void quickRedactListsBecomeCounts() {
+  const QStringList terms{"synthetic-qr1618-term","Synthetic Qr1618 Person","qr1618 José"},patterns{"synthetic-qr1618-pattern-\\d+","(?i)qr1618-host\\.corp"};
+  for(const bool names:{false,true}) {
+   auto bundle=context();
+   auto preferences=bundle.settings["preferences"].toObject();
+   preferences["quickRedactTerms"]=QJsonArray::fromStringList(terms);preferences["quickRedactPatterns"]=QJsonArray::fromStringList(patterns);
+   bundle.settings["preferences"]=preferences;
+   // Wherever else the keys turn up, they are counted the same way.
+   bundle.diagnostics["editor"]=QJsonObject{{"quickRedactTerms",QJsonArray::fromStringList(terms)}};
+   Error error;BundleRequest request;request.includeNames=names;request.output=dir_.filePath(names?"quick-redact-named.zip":"quick-redact-hashed.zip");
+   const auto result=build(bundle,request,error);QVERIFY2(!error,qPrintable(error.message));
+   QFile raw(result["path"].toString());QVERIFY(raw.open(QIODevice::ReadOnly));const auto archive=raw.readAll();
+   const auto files=unzip(result["path"].toString());QVERIFY(files.contains("config.redacted.json"));
+   for(const auto& canary:terms+patterns+QStringList{"qr1618"}) {
+    QVERIFY2(!archive.contains(canary.toUtf8()),qPrintable(canary));
+    for(auto it=files.begin();it!=files.end();++it)QVERIFY2(!it.value().toString().contains(canary),qPrintable(it.key()+": "+canary));
+   }
+   const auto config=QJsonDocument::fromJson(files["config.redacted.json"].toString().toUtf8()).object()["preferences"].toObject();
+   QCOMPARE(config["quickRedactTerms"].toObject(),(QJsonObject{{"count",3}}));
+   QCOMPARE(config["quickRedactPatterns"].toObject(),(QJsonObject{{"count",2}}));
+   const auto diagnostics=QJsonDocument::fromJson(files["diagnostics.json"].toString().toUtf8()).object();
+   QCOMPARE(diagnostics["editor"].toObject()["quickRedactTerms"].toObject(),(QJsonObject{{"count",3}}));
+  }
  }
  // #473: a completed upload whose link never reached the clipboard belongs in a
  // window package, with the failures and the same redaction; a copied one does not.
