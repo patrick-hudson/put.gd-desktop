@@ -987,6 +987,21 @@ bool RecordSession::parseEdit(const QJsonObject& json, RecordingEdit& edit) cons
         mask.strength = int(strength);
         edit.masks.append(mask);
     }
+    // #1613: cuts are optional so an older resident's edit still parses.
+    if (json.contains("cuts")) {
+        if (!json["cuts"].isArray()) return false;
+        for (const auto& value : json["cuts"].toArray()) {
+            if (!value.isObject()) return false;
+            const auto c = value.toObject();
+            RecordingCut cut;
+            if (!c["id"].isString() || !integer(c["start"], 0, durationUs_, &cut.start) || !integer(c["end"], 0, durationUs_, &cut.end) || cut.end <= cut.start) return false;
+            cut.id = c["id"].toString();
+            edit.cuts.append(cut);
+        }
+    }
+    for (const auto* key : {"canUndo", "canRedo"}) if (json.contains(key) && !json[key].isBool()) return false;
+    edit.canUndo = json["canUndo"].toBool();
+    edit.canRedo = json["canRedo"].toBool();
     return true;
 }
 void RecordSession::preview(const QJsonObject& params, Reply reply) {

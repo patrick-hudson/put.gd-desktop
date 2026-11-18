@@ -78,6 +78,8 @@ private:
         QSize canvas;
         qint64 duration = 0;
         RecordingEdit edit;
+        // #1613: the review's undo and redo steps; reset with the edit when review starts.
+        RecordingEditHistory history;
         QJsonObject progress;
         // The latest saveCopy/upload export: {command, status, revision, path?, bytes?, durationUs?, error?}.
         QJsonObject lastExport;

@@ -63,7 +63,7 @@ RECORDING_TARGETS = {'monitor', 'desktop', 'region', 'window'}
 RECORDING_FORMATS = {'mp4', 'webm', 'gif', 'webp'}
 RECORDING_CODECS = {'h264', 'h265', 'vp9'}
 RECORDING_CONTROLS = {'start', 'pause', 'resume', 'stop', 'cancel', 'raise'}
-RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask'}
+RECORDING_EDIT_OPS = {'setTrim', 'resetTrim', 'addMask', 'updateMask', 'removeMask', 'addCut', 'updateCut', 'removeCut', 'undo', 'redo'}
 # The review window's controls (#283), one per drive_recording_review call.
 REVIEW_ACTIONS = {'inspect', 'seek', 'play', 'pause', 'speed', 'setIn', 'setOut', 'resetTrim', 'addMask', 'showMaskOptions', 'closeMaskOptions', 'nextMaskLanes', 'previousMaskLanes', 'selectMask',
                   'setMaskIn', 'setMaskOut', 'strength', 'removeMask', 'format', 'saveCopyDialog', 'closeFileDialog',
@@ -621,7 +621,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_recording(id: str, revision: int, commands: list[Json]) -> Json:
-        """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}; mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A stale revision is refused."""
+        """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}, addCut {start, end}, updateCut {cutId, start, end}, removeCut {cutId}, undo, redo (each alone in its batch); mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A cut leaves a stretch of the clip out of the export but keeps it in the edit (edit.cuts, source times, never overlapping or touching: a new cut merges with the ones it meets, an addCut that merges gets a new id); the output is the trimmed interval minus the cuts, and at least one frame must stay. undo and redo step the review's history (edit.canUndo / edit.canRedo) and still advance the revision; with nothing to step they are refused as recording_history_empty. A stale revision is refused."""
         if not identifier(id) or type(revision) is not int or revision < 1 or not safe_recording_commands(commands):
             return invalid()
         return await adapter.call('recording.edit', {'id': id, 'revision': revision, 'commands': commands})
