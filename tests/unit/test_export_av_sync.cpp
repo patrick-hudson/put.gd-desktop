@@ -522,12 +522,26 @@ Error write(const QString& path) {
 // `fps`, frame k at round(k * 1000 / fps) ms, the bar naming the frame as in
 // the cut clip. With a signal, 48 kHz PCM of signal(source µs) in [-1, 1]
 // throughout, except that no samples are written over [holeFromUs, holeToUs)
-// (a hole in the audio timestamps, as a pause can leave).
+// (a hole in the audio timestamps, as a pause can leave). With timesMs, frame
+// k is at timesMs[k] instead (a variable-rate capture). The bar names the
+// frame modulo 200 (the frame width allows 210); unwrap() restores it.
 namespace plainclip {
 using putgd::Error;
 using cutclip::width, cutclip::height, cutclip::rate;
 qint64 frameUs(int fps, int index) { return av_rescale(index, 1000, fps) * 1000; }
-Error write(const QString& path, int fps, int frames, const std::function<double(qint64)>& signal = {}, qint64 holeFromUs = 0, qint64 holeToUs = 0) {
+// The review's time of frame k: edges snap to round(k / fps) µs.
+qint64 gridUs(int fps, int index) { return qRound64(index * 1e6 / fps); }
+// Clip frame numbers from bar positions (modulo 200), given they only increase.
+QList<int> unwrap(const QList<cutclip::Decoded::Frame>& frames) {
+    QList<int> out;
+    int base = 0;
+    for (const auto& f : frames) {
+        if (!out.isEmpty() && base + f.source < out.last() - 100) base += 200;
+        out << base + f.source;
+    }
+    return out;
+}
+Error write(const QString& path, int fps, int frames, const std::function<double(qint64)>& signal = {}, qint64 holeFromUs = 0, qint64 holeToUs = 0, const QList<qint64>& timesMs = {}) {
     AVFormatContext* out = nullptr;
     if (avformat_alloc_output_context2(&out, nullptr, "matroska", QFile::encodeName(path).constData()) < 0 || !out) return {"fixture", "no muxer", {}};
     struct Closer { AVFormatContext*& f; ~Closer() { if (f && !(f->oformat->flags & AVFMT_NOFILE)) avio_closep(&f->pb); avformat_free_context(f); } } closer{out};
@@ -571,13 +585,14 @@ Error write(const QString& path, int fps, int frames, const std::function<double
         for (int y = 0; y < height; ++y) {
             auto* row = frame->data[0] + qint64(y) * frame->linesize[0];
             std::fill_n(row, width, uint8_t(100));
-            std::fill_n(row + 8 + 3 * index, 8, uint8_t(200));
+            std::fill_n(row + 8 + 3 * (index % 200), 8, uint8_t(200));
         }
         for (int plane = 1; plane < 3; ++plane) for (int y = 0; y < height / 2; ++y) std::fill_n(frame->data[plane] + qint64(y) * frame->linesize[plane], width / 2, uint8_t(128));
-        frame->pts = frameUs(fps, index) / 1000;
+        auto timeUs = [&](int k) { return timesMs.isEmpty() ? frameUs(fps, k) : k < timesMs.size() ? timesMs[k] * 1000 : timesMs.last() * 1000 + 1'000'000 / fps; };
+        frame->pts = timeUs(index) / 1000;
         if (auto e = encode(0, frame)) return e;
         if (!audio) continue;
-        const qint64 until = (index + 1 < frames ? frameUs(fps, index + 1) : frameUs(fps, frames)) * rate / 1'000'000;
+        const qint64 until = timeUs(index + 1) * rate / 1'000'000;
         while (samples < until) {
             if (samples >= holeFrom && samples < holeTo) { samples = std::min(holeTo, until); continue; }
             const int count = int(std::min<qint64>({1024, until - samples, samples < holeFrom ? holeFrom - samples : 1024}));
@@ -805,16 +820,19 @@ private slots:
             QVERIFY2(!f.cutOnlyCovered, qPrintable(QStringLiteral("a cover inside the cut drawn at %1 us").arg(f.us - first)));
         }
         if (format != "gif") {
-            // The exact frame sequence: every kept clip frame once, in order.
-            QList<int> expected;
-            for (int index = 0; index < cutclip::frames; ++index) if (kept.kept(frameUs(index))) expected << index;
-            QList<int> shown;
-            for (const auto& f : frames) shown << f.source;
-            QCOMPARE(shown, expected);
+            // The frame sequence: kept clip frames once each, in order, as many as
+            // the kept time rounds to (the review clock's length, #1635). Cut A
+            // starts 10 ms after frame 42, so that frame's 10 ms round away; a
+            // kept frame may go only so, as the last of its span.
+            QCOMPARE(qint64(frames.size()), (kept.outputDuration() * fps + 500000) / 1000000);
             for (qsizetype i = 0; i < frames.size(); ++i) {
-                const qint64 sourceUs = frameUs(expected[i]);
+                const int source = frames[i].source;
+                QVERIFY2(kept.kept(frameUs(source)), qPrintable(QStringLiteral("output frame %1 shows clip frame %2, which the edit leaves out").arg(i).arg(source)));
+                if (i > 0) QVERIFY2(source > frames[i - 1].source, qPrintable(QStringLiteral("clip frame %1 after %2").arg(source).arg(frames[i - 1].source)));
+                if (i > 0) for (int skipped = frames[i - 1].source + 1; skipped < source; ++skipped) QVERIFY2(!kept.kept(frameUs(skipped)) || !kept.kept(frameUs(skipped + 1)), qPrintable(QStringLiteral("kept clip frame %1 missing inside its span").arg(skipped)));
+                const qint64 sourceUs = frameUs(source);
                 const bool cover = sourceUs >= spanningFrom && sourceUs < spanningTo;
-                QVERIFY2(frames[i].spanningCovered == cover, qPrintable(QStringLiteral("clip frame %1: cover %2, expected %3").arg(expected[i]).arg(frames[i].spanningCovered).arg(cover)));
+                QVERIFY2(frames[i].spanningCovered == cover, qPrintable(QStringLiteral("clip frame %1: cover %2, expected %3").arg(source).arg(frames[i].spanningCovered).arg(cover)));
             }
         }
         // Each kept flash at its output time; the cover on the two around cut A only.
@@ -926,7 +944,9 @@ private slots:
         const int outputFps = animation ? 15 : fps;
         const qint64 step = 1'000'000 / outputFps;
         // The output lasts exactly the time kept, whole output frames here, and progress runs over it.
-        QVERIFY2(std::abs(result.durationUs - expected.outputDuration()) <= 1000, qPrintable(QStringLiteral("%1 us, expected %2").arg(result.durationUs).arg(expected.outputDuration())));
+        // #1635: the review clock's length (the edit's kept time) in whole output frames.
+        const qint64 clockUs = av_rescale(std::max<qint64>(1, (KeptSpans(edit, durationUs).outputDuration() * outputFps + 500000) / 1000000), 1'000'000, outputFps);
+        QVERIFY2(std::abs(result.durationUs - clockUs) <= 1, qPrintable(QStringLiteral("%1 us, expected %2").arg(result.durationUs).arg(clockUs)));
         QVERIFY(!progress.isEmpty() && progress.last() > 0.95);
         for (qsizetype i = 1; i < progress.size(); ++i) QVERIFY(progress[i] >= progress[i - 1]);
 
@@ -992,7 +1012,7 @@ private slots:
             const qint64 offset = decoded.bursts[i] - first - expectedBursts[i];
             QVERIFY2(std::abs(offset) <= audioFrameUs, qPrintable(QStringLiteral("burst %1 is %2 us from %3").arg(i).arg(offset).arg(expectedBursts[i])));
         }
-        QVERIFY2(decoded.audioEndUs - first <= expected.outputDuration() + audioFrameUs, qPrintable(QStringLiteral("audio runs to %1 us of %2").arg(decoded.audioEndUs - first).arg(expected.outputDuration())));
+        QVERIFY2(decoded.audioEndUs - first <= clockUs + audioFrameUs, qPrintable(QStringLiteral("audio runs to %1 us of %2").arg(decoded.audioEndUs - first).arg(clockUs)));
     }
     // #1635: a cover applies to an output frame while it is active at that
     // frame's output time (mapped back through the kept spans) or at the source
@@ -1000,29 +1020,38 @@ private slots:
     // cover wholly inside the gap met no frame, so the still picture played
     // uncovered under it; a cover inside a cut over the frame a later span opens
     // on (held across the seam) was dropped with the cut; and a cover ending in
-    // the gap uncovered the still picture it had covered.
+    // the gap uncovered the still picture it had covered. A frame is covered
+    // for its whole display interval: one whose interval overlaps the cover is
+    // covered even when the cover starts after the frame's tick, since the
+    // file presents it a little late (a 15 fps GIF shows its second frame at
+    // 70 ms, not 66.7 ms).
     void coversFollowTheShownPicture_data() {
         QTest::addColumn<QString>("format");
+        QTest::addColumn<qint64>("trimStart");
         QTest::addColumn<qint64>("cutStart");
         QTest::addColumn<qint64>("cutEnd");
         QTest::addColumn<qint64>("coverFrom");
         QTest::addColumn<qint64>("coverTo");
         for (const QString format : {"mp4", "gif"}) {
             // Frame 47 (1.567 s) is on screen until 2.6 s.
-            QTest::newRow(qPrintable("cover inside a gap, " + format)) << format << qint64(-1) << qint64(-1) << qint64(1'800'000) << qint64(2'200'000);
+            QTest::newRow(qPrintable("cover inside a gap, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(1'800'000) << qint64(2'200'000);
             // The cut holds frame 47; the span from 2.0 s opens on it.
-            QTest::newRow(qPrintable("cover in a cut on the held frame, " + format)) << format << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'600'000);
-            QTest::newRow(qPrintable("cover ending in a gap, " + format)) << format << qint64(-1) << qint64(-1) << qint64(1'000'000) << qint64(2'000'000);
+            QTest::newRow(qPrintable("cover in a cut on the held frame, " + format)) << format << qint64(0) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'600'000);
+            QTest::newRow(qPrintable("cover ending in a gap, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(1'000'000) << qint64(2'000'000);
+            // The output opens at 1.6 s on frame 47, held; the cover runs 68-80 ms into it.
+            QTest::newRow(qPrintable("cover between two ticks, " + format)) << format << qint64(1'600'000) << qint64(-1) << qint64(-1) << qint64(1'668'000) << qint64(1'680'000);
         }
     }
     void coversFollowTheShownPicture() {
         QFETCH(QString, format);
+        QFETCH(qint64, trimStart);
         QFETCH(qint64, cutStart);
         QFETCH(qint64, cutEnd);
         QFETCH(qint64, coverFrom);
         QFETCH(qint64, coverTo);
         using namespace gapclip;
         putgd::RecordingEdit edit;
+        edit.trimStart = trimStart;
         edit.trimEnd = 4'000'000;
         if (cutStart >= 0) edit.cuts = {{"cut", cutStart, cutEnd}};
         putgd::RecordingMask mask;
@@ -1031,7 +1060,7 @@ private slots:
         const KeptSpans kept(edit, durationUs);
         ExportRequest request;
         request.input = frameGap_;
-        request.output = dir_.filePath(QStringLiteral("cover-%1-%2-%3.%4").arg(cutStart).arg(coverFrom).arg(coverTo).arg(format));
+        request.output = dir_.filePath(QStringLiteral("cover-%1-%2-%3-%4.%5").arg(trimStart).arg(cutStart).arg(coverFrom).arg(coverTo).arg(format));
         request.durationUs = durationUs;
         request.canvas = {width, height};
         request.edit = edit;
@@ -1052,10 +1081,12 @@ private slots:
         QVERIFY(shown.size() > 10);
         const putgd::recording::Span cover{coverFrom, coverTo};
         auto distance = [&](qint64 t) { return t < cover.start ? cover.start - t : t >= cover.end ? t - cover.end + 1 : 0; };
+        const auto coverParts = kept.outputParts(coverFrom, coverTo);
         int mustCover = 0;
         for (const auto& f : shown) {
             const qint64 t = f.us - shown.first().us, picture = frameUs(f.source), at = kept.toSource(t);
-            if (cover.contains(picture) || cover.contains(at)) {
+            const bool overlaps = std::any_of(coverParts.begin(), coverParts.end(), [&](const putgd::recording::Span& part) { return part.start < t + step && t < part.end; });
+            if (cover.contains(picture) || overlaps) {
                 ++mustCover;
                 QVERIFY2(f.spanningCovered, qPrintable(QStringLiteral("output %1 us shows clip frame %2 (%3 us) at source %4 us uncovered").arg(t).arg(f.source).arg(picture).arg(at)));
             } else if (distance(picture) > step && distance(at) > step) {
@@ -1093,12 +1124,16 @@ private slots:
         qint64 holeFrom = 0, holeTo = 0, seam = -1;
         QList<Span> tone, silent;  // output time
         if (!leadingCut) {
-            // Both span ends lie between frames (frames 36/37 and 105/106), so
-            // the grid ends the spans on frames 37 and 106: 1.2333 s and 2.7667 s of output.
+            // Both span ends lie between frames (frames 36/37 and 105/106), so the
+            // grid runs the spans on to frames 37 and 106 in the clip; in the
+            // output the first lasts the kept 1.21 s rounded to 36 frames (1.2 s)
+            // and the second ends at 2.7333 s, the kept 2.72 s in frames. The
+            // second span's last 23 ms, past the trim end in the clip, are silence.
             edit.trimEnd = 3'510'000;
             edit.cuts = {{"a", 1'210'000, 2'000'000}};
-            tone = {{0, 1'210'000}, {1'233'333, 1'233'333 + 1'510'000}};
-            silent = {{1'210'000, 1'233'333}, {1'233'333 + 1'510'000, 2'766'667}};
+            tone = {{0, 1'200'000}, {1'200'000, 1'200'000 + 1'510'000}};
+            silent = {{1'200'000 + 1'510'000, 2'733'333}};
+            seam = 1'200'000;
         } else {
             // The clip's audio has a hole from 0.4 s to 0.7 s; the first span starts at 0.5 s.
             holeFrom = 400'000; holeTo = 700'000;
@@ -1157,9 +1192,12 @@ private slots:
         QVERIFY2(decoded.audioEndUs <= videoEnd + audioFrameUs, qPrintable(QStringLiteral("audio runs to %1 us of %2").arg(decoded.audioEndUs).arg(videoEnd)));
     }
     // #1635: at 60 fps Matroska's millisecond timestamps make frame steps of 16
-    // and 17 ms. Spans of two frames with one frame cut between them each, all
-    // through the clip, still export as every kept frame exactly once, in order:
-    // never two on one output tick and the next tick empty.
+    // and 17 ms, and store a frame up to 0.5 ms before the frame time the
+    // review snaps an edge to (frame 2 at 33 ms for 33.333 ms). Spans of two
+    // frames with one frame cut between them each, all through the clip, on the
+    // review's frame grid, still export as every kept frame exactly once, in
+    // order: never two on one output tick and the next tick empty, and never
+    // the cut frame stored just before its cut.
     void sixtyFpsCutsKeepEveryFrame_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("codec");
@@ -1173,7 +1211,7 @@ private slots:
         putgd::RecordingEdit edit;
         QList<int> expected;
         for (int k = 0; k < frames; ++k) {
-            if (k % 3 == 2) edit.cuts.append({QStringLiteral("c%1").arg(k), plainclip::frameUs(fps, k), plainclip::frameUs(fps, k + 1)});
+            if (k % 3 == 2) edit.cuts.append({QStringLiteral("c%1").arg(k), qRound64(k * 1e6 / fps), qRound64((k + 1) * 1e6 / fps)});
             else expected << k;
         }
         ExportRequest request;
@@ -1264,6 +1302,149 @@ private slots:
         QVERIFY2(result.durationUs <= kept.outputDuration(), qPrintable(QStringLiteral("%1 us of GIF for %2 kept").arg(result.durationUs).arg(kept.outputDuration())));
         // Each span rounds to whole 15 fps frames: half a frame each at most.
         QVERIFY2(result.durationUs >= kept.outputDuration() - 5 * 1'000'000 / 30, qPrintable(QString::number(result.durationUs)));
+    }
+    // #1635 AC1: an MP4 cut on whole frames, as the review snaps edges, lasts
+    // what the review clock shows. Trim 1.266667-11.333333 s and a cut from
+    // 5.133333 to 6.266667 s keep 8.933 s; the export came out 9.000 s, two
+    // frames long: Matroska stores frame 154 at 5133 ms and frame 340 at
+    // 11333 ms, a third of a millisecond before the edges they lie on, so the
+    // first cut frame and the first frame after the trim were exported too.
+    void frameExactEdgesMatchTheClock() {
+        constexpr int fps = 30, frames = 360;
+        const auto path = dir_.filePath("long30.mkv");
+        const auto written = plainclip::write(path, fps, frames);
+        QVERIFY2(!written, qPrintable(written.message));
+        putgd::RecordingEdit edit;
+        edit.trimStart = plainclip::gridUs(fps, 38);
+        edit.trimEnd = plainclip::gridUs(fps, 340);
+        edit.cuts = {{"cut", plainclip::gridUs(fps, 154), plainclip::gridUs(fps, 188)}};
+        QCOMPARE(edit.trimStart, qint64(1'266'667));
+        QCOMPARE(edit.cuts[0].start, qint64(5'133'333));
+        const KeptSpans kept(edit, plainclip::frameUs(fps, frames));
+        QVERIFY(std::abs(kept.outputDuration() - 8'933'333) <= 1);  // the clock: 268 frames
+        ExportRequest request;
+        request.input = path;
+        request.output = dir_.filePath("clock.mp4");
+        request.durationUs = plainclip::frameUs(fps, frames);
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit = edit;
+        request.config.format = "mp4";
+        request.config.codec = "h264";
+        request.config.fps = fps;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("mp4 export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        QVERIFY2(std::abs(result.durationUs - 8'933'333) <= 1, qPrintable(QString::number(result.durationUs)));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QList<int> expected;
+        for (int k = 38; k < 340; ++k) if (k < 154 || k >= 188) expected << k;
+        QCOMPARE(expected.size(), 268);
+        QCOMPARE(plainclip::unwrap(decoded.frames), expected);
+    }
+    // #1635 E10: the GIF/WebP cap never erases a span. Kept spans of 100, 100,
+    // 100 and 67 ms at 15 fps fit 5 frames (the 367 ms kept); rounding each span
+    // and trimming the excess from the end left the last span none.
+    void animationCapKeepsEverySpan() {
+        constexpr int fps = 60;
+        putgd::RecordingEdit edit;
+        edit.trimEnd = plainclip::gridUs(fps, 40);
+        edit.cuts = {{"a", plainclip::gridUs(fps, 6), plainclip::gridUs(fps, 12)}, {"b", plainclip::gridUs(fps, 18), plainclip::gridUs(fps, 24)}, {"c", plainclip::gridUs(fps, 30), plainclip::gridUs(fps, 36)}};
+        const KeptSpans kept(edit, plainclip::frameUs(fps, 150));
+        QCOMPARE(kept.spans().size(), 4);
+        ExportRequest request;
+        request.input = sixty_;
+        request.output = dir_.filePath("cap.gif");
+        request.durationUs = plainclip::frameUs(fps, 150);
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit = edit;
+        request.config.format = "gif";
+        request.config.fps = fps;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("gif export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        QVERIFY2(result.durationUs <= kept.outputDuration(), qPrintable(QString::number(result.durationUs)));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        // Each span on screen: frames 0-5, 12-17, 24-29 and 36-39.
+        for (int from : {0, 12, 24, 36}) {
+            const bool shown = std::any_of(decoded.frames.begin(), decoded.frames.end(), [&](const cutclip::Decoded::Frame& f) { return f.source >= from && f.source < from + 6; });
+            QVERIFY2(shown, qPrintable(QStringLiteral("no frame of the span from clip frame %1").arg(from)));
+        }
+    }
+    // #1635 E11: in a variable-rate clip (pictures at 0, 1 and 2 s) trimmed to
+    // 1.010 s, the picture at 1 s rounds to the tick where the output ends; it
+    // takes the last tick instead of being dropped, since the picture there is
+    // only the one from 0 s repeated.
+    void lastPictureOfASpanIsShown() {
+        const auto path = dir_.filePath("vfr.mkv");
+        const auto written = plainclip::write(path, 30, 3, {}, 0, 0, {0, 1000, 2000});
+        QVERIFY2(!written, qPrintable(written.message));
+        ExportRequest request;
+        request.input = path;
+        request.output = dir_.filePath("vfr.mp4");
+        request.durationUs = 2'033'333;
+        request.canvas = {cutclip::width, cutclip::height};
+        request.edit.trimEnd = 1'010'000;
+        request.config.format = "mp4";
+        request.config.codec = "h264";
+        request.config.fps = 30;
+        request.config.audio.system = false;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("mp4 export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        QCOMPARE(result.frames, 30);
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QCOMPARE(decoded.frames.size(), 30);
+        QCOMPARE(decoded.frames.first().source, 0);
+        QCOMPARE(decoded.frames.last().source, 1);
+    }
+    // #1635 E14: audio keeps the samples at or after each kept start, never one
+    // before it. A kept part of 40 µs between two cuts (2 samples, so its fade
+    // is a single sample at half gain) starts 0.48 of a sample after the
+    // impulse that ends the first cut; rounding to the nearest sample let that
+    // impulse through at half its level.
+    void audioKeepsNoSampleBeforeAKeptStart() {
+        constexpr int fps = 30;
+        const auto path = dir_.filePath("impulse.mkv");
+        // Sample 47760 (0.995 s) is the impulse.
+        const auto written = plainclip::write(path, fps, 90, [](qint64 us) { return us == 995'000 ? 0.9 : 0.0; });
+        QVERIFY2(!written, qPrintable(written.message));
+        ExportRequest request;
+        request.input = path;
+        request.output = dir_.filePath("impulse.mp4");
+        request.durationUs = 3'000'000;
+        request.canvas = {cutclip::width, cutclip::height};
+        // Kept 0-0.99 s, 0.995010-0.995050 s (inside the grid's first span, which
+        // runs to the frame at 1.0 s) and 2-3 s.
+        request.edit.cuts = {{"a", 990'000, 995'010}, {"b", 995'050, 2'000'000}};
+        request.config.format = "mp4";
+        request.config.codec = "h264";
+        request.config.fps = fps;
+        request.config.audio.system = true;
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        const auto error = putgd::record::exportClip(request, result, cancelled);
+        if (error.code == "recording_unsupported") QSKIP(qPrintable("mp4 export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        float peak = 0;
+        for (const float v : decoded.audio) peak = std::max(peak, std::abs(v));
+        QVERIFY2(peak < 0.02, qPrintable(QStringLiteral("a sample from inside the cut reached the output (peak %1)").arg(peak)));
     }
     void webmAudioDecodesEveryPacket_data() {
         QTest::addColumn<QString>("decoder");
