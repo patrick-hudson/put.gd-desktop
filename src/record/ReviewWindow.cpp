@@ -353,6 +353,12 @@ int FrameView::zoomPercent() const {
     if (actual_) return 100;
     return std::max(1, int(std::lround(imageRect().width() * devicePixelRatioF() * 100.0 / src.width())));
 }
+void FrameView::panBy(const QPointF& sourcePixels) {
+    if (!actual_) return;
+    pan_ += sourcePixels;
+    clampPan();
+    update();
+}
 void FrameView::clampPan() {
     const QSize src = source();
     if (!actual_ || src.isEmpty()) { pan_ = {}; return; }
@@ -463,9 +469,7 @@ void FrameView::keyPressEvent(QKeyEvent* e) {
             // At 100 % the arrows pan; Shift pans a quarter of the view.
             const qreal dpr = devicePixelRatioF();
             const qreal distance = (e->modifiers() & Qt::ShiftModifier ? area().width() / 4.0 : 40.0) * dpr;
-            pan_ += QPointF(step) * distance;
-            clampPan();
-            update();
+            panBy(QPointF(step) * distance);
             return;
         }
         QWidget::keyPressEvent(e);
@@ -938,7 +942,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(timeline_, &FilmstripTimeline::scrubStarted, this, [this] { stopPlayback(); if (timeSelection_ || !selectedKind_.isEmpty()) clearSelection(); });
     connect(timeline_, &FilmstripTimeline::seekRequested, this, [this](qint64 at) { seek(at); });
     connect(timeline_, &FilmstripTimeline::selectionCleared, this, [this] { if (timeSelection_ || !selectedKind_.isEmpty()) clearSelection(); });
-    connect(timeline_, &FilmstripTimeline::timeSelected, this, [this](qint64 start, qint64 end) { stopPlayback(); setTimeSelection(recording::Span{start, end}); });
+    connect(timeline_, &FilmstripTimeline::timeSelected, this, &ReviewWindow::selectTime);
     connect(timeline_, &FilmstripTimeline::cutSelected, this, [this](const QString& id) { selectCut(id, false); });
     connect(timeline_, &FilmstripTimeline::coverSelected, this, [this](const QString& id) { selectCover(id); });
     connect(timeline_, &FilmstripTimeline::trimEdgeDragged, this, [this](bool start, qint64 at) {
@@ -952,15 +956,9 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         frameTimer_.start();
     });
     connect(timeline_, &FilmstripTimeline::edgeDragFinished, this, [this] { edgePreview_.reset(); frameTimer_.start(); });
-    connect(timeline_, &FilmstripTimeline::trimProposed, this, [this](qint64 start, qint64 end) {
-        propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(start)}, {"end", end >= options_.durationUs ? QJsonValue(QJsonValue::Null) : QJsonValue(double(end))}}});
-    });
-    connect(timeline_, &FilmstripTimeline::cutAdjusted, this, [this](const QString& id, qint64 start, qint64 end) {
-        propose(QJsonArray{QJsonObject{{"op", "updateCut"}, {"cutId", id}, {"start", double(start)}, {"end", double(end)}}});
-    });
-    connect(timeline_, &FilmstripTimeline::coverRetimed, this, [this](const QString& id, qint64 start, qint64 end) {
-        updateCover(id, [&](QJsonObject& mask) { mask["start"] = double(start); mask["end"] = double(end); });
-    });
+    connect(timeline_, &FilmstripTimeline::trimProposed, this, &ReviewWindow::proposeTrim);
+    connect(timeline_, &FilmstripTimeline::cutAdjusted, this, &ReviewWindow::adjustCut);
+    connect(timeline_, &FilmstripTimeline::coverRetimed, this, &ReviewWindow::retimeCover);
     connect(timeline_, &FilmstripTimeline::skimMoved, this, [this](qint64 at) {
         if (playing_) return;
         skimUs_ = at;
@@ -985,9 +983,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(panel_, &ReviewPanel::coverEdgeEdited, this, [this](const QString& id, bool start, qint64 at) {
         updateCover(id, [&](QJsonObject& mask) { mask[start ? "start" : "end"] = double(at); });
     });
-    connect(panel_, &ReviewPanel::coverKindChanged, this, [this](const QString& id, const QString& kind) {
-        updateCover(id, [&](QJsonObject& mask) { mask["kind"] = kind; if (kind == "blur" && !mask.contains("strength")) mask["strength"] = 16; });
-    });
+    connect(panel_, &ReviewPanel::coverKindChanged, this, &ReviewWindow::setCoverKind);
     connect(panel_, &ReviewPanel::coverStrengthChanged, this, [this](const QString& id, int strength) {
         updateCover(id, [&](QJsonObject& mask) { mask["strength"] = strength; });
     });
@@ -995,12 +991,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     connect(panel_, &ReviewPanel::resetTrim, this, [this] { propose(QJsonArray{QJsonObject{{"op", "resetTrim"}}}); });
     connect(panel_, &ReviewPanel::removeCover, this, [this](const QString& id) { propose(QJsonArray{QJsonObject{{"op", "removeMask"}, {"maskId", id}}}); });
     connect(overlay_, &EditsOverlay::closed, this, [this] { editsToggle_->setChecked(false); view_->setRightInset(0); });
-    connect(editsToggle_, &QToolButton::clicked, this, [this] {
-        if (overlay_->isOpen()) { overlay_->dismiss(); return; }
-        overlay_->openFor(panel_, editsToggle_);
-        editsToggle_->setChecked(true);
-        placeOverlayInset();
-    });
+    connect(editsToggle_, &QToolButton::clicked, this, [this] { setPanelOpen(!overlay_->isOpen()); });
 
     // Viewer.
     connect(view_, &FrameView::retryRequested, this, [this] { frameTimer_.stop(); refreshFrame(); });
@@ -1027,10 +1018,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     });
     connect(previousFrame_, &QToolButton::clicked, this, [this] { stepFrames(-1); });
     connect(nextFrame_, &QToolButton::clicked, this, [this] { stepFrames(1); });
-    connect(timelineZoom_, &QToolButton::clicked, this, [this] {
-        const int next = timeline_->zoom() >= 4 ? 1 : timeline_->zoom() * 2;
-        timeline_->setZoom(next, playhead_);
-    });
+    connect(timelineZoom_, &QToolButton::clicked, this, [this] { timeline_->setZoom(timeline_->zoom() >= 4 ? 1 : timeline_->zoom() * 2, playhead_); });
     connect(formats_, &QActionGroup::triggered, this, [this](QAction* action) {
         const auto value = action->data().toStringList();
         if (value.size() != 2 || (value[0] == config_.format && value[1] == config_.codec)) return;
@@ -1165,6 +1153,11 @@ void ReviewWindow::setTimeSelection(std::optional<recording::Span> span) {
     view_->setMasks(edit_.masks, {});
     refreshAll();
 }
+// A drag on the filmstrip (or recording.review selectRange): the half-open span.
+void ReviewWindow::selectTime(qint64 start, qint64 end) {
+    stopPlayback();
+    setTimeSelection(recording::Span{start, end});
+}
 void ReviewWindow::clearSelection() {
     timeSelection_.reset();
     selectedKind_.clear();
@@ -1260,6 +1253,30 @@ void ReviewWindow::undoRedo(bool undo) {
     stopPlayback();
     view_->commitNudge();
     propose(QJsonArray{QJsonObject{{"op", undo ? "undo" : "redo"}}});
+}
+// Trim brackets dragged (and released), or recording.review setTrim.
+void ReviewWindow::proposeTrim(qint64 start, qint64 end) {
+    propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(start)}, {"end", end >= options_.durationUs ? QJsonValue(QJsonValue::Null) : QJsonValue(double(end))}}});
+}
+// A selected cut's edge dragged, or recording.review adjustCut.
+void ReviewWindow::adjustCut(const QString& id, qint64 start, qint64 end) {
+    propose(QJsonArray{QJsonObject{{"op", "updateCut"}, {"cutId", id}, {"start", double(start)}, {"end", double(end)}}});
+}
+// A selected cover bar's end dragged on the timeline.
+void ReviewWindow::retimeCover(const QString& id, qint64 start, qint64 end) {
+    updateCover(id, [&](QJsonObject& mask) { mask["start"] = double(start); mask["end"] = double(end); });
+}
+// The panel's Redact | Blur choice for a selected cover.
+void ReviewWindow::setCoverKind(const QString& id, const QString& kind) {
+    updateCover(id, [&](QJsonObject& mask) { mask["kind"] = kind; if (kind == "blur" && !mask.contains("strength")) mask["strength"] = 16; });
+}
+// The Edits toggle: the folded panel as an overlay.
+void ReviewWindow::setPanelOpen(bool open) {
+    if (open == overlay_->isOpen()) return;
+    if (!open) { overlay_->dismiss(); return; }
+    overlay_->openFor(panel_, editsToggle_);
+    editsToggle_->setChecked(true);
+    placeOverlayInset();
 }
 void ReviewWindow::cutSelection() {
     if (!timeSelection_ || exporting_ || placing_) return;
@@ -1847,12 +1864,16 @@ QJsonObject ReviewWindow::inspect() const {
         for (const auto& [label, params] : entry.actions) actions.append(QJsonObject{{"label", label}, {"drive", params}});
         statusFacts.append(QJsonObject{{"text", entry.text}, {"tone", entry.tone}, {"actions", actions}});
     }
-    QJsonObject selection{{"kind", timeSelection_ ? QStringLiteral("time") : selectedKind_}, {"id", selectedId_}};
-    if (timeSelection_) selection["span"] = QJsonObject{{"start", double(timeSelection_->start)}, {"end", double(timeSelection_->end)}};
+    // #1613: a time selection and an edit selection never coexist.
+    const QJsonValue selection = timeSelection_ ? QJsonValue(QJsonObject{{"start", double(timeSelection_->start)}, {"end", double(timeSelection_->end)}, {"lengthUs", double(timeSelection_->end - timeSelection_->start)}}) : QJsonValue(QJsonValue::Null);
+    const QJsonValue selectedEdit = selectedKind_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(QJsonObject{{"kind", selectedKind_}, {"id", selectedId_.isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(selectedId_)}});
+    const QJsonValue pan = QJsonObject{{"x", view_->pan().x()}, {"y", view_->pan().y()}};
     QJsonValue placement(QJsonValue::Null);
     if (placing_) placement = QJsonObject{{"kind", placing_->kind}, {"start", double(placing_->span.start)}, {"end", double(placing_->span.end)}, {"whole", placing_->whole}, {"banner", placeBanner_->text()}};
     auto timeline = timeline_->inspect();
     timeline["rect"] = rect(timeline_->geometry());
+    timeline["strip"] = rect(timeline_->stripRect().translated(timelineAt));
+    timeline["ruler"] = rect(timeline_->rulerRect().translated(timelineAt));
     auto panel = panel_->inspect();
     panel["folded"] = folded_;
     panel["overlayOpen"] = overlay_->isOpen();
@@ -1865,7 +1886,11 @@ QJsonObject ReviewWindow::inspect() const {
         {"trim", QJsonObject{{"start", double(edit_.trimStart)}, {"end", double(edit_.exportEnd(options_.durationUs))}}},
         {"cuts", cuts}, {"masks", masks}, {"selectedMaskId", mask ? QJsonValue(mask->id) : QJsonValue(QJsonValue::Null)},
         {"selectedMaskName", mask ? QJsonValue(maskNames_->name(*mask)) : QJsonValue(QJsonValue::Null)},
-        {"selection", selection}, {"placement", placement},
+        {"selection", selection}, {"selectedEdit", selectedEdit}, {"edits", panel["rows"]}, {"placement", placement},
+        {"playhead", QJsonObject{{"sourceUs", double(playhead_)}, {"outputUs", double(kept_.toOutput(playhead_))}}},
+        {"undo", QJsonObject{{"canUndo", edit_.canUndo}, {"canRedo", edit_.canRedo}}},
+        {"viewer", QJsonObject{{"zoom", view_->actualSize() ? QStringLiteral("actual") : QStringLiteral("fit")}, {"percent", view_->zoomPercent()}, {"pan", pan}}},
+        {"warning", blurBanner_->isVisibleTo(this) ? QJsonValue(blurBanner_->text()) : QJsonValue(QJsonValue::Null)}, {"folded", folded_},
         {"armed", view_->armed().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->armed())},
         {"blurGuidance", QJsonObject{{"visible", blurBanner_->isVisibleTo(this)}, {"text", blurBanner_->text()}}},
         {"tools", QJsonObject{{"cut", cut_->isEnabled()}, {"undo", undo_->isEnabled()}, {"redo", redo_->isEnabled()}, {"pictureZoom", pictureZoom_->text()}, {"editsToggle", editsToggle_->isVisibleTo(this)}}},
@@ -1980,15 +2005,17 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
         return done();
     }
     if (action == "placeMask") {
-        // The selected cover's box, as a pointer drag or the frame's arrow keys set it.
+        // While a cover is armed: the box a pointer drag draws (one addMask). Otherwise
+        // the selected cover's box, as a pointer drag or the frame's arrow keys set it.
         const auto r = params["rect"].toArray();
-        if (!selectedMask()) return invalid("Select a mask first");
+        if (!placing_ && !selectedMask()) return invalid("Arm Redact or Blur to draw a box, or select a mask first");
         if (r.size() != 4) return invalid("placeMask takes rect [x, y, width, height] in canvas pixels");
         const QRect rect(r[0].toInt(-1), r[1].toInt(-1), r[2].toInt(-1), r[3].toInt(-1));
         if (rect.x() < 0 || rect.y() < 0 || rect.width() < 2 || rect.height() < 2 || (!options_.canvas.isEmpty() && !QRect(QPoint(), options_.canvas).contains(rect))) return invalid("The mask rect must lie inside the canvas");
         stopPlayback();
         view_->commitNudge();
-        emit view_->maskMoved(selectedId_, rect);
+        if (placing_) emit view_->maskCreated(placing_->kind, rect);
+        else emit view_->maskMoved(selectedId_, rect);
         return done();
     }
     if (action == "useSolidCover") {
@@ -2022,6 +2049,143 @@ ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
         if (!selectedMask()) return invalid("Select a mask first");
         stopPlayback();
         removeSelectedCover();
+        return done();
+    }
+    // #1613: the redesigned window's controls. Each calls the function its button,
+    // key or gesture calls; the checks only turn a refused state into an error.
+    const auto state = [](const QString& message) { return DriveResult{"recording_state", message, {}}; };
+    const auto whole = [&params](const char* key) -> std::optional<qint64> {
+        const auto value = params[QLatin1String(key)];
+        if (!value.isDouble() || value.toDouble() != std::floor(value.toDouble()) || std::abs(value.toDouble()) > 9e15) return std::nullopt;
+        return qint64(value.toDouble());
+    };
+    const auto cutById = [this](const QString& id) { return std::any_of(edit_.cuts.cbegin(), edit_.cuts.cend(), [&](const RecordingCut& c) { return c.id == id; }); };
+    const auto idParam = [&params](const char* key) { return params[QLatin1String(key)].isString() ? params[QLatin1String(key)].toString() : QString(); };
+    const auto withinRecording = [this](const std::optional<qint64>& start, const std::optional<qint64>& end) { return start && end && *start >= 0 && *end > *start && *end <= options_.durationUs; };
+    if (action == "selectRange") {
+        const auto start = whole("start"), end = whole("end");
+        if (!withinRecording(start, end)) return invalid("selectRange takes start < end, in microseconds within the recording");
+        if (placing_) return state("Place or cancel the cover first");
+        selectTime(*start, *end);
+        return done();
+    }
+    if (action == "clearSelection") { if (timeSelection_ || !selectedKind_.isEmpty()) clearSelection(); return done(); }
+    if (action == "cut") {
+        if (placing_) return state("Place or cancel the cover first");
+        if (!timeSelection_) return state("Select time on the filmstrip to cut it");
+        cutSelection();
+        return done();
+    }
+    if (action == "selectCut" || action == "restoreCut" || action == "playAcross" || action == "adjustCut") {
+        const auto id = idParam("cutId");
+        if (id.isEmpty() || !cutById(id)) return invalid("No cut has this ID");
+        if (action == "adjustCut") {
+            const auto start = whole("start"), end = whole("end");
+            if (!withinRecording(start, end)) return invalid("adjustCut takes start < end, in microseconds within the recording");
+            adjustCut(id, *start, *end);
+        } else if (action == "selectCut") selectCut(id, false);
+        else if (action == "restoreCut") restoreCut(id);
+        else {
+            if (kept_.empty()) return state("Nothing is kept to play");
+            playAcross(id);
+        }
+        return done();
+    }
+    if (action == "undo" || action == "redo") {
+        const bool undo = action == "undo";
+        if (placing_ && !undo) return state("Place or cancel the cover first");
+        if (!placing_ && !(undo ? edit_.canUndo : edit_.canRedo)) return state(undo ? "There is nothing to undo" : "There is nothing to redo");
+        undoRedo(undo);
+        return done();
+    }
+    if (action == "armRedact" || action == "armBlur") { arm(action == "armRedact" ? QStringLiteral("solid") : QStringLiteral("blur")); return done(); }
+    if (action == "cancelPlacement") {
+        if (!placing_) return state("No cover is being placed");
+        cancelPlacement();
+        refreshTools();
+        return done();
+    }
+    if (action == "selectEdit") {
+        const auto kind = params["kind"].toString(), id = idParam("editId");
+        const bool known = (kind == "cut" && cutById(id)) || (kind == "cover" && maskById(id)) || (kind == "trim" && editsInOrder().contains({QStringLiteral("trim"), QString()}));
+        if (!known) return invalid("selectEdit takes kind cut|cover|trim and the editId of an edit in the Edits list (a trim has none)");
+        selectEdit(kind, id);
+        return done();
+    }
+    if (action == "nextEdit" || action == "previousEdit") {
+        if (editsInOrder().isEmpty()) return state("There are no edits to step through");
+        stepEdit(action == "nextEdit" ? 1 : -1);
+        return done();
+    }
+    if (action == "seekCoverStart" || action == "seekCoverEnd" || action == "setCoverEdgeToPlayhead" || action == "coverKind") {
+        const auto* mask = selectedMask();
+        if (!mask) return state("Select a cover first");
+        const bool start = action == "seekCoverStart" || (action == "setCoverEdgeToPlayhead" && params["edge"] == "start");
+        if (action == "seekCoverStart" || action == "seekCoverEnd") {
+            if (!(start ? firstKeptFrame(mask->start, mask->end) : lastKeptFrame(mask->start, mask->end))) return state("The cover is excluded from the output");
+            seekCoverEdge(mask->id, start);
+        } else if (action == "setCoverEdgeToPlayhead") {
+            if (params["edge"] != "start" && params["edge"] != "end") return invalid("edge is start or end");
+            stopPlayback();
+            return done(setMaskAt(start, mask->id));
+        } else {
+            const auto kind = params["kind"].toString();
+            if (kind != "solid" && kind != "blur") return invalid("coverKind takes kind solid|blur");
+            if (mask->kind != kind) setCoverKind(mask->id, kind);
+        }
+        return done();
+    }
+    if (action == "timelineZoom") {
+        const auto level = whole("level");
+        if (!level || (*level != 1 && *level != 2 && *level != 4 && *level != 8 && *level != 16)) return invalid("timelineZoom takes level 1 (Fit), 2, 4, 8 or 16");
+        timeline_->setZoom(int(*level), playhead_);
+        return done();
+    }
+    if (action == "timelineFit") { timeline_->setZoom(1, playhead_); return done(); }
+    if (action == "viewerZoom") {
+        const auto mode = params["mode"].toString();
+        if (mode != "fit" && mode != "actual") return invalid("viewerZoom takes mode fit|actual");
+        view_->setActualSize(mode == "actual");
+        return done();
+    }
+    if (action == "viewerPan") {
+        if (!params["dx"].isDouble() || !params["dy"].isDouble() || !std::isfinite(params["dx"].toDouble()) || !std::isfinite(params["dy"].toDouble())) return invalid("viewerPan takes dx and dy in source pixels");
+        if (!view_->actualSize()) return state("The picture is at Fit; set viewerZoom actual before panning");
+        view_->panBy({params["dx"].toDouble(), params["dy"].toDouble()});
+        return done();
+    }
+    if (action == "frameStep") {
+        const auto delta = whole("delta");
+        if (!delta || (*delta != 1 && *delta != -1)) return invalid("frameStep takes delta 1 or -1");
+        stepFrames(int(*delta));
+        return done();
+    }
+    if (action == "skim") {
+        const auto time = whole("time");
+        if (!time || *time < 0 || *time >= options_.durationUs) return invalid("skim takes a recording time in microseconds");
+        if (playing_) return state("The timeline skims only while paused");
+        timeline_->skimAt(*time);
+        return done();
+    }
+    if (action == "skimEnd") { timeline_->skimAt(std::nullopt); return done(); }
+    if (action == "panel") {
+        if (!params["open"].isBool()) return invalid("panel takes open true|false");
+        if (!folded_) return state("The Edits panel is shown beside the viewer at this window size; make the window smaller to fold it");
+        setPanelOpen(params["open"].toBool());
+        return done();
+    }
+    if (action == "resize") {
+        const auto width = whole("width"), height = whole("height");
+        if (!width || !height || *width < 200 || *height < 200 || *width > 16000 || *height > 16000) return invalid("resize takes width and height in pixels, 200 to 16000");
+        resize(int(*width), int(*height));
+        return done();
+    }
+    if (action == "setTrim") {
+        const auto start = whole("start");
+        const auto end = params["end"].isNull() || params["end"].isUndefined() ? std::optional<qint64>(options_.durationUs) : whole("end");
+        if (!withinRecording(start, end)) return invalid("setTrim takes start < end (end null: the recording's end), in microseconds within the recording");
+        stopPlayback();
+        proposeTrim(*start, *end);
         return done();
     }
     if (action == "format") {

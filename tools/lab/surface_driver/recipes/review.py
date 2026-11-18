@@ -75,11 +75,23 @@ def _video(ctx, rid, fx=.5, fy=.5):
     return _point(ctx, s, s['video']['rect'], fx, fy)
 
 
+def _drive(ctx, rid, action, **fields):
+    """One recording.review control: the call an agent makes for the button, key or gesture."""
+    return ctx.call('recording.review', {'id': rid, 'action': action, **fields})
+
+
+def _select_time(ctx, rid, start, end):
+    """The filmstrip drag, as fractions of the recording (recording.review selectRange)."""
+    duration = _inspect(ctx, rid)['durationUs']
+    state = _drive(ctx, rid, 'selectRange', start=int(duration * start), end=int(duration * end))
+    ctx.expect(state['selection'] and state['selection']['start'] == int(duration * start), 'selectRange selects the span')
+    return state
+
+
 def _arm(ctx, rid, kind='solid'):
-    ctx.click('addMask', window='review')
-    # Menu order is defined by ReviewWindow and recorded in 31d-review-add-mask-menu.
-    ctx.keys('Home', *(['Down'] if kind == 'blur' else []), 'Return')
-    ctx.wait(lambda: _state(ctx, rid)['armed'] == kind, 'mask tool is armed')
+    state = _drive(ctx, rid, 'armRedact' if kind == 'solid' else 'armBlur')
+    ctx.expect(state['armed'] == kind and state['placement']['kind'] == kind, kind + ' is armed with its placement banner')
+    return state
 
 
 def _add(ctx, rid, kind='solid', centered=False):
@@ -94,46 +106,23 @@ def _add(ctx, rid, kind='solid', centered=False):
     return info['edit']['masks'][-1]
 
 
-def _track(ctx, rid):
-    """Recover the time axis from a live mask bar; never assume window placement.
-
-    Inspect gives bar rectangles and source-time spans. ReviewTimeline places the
-    clip track six logical pixels plus half a lane row above the first lane's
-    center. These are widget layout invariants, independent of desktop/DPI.
-    """
-    s, info = _state(ctx, rid), _inspect(ctx, rid)
-    if not s['masks']:
-        _add(ctx, rid, centered=True)
-        s, info = _state(ctx, rid), _inspect(ctx, rid)
-    for bar in s['masks']:
-        x, y, w, h = bar['timeline']
-        mask = next(m for m in info['edit']['masks'] if m['id'] == bar['id'])
-        if w > 3 and mask['end'] > mask['start']:
-            per_us = w / (mask['end'] - mask['start'])
-            left = x - mask['start'] * per_us
-            # Locate the first visible lane, even when the chosen bar is below it.
-            first_y = min(b['timeline'][1] for b in s['masks'] if b['timeline'][2] > 0)
-            cy = first_y + h / 2 - s['timeline']['interactionRowHeight'] / 2 - 6
-            return s, [left, cy, info['durationUs'] * per_us, 0]
-    ctx.blocked('No visible nonzero mask bar from which to recover the live timeline axis')
+def _strip(ctx, rid):
+    """Window state and a function from source time to the strip's screen point."""
+    s = _state(ctx, rid)
+    strip, visible = s['timeline']['strip'], s['timeline']['visible']
+    span = max(1, visible['end'] - visible['start'])
+    def at(time, fy=.5):
+        return _point(ctx, s, [strip[0] + (time - visible['start']) / span * strip[2], strip[1], 0, strip[3]], 0, fy)
+    return s, at
 
 
 def _seek(ctx, rid, fraction):
-    s, track = _track(ctx, rid)
-    # The ruler lies above trim handles, so a click scrubs without dragging one.
-    track[1] -= 14
-    ctx.click_at(*_point(ctx, s, track, fraction, 0))
     duration = _inspect(ctx, rid)['durationUs']
-    return ctx.wait(lambda: (v if abs((v := _state(ctx, rid))['playheadUs'] - duration * fraction)
-                            < max(120_000, duration * .03) else None), 'timeline scrub reaches requested time')
+    return _drive(ctx, rid, 'seek', time=int(duration * fraction))
 
 
 def _select_mask(ctx, rid, mask):
-    s = _state(ctx, rid)
-    canvas = _inspect(ctx, rid)['canvas']
-    x, y, w, h = mask['rect']
-    ctx.click_at(*_video(ctx, rid, (x + w / 2) / canvas[0], (y + h / 2) / canvas[1]))
-    ctx.wait(lambda: _state(ctx, rid)['selectedMaskId'] == mask['id'], 'frame selects the mask')
+    ctx.expect(_drive(ctx, rid, 'selectEdit', kind='cover', editId=mask['id'])['selectedEdit']['id'] == mask['id'], 'Edits selects the cover')
 
 
 def _choose_format(ctx, rid, fmt, codec=''):
@@ -302,138 +291,176 @@ def playback(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('review.timeline', 'review.trim-in', 'review.trim-out', 'review.trim-reset',
-        'review.key-timeline', needs=('recording',))
+@recipe('review.timeline', 'review.cut', 'review.undo-redo', 'review.edit-step', needs=('recording',))
+def cut_flow(ctx):
+    rid = _open(ctx)
+    duration = _inspect(ctx, rid)['durationUs']
+    # The real gesture: a drag on the filmstrip selects time, C cuts it.
+    s, at = _strip(ctx, rid)
+    before = _inspect(ctx, rid)['edit']
+    ctx.drag(at(duration * .3), at(duration * .45))
+    s = ctx.wait(lambda: (v if (v := _state(ctx, rid))['selection'] else None), 'a filmstrip drag selects time')
+    ctx.expect(s['selection']['end'] > s['selection']['start'] and s['panel']['mode'] == 'selection' and s['tools']['cut'],
+               'the selection enables Cut and the panel offers it')
+    _frame(ctx, 'selected', None)
+    ctx.keys('C')
+    info = _changed(ctx, rid, before['revision'])
+    cut = info['edit']['cuts'][-1]
+    s = _state(ctx, rid)
+    ctx.expect(len(info['edit']['cuts']) == 1, 'C cut the selection')
+    ctx.expect(s['outputDurationUs'] < duration and s['selection'] is None, 'the cut shortens the output and clears the selection')
+    # Select the cut as a click does, then Restore it; Undo and Redo step the history.
+    state = _drive(ctx, rid, 'selectCut', cutId=cut['id'])
+    ctx.expect(state['selectedEdit'] == {'kind': 'cut', 'id': cut['id']} and state['panel']['mode'] == 'cut', 'a selected cut shows Restore and Play across')
+    _drive(ctx, rid, 'adjustCut', cutId=cut['id'], start=cut['start'], end=min(duration - 1, cut['end'] + 200_000))
+    info = _changed(ctx, rid, info['edit']['revision'])
+    ctx.expect(info['edit']['cuts'][-1]['end'] > cut['end'], 'adjustCut moves the cut edge')
+    _drive(ctx, rid, 'restoreCut', cutId=cut['id'])
+    info = _changed(ctx, rid, info['edit']['revision'])
+    ctx.expect(not info['edit']['cuts'], 'Restore removes the cut')
+    ctx.expect(_state(ctx, rid)['undo']['canUndo'], 'the history can step back')
+    _drive(ctx, rid, 'undo')
+    info = _changed(ctx, rid, info['edit']['revision'])
+    ctx.expect(len(info['edit']['cuts']) == 1, 'Undo brings the cut back')
+    _drive(ctx, rid, 'redo')
+    info = _changed(ctx, rid, info['edit']['revision'])
+    ctx.expect(not info['edit']['cuts'], 'Redo restores it again')
+    # Edits in source order: Alt+Right / Alt+Left.
+    _drive(ctx, rid, 'undo')
+    info = _changed(ctx, rid, info['edit']['revision'])
+    _drive(ctx, rid, 'clearSelection')
+    ctx.expect(_drive(ctx, rid, 'nextEdit')['selectedEdit']['kind'] == 'cut', 'nextEdit selects the first edit')
+    ctx.expect(_state(ctx, rid)['edits'], 'inspect lists the Edits rows')
+    _frame(ctx, 'after', None)
+
+
+@recipe('review.trim-in', 'review.trim-out', 'review.trim-reset', 'review.key-timeline', 'review.frame-step', needs=('recording',))
 def trim(ctx):
     rid = _open(ctx)
-    _add(ctx, rid, centered=True)
-    s, track = _track(ctx, rid)
-    revision = _inspect(ctx, rid)['edit']['revision']
-    ctx.drag(_point(ctx, s, track, 0, 0), _point(ctx, s, track, .15, 0))
-    info = _changed(ctx, rid, revision)
-    ctx.expect(info['edit']['trimStart'] > 0, 'left trim handle moves start')
-    s, track = _track(ctx, rid)
-    ctx.drag(_point(ctx, s, track, 1, 0), _point(ctx, s, track, .85, 0))
-    info = _changed(ctx, rid, info['edit']['revision'])
-    ctx.expect(info['edit']['trimEnd'] < info['durationUs'], 'right trim handle moves end')
+    duration = _inspect(ctx, rid)['durationUs']
+    before = _inspect(ctx, rid)['edit']
+    _drive(ctx, rid, 'setTrim', start=int(duration * .1), end=int(duration * .9))
+    info = _changed(ctx, rid, before['revision'])
+    ctx.expect(info['edit']['trimStart'] > 0 and info['edit']['trimEnd'] < duration, 'setTrim sets both brackets')
     _seek(ctx, rid, .25)
-    ctx.click('text:Start here', window='review')
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimStart'] > info['edit']['trimStart'], 'Start here trims')
+    ctx.keys('I')
+    ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimStart'] > info['edit']['trimStart'], 'I trims the start at the playhead')
     _seek(ctx, rid, .75)
     ctx.keys('O')
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimEnd'] < info['edit']['trimEnd'], 'O trims end')
+    ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimEnd'] < info['edit']['trimEnd'], 'O trims the end at the playhead')
     _export(ctx, rid)
     _seek(ctx, rid, .5)
     ctx.keys('Home')
     start = _state(ctx, rid)
-    ctx.expect(abs(start['playheadUs'] - start['trim']['start']) < 100_000, 'Home jumps to trim start')
+    ctx.expect(abs(start['playhead']['sourceUs'] - start['trim']['start']) < 100_000, 'Home jumps to the first kept frame')
     ctx.keys('Right')
-    stepped = _state(ctx, rid)['playheadUs']
-    ctx.expect(abs(stepped - start['playheadUs'] - 100_000) < 40_000, 'Right steps a tenth of a second')
+    stepped = _state(ctx, rid)['playhead']['sourceUs']
+    ctx.expect(abs(stepped - start['playhead']['sourceUs'] - 100_000) < 40_000, 'Right steps a tenth of a second')
     ctx.keys('Shift+Left')
-    ctx.expect(_state(ctx, rid)['playheadUs'] == 0 or
-               abs(_state(ctx, rid)['playheadUs'] - stepped + 1_000_000) < 40_000, 'Shift+Left steps one second')
+    ctx.expect(abs(_state(ctx, rid)['playhead']['sourceUs'] - stepped + 1_000_000) < 40_000 or _state(ctx, rid)['playhead']['sourceUs'] == 0,
+               'Shift+Left steps one second')
+    at = _state(ctx, rid)['playhead']['sourceUs']
+    after = _drive(ctx, rid, 'frameStep', delta=1)['playhead']['sourceUs']
+    ctx.expect(0 < after - at < 100_000, 'frameStep moves one frame')
+    ctx.expect(_drive(ctx, rid, 'frameStep', delta=-1)['playhead']['sourceUs'] == at, 'frameStep -1 returns to the frame')
     ctx.keys('End')
     end = _state(ctx, rid)
-    ctx.expect(abs(end['playheadUs'] - end['trim']['end']) < 100_000, 'End jumps to trim end')
-    ctx.click('text:Reset', window='review')
-    ctx.wait(lambda: (s := _inspect(ctx, rid))['edit']['trimStart'] == 0 and s['edit']['trimEnd'] is None,
-             'Reset restores whole clip')
+    ctx.expect(abs(end['playhead']['sourceUs'] - end['trim']['end']) < 100_000, 'End jumps to the last kept frame')
+    _drive(ctx, rid, 'selectEdit', kind='trim')
+    _drive(ctx, rid, 'resetTrim')
+    ctx.wait(lambda: (s := _inspect(ctx, rid))['edit']['trimStart'] == 0 and s['edit']['trimEnd'] is None, 'Reset restores the whole clip')
     _frame(ctx, 'after')
 
 
-@recipe('review.add-mask', 'review.frame', 'review.masks', 'review.mask-in-out',
-        'review.mask-delete', 'review.mask-place', 'review.mask-disarm', 'review.key-frame-nudge',
-        needs=('recording',))
+@recipe('review.add-mask', 'review.frame', 'review.mask-disarm', 'review.placement-cancel',
+        'review.masks', 'review.mask-in-out', 'review.mask-delete', 'review.key-frame-nudge', needs=('recording',))
 def masks(ctx):
     rid = _open(ctx)
+    # Arm, then cancel: the Select tool, the banner's Cancel and Esc all leave no edit.
     _arm(ctx, rid)
+    _frame(ctx, 'placing', None)
     ctx.keys('Esc')
-    ctx.expect(_state(ctx, rid)['armed'] is None, 'Escape disarms mask')
+    ctx.expect(_state(ctx, rid)['armed'] is None, 'Escape cancels placing')
+    _arm(ctx, rid, 'blur')
+    ctx.expect(_state(ctx, rid)['warning'], 'arming Blur shows the reversible-blur warning')
+    _drive(ctx, rid, 'cancelPlacement')
+    ctx.expect(_state(ctx, rid)['placement'] is None, 'cancelPlacement leaves the placement')
+    # Drawing the box with the pointer places the cover: one edit.
     mask = _add(ctx, rid)
+    state = _state(ctx, rid)
+    ctx.expect(state['selectedEdit'] == {'kind': 'cover', 'id': mask['id']} and state['panel']['mode'] == 'cover', 'the new cover is selected')
     _select_mask(ctx, rid, mask)
-    revision = _inspect(ctx, rid)['edit']['revision']
     ctx.keys('Right', 'Ctrl+Right', 'Shift+Down')
     def nudged():
         info = _inspect(ctx, rid)
         rect = info['edit']['masks'][0]['rect']
         return info if rect[0] == mask['rect'][0] + 11 and rect[3] == mask['rect'][3] + 1 else None
     info = ctx.wait(nudged, 'all three frame key edits reach the resident')
-    changed = info['edit']['masks'][0]
-    ctx.expect(changed['rect'][0] == mask['rect'][0] + 11
-               and changed['rect'][3] == mask['rect'][3] + 1, 'frame arrows move and resize in canvas pixels')
-    # Body move and bottom-right grip resize must also take actual pointer input.
-    _select_mask(ctx, rid, changed)
-    a = _video(ctx, rid, .32, .38)
-    ctx.drag(a, (a[0] + 16, a[1] + 10))
-    info = _changed(ctx, rid, info['edit']['revision'])
-    changed = info['edit']['masks'][0]
+    # The agent's box: placeMask draws while armed, moves the selected cover otherwise.
+    _arm(ctx, rid, 'blur')
     canvas = info['canvas']
-    x,y,w,h = changed['rect']
-    a = _video(ctx, rid, (x+w)/canvas[0], (y+h)/canvas[1])
-    ctx.drag(a, (a[0]+18, a[1]+12))
-    moved = _changed(ctx, rid, info['edit']['revision'])['edit']['masks'][0]
-    ctx.expect(moved['rect'][2] > w and moved['rect'][3] > h, 'grip drag resizes mask')
+    _drive(ctx, rid, 'placeMask', rect=[canvas[0] // 2, canvas[1] // 2, canvas[0] // 4, canvas[1] // 4])
+    info = _changed(ctx, rid, info['edit']['revision'])
+    ctx.expect(len(info['edit']['masks']) == 2 and info['edit']['masks'][-1]['kind'] == 'blur', 'placeMask while armed draws the box')
+    # The covers' times: Shows from / Until and Set to playhead.
+    _select_mask(ctx, rid, info['edit']['masks'][0])
+    first = _drive(ctx, rid, 'seekCoverStart')['playhead']['sourceUs']
+    last = _drive(ctx, rid, 'seekCoverEnd')['playhead']['sourceUs']
+    ctx.expect(last > first, 'Shows from and Until seek to the first and last covered frame')
     _seek(ctx, rid, .2)
     ctx.keys('Shift+I')
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['start'] > 0, 'Shift+I sets mask start')
+    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['start'] > 0, 'Shift+I sets the cover start')
     _seek(ctx, rid, .8)
-    ctx.keys('Shift+O')
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['end'] < _inspect(ctx, rid)['durationUs'],
-             'Shift+O sets mask end')
-    # Selected bar's handles retime with a drag too.
-    s = _state(ctx, rid)
-    bar = s['masks'][0]['timeline']
-    previous_start = _inspect(ctx, rid)['edit']['masks'][0]['start']
-    ctx.drag(_point(ctx, s, bar, 0, .5), _point(ctx, s, bar, .15, .5))
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['start'] > previous_start, 'mask bar handle retimes')
-    ctx.click('masks', window='review')
-    ctx.keys('Home', 'Return')
-    ctx.expect(_state(ctx, rid)['selectedMaskId'] == mask['id'], 'mask chooser selects mask')
+    _drive(ctx, rid, 'setCoverEdgeToPlayhead', edge='end')
+    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['end'] < _inspect(ctx, rid)['durationUs'], 'Set to playhead sets the cover end')
     _export(ctx, rid)
+    # Delete removes the selected cover; Esc clears; the Select tool (V) ends placing.
+    count = len(_inspect(ctx, rid)['edit']['masks'])
     ctx.keys('Delete')
-    ctx.wait(lambda: not _inspect(ctx, rid)['edit']['masks'], 'Delete removes selected mask')
+    ctx.wait(lambda: len(_inspect(ctx, rid)['edit']['masks']) == count - 1, 'Delete removes the selected cover')
     _add(ctx, rid, centered=True)
-    ctx.expect(len(_inspect(ctx, rid)['edit']['masks']) == 1, 'Return places centered mask')
     ctx.click_at(*_video(ctx, rid, .05, .05))
-    ctx.expect(_state(ctx, rid)['selectedMaskId'] is None, 'empty frame click deselects')
-    _frame(ctx, 'after', '32a-review-minimum-no-selection')
-
-
-@recipe('review.mask-options', needs=('recording',))
-def mask_options(ctx):
-    rid = _open(ctx)
-    mask = _add(ctx, rid, 'blur')
-    ctx.click('maskOptions', window='review')
-    ctx.wait(lambda: _state(ctx, rid)['maskOptions']['open'], 'mask options menu opens')
-    _frame(ctx, 'blur-options', '31i-review-mask-options', 'maskOptionsMenu')
-    ctx.click('class:QSpinBox', window='maskOptionsMenu')
-    ctx.keys('Ctrl+A')
-    ctx.type_text('24')
-    ctx.keys('Tab')
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['strength'] == 24, 'blur radius edit reaches resident')
-    ctx.click('useRedact', window='maskOptionsMenu')
-    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['kind'] == 'solid', 'Use Redact converts blur')
-    ctx.expect(_state(ctx, rid)['selectedMaskId'] == mask['id'], 'conversion keeps mask identity')
-    _export(ctx, rid)
+    ctx.expect(_state(ctx, rid)['selectedEdit'] is None, 'an empty frame click clears the selection')
     _frame(ctx, 'after')
 
 
-@recipe('review.wheel-lanes', needs=('recording',))
+@recipe('review.mask-options', 'review.picture-zoom', needs=('recording',))
+def edits_panel(ctx):
+    rid = _open(ctx)
+    mask = _add(ctx, rid, 'blur')
+    ctx.expect(_state(ctx, rid)['warning'], 'a selected blur shows the warning')
+    _drive(ctx, rid, 'coverKind', kind='solid')
+    ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['kind'] == 'solid', 'the panel\'s Redact converts the blur')
+    ctx.expect(_state(ctx, rid)['selectedEdit']['id'] == mask['id'], 'the conversion keeps the cover selected')
+    # Picture zoom: Fit and 100 %, pan at 100 %.
+    ctx.expect(_drive(ctx, rid, 'viewerZoom', mode='actual')['viewer']['zoom'] == 'actual', 'viewerZoom actual shows 100 %')
+    _drive(ctx, rid, 'viewerPan', dx=40, dy=0)
+    ctx.expect(_drive(ctx, rid, 'viewerZoom', mode='fit')['viewer']['zoom'] == 'fit', 'viewerZoom fit restores Fit')
+    # Fold and unfold: below ~1180x720 the panel becomes the Edits overlay.
+    wide = _state(ctx, rid)['size']
+    _drive(ctx, rid, 'resize', width=1000, height=680)
+    ctx.wait(lambda: _state(ctx, rid)['folded'], 'a small window folds the panel')
+    opened = _drive(ctx, rid, 'panel', open=True)
+    ctx.expect(opened['panel']['overlayOpen'], 'the Edits toggle opens the overlay')
+    _frame(ctx, 'overlay', None)
+    ctx.expect(not _drive(ctx, rid, 'panel', open=False)['panel']['overlayOpen'], 'the overlay closes')
+    _drive(ctx, rid, 'resize', width=wide[0], height=wide[1])
+    ctx.wait(lambda: not _state(ctx, rid)['folded'], 'the panel unfolds in a large window')
+
+
+@recipe('review.wheel-lanes', 'review.timeline-zoom', needs=('recording',))
 def wheel_lanes(ctx):
     rid = _open(ctx)
     for _ in range(5):
         _add(ctx, rid, centered=True)
     s = _state(ctx, rid)
-    ctx.expect(s['timeline']['lanes'] >= 5, 'overlapping masks use separate lanes')
-    ctx.scroll(*_point(ctx, s, s['timeline']['rect']), clicks=5)
-    first = ctx.wait(lambda: (s if (s := _state(ctx, rid))['timeline']['firstLane'] < 3 else None),
-                     'wheel scrolls back toward first mask lanes')
-    ctx.scroll(*_point(ctx, first, first['timeline']['rect']), clicks=-5)
-    ctx.wait(lambda: _state(ctx, rid)['timeline']['firstLane'] > first['timeline']['firstLane'],
-             'wheel scrolls down mask lanes')
-    ctx.expect(len(_inspect(ctx, rid)['edit']['masks']) == 5, 'scrolling preserves masks')
-    _frame(ctx, 'after', '31c-review-many-lanes')
+    ctx.expect(s['timeline']['lanes'] == 2 and s['timeline']['hiddenCovers'] >= 1, 'overlapping covers use two lanes and a +n chip')
+    ctx.expect(_drive(ctx, rid, 'timelineZoom', level=4)['timeline']['zoom'] == 4, 'timelineZoom zooms the strip')
+    visible = _state(ctx, rid)['timeline']['visible']
+    ctx.expect(visible['end'] - visible['start'] < _inspect(ctx, rid)['durationUs'], 'a zoomed strip shows part of the recording')
+    ctx.expect(_drive(ctx, rid, 'timelineFit')['timeline']['zoom'] == 1, 'timelineFit shows the whole recording')
+    ctx.expect(len(_inspect(ctx, rid)['edit']['masks']) == 5, 'zooming preserves the covers')
+    _frame(ctx, 'after', None)
 
 
 @recipe('review.format', needs=('recording', 'review-controls'), timeout=600)

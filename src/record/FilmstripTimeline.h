@@ -56,6 +56,11 @@ public:
     // and follows the playhead while playing.
     void setZoom(int level, std::optional<qint64> anchorUs = std::nullopt);
     int zoom() const { return zoom_; }
+    // Paused hover at a source time, as the pointer over the ruler or strip
+    // makes it (skimMoved, then skimRested after ~120 ms), or nullopt for the
+    // pointer leaving (skimLeft). recording.review skim / skimEnd call it.
+    void skimAt(std::optional<qint64> sourceUs);
+    std::optional<qint64> skimTime() const { return skim_; }
     // The skim flag reads "≈m:ss.s" until the exact frame for the skim time has
     // arrived; the window calls this when it shows that frame.
     void setSkimExact(bool exact);
