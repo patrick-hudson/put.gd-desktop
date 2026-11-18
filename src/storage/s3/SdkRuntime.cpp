@@ -201,11 +201,6 @@ struct SdkRuntime::State {
     explicit State(bool defer) : deferred(defer) {
         const auto level = sdkLevel(SdkRuntime::logLevel(std::getenv("PUTGD_AWS_LOG_LEVEL")));
         options.loggingOptions.logLevel = level;
-        // Percent-encode $ & , : ; = and @ in object keys, in the request line and in the
-        // signature alike. Left at its default the SDK sends them as they are but signs them
-        // encoded; AWS and most S3-compatible servers normalise that, Garage does not and
-        // answers 403 (#1601).
-        options.httpOptions.compliantRfc3986Encoding = true;
         options.loggingOptions.logger_create_fn = [level] {
             return Aws::MakeShared<StderrLogSystem>("putgd-log", level);
         };

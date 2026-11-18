@@ -188,25 +188,27 @@ private slots:
         QCOMPARE(checked.error.code, QString("credential_setup_required"));
         QCOMPARE(f.events().size(), 1);
     }
-    // Garage signs the path exactly as it arrives, so these characters must be sent the way
-    // the SDK signs them: percent-encoded.
-    void reservedCharactersAreSentAsSigned() {
+    // #1601: like Garage, the oracle checks the signature against the path as it arrives, and the
+    // SDK sends $ & , : = @ unencoded but signs them encoded. The name check says so plainly once
+    // an ordinary name shows the credentials work; a real permission problem keeps its own error.
+    void nameCharactersTheServiceCannotVerify_data() {
+        QTest::addColumn<QString>("name");QTest::addColumn<bool>("denied");QTest::addColumn<QString>("code");
+        QTest::newRow("colon") << QString("colon:.txt") << false << QString("s3_name_characters_unsupported");
+        QTest::newRow("at-dollar-comma") << QString("at@dollar$comma,.txt") << false << QString("s3_name_characters_unsupported");
+        QTest::newRow("amp-equals") << QString("amp&eq=.txt") << false << QString("s3_name_characters_unsupported");
+        QTest::newRow("denied-anyway") << QString("colon:.txt") << true << QString("s3_permission_denied");
+    }
+    void nameCharactersTheServiceCannotVerify() {
+        QFETCH(QString, name);QFETCH(bool, denied);QFETCH(QString, code);
         S3Fixture f;
-        f.reset();
-        const QString name = "a:b@c$d,e&f=g;h.txt";
-        const auto request = f.request(name);
-        QCOMPARE(request.condition, QString("absent"));
-        const auto uploaded = f.upload(request);
-        QCOMPARE(uploaded.status, QString("uploaded"));
-        for (const auto& event : f.events()) {
-            const auto path = event.toObject()["path"].toString().section('?', 0, 0);
-            QVERIFY2(event.toObject()["signatureValid"].toBool(), qPrintable(path));
-            for (const auto character : QStringList{":", "@", "$", ",", "&", "=", ";"}) QVERIFY2(!path.contains(character), qPrintable(path));
-            QCOMPARE(event.toObject()["key"].toString(), QString("prefix é/") + name);
-        }
-        const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
-        QCOMPARE(stat.status, QString("own"));
-        QCOMPARE(f.remove(uploaded.receipt).status, QString("removed"));
+        f.reset(denied ? QJsonObject{{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"status", 403}, {"remaining", 10}}}}} : QJsonObject{});
+        const auto checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, name, cb); });
+        QCOMPARE(checked.status, QString("inconclusive"));
+        QCOMPARE(checked.error.code, code);
+        if (!denied) QVERIFY(checked.error.message.contains("Rename the file"));
+        QCOMPARE(f.events("PUT").size(), 0);
+        // An ordinary name with the same credentials works.
+        if (!denied) QCOMPARE(f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "plain.txt", cb); }).status, QString("absent"));
     }
 };
 QTEST_GUILESS_MAIN(S3Test)
