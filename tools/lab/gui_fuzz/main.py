@@ -162,7 +162,10 @@ def main():
             interrupted = []
             quietly(lambda: interrupted.append(protected(desk.finish)), 'restore the session and take the witness down')  # no interruption may cut the teardown short
             if interrupted and interrupted[0]:
-                code = 130  # a signal came during the teardown; it is done, and the run says it was interrupted
+                error = sys.exc_info()[1]  # an error of the run that is still propagating is logged, then the interruption decides the status
+                if error is not None and not isinstance(error, KeyboardInterrupt):
+                    print('run error before the interruption: %r' % (error,), flush=True)
+                raise SystemExit(130)
     return code
 
 

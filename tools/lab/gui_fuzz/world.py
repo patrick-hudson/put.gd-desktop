@@ -176,6 +176,8 @@ class World:
         deadline = asked + self.fresh_timeout
         while True:
             snapshot, stamp = self.fence.get()
+            if stamp > deadline:
+                return None  # stamped after the deadline: too late to count, and it is not looked at again
             if stamp > asked + self.freshness:
                 return snapshot
             if time.time() >= deadline:

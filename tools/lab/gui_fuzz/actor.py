@@ -137,18 +137,28 @@ class Actor:
             self.dev.wheel(step, horizontal)
 
     # -- keys ------------------------------------------------------------------------------------
-    def mine_focused(self):
-        """Keys go to put.gd only on positive evidence from a snapshot taken after this call, within 0.3 s; with none, the key is denied and the
-        cached active window is never used. KDE: the selector counts as focus while it is up. GNOME and Cinnamon: a put.gd window has the
-        focus, or the selector holds the Shell's modal grab or the X input focus (the fence marks it active); when the backend cannot tell,
-        the answer is no."""
+    def key_view(self):
+        """The world as a snapshot taken after this call shows it, when keys may go anywhere at all: None when no such snapshot arrives within
+        0.3 s, or while the GNOME overview is visible (it takes every key, put.gd's own hotkeys included)."""
         view = self.world.fresh_view()
-        if view is None:
-            return False
-        if not self.world.desk.strict_input and view.overlays():
-            return True  # the selector is put.gd's, whichever surface KWin calls active
+        if view is None or (view.snapshot().get('chrome') or {}).get('overview'):
+            return None
+        return view
+
+    @staticmethod
+    def focused_in(view, desk):
+        """Positive evidence from that snapshot: KDE counts the selector while it is up; GNOME and Cinnamon need a put.gd window with the focus, or the
+        selector holding the Shell's modal grab or the X input focus (the fence marks it active)."""
+        if not desk.strict_input and view.overlays():
+            return True
         active = view.active()
         return bool(active and view.mine(active))
+
+    def mine_focused(self):
+        """Keys go to put.gd only on positive evidence from a snapshot taken after this call, within 0.3 s; with none, the key is denied and the
+        cached active window is never used."""
+        view = self.key_view()
+        return view is not None and self.focused_in(view, self.world.desk)
 
     def quit_item(self):
         """Note that the next resident exit is the Quit item the actor activated."""
@@ -156,9 +166,11 @@ class Actor:
         self.log.write({'op': 'note', 'action': 'quit item'})
 
     def chord(self, text, hold=0.03):
-        if not self.replaying and not chord_allowed(text, self.mine_focused()):
-            self.denied += 1
-            raise Denied('key chord not allowed here: ' + text)
+        if not self.replaying:
+            view = self.key_view()  # without a fresh snapshot, or under the overview, not even put.gd's global hotkeys go out
+            if view is None or not chord_allowed(text, self.focused_in(view, self.world.desk)):
+                self.denied += 1
+                raise Denied('key chord not allowed here: ' + text)
         keys = text.split('+')
         ordered = [k for k in keys if k in MODIFIERS] + [k for k in keys if k not in MODIFIERS]
         self.log.write({'op': 'chord', 'k': text})

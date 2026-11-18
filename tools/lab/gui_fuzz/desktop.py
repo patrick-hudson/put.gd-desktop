@@ -20,7 +20,8 @@ def host_env():
 
 def host_run(args, timeout=15):
     try:
-        done = subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=host_env())
+        # Its own session: a signal sent to the run's process group (a terminal's Ctrl+C, a supervisor's kill) must not kill a restore command halfway.
+        done = subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=host_env(), start_new_session=True)
         return done.returncode, done.stdout, done.stderr
     except (OSError, subprocess.SubprocessError) as error:
         return -1, '', str(error)

@@ -326,6 +326,36 @@ class PointerRechecks(unittest.TestCase):
         self.assertEqual(wheels, [{'op': 'wheel', 'n': 1, 'h': False}])
         self.assertEqual(dev.wheels, 1)
 
+    def test_a_snapshot_stamped_after_the_deadline_is_rejected(self):
+        w, fence = world([OURS], Gnome())
+        w.fresh_timeout = 0.3
+        fence.get = lambda: (fence.snapshot, time.time() + 0.301)    # stamped 301 ms after the call: past the 300 ms deadline
+        self.assertIsNone(w.fresh_snapshot())
+        self.assertIsNone(w.fresh_cursor())
+        fence.get = lambda: (fence.snapshot, time.time() + 0.2)      # within it: accepted
+        self.assertIsNotNone(w.fresh_snapshot())
+
+    def test_global_hotkeys_are_denied_under_the_overview_and_without_a_fresh_snapshot(self):
+        for desk in (Gnome(), Cinnamon()):
+            w, fence = world([dict(OURS, active=True)], desk)
+            fence.snapshot['chrome'] = {'overview': True}
+            dev = FakeDev(fence)
+            dev.key = mock.Mock()
+            actor = Actor(dev, w, mock.Mock(), __import__('random').Random(1))
+            with self.assertRaises(Exception):
+                actor.chord('ctrl+shift+1')           # a put.gd hotkey: the allow-list passes it, the overview takes it
+            dev.key.assert_not_called()
+            fence.snapshot['chrome'] = {'overview': False}
+            actor.chord('ctrl+shift+1')                # fresh, no overview: it goes
+            self.assertTrue(dev.key.called)
+            dev.key.reset_mock()
+            old = time.time() - 5
+            w.fresh_timeout = 0.05
+            fence.get = lambda: (fence.snapshot, old)  # no fresh post-input snapshot
+            with self.assertRaises(Exception):
+                actor.chord('ctrl+shift+1')
+            dev.key.assert_not_called()
+
     def test_every_wheel_event_is_checked(self):
         actor, dev, fence = self.actor()
         actor.move(300, 300)
@@ -637,6 +667,57 @@ class ReplayAndSignals(unittest.TestCase):
         finally:
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
+
+    def test_teardown_commands_start_in_their_own_session(self):
+        from gui_fuzz import desktop as desktop_module
+        calls = []
+        fake = mock.Mock(returncode=0, stdout='', stderr='')
+
+        def run(args, **kwargs):
+            calls.append((args, kwargs))
+            return fake
+        gnome = Gnome()
+        gnome.saved_pointer = {'accel-profile': "'default'", 'speed': '0.0'}
+        gnome.saved_layout = parse_gdctl(Layout.SHOW)
+        gnome.layout_changed = True
+        cinnamon = Cinnamon()
+        cinnamon.saved_pointer = {'accel-profile': "'default'"}
+        cinnamon.initial_monitors = [('Virtual-1', '1280x800+0+0'), ('Virtual-2', None)]
+        cinnamon.monitors_changed = True
+        with mock.patch.object(desktop_module.subprocess, 'run', side_effect=run):
+            gnome.finish()
+            cinnamon.finish()
+        programs = {c[0][0] for c in calls}
+        self.assertTrue({'gdctl', 'gsettings', 'gnome-extensions', 'xrandr'} <= programs, programs)
+        self.assertTrue(all(c[1].get('start_new_session') is True for c in calls), [c[0][0] for c in calls if not c[1].get('start_new_session')])
+
+    def test_a_signal_during_the_teardown_beats_the_error_that_is_propagating(self):
+        import io
+        import signal
+        import threading
+        from contextlib import redirect_stdout
+
+        class Desk(Gnome):
+            def prepare(self):
+                raise RuntimeError('prepare failed')
+
+            def finish(self):
+                sender = threading.Thread(target=lambda: os.kill(os.getpid(), signal.SIGTERM))
+                sender.start()
+                sender.join()
+                time.sleep(0.1)
+
+        out = io.StringIO()
+        previous = signal.getsignal(signal.SIGTERM)
+        try:
+            with tempfile.TemporaryDirectory() as directory, mock.patch.object(sys, 'argv', ['gui_fuzz', '--out', directory]), \
+                    mock.patch.object(fuzz_main.desktop, 'make', return_value=Desk()), redirect_stdout(out):
+                with self.assertRaises(SystemExit) as raised:
+                    fuzz_main.main()
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+        self.assertEqual(raised.exception.code, 130)
+        self.assertIn('prepare failed', out.getvalue())   # the error is logged, not lost
 
     def test_the_replayed_command_finds_the_flag_already_set(self):
         import json
