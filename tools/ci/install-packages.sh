@@ -36,9 +36,9 @@
 # On apt, a failed attempt moves the first mirror of $PUTGD_APT_ROOT/putgd-mirrors.txt (the
 # PUTGD_UBUNTU_MIRRORS probe's ranked list) behind the other usable ones, so the next attempt
 # starts on another mirror.
-#   PUTGD_APT_LAST_RESORT_MIRRORS  (apt) URL of a list of mirrors, one URI a line, such as
-#                       http://mirrors.ubuntu.com/US.txt. Once the online attempts have failed,
-#                       the fastest few of them replace putgd-mirrors.txt (#1668). The snapshot
+#   PUTGD_APT_LAST_RESORT_MIRRORS  (apt) a checked-in file of HTTPS mirrors, one URI a line, such as
+#                       tools/ci/apt-last-resort-mirrors.txt. Once the online attempts have failed,
+#                       the fastest 8 that answer replace putgd-mirrors.txt (#1668). The snapshot
 #                       install then downloads the packages its indexes name but it lacks through
 #                       them, and with no snapshot, or one that can't serve the list, one more
 #                       online attempt runs through them with fresh metadata:
@@ -208,19 +208,18 @@ demote_mirror() {
   echo "Ubuntu mirror moved behind the other usable mirrors: $first"
 }
 
-# Replace putgd-mirrors.txt with the fastest 8 of the first 60 mirrors of $PUTGD_APT_LAST_RESORT_MIRRORS,
+# Replace putgd-mirrors.txt with the fastest 8 mirrors of the local file $PUTGD_APT_LAST_RESORT_MIRRORS,
 # once. Each is timed on 256 KB of this release's package index for this architecture, so a mirror without
-# it (a ports-only mirror) is left out. Fails when there is no such list or no mirror answers.
+# it is left out. Only HTTPS URIs with a host name are used. Fails when no mirror answers.
 use_last_resort_mirrors() {
   local arch probe ranked
   arch=$(dpkg --print-architecture 2>/dev/null || true)
   probe=dists/$VERSION_CODENAME/main/binary-${arch:-amd64}/Packages.gz
   [ "$manager" = apt-get ] && [ -n "${PUTGD_APT_LAST_RESORT_MIRRORS:-}" ] || return 1
   [ ! -e "$mirror_list.last-resort" ] || return 0
-  # Only plain mirror URIs: the list comes from the network.
-  ranked=$(curl -fsS --max-time 60 "$PUTGD_APT_LAST_RESORT_MIRRORS" | tr -d '\r' |
-    grep -E '^https?://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9._~/-]*/$' | head -n 60 |
-    xargs -r -P 16 -n 1 bash -c 'speed=$(curl -fsS -o /dev/null --max-time 5 -r 0-262143 -w "%{speed_download}" "$2$1") && echo "${speed%.*} $2"' _ "$probe" |
+  # HTTPS with a host name only: no IP literal, no port, no other scheme.
+  ranked=$(grep -E '^https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]+/[A-Za-z0-9._~/-]*/$' "$PUTGD_APT_LAST_RESORT_MIRRORS" |
+    xargs -r -P 16 -n 1 bash -c 'speed=$(curl -fsS --proto =https -o /dev/null --max-time 5 -r 0-262143 -w "%{speed_download}" "$2$1") && echo "${speed%.*} $2"' _ "$probe" |
     sort -rn | head -n 8 | cut -d' ' -f2) || true
   if [ -z "$ranked" ]; then
     echo "E: no mirror of $PUTGD_APT_LAST_RESORT_MIRRORS answered"
@@ -344,7 +343,12 @@ if [ -n "$snapshot" ] && [ -f "$snapshot/putgd-snapshot" ]; then
     fi
     exit 0
   fi
-  report error snapshot '**failed**' "$(failure)"
+  if [ -e "$log.lacking" ]; then
+    read -r count lacking < "$log.lacking"
+    report error snapshot "**failed**; archives it lacked: $count: $lacking" "$(failure)"
+  else
+    report error snapshot '**failed**' "$(failure)"
+  fi
   # dpkg started: never run a second transaction over a half-done one.
   [ "$status" -eq 2 ] || exit 1
 else

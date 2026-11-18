@@ -482,8 +482,8 @@ jobs:
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
           PUTGD_PKG_ATTEMPTS: '3'
-          # After the ranked mirrors and the snapshot: Ubuntu's own published list of US mirrors (#1668).
-          PUTGD_APT_LAST_RESORT_MIRRORS: http://mirrors.ubuntu.com/US.txt
+          # After the ranked mirrors and the snapshot: a checked-in list of public HTTPS mirrors (#1668).
+          PUTGD_APT_LAST_RESORT_MIRRORS: ${{ github.workspace }}/tools/ci/apt-last-resort-mirrors.txt
         run: |
           # One apt transaction (#1652): the base dependencies, the packages in tools/ci/appimage-packages.txt
           # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
@@ -623,15 +623,15 @@ jobs:
           PUTGD_PKG_STALL: '120'
           PUTGD_PKG_ATTEMPTS: '3'
         run: |
-          # The ranked mirror list, as in the appimage job (#1668).
+          # The AppImage's GPL corresponding source includes the bundled distro source packages.
+          printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
+          # The ranked mirror list, as in the appimage job, for the source indexes too (#1668).
           sudo python3 tools/ci/hosted_apt_mirrors.py
           sudo --preserve-env=PUTGD_UBUNTU_MIRRORS bash -c 'eval "$PUTGD_UBUNTU_MIRRORS"'
           if ! grep -rqs 'mirror+file:/etc/apt/putgd-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d; then
             echo '::error::The Ubuntu sources do not use the ranked mirror list /etc/apt/putgd-mirrors.txt'
             exit 1
           fi
-          # The AppImage's GPL corresponding source includes the bundled distro source packages.
-          printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
           sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh
       - name: Key distro source downloads by the bundled Ubuntu packages
         id: source-key

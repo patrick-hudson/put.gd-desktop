@@ -81,17 +81,17 @@ case "$1" in
 esac
 exit 0
 '''
-# The last-resort mirror list and its probe: mirrors named in $FAKE_DEAD_MIRRORS don't answer.
+# The last-resort mirror probe: mirrors named in $FAKE_DEAD_MIRRORS don't answer.
 FAKE_CURL = r'''#!/bin/bash
 echo "curl $*" >> "$FAKE_CALLS"
 url=${!#}
-case " $* " in
-  *' -w '*) case " ${FAKE_DEAD_MIRRORS:-} " in *" ${url%%dists/*} "*) exit 7 ;; esac
-            case "$url" in https://fast.*) echo 900000.000 ;; *) echo 1000.000 ;; esac ;;
-  *) [ -z "${FAKE_NO_LIST:-}" ] || exit 22
-     printf 'http://slow.example/ubuntu/\r\nhttps://fast.example/ubuntu/\r\nhttp://dead.example/ubuntu/\r\nhttp://evil.example/$(id)/\r\n' ;;
-esac
+case " ${FAKE_DEAD_MIRRORS:-} " in *" ${url%%dists/*} "*) exit 7 ;; esac
+case "$url" in https://fast.*) echo 900000.000 ;; *) echo 1000.000 ;; esac
 '''
+# The checked-in list's shape, with entries that must never be probed: plain HTTP, an IP literal, a port, a substitution.
+LAST_RESORT_LIST = ('# comment\nhttps://slow.example/ubuntu/\nhttps://fast.example/ubuntu/\nhttps://dead.example/ubuntu/\n'
+                    'http://plain.example/ubuntu/\nhttps://127.0.0.1/ubuntu/\nhttps://port.example:8080/ubuntu/\n'
+                    'https://evil.example/$(id)/\n')
 FAKE_RPM = '#!/bin/bash\necho mesa-26.2.4-1.fc44.x86_64.rpm\n'
 FAKE_DPKG = '#!/bin/bash\necho "dpkg $*" >> "$FAKE_CALLS"\n'
 
@@ -452,8 +452,10 @@ class InstallPackages(unittest.TestCase):
         apt = self.dir / 'apt'
         apt.mkdir(exist_ok=True)
         (apt / 'putgd-mirrors.txt').write_text('http://127.0.0.1:9/ubuntu/\tpriority:1\n')
-        return {'PUTGD_APT_ROOT': str(apt), 'PUTGD_APT_LAST_RESORT_MIRRORS': 'http://mirrors.example/US.txt',
-                'FAKE_DEAD_MIRRORS': 'http://dead.example/ubuntu/', 'FAKE_FAILURES': '9', 'PUTGD_PKG_ATTEMPTS': '1', **env}
+        mirrors = self.dir / 'last-resort.txt'
+        mirrors.write_text(LAST_RESORT_LIST)
+        return {'PUTGD_APT_ROOT': str(apt), 'PUTGD_APT_LAST_RESORT_MIRRORS': str(mirrors),
+                'FAKE_DEAD_MIRRORS': 'https://dead.example/ubuntu/', 'FAKE_FAILURES': '9', 'PUTGD_PKG_ATTEMPTS': '1', **env}
 
     def test_an_older_snapshot_downloads_what_it_lacks_against_its_own_indexes(self):
         # A snapshot restored from an older package list: one transaction against its indexes, never the mirror's newer ones.
@@ -470,8 +472,11 @@ class InstallPackages(unittest.TestCase):
         self.assertEqual(sum(call.startswith('apt-get update') for call in calls), 1)
         # The fastest answering mirrors from the list, fastest first; a malformed line is never used.
         self.assertEqual((self.dir / 'apt/putgd-mirrors.txt').read_text(),
-                         'https://fast.example/ubuntu/\tpriority:1\nhttp://slow.example/ubuntu/\tpriority:2\n')
-        self.assertNotIn('evil', ' '.join(calls))
+                         'https://fast.example/ubuntu/\tpriority:1\nhttps://slow.example/ubuntu/\tpriority:2\n')
+        probed = ' '.join(call for call in calls if call.startswith('curl'))
+        for never in ('evil', 'plain.example', '127.0.0.1', 'port.example'):
+            self.assertNotIn(never, probed)
+        self.assertIn('--proto =https', probed)
         self.assertIn('| snapshot | **installed offline from the package snapshot** saved 2026-10-20T04:00Z; archives it '
                       'lacked, downloaded against its indexes: 1 | `hello_2.10-3_amd64.deb` |', summary)
 
@@ -482,7 +487,7 @@ class InstallPackages(unittest.TestCase):
         result, calls, summary = self.run_script('apt-get', 'dwz', 'hello', **env)
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertFalse((self.dir / 'installed').exists())
-        self.assertIn('could not download the archives the package snapshot lacks: hello_2.10-3_amd64.deb', summary)
+        self.assertIn('| snapshot | **failed**; archives it lacked: 1: hello_2.10-3_amd64.deb |', summary)
         self.assertIn('| last-resort | **failed** |', summary)
 
     def test_without_a_usable_snapshot_one_fresh_transaction_runs_through_the_last_resort_mirrors(self):
@@ -500,16 +505,16 @@ class InstallPackages(unittest.TestCase):
                                  ['update'] + (['install'] if snapshot else []) + ['update', 'install', 'install'])
                 self.assertIn('--no-download', calls[-1])
                 self.assertIn(f'Dir::State::Lists={self.snapshot}.live/lists/', calls[-1])
-                self.assertIn('| last-resort | **installed online through the last-resort mirrors** from '
-                              'http://mirrors.example/US.txt |', summary)
+                self.assertIn(f'| last-resort | **installed online through the last-resort mirrors** from '
+                              f'{self.dir}/last-resort.txt |', summary)
                 self.assertFalse(self.github_env.exists())
 
-    def test_no_last_resort_list_fails_clearly(self):
-        env = self.last_resort_env(FAKE_NO_LIST='1')
+    def test_no_answering_last_resort_mirror_fails_clearly(self):
+        env = self.last_resort_env(FAKE_DEAD_MIRRORS='https://slow.example/ubuntu/ https://fast.example/ubuntu/ https://dead.example/ubuntu/')
         result, _, summary = self.run_script('apt-get', 'dwz', **env)
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn('| snapshot | **failed**: no package snapshot to install from |', summary)
-        self.assertIn('| last-resort | **failed** | `E: no mirror of http://mirrors.example/US.txt answered` |', summary)
+        self.assertIn(f'| last-resort | **failed** | `E: no mirror of {self.dir}/last-resort.txt answered` |', summary)
 
 if __name__ == '__main__':
     unittest.main()
