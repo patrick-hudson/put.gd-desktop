@@ -280,16 +280,19 @@ private slots:
   owner.unlock();
   PUTGD_TRY_VERIFY(second.ready());
  }
- // A disk error can leave resident.lock empty or unreadable. put.gd never removes a lock on its own (a safe reclaim needs
- // a lock protocol across versions): it stays journal_busy, keeps retrying, and tells the user the one manual step (#1576).
+ // A disk error can leave resident.lock empty or unreadable. Qt cannot verify such a lock as stale and put.gd adds no
+ // reclaim of its own (a safe one needs a lock protocol across versions): it stays journal_busy, keeps retrying, and
+ // tells the user the one manual step (#1576).
  void malformedJournalLockStaysBusyAndIsNeverRemoved() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
   QVERIFY(QDir().mkpath(root));const auto lockPath=root+"/resident.lock";
-  {QFile f(lockPath);QVERIFY(f.open(QIODevice::WriteOnly|QIODevice::Truncate));QVERIFY(f.write("not a lock")>0);QVERIFY(f.setFileTime(QDateTime::currentDateTime().addSecs(-3600),QFileDevice::FileModificationTime));}
+  {QFile f(lockPath);QVERIFY(f.open(QIODevice::WriteOnly|QIODevice::Truncate));QVERIFY(f.write("not a lock")>0);QVERIFY(f.flush());QVERIFY(f.setFileTime(QDateTime::currentDateTime().addSecs(-3600),QFileDevice::FileModificationTime));}
+  QVERIFY(QFileInfo(lockPath).lastModified().secsTo(QDateTime::currentDateTime())>3000);   // the backdated time held
   OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
   PUTGD_TRY_VERIFY(ops.notReadyError().code=="journal_busy");
   const auto message=ops.notReadyError().message;
-  QVERIFY2(message.startsWith("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove ")&&message.contains(QDir::toNativeSeparators(lockPath)),qPrintable(message));
+  QCOMPARE(message,QString("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove %1 and start it again.").arg(QDir::toNativeSeparators(lockPath)));
+  QCOMPARE(ops.notReadyError().details["lockPath"].toString(),QDir::toNativeSeparators(lockPath));
   PUTGD_VERIFY_STEADY(!ops.ready(),500);   // several retries later: still busy
   QFile lock(lockPath);QVERIFY(lock.open(QIODevice::ReadOnly));QCOMPARE(lock.readAll(),QByteArray("not a lock"));
  }

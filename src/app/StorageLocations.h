@@ -26,5 +26,8 @@ struct StorageLocations {
  static StorageLocations prepare(const QString& genericConfig,const QString& genericData,const MoveHook& beforeMove={});
  static QString legacyRoot(const QString& root) {return root+"/putgd";}
  static QString stagingRoot(const QString& root) {return root+"/.putgd-migration";}
+ // A journal lock that cannot be taken. Qt answers a live owner and a lock it cannot verify as stale (malformed or
+ // unreadable) alike, so no owner is named; put.gd adds no reclaim of its own and gives the one manual step (#1576).
+ static Error journalLockBusy(const QString& code,const QString& lockPath,const QJsonObject& details={});
 };
 }

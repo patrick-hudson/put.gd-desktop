@@ -1,4 +1,5 @@
 #include "OperationService.h"
+#include "StorageLocations.h"
 #include "core/ImagePages.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
@@ -174,10 +175,9 @@ void OperationService::recoverJournal() {
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   if(!journalOwner_||!journalOwner_->isLocked()) {journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);}
   if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {
-   // Qt answers a live owner and a stale lock it could not remove alike, so no owner is named, and the lock is
-   // never removed automatically: a lock a disk error left broken needs the user's one manual step (#1576).
-   const auto lockPath=QDir::toNativeSeparators(root_+"/resident.lock");
-   e=journalOwner_->error()==QLockFile::LockFailedError?Error{"journal_busy","The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove "+lockPath+" and start it again.",{{"lockPath",lockPath}}}:Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};
+   // Qt removes a well-formed lock whose owner is gone; one it cannot verify as stale (malformed or unreadable) is left
+   // alone, with the manual step, and no owner is ever named (#1576).
+   e=journalOwner_->error()==QLockFile::LockFailedError?StorageLocations::journalLockBusy("journal_busy",root_+"/resident.lock"):Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};
   }
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
