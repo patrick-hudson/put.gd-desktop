@@ -1,4 +1,5 @@
 #include "RecordingService.h"
+#include "core/KeptSpans.h"
 #include "core/Log.h"
 #include <QDateTime>
 #include <QDir>
@@ -884,13 +885,15 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         qint64 time = 0, maxEdge = 1024;
         if (!integer(params["time"], 0, std::max<qint64>(0, s.duration - 1), &time) || (params.contains("maxEdge") && !integer(params["maxEdge"], 64, 1600, &maxEdge))) { reply(invalid("preview takes a clip time in microseconds and an optional maxEdge of 64 to 1600"), {}); return; }
         const auto edit = s.edit;
-        const auto end = s.edit.exportEnd(s.duration);
-        const bool retained = time >= s.edit.trimStart && time < end;
-        backend_->preview(s.op.id, s.edit, s.config, time, int(maxEdge), marshal(s.generation, [reply, edit, time, retained](Error error, QJsonObject result) {
+        // #1613: kept means inside the trim and outside every cut; output time is the kept-span map's.
+        const recording::KeptSpans kept(s.edit, s.duration);
+        const bool retained = kept.kept(time);
+        const qint64 outputTime = retained ? kept.toOutput(time) : 0;
+        backend_->preview(s.op.id, s.edit, s.config, time, int(maxEdge), marshal(s.generation, [reply, edit, time, retained, outputTime](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
             result["timeUs"] = double(time);
             result["retained"] = retained;
-            result["outputTimeUs"] = retained ? QJsonValue(double(time - edit.trimStart)) : QJsonValue(QJsonValue::Null);
+            result["outputTimeUs"] = retained ? QJsonValue(double(outputTime)) : QJsonValue(QJsonValue::Null);
             result["revision"] = double(edit.revision);
             reply({}, result);
         }));

@@ -131,6 +131,16 @@ private slots:
   QCOMPARE(h.provider->uploads.load(),0);QCOMPARE(h.source.reads,0);
   QVERIFY(h.rec("capabilities").result["active"].isNull());
  }
+ // #1613: preview reports a cut as not kept and maps output time through the cuts.
+ void previewFollowsCuts(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  const auto cut=h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",9000000}},QJsonObject{{"op","addCut"},{"start",3000000},{"end",5000000}}}}});
+  QVERIFY2(!cut.error,qPrintable(cut.error.message));QCOMPARE(cut.result["retainedUs"].toDouble(),6000000.0);
+  const auto inside=h.rec("preview",{{"id",id},{"time",4000000}});QVERIFY(!inside.error);QVERIFY(!inside.result["retained"].toBool());QVERIFY(inside.result["outputTimeUs"].isNull());
+  const auto after=h.rec("preview",{{"id",id},{"time",6000000}});QVERIFY(!after.error);QVERIFY(after.result["retained"].toBool());QCOMPARE(after.result["outputTimeUs"].toDouble(),3000000.0);
+ }
  void cancelAndFailureNeverAdmitBytes(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   auto id=h.prepareReady();QVERIFY(!id.isEmpty());
