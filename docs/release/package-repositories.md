@@ -282,17 +282,24 @@ not have: no update of anything would run. Arch derivatives that follow Arch wit
 therefore can have an installed package whose `putgd-cli` and S3 libraries do not load
 ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
 
-Instead the installer decides, before it installs anything, using `arch_libcrypto` (for example
-`libcrypto.so=4-64`) at the top of `packaging/install.sh`. It asks `pacman -T` for that soname and,
-if that fails, resolves it against the repositories (`pacman -Sp --needed`, or `-Syp` outside Omarchy's
-flow), so a stale Arch system that `pacman -Syu` brings up to the new OpenSSL still gets the native
-package. When nothing provides it (`target not found`) the installer installs the AppImage, after the
-same checks and verification as `--appimage`; any other pacman failure stops the install. It adds the
-signed repository and key either way, and says so when the native package is already installed.
-`tools/releases/arch.py` fails the Arch build when `arch_libcrypto` differs from the OpenSSL the
-binaries link, and records the soname as `package.libcrypto` in the package receipt, so Arch moving to a
-new OpenSSL fails the build until the installer is bumped. A second package built for a derivative's
-package set is the larger alternative.
+Instead the installer decides, using `arch_libcrypto` (for example `libcrypto.so=4-64`) at the top of
+`packaging/install.sh`, and only from the installed system, never from the repositories. A wrong
+AppImage is harmless, because the AppImage works everywhere; a wrong native install is the failure that
+matters.
+
+- **Arch Linux itself** (`ID=arch` in os-release, and no `omarchy-update`): installed natively as before,
+  with no probe. `pacman -Syu putgd` brings OpenSSL to the version the package was built against, because the
+  build uses current Arch.
+- **Every other Arch-family system** (Omarchy, detected by `omarchy-update` and checked after its own
+  update; Manjaro, EndeavourOS and the like): `pacman -T "$arch_libcrypto"`. Exit 0 installs natively. Exit
+  127 (not satisfied) installs the AppImage, chosen for the channel the user asked for even when that
+  channel has no Arch asset yet, after the same checks and verification as `--appimage`, and nothing is
+  trusted, configured or synced first. Any other exit stops the install.
+
+The fallback warns when the native package is already installed. `tools/releases/arch.py` fails the Arch
+build when `arch_libcrypto` differs from the OpenSSL the binaries link, and records the soname as
+`package.libcrypto` in the package receipt, so Arch moving to a new OpenSSL fails the build until the
+installer is bumped. A second package built for a derivative's package set is the larger alternative.
 
 To change channels, copy `/usr/share/putgd/repo/putgd-CHANNEL.conf` to
 `/etc/pacman.d/putgd.conf`, import `/usr/share/putgd/repo/putgd-CHANNEL.asc`, and

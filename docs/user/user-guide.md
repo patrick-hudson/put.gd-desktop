@@ -265,13 +265,21 @@ package availability does not imply acceptance of every derivative's compositor.
 
 The pacman package is built on current Arch against its OpenSSL (OpenSSL 4 today). A system that
 follows Arch with a delay, Omarchy 4.5 with its OpenSSL 3.6 for one, cannot load it: there the native
-package's `putgd-cli` and its S3, B2 and R2 uploads fail with `libcrypto.so.4: cannot open shared object
-file`, until Omarchy ships OpenSSL 4. For a new install the install script checks this with pacman before
-it installs anything and installs the AppImage (`~/.local/bin/putgd.AppImage`) instead, saying why.
+package's `putgd-cli` and its S3 and R2 uploads fail with `libcrypto.so.4: cannot open shared object
+file`, until Omarchy ships OpenSSL 4. The install script handles this for new installs:
 
-If the pacman package is already installed on such a system, switch to the AppImage with one line:
+- On Arch Linux itself (`ID=arch` in `/etc/os-release`, not Omarchy) it installs the pacman package, as
+  always. Its `pacman -Syu putgd` brings OpenSSL to the version the package was built against.
+- On every other Arch-family system (Omarchy, after its own system update; Manjaro, EndeavourOS and the
+  like) it asks pacman whether the installed system has that OpenSSL (`pacman -T libcrypto.so=4-64`). If so
+  it installs the pacman package. If not it installs the AppImage (`~/.local/bin/putgd.AppImage`)
+  instead and says why. Any other pacman failure stops the install.
+
+If the pacman package is already installed on such a system, switch to the AppImage with these two
+commands, in this order:
 
 ```sh
-sudo pacman -R putgd && curl -fsSL https://app.put.gd/install | sh
+curl -fsSL https://app.put.gd/install | sh -s -- --appimage
+sudo pacman -R putgd
 ```
 The AUR recipe is a draft and has not been published.
