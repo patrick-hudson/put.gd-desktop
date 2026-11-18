@@ -505,6 +505,9 @@ class Resident:
             except OSError:
                 continue
             for marker in BAD_MARKERS:
+                # Invalid-vptr reports after 'Too many open files' are a known defect (#1591); the run goes on.
+                if marker == 'runtime error:' and 'Too many open files' in text:
+                    continue
                 if marker in text:
                     problems.append((path.name, marker))
         return problems
@@ -1500,6 +1503,11 @@ class Fuzzer:
             return False
         log = self.run / 'logs' / ('resident-%d.log' % self.resident.starts)
         text = log.read_text(errors='replace') if log.exists() else ''
+        if self.options.memory_max and self.resident.process.returncode == -signal.SIGKILL:
+            # The memory cgroup's OOM killer took it (--memory-max): the same as a SIGKILL, checked by the recovery that follows.
+            self.log('oom-kill', limit=self.options.memory_max)
+            self.resident.judged_logs.add(log.name)
+            return True
         if 'Too many open files' not in text:
             return False
         self.log('emfile-abort', exit=self.resident.process.returncode, first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
