@@ -271,6 +271,7 @@ class Resident:
         self.san = run / 'san'
         self.process = None
         self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
+        self.runtime_errors_expected = lambda: False  # fault mode: true once the open-file limit has been lowered under it
         self.judged_logs = set()  # resident logs of an abort the harness caused on purpose (the open-file limit) and judged by its recovery
         self.memory_max = None  # fault mode: a memory cgroup limit (systemd-run --user --scope)
         self.nofile = None    # fault mode: an open-file limit from the start
@@ -505,8 +506,8 @@ class Resident:
             except OSError:
                 continue
             for marker in BAD_MARKERS:
-                # Invalid-vptr reports after 'Too many open files' are a known defect (#1591); the run goes on.
-                if marker == 'runtime error:' and 'Too many open files' in text:
+                # Invalid-vptr reports after 'Too many open files' are UBSan's own (it cannot read the files it checks types with); the run goes on.
+                if marker == 'runtime error:' and ('Too many open files' in text or self.runtime_errors_expected()):
                     continue
                 if marker in text:
                     problems.append((path.name, marker))
@@ -1398,6 +1399,7 @@ class Fuzzer:
                                                  small_fs=options.small_fs, small_rt=options.small_rt, log=self.log, seed=options.seed,
                                                  net_kinds=options.net_kinds.split(',') if options.net_kinds else None)
         self.resident.extra_env = self.faults.environment()
+        self.resident.runtime_errors_expected = lambda: self.faults.nofile_events > 0
         if options.nofile:
             self.resident.nofile = options.nofile
         if options.memory_max:
@@ -1508,7 +1510,9 @@ class Fuzzer:
             self.log('oom-kill', limit=self.options.memory_max)
             self.resident.judged_logs.add(log.name)
             return True
-        if 'Too many open files' not in text:
+        # UBSan, halting, reads files to check object types: with no descriptor left it reports valid objects as invalid and exits 1.
+        sanitizer_without_descriptors = self.resident.process.returncode == 1 and 'runtime error:' in text and self.faults.nofile_events > 0
+        if 'Too many open files' not in text and not sanitizer_without_descriptors:
             return False
         self.log('emfile-abort', exit=self.resident.process.returncode, first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
         self.resident.judged_logs.add(log.name)

@@ -85,6 +85,7 @@ class FaultControl:
         self.small_rt = SmallFs(small_rt) if small_rt else None
         self.proxy = None
         self.nofile_lowered = False
+        self.nofile_events = 0
         self.build_shim(source_dir)
         self.write_spec([])
 
@@ -167,6 +168,7 @@ class FaultControl:
             _, hard = resource.prlimit(pid, resource.RLIMIT_NOFILE)
             resource.prlimit(pid, resource.RLIMIT_NOFILE, (min(limit, hard), hard))
             self.nofile_lowered = True
+            self.nofile_events += 1
             self.log('fault-nofile', pid=pid, held=held, limit=limit)
         except (OSError, ValueError, ProcessLookupError):
             pass
