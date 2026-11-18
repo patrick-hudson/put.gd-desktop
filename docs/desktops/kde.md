@@ -69,7 +69,12 @@ A desktop entry naming a different build executable does not grant permission.
 Restart the resident application after installing/updating its entry. Do not
 set `KWIN_SCREENSHOT_NO_PERMISSION_CHECKS` or other permission bypasses.
 Permission rejection is reported as `capture_permission`; no portal picker or
-XWayland fallback is introduced.
+XWayland fallback is introduced. Once ScreenShot2 has answered, a resident whose
+executable no entry names, or that KWin has already refused, reports
+`code: "capture_permission"` on its capture sources in `capabilities`, and a region,
+window, monitor, desktop or repeat capture (delayed or not, and an edit of one)
+fails at once with that error and its notification: no selector or countdown is
+shown (#1571).
 
 ## Capture semantics
 

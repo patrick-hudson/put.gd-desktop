@@ -39,7 +39,9 @@ It has no name to check, so `checkName` answers absent with a fresh nonce and co
 nothing, and the required conditional-create safeguard does not apply. `stat` and
 `reconcile` answer unknown with `unsupported_capability`: an upload whose outcome is
 unknown stays unknown, History says a retry may leave a second copy, and only an
-explicit retry sends the file again. `referenceDelete` means deletion addresses exactly
+explicit retry sends the file again. A resend that fails or is cancelled leaves the
+item unknown with that attempt's error, because the first request's copy may still
+be there (#1572); only a confirmed upload clears it. `referenceDelete` means deletion addresses exactly
 what the upload returned (a deletion URL), so there is nothing to stat first.
 `receiptCapabilities(receipt)` answers for one recorded upload rather than for today's
 settings: an upload that came back without a deletion URL reports no removal, with the

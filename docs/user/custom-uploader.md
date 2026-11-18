@@ -188,7 +188,8 @@ changes three things compared with S3:
   complete, a gateway's 408, 502 or 504, any other 5xx that arrived after the whole
   request had been sent (a 500, a 503, Cloudflare's 524), and a 2xx reply with no usable
   link. **Retry upload** sends the file again and may leave a second copy there. put.gd
-  never repeats an upload by itself.
+  never repeats an upload by itself. If that retry fails too, the upload stays unknown
+  and History keeps the warning, since the first attempt may still be on the server.
 - **A reply is whole by its own length.** put.gd counts the bytes of a reply and holds
   them against the `Content-Length` the server declared: a reply that is shorter is not
   a reply, even when the part that came holds a whole link. It asks for replies
