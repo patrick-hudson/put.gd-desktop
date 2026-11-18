@@ -17,12 +17,12 @@ StartFailure classifyStartFailure(const QString& program, const QString& reason)
         if (reason.contains(QString::fromLocal8Bit(std::strerror(code)), Qt::CaseInsensitive)) return StartFailure::Temporary;
     return StartFailure::Unclear;
 }
-QString startFailureMessage(StartFailure failure, const QString& installationMessage) {
+QString startFailureMessage(StartFailure failure, const QString& installationMessage, const QString& subject) {
     // Qt's own text stays in the error details: for an existing helper it can name the
     // wrong cause ("No such file or directory" when Qt ran out of descriptors).
     if (failure == StartFailure::Installation) return installationMessage;
-    if (failure == StartFailure::Temporary) return "put.gd couldn't start its upload helper just now; try again.";
-    return "put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd.";
+    if (failure == StartFailure::Temporary) return subject + " just now; try again.";
+    return subject + ". Try again; if it keeps failing, reinstall put.gd.";
 }
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,

@@ -9,6 +9,8 @@ endif()
 add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(putgd_s3 PRIVATE src/storage/s3/S3ProcessDriver.cpp)
+  # The worker's start-failure advice is shared with the custom uploader's helper.
+  target_link_libraries(putgd_s3 PRIVATE putgd_provider_exchange)
 endif()
 target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_credentials putgd_s3_wire PRIVATE Threads::Threads putgd_ui_control)
 add_library(putgd_s3_module MODULE src/storage/s3/S3Module.cpp src/storage/s3/S3Driver.cpp

@@ -19,9 +19,10 @@ enum class StartFailure { Installation, Temporary, Unclear };
 // meanwhile are used: the program file, and a shortage the reason names.
 StartFailure classifyStartFailure(const QString& program, const QString& reason);
 // The message for a helper that did not start: `installationMessage` for a broken
-// installation, otherwise whether trying again helps. It never repeats Qt's reason, which
-// belongs in the error details.
-QString startFailureMessage(StartFailure, const QString& installationMessage);
+// installation, otherwise whether trying again helps, about `subject` (what could not
+// start, as the user knows it). It never repeats Qt's reason, which belongs in the error details.
+QString startFailureMessage(StartFailure, const QString& installationMessage,
+                            const QString& subject = QStringLiteral("put.gd couldn't start its upload helper"));
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,

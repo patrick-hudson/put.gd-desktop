@@ -41,7 +41,7 @@ ALLOWED = {
     'storage/b2': {'core', 'secrets', 'storage/worker'},
     'storage/http': {'core', 'secrets', 'storage/worker'},
     'storage/proton': {'core'},
-    'storage/s3': {'core', 'ipc', 'secrets'},
+    'storage/s3': {'core', 'ipc', 'secrets', 'storage/worker'},
     'app': {'client', 'core', 'ipc', 'secrets'},
     'ui': {'client', 'core', 'ipc', 'platform'},
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},

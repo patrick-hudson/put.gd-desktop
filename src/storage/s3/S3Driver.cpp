@@ -337,21 +337,40 @@ StatResult inspect(Client& client, const StorageReceipt& expected, bool current 
                             metadata(result, "putgd-sha256"), result.GetContentLength(),
                             qt(result.GetETag()), qt(result.GetVersionId())), {}};
 }
-// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
-// a request naming a version gets 501, and the bucket reports no versioning status. A
-// bucket whose versioning was never enabled holds one object per key, so a receipt from
-// it is checked and removed like an unversioned one.
-bool versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
-    const auto version = expected.objectReference["versionId"].toString();
-    if (found.status != "unknown" || found.error.details["httpStatus"].toInt() != 501 || version.isEmpty() || version == "null") return false;
-    Aws::S3::Model::GetBucketVersioningRequest request;
-    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
-    const auto outcome = client.GetBucketVersioning(request);
-    return outcome.IsSuccess() && outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
-}
 StorageReceipt withoutVersion(StorageReceipt receipt) {
     receipt.objectReference.remove("versionId");
     return receipt;
+}
+// Cloudflare R2 (#145) returns a version ID on every write but implements no versioning:
+// a request naming a version gets 501, and the bucket reports no versioning status. Garage
+// returns an opaque version ID in the PutObject response header (its multipart completion
+// omits it) and has no versioning either; it answers a request naming that version with
+// the object and no version ID, which the identity check takes for another object. A
+// bucket whose versioning was never enabled holds one object per key, so a receipt from it
+// is checked and removed like an unversioned one.
+// Yes: check and remove it unversioned. No: the first answer stands. Unknown: a read
+// needed to tell a version-only mismatch from another object failed; the caller reports
+// unknown with this error, so a Retry checks again instead of settling on "changed".
+struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; };
+Versionless versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
+    const auto version = expected.objectReference["versionId"].toString();
+    if (version.isEmpty() || version == "null") return {};
+    const bool refused = found.status == "unknown" && found.error.details["httpStatus"].toInt() == 501;
+    if (!refused && found.status != "foreign") return {};
+    if (!refused) {
+        // Everything but the version ID must match the object that is current at the key.
+        const auto current = inspect(client, withoutVersion(expected), true);
+        if (current.status == "unknown") return {Versionless::Unknown, current.error};
+        if (current.status != "own") return {};
+    }
+    Aws::S3::Model::GetBucketVersioningRequest request;
+    request.SetBucket(aws(expected.destination.settings["bucket"].toString()));
+    QElapsedTimer timer;
+    timer.start();
+    const auto outcome = client.GetBucketVersioning(request);
+    // R2 keeps its earlier handling: its 501 already leaves the identity unknown.
+    if (!outcome.IsSuccess()) return refused ? Versionless{} : Versionless{Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
+    return {outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET ? Versionless::Yes : Versionless::No, {}};
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -953,7 +972,12 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         return;
     }
     auto found = inspect(*client, expected);
-    if (versionless(*client, expected, found)) {
+    const auto check = versionless(*client, expected, found);
+    if (check.kind == Versionless::Unknown) {
+        reply({"unknown", {}, check.error});
+        return;
+    }
+    if (check.kind == Versionless::Yes) {
         found = inspect(*client, withoutVersion(expected), true);
         // The recorded ID names the only object the key can hold; keep the receipt as recorded.
         if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
@@ -1215,7 +1239,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         return;
     }
     auto identity = inspect(*client, expected);
-    if (phase == S3DeletePhase::None && immutable && versionless(*client, expected, identity)) {
+    const auto check = phase == S3DeletePhase::None && immutable ? versionless(*client, expected, identity) : Versionless{};
+    if (check.kind == Versionless::Unknown) {
+        finish("unknown", check.error);
+        return;
+    }
+    if (check.kind == Versionless::Yes) {
         progress["versionless"] = true;
         expected = withoutVersion(expected);
         version.clear();
