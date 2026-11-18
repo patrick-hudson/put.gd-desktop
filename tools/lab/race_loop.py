@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """Loop tools/lab/action_fuzz.py over seeds under ThreadSanitizer or `rr record --chaos`, to hunt data races and order bugs.
 
-  tsan  --build build/tsan-qt --tsan-prefix work/sanitizer-diagnosis   the instrumented Qt build of docs/testing/thread-sanitizer.md
+  tsan  --build build/tsan-instrumented-qt --tsan-prefix work/sanitizer-diagnosis   the instrumented Qt build of docs/testing/thread-sanitizer.md
   rr    --build build/rrb                                              a RelWithDebInfo build, recorded with rr's chaos mode
 
 Each seed runs `action_fuzz.py run` in its own run folder inside a private session bus. A clean seed keeps only its small records
-(steps.jsonl, logs/, san/): the payloads it made (fixtures/, saves/, archive/) are deleted file by file, and its rr traces are removed
+(steps.jsonl, logs/, san/, receiver.log): the payloads and the resident's roots (fixtures/, saves/, archive/, r/) are deleted file by file, and its rr traces are removed
 with `rr rm`, only for folders that are complete rr traces (a `version` file, no `incomplete` marker, not the `latest-trace` link). A
 cleanup that fails is reported. A finding keeps the run folder whole (finding.json, steps.jsonl, the TSan reports in san/) and, for
 rr, the traces under <out>/traces. --stress N starts N busy loops (this script's own processes, stopped by PID) to shake the schedules. The loop stops
 at --hours or --max-findings.
 
-  python3 -I tools/lab/race_loop.py tsan --build build/tsan-qt --tsan-prefix work/sanitizer-diagnosis --out ~/work/races-1/tsan \\
+  python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt --tsan-prefix work/sanitizer-diagnosis --out /tmp/races-tsan-1 \\
       --first-seed 1 --steps 150 --hours 3 --stress 2
 
 On a build server, with --out on disk (it is made absolute first); rr needs real performance counters, a kernel.perf_event_paranoid it
-accepts (rr 5.9+ on Linux 6.10+ works at 2; see docs/testing/thread-sanitizer.md) and a filesystem whose ioctls it knows (rr 5.10 aborts
-on btrfs's subvolume-info ioctl: put --out on tmpfs or ext4).
+accepts (rr 5.9+ on Linux 6.10+ works at 2; see docs/testing/race-hunting.md) and a filesystem whose ioctls it knows: rr 5.10 aborts on
+FS_IOC_GETFSLABEL, which btrfs and ext4 both answer, so put --out and TMPDIR on tmpfs for rr.
 """
 import argparse
 import os
@@ -27,7 +27,7 @@ import sys
 import time
 
 HOG = 'import signal\nsignal.signal(signal.SIGTERM, signal.SIG_DFL)\nwhile True:\n    pass\n'
-PAYLOADS = ('fixtures', 'saves', 'archive')  # what a clean seed made and does not need to keep
+PAYLOADS = ('fixtures', 'saves', 'archive', 'r')  # what a clean seed made and does not need to keep (r: the resident's roots)
 
 
 def prune_clean_run(run):
@@ -38,6 +38,7 @@ def prune_clean_run(run):
         if not top.is_dir() or top.is_symlink():
             continue
         for folder, subfolders, files in os.walk(top, topdown=False):
+            files = files + [d for d in subfolders if os.path.islink(os.path.join(folder, d))]  # a link to a folder is removed, never followed
             for file in files:
                 try:
                     os.chmod(folder, 0o700)
@@ -87,7 +88,7 @@ def main():
     parser.add_argument('--destination', choices=('http', 's3'), default='http')
     parser.add_argument('--mode', choices=('run', 'crash'), default='run')
     parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
-    parser.add_argument('--keep-limit', type=int, default=16, help='MiB a clean seed may keep after pruning; more is reported')
+    parser.add_argument('--keep-limit', type=int, default=4, help='MiB a clean seed may keep after pruning; more is reported')
     options = parser.parse_args()
     # Absolute before anything uses them: rr, the fuzzer and this script may resolve a relative path from different folders.
     options.out = options.out.absolute()

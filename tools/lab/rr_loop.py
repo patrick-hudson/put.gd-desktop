@@ -6,13 +6,14 @@ within a few runs and a failing run replays exactly (`rr replay`, reverse-contin
 iteration; a passing trace is removed with `rr rm`, a failing trace is kept and printed.
 
   python3 -I tools/lab/rr_loop.py --build build/rrb --test http_uploader_integration --iterations 50 \\
-      --run-dir ~/work/races-1/rr-http -- lostReplyWaitsForAnExplicitRetryThatMayDuplicate
+      --run-dir /tmp/rr-http -- lostReplyWaitsForAnExplicitRetryThatMayDuplicate
 
 The test command, environment and working directory come from `ctest --show-only=json-v1`, so the run is the CTest one.
 Arguments after `--` are appended to the test's command line (a QtTest function name, for one case). Extra
 --env NAME=VALUE entries go into the test's environment. --build and --run-dir are made absolute first. Use a RelWithDebInfo or
 Debug build and run on a build server: rr needs real performance counters (a VM often has none) and a kernel.perf_event_paranoid
-it accepts (rr 5.9+ on Linux 6.10+ works at 2). --timeout is how long one recorded run may take before it is stopped and counted as
+it accepts (rr 5.9+ on Linux 6.10+ works at 2). Keep --run-dir and TMPDIR on tmpfs: rr 5.10 aborts on FS_IOC_GETFSLABEL, which
+btrfs and ext4 answer. --timeout is how long one recorded run may take before it is stopped and counted as
 a possible slowdown or hang; --time-scale (PUTGD_TEST_TIME_SCALE) stretches the test's own waits for rr's slower schedule.
 A run that is stopped gets SIGTERM on rr itself, so rr finishes the trace; a trace is reported replayable only when rr completed it
 (no `incomplete` marker). Only processes this script starts are signalled; nothing is killed by pattern.
