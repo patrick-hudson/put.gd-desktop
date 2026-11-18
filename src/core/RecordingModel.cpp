@@ -295,6 +295,9 @@ Error validateMask(const QJsonValue& value, RecordingMask& mask, qint64 duration
     result.kind = object["kind"].toString("blur");
     if (result.kind != "blur" && result.kind != "solid") return invalid("Mask kind must be blur or solid", "mask.kind");
     if (!rect(object["rect"], result.rect)) return invalid("A mask needs rect [x, y, width, height] with positive size", "mask.rect");
+    // Preview and export draw nothing narrower or shorter than 2 px (a blur needs a
+    // neighbour), so a smaller cover would be accepted and cover nothing.
+    if (result.rect.width() < 2 || result.rect.height() < 2) return invalid("A mask must be at least 2 by 2 pixels", "mask.rect");
     if (!canvas.isEmpty() && (result.rect.x() < 0 || result.rect.y() < 0 || result.rect.right() >= canvas.width() || result.rect.bottom() >= canvas.height()))
         return invalid("Mask rect must lie inside the output canvas", "mask.rect");
     if (!integer(object["start"], 0, duration, &result.start) || !integer(object["end"], 0, duration, &result.end) || result.end <= result.start)
@@ -335,6 +338,21 @@ void mergeCut(QList<RecordingCut>& cuts, QString id, qint64 start, qint64 end) {
     const auto at = std::find_if(cuts.begin(), cuts.end(), [&](const RecordingCut& c) { return c.start > start; });
     cuts.insert(at, merged);
 }
+// #1635: the review's frame grid, edge k at round(k * 1e6 / fps) µs (the same
+// grid the review window snaps to). down: the last edge at or before us; up:
+// the first edge at or after it.
+qint64 gridEdge(qint64 k, int fps) { return qint64(std::llround(double(k) * 1e6 / fps)); }
+qint64 snapDown(qint64 us, int fps) {
+    qint64 k = qint64(std::floor(double(us) * fps / 1e6));
+    while (gridEdge(k + 1, fps) <= us) ++k;
+    while (k > 0 && gridEdge(k, fps) > us) --k;
+    return gridEdge(k, fps);
+}
+qint64 snapUp(qint64 us, int fps) {
+    const qint64 down = snapDown(us, fps);
+    if (down == us) return us;
+    return gridEdge(qint64(std::llround(double(down) * fps / 1e6)) + 1, fps);
+}
 void syncHistoryFlags(RecordingEdit& edit, const RecordingEditHistory* history) {
     edit.canUndo = history && !history->undo.isEmpty();
     edit.canRedo = history && !history->redo.isEmpty();
@@ -362,6 +380,12 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
     RecordingEdit next = edit;
     const qint64 minimum = fps > 0 ? 1000000 / fps : 1;
     bool cutsOrTrimChanged = false;
+    // #1635: every edge lands on the frame grid, in the direction that never lets
+    // unwanted footage through: a cover and a cut grow outward (start down, end
+    // up), the trim shrinks inward (start up, end down). Ends stay within the clip.
+    auto down = [&](qint64 us) { return fps > 0 ? std::clamp<qint64>(snapDown(us, fps), 0, duration) : us; };
+    auto up = [&](qint64 us) { return fps > 0 ? std::clamp<qint64>(snapUp(us, fps), 0, duration) : us; };
+    auto snapMask = [&](RecordingMask& mask) { mask.start = down(mask.start); mask.end = mask.end >= duration ? duration : up(mask.end); };
     for (const auto& value : commands) {
         if (!value.isObject()) return invalid("Each command must be an object", "commands");
         const auto command = value.toObject();
@@ -371,6 +395,8 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             qint64 start = 0, end = duration;
             if (!integer(command["start"], 0, duration, &start)) return invalid("Trim start must be microseconds within the clip", "start");
             if (command.contains("end") && !command["end"].isNull() && !integer(command["end"], 0, duration, &end)) return invalid("Trim end must be microseconds within the clip or null", "end");
+            start = up(start);
+            if (end < duration) end = down(end);
             if (end - start < minimum) return invalid("The retained interval must contain at least one frame", "end");
             next.trimStart = start;
             if (command.contains("end") && !command["end"].isNull() && end != duration) next.trimEnd = end; else next.trimEnd.reset();
@@ -384,6 +410,7 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             if (next.masks.size() >= maximumMasks) return invalid("At most 64 masks are supported", "mask");
             RecordingMask mask;
             if (auto error = validateMask(command["mask"], mask, duration, canvas)) return error;
+            snapMask(mask);
             mask.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
             next.masks.append(mask);
         } else if (op == "updateMask" || op == "removeMask") {
@@ -393,10 +420,13 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             if (index < 0) return {"recording_mask_unknown", "No mask has this id", {{"maskId", command["maskId"].toString()}}};
             if (op == "removeMask") next.masks.removeAt(index);
             else if (auto error = validateMask(command["mask"], next.masks[index], duration, canvas)) return error;
+            else snapMask(next.masks[index]);
         } else if (op == "addCut") {
             if (!knownKeys(command, {"op", "start", "end"})) return invalid("addCut takes start and end", "commands");
             qint64 start = 0, end = 0;
             if (auto error = validateCutSpan(command, duration, start, end)) return error;
+            start = down(start);
+            end = end >= duration ? duration : up(end);
             mergeCut(next.cuts, {}, start, end);
             if (next.cuts.size() > maximumCuts) return invalid("At most 64 cuts are supported", "start");
             cutsOrTrimChanged = true;
@@ -410,6 +440,8 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             else {
                 qint64 start = 0, end = 0;
                 if (auto error = validateCutSpan(command, duration, start, end)) return error;
+                start = down(start);
+                end = end >= duration ? duration : up(end);
                 next.cuts.removeAt(index);
                 mergeCut(next.cuts, id, start, end);
             }
