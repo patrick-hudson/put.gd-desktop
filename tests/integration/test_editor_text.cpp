@@ -6,6 +6,7 @@
 #include "editor/EditorCommands.h"
 #include "ui/AccountName.h"
 #include "ui/EditorWindow.h"
+#include "ui/QuickRedactRunner.h"
 #include <QJsonDocument>
 #include <QtTest>
 #include <atomic>
@@ -45,6 +46,8 @@ void verifyCovered(EditorTextRecognition& text) {
 class EditorTextTest final:public QObject {
  Q_OBJECT
 private slots:
+ // User patterns run in the built putgd-ui --match-patterns (#1618 round 3).
+ void initTestCase() {ui::setQuickRedactMatcherProgram(QStringLiteral(PUTGD_UI_BINARY));}
  void quickRedactCannotChangeSubmittedDocument() {
   QSemaphore gate;std::atomic_bool started=false;
   editor::EditDocument doc(capture());EditorWindow window(doc);

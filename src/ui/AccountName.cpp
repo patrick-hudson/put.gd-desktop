@@ -37,7 +37,8 @@ QString accountsServiceName(uid_t uid) {
  return qvariant_cast<QDBusVariant>(name.arguments().first()).variant().toString().trimmed();
 }
 }
-Account currentAccount() {
+Account currentAccount() {return currentAccount({});}
+Account currentAccount(const std::function<bool()>& stopped) {
  Account account;
  const auto uid=getuid();
  // getpwuid_r: this runs on Quick redact's worker thread. A directory service
@@ -51,7 +52,8 @@ Account currentAccount() {
   account.login=QString::fromLocal8Bit(found->pw_name);
   if(found->pw_gecos)account.realName=QString::fromLocal8Bit(found->pw_gecos).section(',',0,0).trimmed();
  }
- if(account.realName.isEmpty())account.realName=accountsServiceName(uid);
+ // Stopped meanwhile (the editor closed): the system bus is never touched.
+ if(account.realName.isEmpty()&&!(stopped&&stopped()))account.realName=accountsServiceName(uid);
  return account;
 }
 }

@@ -60,6 +60,8 @@
   # a result for an old recognition revision is rejected.
   add_executable(test_editor_text tests/integration/test_editor_text.cpp)
   target_link_libraries(test_editor_text PRIVATE putgd_editor_window Qt6::Test)
+  target_compile_definitions(test_editor_text PRIVATE "PUTGD_UI_BINARY=\"$<TARGET_FILE:putgd-ui>\"")
+  add_dependencies(test_editor_text putgd-ui)
   add_test(NAME editor_text_integration COMMAND test_editor_text)
   set_tests_properties(editor_text_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   # Quick redact (#1428): one table over the matching function.
@@ -70,6 +72,9 @@
   # Its runner (#1618): matching off the interface thread within stated bounds.
   add_executable(test_quick_redact_runner tests/unit/test_quick_redact_runner.cpp)
   target_link_libraries(test_quick_redact_runner PRIVATE putgd_editor_window Qt6::Test)
+  # Its user patterns run in putgd-ui --match-patterns, the built one.
+  target_compile_definitions(test_quick_redact_runner PRIVATE "PUTGD_UI_BINARY=\"$<TARGET_FILE:putgd-ui>\"")
+  add_dependencies(test_quick_redact_runner putgd-ui)
   add_test(NAME quick_redact_runner_contract COMMAND test_quick_redact_runner)
   set_tests_properties(quick_redact_runner_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
   # History's Show QR code (#1428): a written code reads back as the known-good matrix.
