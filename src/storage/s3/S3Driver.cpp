@@ -970,6 +970,11 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
         reply({"unknown", {}, error});
         return;
     }
+    // A retry of an unknown upload reconciles first; the saved folder is the setting to fix.
+    if (!s3KeyAddressable(request.destination.settings["objectPrefix"].toString())) {
+        reply({"unknown", {}, prefixError()});
+        return;
+    }
     const auto expected = receipt(request.destination, request.objectReference["key"].toString(), request.publicationId,
                                   request.artifact.sha256, request.artifact.bytes, {}, {});
     auto client = state_->client(request.destination);

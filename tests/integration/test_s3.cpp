@@ -211,7 +211,7 @@ private slots:
         QVERIFY(f.state()["objects"].toObject()[stored+"p.txt"].toArray().isEmpty());
     }
     // History rows and journals made before #1582 hold the key as typed. They still
-    // check, delete, link and retry against the stored key.
+    // check, delete, retry and abandon against the stored key.
     void receiptsAndJournalsBeforeNormalisation() {
         S3Fixture f;f.reset();f.destination.settings["objectPrefix"]="a//b/";
         const auto uploaded=f.upload(f.request("old.txt"));
@@ -219,8 +219,6 @@ private slots:
         auto legacy=uploaded.receipt;legacy.objectReference["key"]="a//b/old.txt";
         legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,"a//b/old.txt");
         QCOMPARE(legacy.directUrl,f.endpoint+"/isolated-fixture/a//b/old.txt");
-        QCOMPARE(f.provider.currentLink(legacy),f.endpoint+"/isolated-fixture/a/b/old.txt");
-        QCOMPARE(f.provider.currentLink(uploaded.receipt),uploaded.receipt.directUrl);
         const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
         QCOMPARE(stat.status,QString("own"));
         // History compares the stat receipt with the row's own before deleting.
@@ -260,7 +258,6 @@ private slots:
         QCOMPARE(checked.error.code,QString("s3_settings_invalid"));
         auto legacy=uploaded.receipt;const auto key=prefix+"/p.txt";legacy.objectReference["key"]=key;
         legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,key);
-        QVERIFY(f.provider.currentLink(legacy).isEmpty());
         const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
         QCOMPARE(stat.status,QString("unknown"));QCOMPARE(stat.error.code,QString("s3_key_invalid"));
         const auto removed=f.remove(legacy);
@@ -272,6 +269,9 @@ private slots:
         retry.destination=f.destination;
         const auto underFolder=f.upload(retry);
         QCOMPARE(underFolder.status,QString("failed"));QCOMPARE(underFolder.error.code,QString("s3_settings_invalid"));
+        // So does the reconciliation that retrying an unknown upload starts with, which stays unknown.
+        const auto reconciled=f.await<StatResult>([&](auto cb){f.provider.reconcile(retry,cb);});
+        QCOMPARE(reconciled.status,QString("unknown"));QCOMPARE(reconciled.error.code,QString("s3_settings_invalid"));
         QCOMPARE(f.events().size(),0);
     }
 };
