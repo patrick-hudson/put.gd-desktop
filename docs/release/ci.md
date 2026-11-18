@@ -798,8 +798,8 @@ and dwz steps. It works in three layers:
 
   The AppImage job restores the ubuntu24.04 snapshot and installs everything in
   one `install-packages.sh` call, so it is one apt transaction: the base
-  dependencies, the packages in `tools/ci/appimage-packages.txt` and `weston`
-  (`install-native-deps.sh` takes them as `PUTGD_EXTRA_PACKAGES`). The list
+  dependencies, the packages in `tools/ci/appimage-packages.txt` (`#` starts a comment to the end of the line)
+  and `weston` (`install-native-deps.sh` takes them as `PUTGD_EXTRA_PACKAGES`). The list
   includes the system libraries `jurplel/install-qt-action` would otherwise
   install itself, so the action runs with `install-deps: false`. The transaction
   comes entirely online or entirely from the snapshot, never a mix: a mirror
@@ -813,7 +813,12 @@ and dwz steps. It works in three layers:
   it downloads against the indexes the install before it fetched, so the
   snapshot's indexes and packages match. If it can't download everything
   against them, it has no offline fallback and fails with an error annotation,
-  the native build goes on, and that run saves no snapshot. Only the ubuntu24.04
+  the native build goes on, and that run saves no snapshot. The step has its own
+  small budget (2 attempts of 5 minutes, 15 minutes in all), so cache warming
+  can't use up the native job's time. It runs with `--reinstall`, which also
+  downloads archives of packages the image already had at the candidate version
+  (it names `git` and `ca-certificates`, which the bootstrap installs before the
+  snapshot exists), because a runner with an older version needs them offline. Only the ubuntu24.04
   cache key includes `tools/ci/appimage-packages.txt`, so changing the list
   rebuilds that snapshot and no other. Until the native job has saved it, an
   AppImage run on the new key restores nothing, or the previous week's snapshot,
