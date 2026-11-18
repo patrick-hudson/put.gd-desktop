@@ -6,11 +6,12 @@ the D-Bus lock-order rule), and this lists each distinct report once with how of
 
   put.gd     a put.gd frame within the top frames of either racing access: read these first
   qt-known   a known Qt-internal race (KNOWN_QT_RACES, each diagnosed in docs/testing/thread-sanitizer.md): both racing access stacks
-             start in a Qt library and hold no put.gd frame at all, in any of their frames
+             start in a Qt library and hold no put.gd frame in any of their frames, except a bottom-most main()
   external   everything else: Qt, GLib, GStreamer or the C library with no known race; read it before adding an entry
 
-Only qt-known reports are excused, under one strict rule: neither racing access stack contains a put.gd frame anywhere (so a report
-whose main-thread stack ends in put.gd's main() is not excused), both start in Qt, and an entry's function is in the top frames of
+Only qt-known reports are excused, under one strict rule: neither racing access stack contains a put.gd frame anywhere, except that
+the bottom-most frame may be put.gd's main() (the root of every main-thread stack; a put.gd frame directly above it still counts),
+both start in Qt, and an entry's function is in the top frames of
 one of the two stacks, with its anchor (the diagnosed Qt caller), when it has one, in that same stack. Any other report counts,
 including every report that involves put.gd at any depth. Thread-creation, mutex and allocation stacks are not read. The
 action-sequence fuzzer uses unexplained() to fail a seed on anything but qt-known reports.
@@ -34,7 +35,9 @@ KNOWN_QT_RACES = (
     # QNetworkAccessManager starts its HTTP thread, then connects to that QThread's started() from the calling thread; the new thread reads
     # the connection list with a relaxed load (qobject.cpp maybeSignalConnected) while connect() publishes it under the signal mutex.
     ('QThread::started', None),
-    ('QObjectPrivate::maybeSignalConnected', 'QNetworkReplyHttpImplPrivate::postRequest'),
+    # In the reports the new thread reads in maybeSignalConnected while emitting QThread::started (same stack); the main thread writes
+    # in addConnection under QNetworkReplyHttpImplPrivate::postRequest, a stack the no-put.gd-frame rule already guards.
+    ('QObjectPrivate::maybeSignalConnected', 'QThread::started'),
     # A QNetworkReply is deleted on its own thread while the access manager's HTTP thread still runs the QObject destructor chain of the
     # delegate (vptr report in ~QNetworkReply / ~QObject).
     ('QNetworkReply::~QNetworkReply', None),
@@ -63,6 +66,14 @@ def is_own(frame, own_prefixes):
     return any(p in frame for p in own_prefixes) or name.startswith(('putgd', 'libputgd'))
 
 
+def below_main(frames, own_prefixes):
+    """The frames that count against an excuse: all of them, except the bottom-most when it is put.gd's main(). main() is the root of
+    every main-thread stack and runs no racing code itself; any other put.gd frame, directly above main() included, still counts."""
+    if frames and function(frames[-1]).split('(')[0].strip() == 'main' and is_own(frames[-1], own_prefixes):
+        return frames[:-1]
+    return frames
+
+
 def reports(text):
     for block in text.split('==================\n'):
         if 'WARNING: ThreadSanitizer' in block:
@@ -82,9 +93,10 @@ def classify(block, own_prefixes):
     key = (kind.group(1) if kind else '?', ' || '.join(function(frames[0]) if frames else '?' for frames in stacks), tuple(sorted(set(own)))[:2])
     if own:
         return 'put.gd', key
-    # Strict: no put.gd frame anywhere in either racing access stack (every frame, not only the top ones), both start in Qt, and a known
+    # Strict: no put.gd frame anywhere in either racing access stack (every frame but a bottom-most main()), both start in Qt, and a known
     # function sits in the top frames of one stack whose own frames also hold its anchor (the diagnosed Qt caller), when it has one.
-    clean = len(stacks) == 2 and all(frames and is_qt(frames[0]) and not any(is_own(l, own_prefixes) for l in frames) for frames in stacks)
+    clean = len(stacks) == 2 and all(frames and is_qt(frames[0]) and not any(is_own(l, own_prefixes) for l in below_main(frames, own_prefixes))
+                                     for frames in stacks)
     if clean and kind and kind.group(1) == 'data race':
         for frames in stacks:
             top = ' '.join(function(l) for l in frames[:TOP])

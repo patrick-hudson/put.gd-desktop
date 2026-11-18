@@ -20,11 +20,17 @@ def own(name, n):
     return '    #%d %s %s/src/storage/worker/HttpUpload.cpp:%d (putgd-http-worker+0x41%04x)' % (n, name, ROOT, 200 + n, n)
 
 
-def stack(*names, deep_own=None):
+def put_main(n):
+    return '    #%d main %s/src/main.cpp:312 (putgd+0x2a%04x)' % (n, ROOT, n)
+
+
+def stack(*names, deep_own=None, main=False):
     frames = [qt(name, n) for n, name in enumerate(names)]
     frames += [qt('QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)', n) for n in range(len(frames), 12)]
     if deep_own is not None:
         frames[deep_own] = own('putgd::HttpUpload::readReply(QNetworkReply*)', deep_own)
+    if main:
+        frames.append(put_main(len(frames)))
     return '\n'.join(frames)
 
 
@@ -54,13 +60,27 @@ class Classifier(unittest.TestCase):
             self.assertNotEqual(self.kind(stack(*DTOR, deep_own=depth), stack(*OTHER)), 'qt-known', 'first stack, frame %d' % depth)
             self.assertNotEqual(self.kind(stack(*DTOR), stack(*OTHER, deep_own=depth)), 'qt-known', 'second stack, frame %d' % depth)
 
+    # The diagnosed hand-off as m74's live run reported it: the new thread reads in maybeSignalConnected while it emits QThread::started
+    # (deeper than the top frames), the main thread writes in addConnection under Qt's postRequest.
+    FILL = ('QMetaObject::activate(QObject*, int, int, void**)', 'QObjectPrivate::Connection* QAtomicOps::load()', 'QBasicAtomicPointer::load()', 'f4()', 'f5()')
+    READ = ('std::atomic<QObjectPrivate::Connection*>::load() const', 'QObjectPrivate::maybeSignalConnected(unsigned int) const') + FILL + ('QThread::started(QThread::QPrivateSignal)',)
+    WRITE = ('std::atomic<QObjectPrivate::Connection*>::atomic()', 'QObjectPrivate::addConnection(int, QObjectPrivate::Connection*)',
+             'QObject::connect(QObject const*, char const*, QObject const*, char const*, Qt::ConnectionType)', 'QNetworkReplyHttpImplPrivate::postRequest(QNetworkRequest const&)')
+
     def test_the_anchor_must_be_in_the_same_stack_as_its_function(self):
-        read = ('QObjectPrivate::maybeSignalConnected(unsigned int) const', 'doActivate<false>(QObject*, int, void**)')
-        write = ('QObjectPrivate::addConnection(int, QObjectPrivate::Connection*)', 'QMetaObjectPrivate::connect(QObject const*, int)')
-        anchor = 'QNetworkReplyHttpImplPrivate::postRequest(QNetworkRequest const&)'
-        self.assertNotEqual(self.kind(stack(*read), stack(*write, anchor)), 'qt-known')  # anchor only in the other stack
-        self.assertEqual(self.kind(stack(*read, anchor), stack(*write)), 'qt-known')
-        self.assertNotEqual(self.kind(stack(*read), stack(*write)), 'qt-known')  # no anchor at all
+        self.assertEqual(self.kind(stack(*self.READ), stack(*self.WRITE)), 'qt-known')
+        moved = tuple(n for n in self.READ if not n.startswith('QThread::started'))
+        self.assertNotEqual(self.kind(stack(*moved), stack(*(self.WRITE + self.FILL + ('QThread::started(QThread::QPrivateSignal)',)))), 'qt-known')  # only in the other stack
+        self.assertNotEqual(self.kind(stack(*moved), stack(*self.WRITE)), 'qt-known')  # no anchor at all
+
+    def test_put_gd_main_at_the_bottom_of_a_stack_does_not_count(self):
+        self.assertEqual(self.kind(stack(*self.READ), stack(*self.WRITE, main=True)), 'qt-known')  # a main-thread stack rooted in main()
+        self.assertEqual(self.kind(stack(*DTOR, main=True), stack(*OTHER, main=True)), 'qt-known')
+        # One put.gd frame directly above main(), or main() anywhere but the bottom, is put.gd code and is never excused.
+        self.assertNotEqual(self.kind(stack(*self.READ), stack(*self.WRITE, deep_own=11, main=True)), 'qt-known')
+        self.assertNotEqual(self.kind(stack(*DTOR, deep_own=11, main=True), stack(*OTHER)), 'qt-known')
+        not_bottom = stack(*DTOR).replace(qt('QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)', 8), put_main(8))
+        self.assertNotEqual(self.kind(not_bottom, stack(*OTHER)), 'qt-known')
 
     def test_an_unknown_qt_race_is_not_excused(self):
         self.assertEqual(self.kind(stack('QTimer::start()'), stack('QTimer::stop()')), 'external')
