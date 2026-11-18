@@ -811,7 +811,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         const int status = int(outcome.GetError().GetResponseCode());
         const bool conflict = status == 412 || status == 409;
         uncertain = uncertain || ambiguous(outcome.GetError());
-        if (!ambiguous(outcome.GetError()) && !conflict && status != 404) return fail(error);
+        // A definite refusal of the first completion publishes nothing. One of a resend (after a
+        // lost reply, or resuming an interrupted completion) can't undo the earlier attempt,
+        // which may have published: unknown, with the upload kept for reconciliation (#1627).
+        if (!ambiguous(outcome.GetError()) && !conflict && status != 404) return uncertain ? UploadResult{"unknown", {}, error} : fail(error);
         // A lost reply, a precondition failure or a vanished upload: check what the key holds.
         const auto found = inspect(client, expected, true);
         if (found.status == "own") {

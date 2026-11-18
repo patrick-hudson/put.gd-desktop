@@ -261,6 +261,42 @@ private slots:
         QVERIFY(parts(f).isEmpty());
         QCOMPARE(count(f, "POST", "uploadId="), 1);
     }
+    // #1627: a completion that may already have published stays unknown when its resend is
+    // refused outright, and the upload is not aborted. Two ways to get there: the first reply is
+    // lost after publishing and the follow-up HEAD doesn't see the object yet; or put.gd resumes
+    // a completion an earlier run left uncertain.
+    void refusedCompletionResendStaysUnknown_data() {
+        QTest::addColumn<QString>("path");QTest::addColumn<int>("status");QTest::addColumn<QString>("service");
+        for (const auto& [status, service] : QList<QPair<int, QString>>{{501, "NotImplemented"}, {400, "InvalidRequest"}, {403, "AccessDenied"}}) {
+            QTest::newRow(qPrintable("lost-reply-" + QString::number(status))) << QString("lost-reply") << status << service;
+            QTest::newRow(qPrintable("resumed-" + QString::number(status))) << QString("resumed") << status << service;
+        }
+    }
+    void refusedCompletionResendStaysUnknown() {
+        QFETCH(QString, path);QFETCH(int, status);QFETCH(QString, service);
+        S3Fixture f(policy);
+        auto request = f.request("complete.bin", synthetic(11 * mib));
+        const QJsonObject refuse{{"method", "POST"}, {"query", "uploadId="}, {"status", status}, {"code", service}, {"remaining", 1}};
+        Journal journal;
+        journal.attach(request);
+        if (path == "resumed") {
+            f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}, {"remaining", 3}}}}});
+            QCOMPARE(f.upload(request).status, QString("unknown"));
+            QCOMPARE(journal.last()["phase"].toString(), QString("completing"));
+            request.resume = journal.last();
+            f.control("/__rules", {{"rules", QJsonArray{refuse}}}, true);
+        } else {
+            // The first completion outlasts the request timeout, then publishes; the check right
+            // after doesn't see the object yet.
+            f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"delay", 3}, {"remaining", 1}},
+                                          QJsonObject{{"method", "HEAD"}, {"status", 404}, {"code", "NoSuchKey"}, {"remaining", 1}}, refuse}}});
+        }
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.details["httpStatus"].toInt(), status);
+        QCOMPARE(count(f, "DELETE", "uploadId="), 0);
+        if (path == "lost-reply") PUTGD_TRY_COMPARE(f.state()["objects"].toObject()["prefix é/complete.bin"].toArray().size(), 1);
+    }
     void journalForAnotherKeyIsAbortedNeverResumed() {
         S3Fixture f(policy);
         auto stale = f.request("old name.bin", synthetic(11 * mib));
