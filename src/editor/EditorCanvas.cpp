@@ -540,7 +540,8 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
   else if(shape.twoPoint())shape.to=QPoint(int(std::lround(end.x())),int(std::lround(end.y())));
   else if(shape.kind==Shape::Kind::Pen){
    // Each move adds a point once the pointer has travelled two screen pixels.
-   const auto* live=doc_.find(selected_);shape=live?*live:original_;
+   // The stroke being drawn, whatever is selected meanwhile (an agent can select another shape).
+   const auto* live=doc_.find(original_.id);shape=live?*live:original_;
    const QPoint point(int(std::lround(end.x())),int(std::lround(end.y())));
    if(QLineF(toWidget(QPointF(shape.points.last())),toWidget(QPointF(point))).length()>=2)shape.points.append(point);
   }else if(shape.kind==Shape::Kind::Step){
@@ -590,7 +591,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
  const auto kind=drag_;drag_=Drag::None;const auto edit=std::exchange(editOnClick_,0);
  if(kind==Drag::CropNew||kind==Drag::CropMove||kind==Drag::CropResize||kind==Drag::None)return;
  if(kind==Drag::Create){
-  const auto* shape=doc_.find(selected_);
+  const auto* shape=doc_.find(original_.id); // the shape the drag made, not whatever is selected now
   // A pen click leaves a dot and a step is placed by its click; neither is too small.
   const bool tiny=!shape||(shape->twoPoint()?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:shape->kind==Shape::Kind::Pen||shape->kind==Shape::Kind::Step?false:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
   if(shape&&shape->kind==Shape::Kind::Pen){auto next=*shape;next.points=smoothStroke(next.points);doc_.preview(next);}

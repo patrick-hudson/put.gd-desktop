@@ -972,8 +972,8 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  if(action=="inspect"){if(!only({}))return fail("invalid_request","inspect has no other parameters");return viewState();}
  if(busy_)return fail("editor_finalizing","The edit was already submitted or discarded");
  // A drag in progress owns the document's current undo step: a change made now would join it, and abandoning the drag
- // would roll it back after the agent was told it worked. Every action that edits the document waits for the drag.
- if(QStringList{"removeMark","removeSuggestions","place","geometry","applyCrop","blurStyle","stepNumber"}.contains(action)&&doc_.inGesture())return fail("editor_busy","A mark is being dragged; try again when the drag ends");
+ // would roll it back after the agent was told it worked. Every action that edits the document or changes what is selected waits for the drag.
+ if(QStringList{"removeMark","removeSuggestions","place","geometry","applyCrop","blurStyle","stepNumber","select","selectNext","selectPrevious","selectAffectedText"}.contains(action)&&doc_.inGesture())return fail("editor_busy","A mark is being dragged; try again when the drag ends");
  // Keep editing answers the discard question, else dismisses a preparation
  // failure: both buttons carry that label.
  if(action=="keepEditing"||action=="confirmDiscard"){

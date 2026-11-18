@@ -130,6 +130,27 @@ private slots:
   QString c,m;QVERIFY(!window.applyCommands(QJsonArray{QJsonObject{{"op","add"},{"shape",rect}}},c,m).isEmpty());QCOMPARE(doc.shapes().size(),2);
   QVERIFY(doc.undo());QVERIFY(doc.undo());QVERIFY(doc.shapes().isEmpty());
  }
+ // Round 4 (U13): an agent cannot change the selection in the middle of a drag. Selecting another shape while a pen
+ // stroke was being drawn made the next pointer move read that shape's (empty) point list.
+ void selectionViewsDuringAPenDragAnswerBusyAndTheStrokeCompletes(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  Shape box;box.kind=Shape::Kind::Rectangle;box.rect=QRect(5,5,40,30);const auto boxId=doc.add(box);
+  QString code,message;window.viewCommand({{"action","tool"},{"tool","pen"}},code,message);QVERIFY2(code.isEmpty(),qPrintable(message));
+  const auto start=window.canvas().rect().center();
+  QTest::mousePress(&window.canvas(),Qt::LeftButton,{},start);QTest::mouseMove(&window.canvas(),start+QPoint(20,10));
+  QVERIFY(doc.inGesture());
+  const auto before=window.canvas().selected();QVERIFY(before!=boxId);
+  for(const auto& params:{QJsonObject{{"action","select"},{"shapeId",double(boxId)}},QJsonObject{{"action","select"},{"shapeId",QJsonValue()}},QJsonObject{{"action","selectNext"}},QJsonObject{{"action","selectPrevious"}},QJsonObject{{"action","selectAffectedText"}}}){
+   code.clear();window.viewCommand(params,code,message);QCOMPARE(code,QString("editor_busy"));
+  }
+  QCOMPARE(window.canvas().selected(),before); // nothing changed
+  QTest::mouseMove(&window.canvas(),start+QPoint(40,25));QTest::mouseMove(&window.canvas(),start+QPoint(60,20));
+  QTest::mouseRelease(&window.canvas(),Qt::LeftButton,{},start+QPoint(60,20));
+  QVERIFY(!doc.inGesture());QCOMPARE(doc.shapes().size(),2);
+  const auto& pen=doc.shapes().last();QCOMPARE(pen.kind,Shape::Kind::Pen);QVERIFY(pen.points.size()>=3);
+  QVERIFY(doc.find(boxId)->points.isEmpty()); // the rectangle was never treated as the stroke
+  QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),1); // one stroke, one undo step
+ }
  // A crop drawn but not yet applied is applied before Upload exports the image.
  void uploadFinishesThePendingCrop(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
