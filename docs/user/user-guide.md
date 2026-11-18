@@ -262,4 +262,43 @@ updated with `sudo pacman -Syu`, or on Omarchy with `omarchy update`, because Om
 refuses a direct `pacman -Syu` unless told otherwise. Remove put.gd with `sudo pacman -R putgd`;
 repository configuration remains administrator-owned. AppImage is also available;
 package availability does not imply acceptance of every derivative's compositor.
+
+The pacman package is built on current Arch against its OpenSSL (OpenSSL 4 today). A system that
+follows Arch with a delay, Omarchy 4.5 with its OpenSSL 3.6 for one, cannot load it: there the native
+package's `putgd-cli` and its S3 and R2 uploads fail with `libcrypto.so.4: cannot open shared object
+file`, until Omarchy ships OpenSSL 4. The install script handles this for new installs:
+
+- On Arch Linux itself (`ID=arch` in `/etc/os-release`, not Omarchy) it installs the pacman package, as
+  always. Its `pacman -Syu putgd` brings OpenSSL to the version the package was built against.
+- On every other Arch-family system (Omarchy, after its own system update; Manjaro, EndeavourOS and the
+  like) it asks pacman whether the installed system has that OpenSSL (`pacman -T libcrypto.so=4-64`). If so
+  it installs the pacman package. If not it installs the AppImage (`~/.local/bin/putgd.AppImage`)
+  instead and says why. Any other pacman failure stops the install.
+- On every Arch-family system, Arch Linux included, it then runs `/usr/bin/putgd-cli --version`, the binary the package installed. If
+  that does not start (the same transaction can replace OpenSSL with a version the package does not
+  match), it removes the package with `sudo pacman -R --noconfirm putgd` and installs the AppImage.
+
+The AppImage path chosen by the `pacman -T` check adds no pacman repository or signing key and changes
+nothing of put.gd's on the system. On Omarchy the install script first offers Omarchy's own system update,
+which you agree to at the prompt. That update can sync a put.gd repository that was already configured, and
+it can upgrade an already installed native put.gd before the script picks the AppImage; that is the update,
+not the fallback.
+
+When the `putgd-cli` check after a native install is what falls back, the package is removed but the put.gd
+repository and its signing key stay configured. To remove them as well (use the key of the channel you
+installed from):
+
+```sh
+sudo rm /etc/pacman.d/putgd.conf
+sudo sed -i '\|^Include = /etc/pacman.d/putgd.conf$|d' /etc/pacman.conf
+sudo pacman-key --delete 4032E28D893BAF66F4AC23D9A11D38D55536B371   # nightly
+sudo pacman-key --delete C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C   # stable
+```
+
+If the pacman package is already installed on such a system, switch to the AppImage with this command. The
+package is removed only after the AppImage install succeeded, so a failed download leaves what you have:
+
+```sh
+curl -fsSL https://app.put.gd/install -o /tmp/putgd-install && sh /tmp/putgd-install --appimage && sudo pacman -R putgd
+```
 The AUR recipe is a draft and has not been published.

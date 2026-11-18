@@ -6,6 +6,11 @@ Hyprland and for Arch packages, tracked in
 [#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275). It has an acceptance
 row in the [matrix](../testing/acceptance-matrix.md#hyprland-omarchy-vm-row) that is not a
 nightly or release gate; adding it to the nightly desktop check is Patrick's decision.
+The nightly desktop check runs only the five physical builders, so no nightly row installs
+the Arch package on an Omarchy package set; the Arch CI job installs it on current Arch,
+where OpenSSL always matches. That is why [#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)
+(a package that pacman accepted on Omarchy and that then could not load `libcrypto.so.4`)
+went unseen for five nightlies.
 
 The golden was built end to end on a temporary EC2 instance on 2026-11-08 (UTC), uploaded
 to S3 from there, and only downloaded to the builders. The instance is terminated.
