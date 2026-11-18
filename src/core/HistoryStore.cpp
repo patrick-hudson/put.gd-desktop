@@ -256,15 +256,20 @@ QList<Operation> HistoryStore::recover(Error* error) {
   if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
   if(changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty())) result.append(op);
  }
+ // A read error partway through a scan ends it like the last row (Qt's SQLite driver), so every scan is checked
+ // before its rows are applied: a recovery that read part of the journal must fail and be retried, never pass (#1576).
+ if(q.lastError().isValid()) {if(error)*error=sqlError();return {};}
  q.finish();for(const auto& op:std::as_const(result)) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
  // Sharing intent survives a crash; revoke/create are never automatically replayed.
- auto shares=forwardQuery(db_);if(!shares.exec("SELECT data FROM sharing_operations WHERE json_extract(data,'$.state') IN ('accepted','running')")){if(error)*error=sqlError();return result;}
+ auto shares=forwardQuery(db_);if(!shares.exec("SELECT data FROM sharing_operations WHERE json_extract(data,'$.state') IN ('accepted','running')")){if(error)*error=sqlError();return {};}
  QList<QJsonObject> interruptedShares;
  while(shares.next()){auto doc=decode(shares.value(0));if(doc["state"]=="accepted"||doc["state"]=="running"){doc["state"]="interrupted";doc["status"]="unknown";auto receipt=doc["receipt"].toObject();receipt["directUrl"]="";doc["receipt"]=receipt;interruptedShares.append(doc);}}
+ if(shares.lastError().isValid()) {if(error)*error=sqlError();return {};}
  shares.finish();for(const auto& doc:interruptedShares)if(auto e=saveSharing(doc)){if(error)*error=e;return {};}
  // A driver may have sent a DELETE before the session died. Keep its exact progress.
- auto d=forwardQuery(db_);if(!d.exec("SELECT data FROM deletions")) {if(error)*error=sqlError();return result;}
+ auto d=forwardQuery(db_);if(!d.exec("SELECT data FROM deletions")) {if(error)*error=sqlError();return {};}
  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc["state"]=="accepted"||doc["state"]=="running") {doc["state"]="interrupted";auto items=doc["items"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item["status"]=="deleting") item["status"]="unknown";items[i]=item;}doc["items"]=items;pending.append(doc);}}
+ if(d.lastError().isValid()) {if(error)*error=sqlError();return {};}
  d.finish();for(const auto& doc:pending) if(auto e=saveDeletion(doc)) {if(error)*error=e;return {};}
  return result;
 }

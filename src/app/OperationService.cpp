@@ -6,6 +6,7 @@
 #include "core/RunMarker.h"
 #include "core/ReleaseLink.h"
 #include <QBuffer>
+#include <QSysInfo>
 #include <QElapsedTimer>
 #include <QImageReader>
 #ifdef __GLIBC__
@@ -27,6 +28,7 @@
 #include <QScopeGuard>
 #include <QTimer>
 #include <QUuid>
+#include <QSysInfo>
 #include <chrono>
 #include <thread>
 #include <vector>
@@ -34,6 +36,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <csignal>
+#include <cerrno>
 #else
 #include <QBuffer>
 #include <QImageReader>
@@ -166,17 +170,29 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
  recoverJournal();
 }
+namespace {
+// Qt reports a live owner and a stale lock it could not remove (an I/O error) alike. Only a lock naming a process that
+// is running on this computer is another resident's; otherwise the lock simply could not be taken (#1576).
+Error journalLockBusy(const QLockFile& lock) {
+ qint64 pid=0;QString host,application;
+ if(lock.getLockInfo(&pid,&host,&application)&&pid>0&&host==QSysInfo::machineHostName()&&(::kill(pid_t(pid),0)==0||errno==EPERM))
+  return {"journal_busy","Another resident owns this operation journal",{{"pid",double(pid)}}};
+ return {"journal_busy","The operation journal lock could not be acquired",{}};
+}
+}
 void OperationService::recoverJournal() {
  if(stopping_)return;
  const auto path=databasePath(),artifactsRoot=root_+"/artifacts";
  background([this,path,artifactsRoot](Error& e) {
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   if(!journalOwner_||!journalOwner_->isLocked()) {journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);}
-  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {e=journalOwner_->error()==QLockFile::LockFailedError?Error{"journal_busy","Another resident owns this operation journal",{}}:Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};}
+  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {e=journalOwner_->error()==QLockFile::LockFailedError?journalLockBusy(*journalOwner_):Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};}
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
   RecordingService::discardStaging(root_+"/recording");
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
+  // A recovery that failed partway is retried whole: a later write below must not clear its error (#1576).
+  if(e)return QJsonObject{};
   for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:std::as_const(batch.artifacts)) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
  },[this](Error e,QJsonObject) {

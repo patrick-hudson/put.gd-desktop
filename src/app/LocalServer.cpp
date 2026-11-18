@@ -444,6 +444,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(!p.isEmpty()) {reply(invalid(),{});return;}
  if(method=="ui.snapshot"){
   QJsonObject snapshot{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}};
+  // Why the journal is unavailable, while it is: History shows this instead of a bare wait (#1576).
+  if(!operations_.ready())snapshot["operationsError"]=operations_.notReadyError().toJson();
   // A changed generation tells an open window that a credential read or store ended (#600).
   if(setup_)snapshot["credentials"]=QJsonObject{{"generation",double(setup_->credentialGeneration())}};
   reply({},snapshot);

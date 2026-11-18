@@ -6,7 +6,28 @@
 #include <QTest>
 #include <QSet>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QSqlDatabase>
+#include <QUuid>
 using namespace putgd;
+namespace {
+// Makes the last leaf page of one table unreadable, as a disk read error partway through a scan would:
+// SQLite reads the earlier leaves, then fails the step that reaches this one.
+bool corruptLastLeaf(const QString& path,const QString& table) {
+ int root=0;{const auto name=QUuid::createUuid().toString();{auto db=QSqlDatabase::addDatabase("QSQLITE",name);db.setDatabaseName(path);if(!db.open())return false;QSqlQuery q(db);if(!q.exec("SELECT rootpage FROM sqlite_master WHERE type='table' AND name='"+table+"'")||!q.next())return false;root=q.value(0).toInt();}QSqlDatabase::removeDatabase(name);}
+ QFile file(path);if(root<2||!file.open(QIODevice::ReadWrite))return false;
+ file.seek(16);const auto sizeBytes=file.read(2);if(sizeBytes.size()!=2)return false;qint64 pageSize=(uchar(sizeBytes[0])<<8)|uchar(sizeBytes[1]);if(pageSize==1)pageSize=65536;
+ int page=root,depth=0;
+ for(;;){
+  if(!file.seek((page-1)*pageSize))return false;const auto header=file.read(12);if(header.size()!=12)return false;
+  if(uchar(header[0])==0x0d)break;                    // a table leaf
+  if(uchar(header[0])!=0x05)return false;              // not an interior table page
+  page=int((uchar(header[8])<<24)|(uchar(header[9])<<16)|(uchar(header[10])<<8)|uchar(header[11]));++depth;
+ }
+ if(depth==0)return false;                             // one page only: the scan would not read any row first
+ file.seek((page-1)*pageSize);return file.write(QByteArray(1,'\0'))==1&&file.flush();
+}
+}
 class HistoryTest:public QObject {
  Q_OBJECT
 private slots:
@@ -170,6 +191,17 @@ private slots:
   {auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TABLE history(id TEXT PRIMARY KEY,data BLOB)"));q.prepare("INSERT INTO history VALUES(?,?)");q.addBindValue("item");q.addBindValue(QJsonDocument(row).toJson());QVERIFY(q.exec());QVERIFY(q.exec("PRAGMA user_version=1"));db.close();}QSqlDatabase::removeDatabase(connection);HistoryStore upgraded(path);QVERIFY(!upgraded.error());auto expected=row;expected["linkAvailable"]=true;expected["linkFinishable"]=false;expected["linkRefreshable"]=false;QCOMPARE(upgraded.detail("item"),expected);QCOMPARE(upgraded.list({}).total,1);
  }
  void migrationIsTransactional() {QTemporaryDir d;const auto path=d.filePath("history.sqlite");const auto connection=QString("legacy");{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TABLE history(id TEXT PRIMARY KEY,data BLOB)"));QVERIFY(q.exec("INSERT INTO history VALUES('preserve','{}')"));QVERIFY(q.exec("PRAGMA user_version=1"));db.close();}QSqlDatabase::removeDatabase(connection);{HistoryStore store(path);QCOMPARE(store.error().code,QString("history_migration"));}{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("PRAGMA user_version"));QVERIFY(q.next());QCOMPARE(q.value(0).toInt(),1);QVERIFY(q.exec("SELECT id FROM history"));QVERIFY(q.next());QCOMPARE(q.value(0).toString(),QString("preserve"));db.close();}QSqlDatabase::removeDatabase(connection);}
+ // A read error partway through recovery's scan ends it like the last row (Qt's SQLite driver). Recovery must fail
+ // then, and apply nothing, so the resident retries it instead of running with unrecovered records (#1576).
+ void aReadErrorPartwayThroughRecoveryFailsIt() {
+  QTemporaryDir d;const auto path=d.filePath("history.sqlite");
+  {HistoryStore store(path);QVERIFY(!store.error());for(int n=0;n<200;++n){Operation op;op.id=QString("op-%1").arg(n,3,10,QChar('0'));op.restore(OperationState::Running);op.phase="uploading";op.settings=Settings::fromValidated(Settings::defaults());QVERIFY(!store.saveOperation(op));}}
+  QVERIFY(!QFile::exists(path+"-wal"));QVERIFY(corruptLastLeaf(path,"operations"));
+  HistoryStore reopened(path);QVERIFY(!reopened.error());Error error;const auto recovered=reopened.recover(&error);
+  QCOMPARE(error.code,QString("history_io"));QVERIFY(recovered.isEmpty());
+  // Nothing scanned before the error was applied.
+  QCOMPARE(reopened.operation("op-000").stateName(),QString("running"));
+ }
 };
 QTEST_GUILESS_MAIN(HistoryTest)
 #include "test_history.moc"
