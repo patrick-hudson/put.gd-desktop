@@ -34,8 +34,14 @@ The option stays because a run without it is unusable: on m74 a fuzzer seed fail
 The action fuzzer sets its own `TSAN_OPTIONS` (the same options, `halt_on_error=0`, and
 `log_path` under each seed's `san/`), so do not export them for it. A seed fails on any report
 except one on the known list (below). GCC's TSan makes the resident exit with status 66 when
-it reported anything. The fuzzer accepts that exit only when the seed has TSan report files and
-every report in them is on the known list; any other exit status still fails the seed.
+it reported anything, and also after a fatal error such as an allocator diagnostic. The fuzzer
+accepts exit 66 only when all of this holds:
+- the seed has TSan report files;
+- every report in them is on the known list;
+- no file in its `san/` holds a fatal sanitizer line (`ERROR: ThreadSanitizer`,
+  `ERROR: AddressSanitizer` and the like).
+
+Any other exit status still fails the seed.
 
 What is excused, and how:
 
@@ -197,25 +203,34 @@ trace folder as complete only when its `version` is a regular file and there is 
 
 **Stopping a loop, and what cleanup guarantees.** Both loops need a systemd user manager
 (`systemd-run --user --scope`) and refuse to start without one. Each seed of `race_loop.py`,
-its busy loops, and each recorded run of `rr_loop.py` runs in a transient user scope of its
-own, with a name unique to that job (`putgd-lab-*.scope`). Every process the job starts stays
+every one of its busy loops, and each recorded run of `rr_loop.py` runs in a transient user
+scope of its own, named `putgd-lab-<the loop's PID>-<job>-<random>.scope`. Each launch is
+checked: a scope that does not come up stops the run. Every process the job starts stays
 in that scope's cgroup, whatever session or parent it ends up with: rr's tracees, the
 resident's helpers, an orphan.
 
-- When a seed or run ends, however it ends, the loop stops its scope. Every process still in
-  it gets SIGTERM, then SIGKILL after the unit's stop timeout. The loop says how many were
-  left.
+- When a seed or run ends, however it ends, the loop stops its scope in a `finally` that
+  starts right after the launch. SIGINT and SIGTERM are held while the stop runs. Every process
+  still in the scope gets SIGTERM, then SIGKILL after the unit's stop timeout. The loop says how
+  many were still there. If `systemctl --user stop` fails, or the scope is still there
+  afterwards, the loop reports that and stops with status 2; it never calls that a stop.
 - Ctrl+C, or SIGTERM to the script alone, first lets the job finish properly:
   - `rr_loop.py` sends SIGTERM to its rr through the pidfd it holds, so rr can finish the
     trace, then stops the scope.
   - `race_loop.py` forwards the signal to the seed's process group, so the fuzzer stops its
-    resident and receiver, waits up to 300 s, then stops the seed's scope and the busy loops'
-    scope.
+    resident and receiver, waits up to 300 s, then stops the seed's scope and each busy
+    loop's scope.
 
   Both exit with 128 + the signal, and the seed or run that was stopped is kept.
 - The guarantee needs the loop itself to run its cleanup. If the loop is killed with
-  SIGKILL, its scopes keep running. Stop them by hand with
-  `systemctl --user stop 'putgd-lab-*.scope'`.
+  SIGKILL, its scopes keep running. Stop exactly that loop's scopes, never every
+  `putgd-lab-*` scope of the user (another loop may be running):
+
+  ```sh
+  pid=12345   # the loop that was killed (its scopes carry its PID)
+  systemctl --user list-units --all --no-legend "putgd-lab-$pid-*.scope"
+  systemctl --user stop "putgd-lab-$pid-*.scope"
+  ```
 
 **Replaying.** Let rr start GDB with your commands, so no server is left behind:
 
