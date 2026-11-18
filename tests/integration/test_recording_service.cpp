@@ -131,6 +131,16 @@ private slots:
   QCOMPARE(h.provider->uploads.load(),0);QCOMPARE(h.source.reads,0);
   QVERIFY(h.rec("capabilities").result["active"].isNull());
  }
+ // #1613: preview reports a cut as not kept and maps output time through the cuts.
+ void previewFollowsCuts(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  const auto cut=h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",1000000},{"end",9000000}},QJsonObject{{"op","addCut"},{"start",3000000},{"end",5000000}}}}});
+  QVERIFY2(!cut.error,qPrintable(cut.error.message));QCOMPARE(cut.result["retainedUs"].toDouble(),6000000.0);
+  const auto inside=h.rec("preview",{{"id",id},{"time",4000000}});QVERIFY(!inside.error);QVERIFY(!inside.result["retained"].toBool());QVERIFY(inside.result["outputTimeUs"].isNull());
+  const auto after=h.rec("preview",{{"id",id},{"time",6000000}});QVERIFY(!after.error);QVERIFY(after.result["retained"].toBool());QCOMPARE(after.result["outputTimeUs"].toDouble(),3000000.0);
+ }
  void cancelAndFailureNeverAdmitBytes(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   auto id=h.prepareReady();QVERIFY(!id.isEmpty());
@@ -194,7 +204,9 @@ private slots:
  void retryFromReviewRepeatsOnlyTheFailedUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
-  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  // Nothing failed yet: the resident refuses the window's request; nothing exports.
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_COMPARE_STEADY(h.backend->exports,0,200);
   h.backend->failExport=true;
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QCOMPARE(journal.operation(id).items.size(),0);
@@ -202,6 +214,271 @@ private slots:
   h.backend->sink({{"id",id},{"event","retryExportRequested"}});
   PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));
   QCOMPARE(h.backend->exports,2);QCOMPARE(journal.operation(id).items.size(),1);
+ }
+ // U1: every review-window proposal is answered by its number; a refused one
+ // carries its code, message and the revision it was proposed at, and a
+ // recording.review action whose own proposal was refused returns that refusal.
+ void windowProposalsAreAnsweredAndRefusalsReachAgents(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  const auto propose=[&](int revision,int proposal,const QJsonObject& command){h.backend->sink({{"id",id},{"event","edit"},{"revision",revision},{"proposal",proposal},{"commands",QJsonArray{command}}});};
+  propose(1,1,{{"op","addCut"},{"start",2000000},{"end",3000000}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QVERIFY(!h.backend->answers[0].contains("refused"));
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
+  propose(1,2,{{"op","resetTrim"}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
+  QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
+  QCOMPARE(h.backend->answers[1]["refused"].toObject()["code"].toString(),QString("recording_stale"));
+  QCOMPARE(h.backend->answers[1]["refused"].toObject()["revision"].toDouble(),1.0);
+  propose(2,3,{{"op","setTrim"},{"start",1000000},{"end",1000001}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),3);
+  const auto refused=h.backend->answers[2]["refused"].toObject();
+  QCOMPARE(refused["code"].toString(),QString("invalid_request"));QVERIFY(!refused["message"].toString().isEmpty());QCOMPARE(refused["revision"].toDouble(),2.0);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
+  // A recording.review action gets the outcome of its own proposals (U17): the
+  // action that made proposal 3 is refused although the window's latest refusal
+  // is proposal 4's, and the action that made proposal 5 succeeds although
+  // proposal 4 was refused.
+  propose(1,4,{{"op","resetTrim"}});
+  propose(2,5,{{"op","addCut"},{"start",5000000},{"end",6000000}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),5);
+  const QJsonObject latest{{"lastRefusal",QJsonObject{{"code","recording_stale"},{"message","later"},{"revision",1},{"proposal",4}}}};
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{3}}},latest};
+  const auto cut=h.rec("review",{{"id",id},{"action","cut"}});
+  QCOMPARE(cut.error.code,QString("invalid_request"));QCOMPARE(cut.error.message,refused["message"].toString());QCOMPARE(cut.error.details["proposal"].toDouble(),3.0);
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{5}}},latest};
+  const auto accepted=h.rec("review",{{"id",id},{"action","cut"}});
+  QVERIFY2(!accepted.error,qPrintable(accepted.error.message));QCOMPARE(accepted.result["proposals"].toArray(),(QJsonArray{5}));
+  // A proposal the resident never answered is not reported as applied.
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{9}}},QJsonObject{}};
+  QCOMPARE(h.rec("review",{{"id",id},{"action","cut"}}).error.code,QString("recording_state"));
+ }
+ // U3/U19/U27: recording.review retryExport asks the window's Try again guard
+ // first (its refusal, or a window that can't be asked, is the error), then
+ // replies with the resident's own answer to this request: the export-start
+ // state, or the resident's refusal.
+ void retryExportIsGuardedByTheWindowAndAnsweredByTheResident(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  // The window allows it, but nothing failed: the resident's refusal is the answer.
+  const auto nothing=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(nothing.error.code,QString("recording_state"));QCOMPARE(h.backend->exports,0);
+  QVERIFY(h.backend->lastControlParams["residentRetries"].toBool());
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  h.backend->reviewReplies={QJsonObject{{"error",QJsonObject{{"code","recording_state"},{"message","Place or cancel the cover first"}}}}};
+  const auto placing=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(placing.error.code,QString("recording_state"));QCOMPARE(placing.error.message,QString("Place or cancel the cover first"));
+  h.backend->reviewReplies={QJsonObject{{"error",QJsonObject{{"code","recording_state"},{"message","The review window is not open"}}}}};
+  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  QCOMPARE(h.backend->exports,1);
+  // Allowed: the export starts and the reply is its start state, as before the redesign.
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QVERIFY2(!retried.error,qPrintable(retried.error.message));
+  QCOMPARE(retried.result["lastExport"].toObject()["command"].toString(),QString("upload"));
+  QCOMPARE(retried.result["recordingId"].toString(),id);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+ }
+ // U28: an action's proposal outcomes are read when its reply arrives, so 128
+ // newer proposals answered before the follow-up inspect can't make a committed
+ // edit look unanswered.
+ void anActionsOutcomesSurviveNewerProposals(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{1}}},QJsonObject{}};
+  h.backend->reviewHooks={{},[&]{for(int n=2;n<=140;++n)h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",n},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});}};
+  const auto cut=h.rec("review",{{"id",id},{"action","cut"}});
+  QVERIFY2(!cut.error,qPrintable(cut.error.code+": "+cut.error.message));
+  QCOMPARE(cut.result["edit"].toObject()["revision"].toDouble(),2.0);
+ }
+ // The upload rule, checked again in the resident: an upload at a revision
+ // that isn't the current one, or while an export runs, is refused with the
+ // reason (the window reopens with it) and never exported.
+ void anUploadOnlyExportsItsOwnRevision(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}}).error);
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",1}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("nothing was uploaded"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));  // U35: no Try again
+  QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));
+  // During an export (a copy being saved), an upload is refused out loud.
+  h.backend->deferExports=true;
+  QVERIFY(!h.rec("saveCopy",{{"id",id},{"path",h.dir.filePath("copy.mp4")}}).error);
+  QCOMPARE(h.state(id),QString("exporting"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Another export is running"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  // U34: a proposal answered during the export reaches the window once review resumes.
+  const auto before=h.backend->answers.size();
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",2},{"proposal",7},{"commands",QJsonArray{QJsonObject{{"op","resetTrim"}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),before,200);
+  QCOMPARE(h.backend->exports,1);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(h.backend->exports,1);
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),before+1);
+  QCOMPARE(h.backend->answers.last()["proposal"].toDouble(),7.0);
+  QCOMPARE(h.backend->answers.last()["refused"].toObject()["code"].toString(),QString("recording_state"));
+ }
+ // U31: Try again after a failed Upload retries that Upload's revision; once
+ // the edit changed it is refused (press Upload), never uploaded at the new one.
+ void retryKeepsTheFailedUploadsRevision(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}}).error);
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retried.error.code,QString("recording_stale"));QVERIFY(retried.error.message.contains("Press Upload"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Press Upload"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,1);
+ }
+ // U32: the upload carries the output the window shows; any other is refused.
+ // Pushes name the window's latest output choice the resident applied.
+ void anUploadMustCarryTheShownOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",3},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->lastPush["configSeq"].toDouble(),3.0);
+  h.backend->log.clear();
+  auto mp4=h.rec("inspect",{{"id",id}}).result["config"].toObject();mp4["format"]="mp4";mp4["codec"]="h264";
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",mp4}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("format or sound changed"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,0);
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",2},{"config",h.rec("inspect",{{"id",id}}).result["config"]}});
+  PUTGD_TRY_COMPARE(h.backend->exports,1);
+ }
+ // D16: the review's Format menu can leave captured sound out of the export,
+ // but never adds a source that wasn't captured.
+ void reviewAudioChoiceNeverExceedsTheCapture(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",true}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  const auto audio=[&]{return h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject();};
+  QVERIFY(audio()["system"].toBool()&&audio()["microphone"].toBool());
+  const auto choose=[&](bool system,bool microphone){h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"audio",QJsonObject{{"system",system},{"microphone",microphone}}}}}});};
+  choose(false,false);
+  PUTGD_TRY_VERIFY(!audio()["system"].toBool()&&!audio()["microphone"].toBool());
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,1);
+  QVERIFY(!h.backend->lastConfig.audio.system);QVERIFY(!h.backend->lastConfig.audio.microphone);
+ }
+ void reviewAudioChoiceKeepsOnlyCapturedSources(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","webm"},{"codec","vp9"},{"audio",QJsonObject{{"system",true},{"microphone",true}}}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  const auto audio=h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject();
+  QVERIFY(audio["system"].toBool());QVERIFY(!audio["microphone"].toBool());
+ }
+ // U42: a format choice made while an export runs is applied when review
+ // resumes, and the next push names it, so window and resident agree.
+ void aChoiceMadeDuringAnExportIsApplied(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);QCOMPARE(h.state(id),QString("exporting"));
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",4},{"config",QJsonObject{{"format","webm"},{"codec","vp9"}}}});
+  putgd::test::settle(50);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["format"].toString(),QString("webm"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QCOMPARE(h.backend->lastPush["configSeq"].toDouble(),4.0);
+ }
+ // U43: past the export's deadline the helper still exports and takes no edit:
+ // answers wait until its late result, not until the resident's timeout.
+ void answersWaitForTheHelperToLeaveItsExport(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  putgd::test::settle(50);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",2},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",5000000},{"end",6000000}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),0,200);
+  h.backend->sink({{"id",id},{"event","lateResult"},{"command","export"},{"ok",true}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),2);
+  QCOMPARE(h.backend->answers[0]["proposal"].toDouble(),1.0);QCOMPARE(h.backend->answers[1]["proposal"].toDouble(),2.0);
+ }
+ // V2: past an export's deadline the helper still exports: a second Upload or
+ // Save a copy is refused (recording_state) until its late result, so nothing is
+ // sent to the busy helper and the held answers stay held.
+ void noSecondExportWhileTheFirstIsFinishing(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->deferExports=true;h.backend->failExport=true;h.backend->failExportCode="recording_helper_timeout";
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);
+  h.backend->pendingExports.takeFirst()();
+  PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;h.backend->deferExports=false;
+  const auto again=h.rec("upload",{{"id",id},{"revision",1}});
+  QCOMPARE(again.error.code,QString("recording_state"));QVERIFY(again.error.message.contains("still finishing"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","saveCopyRequested"},{"revision",1},{"path",h.dir.filePath("copy.mp4")}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("still finishing"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  h.backend->sink({{"id",id},{"event","edit"},{"revision",1},{"proposal",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}});
+  PUTGD_COMPARE_STEADY(h.backend->answers.size(),0,200);
+  QCOMPARE(h.backend->exports,1);
+  h.backend->sink({{"id",id},{"event","lateResult"},{"command","export"},{"ok",false}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),1);
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",2}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+ }
+ // D32: Try again exports exactly the output of the failed press; once the
+ // output changed it is refused (press Upload again), never exported with either.
+ void retryExportsTheFailedRequestsOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  const auto failed=h.backend->lastConfig;
+  QVERIFY(failed.audio.system);
+  h.backend->failExport=false;
+  // Unchanged: the retry exports with the failed request's output.
+  QVERIFY(!h.rec("review",{{"id",id},{"action","retryExport"}}).error);
+  PUTGD_TRY_COMPARE(h.backend->exports,2);
+  QCOMPARE(h.backend->lastConfig.toJson(),failed.toJson());
+ }
+ void retryRefusesAChangedOutput(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  h.backend->stopAudioSources={{"system",true},{"microphone",false}};
+  const auto id=h.prepareReady({{"audio",QJsonObject{{"system",true}}}});QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
+  h.backend->failExport=true;
+  QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;
+  h.backend->sink({{"id",id},{"event","configChanged"},{"seq",1},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}}});
+  PUTGD_TRY_VERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool());
+  const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(retried.error.code,QString("recording_config"));QVERIFY(retried.error.message.contains("Press Upload"));
+  h.backend->log.clear();
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
+  QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QCOMPARE(h.backend->exports,1);
  }
  void lateStopReplyPreservesEditedPendingExport_data(){
   QTest::addColumn<QString>("command");QTest::addColumn<bool>("failedReply");

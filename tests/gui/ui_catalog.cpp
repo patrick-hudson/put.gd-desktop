@@ -82,6 +82,7 @@
 #include <QWindow>
 #ifdef PUTGD_CATALOG_REVIEW
 #include "record/ReviewWindow.h"
+#include "record/FilmstripTimeline.h"
 #include "fixtures/ReviewLayout.h"
 #include "ui/RegionOverlay.h"
 #include "ui/CountdownPill.h"
@@ -247,7 +248,7 @@ private:
 };
 QImage iconSpecimen(){
  const auto& theme=Theme::current();const auto& tints=Theme::trayTints(Theme::scheme()==Theme::Scheme::Light);
- const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","redact","blur","crop","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
+ const QStringList names{"region","window","desktop","record","alert","clipboard","copy","save","history","destinations","settings","preferences","info","shortcuts","images","bucket","proton","add","upload","download","failed-uploads","edit","stop","select","cut","redact","blur","crop","copy-text","qr-code","annotate-arrow","rectangle","highlight","chevron-down","text","undo","redo","refresh","zoom-fit","zoom-actual","back","forward","up","folder-new","view-list","view-detail","play","pause","trim-in","trim-out","trim-reset","mask-in","mask-out","remove","file","video"};
  const int rows=(names.size()+7)/8,identityY=64+rows*94;
  QImage image(1280,identityY+340,QImage::Format_RGB32);image.fill(theme.bg);QPainter p(&image);p.setPen(theme.text);p.setFont(Ui::font(Ui::Type::body));
  p.drawText(24,28,"Outline family · 40 px reference + actual 16 px and 20 px (text-scaled) · production renderer");
@@ -890,60 +891,40 @@ int main(int argc,char** argv){
   if(!waitUntil([&]{return recover.settings()->saveViewState()["setupJobs"].toArray().isEmpty()&&recover.findChild<QLabel*>("settingsStatus")->property("errorCode").toString()=="synthetic_cancelled";}))return 2;
   recover.navigate("settings");recover.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);QFile::remove(config.path());recover.findChild<QPushButton*>("openConfigEditor")->click();auto* scroll=qobject_cast<QScrollArea*>(recover.findChild<QTabWidget*>("settingsTabs")->currentWidget());if(!waitUntil([&]{return recover.findChild<QLabel*>("settingsStatus")->property("errorCode").toString()=="config_missing"&&!recover.findChild<QLabel*>("configEditorFailure")->isHidden();}))return 2;scroll->ensureWidgetVisible(recover.findChild<QLabel*>("configEditorFailure"));if(!steadyGrab(recover).save(QDir(output).filePath("settings-config-editor-failure.png")))return 2;captures.append(QJsonObject{{"file","settings-config-editor-failure.png"},{"width",recover.width()},{"height",recover.height()}});
  }
- // The private review and the ready control bar, over a synthetic frame.
-  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
+ // #1613: the private review in the mock's four states (open; editing with a
+ // trim, a cut and two covers; compact 1100×700 with the Edits overlay open on
+ // a selected cut; the light theme), over a synthetic frame and synthetic
+ // filmstrip tiles (no clip exists here), and the ready control bar.
+  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.availableSize=record::ReviewWindow::defaultSize();o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
   RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;config.audio.system=true;o.audioRecorded=true;
   // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","3600000");
   record::ReviewWindow review(o,config);review.resize(record::ReviewWindow::defaultSize());review.show();
-  if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
-  RecordingEdit edit;edit.revision=1;RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8000000;solid.end=21000000;RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(337,194,256,130);blur.start=3000000;blur.end=12000000;edit.masks={solid,blur};edit.trimStart=2000000;edit.trimEnd=29000000;review.setEdit(edit);
-  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty())view->setFrame(syntheticCapture(2),qint64(r->inspect()["playheadUs"].toDouble()));putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=steadyGrab(w);if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name)||!writeInventory(output,name,w))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
-  // Each review state also keeps the window's own geometry (header, frame share).
+  QList<QImage> tileImages;for(int i=0;i<8;++i)tileImages.append(syntheticCapture(i).scaled(128,80,Qt::KeepAspectRatioByExpanding,Qt::SmoothTransformation));
+  if(auto* strip=review.findChild<record::FilmstripTimeline*>())strip->setTileSource([&tileImages](qint64 at){return tileImages.value(int(at/4000000)%8);});
+  // The frame the resident would decode: the synthetic picture with the covers active at that time.
+  RecordingEdit shown;
+  auto frameAt=[&](qint64 at){auto image=syntheticCapture(2);QPainter p(&image);for(const auto& m:shown.masks){if(!(m.start<=at&&at<m.end))continue;if(m.kind=="solid")p.fillRect(m.rect,Qt::black);else p.drawImage(m.rect,image.copy(m.rect).scaled(std::max(1,m.rect.width()/12),std::max(1,m.rect.height()/12)).scaled(m.rect.size(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation));}return image;};
+  auto shot=[&](QWidget& w,const QString& name){if(auto* r=qobject_cast<record::ReviewWindow*>(&w))if(auto* view=r->findChild<record::FrameView*>();view&&view->previewError().isEmpty()){const auto at=qint64(r->inspect()["playheadUs"].toDouble());view->setFrame(frameAt(at),at);}putgd::test::settle(450);app.processEvents();if(auto* r=qobject_cast<record::ReviewWindow*>(&w)){const auto problem=putgd::test::reviewFooterProblem(*r);if(!problem.isEmpty()){qCritical()<<name<<problem;w.grab().save(QDir(output).filePath(name+"-failed.png"));return false;}}if(!checkSteppers(w))return false;const auto image=steadyGrab(w);if(!image.save(QDir(output).filePath(name+".png")))return false;if(!native.step(w,name)||!writeInventory(output,name,w))return false;captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});return true;};
+  // Each review state also keeps the window's own state (inspect).
   auto inspected=[&](record::ReviewWindow& r,const QString& name){QSaveFile f(QDir(output).filePath(name+".json"));return f.open(QIODevice::WriteOnly)&&f.write(QJsonDocument(r.inspect()).toJson())>0&&f.commit();};
-  review.drive({{"action","selectMask"},{"maskId","m-solid"}});
   if(!shot(review,"30-review")||!inspected(review,"30-review"))return 2;
-  review.drive({{"action","seek"},{"time",1000000}});if(!shot(review,"30a-review-mask-inactive")||!inspected(review,"30a-review-mask-inactive"))return 2;
-  review.drive({{"action","seek"},{"time",25000000}});if(!shot(review,"30b-review-mask-ended")||!inspected(review,"30b-review-mask-ended"))return 2;
-  review.drive({{"action","seek"},{"time",10000000}});
-  review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31-review-blur-selected")||!inspected(review,"31-review-blur-selected"))return 2;
-  review.drive({{"action","addMask"},{"kind","blur"}});if(!shot(review,"31j-review-add-blur-warning")||!inspected(review,"31j-review-add-blur-warning"))return 2;
-  review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31k-review-disabled-blur-warning")||!inspected(review,"31k-review-disabled-blur-warning"))return 2;review.drive({{"action","selectMask"},{"maskId","m-blur"}});review.drive({{"action","dismissBlurTip"}});
-  {review.drive({{"action","showMaskOptions"}});if(!shot(*review.findChild<QMenu*>("maskOptionsMenu"),"31i-review-mask-options"))return 2;review.drive({{"action","closeMaskOptions"}});}
-  {const auto size=review.size();review.resize(1060,size.height());if(!shot(review,"31b-review-strength-1060"))return 2;review.resize(size);}
-  {const auto size=review.size();review.resize(1342,size.height());if(!shot(review,"31m-review-header-wide")||!inspected(review,"31m-review-header-wide"))return 2;review.resize(size);}
-  {auto many=edit;for(int i=2;i<8;++i){auto mask=solid;mask.id=QStringLiteral("m-extra-%1").arg(i);many.masks.append(mask);}review.setEdit(many);review.drive({{"action","selectMask"},{"maskId","m-solid"}});if(!shot(review,"31c-review-many-lanes")||!inspected(review,"31c-review-many-lanes"))return 2;review.setEdit(edit);review.drive({{"action","selectMask"},{"maskId","m-blur"}});}
-  for(int i=0;i<3;++i){review.resize(review.minimumSizeHint());putgd::test::settle(40);}if(!shot(review,"32-review-minimum")||!inspected(review,"32-review-minimum"))return 2;
-  {QEvent inactive(QEvent::WindowDeactivate);QApplication::sendEvent(&review,&inactive);if(!shot(review,"settings-review-inactive-header"))return 2;QEvent active(QEvent::WindowActivate);QApplication::sendEvent(&review,&active);}
-  review.drive({{"action","selectMask"},{"maskId",QJsonValue(QJsonValue::Null)}});review.drive({{"action","dismissBlurTip"}});
-  if(!shot(review,"32a-review-minimum-no-selection")||!inspected(review,"32a-review-minimum-no-selection"))return 2;
-  review.resize(record::ReviewWindow::defaultSize());
-  // Keyboard mask editing: the frame focused by Tab, the selected cover's ring.
-  review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.activateWindow();putgd::test::waitForWindowActive(&review);if(auto* view=review.findChild<record::FrameView*>())view->setFocus(Qt::TabFocusReason);if(!shot(review,"38-review-keyboard-mask")||!inspected(review,"38-review-keyboard-mask"))return 2;
-  // An export failure and a codec warning, each with its actions, in the status row.
-  review.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});review.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");if(!shot(review,"39-review-status-errors")||!inspected(review,"39-review-status-errors"))return 2;
-  {
-   auto constrainedOptions=o;constrainedOptions.availableSize=QSize(1366,680);
-   record::ReviewWindow constrained(constrainedOptions,config);constrained.setEdit(edit);constrained.show();
-   constrained.drive({{"action","selectMask"},{"maskId","m-blur"}});constrained.drive({{"action","format"},{"format","mp4"},{"codec","h265"}});
-   constrained.showError("Export failed: the encoder stopped after 412 frames because the disk holding the private recording is full; free some space and try again");
-   if(auto* view=constrained.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);
-   if(!shot(constrained,"67-review-680-workspace")||!inspected(constrained,"67-review-680-workspace"))return 2;
-   {auto* destination=constrained.findChild<QToolButton*>("uploadDestinationMenu");destination->menu()->popup(destination->mapToGlobal(QPoint(0,destination->height())));putgd::test::settle(100);if(!shot(*destination->menu(),"review-destination-full-text"))return 2;destination->menu()->close();}
-   constrained.drive({{"action","showAdvice"}});if(auto* dialog=constrained.findChild<QWidget*>("reviewAdvice")){if(!shot(*dialog,"68-review-error-details"))return 2;}else return 2;
-  }
-  {auto* add=review.findChild<QToolButton*>("addMask");add->menu()->popup(add->mapToGlobal(QPoint(0,add->height())));putgd::test::settle(100);if(!shot(*add->menu(),"31d-review-add-mask-menu"))return 2;add->menu()->close();}
-  {QComboBox* formats=nullptr;for(auto* combo:review.findChildren<QComboBox*>())if(combo->accessibleName()=="Output format")formats=combo;if(!formats)return 2;formats->showPopup();putgd::test::settle(100);if(!shot(*formats->view()->window(),"31e-review-format-menu"))return 2;formats->hidePopup();}
-  review.drive({{"action","dismissStatus"}});review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});
-  review.drive({{"action","format"},{"format","gif"}});if(!shot(review,"31f-review-gif-audio")||!inspected(review,"31f-review-gif-audio"))return 2;
-  review.drive({{"action","format"},{"format","mp4"},{"codec","h264"}});if(!shot(review,"31g-review-restored-audio")||!inspected(review,"31g-review-restored-audio"))return 2;
-  {auto silentOptions=o;silentOptions.audioRecorded=false;record::ReviewWindow silent(silentOptions,config);silent.show();if(!shot(silent,"31h-review-no-audio")||!inspected(silent,"31h-review-no-audio"))return 2;}
-  // A refresh that fails (there is no clip): the earlier frame is dimmed and named.
-  review.drive({{"action","seek"},{"time",16000000}});review.drive({{"action","retryPreview"}});if(!shot(review,"40-review-preview-error")||!inspected(review,"40-review-preview-error"))return 2;
-  if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);
-  review.setSavedCopy("/tmp/product-walkthrough.mp4",edit.revision,config);if(!shot(review,"49-review-saved-copy")||!inspected(review,"49-review-saved-copy"))return 2;
-  auto later=edit;later.revision++;review.setEdit(later);if(auto* view=review.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),16000000);if(!shot(review,"50-review-earlier-copy")||!inspected(review,"50-review-earlier-copy"))return 2;
-  review.drive({{"action","dismissSavedCopy"}});
+  RecordingEdit edit;edit.revision=2;edit.canUndo=true;edit.trimStart=2600000;edit.trimEnd=29400000;edit.cuts={RecordingCut{"c-wait",13000000,19500000}};
+  RecordingMask solid;solid.id="m-solid";solid.kind="solid";solid.rect=QRect(61,194,256,40);solid.start=8200000;solid.end=12600000;
+  RecordingMask blur=solid;blur.id="m-blur";blur.kind="blur";blur.rect=QRect(613,194,256,130);blur.start=22100000;blur.end=24900000;
+  edit.masks={solid,blur};shown=edit;review.setEdit(edit);
+  review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.drive({{"action","seek"},{"time",10400000}});
+  if(!shot(review,"31-review-edit")||!inspected(review,"31-review-edit"))return 2;
+  // The edit picture's insets: placing a redaction over a time selection, and Blur's warning.
+  {auto* strip=review.findChild<record::FilmstripTimeline*>();emit strip->timeSelected(8200000,12600000);QTest::keyClick(&review,Qt::Key_X);
+   if(!shot(review,"31a-review-placing")||!inspected(review,"31a-review-placing"))return 2;QTest::keyClick(&review,Qt::Key_Escape);
+   review.drive({{"action","selectMask"},{"maskId","m-blur"}});if(!shot(review,"31b-review-blur-selected")||!inspected(review,"31b-review-blur-selected"))return 2;}
+  {auto* strip=review.findChild<record::FilmstripTimeline*>();review.resize(1100,700);putgd::test::settle(100);emit strip->cutSelected("c-wait");review.drive({{"action","seek"},{"time",19500000}});
+   auto* toggle=review.findChild<QToolButton*>("editsToggle");if(!toggle||!toggle->isVisible())return 2;toggle->click();
+   if(!shot(review,"32-review-compact")||!inspected(review,"32-review-compact"))return 2;
+   toggle->click();review.resize(record::ReviewWindow::defaultSize());}
+  {const auto scheme=Theme::scheme();Theme::setScheme(Theme::Scheme::Light);review.drive({{"action","selectMask"},{"maskId","m-solid"}});review.drive({{"action","seek"},{"time",10400000}});
+   const bool ok=shot(review,"33-review-light")&&inspected(review,"33-review-light");Theme::setScheme(scheme);if(!ok)return 2;}
   // Discard… asks first; the dialog alone, as the desktop shows it over the review.
   review.drive({{"action","discard"}});if(auto* box=review.findChild<QMessageBox*>("confirmAction")){if(!shot(*box,"41-review-discard-confirm"))return 2;}else return 2;review.drive({{"action","keepReviewing"}});
   qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
@@ -995,17 +976,6 @@ int main(int argc,char** argv){
    auto none=bar;none.microphoneUnavailable="No microphone is connected.";
    record::ControlBar absent(none,narrated);absent.fitTo(QRect(0,0,1366,768));absent.show();if(!shot(absent,"72d-record-ready-no-microphone"))return 2;absent.hide();
   }
-  qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","60000");
-  record::ReviewWindow::Options privateOptions=o;privateOptions.destination="Proton Drive";privateOptions.sharingMode="private";privateOptions.uploadSummary="Private upload to Proton Drive";
-  record::ReviewWindow privateReview(privateOptions,config);privateReview.show();if(auto* view=privateReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);if(!shot(privateReview,"43-review-private-destination")||!inspected(privateReview,"43-review-private-destination"))return 2;privateReview.hide();
-  {auto longOptions=o;longOptions.destination="Project archive for customer support in the European Union";longOptions.uploadSummary="Upload to "+longOptions.destination+" · Shared link";record::ReviewWindow longReview(longOptions,config);longReview.setEdit(edit);longReview.show();if(auto* view=longReview.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),12000000);if(!shot(longReview,"43a-review-long-destination")||!inspected(longReview,"43a-review-long-destination"))return 2;longReview.resize(1342,longReview.height());if(!shot(longReview,"43b-review-long-destination-header")||!inspected(longReview,"43b-review-long-destination-header"))return 2;longReview.hide();}
-  record::ReviewWindow crowded(o,config);RecordingEdit many;many.revision=1;
-  for(int i=0;i<8;++i){auto m=solid;m.id=QString("lane-%1").arg(i);m.start=1000000;m.end=29000000;many.masks.append(m);}
-  crowded.setEdit(many);crowded.show();if(auto* view=crowded.findChild<record::FrameView*>())view->setFrame(syntheticCapture(2),0);
-  if(!shot(crowded,"48-review-many-masks")||!inspected(crowded,"48-review-many-masks"))return 2;
-  crowded.drive({{"action","selectMask"},{"maskId","lane-0"}});crowded.drive({{"action","nextMaskLanes"}});
-  if(!shot(crowded,"48a-review-next-mask-lanes")||!inspected(crowded,"48a-review-next-mask-lanes"))return 2;
-  crowded.hide();qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
   // Pin each reference's hint phase: initial for entire-display/keyboard,
   // expired for the later drag. Rendering speed must not choose those pixels.
   RegionHintFade::setElapsedForTesting(0);

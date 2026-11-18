@@ -87,6 +87,40 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
                 checked += 1
         self.assertGreater(checked, 30)
 
+    async def test_review_controls_forward_their_fields(self):
+        # #1613: each new review control reaches recording.review with the fields the window
+        # reads, and a missing or out-of-range field never reaches the resident.
+        from unittest.mock import AsyncMock
+        adapter = CliAdapter('/does/not/exist')
+        adapter.call = AsyncMock(return_value={'ok': True})
+        server = create_server(adapter)
+        for args, params in [
+            ({'action': 'selectRange', 'start_us': 1, 'end_us': 5}, {'action': 'selectRange', 'start': 1, 'end': 5}),
+            ({'action': 'adjustCut', 'cut_id': 'c1', 'start_us': 0, 'end_us': 9}, {'action': 'adjustCut', 'cutId': 'c1', 'start': 0, 'end': 9}),
+            ({'action': 'selectEdit', 'kind': 'cover', 'edit_id': 'm1'}, {'action': 'selectEdit', 'kind': 'cover', 'editId': 'm1'}),
+            ({'action': 'selectEdit', 'kind': 'trim'}, {'action': 'selectEdit', 'kind': 'trim'}),
+            ({'action': 'setTrim', 'start_us': 3}, {'action': 'setTrim', 'start': 3, 'end': None}),
+            ({'action': 'setCoverEdgeToPlayhead', 'edge': 'end'}, {'action': 'setCoverEdgeToPlayhead', 'edge': 'end'}),
+            ({'action': 'viewerPan', 'dx': 4.5, 'dy': -2}, {'action': 'viewerPan', 'dx': 4.5, 'dy': -2}),
+            ({'action': 'timelineZoom', 'level': 4}, {'action': 'timelineZoom', 'level': 4}),
+            ({'action': 'frameStep', 'delta': -1}, {'action': 'frameStep', 'delta': -1}),
+            ({'action': 'skim', 'time_us': 7}, {'action': 'skim', 'time': 7}),
+            ({'action': 'panel', 'panel_open': True}, {'action': 'panel', 'open': True}),
+            ({'action': 'resize', 'width': 1000, 'height': 680}, {'action': 'resize', 'width': 1000, 'height': 680}),
+            ({'action': 'undo'}, {'action': 'undo'}),
+        ]:
+            adapter.call.reset_mock()
+            result = await server.call_tool('drive_recording_review', {'id': 'r', **args})
+            adapter.call.assert_awaited_once_with('recording.review', {'id': 'r', **params})
+        for args in [{'action': 'selectRange', 'start_us': 1}, {'action': 'selectEdit', 'kind': 'cover'}, {'action': 'timelineZoom', 'level': 3},
+                     {'action': 'frameStep', 'delta': 2}, {'action': 'viewerZoom', 'mode': 'big'}, {'action': 'panel'}, {'action': 'resize', 'width': 10, 'height': 900},
+                     {'action': 'adjustCut', 'cut_id': 'c1', 'start_us': 0}, {'action': 'cut', 'edge': 'middle'}]:
+            adapter.call.reset_mock()
+            result = await server.call_tool('drive_recording_review', {'id': 'r', **args})
+            envelope = result.structured_content or json.loads(result.content[0].text)
+            self.assertEqual(envelope['error']['code'], 'invalid_request', args)
+            adapter.call.assert_not_awaited()
+
     async def test_schema_rejects_coercion_before_calling_adapter(self):
         from unittest.mock import AsyncMock
         adapter = CliAdapter('/does/not/exist')

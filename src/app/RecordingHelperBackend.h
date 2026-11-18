@@ -26,7 +26,7 @@ public:
     void control(const QString& id, const QString& command, const QJsonObject& params, Reply) override;
     void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) override;
     void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) override;
-    void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) override;
+    void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits, const QJsonObject& answer = {}) override;
     void discard(const QString& id) override { helper_.discard(id); }
     qint64 processId(const QString& id) const override { return helper_.processId(id); }
     QJsonObject diagnostics() const { return helper_.diagnostics(); }

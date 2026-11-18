@@ -1,4 +1,5 @@
 #pragma once
+#include "core/KeptSpans.h"
 #include "core/RecordingModel.h"
 #include "MaskNames.h"
 #include <QImage>
@@ -11,33 +12,47 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 
 class QAction;
-class QComboBox;
+class QActionGroup;
 class QHBoxLayout;
 class QLabel;
+class QMenu;
 class QMessageBox;
 class QPushButton;
 class QVBoxLayout;
-class QShortcut;
-class QSpinBox;
-class QScrollBar;
 class QThread;
 class QToolButton;
 namespace putgd { class FileDialog; }
-namespace putgd::Ui { class ElidedLabel; class WindowHeader; }
+namespace putgd::Ui { class WindowHeader; }
 
 namespace putgd::record {
-// Paints the preview frame scaled to fit and lets the user create, select,
-// move and resize mask rectangles in canvas pixels, with the pointer or, with
-// focus, the keyboard: arrows move the selected mask, Shift+arrows resize it
-// (1 px steps, 10 px with Ctrl), Escape clears the selection.
+class EditsOverlay;
+class Filmstrip;
+class FilmstripTimeline;
+class FrameSkimmer;
+class ReviewPanel;
+class ViewerBanner;
+
+// Paints the frame at the playhead (or the skim position) scaled to fit, or at
+// 100 % (one source pixel per device pixel) with drag and arrow panning, and
+// lets the user draw a cover's box, select a cover and move or resize it, in
+// canvas pixels, with the pointer or, with focus, the keyboard: arrows move
+// the selected cover, Shift+arrows resize it (1 px steps, 10 px with Ctrl).
+// Nothing is written over the picture: guidance lives in the window's
+// banners above it.
 class FrameView final : public QWidget {
     Q_OBJECT
 public:
     explicit FrameView(QWidget* parent = nullptr, std::shared_ptr<MaskNames> names = {});
-    // A decoded frame; it also clears a preview error.
+    // A decoded frame; it also clears a preview error and any skim image.
     void setFrame(const QImage&, qint64 timeUs);
+    // #1613: the skimmer's picture (a tile, then the exact frame) shown in
+    // place of the playhead frame until clearSkim(); the frame stays.
+    void setSkim(const QImage&, qint64 timeUs);
+    void clearSkim();
+    bool skimming() const { return !skim_.isNull(); }
     // A failed refresh: the message over the frame with Retry preview, and a
     // frame still shown dimmed and marked as an earlier one. Empty clears it.
     void setPreviewError(const QString& message);
@@ -45,28 +60,47 @@ public:
     bool stale() const { return !error_.isEmpty() && !frame_.isNull(); }
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
+    QSize frameSize() const { return frame_.size(); }
+    QSize skimSize() const { return skim_.size(); }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
-    void armCreate(const QString& kind) { armed_ = kind; setCursor(Qt::CrossCursor); announce(); update(); }
-    void disarm() { armed_.clear(); unsetCursor(); announce(); update(); }
+    void armCreate(const QString& kind);
+    void disarm();
     const QString& armed() const { return armed_; }
     // Where the frame is drawn, in this widget's coordinates.
     QRect imageRect() const;
     void setPlaying(bool playing) { playing_ = playing; update(); }
     bool playing() const { return playing_; }
-    void setOutsideKeptPart(bool outside) { if (outsideKeptPart_ == outside) return; outsideKeptPart_ = outside; announce(); update(); }
-    bool outsideKeptPart() const { return outsideKeptPart_; }
-    // The mask Enter places: centred, half the frame's width and height.
+    // #1613: the picture's zoom: Fit, or 100 % of the source's pixels.
+    void setActualSize(bool actual);
+    bool actualSize() const { return actual_; }
+    int zoomPercent() const;
+    // #1613: pans a picture at 100 % by source pixels (the arrow keys and
+    // recording.review viewerPan); the pan clamps so the picture stays in view.
+    void panBy(const QPointF& sourcePixels);
+    QPointF pan() const { return pan_; }
+    // #1613: the width an overlay covers at the right; the picture fits the
+    // rest, left-aligned, so nothing plays under it.
+    void setRightInset(int px);
+    int rightInset() const { return rightInset_; }
+    // The cover box Enter places: centred, half the frame's width and height.
     QRect defaultMaskRect() const;
     // Proposes a keyboard nudge that is still waiting for the keys to stop.
     void commitNudge();
+    // Drops a nudge not yet proposed: the cover goes back to where it was.
+    void cancelNudge();
+    bool nudging() const { return nudging_; }
+    // A pointer drag (draw, move, resize or pan) is in progress.
+    bool dragging() const { return drag_ != Drag::None; }
     QSize sizeHint() const override { return {640, 360}; }
 signals:
     void maskCreated(const QString& kind, const QRect& rect);
     void maskMoved(const QString& id, const QRect& rect);
     void maskSelected(const QString& id);
     void retryRequested();
+    void zoomChanged();
 protected:
+    bool event(QEvent*) override;
     void paintEvent(QPaintEvent*) override;
     void mousePressEvent(QMouseEvent*) override;
     void mouseMoveEvent(QMouseEvent*) override;
@@ -80,18 +114,22 @@ private:
     QPointF toCanvas(const QPointF&) const;
     QRectF toView(const QRect&) const;
     QRect bounds() const;
+    QSize source() const;
+    QRect area() const;
+    void clampPan();
     void placeErrorCard();
     void announce();
-    QImage frame_;
-    qint64 timeUs_ = 0;
-    bool outsideKeptPart_ = false;
+    QImage frame_, skim_;
+    qint64 timeUs_ = 0, skimUs_ = 0;
     QSize canvas_;
     QList<RecordingMask> masks_;
     std::shared_ptr<MaskNames> maskNames_;
     QString selected_, hovered_, armed_, error_;
-    bool playing_ = false;
-    enum class Drag { None, Create, Move, Resize } drag_ = Drag::None;
-    QPointF anchor_, current_;
+    bool playing_ = false, actual_ = false;
+    int rightInset_ = 0;
+    QPointF pan_;  // at 100 %: the source point at the area's centre, minus the source centre
+    enum class Drag { None, Create, Move, Resize, Pan } drag_ = Drag::None;
+    QPointF anchor_, current_, panFrom_;
     QRect original_;
     // Keyboard nudges show at once and are proposed as one edit once the keys
     // stop, so a held arrow never races the resident's revisions.
@@ -103,86 +141,16 @@ private:
     QPushButton* retry_ = nullptr;
 };
 
-// #283: the one timeline under the frame. The track is the whole clip with the
-// retained interval between two trim handles; each mask's time span is a bar
-// in a lane below it. Dragging the track scrubs, dragging a handle or a
-// selected mask's edge retimes it, and a click on a bar selects that mask.
-// It only shows and proposes: the window turns its signals into edits.
-class ReviewTimeline final : public QWidget {
-    Q_OBJECT
-public:
-    explicit ReviewTimeline(QWidget* parent = nullptr, std::shared_ptr<MaskNames> names = {});
-    void setDuration(qint64 us);
-    void setTrim(qint64 start, qint64 end);
-    void setMasks(const QList<RecordingMask>& masks, const QString& selected, bool reveal = false);
-    void setPlayhead(qint64 us);
-    void showMoreMasks();
-    void showPreviousMasks();
-    int firstLane() const;
-    QString laneSummary() const;
-    void setLaneHeader(QWidget* header);
-    qint64 playhead() const { return playhead_; }
-    qint64 duration() const { return duration_; }
-    // Concurrent masks always have distinct lanes; two are visible at a time.
-    int lanes() const { return lanes_; }
-    // The lane header leaves the bars and ruler on one time axis.
-    static int gutterWidth();
-    // Geometry for tests and the review session method: the track, a time's x
-    // and the bar of a mask.
-    QRect trackRect() const;
-    int xFor(qint64 us) const;
-    QRect maskRect(const QString& id) const;
-    QRect maskHitRect(const QString& id) const;
-    QSize sizeHint() const override;
-    QSize minimumSizeHint() const override;
-    int heightForLanes(int width, int lanes) const;
-signals:
-    void scrubbed(qint64 us);
-    void scrubStarted();
-    void trimChanged(qint64 start, qint64 end);
-    void maskRetimed(const QString& id, qint64 start, qint64 end);
-    void maskSelected(const QString& id);
-protected:
-    void paintEvent(QPaintEvent*) override;
-    void mousePressEvent(QMouseEvent*) override;
-    void mouseMoveEvent(QMouseEvent*) override;
-    void mouseReleaseEvent(QMouseEvent*) override;
-    void keyPressEvent(QKeyEvent*) override;
-    void resizeEvent(QResizeEvent*) override;
-    void wheelEvent(QWheelEvent*) override;
-    bool event(QEvent*) override;
-private:
-    enum class Drag { None, Scrub, TrimStart, TrimEnd, MaskStart, MaskEnd, MaskMovePending, MaskMove };
-    Drag handleAt(QPointF) const;
-    QString maskAt(QPointF) const;
-    qint64 timeAt(qreal x) const;
-    void layoutLanes();
-    void placeNavigation();
-    QRect laneRect(int lane) const;
-    int lanesBottom() const;
-    void seek(qint64 us);
-    qint64 duration_ = 1, playhead_ = 0, trimStart_ = 0, trimEnd_ = 1;
-    qint64 moveAnchor_ = 0;  // a moved mask: the press point's offset from its start
-    qreal pressX_ = 0;       // where a mask-bar press began, for the drag distance
-    QList<RecordingMask> masks_;
-    std::shared_ptr<MaskNames> maskNames_;
-    QList<int> lane_;
-    int lanes_ = 0;
-    QScrollBar* laneScroll_ = nullptr;
-    QToolButton* moreMasks_ = nullptr;
-    QToolButton* previousMasks_ = nullptr;
-    QLabel* laneSummary_ = nullptr;
-    QWidget* laneHeader_ = nullptr;
-    Ui::ElidedLabel* clipLabel_ = nullptr;
-    QString selected_;
-    Drag drag_ = Drag::None;
-    qint64 dragStart_ = 0, dragEnd_ = 0;
-};
-
-// The private review: scrub, trim, timed masks, then Upload or Save copy.
+// #1613: the private review (design: put.gd-evidence record
+// 2026-11-17-recording-review-redesign, design.md). Title; tool row (Select V,
+// Cut C, Redact X, Blur B, Undo, Redo, Fit · n%, and the Edits toggle when the
+// panel folds); the viewer with its banners along the top; the transport; the
+// filmstrip timeline; the footer (format, Discard…, Save a copy…, destination,
+// Upload). The right panel (ReviewPanel) runs from the tool row to the footer
+// and folds into the Edits overlay below ~1180×720.
 // Edits are proposed to the resident as events and the resident's answer
 // (setEdit) is what this window displays; nothing uploads from here. Upload
-// closes the window and the work continues in the background; Save copy
+// closes the window and the work continues in the background; Save a copy
 // keeps it open so the user can still upload afterwards.
 class ReviewWindow final : public QWidget {
     Q_OBJECT
@@ -192,94 +160,156 @@ public:
         // #1364: what the recorded track holds; with neither set, a recorded track is system audio.
         bool systemRecorded = false, microphoneRecorded = false; };
     ReviewWindow(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
-    void setEdit(const RecordingEdit&);
-    void setConfig(const RecordingConfig&);
+    ~ReviewWindow() override;
+    // The resident's edit. answer, when this push answers one of the window's
+    // proposals: {proposal: n} once proposal n was applied, plus refused:
+    // {code, message, revision} when it was not (the edit is then unchanged).
+    void setEdit(const RecordingEdit&, const QJsonObject& answer = {});
+    // seq: the window's latest output choice (configChanged's seq) the resident had
+    // applied; an older config is ignored. False when ignored.
+    bool setConfig(const RecordingConfig&, quint64 seq = 0);
     void setExporting(bool exporting, const QString& label);
     void setSavedCopy(const QString& path, quint64 revision, const RecordingConfig& config);
     QSize minimumSizeHint() const override;
-    // An operational error in the status row, kept until dismissed or a new edit.
+    // An operational error above the viewer, kept until dismissed or a new edit.
     void showError(const QString& message, bool retryExport = true);
-    // A standing banner above the frame (why the recording stopped); empty hides it.
+    // A standing banner above the viewer (why the recording stopped); empty hides it.
     void setNotice(const QString& text);
     // Upload closes the window; a refused export brings it back with the reason.
-    void reopen(const QString& error);
+    void reopen(const QString& error, bool retry = true);
     // The resident's animation limits, for a warning before an export is refused.
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
     // #283: the review session method (recording.review) drives the window as a
-    // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
-    // addMask|showMaskOptions|closeMaskOptions|nextMaskLanes|previousMaskLanes|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
-    // useSolidCover|format|trimToLimit|dismissStatus|dismissBlurTip|showAdvice|showFormatTips|
-    // showInFolder|copyPath|dismissSavedCopy|retryExport|retryPreview|
-    // saveCopyDialog|closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
+    // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|setTrim|resetTrim|
+    // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
+    // useSolidCover|format|trimToLimit|dismissStatus|showAdvice|showInFolder|
+    // copyPath|dismissSavedCopy|retryExport|retryPreview|saveCopyDialog|
+    // closeFileDialog|discard|keepReviewing|confirmDiscard, and (#1613) selectRange|
+    // clearSelection|cut|selectCut|adjustCut|restoreCut|playAcross|undo|redo|armRedact|
+    // armBlur|cancelPlacement|selectEdit|nextEdit|previousEdit|seekCoverStart|
+    // seekCoverEnd|setCoverEdgeToPlayhead|setCoverEdge|coverKind|timelineZoom|
+    // timelineFit|viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
-    // window's state (inspect) after the action, or an error.
+    // window's state (inspect) after the action, or an error. A state that
+    // proposed edits carries their numbers in "proposals"; inspect's lastRefusal
+    // {code, message, revision, proposal} names the last one the resident refused.
     struct DriveResult { QString code, message; QJsonObject state; };
     DriveResult drive(const QJsonObject& params);
     QJsonObject inspect() const;
-    // Fits a 1366×768 workspace, reserving mask lanes and transient guidance.
-    // First presentation adapts to the canvas aspect and available workspace;
-    // subsequent changes preserve the user's geometry. Minimums ensure usability.
+    // 1440×900 (#1613: the 1366×768 rule is lifted for this window), bounded by
+    // the work area when the window first shows.
     static QSize defaultSize();
+    // Below this the right panel folds into the Edits toggle.
+    static QSize foldBelow() { return {1180, 720}; }
 signals:
-    void editProposed(quint64 revision, const QJsonArray& commands);
-    void configChanged(const RecordingConfig&);
-    void uploadRequested(quint64 revision);
+    // proposal numbers the window's proposals 1, 2, …; the resident's answer names it.
+    void editProposed(quint64 revision, const QJsonArray& commands, quint64 proposal);
+    // seq numbers the window's output choices 1, 2, …; the resident echoes the last it applied.
+    void configChanged(const RecordingConfig&, quint64 seq);
+    // The revision and the output the window shows; the resident refuses any other.
+    void uploadRequested(quint64 revision, const RecordingConfig& config);
     void retryExportRequested();
     void saveCopyRequested(const QString& path, quint64 revision);
     void cancelRequested();
 protected:
     void closeEvent(QCloseEvent*) override;
     void hideEvent(QHideEvent*) override;
+    void showEvent(QShowEvent*) override;
     void resizeEvent(QResizeEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
+    bool eventFilter(QObject*, QEvent*) override;
 private:
-    // One line of the status row: an error, warning or notice with the actions
-    // that resolve it; each action is the drive() call the button makes.
+    // One status line above the viewer: an error, warning or notice with the
+    // actions that resolve it; each action is the drive() call the button makes.
     struct StatusEntry {
         QString text, tone;
         QList<QPair<QString, QJsonObject>> actions;
         bool operator==(const StatusEntry&) const = default;
     };
+    // A cover being placed: armed by X/B (or the panel), drawn on the viewer.
+    struct Placement { QString kind; recording::Span span; bool whole = false; };
     QList<StatusEntry> statusEntries() const;
     void refreshStatus();
-    void placeDestination();
-    void placeErrorDetails();
-    void placeFooterStatus();
-    int destinationContextWidth() const;
-    bool footerFits(int width) const;
-    bool destinationFitsHeader(int width) const;
+    void refreshAll();
+    void refreshTransport();
+    void refreshTools();
+    void refreshFooter();
+    void refreshPanel();
+    void refreshBanners();
+    void refreshFold();
+    void placeOverlayInset();
     // Discard, the close button and the drive's discard ask before anything is
     // lost; recording.cancel (an agent's explicit cancel) never asks.
     void askDiscard();
     void answerDiscard(bool discard);
-    void useSolidCover();
-    // Save copy…: the desktop's chooser (#259); false while one is open or exporting.
+    // Save a copy…: the desktop's chooser (#259); false while one is open or exporting.
     bool chooseCopy();
+    // Upload, Ctrl+Enter and Enter: never during a pointer drag or while placing;
+    // with proposals unanswered, only once the resident accepted the last of
+    // them (a refusal or 2 s without an answer cancels it, with a status line).
+    void upload();
+    bool tryUpload();  // sends once nothing is unanswered; true when it did
+    // The one way a waiting upload stops, with its own status line (why: what happened).
+    void cancelUpload(const QString& why = {});
+    void emitConfig();
+    int viewEdge() const;
     void refreshFrame();
-    // Silent playback of the retained interval from the scrubber: frames are
-    // decoded in order on a worker and shown at their clip time; any scrub or
-    // edit control pauses it. The export preview has no audio path.
-    void startPlayback();
+    DriveResult driveAction(const QJsonObject& params);
+    // Silent playback of the kept footage only: each kept span is opened at
+    // its start (never decoded through a cut) and frames are shown at their
+    // output time; the end of the trim stops it. Any seek or edit pauses it.
+    // resume (a zoom, speed or edit restart): with nothing kept ahead it stays paused, never wrapping.
+    void startPlayback(std::optional<qint64> fromUs = std::nullopt, bool resume = false);
     void stopPlayback();
-    void refreshMaskList();
-    void refreshLabels();
-    void refreshTimeline();
     void propose(const QJsonArray& commands);
-    void selectMask(const QString& id);
-    void armMask(const QString& kind);
-    void disarm();
-    void addMaskAt(const QString& kind, const QRect& rect);
-    // Trim and mask in/out at the playhead (the toolbar, I/O and Shift+I/O);
-    // the refusal shown in the status, or empty when proposed.
+    // Time and selection.
+    qint64 playhead() const { return playhead_; }
+    void seek(qint64 us, bool user = true);
+    void stepFrames(int frames);
+    void stepTime(qint64 us);
+    qint64 frameUs() const;
+    qint64 frameIndex(qint64 us) const;
+    qint64 nextFrameEdge(qint64 at) const;   // the edge after the frame at `at`
+    qint64 previousFrame(qint64 edge) const; // the frame before an end edge
+    std::optional<qint64> shownFrameEnd();   // the edge after the frame shown at the playhead
+    QString refuseChange(const QString& message);
+    qint64 frameAt(qint64 index) const;
+    std::optional<qint64> firstFrameIn(const recording::Span&) const;
+    std::optional<qint64> lastFrameIn(const recording::Span&) const;
+    std::optional<qint64> firstKeptFrame(qint64 start, qint64 end) const;
+    std::optional<qint64> lastKeptFrame(qint64 start, qint64 end) const;
+    void setTimeSelection(std::optional<recording::Span>);
+    void selectTime(qint64 start, qint64 end);
+    void selectEdit(const QString& kind, const QString& id);
+    void selectCover(const QString& id, bool seekToIt = true);
+    void selectCut(const QString& id, bool seekToIt);
+    void clearSelection();
+    void stepEdit(int direction);
+    QList<QPair<QString, QString>> editsInOrder() const;
+    // Edits.
+    void cutSelection();
+    void proposeTrim(qint64 start, qint64 end);
+    void adjustCut(const QString& id, qint64 start, qint64 end);
+    void retimeCover(const QString& id, qint64 start, qint64 end);
+    void setCoverKind(const QString& id, const QString& kind);
+    void setPanelOpen(bool open);
+    void arm(const QString& kind);
+    void cancelPlacement();
+    void placeCover(const QString& kind, const QRect& rect);
+    void updateCover(const QString& id, const std::function<void(QJsonObject&)>& change);
+    void restoreCut(const QString& id);
+    void playAcross(const QString& id);
+    void seekCoverEdge(const QString& id, bool start);
     QString setTrimAt(bool start);
-    QString setMaskAt(bool start);
-    void setStrength(int value);
-    void removeSelected();
-    qint64 playhead() const;
-    void seek(qint64 us);
+    QString setMaskAt(bool start, const QString& id = {});
+    void removeSelectedCover();
+    void useSolidCover();
+    void undoRedo(bool undo);
     RecordingMask* selectedMask();
     const RecordingMask* selectedMask() const;
-    QString timeText(qint64 us) const;
+    const RecordingMask* maskById(const QString& id) const;
+    // Thumbnails and skim.
+    void requestTiles();
     Options options_;
     RecordingConfig config_;
     bool audioIntent_ = false;
@@ -287,63 +317,78 @@ private:
     void applyAudio();
     // "System audio", "Microphone" or "System audio and microphone".
     QString audioName() const;
+    QString audioSummary() const;
     RecordingEdit edit_;
+    recording::KeptSpans kept_;
     std::shared_ptr<MaskNames> maskNames_ = std::make_shared<MaskNames>();
+    qint64 playhead_ = 0;
+    std::optional<recording::Span> timeSelection_;
+    QString selectedKind_, selectedId_;  // "cut" | "cover" | "trim" | ""
+    std::optional<Placement> placing_;
+    // After making a cut, the playhead lands 1 s before its seam once the
+    // resident answers (unless something else moved the playhead first).
+    std::optional<recording::Span> pendingCut_;
+    quint64 pendingCutProposal_ = 0;  // the cut's proposal; only its answer moves the playhead
+    // Proposals sent and answered (numbered from 1); the one an upload waits for.
+    quint64 proposalSeq_ = 0, answeredSeq_ = 0;
+    bool uploadWaiting_ = false;  // Upload pressed, its revision not yet fully answered
+    StatusEntry uploadNotice_;    // "Upload cancelled: …" until dismissed or Upload again
+    quint64 configSeq_ = 0;
+    quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited
+    qint64 shownFor_ = -1, shownActual_ = -1;  // the playhead a frame was decoded for, and its own time
+    bool proposalPending() const { return answeredSeq_ < proposalSeq_; }
+    QTimer uploadWait_;
+    int shownEdge_ = 1280;  // the long edge frames are decoded at (viewEdge())
+    QJsonObject lastRefusal_;
+    // The exact skim frame asked for: its time and the edit revision it was asked at.
+    std::optional<std::pair<qint64, quint64>> skimAsked_;
+    void askSkimFrame(qint64 at);
+    std::optional<qint64> edgePreview_;  // a dragged bracket or edge: the frame shown
+    std::optional<qint64> skimUs_;
     QString savedPath_;
     quint64 savedRevision_ = 0;
     RecordingConfig savedConfig_;
     bool savedDismissed_ = false;
     QJsonObject lastShowInFolder_;
     bool savedCurrent() const;
-    void placeTools();
-    void updateMinimum();
     QSize availableReviewSize() const;
-    void showAdvice(bool formatTips = false);
-    bool compactStatus_ = false, footerError_ = false;
-    // The error left the status band for the footer's status slot, so the blur warning stays.
-    bool errorInFooter_ = false;
+    void showAdvice();
     QPointer<QWidget> adviceDialog_;
-    bool minimumPending_ = false, initialFitDone_ = false;
-    // The Trim row, the wrapping Mask row (its kinds, timing) and the transport row.
-    QWidget *trimGroup_ = nullptr, *maskGroup_ = nullptr, *maskTiming_ = nullptr, *transport_ = nullptr;
+    bool initialFitDone_ = false, folded_ = false;
     Ui::WindowHeader* header_ = nullptr;
-    FrameView* view_ = nullptr;
-    ReviewTimeline* timeline_ = nullptr;
-    Ui::ElidedLabel* destination_ = nullptr;
-    QLabel* destinationFull_ = nullptr;
-    QLabel *notice_ = nullptr, *time_ = nullptr, *playbackStatus_ = nullptr, *previewIndicator_ = nullptr, *retained_ = nullptr, *maskActive_ = nullptr, *audio_ = nullptr, *exportAudio_ = nullptr;
-    // Errors, warnings and privacy guidance with their actions; shown only when there are any.
-    QWidget* statusRow_ = nullptr;
-    QWidget* statusContent_ = nullptr;
+    QWidget *toolRow_ = nullptr, *transport_ = nullptr, *footer_ = nullptr, *statusRow_ = nullptr;
     QVBoxLayout* statusLines_ = nullptr;
+    FrameView* view_ = nullptr;
+    FilmstripTimeline* timeline_ = nullptr;
+    ReviewPanel* panel_ = nullptr;
+    EditsOverlay* overlay_ = nullptr;
+    Filmstrip* filmstrip_ = nullptr;
+    FrameSkimmer* skimmer_ = nullptr;
+    QTimer tileTimer_;
+    QLabel *notice_ = nullptr, *time_ = nullptr, *clipTime_ = nullptr, *silent_ = nullptr;
+    QWidget* noticeBand_ = nullptr;
+    ViewerBanner *placeBanner_ = nullptr, *blurBanner_ = nullptr;
     QList<StatusEntry> shownStatus_;
-    bool blurTipShown_ = false;
-    bool blurTipDismissed_ = false;  // the blur privacy guidance, acknowledged once
     StatusEntry message_;
     QPointer<QMessageBox> discard_;
-    QToolButton *play_ = nullptr, *formatAdvice_ = nullptr;
-    QComboBox* speed_ = nullptr;
+    QToolButton *select_ = nullptr, *cut_ = nullptr, *redact_ = nullptr, *blur_ = nullptr, *undo_ = nullptr, *redo_ = nullptr, *pictureZoom_ = nullptr, *editsToggle_ = nullptr;
+    QToolButton *play_ = nullptr, *previousFrame_ = nullptr, *nextFrame_ = nullptr, *timelineZoom_ = nullptr;
+    QToolButton *format_ = nullptr, *destinationMenu_ = nullptr;
+    QMenu *speedMenu_ = nullptr, *formatMenu_ = nullptr;
+    QActionGroup *speeds_ = nullptr, *formats_ = nullptr;
+    QAction* includeAudio_ = nullptr;
+    QLabel* destinationFull_ = nullptr;
+    QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
+    FileDialog* chooser_ = nullptr;
+    QTimer frameTimer_;
     // The worker deletes itself when it finishes; the guard forgets it then, so
     // closing the window after a preview ended never waits on a freed thread.
     QPointer<QThread> playThread_;
-    std::shared_ptr<std::atomic_bool> playStop_;
+    std::shared_ptr<std::atomic_bool> playStop_, playEnded_;
     bool playing_ = false;
-    QAction *addBlur_ = nullptr, *addSolid_ = nullptr;
-    QToolButton *destinationMenu_ = nullptr;
-    QToolButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addMask_ = nullptr, *removeMask_ = nullptr, *maskOptions_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr;
-    QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
-    FileDialog* chooser_ = nullptr;
-    QWidget *maskTools_ = nullptr, *strengthControl_ = nullptr;
-    QShortcut *escape_ = nullptr, *place_ = nullptr, *placeEnter_ = nullptr;
-    QSpinBox* strength_ = nullptr;
-    QComboBox* format_ = nullptr;
-    QComboBox* masks_ = nullptr;
-    QString selectedMask_;
-    QTimer frameTimer_;
+    double speed_ = 1.0;
     bool exporting_ = false, closing_ = false;
     qint64 animationMaxUs_ = 0;
     int animationMaxEdge_ = 0;
-public:
-    ~ReviewWindow() override;
 };
 }

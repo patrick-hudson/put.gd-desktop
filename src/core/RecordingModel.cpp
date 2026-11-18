@@ -1,4 +1,5 @@
 #include "RecordingModel.h"
+#include "KeptSpans.h"
 #include <QHash>
 #include <QJsonArray>
 #include <QUuid>
@@ -64,16 +65,16 @@ QJsonObject RecordingMask::toJson() const {
     if (kind == "blur") o["strength"] = strength;
     return o;
 }
-std::optional<std::pair<qint64, qint64>> RecordingEdit::exportInterval(const RecordingMask& mask, qint64 trimStart, qint64 trimEnd) {
-    const auto start = std::max(mask.start, trimStart), end = std::min(mask.end, trimEnd);
-    if (end <= start) return std::nullopt;
-    return std::make_pair(start - trimStart, end - trimStart);
-}
+QJsonObject RecordingCut::toJson() const { return {{"id", id}, {"start", double(start)}, {"end", double(end)}}; }
+qint64 RecordingEdit::exportDuration(qint64 duration) const { return recording::KeptSpans(*this, duration).outputDuration(); }
 QJsonObject RecordingEdit::toJson() const {
     QJsonArray array;
     for (const auto& mask : masks) array.append(mask.toJson());
+    QJsonArray cutArray;
+    for (const auto& cut : cuts) cutArray.append(cut.toJson());
     return {{"revision", double(revision)}, {"trimStart", double(trimStart)},
-        {"trimEnd", trimEnd ? QJsonValue(double(*trimEnd)) : QJsonValue(QJsonValue::Null)}, {"masks", array}};
+        {"trimEnd", trimEnd ? QJsonValue(double(*trimEnd)) : QJsonValue(QJsonValue::Null)}, {"masks", array},
+        {"cuts", cutArray}, {"canUndo", canUndo}, {"canRedo", canRedo}};
 }
 
 namespace recording {
@@ -294,6 +295,9 @@ Error validateMask(const QJsonValue& value, RecordingMask& mask, qint64 duration
     result.kind = object["kind"].toString("blur");
     if (result.kind != "blur" && result.kind != "solid") return invalid("Mask kind must be blur or solid", "mask.kind");
     if (!rect(object["rect"], result.rect)) return invalid("A mask needs rect [x, y, width, height] with positive size", "mask.rect");
+    // Preview and export draw nothing narrower or shorter than 2 px (a blur needs a
+    // neighbour), so a smaller cover would be accepted and cover nothing.
+    if (result.rect.width() < 2 || result.rect.height() < 2) return invalid("A mask must be at least 2 by 2 pixels", "mask.rect");
     if (!canvas.isEmpty() && (result.rect.x() < 0 || result.rect.y() < 0 || result.rect.right() >= canvas.width() || result.rect.bottom() >= canvas.height()))
         return invalid("Mask rect must lie inside the output canvas", "mask.rect");
     if (!integer(object["start"], 0, duration, &result.start) || !integer(object["end"], 0, duration, &result.end) || result.end <= result.start)
@@ -304,11 +308,84 @@ Error validateMask(const QJsonValue& value, RecordingMask& mask, qint64 duration
     mask = result;
     return {};
 }
+// A cut's start and end clamped to the clip; the interval must be nonempty
+// both as sent and once clamped.
+Error validateCutSpan(const QJsonObject& object, qint64 duration, qint64& start, qint64& end) {
+    qint64 rawStart = 0, rawEnd = 0;
+    const qint64 limit = 1LL << 50;
+    if (!integer(object["start"], -limit, limit, &rawStart) || !integer(object["end"], -limit, limit, &rawEnd) || rawEnd <= rawStart)
+        return invalid("Cut start/end must be microseconds with end after start", "start");
+    start = std::clamp<qint64>(rawStart, 0, duration);
+    end = std::clamp<qint64>(rawEnd, 0, duration);
+    if (end <= start) return invalid("A cut must overlap the clip", "start");
+    return {};
 }
-Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 duration, const QSize& canvas, int fps) {
+// Puts [start, end) into `cuts`: every cut it overlaps or touches is absorbed
+// into one, which takes `id` (a fresh id when empty).
+void mergeCut(QList<RecordingCut>& cuts, QString id, qint64 start, qint64 end) {
+    if (id.isEmpty()) id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    for (auto it = cuts.begin(); it != cuts.end();) {
+        if (it->start <= end && it->end >= start) {
+            start = std::min(start, it->start);
+            end = std::max(end, it->end);
+            it = cuts.erase(it);
+        } else ++it;
+    }
+    RecordingCut merged;
+    merged.id = id;
+    merged.start = start;
+    merged.end = end;
+    const auto at = std::find_if(cuts.begin(), cuts.end(), [&](const RecordingCut& c) { return c.start > start; });
+    cuts.insert(at, merged);
+}
+// #1635: the review's frame grid, edge k at round(k * 1e6 / fps) µs (the same
+// grid the review window snaps to). down: the last edge at or before us; up:
+// the first edge at or after it.
+qint64 gridEdge(qint64 k, int fps) { return qint64(std::llround(double(k) * 1e6 / fps)); }
+qint64 snapDown(qint64 us, int fps) {
+    qint64 k = qint64(std::floor(double(us) * fps / 1e6));
+    while (gridEdge(k + 1, fps) <= us) ++k;
+    while (k > 0 && gridEdge(k, fps) > us) --k;
+    return gridEdge(k, fps);
+}
+qint64 snapUp(qint64 us, int fps) {
+    const qint64 down = snapDown(us, fps);
+    if (down == us) return us;
+    return gridEdge(qint64(std::llround(double(down) * fps / 1e6)) + 1, fps);
+}
+void syncHistoryFlags(RecordingEdit& edit, const RecordingEditHistory* history) {
+    edit.canUndo = history && !history->undo.isEmpty();
+    edit.canRedo = history && !history->redo.isEmpty();
+}
+}
+Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 duration, const QSize& canvas, int fps, RecordingEditHistory* history) {
     if (commands.isEmpty() || commands.size() > maximumEditCommands) return invalid("Send 1 to 100 edit commands", "commands");
+    // undo and redo step the history on their own; they never share a batch.
+    for (const auto& value : commands) {
+        const auto op = value.toObject()["op"].toString();
+        if (op != "undo" && op != "redo") continue;
+        if (commands.size() != 1 || !knownKeys(value.toObject(), {"op"})) return invalid("undo and redo are sent alone and take no fields", "commands");
+        if (!history) return invalid("There is no edit history to step", "op");
+        auto& from = op == "undo" ? history->undo : history->redo;
+        auto& to = op == "undo" ? history->redo : history->undo;
+        if (from.isEmpty()) return {"recording_history_empty", op == "undo" ? QStringLiteral("There is nothing to undo") : QStringLiteral("There is nothing to redo"), {{"op", op}}};
+        RecordingEdit snapshot = from.takeLast();
+        RecordingEdit left = edit;
+        to.append(left);
+        snapshot.revision = edit.revision + 1;
+        syncHistoryFlags(snapshot, history);
+        edit = snapshot;
+        return {};
+    }
     RecordingEdit next = edit;
     const qint64 minimum = fps > 0 ? 1000000 / fps : 1;
+    bool cutsOrTrimChanged = false;
+    // #1635: every edge lands on the frame grid, in the direction that never lets
+    // unwanted footage through: a cover and a cut grow outward (start down, end
+    // up), the trim shrinks inward (start up, end down). Ends stay within the clip.
+    auto down = [&](qint64 us) { return fps > 0 ? std::clamp<qint64>(snapDown(us, fps), 0, duration) : us; };
+    auto up = [&](qint64 us) { return fps > 0 ? std::clamp<qint64>(snapUp(us, fps), 0, duration) : us; };
+    auto snapMask = [&](RecordingMask& mask) { mask.start = down(mask.start); mask.end = mask.end >= duration ? duration : up(mask.end); };
     for (const auto& value : commands) {
         if (!value.isObject()) return invalid("Each command must be an object", "commands");
         const auto command = value.toObject();
@@ -318,17 +395,22 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             qint64 start = 0, end = duration;
             if (!integer(command["start"], 0, duration, &start)) return invalid("Trim start must be microseconds within the clip", "start");
             if (command.contains("end") && !command["end"].isNull() && !integer(command["end"], 0, duration, &end)) return invalid("Trim end must be microseconds within the clip or null", "end");
+            start = up(start);
+            if (end < duration) end = down(end);
             if (end - start < minimum) return invalid("The retained interval must contain at least one frame", "end");
             next.trimStart = start;
             if (command.contains("end") && !command["end"].isNull() && end != duration) next.trimEnd = end; else next.trimEnd.reset();
+            cutsOrTrimChanged = true;
         } else if (op == "resetTrim") {
             if (!knownKeys(command, {"op"})) return invalid("resetTrim takes no fields", "commands");
             next.trimStart = 0; next.trimEnd.reset();
+            cutsOrTrimChanged = true;
         } else if (op == "addMask") {
             if (!knownKeys(command, {"op", "mask"})) return invalid("addMask takes a mask", "commands");
             if (next.masks.size() >= maximumMasks) return invalid("At most 64 masks are supported", "mask");
             RecordingMask mask;
             if (auto error = validateMask(command["mask"], mask, duration, canvas)) return error;
+            snapMask(mask);
             mask.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
             next.masks.append(mask);
         } else if (op == "updateMask" || op == "removeMask") {
@@ -338,9 +420,44 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             if (index < 0) return {"recording_mask_unknown", "No mask has this id", {{"maskId", command["maskId"].toString()}}};
             if (op == "removeMask") next.masks.removeAt(index);
             else if (auto error = validateMask(command["mask"], next.masks[index], duration, canvas)) return error;
-        } else return invalid("Edit op must be setTrim, resetTrim, addMask, updateMask or removeMask", "op");
+            else snapMask(next.masks[index]);
+        } else if (op == "addCut") {
+            if (!knownKeys(command, {"op", "start", "end"})) return invalid("addCut takes start and end", "commands");
+            qint64 start = 0, end = 0;
+            if (auto error = validateCutSpan(command, duration, start, end)) return error;
+            start = down(start);
+            end = end >= duration ? duration : up(end);
+            mergeCut(next.cuts, {}, start, end);
+            if (next.cuts.size() > maximumCuts) return invalid("At most 64 cuts are supported", "start");
+            cutsOrTrimChanged = true;
+        } else if (op == "updateCut" || op == "removeCut") {
+            if (!knownKeys(command, op == "updateCut" ? QStringList{"op", "cutId", "start", "end"} : QStringList{"op", "cutId"}) || !command["cutId"].isString()) return invalid("Cut commands need a cutId", "cutId");
+            const auto id = command["cutId"].toString();
+            int index = -1;
+            for (int i = 0; i < next.cuts.size(); ++i) if (next.cuts[i].id == id) index = i;
+            if (index < 0) return {"recording_cut_unknown", "No cut has this id", {{"cutId", id}}};
+            if (op == "removeCut") next.cuts.removeAt(index);
+            else {
+                qint64 start = 0, end = 0;
+                if (auto error = validateCutSpan(command, duration, start, end)) return error;
+                start = down(start);
+                end = end >= duration ? duration : up(end);
+                next.cuts.removeAt(index);
+                mergeCut(next.cuts, id, start, end);
+            }
+            cutsOrTrimChanged = true;
+        } else return invalid("Edit op must be setTrim, resetTrim, addMask, updateMask, removeMask, addCut, updateCut, removeCut, undo or redo", "op");
+    }
+    // At least one frame must stay kept once the trim and the cuts are both applied.
+    if (cutsOrTrimChanged && !next.cuts.isEmpty() && next.exportDuration(duration) < minimum)
+        return {"recording_cut_empty", "The cuts would leave less than one frame in the clip", {{"keptUs", double(next.exportDuration(duration))}}};
+    if (history) {
+        history->undo.append(edit);
+        while (history->undo.size() > maximumUndoSteps) history->undo.removeFirst();
+        history->redo.clear();
     }
     next.revision = edit.revision + 1;
+    syncHistoryFlags(next, history);
     edit = next;
     return {};
 }

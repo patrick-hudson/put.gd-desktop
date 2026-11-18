@@ -11,6 +11,7 @@
 #include "BundledRuntime.h"
 #include "Poster.h"
 #include "ClipExporter.h"
+#include "Filmstrip.h"
 #include "DebugLog.h"
 #include "AvSync.h"
 #include "ClickCheck.h"
@@ -29,6 +30,7 @@
 #include <QBuffer>
 #include <QImage>
 #include <QCoreApplication>
+#include <algorithm>
 #include <atomic>
 #include <memory>
 #include <QElapsedTimer>
@@ -147,6 +149,49 @@ int main(int argc, char** argv) {
         std::printf("motion=%.3f compared=%d samples=%d durationMs=%lld size=%dx%d\n", compared ? total / compared : 0.0, compared, samples, static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
         return 0;
     }
+    if ((argc == 4 || argc == 5) && std::strcmp(argv[1], "--filmstrip") == 0) {
+        // Lab diagnostic (#1613): asks the review filmstrip for N tiles spread
+        // over the clip, the two ends first, and prints one JSON line: the time
+        // from open() to the first two tiles and to all N (the clip's open
+        // included), tiles decoded, and the peak resident set.
+        QCoreApplication app(argc, argv);
+        av_log_set_level(AV_LOG_QUIET);
+        const QString clip = QString::fromLocal8Bit(argv[2]);
+        const int count = std::clamp(std::atoi(argv[3]), 1, 48);
+        const int width = argc == 5 ? std::clamp(std::atoi(argv[4]), 8, 1024) : 128;
+        qint64 durationUs = 0;
+        QSize canvas;
+        if (auto error = record::probeClip(clip, durationUs, canvas)) { std::fprintf(stderr, "%s: %s\n", qPrintable(error.code), qPrintable(error.message)); return 1; }
+        const QSize tile(width, std::max(1, int(std::lround(double(width) * canvas.height() / std::max(1, canvas.width())))));
+        QList<qint64> times;
+        const auto center = [&](int i) { return durationUs * (2 * i + 1) / (2 * count); };
+        times.append(center(0));
+        if (count > 1) times.append(center(count - 1));
+        for (int i = 1; i < count - 1; ++i) times.append(center(i));
+        record::Filmstrip strip;
+        QElapsedTimer clock;
+        qint64 firstTwoNs = 0, allNs = 0;
+        int arrived = 0;
+        QString failure;
+        QObject::connect(&strip, &record::Filmstrip::tileReady, &app, [&](qint64, qint64, const QImage&) {
+            ++arrived;
+            if (arrived == std::min(2, count)) firstTwoNs = clock.nsecsElapsed();
+            if (arrived == count) { allNs = clock.nsecsElapsed(); QCoreApplication::quit(); }
+        });
+        QObject::connect(&strip, &record::Filmstrip::failed, &app, [&](const QString& message) { failure = message; QCoreApplication::quit(); });
+        QTimer::singleShot(60000, &app, [&] { failure = QStringLiteral("timed out"); QCoreApplication::quit(); });
+        clock.start();
+        strip.open(clip, durationUs, canvas);
+        strip.request(times, tile);
+        app.exec();
+        if (!failure.isEmpty() || arrived != count) { std::fprintf(stderr, "filmstrip: %s (%d of %d tiles)\n", failure.isEmpty() ? "incomplete" : qPrintable(failure), arrived, count); return 1; }
+        rusage used{};
+        getrusage(RUSAGE_SELF, &used);
+        std::printf("{\"tiles\":%d,\"tile\":\"%dx%d\",\"first_two_ms\":%.1f,\"all_ms\":%.1f,\"decoded\":%d,\"cached\":%d,\"peak_rss_kib\":%ld,\"duration_ms\":%lld,\"canvas\":\"%dx%d\"}\n",
+                    count, tile.width(), tile.height(), firstTwoNs / 1e6, allNs / 1e6, strip.stats().decoded, strip.stats().cached, used.ru_maxrss,
+                    static_cast<long long>(durationUs / 1000), canvas.width(), canvas.height());
+        return 0;
+    }
     if ((argc == 4 || (argc == 5 && std::strcmp(argv[4], "--moving") == 0)) && std::strcmp(argv[1], "--av-marker") == 0) {
         // Lab diagnostic: write the synthetic A/V marker clip to play while recording.
         // `--moving` adds a sweeping bar, for clips that must also show motion.
@@ -206,6 +251,7 @@ int main(int argc, char** argv) {
             if (arg == "--codec" && i + 1 < argc) request.config.codec = QString::fromLocal8Bit(argv[++i]);
             else if (arg == "--max-edge" && i + 1 < argc) request.config.maxEdge = std::atoi(argv[++i]);
             else if (arg == "--trim" && i + 2 < argc) { request.edit.trimStart = std::atoll(argv[++i]); request.edit.trimEnd = std::atoll(argv[++i]); }
+            else if (arg == "--cut" && i + 2 < argc) { RecordingCut cut; cut.start = std::atoll(argv[++i]); cut.end = std::atoll(argv[++i]); request.edit.cuts.append(cut); }
             else if (arg == "--no-audio") request.config.audio.system = false;
             else { std::fprintf(stderr, "unknown export option %s\n", argv[i]); return 2; }
         }

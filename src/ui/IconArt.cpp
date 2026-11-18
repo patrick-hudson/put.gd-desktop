@@ -248,6 +248,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="select") {
   // 1.8 units on the 24-unit grid gives a 1.5 px stroke in 20 px tool icons.
   line(color,1.8);QPainterPath pointer;pointer.moveTo(5,3);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,21);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
+ } else if(name=="cut") {
+  // Scissors: two rings below, blades crossing up to the right.
+  line(color,1.8);p.drawEllipse(QPointF(6,6),2.8,2.8);p.drawEllipse(QPointF(6,18),2.8,2.8);
+  p.drawLine(QPointF(8.2,7.8),QPointF(20,18.5));p.drawLine(QPointF(8.2,16.2),QPointF(20,5.5));
  } else if(name=="redact") {
   line(color,1.2);p.drawLine(3,5,18,5);p.drawLine(3,9,21,9);p.drawLine(3,13,20,13);p.drawLine(3,17,21,17);p.drawLine(3,21,15,21);
   fill(color);rounded(7,7,10,12,1);
@@ -291,6 +295,15 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
   line(color,1.8);QPainterPath turn;turn.moveTo(4,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);
   turn.moveTo(9,4);turn.lineTo(4,9);turn.lineTo(9,14);p.drawPath(turn);
+ } else if(name=="frame-back"||name=="frame-forward") {
+  // #1613 frame step: one film frame (a cell between two rules) with a chevron
+  // beside it, distinct from skip-to-start.
+  line(color,1.8);const bool back=name=="frame-back";const qreal left=back?10:3;
+  rounded(left,4,11,16,1.5);p.drawLine(QPointF(left,8),QPointF(left+11,8));p.drawLine(QPointF(left,16),QPointF(left+11,16));
+  QPainterPath chevron;if(back){chevron.moveTo(7,8);chevron.lineTo(3,12);chevron.lineTo(7,16);}else{chevron.moveTo(17,8);chevron.lineTo(21,12);chevron.lineTo(17,16);}p.drawPath(chevron);
+ } else if(name=="zoom") {
+  // #1613 the timeline zoom: a magnifier.
+  line(color,1.8);p.drawEllipse(QPointF(10.5,10.5),6.5,6.5);p.drawLine(QPointF(15.3,15.3),QPointF(20.5,20.5));
  } else if(name=="zoom-fit") {
   line(color,1.8);rounded(4,4,16,16,2);
   QPainterPath arrows;arrows.moveTo(10,10);arrows.lineTo(7,7);arrows.lineTo(7,10);arrows.moveTo(7,7);arrows.lineTo(10,7);

@@ -97,88 +97,371 @@ not authorize upload; a stopped clip stays in private review.
 ## Review window
 
 Every Stop (from the bar, the CLI, or the byte budget) opens the helper's
-private review window. Since #283 the video takes the window and the tools sit
-in three compact rows under it (960×600 by default, which fits a 1366×768
-desktop, also with large text; the frame scales with the window):
+private review window. It is the image editor's cousin for time: a picture, a
+timeline of thumbnails, and a panel that says what the selection can do. The
+design was agreed by a council in the
+[2026-11-17 record](https://github.com/patrick-hudson/put.gd-evidence/tree/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign)
+(#1613), which also holds its pictures and the filmstrip measurement.
 
-- **The frame** at the playhead, with the masks active at that time drawn over
-  it.
-- **One timeline** with Play/Pause and the time: the whole clip with the
-  retained interval between two trim handles, each mask's time span as a bar in
-  a lane under it (overlapping masks take separate lanes, up to four), and the
-  playhead. Click or drag to scrub; drag a trim handle, or a selected mask's
-  end, to retime it; click a bar to select that mask. Arrows step 0.1 s (1 s
-  with Shift), Home and End go to the kept interval's ends.
-- **A tool row** of IconArt buttons with tooltips and accessible names:
-  speed (0.5×, 1×, 2×, 4×), set trim start / end at the playhead, reset trim,
-  the kept interval, Add blur / Add solid cover (then drag on the frame).
-  The mask controls are contextual: the mask list appears once masks exist;
-  the selected mask's start/end at the playhead and Remove appear when one is
-  selected, and the blur strength only for a selected blur. A mask just added
-  becomes the selection; clicking the frame outside every mask clears it.
-- **The action row**: the output format (GIF/WebP drop audio; the capture rate
-  cannot change), the status, Save copy… / Discard / Upload (primary).
+### Size and layout
 
-Keys: Space plays and pauses, I and O set the trim start and end at the
-playhead, Shift+I and Shift+O the selected mask's start and end, Delete removes
-the selected mask, Escape drops a blur or cover not placed yet.
+- **Opens at 1440×900**, bounded by the work area. The 1366×768 rule that every
+  other put.gd window follows is lifted for this window only. Below about
+  1180×720 the right panel folds into an overlay (below).
+- Rows from the top: title (40 px) · tool row (52) · viewer (all the remaining
+  height) · transport (42) · timeline (142 px at normal text, growing with the
+  font) · footer (56). Text sizes and row heights come from `QFontMetrics`, so 150 %
+  text lays out the same way. The right panel is 280 px wide and runs from the
+  tool row to the footer; the viewer, transport and timeline use the width left of it.
+- **Folded** (the window is narrower than 1180 px or lower than 720 px): the panel is
+  hidden and the toolbar's **Edits** toggle (focusable, labelled "Edits") opens it as
+  a 300 px overlay under the button, in the checked style while open. The overlay
+  scrolls, takes focus on its default button, and Esc closes it with focus back on
+  the toggle. While it is open the picture fits the uncovered width, left-aligned,
+  so nothing plays under it; Play across closes it first.
+- **Title:** "Review recording" · "Not uploaded". Duration, resolution, frame rate and
+  codec are not in the window; they stay in History details and `recording.inspect`.
 
-Previews are rendered in the helper by the same `previewFrame` the CLI and
-MCP preview use, so timing and placement agree with the export. While a mask
-is being dragged the pending area is drawn as a dashed rubber band. Play /
-Pause plays the retained interval silently from the playhead at the chosen
-speed: frames are decoded in order on a worker by `FrameSequence`, masks
-applied as the export renders them, and shown at their clip time; frames that
-fall behind the clock are decoded but not drawn, so a large clip keeps pace
-with dropped frames. Scrubbing or any edit control pauses playback; the audio
-track is not previewed (the export keeps it).
+### Tool row and viewer
+
+The tool row has the image editor's tools and keys: Select **V** · Cut **C** ·
+Redact **X** · Blur **B** · Undo · Redo, then **Fit · n%** (Fit or 100 %; at 100 %
+the picture pans by drag and arrows, one source pixel per device pixel) and the
+Edits toggle when folded. Selecting an existing cover activates Select. Cut is
+enabled only with a time selection.
+
+The viewer shows the frame at the playhead, or the skim position while the pointer
+hovers the paused timeline, with the covers active at that time drawn over it.
+Banners take space from the well along its top edge and never sit over the picture:
+
+- **Placing a cover:** "Draw the redaction · 0:08.2 – 0:12.6" (or "· whole
+  recording") with a **Cancel** button (Esc). Save a copy and Upload are disabled
+  until the box is placed or cancelled.
+- **Blur armed or a blur selected:** "Blur may be reversible. Use Redact for private
+  information." (the image editor's wording, in the warning colours).
+
+### Transport
+
+Play is a split button whose menu holds the speeds 0.5×–4× (1× by default).
+Previous and next frame (`,` and `.`, named in their tooltips) follow, then **one
+clock**: output time / output length (m:ss.s, the kept time, what the exported clip
+will show). Hover it for the recording time, the source time the ruler and the trim
+brackets use. Beside it a muted caption reads "clip time" (with "· Excluded from
+output" while the playhead is on footage the export drops), then "Preview is silent"
+with a speaker glyph. The timeline zoom button (magnifier and level) cycles Fit, 2×
+and 4× and back; Ctrl+wheel steps through Fit, 2×, 4×, 8× and 16×, around the
+pointer. Playback skips every cut and the footage outside the trim: the output clock
+runs only over what the export keeps, and the preview never plays the audio.
+
+### Timeline
+
+- A ruler in recording (source) time, captioned "recording time" at its right end
+  (ruler labels under the caption or the skim flag are skipped); a filmstrip of
+  about 72 px thumbnails; the trim brackets in the accent colour with the part
+  outside dimmed.
+- **Cuts** are hatched in place with a "Cut · n s" chip (a scissors glyph when the
+  chip does not fit). **Covers** have their own track under the filmstrip: two lanes
+  of named bars (the selected cover in the accent colour with handles, idle ones
+  neutral), names elided, "+n" for covers past the second lane, and "No covers yet"
+  when empty. The selected cover's span is also tinted 20 % accent with a 3 px base
+  line.
+- A **time selection** is a dashed, accent-outlined range. A time selection and a
+  selected edit never exist together.
+- The **playhead** has a cap on the ruler and a two-tone stroke that stops above the
+  covers track. While paused, hovering shows a thin **skim line** with its own time
+  flag on the ruler, painted "≈0:05.3" until the exact frame has arrived.
+- Every colour is a `Theme` token, so the timeline follows the light and dark schemes.
+
+### Right panel
+
+What it shows follows the selection:
+
+| Selection | Panel |
+| --- | --- |
+| Nothing edited | "No edits yet" · "Upload sends the whole clip." and five gestures: brackets trim, drag selects time, C or Del cuts, X or B redacts or blurs, Ctrl+Z undoes. No clip facts or keyboard help. |
+| A time selection | "Selected time", its span and length, and **Cut**, **Redact**, **Blur**. |
+| A cover | Its name; "Covered pixels are removed from the saved and uploaded clip." (Blur shows the warning sentence instead); **Shows from →** and **Until →** with m:ss.s fields and **Set to playhead** (⇧I / ⇧O); a Redact / Blur choice, with strength for blur. The arrow buttons (Home / End) seek to the first and last *kept* covered frame, so you can check the frames either side; they are disabled with "Excluded from output" when no covered frame stays in the clip. |
+| A cut | Its span and "n s left out of the clip", **Restore** (the default button) and **Play across** (from 1 s of kept footage before the join). |
+
+Below that, once anything is edited, the **Edits** list shows every trim, cut and
+cover in source order with an icon, a name and its span. A selected row shows its
+verb in place of the span (Trim: Reset, cover: Remove) only when the panel above
+does not already offer it; a selected cut keeps its span because Restore is above;
+other rows show their verb on hover.
+
+### Footer
+
+**Format ▾** ("MP4 · with system audio"; codec and limits inside the menu; GIF and
+WebP say "no sound") · **Discard…** (asks first; the window's Close button asks the
+same question) · **Save a copy…** · a destination menu that says what Upload produces
+("Project archive · Shared link", or "· Private upload") · **Upload** (the default
+button; once the resident has accepted the last change it closes the window).
+
+The Format menu also holds an **Include system audio** toggle (named for what was
+recorded) that sets whether the export carries the captured sound: turning it off
+removes captured system audio or microphone from the export, and a source is kept only
+when it was captured **and** the window asks for it. It has no review action: `inspect`
+reports it as `audioRequested` and `audioEffective`, and the format menu's `format`
+action does not change it.
+
+### Interaction rules
+
+- The window opens paused on the first frame.
+- **Select time** by dragging on the filmstrip (a half-open source-time span), or with
+  `[` and `]` while the timeline has focus: `[` sets the selection's start at the
+  playhead and `]` its end, and with no selection the other end is the trim's start or
+  end. A click seeks and clears the selection; Esc clears it.
+- **Cut** (C, or Delete or Backspace on a time selection). Delete and Backspace act in
+  the viewer, the timeline and the Edits list, never in a focused field. The cut stays
+  in place, hatched; playback jumps it; the output length drops. After making a cut the
+  playhead lands 1 s before the join in output time, clamped to the first kept frame.
+  Delete never restores a cut: use Restore or Ctrl+Z. Clicking a cut selects it, shows
+  handles at its edges to adjust it, and offers Restore and Play across. Selecting a cut
+  from Edits seeks to the first kept frame after it (the last kept frame before a
+  trailing cut).
+- **Cover** (X Redact, B Blur): arms a cover for the time selection (snapped outward to
+  whole frames), or for the whole recording with no selection; the banner says which. An
+  agent's `addMask` does the same, so with nothing selected it covers the whole
+  recording. The viewer then pauses on the playhead frame if that lies in the selection's
+  kept footage, else on the first kept frame in it, else (all excluded) on its first
+  source frame marked "Excluded from output". Dragging a box places it; one command
+  creates the cover's rectangle and span. Selecting a cover seeks to its first visible
+  frame; one wholly outside the kept footage shows its start paused as "Excluded from
+  output". Drags clamp to the clip and do not scroll. Delete on a selected cover in the
+  viewer or timeline removes it; **Delete on a focused Edits row** removes that row's
+  cover, except that with a time selection it cuts the selection instead.
+- **Trim** with the brackets or I and O at the playhead. The end actions (Set Out, O,
+  Shift+O, **Set to playhead** on a cover's end, `setOut`, `setCoverEdgeToPlayhead`,
+  `setMaskOut`) end after **the frame on screen**. The window takes that frame's stored
+  time, rounds it to the nearest grid index (Matroska keeps 33,333 µs as 33,000, and the
+  exporter puts that frame on 33,333), and the end is the next frame edge,
+  round((*k* + 1) × 10⁶ / `fps`), bounded by the recording's end. If a seek has not been
+  shown yet, the window decodes the frame first; if there is still no frame shown for the
+  playhead it refuses with "The frame at the playhead isn't shown yet. Try again once it
+  is." and never falls back to a nominal frame. `inspect.preview.shownUs` reports the shown
+  frame's time. Shift+I and Shift+O retime the selected cover the same way. Dragging an edge
+  of a cut or cover retimes it.
+- **Keys.** The keys act on the window unless a text field has focus, which keeps its
+  own. Space plays; `,` and `.` step a frame; ← and → move 0.1 s, with Shift 1 s, except
+  in the focused viewer, where the arrows move the selected cover (Shift+arrows resize
+  it, 1 px a step, 10 px with Ctrl) or, at 100 %, pan the picture. Home and End go to the
+  selected cover's first and last kept frame, else the kept ends. Alt+← and Alt+→ step
+  through edits in any layout. Ctrl+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes. Esc
+  cancels a placement, or clears a selection.
+- **Enter** depends on focus. A focused text field keeps it; a focused button presses
+  itself; a focused row of the Edits list activates (selects) the row; while a cover is
+  being placed it places a centred cover (half the frame's width and height); with a cut
+  selected it restores the cut; otherwise it uploads. Ctrl+Enter always uploads, and does
+  nothing with a menu open. The initial press can upload; an **auto-repeated** Enter is
+  ignored (and Ctrl+Enter does not auto-repeat), so a held key cannot trigger a second
+  action.
+- **100 % view** shows source pixels: the helper decodes the clip at its own size rather
+  than the 1280 px preview, so a cover and the picture can be checked pixel for pixel.
+  Changing the zoom refreshes the paused frame or the skim frame at the new size, and
+  playback at 100 % decodes at full size.
+- **Undo and redo** run in the resident: one step per committed gesture (a run of
+  nudges is one), covering trim, cuts and covers only. Every undo or redo is a new
+  revision (see [the edit model](session-contract.md#time-geometry-and-the-edit-model)).
+  Ctrl+Z while placing cancels the placement, and while a keyboard nudge is pending it
+  drops the nudge.
+- **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
+  a keyboard nudge of a cover is proposed 350 ms after the last key. Two different things
+  can stop an upload:
+  - **What blocks a new Upload press** (Upload, Ctrl+Enter, Enter): a cover being placed, a
+    drag in progress (its edit has not been proposed), an export running or the window
+    closing. Pressing does nothing then.
+  - **What cancels an Upload that is already waiting** (`inspect` shows `uploadWaiting`):
+    only a change to what it would export. That is the edit's revision moving for anything
+    other than the awaited answers (a later edit, undo or redo, by the user or an agent); the
+    output changing (format, codec, audio or size, from the window or the resident); **any
+    refusal received while it waits, including one for a later proposal**; a trim or cover
+    change the window itself refuses locally, **whether a gesture or an agent's
+    `recording.review` action** (see below); and 2 s without an answer. The output change
+    counts even when the revision stays the same, because the helper applies the config
+    (with `answer.configSeq`) before it calls the window's `setEdit`. A drag or a
+    placement *started* after Upload was pressed does not cancel it: the upload exports
+    what you had when you pressed it (a drag that then finishes and is accepted moves the
+    revision, which does cancel).
+
+  A press sends a pending nudge first, then **waits for every proposal's answer** from the
+  resident, and sends **that revision** with the output the window shows: an upload exports
+  exactly the revision it started with, or it is refused. Input, dialogs and menus opening,
+  hover, `inspect`, `dismissStatus`, a raise and a saved-copy push do **not** cancel it. A
+  second Upload while one waits does nothing and says "Upload already waiting for your last
+  change to be saved." (the notice clears when the upload is sent), and appears only when the
+  press gets past the guard above: a new press is blocked while placing, mid-drag, during an
+  export and while the window is closing, and says nothing then. When it is cancelled the
+  status line reads "Upload cancelled: … Press Upload again." on a line of its own above
+  any other status line (so the row can hold two lines). It is not a dialog, has no
+  Dismiss, and stays until Upload is pressed again, including after the awaited answer
+  arrives. **An agent's refused edit cancels it too:** any edit-proposing `recording.review`
+  action that is refused **by the window, in `drive()`** (bad values, nothing selected, a
+  dialog open) cancels a waiting Upload through the same path as a refused gesture, and
+  keeps its own error code. During an active export the resident rejects these API calls
+  before `drive()` runs, so that refusal does not cancel a waiting Upload (an Upload cannot
+  be sent during an export anyway). The actions are `setIn`, `setOut`, `resetTrim`, `addMask`, `placeMask`,
+  `useSolidCover`, `trimToLimit`, `setMaskIn`, `setMaskOut`, `strength`, `removeMask`, `cut`,
+  `adjustCut`, `restoreCut`, `undo`, `redo`, `setCoverEdge`, `setCoverEdgeToPlayhead`,
+  `coverKind` and `setTrim`.
+  **On the window path** the resident refuses an upload at any other revision
+  (`recording_stale`) and, for the window's own upload, an output other than the one shown
+  (`recording_config`). It also refuses an export request in **two different situations**:
+  while another export is running ("Another export is running, so this one didn't start. Try
+  again when it finishes."), and when an export timed out but the helper may still be
+  finishing it ("An export is still finishing. Try again when it's done."); both are
+  `recording_state`. It reopens the window with the reason and **no Try again**
+  (`retry: false`), since pressing Upload again (or Save a copy again) is the answer: **retry
+  your original action once the export finishes**. A direct API call (`recording.upload`,
+  `recording.saveCopy`) just gets the error: during an export it fails the ordinary
+  `recording_state` check, and after a timeout it gets "An export is still finishing"; it
+  reopens nothing. `recording.upload` takes no output snapshot. A proposal answered during an
+  export is held and delivered when review resumes, and so are a format or audio change made
+  then; after an export timeout, answers and pushes stay held until the helper's late result
+  arrives. Nothing is dropped silently.
+- **Try again** after a failed export uses **the output and revision stored with the
+  failed press** (each export request stores the output current when it was pressed, with its
+  revision). A failed Upload is retried at its own revision, and if the edit changed since
+  it is refused ("Press Upload to upload them"). **Both an Upload and a Save a copy retry
+  need the output unchanged:** if the output changed since, it is refused with
+  `recording_config` and no Try again, with "Press Upload again" for an Upload and "Press
+  Save a copy again" for a copy. A failed **Save a copy…** is retried with its stored output
+  at the current revision. Try again is refused while a cover is being placed, and blocked
+  while a change or gesture is still unanswered.
+- **Held keys.** The first Enter press can place, restore or upload, as the Enter rules
+  above say, and on a focused Edits row it activates the row. An **auto-repeated** Enter is
+  ignored, so a held key acts once and never uploads on repeat, and Ctrl+Enter does not
+  auto-repeat.
+
+### Thumbnails and skimming
+
+- The number of thumbnails follows the strip's width at every zoom level: 12 at the
+  reference width (a 1120 px strip), at most 24. Zooming asks for thumbnails of the
+  newly visible range, again one keyframe tile each. One cancellable worker opens the
+  clip once, seeks backward to the keyframe before each thumbnail's time, decodes only
+  that keyframe packet and scales straight to the thumbnail size; the two end
+  thumbnails come first, and results are cached by keyframe time. A placeholder shows
+  until each arrives. Thumbnails are keyframe pictures, not exact frames: exact frames
+  come only from the skim worker, below. The strip never decodes the whole clip, and
+  scrubbing, playback and Upload never wait for it. It draws the recorded picture
+  **without covers**. (`putgd-record --filmstrip` times the production worker on a build
+  in a standalone diagnostic, not through the review window, see
+  [Lab diagnostics](capture-and-export.md#lab-diagnostics).)
+- The timings below come from a **separate benchmark harness**, `bench.cpp` in the
+  council record's
+  [`filmstrip-test`](https://github.com/patrick-hudson/put.gd-evidence/tree/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test)
+  folder, which links the nightly's FFmpeg and runs the same keyframe method; they
+  are not measurements of the shipped review window or of the production worker.
+  `putgd-record --filmstrip` is a separate standalone worker benchmark (it runs the
+  production `Filmstrip` worker outside the window) and is how a build is rechecked
+  against these numbers. On m74 (i5-6500T) with a 3-minute 4K60 clip and the nightly's FFmpeg
+  9.0.2: the two end thumbnails in 156 ms, 12 in 433 ms and 24 in 739 ms (p95, warm;
+  490 ms and 846 ms cold), on one core and 55 MiB. Decoding every frame of that clip
+  takes 24 s, which is why there is no whole-clip pass
+  ([results](https://github.com/patrick-hudson/put.gd-evidence/blob/e2d072343dc15e433648d1512d4f29fe45cd1833/records/2026-11-17-recording-review-redesign/filmstrip-test/results.md)).
+- **Skim.** Hovering the paused timeline puts that thumbnail in the viewer at once, but
+  only when the tile of the keyframe before that time is already cached; on a miss the
+  viewer keeps what it showed, the playhead frame or an earlier skim picture, until the
+  exact frame arrives. As a tile has no covers,
+  **the viewer can show a picture without its covers** until the next step. After about 120 ms at rest, one exact-frame request goes out (at most one in
+  flight, cancelled when the pointer moves, the decoder kept open) and replaces the
+  thumbnail when it arrives, with the covers active at that time applied; the time flag
+  then drops its "≈". On m74 that frame takes 217 ms median and 328 ms p95 at 4K
+  (130 ms and 199 ms at 1080p), measured in the same harness. Leaving the strip restores
+  the playhead frame, and skimming never moves the playhead. An edit made meanwhile
+  cancels the skim frame and asks for it again, so a stale frame is never marked exact.
+
+### Previews, edits and the resident
+
+Previews are rendered in the helper by `previewFrame`, which the CLI and MCP preview
+also use. The paused preview and the exact skim frame check a cover against **two
+instants**: the requested time and the captured time of the picture they show. The export
+checks those too and also display-interval overlap, so a preview can show a later picture
+where the export holds an earlier one, and a held picture in the export can come from inside
+a cut (see [Covers](capture-and-export.md#kept-spans-cuts-and-frame-gaps)). The preview
+and the export are separate renderers and do not promise the same frame at a given time.
+**Playback masks differently again:** `FrameSequence` decodes frames in order on a worker and masks each frame at
+its own time only, so a cover wholly inside a frame gap is not drawn on the still
+picture while playing. That is a limit of the local viewer. While
+a cover is being dragged the pending area is drawn as a dashed rubber band. Play plays
+the kept footage silently from the playhead at the chosen speed and follows edits made
+while it plays (it resumes from the playhead, or pauses there when the edit leaves no
+kept footage ahead of it; zoom, speed and edit restarts resume from the playhead, and only
+Play itself wraps to the start): a cut is jumped, and frames that fall behind the clock are decoded but
+not drawn, so a large clip keeps pace with dropped frames. Stopping playback drops its
+queued frames. Scrubbing or any edit control pauses playback. The audio track is not previewed. **Check the saved export before
+uploading sensitive footage:** the preview and the export are separate renderers.
 
 `recording.review {id, action, ...}` (MCP `drive_recording_review`) works the
 window's controls as a user does, one action per call, in `reviewing` (and
-`inspect` while `exporting`): `inspect`, `seek {time}`, `play`, `pause`,
-`speed {speed}`, `setIn`, `setOut`, `resetTrim`, `addMask {kind, rect}` (from
-the playhead to the trim end, as Add blur/cover and a drag), `selectMask
-{maskId|null}`, `setMaskIn`, `setMaskOut`, `strength {strength}`, `removeMask`,
-`format {format, codec}`, `saveCopyDialog` (opens **Save copy…** as the button
-does: the desktop's chooser through the XDG portal, or the themed fallback; see
-[file-dialogs.md](../file-dialogs.md)) and `closeFileDialog` (closes it as a
-cancel). While that chooser is open the other actions answer
-`recording_state`, as the window takes no input then. A refused action answers
-`invalid_request` with the message the window shows. The answer is the window's state after the
-action (`visible`, `size`, `playheadUs`, `playing`, `speed`, `trim`, `masks`
-with their timeline bars, `selectedMaskId`, `armed`, `maskControls {list,
-times, strength, remove}`, `status`, `notice`, `video {rect, share}`,
-`timeline {rect, lanes}`, `scheme`, `fileDialog {open, mode, title, backend,
-parentWindow, fallbackReason, last}`) plus the resident's `state` and `edit`: an
-edit a control proposes reaches the resident as an `edit` event first, and the
-resident reads the window again after pushing the result back.
+`inspect` while `exporting`). The answer is the window's state after the action plus
+the resident's `state` and `edit`. Not every control has an action: the Format menu's
+audio toggle (the footer's "with system audio") has none, and neither does a fresh Upload
+(`recording.upload`; see
+[Review window actions](agent-control-and-tests.md#review-window-actions)). Errors:
 
-The window never owns the edit: each change is proposed to the resident as an
-`edit {revision, commands}` event, the resident applies it to the authoritative
-model (or refuses a stale or invalid proposal) and pushes the result back with
-the `setEdit` command, which is also sent after every CLI/MCP edit. "Save
-copy…" and "Upload" send `saveCopyRequested {path, revision}` and
-`uploadRequested {revision}`; the resident runs exactly the `saveCopy` and
-`upload` paths, so a stale revision or an animation over budget is refused
-and the window shows the resident's current edit again. Discard, closing the
-window and Escape during selection end the operation as `cancelled`. Upload
-closes the window at once and the export and upload continue in the
-background; the operation reports like any other upload (tray, history,
-`operation.inspect`), and the resident shuts the helper down when the export
-has been handed over. Save copy keeps the window open with the controls
-disabled and the status showing progress, so the user can still upload
-afterwards. A refused export after Upload (a stale revision, or an animation
-over its limits) reopens the window with the resident's reason, so the
-session never sits silently in `reviewing`. `operation.cancel` on the
-recording's operation (the Activity window's Cancel) ends the session the
-same way `recording.cancel` does, discarding the working clip.
+- **`invalid_request`** for a value the window rejects (a missing or malformed field, a
+  time outside the recording, an unknown ID) and for actions that need a selection the
+  window does not have (`placeMask`, `strength`, `removeMask`, `useSolidCover`, `setMaskIn`
+  and `setMaskOut`), and for `retryExport` when the window has no Try again to press, with
+  the message the window shows.
+- **`recording_state`** when the window's state refuses the action: no time selection
+  for `cut`, no selected cover for `seekCoverStart`, `seekCoverEnd`, `setCoverEdge`,
+  `setCoverEdgeToPlayhead` and `coverKind`, nothing to undo or redo, a cover being placed,
+  an export running, the discard confirmation or the **Save a copy…** chooser open (opened
+  through the desktop's XDG portal or the themed fallback; see
+  [file-dialogs.md](../file-dialogs.md)).
+- **The outcome of the action's own proposals.** An edit a control proposes reaches the
+  resident as an `edit` event first. If the resident refuses it (a cut that would leave
+  no frame, a 65th cut, a stale revision), the action answers with the refusal as its
+  error: the model's own code (for example `recording_cut_empty`, `recording_stale` or
+  `invalid_request`) and message, with `details {revision, proposal}`. A proposal that
+  was never answered is a `recording_state` error. `inspect`'s
+  `lastRefusal {code, message, revision, proposal}` is for display only. An action that
+  succeeds returns the window's state with the edit after it, so an agent can read the
+  returned `edit.revision`; `recording.edit` returns the same refusal codes directly.
 
-Choosing GIF or WebP is a format choice, not a pixel count: when the output
-would exceed `limits.recordingAnimationEdge`, the resident sets `maxEdge` to
-the limit at prepare and whenever the format changes, and pushes the result
-to the review. The duration limit still needs a trim; the review's status
-line says so ("GIF is limited to 60 s: trim the clip") as soon as the
-retained interval exceeds it, using the limits the resident sends with every
+The window never owns the edit. Its wire contract, between the helper and the resident:
+
+- **`edit {revision, commands, proposal}`** is a proposal at the revision the window showed,
+  numbered by `proposal`. The resident applies it to the authoritative model and its undo
+  history, or refuses it (stale revision, invalid commands, an export running), and answers
+  with the `setEdit` command, whose parameters are `{edit, config, limits, answer}`: the
+  current edit, the current output config, the limits, and an `answer` object
+  `{proposal?, refused? {code, message, revision}, configSeq}`. The helper applies `config`
+  (with `answer.configSeq`) before it calls the window's `setEdit()`. `answer.proposal` names the
+  proposal answered, `refused` appears only for a refusal, and `configSeq` is the last output
+  choice (the `seq` of a `configChanged`) the resident applied. A `setEdit` is also pushed
+  after every CLI or MCP edit, and at once when the resident clamps the animation size
+  after a format change.
+- **`configChanged {config, seq}`** is the window's output choice; the window ignores any
+  older config in a push.
+- **`uploadRequested {revision, config}`** has one shape: the revision the upload started
+  with and the output the window shows. **`saveCopyRequested {path, revision}`** and
+  **`retryExportRequested`** (no fields) are the other two. The resident runs exactly the
+  `saveCopy` and `upload` paths (a retry uses the stored request). Only an upload is refused
+  for a stale revision: **Save a copy exports the resident's current edit** at the moment the
+  resident handles the request, whatever revision the window sent. A changed output (for an
+  upload) or an animation over budget is also refused, and the window shows the resident's
+  current edit again.
+
+Discard… and the window's Close button open the same confirmation; confirming, or Escape
+during selection, ends the operation as `cancelled`. Upload sends its request once the
+resident has accepted every pending proposal (see "Commit and upload" above), then closes
+the window at once and the export and upload continue in the background; the operation
+reports like any other upload (tray, history, `operation.inspect`), and the resident shuts
+the helper down when the export has been handed over. Save a copy keeps the window open with
+the controls disabled and the status showing progress, so the user can still upload
+afterwards. A refused export after Upload reopens the window with the resident's reason, so
+the session never sits silently in `reviewing`. `operation.cancel` on the recording's
+operation (the Activity window's Cancel) ends the session the same way `recording.cancel`
+does, discarding the working clip.
+
+Choosing GIF or WebP is a format choice, not a pixel count: when the output would
+exceed `limits.recordingAnimationEdge`, the resident sets `maxEdge` to the limit at
+prepare and whenever the format changes, and pushes the result to the review. The
+duration limit counts **kept** time (the trim minus the cuts), so a cut can bring a
+long clip under it; when the kept time is still over, the status line says so ("GIF is
+limited to 60 s: trim the clip") using the limits the resident sends with every
 `setEdit`.
 
 ### Tray feedback
@@ -204,7 +487,7 @@ round of [removed tests](../../testing/removed-tests.md#second-round).
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review; after `budget` the resident sends the helper `notice {text}`, which the review window shows as its banner |
 | `cancelled` | Cancel on the bar, Discard in the review, the window closed |
-| `configChanged {config, microphoneRequested?}` | format/codec/audio changed on the bar (ready) or the format changed in review; `microphoneRequested` is the Microphone toggle as the user left it, which the resident remembers |
-| `edit {revision, commands}` | a review-window proposal at the revision it displayed |
-| `uploadRequested {revision}`, `saveCopyRequested {path, revision}` | the review's Upload / Save copy |
+| `configChanged {config, microphoneRequested?, seq?}` | format/codec/audio changed on the bar (ready) or in review (where `seq` numbers the change; the resident echoes the last one it applied and the window ignores older config); `microphoneRequested` is the Microphone toggle as the user left it, which the resident remembers |
+| `edit {revision, commands, proposal}` | a review-window proposal at the revision it displayed, numbered by `proposal` |
+| `uploadRequested {revision, config}`, `saveCopyRequested {path, revision}`, `retryExportRequested` | the review's Upload (with the output it shows) / Save copy / Try again |
 | `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |

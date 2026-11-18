@@ -1,4 +1,5 @@
 #include "RecordingService.h"
+#include "core/KeptSpans.h"
 #include "core/Log.h"
 #include <QDateTime>
 #include <QDir>
@@ -16,6 +17,8 @@
 namespace putgd {
 namespace {
 Error invalid(const QString& message) { return {"invalid_request", message, {}}; }
+// What an export's output depends on: format, codec, size and the two sound sources.
+QJsonArray outputChoice(const QJsonObject& c) { return QJsonArray{c["format"], c["codec"], c["maxEdge"], c["audio"].toObject()["system"], c["audio"].toObject()["microphone"]}; }
 bool integer(const QJsonValue& value, qint64 min, qint64 max, qint64* out) {
     if (!value.isDouble()) return false;
     const double number = value.toDouble();
@@ -102,9 +105,9 @@ QJsonObject RecordingService::capabilities() const {
     result["states"] = QJsonArray::fromStringList(recording::states());
     result["timeUnit"] = "microseconds";
     result["maskKinds"] = QJsonArray{"blur", "solid"};
-    result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask"};
+    result["editCommands"] = QJsonArray{"setTrim", "resetTrim", "addMask", "updateMask", "removeMask", "addCut", "updateCut", "removeCut", "undo", "redo"};
     result["limits"] = QJsonObject{{"animationMaxUs", double(limit.animationMaxUs)}, {"animationMaxEdge", limit.animationMaxEdge},
-        {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}};
+        {"maxFileBytes", double(settings.limits.maxFileBytes)}, {"maxMasks", recording::maximumMasks}, {"maxCuts", recording::maximumCuts}};
     result["commands"] = QJsonArray{"windows", "microphones", "prepare", "start", "pause", "resume", "stop", "cancel", "inspect", "select", "raise", "overlay", "audio", "edit", "preview", "review", "saveCopy", "upload"};
     // recording.windows lists the identities a window target takes (KDE, GNOME Wayland).
     result["windowList"] = windows_ != nullptr;
@@ -225,6 +228,26 @@ void RecordingService::checkStep(Session& s, RecordingState to) {
     if (recording::allowedStep(s.state, to) || std::exchange(s.offTableStep, true)) return;
     logging::warning(logRecording(), "Recording step outside the state table", {{"operationId", s.op.id}, {"from", recording::stateName(s.state)}, {"state", recording::stateName(to)}});
 }
+// The edit (and config) the review window shows. configSeq names the window's
+// latest output choice the resident has applied, so the window never takes an
+// older config over a newer choice of its own.
+void RecordingService::pushEdit(Session& s, QJsonObject answer) {
+    // The helper takes no edit while it exports (even after its deadline passed):
+    // answers wait for it, and the latest edit goes out with them.
+    if (s.helperExporting) { if (answer.contains("proposal")) s.heldAnswers.append(answer); else s.pushHeld = true; return; }
+    answer["configSeq"] = double(s.windowConfigSeq);
+    backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s), answer);
+}
+// Once the helper has left its export and review resumes: a format or sound
+// choice made meanwhile, then the answers that waited.
+void RecordingService::resumeReview(Session& s) {
+    if (s.state != RecordingState::Reviewing || s.helperExporting) return;
+    if (auto held = std::exchange(s.heldConfig, {}); !held.isEmpty()) handleEvent(held);
+    if (!session_ || &*session_ != &s) return;
+    const auto answers = std::exchange(s.heldAnswers, {});
+    for (const auto& held : answers) pushEdit(s, held);
+    if (std::exchange(s.pushHeld, false) && answers.isEmpty()) pushEdit(s);
+}
 void RecordingService::transition(Session& s, RecordingState state, const QString& phase) {
     // A step the table does not list is still taken: refusing it would leave the
     // session where it is with nothing to move it on, holding the clip, the bar
@@ -243,6 +266,7 @@ void RecordingService::transition(Session& s, RecordingState state, const QStrin
     else if (s.shellFrame && state != RecordingState::Ready && state != RecordingState::Starting && state != RecordingState::Stopping) closeShell(s);
     host_.observe(s.op);
     emit changed(s.op.id);
+    if (state == RecordingState::Reviewing) resumeReview(s);
 }
 RecordingBackend::Reply RecordingService::marshal(quint64 generation, std::function<void(Error, QJsonObject)> fn) {
     QPointer<RecordingService> guard(this);
@@ -329,7 +353,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         qint64 duration = 0;
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
         s.duration = duration;
-        s.edit = {};
+        s.edit = {}; s.history = {};
         s.captureStopped = true;
         noteCaptured(s, event, false);
         s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
@@ -355,6 +379,11 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         transition(s, RecordingState::Recording);
     } else if (kind == "paused" && s.state == RecordingState::Recording) transition(s, RecordingState::Paused);
     else if (kind == "resumed" && s.state == RecordingState::Paused) transition(s, RecordingState::Recording);
+    else if (kind == "lateResult" && event["command"] == "export") {
+        // The helper finished an export after its deadline: it takes edits again.
+        s.helperExporting = false;
+        resumeReview(s);
+    }
     else if (kind == "lateResult" && event["ok"].toBool()) {
         // The helper finished a pause or resume after its deadline (#1443): its
         // caller had recording_helper_timeout, and the clip is now where the
@@ -371,16 +400,23 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         }
     }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
+    // A format or sound choice made while an export runs is applied when review resumes.
+    else if (kind == "configChanged" && s.state == RecordingState::Exporting) s.heldConfig = event;
     else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();
         for (const auto* key : {"mime", "budgetBytes"}) json.remove(key);
         if (s.state == RecordingState::Reviewing) {
             // After the clip exists only the output can change: the capture rate is
-            // fixed and audio cannot appear (and is dropped for silent formats).
+            // fixed and audio cannot appear (and is dropped for silent formats). A
+            // source the review turned off stays out of the export; one it asks for
+            // is kept only when it was captured. No audio object: what was captured.
             const auto format = json["format"].toString();
             json.remove("fps");
             const bool sound = format != "gif" && format != "webp";
-            json["audio"] = QJsonObject{{"system", s.capturedSystemAudio && sound}, {"microphone", s.capturedMicrophone && sound}};
+            const auto requested = json.value("audio").toObject();
+            const bool asked = json.value("audio").isObject();
+            const auto keep = [&](const char* source, bool captured) { return captured && sound && (!asked || requested.value(QLatin1String(source)).toBool(true)); };
+            json["audio"] = QJsonObject{{"system", keep("system", s.capturedSystemAudio)}, {"microphone", keep("microphone", s.capturedMicrophone)}};
         }
         // The bar's microphone toggle is remembered for the next recording (#1364).
         if (s.state == RecordingState::Ready && event["microphoneRequested"].isBool() && host_.remember && event["microphoneRequested"].toBool() != host_.settings().recordingMicrophone)
@@ -392,29 +428,53 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             // Choosing GIF or WebP is a format choice: fit the output to the animation limit.
             const bool clamped = recording::clampAnimationSize(config, s.canvas, limits(s.op.settings));
             s.config = config;
-            if (clamped && s.state == RecordingState::Reviewing) backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
+            if (s.state == RecordingState::Reviewing && event["seq"].isDouble()) s.windowConfigSeq = quint64(event["seq"].toDouble());
+            if (clamped && s.state == RecordingState::Reviewing) pushEdit(s);
             host_.observe(s.op);
             emit changed(s.op.id);
         }
-    } else if (kind == "edit" && s.state == RecordingState::Reviewing) {
+    } else if (kind == "edit" && (s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting)) {
         // The review window proposes commands at the revision it showed; the
-        // resident's answer (setEdit) is what it displays, accepted or not.
-        qint64 revision = 0;
-        if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
-            if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { host_.observe(s.op); emit changed(s.op.id); }
-        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
-    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && s.state == RecordingState::Reviewing) {
+        // resident's answer (setEdit) is what it displays. It names the
+        // proposal, and a refusal says why, so the window never takes an
+        // unchanged edit for its own and uploads without the change.
+        qint64 revision = 0, proposal = 0;
+        QJsonObject answer;
+        if (integer(event["proposal"], 1, 1LL << 52, &proposal)) answer["proposal"] = double(proposal);
+        Error refusal;
+        if (s.state != RecordingState::Reviewing) refusal = {"recording_state", "An export is running, so the change wasn't applied", {}};
+        else if (!integer(event["revision"], 1, 1LL << 52, &revision) || !event["commands"].isArray()) refusal = invalid("The edit proposal is malformed");
+        else if (quint64(revision) != s.edit.revision) refusal = {"recording_stale", "The edits changed before this change arrived, so it wasn't applied", {{"currentRevision", double(s.edit.revision)}}};
+        else if (auto error = recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) refusal = error;
+        else { host_.observe(s.op); emit changed(s.op.id); }
+        if (refusal) answer["refused"] = QJsonObject{{"code", refusal.code}, {"message", refusal.message}, {"revision", double(revision)}};
+        if (proposal > 0) {
+            s.proposalOutcomes[quint64(proposal)] = answer.value("refused").toObject();
+            while (s.proposalOutcomes.size() > 128) s.proposalOutcomes.erase(s.proposalOutcomes.begin());
+        }
+        pushEdit(s, answer);
+    } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && (s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting)) {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
         // The helper learns the outcome from its own export command; a refused
-        // request (stale revision, budget) or a failed export is pushed back as the
-        // current edit and the review window, closed by Upload, is reopened with the reason.
+        // request (an upload at a revision that isn't the current one, an export
+        // already running, the budget) or a failed export is pushed back as the
+        // current edit and the review window, closed by Upload, is reopened with
+        // the reason. Nothing is dropped silently.
+        // Try again is offered only for a failed export: a stale, busy or changed-format
+        // refusal is answered by pressing Upload again.
         auto refused = [this](Error error, QJsonObject) {
             if (!error || !session_) return;
-            backend_->setEdit(session_->op.id, session_->edit, session_->config, limitsJson(*session_));
-            backend_->control(session_->op.id, "raise", {{"error", error.message}}, [](Error, QJsonObject) {});
+            pushEdit(*session_);
+            const bool retry = error.code != "recording_stale" && error.code != "recording_state" && error.code != "recording_config";
+            backend_->control(session_->op.id, "raise", {{"error", error.message}, {"retry", retry}}, [](Error, QJsonObject) {});
         };
-        if (kind == "retryExportRequested") retryExport(refused, refused);
+        // An upload exports the output the window showed when Upload was pressed.
+        const auto shown = event["config"].toObject();
+        if (s.state == RecordingState::Exporting) refused({"recording_state", "Another export is running, so this one didn't start. Try again when it finishes.", {}}, {});
+        else if (kind == "uploadRequested" && !shown.isEmpty() && outputChoice(shown) != outputChoice(s.config.toJson()))
+            refused({"recording_config", "The format or sound changed before the upload started, so nothing was uploaded. Press Upload again.", {}}, {});
+        else if (kind == "retryExportRequested") retryExport(refused, refused);
         else exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
     }
 }
@@ -855,7 +915,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 qint64 duration = 0;
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
                 s.duration = duration;
-                s.edit = {};
+                s.edit = {}; s.history = {};
                 s.captureStopped = true;
                 noteCaptured(s, result, false);
                 s.config.audio.system = s.capturedSystemAudio && !s.config.silent();
@@ -873,8 +933,8 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         qint64 revision = 0;
         if (!integer(params["revision"], 1, 1LL << 52, &revision) || !params["commands"].isArray()) { reply(invalid("edit takes the current revision and 1 to 100 commands"), {}); return; }
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
-        if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { reply(error, {}); return; }
-        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
+        if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) { reply(error, {}); return; }
+        pushEdit(s);
         host_.observe(s.op);
         emit changed(s.op.id);
         reply({}, publicJson(s));
@@ -884,13 +944,15 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         qint64 time = 0, maxEdge = 1024;
         if (!integer(params["time"], 0, std::max<qint64>(0, s.duration - 1), &time) || (params.contains("maxEdge") && !integer(params["maxEdge"], 64, 1600, &maxEdge))) { reply(invalid("preview takes a clip time in microseconds and an optional maxEdge of 64 to 1600"), {}); return; }
         const auto edit = s.edit;
-        const auto end = s.edit.exportEnd(s.duration);
-        const bool retained = time >= s.edit.trimStart && time < end;
-        backend_->preview(s.op.id, s.edit, s.config, time, int(maxEdge), marshal(s.generation, [reply, edit, time, retained](Error error, QJsonObject result) {
+        // #1613: kept means inside the trim and outside every cut; output time is the kept-span map's.
+        const recording::KeptSpans kept(s.edit, s.duration);
+        const bool retained = kept.kept(time);
+        const qint64 outputTime = retained ? kept.toOutput(time) : 0;
+        backend_->preview(s.op.id, s.edit, s.config, time, int(maxEdge), marshal(s.generation, [reply, edit, time, retained, outputTime](Error error, QJsonObject result) {
             if (error) { reply(error, {}); return; }
             result["timeUs"] = double(time);
             result["retained"] = retained;
-            result["outputTimeUs"] = retained ? QJsonValue(double(time - edit.trimStart)) : QJsonValue(QJsonValue::Null);
+            result["outputTimeUs"] = retained ? QJsonValue(double(outputTime)) : QJsonValue(QJsonValue::Null);
             result["revision"] = double(edit.revision);
             reply({}, result);
         }));
@@ -903,7 +965,17 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         // applied the proposal (or refused it) and pushed the result to the
         // window, so the window is read once more: the reply's window state and
         // edit are the ones after the action.
-        if (params["action"] == "retryExport") { retryExport(reply); return; }
+        // retryExport: the window's Try again guard first (no failed export there,
+        // a cover being placed; a window that can't be asked retries nothing),
+        // then the resident's own answer to this request: the export-start
+        // state or the refusal, as recording.review retryExport always replied.
+        if (params["action"] == "retryExport") {
+            backend_->control(s.op.id, "review", {{"action", "retryExport"}, {"residentRetries", true}}, marshal(s.generation, [this, reply](Error error, QJsonObject) {
+                if (error) { reply(error, {}); return; }
+                retryExport(reply);
+            }));
+            return;
+        }
         auto forwarded = params;
         forwarded.remove("id");
         const bool inspect = forwarded["action"].toString() == "inspect";
@@ -917,9 +989,26 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         };
         backend_->control(s.op.id, "review", forwarded, marshal(generation, [this, answer, generation, inspect](Error error, QJsonObject result) {
             if (error || inspect) { answer(error, result); return; }
-            QMetaObject::invokeMethod(this, [this, answer, generation] {
+            // The proposals this action made were answered before this reply (events
+            // queue ahead of it): their outcomes are read now, before newer proposals
+            // can push them out. A refused one is the action's error; one with no
+            // outcome was never applied.
+            const auto proposals = result["proposals"].toArray();
+            for (const auto& value : proposals) {
+                const auto number = quint64(value.toDouble());
+                const auto outcome = session_->proposalOutcomes.constFind(number);
+                if (outcome == session_->proposalOutcomes.constEnd()) { answer({"recording_state", "The edit was not answered", {{"proposal", double(number)}}}, {}); return; }
+                if (outcome->isEmpty()) continue;
+                const auto code = (*outcome)["code"].toString();
+                answer({code.isEmpty() ? QStringLiteral("recording_refused") : code, (*outcome)["message"].toString(), {{"revision", (*outcome)["revision"]}, {"proposal", double(number)}}}, {});
+                return;
+            }
+            QMetaObject::invokeMethod(this, [this, answer, generation, proposals] {
                 if (!session_ || session_->generation != generation) { answer({"recording_unavailable", "The recording ended", {}}, {}); return; }
-                backend_->control(session_->op.id, "review", {{"action", "inspect"}}, marshal(generation, answer));
+                backend_->control(session_->op.id, "review", {{"action", "inspect"}}, marshal(generation, [answer, proposals](Error error, QJsonObject state) {
+                    if (!error && !proposals.isEmpty()) state["proposals"] = proposals;
+                    answer(error, state);
+                }));
             }, Qt::QueuedConnection);
         }));
         return;
@@ -933,12 +1022,24 @@ void RecordingService::retryExport(JsonReply reply, JsonReply done) {
         reply({"recording_state", "There is no failed export to retry", {}}, {});
         return;
     }
+    // An upload is retried at the revision that failed, never at a later edit.
     auto params = s.lastExportRequest;
-    params["revision"] = double(s.edit.revision);
+    if (s.lastExport["command"] == "upload") {
+        if (quint64(params["revision"].toDouble()) != s.edit.revision) {
+            reply({"recording_stale", "The edits changed since the upload failed, so it wasn't retried. Press Upload to upload them.", {{"currentRevision", double(s.edit.revision)}}}, {});
+            return;
+        }
+    } else params["revision"] = double(s.edit.revision);
+    if (outputChoice(params["config"].toObject()) != outputChoice(s.config.toJson())) {
+        reply({"recording_config", QStringLiteral("The format or sound changed since the export failed, so it wasn't retried. Press %1 again.").arg(s.lastExport["command"] == "upload" ? QStringLiteral("Upload") : QStringLiteral("Save a copy")), {}}, {});
+        return;
+    }
     exportTo(s.lastExport["command"].toString(), params, std::move(reply), std::move(done));
 }
 void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done) {
     auto& s = *session_;
+    // Past its deadline the helper may still be exporting: no second export until its late result.
+    if (s.helperExporting) { reply({"recording_state", "An export is still finishing. Try again when it's done.", {}}, {}); return; }
     const auto settings = s.op.settings;
     QString destination;
     bool overwrite = false;
@@ -950,9 +1051,11 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     } else {
         qint64 revision = 0;
         if (!integer(params["revision"], 1, 1LL << 52, &revision)) { reply(invalid("upload takes the edit revision it was reviewed at"), {}); return; }
-        if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
+        // An upload exports exactly the revision it was started at, or nothing.
+        if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edits changed after Upload was pressed, so nothing was uploaded. Check them, then upload again", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
     }
     s.lastExportRequest = params;
+    s.lastExportRequest["config"] = s.config.toJson();  // a retry exports exactly this output
     s.lastExport = {{"command", command}, {"status", "exporting"}, {"revision", double(s.edit.revision)}};
     if (command == "saveCopy") s.lastExport["path"] = destination;
     if (auto error = recording::checkExportBudget(s.config, s.edit, s.duration, s.canvas, limits(settings))) {
@@ -972,8 +1075,11 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     // poll inspect: `lastExport` and the operation carry the outcome.
     reply({}, publicJson(s));
     if (!session_ || session_->generation != generation) return;
+    s.helperExporting = true;
     backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done](Error error, QJsonObject result) {
         auto& s = *session_;
+        // Past its deadline the helper may still be exporting; its late result says when it stops.
+        if (error.code != "recording_helper_timeout") s.helperExporting = false;
         const auto maximum = s.op.settings.limits.maxFileBytes;
         const QFileInfo file(output);
         auto failed = [&](const Error& cause) {
