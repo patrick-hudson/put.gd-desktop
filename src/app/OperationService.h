@@ -91,6 +91,8 @@ public:
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
+ // The operation has finished but still holds its slot; a Retry now is answered operation_settling (#1578).
+ bool operationSettling(const QString& id) const {return settling(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
@@ -152,6 +154,11 @@ public:
  // reference) is leased to one operation's provider work at a time.
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
+ // Why the journal is not ready: the error that stopped its recovery (kept while the recovery is retried), or "initializing" while the
+ // first attempt is still running. Every reply to a call that needs the journal carries this, never a bare wait message (#1576).
+ Error notReadyError() const {return ready_?Error{}:startupError_?startupError_:Error{"initializing","Wait for resident journal recovery",{}};}
+ // Tests shorten the pause before a failed recovery is retried.
+ void setRecoveryRetryForTesting(int ms) {recoveryRetryMs_=ms;}
  // Ask the idle gate to return freed heap once current work drains (#1149): a
  // closed interface leaves its buffers free but resident. background() arms it itself.
  void requestHeapReclamation();
@@ -242,6 +249,11 @@ private:
  QHash<QString,Error> previewFailures_;
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
+ // A finished operation keeps its slot until its link copy and source cleanup are done, while its outcome is already
+ // visible. A Retry then is answered operation_settling, which is worth repeating in a moment (#1578).
+ QSet<QString> finishing_;
+ bool settling(const QString& id) const;
+ void settled(const QString& id);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  // Which guard refused a copy, for the putgd.clipboard log record (#473): the
  // clipboard revision moved, the epoch/invocation moved (`epochGuard` names
@@ -339,6 +351,11 @@ private:
  QString installation_;
  std::function<Error()> uploadGate_;
  Error startupError_;
+ // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile
+ // reports a stale lock it failed to remove the same way as a live owner) is retried with a growing pause until it succeeds, so a fault that
+ // passes does not leave the resident dead until the next start.
+ void recoverJournal();
+ int recoveryRetryMs_=2000,recoveryAttempts_=0;
 };
 // Callback adapters complete once, including ambiguous outcomes. Waiting occurs
 // exclusively on a worker, so the user session remains responsive.

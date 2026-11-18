@@ -174,6 +174,19 @@ QJsonObject withIds(QJsonObject record, const ResponseIds& ids, const Aws::Strin
     if (!ids.extended.isEmpty()) record["extendedRequestId"] = ids.extended;
     return record;
 }
+// #1601: the SDK sends $ & , : = and @ in a key as they are but signs them percent-encoded.
+// AWS and most servers accept that; Garage checks the path as sent and answers 403. put.gd
+// can't tell that apart from a real denial, so the error stays as it is and gains a hint
+// when the key (prefix and name) contains one of those characters.
+Error withNameCharactersHint(Error error, const QString& key) {
+    if (error.code != "s3_permission_denied" && error.code != "s3_authentication_failed") return error;
+    for (const auto character : QStringLiteral("$&,:=@"))
+        if (key.contains(character)) {
+            error.message += " Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @; if this name or its folder in the bucket has them, try renaming it.";
+            break;
+        }
+    return error;
+}
 template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedMs) {
     const auto name = qt(error.GetExceptionName());
     const int status = int(error.GetResponseCode());
@@ -954,8 +967,11 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
     if (stopped(cancellation)) { reply({"inconclusive", {}, {}, cancelled()}); return; }
     QJsonObject reference{{"schemaVersion", 1}, {"key", key}};
     if (!outcome.IsSuccess()) {
-        if (absent(outcome.GetError())) reply({"absent", reference, {}, {}});
-        else reply({"inconclusive", {}, {}, wireError(outcome.GetError(), S3Stage::NameHead, requestTimer.elapsed())});
+        if (absent(outcome.GetError())) {
+            reply({"absent", reference, {}, {}});
+            return;
+        }
+        reply({"inconclusive", {}, {}, withNameCharactersHint(wireError(outcome.GetError(), S3Stage::NameHead, requestTimer.elapsed()), key)});
     } else {
         reference["versionId"] = qt(outcome.GetResult().GetVersionId());
         reply({"present", reference, qt(outcome.GetResult().GetETag()), {}});
@@ -1057,6 +1073,11 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         reply({"failed", {}, {"s3_precondition_invalid", "Persist an exact object key and write precondition before upload", {}}});
         return;
     }
+    // #1601: one hint for every failure of this upload, single request or multipart.
+    reply = [key, deliver = std::move(reply)](UploadResult result) {
+        if (result.error) result.error = withNameCharactersHint(result.error, key);
+        deliver(std::move(result));
+    };
     QFile source(request.artifact.path);
     if (!source.open(QIODevice::ReadOnly) || source.size() != request.artifact.bytes) {
         reply({"failed", {}, {"artifact_invalid", "Retained artifact is unavailable", {}}});

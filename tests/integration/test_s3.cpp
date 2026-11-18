@@ -191,7 +191,69 @@ private slots:
         QCOMPARE(checked.error.code, QString("credential_setup_required"));
         QCOMPARE(f.events().size(), 1);
     }
-
+    // #1601: the hint appended to a permission or authentication error when the key, prefix
+    // included, contains $ & , : = or @. The rest of the message is exactly what the same
+    // failure gives for a plain key.
+    static QString nameCharactersHint() {
+        return QStringLiteral(" Some S3-compatible services, such as Garage, can't verify names containing $ & , : = or @; if this name or its folder in the bucket has them, try renaming it.");
+    }
+    // Like Garage, the oracle checks the signature against the path as it arrives, and the SDK
+    // sends these characters unencoded but signs them encoded: the name check is denied.
+    void nameCheckAddsTheHintForSuchKeys_data() {
+        QTest::addColumn<QString>("prefix");QTest::addColumn<QString>("name");
+        QTest::newRow("colon") << QString("prefix é") << QString("colon:.txt");
+        QTest::newRow("at-dollar-comma") << QString("prefix é") << QString("at@dollar$comma,.txt");
+        QTest::newRow("amp-equals") << QString("prefix é") << QString("amp&eq=.txt");
+        QTest::newRow("in-the-folder") << QString("team=a") << QString("plain.txt");
+    }
+    void nameCheckAddsTheHintForSuchKeys() {
+        QFETCH(QString, prefix);QFETCH(QString, name);
+        S3Fixture f;
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"key", "prefix é/plain.txt"}, {"status", 403}}}}});
+        const auto plain = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "plain.txt", cb); });
+        QCOMPARE(plain.error.code, QString("s3_permission_denied"));
+        // A plain key never gets the hint, so the baseline below holds none.
+        QVERIFY(!plain.error.message.contains(nameCharactersHint()));
+        f.destination.settings["objectPrefix"] = prefix;
+        f.reset();
+        const auto checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, name, cb); });
+        QCOMPARE(checked.status, QString("inconclusive"));
+        QCOMPARE(checked.error.code, QString("s3_permission_denied"));
+        QCOMPARE(checked.error.message, plain.error.message + nameCharactersHint());
+        // The hint costs no request.
+        QCOMPARE(f.events().size(), 1);
+    }
+    // The upload's own failure, single request or multipart: both eligible codes gain the hint
+    // for such a key, any other code does not, and a plain key never does. The oracle verifies
+    // paths the way AWS does here, so the rule decides the answer.
+    void uploadFailureAddsTheHintOnlyForEligibleCodes_data() {
+        QTest::addColumn<bool>("multipart");QTest::addColumn<int>("status");QTest::addColumn<QString>("service");QTest::addColumn<QString>("code");QTest::addColumn<bool>("hint");
+        for (const bool multipart : {false, true}) {
+            const auto mode = QString(multipart ? "multipart-" : "single-");
+            QTest::newRow(qPrintable(mode + "denied")) << multipart << 403 << QString("AccessDenied") << QString("s3_permission_denied") << true;
+            QTest::newRow(qPrintable(mode + "signature")) << multipart << 403 << QString("SignatureDoesNotMatch") << QString("s3_authentication_failed") << true;
+            QTest::newRow(qPrintable(mode + "other")) << multipart << 400 << QString("InvalidRequest") << QString("s3_request_failed") << false;
+        }
+    }
+    void uploadFailureAddsTheHintOnlyForEligibleCodes() {
+        QFETCH(bool, multipart);QFETCH(int, status);QFETCH(QString, service);QFETCH(QString, code);QFETCH(bool, hint);
+        S3UploadPolicy policy;policy.multipartThresholdBytes = 1024 * 1024;policy.minimumPartBytes = 1024 * 1024;
+        S3Fixture f(policy);
+        QJsonObject rule{{"method", multipart ? "POST" : "PUT"}, {"status", status}, {"code", service}, {"remaining", 10}};
+        if (multipart) rule["query"] = "uploads";
+        const QByteArray bytes(multipart ? 2 * 1024 * 1024 : 64, 'x');
+        auto attempt = [&](const QString& name) {
+            f.reset({{"normalisePath", true}, {"rules", QJsonArray{rule}}});
+            return f.upload(f.request(name, bytes));
+        };
+        const auto plain = attempt("plain.bin");
+        const auto special = attempt("a:b@c.bin");
+        QCOMPARE(plain.status, QString("failed"));QCOMPARE(special.status, QString("failed"));
+        QCOMPARE(plain.error.code, code);QCOMPARE(special.error.code, code);
+        QVERIFY(!plain.error.message.contains(nameCharactersHint()));
+        if (!hint) QVERIFY(!special.error.message.contains(nameCharactersHint()));
+        QCOMPARE(special.error.message, plain.error.message + (hint ? nameCharactersHint() : QString()));
+    }
     // The SDK drops empty path segments, so the receipt, the link and the stored
     // object must all name the key the request reached (#1582).
     void prefixKeyIsTheStoredKey_data() {
