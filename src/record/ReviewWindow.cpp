@@ -1084,8 +1084,6 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     shortcut(QKeySequence(Qt::ALT | Qt::Key_Right), [this] { stepEdit(1); });
     view_->installEventFilter(this);
     timeline_->installEventFilter(this);
-    // While an Upload waits, any input in this window or its dialogs cancels it.
-    qApp->installEventFilter(this);
 
     frameTimer_.setSingleShot(true);
     frameTimer_.setInterval(qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") > 0 ? qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") : 60);
@@ -1123,6 +1121,17 @@ qint64 ReviewWindow::frameAt(qint64 index) const { return std::llround(double(in
 // a rounded frame length: 33,333 + 33,333 is not frame 2's 66,667.
 qint64 ReviewWindow::frameIndex(qint64 us) const { return std::llround(double(us) * std::max(1, config_.fps) / 1e6); }
 qint64 ReviewWindow::nextFrameEdge(qint64 at) const { return std::min(options_.durationUs, frameAt(frameIndex(at) + 1)); }
+// The edge after the frame the viewer shows for the playhead: the decoded
+// frame's own time when it was decoded for this playhead, else the frame a
+// preview there shows (the first at or after it). Never the nominal playhead
+// frame: at 30 fps a playhead at 40 ms shows the frame at 66,667 µs (#1635 U44).
+qint64 ReviewWindow::shownFrameEnd() const {
+    const qint64 at = shownFor_ == playhead_ && shownActual_ >= 0 ? shownActual_ : playhead_;
+    qint64 k = std::max<qint64>(0, frameIndex(at) - 1);
+    if (shownFor_ == playhead_ && shownActual_ >= 0) { while (frameAt(k + 1) <= at) ++k; }
+    else while (frameAt(k) < at) ++k;
+    return std::min(options_.durationUs, frameAt(k + 1));
+}
 qint64 ReviewWindow::previousFrame(qint64 edge) const { return frameAt(std::max<qint64>(0, frameIndex(edge) - 1)); }
 // Frame times are rounded (30 fps: 66,667 µs is frame 2), so the estimate is
 // checked against the rounded times on both sides of it.
@@ -1414,8 +1423,8 @@ QString ReviewWindow::setTrimAt(bool start) {
         propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(at)}, {"end", edit_.trimEnd ? QJsonValue(double(*edit_.trimEnd)) : QJsonValue(QJsonValue::Null)}}});
         return {};
     }
-    // The playhead frame is the last one kept.
-    const qint64 end = nextFrameEdge(at);
+    // The frame shown at the playhead is the last one kept.
+    const qint64 end = shownFrameEnd();
     if (end <= edit_.trimStart) return refuse("Trim end must be after the trim start");
     propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(edit_.trimStart)}, {"end", end >= options_.durationUs ? QJsonValue(QJsonValue::Null) : QJsonValue(double(end))}}});
     return {};
@@ -1430,7 +1439,7 @@ QString ReviewWindow::setMaskAt(bool start, const QString& id) {
         updateCover(mask->id, [&](QJsonObject& m) { m["start"] = double(at); });
     } else {
         // Until the playhead: the frame shown stays covered.
-        const qint64 end = nextFrameEdge(at);
+        const qint64 end = shownFrameEnd();
         if (end <= mask->start) return refuse("The cover must end after it starts");
         updateCover(mask->id, [&](QJsonObject& m) { m["end"] = double(end); });
     }
@@ -1461,7 +1470,8 @@ void ReviewWindow::setEdit(const RecordingEdit& edit, const QJsonObject& answer)
     const auto answered = quint64(std::max<qint64>(0, answer["proposal"].toInteger()));
     const auto refused = answer["refused"].toObject();
     // Only the answer the upload waits for lets it go on; any other push cancels it.
-    if (!answer.contains("proposal")) cancelUpload();
+    // What the upload would export changed: an edit other than the ones it waits for.
+    if (changed && !(answer.contains("proposal") && answered <= uploadAwaits_)) cancelUpload();
     if (answered > answeredSeq_) answeredSeq_ = std::min(answered, proposalSeq_);
     if (!refused.isEmpty()) {
         lastRefusal_ = refused;
@@ -1533,7 +1543,6 @@ bool ReviewWindow::setConfig(const RecordingConfig& config, quint64 seq) {
     return true;
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {
-    if (exporting) cancelUpload();
     stopPlayback();
     if (exporting) { cancelPlacement(); chooser_->cancel(); if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); } if (overlay_->isOpen()) overlay_->dismiss(); }
     if (exporting && discard_) answerDiscard(false);
@@ -1560,7 +1569,6 @@ void ReviewWindow::setSavedCopy(const QString& path, quint64 revision, const Rec
 void ReviewWindow::showError(const QString& message, bool retryExport) {
     message_ = message.isEmpty() ? StatusEntry{} : StatusEntry{message, QStringLiteral("error"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
     if (!message.isEmpty() && retryExport) message_.actions.prepend({QStringLiteral("Try again"), QJsonObject{{"action", "retryExport"}}});
-    cancelUpload();  // never past an error
     refreshAll();
 }
 void ReviewWindow::setNotice(const QString& text) {
@@ -1581,18 +1589,25 @@ void ReviewWindow::setLimits(qint64 animationMaxUs, int animationMaxEdge) {
     refreshAll();
 }
 // The upload rule (#1635): Upload (Ctrl+Enter, Enter) commits a pending nudge
-// and waits until every proposal was accepted, then sends that revision with
-// the output the window shows. While it waits, anything that happens cancels
-// it through cancelUpload(): input in this window or its dialogs, an agent's
-// action, a format or sound change, a dialog or an export starting, a push from
-// the resident other than the awaited answer, a refusal or 2 s without an
-// answer. The resident refuses an upload at any other revision or output.
+// and waits until every proposal made so far was accepted, then sends that
+// revision with the output the window shows. It is cancelled, through
+// cancelUpload(), only when what it would export changes: the edit's revision
+// moves for anything but the awaited answers (a later edit, undo or redo, by
+// the user or an agent), or the output (format, codec, sound, size) changes;
+// and by a refusal or 2 s without an answer. The resident refuses an upload at
+// any other revision or output.
 void ReviewWindow::upload() {
     // Mid-gesture or placing there is a change not yet made: nothing to upload.
     if (exporting_ || closing_ || placing_ || view_->dragging() || timeline_->dragging()) return;
+    if (uploadWaiting_) {
+        uploadNotice_ = {QStringLiteral("Upload already waiting for your last change to be saved."), QStringLiteral("info"), {}};
+        refreshStatus();
+        return;
+    }
     stopPlayback();
     view_->commitNudge();
     uploadNotice_ = {};
+    uploadAwaits_ = proposalSeq_;
     uploadWaiting_ = true;
     uploadWait_.start();
     tryUpload();
@@ -1612,7 +1627,7 @@ void ReviewWindow::cancelUpload(const QString& why) {
     uploadWaiting_ = false;
     uploadWait_.stop();
     // Its own status line, kept when the awaited answer arrives.
-    uploadNotice_ = {QStringLiteral("Upload cancelled: %1. Press Upload again.").arg(why.isEmpty() ? QStringLiteral("you changed the clip") : why), QStringLiteral("warning"), {{QStringLiteral("Dismiss"), QJsonObject{{"action", "dismissStatus"}}}}};
+    uploadNotice_ = {QStringLiteral("Upload cancelled: %1. Press Upload again.").arg(why.isEmpty() ? QStringLiteral("you changed the clip") : why), QStringLiteral("warning"), {}};
     refreshAll();
 }
 void ReviewWindow::emitConfig() {
@@ -2034,7 +2049,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"audio", format_->text()}, {"previewMuted", true}, {"audioRequested", audioIntent_}, {"audioEffective", effectiveAudio(config_, options_.audioRecorded, audioIntent_)},
         {"destination", options_.destination}, {"sharingMode", options_.sharingMode}, {"uploadSummary", options_.uploadSummary},
         {"notice", noticeBand_->isVisibleTo(this) ? QJsonValue(notice_->text()) : QJsonValue(QJsonValue::Null)},
-        {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}, {"frameSize", QJsonArray{view_->frameSize().width(), view_->frameSize().height()}}, {"skimSize", QJsonArray{view_->skimSize().width(), view_->skimSize().height()}}}},
+        {"preview", QJsonObject{{"error", view_->previewError().isEmpty() ? QJsonValue(QJsonValue::Null) : QJsonValue(view_->previewError())}, {"stale", view_->stale()}, {"frameTimeUs", view_->hasFrame() ? QJsonValue(double(view_->frameTime())) : QJsonValue(QJsonValue::Null)}, {"shownUs", shownFor_ == playhead_ ? QJsonValue(double(shownActual_)) : QJsonValue(QJsonValue::Null)}, {"frameSize", QJsonArray{view_->frameSize().width(), view_->frameSize().height()}}, {"skimSize", QJsonArray{view_->skimSize().width(), view_->skimSize().height()}}}},
         {"frameFocus", view_->hasFocus()},
         {"discardConfirmation", QJsonObject{{"open", bool(discard_)}, {"text", discard_ ? QJsonValue(discard_->text()) : QJsonValue(QJsonValue::Null)}}},
         {"fileDialog", chooser_->state()},
@@ -2045,7 +2060,6 @@ QJsonObject ReviewWindow::inspect() const {
 // The state after an action that proposed edits lists them (proposals: [n, …]),
 // so the resident can tell whether it refused one: inspect's lastRefusal.proposal.
 ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
-    if (params["action"] != "inspect") cancelUpload();
     const quint64 before = proposalSeq_;
     auto result = driveAction(params);
     if (result.code.isEmpty() && proposalSeq_ != before) {
@@ -2110,8 +2124,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
         return done();
     }
     if (action == "dismissStatus") {
-        message_ = {};
-        uploadNotice_ = {};
+        message_ = {};  // the upload notice stays until Upload is pressed again
         if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); }
         refreshAll();
         return done();
@@ -2377,6 +2390,7 @@ void ReviewWindow::refreshFrame() {
         return;
     }
     view_->setFrame(image, at);
+    if (!edgePreview_) { shownFor_ = at; shownActual_ = actual; }
     debugLog(QStringLiteral("review: frame %1x%2").arg(image.width()).arg(image.height()));
 }
 void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
@@ -2444,6 +2458,7 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
                 QMetaObject::invokeMethod(guard, [guard, stop, image, frameUs] {
                     if (!guard || !guard->playing_ || guard->playStop_ != stop) return;
                     guard->view_->setFrame(image, frameUs);
+                    guard->shownFor_ = guard->shownActual_ = frameUs;
                     guard->playhead_ = frameUs;
                     guard->timeline_->setPlayhead(frameUs);
                     guard->refreshTransport();
@@ -2451,13 +2466,13 @@ void ReviewWindow::startPlayback(std::optional<qint64> fromUs, bool resume) {
             }
             if (stop->load()) { reachedEnd = false; break; }
         }
-        ended->store(reachedEnd);  // the run played to the end and queued it (inspect, tests)
         QMetaObject::invokeMethod(guard, [guard, stop, reachedEnd] {
             if (!guard || guard->playStop_ != stop) return;
             guard->stopPlayback();
             // Stopped at the trim end: on the last kept frame.
             if (reachedEnd) if (const auto last = guard->lastKeptFrame(0, guard->options_.durationUs)) guard->seek(*last, false);
         }, Qt::QueuedConnection);
+        ended->store(reachedEnd);  // set once the end is queued (inspect, tests)
     });
     playThread_ = thread;
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
@@ -2477,7 +2492,6 @@ void ReviewWindow::stopPlayback() {
 // ---- save, discard, close, keys ----
 bool ReviewWindow::chooseCopy() {
     if (exporting_ || placing_ || chooser_->isOpen()) return false;
-    cancelUpload();
     const auto extension = config_.extension();
     FileDialog::Options options{FileDialog::Mode::Save, "Save a copy", QDir::homePath(), "recording." + extension, {{config_.format.toUpper(), {"*." + extension}}}};
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
@@ -2499,15 +2513,6 @@ void ReviewWindow::hideEvent(QHideEvent* e) {
     QWidget::hideEvent(e);
 }
 bool ReviewWindow::eventFilter(QObject* watched, QEvent* event) {
-    if (uploadWaiting_) {
-        const auto type = event->type();
-        const bool input = type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick || type == QEvent::Wheel
-            || (type == QEvent::KeyPress && !static_cast<QKeyEvent*>(event)->isAutoRepeat());
-        auto* widget = qobject_cast<QWidget*>(watched);
-        // A dialog, menu or popup of this window opening counts as much as a click.
-        const bool opened = type == QEvent::Show && widget && widget->isWindow() && widget != this;
-        if (input || opened) for (auto* w = widget; w; w = w->parentWidget()) if (w == this) { cancelUpload(); break; }
-    }
     // Delete and Backspace cut or remove only from the viewer and the timeline
     // (the Edits list handles its own rows; a field keeps its own keys).
     if (event->type() == QEvent::KeyPress && (watched == view_ || watched == timeline_)) {

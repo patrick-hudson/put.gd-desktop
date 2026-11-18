@@ -13,7 +13,8 @@ public:
  Event sink;QStringList log;QString staging;bool failStart=false,failExport=false,available=true,deferExports=false;QList<std::function<void()>> pendingExports;int exports=0,previews=0,discards=0,cancels=0;qint64 durationUs=12000000;
  QByteArray exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4096,'r');RecordingEdit lastEdit;RecordingConfig lastConfig;qint64 lastPreviewTime=-1;
  QJsonObject lastReviewOptions,lastControlParams;QList<QJsonObject> reviewReplies;  // the window's next review answers, in order; {error: {code, message}} refuses
- QList<std::function<void()>> reviewHooks;  // run as each review command arrives, before its answer
+ QList<std::function<void()>> reviewHooks;
+ QString failExportCode="recording_export_failed";  // recording_helper_timeout: the deadline passed, the helper still exports  // run as each review command arrives, before its answer
  QJsonObject stopAudioSources;  // stop's audioSources {system, microphone}, when set
  QJsonObject capabilities() const override {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
@@ -45,7 +46,7 @@ public:
  void exportClip(const QString&,const RecordingEdit& edit,const RecordingConfig& config,const QString& output,Reply reply) override {
   ++exports;lastEdit=edit;lastConfig=config;log<<"export";
   auto finish=[this,edit,output,reply]{
-   if(failExport){reply({"recording_export_failed","Synthetic export failure",{}},{});return;}
+   if(failExport){reply({failExportCode,"Synthetic export failure",{}},{});return;}
    QFile file(output);if(!file.open(QIODevice::WriteOnly)){reply({"recording_io","cannot write",{}},{});return;}file.write(exportBytes);file.close();
    reply({},{{"bytes",double(exportBytes.size())},{"durationUs",double(edit.exportDuration(durationUs))}});
   };

@@ -271,6 +271,7 @@ private:
     qint64 frameIndex(qint64 us) const;
     qint64 nextFrameEdge(qint64 at) const;   // the edge after the frame at `at`
     qint64 previousFrame(qint64 edge) const; // the frame before an end edge
+    qint64 shownFrameEnd() const;            // the edge after the frame shown at the playhead
     qint64 frameAt(qint64 index) const;
     std::optional<qint64> firstFrameIn(const recording::Span&) const;
     std::optional<qint64> lastFrameIn(const recording::Span&) const;
@@ -332,6 +333,8 @@ private:
     bool uploadWaiting_ = false;  // Upload pressed, its revision not yet fully answered
     StatusEntry uploadNotice_;    // "Upload cancelled: …" until dismissed or Upload again
     quint64 configSeq_ = 0;
+    quint64 uploadAwaits_ = 0;  // the last proposal made before Upload: answers up to it are awaited
+    qint64 shownFor_ = -1, shownActual_ = -1;  // the playhead a frame was decoded for, and its own time
     bool proposalPending() const { return answeredSeq_ < proposalSeq_; }
     QTimer uploadWait_;
     int shownEdge_ = 1280;  // the long edge frames are decoded at (viewEdge())

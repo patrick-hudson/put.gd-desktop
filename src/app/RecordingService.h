@@ -89,8 +89,11 @@ private:
         // its refusal {code, message, revision}. recording.review reads its own
         // proposals' outcomes here; the newest 128 are kept.
         QMap<quint64, QJsonObject> proposalOutcomes;
-        // Proposal answers made during an export, pushed when review resumes.
+        // While the helper exports (it takes no edit then): proposal answers and
+        // whether another push waits, and a format or sound choice made meanwhile.
+        bool helperExporting = false, pushHeld = false;
         QList<QJsonObject> heldAnswers;
+        QJsonObject heldConfig;
         // The window's latest output choice (its configChanged seq) applied here.
         quint64 windowConfigSeq = 0;
         std::optional<bool> overlayExcluded;
@@ -126,6 +129,7 @@ private:
     // The phase defaults to the state; Upload's export reports as `encoding`.
     void transition(Session&, RecordingState, const QString& phase = {});
     void pushEdit(Session&, QJsonObject answer = {});
+    void resumeReview(Session&);
     // Logs, once per session, a step outside the from/to table; the step is taken all the same.
     void checkStep(Session&, RecordingState to);
     QJsonObject limitsJson(const Session&) const;
