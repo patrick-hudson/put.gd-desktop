@@ -2,7 +2,6 @@
 
 ``recording`` supplies id, output_dir, working_path, frozen_path. The two clips
 must be same-pattern moving/frozen captures, not generated stand-ins for capture.
-``review-controls`` is the current build's 30-review.controls.json inventory.
 ``destination`` supplies id and label and configures local saving or an isolated
 remote destination before recording.prepare snapshots configuration. No secrets
 or publication URLs are written into notes. Error fixtures are opt-in needs.
@@ -14,9 +13,14 @@ import shlex
 from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.recipes.dialogs import choose_review_copy
 
 REFERENCE = '30-review'
-SPLIT_ZONE = 26  # Ui::Metric::splitZone: the chevron half of a split button
+# Each native fixture waits for two captures, then the recipe exercises the
+# window and may decode several exports. Keep those phases inside one deadline.
+CAPTURE_BUDGET = 240
+EXPORT_BUDGET = 480
+MULTI_EXPORT_BUDGET = 720
 
 
 def _state(ctx, rid):
@@ -132,24 +136,47 @@ def _seek(ctx, rid, fraction):
     return _drive(ctx, rid, 'seek', time=int(duration * fraction))
 
 
+def _shown(ctx, rid, target):
+    return ctx.wait(lambda: (s if (s := _state(ctx, rid))['playheadUs'] == target
+                              and s['preview']['shownUs'] is not None and not s['preview']['stale'] else None),
+                    'requested playhead picture is shown')
+
+
+def _nominal_frame_time(time, fps, step=0):
+    # The time field and frame-step shortcut snap to the configured FPS grid.
+    index = (time * fps + 500_000) // 1_000_000 + step
+    return (index * 1_000_000 + fps // 2) // fps
+
+
 def _select_mask(ctx, rid, mask):
     ctx.expect(_drive(ctx, rid, 'selectEdit', kind='cover', editId=mask['id'])['selectedEdit']['id'] == mask['id'], 'Edits selects the cover')
 
 
+FORMAT_SELECTORS = {
+    ('mp4', 'h264'): 'text:Compatible video — MP4 (H.264) · Recommended',
+    ('mp4', 'h265'): 'text:Smaller video — MP4 (H.265)',
+    ('webm', 'vp9'): 'text:Browser video — WebM (VP9)',
+    ('gif', ''): 'text-glob:Animated GIF · no sound · at most *',
+    ('webp', ''): 'text-glob:Animated WebP · no sound · at most *',
+}
+
+
+def _menu_choice(ctx, menu, selector):
+    ctx.profile.setdefault('windows', {})[menu] = {'owner': 'review', 'popup': True, 'title': '.*'}
+    ctx.click(selector, window=menu)
+
+
 def _choose_format(ctx, rid, fmt, codec=''):
-    # Prefer the stable name added by fix/surface-objectnames. For older builds
-    # use the combo's accessible name, which differs from its selected item.
-    controls = ctx.fixture('review-controls')['controls']
-    named = next((c for c in controls if c.get('name') == 'format'), None)
-    selector = 'format' if named else 'text:Output format'
-    ctx.click(selector, window='review')
-    caps = ctx.call('recording.capabilities')
-    choices = [(f, c) for f in caps['formats'] for c in (caps['codecs'].get(f) or [''])]
-    if (fmt, codec) not in choices:
-        ctx.keys('Esc')
-        ctx.blocked(f'{fmt}/{codec} is not offered by recording.capabilities')
-    ctx.keys('Home', *(['Down'] * choices.index((fmt, codec))), 'Return')
-    ctx.wait(lambda: _state(ctx, rid)['format'] == {'format': fmt, 'codec': codec}, 'format choice accepted')
+    ctx.click('text:Output format', window='review')
+    _menu_choice(ctx, 'reviewFormatMenu', FORMAT_SELECTORS[fmt, codec])
+    choice = {'format': fmt, 'codec': codec}
+    ctx.wait(lambda: _state(ctx, rid)['format'] == choice, 'the window accepts the menu selection')
+
+    def accepted():
+        config = _inspect(ctx, rid)['config']
+        return config['format'] == fmt and config.get('codec', '') == codec
+
+    ctx.wait(accepted, 'resident accepts format choice')
 
 
 def kept_spans(edit, duration):
@@ -223,6 +250,17 @@ def timeline(path):
     raw = run(['ffmpeg', '-nostdin', '-v', 'error', '-i', path, '-an', '-vf',
                'fps=10,scale=%d:%d,format=gray' % (W,H), '-t', '20', '-f', 'rawvideo', '-'])
     return [(i/10, raw[i*n:(i+1)*n]) for i in range(len(raw)//n)]
+def source_frames(path):
+    # Animation cadence can land between the 10 Hz motion samples. Compare
+    # each output sample against every native source frame and its actual PTS.
+    meta = json.loads(run(['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+                           '-show_entries', 'frame=best_effort_timestamp_time', '-of', 'json', path]))
+    raw = run(['ffmpeg', '-nostdin', '-v', 'error', '-i', path, '-an', '-vf',
+               'scale=%d:%d,format=gray' % (W,H), '-fps_mode', 'passthrough', '-f', 'rawvideo', '-'])
+    stamps = [float(frame['best_effort_timestamp_time']) for frame in meta['frames']]
+    n = W*H
+    assert stamps and len(stamps)*n == len(raw), 'source timestamps do not match decoded frames'
+    return [(stamp-stamps[0], raw[i*n:(i+1)*n]) for i,stamp in enumerate(stamps)]
 def run_motion(tl, lo, hi, least=3):
     fs = [f for t,f in tl if lo <= t < hi]
     assert len(fs) >= least, ('too few decoded frames', lo, hi, len(fs))
@@ -276,8 +314,8 @@ if seams:
         for lo, hi in ((seam-.6, seam), (seam, seam+.6)):
             m = run_motion(out, max(0, lo), min(duration, hi))
             assert m > floor, ('no motion beside a cut', seam, lo, hi, m, floor)
-    # Frame identity: the pattern scrolls, so every output frame matches the source
-    # frame at its mapped time, and none is a frame the cuts or the trim removed.
+    # Match sampled pictures on both sides to their kept source times.
+    source = source_frames(p['working'])
     removed, last = [], 0.0
     for s,e in spans:
         if s > last: removed.append((last, s))
@@ -289,7 +327,7 @@ if seams:
             if not 0 <= i < len(out): continue
             at = out[i][0]
             want = to_src(at)
-            best, distance = min(((t, diff(out[i][1], f)) for t,f in ref), key=lambda r: r[1])
+            best, distance = min(((t, diff(out[i][1], f)) for t,f in source), key=lambda r: r[1])
             assert abs(best-want) <= .15, ('frame does not come from its kept source time', at, want, best, distance)
             assert not any(lo + .1 < best < hi - .1 for lo,hi in removed), ('frame from removed footage', at, best, removed)
             checked['identified'] += 1
@@ -312,18 +350,21 @@ for mask in p['masks']:
             elapsed = 0
             for n in range(im.n_frames):
                 im.seek(n)
+                im.load()
                 elapsed += im.info.get('duration',0)/1000
                 if elapsed > t: break
             pix = im.convert('RGB').crop((x,y,x+w,y+h)).tobytes()
         else:
+            # Convert before cropping so chroma subsampling cannot round an
+            # odd-sized or odd-positioned cover rectangle.
             pix = run(['ffmpeg','-nostdin','-v','error','-i',path,'-ss',str(t),'-frames:v','1',
-                   '-vf',f'crop={w}:{h}:{x}:{y},format=rgb24','-f','rawvideo','-'])
-        assert len(pix)>=w*h*3, 'masked frame did not decode'
+                   '-vf',f'format=rgb24,crop={w}:{h}:{x}:{y}','-f','rawvideo','-'])
+        assert len(pix)==w*h*3, ('masked frame did not decode to the exact crop', len(pix), w, h, t)
         assert sum(pix)/len(pix) < 8 and max(pix) < 40, 'solid mask leaked source pixels'
         # A naturally black source region is not evidence of a working mask.
         ox,oy,ow,oh = mask['rect']
         source = run(['ffmpeg','-nostdin','-v','error','-i',p['working'],'-ss',str(source_time),
-                      '-frames:v','1','-vf',f'crop={ow-6}:{oh-6}:{ox+3}:{oy+3},format=rgb24',
+                      '-frames:v','1','-vf',f'format=rgb24,crop={ow-6}:{oh-6}:{ox+3}:{oy+3}',
                       '-f','rawvideo','-'])
         assert source and sum(source)/len(source) > 20, 'source mask region must contain visible pattern'
         assert sum(source)/len(source) - sum(pix)/len(pix) > 15, 'mask did not change source pixels'
@@ -356,6 +397,8 @@ def _verify(ctx, rid, path, info=None):
               'masks': edit['masks'], 'canvas': info['canvas']}
     result = ctx.shell('python3 - ' + shlex.quote(json.dumps(params)) + " <<'REVIEW_MEDIA_PY'\n"
                        + _MEDIA_CHECK + '\nREVIEW_MEDIA_PY', timeout=180)
+    if result['returncode']:
+        ctx.note('Decoder rejected the export: ' + result['stderr'].strip())
     ctx.expect(result['returncode'] == 0, 'decoded output passes duration, codec, motion, cut and mask pixel checks')
     ctx.note('Decoded export metrics: ' + result['stdout'].strip())
 
@@ -387,40 +430,56 @@ def _export(ctx, rid, name='review-check'):
     return _saved(ctx, rid, path)
 
 
-def _open_speed_menu(ctx):
-    """Click the chevron half of Play's split button, which opens the speed menu."""
-    nodes = [n for n in ctx.accessible({'name': 'Play', 'owned': True, 'visible': True, 'showing': True})
-             if n.get('rect') and min(n['rect'][2:]) > 0]
-    if not nodes:
-        ctx.blocked('Play is not exposed with live bounds by the accessibility resolver (#672)', issue=672)
-    x, y, w, h = (nodes[0]['rect'])
-    g = ctx.geometry('review')
-    if g.get('head', 0) != 0:
-        ctx.blocked('Context.click_at cannot select a non-primary head (#672)', issue=672)
-    # The button is height + the chevron zone wide; the chevron is that last zone.
-    chevron = w * SPLIT_ZONE / (h + SPLIT_ZONE)
-    scale = g.get('scale', 1)
-    ctx.click_at(round((x + w - chevron / 2 - g.get('screen_x', 0)) * scale),
-                 round((y + h / 2 - g.get('screen_y', 0)) * scale))
+def _playback_sample(ctx, rid):
+    request = json.dumps({'id': rid, 'action': 'inspect'})
+    result = ctx.shell(f"""python3 - <<'SD_PLAYBACK'
+import json, os, subprocess, time
+command = ['putgd-cli', '--socket', os.environ['XDG_RUNTIME_DIR'] + '/putgd/session.sock',
+           '--params-stdin', 'recording.review']
+before = time.monotonic_ns()
+response = subprocess.run(command, input={request!r}, text=True, stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL, timeout=5, check=True)
+after = time.monotonic_ns()
+state = json.loads(response.stdout)['result']
+print(json.dumps([state['playheadUs'], before, after] if state['playing'] else None))
+SD_PLAYBACK
+""", timeout=8)
+    ctx.expect(result['returncode'] == 0, 'target timed a recording.review inspect call')
+    return json.loads(result['stdout'])
 
 
-@recipe('review.play', 'review.speed', needs=('recording',))
+def _playback_rate(first, last):
+    # Each playhead was observed somewhere inside its target-side CLI interval.
+    elapsed_us = last[0] - first[0]
+    shortest_ns, longest_ns = last[1] - first[2], last[2] - first[1]
+    return elapsed_us * 1000 / longest_ns, elapsed_us * 1000 / shortest_ns
+
+
+@recipe('review.play', 'review.speed', needs=('recording',), timeout=CAPTURE_BUDGET)
 def playback(ctx):
     rid = _open(ctx)
     ctx.expect(_state(ctx, rid)['speed'] == 1, 'playback starts at 1x')
-    _open_speed_menu(ctx)
-    ctx.keys('Home', 'Down', 'Down', 'Return')
-    ctx.wait(lambda: _state(ctx, rid)['speed'] == 2, '2x playback selected')
-    at = _state(ctx, rid)['playheadUs']
-    ctx.click('play', window='review')
-    ctx.wait(lambda: (s := _state(ctx, rid))['playing'] and s['playheadUs'] > at, 'playhead advances')
+    # The split button's last 26 logical pixels open its speed menu.
+    ctx.click('play', window='review', offset=(51, 16))
+    _menu_choice(ctx, 'reviewSpeedMenu', 'text:2×')
+    ctx.wait(lambda: _state(ctx, rid)['speed'] == 2, 'the speed menu selected 2×')
+    ctx.click_at(*_video(ctx, rid, .05, .05))
+    ctx.keys('Space')
+
+    first = ctx.wait(lambda: _playback_sample(ctx, rid), 'playback begins')
+    last = ctx.wait(lambda: point if (point := _playback_sample(ctx, rid)) and point[1] - first[2] >= 750_000_000 else None,
+                    'a second playing sample spans at least 750 ms', timeout=3)
+    lower, upper = _playback_rate(first, last)
+    elapsed = (last[1] - first[2]) / 1_000_000_000
+    ctx.note(f'Native 2× playback measured {lower:.2f}–{upper:.2f}× over at least {elapsed:.3f} s on the target')
+    ctx.expect(1.55 <= lower <= upper <= 2.45, 'target sample bounds show the playhead advancing at twice elapsed time')
     ctx.keys('Space')
     ctx.wait(lambda: not _state(ctx, rid)['playing'], 'Space pauses playback')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'playback remains private')
     _frame(ctx, 'after')
 
 
-@recipe('review.timeline', 'review.cut', 'review.undo-redo', 'review.edit-step', needs=('recording',))
+@recipe('review.timeline', 'review.cut', 'review.undo-redo', 'review.edit-step', needs=('recording',), timeout=MULTI_EXPORT_BUDGET)
 def cut_flow(ctx):
     rid = _open(ctx)
     duration = _inspect(ctx, rid)['durationUs']
@@ -470,14 +529,12 @@ def cut_flow(ctx):
         if codec not in (caps['codecs'].get(fmt) or []):
             ctx.note(f'{fmt}/{codec} is not offered here; its cut export was not run')
             continue
-        _drive(ctx, rid, 'format', format=fmt, codec=codec)
-        ctx.wait(lambda: _inspect(ctx, rid)['config'].get('codec') == codec and _inspect(ctx, rid)['config']['format'] == fmt,
-                 'resident accepts the format')
+        _choose_format(ctx, rid, fmt, codec)
         _export(ctx, rid, f'cut-flow-{fmt}-{codec}')
     _frame(ctx, 'after', None)
 
 
-@recipe('review.trim-in', 'review.trim-out', 'review.trim-reset', 'review.key-timeline', 'review.frame-step', needs=('recording',))
+@recipe('review.trim-in', 'review.trim-out', 'review.trim-reset', 'review.key-timeline', 'review.frame-step', needs=('recording',), timeout=EXPORT_BUDGET)
 def trim(ctx):
     rid = _open(ctx)
     duration = _inspect(ctx, rid)['durationUs']
@@ -488,27 +545,31 @@ def trim(ctx):
     _seek(ctx, rid, .25)
     ctx.keys('I')
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimStart'] > info['edit']['trimStart'], 'I trims the start at the playhead')
-    _seek(ctx, rid, .75)
+    target = _seek(ctx, rid, .75)['playheadUs']
+    _shown(ctx, rid, target)
     ctx.keys('O')
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimEnd'] < info['edit']['trimEnd'], 'O trims the end at the playhead')
     _export(ctx, rid)
+    ctx.click_at(*_video(ctx, rid, .05, .05))
+    ctx.wait(lambda: _state(ctx, rid)['frameFocus'], 'the picture has keyboard focus for timeline shortcuts')
     _seek(ctx, rid, .5)
     ctx.keys('Home')
-    start = _state(ctx, rid)
-    ctx.expect(abs(start['playhead']['sourceUs'] - start['trim']['start']) < 100_000, 'Home jumps to the first kept frame')
+    start = ctx.wait(lambda: (s if abs((s := _state(ctx, rid))['playheadUs'] - s['trim']['start']) < 100_000 else None),
+                     'Home jumps to the first kept frame')
+    stepped = start['playheadUs'] + 100_000
     ctx.keys('Right')
-    stepped = _state(ctx, rid)['playhead']['sourceUs']
-    ctx.expect(abs(stepped - start['playhead']['sourceUs'] - 100_000) < 40_000, 'Right steps a tenth of a second')
+    ctx.wait(lambda: _state(ctx, rid)['playheadUs'] == stepped, 'Right steps a tenth of a second')
+    at = max(0, stepped - 1_000_000)
     ctx.keys('Shift+Left')
-    ctx.expect(abs(_state(ctx, rid)['playhead']['sourceUs'] - stepped + 1_000_000) < 40_000 or _state(ctx, rid)['playhead']['sourceUs'] == 0,
-               'Shift+Left steps one second')
-    at = _state(ctx, rid)['playhead']['sourceUs']
+    ctx.wait(lambda: _state(ctx, rid)['playheadUs'] == at, 'Shift+Left steps one second')
+    fps = _inspect(ctx, rid)['config']['fps']
     after = _drive(ctx, rid, 'frameStep', delta=1)['playhead']['sourceUs']
-    ctx.expect(0 < after - at < 100_000, 'frameStep moves one frame')
-    ctx.expect(_drive(ctx, rid, 'frameStep', delta=-1)['playhead']['sourceUs'] == at, 'frameStep -1 returns to the frame')
+    ctx.expect(after == _nominal_frame_time(at, fps, step=1), 'frameStep moves one frame')
+    ctx.expect(_drive(ctx, rid, 'frameStep', delta=-1)['playhead']['sourceUs'] == _nominal_frame_time(at, fps),
+               'frameStep -1 returns to the original frame on the FPS grid')
     ctx.keys('End')
-    end = _state(ctx, rid)
-    ctx.expect(abs(end['playhead']['sourceUs'] - end['trim']['end']) < 100_000, 'End jumps to the last kept frame')
+    ctx.wait(lambda: abs((s := _state(ctx, rid))['playheadUs'] - s['trim']['end']) < 100_000,
+             'End jumps to the last kept frame')
     _drive(ctx, rid, 'selectEdit', kind='trim')
     _drive(ctx, rid, 'resetTrim')
     ctx.wait(lambda: (s := _inspect(ctx, rid))['edit']['trimStart'] == 0 and s['edit']['trimEnd'] is None, 'Reset restores the whole clip')
@@ -516,7 +577,7 @@ def trim(ctx):
 
 
 @recipe('review.add-mask', 'review.frame', 'review.mask-disarm', 'review.placement-cancel',
-        'review.masks', 'review.mask-in-out', 'review.mask-delete', 'review.key-frame-nudge', needs=('recording',))
+        'review.masks', 'review.mask-in-out', 'review.mask-delete', 'review.key-frame-nudge', needs=('recording',), timeout=EXPORT_BUDGET)
 def masks(ctx):
     rid = _open(ctx)
     # Arm, then cancel: the Select tool, the banner's Cancel and Esc all leave no edit.
@@ -553,21 +614,37 @@ def masks(ctx):
     _seek(ctx, rid, .2)
     ctx.keys('Shift+I')
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['start'] > 0, 'Shift+I sets the cover start')
-    _seek(ctx, rid, .8)
+    target = _seek(ctx, rid, .8)['playheadUs']
+    _shown(ctx, rid, target)
     _drive(ctx, rid, 'setCoverEdgeToPlayhead', edge='end')
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['end'] < _inspect(ctx, rid)['durationUs'], 'Set to playhead sets the cover end')
+    info = _inspect(ctx, rid)
+    start = int(info['durationUs'] * .3)
+    snapped = _nominal_frame_time(start, info['config']['fps'])
+    _drive(ctx, rid, 'setCoverEdge', edge='start', time=start)
+    updated = _changed(ctx, rid, info['edit']['revision'])
+    ctx.expect(updated['edit']['masks'][0]['start'] == snapped, 'setCoverEdge snaps the selected cover start to the frame grid')
+    ctx.note(f'setCoverEdge start: requested {start} us, stored {snapped} us')
     _export(ctx, rid)
-    # Delete removes the selected cover; Esc clears; the Select tool (V) ends placing.
-    count = len(_inspect(ctx, rid)['edit']['masks'])
+    # Export temporarily disables the review. Re-focus the picture by clicking
+    # inside the solid cover at a time when it is drawn, then use the native key.
+    solid = updated['edit']['masks'][0]
+    middle = (solid['start'] + solid['end']) // 2
+    _shown(ctx, rid, _drive(ctx, rid, 'seek', time=middle)['playheadUs'])
+    x, y, w, h = solid['rect']
+    ctx.click_at(*_video(ctx, rid, (x + w / 2) / canvas[0], (y + h / 2) / canvas[1]))
+    ctx.wait(lambda: (s := _state(ctx, rid))['frameFocus'] and (s['selectedEdit'] or {}).get('id') == solid['id'],
+             'the solid cover is selected in the focused picture')
+    count = len(updated['edit']['masks'])
     ctx.keys('Delete')
     ctx.wait(lambda: len(_inspect(ctx, rid)['edit']['masks']) == count - 1, 'Delete removes the selected cover')
     _add(ctx, rid, centered=True)
     ctx.click_at(*_video(ctx, rid, .05, .05))
-    ctx.expect(_state(ctx, rid)['selectedEdit'] is None, 'an empty frame click clears the selection')
+    ctx.wait(lambda: _state(ctx, rid)['selectedEdit'] is None, 'an empty frame click clears the selection')
     _frame(ctx, 'after')
 
 
-@recipe('review.mask-options', 'review.picture-zoom', needs=('recording',))
+@recipe('review.mask-options', 'review.picture-zoom', needs=('recording',), timeout=CAPTURE_BUDGET)
 def edits_panel(ctx):
     rid = _open(ctx)
     mask = _add(ctx, rid, 'blur')
@@ -581,8 +658,11 @@ def edits_panel(ctx):
     ctx.expect(_drive(ctx, rid, 'viewerZoom', mode='fit')['viewer']['zoom'] == 'fit', 'viewerZoom fit restores Fit')
     # Fold and unfold: below ~1180x720 the panel becomes the Edits overlay.
     wide = _state(ctx, rid)['size']
-    _drive(ctx, rid, 'resize', width=1000, height=680)
-    ctx.wait(lambda: _state(ctx, rid)['folded'], 'a small window folds the panel')
+    narrow = [1100, 700]
+    _drive(ctx, rid, 'resize', width=narrow[0], height=narrow[1])
+    ctx.wait(lambda: (s := _state(ctx, rid))['size'] == narrow and s['folded'],
+             'resize changes the window dimensions and folds the panel')
+    ctx.note('resize: 1100 × 700, Edits folded')
     opened = _drive(ctx, rid, 'panel', open=True)
     ctx.expect(opened['panel']['overlayOpen'], 'the Edits toggle opens the overlay')
     _frame(ctx, 'overlay', None)
@@ -606,7 +686,7 @@ def wheel_lanes(ctx):
     _frame(ctx, 'after', None)
 
 
-@recipe('review.format', needs=('recording', 'review-controls'), timeout=600)
+@recipe('review.format', needs=('recording',), timeout=MULTI_EXPORT_BUDGET)
 def formats(ctx):
     rid = _open(ctx)
     # Every format exports the same edited clip: a cut, so the decode checks the join.
@@ -620,45 +700,45 @@ def formats(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('review.save-copy', needs=('recording',))
+@recipe('review.save-copy', needs=('recording-copy',), timeout=EXPORT_BUDGET)
 def save_copy(ctx):
-    rid = _open(ctx)
-    ctx.click('text:Save a copy…', window='review')
-    ctx.wait(lambda: _state(ctx, rid)['fileDialog']['open'], 'Save a copy opens file chooser')
-    ctx.focus('fileDialog')
+    rid = _open(ctx, 'recording-copy')
     info = _inspect(ctx, rid)
-    path = str(PurePosixPath(ctx.fixture('recording')['output_dir']) / ('user-copy.' + info['config']['format']))
-    ctx.keys('Ctrl+L')
-    ctx.type_text(path)
-    ctx.keys('Return')
+    fixture = ctx.fixture('recording-copy')
+    path = str(PurePosixPath(fixture['output_dir']) / ('user-copy.' + info['config']['format']))
+    choose_review_copy(ctx, rid, path, output_dir=fixture['output_dir'])
     info = _saved(ctx, rid, path)
     ctx.expect(info['lastExport']['path'] == path, 'chooser exports to chosen absolute path')
-    s = _state(ctx, rid)
-    ctx.expect(s['savedCopy']['current'] and s['visible'], 'saved copy keeps private review open')
+    ctx.wait(lambda: (s := _state(ctx, rid))['visible'] and (s.get('savedCopy') or {}).get('current'),
+             'saved copy keeps private review open')
     _frame(ctx, 'saved', '49-review-saved-copy')
-    ctx.click('text:Copy path', window='review')
-    ctx.expect(ctx.clipboard_text() == path, 'Copy path copies actual saved path')
-    ctx.click('text:Dismiss', window='review')
+    _check_saved_actions(ctx, rid, path)
     ctx.wait(lambda: not _saved_copy_actions(_state(ctx, rid)), 'Dismiss hides saved-copy result')
     _frame(ctx, 'after')
 
 
 
-@recipe('review.status-actions', needs=('recording', 'recording-export-failure'))
+def _check_saved_actions(ctx, rid, path):
+    ctx.wait(lambda: {'copyPath', 'showInFolder', 'dismissSavedCopy'} <= _saved_copy_actions(_state(ctx, rid)),
+             'the saved copy offers Copy path, Show in folder and Dismiss')
+    ctx.expect(not ctx.clipboard_matches(path), 'the clipboard differs from the fresh output before Copy path')
+    _drive(ctx, rid, 'copyPath')
+    ctx.wait(lambda: ctx.clipboard_matches(path), 'Copy path changes the clipboard to the saved output path')
+    _drive(ctx, rid, 'dismissSavedCopy')
+
+
+@recipe('review.status-actions', needs=('recording-export-failure',), timeout=MULTI_EXPORT_BUDGET)
 def status_actions(ctx):
     rid = _open(ctx, 'recording-export-failure')
-    fixture = ctx.fixture('recording-export-failure')
+    path = ctx.fixture('recording-export-failure')['retry_path']
     ctx.expect(_inspect(ctx, rid)['lastExport']['status'] == 'failed', 'fixture has a genuine failed export')
-    _frame(ctx, 'export-failed', '39-review-status-errors')
-    ctx.click('text:Try again', window='review')
-    _saved(ctx, rid, fixture['retry_path'], retry=True)
-    ctx.click('text:Copy path', window='review')
-    ctx.expect(ctx.clipboard_text() == fixture['retry_path'], 'retry result copies the saved path')
-    ctx.click('text:Dismiss', window='review')
-    # The window keeps the saved path; Dismiss removes the saved-copy status and its actions.
+    _frame(ctx, 'export-failed', None)
+    _drive(ctx, rid, 'retryExport')
+    _saved(ctx, rid, path, retry=True)
+    _check_saved_actions(ctx, rid, path)
     ctx.wait(lambda: not _saved_copy_actions(_state(ctx, rid)), 'Dismiss removes the retry result and its actions')
     _frame(ctx, 'after')
-    ctx.blocked('Try again, Copy path and Dismiss exercised; Show in folder needs guarded opener (#682), size/format recovery needs an over-limit fixture (#672)', issue=672)
+    ctx.blocked('Retry, Copy path and Dismiss passed. Show in folder and size/format recovery still need live checks.', issue=672)
 
 
 @recipe('review.destination-menu', 'review.upload', needs=('recording', 'destination'),
@@ -731,28 +811,31 @@ def window_close(ctx):
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'Escape keeps recording')
 
 
-@recipe('review.advice', needs=('recording', 'recording-export-failure'))
+@recipe('review.advice', needs=('recording-export-failure',), timeout=MULTI_EXPORT_BUDGET)
 def advice(ctx):
     rid = _open(ctx, 'recording-export-failure')
-    fixture = ctx.fixture('recording-export-failure')
+    path = ctx.fixture('recording-export-failure')['retry_path']
     ctx.expect(_inspect(ctx, rid)['lastExport']['status'] == 'failed', 'fixture has a genuine failed export')
     ctx.expect(_state(ctx, rid)['errorDetails']['visible'], 'the failed export offers Details')
-    ctx.click('text:Details…', window='review')
-    ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'Details opens the error details')
-    ctx.expect(bool(_state(ctx, rid)['adviceDialog']['text']), 'the details explain the failure and what to do')
-    _frame(ctx, 'details', '68-review-error-details', 'confirmAction')
-    ctx.focus('confirmAction')
+    details = _drive(ctx, rid, 'showAdvice')['adviceDialog']
+    ctx.expect(details['open'] and details['text'], 'Details explains the failure in the live window')
+    dialog = 'reviewErrorDetails'
+    ctx.profile.setdefault('windows', {})[dialog] = {
+        'title': '^Export failed$',
+        'accessible': {'name': 'Export failed', 'role': 'dialog', 'application': 'putgd*'},
+    }
+    ctx.focus(dialog)
+    ctx.frame('details')
     ctx.keys('Esc')
     ctx.wait(lambda: not _state(ctx, rid)['adviceDialog']['open'], 'Escape closes the details')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'the details leave the recording in review')
-    # The dialog's own Try again retries the export.
-    ctx.click('text:Details…', window='review')
-    ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'Details opens again')
-    ctx.click('text:Try again', window='confirmAction')
+    ctx.expect(_drive(ctx, rid, 'showAdvice')['adviceDialog']['open'], 'Details opens again')
+    ctx.click('text:Try again', window=dialog)
     ctx.wait(lambda: not _state(ctx, rid)['adviceDialog']['open'], 'Try again closes the details')
-    _saved(ctx, rid, fixture['retry_path'], retry=True)
+    _saved(ctx, rid, path, retry=True)
+    ctx.view('recording.review', {'id': rid, 'action': 'inspect'})
     _frame(ctx, 'after')
-    ctx.blocked('Details and Try again exercised; the Recording error and size/format advice variants need fault fixtures (#672)', issue=672)
+    ctx.blocked('Export failed Details and Retry passed. The Recording error dialog still needs a live check.', issue=672)
 
 
 @recipe('review.notice', needs=('recording-budget-stop',), timeout=240)

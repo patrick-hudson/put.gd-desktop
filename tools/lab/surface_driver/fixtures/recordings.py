@@ -9,20 +9,23 @@ from . import consent, media
 from .base import Fixture
 from .uploads import track
 
-GTK_SINK = '''import gi
+PATTERN_PLUGINS = '''import gi
 gi.require_version('Gst','1.0')
 from gi.repository import Gst
 Gst.init(None)
-raise SystemExit(0 if Gst.ElementFactory.find('gtksink') else 3)
+missing = [name for name in ('gtksink', 'timeoverlay') if not Gst.ElementFactory.find(name)]
+if missing:
+    print(', '.join(missing))
+    raise SystemExit(3)
 '''
 
 
 def media_preflight(scope):
-    """The visible pattern plays through GStreamer's GTK3 sink (#784)."""
-    result=scope.ctx.shell("python3 - <<'SD_GTKSINK'\n"+GTK_SINK+'SD_GTKSINK\n')
+    """The timestamped pattern plays through GStreamer's GTK3 sink (#784)."""
+    result=scope.ctx.shell("python3 - <<'SD_GST_PATTERN'\n"+PATTERN_PLUGINS+'SD_GST_PATTERN\n')
     if result['returncode']:
-        raise RecipeBlocked('recording source needs GStreamer gtksink (gstreamer1.0-gtk3 / gstreamer1-plugins-good-gtk); '
-                            'stage it in the disposable overlay with profiles/provision-probes.sh --recording-overlay',issue=784)
+        missing=result['stdout'].strip() or 'GStreamer with Python GI bindings'
+        raise RecipeBlocked('recording source is missing '+missing,issue=784)
 
 
 def desktop_contract(scope):
@@ -48,12 +51,15 @@ print(json.dumps({'record_helper':str(helper),'logical':outputs['logical']}))
 
 def pattern(scope):
     scope.ctx.fixture('app-profile')
-    # Reuse the established output-pinned cover; add private FIFO controls for
-    # freeze/resume/raise. The real desktop, compositor and portal stay intact.
+    # Add a clock to distinguish repeated bar positions across a cut.
+    # Reuse the output-pinned cover and add private FIFO controls.
     source=(Path(__file__).resolve().parents[2]/'cover_player.py').read_text()
-    for anchor in ('def on_stdin(channel, condition):', "if command == 'quit':"):
+    bars='framerate=30/1 ! videoconvert ! gtksink name=video'
+    for anchor in (bars, 'def on_stdin(channel, condition):', "if command == 'quit':"):
         if source.count(anchor) != 1:
             raise RecipeBlocked('cover_player.py no longer matches pattern-control anchors',issue=672)
+    source=source.replace(bars, 'framerate=30/1 ! timeoverlay font-desc="Sans Bold 40" '
+                               'shaded-background=true ! videoconvert ! gtksink name=video')
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
     scope.write(scope.root+'/cover.py',source.encode())
@@ -142,7 +148,7 @@ def capture(scope, scene, *, seconds=4.5, automatic=False):
 def recording(scope, *, automatic=False):
     ctx=scope.ctx
     ctx.fixture('destination') # route/settings snapshot must precede prepare
-    media.register(scope) # private hashed copies before any clip is removed
+    media.register(scope, outside_receipts=True) # preserve raw clips outside the shareable audit root
     scene=ctx.fixture('events.recording-source')
     scene.command('freeze')
     frozen,frozen_path=capture(scope,scene)
@@ -165,10 +171,15 @@ def controls(scope):
     return Fixture(json.loads(path.read_text()))
 
 
-def preview_error(scope):
-    """Latch a genuine decoder failure, then restore bytes before real Retry."""
-    value=scope.ctx.fixture('recording')
-    working=actual_working(scope,value.id)
+def copy_recording(scope):
+    ctx=scope.ctx
+    ctx.fixture('file-dialog-fallback')
+    return ctx.fixture('recording')
+
+
+def _replace_working(scope, identity):
+    """Temporarily replace the owned working file and register its restoration."""
+    working=actual_working(scope,identity)
     backup=scope.root+'/decoder-backup.mkv'
     scope.python('''import os
 from pathlib import Path
@@ -189,7 +200,15 @@ if backup.exists():
  assert backup.resolve()==backup and p.resolve()==p
  os.replace(backup,p)
 '''.replace('WORKING',repr(working)).replace('BACKUP',repr(backup)))
-    scope.defer('decoder working bytes',restore,priority=300)
+    scope.defer('recording working bytes',restore,priority=300)
+    return restore
+
+
+def preview_error(scope):
+    """Latch a genuine decoder failure, then restore bytes before real Retry."""
+    value=scope.ctx.fixture('recording')
+    restore=_replace_working(scope,value.id)
+
     scope.ctx.call('recording.review',{'id':value.id,'action':'seek','time':1_000_000})
     scope.ctx.wait(lambda:scope.ctx.call('recording.review',{'id':value.id,'action':'inspect'})['preview'].get('error'),
                    'genuine decoder preview failure',timeout=20)
@@ -199,11 +218,21 @@ if backup.exists():
 
 
 def export_failure(scope):
-    value=scope.ctx.fixture('recording')
-    blocker=scope.root+'/blocked-export'
-    scope.write(blocker,b'synthetic export blocker')
-    scope.ctx.call('recording.saveCopy',{'id':value.id,'path':blocker+'/retry.mp4'})
-    scope.ctx.wait(lambda:(state if (state:=scope.ctx.call('recording.inspect',{'id':value.id})).get('lastExport',{}).get('status')=='failed' else None),
-                   'authentic recoverable export failure',timeout=30)
-    scope.python('from pathlib import Path\np=Path('+repr(blocker)+');p.unlink();p.mkdir(mode=0o700)')
-    return Fixture(value,export_fault_removed=True,retry_path=blocker+'/retry.mp4')
+    from ..recipes.dialogs import choose_review_copy
+
+    value=scope.ctx.fixture('recording-copy')
+    path=value['output_dir']+'/retry.mp4'
+    restore=_replace_working(scope,value.id)
+    try:
+        # Only a chooser save tells the review to show a failed export banner.
+        # Force the worker to fail inside that event, with a valid save path.
+        choose_review_copy(scope.ctx,value.id,path,output_dir=value['output_dir'])
+        def failed():
+            result=scope.ctx.call('recording.inspect',{'id':value.id}).get('lastExport') or {}
+            return result.get('status')=='failed' and result.get('path')==path
+        scope.ctx.wait(failed,'recoverable export failure at the chosen path',timeout=30)
+        scope.ctx.wait(lambda: scope.ctx.call('recording.review',{'id':value.id,'action':'inspect'})['errorDetails']['visible'],
+                       'the chooser export failure reaches the review')
+    finally:
+        restore()
+    return Fixture(value,retry_path=path)

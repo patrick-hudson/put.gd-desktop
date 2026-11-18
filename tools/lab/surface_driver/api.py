@@ -304,6 +304,10 @@ class Context:
         """
         raise NotImplementedError
 
+    def clipboard_matches(self, expected: str) -> bool:
+        """Compare clipboard text on the target and return only the match result."""
+        raise NotImplementedError
+
     def shell(self, script: str, timeout: float = 60.0, cleanup: bool = False) -> dict:
         """Run a shell script on the target as the session user with the run's private XDG profile.
 
