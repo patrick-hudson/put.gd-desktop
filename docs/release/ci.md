@@ -786,6 +786,16 @@ and dwz steps. It works in three layers:
   (`dnf --cacheonly`, `apt-get --no-download`). That builds against a package
   set at most a week old instead of failing the job. A dependency list that
   changed since the snapshot can't be satisfied offline, and the step fails.
+  On apt the snapshot also keeps the sources it was made with, and the offline
+  install reads the metadata through them, because apt names its metadata files
+  after the source URI. The AppImage job restores the ubuntu24.04 snapshot and
+  installs everything from it offline the same way. The native ubuntu24.04 job
+  adds that job's extra packages (`tools/ci/appimage-packages.txt`) and `weston`
+  to the snapshot with `--download-only`. The AppImage job also switches off the
+  runner's non-Ubuntu apt sources (`tools/ci/hosted_apt_mirrors.py`), so a 429
+  from `packages.microsoft.com` can't fail the metadata refresh.
+  `PUTGD_PKG_ATTEMPTS=0` skips the online attempts, which exercises the fallback
+  on demand.
 - **Reporting.** Each failed or stopped attempt, a retry that passed and a
   snapshot install are warning annotations and rows of a "Package install
   retries" table in the job summary. A stopped attempt's row says
