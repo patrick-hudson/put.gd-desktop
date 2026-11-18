@@ -300,6 +300,34 @@ private slots:
   QVERIFY(doc.undo());QCOMPARE(doc.shapes().size(),2);
   window.viewCommand({{"action","removeSuggestions"},{"shapeId",1}},code,message);QCOMPARE(code,QString("invalid_request"));
  }
+ // Round 2 (U9): removeSuggestions while a mark is being dragged is refused, so it cannot join the drag's
+ // undo step or be undone by cancelling the drag after the agent was told it worked.
+ void removeSuggestionsDuringADragIsRefused() {
+  editor::EditDocument doc(capture());EditorWindow window(doc);useTerminal(window);
+  QCOMPARE(run(window,{"email"})["created"].toArray().size(),1);
+  const auto before=doc.shapes();
+  doc.beginGesture();
+  QString code,message;window.viewCommand({{"action","removeSuggestions"}},code,message);
+  QCOMPARE(code,QString("editor_busy"));QCOMPARE(doc.shapes(),before);
+  doc.cancelGesture();
+  code.clear();window.viewCommand({{"action","removeSuggestions"}},code,message);
+  QVERIFY2(code.isEmpty(),qPrintable(code+": "+message));QVERIFY(doc.shapes().isEmpty());
+ }
+ // Round 2 (U11): a deleted suggestion is remembered by the recognized words' own boxes, not the padded mark.
+ // The padded marks of two neighbouring one-character words overlap by more than half; the words do not.
+ void deletingOneWordsSuggestionDoesNotHideItsNeighbours() {
+  editor::EditDocument doc(capture());EditorWindow window(doc);
+  window.text().setRunner([](const QImage&,const textjob::Options&,Error&,TextJob::Cancel){auto result=found();result.candidates={{"x",QRect(100,60,10,20),95},{"y",QRect(111,60,10,20),95}};return result;});
+  const auto first=run(window,{"list"},{"x"});
+  QCOMPARE(first["created"].toArray().size(),1);
+  const auto id=quint64(first["created"].toArray().first().toDouble());
+  QCOMPARE(doc.find(id)->suggestedAt,QRect(100,60,10,20)); // the word's own box
+  QVERIFY(doc.remove(id));
+  const auto neighbour=run(window,{"list"},{"y"});
+  QCOMPARE(neighbour["created"].toArray().size(),1);
+  // And the deleted one is still skipped.
+  QCOMPARE(run(window,{"list"},{"x"})["created"].toArray().size(),0);
+ }
  void wordUnderRedactMarkIsNeverReturned_data() {
   QTest::addColumn<QString>("change");
   QTest::newRow("mark added after recognition")<<"added";

@@ -18,8 +18,9 @@ struct Shape {
  Kind kind=Kind::Rectangle;
  quint64 id=0;
  // Quick redact (#1618): the category that suggested this mark (name, list,
- // email, ...), empty for a mark drawn by hand, and the box it was suggested
- // at, which moving or resizing leaves alone. Never the recognized text.
+ // email, ...), empty for a mark drawn by hand, and the recognized words' own
+ // box it was suggested for (unpadded, one line), which moving or resizing
+ // leaves alone. Never the recognized text.
  QString suggested;
  QRect suggestedAt;
  QRect rect;          // normalized box: Redact, Blur, Rectangle, Highlight, Text, Ellipse; a Step's square
@@ -99,7 +100,8 @@ public:
  // Every suggested mark that is still there, as one undo step, without
  // remembering any as dismissed. Marks drawn by hand stay. Returns how many.
  int removeSuggested();
- // True when the user removed a mark of this category suggested at about this box:
+ // True when the user removed a mark of this category suggested for about this
+ // words box (Shape::suggestedAt):
  // a later run reads the page with the other marks blacked out, so its boxes move
  // a few pixels and shrink a little. Two boxes are the same suggestion when their
  // intersection is at least half of their union. Quick redact skips such a mark.
