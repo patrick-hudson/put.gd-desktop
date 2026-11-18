@@ -48,7 +48,9 @@ def window(wid, pid, cls, frame, **extra):
 def world(windows, desk, fence=None):
     fence = fence or FakeFence(windows)
     desk.fence = fence
-    return World(fence, desk, procs=lambda: {10: 'putgd-ui'}), fence
+    w = World(fence, desk, procs=lambda: {10: 'putgd-ui'})
+    w.freshness = 0.0   # the fake fence stamps every reading with the time it is read
+    return w, fence
 
 
 OURS = window('w-ours', 10, 'putgd-ui', [100, 100, 600, 400])
@@ -143,6 +145,13 @@ class GrabStack(unittest.TestCase):
 
     def test_a_foreign_grab_above_the_selector_denies_keys_and_pointer(self):
         focused, w = self.mine_focused(self.raw(['Gjs_putgd_put_gd_extension_RegionSelector', 'Gjs_ui_modalDialog_ModalDialog']))
+        self.assertFalse(focused)
+        self.assertFalse(w.inside(600, 400))
+
+    def test_a_visible_overview_denies_keys_even_when_the_selector_tops_the_stack(self):
+        raw = self.raw(['Gjs_putgd_put_gd_extension_RegionSelector'])
+        raw['chrome'] = dict(raw['chrome'], overview=True)
+        focused, w = self.mine_focused(raw)
         self.assertFalse(focused)
         self.assertFalse(w.inside(600, 400))
 
@@ -262,6 +271,24 @@ class PointerRechecks(unittest.TestCase):
         with self.assertRaises(Exception):
             actor.click(300, 300, count=3)
         self.assertEqual(dev.presses, 1)
+
+    def test_a_key_needs_a_snapshot_taken_after_it_and_never_uses_the_cached_active_window(self):
+        for stale, expected in ((False, True), (True, False)):
+            w, fence = world([dict(OURS, active=True)], Gnome())
+            w.fresh_timeout = 0.05
+            if stale:
+                old = time.time() - 5
+                fence.get = lambda: (fence.snapshot, old)   # the fence has stopped producing snapshots; its last one says put.gd is active
+            actor = Actor(FakeDev(fence), w, mock.Mock(), __import__('random').Random(1))
+            self.assertEqual(actor.mine_focused(), expected, 'stale' if stale else 'fresh')
+        w, fence = world([dict(OURS, active=True)], Gnome())
+        old = time.time() - 5
+        w.fresh_timeout = 0.05
+        fence.get = lambda: (fence.snapshot, old)
+        actor = Actor(FakeDev(fence), w, mock.Mock(), __import__('random').Random(1))
+        with self.assertRaises(Exception):
+            actor.text('hello')       # typing is denied too
+        self.assertEqual(actor.dev.presses, 0)
 
     def test_no_fresh_snapshot_means_deny_and_never_the_cached_one(self):
         actor, dev, fence = self.actor()
@@ -588,18 +615,41 @@ class ReplayAndSignals(unittest.TestCase):
         self.assertTrue(gnome.layout_changed)
         self.assertTrue(cinnamon.monitors_changed)
 
-    def test_an_interruption_during_the_teardown_waits_until_it_is_done(self):
+    def test_a_signal_sent_from_another_thread_during_the_teardown_raises_nothing(self):
         import signal
+        import threading
         seen = []
-        previous = signal.signal(signal.SIGTERM, lambda *_: seen.append('handler'))
+        outer = lambda *_: seen.append('outer handler')  # noqa: E731
+        previous = {sig: signal.signal(sig, outer) for sig in (signal.SIGTERM, signal.SIGINT)}
         try:
             def teardown():
-                os.kill(os.getpid(), signal.SIGTERM)
-                seen.append('teardown finished' if not seen else 'cut short')
-            fuzz_main.blocked(teardown)
+                sender = threading.Thread(target=lambda: os.kill(os.getpid(), signal.SIGTERM))  # process-directed, from a live worker thread
+                sender.start()
+                sender.join()
+                time.sleep(0.1)   # the main thread runs the handler between bytecodes
+                seen.append('teardown finished')
+            arrived = fuzz_main.protected(teardown)
+            self.assertTrue(arrived)
+            self.assertEqual(seen, ['teardown finished'])   # no exception, and the outer handler did not run during the teardown
+            self.assertIs(signal.getsignal(signal.SIGTERM), outer)   # restored
+            self.assertIs(signal.getsignal(signal.SIGINT), outer)
+            self.assertFalse(fuzz_main.protected(lambda: None))
         finally:
-            signal.signal(signal.SIGTERM, previous)
-        self.assertEqual(seen, ['teardown finished', 'handler'])
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+
+    def test_the_replayed_command_finds_the_flag_already_set(self):
+        import json
+        gnome = Gnome()
+        actor = mock.Mock()
+        flags = []
+        actor.sh = lambda *args: flags.append(gnome.layout_changed)   # what a failing or interrupted command would find
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, 'actions.jsonl')
+            with open(path, 'w') as stream:
+                stream.write(json.dumps({'op': 'sh', 'a': ['gdctl', 'set', '--logical-monitor', '--monitor', 'Virtual-1']}) + '\n')
+            fuzz_main.replay(path, actor, gnome)
+        self.assertEqual(flags, [True])
 
 
 class Noise(unittest.TestCase):

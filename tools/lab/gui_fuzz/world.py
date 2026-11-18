@@ -67,6 +67,17 @@ class Log:
             return list(self.recent)
 
 
+class Frozen:
+    """A fence that always returns one snapshot."""
+
+    def __init__(self, snapshot):
+        self.snapshot = snapshot
+        self.serial = 0
+
+    def get(self):
+        return self.snapshot, time.time()
+
+
 class World:
     def __init__(self, fence, desk, procs=putgd_processes):
         self.fence = fence
@@ -159,18 +170,32 @@ class World:
             return self.mine(w) and fx + margin <= x < fx + fw - margin and fy + margin <= y < fy + fh - margin
         return False
 
-    def fresh_cursor(self):
-        """The cursor as the fence sees it in a snapshot taken after this call: what the last input really did. None when no such snapshot
-        arrives in time: an input decision never rests on an older one."""
+    def fresh_snapshot(self):
+        """A snapshot taken after this call, or None when none arrives in time: an input decision never rests on an older one."""
         asked = time.time()
         deadline = asked + self.fresh_timeout
         while True:
             snapshot, stamp = self.fence.get()
             if stamp > asked + self.freshness:
-                return tuple(snapshot['cursor'])
+                return snapshot
             if time.time() >= deadline:
                 return None
             time.sleep(0.005)
+
+    def fresh_cursor(self):
+        """The cursor as the fence sees it in a snapshot taken after this call (what the last input really did), or None."""
+        snapshot = self.fresh_snapshot()
+        return None if snapshot is None else tuple(snapshot['cursor'])
+
+    def fresh_view(self):
+        """This world as a snapshot taken after this call shows it, or None: windows, overlays and the active window all from that one snapshot."""
+        snapshot = self.fresh_snapshot()
+        if snapshot is None:
+            return None
+        view = World(Frozen(snapshot), self.desk, procs=self.procs)
+        view._procs, view._procs_at = self._procs, self._procs_at
+        view.freshness, view.fresh_timeout = self.freshness, self.fresh_timeout
+        return view
 
     def on_output(self, x, y):
         return any(o['geom'][0] <= x < o['geom'][0] + o['geom'][2] and o['geom'][1] <= y < o['geom'][1] + o['geom'][3] for o in self.outputs())

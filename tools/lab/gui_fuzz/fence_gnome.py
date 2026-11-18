@@ -42,7 +42,7 @@ def convert(raw):
         style = actor.get('style', '')
         if actor['t'].endswith('RegionSelector'):
             selector = True
-            windows.append(pseudo('sel%d' % index, 'putgd-shell-selector', actor['frame'], z, active=grab))
+            windows.append(pseudo('sel%d' % index, 'putgd-shell-selector', actor['frame'], z, active=grab and not chrome_raw.get('overview')))
             for kid in actor.get('kids', []):
                 if kid['name'] or kid.get('text'):
                     windows.append(pseudo('selk%d' % z, 'putgd-shell-selector-part', kid['frame'], z + 1, title=kid['name'] or kid.get('text', '')))

@@ -37,8 +37,8 @@ def replay(path, actor, desk):
         elif op == 'cli':
             actor.cli(record['m'], record['p'], timeout=55)
         elif op == 'sh':
+            desk.replayed(record['a'])  # before the command, as the walk does: a replayed monitor change is one the run made, and finish() puts the layout back
             actor.sh(*record['a'])
-            desk.replayed(record['a'])  # a replayed monitor change is one the run made: finish() puts the layout back
 
 
 def stop_code(findings, args, log, started, now):
@@ -60,14 +60,19 @@ def exit_status(code, watch, findings, args):
     return 3 if findings.fatal.is_set() and not args.keep_going else code
 
 
-def blocked(step):
-    """Run `step` with SIGTERM and SIGINT held back, then let any that arrived through (the handler runs after the step is done)."""
-    held = {signal.SIGTERM, signal.SIGINT}
-    before = signal.pthread_sigmask(signal.SIG_BLOCK, held)
+def protected(step):
+    """Run `step` (the teardown) with SIGTERM and SIGINT handlers that only record that one came. Nothing is raised, on any thread: Python runs a
+    handler on the main thread between bytecodes, whichever thread the signal was sent from. The old handlers are back afterwards.
+    Returns whether a signal arrived meanwhile."""
+    arrived = []
+    held = (signal.SIGTERM, signal.SIGINT)
+    old = {sig: signal.signal(sig, lambda signum, frame: arrived.append(signum)) for sig in held}
     try:
-        return step()
+        step()
     finally:
-        signal.pthread_sigmask(signal.SIG_SETMASK, before)
+        for sig, handler in old.items():
+            signal.signal(sig, handler)
+    return bool(arrived)
 
 
 def quietly(step, what):
@@ -154,12 +159,12 @@ def main():
                 quietly(dev.close, 'destroy the virtual devices')
             if fence is not None:
                 quietly(fence.stop, 'stop the fence')
-            quietly(lambda: blocked(desk.finish), 'restore the session and take the witness down')  # no interruption may cut the teardown short
+            interrupted = []
+            quietly(lambda: interrupted.append(protected(desk.finish)), 'restore the session and take the witness down')  # no interruption may cut the teardown short
+            if interrupted and interrupted[0]:
+                code = 130  # a signal came during the teardown; it is done, and the run says it was interrupted
     return code
 
 
 if __name__ == '__main__':
-    try:
-        sys.exit(main())
-    except KeyboardInterrupt:  # an interruption that arrived while the teardown was protected: it is done now
-        sys.exit(130)
+    sys.exit(main())
