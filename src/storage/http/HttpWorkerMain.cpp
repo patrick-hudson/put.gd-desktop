@@ -347,7 +347,7 @@ public:
             if (!QList<int>{301, 302, 303, 307, 308}.contains(out.status)) return out;
             const auto target = url.resolved(QUrl(out.header("location")));
             if (stay && target.isValid() && !sameHost(first, target)) {
-                if (refused) *refused = QStringLiteral("it redirects to another host, where put.gd does not send this destination's stored value");
+                if (refused) *refused = QStringLiteral("it redirects to another host, which put.gd does not follow for a deletion");
                 return out;
             }
             if (!target.isValid() || (url.scheme() == "https" && target.scheme() != "https") || !fetchProblem(target, allowInsecure).isEmpty()) {
@@ -914,7 +914,10 @@ private:
         const auto before = client_.get(link, allowInsecure());
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         QString refused;
-        auto r = client_.get(url, allowInsecure(), &refused, named);
+        // A redirect of the deletion URL to another host is never followed, with or
+        // without a stored value in it: what another host answers says nothing of this
+        // deletion, and following it could carry the request somewhere it was not meant.
+        auto r = client_.get(url, allowInsecure(), &refused, true);
         QJsonObject details{{"requestStage", "delete"}, {"httpStatus", r.status}};
         if (!refused.isEmpty()) {
             // The server received the request and answered with a redirect that is not
@@ -959,7 +962,8 @@ private:
             const bool elsewhere = !sameHost(link, before.url) || !sameHost(link, after.url);
             if (elsewhere) details["checkOffHost"] = true;
             if (gone(after)) return finish(gone(before) && phase != "delete_intent" ? "missing" : "removed");
-            const bool compared = after.status >= 200 && after.status < 300 && before.status >= 200 && before.status < 300 && !before.body.isEmpty() && !after.body.isEmpty();
+            // Only a 200 carries the whole file; a 206 range or any other 2xx is not compared.
+            const bool compared = after.status == 200 && before.status == 200 && !before.body.isEmpty() && !after.body.isEmpty();
             // Only two whole replies count: one cut off, or stopped at the reply cap, shows
             // neither that the file is still there (a matching start) nor that it went (a
             // differing one). For a file larger than the cap, only a link that is gone

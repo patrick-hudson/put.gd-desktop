@@ -499,6 +499,41 @@ private slots:
         if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QCOMPARE(f.stored(), 1);
     }
+    // Review of #1603. A deletion URL that names no stored value, and redirects to
+    // another host: the redirect is not followed (the other host never sees the
+    // deletion), so the outcome is unknown with the intent kept.
+    void aDeletionRedirectedToAnotherHostIsNotFollowed() {
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto deletion = uploaded.receipt.objectReference["deletionUrl"].toString();
+        QVERIFY2(!deletion.contains("{secret:"), qPrintable(deletion));
+        f.rules({{{"call", "delete"}, {"status", 302}, {"location", QString(deletion).replace("127.0.0.1", "localhost")}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.events("delete").size(), 1);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. Only a 200 carries the whole file: a 206 range after the deletion,
+    // whatever its bytes, is not compared, and the outcome is unknown.
+    void aPartialContentCheckIsUnknown() {
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        f.rules({{{"call", "file"}}, {{"call", "file"}, {"status", 206}, {"body", "PNG"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
     // Review of #1603. A check of the link whose reply was cut off before any of it came
     // leaves nothing to compare: unknown, never removed or failed.
     void aDeletionWithNothingToCompareIsUnknown_data() {
