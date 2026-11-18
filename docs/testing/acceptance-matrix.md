@@ -130,7 +130,7 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
 | Package | Golden | Must show |
 | --- | --- | --- |
 | AppImage (no Arch package installed) | `omarchy-hyprland-20261108` | Everything below, with Nautilus through the entry under **Scripts**; the AppImage has no Nautilus plugin |
-| Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, with the Nautilus plugin, which refuses while an AppImage resident runs; its dependencies pull the GStreamer plugins Omarchy lacks |
+| Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, with the Nautilus plugin, which refuses while an AppImage resident runs; its dependencies pull the GStreamer plugins Omarchy lacks. Possible only while Omarchy's OpenSSL has the soname the package needs; with OpenSSL 3.6 (Omarchy 4.5, 2026-11-18) pacman refuses the package (`unable to satisfy dependency 'libcrypto.so=4-64'`) and the row is the install script's AppImage fallback instead |
 
 - A drag that starts right after the region hotkey (from about 0.1 s) selects
   exactly what was dragged, on one and on two settled outputs. Just after an

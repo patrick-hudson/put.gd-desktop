@@ -340,7 +340,11 @@ slurp a later rule with `no_anim = false` (Omarchy ships `no_anim` for its
 `selection` layer): slurp then fades in over the animation while put.gd's
 selector appears in one step, and a capture contains no selector.
 Acceptance evidence: [2026-11-08-hyprland-omarchy-1275](https://github.com/patrick-hudson/put.gd-evidence/tree/82185b9d2ccfa39c976ab2fd36b45eac4ebe5c35/records/2026-11-08-hyprland-omarchy-1275). The Omarchy golden has no pacman sync databases: run
-`sudo pacman -Sy` before `pacman -U`, never `-Syu`. Hyprland cannot run headless
+`sudo pacman -Sy` before `pacman -U`, never `-Syu`. The Arch package needs the OpenSSL
+soname Arch ships (`libcrypto.so=4-64`) and Omarchy 4.5 has OpenSSL 3.6.5 after its own
+full update, so pacman refuses the package there and the install script installs the
+AppImage instead ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525));
+the Arch package returns to Omarchy when its OpenSSL catches up. Hyprland cannot run headless
 in CI (aquamarine needs a DRM device), so CI covers routing, key and bind
 normalisation, the bind plan, refusal frames and the hotkey backend against a
 fake IPC server; the compositor itself is covered by the golden.

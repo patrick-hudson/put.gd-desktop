@@ -275,6 +275,21 @@ fingerprint, imports and locally signs that key with `pacman-key`, writes
 supported. Existing repository choice is preserved. Native package removal
 leaves this administrator-owned repository configuration in place.
 
+The package depends on the OpenSSL soname its binaries link, which makepkg records from
+a bare `libcrypto.so` entry in `packaging/arch/PKGBUILD` (`libcrypto.so=4-64` for OpenSSL 4).
+`tools/releases/arch.py` fails the build when the entry stays unversioned, because a bare
+one is met by any OpenSSL. Arch derivatives that follow Arch with a delay (Omarchy)
+cannot meet a newer soname, so before installing, the installer asks pacman to resolve
+`putgd` (`pacman -Sp putgd`, or `-Syp` outside Omarchy's flow). When pacman answers
+`could not satisfy dependencies` the installer installs the AppImage, after the same
+checks and verification as `--appimage`; any other pacman failure stops the install.
+It adds the signed repository and key either way, and says so when the package is
+already installed. A package that is installed and has an unsatisfiable upgrade stops
+`pacman -Syu --noconfirm`, which is what `omarchy update` runs, until it is removed or
+listed in `IgnorePkg`. This repeats at every soname change Arch makes before its
+derivatives do; a second package built for a derivative's package set is the larger
+alternative ([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
+
 To change channels, copy `/usr/share/putgd/repo/putgd-CHANNEL.conf` to
 `/etc/pacman.d/putgd.conf`, import `/usr/share/putgd/repo/putgd-CHANNEL.asc`, and
 locally sign its full fingerprint (the pinned public keys are in source).
