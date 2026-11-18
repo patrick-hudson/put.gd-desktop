@@ -370,12 +370,14 @@ private slots:
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
                                       QJsonObject{{"method", "HEAD"}, {"competitor", true}},
                                       QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}, {"code", "AccessDenied"}, {"remaining", 20}}}}});
+        // Another object, but the abort is refused: unknown, not a collision (M8), journal kept.
         const auto collided = f.upload(stale);
-        QCOMPARE(collided.status, QString("collision"));
+        QCOMPARE(collided.status, QString("unknown"));
         QVERIFY(collided.error.details["incompleteUpload"].toBool());
         const auto kept = journal.last();
         QVERIFY(!kept["uploadId"].toString().isEmpty());
-        // History renames the file and uploads it again with that journal.
+        // A later upload under another name with that journal (an item renamed before): the old
+        // upload's abort is refused again, so nothing new is created.
         auto renamed = f.request("new name.bin", synthetic(11 * mib));
         renamed.resume = kept;
         journal.attach(renamed);

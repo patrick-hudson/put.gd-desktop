@@ -1026,7 +1026,16 @@ Operation OperationService::run(Job job) {
   // A provider that settles its own uploads checks the key itself when it resumes a journaled
   // upload; checking it here as well could only overrule its answer (#1627).
   if(item.uploadStatus=="unknown"&&capabilities.settlesUploads&&!item.uploadJournal.isEmpty()) {
-   item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
+   // First the saved identity: it needs neither the local file nor a new upload, so a missing
+   // file, locked credentials or a worker that won't start leave the item unknown with its
+   // journal (the check itself fails), never failed. Only the provider's own check may then
+   // abort or replace the upload, for a key that is absent or holds another object.
+   item.phase="reconciling";show(item,index);
+   auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;return;}
+   if(stat.status!="missing"&&stat.status!="foreign") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};commit(item,index);return;}
+   if(auto error=artifacts.verify(item.artifact)) {item.phase="unknown";item.error=error;commit(item,index);return;}
+   item.uploadStatus="stored";if(!commit(item,index))return;
   }
   if(item.uploadStatus=="unknown") {
    item.phase="reconciling";show(item,index);

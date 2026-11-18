@@ -515,6 +515,15 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         }
         return {status, {}, error};
     };
+    // Another object holds the key. A collision lets History rename, skip or fail the item, so
+    // it is reported only once the upload is aborted: if S3 refuses the abort, the item stays
+    // unknown with its journal, which still names the parts (M8).
+    auto collided = [&](Error error) -> UploadResult {
+        if (abort(uploadId, key)) return {"collision", {}, error};
+        error.details["incompleteUpload"] = true;
+        error.message += " The incomplete multipart upload could not be removed, so put.gd keeps its record and the item stays unresolved; Retry to try again, or allow s3:AbortMultipartUpload.";
+        return {"unknown", {}, error};
+    };
     // What the key says once a completion's outcome is in doubt, or the upload vanished.
     auto settle = [&](const Error& error, bool conflict) -> UploadResult {
         const auto found = inspect(client, expected, true);
@@ -524,7 +533,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         }
         // The HEAD can't tell: the item stays unknown, keeping its journal and parts.
         if (found.status == "unknown") return {"unknown", {}, error};
-        if (found.status == "foreign") return fail(conflict ? error : Error{"precondition_changed", "Another object now uses the saved object key", {}}, "collision");
+        if (found.status == "foreign") return collided(conflict ? error : Error{"precondition_changed", "Another object now uses the saved object key", {}});
         return fail(error);
     };
     std::map<int, Aws::String> done;
@@ -561,7 +570,7 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
             return {"uploaded", found.receipt, {}};
         }
         if (found.status == "unknown") return {"unknown", {}, found.error};
-        if (found.status == "foreign") return fail({"precondition_changed", "Another object now uses the saved object key", {}}, "collision");
+        if (found.status == "foreign") return collided({"precondition_changed", "Another object now uses the saved object key", {}});
         if (!abort(previous, key)) {
             Error error{"publication_unknown", "The earlier multipart upload could not be removed; retry to try again.", {}};
             error.details["incompleteUpload"] = true;
