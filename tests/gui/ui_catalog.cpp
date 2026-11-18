@@ -874,7 +874,7 @@ int main(int argc,char** argv){
  // trim, a cut and two covers; compact 1100×700 with the Edits overlay open on
  // a selected cut; the light theme), over a synthetic frame and synthetic
  // filmstrip tiles (no clip exists here), and the ready control bar.
-  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
+  record::ReviewWindow::Options o;o.workingClip=QDir(output).filePath("no-clip.mkv");o.destination="Project archive";o.sharingMode="share";o.uploadSummary="Upload to Project archive · Shared link";o.durationUs=32000000;o.canvas=QSize(960,600);o.availableSize=record::ReviewWindow::defaultSize();o.formats={"mp4","webm","gif","webp"};o.codecs=QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}};
   RecordingConfig config;config.format="mp4";config.codec="h264";config.fps=30;config.audio.system=true;o.audioRecorded=true;
   // No clip exists: hold the frame refresh so the synthetic frame stays until a state asks for one.
   qputenv("PUTGD_RECORD_REVIEW_DELAY_MS","3600000");

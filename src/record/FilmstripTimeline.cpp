@@ -341,6 +341,17 @@ void FilmstripTimeline::selectLocally(const QString& kind, const QString& id) {
     layoutCovers();
     update();
 }
+void FilmstripTimeline::skimAt(std::optional<qint64> sourceUs) {
+    if (!sourceUs) { clearSkim(); return; }
+    if (playing_) return;
+    const qint64 at = std::clamp<qint64>(*sourceUs, 0, std::max<qint64>(0, duration_ - 1));
+    if (skim_ == at) { restartSkimTimer(); return; }
+    skim_ = at;
+    skimExact_ = false;
+    update();
+    emit skimMoved(at);
+    restartSkimTimer();
+}
 void FilmstripTimeline::setSkimExact(bool exact) { if (skimExact_ != exact) { skimExact_ = exact; update(); } }
 
 // ---- time and frames ----
@@ -855,13 +866,7 @@ void FilmstripTimeline::mouseMoveEvent(QMouseEvent* e) {
         setCursor(over ? Qt::SizeHorCursor : Qt::ArrowCursor);
         // Paused hover over the ruler or the strip skims; the covers track and playing do not.
         if (playing_ || pos.y() < 0 || pos.y() > strip.bottom() + 4 || pos.x() < strip.left() || pos.x() > strip.right() + 1) { clearSkim(); return; }
-        const qint64 at = timeAt(pos.x());
-        if (skim_ == at) { restartSkimTimer(); return; }
-        skim_ = at;
-        skimExact_ = false;
-        update();
-        emit skimMoved(at);
-        restartSkimTimer();
+        skimAt(timeAt(pos.x()));
         return;
     }
     case Drag::Scrub: emit seekRequested(timeAt(clampedX)); return;

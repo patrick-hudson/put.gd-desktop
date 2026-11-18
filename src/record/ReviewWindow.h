@@ -73,6 +73,10 @@ public:
     void setActualSize(bool actual);
     bool actualSize() const { return actual_; }
     int zoomPercent() const;
+    // #1613: pans a picture at 100 % by source pixels (the arrow keys and
+    // recording.review viewerPan); the pan clamps so the picture stays in view.
+    void panBy(const QPointF& sourcePixels);
+    QPointF pan() const { return pan_; }
     // #1613: the width an overlay covers at the right; the picture fits the
     // rest, left-aligned, so nothing plays under it.
     void setRightInset(int px);
@@ -165,11 +169,15 @@ public:
     // The resident's animation limits, for a warning before an export is refused.
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
     // #283: the review session method (recording.review) drives the window as a
-    // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|resetTrim|
+    // user does: {action: inspect|seek|play|pause|speed|setIn|setOut|setTrim|resetTrim|
     // addMask|selectMask|placeMask|setMaskIn|setMaskOut|strength|removeMask|
     // useSolidCover|format|trimToLimit|dismissStatus|showAdvice|showInFolder|
     // copyPath|dismissSavedCopy|retryExport|retryPreview|saveCopyDialog|
-    // closeFileDialog|discard|keepReviewing|confirmDiscard, ...}.
+    // closeFileDialog|discard|keepReviewing|confirmDiscard, and (#1613) selectRange|
+    // clearSelection|cut|selectCut|adjustCut|restoreCut|playAcross|undo|redo|armRedact|
+    // armBlur|cancelPlacement|selectEdit|nextEdit|previousEdit|seekCoverStart|
+    // seekCoverEnd|setCoverEdgeToPlayhead|coverKind|timelineZoom|timelineFit|
+    // viewerZoom|viewerPan|frameStep|skim|skimEnd|panel|resize, ...}.
     // Edits are proposed exactly as the controls propose them; the answer is the
     // window's state (inspect) after the action, or an error.
     struct DriveResult { QString code, message; QJsonObject state; };
@@ -240,6 +248,7 @@ private:
     std::optional<qint64> firstKeptFrame(qint64 start, qint64 end) const;
     std::optional<qint64> lastKeptFrame(qint64 start, qint64 end) const;
     void setTimeSelection(std::optional<recording::Span>);
+    void selectTime(qint64 start, qint64 end);
     void selectEdit(const QString& kind, const QString& id);
     void selectCover(const QString& id, bool seekToIt = true);
     void selectCut(const QString& id, bool seekToIt);
@@ -248,6 +257,11 @@ private:
     QList<QPair<QString, QString>> editsInOrder() const;
     // Edits.
     void cutSelection();
+    void proposeTrim(qint64 start, qint64 end);
+    void adjustCut(const QString& id, qint64 start, qint64 end);
+    void retimeCover(const QString& id, qint64 start, qint64 end);
+    void setCoverKind(const QString& id, const QString& kind);
+    void setPanelOpen(bool open);
     void arm(const QString& kind);
     void cancelPlacement();
     void placeCover(const QString& kind, const QRect& rect);

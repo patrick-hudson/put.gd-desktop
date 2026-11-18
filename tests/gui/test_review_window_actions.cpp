@@ -130,6 +130,150 @@ private slots:
         QCOMPARE(command["op"].toString(), QString("setTrim"));
         QCOMPARE(command["end"].toDouble(), 8000000.0);
     }
+    // #1613: every control an agent can reach calls the code its gesture calls, so
+    // the proposals match the gesture's, and inspect reports the state it leaves.
+    void agentActionsProposeWhatTheGesturesPropose() {
+        ReviewWindow window(options(), config());
+        QSignalSpy spy(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 5;
+        edit.canUndo = edit.canRedo = true;
+        edit.cuts = {RecordingCut{"c1", 1000000, 2000000}};
+        edit.masks = {mask("m1", "blur", 4000000, 8000000)};
+        window.setEdit(edit);
+        // The proposal after `agent` equals the one after `gesture`.
+        const auto same = [&](const QJsonObject& agent, const std::function<void()>& gesture) {
+            const auto before = spy.size();
+            const auto result = window.drive(agent);
+            QVERIFY2(result.code.isEmpty(), qPrintable(agent["action"].toString() + ": " + result.message));
+            QCOMPARE(spy.size(), before + 1);
+            const auto driven = spy.last().at(1).toJsonArray();
+            gesture();
+            QCOMPARE(spy.size(), before + 2);
+            QCOMPARE(spy.last().at(1).toJsonArray(), driven);
+        };
+        const auto drive = [&](const QJsonObject& params) { return window.drive(params); };
+        const auto button = [&](const char* name) { return window.findChild<QAbstractButton*>(name); };
+        auto* strip = timeline(window);
+        // Time selection: selectRange is the drag; cut is C.
+        QCOMPARE(drive({{"action", "cut"}}).code, QString("recording_state"));
+        QCOMPARE(drive({{"action", "selectRange"}, {"start", 5000000}, {"end", 5000000}}).code, QString("invalid_request"));
+        auto state = drive({{"action", "selectRange"}, {"start", 5000000}, {"end", 7000000}}).state;
+        QCOMPARE(state["selection"].toObject()["start"].toDouble(), 5000000.0);
+        QCOMPARE(state["selection"].toObject()["lengthUs"].toDouble(), 2000000.0);
+        QVERIFY(state["selectedEdit"].isNull() && state["tools"].toObject()["cut"].toBool());
+        QVERIFY(drive({{"action", "clearSelection"}}).state["selection"].isNull());
+        drive({{"action", "selectRange"}, {"start", 5000000}, {"end", 7000000}});
+        same({{"action", "cut"}}, [&] { emit strip->timeSelected(5000000, 7000000); QTest::keyClick(&window, Qt::Key_C); });
+        QCOMPARE(proposed(spy)["op"].toString(), QString("addCut"));
+        // Cuts: select (a click on it), adjust (a drag), restore (the panel's button).
+        state = drive({{"action", "selectCut"}, {"cutId", "c1"}}).state;
+        QCOMPARE(state["selectedEdit"].toObject()["kind"].toString(), QString("cut"));
+        QCOMPARE(state["panel"].toObject()["mode"].toString(), QString("cut"));
+        QCOMPARE(drive({{"action", "restoreCut"}, {"cutId", "nope"}}).code, QString("invalid_request"));
+        same({{"action", "adjustCut"}, {"cutId", "c1"}, {"start", 1500000}, {"end", 2500000}}, [&] { emit strip->cutAdjusted("c1", 1500000, 2500000); });
+        QCOMPARE(proposed(spy)["op"].toString(), QString("updateCut"));
+        same({{"action", "restoreCut"}, {"cutId", "c1"}}, [&] { button("reviewPanelRestore")->click(); });
+        QCOMPARE(proposed(spy)["op"].toString(), QString("removeCut"));
+        // Undo and redo step the resident's history.
+        same({{"action", "undo"}}, [&] { button("toolUndo")->click(); });
+        same({{"action", "redo"}}, [&] { button("toolRedo")->click(); });
+        // Covers: arm (X / B), draw (a drag), the panel's Redact | Blur.
+        state = drive({{"action", "armBlur"}}).state;
+        QCOMPARE(state["placement"].toObject()["kind"].toString(), QString("blur"));
+        QVERIFY(state["warning"].toString().contains("reversible"));
+        QCOMPARE(drive({{"action", "redo"}}).code, QString("recording_state"));
+        QVERIFY(drive({{"action", "cancelPlacement"}}).state["placement"].isNull());
+        QCOMPARE(drive({{"action", "cancelPlacement"}}).code, QString("recording_state"));
+        QCOMPARE(drive({{"action", "armRedact"}}).state["placement"].toObject()["kind"].toString(), QString("solid"));
+        same({{"action", "placeMask"}, {"rect", QJsonArray{10, 10, 100, 50}}}, [&] { drive({{"action", "armRedact"}}); emit window.findChild<FrameView*>("frame")->maskCreated("solid", QRect(10, 10, 100, 50)); });
+        QCOMPARE(proposed(spy)["op"].toString(), QString("addMask"));
+        state = drive({{"action", "selectEdit"}, {"kind", "cover"}, {"editId", "m1"}}).state;
+        QCOMPARE(state["selectedEdit"].toObject()["id"].toString(), QString("m1"));
+        QCOMPARE(state["panel"].toObject()["mode"].toString(), QString("cover"));
+        same({{"action", "coverKind"}, {"kind", "solid"}}, [&] { button("reviewPanelCoverRedact")->click(); });
+        QCOMPARE(proposed(spy)["mask"].toObject()["kind"].toString(), QString("solid"));
+        // Stepping edits in source order: the cut at 1 s, then the cover at 4 s.
+        drive({{"action", "clearSelection"}});
+        QCOMPARE(drive({{"action", "nextEdit"}}).state["selectedEdit"].toObject()["kind"].toString(), QString("cut"));
+        QCOMPARE(drive({{"action", "nextEdit"}}).state["selectedEdit"].toObject()["id"].toString(), QString("m1"));
+        QCOMPARE(drive({{"action", "previousEdit"}}).state["selectedEdit"].toObject()["kind"].toString(), QString("cut"));
+        QCOMPARE(drive({{"action", "selectEdit"}, {"kind", "trim"}}).code, QString("invalid_request"));
+        QCOMPARE(window.inspect()["edits"].toArray().size(), 2);
+        // The brackets.
+        same({{"action", "setTrim"}, {"start", 1000000}, {"end", 9000000}}, [&] { emit strip->trimProposed(1000000, 9000000); });
+        same({{"action", "setTrim"}, {"start", 1000000}}, [&] { emit strip->trimProposed(1000000, duration); });
+        QVERIFY(proposed(spy)["end"].isNull());
+    }
+    // #1613: the cover edges and the view controls change the state their widgets do.
+    void agentViewControlsMatchTheirWidgets() {
+        ReviewWindow window(options(), config());
+        QSignalSpy spy(&window, &ReviewWindow::editProposed);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        RecordingEdit edit;
+        edit.revision = 2;
+        edit.masks = {mask("m1", "solid", 4000000, 8000000)};
+        window.setEdit(edit);
+        const auto at = [&](const QJsonObject& params) { return window.drive(params).state["playhead"].toObject()["sourceUs"].toDouble(); };
+        window.drive({{"action", "clearSelection"}});
+        QCOMPARE(window.drive({{"action", "seekCoverStart"}}).code, QString("recording_state"));
+        // Shows from / Until seek to the first and last covered frame; Set to playhead retimes.
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        QCOMPARE(at({{"action", "seekCoverEnd"}}), 7966667.0);
+        QCOMPARE(at({{"action", "seekCoverStart"}}), 4000000.0);
+        QCOMPARE(at({{"action", "frameStep"}, {"delta", 1}}), 4033333.0);
+        QCOMPARE(window.drive({{"action", "frameStep"}, {"delta", 2}}).code, QString("invalid_request"));
+        QVERIFY(window.drive({{"action", "setCoverEdgeToPlayhead"}, {"edge", "start"}}).code.isEmpty());
+        const auto driven = spy.last().at(1).toJsonArray();
+        QCOMPARE(driven.first().toObject()["mask"].toObject()["start"].toDouble(), 4033333.0);
+        window.drive({{"action", "selectMask"}, {"maskId", "m1"}});
+        window.drive({{"action", "frameStep"}, {"delta", 1}});
+        window.findChild<QAbstractButton*>("reviewPanelShowsFromPlayhead")->click();
+        QCOMPARE(spy.last().at(1).toJsonArray(), driven);
+        // Timeline zoom and viewer zoom.
+        QCOMPARE(window.drive({{"action", "timelineZoom"}, {"level", 4}}).state["timeline"].toObject()["zoom"].toInt(), 4);
+        QCOMPARE(window.drive({{"action", "timelineFit"}}).state["timeline"].toObject()["zoom"].toInt(), 1);
+        QCOMPARE(window.drive({{"action", "timelineZoom"}, {"level", 3}}).code, QString("invalid_request"));
+        auto* view = window.findChild<FrameView*>("frame");
+        QImage frame(1280, 720, QImage::Format_RGB32);
+        frame.fill(Qt::gray);
+        view->setFrame(frame, 0);
+        QCOMPARE(window.drive({{"action", "viewerPan"}, {"dx", 5}, {"dy", 5}}).code, QString("recording_state"));
+        QCOMPARE(window.drive({{"action", "viewerZoom"}, {"mode", "actual"}}).state["viewer"].toObject()["zoom"].toString(), QString("actual"));
+        QVERIFY(view->actualSize());
+        view->panBy({-100000, 0});
+        const auto left = view->pan();
+        QVERIFY(window.drive({{"action", "viewerPan"}, {"dx", 30}, {"dy", 0}}).code.isEmpty());
+        QCOMPARE(view->pan().x(), left.x() + 30);
+        QCOMPARE(window.inspect()["viewer"].toObject()["pan"].toObject()["x"].toDouble(), view->pan().x());
+        QCOMPARE(window.drive({{"action", "viewerZoom"}, {"mode", "fit"}}).state["viewer"].toObject()["zoom"].toString(), QString("fit"));
+        // Skim shows the flag at once and ends with the pointer leaving.
+        auto state = window.drive({{"action", "skim"}, {"time", 3000000}}).state;
+        QCOMPARE(state["timeline"].toObject()["skim"].toObject()["time"].toDouble(), 3000000.0);
+        QVERIFY(!state["timeline"].toObject()["skim"].toObject()["exact"].toBool());
+        QVERIFY(window.drive({{"action", "skimEnd"}}).state["timeline"].toObject()["skim"].isNull());
+        QCOMPARE(window.drive({{"action", "skim"}, {"time", duration}}).code, QString("invalid_request"));
+    }
+    // #1613: the Edits panel is beside the viewer at 1440×900 and folds below ~1180×720;
+    // `panel` is the Edits toggle and is refused while nothing is folded.
+    void agentCanFoldAndOpenTheEditsPanel() {
+        ReviewWindow window(options(), config());
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        QVERIFY(window.drive({{"action", "resize"}, {"width", 1440}, {"height", 900}}).code.isEmpty());
+        QVERIFY(!window.inspect()["folded"].toBool());
+        QCOMPARE(window.drive({{"action", "panel"}, {"open", true}}).code, QString("recording_state"));
+        QVERIFY(window.drive({{"action", "resize"}, {"width", 1000}, {"height", 680}}).state["folded"].toBool());
+        const auto opened = window.drive({{"action", "panel"}, {"open", true}}).state;
+        QVERIFY(opened["panel"].toObject()["overlayOpen"].toBool());
+        QVERIFY(window.findChild<QToolButton*>("editsToggle")->isChecked());
+        QVERIFY(!window.drive({{"action", "panel"}, {"open", false}}).state["panel"].toObject()["overlayOpen"].toBool());
+        QVERIFY(!window.drive({{"action", "resize"}, {"width", 1440}, {"height", 900}}).state["folded"].toBool());
+        QCOMPARE(window.drive({{"action", "resize"}, {"width", 10}, {"height", 900}}).code, QString("invalid_request"));
+    }
     // While recording, Stop keeps the clip and Discard only asks.
     void stoppingKeepsTheClipAndDiscardStillAsks() {
         ControlBar::Options o;
