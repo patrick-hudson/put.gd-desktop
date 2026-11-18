@@ -65,6 +65,11 @@
   target_link_libraries(test_quick_redact PRIVATE putgd_editor Qt6::Test)
   add_test(NAME quick_redact_contract COMMAND test_quick_redact)
   set_tests_properties(quick_redact_contract PROPERTIES TIMEOUT 30)
+  # Its runner (#1618): matching off the interface thread within stated bounds.
+  add_executable(test_quick_redact_runner tests/unit/test_quick_redact_runner.cpp)
+  target_link_libraries(test_quick_redact_runner PRIVATE putgd_editor_window Qt6::Test)
+  add_test(NAME quick_redact_runner_contract COMMAND test_quick_redact_runner)
+  set_tests_properties(quick_redact_runner_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
   # History's Show QR code (#1428): a written code reads back as the known-good matrix.
   add_executable(test_qr_code tests/unit/test_qr_code.cpp)
   target_link_libraries(test_qr_code PRIVATE putgd_core Qt6::Test)

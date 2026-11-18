@@ -3,6 +3,7 @@
 #include <QDBusMessage>
 #include <QDBusObjectPath>
 #include <QDBusVariant>
+#include <cerrno>
 #include <pwd.h>
 #include <unistd.h>
 
@@ -39,11 +40,14 @@ QString accountsServiceName(uid_t uid) {
 Account currentAccount() {
  Account account;
  const auto uid=getuid();
- // getpwuid_r: this may run off the interface thread.
+ // getpwuid_r: this runs on Quick redact's worker thread. A directory service
+ // can return an entry larger than _SC_GETPW_R_SIZE_MAX suggests: ERANGE asks
+ // for a bigger buffer, doubled up to 1 MiB.
  struct passwd entry{};struct passwd* found=nullptr;
  auto size=sysconf(_SC_GETPW_R_SIZE_MAX);if(size<=0)size=16384;
- QByteArray buffer(qsizetype(size),Qt::Uninitialized);
- if(getpwuid_r(uid,&entry,buffer.data(),size_t(buffer.size()),&found)==0&&found){
+ QByteArray buffer;int status=ERANGE;
+ for(;status==ERANGE&&size<=(1<<20);size*=2){buffer.resize(qsizetype(size));found=nullptr;status=getpwuid_r(uid,&entry,buffer.data(),size_t(buffer.size()),&found);}
+ if(status==0&&found){
   account.login=QString::fromLocal8Bit(found->pw_name);
   if(found->pw_gecos)account.realName=QString::fromLocal8Bit(found->pw_gecos).section(',',0,0).trimmed();
  }

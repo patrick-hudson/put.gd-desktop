@@ -1,6 +1,7 @@
 #include "QuickRedactRunner.h"
+#include "AccountName.h"
 #include <QCoreApplication>
-#include <QDeadlineTimer>
+#include <QHash>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QThread>
@@ -19,29 +20,35 @@ struct Progress {
  std::optional<editor::quickRedact::Result> result;
  bool delivered=false; // interface thread only
 };
-// How long past the budget the editor waits before giving up on the worker.
-// quickRedact::find stops its patterns itself (PCRE2 limits and a clock check
-// between matches, see QuickRedact.cpp), so the worker normally answers within
-// the budget; this is the backstop if it does not.
-constexpr int graceMs=1000;
-// The editor's budget for all patterns together (decision 6).
-constexpr int budgetMs=2000;
+// The workers still running, each with the time it is waited for until. Read
+// and written on the interface thread only, and never destroyed: the exit
+// wait below runs while the application object goes away.
+QHash<QThread*,QDeadlineTimer>& live() {static auto* value=new QHash<QThread*,QDeadlineTimer>;return *value;}
+// At exit the process's static data goes away, matching's compiled
+// expressions among it, so QApplication's destructor (a post routine) waits for
+// the workers first: at most until the last one's deadline.
+void waitAtExit() {quickRedactWorkersEnded(QDeadlineTimer(QDeadlineTimer::Forever));}
 }
-void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QStringList categories,editor::quickRedact::Sources sources,std::function<void(editor::quickRedact::Result)> done) {
+bool quickRedactWorkersEnded(QDeadlineTimer limit) {
+ bool all=true;
+ for(auto it=live().cbegin();it!=live().cend();++it)all=it.key()->wait(qMin(it.value(),limit))&&all;
+ return all;
+}
+void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QStringList categories,editor::quickRedact::Sources sources,std::function<void(editor::quickRedact::Result)> done,int budgetMs) {
  auto progress=std::make_shared<Progress>();
  const bool patterns=categories.contains(QStringLiteral("list"))&&!sources.patterns.isEmpty();
- // Given up on: every pattern is reported skipped, never the page as checked.
+ // Given up on before anything was found: every pattern is reported skipped,
+ // never the page as checked.
  QList<int> allPatterns(patterns?sources.patterns.size():0);std::iota(allPatterns.begin(),allPatterns.end(),0);
- auto* thread=QThread::create([candidates=std::move(candidates),categories=std::move(categories),sources=std::move(sources),progress,patterns]{
-  // With patterns, everything else first: if the patterns outlast the
-  // deadline, the editor still gets these, with every pattern skipped.
-  if(patterns){
-   auto quick=sources;quick.patterns.clear();
-   auto first=editor::quickRedact::find(candidates,categories,quick,budgetMs);
-   first.skippedPatterns.resize(sources.patterns.size());std::iota(first.skippedPatterns.begin(),first.skippedPatterns.end(),0);
-   QMutexLocker lock(&progress->mutex);progress->result=std::move(first);
-  }
-  auto result=editor::quickRedact::find(candidates,categories,sources,budgetMs);
+ auto* thread=QThread::create([candidates=std::move(candidates),categories=std::move(categories),sources=std::move(sources),progress,budgetMs]() mutable {
+  // The account is read here, off the interface thread: getpwuid_r can wait on
+  // a directory service and the AccountsService fallback on the system bus.
+  if(categories.contains(QStringLiteral("name"))&&sources.login.isEmpty()){const auto account=currentAccount();sources.login=account.login;sources.realName=account.realName;}
+  // One pass. Each stage it finishes is kept, so a deadline that passes
+  // mid-way still delivers the marks found before it.
+  auto result=editor::quickRedact::find(candidates,categories,sources,budgetMs,[&progress](const editor::quickRedact::Result& partial){
+   QMutexLocker lock(&progress->mutex);progress->result=partial;
+  });
   QMutexLocker lock(&progress->mutex);progress->result=std::move(result);
  });
  auto deliver=[progress,allPatterns,done=std::move(done)]{
@@ -55,15 +62,11 @@ void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QS
  // thread deletes itself when it ends, whether or not anyone still waits.
  QObject::connect(thread,&QThread::finished,context,deliver);
  QObject::connect(thread,&QThread::finished,thread,&QObject::deleteLater);
- QTimer::singleShot(budgetMs+graceMs,context,deliver);
- // At exit the process's static data goes away, matching's compiled
- // expressions among it, so a worker still running then waits out what is left
- // of its time (it stops its patterns itself within the budget) rather than
- // reading freed memory.
- if(auto* application=QCoreApplication::instance()){
-  const QDeadlineTimer deadline(budgetMs+graceMs);
-  QObject::connect(application,&QCoreApplication::aboutToQuit,thread,[thread,deadline]{thread->wait(deadline);});
- }
+ QTimer::singleShot(budgetMs+quickRedactGraceMs,context,deliver);
+ static const bool registered=[]{qAddPostRoutine(waitAtExit);return true;}();
+ Q_UNUSED(registered);
+ live().insert(thread,QDeadlineTimer(budgetMs+quickRedactGraceMs));
+ QObject::connect(thread,&QObject::destroyed,[thread]{live().remove(thread);});
  thread->start(QThread::LowPriority);
 }
 }

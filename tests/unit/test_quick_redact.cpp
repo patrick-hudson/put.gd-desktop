@@ -2,6 +2,7 @@
 // row is recognized words in reading order ("|" starts a new line), the
 // categories asked for, and every match expected as "category: words".
 #include "editor/QuickRedact.h"
+#include "fixtures/Waits.h"
 #include <QElapsedTimer>
 #include <QtTest>
 #include <tuple>
@@ -172,6 +173,27 @@ private slots:
   QTest::newRow("pattern: lines join only on wrap evidence")<<"ticket ABC- | 99 | ticket ABC | 98"<<list<<patterns({R"(ABC-\n\d+)",R"(ABC\s+98)"})<<QStringList{"list: ABC- 99"};
   QTest::newRow("pattern: one that does not compile matches nothing")<<"JIRA-1"<<list<<patterns({"(abc"})<<QStringList{};
   QTest::newRow("pattern: Unicode properties")<<"Öffnung ÄRGER x"<<list<<patterns({R"(\b\p{Lu}{5}\b)"})<<QStringList{"list: ÄRGER"};
+  // Round 1 (#1631), one row per finding.
+  QTest::newRow("M1: a pattern's own limits are left out")<<"JIRA-1"<<list<<patterns({"(*LIMIT_MATCH=99999999)JIRA-\\d"})<<QStringList{};
+  QTest::newRow("M3: an empty alternative still finds the match at that position")<<"see JIRA-7"<<list<<patterns({R"(|JIRA-\d)"})<<QStringList{"list: JIRA-7"};
+  QTest::newRow("M3: patterns step over characters outside the BMP")<<QString::fromUtf8("\xF0\x9F\x98\x80 JIRA-5")<<list<<patterns({R"(\p{So}|JIRA-\d)"})
+   <<QStringList{QString::fromUtf8("list: \xF0\x9F\x98\x80"),"list: JIRA-5"};
+  QTest::newRow("M4: punctuation at an entry's edge stays")<<"env .env /app/.env envy"<<list<<terms({".env"})<<QStringList{"list: .env","list: /app/.env"};
+  QTest::newRow("M4: trailing punctuation too")<<"env env. env.x"<<list<<terms({"env."})<<QStringList{"list: env.","list: env.x"};
+  QTest::newRow("M4: an entry of punctuation alone matches nothing")<<". .. a.b"<<list<<terms({"."})<<QStringList{};
+  QTest::newRow("M5: the login follows the part rules")<<"jane-doe janedoe2 jane_doe jane.doex"<<name<<account("jane.doe",{})<<QStringList{"name: jane-doe","name: janedoe2","name: jane_doe"};
+  QTest::newRow("M5: a lone one-letter name builds no form")<<"J went to j and J."<<name<<account("zz","J")<<QStringList{};
+  QTest::newRow("M5: last, first leaves out a middle name")<<"Doe, Jane wrote"<<name<<account("zz","Jane Q Doe")<<QStringList{"name: Doe, Jane"};
+  QTest::newRow("M6: a doubled separator does not join")<<"Patrick -- Hudson and Patrick - - Hudson"<<list<<entry<<QStringList{};
+  QTest::newRow("M6: one separator between spaces joins")<<"Patrick - Hudson and Patrick _ Hudson"<<list<<entry<<QStringList{"list: Patrick - Hudson","list: Patrick _ Hudson"};
+  QTest::newRow("M7: overlapping occurrences")<<"ha ha ha"<<list<<terms({"ha ha"})<<QStringList{"list: ha ha","list: ha"};
+  QTest::newRow("M8: full case folding")<<QString::fromUtf8("STRASSE Strasse Stra\xC3\x9F" "e")<<list<<terms({QString::fromUtf8("Stra\xC3\x9F" "e")})
+   <<QStringList{"list: STRASSE","list: Strasse",QString::fromUtf8("list: Stra\xC3\x9F" "e")};
+  QTest::newRow("M8: an Indic vowel sign is a letter, not an accent")<<QString::fromUtf8("\xE0\xA4\x95 \xE0\xA4\x95\xE0\xA4\xBF")<<list<<terms({QString::fromUtf8("\xE0\xA4\x95\xE0\xA4\xBF")})
+   <<QStringList{QString::fromUtf8("list: \xE0\xA4\x95\xE0\xA4\xBF")};
+  QTest::newRow("M8: a term does not end inside a letter's vowel sign")<<QString::fromUtf8("\xE0\xA4\x95\xE0\xA4\xBF \xE0\xA4\x95")<<list<<terms({QString::fromUtf8("\xE0\xA4\x95")})
+   <<QStringList{QString::fromUtf8("list: \xE0\xA4\x95")};
+  QTest::newRow("M8: a letter outside the BMP is a word character")<<QString::fromUtf8("\xF0\xA0\x80\x80" "abc abc")<<list<<terms({"abc"})<<QStringList{"list: abc"};
   QTest::newRow("terms and patterns together")<<"Hammond filed JIRA-9"<<list<<quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)"}}<<QStringList{"list: Hammond","list: JIRA-9"};
  }
  void namesAndListsMatchTheirSpellings() {
@@ -190,6 +212,45 @@ private slots:
   QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
   QCOMPARE(found(candidates,result),(QStringList{"list: JIRA-7","list: TICKET9"}));
   QCOMPARE(result.skippedPatterns,QList<int>{1});
+ }
+ // M2: all patterns together end within the budget plus one bounded call,
+ // even when every start position costs just under PCRE2's limit (its count
+ // starts again at each position of one unanchored call).
+ void patternTimeIsBounded() {
+  // 8000 runs on one line: one unanchored call over it took 1.7 s on
+  // m74, which only stepping through the start positions can interrupt.
+  QString line;for(int i=0;i<8000;++i)line+=QString(14,'a')+"b ";
+  const auto candidates=words(line+" | JIRA-3");
+  QStringList slow;for(int i=0;i<20;++i)slow.append("(a+)+$");
+  slow.prepend(R"(JIRA-\d)");
+  constexpr int budget=300;
+  QElapsedTimer clock;clock.start();
+  const auto result=quickRedact::find(candidates,{"list"},patterns(slow),budget);
+  // 14 a's keep every position just under the limit (15 cost 0.4 s a pattern
+  // on m74, 16 reach it at once), so this ran until the budget...
+  QVERIFY2(clock.elapsed()>=budget,qPrintable(QString::number(clock.elapsed())));
+  // ...and the bound is the budget plus one match call; the slack is for a loaded runner.
+  QVERIFY2(clock.elapsed()<budget+putgd::test::scaled(250),qPrintable(QString::number(clock.elapsed())));
+  QCOMPARE(found(candidates,result),QStringList{"list: JIRA-3"});
+  QVERIFY(result.skippedPatterns.contains(20));QVERIFY(!result.skippedPatterns.contains(0));
+  // Short runs on one long line: before stepping, one call took a second.
+  QString runs;for(int i=0;i<300;++i)runs+=QString(18,'a')+"b ";
+  const auto many=words(runs+" TICKET9");
+  clock.restart();
+  const auto stopped=quickRedact::find(many,{"list"},patterns({"(a+)+$",R"(TICKET\d)"}),2000);
+  QVERIFY2(clock.elapsed()<2000,qPrintable(QString::number(clock.elapsed())));
+  QCOMPARE(found(many,stopped),QStringList{"list: TICKET9"});
+ }
+ // M2: progress after the terms and after each pattern, the rest skipped, so a
+ // caller that stops waiting keeps what was found.
+ void progressCarriesFinishedPatterns() {
+  const auto candidates=words("Hammond filed JIRA-9 and TICKET4");
+  QList<quickRedact::Result> seen;
+  const auto result=quickRedact::find(candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)",R"(TICKET\d)"}},2000,[&](const quickRedact::Result& partial){seen.append(partial);});
+  QCOMPARE(seen.size(),3);
+  QCOMPARE(found(candidates,seen.at(0)),QStringList{"list: Hammond"});QCOMPARE(seen.at(0).skippedPatterns,(QList<int>{0,1}));
+  QCOMPARE(found(candidates,seen.at(1)),(QStringList{"list: Hammond","list: JIRA-9"}));QCOMPARE(seen.at(1).skippedPatterns,QList<int>{1});
+  QCOMPARE(seen.at(2).matches,result.matches);QCOMPARE(seen.at(2).skippedPatterns,QList<int>{});
  }
  void noBudgetSkipsEveryPattern() {
   const auto candidates=words("Hammond filed JIRA-9");
