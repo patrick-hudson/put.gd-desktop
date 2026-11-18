@@ -115,7 +115,7 @@ class Fuzzer(unittest.TestCase):
     def test_review_s2_one_retry_may_resend_every_row_of_its_operation(self):
         """The same file twice in one call (two rows of one operation), retried once: four sends, so four copies may be stored."""
         fake = fuzzer(digest_rows={'d': {'row1', 'row2'}}, digest_operations={'d': {'op1'}}, row_operations={'row1': 'op1', 'row2': 'op1'}, seen={},
-                      resident=types.SimpleNamespace(retries={'op1': 1}))
+                      row_retry_credit={'row1': 1, 'row2': 1}, resident=types.SimpleNamespace(retries={'op1': 1}))
         self.assertEqual(action_fuzz.Fuzzer.allowed_copies(bound(fake, *ACCOUNTING), 'd'), 4)
 
     def test_review_s3_only_an_accepted_retry_earns_credit(self):
@@ -147,7 +147,7 @@ class Fuzzer(unittest.TestCase):
     def test_an_unknown_row_without_a_send_allows_no_extra_copy(self):
         """One row, unknown once, retried once: two sends, so two copies at most (it used to allow three)."""
         fake = fuzzer(digest_rows={'d': {'row1'}}, digest_operations={'d': {'op1'}}, row_operations={'row1': 'op1'}, seen={'row1': {'unknown', 'failed'}},
-                      resident=types.SimpleNamespace(retries={'op1': 1}))
+                      row_retry_credit={'row1': 1}, resident=types.SimpleNamespace(retries={'op1': 1}))
         self.assertEqual(action_fuzz.Fuzzer.allowed_copies(bound(fake, *ACCOUNTING), 'd'), 2)
 
 
@@ -159,7 +159,7 @@ def bound(fake, *names):
     return fake
 
 
-ACCOUNTING = ('allowed_copies', 'row_allowance', 'refused', 'copies_explained_without_refused')
+ACCOUNTING = ('allowed_copies', 'row_allowance', 'refused', 'copies_explained_without_refused', 'credit_retry')
 
 
 class PerRowRecovery(unittest.TestCase):
@@ -169,7 +169,9 @@ class PerRowRecovery(unittest.TestCase):
         fake = fuzzer(rows=lambda: rows, receiver=receiver, TERMINAL=action_fuzz.Fuzzer.TERMINAL, known_stuck=lambda row: False,
                       row_removed_by_delete=lambda row: False, seen=seen or {}, seen_digest={}, deleting=set(),
                       digest_rows={'d': {row['id'] for row in rows}}, digest_operations={'d': {row['operationId'] for row in rows}},
-                      row_operations={row['id']: row['operationId'] for row in rows}, resident=types.SimpleNamespace(retries=retries or {}))
+                      row_operations={row['id']: row['operationId'] for row in rows}, resident=types.SimpleNamespace(retries=retries or {}),
+                      row_status={row['id']: row['uploadStatus'] for row in rows},
+                      row_retry_credit={row['id']: (retries or {}).get(row['operationId'], 0) for row in rows if row['uploadStatus'] != 'uploaded'})
         return bound(fake, *ACCOUNTING)
 
     def test_review_s2_one_row_of_a_duplicate_batch_refused_is_no_lost_upload(self):
@@ -196,6 +198,24 @@ class PerRowRecovery(unittest.TestCase):
         self.assertEqual(caught.exception.kind, 'duplicate-upload')
         fake.receiver.stored = lambda: {'d': ['f1', 'f2']}  # two copies: the first send and the retry
         action_fuzz.Fuzzer.retry_interrupted(fake, {'d': 'unknown'}, {'d': 1})
+
+    def test_a_retry_never_earns_credit_for_a_row_that_was_already_uploaded(self):
+        """An uploaded row plus an accepted retry of its operation that stores a second copy is the duplicate this harness exists for."""
+        rows = [{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'uploaded', 'sha256': 'd', 'receipt': {}},
+                {'id': 'row2', 'operationId': 'op1', 'uploadStatus': 'failed', 'sha256': 'e', 'receipt': {}}]
+        fake = self.recovery(rows, {'d': ['f1', 'f2'], 'e': ['g1']}, retries={'op1': 1})
+        if hasattr(fake, 'credit_retry'):  # absent in a harness without per-row credit, which counted the retry for every row
+            fake.row_retry_credit = {}
+            fake.credit_retry('op1')  # the retry is accepted while row1 is uploaded and row2 failed
+            self.assertEqual(fake.row_retry_credit, {'row2': 1})
+        fake.digest_rows = {'d': {'row1'}, 'e': {'row2'}}
+        fake.operations_to_retry = lambda: [{'id': 'op1'}]
+        fake.call = lambda method, params=None, timeout=60: {'ok': True, 'result': {'operationId': 'op1', 'retryAccepted': True}}
+        fake.drain = lambda seconds: True
+        with self.assertRaises(action_fuzz.Finding) as caught:
+            action_fuzz.Fuzzer.retry_interrupted(fake, {'d': 'uploaded', 'e': 'failed'}, {'d': 1, 'e': 0})
+        self.assertEqual(caught.exception.kind, 'duplicate-upload')
+        self.assertIn(' d', ' ' + caught.exception.detail.split('stored content ')[1][:2])
 
 
 class ReceiverSnapshot(unittest.TestCase):

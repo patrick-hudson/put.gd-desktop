@@ -339,6 +339,7 @@ class Resident:
         self.token = 'PUTGD_FUZZ_RUN=%s' % secrets.token_hex(12)
         self.pids_seen = set()   # every PID of the resident itself, for the shim's no-helper check
         self.retries = {}        # operation id -> accepted operation.retry calls
+        self.on_retry = None     # called with the operation id of every accepted retry (the fuzzer credits that operation's rows)
         self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
         # Fault mode: start (self.starts) -> [(first byte, end byte or None)] of its log written while the harness held the resident at its
         # open-file limit on purpose. Only there is UBSan's invalid-vptr report expected.
@@ -512,6 +513,8 @@ class Resident:
             return
         with self.lock:  # from any step or burst thread
             self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
+            if getattr(self, 'on_retry', None):
+                self.on_retry(params['id'])
 
     # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
     # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
@@ -955,6 +958,7 @@ class Fuzzer:
         for name in ('logs', 'fixtures', 'saves', 'archive'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
         self.resident = Resident(self.run, options.build, options=options)
+        self.resident.on_retry = self.credit_retry
         self.proxy_port = None
         self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
         self.fixtures = {}
@@ -2379,7 +2383,12 @@ class Fuzzer:
                 self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
                 self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
                 self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
+                if row.get('id') not in self.row_operations:
+                    # Listed for the first time: its status when its operation's earlier retries were accepted is unknown, so each of them
+                    # may have sent it again.
+                    self.row_retry_credit[row.get('id')] = self.resident.retries.get(row.get('operationId'), 0)
                 self.row_operations[row.get('id')] = row.get('operationId')
+                self.row_status[row.get('id')] = row.get('uploadStatus')
             found.extend(batch)
             if len(batch) < 200:
                 return found
@@ -2451,14 +2460,21 @@ class Fuzzer:
 
     def allowed_copies(self, digest):
         """How many copies of this content the server may hold, counted per History row that ever had it: one for its first send, and one
-        more for every accepted operation.retry of that row's operation (a retry may send each of its rows again, so the same file twice in
-        one call, retried once, may leave four copies). An unknown outcome adds nothing by itself: put.gd sends again only on an explicit
-        retry, which is counted."""
+        more for every accepted operation.retry of that row's operation that came while the row was not uploaded (a retry may send each of
+        those rows again, so the same file twice in one call, retried once, may leave four copies; it never sends an uploaded row again).
+        An unknown outcome adds nothing by itself: put.gd sends again only on an explicit retry, which is counted."""
         return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()))
 
     def row_allowance(self, row):
-        """The copies one History row may account for on the server: its first send plus one per accepted retry of its operation."""
-        return 1 + self.resident.retries.get(self.row_operations.get(row), 0)
+        """The copies one History row may account for on the server: its first send plus one per accepted retry of its operation that came
+        while the row was not uploaded. A retry never sends an uploaded row again, so a second copy of one is a duplicate."""
+        return 1 + self.row_retry_credit.get(row, 0)
+
+    def credit_retry(self, operation):
+        """An accepted retry of `operation`: every row of it not uploaded at that moment (by its latest listed status) may be sent again."""
+        for row, owner in list(self.row_operations.items()):
+            if owner == operation and self.row_status.get(row) != 'uploaded':
+                self.row_retry_credit[row] = self.row_retry_credit.get(row, 0) + 1
 
     def refused(self, row):
         """A row put.gd settled as not on the server: failed or stored, never unknown, and with no direct address."""
@@ -2561,6 +2577,8 @@ class Fuzzer:
     digest_operations = {}
     digest_rows = {}
     row_operations = {}
+    row_status = {}        # row id -> its latest listed uploadStatus
+    row_retry_credit = {}  # row id -> accepted retries of its operation that may have sent it again
 
     def finish_deletion(self, rows):
         """The kill came during a deletion: inspect it, retry it, and require every chosen row removed on both sides."""
