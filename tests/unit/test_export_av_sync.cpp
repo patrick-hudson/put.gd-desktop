@@ -1,7 +1,9 @@
 #include "core/KeptSpans.h"
+#include "record/AdaptiveRate.h"
 #include "record/AvSync.h"
 #include "record/ClipExporter.h"
 #include <QtTest>
+#include <algorithm>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
@@ -265,6 +267,104 @@ QList<quint32> gifPalette(const QByteArray& gif) {
 }
 }
 
+// #1613: a clip with a real frame gap, as a stepped-down or static capture
+// leaves one. 640x160 MPEG-4 Part 2 in GOPs of 15 frames on a millisecond time
+// base: frames 0..47 at 30 fps, frame 47 (1.567 s) then held a second with no
+// frame, and frames from 48 on at 30 fps again from 2.6 s; 48 kHz PCM runs
+// throughout. The bar names the frame, as in the cut clip. Flashes with bursts
+// on frames 6, 51 and 60, and one more burst inside the gap (2.2 s), over the
+// still frame 47.
+namespace gapclip {
+using putgd::Error;
+using cutclip::width, cutclip::height, cutclip::rate;
+constexpr int fps = 30, gop = 15, frames = 108, held = 47;
+constexpr qint64 resumeMs = 2600, gapBurstMs = 2200, durationUs = 4'600'000;
+const QList<int> flashFrames{6, 51, 60};  // 0.2, 2.7, 3.0 s
+constexpr int flashLength = 3;
+qint64 frameMs(int index) { return index <= held ? av_rescale(index, 1000, fps) : resumeMs + av_rescale(index - held - 1, 1000, fps); }
+qint64 frameUs(int index) { return frameMs(index) * 1000; }
+// The clip frame on screen at a source time.
+int onScreen(qint64 sourceUs) { int index = 0; while (index + 1 < frames && frameUs(index + 1) <= sourceUs) ++index; return index; }
+QList<qint64> burstsUs() { QList<qint64> out{gapBurstMs * 1000}; for (int f : flashFrames) out << frameUs(f); std::sort(out.begin(), out.end()); return out; }
+bool flash(int index) { for (int f : flashFrames) if (index >= f && index < f + flashLength) return true; return false; }
+Error write(const QString& path) {
+    AVFormatContext* out = nullptr;
+    if (avformat_alloc_output_context2(&out, nullptr, "matroska", QFile::encodeName(path).constData()) < 0 || !out) return {"fixture", "no muxer", {}};
+    struct Closer { AVFormatContext*& f; ~Closer() { if (f && !(f->oformat->flags & AVFMT_NOFILE)) avio_closep(&f->pb); avformat_free_context(f); } } closer{out};
+    AVCodecContext *video = avcodec_alloc_context3(avcodec_find_encoder(AV_CODEC_ID_MPEG4)), *audio = avcodec_alloc_context3(avcodec_find_encoder(AV_CODEC_ID_PCM_S16LE));
+    struct Contexts { AVCodecContext*& v; AVCodecContext*& a; ~Contexts() { avcodec_free_context(&v); avcodec_free_context(&a); } } contexts{video, audio};
+    if (!video || !audio) return {"fixture", "no encoder", {}};
+    video->width = width; video->height = height; video->time_base = {1, 1000}; video->framerate = {fps, 1};
+    video->pix_fmt = AV_PIX_FMT_YUV420P; video->gop_size = gop; video->max_b_frames = 0;
+    video->flags |= AV_CODEC_FLAG_QSCALE; video->global_quality = FF_QP2LAMBDA * 3;
+    av_opt_set_int(video->priv_data, "sc_threshold", 1000000000, 0);
+    audio->sample_rate = rate; audio->sample_fmt = AV_SAMPLE_FMT_S16; audio->time_base = {1, rate};
+    AVChannelLayout stereo = AV_CHANNEL_LAYOUT_STEREO;
+    av_channel_layout_copy(&audio->ch_layout, &stereo);
+    AVStream* streams[2] = {avformat_new_stream(out, nullptr), avformat_new_stream(out, nullptr)};
+    AVCodecContext* contextOf[2] = {video, audio};
+    for (int i = 0; i < 2; ++i) {
+        if (out->oformat->flags & AVFMT_GLOBALHEADER) contextOf[i]->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        if (!streams[i] || avcodec_open2(contextOf[i], contextOf[i]->codec, nullptr) < 0 || avcodec_parameters_from_context(streams[i]->codecpar, contextOf[i]) < 0) return {"fixture", "cannot open an encoder", {}};
+        streams[i]->time_base = contextOf[i]->time_base;
+    }
+    if (avio_open(&out->pb, QFile::encodeName(path).constData(), AVIO_FLAG_WRITE) < 0 || avformat_write_header(out, nullptr) < 0) return {"fixture", "cannot write", {}};
+    AVPacket* packet = av_packet_alloc();
+    AVFrame* frame = av_frame_alloc();
+    struct Frames { AVPacket*& p; AVFrame*& f; ~Frames() { av_packet_free(&p); av_frame_free(&f); } } owned{packet, frame};
+    auto encode = [&](int stream, AVFrame* input) -> Error {
+        if (avcodec_send_frame(contextOf[stream], input) < 0) return {"fixture", "encoder refused a frame", {}};
+        while (avcodec_receive_packet(contextOf[stream], packet) == 0) {
+            av_packet_rescale_ts(packet, contextOf[stream]->time_base, streams[stream]->time_base);
+            packet->stream_index = stream;
+            if (av_interleaved_write_frame(out, packet) < 0) return {"fixture", "cannot write a packet", {}};
+        }
+        return {};
+    };
+    QList<qint64> bursts;
+    for (qint64 us : burstsUs()) bursts << us * rate / 1'000'000;
+    qint64 samples = 0;
+    for (int index = 0; index < frames; ++index) {
+        const bool white = flash(index);
+        av_frame_unref(frame);
+        frame->format = AV_PIX_FMT_YUV420P; frame->width = width; frame->height = height;
+        if (av_frame_get_buffer(frame, 0) < 0) return {"fixture", "cannot allocate a frame", {}};
+        const int barX = 8 + 3 * index;
+        for (int y = 0; y < height; ++y) {
+            auto* row = frame->data[0] + qint64(y) * frame->linesize[0];
+            std::fill_n(row, width, uint8_t(white ? 235 : 100));
+            std::fill_n(row + barX, 8, uint8_t(white ? 60 : 200));
+        }
+        for (int plane = 1; plane < 3; ++plane) for (int y = 0; y < height / 2; ++y) std::fill_n(frame->data[plane] + qint64(y) * frame->linesize[plane], width / 2, uint8_t(128));
+        frame->pts = frameMs(index);
+        if (auto e = encode(0, frame)) return e;
+        // Audio up to the next frame's time, so the file interleaves across the gap too.
+        const qint64 until = (index + 1 < frames ? frameUs(index + 1) : durationUs) * rate / 1'000'000;
+        while (samples < until) {
+            const int count = int(std::min<qint64>(1024, until - samples));
+            av_frame_unref(frame);
+            frame->format = AV_SAMPLE_FMT_S16; frame->sample_rate = rate; frame->nb_samples = count;
+            av_channel_layout_copy(&frame->ch_layout, &stereo);
+            if (av_frame_get_buffer(frame, 0) < 0) return {"fixture", "cannot allocate audio", {}};
+            auto* pcm = reinterpret_cast<int16_t*>(frame->data[0]);
+            for (int i = 0; i < count; ++i) {
+                const qint64 n = samples + i;
+                bool burst = false;
+                for (qint64 b : bursts) burst = burst || (n >= b && n < b + rate / 10);
+                pcm[2 * i] = pcm[2 * i + 1] = int16_t(burst ? std::lround(8000.0 * std::sin(2.0 * M_PI * 1000.0 * double(n) / rate)) : 0);
+            }
+            frame->pts = samples;
+            samples += count;
+            if (auto e = encode(1, frame)) return e;
+        }
+    }
+    if (auto e = encode(0, nullptr)) return e;
+    if (auto e = encode(1, nullptr)) return e;
+    if (av_write_trailer(out) < 0) return {"fixture", "cannot finish", {}};
+    return {};
+}
+}
+
 // #86: a working clip's audio starts after its first video frame (the sink
 // monitor opens after the screen stream; 20-110 ms on the lab desktops). Every
 // export with sound must keep that gap rather than rebase the audio to its own
@@ -276,7 +376,7 @@ QList<quint32> gifPalette(const QByteArray& gif) {
 class ExportAvSync : public QObject {
     Q_OBJECT
     QTemporaryDir dir_;
-    QString clip_, gapped_, cut_;
+    QString clip_, gapped_, cut_, frameGap_;
     static double median(const QString& path) {
         QJsonObject sync;
         const auto error = measureAvSync(path, sync);
@@ -363,6 +463,9 @@ private slots:
         cut_ = dir_.filePath("cut.mkv");
         const auto written = cutclip::write(cut_);
         QVERIFY2(!written, qPrintable(written.message));
+        frameGap_ = dir_.filePath("frame-gap.mkv");
+        const auto writtenGap = gapclip::write(frameGap_);
+        QVERIFY2(!writtenGap, qPrintable(writtenGap.message));
     }
     void exportsWithSoundKeepTheAudioStart_data() {
         QTest::addColumn<QString>("format");
@@ -504,6 +607,114 @@ private slots:
         for (qsizetype i = 0; i < flashes.size(); ++i) {
             const qint64 offset = decoded.bursts[i] - first - flashes[i];
             QVERIFY2(std::abs(offset) <= audioFrameUs, qPrintable(QStringLiteral("burst %1 is %2 us from its flash").arg(i).arg(offset)));
+        }
+    }
+    // #1613: a kept span that starts inside a long frame gap (more than one
+    // floor interval, 1/15 s, before its first frame) starts at its start, on
+    // the frame on screen there, with the audio from that instant: the
+    // narration over a still slide is kept and stays in sync, at the trim start
+    // and at a seam after a cut alike. A span starting less than a floor
+    // interval before a frame still starts on that frame.
+    void frameGapsKeepTheSpanStart_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<QString>("codec");
+        QTest::addColumn<qint64>("trimStart");
+        QTest::addColumn<qint64>("cutStart");
+        QTest::addColumn<qint64>("cutEnd");
+        QTest::addColumn<qint64>("keptFrom");  // where the output really starts
+        constexpr qint64 none = -1, floorIntervalUs = 1'000'000 / AdaptiveRate::floorFps;
+        static_assert(gapclip::resumeMs * 1000 - 2'000'000 > floorIntervalUs && gapclip::resumeMs * 1000 - 2'560'000 < floorIntervalUs);
+        // 0.8 s before frame 48: opens on frame 47, shown from before the trim.
+        QTest::newRow("trim in a gap, mp4") << "mp4" << "h264" << qint64(1'800'000) << none << none << qint64(1'800'000);
+        QTest::newRow("trim in a gap, webm") << "webm" << "vp9" << qint64(1'800'000) << none << none << qint64(1'800'000);
+        QTest::newRow("trim in a gap, gif") << "gif" << "" << qint64(1'800'000) << none << none << qint64(1'800'000);
+        // The cut holds frame 47 and ends 0.6 s before frame 48: the seam opens on 47.
+        QTest::newRow("cut ending in a gap, mp4") << "mp4" << "h264" << qint64(0) << qint64(800'000) << qint64(2'000'000) << qint64(0);
+        QTest::newRow("cut ending in a gap, gif") << "gif" << "" << qint64(0) << qint64(800'000) << qint64(2'000'000) << qint64(0);
+        // 40 ms before frame 48, under the 66.7 ms floor interval: starts on frame 48.
+        QTest::newRow("trim just before a frame, mp4") << "mp4" << "h264" << qint64(2'560'000) << none << none << qint64(2'600'000);
+    }
+    void frameGapsKeepTheSpanStart() {
+        QFETCH(QString, format);
+        QFETCH(QString, codec);
+        QFETCH(qint64, trimStart);
+        QFETCH(qint64, cutStart);
+        QFETCH(qint64, cutEnd);
+        QFETCH(qint64, keptFrom);
+        using namespace gapclip;
+        putgd::RecordingEdit edit;
+        edit.trimStart = trimStart;
+        edit.trimEnd = 4'000'000;  // on frame 90
+        if (cutStart >= 0) edit.cuts = {{"gap", cutStart, cutEnd}};
+        putgd::RecordingEdit expectedEdit = edit;
+        expectedEdit.trimStart = keptFrom;
+        const KeptSpans expected(expectedEdit, durationUs);
+        ExportRequest request;
+        request.input = frameGap_;
+        request.output = dir_.filePath(QStringLiteral("gap-%1-%2.%3").arg(trimStart).arg(cutStart).arg(format));
+        request.durationUs = durationUs;
+        request.canvas = {width, height};
+        request.edit = edit;
+        request.config.format = format;
+        request.config.codec = codec;
+        request.config.audio.system = format != "gif";
+        ExportResult result;
+        std::atomic_bool cancelled{false};
+        QList<double> progress;
+        const auto error = putgd::record::exportClip(request, result, cancelled, [&](double p) { progress << p; });
+        if (error.code == "recording_unsupported") QSKIP(qPrintable(format + " export unavailable in this FFmpeg: " + error.message));
+        QVERIFY2(!error, qPrintable(error.code + ": " + error.message));
+        const int outputFps = format == "gif" ? 15 : fps;
+        const qint64 step = 1'000'000 / outputFps;
+        // The output grows by exactly the time kept at the span start, and progress runs over it.
+        QVERIFY2(std::abs(result.durationUs - expected.outputDuration()) <= step, qPrintable(QStringLiteral("%1 us, expected %2").arg(result.durationUs).arg(expected.outputDuration())));
+        QVERIFY(!progress.isEmpty() && progress.last() > 0.95);
+        for (qsizetype i = 1; i < progress.size(); ++i) QVERIFY(progress[i] >= progress[i - 1]);
+
+        cutclip::Decoded decoded;
+        const auto failure = cutclip::analyse(request.output, decoded);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        const auto& shown = decoded.frames;
+        QVERIFY(shown.size() > 10);
+        const qint64 first = shown.first().us;
+        const qint64 length = shown.last().us + step - first;
+        QVERIFY2(std::abs(length - expected.outputDuration()) <= step, qPrintable(QStringLiteral("%1 us of video for %2 kept").arg(length).arg(expected.outputDuration())));
+        // GIF's 15 fps step keeps the later of two clip frames; the window check below covers it.
+        if (format != "gif") QCOMPARE(shown.first().source, onScreen(keptFrom));
+        // Every output frame shows the clip frame on screen at its source time,
+        // give or take the output rate's half-step rounding, and never a cut-out one.
+        for (const auto& f : shown) {
+            const qint64 t = f.us - first;
+            const int lo = onScreen(expected.toSource(std::max<qint64>(0, t - step / 2)));
+            const int hi = onScreen(expected.toSource(std::min(t + step / 2, expected.outputDuration() - 1)));
+            const bool between = f.source > lo && f.source < hi && expected.kept(frameUs(f.source));
+            QVERIFY2(f.source == lo || f.source == hi || between, qPrintable(QStringLiteral("output %1 us shows clip frame %2, expected %3..%4").arg(t).arg(f.source).arg(lo).arg(hi)));
+        }
+        for (const qint64 seam : expected.seams()) {
+            const auto after = std::find_if(shown.begin(), shown.end(), [&](const cutclip::Decoded::Frame& f) { return f.us - first >= seam; });
+            QVERIFY(after != shown.end());
+            QCOMPARE(after->source, onScreen(expected.toSource(seam)));
+        }
+        // The first frame after the gap lands where it belongs in the output.
+        const auto resumed = std::find_if(shown.begin(), shown.end(), [](const cutclip::Decoded::Frame& f) { return f.source > held; });
+        QVERIFY(resumed != shown.end());
+        const qint64 resumedUs = expected.toOutput(resumeMs * 1000);
+        QVERIFY2(std::abs(resumed->us - first - resumedUs) <= step, qPrintable(QStringLiteral("frame %1 at %2 us, expected %3").arg(resumed->source).arg(resumed->us - first).arg(resumedUs)));
+        QList<qint64> flashes, expectedFlashes;
+        for (qsizetype i = 0; i < shown.size(); ++i) if (shown[i].white && (i == 0 || !shown[i - 1].white)) flashes << shown[i].us - first;
+        for (int f : flashFrames) if (expected.kept(frameUs(f))) expectedFlashes << expected.toOutput(frameUs(f));
+        QCOMPARE(flashes.size(), expectedFlashes.size());
+        for (qsizetype i = 0; i < flashes.size(); ++i) QVERIFY2(std::abs(flashes[i] - expectedFlashes[i]) <= step, qPrintable(QStringLiteral("flash %1 at %2 us, expected %3").arg(i).arg(flashes[i]).arg(expectedFlashes[i])));
+        if (format == "gif") return;
+        // Every kept burst, the one over the still frame included, at its output
+        // time: within one audio frame, as its flash is within one video frame.
+        QList<qint64> expectedBursts;
+        for (qint64 us : burstsUs()) if (expected.kept(us)) expectedBursts << expected.toOutput(us);
+        QCOMPARE(decoded.bursts.size(), expectedBursts.size());
+        const qint64 audioFrameUs = qint64(decoded.audioFrameSize) * 1'000'000 / rate;
+        for (qsizetype i = 0; i < expectedBursts.size(); ++i) {
+            const qint64 offset = decoded.bursts[i] - first - expectedBursts[i];
+            QVERIFY2(std::abs(offset) <= audioFrameUs, qPrintable(QStringLiteral("burst %1 is %2 us from %3").arg(i).arg(offset).arg(expectedBursts[i])));
         }
     }
     void webmAudioDecodesEveryPacket_data() {
