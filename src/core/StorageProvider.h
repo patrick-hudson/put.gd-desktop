@@ -23,6 +23,10 @@ struct ProviderCapabilities {
  // Deletion goes through a reference the upload itself returned and addresses exactly
  // that upload, so it needs no stat, precondition or version.
  bool referenceDelete=false;
+ // The provider checks the key itself before it reports a collision or ends an uncertain
+ // upload, and its answer stands: History neither checks the key again after the upload
+ // nor before a Retry of an upload the provider journaled (S3, #1627).
+ bool settlesUploads=false;
  // Why this recorded upload cannot be deleted, when remove is false for it alone.
  QString removeUnavailable;
  // Whether a recorded object can be deleted without risking another object.
