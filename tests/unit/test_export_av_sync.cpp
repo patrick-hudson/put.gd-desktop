@@ -1056,6 +1056,13 @@ private slots:
             // E18: frame 47 is stored at 1567 ms for 1566.667 ms, 0.1 ms past this
             // cover's end: within the container's half-millisecond, so covered.
             QTest::newRow(qPrintable("cover ending just before a stored frame time, " + format)) << format << qint64(0) << qint64(1'000'000) << qint64(2'000'000) << qint64(1'500'000) << qint64(1'566'900);
+            // A cover is drawn on every picture whose display, from its own time to
+            // the next frame's, overlaps it. Frame 1 is stored at 33 ms, grid frame
+            // 1 at 33.333 ms: a cover ending on that grid edge still covers it.
+            QTest::newRow(qPrintable("cover ending on the grid edge of an early stored frame, " + format)) << format << qint64(0) << qint64(-1) << qint64(-1) << qint64(0) << qint64(33'333);
+            // A cover in a cut, ending (and starting) inside frame 47's display
+            // (1.567-2.6 s): frame 47 is shown on both sides of the cut, covered.
+            QTest::newRow(qPrintable("cover ending inside a frame's display, in a cut, " + format)) << format << qint64(0) << qint64(1'800'000) << qint64(2'400'000) << qint64(1'900'000) << qint64(2'000'000);
         }
     }
     void coversFollowTheShownPicture() {
@@ -1104,11 +1111,14 @@ private slots:
         for (const auto& f : shown) {
             const qint64 t = f.us - shown.first().us, until = t + (f.durationUs > 0 ? f.durationUs : step), picture = frameUs(f.source), at = kept.toSource(t);
             const bool overlaps = std::any_of(coverParts.begin(), coverParts.end(), [&](const putgd::recording::Span& part) { return part.start < until && t < part.end; });
+            // The picture's own display in the clip, up to the next frame's stored time.
+            const qint64 next = f.source + 1 < frames ? frameUs(f.source + 1) : durationUs;
+            const bool displayed = picture < cover.end && next > cover.start;
             // A stored picture time within half a millisecond of a bound may lie on either side: covered.
-            if ((picture >= cover.start - 500 && picture < cover.end + 500) || overlaps) {
+            if ((picture >= cover.start - 500 && picture < cover.end + 500) || overlaps || displayed) {
                 ++mustCover;
                 QVERIFY2(f.spanningCovered, qPrintable(QStringLiteral("output %1 us shows clip frame %2 (%3 us) at source %4 us uncovered").arg(t).arg(f.source).arg(picture).arg(at)));
-            } else if (distance(picture) > step && distance(at) > step) {
+            } else if (distance(picture) > step && distance(at) > step && distance(next - 1) > step) {
                 QVERIFY2(!f.spanningCovered, qPrintable(QStringLiteral("output %1 us (clip frame %2) covered far from the cover").arg(t).arg(f.source)));
             }
         }

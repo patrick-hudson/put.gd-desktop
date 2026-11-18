@@ -295,8 +295,9 @@ struct FrameGrid {
     // (presentUs: a GIF counts centiseconds, so its second 15 fps frame shows at
     // 70 ms, not 66.7 ms), so a frame is covered when either that interval or
     // its ideal one overlaps the cover's output part in its span. A picture time
-    // within the container slack of either bound counts as inside: uncertainty
-    // is covered. The output parts are the cover's kept parts laid out as the
+    // within the container slack of either bound counts as inside, and so does
+    // a picture whose display overlaps the cover anywhere: uncertainty is
+    // covered, and covers only ever grow. The output parts are the cover's kept parts laid out as the
     // span's frames are (from its first tick); for an edit on the frame grid
     // they are the review clock's own (KeptSpans::outputParts), and they never
     // drift from the frames when an edge falls between frames.
@@ -321,10 +322,19 @@ struct FrameGrid {
             }
             // Picture time: each frame the span shows, from its tick to the next one's.
             const auto shownFrom = [&](std::set<qint64>::const_iterator it) { return it != frames.end() && *it < span.end ? std::min(end, tickOf(i, *it)) : end; };
-            if (const auto& h = held[size_t(i)]; h && active(*h)) parts.append({first, shownFrom(frames.lower_bound(span.start))});
-            for (auto it = frames.lower_bound(std::max(mask.start - slackUs, span.start)); it != frames.end() && *it < span.end && active(*it); ++it) {
-                const qint64 tick = tickOf(i, *it);
+            // #1635: also every picture whose source display interval, from its
+            // own stored time to the next frame's, overlaps the cover at all: a
+            // cover never misses a frame because of where inside a frame it
+            // starts or ends, or because the slack placed the frame on an edge.
+            const auto covers = [&](qint64 picture, std::set<qint64>::const_iterator next) { return active(picture) || (picture < mask.end && (next == frames.end() || *next > mask.start)); };
+            if (const auto& h = held[size_t(i)]; h && covers(*h, frames.upper_bound(*h))) parts.append({first, shownFrom(frames.lower_bound(span.start))});
+            // From the earlier of the frame on screen at the cover's start and the first within the slack of it.
+            auto it = frames.lower_bound(std::max(mask.start - slackUs, span.start));
+            if (auto on = frames.upper_bound(std::max(mask.start, span.start)); on != frames.begin() && *std::prev(on) >= span.start && *std::prev(on) < (it == frames.end() ? std::numeric_limits<qint64>::max() : *it)) it = std::prev(on);
+            for (; it != frames.end() && *it < span.end && *it < mask.end + slackUs; ++it) {
                 const auto next = std::next(it);
+                if (!covers(*it, next)) continue;
+                const qint64 tick = tickOf(i, *it);
                 // The span's last picture, rounded past its end, may take its last tick (driveVideo).
                 if (tick >= end) { if (next == frames.end() || *next >= span.end) parts.append({end - 1, end}); continue; }
                 const recording::Span shown{tick, shownFrom(next)};
