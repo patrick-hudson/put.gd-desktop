@@ -371,7 +371,13 @@ class Resident:
             env['LD_LIBRARY_PATH'] = ':'.join(str(p) for p in (prefix / 'deps-tsan' / 'lib', prefix / 'qtbase-tsan-build' / 'lib'))
             env['PATH'] = '%s:%s' % (prefix / 'deps-tsan' / 'bin', env['PATH'])
             suppressions = Path(__file__).resolve().parents[2] / 'tests/sanitizer/tsan.supp'
-            env['TSAN_OPTIONS'] = 'halt_on_error=0:ignore_noninstrumented_modules=1:history_size=5:second_deadlock_stack=1:suppressions=%s:log_path=%s/tsan' % (suppressions, self.san)
+            # ignore_noninstrumented_modules=1 stays: without it a seed fails within a few steps on reports from the recording helper's
+            # distribution GStreamer plugins (mutex misuse, new/delete and getrandom races seen on m74). What it hides: TSan then ignores
+            # the memory and synchronization calls (memcpy, free, mutexes) that uninstrumented libraries make through its interceptors, so
+            # a race in which one access is put.gd's and the other happens inside such a library (GStreamer, libcurl, OpenSSL, the AWS
+            # SDK) is not reported.
+            env['TSAN_OPTIONS'] = 'halt_on_error=0:ignore_noninstrumented_modules=1:history_size=5:second_deadlock_stack=1:suppressions=%s:log_path=%s/tsan' % (
+                suppressions, self.san)
             env['QT_PLUGIN_PATH'] = str(prefix / 'qtbase-tsan-build' / 'plugins')
             # GStreamer's plugin scanner is a distribution binary that would load the instrumented GLib without libtsan and crash.
             env['GST_REGISTRY_FORK'] = 'no'
@@ -730,7 +736,7 @@ class Resident:
             return [], []
         found = [p for p in sorted(Path(folder).glob('*-*')) if p.is_dir() and not p.is_symlink()]
         # Complete: rr wrote its `version` file and removed its `incomplete` marker. A folder with neither is not a trace rr finished.
-        complete = [p for p in found if (p / 'version').exists() and not (p / 'incomplete').exists()]
+        complete = [p for p in found if (p / 'version').is_file() and not os.path.lexists(p / 'incomplete')]
         return [str(p) for p in complete], [str(p) for p in found if p not in complete]
 
     def quit(self, how='ui.quit'):
@@ -747,7 +753,7 @@ class Resident:
         if not self.wait_exit(60 * SLOW):
             raise Finding('hang', 'the resident did not exit within 60 s of %s' % how)
         # After SIGTERM or SIGINT the status is the signal's or 0; a sanitizer abort is neither.
-        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT):
+        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT) and not self.tsan_exit_excused():
             raise Finding('exit', 'the resident exited with %s after %s' % (self.returncode(), how))
         # Helpers it started leave with it.
         end = time.monotonic() + 10 * SLOW
@@ -776,17 +782,27 @@ class Resident:
         found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p) and not self.known_qt_races_only(p))
         return found
 
+    TSAN_REPORTED = 66  # GCC TSan's exit status when it reported anything (exitcode= in TSAN_OPTIONS)
+
+    def tsan_exit_excused(self):
+        """Exit 66 from a ThreadSanitizer resident means only that TSan reported something. It is accepted when the run has TSan report
+        files and every report in them is on tools/lab/tsan_summary.py's known list; anything else fails as before."""
+        if self.returncode() != self.TSAN_REPORTED or self.options is None or not self.options.tsan_prefix:
+            return False
+        files = [p for p in self.san.glob('tsan.*') if p.is_file()]
+        return bool(files) and all(self.known_qt_races_only(p) for p in files)
+
     @staticmethod
     def known_qt_races_only(path):
-        """A TSan report file holding nothing but diagnosed Qt-internal races (tools/lab/tsan_summary.py: both racing accesses inside Qt in
-        their top frames). Every other report, a put.gd frame near the top of either access included, is a finding."""
+        """A TSan report file holding nothing but reports on tools/lab/tsan_summary.py's exact known list. Every other report, any with a
+        put.gd frame above main() included, is a finding."""
         if not path.name.startswith('tsan.'):
             return False
         try:
             text = path.read_text(errors='replace')
         except OSError:
             return False
-        return 'WARNING: ThreadSanitizer' in text and not tsan_summary.unexplained(path, Path(__file__).resolve().parents[2])
+        return 'WARNING: ThreadSanitizer' in text and not tsan_summary.unexplained(path)
 
     @staticmethod
     def third_party(path):

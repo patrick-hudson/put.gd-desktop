@@ -16,7 +16,8 @@ it accepts (rr 5.9+ on Linux 6.10+ works at 2). Keep --run-dir and TMPDIR on tmp
 btrfs and ext4 answer. --timeout is how long one recorded run may take before it is stopped and counted as
 a possible slowdown or hang; --time-scale (PUTGD_TEST_TIME_SCALE) stretches the test's own waits for rr's slower schedule.
 A run that is stopped gets SIGTERM on rr itself, so rr finishes the trace; a trace is reported replayable only when rr completed it
-(no `incomplete` marker). Only processes this script starts are signalled; nothing is killed by pattern.
+(no `incomplete` marker and a `version` file). Each run lives in a systemd user scope of its own (tools/lab/run_scope.py); when the run
+ends, however it ends, the scope is stopped, which ends every process rr started. Nothing is killed by pattern.
 """
 import argparse
 import json
@@ -26,6 +27,9 @@ import signal
 import subprocess
 import sys
 import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not put the script's folder on the path
+import run_scope  # noqa: E402
 
 
 def test_definition(build, name):
@@ -87,6 +91,8 @@ def main():
     parser.add_argument('--rr', default='rr', help='the rr binary (a pinned build such as ~/opt/rr-5.10.0/bin/rr)')
     parser.add_argument('extra', nargs=argparse.REMAINDER)
     options = parser.parse_args()
+    if not run_scope.available():
+        raise SystemExit('rr_loop needs a systemd user manager (systemd-run --user --scope): each recorded run lives in a scope that cleanup stops')
     # Ctrl+C or SIGTERM stops the recording this script started (rr runs in a session of its own and would not see the signal).
     signal.signal(signal.SIGINT, interrupted)
     signal.signal(signal.SIGTERM, interrupted)
@@ -108,9 +114,9 @@ def main():
         argv = [options.rr, 'record', '-o', str(trace)] + ([] if options.no_chaos else ['--chaos']) + command + extra
         started = time.monotonic()
         with open(log, 'w') as out:
-            process, handle, stopped_by = None, None, None
+            process, handle, stopped_by, scope = None, None, None, run_scope.Scope('rr%03d' % index)
             try:
-                process = subprocess.Popen(argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
+                process = subprocess.Popen(scope.command(argv), cwd=cwd, env=environment, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
                                            start_new_session=True)
                 handle = os.pidfd_open(process.pid)  # rr itself, not reaped until wait() below, so this names it for good
                 code = process.wait(options.timeout)
@@ -126,8 +132,13 @@ def main():
             finally:
                 if handle is not None:
                     os.close(handle)
+                left = scope.stop()  # rr has finished or been stopped: nothing it recorded may outlive the run
+                if left:
+                    print('run %d: %d processes were left in %s and were stopped with it' % (index, left, scope.unit), flush=True)
+                if process is not None and process.returncode is None:
+                    process.wait()
         if stopped_by is not None:
-            replayable = (trace / 'version').exists() and not (trace / 'incomplete').exists()
+            replayable = (trace / 'version').is_file() and not os.path.lexists(trace / 'incomplete')
             print('run %d: %s; trace %s (%s)' % (index, code, trace, 'rr replay %s' % trace if replayable else 'INCOMPLETE, not replayable'), flush=True)
             return 128 + stopped_by
         seconds = time.monotonic() - started
@@ -137,7 +148,7 @@ def main():
             print('run %d: passed in %.1f s%s' % (index, seconds, note), flush=True)
             continue
         failures += 1
-        replayable = (trace / 'version').exists() and not (trace / 'incomplete').exists()
+        replayable = (trace / 'version').is_file() and not os.path.lexists(trace / 'incomplete')
         print('run %d: FAILED (%s) in %.1f s: log %s, trace %s (%s)' % (
             index, code, seconds, log, trace, 'rr replay %s' % trace if replayable else 'INCOMPLETE: rr did not finish it, not replayable'), flush=True)
         if failures >= options.stop_after:

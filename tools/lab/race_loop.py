@@ -4,11 +4,12 @@
   tsan  --build build/tsan-instrumented-qt --tsan-prefix work/sanitizer-diagnosis   the instrumented Qt build of docs/testing/thread-sanitizer.md
   rr    --build build/rrb                                              a RelWithDebInfo build, recorded with rr's chaos mode
 
-Each seed runs `action_fuzz.py run` in its own run folder inside a private session bus. A clean seed keeps only its small records
+Each seed runs `action_fuzz.py run` in its own run folder inside a private session bus, in a systemd user scope of its own
+(tools/lab/run_scope.py). When the seed ends, however it ends, that scope is stopped, which ends every process the seed started. A clean seed keeps only its small records
 (steps.jsonl, logs/, san/, receiver.log): the payloads, the resident's roots and its TMPDIR (fixtures/, saves/, archive/, weird/, r/, tmp/) are deleted file by file, and its rr traces are removed
 with `rr rm`, only for folders that are complete rr traces (a `version` file, no `incomplete` marker, not the `latest-trace` link). A
 cleanup that fails is reported. A finding keeps the run folder whole (finding.json, steps.jsonl, the TSan reports in san/) and, for
-rr, the traces under <out>/traces. --stress N starts N busy loops (this script's own processes, stopped by PID) to shake the schedules. The loop stops
+rr, the traces under <out>/traces. --stress N starts N busy loops (in one systemd user scope of their own, stopped with it) to shake the schedules. The loop stops
 at --hours or --max-findings.
 
   python3 -I tools/lab/race_loop.py tsan --build build/tsan-instrumented-qt --tsan-prefix work/sanitizer-diagnosis --out /tmp/races-tsan-1 \\
@@ -25,6 +26,9 @@ import signal
 import subprocess
 import sys
 import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # python -I does not put the script's folder on the path
+import run_scope  # noqa: E402
 
 HOG = 'import os, signal\nsignal.signal(signal.SIGTERM, signal.SIG_DFL)\nsignal.signal(signal.SIGINT, lambda *_: os._exit(0))\nwhile True:\n    pass\n'
 PAYLOADS = ('fixtures', 'saves', 'archive', 'weird', 'r', 'tmp')  # what a clean seed made and does not need (r: the resident's roots)
@@ -65,7 +69,7 @@ def remove_traces(root, rr):
     for trace in sorted(root.glob('*')):
         if trace.is_symlink() or not trace.is_dir():
             continue  # latest-trace is a link to a trace, not one
-        if not (trace / 'version').exists() or (trace / 'incomplete').exists():
+        if not (trace / 'version').is_file() or os.path.lexists(trace / 'incomplete'):
             errors.append('%s: not a complete rr trace, left in place' % trace)
             continue
         done = subprocess.run([rr, 'rm', str(trace)], capture_output=True, text=True)
@@ -84,28 +88,27 @@ def interrupted(signum, frame):
     raise Interrupted(signum)
 
 
-def stop_seed(process, signum):
-    """Forward a signal to a seed's process group (its own session, pinned while its leader is unreaped), wait for the leader, then
-    until no process of the group is left (bounded). The fuzzer inside stops its resident and receiver itself."""
+def stop_seed(process, scope, signum):
+    """Forward a signal to a seed's process group (pinned while its leader is unreaped), so the fuzzer stops its resident and receiver
+    itself, and wait for it (bounded). Then stop the seed's scope, which ends whatever is still in it, rr's processes included."""
     previous = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGTERM)}
     try:
         try:
             os.killpg(process.pid, signum)
         except OSError:
             pass
-        try:
-            process.wait(300)
-        except subprocess.TimeoutExpired:
-            print('race_loop: the seed did not stop within 300 s of %s' % signal.Signals(signum).name, flush=True)
-            return
-        end = time.monotonic() + 60
-        while time.monotonic() < end:
-            try:
-                os.killpg(process.pid, 0)
-            except ProcessLookupError:
-                return
+        # dbus-run-session gets the signal too and may exit at once: wait for the fuzzer itself (in the seed's scope) to finish its
+        # cleanup, so rr can complete its trace, before the scope is stopped.
+        end = time.monotonic() + 300
+        while scope.running(b'action_fuzz.py') and time.monotonic() < end:
             time.sleep(0.5)
-        print('race_loop: processes of the seed group %d still run' % process.pid, flush=True)
+        if scope.running(b'action_fuzz.py'):
+            print('race_loop: the seed did not stop within 300 s of %s; stopping its scope' % signal.Signals(signum).name, flush=True)
+        left = scope.stop()
+        if left:
+            print('race_loop: %d processes were left in %s and were stopped with it' % (left, scope.unit), flush=True)
+        if process.returncode is None:
+            process.wait()
     finally:
         for sig, handler in previous.items():
             signal.signal(sig, handler)
@@ -137,11 +140,15 @@ def main():
         options.tsan_prefix = os.path.abspath(options.tsan_prefix)
     if options.kind == 'tsan' and not options.tsan_prefix:
         raise SystemExit('tsan needs --tsan-prefix')
+    if not run_scope.available():
+        raise SystemExit('race_loop needs a systemd user manager (systemd-run --user --scope): every seed and busy loop runs in a scope of '
+                         'its own, which cleanup stops')
     options.out.mkdir(parents=True)
     fuzz = Path(__file__).resolve().parent / 'action_fuzz.py'
     traces = options.out / 'traces'
     traces.mkdir()
-    hogs = [subprocess.Popen([sys.executable, '-c', HOG], stdin=subprocess.DEVNULL) for _ in range(options.stress)]
+    stress = run_scope.Scope('stress')  # every busy loop in one scope, stopped as one
+    hogs = [subprocess.Popen(stress.command([sys.executable, '-c', HOG]), stdin=subprocess.DEVNULL) for _ in range(options.stress)]
     deadline = time.monotonic() + options.hours * 3600
     seed, findings, clean = options.first_seed, 0, 0
     try:
@@ -158,17 +165,22 @@ def main():
             command += [options.mode]
             started = time.monotonic()
             with open(options.out / ('s%d.log' % seed), 'w') as log:
-                process = None
+                process, scope = None, run_scope.Scope('seed%d' % seed)
                 try:
-                    process = subprocess.Popen(['dbus-run-session', '--'] + command, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                                               start_new_session=True)
+                    process = subprocess.Popen(scope.command(['dbus-run-session', '--'] + command), stdin=subprocess.DEVNULL, stdout=log,
+                                               stderr=subprocess.STDOUT, start_new_session=True)
                     code = process.wait()
                 except Interrupted as stop:
                     if process is not None:
-                        stop_seed(process, stop.signum)
+                        stop_seed(process, scope, stop.signum)
+                    else:
+                        scope.stop()
                     print('seed %d: interrupted by %s (kept %s)' % (seed, signal.Signals(stop.signum).name, run), flush=True)
                     raise
+            left = scope.stop()  # the seed is done: nothing of it may outlive it
             note = 'seed %d: %s in %.0f s' % (seed, 'clean' if code == 0 else 'FINDING (exit %d)' % code, time.monotonic() - started)
+            if left:
+                note += ' (%d processes were left in its scope and were stopped)' % left
             if code == 0:
                 clean += 1
                 problems = remove_traces(traces / ('s%d' % seed), options.rr) if options.kind == 'rr' else []
@@ -192,8 +204,7 @@ def main():
     finally:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        for hog in hogs:
-            hog.terminate()  # our children, not reaped until wait() below
+        stress.stop()  # every busy loop at once, through their scope
         for hog in hogs:
             hog.wait()
     if status is not None:

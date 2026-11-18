@@ -1,5 +1,5 @@
-"""The race hunt's ThreadSanitizer filter excuses only a diagnosed Qt race with no put.gd frame in either racing stack. A report it
-excused wrongly would hide a put.gd race without a trace, so every way a put.gd frame or a misplaced anchor can appear is checked."""
+"""The race hunt's ThreadSanitizer filter excuses only reports on its exact known list. A report it excused wrongly would hide a put.gd
+race without a trace, so the known entries, the ownership rule and the counterexamples found in review are checked."""
 from pathlib import Path
 import sys
 import unittest
@@ -9,103 +9,90 @@ sys.path.insert(0, str(ROOT / 'tools' / 'lab'))
 import tsan_summary  # noqa: E402
 
 QT = '/w/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src'
-OWN = tsan_summary.own_prefixes_for(ROOT)
 
 
-def qt(name, n):
-    return '    #%d %s %s/corelib/kernel/qobject.cpp:%d (libQt6Core.so.6+0x2c%04x)' % (n, name, QT, 100 + n, n)
+def qt(symbol, n):
+    return '    #%d %s %s/corelib/kernel/qobject.cpp:%d (libQt6Core.so.6+0x2c%04x) (BuildId: dca8b7765239849cdf76afcb87d15f42a404adad)' % (
+        n, symbol, QT, 100 + n, n)
 
 
-def own(name, n):
-    return '    #%d %s %s/src/storage/worker/HttpUpload.cpp:%d (putgd-http-worker+0x41%04x)' % (n, name, ROOT, 200 + n, n)
+def own(symbol, n, path=None):
+    return '    #%d %s %s:%d (putgd-http-worker+0x41%04x)' % (n, symbol, path or str(ROOT / 'src/storage/worker/HttpUpload.cpp'), 200 + n, n)
 
 
-def put_main(n):
-    return '    #%d main %s/src/main.cpp:312 (putgd+0x2a%04x)' % (n, ROOT, n)
+def frames(symbols, below=()):
+    """Qt frames for `symbols` (a known signature, say), then `below`: (kind, symbol) pairs for the frames under them."""
+    lines = [qt(sym, n) for n, sym in enumerate(symbols)]
+    for kind, sym in below:
+        n = len(lines)
+        lines.append(qt(sym, n) if kind == 'qt' else own(sym, n) if kind == 'own' else '    #%d main %s/src/main.cpp:312 (putgd+0x2a%04x)' % (n, ROOT, n))
+    return '\n'.join(lines)
 
 
-def stack(*names, deep_own=None, main=False, entry=None, callers=0):
-    """Qt frames for `names`, Qt filler to 12 frames, then optionally a public Qt entry point, `callers` put.gd frames that called it,
-    and put.gd's main()."""
-    frames = [qt(name, n) for n, name in enumerate(names)]
-    frames += [qt('QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)', n) for n in range(len(frames), 12)]
-    if deep_own is not None:
-        frames[deep_own] = own('putgd::HttpUpload::readReply(QNetworkReply*)', deep_own)
-    if entry:
-        frames.append(qt(entry, len(frames)))
-    for _ in range(callers):
-        frames.append(own('putgd::HttpUpload::start()', len(frames)))
-    if main:
-        frames.append(put_main(len(frames)))
-    return '\n'.join(frames)
+def report(first, second, kind='data race'):
+    return ('==================\nWARNING: ThreadSanitizer: %s (pid=4242)\n  Atomic read of size 8 at 0x7228000006f0 by thread T1:\n%s\n\n'
+            '  Previous write of size 8 at 0x7228000006f0 by main thread (mutexes: write M0):\n%s\n\n'
+            '  Thread T1 (tid=4250, running) created by main thread at:\n%s\n\nSUMMARY: ThreadSanitizer: %s\n==================\n'
+            % (kind, first, second, own('putgd::HttpUpload::start()', 0), kind))
 
 
-GET = 'QNetworkAccessManager::get(QNetworkRequest const&)'
-
-
-
-def report(first, second):
-    return ('==================\nWARNING: ThreadSanitizer: data race (pid=4242)\n  Write of size 8 at 0x7b0c000a1230 by thread T7:\n%s\n\n'
-            '  Previous read of size 8 at 0x7b0c000a1230 by main thread:\n%s\n\n'
-            '  Thread T7 (tid=4250, running) created by main thread at:\n%s\n\nSUMMARY: ThreadSanitizer: data race\n==================\n'
-            % (first, second, own('putgd::HttpUpload::start()', 0)))
-
-
-DTOR = ('QNetworkReply::~QNetworkReply()', 'QObject::event(QEvent*)')
-OTHER = ('QObject::~QObject()', 'QMetaObject::activate(QObject*, int, int, void**)')
+HANDOFF = tsan_summary.KNOWN_QT_RACES[2]  # the shape whose stacks name QThread::started and postRequest
+THREAD = (('qt', 'QThreadPrivate::start(void*)'),)
+CALLER = (('qt', 'QNetworkReplyHttpImplPrivate::_q_startOperation()'), ('qt', 'QNetworkAccessManager::get(QNetworkRequest const&)'))
 
 
 class Classifier(unittest.TestCase):
-    def kind(self, first, second):
-        blocks = list(tsan_summary.reports(report(first, second)))  # as the tool reads a tsan.<pid> file
+    def kind(self, first, second, kind='data race'):
+        blocks = list(tsan_summary.reports(report(first, second, kind)))  # as the tool reads a tsan.<pid> file
         self.assertEqual(len(blocks), 1)
         self.assertEqual(len(tsan_summary.access_stacks(blocks[0])), 2)
-        return tsan_summary.classify(blocks[0], OWN)[0]
+        return tsan_summary.classify(blocks[0])[0]
 
-    def test_a_diagnosed_race_with_no_put_gd_frame_is_excused(self):
-        self.assertEqual(self.kind(stack(*DTOR), stack(*OTHER)), 'qt-known')
+    def test_every_known_entry_is_excused_as_reported(self):
+        for first, second in tsan_summary.KNOWN_QT_RACES:
+            self.assertEqual(self.kind(frames(first, THREAD), frames(second, CALLER + (('main', 'main'),))), 'known')
 
-    def test_a_put_gd_frame_at_any_depth_of_either_stack_is_never_excused(self):
-        for depth in range(12):
-            self.assertNotEqual(self.kind(stack(*DTOR, deep_own=depth), stack(*OTHER)), 'qt-known', 'first stack, frame %d' % depth)
-            self.assertNotEqual(self.kind(stack(*DTOR), stack(*OTHER, deep_own=depth)), 'qt-known', 'second stack, frame %d' % depth)
+    def test_a_put_gd_frame_above_main_in_either_stack_is_reported(self):
+        first, second = HANDOFF
+        self.assertEqual(self.kind(frames(first, THREAD + (('own', 'putgd::Worker::run()'),)), frames(second, CALLER)), 'put.gd')
+        self.assertEqual(self.kind(frames(first, THREAD), frames(second, CALLER + (('own', 'putgd::HttpUpload::start()'), ('main', 'main')))), 'put.gd')
 
-    # The diagnosed hand-off as m74's live run reported it: the new thread reads in maybeSignalConnected while it emits QThread::started
-    # (deeper than the top frames), the main thread writes in addConnection under Qt's postRequest.
-    FILL = ('QMetaObject::activate(QObject*, int, int, void**)', 'QObjectPrivate::Connection* QAtomicOps::load()', 'QBasicAtomicPointer::load()', 'f4()', 'f5()')
-    READ = ('std::atomic<QObjectPrivate::Connection*>::load() const', 'QObjectPrivate::maybeSignalConnected(unsigned int) const') + FILL + ('QThread::started(QThread::QPrivateSignal)',)
-    WRITE = ('std::atomic<QObjectPrivate::Connection*>::atomic()', 'QObjectPrivate::addConnection(int, QObjectPrivate::Connection*)',
-             'QObject::connect(QObject const*, char const*, QObject const*, char const*, Qt::ConnectionType)', 'QNetworkReplyHttpImplPrivate::postRequest(QNetworkRequest const&)')
+    def test_frames_below_main_are_not_read(self):
+        first, second = HANDOFF
+        self.assertEqual(self.kind(frames(first, THREAD), frames(second, CALLER + (('main', 'main'), ('own', 'putgd::below_main()')))), 'known')
 
-    def test_the_anchor_must_be_in_the_same_stack_as_its_function(self):
-        self.assertEqual(self.kind(stack(*self.READ), stack(*self.WRITE)), 'qt-known')
-        moved = tuple(n for n in self.READ if not n.startswith('QThread::started'))
-        self.assertNotEqual(self.kind(stack(*moved), stack(*(self.WRITE + self.FILL + ('QThread::started(QThread::QPrivateSignal)',)))), 'qt-known')  # only in the other stack
-        self.assertNotEqual(self.kind(stack(*moved), stack(*self.WRITE)), 'qt-known')  # no anchor at all
+    def test_ownership_comes_from_the_module_or_the_namespace_never_a_path(self):
+        first, second = HANDOFF
+        qt_named_path = own('QNetworkReplyHttpImplPrivate::helper()', 8, path='/home/x/qtbase-patches/src/network/access/helper.cpp')
+        self.assertEqual(self.kind(frames(first, THREAD), frames(second, CALLER) + '\n' + qt_named_path), 'put.gd')  # a putgd module
+        namespaced = qt('putgd::QtGlue::forward()', 8)  # put.gd code in a Qt-named module is still put.gd's
+        self.assertEqual(self.kind(frames(first, THREAD), frames(second, CALLER) + '\n' + namespaced), 'put.gd')
 
-    def test_put_gd_main_at_the_bottom_of_a_stack_does_not_count(self):
-        self.assertEqual(self.kind(stack(*self.READ), stack(*self.WRITE, main=True)), 'qt-known')  # a main-thread stack rooted in main()
-        self.assertEqual(self.kind(stack(*DTOR, main=True), stack(*OTHER, main=True)), 'qt-known')
-        # One put.gd frame directly above main() is put.gd code and is never excused.
-        self.assertNotEqual(self.kind(stack(*self.READ), stack(*self.WRITE, deep_own=11, main=True)), 'qt-known')
-        self.assertNotEqual(self.kind(stack(*DTOR, deep_own=11, main=True), stack(*OTHER)), 'qt-known')
+    def test_one_different_frame_or_the_wrong_order_is_not_excused(self):
+        first, second = HANDOFF
+        changed = first[:3] + ('QObjectPrivate::somethingElse() const',) + first[4:]
+        self.assertEqual(self.kind(frames(changed, THREAD), frames(second, CALLER)), 'other')
+        self.assertEqual(self.kind(frames(second, CALLER), frames(first, THREAD)), 'other')
+        self.assertEqual(self.kind(frames(first[:5], THREAD), frames(second, CALLER)), 'other')  # a frame short at the top
+        self.assertEqual(self.kind(frames(first, THREAD), frames(second, CALLER), kind='data race on vptr'), 'other')
 
-    def test_put_gd_callers_below_a_listed_entry_point_do_not_count(self):
-        self.assertEqual(self.kind(stack(*self.READ), stack(*self.WRITE, entry=GET, callers=3, main=True)), 'qt-known')
+    # Counterexamples from review of the stack-walk rule this list replaced; each was excused there.
+    def test_review_s1_a_put_gd_frame_with_qtbase_in_its_path_is_put_gd_code(self):
+        first, second = HANDOFF
+        sneaky = own('putgd::Patched::relay()', 6, path='/home/x/work/qtbase-fork/src/corelib/kernel/qobject.cpp')
+        stack = '\n'.join(frames(second, ()).splitlines()[:6] + [sneaky]) + '\n' + frames((), CALLER)
+        self.assertEqual(self.kind(frames(first, THREAD), stack), 'put.gd')
 
-    def test_a_put_gd_frame_between_the_racing_access_and_the_entry_point_is_reported(self):
-        self.assertNotEqual(self.kind(stack(*self.READ), stack(*self.WRITE, deep_own=6, entry=GET, callers=2, main=True)), 'qt-known')
+    def test_review_s10_a_put_gd_override_of_create_request_is_reported(self):
+        first, second = HANDOFF
+        below = (('qt', 'QNetworkAccessManager::createRequest(QNetworkAccessManager::Operation, QNetworkRequest const&, QIODevice*)'),
+                 ('own', 'putgd::UploadNetwork::createRequest(QNetworkAccessManager::Operation, QNetworkRequest const&, QIODevice*)'),
+                 ('qt', 'QNetworkAccessManager::get(QNetworkRequest const&)'), ('main', 'main'))
+        self.assertEqual(self.kind(frames(first, THREAD), frames(second, below)), 'put.gd')
 
-    def test_a_put_gd_frame_above_any_entry_point_in_the_other_stack_is_reported(self):
-        # The writing side stops cleanly at get(); the reading thread has no entry point, and a put.gd frame in it counts at any depth.
-        self.assertNotEqual(self.kind(stack(*self.READ, deep_own=10), stack(*self.WRITE, entry=GET, callers=2, main=True)), 'qt-known')
-
-    def test_an_entry_point_off_the_diagnosis_list_does_not_stop_the_walk(self):
-        dbus = 'QDBusConnection::call(QDBusMessage const&, QDBus::CallMode, int) const'  # an entry point, but not the hand-off's
-        self.assertNotEqual(self.kind(stack(*self.READ), stack(*self.WRITE, entry=dbus, callers=2, main=True)), 'qt-known')
-
-    def test_an_unknown_qt_race_is_not_excused(self):
-        self.assertEqual(self.kind(stack('QTimer::start()'), stack('QTimer::stop()')), 'external')
+    def test_review_s11_qthread_started_alone_is_not_the_hand_off(self):
+        unrelated = ('QTimer::start()', 'QMetaObject::activate(QObject*, QMetaObject const*, int, void**)', 'QThread::started(QThread::QPrivateSignal)')
+        self.assertEqual(self.kind(frames(unrelated, THREAD), frames(('QTimer::stop()', 'QObject::killTimer(int)'), CALLER)), 'other')
 
 
 if __name__ == '__main__':
