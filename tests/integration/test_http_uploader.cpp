@@ -48,8 +48,10 @@ public:
         auto s = http::defaults();
         s["requestUrl"] = base + "/upload/" + style;
         s["headers"] = rows({secretRow("Authorization")});
-        s["requestTimeoutMs"] = 5000;
-        s["connectTimeoutMs"] = 2000;
+        // The helper's own deadlines are budgets like any test wait: they scale with
+        // PUTGD_TEST_TIME_SCALE, or a starved runner turns a slow 16 MiB send into "no reply".
+        s["requestTimeoutMs"] = putgd::test::scaled(5000);
+        s["connectTimeoutMs"] = putgd::test::scaled(2000);
         if (style == "json" || style == "away" || style == "pretend") { s["responseUrl"] = "{json:files[0].url}"; s["thumbnailUrl"] = "{json:files[0].thumb}"; s["deletionUrl"] = "{json:files[0].delete}"; }
         s["errorMessage"] = "{json:error}";
         return s;
@@ -489,7 +491,10 @@ private slots:
         else if (shape == "cdn-same") { f.rules({toCdn, serve, toCdn, serve}); checks = 4; }
         else f.rules({serve, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}}});
         const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(f.events("file").size(), checks);
+        // The helper looks at the link `checks` times. Qt may also send a GET again when the
+        // connection closes under a reply that was cut off, so each cut reply may be asked for once more.
+        const int cuts = shape == "cut-404" ? 1 : 0;
+        QVERIFY2(f.events("file").size() >= checks && f.events("file").size() <= checks + cuts, qPrintable(QString("%1 requests for the file, expected %2 to %3").arg(f.events("file").size()).arg(checks).arg(checks + cuts)));
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
