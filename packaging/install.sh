@@ -18,8 +18,8 @@ Usage: curl -fsSL https://app.put.gd/install | sh -s -- [OPTIONS]
   --dry-run                 Show the plan; only checks channel availability online
   --help                    Show this help
 Native packages use sudo only for apt/dnf/pacman install, with prompts on your terminal.
-On Arch-family systems whose OpenSSL is older than the package's (Omarchy, for example), the
-AppImage is installed instead.
+On an Arch-family system other than Arch Linux itself (Omarchy, Manjaro) whose OpenSSL is older than
+the one the package was built against, the AppImage is installed instead.
 AppImage requires glibc 2.39+ and a working AppImage/FUSE runtime.
 HELP
     }
@@ -43,6 +43,7 @@ HELP
         esac
         shift
     done
+    requested_channel=$channel
     [ "$(uname -m)" = x86_64 ] || die 'Unsupported architecture; only x86_64 is published'
     command -v curl >/dev/null 2>&1 || die 'Missing curl; install it with your package manager first'
     command -v sha256sum >/dev/null 2>&1 || die 'Missing sha256sum; install coreutils first'
@@ -124,7 +125,7 @@ HELP
                 else
                     note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and run pacman -Syu putgd from the signed pkg.put.gd repository.'
                 fi
-                note 'If this system has an older OpenSSL than the package was built against (an Arch derivative), the AppImage is installed instead.'
+                note 'On an Arch-family system other than Arch Linux itself, the AppImage is installed instead when the installed OpenSSL is older than the package was built against.'
                 ;;
             fedora44|fedora45)
                 note "Would run sudo dnf install ./putgd-VERSION$suffix; package adds the signed pkg.put.gd update repository. Start: putgd"
@@ -183,7 +184,6 @@ HELP
         appimage) install_appimage ;;
         archlinux)
             arch_updated=false
-            arch_status=0
             if command -v omarchy-update >/dev/null 2>&1; then
                 if ! ( : < /dev/tty ) 2>/dev/null; then
                     die 'Omarchy needs a terminal for its system update. Run omarchy update, then rerun this installer in a terminal.'
@@ -203,70 +203,68 @@ HELP
                 omarchy-update -y < /dev/tty || die 'Omarchy system update failed; nothing installed'
                 arch_updated=true
             fi
-            fetch --output "$work/putgd.asc" "https://pkg.put.gd/keys/putgd-$channel.asc"
-            # Pinned channel fingerprint comes from the public key shipped in source.
-            case "$channel" in
-                nightly) fingerprint=4032E28D893BAF66F4AC23D9A11D38D55536B371 ;;
-                stable) fingerprint=C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C ;;
-            esac
-            command -v sudo >/dev/null 2>&1 || die 'Missing sudo'
-            sudo sh -c '
-                set -eu
-                # Repository configuration contains public URLs and must be readable by pacman users.
-                umask 022
-                actual=$(gpg --show-keys --with-colons "$1" | awk -F: '\''$1 == "fpr" { print $10; exit }'\'')
-                [ "$actual" = "$2" ] || exit 1
-                pacman-key --add "$1"
-                pacman-key --lsign-key "$2"
-                if [ ! -e /etc/pacman.d/putgd.conf ]; then
-                    printf "[putgd-%s]\nSigLevel = PackageRequired DatabaseRequired\nServer = https://pkg.put.gd/pacman/x86_64/%s\n" "$3" "$3" > /etc/pacman.d/putgd.conf
-                fi
-                chmod 0644 /etc/pacman.d/putgd.conf
-                if ! grep -qxF "Include = /etc/pacman.d/putgd.conf" /etc/pacman.conf; then
-                    printf "\nInclude = /etc/pacman.d/putgd.conf\n" >> /etc/pacman.conf
-                fi
-                if [ "$4" = true ]; then
-                    # Omarchy refreshed the system repositories before this file existed.
-                    # Sync only the newly configured repository, then install normally.
-                    pacman --config /etc/pacman.d/putgd.conf -Sy
-                    resolve=-Sp
-                else
-                    resolve=-Syp
-                fi
-                # Ask pacman whether this system can provide the OpenSSL the package was built against ($5, for
-                # example libcrypto.so=4-64), installed or from the synced repositories, before installing
-                # anything. Omarchy follows Arch with a delay and can still have the older one, where the
-                # putgd-cli and the S3 libraries of the package would not load. Status 73 asks the installer to use
-                # the AppImage; any other failure is reported as it is.
-                if ! pacman -T "$5" > /dev/null; then
-                    if ! failure=$(LC_ALL=C pacman "$resolve" --needed "$5" 2>&1 > /dev/null); then
-                        printf "%s\n" "$failure" >&2
-                        case "$failure" in *"target not found"*) exit 73 ;; esac
-                        exit 1
+            # Arch Linux itself builds the package against its own current OpenSSL, and pacman -Syu putgd brings
+            # the system to it. Any other Arch-family system (Omarchy, Manjaro, EndeavourOS) can still have an
+            # older one, where the package's putgd-cli and S3 libraries would not load: ask pacman about the
+            # installed system only, after Omarchy's own update. A wrong AppImage is harmless; a wrong native
+            # install is not.
+            arch_native=true
+            if [ "$ID" != arch ] || command -v omarchy-update >/dev/null 2>&1; then
+                command -v pacman >/dev/null 2>&1 || die 'Missing pacman'
+                arch_probe=0
+                pacman -T "$arch_libcrypto" > /dev/null || arch_probe=$?
+                case "$arch_probe" in
+                    0) ;;
+                    127)
+                        arch_native=false
+                        note "This system's OpenSSL is not the one the native package was built against ($arch_libcrypto; Arch derivatives such as Omarchy follow Arch with a delay), so its putgd-cli and S3 and R2 uploads would not load. Using the AppImage."
+                        package=appimage
+                        channel=$requested_channel
+                        check_appimage_host
+                        check_download
+                        fetch_package
+                        install_appimage
+                        # An installed native package keeps its files but cannot run putgd-cli or upload to S3 or R2 here.
+                        if pacman -Q putgd >/dev/null 2>&1; then
+                            note 'The put.gd pacman package installed here cannot run putgd-cli or upload to S3 or R2 on this system. Remove it with: sudo pacman -R putgd (the AppImage now installed replaces it).'
+                        fi
+                        ;;
+                    *) die "pacman could not check whether $arch_libcrypto is installed (exit $arch_probe); nothing installed" ;;
+                esac
+            fi
+            if "$arch_native"; then
+                fetch --output "$work/putgd.asc" "https://pkg.put.gd/keys/putgd-$channel.asc"
+                # Pinned channel fingerprint comes from the public key shipped in source.
+                case "$channel" in
+                    nightly) fingerprint=4032E28D893BAF66F4AC23D9A11D38D55536B371 ;;
+                    stable) fingerprint=C0962EFA929F5A5477A4509C0CC9E5A0F0B6FC1C ;;
+                esac
+                command -v sudo >/dev/null 2>&1 || die 'Missing sudo'
+                sudo sh -c '
+                    set -eu
+                    # Repository configuration contains public URLs and must be readable by pacman users.
+                    umask 022
+                    actual=$(gpg --show-keys --with-colons "$1" | awk -F: '\''$1 == "fpr" { print $10; exit }'\'')
+                    [ "$actual" = "$2" ] || exit 1
+                    pacman-key --add "$1"
+                    pacman-key --lsign-key "$2"
+                    if [ ! -e /etc/pacman.d/putgd.conf ]; then
+                        printf "[putgd-%s]\nSigLevel = PackageRequired DatabaseRequired\nServer = https://pkg.put.gd/pacman/x86_64/%s\n" "$3" "$3" > /etc/pacman.d/putgd.conf
                     fi
-                fi
-                if [ "$4" = true ]; then
-                    pacman -S putgd
-                else
-                    pacman -Syu putgd
-                fi
-            ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" "$arch_libcrypto" < /dev/tty || arch_status=$?
-            case "$arch_status" in
-                0) ;;
-                73)
-                    note "This system's OpenSSL is not the one the native package was built against ($arch_libcrypto; Arch derivatives such as Omarchy follow Arch with a delay), so its putgd-cli and S3, B2 and R2 uploads would not load. Using the AppImage."
-                    package=appimage
-                    check_appimage_host
-                    check_download
-                    fetch_package
-                    install_appimage
-                    # An installed native package keeps running as before but cannot load putgd-cli or its S3 libraries.
-                    if pacman -Q putgd >/dev/null 2>&1; then
-                        note 'The put.gd pacman package installed here cannot run putgd-cli or upload to S3, B2 or R2 on this system. Remove it with: sudo pacman -R putgd (the AppImage now installed replaces it).'
+                    chmod 0644 /etc/pacman.d/putgd.conf
+                    if ! grep -qxF "Include = /etc/pacman.d/putgd.conf" /etc/pacman.conf; then
+                        printf "\nInclude = /etc/pacman.d/putgd.conf\n" >> /etc/pacman.conf
                     fi
-                    ;;
-                *) exit "$arch_status" ;;
-            esac
+                    if [ "$4" = true ]; then
+                        # Omarchy refreshed the system repositories before this file existed.
+                        # Sync only the newly configured repository, then install normally.
+                        pacman --config /etc/pacman.d/putgd.conf -Sy
+                        pacman -S putgd
+                    else
+                        pacman -Syu putgd
+                    fi
+                ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty
+            fi
             ;;
         *)
             command -v sudo >/dev/null 2>&1 || die 'Missing sudo; install sudo or use --appimage'
