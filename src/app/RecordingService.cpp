@@ -226,6 +226,14 @@ void RecordingService::checkStep(Session& s, RecordingState to) {
     if (recording::allowedStep(s.state, to) || std::exchange(s.offTableStep, true)) return;
     logging::warning(logRecording(), "Recording step outside the state table", {{"operationId", s.op.id}, {"from", recording::stateName(s.state)}, {"state", recording::stateName(to)}});
 }
+// The edit (and config) the review window shows. configSeq names the window's
+// latest output choice the resident has applied, so the window never takes an
+// older config over a newer choice of its own.
+void RecordingService::pushEdit(Session& s, QJsonObject answer) {
+    if (s.state == RecordingState::Exporting && answer.contains("proposal")) { s.heldAnswers.append(answer); return; }
+    answer["configSeq"] = double(s.windowConfigSeq);
+    backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s), answer);
+}
 void RecordingService::transition(Session& s, RecordingState state, const QString& phase) {
     // A step the table does not list is still taken: refusing it would leave the
     // session where it is with nothing to move it on, holding the clip, the bar
@@ -235,6 +243,9 @@ void RecordingService::transition(Session& s, RecordingState state, const QStrin
     logging::info(logRecording(), "Recording step", {{"operationId", s.op.id}, {"from", recording::stateName(s.state)}, {"state", name}, {"elapsedMs", s.clock.isValid() ? s.clock.elapsed() : -1}});
     s.state = state;
     s.pending.clear();
+    // Answers to the window's proposals that arrived during an export (the helper
+    // takes no edit then) go out once review resumes, so nothing waits on one.
+    if (state == RecordingState::Reviewing) for (const auto& held : std::exchange(s.heldAnswers, {})) pushEdit(s, held);
     s.op.phase = phase.isEmpty() ? name : phase;
     // Click highlights (#1364) follow the capture: on at Record, kept across a pause, off once it stops.
     if (state == RecordingState::Recording) watchClicks(s);
@@ -398,7 +409,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             // Choosing GIF or WebP is a format choice: fit the output to the animation limit.
             const bool clamped = recording::clampAnimationSize(config, s.canvas, limits(s.op.settings));
             s.config = config;
-            if (clamped && s.state == RecordingState::Reviewing) backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
+            if (s.state == RecordingState::Reviewing && event["seq"].isDouble()) s.windowConfigSeq = quint64(event["seq"].toDouble());
+            if (clamped && s.state == RecordingState::Reviewing) pushEdit(s);
             host_.observe(s.op);
             emit changed(s.op.id);
         }
@@ -421,7 +433,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
             s.proposalOutcomes[quint64(proposal)] = answer.value("refused").toObject();
             while (s.proposalOutcomes.size() > 128) s.proposalOutcomes.erase(s.proposalOutcomes.begin());
         }
-        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s), answer);
+        pushEdit(s, answer);
     } else if ((kind == "uploadRequested" || kind == "saveCopyRequested" || kind == "retryExportRequested") && (s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting)) {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
@@ -430,12 +442,20 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         // already running, the budget) or a failed export is pushed back as the
         // current edit and the review window, closed by Upload, is reopened with
         // the reason. Nothing is dropped silently.
+        // Try again is offered only for a failed export: a stale, busy or changed-format
+        // refusal is answered by pressing Upload again.
         auto refused = [this](Error error, QJsonObject) {
             if (!error || !session_) return;
-            backend_->setEdit(session_->op.id, session_->edit, session_->config, limitsJson(*session_));
-            backend_->control(session_->op.id, "raise", {{"error", error.message}}, [](Error, QJsonObject) {});
+            pushEdit(*session_);
+            const bool retry = error.code != "recording_stale" && error.code != "recording_state" && error.code != "recording_config";
+            backend_->control(session_->op.id, "raise", {{"error", error.message}, {"retry", retry}}, [](Error, QJsonObject) {});
         };
+        // An upload exports the output the window showed when Upload was pressed.
+        const auto shown = event["config"].toObject();
+        const auto choice = [](const QJsonObject& c) { return QJsonArray{c["format"], c["codec"], c["maxEdge"], c["audio"].toObject()["system"], c["audio"].toObject()["microphone"]}; };
         if (s.state == RecordingState::Exporting) refused({"recording_state", "Another export is running, so this one didn't start. Try again when it finishes.", {}}, {});
+        else if (kind == "uploadRequested" && !shown.isEmpty() && choice(shown) != choice(s.config.toJson()))
+            refused({"recording_config", "The format or sound changed before the upload started, so nothing was uploaded. Press Upload again.", {}}, {});
         else if (kind == "retryExportRequested") retryExport(refused, refused);
         else exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
     }
@@ -896,7 +916,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (!integer(params["revision"], 1, 1LL << 52, &revision) || !params["commands"].isArray()) { reply(invalid("edit takes the current revision and 1 to 100 commands"), {}); return; }
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
         if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps, &s.history)) { reply(error, {}); return; }
-        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
+        pushEdit(s);
         host_.observe(s.op);
         emit changed(s.op.id);
         reply({}, publicJson(s));
@@ -984,8 +1004,14 @@ void RecordingService::retryExport(JsonReply reply, JsonReply done) {
         reply({"recording_state", "There is no failed export to retry", {}}, {});
         return;
     }
+    // An upload is retried at the revision that failed, never at a later edit.
     auto params = s.lastExportRequest;
-    params["revision"] = double(s.edit.revision);
+    if (s.lastExport["command"] == "upload") {
+        if (quint64(params["revision"].toDouble()) != s.edit.revision) {
+            reply({"recording_stale", "The edits changed since the upload failed, so it wasn't retried. Press Upload to upload them.", {{"currentRevision", double(s.edit.revision)}}}, {});
+            return;
+        }
+    } else params["revision"] = double(s.edit.revision);
     exportTo(s.lastExport["command"].toString(), params, std::move(reply), std::move(done));
 }
 void RecordingService::exportTo(const QString& command, const QJsonObject& params, JsonReply reply, JsonReply done) {

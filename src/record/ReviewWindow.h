@@ -99,9 +99,6 @@ signals:
     void maskSelected(const QString& id);
     void retryRequested();
     void zoomChanged();
-    // A keyboard nudge, or a cover move or resize drag, began (an edit not yet proposed).
-    void nudgeStarted();
-    void editStarted();
 protected:
     bool event(QEvent*) override;
     void paintEvent(QPaintEvent*) override;
@@ -168,7 +165,9 @@ public:
     // proposals: {proposal: n} once proposal n was applied, plus refused:
     // {code, message, revision} when it was not (the edit is then unchanged).
     void setEdit(const RecordingEdit&, const QJsonObject& answer = {});
-    void setConfig(const RecordingConfig&);
+    // seq: the window's latest output choice (configChanged's seq) the resident had
+    // applied; an older config is ignored. False when ignored.
+    bool setConfig(const RecordingConfig&, quint64 seq = 0);
     void setExporting(bool exporting, const QString& label);
     void setSavedCopy(const QString& path, quint64 revision, const RecordingConfig& config);
     QSize minimumSizeHint() const override;
@@ -177,7 +176,7 @@ public:
     // A standing banner above the viewer (why the recording stopped); empty hides it.
     void setNotice(const QString& text);
     // Upload closes the window; a refused export brings it back with the reason.
-    void reopen(const QString& error);
+    void reopen(const QString& error, bool retry = true);
     // The resident's animation limits, for a warning before an export is refused.
     void setLimits(qint64 animationMaxUs, int animationMaxEdge);
     // #283: the review session method (recording.review) drives the window as a
@@ -205,8 +204,10 @@ public:
 signals:
     // proposal numbers the window's proposals 1, 2, …; the resident's answer names it.
     void editProposed(quint64 revision, const QJsonArray& commands, quint64 proposal);
-    void configChanged(const RecordingConfig&);
-    void uploadRequested(quint64 revision);
+    // seq numbers the window's output choices 1, 2, …; the resident echoes the last it applied.
+    void configChanged(const RecordingConfig&, quint64 seq);
+    // The revision and the output the window shows; the resident refuses any other.
+    void uploadRequested(quint64 revision, const RecordingConfig& config);
     void retryExportRequested();
     void saveCopyRequested(const QString& path, quint64 revision);
     void cancelRequested();
@@ -247,8 +248,10 @@ private:
     // with proposals unanswered, only once the resident accepted the last of
     // them (a refusal or 2 s without an answer cancels it, with a status line).
     void upload();
-    bool tryUpload();      // sends once nothing is unanswered; true when it did
-    void callOffUpload();  // a new local change: the waiting upload stops, with a status line
+    bool tryUpload();  // sends once nothing is unanswered; true when it did
+    // The one way a waiting upload stops, with its own status line (why: what happened).
+    void cancelUpload(const QString& why = {});
+    void emitConfig();
     int viewEdge() const;
     void refreshFrame();
     DriveResult driveAction(const QJsonObject& params);
@@ -265,6 +268,9 @@ private:
     void stepFrames(int frames);
     void stepTime(qint64 us);
     qint64 frameUs() const;
+    qint64 frameIndex(qint64 us) const;
+    qint64 nextFrameEdge(qint64 at) const;   // the edge after the frame at `at`
+    qint64 previousFrame(qint64 edge) const; // the frame before an end edge
     qint64 frameAt(qint64 index) const;
     std::optional<qint64> firstFrameIn(const recording::Span&) const;
     std::optional<qint64> lastFrameIn(const recording::Span&) const;
@@ -324,6 +330,8 @@ private:
     // Proposals sent and answered (numbered from 1); the one an upload waits for.
     quint64 proposalSeq_ = 0, answeredSeq_ = 0;
     bool uploadWaiting_ = false;  // Upload pressed, its revision not yet fully answered
+    StatusEntry uploadNotice_;    // "Upload cancelled: …" until dismissed or Upload again
+    quint64 configSeq_ = 0;
     bool proposalPending() const { return answeredSeq_ < proposalSeq_; }
     QTimer uploadWait_;
     int shownEdge_ = 1280;  // the long edge frames are decoded at (viewEdge())
@@ -372,7 +380,7 @@ private:
     // The worker deletes itself when it finishes; the guard forgets it then, so
     // closing the window after a preview ended never waits on a freed thread.
     QPointer<QThread> playThread_;
-    std::shared_ptr<std::atomic_bool> playStop_;
+    std::shared_ptr<std::atomic_bool> playStop_, playEnded_;
     bool playing_ = false;
     double speed_ = 1.0;
     bool exporting_ = false, closing_ = false;
