@@ -334,6 +334,58 @@ private slots:
         QCOMPARE(result.status, QString("failed"));
         QVERIFY(f.state()["uploads"].toObject().isEmpty());
     }
+    // M3: with parts on parallel lanes, a lane that finds the upload gone counts even when
+    // another lane's error came first. The upload had been completed by an earlier attempt,
+    // so the key shows put.gd's object.
+    void vanishedUploadSeenByAnyLaneIsSettledByTheKey() {
+        S3Fixture f(policy);
+        auto request = f.request("complete.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(request);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"statusAfter", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"status", 503}, {"code", "SlowDown"}}}}});
+        QCOMPARE(f.upload(request).status, QString("unknown"));
+        auto saved = journal.last();
+        saved["phase"] = "parts";
+        request.resume = saved;
+        request.extraLanes = [](int wanted) { return wanted; };
+        // Every part's body is sent first. Part 1 is then denied, and parts 2 and 3 find the
+        // upload gone just after, while the other lanes' error is already recorded.
+        f.control("/__rules", {{"rules", QJsonArray{QJsonObject{{"method", "GET"}, {"query", "uploadId="}, {"status", 403}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=1&"}, {"delay", 0.2}, {"status", 403}, {"code", "AccessDenied"}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=2&"}, {"delay", 0.22}},
+                                                    QJsonObject{{"method", "PUT"}, {"query", "partNumber=3&"}, {"delay", 0.22}}}}}, true);
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("uploaded"));
+        QVERIFY(journal.last().isEmpty());
+    }
+    // M5: when the old upload can't be aborted, no new upload is created and its journal
+    // stays, so the record of its parts is never lost.
+    void unabortableOldUploadKeepsItsJournal() {
+        S3Fixture f(policy);
+        auto stale = f.request("old name.bin", synthetic(11 * mib));
+        Journal journal;
+        journal.attach(stale);
+        // An unclear completion, another object at the key, and an abort S3 refuses.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                      QJsonObject{{"method", "HEAD"}, {"competitor", true}},
+                                      QJsonObject{{"method", "DELETE"}, {"query", "uploadId="}, {"status", 403}, {"code", "AccessDenied"}, {"remaining", 20}}}}});
+        const auto collided = f.upload(stale);
+        QCOMPARE(collided.status, QString("collision"));
+        QVERIFY(collided.error.details["incompleteUpload"].toBool());
+        const auto kept = journal.last();
+        QVERIFY(!kept["uploadId"].toString().isEmpty());
+        // History renames the file and uploads it again with that journal.
+        auto renamed = f.request("new name.bin", synthetic(11 * mib));
+        renamed.resume = kept;
+        journal.attach(renamed);
+        f.control("/__clear_events", {}, true);
+        const auto result = f.upload(renamed);
+        QCOMPARE(result.status, QString("unknown"));
+        QVERIFY(result.error.details["incompleteUpload"].toBool());
+        QCOMPARE(count(f, "POST", "uploads"), 0);
+        QCOMPARE(journal.last(), kept);
+    }
     void journalForAnotherKeyIsAbortedNeverResumed() {
         S3Fixture f(policy);
         auto stale = f.request("old name.bin", synthetic(11 * mib));

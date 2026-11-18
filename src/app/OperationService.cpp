@@ -1023,6 +1023,11 @@ Operation OperationService::run(Job job) {
    undone=QStringLiteral("unknown");
    item.uploadStatus="stored";item.error={};if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus=undone;item.error=error;commit(item,index);return;}
   }
+  // A provider that settles its own uploads checks the key itself when it resumes a journaled
+  // upload; checking it here as well could only overrule its answer (#1627).
+  if(item.uploadStatus=="unknown"&&capabilities.settlesUploads&&!item.uploadJournal.isEmpty()) {
+   item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
+  }
   if(item.uploadStatus=="unknown") {
    item.phase="reconciling";show(item,index);
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
@@ -1084,9 +1089,10 @@ Operation OperationService::run(Job job) {
    // Cancelling one file leaves it pending for Retry; the rest of the batch continues.
    if(uploaded.status=="failed"&&cancel->load()&&!job.cancelled->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Upload cancelled; Retry uploads this file again",{}};commit(item,index);break;}
    if(uploaded.status!="collision") {item.uploadStatus=undone;if(!commit(item,index))return;break;}
-   // Reconcile our publication before changing any proposed target after a race.
+   // Reconcile our publication before changing any proposed target after a race, unless
+   // the provider already did: its collision means another object holds the key (#1627).
    item.phase="reconciling";show(item,index);
-   auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   auto stat=capabilities.settlesUploads?StatResult{"foreign",{},{}}:storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;break;}
    const bool unpublishedDraft=stat.status=="missing"&&uploaded.error.code=="upload_draft_conflict";
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!commit(item,index))return;break;}

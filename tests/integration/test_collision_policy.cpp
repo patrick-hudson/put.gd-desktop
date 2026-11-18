@@ -40,6 +40,30 @@ class CollisionTest : public QObject {
         QTest::qFail("Operation did not reach a terminal state within the 15-second budget",__FILE__,__LINE__);
         return result;
     }
+    // #1627: the S3 driver settles an unclear multipart completion by checking the key itself;
+    // History takes its answer instead of checking again.
+    struct LargeUpload {
+        S3Fixture f;
+        ProviderRegistry registry;
+        std::unique_ptr<SettingsService> settings;
+        Source source;
+        std::unique_ptr<OperationService> operations;
+        explicit LargeUpload(CollisionTest& test) {
+            constexpr qint64 mib = 1024 * 1024;
+            registry.add("s3", std::make_shared<S3Provider>(f.credentials, S3UploadPolicy{6 * mib, 5 * mib}));
+            settings = std::make_unique<SettingsService>(f.directory.filePath("config.json"), [this](auto id, auto value) { return registry.validate(id, value); });
+            settings->save(test.configuration(f, "rename"), {});
+            source.payload.kind = "files";
+            source.payload.files = {putgd::test::fixture(f.directory.path(), "big.bin", QByteArray(11 * mib, 'x'))};
+            operations = std::make_unique<OperationService>(f.directory.filePath("data"), *settings, registry, source);
+        }
+        QString start() {
+            QString id;
+            operations->invoke("clipboard", [&](auto error, auto value) { if (!error) id = value["operationId"].toString(); });
+            putgd::test::waitFor([&] { return !id.isEmpty(); }, 5000);
+            return id;
+        }
+    };
 private slots:
     void existingKeyPolicies_data() {
         QTest::addColumn<QString>("policy");
@@ -92,6 +116,45 @@ private slots:
             QCOMPARE(QByteArray::fromBase64(objects[key].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("new fixture"));
             if (policy == "rename") QCOMPARE(QByteArray::fromBase64(objects["prefix é/report.pdf"].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("original fixture"));
         }
+    }
+    // M7: the driver's HEAD found another object, so the file is renamed; a second HEAD of the
+    // key, which would fail, is never sent.
+    void driverSettledCollisionIsNotCheckedAgain() {
+        LargeUpload u(*this);
+        PUTGD_TRY_VERIFY(u.operations->ready());
+        const QString original = "prefix é/big.bin";
+        u.f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                        QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"competitor", true}},
+                                        QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"status", 503}, {"code", "SlowDown"}}}}});
+        const auto id = u.start();
+        QVERIFY(!id.isEmpty());
+        const auto item = waitOperation(*u.operations, id).items[0];
+        QCOMPARE(item.uploadStatus, QString("uploaded"));
+        QVERIFY(item.candidate.startsWith("big-"));
+        QCOMPARE(QByteArray::fromBase64(u.f.state()["objects"].toObject()[original].toArray().last().toObject()["body"].toString().toUtf8()), QByteArray("competitor"));
+    }
+    // M6: Retry of an item whose completion stayed unknown goes through the driver's check. Another
+    // object now holds the key, so the file is renamed and uploaded instead of staying unknown.
+    void retryOfSavedCompletionUsesTheDriversCheck() {
+        LargeUpload u(*this);
+        PUTGD_TRY_VERIFY(u.operations->ready());
+        const QString original = "prefix é/big.bin";
+        u.f.reset({{"rules", QJsonArray{QJsonObject{{"method", "POST"}, {"query", "uploadId="}, {"status", 500}, {"code", "InternalError"}},
+                                        QJsonObject{{"method", "HEAD"}, {"key", original}, {"after", 1}, {"status", 503}, {"code", "SlowDown"}}}}});
+        const auto id = u.start();
+        QVERIFY(!id.isEmpty());
+        const auto unknown = waitOperation(*u.operations, id).items[0];
+        QCOMPARE(unknown.uploadStatus, QString("unknown"));
+        QCOMPARE(unknown.uploadJournal["phase"].toString(), QString("completing"));
+        u.f.control("/__replace", {{"key", original}}, true);
+        PUTGD_TRY_COMPARE(u.operations->diagnostics()["activeOperations"].toInt(), 0);
+        bool accepted = false;
+        u.operations->retry(id, [&](auto error, auto) { QVERIFY(!error); accepted = true; });
+        PUTGD_TRY_VERIFY(accepted);
+        PUTGD_TRY_COMPARE(HistoryStore(u.operations->databasePath()).operation(id).items[0].uploadStatus, QString("uploaded"));
+        const auto item = waitOperation(*u.operations, id).items[0];
+        QVERIFY(item.candidate.startsWith("big-"));
+        QVERIFY(item.uploadJournal.isEmpty());
     }
     void partialBatchRetriesOnlyFailedAndRetainsArchives() {
         S3Fixture f;

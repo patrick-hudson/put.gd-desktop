@@ -118,6 +118,10 @@ class Handler(BaseHTTPRequestHandler):
                 request = json.loads(body)
                 state['uploads'][request['uploadId']]['parts'][request['part']]['etag'] = request['etag']
                 self.respond(200, b'{}')
+            elif self.path == '/__replace':
+                # Another client writes the key now, outside any request put.gd sends.
+                state['objects'][json.loads(body)['key']] = [{'version': '', 'body': base64.b64encode(b'competitor').decode(), 'metadata': {}, 'etag': '"competitor"', 'marker': False}]
+                self.respond(200, b'{}')
             elif self.path == '/__release':
                 barriers.setdefault(json.loads(body)['barrier'], threading.Event()).set()
                 self.respond(200, b'{}')

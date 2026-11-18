@@ -544,7 +544,13 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         // A journal for another target or another artifact is never resumed. One whose key
         // has a "." or ".." part names nothing a request can reach, so it is left alone,
         // as the standalone abandon path refuses it.
-        if (s3KeyAddressable(request.resume["key"].toString())) abort(previous, s3StoredKey(request.resume["key"].toString()));
+        // If S3 refuses to abort it, nothing new is created: a new upload ID would replace the
+        // journal, and with it the only record of the old upload's parts.
+        if (s3KeyAddressable(request.resume["key"].toString()) && !abort(previous, s3StoredKey(request.resume["key"].toString()))) {
+            Error error{"publication_unknown", "An earlier multipart upload of this file could not be removed, so put.gd did not start a new one. Retry to try again, or allow s3:AbortMultipartUpload.", {}};
+            error.details["incompleteUpload"] = true;
+            return {"unknown", {}, error};
+        }
     } else if (completing) {
         // A completion was sent before and its outcome never settled. It is not sent again:
         // the key decides, and only a definitely absent key starts a new upload.
@@ -650,7 +656,8 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         std::array<bool, s3MaximumPartLanes> busy{};
         std::array<qint64, s3MaximumPartLanes> sending{}; // bytes read of each lane's part in flight
         Error error;           // the first error that ends this attempt
-        bool vanished = false; // S3 no longer has the upload
+        bool vanished = false; // some lane found that S3 no longer has the upload
+        Error vanishedError;
         std::atomic_bool ended{false}; // error is set: parts in flight stop (#203)
     } lanes;
     auto progress = [&] { // lanes.mutex held
@@ -718,12 +725,14 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 }
                 return {true, outcome.GetResult().GetETag(), {}};
             }
+            // The upload vanished (completed, aborted elsewhere, or a lifecycle rule): reported even
+            // when another lane's error came first, because the key must then decide (#1627).
+            if (int(outcome.GetError().GetResponseCode()) == 404)
+                return {false, {}, partError(outcome.GetError(), S3Stage::UploadPart, timer.elapsed(), number), true};
             // A part cut on cancel or by another lane's error reports that, not its transport error.
             if (stopped(request.cancellation)) return {false, {}, cancelled()};
             if (lanes.ended.load()) return {};
             last = partError(outcome.GetError(), S3Stage::UploadPart, timer.elapsed(), number);
-            // The upload vanished (aborted elsewhere, or a lifecycle rule): start again on retry.
-            if (int(outcome.GetError().GetResponseCode()) == 404) return {false, {}, last, true};
             if (!ambiguous(outcome.GetError())) return {false, {}, last};
         }
         return {false, {}, last};
@@ -742,11 +751,16 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
                 done[number] = sent.etag;
                 completed += qMin(partBytes, bytes - qint64(number - 1) * partBytes);
                 progress();
-            } else if (!lanes.error) {
-                // Another lane's error ends the attempt; this part is sent again on retry.
-                lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
-                lanes.vanished = sent.vanished;
-                lanes.ended = true;
+            } else {
+                if (sent.vanished && !lanes.vanished) {
+                    lanes.vanished = true;
+                    lanes.vanishedError = sent.error;
+                }
+                if (!lanes.error) {
+                    // Another lane's error ends the attempt; this part is sent again on retry.
+                    lanes.error = sent.error ? sent.error : Error{"s3_multipart_invalid", "A multipart part ended without a result", {}};
+                    lanes.ended = true;
+                }
             }
         }
         lanes.busy[lane] = false;
@@ -783,11 +797,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
     }
     for (auto& thread : threads)
         if (thread.joinable()) thread.join();
-    if (lanes.error) {
-        if (!lanes.vanished) return fail(lanes.error);
-        // S3 no longer has the upload: it may have been completed meanwhile, so the key decides.
-        return settle(lanes.error, false);
-    }
+    // S3 no longer has the upload, as any lane found: it may have been completed meanwhile,
+    // so the key decides, whatever error another lane reported first.
+    if (lanes.vanished) return settle(lanes.vanishedError, false);
+    if (lanes.error) return fail(lanes.error);
     if (int(done.size()) != parts) return fail({"s3_multipart_invalid", "A multipart part ended without a result", {}});
     report("uploading", completed);
     journal["phase"] = s3UploadPhaseName(S3UploadPhase::Completing);

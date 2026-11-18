@@ -180,6 +180,7 @@ ProviderCapabilities S3Provider::capabilities(const Destination& destination) co
             "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes"};
     // Larger files upload in parts; S3 itself stores objects of at most 5 TiB.
     result.maximumObjectBytes = s3MaximumObjectBytes;
+    result.settlesUploads = true;
     return result;
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
