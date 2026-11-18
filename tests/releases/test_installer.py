@@ -30,6 +30,7 @@ class Installer(unittest.TestCase):
         self.script = self.root / 'install.sh'
         self.script.write_text(SOURCE.read_text().replace('/etc/os-release', str(self.os_release))
                                .replace('/run/ostree-booted', str(self.root / 'ostree-booted'))
+                               .replace('/usr/bin/putgd-cli', str(self.root / 'installed/putgd-cli'))
                                .replace('/etc/pacman', str(self.root / 'pacman')))
         self.log = self.root / 'calls.jsonl'
         self.env = dict(os.environ, HOME=str(self.home), TMPDIR=str(self.root),
@@ -62,8 +63,12 @@ if args[:1] == ['-T'] and mode == 'failed':
     sys.stderr.write('error: failed to initialize alpm library\\n')
     sys.exit(1)
 ''')
-        # The installed putgd-cli: CLI=broken is a binary whose shared library the system does not have.
-        self.tool('putgd-cli', "import os, sys\nif os.environ.get('CLI') == 'broken':\n"
+        # The putgd-cli the package installs (/usr/bin in the real script): CLI=broken is a binary whose shared
+        # library the system does not have. A different, working copy sits on PATH, like an older one in
+        # ~/.local/bin, and must never stand in for it.
+        (self.root / 'installed').mkdir()
+        self.tool('putgd-cli', "print('putgd-cli older copy on PATH')")
+        self.tool('../installed/putgd-cli', "import os, sys\nif os.environ.get('CLI') == 'broken':\n"
                   "    sys.stderr.write('putgd-cli: error while loading shared libraries: libcrypto.so.4: cannot open shared object file\\n')\n"
                   "    sys.exit(127)\nprint('putgd-cli 26.1031.1')")
         with (self.bin / 'rpm').open('a') as f:
@@ -429,6 +434,15 @@ else:
                 self.assertEqual(calls[-2:], [['-Syu', 'putgd'], ['-R', '--noconfirm', 'putgd']])
                 self.assertEqual((self.home / '.local/bin/putgd.AppImage').read_bytes(), PAYLOAD)
                 (self.home / '.local/bin/putgd.AppImage').unlink()
+
+    def test_a_working_cli_earlier_on_path_cannot_stand_in_for_the_installed_one(self):
+        # PATH has a working putgd-cli (self.bin); only the package's own copy fails to load.
+        self.broken_native_install('manjaro')
+        self.assertEqual(subprocess.run([str(self.bin / 'putgd-cli'), '--version'], capture_output=True).returncode, 0)
+        out = self.run_script('--channel', 'nightly')
+        self.assertIn('putgd-cli does not start', out)
+        self.assertEqual(self.pacman_calls()[-1], ['-R', '--noconfirm', 'putgd'])
+        self.assertEqual((self.home / '.local/bin/putgd.AppImage').read_bytes(), PAYLOAD)
 
     def test_the_proof_keeps_the_requested_channel_and_needs_an_appimage_host(self):
         self.broken_native_install('manjaro')

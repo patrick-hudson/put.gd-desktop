@@ -288,9 +288,10 @@ HELP
                     fi
                 ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty
                 # The proof that counts: pacman -T cannot predict what this transaction replaced (an OpenSSL with
-                # another soname, say), so run the installed putgd-cli. If it does not start, take the package
-                # back out and use the AppImage.
-                if ! putgd-cli --version > /dev/null 2>&1; then
+                # another soname, say), so run the putgd-cli the package installed, by its absolute path (the
+                # package ships /usr/bin/putgd-cli; a copy earlier on PATH could pass for it). If it does not
+                # start, take the package back out and use the AppImage.
+                if ! /usr/bin/putgd-cli --version > /dev/null 2>&1; then
                     note 'The pacman package installed, but its putgd-cli does not start on this system (a shared library it needs is missing or does not match). Removing the package and using the AppImage.'
                     sudo pacman -R --noconfirm putgd < /dev/tty \
                         || die 'The pacman package does not start and could not be removed. Remove it with: sudo pacman -R putgd; then use --appimage'
