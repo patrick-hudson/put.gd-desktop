@@ -274,7 +274,7 @@ private slots:
   const auto shown=ops.withUnsavedResult({{"operationId",id},{"itemId",itemId},{"uploadStatus","uploading"}});QCOMPARE(shown["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(shown["resultUnsaved"].toObject()["code"].toString(),QString("history_io"));
   // Nothing acts on the stale row: Retry would upload the file again.
   Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(retried.code,QString("history_io"));
-  QTest::qWait(300);QCOMPARE(ops.unsavedResultCount(),1);  // still refused, still kept
+  PUTGD_COMPARE_STEADY(ops.unsavedResultCount(),1,300);  // still refused, still kept
   QVERIFY(QDir().rmdir(fault));
   PUTGD_TRY_COMPARE(ops.unsavedResultCount(),0);
   HistoryStore journal(ops.databasePath());const auto saved=journal.operation(id);QVERIFY(!saved.active());QCOMPARE(saved.items[0].uploadStatus,QString("uploaded"));QVERIFY(!saved.items[0].receipt.validate());QCOMPARE(journal.detail(itemId)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(provider->uploads.load(),1);
