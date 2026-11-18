@@ -70,7 +70,9 @@ Error verify(const QByteArray& message,const QByteArray& signatureFile,const QBy
  const auto signed_=algorithm=="ED"?blake2b512(message):message;
  // The prehash is never empty; a legacy signature over an empty message is a valid one.
  if((algorithm=="ED"&&signed_.isEmpty())||!ed25519(publicKey.mid(10),signature.mid(10),signed_))return invalid("The signature doesn't match","signature");
- const auto comment=lines[2].mid(int(qstrlen("trusted comment: ")));
+ // minisign's reader ends each line at \n and drops a trailing \r, so a CRLF file (one passed through a text-mode tool) is as valid as an LF one.
+ auto comment=lines[2].mid(int(qstrlen("trusted comment: ")));
+ while(comment.endsWith('\r'))comment.chop(1);
  if(!ed25519(publicKey.mid(10),global,signature.mid(10)+comment))return invalid("The signature's trusted comment doesn't match","trustedComment");
  if(trustedComment)*trustedComment=QString::fromUtf8(comment);
 #endif
