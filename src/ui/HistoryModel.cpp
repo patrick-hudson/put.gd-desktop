@@ -38,6 +38,9 @@ bool localSaveFailed(const QJsonObject& r){
  return false;
 }
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
+// A file whose upload the destination confirmed (it has a receipt) is uploaded, even when its operation ended because
+// History could not record a later step (#1579).
+bool confirmedDespiteJournal(const QJsonObject& r){return r["uploadStatus"]=="uploaded"&&!r["receipt"].toObject()["objectReference"].toObject().isEmpty()&&r["operation"].toObject()["error"].toObject()["code"]=="history_io";}
 }
 // The locale's short time of day, never with seconds (the C locale's short form has them).
 static QString shortTime(const QTime& time){auto format=QLocale().timeFormat(QLocale::ShortFormat);format.remove(QStringLiteral(":ss"));format.remove(QStringLiteral(".ss"));return QLocale().toString(time,format);}
@@ -108,7 +111,7 @@ QString HistoryModel::failureLabel(const QJsonObject& r){
  const auto action=r["operation"].toObject()["action"].toString();
  return action=="edit"?"Edit failed":action=="text"?"Text recognition failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
 }
-bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial";}
+bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);if(confirmedDespiteJournal(r))return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial";}
 // An unknown outcome is retried like a failure, also after a crash left its operation interrupted: operation.retry accepts any non-active state (OperationService::retry).
 bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
 namespace {
@@ -180,8 +183,6 @@ QString HistoryModel::statusText(const QJsonObject& r){
   {const auto items=op["items"].toArray();bool linksOnly=!items.isEmpty();for(const auto& v:items)linksOnly&=terminalUpload(v.toObject()["uploadStatus"].toString());
    if(linksOnly&&QStringList{"queued","preflight","sharing"}.contains(phase))return "Creating share link…";}
   if(phase=="queued")return "Waiting to upload…";
-  // The upload is over; its result waits for the History database to take it (#1579).
-  if(phase=="finishing")return "Finishing · Saving the result to History…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
   if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":op["action"]=="files"?"Copying the files…":"Selecting a capture…";
@@ -203,7 +204,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
  if(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)&&!localSaveFailed(r))return "Saved previously · Local file unavailable";
  if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):op["copyStatus"]=="suppressed"?QString("Saved locally · Not copied (clipboard changed). Copy it again."):QString("Saved locally");
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
- if(r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial"){
+ if(!confirmedDespiteJournal(r)&&(r["uploadStatus"]=="failed"||r["uploadStatus"]=="unknown"||state=="failed"||state=="partial")){
   message.replace(" Try again.","").replace(" Try again","");message=message.trimmed();while(!message.isEmpty()&&QStringLiteral(".!?…").contains(message.back()))message.chop(1);
   auto text=failureLabel(r);if(!message.isEmpty()&&message!=text)text+=" · "+message;if(r["local"].toObject()["status"]=="saved")text+=localCopyUnavailable(r)?" · Saved previously · Local file unavailable":" · Saved locally";return text;
  }

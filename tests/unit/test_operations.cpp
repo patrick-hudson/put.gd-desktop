@@ -351,39 +351,61 @@ private slots:
   const auto op=journal.operation(id);QCOMPARE(op.stateName(),QString("completed"));QCOMPARE(op.items[0].shareStatus,QString("shared"));QVERIFY(!op.error);
   QCOMPARE(source.copies,1);QVERIFY(op.items[0].receipt.directUrl.startsWith("https://example.invalid/shared#"));QCOMPARE(source.copied.text,op.items[0].receipt.directUrl);
  }
- // The journal refuses writes while an upload finishes (a full disk, an I/O error): SQLite cannot create its rollback
- // journal where a directory stands. The operation stays active with its slot held, Retry gets the busy answer, and
- // the same final write lands once the journal works, with the upload as it really ended and no late clipboard copy (#1579).
- void finalWriteTheJournalRefusedKeepsTheOperationActiveUntilItLands() {
+ // History refuses writes while an upload finishes (a full disk, an I/O error): SQLite cannot create its rollback
+ // journal where a directory stands. The operation stops as after a crash, at once: its slot is free, nothing is copied,
+ // Retry waits for recovery and Cancel acknowledges. Once History works, the startup recovery is applied to it alone:
+ // interrupted, its upload unknown, and Retry reconciles it without sending it again (#1579).
+ void refusedFinalWriteStopsTheOperationAndRecoversItInProcess() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
-  OperationService ops(d.filePath("data"),settings,registry,source);ops.setResultRetryForTesting(40);PUTGD_TRY_VERIFY(ops.ready());
+  OperationService ops(d.filePath("data"),settings,registry,source);ops.setOperationRecoveryRetryForTesting(40);PUTGD_TRY_VERIFY(ops.ready());
   const auto fault=ops.databasePath()+"-journal";auto lift=qScopeGuard([&]{QDir().rmdir(fault);});
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
-  QString itemId;{HistoryStore journal(ops.databasePath());const auto running=journal.operation(id);QCOMPARE(running.items[0].uploadStatus,QString("uploading"));itemId=running.items[0].artifact.id;}
   QVERIFY(QDir().mkdir(fault));provider->completions.takeFirst()();
-  PUTGD_TRY_COMPARE(ops.diagnostics()["unsavedResults"].toInt(),1);
-  PUTGD_COMPARE_STEADY(ops.diagnostics()["activeOperations"].toInt(),1,300);   // still active: nothing claims the result is saved
-  QCOMPARE(ops.activeObservations().first().toObject()["phase"].toString(),QString("finishing"));
-  Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});PUTGD_TRY_VERIFY(answered);QVERIFY(retried);
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(ops.diagnostics()["operationsAwaitingRecovery"].toInt(),1);
+  Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(retried.code,QString("history_io"));
+  Error cancelled;QJsonObject cancelReply;answered=false;ops.cancel(id,[&](Error e,QJsonObject r){cancelled=e;cancelReply=r;answered=true;});PUTGD_TRY_VERIFY(answered);QVERIFY(!cancelled);QVERIFY(cancelReply["cancellationRequested"].toBool());
+  PUTGD_COMPARE_STEADY(ops.diagnostics()["operationsAwaitingRecovery"].toInt(),1,300);
   QVERIFY(QDir().rmdir(fault));
-  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(ops.diagnostics()["unsavedResults"].toInt(),0);
-  HistoryStore journal(ops.databasePath());const auto saved=journal.operation(id);QVERIFY(!saved.active());QCOMPARE(saved.items[0].uploadStatus,QString("uploaded"));QVERIFY(!saved.items[0].receipt.validate());
-  QCOMPARE(journal.detail(itemId)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.copies,0);
+  PUTGD_TRY_COMPARE(ops.diagnostics()["operationsAwaitingRecovery"].toInt(),0);
+  HistoryStore journal(ops.databasePath());auto saved=journal.operation(id);QCOMPARE(saved.stateName(),QString("interrupted"));QCOMPARE(saved.items[0].uploadStatus,QString("unknown"));QCOMPARE(saved.copyStatus,QString("no_result"));
+  QCOMPARE(source.copies,0);QCOMPARE(provider->uploads.load(),1);
+  // Retry reconciles the unknown upload: the destination has it, so it is not sent again.
+  provider->deferUploads=false;answered=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));answered=true;});PUTGD_TRY_VERIFY(answered);
+  PUTGD_TRY_COMPARE(journal.operation(id).items[0].uploadStatus,QString("uploaded"));QCOMPARE(provider->uploads.load(),1);
  }
- // A resident that stops before the journal takes the result does not wait for it. The next start finds the saved
- // "uploading" row and recovers it as after a crash: interrupted, its upload unknown, never published again (#1579).
- void unsavedFinalWriteAtShutdownRecoversAsUnknown() {
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+ // A checkpoint refused before anything is sent stops the operation the same way; its recovered file is still stored,
+ // and Retry uploads it once (#1579).
+ void refusedCheckpointBeforeUploadRecoversWithNothingSent() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferChecks=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
-  const auto root=d.filePath("data");QString id;
-  {OperationService ops(root,settings,registry,source);ops.setResultRetryForTesting(40);PUTGD_TRY_VERIFY(ops.ready());
-   ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
-   QVERIFY(QDir().mkdir(ops.databasePath()+"-journal"));provider->completions.takeFirst()();PUTGD_TRY_COMPARE(ops.diagnostics()["unsavedResults"].toInt(),1);
-   QElapsedTimer stopping;stopping.start();ops.shutdown();QVERIFY(stopping.elapsed()<5000);}
-  QVERIFY(QDir().rmdir(root+"/history.sqlite-journal"));
-  OperationService restarted(root,settings,registry,source);PUTGD_TRY_VERIFY(restarted.ready());
-  HistoryStore journal(restarted.databasePath());const auto recovered=journal.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items[0].uploadStatus,QString("unknown"));QCOMPARE(provider->uploads.load(),1);
+  OperationService ops(d.filePath("data"),settings,registry,source);ops.setOperationRecoveryRetryForTesting(40);PUTGD_TRY_VERIFY(ops.ready());
+  const auto fault=ops.databasePath()+"-journal";auto lift=qScopeGuard([&]{QDir().rmdir(fault);});
+  QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->checkCompletions.size(),1);
+  QVERIFY(QDir().mkdir(fault));provider->checkCompletions.takeFirst()();
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(provider->uploads.load(),0);
+  QVERIFY(QDir().rmdir(fault));PUTGD_TRY_COMPARE(ops.diagnostics()["operationsAwaitingRecovery"].toInt(),0);
+  HistoryStore journal(ops.databasePath());QCOMPARE(journal.operation(id).stateName(),QString("interrupted"));QCOMPARE(journal.operation(id).items.size(),1);QCOMPARE(journal.operation(id).items[0].uploadStatus,QString("stored"));
+  provider->deferChecks=false;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.code));answered=true;});PUTGD_TRY_VERIFY(answered);
+  PUTGD_TRY_COMPARE(journal.operation(id).items[0].uploadStatus,QString("uploaded"));QCOMPARE(provider->uploads.load(),1);
+ }
+ // While one operation waits for recovery, later operations on the same file name run normally: its slot is free (no
+ // queue_full at the smallest limits), and nothing it held in memory is written later over what they recorded (#1579).
+ void operationAwaitingRecoveryFreesItsSlotAndNeverWritesLate() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto document=configuration(d.path());auto limits=document["limits"].toObject();limits["pendingOperations"]=1;limits["concurrentUploads"]=1;document["limits"]=limits;QVERIFY(settings.save(document,{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"same.txt","synthetic same name")};
+  OperationService ops(d.filePath("data"),settings,registry,source);ops.setOperationRecoveryRetryForTesting(1500);PUTGD_TRY_VERIFY(ops.ready());
+  const auto fault=ops.databasePath()+"-journal";auto lift=qScopeGuard([&]{QDir().rmdir(fault);});
+  QString first;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  QVERIFY(QDir().mkdir(fault));provider->completions.takeFirst()();PUTGD_TRY_COMPARE(ops.diagnostics()["operationsAwaitingRecovery"].toInt(),1);
+  QVERIFY(QDir().rmdir(fault));provider->deferUploads=false;
+  QStringList later;for(int n=0;n<2;++n){Error error;bool answered=false;ops.invoke("clipboard",[&](Error e,QJsonObject r){error=e;answered=true;later<<r["operationId"].toString();});PUTGD_TRY_VERIFY(answered);QVERIFY2(!error,qPrintable(error.code));PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);}
+  PUTGD_TRY_COMPARE(ops.diagnostics()["operationsAwaitingRecovery"].toInt(),0);
+  HistoryStore journal(ops.databasePath());const auto recovered=journal.operation(first);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items[0].uploadStatus,QString("unknown"));
+  for(const auto& id:std::as_const(later)){const auto op=journal.operation(id);QCOMPARE(op.stateName(),QString("completed"));QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QVERIFY(journal.detail(op.items[0].artifact.id)["remoteStatus"].toString()!="superseded"||id==later.first());}
+  QVERIFY(journal.detail(recovered.items[0].artifact.id)["uploadStatus"].toString()=="unknown");
  }
  void zeroRetentionAndActiveRetryPreserveArtifacts() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto retention=doc["retention"].toObject();retention["failedArtifactDays"]=0;doc["retention"]=retention;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_VERIFY(([&]{HistoryStore store(ops.databasePath());return store.operation(id).copyStatus=="no_result";})());HistoryStore store(ops.databasePath());auto op=store.operation(id);op.created="2000-01-01T00:00:00.000Z";QVERIFY(!store.saveOperation(op));const auto spool=op.items[0].artifact.path;bool cleaned=false;ops.cleanup([&](Error e,QJsonObject r){QVERIFY(!e);QCOMPARE(r["removedOperations"].toInt(),0);cleaned=true;});PUTGD_TRY_VERIFY(cleaned);QVERIFY(QFile::exists(spool));

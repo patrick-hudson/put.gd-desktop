@@ -94,8 +94,8 @@ public:
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
- // Tests shorten the pause before a failed final write is tried again.
- void setResultRetryForTesting(int ms) {resultRetryMs_=ms;}
+ // Tests shorten the pause before a stopped operation's recovery is tried again.
+ void setOperationRecoveryRetryForTesting(int ms) {recoveryWriteRetryMs_=ms;}
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
  // The tray needs only the desktop report, without querying storage providers.
@@ -224,13 +224,14 @@ private:
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
- // An operation whose final journal write failed (a full disk, an I/O error) stays active, its slot held exactly as
- // while it ran, and the same final write is tried again after 2 s, doubling to 30 s, until it lands (#1579).
- // Nothing reports a result the journal does not hold. Shutdown drops the retry; recovery then sees the saved row.
- QSet<QString> unsavedResults_;
- int resultRetryMs_=2000;
- void commitFinal(Operation op,JsonReply reply,int attempt);
- void finalCommitted(const QString& id,JsonReply reply,Error e,QJsonObject document,bool late);
+ // An operation stopped because History could not record it (#1579). It stops as after a crash: its slots are freed,
+ // its pending copies and finish watcher dropped, its in-memory result discarded. Once History accepts a write again
+ // (tried after 2 s, doubling to 30 s), the same recovery as at startup is applied to that one operation.
+ QHash<QString,int> recovering_;
+ int recoveryWriteRetryMs_=2000;
+ void stopForRecovery(const QString& id,const Error& error,JsonReply reply);
+ void scheduleOperationRecovery(const QString& id);
+ void recoverOperation(const QString& id);
  void enqueue(Job);
  void pump();
  bool heapReclamationIdle() const;

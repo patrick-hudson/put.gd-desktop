@@ -1032,10 +1032,7 @@ Operation OperationService::run(Job job) {
    item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
   }
   for(int attempts=0;attempts<32;++attempts) {
-   item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress.reset();
-   // The journal did not take "uploading", so nothing is sent: the item ends as a failed or
-   // cancelled attempt does, never as an upload still running (#1579).
-   if(!commit(item,index)){std::lock_guard lock(itemsMutex);item.uploadStatus=undone;item.phase=undone;item.error=op.error;op.items[index]=item;return;}
+   item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress.reset();if(!commit(item,index))return;
    struct ProgressState{std::mutex mutex;bool closed=false;std::optional<UploadProgress> latest;};
    auto activity=std::make_shared<StorageActivity>(*this,!provider->reportsUploadProgress());
    auto progress=std::make_shared<ProgressState>();QPointer<OperationService> owner(this);
@@ -1205,32 +1202,10 @@ void OperationService::finish(Operation op,JsonReply reply) {
  op.phase=op.stateName();
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted)&&op.copyStatus=="pending")op.copyStatus="no_result";
- commitFinal(std::move(op),std::move(reply),0);
-}
-void OperationService::commitFinal(Operation op,JsonReply reply,int attempt) {
- // The whole operation, every item row and its publication identity, written the same way each time (#1579).
- // A retried write waits at most a second for a lock, so shutdown is never held long by one.
- const auto path=databasePath();background([this,path,op,attempt](Error& e) {HistoryStore store(path,attempt?1000:10000);e=store.saveOperation(op,&providers_);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,op,reply,attempt](Error e,QJsonObject document) mutable {
-  if(e&&!stopping_) {
-   if(attempt==0) {
-    logging::error(logHistory(),"Cannot record the operation result; trying again",{{"operationId",op.id},{"error",logging::errorFields(e)}});
-    // A result recorded later is not copied to the clipboard: the request that wanted it is long over.
-    abandonUploadCopies(op.id);if(op.copyStatus=="pending")op.copyStatus="suppressed";
-   } else if((attempt&(attempt+1))==0)logging::warning(logHistory(),"Operation result still cannot be recorded; trying again",{{"operationId",op.id},{"attempts",attempt+1},{"error",logging::errorFields(e)}});
-   unsavedResults_.insert(op.id);
-   // The operation stays active; History shows the saved row, with the phase saying what it waits for.
-   auto live=op.publicJson();live["state"]=QStringLiteral("running");live["phase"]=QStringLiteral("finishing");
-   auto items=live["items"].toArray();for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();item["phase"]=QStringLiteral("finishing");items[i]=item;}live["items"]=items;
-   observe(live);emit changed(op.id);emit observationsChanged();
-   const int pause=std::min(resultRetryMs_<<std::min(attempt,4),30000);
-   QTimer::singleShot(pause,this,[this,op,reply,attempt]{if(!stopping_)commitFinal(op,reply,attempt+1);});
-   return;
-  }
-  if(!e&&unsavedResults_.remove(op.id))logging::info(logHistory(),"Operation result recorded after a journal error",{{"operationId",op.id},{"attempts",attempt+1}});
-  finalCommitted(op.id,reply,e,document,attempt>0);
- });
-}
-void OperationService::finalCommitted(const QString& id,JsonReply reply,Error e,QJsonObject document,bool late) {
+ // The run stopped because History refused a write: its in-memory result is not written over what History holds (#1579).
+ if(op.error.code=="history_io"){stopForRecovery(op.id,op.error,std::move(reply));return;}
+ const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
+  if(e.code=="history_io"){stopForRecovery(id,e,reply);return;}
   clearObservation(id);emit changed(id);emit observationsChanged();
   if(e) {logging::error(logHistory(),"Cannot record the operation result",{{"operationId",id},{"error",logging::errorFields(e)}});abandonUploadCopies(id);releaseActive(id);if(reply)reply(e,{});return;}
   const auto op=Operation::fromJson(document);
@@ -1246,8 +1221,43 @@ void OperationService::finalCommitted(const QString& id,JsonReply reply,Error e,
   if(!op.active())queuePosters(op);
   if(!op.active())if(auto watcher=finishWatchers_.take(id))watcher(op);
   if(uploadCopies_.contains(id)){finishUploadCopies(op,reply);return;}
-  if(late||op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted||op.action==diagnosticsAction) {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
+  if(op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted||op.action==diagnosticsAction) {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
   performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {releaseActive(id);if(reply)reply(error,result);});
+ });
+}
+
+void OperationService::stopForRecovery(const QString& id,const Error& error,JsonReply reply) {
+ logging::error(logHistory(),"History could not record the operation; it stops as after a crash and is recovered once History can be written",{{"operationId",id},{"error",logging::errorFields(error)}});
+ clearObservation(id);abandonUploadCopies(id);interruptUploadCopy(id);finishWatchers_.remove(id);
+ recovering_.insert(id,0);releaseActive(id);emit changed(id);emit observationsChanged();
+ if(reply)reply(error,{});
+ scheduleOperationRecovery(id);
+}
+void OperationService::scheduleOperationRecovery(const QString& id) {
+ const int pause=std::min(recoveryWriteRetryMs_<<std::min(recovering_.value(id),4),30000);
+ QTimer::singleShot(pause,this,[this,id]{recoverOperation(id);});
+}
+void OperationService::recoverOperation(const QString& id) {
+ if(stopping_||!recovering_.contains(id))return;
+ const auto path=databasePath(),artifactsRoot=root_+"/artifacts";
+ background([path,artifactsRoot,id](Error& e) {
+  // A recovery write waits at most a second for a lock, so shutdown is never held long by one.
+  HistoryStore store(path,1000);Operation op;e=store.recoverOperation(id,&op);if(e)return QJsonObject{};
+  // Artifacts acquired before the item checkpoint are recovered as at startup.
+  if(op.state()==OperationState::Interrupted&&op.items.isEmpty()) {ArtifactStore artifacts(artifactsRoot);auto batch=artifacts.recover(op.id);
+   if(batch.error) {op.error=batch.error;e=store.saveOperation(op);}
+   else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:std::as_const(batch.artifacts)) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);}}
+  return QJsonObject{};
+ },[this,id](Error e,QJsonObject) {
+  if(!recovering_.contains(id))return;
+  if(e) {
+   const int attempts=++recovering_[id];
+   if((attempts&(attempts-1))==0)logging::warning(logHistory(),"The stopped operation cannot be recovered yet; trying again",{{"operationId",id},{"attempts",attempts},{"error",logging::errorFields(e)}});
+   scheduleOperationRecovery(id);return;
+  }
+  recovering_.remove(id);logging::info(logHistory(),"Stopped operation recovered",{{"operationId",id}});
+  emit changed(id);emit observationsChanged();
+ });
 }
 
 void OperationService::queuePosters(const Operation& op) {
@@ -1367,6 +1377,8 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  if(active_.contains(id)) {active_[id]->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& flag:itemCancels_.value(id))flag->store(true);}uploadSlots_.wake();interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}
+ // A stopped operation has nothing left to cancel; its recovery marks it interrupted (#1579).
+ if(recovering_.contains(id)){reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","The operation has already stopped; put.gd records it as interrupted once History can be written"}});return;}
  // A finished operation keeps its outcome: marking it cancelled would hide a live
  // link or a failure in History. Only a row a failed journal write left active is.
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};if(!op.active()){e={"operation_inactive","This operation has finished; only an active operation can be cancelled",{{"state",op.stateName()}}};return QJsonObject{};}op.cancelled=true;op.advance(OperationState::Cancelled);op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
@@ -1378,6 +1390,8 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  if(active_.contains(id)) {reply({"operation_busy","Operation is already active",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved,path,sharingOnly](Error e,QJsonObject doc) {
+  // A stopped operation waits for its recovery; until then History holds its last saved state, not its result (#1579).
+  if(recovering_.contains(id)) {active_.remove(id);reply({"history_io","put.gd is still recovering this operation after History could not record it; try again in a moment",{}},{});return;}
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=routeOf(op).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
   // The whole operation is checked here, not the History rows a client happened to load.
@@ -1405,6 +1419,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  // A local retry keeps its durable result; only its live observation is active.
  observe({{"id",id},{"state","running"},{"phase","saving_local"},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});
  emit observationsChanged();
+ if(recovering_.contains(id)){clearObservation(id);active_.remove(id);emit observationsChanged();reply({"history_io","put.gd is still recovering this operation after History could not record it; try again in a moment",{}},{});return;}
  const auto path=databasePath();
  background([this,path,id](Error& e) {
   HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};
@@ -1558,7 +1573,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"unsavedResults",int(unsavedResults_.size())},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"operationsAwaitingRecovery",int(recovering_.size())},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_}}}};
 }

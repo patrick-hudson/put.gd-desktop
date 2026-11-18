@@ -12,8 +12,7 @@ struct HistoryPage { QJsonArray records; qint64 total=0; Error error; QJsonObjec
 // Instances belong to the creating worker thread; never share a Qt SQL connection.
 class HistoryStore {
 public:
- // busyTimeoutMs bounds how long a call waits for another connection's lock.
- explicit HistoryStore(QString path,int busyTimeoutMs=10000);
+ explicit HistoryStore(QString path);
  ~HistoryStore();
  HistoryStore(const HistoryStore&)=delete;
  Error error() const {return error_;}
@@ -25,6 +24,12 @@ public:
  Error removeTextOperation(const QString& id);
  Operation operation(const QString&,Error* = nullptr) const;
  QList<Operation> recover(Error* = nullptr);
+ // What recovery does to one operation that was stopped: interrupted, its uploading items unknown, a copy that never
+ // happened marked as not copied. Returns whether the operation must be saved. recover() applies it to every row.
+ static bool interruptOperation(Operation&);
+ // The same recovery for one operation a running resident stopped after a History write failed (#1579), with its
+ // sharing steps. `recovered` receives the operation as saved.
+ Error recoverOperation(const QString& id,Operation* recovered=nullptr);
  Error indexPublications(const ProviderRegistry&);
  HistoryPage list(const HistoryQuery&) const;
  // History's counts: per-category totals of every stored file (all, images,

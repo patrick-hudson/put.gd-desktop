@@ -264,7 +264,10 @@ void OperationService::queueCopy(std::function<CopyPayload()> payload,std::funct
 }
 void OperationService::pumpCopies() {
  if(stopping_||currentCopy_||copies_.isEmpty()||!clipboardImports_.isEmpty())return;
- auto request=copies_.dequeue();currentCopy_=request;QPointer<OperationService> owner(this);
+ auto request=copies_.dequeue();
+ // A link copy of an operation that was stopped for recovery is never made late (#1579).
+ if(request->upload&&!request->operations.isEmpty()&&std::all_of(request->operations.cbegin(),request->operations.cend(),[this](const QString& id){return recovering_.contains(id);})){pumpCopies();return;}
+ currentCopy_=request;QPointer<OperationService> owner(this);
  auto complete=[owner,request](Error error,quint64 before) {
   if(!owner)return;
   QMetaObject::invokeMethod(owner,[owner,request,before,error] {

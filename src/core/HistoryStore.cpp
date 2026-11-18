@@ -84,9 +84,9 @@ bool persistRemote(QSqlDatabase db,const QString& id,const QJsonObject& remote) 
 QString createHistory(const QString& table) {return "CREATE TABLE "+table+"(id TEXT PRIMARY KEY, operation_id TEXT NOT NULL,item_id TEXT NOT NULL,created TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,category TEXT NOT NULL,profile_id TEXT NOT NULL,upload_status TEXT NOT NULL,local_status TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,UNIQUE(operation_id,item_id))";}
 }
 QJsonObject HistoryPage::toJson() const {return {{"records",records},{"total",double(total)}};}
-HistoryStore::HistoryStore(QString path,int busyTimeoutMs):root_(QFileInfo(path).absolutePath()) {
+HistoryStore::HistoryStore(QString path):root_(QFileInfo(path).absolutePath()) {
  QDir().mkpath(QFileInfo(path).absolutePath()); QFile::setPermissions(QFileInfo(path).absolutePath(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
- connection_=QUuid::createUuid().toString();db_=QSqlDatabase::addDatabase("QSQLITE",connection_);db_.setDatabaseName(path);db_.setConnectOptions(QStringLiteral("QSQLITE_BUSY_TIMEOUT=%1").arg(busyTimeoutMs));
+ connection_=QUuid::createUuid().toString();db_=QSqlDatabase::addDatabase("QSQLITE",connection_);db_.setDatabaseName(path);db_.setConnectOptions("QSQLITE_BUSY_TIMEOUT=10000");
  if(!db_.open()) {error_=sqlError();return;} QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);error_=initialize();
 }
 HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::removeDatabase(connection_);}
@@ -238,23 +238,44 @@ Operation HistoryStore::operation(const QString& id,Error* error) const {
 
  return op;
 }
+bool HistoryStore::interruptOperation(Operation& op) {
+ bool changed=false;
+ const auto state=op.state();
+ if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};}
+ // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
+ else if(state==OperationState::Editing) {op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};}
+ // A recording that never reached explicit Upload is discarded with its private clip.
+ else if(state==OperationState::Recording) {op.error={"recording_interrupted","Recording was interrupted before upload; nothing was uploaded",{}};}
+ // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
+ else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted; nothing was copied",{}};}
+ if(op.active()) {op.advance(OperationState::Interrupted);changed=true;}
+ for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+ // A copy still pending was never made and never will be: an interrupted operation has no result to copy, and a
+ // finished one says its link was not copied, so Copy link is the way to it (#1579).
+ if(op.copyStatus=="pending"&&!op.active()) {op.copyStatus=op.state()==OperationState::Completed||op.state()==OperationState::Partial?QStringLiteral("failed"):QStringLiteral("no_result");changed=true;}
+ if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
+ return changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty());
+}
+Error HistoryStore::recoverOperation(const QString& id,Operation* recovered) {
+ if(error_)return error_;
+ Error e;auto op=operation(id,&e);if(e)return e;
+ if(interruptOperation(op))if(auto saved=saveOperation(op))return saved;
+ // Its sharing steps that were running stop as at startup; a create or revoke is never replayed on its own.
+ QStringList marks;QVariantList ids;for(const auto& item:std::as_const(op.items)){marks<<"?";ids<<item.artifact.id;}
+ if(!ids.isEmpty()) {
+  auto shares=forwardQuery(db_);shares.prepare("SELECT data FROM sharing_operations WHERE history_id IN ("+marks.join(',')+") AND json_extract(data,'$.state') IN ('accepted','running')");for(const auto& v:std::as_const(ids))shares.addBindValue(v);
+  if(!shares.exec())return sqlError();
+  QList<QJsonObject> interrupted;while(shares.next()){auto doc=decode(shares.value(0));doc["state"]="interrupted";doc["status"]="unknown";auto receipt=doc["receipt"].toObject();receipt["directUrl"]="";doc["receipt"]=receipt;interrupted.append(doc);}
+  if(shares.lastError().isValid())return sqlError();
+  shares.finish();for(const auto& doc:std::as_const(interrupted))if(auto saved=saveSharing(doc))return saved;
+ }
+ if(recovered)*recovered=op;
+ return {};
+}
 QList<Operation> HistoryStore::recover(Error* error) {
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
  auto q=forwardQuery(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
- while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);bool changed=false;
-  const auto state=op.state();
-  if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};}
-  // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
-  else if(state==OperationState::Editing) {op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};}
-  // A recording that never reached explicit Upload is discarded with its private clip.
-  else if(state==OperationState::Recording) {op.error={"recording_interrupted","Recording was interrupted before upload; nothing was uploaded",{}};}
-  // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
-  else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted; nothing was copied",{}};}
-  if(op.active()) {op.advance(OperationState::Interrupted);changed=true;}
-  for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
-  if(op.state()==OperationState::Interrupted&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
-  if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
-  if(changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty())) result.append(op);
+ while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);if(interruptOperation(op))result.append(op);
  }
  q.finish();for(const auto& op:std::as_const(result)) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
  // Sharing intent survives a crash; revoke/create are never automatically replayed.

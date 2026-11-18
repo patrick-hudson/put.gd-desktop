@@ -170,6 +170,15 @@ private slots:
   {auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TABLE history(id TEXT PRIMARY KEY,data BLOB)"));q.prepare("INSERT INTO history VALUES(?,?)");q.addBindValue("item");q.addBindValue(QJsonDocument(row).toJson());QVERIFY(q.exec());QVERIFY(q.exec("PRAGMA user_version=1"));db.close();}QSqlDatabase::removeDatabase(connection);HistoryStore upgraded(path);QVERIFY(!upgraded.error());auto expected=row;expected["linkAvailable"]=true;expected["linkFinishable"]=false;expected["linkRefreshable"]=false;QCOMPARE(upgraded.detail("item"),expected);QCOMPARE(upgraded.list({}).total,1);
  }
  void migrationIsTransactional() {QTemporaryDir d;const auto path=d.filePath("history.sqlite");const auto connection=QString("legacy");{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TABLE history(id TEXT PRIMARY KEY,data BLOB)"));QVERIFY(q.exec("INSERT INTO history VALUES('preserve','{}')"));QVERIFY(q.exec("PRAGMA user_version=1"));db.close();}QSqlDatabase::removeDatabase(connection);{HistoryStore store(path);QCOMPARE(store.error().code,QString("history_migration"));}{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("PRAGMA user_version"));QVERIFY(q.next());QCOMPARE(q.value(0).toInt(),1);QVERIFY(q.exec("SELECT id FROM history"));QVERIFY(q.next());QCOMPARE(q.value(0).toString(),QString("preserve"));db.close();}QSqlDatabase::removeDatabase(connection);}
+ // A finished operation whose copy was still pending will never be copied: recovery (at startup, or for one
+ // operation stopped while put.gd runs) records that, so it never stays pending forever (#1579).
+ void recoveryMarksAPendingCopyOfAFinishedOperationAsNotCopied() {
+  QTemporaryDir d;HistoryStore store(d.filePath("history.sqlite"));
+  for(const auto& id:{QString("startup"),QString("single")}){Operation op;op.id=id;op.restore(OperationState::Completed);op.phase="completed";op.copyStatus="pending";op.settings=Settings::fromValidated(Settings::defaults());QVERIFY(!store.saveOperation(op));}
+  Operation single;QVERIFY(!store.recoverOperation("single",&single));QCOMPARE(single.copyStatus,QString("failed"));QCOMPARE(store.operation("single").copyStatus,QString("failed"));
+  QCOMPARE(store.operation("startup").copyStatus,QString("pending"));   // only the named operation is touched
+  Error error;store.recover(&error);QVERIFY(!error);QCOMPARE(store.operation("startup").copyStatus,QString("failed"));QCOMPARE(store.operation("startup").stateName(),QString("completed"));
+ }
 };
 QTEST_GUILESS_MAIN(HistoryTest)
 #include "test_history.moc"
