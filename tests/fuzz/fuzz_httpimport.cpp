@@ -10,6 +10,7 @@
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpTemplate.h"
 #include <QDir>
+#include <memory>
 #include <cctype>
 #include <QElapsedTimer>
 #include <QFile>
@@ -21,26 +22,40 @@ using namespace putgd;
 using namespace putgd::http;
 
 namespace {
-// What settings.importUploaderFile runs on: a configuration file of its own in a
-// directory of its own (several workers run at once), and a credential store that holds
-// session values only.
-struct Resident {
-    QTemporaryDir directory;
-    SettingsService settings{directory.filePath("config.json")};
-    CredentialStore credentials;
-    QString file = directory.filePath("uploader.sxcu");
-    QJsonObject initial = SettingsService::defaults();
-    Resident() {
-        const auto saved = settings.save(initial, {});
-        if (saved.error) fuzz::bug("the starting configuration was refused");
+// A credential store that can only hold values for this session. The import is always
+// asked for session mode; should it ever reach for the system keychain anyway (over SSH
+// on a builder that is the desktop session's keyring), the run stops before it writes.
+struct SessionOnlyStore : CredentialStore {
+    void save(const QString& profileId, const QJsonObject& reference, Credentials value, std::function<void(Error)> reply) override {
+        if (reference["mode"] != "session") fuzz::bug("an import reached for the system keychain");
+        CredentialStore::save(profileId, reference, std::move(value), std::move(reply));
+    }
+    void erase(const QString& profileId, const QJsonObject& reference, std::function<void(Error)> reply) override {
+        if (reference["mode"] != "session") fuzz::bug("an import reached for the system keychain");
+        CredentialStore::erase(profileId, reference, std::move(reply));
     }
 };
-Resident* resident = nullptr;
+// What settings.importUploaderFile runs on, made anew for each input so that no input
+// changes what the next one reaches: a configuration file in a directory of its own
+// (several workers run at once) and an empty credential store. It is removed with its
+// directory when the input is done.
+struct Resident {
+    QTemporaryDir directory;
+    std::unique_ptr<SettingsService> settings;
+    SessionOnlyStore credentials;
+    QString file, missing;
+    Resident() {
+        if (!directory.isValid()) fuzz::bug("no scratch directory");
+        settings = std::make_unique<SettingsService>(directory.filePath("config.json"));
+        file = directory.filePath("uploader.sxcu");
+        missing = directory.filePath("missing.sxcu");
+        if (settings->save(SettingsService::defaults(), {}).error) fuzz::bug("the starting configuration was refused");
+    }
+};
 }
 
 extern "C" int LLVMFuzzerInitialize(int* argc, char*** argv) {
     fuzz::application(argc, argv);
-    resident = new Resident;
     return 0;
 }
 
@@ -87,29 +102,42 @@ void sxcu(const QByteArray& json) {
     // that merely begins like another is not that value.)
     // An address is read from its first "/" on: what stands between the scheme and that
     // (user information, a port) is no part of a path or a query, and the reader leaves it.
-    auto kept = imported.settings;
-    for (const auto* key : {"requestUrl", "responseUrl", "thumbnailUrl", "deletionUrl"}) {
-        const auto address = kept[key].toString();
-        const auto scheme = address.indexOf("://");
-        const auto path = scheme < 0 ? -1 : address.indexOf('/', scheme + 3);
-        kept[key] = scheme < 0 ? address : path < 0 ? QString() : address.mid(path);
+    // Each place is looked at by itself, so that a failure can say where without saying what.
+    QList<QPair<QString, QByteArray>> places; // where → text
+    for (auto it = imported.settings.begin(); it != imported.settings.end(); ++it) {
+        auto text = it.value().isString() ? it.value().toString().toUtf8() : QJsonDocument(QJsonArray{it.value()}).toJson(QJsonDocument::Compact);
+        if (it.key().endsWith("Url") && it.value().isString()) {
+            const auto address = it.value().toString();
+            const auto scheme = address.indexOf("://");
+            const auto path = scheme < 0 ? -1 : address.indexOf('/', scheme + 3);
+            text = (scheme < 0 ? address : path < 0 ? QString() : address.mid(path)).toUtf8();
+        }
+        places.append({"settings." + it.key(), text});
     }
-    const auto shown = QJsonDocument(kept).toJson(QJsonDocument::Compact) + imported.notes.join('\n').toUtf8() + imported.name.toUtf8();
-    const auto leaked = [&](const QString& value) {
+    places.append({"notes", imported.notes.join('\n').toUtf8()});
+    places.append({"name", imported.name.toUtf8()});
+    // Only the place and the property are printed, never a value or the text around it.
+    const auto leaked = [&](const QString& value, const QStringList& skipped) {
         const auto needle = value.toUtf8();
         const auto word = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_'; };
-        for (qsizetype at = shown.indexOf(needle); at >= 0; at = shown.indexOf(needle, at + 1)) {
-            const auto end = at + needle.size();
-            if ((at > 0 && word(shown[at - 1])) || (end < shown.size() && word(shown[end]))) continue;
-            std::fprintf(stderr, "settings, notes and name: %s\nsecret: %s\n", shown.constData(), needle.constData());
-            fuzz::bug("a secret value is in the settings, notes or name");
+        for (const auto& [where, shown] : std::as_const(places)) {
+            if (skipped.contains(where)) continue;
+            for (qsizetype at = shown.indexOf(needle); at >= 0; at = shown.indexOf(needle, at + 1)) {
+                const auto end = at + needle.size();
+                if ((at > 0 && word(shown[at - 1])) || (end < shown.size() && word(shown[end]))) continue;
+                std::fprintf(stderr, "a stored value stands in %s\n", where.toUtf8().constData());
+                fuzz::bug("a secret value is in the settings, notes or name");
+            }
         }
     };
     const auto keys = secretKeys(imported.settings);
     for (auto it = imported.secrets.cbegin(); it != imported.secrets.cend(); ++it) {
         FUZZ_REQUIRE(keys.contains(it.key()));
-        // The keys the import takes out of an address ("secrets/...") are left out until #1570.
-        if (!it.key().startsWith("secrets/") && credentialLike(it.value())) leaked(it.value());
+        if (!credentialLike(it.value())) continue;
+        // A key the import takes out of an address ("secrets/...") may still stand in the
+        // thumbnail URL and the error message until #1570 is fixed; everywhere else it may not.
+        if (it.key().startsWith("secrets/")) leaked(it.value(), {"settings.thumbnailUrl", "settings.errorMessage"});
+        else leaked(it.value(), {});
     }
     // What the import hands to importUploaderFile is what the destination's own rules take,
     // once the caller has allowed plain HTTP, which a file may need and may not decide for
@@ -117,7 +145,7 @@ void sxcu(const QByteArray& json) {
     auto allowed = imported.settings;
     allowed["allowInsecureHttp"] = true;
     const auto invalid = validateSettings(allowed);
-    if (invalid) std::fprintf(stderr, "refused: %s\n%s\n", invalid.message.toUtf8().constData(), shown.constData());
+    if (invalid) std::fprintf(stderr, "the import's settings were refused at %s\n", invalid.details["field"].toString().toUtf8().constData());
     FUZZ_REQUIRE(!invalid);
     QStringList names;
     FUZZ_REQUIRE(!namedCredentials({{"provider", providerId}, {"settings", imported.settings}}, imported.secrets, &names));
@@ -201,27 +229,30 @@ void importFile(fuzz::Input& in) {
     const auto flags = in.byte();
     const auto document = QJsonDocument::fromJson(in.part());
     const auto bytes = in.rest();
-    auto& r = *resident;
+    Resident r;
     {
         QFile out(r.file);
         if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) fuzz::bug("scratch file");
         out.write(bytes);
     }
-    // The destinations already there are all the 32 it may hold: start over.
-    if (r.settings.document()["profiles"].toArray().size() >= 8 && !r.settings.save(r.initial, r.settings.revision()).error) {}
     QJsonObject params;
-    if (flags & 1) params = {{"path", r.file}, {"expectedRevision", r.settings.revision()}, {"credentialMode", "session"}};
+    if (flags & 1) params = {{"path", r.file}, {"expectedRevision", r.settings->revision()}};
     if (flags & 2) params["allowInsecureHttp"] = true;
     const auto given = document.object();
-    for (auto it = given.begin(); it != given.end(); ++it) {
-        // The path is the file the fuzzer wrote, or one it names that cannot hold a secret of ours.
-        if (it.key() == "path" && (flags & 4)) continue;
-        params[it.key()] = it.value();
+    for (auto it = given.begin(); it != given.end(); ++it) params[it.key()] = it.value();
+    // A path the fuzzer names is one of the scratch directory's own: the file it wrote, a
+    // file that is not there, the directory itself, or a relative name. Nothing outside
+    // the directory is read.
+    if (params["path"].isString() || (flags & 4)) {
+        const QStringList paths{r.file, r.missing, r.directory.path(), QStringLiteral("uploader.sxcu")};
+        params["path"] = paths[(flags >> 3) & 3];
     }
+    // Always this session's memory, never the system keychain (SessionOnlyStore holds to it).
+    params["credentialMode"] = "session";
     int answers = 0;
     Error error;
     QJsonObject result;
-    http::importUploaderFile(r.settings, r.credentials, params, [&](Error e, QJsonObject o) { ++answers; error = e; result = o; }, std::chrono::milliseconds(1000));
+    http::importUploaderFile(*r.settings, r.credentials, params, [&](Error e, QJsonObject o) { ++answers; error = e; result = o; }, std::chrono::milliseconds(1000));
     QElapsedTimer waited;
     waited.start();
     while (!answers && waited.elapsed() < 3000) QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
@@ -234,7 +265,7 @@ void importFile(fuzz::Input& in) {
     if (!error) {
         FUZZ_REQUIRE(result["profileId"].isString());
         bool found = false;
-        for (const auto& profile : r.settings.document()["profiles"].toArray()) found |= profile.toObject()["id"] == result["profileId"];
+        for (const auto& profile : r.settings->document()["profiles"].toArray()) found |= profile.toObject()["id"] == result["profileId"];
         FUZZ_REQUIRE(found);
     }
 }
