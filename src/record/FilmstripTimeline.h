@@ -39,7 +39,10 @@ public:
     void setTileSource(TileSource);
     void tilesChanged();
     void setDuration(qint64 durationUs, int fps);
+    // A new revision ends a trim, cut or cover edge drag without proposing it.
     void setEdit(const RecordingEdit&);
+    // A pointer drag (scrub, select or an edge) is in progress.
+    bool dragging() const { return drag_ != Drag::None; }
     void setPlayhead(qint64 sourceUs);
     qint64 duration() const { return duration_; }
     qint64 playhead() const { return playhead_; }

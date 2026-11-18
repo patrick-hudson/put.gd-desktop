@@ -58,6 +58,35 @@ private slots:
         if (!qFuzzyCompare(Ui::textScale(), 1.0)) QSKIP("normal text only");
         QCOMPARE(FilmstripTimeline(std::make_shared<MaskNames>()).sizeHint().height(), 142);
     }
+    // U5: a bracket dragged from revision r never writes over a newer edit: the
+    // drag ends when the edit changes, and its release proposes nothing.
+    void aNewerEditEndsAnEdgeDrag() {
+        auto t = make();
+        auto e = edit();
+        e.revision = 4;
+        t->setEdit(e);
+        QSignalSpy proposed(t.get(), &FilmstripTimeline::trimProposed), finished(t.get(), &FilmstripTimeline::edgeDragFinished);
+        const QPoint from = t->trimHandleRect(true).center(), to(t->xFor(5000000), from.y());
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, from);
+        QTest::mouseMove(t.get(), (from + to) / 2);
+        QTest::mouseMove(t.get(), to);
+        QVERIFY(t->dragging());
+        auto newer = e;
+        newer.revision = 5;
+        newer.trimStart = 1000000;
+        t->setEdit(newer);
+        QVERIFY(!t->dragging());
+        QCOMPARE(finished.size(), 1);
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, to);
+        QCOMPARE(proposed.size(), 0);
+        // The same revision again (a refused proposal's answer) leaves a drag alone.
+        QTest::mousePress(t.get(), Qt::LeftButton, {}, t->trimHandleRect(true).center());
+        QTest::mouseMove(t.get(), to);
+        t->setEdit(newer);
+        QVERIFY(t->dragging());
+        QTest::mouseRelease(t.get(), Qt::LeftButton, {}, to);
+        QCOMPARE(proposed.size(), 1);
+    }
     void bracketDragProposesOnceOnFrames() {
         auto t = make();
         QSignalSpy dragged(t.get(), &FilmstripTimeline::trimEdgeDragged), proposed(t.get(), &FilmstripTimeline::trimProposed);

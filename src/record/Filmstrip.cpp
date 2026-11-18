@@ -117,6 +117,7 @@ struct Source {
         bool have = false, done = false;
         while (!done) {
             if (abort()) return false;
+            // The pending key packet (from seekKey) is sent first, then the ones read after it.
             int rc = 0;
             if (pending) pending = false;
             else rc = readVideo();
@@ -124,8 +125,13 @@ struct Source {
             else if (rc < 0) return have;
             else {
                 rc = avcodec_send_packet(codec, packet);
-                av_packet_unref(packet);
-                if (rc < 0 && rc != AVERROR(EAGAIN)) return have;
+                // A full decoder takes the packet again once drained below; dropping
+                // it would decode later frames from the wrong reference.
+                if (rc == AVERROR(EAGAIN)) pending = true;
+                else {
+                    av_packet_unref(packet);
+                    if (rc < 0) return have;
+                }
             }
             for (;;) {
                 rc = avcodec_receive_frame(codec, frame.get());

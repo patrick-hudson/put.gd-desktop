@@ -253,7 +253,8 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         if (review_) {
             const auto limits = params["limits"].toObject();
             if (!limits.isEmpty()) review_->setLimits(qint64(limits["animationSeconds"].toDouble()) * 1000000, limits["animationEdge"].toInt());
-            review_->setEdit(edit);
+            // answer: {proposal, refused?} when this push answers the window's proposal.
+            review_->setEdit(edit, params["answer"].toObject());
         }
         reply({}, {});
         return;
@@ -941,7 +942,7 @@ void RecordSession::openReview() {
     options.microphoneRecorded = capturedMicrophone_;
     review_ = new ReviewWindow(options, config_);
     QPointer<RecordSession> guard(this);
-    connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}}); });
+    connect(review_, &ReviewWindow::editProposed, this, [guard](quint64 revision, const QJsonArray& commands, quint64 proposal) { if (guard) emit guard->event({{"event", "edit"}, {"revision", double(revision)}, {"commands", commands}, {"proposal", double(proposal)}}); });
     connect(review_, &ReviewWindow::configChanged, this, [guard](const RecordingConfig& config) {
         if (!guard) return;
         const auto budget = guard->config_.budgetBytes;

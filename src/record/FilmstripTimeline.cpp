@@ -304,7 +304,17 @@ void FilmstripTimeline::setDuration(qint64 durationUs, int fps) {
 void FilmstripTimeline::setEdit(const RecordingEdit& edit) {
     names_->observe(edit.masks);
     const int cuts = int(edit_.cuts.size()), covers = int(edit_.masks.size());
+    // A bracket, cut edge or cover end dragged from an older edit would write
+    // over the newer one on release: the drag ends here, proposing nothing.
+    const bool edgeDrag = drag_ == Drag::TrimStart || drag_ == Drag::TrimEnd || drag_ == Drag::CutStart || drag_ == Drag::CutEnd || drag_ == Drag::CoverStart || drag_ == Drag::CoverEnd;
+    const bool cancelDrag = edgeDrag && edit.revision != edit_.revision;
     edit_ = edit;
+    if (cancelDrag) {
+        drag_ = Drag::None;
+        dragId_.clear();
+        unsetCursor();
+        emit edgeDragFinished();
+    }
     if (selectedKind_ == "cut" && std::none_of(edit_.cuts.cbegin(), edit_.cuts.cend(), [this](const RecordingCut& c) { return c.id == selectedId_; })) selectedKind_.clear(), selectedId_.clear();
     if (selectedKind_ == "cover" && std::none_of(edit_.masks.cbegin(), edit_.masks.cend(), [this](const RecordingMask& m) { return m.id == selectedId_; })) selectedKind_.clear(), selectedId_.clear();
     layoutCovers();
