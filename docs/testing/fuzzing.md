@@ -18,7 +18,7 @@ the GNOME Shell extension. They live in `tests/fuzz/` and are built only with cl
 | `fuzz_journal` | `Operation`, `OperationItem`, `StorageReceipt` | What a damaged journal row reads as is written out and read again unchanged. |
 | `fuzz_gnome` | `GnomeProtocol::decodeTransfer` | Image bytes always start with a PNG header, so the decoder never starts the image helper process. |
 | `fuzz_hyprland` | `HyprlandIpc` | `luaString` always yields one Lua string literal; replies and event lines of any shape. |
-| `fuzz_httpimport` | `src/storage/http`: `importSxcu`, `validateSettings`, `namedCredentials`, the placeholder engine, `scrubStoredValues`, and `importUploaderFile` end to end against a real settings file | A refused `.sxcu` hands nothing on. What an import returns passes `validateSettings` (once plain HTTP is allowed) and `namedCredentials`. A credential-like stored value (20 to 200 letters, digits, `-` and `_`, with a letter and a digit), a key the import took out of an address included, does not appear whole, at word boundaries, anywhere in the settings, notes or name. Text written with `escapeTemplate` renders back unchanged. A stored credential does not survive `scrubStoredValues`. An import answers once, and the profile it names is in the configuration. |
+| `fuzz_httpimport` | `src/storage/http`: `importSxcu`, `validateSettings`, `namedCredentials`, the placeholder engine, `scrubStoredValues`, and `importUploaderFile` end to end against a real settings file | A refused `.sxcu` hands nothing on. What an import returns passes `validateSettings` (once plain HTTP is allowed) and `namedCredentials`. A credential-like stored value (20 to 200 letters, digits, `-` and `_`, with a letter and a digit), a key the import took out of an address and the value of a row that is not sent included, does not appear whole, at word boundaries, anywhere in the settings, notes or name. Text written with `escapeTemplate` renders back unchanged. A stored credential does not survive `scrubStoredValues`. An import answers once, and the profile it names is in the configuration. |
 
 What `fuzz_httpimport` does not check:
 
@@ -35,7 +35,9 @@ What `fuzz_httpimport` does not check:
   fuzzed; a run that reaches for the keychain stops.
 
 #1570 (a key the import took out of an address kept in clear text in the thumbnail URL
-or error message) was found by this target and is fixed; its file is in the corpus.
+or error message) was found by this target and is fixed. Its file and the shapes found in
+review (a key in a host or a placeholder, a replaced query value, a row name holding its
+value) are in the corpus.
 
 ## Results so far
 
