@@ -274,7 +274,7 @@ file`, until Omarchy ships OpenSSL 4. The install script handles this for new in
   like) it asks pacman whether the installed system has that OpenSSL (`pacman -T libcrypto.so=4-64`). If so
   it installs the pacman package. If not it installs the AppImage (`~/.local/bin/putgd.AppImage`)
   instead and says why. Any other pacman failure stops the install.
-- On every Arch-family system, Arch Linux included, it then runs `/usr/bin/putgd-cli --version`, the binary the package installed,. If
+- On every Arch-family system, Arch Linux included, it then runs `/usr/bin/putgd-cli --version`, the binary the package installed. If
   that does not start (the same transaction can replace OpenSSL with a version the package does not
   match), it removes the package with `sudo pacman -R --noconfirm putgd` and installs the AppImage.
 
