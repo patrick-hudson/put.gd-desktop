@@ -121,8 +121,14 @@ struct SxcuImport {
     QJsonObject settings;
     QMap<QString, QString> secrets;
     QStringList notes;               // what was adapted or left out, for the user
+    // The texts the import recognised as credentials, for checks on what a caller saves
+    // later (an ID, a label). Never shown, saved or logged.
+    QStringList recognised;
 };
 SxcuImport importSxcu(const QByteArray& json);
 // The destination ID an import derives from a name: lower-case letters, digits and "-".
 QString uploaderSlug(const QString& name);
+// Whether a text repeats one of an import's recognised credentials, in any letter case
+// or as an ID would write it.
+bool repeatsCredential(const QString& text, const QStringList& recognised);
 }

@@ -614,32 +614,45 @@ QString uploaderSlug(const QString& name) {
 QString plainHttpNote() {
     return QStringLiteral("The address uses plain HTTP, which sends files and credentials unencrypted. Turn on Allow plain HTTP to use it.");
 }
+bool repeatsCredential(const QString& text, const QStringList& recognised) {
+    if (holdsRecognised(text, recognised)) return true;
+    // A credential as an ID would write it: lower case, with "-" for anything else.
+    QStringList slugs;
+    for (const auto& needle : recognised) if (needle.size() >= 16) slugs.append(uploaderSlug(needle));
+    return holdsRecognised(text, slugs);
+}
 SxcuImport importSxcu(const QByteArray& json) {
     QStringList recognised;
     auto out = readSxcu(json, &recognised);
     // The last check, whatever the rules before it missed: nothing the import keeps or
-    // shows holds a credential it recognised, in any letter case, in any field. A refusal
-    // names the field only.
+    // shows holds a credential it recognised, in any letter case, in any field. Each value
+    // is read by itself, never a field's JSON with its property names. A refusal names
+    // the field only.
     if (out.error) {
         if (holdsRecognised(out.error.message + QJsonDocument(out.error.details).toJson(), recognised)) out.error.message = QStringLiteral("This file cannot be used.");
     } else {
         QList<QPair<QString, QString>> places; // field → text
-        for (auto it = out.settings.begin(); it != out.settings.end(); ++it)
-            places.append({sxcuFieldName(it.key()), it.value().isString() ? it.value().toString() : QString::fromUtf8(QJsonDocument(QJsonArray{it.value()}).toJson(QJsonDocument::Compact))});
+        for (auto it = out.settings.begin(); it != out.settings.end(); ++it) {
+            const auto field = sxcuFieldName(it.key());
+            if (it.value().isString()) places.append({field, it.value().toString()});
+            for (const auto& item : it.value().toArray()) {
+                if (item.isString()) places.append({field, item.toString()});
+                for (const auto* part : {"name", "value"}) if (item.toObject()[part].isString()) places.append({field, item.toObject()[part].toString()});
+            }
+        }
         for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it) places.append({QStringLiteral("the names of its values"), secretLabel(it.key())});
         places.append({QStringLiteral("Name"), out.name});
         places.append({QStringLiteral("the destination ID"), uploaderSlug(out.name)});
-        places.append({QStringLiteral("the import notes"), out.notes.join('\n')});
-        QStringList slugs; // a credential as the ID would write it
-        for (const auto& needle : std::as_const(recognised)) if (needle.size() >= 16) slugs.append(uploaderSlug(needle));
+        for (const auto& note : std::as_const(out.notes)) places.append({QStringLiteral("the import notes"), note});
         for (const auto& [field, text] : std::as_const(places))
-            if (holdsRecognised(text, recognised) || (field == "the destination ID" && holdsRecognised(text, slugs))) {
+            if (repeatsCredential(text, recognised)) {
                 out.error = sxcuError("sxcu_unsupported", "This file cannot be used: the import would keep a credential in " + field + ".");
                 break;
             }
     }
     // A refused file hands nothing on, the values read before the refusal included.
     if (out.error) { out.settings = {}; out.secrets.clear(); out.notes.clear(); out.name.clear(); }
+    else out.recognised = recognised;
     return out;
 }
 namespace {
@@ -1011,25 +1024,8 @@ SxcuImport readSxcu(const QByteArray& json, QStringList* recognised) {
             out.notes.append(QString("DeletionURL repeated the value of %1 where put.gd cannot name it as a stored value, and was left out.").arg(deletion.join(", ")));
             settings["deletionUrl"] = QString();
         }
-        // A key taken out of an address that was then left out is still looked for (it was
-        // learnt above), but it is not stored: no address of the destination uses it.
-        // Referenced from anywhere a value is filled in: the addresses, the rows kept as
-        // written, and the stored values themselves, which are templates too.
-        auto referenced = secretReferences(settings["requestUrl"].toString());
-        referenced += secretReferences(settings["deletionUrl"].toString());
-        for (const auto* list : {"parameters", "headers", "arguments"})
-            for (const auto& row : settings[list].toArray()) referenced += secretReferences(row.toObject()["value"].toString());
-        for (auto it = out.secrets.cbegin(); it != out.secrets.cend(); ++it) referenced += secretReferences(it.value());
-        QJsonArray used;
-        QStringList usedMoved;
-        for (const auto& row : std::as_const(extra)) {
-            const auto name = row.toObject()["name"].toString();
-            if (!referenced.contains(secretKey(extraSecretsList(), name))) { out.secrets.remove(secretKey(extraSecretsList(), name)); continue; }
-            used.append(row);
-            usedMoved.append(name);
-        }
-        extra = used;
-        moved = usedMoved;
+        // A key taken out of a deletion URL that was then left out stays stored, unused:
+        // it is still looked for, and nothing has to decide whether a value names it.
     }
     auto responseUrl = migrate(fieldText("URL"));
     if (const auto found = repeated(responseUrl); !found.isEmpty()) {

@@ -110,7 +110,12 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
         for (const auto& value : std::as_const(profiles)) if (value.toObject()["credentials"].toObject()["reference"].toString() == entry(candidate)) return true;
         return unsettled().contains(entry(candidate));
     };
+    // What is saved, returned and logged holds no credential the import recognised: an ID
+    // or a label that would gives way to a fixed one, the caller's own included.
+    const auto unsafe = [&](const QString& text) { return repeatsCredential(text, imported.recognised); };
     auto id = params["profileId"].toString();
+    bool replaced = false;
+    if (!id.isEmpty() && unsafe(id)) { id.clear(); replaced = true; }
     if (!id.isEmpty() && ids.contains(id)) { reply({"profile_exists", "A destination with this ID already exists", {}}, {}); return; }
     if (!id.isEmpty() && taken(id)) {
         reply({"credential_reference_in_use", "The keychain entry this ID would use (" + entry(id) + ") already belongs to another destination, or is still being written. Choose another ID.", {}}, {});
@@ -120,8 +125,15 @@ void importUploaderFile(SettingsService& settings, CredentialStore& credentials,
         const auto base = uploaderSlug(imported.name);
         id = base;
         for (int n = 2; ids.contains(id) || taken(id); ++n) id = base + "-" + QString::number(n);
+        if (unsafe(id)) {
+            id = QStringLiteral("imported-uploader");
+            for (int n = 2; ids.contains(id) || taken(id); ++n) id = QStringLiteral("imported-uploader-") + QString::number(n);
+            replaced = true;
+        }
     }
-    const auto label = params.contains("label") ? params["label"].toString().trimmed() : imported.name.isEmpty() ? QStringLiteral("Custom uploader") : imported.name;
+    auto label = params.contains("label") ? params["label"].toString().trimmed() : imported.name.isEmpty() ? QStringLiteral("Custom uploader") : imported.name;
+    if (unsafe(label)) { label = QStringLiteral("Imported uploader"); replaced = true; }
+    if (replaced) imported.notes.append("The destination's ID or name would have repeated a credential; a fixed one is used instead.");
     const QJsonObject reference = keychain ? QJsonObject{{"mode", "keychain"}, {"reference", entry(id)}} : QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}};
     profiles.append(QJsonObject{{"id", id}, {"label", label}, {"provider", providerId}, {"settings", imported.settings}, {"credentials", reference}});
     QJsonArray stored;

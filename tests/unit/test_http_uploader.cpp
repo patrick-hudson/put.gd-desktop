@@ -322,9 +322,8 @@ private slots:
         const auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
     }
-    // A deletion URL that is left out takes the keys taken out of it along: nothing is
-    // stored that no address uses.
-    void importStoresNoKeyOfALeftOutDeletionUrl() {
+    // A deletion URL that is left out keeps the keys taken out of it, stored and unused.
+    void importKeepsTheKeysOfALeftOutDeletionUrl() {
         const QString key = token;
         const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"token", key}}}, {"URL", "{json:u}"},
@@ -332,9 +331,16 @@ private slots:
         const auto result = importSxcu(sxcu(file));
         QVERIFY2(!result.error, qPrintable(result.error.message));
         QCOMPARE(result.settings["deletionUrl"].toString(), QString());
-        QCOMPARE(result.secrets.keys(), QStringList({"arguments/token"}));
-        QCOMPARE(result.settings["secrets"].toArray(), QJsonArray());
+        QCOMPARE(result.secrets.keys(), QStringList({"arguments/token", "secrets/deletion-key"}));
         QVERIFY2(!validateSettings(result.settings), qPrintable(validateSettings(result.settings).message));
+    }
+    // The last check reads values, not a field's JSON: a credential that happens to be a
+    // property name of the settings ("name") refuses nothing.
+    void importLastCheckReadsValuesOnly() {
+        const QJsonObject file{{"Version", "17.0.0"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"}, {"RequestURL", "https://media.example.test/upload"},
+                               {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"Arguments", QJsonObject{{"password", "secret"}, {"title", "{filename}"}}}, {"URL", "{json:u}"}};
+        const auto result = importSxcu(sxcu(file));
+        QVERIFY2(!result.error, qPrintable(result.error.message));
     }
     // A Name that repeats a credential gives way to a fixed name, not to the host, which is
     // written in lower case and may repeat a credential written that way.

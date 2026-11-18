@@ -484,7 +484,8 @@ Error CustomUploaderPanel::importBytes(const QByteArray& bytes) {
     setTypedSecrets(result.secrets);
     QStringList held;
     for (auto it = result.secrets.cbegin(); it != result.secrets.cend(); ++it) held.append(http::secretLabel(it.key()));
-    QString text = "Imported" + (result.name.isEmpty() ? QString() : " " + result.name) + ".";
+    // The notice never repeats the file's Name: it says what happened, not what was read.
+    QString text = QStringLiteral("Imported uploader.");
     if (!held.isEmpty())
         text += QString(" %1 secret value%2 held in this window until you store %3: %4.").arg(held.size()).arg(held.size() == 1 ? " is" : "s are", held.size() == 1 ? "it" : "them", held.join(", "));
     for (const auto& note : std::as_const(result.notes))
