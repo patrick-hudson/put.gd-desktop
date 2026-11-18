@@ -26,5 +26,5 @@ QString startFailureMessage(StartFailure, const QString& installationMessage,
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping, Error& error, bool* uncertain,
                      std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
-                     DurableCheckpoint checkpoint);
+                     DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill = {});
 }

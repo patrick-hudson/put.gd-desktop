@@ -130,7 +130,7 @@ tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
 | Package | Golden | Must show |
 | --- | --- | --- |
 | AppImage (no Arch package installed) | `omarchy-hyprland-20261108` | Everything below, with Nautilus through the entry under **Scripts**; the AppImage has no Nautilus plugin |
-| Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, with the Nautilus plugin, which refuses while an AppImage resident runs; its dependencies pull the GStreamer plugins Omarchy lacks |
+| Arch package (`pacman -U` after `pacman -Sy`) | same | Everything below, with the Nautilus plugin, which refuses while an AppImage resident runs; its dependencies pull the GStreamer plugins Omarchy lacks. With OpenSSL 3.6 (Omarchy 4.5, 2026-11-18) the package's `putgd-cli` and S3 and R2 libraries do not load, so this row waits for Omarchy to ship OpenSSL 4; the install script installs the AppImage there |
 
 - A drag that starts right after the region hotkey (from about 0.1 s) selects
   exactly what was dragged, on one and on two settled outputs. Just after an

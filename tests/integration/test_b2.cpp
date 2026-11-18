@@ -1,5 +1,7 @@
 // Backblaze B2 native destination (#282) against the offline b2api v3 oracle.
 #include "storage/b2/B2Provider.h"
+#include "fixtures/U2Fixtures.h"
+#include "fixtures/ChildProcesses.h"
 #include "fixtures/Waits.h"
 #include "fixtures/HttpControl.h"
 #include <QCryptographicHash>
@@ -8,6 +10,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QTest>
@@ -269,6 +273,80 @@ private slots:
         f.reset({{"versions",QJsonArray{recorded,replacement}}});
         const auto refused=f.await<StatResult>([&](auto cb){f.provider.refreshLink(expired,cb);});
         QCOMPARE(refused.status,QString("foreign"));QVERIFY(f.events("b2_get_download_authorization").isEmpty());
+    }
+    // #1602, review of #1603. Copy Link renews an expired authorized link and its request
+    // stalls, holding the file; a deletion of the same file waits behind it. Quit kills the
+    // renewal's helper as it does a deletion's: shutdown ends quickly, no helper survives,
+    // the recorded link stays as it was and the waiting deletion sent nothing.
+    void quitKillsAStalledLinkRenewal() {
+        B2Fixture f;
+        f.reset();
+        f.destination.settings["bucket"] = "putgd-fixture-private";
+        f.destination.settings["linkMode"] = "authorized";
+        f.destination.settings["linkValidityDays"] = 3;
+        f.destination.settings["requestTimeoutMs"] = 30000;
+        ProviderRegistry registry;
+        registry.add("backblaze-b2", std::make_shared<B2Provider>(f.credentials));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        auto doc = test::configuration(f.directory.path());
+        doc["profiles"] = QJsonArray{QJsonObject{{"id", f.destination.profileId}, {"label", "Synthetic B2"}, {"provider", "backblaze-b2"}, {"settings", f.destination.settings}, {"credentials", f.destination.credentialReference}}};
+        auto actions = doc["actions"].toObject();
+        for (const auto& key : Settings::actionNames()) { auto action = actions[key].toObject(); action["profileId"] = f.destination.profileId; actions[key] = action; }
+        doc["actions"] = actions;
+        const auto saved = settings.save(doc, {});
+        QVERIFY2(saved, qPrintable(saved.error.code + ": " + saved.error.message));
+        test::Source source;
+        source.payload.kind = "files";
+        source.payload.files = {test::fixture(f.directory.path(), "renew.png", "synthetic renewal")};
+        OperationService operations(f.directory.filePath("data"), settings, registry, source);
+        HistoryService history(operations);
+        PUTGD_TRY_VERIFY(operations.ready());
+        QString operationId;
+        operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); operationId = value["operationId"].toString(); });
+        PUTGD_TRY_VERIFY(!operationId.isEmpty());
+        Operation uploaded;
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT((uploaded = HistoryStore(operations.databasePath()).operation(operationId)).stateName() == "completed", 15000);
+        const auto id = uploaded.items[0].artifact.id;
+        // Every save of the upload is done, so none rewrites the record below.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        // The recorded link has expired, so Copy Link renews it.
+        {
+            const auto connection = QString("b2-renewal-fixture");
+            {
+                auto db = QSqlDatabase::addDatabase("QSQLITE", connection);
+                db.setDatabaseName(operations.databasePath());
+                QVERIFY(db.open());
+                QSqlQuery query(db);
+                query.prepare("UPDATE history SET data=json_set(data,'$.linkExpiresAt',?,'$.receipt.objectReference.linkExpiresAt',?) WHERE id=?");
+                query.addBindValue("2000-01-01T00:00:00.000Z");query.addBindValue("2000-01-01T00:00:00.000Z");query.addBindValue(id);
+                QVERIFY(query.exec());
+            }
+            QSqlDatabase::removeDatabase(connection);
+        }
+        const auto recorded = HistoryStore(operations.databasePath()).detail(id);
+        QVERIFY(recorded["linkRefreshable"].toBool());
+        const auto authorizations = f.events("b2_get_download_authorization").size();
+        f.rules(QJsonArray{QJsonObject{{"call", "b2_get_download_authorization"}, {"delay", 20}}});
+        history.copyLink(id, [](Error, QJsonObject) {});
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(f.events("b2_get_download_authorization").size() == authorizations + 1, 15000);
+        QJsonObject preview;
+        history.prepareDelete({id}, [&](Error e, QJsonObject r) { QVERIFY2(!e, qPrintable(e.code)); preview = r; });
+        PUTGD_TRY_VERIFY(!preview.isEmpty());
+        QString deletion;
+        history.deleteConfirmed({id}, preview["acknowledgement"].toString(), [&](Error e, QJsonObject r) { QVERIFY2(!e, qPrintable(e.code)); deletion = r["deleteOperationId"].toString(); });
+        PUTGD_TRY_VERIFY(!deletion.isEmpty());
+        QVERIFY(!test::childProcesses("putgd-b2-worker").isEmpty());
+        QElapsedTimer quit;
+        quit.start();
+        history.stopDeletions();
+        operations.shutdown();
+        QVERIFY2(quit.elapsed() < 3000, qPrintable(QString::number(quit.elapsed())));
+        QVERIFY(test::childProcesses("putgd-b2-worker").isEmpty());
+        const auto after = HistoryStore(operations.databasePath()).detail(id);
+        QCOMPARE(after["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString(), QString("2000-01-01T00:00:00.000Z"));
+        QCOMPARE(after["receipt"].toObject(), recorded["receipt"].toObject());
+        QCOMPARE(HistoryStore(operations.databasePath()).deletion(deletion)["items"].toArray()[0].toObject()["status"].toString(), QString("pending"));
+        QVERIFY(f.events("b2_delete_file_version").isEmpty());
     }
     void changedVersionIsNotDeleted() {
         B2Fixture f;

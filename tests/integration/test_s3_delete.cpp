@@ -299,8 +299,9 @@ private slots:
         configuration["versioning"] = "Enabled";
         f.reset(configuration);
         auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.status, QString("hidden_version_retained"));
+        QCOMPARE(result.status, QString("unknown"));
         QCOMPARE(result.progress["phase"].toString(), QString("version_unknown"));
+        QVERIFY(result.progress.contains("markerVersionId"));
         auto retry = f.remove(uploaded.receipt, result.progress);
         QCOMPARE(retry.status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 2);

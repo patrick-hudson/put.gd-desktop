@@ -35,6 +35,10 @@ public:
  void inspectDelete(const QString&,JsonReply);
  void retryDelete(const QString&,JsonReply);
  void cancelDelete(const QString&,JsonReply);
+ // Quit's first step (#1602): no new deletion or retry is admitted, and the helper of
+ // every running deletion, and of a Copy Link renewal, is killed, so it sends nothing more. What it had sent is
+ // recorded unknown with its journaled intent; work that sent nothing is left as it was.
+ void stopDeletions();
 signals:
  void changed();
 private:
@@ -48,6 +52,8 @@ private:
  OperationService& operations_;
  QTimer retention_,notification_;
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
+ // Set by stopDeletions(): every deletion's helper kill, and the end of admission.
+ std::shared_ptr<std::atomic_bool> quitting_=std::make_shared<std::atomic_bool>(false);
  // Stopped jobs whose last state could not be committed. Never replay a mutation.
  QHash<QString,QJsonObject> stoppedSharing_;
 };

@@ -275,6 +275,47 @@ fingerprint, imports and locally signs that key with `pacman-key`, writes
 supported. Existing repository choice is preserved. Native package removal
 leaves this administrator-owned repository configuration in place.
 
+The package keeps a plain `openssl` dependency. A versioned one (`libcrypto.so=4-64`) would make pacman
+refuse the package on a system with an older OpenSSL, but it would also make `pacman -Syu --noconfirm`,
+which is what `omarchy update` runs, fail as a whole once a newer put.gd needs an OpenSSL the system does
+not have: no update of anything would run. Arch derivatives that follow Arch with a delay (Omarchy)
+therefore can have an installed package whose `putgd-cli` and S3 libraries do not load
+([#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)).
+
+Instead the installer decides, using `arch_libcrypto` (for example `libcrypto.so=4-64`) at the top of
+`packaging/install.sh`, and only from the installed system, never from the repositories. A wrong
+AppImage is harmless, because the AppImage works everywhere; a wrong native install is the failure that
+matters.
+
+- **Arch Linux itself** (`ID=arch` in os-release, and no `omarchy-update`): installed natively as before,
+  with no probe. `pacman -Syu putgd` brings OpenSSL to the version the package was built against, because the
+  build uses current Arch.
+- **Every other Arch-family system** (Omarchy, detected by `omarchy-update`; Manjaro, EndeavourOS and the
+  like): after Omarchy's own update, `pacman -T "$arch_libcrypto"` on a configuration of its own (an
+  unreadable `/etc/pacman.d/putgd.conf` cannot stop it). Exit 0 chooses the package. Exit 127 (not
+  satisfied) installs the AppImage for the channel the user asked for, after the same checks and
+  verification as `--appimage`; any other exit stops the install. The asset is checked for the package
+  that is chosen, after this decision, so a missing Arch asset cannot stop an AppImage install.
+- **Every Arch-family system, Arch Linux included**: after the native install, the installed
+  `/usr/bin/putgd-cli --version`, the binary the package installed, must start. `pacman -T` cannot predict what the same `pacman -Syu putgd` transaction
+  replaces (an OpenSSL with another soname), so a `putgd-cli` that fails to start (a shared-library error)
+  makes the installer run `sudo pacman -R --noconfirm putgd` and install the AppImage for the requested
+  channel.
+
+The fallback chosen by the pre-install check adds no repository or signing key and makes no chmod, so a
+put.gd repository file stays as it was. Omarchy's own update comes first on purpose: the user agrees to it at
+the prompt, and the probe has to see the OpenSSL that update leaves behind. That update may sync an already
+configured put.gd repository, and it can upgrade an already installed native put.gd before the installer
+picks the AppImage (the accepted limit of keeping a plain `openssl` dependency); that is the update's
+doing. When the post-install proof is what falls back, the repository file, its `Include` line in
+`/etc/pacman.conf` and the channel's signing key stay configured after the package is removed
+(`sudo rm /etc/pacman.d/putgd.conf`, delete the `Include = /etc/pacman.d/putgd.conf` line, and
+`sudo pacman-key --delete <fingerprint>` remove them). The fallback warns when the native package is
+already installed. `tools/releases/arch.py` fails the Arch build when `arch_libcrypto` differs from the
+OpenSSL the binaries link, and records the soname as `package.libcrypto` in the package receipt, so Arch
+moving to a new OpenSSL fails the build until the installer is bumped. A second package built for a
+derivative's package set is the larger alternative.
+
 To change channels, copy `/usr/share/putgd/repo/putgd-CHANNEL.conf` to
 `/etc/pacman.d/putgd.conf`, import `/usr/share/putgd/repo/putgd-CHANNEL.asc`, and
 locally sign its full fingerprint (the pinned public keys are in source).

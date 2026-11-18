@@ -105,6 +105,28 @@ private slots:
   // History must retain only its last committed checkpoint.
   QCOMPARE(failed["progress"].toObject(),QJsonObject({{"schemaVersion",1}}));
  }
+ // Review of #1603. Quit lands while a driver's checkpoint of a completed server action
+ // (as S3's marker_done with its marker ID) is being saved: the helper gets no
+ // acknowledgement, but the checkpoint is kept, so after a restart Retry continues from it.
+ void quitKeepsACheckpointOfACompletedServerAction() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();QString deletion,id;
+  std::atomic_bool intentAcknowledged{false},markerAcknowledged{true};
+  {OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);PUTGD_TRY_VERIFY(ops.ready());QString operation;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);operation=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(ops.databasePath());id=store.operation(operation).items[0].artifact.id;
+   provider->removeOverride=[&](const DeleteRequest&,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> cb){
+    checkpoint({{"schemaVersion",1},{"phase","marker_intent"}},[&](Error e){intentAcknowledged=!e;});
+    // The server made the marker; then Quit begins while its checkpoint is saved.
+    history.stopDeletions();
+    checkpoint({{"schemaVersion",1},{"phase","marker_done"},{"markerVersionId","marker-1"}},[&](Error e){markerAcknowledged=!e;});
+    cb({"hidden_version_retained",{},{"cancelled","Synthetic driver stopped",{}}});
+   };
+   QJsonObject preview;history.prepareDelete({id},[&](Error e,QJsonObject r){QVERIFY(!e);preview=r;});PUTGD_TRY_VERIFY(!preview.isEmpty());history.deleteConfirmed({id},preview["acknowledgement"].toString(),[&](Error e,QJsonObject r){QVERIFY(!e);deletion=r["deleteOperationId"].toString();});PUTGD_TRY_VERIFY(!deletion.isEmpty());
+   PUTGD_TRY_COMPARE(store.deletion(deletion)["items"].toArray()[0].toObject()["status"].toString(),QString("hidden_version_retained"));
+   QVERIFY(intentAcknowledged.load());QVERIFY(!markerAcknowledged.load());
+   QCOMPARE(store.deletion(deletion)["items"].toArray()[0].toObject()["progress"].toObject()["markerVersionId"].toString(),QString("marker-1"));}
+  QJsonObject resumed;provider->removeOverride=[&](const DeleteRequest& request,DurableCheckpoint,std::function<void(DeleteResult)> cb){resumed=request.progress;cb({"removed",request.progress,{}});};
+  OperationService restarted(d.filePath("data"),settings,registry,source);HistoryService history(restarted);PUTGD_TRY_VERIFY(restarted.ready());bool accepted=false;history.retryDelete(deletion,[&](Error e,QJsonObject){QVERIFY(!e);accepted=true;});PUTGD_TRY_VERIFY(accepted);HistoryStore store(restarted.databasePath());PUTGD_TRY_COMPARE(store.detail(id)["remoteStatus"].toString(),QString("removed"));
+  QCOMPARE(resumed["phase"].toString(),QString("marker_done"));QCOMPARE(resumed["markerVersionId"].toString(),QString("marker-1"));
+ }
  void partialDeletionRetainsIdentityAndHistoryClearNeverCallsProvider() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"a.txt","fixture a"),fixture(d.path(),"b.txt","fixture b")};QString deletion,unknownId;QStringList ids;
   {OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);PUTGD_TRY_VERIFY(ops.ready());QString operation;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);operation=r["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,2);PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);HistoryStore store(ops.databasePath());auto op=store.operation(operation);for(const auto& item:op.items)ids.append(item.artifact.id);unknownId=ids[1];auto fileId=op.items[1].receipt.objectReference["fileId"].toString();provider->deletionResults[fileId]="unknown";QJsonObject preview;history.prepareDelete(ids,[&](Error e,QJsonObject r){QVERIFY(!e);preview=r;});PUTGD_TRY_VERIFY(!preview.isEmpty());history.deleteConfirmed(ids,preview["acknowledgement"].toString(),[&](Error e,QJsonObject r){QVERIFY(!e);deletion=r["deleteOperationId"].toString();});PUTGD_TRY_VERIFY(!deletion.isEmpty());PUTGD_TRY_COMPARE(store.detail(unknownId)["remoteStatus"].toString(),QString("unknown"));QCOMPARE(store.detail(ids[0])["remoteStatus"].toString(),QString("removed"));QVERIFY(!store.clear());QVERIFY(store.detail(ids[0]).isEmpty());QVERIFY(!store.detail(unknownId).isEmpty());QCOMPARE(provider->deletes.load(),2);}

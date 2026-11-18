@@ -69,7 +69,10 @@ public:
  }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=receipt.objectReference["fileId"].toString();auto r=objects.value(id);if(wrongStatDestination)r.destination.settings["workspace"]="different-namespace";QString status=!objects.contains(id)?"missing":r.publicationId==receipt.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=request.objectReference["fileId"].toString();auto r=objects.value(id);QString status=!objects.contains(id)?"missing":r.publicationId==request.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
+ // A test's own deletion driver, in place of the one below.
+ std::function<void(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)>)> removeOverride;
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> cb) override {
+  if(removeOverride) {removeOverride(request,checkpoint,cb);return;}
   const QJsonObject progress{{"schemaVersion",1},{"phase","recorded-intent"},{"opaqueMutationId",request.receipt.publicationId}};
   checkpoint(progress,[this,request,progress,cb](Error e) {if(e) {cb({"failed",{},e});return;}if(checkpointObserver)checkpointObserver(request);++deletes;QMutexLocker lock(&mutex);auto id=request.receipt.objectReference["fileId"].toString();auto status=deletionResults.value(id,"removed");if(status=="removed")objects.remove(id);lock.unlock();if(slowDelete)std::thread([cb,status,progress] {std::this_thread::sleep_for(std::chrono::milliseconds(250));cb({status,progress,{}});}).detach();else cb({status,progress,{}});});
  }

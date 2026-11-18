@@ -17,6 +17,21 @@ class Arch(unittest.TestCase):
         self.assertEqual(arch.pkgver('26.1107.4000'), '26.1107.4000')
         self.assertNotIn('-', arch.pkgver('26.1107.4000-dev+g123456789abc'))
 
+    def test_installer_names_the_openssl_soname_the_package_links(self):
+        elf = {'usr/bin/putgd-cli': {'needed': ['libcrypto.so.4', 'libc.so.6']}, 'usr/lib/putgd/libs2n.so': {'needed': ['libcrypto.so.4']}}
+        self.assertEqual(arch.linked_libcrypto(elf), 'libcrypto.so=4-64')
+        with self.assertRaises(ValueError):
+            arch.linked_libcrypto({**elf, 'usr/bin/x': {'needed': ['libcrypto.so.3']}})
+        with self.assertRaises(ValueError):
+            arch.linked_libcrypto({'usr/bin/putgd-cli': {'needed': ['libc.so.6']}})
+        self.assertEqual(arch.installer_libcrypto("x=1\narch_libcrypto='libcrypto.so=4-64'\n"), 'libcrypto.so=4-64')
+        for text in ('', "arch_libcrypto='libcrypto.so=4'\n", "arch_libcrypto='libcrypto.so=4-64'\narch_libcrypto='libcrypto.so=5-64'\n"):
+            with self.assertRaises(ValueError):
+                arch.installer_libcrypto(text)
+        # The shipped installer names exactly one soname.
+        shipped = Path(__file__).resolve().parents[2] / 'packaging/install.sh'
+        self.assertRegex(arch.installer_libcrypto(shipped.read_text()), r'libcrypto\.so=\d+-64')
+
     def test_database_binds_package_and_rejects_other_bytes(self):
         fields = {k: [v] for k, v in dict(pkgname='putgd', pkgver='26.1107.4000nightly-1', pkgdesc='Sharing', arch='x86_64', size='7', builddate='1', packager='put.gd').items()}
         fields['depend'] = ['qt6-base>=6.4.2']
