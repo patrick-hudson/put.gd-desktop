@@ -264,31 +264,26 @@ private slots:
  void resumableUploadJournalSurvivesForRetry() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->journalThenUnknown=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
   Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());
-  HistoryStore store(ops.databasePath());bool earlyAnswered=false;Error earlyError;
-  // Synchronously observe the durable result before finish() can release its
-  // owner. This forces the ordering that the old inspect/poll occasionally saw
-  // under contention, without sleeps or a production scheduling hook.
+  HistoryStore store(ops.databasePath());bool earlyAnswered=false;Error earlyError;QJsonObject journal;QString earlyStatus;
+  // Retry as soon as the durable result is visible, while finish() still holds the operation for its copy
+  // bookkeeping: the Retry waits for the release instead of being refused as busy (#1578), then resumes the
+  // multipart journal the first attempt saved.
   const auto connection=connect(&ops,&OperationService::changed,this,[&](const QString& changed){
-   if(earlyAnswered||store.operation(changed).stateName()!="partial")return;
+   if(earlyAnswered||!journal.isEmpty()||store.operation(changed).stateName()!="partial")return;
+   const auto saved=store.operation(changed);earlyStatus=saved.items[0].uploadStatus;journal=saved.items[0].uploadJournal;
+   provider->journalThenUnknown=false;
    ops.retry(changed,[&](Error error,QJsonObject){earlyError=error;earlyAnswered=true;});
   });
   const auto disconnectEarly=qScopeGuard([&]{disconnect(connection);});
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   PUTGD_TRY_VERIFY(earlyAnswered);disconnect(connection);
-  QCOMPARE(earlyError.code,QString("operation_busy"));
-  QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="partial";}());
-  QCOMPARE(op["items"].toArray()[0].toObject()["uploadStatus"].toString(),QString("unknown"));
+  QVERIFY2(!earlyError,qPrintable(earlyError.code));
+  QCOMPARE(earlyStatus,QString("unknown"));QCOMPARE(journal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
+  PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
+  QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="completed";}());
   // The journal is durable on the item but never part of the public operation.
   QVERIFY(!op["items"].toArray()[0].toObject().contains("uploadJournal"));
-  Error error;const auto saved=store.operation(id,&error);QVERIFY(!error);
-  QCOMPARE(saved.items[0].uploadJournal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
-  // The worker's durable partial state precedes finish()/clipboard bookkeeping.
-  // Wait for the owner to release the operation, rather than racing retry()
-  // against that separate completion (which correctly returns operation_busy).
-  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
-  provider->journalThenUnknown=false;bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);
-  PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
-  QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],saved.items[0].uploadJournal);
+  QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],journal);
  }
  // #202: retention applies without the user, on the resident's own clock.
  void automaticCleanupAppliesRetentionWithoutTheUser() {
