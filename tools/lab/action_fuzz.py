@@ -36,6 +36,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import secrets
 import select
 import shutil
@@ -50,9 +51,13 @@ import urllib.request
 import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'faults'))  # python -I does not put the script's folder on the path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fault_control  # noqa: E402
+import tsan_summary  # noqa: E402
 
 SOCKET_LIMIT = 107
+# Every wait scales with it: rr record --chaos runs several times slower than a plain run (ACTION_FUZZ_SLOW=5), ThreadSanitizer about three.
+SLOW = float(os.environ.get('ACTION_FUZZ_SLOW', '1'))
 TOKEN = 'putgd-synthetic-uploader-token-not-real'
 # What a clean sanitizer run never writes: any of these in a log is a finding.
 BAD_MARKERS = ('AddressSanitizer', 'LeakSanitizer', 'runtime error:', 'ThreadSanitizer', 'UndefinedBehaviorSanitizer',
@@ -309,8 +314,10 @@ class S3Receiver(Receiver):
 # ---------------------------------------------------------------------------------------------- resident
 
 class Resident:
-    def __init__(self, run, build, runtime=None):
+    def __init__(self, run, build, runtime=None, options=None):
         self.run, self.build = run, Path(build)
+        self.options = options
+        self.wrapped = bool(options is not None and options.wrap)  # under a recorder such as rr: self.process is the recorder
         self.root = run / 'r'
         self.runtime = Path(runtime) if runtime else self.root / 'rt'
         self.socket_path = str(self.runtime / 'putgd' / 'session.sock')
@@ -342,6 +349,11 @@ class Resident:
         os.chmod(self.runtime, 0o700)
         self.san.mkdir(exist_ok=True)
         env = {k: os.environ[k] for k in ('PATH', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'XDG_DATA_DIRS') if k in os.environ}
+        # A private TMPDIR inside the run folder, for the resident and a recorder around it alike: it lives where --run-dir does (tmpfs
+        # for rr, which aborts on FS_IOC_GETFSLABEL on ext4 and btrfs) and never in a shared /tmp.
+        tmp = self.run / 'tmp'
+        tmp.mkdir(mode=0o700, exist_ok=True)
+        env['TMPDIR'] = str(tmp)
         env.update(self.extra_env)
         env[self.token.split('=', 1)[0]] = self.token.split('=', 1)[1]
         env.update(HOME=str(self.root / 'home'), XDG_CONFIG_HOME=str(self.root / 'config'), XDG_DATA_HOME=str(self.root / 'data'),
@@ -351,6 +363,28 @@ class Resident:
                        self.san, ':verify_asan_link_order=0' if 'LD_PRELOAD' in self.extra_env else ''),
                    UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=%s/ubsan' % self.san,
                    LSAN_OPTIONS='log_path=%s/lsan' % self.san)
+        options = self.options
+        if options is not None and options.tsan_prefix:
+            # ThreadSanitizer build against the instrumented Qt and D-Bus (docs/testing/thread-sanitizer.md): the libraries come from the
+            # test prefix, and reports go to files next to the ASan ones so check_sanitizers sees them. No suppressions file: every report
+            # is kept, and tools/lab/tsan_summary.py separates verified Qt-only pairs from the rest.
+            prefix = Path(options.tsan_prefix)
+            env['LD_LIBRARY_PATH'] = ':'.join(str(p) for p in (prefix / 'deps-tsan' / 'lib', prefix / 'qtbase-tsan-build' / 'lib'))
+            env['PATH'] = '%s:%s' % (prefix / 'deps-tsan' / 'bin', env['PATH'])
+            suppressions = Path(__file__).resolve().parents[2] / 'tests/sanitizer/tsan.supp'
+            # ignore_noninstrumented_modules=1 stays: without it a seed fails within a few steps on reports from the recording helper's
+            # distribution GStreamer plugins (mutex misuse, new/delete and getrandom races seen on m74). What it hides: TSan then ignores
+            # the memory and synchronization calls (memcpy, free, mutexes) that uninstrumented libraries make through its interceptors, so
+            # a race in which one access is put.gd's and the other happens inside such a library (GStreamer, libcurl, OpenSSL, the AWS
+            # SDK) is not reported.
+            env['TSAN_OPTIONS'] = 'halt_on_error=0:ignore_noninstrumented_modules=1:history_size=5:second_deadlock_stack=1:suppressions=%s:log_path=%s/tsan' % (
+                suppressions, self.san)
+            env['QT_PLUGIN_PATH'] = str(prefix / 'qtbase-tsan-build' / 'plugins')
+            # GStreamer's plugin scanner is a distribution binary that would load the instrumented GLib without libtsan and crash.
+            env['GST_REGISTRY_FORK'] = 'no'
+        for assignment in (options.env if options is not None else []):
+            name, _, value = assignment.partition('=')
+            env[name] = value
         return env
 
     def launch(self, log):
@@ -363,6 +397,10 @@ class Resident:
             command = ['/bin/sh', '-c', 'PUTGD_FAULT_PID=$$; export PUTGD_FAULT_PID; exec "$0" "$@"'] + command
         if self.nofile:
             command = ['prlimit', '--nofile=%d:%d' % (self.nofile, self.nofile), '--'] + command
+        if self.wrapped:
+            command = self.options.wrap.split() + command  # a recorder such as `rr record --chaos`: the resident is its tracee
+        if self.options is not None and self.options.tsan_prefix:
+            command = ['setarch', 'x86_64', '-R'] + command  # GCC's TSan runtime aborts on the host's address randomization
         if self.memory_max:
             # A scope of the real user manager: it needs the real user bus, and the resident its private one, set by env(1) inside.
             inner = ['env'] + ['%s=%s' % (k, v) for k, v in env.items()]
@@ -401,7 +439,7 @@ class Resident:
         self.opened_log()
         log = open(self.run / 'logs' / ('resident-%d.log' % self.starts), 'w')
         self.process = self.launch(log)
-        deadline = time.monotonic() + 90
+        deadline = time.monotonic() + 90 * SLOW
         while time.monotonic() < deadline:
             if self.returncode() is not None:
                 raise Finding('startup', 'the resident exited %s while starting' % self.returncode())
@@ -415,9 +453,12 @@ class Resident:
         else:
             raise Finding('hang', 'the resident did not answer capabilities within 90 s')
         # "initializing" resolves on its own; wait for a settled snapshot.
-        end = time.monotonic() + 60
+        end = time.monotonic() + 60 * SLOW
         while time.monotonic() < end:
-            reply = self.call('settings.get', raw=True)
+            try:
+                reply = self.call('settings.get', raw=True)
+            except OSError as error:  # the resident (or the recorder it runs under) went away right after it answered
+                raise Finding('startup', 'settings.get failed while the resident started: %s (exit %s)' % (error, self.returncode()))
             if reply.get('ok'):
                 return
             if (reply.get('error') or {}).get('code') not in BUSY_CODES:
@@ -432,7 +473,7 @@ class Resident:
         request = json.dumps({'schemaVersion': 1, 'requestId': request_id, 'session': self.socket_path, 'method': method,
                               'params': {} if params is None else params}, ensure_ascii=False).encode() + b'\n'
         client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        client.settimeout(timeout)
+        client.settimeout(timeout * SLOW)
         try:
             client.connect(self.socket_path)
             client.sendall(request)
@@ -610,6 +651,25 @@ class Resident:
         finally:
             os.close(fd)
 
+    def resident_pid(self):
+        """The resident's own process: the one started, or under a recorder (rr) its tracee, whose command line carries --background."""
+        if self.wrapped:
+            for pid in self.children():
+                try:
+                    if pid != self.process.pid and b'--background' in Path('/proc/%d/cmdline' % pid).read_bytes().split(b'\0'):
+                        return pid
+                except OSError:
+                    pass
+        return self.process.pid
+
+    def tracees(self):
+        """Everything of the resident's tree except the recorder itself."""
+        return [pid for pid in self.children() if pid != self.process.pid]
+
+    def hold(self, pid):
+        """A pidfd on one of this launch's processes, to signal it more than once (stop, then continue) without looking its PID up again."""
+        return self.owned(pid)
+
     def rss_kib(self):
         total = 0
         for pid in self.children():
@@ -622,9 +682,12 @@ class Resident:
         return total
 
     def kill_tree(self, sig=signal.SIGKILL):
-        """SIGKILL the resident and its helpers (exact PIDs found from /proc; never a pattern kill)."""
+        """SIGKILL the resident and its helpers (exact PIDs found from /proc, each signalled through a pidfd checked as this launch's; never a
+        pattern kill). Under a recorder only the tracees are killed: rr then flushes its trace and exits by itself."""
         if self.process is not None and self.process.returncode is None and not self.open_late():
             self.kill_pinned_session(sig)
+        if self.wrapped and self.process is not None and self.alive():
+            self.kill_tracees(sig)
         for _ in range(3):
             if self.process is not None and self.handle() is not None:
                 try:
@@ -633,14 +696,49 @@ class Resident:
                     pass
             for pid in reversed(self.children()):
                 self.send(pid, sig)
-            if self.process is not None and not self.wait_exit(20):
+            if self.process is not None and not self.wait_exit(20 * SLOW):
                 raise Finding('hang', 'the resident did not die after SIGKILL')
             # Whatever the resident left behind in its session (a child it started in the last moment) dies too.
             if not self.session_members():
                 self.reap()
                 return
             time.sleep(0.05)
-        raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
+        # A wrapper such as rr leaves a process of its own that ends after the tracees: give it the time a recording needs.
+        end = time.monotonic() + (10 * SLOW if self.options is not None and self.options.wrap else 0)
+        while self.session_members() and time.monotonic() < end:
+            for pid in self.session_members():
+                self.send(pid, sig)
+            time.sleep(0.2)
+        if self.session_members():
+            raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
+        self.reap()
+
+    # Under rr a trace is complete once rr has written it: rr removes the `incomplete` marker of its trace folder at the end of recording.
+    def kill_tracees(self, sig):
+        for _ in range(3):
+            for pid in reversed(self.tracees()):
+                self.send(pid, sig)
+            if self.wait_exit(60 * SLOW):  # rr notices its tracees are gone, finishes the trace and exits
+                return
+            if not self.tracees():
+                break
+        # rr itself did not end: SIGTERM asks it to stop recording cleanly before the SIGKILL of kill_tree.
+        if self.handle() is not None:
+            try:
+                signal.pidfd_send_signal(self.pidfd, signal.SIGTERM)
+            except OSError:
+                pass
+        self.wait_exit(30 * SLOW)
+
+    def traces(self):
+        """(complete, incomplete) rr trace folders of this run, from _RR_TRACE_DIR."""
+        folder = next((a.partition('=')[2] for a in (self.options.env if self.options is not None else []) if a.startswith('_RR_TRACE_DIR=')), None)
+        if not folder:
+            return [], []
+        found = [p for p in sorted(Path(folder).glob('*-*')) if p.is_dir() and not p.is_symlink()]
+        # Complete: rr wrote its `version` file and removed its `incomplete` marker. A folder with neither is not a trace rr finished.
+        complete = [p for p in found if (p / 'version').is_file() and not os.path.lexists(p / 'incomplete')]
+        return [str(p) for p in complete], [str(p) for p in found if p not in complete]
 
     def quit(self, how='ui.quit'):
         """A graceful stop: ui.quit, or the signal a session manager sends. The resident must exit by itself, with its leak check clean."""
@@ -652,14 +750,14 @@ class Resident:
             except (OSError, Finding, ValueError):
                 pass
         else:
-            self.send(self.process.pid, getattr(signal, how))
-        if not self.wait_exit(60):
+            self.send(self.resident_pid(), getattr(signal, how))
+        if not self.wait_exit(60 * SLOW):
             raise Finding('hang', 'the resident did not exit within 60 s of %s' % how)
         # After SIGTERM or SIGINT the status is the signal's or 0; a sanitizer abort is neither.
-        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT):
+        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT) and not self.tsan_exit_excused():
             raise Finding('exit', 'the resident exited with %s after %s' % (self.returncode(), how))
         # Helpers it started leave with it.
-        end = time.monotonic() + 10
+        end = time.monotonic() + 10 * SLOW
         while self.session_members() and time.monotonic() < end:
             time.sleep(0.1)
         if self.session_members():
@@ -682,8 +780,45 @@ class Resident:
         return '\n'.join(out)
 
     def sanitizer_output(self):
-        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p))
+        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p) and not self.known_qt_races_only(p))
         return found
+
+    TSAN_REPORTED = 66  # GCC TSan's exit status when it reported anything (exitcode= in TSAN_OPTIONS)
+
+    def tsan_exit_excused(self):
+        """Exit 66 from a ThreadSanitizer resident means only that TSan reported something. It is accepted when the run has TSan report
+        files, they hold at least one recognised report, every report in them is on tools/lab/tsan_summary.py's known list, and no file
+        in san/ holds a fatal sanitizer line. Any other non-zero exit, and exit 66 without a recognised report, fails as before."""
+        if self.returncode() != self.TSAN_REPORTED or self.options is None or not self.options.tsan_prefix:
+            return False
+        files = [p for p in self.san.glob('tsan.*') if p.is_file()]
+        if not files or any(self.fatal_sanitizer_error(p) for p in self.san.glob('*') if p.is_file()):
+            return False  # a fatal sanitizer error (an allocator diagnostic exits 66 too) is never excused
+        return all(self.known_qt_races_only(p) for p in files)  # each needs a recognised report, all of them known
+
+    # A sanitizer that stopped rather than reported: ERROR:/FATAL: lines, a failed internal CHECK, a deadly signal, a fatal-error banner.
+    FATAL = re.compile(r'(ERROR|FATAL): \w*Sanitizer|\w*Sanitizer: CHECK failed|\w*Sanitizer:DEADLYSIGNAL|Sanitizer has encountered a fatal error')
+
+    @classmethod
+    def fatal_sanitizer_error(cls, path):
+        """True when a report file holds a fatal sanitizer line (ERROR: or FATAL: ThreadSanitizer, ThreadSanitizer: CHECK failed and the
+        like), which tsan_summary.py's report parser does not read: it reads only WARNING blocks."""
+        try:
+            return bool(cls.FATAL.search(path.read_text(errors='replace')))
+        except OSError:
+            return True
+
+    @staticmethod
+    def known_qt_races_only(path):
+        """A TSan report file holding nothing but reports on tools/lab/tsan_summary.py's exact known list. Every other report, any with a
+        put.gd frame above main() included, is a finding."""
+        if not path.name.startswith('tsan.'):
+            return False
+        try:
+            text = path.read_text(errors='replace')
+        except OSError:
+            return False
+        return 'WARNING: ThreadSanitizer' in text and not tsan_summary.unexplained(path)
 
     @staticmethod
     def third_party(path):
@@ -804,7 +939,7 @@ class Fuzzer:
         self.faults = None
         for name in ('logs', 'fixtures', 'saves', 'archive'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
-        self.resident = Resident(self.run, options.build)
+        self.resident = Resident(self.run, options.build, options=options)
         self.proxy_port = None
         self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
         self.fixtures = {}
@@ -1411,8 +1546,9 @@ class Fuzzer:
             self.call('ui.show', {'view': rng.choice(('history', 'settings'))}, timeout=60)
         time.sleep(rng.choice((0, 0.05, 0.3, 1.0)))
         helpers = []
+        resident = self.resident.resident_pid()
         for pid in self.resident.children():
-            if pid == self.resident.process.pid:
+            if pid in (self.resident.process.pid, resident):  # the resident (also as a recorder's tracee) and the recorder are not helpers
                 continue
             try:
                 helpers.append((pid, Path('/proc/%d/comm' % pid).read_text().strip()))
@@ -1424,20 +1560,28 @@ class Fuzzer:
         pid, name = rng.choice(helpers)
         action = rng.choice(('kill', 'kill', 'freeze'))
         self.log('helper-chaos', helper=name, pid=pid, what=action)
+        # One pidfd, checked once, for every signal to this helper: a SIGCONT after a long pause reaches the helper that was stopped or nobody.
+        handle = self.resident.hold(pid)
+        if handle is None:
+            return
         try:
             if action == 'kill':
-                self.resident.send(pid, signal.SIGKILL)
+                signal.pidfd_send_signal(handle, signal.SIGKILL)
             else:
-                self.resident.send(pid, signal.SIGSTOP)
+                signal.pidfd_send_signal(handle, signal.SIGSTOP)
                 hold = rng.choice((0.5, 3.0, 12.0))
                 end = time.monotonic() + hold
-                # The resident keeps answering while the helper is frozen.
-                while time.monotonic() < end:
-                    self.call(rng.choice(('capabilities', 'history.list', 'operation.recent', 'settings.get')), {}, timeout=30)
-                    time.sleep(0.3)
-                self.resident.send(pid, signal.SIGCONT)
+                try:
+                    # The resident keeps answering while the helper is frozen.
+                    while time.monotonic() < end:
+                        self.call(rng.choice(('capabilities', 'history.list', 'operation.recent', 'settings.get')), {}, timeout=30)
+                        time.sleep(0.3)
+                finally:
+                    signal.pidfd_send_signal(handle, signal.SIGCONT)
         except OSError:
             pass
+        finally:
+            os.close(handle)
 
     def config_path(self):
         return self.resident.root / 'config' / 'putgd' / 'config.json'
@@ -1606,7 +1750,7 @@ class Fuzzer:
 
     def drain(self, seconds):
         """Wait for every active operation to settle; one that stays active is a stuck upload."""
-        end = time.monotonic() + seconds
+        end = time.monotonic() + seconds * SLOW
         while time.monotonic() < end:
             if not self.active():
                 return True
@@ -1699,7 +1843,7 @@ class Fuzzer:
             raise Finding('driver', str(error))
 
     def resident_pids(self):
-        return [self.resident.process.pid] if self.resident.alive() else []
+        return [self.resident.resident_pid()] if self.resident.alive() else []
 
     def run_faults(self):
         """The fault loop. Setup and every step run inside main()'s one cleanup path (Fuzzer.cleanup)."""
@@ -2411,6 +2555,13 @@ def write_finding(fuzzer, error):
               'rss_samples': fuzzer.rss[-20:]}
     if error.kind in ('hang', 'transport') and fuzzer.resident.alive():
         (run / 'stacks.txt').write_text(fuzzer.resident.stacks())
+    if error.kind in ('hang', 'transport', 'stuck') and fuzzer.resident.alive():
+        # What the resident says about its operations at the moment of the finding.
+        try:
+            (run / 'state.json').write_text(json.dumps({'operation.recent': fuzzer.resident.call('operation.recent', {}, timeout=20, raw=True),
+                                                        'ui.snapshot': fuzzer.resident.call('ui.snapshot', {}, timeout=20, raw=True)}, indent=1)[:200000])
+        except (OSError, ValueError, Finding):
+            pass
     if getattr(fuzzer, 'faults', None):
         record['fault_rules'] = fuzzer.faults.rules
         record['fault_log_tail'] = fuzzer.faults.tail(60)
@@ -2467,6 +2618,17 @@ def cleanup_finding(fuzzer, error, status):
     return status
 
 
+def report_traces(fuzzer):
+    """After cleanup (rr finishes a trace only once its tracees are gone): which traces rr completed, and so can be replayed."""
+    complete, incomplete = fuzzer.resident.traces()
+    print('rr traces: %d complete (replayable) %s; %d incomplete %s' % (len(complete), complete, len(incomplete), incomplete), flush=True)
+    finding = fuzzer.run / 'finding.json'
+    if finding.exists():
+        record = json.loads(finding.read_text())
+        record['rr_traces'] = {'complete': complete, 'incomplete': incomplete}
+        finding.write_text(json.dumps(record, indent=1))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('mode', choices=('run', 'crash', 'faults'))
@@ -2477,6 +2639,9 @@ def main():
     parser.add_argument('--run-dir', help='a new short private folder (default /tmp/at/<mode>-<seed>)')
     parser.add_argument('--fixture-server', help='tests/fixtures/http_uploader_server.py when not run from the repository')
     parser.add_argument('--destination', choices=('http', 's3'), default='http', help='the loopback destination: the custom uploader or put.gd\'s S3 provider')
+    parser.add_argument('--tsan-prefix', help='the folder holding deps-tsan and qtbase-tsan-build (docs/testing/thread-sanitizer.md): run a ThreadSanitizer build')
+    parser.add_argument('--wrap', help='a command prefix for the resident, such as "rr record --chaos" (put an absolute _RR_TRACE_DIR in --env)')
+    parser.add_argument('--env', action='append', default=[], help='NAME=VALUE for the resident (repeatable)')
     parser.add_argument('--verbose', action='store_true')
     faults = parser.add_argument_group('faults mode')
     faults.add_argument('--fault-classes', default='fs,net', help='comma list of fs (the LD_PRELOAD shim), net (the proxy), res (the open-file limit)')
@@ -2492,8 +2657,14 @@ def main():
     # without job control has) is reset at exec, so the resident still gets the default action of the signals a graceful-stop step sends.
     signal.signal(signal.SIGINT, interrupted)
     signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGQUIT, signal.SIG_DFL)  # a background shell job inherits SIGQUIT ignored, and the resident would too
     if not options.run_dir:
         options.run_dir = str(Path.home() / 'work' / 'apptest-runs' / ('%s-%d' % (options.mode, options.seed)))
+    # Absolute before anything uses it: the resident's XDG_RUNTIME_DIR and the socket-length check need the real path, and a recorder
+    # (rr) or a caller with another working folder would resolve a relative one elsewhere.
+    options.run_dir = os.path.abspath(options.run_dir)
+    if options.wrap and options.mode == 'faults':
+        raise SystemExit('--wrap and the faults mode do not combine: the fault shim would load into the recorder')
     run = Path(options.run_dir)
     if run.exists():
         raise SystemExit('%s exists: pick a new --run-dir (a failed run is evidence)' % run)
@@ -2515,6 +2686,8 @@ def main():
                 fuzzer.cleanup()
             except Finding as error:  # cleanup did everything first, then raised what it met: a harness finding of its own
                 status = cleanup_finding(fuzzer, error, status)
+            if fuzzer.resident.wrapped:
+                report_traces(fuzzer)
     if status is not None:
         return status
     if os.environ.get('ACTION_FUZZ_STATS'):
