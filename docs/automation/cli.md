@@ -27,6 +27,8 @@ Active `operation.inspect` and `operation.recent` results also expose an operati
 `phase` and per-item `phase`/optional `uploadProgress` with `bytesTransferred` and
 optional `bytesTotal`. A missing total means percentage is unknown. These are
 transient observations, not confirmed publication or final result evidence.
+`diagnostics.unsavedHistoryResults` counts operations whose result History could not
+save this session (#1579); their Retry answers `history_io` until put.gd restarts.
 A finished operation that still holds its slot (recording its link copy or cleaning
 up its source) carries `settling: true`. A Retry or Retry local save then answers
 `operation_settling` with "This operation is still finishing; try Retry again in a
