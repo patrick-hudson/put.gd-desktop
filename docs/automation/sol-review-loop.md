@@ -14,7 +14,17 @@ back on findings that are wrong.
   coordinator, before each merge. A top-level session that owns its own pull request runs it
   before asking for a merge. A delegated worker does not start reviewers unless its brief says
   to; it hands back and the coordinator runs the loop.
-- One reviewer at a time. Sol must not start subagents or other reviewers.
+- One Sol reviewer per pull request per round by default. Sol must not start subagents or
+  other reviewers.
+- Run in parallel when it saves time and you judge it worth the cost:
+  - **Different pull requests:** review several at once, each with its own loop, ledger,
+    worktree and comment. Pull requests that touch the same files are merged one at a time,
+    and each later one gets a short round on its rebased diff.
+  - **One large or risky pull request:** up to three reviewers in the same round, each with a
+    separate focus written into its brief (for example correctness, security and credentials,
+    concurrency and recovery). Merge their findings into one ledger with distinct ids, and
+    count the round once against the budget. Later rounds go back to one reviewer unless a
+    focus still has open findings.
 
 ## Budget
 
