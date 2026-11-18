@@ -193,7 +193,7 @@ Choose the **Copy text** tool (G) in the editor, the last one, after Blur. put.g
 
 ## Record the screen
 
-Choose **Record screen** in the action bar or the tray, or assign the record hotkey in **Settings → Hotkeys**. Drag the area to record on X11, Plasma, GNOME (with the put.gd Shell extension), Budgie and Hyprland; other Wayland desktops ask once which screen or window to share. The floating bar chooses MP4, WebM, GIF or WebP, system audio and the microphone, then records, pauses and stops. Stop always opens a private review: trim, add blur or solid covers for part of the clip, play it back, **Save copy…**, **Discard** or **Upload**. Nothing is saved or uploaded until you choose one. See [screen recording](../design/recording.md) for the details.
+Choose **Record screen** in the action bar or the tray, or assign the record hotkey in **Settings → Hotkeys**. Drag the area to record on X11, Plasma, GNOME (with the put.gd Shell extension), Budgie and Hyprland; other Wayland desktops ask once which screen or window to share. The floating bar chooses MP4, WebM, GIF or WebP, system audio and the microphone, then records, pauses and stops. Stop always opens a private review: trim the ends, cut out a stretch, redact or blur part of the picture, undo, play it back, **Save a copy…**, **Discard…** or **Upload** (see [Review a recording](#review-a-recording)). Nothing is saved or uploaded until you choose one. See [screen recording](../design/recording.md) for the details.
 
 To narrate a recording, tick **Microphone** on the bar. The bar beside it moves with your voice, so you can see the microphone is live before you press Record; put.gd opens the microphone only while that box is ticked and lets go of it when the recording stops. The choice is remembered for next time. put.gd uses the system's default microphone unless you pick another in **Settings → Capture → Screen recording → Microphone**. If no microphone can be opened, the box reads **No microphone** and is greyed out (hover it for the reason). A microphone plugged in while the bar is showing is offered within a second or two, with no need to start over; if **Microphone** was ticked last time, it is ticked again. A microphone unplugged during a recording leaves the recording running, silent from there. With **System audio** ticked as well, both are in the clip. GIF and WebP have no sound.
 
@@ -206,6 +206,19 @@ Recording needs an H.264 encoder. When none works, put.gd says so and what to in
 - **AppImage**: it carries its own recorder. It encodes with your graphics driver where it can (VA-API or NVIDIA) and otherwise with its bundled x264 and x265, so it needs no setup.
 
 In testing on an AMD Radeon 740M with KDE Plasma, hardware and software encoding were equally smooth at 60 fps. On that setup, a notification with a countdown bar made a 60 fps recording less smooth while it was on screen, about 50 frames per second, with either encoder. Other GPUs may differ.
+
+### Review a recording
+
+Stop opens a private review window (1440×900 where the screen allows; on a smaller screen the side panel folds into an **Edits** button). Nothing is saved or uploaded until you choose **Save a copy…** or **Upload**. A recording that needs no changes can go straight to **Upload**.
+
+- **Look around.** Click the timeline to move the playhead, press Space to play, and use `,` and `.` to step one frame. Hover the timeline while paused to preview that moment without moving the playhead. The clock shows the length of what you will upload, with the time in the original recording beside it. The preview is silent.
+- **Trim the ends.** Drag a bracket at either end of the timeline, or put the playhead where you want the clip to start or end and press **I** or **O**.
+- **Cut the middle out.** Drag across the timeline to select a stretch of time, then choose **Cut** or press **C** or Delete. The cut stays on the timeline, hatched, and playback skips it. Select a cut and choose **Restore** to put it back, or **Play across** to see how the join looks. Drag the edges of a cut to adjust it.
+- **Cover part of the picture.** Select time if the cover should last for only part of the clip (with nothing selected it covers the whole recording), choose **Redact** (X) or **Blur** (B), and drag a box on the picture. **Redact** removes the covered pixels from the saved and uploaded clip, so use it for passwords, names and anything private. **Blur** can sometimes be reversed, and the window warns you of that when you pick it. Select a cover to retime it: its panel has **Shows from** and **Until** fields with **Set to playhead** buttons, and the arrows beside them jump to its first and last visible frame so you can check both edges.
+- **Undo.** Ctrl+Z undoes the last edit and Ctrl+Shift+Z or Ctrl+Y redoes it, up to 200 steps. A drag or a run of arrow-key nudges counts as one step.
+- **The Edits list.** Once you have changed something, the panel lists every trim, cut and cover in order. Select a row to go to it; hover a row for its action (Reset, Restore or Remove).
+- **Keys.** V, C, X and B choose the Select, Cut, Redact and Blur tools; arrows move 0.1 s, Shift+arrows 1 s; Home and End go to the first and last frame of the selected cover, or to the ends of the clip; Alt+← and Alt+→ move between edits; Esc cancels a box you were placing or clears the selection; Ctrl+Enter uploads.
+- **Format and destination.** **Format** chooses MP4, WebM, GIF or WebP. GIF and WebP have no sound and a length limit that counts only the time you keep, so a cut can bring a long clip under it. The menu beside **Upload** shows what Upload will produce, such as a shared link or a private upload.
 
 ## Destinations and credentials
 

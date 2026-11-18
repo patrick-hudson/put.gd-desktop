@@ -7,7 +7,7 @@ The contract below is implemented and tested against a fake backend and the
 real helper. On **X11 sessions** the `putgd-record` helper records monitors, the
 desktop, regions and windows through `ximagesrc`, pauses and resumes on one
 clip timeline, previews frames with masks, and exports MP4 (H.264, H.265), WebM
-(VP9), GIF and animated WebP with trim and timed masks; the agent path (CLI
+(VP9), GIF and animated WebP with a trim, cuts and timed masks; the agent path (CLI
 and MCP) is complete, and the drag selection, ready bounds, outside dimming
 and floating control bar are in place, and every Stop opens the private review
 window. The tray's **Capture Screen Recording** entry, the dashboard's **Record
@@ -30,7 +30,7 @@ separately in `docs/testing/verification.md` when it exists; nothing here claims
 ## Workflow
 
 prepare → ready → start → recording ⇄ paused → stop → **private review**
-(trim, timed masks, preview, local copy) → explicit **Upload** → the ordinary
+(trim, cuts, timed covers, undo, preview, local copy) → explicit **Upload** → the ordinary
 operation pipeline (immutable artifact, archive, destination, history,
 clipboard). Cancel is available in every non-terminal state and uploads nothing.
 
@@ -58,9 +58,9 @@ quoted above and elsewhere are headings on these pages.
 
 - [Sessions, exports and settings](recording/session-contract.md): Time, geometry and the edit model; Session methods; Exports; Settings; Frame rate.
 - [Process boundary](recording/process-boundary.md): Process boundary; Live free-space stop (#254).
-- [Overlay and review](recording/overlay-and-review.md): Overlay (X11); Tray and hotkey; Review window; Tray feedback; Helper events.
+- [Overlay and review](recording/overlay-and-review.md): Overlay (X11); Tray and hotkey; Review window (layout, timeline, panel, interaction rules, thumbnails and skimming); Tray feedback; Helper events.
 - [Wayland](recording/wayland.md): Wayland acquisition; Timestamps and A/V sync; Wayland selection, bounds and bar.
-- [Capture and export engine](recording/capture-and-export.md): Capture and export engine (X11), including the lab diagnostics.
+- [Capture and export engine](recording/capture-and-export.md): Capture and export engine (X11); Kept spans, cuts and frame gaps; Selectors; Lab diagnostics.
 - [History posters](recording/history-posters.md): History poster frames; Previews made on selection.
 - [Packages and codecs](recording/packages-and-codecs.md): Packages and codecs; AppImage runtime.
 - [Agent control and tests](recording/agent-control-and-tests.md): Agent and MCP control; Verification.
