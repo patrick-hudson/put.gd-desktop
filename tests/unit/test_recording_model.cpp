@@ -73,20 +73,17 @@ private slots:
         QCOMPARE(*edit.trimEnd, qint64(30000000));
         QCOMPARE(edit.exportDuration(duration), qint64(20000000));
         QCOMPARE(edit.masks.size(), 3);
-        const auto first = RecordingEdit::exportInterval(edit.masks[0], edit.trimStart, edit.exportEnd(duration));
-        QVERIFY(first);
-        QCOMPARE(first->first, qint64(2000000));
-        QCOMPARE(first->second, qint64(5000000));
+        const recording::KeptSpans kept(edit, duration);
+        const auto parts = [&](const RecordingMask& m) { return kept.outputParts(m.start, m.end); };
+        QCOMPARE(parts(edit.masks[0]), (QList<recording::Span>{{2000000, 5000000}}));
         // A mask wholly before the retained interval disappears; a mask crossing the end is clipped.
-        QVERIFY(!RecordingEdit::exportInterval(edit.masks[1], edit.trimStart, edit.exportEnd(duration)));
-        const auto third = RecordingEdit::exportInterval(edit.masks[2], edit.trimStart, edit.exportEnd(duration));
-        QCOMPARE(third->first, qint64(18000000));
-        QCOMPARE(third->second, qint64(20000000));
+        QVERIFY(parts(edit.masks[1]).isEmpty());
+        QCOMPARE(parts(edit.masks[2]), (QList<recording::Span>{{18000000, 20000000}}));
         // Changing the trim never moves a mask on the source timeline.
         QVERIFY(!recording::applyEditCommands(edit, QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", 0.0}, {"end", QJsonValue::Null}}}, duration, canvas, 30));
         QCOMPARE(edit.masks[0].start, qint64(12000000));
         QVERIFY(!edit.trimEnd);
-        QCOMPARE(RecordingEdit::exportInterval(edit.masks[0], 0, duration)->first, qint64(12000000));
+        QCOMPARE(recording::KeptSpans(edit, duration).outputParts(edit.masks[0].start, edit.masks[0].end).value(0).start, qint64(12000000));
         QVERIFY(!recording::applyEditCommands(edit, QJsonArray{QJsonObject{{"op", "resetTrim"}}}, duration, canvas, 30));
         QCOMPARE(edit.revision, quint64(4));
         const auto id = edit.masks[0].id;

@@ -42,14 +42,14 @@ int flushSource(AVFilterContext* source) {
 }
 constexpr AVRational microseconds{1, 1000000};
 QString seconds(qint64 us) { return QString::number(us / 1000000.0, 'f', 6); }
-// A mask's output intervals as one timeline expression, one gte(t,a)*lt(t,b)
-// term per interval. Frame times are whole microseconds and t is their product
-// with 1e-6, which can land a hair below the exact value: the bounds sit half a
-// microsecond early, so a frame exactly on a bound falls on the side it belongs to.
-QString enable(const QList<recording::Span>& parts) {
+// A mask's output intervals, in output frames (ticks of 1/fps), as one
+// timeline expression, one gte(t,a)*lt(t,b) term per interval. Frame n is at
+// t = n/fps, which can land a hair either side of the exact value: the bounds
+// sit half a frame early, so a frame falls on the side it belongs to.
+QString enable(const QList<recording::Span>& ticks, int fps) {
     QStringList terms;
-    auto bound = [](qint64 us) { return QString::number((double(us) - 0.5) / 1e6, 'f', 7); };
-    for (const auto& part : parts) terms << QStringLiteral("gte(t\\,%1)*lt(t\\,%2)").arg(bound(part.start), bound(part.end));
+    auto bound = [fps](qint64 tick) { return QString::number((double(tick) - 0.5) / fps, 'f', 9); };
+    for (const auto& part : ticks) terms << QStringLiteral("gte(t\\,%1)*lt(t\\,%2)").arg(bound(part.start), bound(part.end));
     return QStringLiteral("enable='%1'").arg(terms.join('+'));
 }
 
@@ -187,8 +187,9 @@ qint64 streamOrigin(const AVStream* stream) { return stream->start_time == AV_NO
 // none follows). Laid end to end on those bounds, each kept frame lasts what it
 // lasted in the clip and a seam is one frame step like any other: nothing is
 // repeated, dropped or shifted there. Video selection, output timestamps, mask
-// intervals, the audio cut points and progress all read this one map; it
-// differs from the edit's own KeptSpans by less than a frame per span bound.
+// intervals, the audio layout and progress all read this one map; it differs
+// from the edit's own KeptSpans by less than a frame per span bound, and the
+// audio heard is the edit's own kept time only (KeptAudio, #1635).
 //
 // Frames do not always come at the capture rate: after the adaptive rate steps
 // down the encoder never sees videorate's repeats (#1045), and a static
@@ -203,11 +204,25 @@ qint64 streamOrigin(const AVStream* stream) { return stream->start_time == AV_NO
 // more than one floor interval later, the span ends at E exactly, the last kept
 // frame shown until E and the audio stopped there, so nothing after E (above
 // all, nothing a cut removed) reaches the output.
+//
+// #1635: the output is whole frames at the output rate (ticks of 1/fps), and
+// each span is joined on that grid: it lasts its length rounded to whole ticks
+// and a frame in it lands on the tick nearest its time from the span's start.
+// Summing millisecond container times and rounding the total (60 fps Matroska
+// steps 16 and 17 ms) could put two kept frames on one tick and none on the
+// next; per span, every frame keeps its own tick. An animation keeps at least
+// one tick, and no more than the edit's kept time, the length its limit is checked on.
 struct FrameGrid {
-    recording::KeptSpans map;       // snapped source spans and their output times
+    recording::KeptSpans map;       // snapped source spans
     std::vector<qint64> keyframes;  // keyframe times the scan saw (µs from the video origin), ascending
     // Per map span: the time of the frame it opens on when that frame lies before its start.
     std::vector<std::optional<qint64>> held;
+    // Every frame time the scans saw; complete over each mask's kept parts and a
+    // little past them (maskTicks needs the frame after each).
+    std::set<qint64> frames;
+    int fps = 0;
+    std::vector<qint64> firstTick, ticks;  // per map span: its first output tick and its length in ticks
+    qint64 totalTicks = 0;
     // The keyframe decoding has to start from to reach `us`.
     qint64 keyframeAtOrBefore(qint64 us) const {
         const auto it = std::upper_bound(keyframes.begin(), keyframes.end(), us);
@@ -215,26 +230,95 @@ struct FrameGrid {
     }
     // The first frame time span i needs decoded: its held frame, or its start.
     qint64 decodeFrom(qsizetype i) const { return held[size_t(i)] ? *held[size_t(i)] : map.spans()[i].start; }
+    qint64 outputUs() const { return av_rescale(totalTicks, 1000000, fps); }
+    // Lays the spans on the output grid at `rate`; maxTicks > 0 caps the total.
+    void layOut(int rate, qint64 maxTicks) {
+        fps = rate;
+        const auto& spans = map.spans();
+        firstTick.assign(size_t(spans.size()), 0);
+        ticks.assign(size_t(spans.size()), 0);
+        totalTicks = 0;
+        for (qsizetype i = 0; i < spans.size(); ++i) totalTicks += ticks[size_t(i)] = (spans[i].length() * fps + 500000) / 1000000;
+        if (totalTicks == 0 && !spans.isEmpty()) {
+            // A kept frame shorter than half a tick: the longest span shows for one.
+            const auto longest = std::max_element(spans.begin(), spans.end(), [](const recording::Span& a, const recording::Span& b) { return a.length() < b.length(); });
+            ticks[size_t(longest - spans.begin())] = totalTicks = 1;
+        }
+        for (qsizetype i = spans.size() - 1; maxTicks > 0 && totalTicks > maxTicks && i >= 0; --i) {
+            const qint64 less = std::min(ticks[size_t(i)], totalTicks - maxTicks);
+            ticks[size_t(i)] -= less;
+            totalTicks -= less;
+        }
+        for (size_t i = 1; i < ticks.size(); ++i) firstTick[i] = firstTick[i - 1] + ticks[i - 1];
+    }
+    // The output tick a frame of span i at source time us lands on. One that
+    // rounds past the span's last tick lands on the next span's first, where
+    // that span's own first frame, pushed after it, replaces it (or past the
+    // output's end, where it is dropped).
+    qint64 tickOf(qsizetype i, qint64 us) const {
+        const qint64 offset = (std::max<qint64>(0, us - map.spans()[i].start) * fps + 500000) / 1000000;
+        return firstTick[size_t(i)] + std::min(offset, ticks[size_t(i)]);
+    }
+    // #1635: the output ticks a mask covers. A cover applies to an output frame
+    // while it is active at that frame's time mapped back into its span, or at
+    // the source time of the picture the frame shows: a frame shown on past its
+    // own time (a frame gap, a span held on the frame before its start) carries
+    // the cover it was captured under, and a cover inside a gap covers the
+    // still picture on screen under it.
+    QList<recording::Span> maskTicks(const RecordingMask& mask) const {
+        QList<recording::Span> parts;
+        const auto& spans = map.spans();
+        auto ceilTicks = [this](qint64 us) { return us <= 0 ? 0 : (us * fps + 999999) / 1000000; };
+        for (qsizetype i = 0; i < spans.size(); ++i) {
+            const auto& span = spans[i];
+            const qint64 first = firstTick[size_t(i)], end = first + ticks[size_t(i)];
+            if (ticks[size_t(i)] == 0) continue;
+            // Output time: tick n of the span shows source time start + (n - first) / fps.
+            const qint64 from = first + ceilTicks(mask.start - span.start), to = std::min(end, first + ceilTicks(mask.end - span.start));
+            if (from < to) parts.append({from, to});
+            // Picture time: each frame the span shows, from its tick to the next one's.
+            const auto after = [&](qint64 us) { const auto it = frames.upper_bound(us); return it != frames.end() && *it < span.end ? tickOf(i, *it) : end; };
+            if (const auto& h = held[size_t(i)]; h && mask.start <= *h && *h < mask.end) {
+                const auto it = frames.lower_bound(span.start);
+                parts.append({first, it != frames.end() && *it < span.end ? tickOf(i, *it) : end});
+            }
+            for (auto it = frames.lower_bound(std::max(mask.start, span.start)); it != frames.end() && *it < std::min(mask.end, span.end); ++it) {
+                const recording::Span shown{tickOf(i, *it), after(*it)};
+                if (!shown.empty()) parts.append(shown);
+            }
+        }
+        std::sort(parts.begin(), parts.end(), [](const recording::Span& a, const recording::Span& b) { return a.start < b.start; });
+        QList<recording::Span> merged;
+        for (const auto& part : std::as_const(parts)) {
+            if (!merged.isEmpty() && part.start <= merged.last().end) merged.last().end = std::max(merged.last().end, part.end);
+            else merged.append(part);
+        }
+        return merged;
+    }
 };
 // The longest wait for a span's first frame that still starts the span on it,
 // and the longest a span's last frame runs past its end.
 constexpr qint64 floorIntervalUs = 1000000 / AdaptiveRate::floorFps;
 // Video frame times in microseconds from the clip's first frame (the timeline
 // every edit uses), read from the packets: a demux-only pass, nothing decoded.
-Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameGrid& grid);
-// RGB → masks → scale → rate. Frames reach the graph already selected and
-// stamped in output time (driveVideo), so the same chain feeds every format and
-// both GIF passes.
-QString baseVideoGraph(const ExportRequest& request, const recording::KeptSpans& map, const QSize& outputSize, int outputFps) {
-    QString graph = QStringLiteral("[in]format=rgb24");
+// Also collects every frame time over each mask's kept parts (FrameGrid::frames).
+Error snapToFrames(const QString& path, const recording::KeptSpans& kept, const QList<RecordingMask>& masks, FrameGrid& grid);
+// RGB → rate → masks → scale. Frames reach the graph already selected and
+// stamped in output ticks (driveVideo), so the same chain feeds every format
+// and both GIF passes. The rate filter comes first so that every output frame,
+// a repeat in a frame gap included, is masked on its own (FrameGrid::maskTicks).
+QString baseVideoGraph(const ExportRequest& request, const FrameGrid& grid, const QSize& outputSize) {
+    // fps holds each frame until the next one's tick and the last one until the
+    // source closes at the last tick (driveVideo); trim ends on it exactly.
+    QString graph = QStringLiteral("[in]format=rgb24,fps=%1:start_time=0,trim=end_frame=%2").arg(grid.fps).arg(grid.totalTicks);
     int label = 0;
     for (const auto& mask : request.edit.masks) {
         // A cover over a cut is one interval; one wholly in a cut or outside the trim has none.
-        const auto parts = map.outputParts(mask.start, mask.end);
+        const auto parts = grid.maskTicks(mask);
         if (parts.isEmpty()) continue;
         const auto r = mask.rect.intersected(QRect(QPoint(0, 0), request.canvas));
         if (r.width() < 2 || r.height() < 2) continue;
-        const auto when = enable(parts);
+        const auto when = enable(parts, grid.fps);
         if (mask.kind == "solid") graph += QStringLiteral(",drawbox=x=%1:y=%2:w=%3:h=%4:color=black@1:t=fill:%5").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height()).arg(when);
         else {
             const int radius = std::clamp(mask.strength, 2, std::max(2, std::min(r.width(), r.height()) / 2 - 1));
@@ -245,9 +329,6 @@ QString baseVideoGraph(const ExportRequest& request, const recording::KeptSpans&
         }
     }
     if (outputSize != request.canvas) graph += QStringLiteral(",scale=w=%1:h=%2:flags=lanczos").arg(outputSize.width()).arg(outputSize.height());
-    // fps holds each frame until the next one's time and the last one until the
-    // source closes at the output duration (driveVideo); trim ends on it exactly.
-    if (outputFps > 0) graph += QStringLiteral(",fps=%1:start_time=0,trim=end=%2").arg(outputFps).arg(seconds(map.outputDuration()));
     return graph;
 }
 struct Encoder {
@@ -381,11 +462,15 @@ using PacketPtr = std::unique_ptr<AVPacket, PacketDeleter>;
 // After the last frame one more goes in with every byte inverted: every pixel
 // changes, so the last frame is counted in full too, and the inverted frame,
 // never followed by another, counts nothing.
+//
+// #1635: a frame added to a buffer source only waits in its queue until a sink
+// asks for output, and palettegen answers only at EOF, so without a pull after
+// every frame the whole export queued up as RGB (2.6 GiB for a 60 s 720p GIF).
 struct PaletteStats {
     AVFilterGraph* graph = nullptr;
     AVFilterContext* source = nullptr;
     AVFilterContext* sink = nullptr;
-    FramePtr last;
+    FramePtr last, early;  // early: a palette the graph gave before EOF (palettegen never does)
     ~PaletteStats() { if (graph) avfilter_graph_free(&graph); }
     // Frames arrive as packed RGB24 (the palette pass ends on format=rgb24).
     Error add(const AVFrame* frame, AVRational timeBase) {
@@ -404,7 +489,14 @@ struct PaletteStats {
         }
         last.reset(av_frame_clone(frame));
         if (!last) return fail("recording_export_failed", "Cannot keep a frame for the GIF palette");
-        const int rc = av_buffersrc_add_frame_flags(source, last.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+        int rc = av_buffersrc_add_frame_flags(source, last.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+        if (rc >= 0) {
+            // Let palettegen take the frame now rather than queue it.
+            FramePtr out(av_frame_alloc());
+            rc = av_buffersink_get_frame(sink, out.get());
+            if (rc >= 0) early = std::move(out);
+            if (rc == AVERROR(EAGAIN) || rc >= 0) rc = 0;
+        }
         return rc < 0 ? fail("recording_export_failed", "Cannot build the GIF palette", rc) : Error{};
     }
     Error finish(FramePtr& palette) {
@@ -422,12 +514,13 @@ struct PaletteStats {
         int rc = av_buffersrc_add_frame_flags(source, inverted.get(), 0);
         if (rc >= 0) rc = flushSource(source);
         if (rc >= 0) { palette.reset(av_frame_alloc()); rc = av_buffersink_get_frame(sink, palette.get()); }
+        if (rc == AVERROR_EOF && early) { palette = std::move(early); rc = 0; }
         if (rc < 0) { palette.reset(); return fail("recording_export_failed", "Cannot build the GIF palette", rc); }
         return {};
     }
 };
 
-Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameGrid& grid) {
+Error snapToFrames(const QString& path, const recording::KeptSpans& kept, const QList<RecordingMask>& masks, FrameGrid& grid) {
     Input input;
     if (auto e = input.open(path, false)) return e;
     const auto* stream = input.format->streams[input.videoIndex];
@@ -491,9 +584,8 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameG
         if (stop > *start) spans.append({*start, stop});
     }
     debugLog(QStringLiteral("export grid: %1 kept spans -> %2 on frames (%3 held at their start), %4 scan seeks").arg(kept.spans().size()).arg(spans.size()).arg(heldAt.size()).arg(seeks));
-    grid.keyframes.assign(keys.begin(), keys.end());
     grid.held.clear();
-    if (spans.isEmpty()) { grid.map = {}; return {}; }
+    if (spans.isEmpty()) { grid.map = {}; grid.keyframes.assign(keys.begin(), keys.end()); return {}; }
     RecordingEdit snapped;
     snapped.trimStart = spans.first().start;
     snapped.trimEnd = spans.last().end;
@@ -503,11 +595,41 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, FrameG
         const auto it = heldAt.find(span.start);
         grid.held.push_back(it == heldAt.end() ? std::nullopt : std::optional<qint64>(it->second));
     }
+    // #1635: every frame over each mask's kept parts, read from a seek to each
+    // part's start until enough frames past its end show none is still to come.
+    QList<recording::Span> ranges;
+    for (const auto& mask : masks) ranges << grid.map.keptParts(mask.start, mask.end);
+    std::sort(ranges.begin(), ranges.end(), [](const recording::Span& a, const recording::Span& b) { return a.start < b.start; });
+    qint64 scanned = std::numeric_limits<qint64>::min();
+    for (const auto& range : std::as_const(ranges)) {
+        if (range.end <= scanned) continue;
+        input.seekTo(std::max(range.start, scanned), path, false);
+        if (!input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
+        ++seeks;
+        // seekTo starts on a keyframe at or before the start, so every frame shown
+        // from there is read; 16 past the end cover H.264's reordering.
+        for (int beyond = 0; beyond < 16;) {
+            const int rc = input.read(packet.get());
+            if (rc == AVERROR_EOF) break;
+            if (rc < 0) return fail("recording_export_failed", "Reading the working clip failed", rc);
+            if (packet->stream_index == input.videoIndex && packet->pts != AV_NOPTS_VALUE) {
+                const auto us = av_rescale_q(packet->pts - origin, timeBase, microseconds);
+                frames.insert(us);
+                if (packet->flags & AV_PKT_FLAG_KEY) keys.insert(us);
+                if (us >= range.end) ++beyond;
+            }
+            av_packet_unref(packet.get());
+        }
+        scanned = range.end;
+    }
+    grid.keyframes.assign(keys.begin(), keys.end());
+    grid.frames = std::move(frames);
+    debugLog(QStringLiteral("export grid: %1 mask parts scanned, %2 frame times, %3 seeks in all").arg(ranges.size()).arg(grid.frames.size()).arg(seeks));
     return {};
 }
 
 // Decodes the kept frames once through `graph`, each stamped with its output
-// time, handing every filtered frame to `consume`. Seeks to the keyframe at or
+// tick (FrameGrid::tickOf, time base 1/fps), handing every filtered frame to `consume`. Seeks to the keyframe at or
 // before the first span and, past a cut that holds the keyframe the next span
 // decodes from, to that keyframe: cut-out footage after it is never decoded.
 // A span held at its start (FrameGrid::held) first gets the frame on screen
@@ -527,7 +649,6 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
     bool inputDone = false, heldPushed = false;
     int pushed = 0, pulled = 0, seeks = 0, lastRc = 0;
     qsizetype span = 0;
-    qint64 offset = 0;  // output time of the current span's start
     qint64 previousAt = std::numeric_limits<qint64>::min();  // source time of `previous`, the last frame decoded
     auto drain = [&]() -> Error {
         for (;;) {
@@ -541,10 +662,10 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
             if (error) return error;
         }
     };
-    // The source ends at the output duration, so the rate filter holds the last
-    // kept frame for as long as it lasted in the clip.
+    // The source ends at the last tick, so the rate filter holds the last kept
+    // frame for as long as it lasted in the clip.
     auto finish = [&](const char* why) -> Error {
-        const int rc = av_buffersrc_close(graph.source, grid.map.outputDuration(), 0);
+        const int rc = av_buffersrc_close(graph.source, grid.totalTicks, 0);
         if (rc < 0 && rc != AVERROR_EOF) return fail("recording_export_failed", "Filtering failed", rc);
         auto e = drain();
         debugLog(QStringLiteral("drive: %1 after pushed=%2 pulled=%3 seeks=%4 lastRc=%5").arg(QLatin1String(why)).arg(pushed).arg(pulled).arg(seeks).arg(lastRc));
@@ -584,12 +705,11 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
                 // first frame at or past that start shows it is the one on screen there.
                 if (const auto& held = grid.held[size_t(span)]; held && !heldPushed && at >= spans[span].start && previousAt >= *held && previousAt < spans[span].start) {
                     heldPushed = true;
-                    previous->pts = offset;
-                    previous->duration = std::min<qint64>(at, spans[span].end) - spans[span].start;
+                    previous->pts = grid.firstTick[size_t(span)];
+                    previous->duration = 1;
                     if (auto e = push(previous.get()); e || sourceEnded) { av_frame_unref(frame.get()); return e; }
                 }
                 if (at < spans[span].end) break;
-                offset += spans[span].length();
                 heldPushed = false;
                 // Decoding on through the cut wastes nothing when the next span's
                 // keyframe lies before the cut; when the cut holds it, jump there.
@@ -611,8 +731,8 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
             if (av_frame_ref(previous.get(), frame.get()) < 0) { av_frame_unref(frame.get()); return fail("recording_export_failed", "Cannot keep a decoded frame"); }
             previousAt = at;
             if (at < spans[span].start) { av_frame_unref(frame.get()); continue; }
-            frame->pts = offset + (at - spans[span].start);
-            frame->duration = av_rescale_q(frame->duration, timeBase, microseconds);
+            frame->pts = grid.tickOf(span, at);
+            frame->duration = 1;
             const auto e = push(frame.get());
             av_frame_unref(frame.get());
             // Once trim has passed its end the graph reports EOF upstream: we are done.
@@ -624,17 +744,67 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
 // #1613: cuts the trimmed audio (48 kHz float, counted in samples from the first
 // kept frame) to the kept spans, laid end to end, and queues it for the encoder
 // in whole frames. Each side of a seam fades over 4 ms, so a join never clicks.
+// #1635: each grid span fills exactly its ticks' share of the output, so audio
+// and video stay together across any number of seams, but only the edit's own
+// kept time is heard: where the grid runs a span past the edit's end (up to the
+// next frame) or the ticks outlast the span, the output gets silence instead.
 struct KeptAudio {
     static constexpr qint64 fade = 192;
     struct Range { qint64 from = 0, to = 0; };
-    QList<Range> ranges;
+    // A span's source samples [from, to) of the trimmed stream, the audible
+    // parts of them, and the output samples it fills (to - from plus silence).
+    struct Piece { qint64 from = 0, to = 0, length = 0; QList<Range> audible; };
+    QList<Piece> pieces;
+    qsizetype current = 0;
+    qint64 done = 0;      // output samples of the current piece queued so far
     AVAudioFifo* fifo = nullptr;
     qint64 position = 0;  // samples of the trimmed stream seen so far
+    std::vector<float> zeros;
     ~KeptAudio() { if (fifo) av_audio_fifo_free(fifo); }
-    KeptAudio(const recording::KeptSpans& map, AVSampleFormat format, int channels) {
-        const qint64 first = map.spans().first().start;
-        for (const auto& span : map.spans()) ranges.append({av_rescale(span.start - first, 48000, 1000000), av_rescale(span.end - first, 48000, 1000000)});
+    KeptAudio(const FrameGrid& grid, const recording::KeptSpans& kept, AVSampleFormat format, int channels) {
+        const auto& spans = grid.map.spans();
+        const qint64 first = spans.first().start;
+        auto sample = [first](qint64 us) -> qint64 { return av_rescale(us - first, 48000, 1000000); };
+        for (qsizetype i = 0; i < spans.size(); ++i) {
+            Piece piece;
+            piece.from = sample(spans[i].start);
+            piece.length = av_rescale(grid.firstTick[size_t(i)] + grid.ticks[size_t(i)], 48000, grid.fps) - av_rescale(grid.firstTick[size_t(i)], 48000, grid.fps);
+            piece.to = piece.from + piece.length;
+            if (i + 1 < spans.size()) piece.to = std::min(piece.to, sample(spans[i + 1].start));
+            for (const auto& part : kept.keptParts(spans[i].start, first + av_rescale(piece.to, 1000000, 48000) + 1)) {
+                const Range range{std::max(piece.from, sample(part.start)), std::min(piece.to, sample(part.end))};
+                if (range.from < range.to) piece.audible.append(range);
+            }
+            if (piece.length > 0) pieces.append(piece);
+        }
         fifo = av_audio_fifo_alloc(format, channels, 4096);
+        zeros.assign(size_t(4096) * size_t(std::max(1, channels)), 0.0f);
+    }
+    // Queues `count` samples of silence.
+    Error silence(qint64 count) {
+        void* parts[AV_NUM_DATA_POINTERS];
+        for (auto& part : parts) part = zeros.data();
+        while (count > 0) {
+            const int n = int(std::min<qint64>(count, 4096));
+            if (av_audio_fifo_write(fifo, parts, n) < n) return {"recording_export_failed", "Cannot queue the clip audio", {}};
+            count -= n;
+        }
+        return {};
+    }
+    // The gain of sample n of piece k: 0 outside its audible parts, a fade at
+    // their edges (not at the very start or end of the output).
+    double gain(qsizetype k, qint64 n) const {
+        const auto& piece = pieces[k];
+        for (const auto& range : piece.audible) {
+            if (n < range.from || n >= range.to) continue;
+            const qint64 length = std::min(fade, (range.to - range.from) / 2);
+            if (length <= 0) return 1.0;
+            double g = 1.0;
+            if (!(k == 0 && range.from == piece.from) && n < range.from + length) g = std::min(g, (double(n - range.from) + 0.5) / double(length));
+            if (!(k + 1 == pieces.size() && range.to == piece.to) && n >= range.to - length) g = std::min(g, (double(range.to - n) - 0.5) / double(length));
+            return g;
+        }
+        return 0.0;
     }
     // Takes one filtered frame (packed or planar float), fading it in place at the seams.
     Error take(AVFrame* in) {
@@ -645,26 +815,38 @@ struct KeptAudio {
         if (av_frame_make_writable(in) < 0) return {"recording_export_failed", "Cannot cut the clip audio", {}};
         const bool planar = av_sample_fmt_is_planar(format);
         const int channels = in->ch_layout.nb_channels;
-        auto scale = [&](qint64 sample, double gain) {
-            const qint64 i = sample - from;
-            for (int c = 0; c < channels; ++c) {
-                if (planar) reinterpret_cast<float*>(in->extended_data[c])[i] *= float(gain);
-                else reinterpret_cast<float*>(in->data[0])[i * channels + c] *= float(gain);
+        while (current < pieces.size()) {
+            const auto& piece = pieces[current];
+            if (piece.from >= to) break;
+            const qint64 a = std::max(from, piece.from + done), b = std::min(to, piece.to);
+            if (a < b) {
+                for (qint64 n = a; n < b; ++n) {
+                    const double g = gain(current, n);
+                    if (g == 1.0) continue;
+                    const qint64 i = n - from;
+                    for (int c = 0; c < channels; ++c) {
+                        if (planar) reinterpret_cast<float*>(in->extended_data[c])[i] *= float(g);
+                        else reinterpret_cast<float*>(in->data[0])[i * channels + c] *= float(g);
+                    }
+                }
+                void* parts[AV_NUM_DATA_POINTERS] = {};
+                const int bytes = av_get_bytes_per_sample(format);
+                if (planar) for (int c = 0; c < channels && c < AV_NUM_DATA_POINTERS; ++c) parts[c] = in->extended_data[c] + (a - from) * bytes;
+                else parts[0] = in->data[0] + (a - from) * bytes * channels;
+                if (av_audio_fifo_write(fifo, parts, int(b - a)) < int(b - a)) return {"recording_export_failed", "Cannot queue the clip audio", {}};
+                done += b - a;
             }
-        };
-        for (qsizetype k = 0; k < ranges.size(); ++k) {
-            const auto range = ranges[k];
-            const qint64 a = std::max(from, range.from), b = std::min(to, range.to);
-            if (a >= b) continue;
-            const qint64 length = std::min(fade, (range.to - range.from) / 2);
-            if (k > 0 && length > 0) for (qint64 n = a; n < std::min(b, range.from + length); ++n) scale(n, (double(n - range.from) + 0.5) / double(length));
-            if (k + 1 < ranges.size() && length > 0) for (qint64 n = std::max(a, range.to - length); n < b; ++n) scale(n, (double(range.to - n) - 0.5) / double(length));
-            void* parts[AV_NUM_DATA_POINTERS] = {};
-            const int bytes = av_get_bytes_per_sample(format);
-            if (planar) for (int c = 0; c < channels && c < AV_NUM_DATA_POINTERS; ++c) parts[c] = in->extended_data[c] + (a - from) * bytes;
-            else parts[0] = in->data[0] + (a - from) * bytes * channels;
-            if (av_audio_fifo_write(fifo, parts, int(b - a)) < int(b - a)) return {"recording_export_failed", "Cannot queue the clip audio", {}};
+            if (to < piece.to) break;
+            // The piece's source is used up: silence fills the rest of its output time.
+            if (auto e = silence(piece.length - done)) return e;
+            ++current;
+            done = 0;
         }
+        return {};
+    }
+    // After the last audio: silence for whatever output time the audio did not reach.
+    Error finish() {
+        for (; current < pieces.size(); ++current, done = 0) if (auto e = silence(pieces[current].length - done)) return e;
         return {};
     }
 };
@@ -680,11 +862,14 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     const recording::KeptSpans kept(request.edit, request.durationUs);
     if (kept.outputDuration() <= 0) return {"invalid_request", "The retained interval is empty", {}};
     FrameGrid grid;
-    if (auto e = snapToFrames(request.input, kept, grid)) return e;
+    if (auto e = snapToFrames(request.input, kept, request.edit.masks, grid)) return e;
     if (grid.map.empty()) return {"recording_export_failed", "The retained interval produced no frames", {}};
-    const auto outputUs = grid.map.outputDuration();
     const bool animation = request.config.animation();
-    const int fps = animation ? std::min(request.config.fps, 15) : request.config.fps;
+    const int fps = std::max(1, animation ? std::min(request.config.fps, 15) : request.config.fps);
+    // GIF/WebP: the length limit was checked on the edit's kept time, so the
+    // output keeps no more whole frames than fit in it (and at least one).
+    grid.layOut(fps, animation ? std::max<qint64>(1, kept.outputDuration() * fps / 1000000) : 0);
+    const auto outputUs = grid.outputUs();
     const AVPixelFormat encodeFormat = request.config.format == "gif" ? AV_PIX_FMT_PAL8 : AV_PIX_FMT_YUV420P;
 
     AVFormatContext* output = nullptr;
@@ -706,12 +891,12 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     if (rc < 0) return fail("recording_export_failed", "Cannot write the output header", rc);
 
     PacketPtr packet(av_packet_alloc());
-    const auto base = baseVideoGraph(request, grid.map, outputSize, fps);
+    const auto base = baseVideoGraph(request, grid, outputSize);
     FramePtr paletteFrame;
     if (request.config.format == "gif") {
         // Pass one builds the palette from the exact frames pass two encodes.
         Graph paletteGraph;
-        if (auto e = paletteGraph.build(base + ",format=rgb24[out]", input.video, microseconds, false)) return e;
+        if (auto e = paletteGraph.build(base + ",format=rgb24[out]", input.video, {1, fps}, false)) return e;
         PaletteStats stats;
         const auto statsTimeBase = av_buffersink_get_time_base(paletteGraph.sink);
         if (auto e = driveVideo(request.input, paletteGraph, grid, cancelled, [&](AVFrame* frame) { return stats.add(frame, statsTimeBase); })) return e;
@@ -719,7 +904,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     }
     Graph graph;
     const auto description = request.config.format == "gif" ? base + "[pv];[pv][pal]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle[out]" : base + tail + "[out]";
-    if (auto e = graph.build(description, input.video, microseconds, request.config.format == "gif", paletteFrame.get())) return e;
+    if (auto e = graph.build(description, input.video, {1, fps}, request.config.format == "gif", paletteFrame.get())) return e;
     if (graph.palette) {
         rc = av_buffersrc_add_frame_flags(graph.palette, paletteFrame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
         if (rc >= 0) rc = flushSource(graph.palette);
@@ -754,17 +939,21 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
         // its first sample (#86; rebasing it to its own start played it early).
         // #1613: the cut points are the video's, on its frame grid: the trimmed
         // stream runs from the first kept frame to the last span's end and
-        // KeptAudio keeps the same spans of it, sample for sample.
+        // KeptAudio lays the same spans of it on the output grid, hearing only
+        // the edit's own kept time (#1635).
         const auto videoStream = input.format->streams[input.videoIndex];
         const auto originUs = av_rescale_q(streamOrigin(videoStream), videoStream->time_base, microseconds);
         const auto audioStartUs = av_rescale_q(streamOrigin(input.format->streams[input.audioIndex]), audioTimeBase, microseconds);
-        const auto startUs = originUs + grid.map.spans().first().start, endUs = originUs + grid.map.spans().last().end;
+        // A last span's ticks can outlast it by half a frame; KeptAudio drops what it does not use.
+        const auto startUs = originUs + grid.map.spans().first().start, endUs = originUs + grid.map.spans().last().end + 1000000 / fps;
         const auto end = av_rescale_q(endUs, microseconds, audioTimeBase);
         // atrim's *_pts options count samples; seconds (microsecond precision) match the video trim.
         // The encoder numbers its frames by samples, so aresample turns the clip's
         // timestamps into samples first: a hole (audio dropped around a pause) becomes
         // silence and an overlap is cut, so later audio keeps its place (#130).
-        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-STARTPTS,aresample=async=1:min_hard_comp=0.001:first_pts=0,aformat=sample_fmts=%3:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(startUs), seconds(endUs)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
+        // #1635: rebased on the requested start, not the first sample after it, so
+        // a start inside a hole keeps the hole as silence too.
+        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-%3,aresample=async=1:min_hard_comp=0.001:first_pts=0,aformat=sample_fmts=%4:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(startUs), seconds(endUs)).arg(av_rescale_q(startUs, microseconds, audioTimeBase)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
         AudioGraph audioGraph;
         if (auto e = audioGraph.build(description, input.audio, audioTimeBase, 0)) return e;
         avcodec_flush_buffers(input.audio);
@@ -785,7 +974,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
             debugLog(QStringLiteral("export audio lead %1 us of silence").arg(leadUs));
         }
         qint64 samples = 0;
-        KeptAudio keptAudio(grid.map, audio.context->sample_fmt, audio.context->ch_layout.nb_channels);
+        KeptAudio keptAudio(grid, kept, audio.context->sample_fmt, audio.context->ch_layout.nb_channels);
         if (!keptAudio.fifo) return {"recording_export_failed", "Cannot allocate the audio queue", {}};
         const int frameSize = (audio.context->codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) || audio.context->frame_size <= 0 ? 1024 : audio.context->frame_size;
         // Whole encoder frames from the queue; the rest too once the audio ended.
@@ -836,9 +1025,10 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
                 if (auto e = drain()) return e;
             }
         }
+        if (auto e = keptAudio.finish()) return e;
         if (auto e = encodeQueued(true)) return e;
         if (auto e = encodeFrame(output, audio, nullptr, packet.get())) return e;
-        debugLog(QStringLiteral("export audio samples=%1 of %2 trimmed in %3 spans").arg(samples).arg(keptAudio.position).arg(keptAudio.ranges.size()));
+        debugLog(QStringLiteral("export audio samples=%1 of %2 trimmed in %3 spans").arg(samples).arg(keptAudio.position).arg(keptAudio.pieces.size()));
         result.audioEncoder = audio.name;
     }
     if ((rc = av_write_trailer(output)) < 0) return fail("recording_export_failed", "Cannot finish the output file", rc);
@@ -904,11 +1094,13 @@ Error frameToImage(const AVFrame* chosen, QImage& image) {
     for (int y = 0; y < height; ++y) std::memcpy(image.scanLine(y), rgb->data[0] + qint64(y) * rgb->linesize[0], size_t(width) * 4);
     return {};
 }
-// The masks active at frameUs, drawn the way the export renders them.
-void applyMasks(QImage& image, const RecordingEdit& edit, qint64 frameUs, const QSize& canvas) {
+// The masks active at frameUs, or at shownAtUs (the time the frame is shown
+// for, when that differs), drawn the way the export renders them.
+void applyMasks(QImage& image, const RecordingEdit& edit, qint64 frameUs, const QSize& canvas, std::optional<qint64> shownAtUs = std::nullopt) {
     const QRect bounds(QPoint(0, 0), canvas.isEmpty() ? image.size() : canvas);
     for (const auto& mask : edit.masks) {
-        if (!(mask.start <= frameUs && frameUs < mask.end)) continue;
+        const auto active = [&](qint64 t) { return mask.start <= t && t < mask.end; };
+        if (!active(frameUs) && !(shownAtUs && active(*shownAtUs))) continue;
         const auto r = mask.rect.intersected(bounds).intersected(image.rect());
         if (r.width() < 2 || r.height() < 2) continue;
         if (mask.kind == "solid") { QPainter painter(&image); painter.fillRect(r, Qt::black); }
@@ -928,10 +1120,10 @@ Error probeClip(const QString& path, qint64& durationUs, QSize& canvas) {
     durationUs = input.format->duration > 0 ? input.format->duration : (stream->duration > 0 ? av_rescale_q(stream->duration, stream->time_base, microseconds) : 0);
     return {};
 }
-Error renderPreviewFrame(const AVFrame* frame, const RecordingEdit& edit, qint64 frameUs, const QSize& canvas, int maxEdge, QImage& out) {
+Error renderPreviewFrame(const AVFrame* frame, const RecordingEdit& edit, qint64 frameUs, const QSize& canvas, int maxEdge, QImage& out, std::optional<qint64> requestedUs) {
     QImage image;
     if (auto e = frameToImage(frame, image)) return e;
-    applyMasks(image, edit, frameUs, canvas);
+    applyMasks(image, edit, frameUs, canvas, requestedUs);
     out = fitPreview(image, maxEdge);
     return {};
 }
@@ -967,7 +1159,7 @@ Error previewFrame(const QString& path, const RecordingEdit& edit, const Recordi
     const auto frameUs = av_rescale_q(chosen->best_effort_timestamp - origin, timeBase, microseconds);
     if (actualTimeUs) *actualTimeUs = frameUs;
     Q_UNUSED(config);
-    return renderPreviewFrame(chosen.get(), edit, frameUs, canvas, maxEdge, out);
+    return renderPreviewFrame(chosen.get(), edit, frameUs, canvas, maxEdge, out, timeUs);
 }
 
 struct FrameSequence::Private {
