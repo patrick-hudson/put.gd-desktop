@@ -589,7 +589,7 @@ jobs:
         env:
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '0'
+          PUTGD_PKG_ATTEMPTS: '3'
         run: |
           sudo python3 tools/ci/hosted_apt_mirrors.py
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
