@@ -204,7 +204,9 @@ private slots:
  void retryFromReviewRepeatsOnlyTheFailedUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());HistoryStore journal(h.operations->databasePath());
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
-  QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
+  // Nothing failed yet: the resident refuses the window's request; nothing exports.
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
+  PUTGD_COMPARE_STEADY(h.backend->exports,0,200);
   h.backend->failExport=true;
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   QCOMPARE(journal.operation(id).items.size(),0);
@@ -234,27 +236,44 @@ private slots:
   const auto refused=h.backend->answers[2]["refused"].toObject();
   QCOMPARE(refused["code"].toString(),QString("invalid_request"));QVERIFY(!refused["message"].toString().isEmpty());QCOMPARE(refused["revision"].toDouble(),2.0);
   QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble(),2.0);
-  // The window answers the action with the proposals it made, then (re-read) its last refusal.
-  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{4}}},QJsonObject{{"lastRefusal",QJsonObject{{"code","invalid_request"},{"message","At most 64 masks are supported"},{"revision",2},{"proposal",4}}}}};
+  // A recording.review action gets the outcome of its own proposals (U17): the
+  // action that made proposal 3 is refused although the window's latest refusal
+  // is proposal 4's, and the action that made proposal 5 succeeds although
+  // proposal 4 was refused.
+  propose(1,4,{{"op","resetTrim"}});
+  propose(2,5,{{"op","addCut"},{"start",5000000},{"end",6000000}});
+  PUTGD_TRY_COMPARE(h.backend->answers.size(),5);
+  const QJsonObject latest{{"lastRefusal",QJsonObject{{"code","recording_stale"},{"message","later"},{"revision",1},{"proposal",4}}}};
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{3}}},latest};
   const auto cut=h.rec("review",{{"id",id},{"action","cut"}});
-  QCOMPARE(cut.error.code,QString("invalid_request"));QCOMPARE(cut.error.message,QString("At most 64 masks are supported"));QCOMPARE(cut.error.details["proposal"].toDouble(),4.0);
-  // An older refusal is not this action's.
-  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{5}}},QJsonObject{{"lastRefusal",QJsonObject{{"code","invalid_request"},{"message","x"},{"revision",2},{"proposal",4}}}}};
+  QCOMPARE(cut.error.code,QString("invalid_request"));QCOMPARE(cut.error.message,refused["message"].toString());QCOMPARE(cut.error.details["proposal"].toDouble(),3.0);
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{5}}},latest};
   const auto accepted=h.rec("review",{{"id",id},{"action","cut"}});
   QVERIFY2(!accepted.error,qPrintable(accepted.error.message));QCOMPARE(accepted.result["proposals"].toArray(),(QJsonArray{5}));
+  // A proposal the resident never answered is not reported as applied.
+  h.backend->reviewReplies={QJsonObject{{"action","cut"},{"proposals",QJsonArray{9}}},QJsonObject{}};
+  QCOMPARE(h.rec("review",{{"id",id},{"action","cut"}}).error.code,QString("recording_state"));
  }
- // U3: recording.review retryExport waits, as the window's Try again does,
- // while a cover is being placed in the window.
- void retryExportWaitsForAPlacementInTheWindow(){
+ // U3/U19: recording.review retryExport is the window's guarded Try again: its
+ // refusal (a cover being placed) or a window that can't be asked is the error,
+ // and the resident never retries on its own; the window's request does.
+ void retryExportGoesThroughTheWindow(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
   const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QVERIFY(!h.rec("stop",{{"id",id}}).error);
   h.backend->failExport=true;
   QVERIFY(!h.rec("upload",{{"id",id},{"revision",1}}).error);PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   h.backend->failExport=false;
-  h.backend->reviewReplies={QJsonObject{{"placement",QJsonObject{{"kind","solid"},{"whole",true}}}}};
+  h.backend->reviewReplies={QJsonObject{{"error",QJsonObject{{"code","recording_state"},{"message","Place or cancel the cover first"}}}}};
+  const auto placing=h.rec("review",{{"id",id},{"action","retryExport"}});
+  QCOMPARE(placing.error.code,QString("recording_state"));QCOMPARE(placing.error.message,QString("Place or cancel the cover first"));
+  h.backend->reviewReplies={QJsonObject{{"error",QJsonObject{{"code","recording_state"},{"message","The review window is not open"}}}}};
   QCOMPARE(h.rec("review",{{"id",id},{"action","retryExport"}}).error.code,QString("recording_state"));
   QCOMPARE(h.backend->exports,1);
+  QCOMPARE(h.backend->lastControlParams["action"].toString(),QString("retryExport"));
+  // The window accepts: it asks the resident (its event), which retries once.
   QVERIFY(!h.rec("review",{{"id",id},{"action","retryExport"}}).error);
+  QCOMPARE(h.backend->exports,1);
+  h.backend->sink({{"id",id},{"event","retryExportRequested"}});
   PUTGD_TRY_COMPARE(h.backend->exports,2);
  }
  void lateStopReplyPreservesEditedPendingExport_data(){

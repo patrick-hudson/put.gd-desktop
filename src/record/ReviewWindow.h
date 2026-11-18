@@ -61,6 +61,7 @@ public:
     bool hasFrame() const { return !frame_.isNull(); }
     qint64 frameTime() const { return timeUs_; }
     QSize frameSize() const { return frame_.size(); }
+    QSize skimSize() const { return skim_.size(); }
     void setCanvas(const QSize& canvas) { canvas_ = canvas; update(); }
     void setMasks(const QList<RecordingMask>& masks, const QString& selected);
     void armCreate(const QString& kind);
@@ -244,6 +245,9 @@ private:
     // them (a refusal or 2 s without an answer cancels it, with a status line).
     void upload();
     void sendUpload();
+    bool uploadBlocked() const;
+    void cancelQueuedUpload();
+    static StatusEntry keptEditing();
     int viewEdge() const;
     void refreshFrame();
     DriveResult driveAction(const QJsonObject& params);
@@ -314,6 +318,7 @@ private:
     // After making a cut, the playhead lands 1 s before its seam once the
     // resident answers (unless something else moved the playhead first).
     std::optional<recording::Span> pendingCut_;
+    quint64 pendingCutProposal_ = 0;  // the cut's proposal; only its answer moves the playhead
     // Proposals sent and answered (numbered from 1); the one an upload waits for.
     quint64 proposalSeq_ = 0, answeredSeq_ = 0, uploadAfter_ = 0;
     bool proposalPending() const { return answeredSeq_ < proposalSeq_; }

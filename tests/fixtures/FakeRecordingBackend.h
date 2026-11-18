@@ -12,7 +12,7 @@ class FakeRecordingBackend final:public RecordingBackend {
 public:
  Event sink;QStringList log;QString staging;bool failStart=false,failExport=false,available=true,deferExports=false;QList<std::function<void()>> pendingExports;int exports=0,previews=0,discards=0,cancels=0;qint64 durationUs=12000000;
  QByteArray exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4096,'r');RecordingEdit lastEdit;RecordingConfig lastConfig;qint64 lastPreviewTime=-1;
- QJsonObject lastReviewOptions,lastControlParams;QList<QJsonObject> reviewReplies;  // the window's next review answers, in order
+ QJsonObject lastReviewOptions,lastControlParams;QList<QJsonObject> reviewReplies;  // the window's next review answers, in order; {error: {code, message}} refuses
  QJsonObject capabilities() const override {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
  void microphones(const QString&,Reply reply) override {reply({},{{"available",false},{"reason","no_microphone"},{"message","No microphone is connected."},{"devices",QJsonArray{}},{"defaultIsMonitor",false}});}
@@ -27,7 +27,7 @@ public:
  qint64 processId(const QString&) const override {return 0;}
  void control(const QString&,const QString& command,const QJsonObject& params,Reply reply) override {
   log<<command;lastControlParams=params;
-  if(command=="review"){if(!reviewReplies.isEmpty()){reply({},reviewReplies.takeFirst());return;}reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
+  if(command=="review"){if(!reviewReplies.isEmpty()){const auto next=reviewReplies.takeFirst();if(next.contains("error")){const auto e=next["error"].toObject();reply({e["code"].toString(),e["message"].toString(),{}},{});}else reply({},next);return;}reply({},{{"action",params["action"]},{"playheadUs",3000000.0},{"visible",true}});return;}
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
   if(command=="start"){reply({},{{"audioEncoder",lastConfig.audio.system?QString("synthetic-aac"):QString()}});return;}
