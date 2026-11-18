@@ -19,7 +19,8 @@ Usage: curl -fsSL https://app.put.gd/install | sh -s -- [OPTIONS]
   --help                    Show this help
 Native packages use sudo only for apt/dnf/pacman install, with prompts on your terminal.
 On an Arch-family system other than Arch Linux itself (Omarchy, Manjaro) whose OpenSSL is older than
-the one the package was built against, the AppImage is installed instead.
+the one the package was built against, or where the installed putgd-cli does not start, the AppImage is
+installed instead.
 AppImage requires glibc 2.39+ and a working AppImage/FUSE runtime.
 HELP
     }
@@ -105,12 +106,24 @@ HELP
             *) suffix=-$package-x86_64.deb ;;
         esac
     }
+    announce_package() {
+        if [ "$package" = archlinux ]; then
+            note "Installing $channel / $package using the configured pacman repositories and signature policy."
+        else
+            note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
+        fi
+    }
+    # Arch Linux itself takes the pacman package. Any other Arch-family system (Omarchy, Manjaro, EndeavourOS)
+    # first decides between it and the AppImage, so the package's asset is checked only if the package is chosen:
+    # a missing Arch asset must not stop an AppImage install.
+    arch_probe_needed=false
+    if [ "$package" = archlinux ] && { [ "${ID:-}" != arch ] || command -v omarchy-update >/dev/null 2>&1; }; then
+        arch_probe_needed=true
+    fi
     [ "$package" != appimage ] || check_appimage_host
-    check_download
-    if [ "$package" = archlinux ]; then
-        note "Installing $channel / $package using the configured pacman repositories and signature policy."
-    else
-        note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
+    if ! "$arch_probe_needed"; then
+        check_download
+        announce_package
     fi
 
     if "$dry_run"; then
@@ -126,6 +139,7 @@ HELP
                     note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and run pacman -Syu putgd from the signed pkg.put.gd repository.'
                 fi
                 note 'On an Arch-family system other than Arch Linux itself, the AppImage is installed instead when the installed OpenSSL is older than the package was built against.'
+                note 'If the installed putgd-cli does not start, the pacman package is removed and the AppImage is installed instead.'
                 ;;
             fedora44|fedora45)
                 note "Would run sudo dnf install ./putgd-VERSION$suffix; package adds the signed pkg.put.gd update repository. Start: putgd"
@@ -174,6 +188,16 @@ HELP
         # AppRun manages its temporary desktop entries at launch; no install flag exists.
         note 'Installed. Start: ~/.local/bin/putgd.AppImage'
     }
+    # The AppImage for the channel the user asked for, whatever channel or package was checked before.
+    use_appimage() {
+        note "$1"
+        package=appimage
+        channel=$requested_channel
+        check_appimage_host
+        check_download
+        fetch_package
+        install_appimage
+    }
     # Pacman fetches and authenticates both the index and payload itself. Avoid
     # a second, redundant GitHub download before using the signed repository.
     if [ "$package" != archlinux ]; then
@@ -194,36 +218,31 @@ HELP
                 case "$answer" in y|Y|yes|YES) ;; *) die 'Omarchy system update declined; nothing installed' ;; esac
                 # Our explicit confirmation precedes -y so a declined native prompt
                 # (which some updater versions report as success) cannot install put.gd.
-                # Older installer versions created this public file as root-only.
-                # Repair readability so the native updater can query pacman normally.
-                if [ -f /etc/pacman.d/putgd.conf ] && [ ! -r /etc/pacman.d/putgd.conf ]; then
-                    note 'Repairing read permissions on the existing public put.gd repository file.'
-                    sudo chmod 0644 /etc/pacman.d/putgd.conf < /dev/tty
+                if ! omarchy-update -y < /dev/tty; then
+                    if [ -f /etc/pacman.d/putgd.conf ] && [ ! -r /etc/pacman.d/putgd.conf ]; then
+                        note 'The existing /etc/pacman.d/putgd.conf is not readable by pacman users (an older installer made it root-only). Run: sudo chmod 0644 /etc/pacman.d/putgd.conf'
+                    fi
+                    die 'Omarchy system update failed; nothing installed'
                 fi
-                omarchy-update -y < /dev/tty || die 'Omarchy system update failed; nothing installed'
                 arch_updated=true
             fi
             # Arch Linux itself builds the package against its own current OpenSSL, and pacman -Syu putgd brings
-            # the system to it. Any other Arch-family system (Omarchy, Manjaro, EndeavourOS) can still have an
-            # older one, where the package's putgd-cli and S3 libraries would not load: ask pacman about the
-            # installed system only, after Omarchy's own update. A wrong AppImage is harmless; a wrong native
-            # install is not.
+            # the system to it. Any other Arch-family system can still have an older one, where the putgd-cli and
+            # the S3 libraries of the package would not load: ask pacman about the installed system only, after
+            # Omarchy's own update, and change nothing of put.gd's (no key, no repository file, no chmod) unless
+            # the package is chosen. A wrong AppImage is harmless; a wrong native install is not.
             arch_native=true
-            if [ "$ID" != arch ] || command -v omarchy-update >/dev/null 2>&1; then
+            if "$arch_probe_needed"; then
                 command -v pacman >/dev/null 2>&1 || die 'Missing pacman'
+                # A configuration of its own: an unreadable /etc/pacman.d/putgd.conf must not stop an unprivileged query.
+                printf '[options]\nArchitecture = auto\n' > "$work/probe.conf"
                 arch_probe=0
-                pacman -T "$arch_libcrypto" > /dev/null || arch_probe=$?
+                pacman --config "$work/probe.conf" -T "$arch_libcrypto" > /dev/null || arch_probe=$?
                 case "$arch_probe" in
                     0) ;;
                     127)
                         arch_native=false
-                        note "This system's OpenSSL is not the one the native package was built against ($arch_libcrypto; Arch derivatives such as Omarchy follow Arch with a delay), so its putgd-cli and S3 and R2 uploads would not load. Using the AppImage."
-                        package=appimage
-                        channel=$requested_channel
-                        check_appimage_host
-                        check_download
-                        fetch_package
-                        install_appimage
+                        use_appimage "This system's OpenSSL is not the one the native package was built against ($arch_libcrypto; Arch derivatives such as Omarchy follow Arch with a delay), so its putgd-cli and S3 and R2 uploads would not load. Using the AppImage."
                         # An installed native package keeps its files but cannot run putgd-cli or upload to S3 or R2 here.
                         if pacman -Q putgd >/dev/null 2>&1; then
                             note 'The put.gd pacman package installed here cannot run putgd-cli or upload to S3 or R2 on this system. Remove it with: sudo pacman -R putgd (the AppImage now installed replaces it).'
@@ -233,6 +252,10 @@ HELP
                 esac
             fi
             if "$arch_native"; then
+                if "$arch_probe_needed"; then
+                    check_download
+                    announce_package
+                fi
                 fetch --output "$work/putgd.asc" "https://pkg.put.gd/keys/putgd-$channel.asc"
                 # Pinned channel fingerprint comes from the public key shipped in source.
                 case "$channel" in
@@ -264,6 +287,15 @@ HELP
                         pacman -Syu putgd
                     fi
                 ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty
+                # The proof that counts: pacman -T cannot predict what this transaction replaced (an OpenSSL with
+                # another soname, say), so run the installed putgd-cli. If it does not start, take the package
+                # back out and use the AppImage.
+                if ! putgd-cli --version > /dev/null 2>&1; then
+                    note 'The pacman package installed, but its putgd-cli does not start on this system (a shared library it needs is missing or does not match). Removing the package and using the AppImage.'
+                    sudo pacman -R --noconfirm putgd < /dev/tty \
+                        || die 'The pacman package does not start and could not be removed. Remove it with: sudo pacman -R putgd; then use --appimage'
+                    use_appimage 'Installing the AppImage instead.'
+                fi
             fi
             ;;
         *)
