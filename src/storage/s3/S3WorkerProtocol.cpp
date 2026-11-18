@@ -123,8 +123,8 @@ bool deleteStatus(const QJsonValue& value) {
 QJsonValue optionalReceipt(const QString& status, const QString& success, const StorageReceipt& receipt) {
     return status == success ? QJsonValue(receipt.toJson()) : QJsonValue(QJsonValue::Null);
 }
-bool resultReceipt(const QJsonValue& value, bool success, StorageReceipt& receipt) {
-    return success ? value.isObject() && decode(value.toObject(), receipt) : value.isNull();
+bool resultReceipt(const QJsonValue& value, bool success, StorageReceipt& receipt, const QString& recordedLink = {}) {
+    return success ? value.isObject() && decode(value.toObject(), receipt, recordedLink) : value.isNull();
 }
 bool errorDetails(const QJsonObject& details) {
     // Error.details is an open application-owned JSON object, including durable
@@ -200,7 +200,7 @@ bool decode(const QJsonObject& object, Artifact& artifact) {
     artifact = Artifact::fromJson(object);
     return true;
 }
-bool decode(const QJsonObject& object, StorageReceipt& receipt) {
+bool decode(const QJsonObject& object, StorageReceipt& receipt, const QString& recordedLink) {
     StorageReceipt value;
     if (!bounded(object) || !keys(object, {"schemaVersion", "destination", "objectReference", "concurrencyToken", "publicationId", "directUrl"}) ||
         !integer(object["schemaVersion"], 1, 1) || !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
@@ -212,9 +212,12 @@ bool decode(const QJsonObject& object, StorageReceipt& receipt) {
     value.directUrl = object["directUrl"].toString();
     auto unsignedSettings=value.destination.settings;unsignedSettings["publicUrlBase"]=QJsonValue::Null;
     const QUrl url(value.directUrl);auto origin=url;origin.setQuery(QString{});
-    // Receipts made before #1582 wrote the URL for the key exactly as recorded.
+    // Receipts made before #1582 wrote the URL for the key exactly as recorded. That
+    // spelling is accepted only as the link the checked receipt already holds, never
+    // for a new publication, whose link must name the key it is stored under.
     const auto key=value.objectReference["key"].toString();
-    auto names=[&key](const QString& url,const QJsonObject& settings){return url==publicObjectUrl(settings,key)||url==s3LegacyPublicObjectUrl(settings,key);};
+    const bool kept=!recordedLink.isEmpty()&&value.directUrl==recordedLink;
+    auto names=[&key,kept](const QString& url,const QJsonObject& settings){return url==publicObjectUrl(settings,key)||(kept&&url==s3LegacyPublicObjectUrl(settings,key));};
     if(value.destination.settings.value("linkMode")=="presigned") {
         if(!names(origin.toString(QUrl::FullyEncoded),unsignedSettings) ||
            !QUrlQuery(url).hasQueryItem("X-Amz-Signature") ||
@@ -350,13 +353,13 @@ bool decode(const QJsonObject& object, UploadResult& result) {
     result = std::move(value);
     return true;
 }
-bool decode(const QJsonObject& object, StatResult& result) {
+bool decode(const QJsonObject& object, StatResult& result, const StorageReceipt& checked) {
     StatResult value;
     if (!bounded(object) || !keys(object, {"status", "receipt", "error"}) ||
         !choice(object["status"], {"own", "foreign", "missing", "unknown"}) ||
         !object["error"].isObject() || !decode(object["error"].toObject(), value.error)) return false;
     value.status = object["status"].toString();
-    if (!resultReceipt(object["receipt"], value.status == QStringLiteral("own"), value.receipt) ||
+    if (!resultReceipt(object["receipt"], value.status == QStringLiteral("own"), value.receipt, checked.directUrl) ||
         (value.status != QStringLiteral("unknown") && value.error)) return false;
     result = std::move(value);
     return true;
