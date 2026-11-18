@@ -163,6 +163,12 @@ public:
  Error validateCredentials(const QString&,const QJsonObject&) const;
  QJsonObject capabilities() const;
  QJsonObject diagnostics() const;
+ // The link to hand out for a recorded receipt (StorageProvider::currentLink); the
+ // recorded one when its provider is not registered.
+ QString currentLink(const StorageReceipt&) const;
+ // Corrects ["receipt"]["directUrl"] of a History record or operation item in place,
+ // and marks its link unavailable when the provider has none (#1582).
+ void applyCurrentLink(QJsonObject& record) const;
 private: QHash<QString,std::shared_ptr<StorageProvider>> providers_;
 };
 }

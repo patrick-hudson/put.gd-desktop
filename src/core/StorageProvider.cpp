@@ -37,6 +37,15 @@ QJsonObject ProviderCapabilities::toJson() const {
  if(!removeUnavailable.isEmpty())value["removeUnavailable"]=removeUnavailable;
  return value;
 }
+QString ProviderRegistry::currentLink(const StorageReceipt& receipt) const {
+ const auto provider=find(receipt.destination.providerId);return provider?provider->currentLink(receipt):receipt.directUrl;
+}
+void ProviderRegistry::applyCurrentLink(QJsonObject& record) const {
+ auto receipt=record["receipt"].toObject();const auto recorded=receipt["directUrl"].toString();if(recorded.isEmpty())return;
+ const auto link=currentLink(StorageReceipt::fromJson(receipt));if(link==recorded)return;
+ receipt["directUrl"]=link;record["receipt"]=receipt;
+ if(link.isEmpty()){record["linkAvailable"]=false;record["linkRefreshable"]=false;}
+}
 void ProviderRegistry::add(const QString& id,std::shared_ptr<StorageProvider> p) {providers_.insert(id,std::move(p));}
 std::shared_ptr<StorageProvider> ProviderRegistry::find(const QString& id) const {return providers_.value(id);}
 Error ProviderRegistry::validate(const QString& id,const QJsonObject& s) const {auto p=find(id); return p?p->validateSettings(s):Error{"provider_unavailable","No validator registered for this provider",{}};}
