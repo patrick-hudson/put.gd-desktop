@@ -188,6 +188,26 @@ private slots:
         QCOMPARE(checked.error.code, QString("credential_setup_required"));
         QCOMPARE(f.events().size(), 1);
     }
+    // Garage signs the path exactly as it arrives, so these characters must be sent the way
+    // the SDK signs them: percent-encoded.
+    void reservedCharactersAreSentAsSigned() {
+        S3Fixture f;
+        f.reset();
+        const QString name = "a:b@c$d,e&f=g;h.txt";
+        const auto request = f.request(name);
+        QCOMPARE(request.condition, QString("absent"));
+        const auto uploaded = f.upload(request);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        for (const auto& event : f.events()) {
+            const auto path = event.toObject()["path"].toString().section('?', 0, 0);
+            QVERIFY2(event.toObject()["signatureValid"].toBool(), qPrintable(path));
+            for (const auto character : QStringList{":", "@", "$", ",", "&", "=", ";"}) QVERIFY2(!path.contains(character), qPrintable(path));
+            QCOMPARE(event.toObject()["key"].toString(), QString("prefix é/") + name);
+        }
+        const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
+        QCOMPARE(stat.status, QString("own"));
+        QCOMPARE(f.remove(uploaded.receipt).status, QString("removed"));
+    }
 };
 QTEST_GUILESS_MAIN(S3Test)
 #include "test_s3.moc"
