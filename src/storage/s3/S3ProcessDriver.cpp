@@ -50,7 +50,9 @@ public:
  ~ProcessDriver()override{closePrepared();}
  // Why the last prepare() failed, in words the user can act on.
  Error startFailure()const{return startError_?startError_:unavailable();}
- bool prepare(){
+ // `kill` and `cancellation` stop the startup handshake too: the helper is killed, and
+ // startFailure() then says it was stopped (Quit, #1602), never that S3 is missing.
+ bool prepare(const std::shared_ptr<std::atomic_bool>& kill={},const std::shared_ptr<std::atomic_bool>& cancellation={}){
   if(process_)return ready_&&!failed_;
   startError_={};
   ready_=activated_=activationAcknowledged_=terminal_=failed_=cancelSent_=checkpointException_=false;reply_={};pending_.reset();
@@ -80,7 +82,11 @@ public:
   auto boot=envelope();boot["build"]=build();boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=path_;
   if(control_->send("bootstrap",boot).isEmpty())failed_=true;
   QElapsedTimer clock;clock.start();
-  while(!ready_&&!failed_&&process_->state()!=QProcess::NotRunning&&clock.elapsed()<10000)process_->waitForReadyRead(20);
+  const auto stop=[&]{return (kill&&kill->load())||(cancellation&&cancellation->load());};
+  while(!ready_&&!failed_&&process_->state()!=QProcess::NotRunning&&clock.elapsed()<10000){
+   if(stop()){process_->kill();process_->waitForFinished(5000);startError_={"cancelled","Stopped before S3 support started; nothing was sent",{}};failed_=true;break;}
+   process_->waitForReadyRead(20);
+  }
   if(!ready_||failed_){failed_=true;resetProcess();return false;}
   return true;
  }
@@ -194,7 +200,7 @@ private:
   if(!s3wire::validateRequest(method,request))return invalidRequest(method,request);
   destination_=destination;checkpoint_=std::move(checkpoint);rpc_=0;activeMethod_=method;
   progress_=std::move(progress);uploadBytes_=method=="upload"?request["artifact"].toObject()["bytes"].toInteger():0;
-  if(!prepare()){progress_={};return startFailure();}
+  if(!prepare(kill,cancellation)){progress_={};return startFailure();}
   auto activate=envelope();activate["method"]=method;activate["request"]=request;
   // SDK CURL bounds each HTTP exchange; allow the complete driver's bounded
   // call chain, slow local artifact hashing and durable persistence separately.
@@ -263,8 +269,8 @@ private:
  HelperOutput output_{"putgd-s3-worker",logS3(),true};
 };
 }
-S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits){
+S3Driver* createS3ProcessDriver(const QString& path,CredentialLookup credentials,ReadinessCheck readiness,Error& error,S3ProcessLimits limits,std::shared_ptr<std::atomic_bool> stop){
  auto driver=std::make_unique<ProcessDriver>(path,std::move(credentials),std::move(readiness),limits);
- if(!driver->prepare()){error=driver->startFailure();return nullptr;}return driver.release();
+ if(!driver->prepare(stop)){error=driver->startFailure();return nullptr;}return driver.release();
 }
 }

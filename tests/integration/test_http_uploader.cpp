@@ -363,7 +363,8 @@ private slots:
         QCOMPARE(f.stored(), 0);
     }
     // A server that answers 200 to a deletion and deletes nothing is not believed: the
-    // file stays public, so History must not call it deleted.
+    // file stays public, so History must not call it deleted. It is unknown, not failed:
+    // the server may serve a cached copy for a while, and Retry checks again.
     void aDeletionTheServerDidNotDoIsNotBelieved() {
         HttpFixture f;
         f.reset();
@@ -372,7 +373,8 @@ private slots:
         const auto uploaded = f.upload(f.image(), destination);
         QCOMPARE(uploaded.status, QString("uploaded"));
         const auto result = f.remove(uploaded.receipt);
-        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QVERIFY2(result.error.message.contains("still serves the file"), qPrintable(result.error.message));
         QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
@@ -404,6 +406,46 @@ private slots:
         QCOMPARE(f.events("file").size(), 2);
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. A deletion URL answers with a confirmation page, and its form posts
+    // to a route that answers 404, while the file still serves. The 404 is not proof:
+    // only the check of the file's link is, and it shows nothing deleted.
+    void aConfirmationAnsweredNotFoundIsNotProof() {
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        f.rules({{{"call", "delete"}, {"status", 200}, {"body", "<form method=\"post\" action=\"?confirm=1\"><input type=\"hidden\" name=\"go\" value=\"1\"></form>"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.details["confirmed"].toBool(), true);
+        QCOMPARE(result.error.details["httpStatus"].toInt(), 404);
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
+        QCOMPARE(f.stored(), 1);
+    }
+    // Review of #1603. A check of the link whose reply was cut off before any of it came
+    // leaves nothing to compare: unknown, never removed or failed.
+    void aDeletionWithNothingToCompareIsUnknown_data() {
+        QTest::addColumn<bool>("beforeEmpty");
+        QTest::newRow("before-cut-empty") << true;
+        QTest::newRow("after-cut-empty") << false;
+    }
+    void aDeletionWithNothingToCompareIsUnknown() {
+        QFETCH(bool, beforeEmpty);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const QJsonObject whole{{"call", "file"}}, empty{{"call", "file"}, {"cut", "empty"}};
+        f.rules({beforeEmpty ? empty : whole, beforeEmpty ? whole : empty});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
     }
@@ -711,7 +753,7 @@ private slots:
         const QJsonObject whole{{"call", "file"}}, cut{{"call", "file"}, {"cut", "length"}};
         f.rules({cut, whole});
         const auto result = f.remove(uploaded.receipt);
-        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QCOMPARE(f.stored(), 1);
     }
@@ -865,7 +907,7 @@ private slots:
         QTest::addColumn<int>("checks");
         QTest::addColumn<int>("sent");
         QTest::addColumn<QString>("retried");
-        QTest::newRow("answered") << QString("pretend") << 2 << 1 << QString("failed");
+        QTest::newRow("answered") << QString("pretend") << 2 << 1 << QString("unknown");
         QTest::newRow("before-dispatch") << QString("json") << 1 << 0 << QString("removed");
     }
     void quitKillsTheHelperOfAStalledDeletion() {

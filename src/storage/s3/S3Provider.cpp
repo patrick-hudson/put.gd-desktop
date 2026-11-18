@@ -124,7 +124,7 @@ struct S3Provider::State {
                         if (!lane->driver) lane->driver = lane->module->createDriver(
                             [this](const QString& profile, const QJsonObject& reference) {
                                 return credentials.cached(profile, reference);
-                            }, [&owner](const Destination& value) { return owner.readiness(value); }, error);
+                            }, [&owner](const Destination& value) { return owner.readiness(value); }, error, cancellation);
                         { std::lock_guard lock(mutex); lane->retained = lane->driver != nullptr; }
                         if (lane->driver) work(*lane->driver);
                         else fail(error);

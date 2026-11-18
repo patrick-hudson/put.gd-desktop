@@ -29,6 +29,7 @@ An upload rule can also bend the reply the way a careless or hostile server woul
   "elsewhere": "url" | "thumb" | "delete"   that address is on another host name
                                        (this listener as "localhost")
   "cut": "length"                      the reply ends early: a Content-Length it does not fulfil
+         "empty"                       the headers promise the body, and the connection closes before any of it
          "chunk"                       a chunked reply with every byte of the body but no last chunk
   "early": true                        with "status": the reply is sent before the body is
                                        read, and the connection then closes with most of
@@ -96,6 +97,10 @@ class Handler(BaseHTTPRequestHandler):
             for name, value in (headers or {}).items():
                 self.send_header(name, value)
             self.end_headers()
+            if cut == 'empty':
+                self.wfile.flush()
+                self.close_connection = True
+                return
             if chunked:
                 def chunk(data):
                     return b'%x\r\n' % len(data) + data + b'\r\n'

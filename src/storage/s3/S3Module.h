@@ -20,7 +20,8 @@ public:
     void post(std::function<void()>);
     // Creation is worker-only. Destruction runs directly there, or queues and drains
     // for external callers; clients and SDK runtime stay on their original owner.
-    S3Driver* createDriver(CredentialLookup, ReadinessCheck, Error&);
+    // `stop` ends a process driver's startup handshake at once (Quit, #1602).
+    S3Driver* createDriver(CredentialLookup, ReadinessCheck, Error&, std::shared_ptr<std::atomic_bool> stop = {});
     void destroyDriver(S3Driver*);
     int liveDriverCount() const;
     bool workerStarted() const;
