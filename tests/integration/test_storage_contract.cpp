@@ -57,14 +57,6 @@ private slots:
   QCOMPARE(page["records"].toArray()[0].toObject()["receipt"].toObject()["directUrl"].toString(),corrected);
   bool replied=false;history.copyLink(item.artifact.id,[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});PUTGD_TRY_VERIFY(replied);QCOMPARE(source.copied.text,corrected);
   QCOMPARE(store.detail(item.artifact.id)["receipt"].toObject()["directUrl"].toString(),recorded);
-  // Operation results hand out the same link: putgd-cli operation.inspect, .recent and .copy.
-  QJsonObject inspected;ops.inspect(operation,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;});PUTGD_TRY_VERIFY(!inspected.isEmpty());
-  QCOMPARE(inspected["items"].toArray()[0].toObject()["receipt"].toObject()["directUrl"].toString(),corrected);
-  QJsonObject recent;ops.recent([&](Error e,QJsonObject r){QVERIFY(!e);recent=r;});PUTGD_TRY_VERIFY(!recent.isEmpty());
-  QCOMPARE(recent["operations"].toArray()[0].toObject()["items"].toArray()[0].toObject()["receipt"].toObject()["directUrl"].toString(),corrected);
-  source.copied={};QJsonObject copied;ops.copyResult(operation,[&](Error e,QJsonObject r){QVERIFY(!e);copied=r;});PUTGD_TRY_VERIFY(!copied.isEmpty());
-  QCOMPARE(source.copied.text,corrected);QCOMPARE(copied["items"].toArray()[0].toObject()["receipt"].toObject()["directUrl"].toString(),corrected);
-  QCOMPARE(store.operation(operation).items[0].receipt.directUrl,recorded);
   provider->link=[](const StorageReceipt&){return QString{};};const auto copies=source.copies;
   detail={};history.detail(item.artifact.id,[&](Error e,QJsonObject r){QVERIFY(!e);detail=r;});PUTGD_TRY_VERIFY(!detail.isEmpty());QVERIFY(!detail["linkAvailable"].toBool());
   replied=false;QString code;history.copyLink(item.artifact.id,[&](Error e,QJsonObject){code=e.code;replied=true;});PUTGD_TRY_VERIFY(replied);QCOMPARE(code,QString("link_unavailable"));QCOMPARE(source.copies,copies);

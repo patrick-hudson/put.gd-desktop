@@ -270,11 +270,6 @@ QJsonArray OperationService::activeObservations() const {
  return result;
 }
 void OperationService::clearObservation(const QString& id){std::lock_guard lock(observationsMutex_);observations_.remove(id);observationsDirty_.remove(id);}
-QJsonObject OperationService::withCurrentLinks(QJsonObject document)const{
- auto items=document["items"].toArray();
- for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();providers_.applyCurrentLink(item);items[i]=item;}
- document["items"]=items;return document;
-}
 QJsonObject OperationService::currentObservation(QJsonObject document)const{
  if(QStringList{"completed","partial","failed","cancelled","interrupted"}.contains(document["state"].toString()))return document;
  QJsonObject live;{std::lock_guard lock(observationsMutex_);live=observations_.value(document["id"].toString());}if(live.isEmpty())return document;
@@ -1326,8 +1321,8 @@ void OperationService::settlePreview(const PosterTask& task,Error e,QJsonObject 
  }
  for(const auto& reply:task.replies)reply(e,e?QJsonObject{}:result);
 }
-void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=withCurrentLinks(currentObservation(values[i].toObject()));data["operations"]=values;reply(e,data);});}
-void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,withCurrentLinks(currentObservation(data)));});}
+void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
+void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}
 void OperationService::cancel(const QString& id,JsonReply reply,const QString& itemId) {
  if(!itemId.isEmpty()) {
   // One file of an active batch: waiting stops at once, a running transfer is
@@ -1416,13 +1411,13 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
  auto record=[guarded,path,reply,explicitCopy](Operation value,QJsonObject copy={}) {if(!guarded)return;
   copy["operationId"]=value.id;copy["action"]=value.action;copy["automatic"]=!explicitCopy;copy["copyStatus"]=value.copyStatus;
   logging::write(logClipboard(),value.copyStatus=="failed"?QtWarningMsg:QtInfoMsg,explicitCopy?"Copy finished":"Automatic copy finished",copy);
-  guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(!e)emit guarded->resultReady(value.id);if(reply)reply(e,guarded->withCurrentLinks(result));});};
+  guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(!e)emit guarded->resultReady(value.id);if(reply)reply(e,result);});};
  if(!eligible) {
   op.copyStatus="suppressed";
   record(op,{{"suppression",explicitCopy?copyGuard(false,false,"superseded",ticket,invocation_,0,0):copyGuard(false,false,"newer_action",op.invocation,invocation_,op.clipboardRevision,source_.clipboardRevision())}});return;
  }
  QStringList urls,files;QString localKind;
- for(const auto& item:std::as_const(op.items)) {if(item.linkAvailable()){const auto link=providers_.currentLink(item.receipt);if(!link.isEmpty())urls.append(link);}if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
+ for(const auto& item:std::as_const(op.items)) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
  if(urls.isEmpty()&&files.isEmpty()) {op.copyStatus="no_result";record(op);return;}
  CopyPayload payload;
  if(!urls.isEmpty()) {payload.kind="text";payload.text=urls.join('\n');}

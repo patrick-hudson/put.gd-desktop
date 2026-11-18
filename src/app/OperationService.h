@@ -221,8 +221,6 @@ private:
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};bool sharingOnly=false;};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
- // Each item's link as its provider hands it out now; the stored receipt is unchanged (#1582).
- QJsonObject withCurrentLinks(QJsonObject) const;
  void clearObservation(const QString&);
  void enqueue(Job);
  void pump();
