@@ -42,20 +42,22 @@ What is excused, and how:
   Reports are captured whole, and `tools/lab/tsan_summary.py` excuses a report under one
   strict rule, and nothing else:
   - neither racing access stack contains a put.gd frame, in any of its frames (not only the
-    top ones);
+    top ones). The one exception is the bottom-most frame when it is put.gd's `main()`, the
+    root of every main-thread stack. A put.gd frame directly above `main()` still counts;
   - both stacks start in a Qt library;
   - the report is a data race whose stack holds a diagnosed Qt race (`KNOWN_QT_RACES`: Qt's
     `QThread::started` hand-off in `QNetworkAccessManager`, the `QNetworkReply` destructor
     chain, QtDBus's own thread, and QtDBus's pending-call bookkeeping): its function is in the
-    top six frames of one stack, and its diagnosed Qt caller, when it names one (the generic
-    `maybeSignalConnected` counts only with `QNetworkReplyHttpImplPrivate::postRequest`), is in
-    that same stack.
+    top six frames of one stack, and its anchor, when it names one, is in that same stack. The
+    generic `maybeSignalConnected` counts only with `QThread::started`, the emission the
+    diagnosis covers.
 
   The rule reads only the two racing access stacks (not thread-creation, mutex or allocation
   stacks), and it does not prove that put.gd is uninvolved: it only refuses to excuse any
-  report in which put.gd code appears. One consequence is that a known Qt race whose
-  main-thread stack ends in put.gd's `main()` is reported, not excused. Every other report
-  fails a fuzzer seed, including a put.gd frame at any depth, such as put.gd reading a
+  report in which put.gd code appears. One consequence is that a known Qt race is excused only
+  when put.gd's code is nowhere in its stacks. For example, the `QThread::started` hand-off is
+  reported when put.gd code above `main()` called `QNetworkAccessManager::get`. Every other
+  report fails a fuzzer seed, including a put.gd frame at any depth, such as put.gd reading a
   `QNetworkReply` that Qt destroys. Add an entry only after reading the report. Never add a
   put.gd function.
 
