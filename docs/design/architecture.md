@@ -125,6 +125,13 @@ File-manager selections enter through `uploadFiles`; folder handling is describe
 in [file-manager upload](file-manager-upload.md).
 
 The operation journal and per-item history commit in one SQLite transaction.
+When the journal refuses an operation's final result (a full disk, an I/O error),
+the resident keeps that result in memory and writes it again after 2 s, doubling to
+30 s, until it lands. Meanwhile `operation.inspect`, `operation.recent` and History
+report the outcome the operation really reached, marked `resultUnsaved`. Retry
+refuses it with `history_io` and Cancel with `operation_inactive`. An item whose `uploading` checkpoint was
+refused sends nothing and ends failed. Shutdown does not wait for the write: the
+stale row is then recovered at the next start like any interrupted upload (#1579).
 An unknown publication has no invented URL or deletion target. Recovery marks
 interrupted uploads unknown and never automatically publishes. Explicit retry
 retains artifacts, candidate names, conditions and publication markers, reconciles
