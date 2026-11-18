@@ -125,23 +125,17 @@ File-manager selections enter through `uploadFiles`; folder handling is describe
 in [file-manager upload](file-manager-upload.md).
 
 The operation journal and per-item history commit in one SQLite transaction.
-When the journal refuses an operation's final result (a full disk, an I/O error),
-the resident keeps that result in memory and writes it again after 2 s, doubling to
-30 s, until it lands. A refused write stops the operation but undoes nothing its
-provider did: the operation ends completed when every file was uploaded, skipped or
-saved locally, partial with `history_io` when only some were, and failed with
-`history_io` when none were. While the result is kept, `operation.inspect` and
-`operation.recent` report it with `resultUnsaved`. History lays only the kept upload
-status, phase, error and local-save state over its existing rows, marked
-`resultUnsaved`; share and link fields, filters and counts still come from the saved
-journal. Retry first gives its usual answers (`cleanup_busy`, `queue_full`) and then
-`history_io` from the unsaved-result check; Cancel answers `operation_inactive`.
-When the journal refuses the `uploading` checkpoint before an attempt, that attempt
-sends nothing: the item ends failed, or stays unknown when it was a resend to a
-provider that names its own objects. Shutdown skips scheduled rewrites but joins a
-write already running. A result that stays unsaved is not lost silently: at the next
-start, if the journal can be read, recovery marks the operation interrupted and its
-`uploading` items unknown, as after a crash (#1579).
+When the journal refuses an operation's final write (a full disk, an I/O error), the
+operation stays active, its slot held as while it ran, and the same final write
+(every item row and its publication identity, with the outcome the run chose) is
+tried again after 2 s, doubling to 30 s, until it lands. Meanwhile History and
+`operation.recent` show the saved row with the phase `finishing`; Retry, Cancel and
+Copy answer as for any active operation. A result that lands late is not copied to
+the clipboard. When the journal refuses the `uploading` checkpoint before an attempt,
+that attempt sends nothing: the item ends failed, or stays unknown on a resend to a
+provider that names its own objects. Shutdown drops the retry, and a retried write
+waits at most 1 s for a lock; the next start recovers the saved row as interrupted,
+its `uploading` items unknown (#1579).
 An unknown publication has no invented URL or deletion target. Recovery marks
 interrupted uploads unknown and never automatically publishes. Explicit retry
 retains artifacts, candidate names, conditions and publication markers, reconciles
