@@ -96,6 +96,8 @@ public:
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
+ // Tests make reading a just-saved final row back fail, which must not mark the operation (#1579).
+ void setFinalReadbackFailureForTesting(bool fail) {failFinalReadbackForTesting_=fail;}
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
  // The tray needs only the desktop report, without querying storage providers.
@@ -254,7 +256,7 @@ private:
  // Operations whose result History could not save (#1579). Their rows stay as last saved until a restart's
  // recovery fixes them; Retry refuses them until then. One notification per session says so.
  QSet<QString> unsavedHistory_;
- bool unsavedHistoryNotified_=false;
+ bool unsavedHistoryNotified_=false,failFinalReadbackForTesting_=false;
  void rememberUnsavedHistory(const QString& id);
  // A finished operation keeps its slot until its link copy and source cleanup are done, while its outcome is already
  // visible. A Retry then is answered operation_settling, which is worth repeating in a moment (#1578).
