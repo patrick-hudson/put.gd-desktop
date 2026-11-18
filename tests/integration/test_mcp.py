@@ -18,7 +18,7 @@ import zlib
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from share_mcp.server import CliAdapter, create_server
+from share_mcp.server import CliAdapter, create_server, safe_commands
 
 
 def synthetic_png() -> bytes:
@@ -66,6 +66,25 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             result = await server.call_tool(name, args)
             envelope = result.structured_content or json.loads(result.content[0].text)
             self.assertEqual(envelope['error']['code'], 'invalid_request', name)
+
+    def test_redact_terms_and_patterns_follow_the_shared_table(self):
+        # #1618: the editor's validation table (tests/fixtures/text/redact-validation.json) feeds the same inputs
+        # to this helper. Rules that need PCRE2 (compile, emptyMatch, backReference, nestedRepeat) are left to the
+        # editor, whose edit_command_invalid stays authoritative: the helper may pass them on, never refuse a valid row.
+        table = json.loads((Path(__file__).resolve().parents[1] / 'fixtures/text/redact-validation.json').read_text())
+        editor_only = {'compile', 'emptyMatch', 'backReference', 'nestedRepeat'}
+        checked = 0
+        for key, rows in (('terms', table['terms']), ('patterns', table['patterns'])):
+            for row in rows:
+                accepted = safe_commands([{'op': 'redactText', 'categories': ['list'], key: [row['value']]}])
+                if row['rule'] == 'ok':
+                    self.assertTrue(accepted, (key, row['value'][:40]))
+                elif row['rule'] not in editor_only:
+                    self.assertFalse(accepted, (key, row['rule'], row['value'][:40]))
+                else:
+                    continue
+                checked += 1
+        self.assertGreater(checked, 40)
 
     async def test_schema_rejects_coercion_before_calling_adapter(self):
         from unittest.mock import AsyncMock

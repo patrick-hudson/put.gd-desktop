@@ -132,20 +132,41 @@ def result_identity(value: Any) -> bool:
 REDACT_BREAKS = {'\n', '\r', '\u2028', '\u2029'}
 
 
+def has_wide_escape(pattern: str) -> bool:
+    # PCRE2's \C matches one code unit, which can be half a character. A backslash escapes the next
+    # character (so \\C is a literal backslash and a C), and \Q...\E quotes its text.
+    i = 0
+    while i < len(pattern):
+        if pattern[i] != '\\':
+            i += 1
+        elif pattern.startswith('\\Q', i):
+            end = pattern.find('\\E', i + 2)
+            i = len(pattern) if end < 0 else end + 2
+        elif pattern.startswith('\\C', i):
+            return True
+        else:
+            i += 2
+    return False
+
+
 def safe_redact_term(value: Any) -> bool:
-    # The editor's rules (redactTermError): trimmed, 1 to 100 code points, one line, with a letter or digit.
-    if not isinstance(value, str):
+    # The editor's rules (redactTermError). The line breaks are checked on the raw value, then it is
+    # trimmed; what is left is 1 to 100 code points with a letter or digit.
+    if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
         return False
     term = value.strip()
-    return (0 < len(term) <= REDACT_TERM_LENGTH and not any(c in REDACT_BREAKS for c in term) and
-            any(c.isalnum() for c in term))
+    return 0 < len(term) <= REDACT_TERM_LENGTH and any(c.isalnum() for c in term)
 
 
 def safe_redact_pattern(value: Any) -> bool:
-    # redactPatternError, minus compiling (the editor does that): up to 500 code points on one line,
-    # not blank, and no leading (* verb, which could set the pattern's own matching limits.
-    return (isinstance(value, str) and bool(value.strip()) and len(value) <= REDACT_PATTERN_LENGTH and
-            not any(c in REDACT_BREAKS for c in value) and not value.startswith('(*'))
+    # redactPatternError as far as it can be checked without PCRE2: no line break in the raw value; then,
+    # trimmed, not empty, at most 500 code points, no leading (* verb (it could set the pattern's own
+    # matching limits) and no \C (half a character). Compiling, empty matches, back references and nested
+    # unbounded repeats such as (a+)+ are the editor's to refuse; its edit_command_invalid stays authoritative.
+    if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
+        return False
+    pattern = value.strip()
+    return 0 < len(pattern) <= REDACT_PATTERN_LENGTH and not pattern.startswith('(*') and not has_wide_escape(pattern)
 
 
 def safe_redact_list(values: Any, most: int, entry_ok: Any) -> bool:

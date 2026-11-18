@@ -25,6 +25,7 @@
 #include <QColorDialog>
 #include <QComboBox>
 #include <QFontComboBox>
+#include <QMap>
 #include <QPointer>
 #include <QAbstractSpinBox>
 #include <QDateTime>
@@ -980,6 +981,8 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  }else if(action=="removeSuggestions"){
   // Quick redact's "Remove suggestions": every suggested mark, one undo step; marks drawn by hand stay (#1618).
   if(!only({}))return fail("invalid_request","removeSuggestions has no other parameters");
+  // A drag in progress owns the document's undo step: removing now would join it, and cancelling the drag would bring the marks back.
+  if(doc_.inGesture())return fail("editor_busy","A mark is being dragged; try again when the drag ends");
   if(removeSuggestions()==0)return fail("edit_shape_missing","There are no suggested marks to remove");
  }else if(action=="selectAffectedText"){
   if(!only({}))return fail("invalid_request","selectAffectedText has no other parameters");
@@ -1223,9 +1226,14 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     g->doc_.beginGesture();
     for(const auto& match:found.matches){
      bool any=false;
-     for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){
-      if(g->doc_.dismissed(rect,match.category))continue;
-      editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=rect;created.append(double(g->doc_.add(shape)));any=true;
+     // What a deleted suggestion is remembered by: the recognized words' own boxes on that line, never the padded mark (padding
+    // would make two neighbouring one-character words look like one suggestion).
+    QMap<int,QRect> lines;for(const int index:match.words)if(index>=0&&index<candidates.size())lines[candidates.at(index).line]=lines.value(candidates.at(index).line).united(candidates.at(index).rect);
+    for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){
+      QRect words;qint64 best=-1;
+      for(const auto& line:std::as_const(lines)){const auto shared=qint64(line.intersected(rect).width())*line.intersected(rect).height();if(shared>best){best=shared;words=line;}}
+      if(g->doc_.dismissed(words,match.category))continue;
+      editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=words;created.append(double(g->doc_.add(shape)));any=true;
      }
      if(any)counts[match.category]=counts[match.category].toInt()+1;
     }
