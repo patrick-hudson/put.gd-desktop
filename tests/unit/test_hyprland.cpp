@@ -67,6 +67,9 @@ public:
  // The server thread appends to these under the lock; a copy iterated outside it would detach its shared data unlocked.
  int ownCount(){std::lock_guard lock(mutex_);int n=0;for(const auto& b:std::as_const(binds_))if(HyprlandShortcuts::ownDescription(b.toObject()["description"].toString()))++n;return n;}
  int count(const QString& prefix){std::lock_guard lock(mutex_);int n=0;for(const auto& r:std::as_const(log_))if(r.startsWith(prefix))++n;return n;}
+ bool hasBindDescribed(const QString& description){std::lock_guard lock(mutex_);for(const auto& b:std::as_const(binds_))if(b.toObject()["description"].toString()==description)return true;return false;}
+ // The first request that is a handle's :remove() or a keyword bind, or an empty string when the log has none.
+ QString forbiddenRequest(){std::lock_guard lock(mutex_);for(const auto& r:std::as_const(log_))if(r.contains(":remove")||r.startsWith("keyword"))return r;return {};}
  // An Omarchy theme change: Hyprland reloads by itself.
  void externalReload(){std::lock_guard lock(mutex_);reload();}
  void addBind(const QJsonObject& bind){std::lock_guard lock(mutex_);binds_.append(bind);}
@@ -308,7 +311,7 @@ private slots:
   QCOMPARE(hyprland.binds().size(),251+2);
   // Another program's runtime bind: gone if put.gd reloaded, so it must outlive what follows.
   hyprland.addBind(QJsonObject{{"modmask",8},{"key","F7"},{"keycode",0},{"submap",""},{"mouse",false},{"catch_all",false},{"description","Another program"},{"dispatcher","exec"},{"arg","x"}});
-  const auto otherProgram=[&]{for(const auto& b:hyprland.binds())if(b.toObject()["description"].toString()=="Another program")return true;return false;};
+  const auto otherProgram=[&]{return hyprland.hasBindDescribed("Another program");};
   // Rebinding one action removes just that action's old chord.
   shortcuts->bind({{"region","Ctrl+Shift+1"},{"window","Ctrl+Shift+4"},{"record","Print"}});
   PUTGD_TRY_COMPARE(hyprland.count("eval hl.unbind"),2);
@@ -352,7 +355,7 @@ private slots:
   PUTGD_TRY_COMPARE(hyprland.count("reload"),reloadsBeforeQuit+1);PUTGD_TRY_COMPARE(hyprland.ownCount(),2);
   shortcuts->clear();QCOMPARE(hyprland.ownCount(),0);QCOMPARE(hyprland.count("reload"),reloadsBeforeQuit+2);
   // Never a handle's :remove() (a stale handle crashes Hyprland), never keyword binds.
-  for(const auto& request:hyprland.requests()){QVERIFY2(!request.contains(":remove"),qPrintable(request));QVERIFY(!request.startsWith("keyword"));}
+  const QString forbidden=hyprland.forbiddenRequest();QVERIFY2(forbidden.isEmpty(),qPrintable(forbidden));
   QVERIFY(hyprland.count("eval hl.layer_rule(")>=2);
  }
 };
