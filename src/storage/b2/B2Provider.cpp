@@ -142,8 +142,9 @@ void B2Provider::testDestination(const Destination& destination, DurableCheckpoi
 }
 
 namespace putgd {
-void B2Provider::refreshLink(const StorageReceipt& receipt, std::function<void(StatResult)> reply) {
-    Error e;const auto result=call("refreshLink",receipt.destination,{{"receipt",receipt.toJson()}},e);
+void B2Provider::refreshLink(const StorageReceipt& receipt, std::function<void(StatResult)> reply) {refreshLinkForCopy(receipt,{},std::move(reply));}
+void B2Provider::refreshLinkForCopy(const StorageReceipt& receipt, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)> reply) {
+    Error e;const auto result=call("refreshLink",receipt.destination,{{"receipt",receipt.toJson()}},e,nullptr,{},{},{},kill);
     reply({e?"unknown":result["status"].toString("unknown"),StorageReceipt::fromJson(result["receipt"].toObject()),e});
 }
 }

@@ -36,7 +36,7 @@ public:
  void retryDelete(const QString&,JsonReply);
  void cancelDelete(const QString&,JsonReply);
  // Quit's first step (#1602): no new deletion or retry is admitted, and the helper of
- // every running deletion is killed, so it sends nothing more. What it had sent is
+ // every running deletion, and of a Copy Link renewal, is killed, so it sends nothing more. What it had sent is
  // recorded unknown with its journaled intent; work that sent nothing is left as it was.
  void stopDeletions();
 signals:

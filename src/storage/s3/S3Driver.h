@@ -11,6 +11,8 @@ public:
     virtual void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) = 0;
     virtual void upload(const UploadRequest&, std::function<void(UploadResult)>) = 0;
     virtual void refreshLink(const StorageReceipt& value, std::function<void(StatResult)> reply) {reply({"unknown",value,{"unsupported","Link refresh unavailable",{}}});}
+    // Copy Link's renewal; the process driver kills its helper on `kill` (#1602).
+    virtual void refreshLinkForCopy(const StorageReceipt& value, std::shared_ptr<std::atomic_bool>, std::function<void(StatResult)> reply) { refreshLink(value, std::move(reply)); }
     virtual void stat(const StorageReceipt&, std::function<void(StatResult)>) = 0;
     // A deletion's identity check; the process driver kills its helper on `kill` (#1602).
     virtual void statForRemoval(const StorageReceipt& value, std::shared_ptr<std::atomic_bool>, std::function<void(StatResult)> reply) { stat(value, std::move(reply)); }

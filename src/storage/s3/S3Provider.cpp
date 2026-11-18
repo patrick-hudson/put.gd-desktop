@@ -293,10 +293,11 @@ void S3Provider::testDestination(const Destination& destination, DurableCheckpoi
 }
 
 namespace putgd {
-void S3Provider::refreshLink(const StorageReceipt& receipt, std::function<void(StatResult)> reply) {
+void S3Provider::refreshLink(const StorageReceipt& receipt, std::function<void(StatResult)> reply) {refreshLinkForCopy(receipt,{},std::move(reply));}
+void S3Provider::refreshLinkForCopy(const StorageReceipt& receipt, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)> reply) {
     if(receipt.destination.settings["linkMode"]!="presigned") {reply({"unknown",receipt,{"link_refresh_unsupported","This link does not expire",{}}});return;}
     reply=once(std::move(reply));
-    state_->run(*this,receipt.destination,{},[receipt,reply](S3Driver& driver){driver.refreshLink(receipt,reply);},
+    state_->run(*this,receipt.destination,kill,[receipt,kill,reply](S3Driver& driver){driver.refreshLinkForCopy(receipt,kill,reply);},
         [reply](Error e){reply({"unknown",{},e});});
 }
 }

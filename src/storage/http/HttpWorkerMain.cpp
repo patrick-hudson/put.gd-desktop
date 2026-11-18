@@ -933,42 +933,42 @@ private:
         }
         // The answer to a confirmation is often a redirect back to the site.
         if (r.status >= 200 && r.status < 400) {
-            // A server can answer politely and delete nothing. If the link served the
-            // file before and serves the very same bytes now, it is still there.
-            // Two whole replies are the same file when their bytes are. A reply that was
-            // cut short, before or after, is held against the other as far as it came:
-            // a link that still answers with the bytes it had is not a deleted file, and
-            // a check that was cut short proves nothing either way.
-            if (before.status >= 200 && before.status < 300) {
-                const auto after = client_.get(link, allowInsecure());
+            // A server can answer politely and delete nothing, so the link is always
+            // checked again after the answer; what it served before the deletion never
+            // stands in for that check. Only a link that is gone, or that now serves other
+            // bytes than the file it served before, shows the file went.
+            const auto after = client_.get(link, allowInsecure());
+            if (after.status == 404 || after.status == 410) return finish("removed");
+            const bool served = after.status >= 200 && after.status < 300;
+            if (served && before.status >= 200 && before.status < 300) {
+                // Two whole replies are the same file when their bytes are. A reply that was
+                // cut short, before or after, is held against the other as far as it came:
+                // a link that still answers with the bytes it had is not a deleted file, and
+                // a check that was cut short proves nothing either way.
                 const bool partial = before.cut || after.cut;
                 const auto common = qMin(before.body.size(), after.body.size());
                 const bool same = partial ? before.body.left(common) == after.body.left(common) : after.body == before.body;
-                if (after.status >= 200 && after.status < 300 && same) {
-                    // With nothing to compare (a check cut off before any of the file came)
-                    // the link still answers, and that is all that is known.
-                    error = partial && common == 0
-                        ? Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), and the link still answers, but the check of the link was cut off before any of the file came, "
-                                "so it shows nothing either way. Nothing is confirmed deleted; try again later or delete it on the server.").arg(r.status), details}
-                        : Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
-                                "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status)
-                                .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
-                    return {{"status", "failed"}, {"progress", progress}};
-                }
-                // Only a link that is gone, or serves something else now, shows the file
-                // went. Any other answer (a server error, no reply, a redirect) shows
-                // nothing either way: the intent stays journaled and Retry asks again.
-                const bool gone = after.status == 404 || after.status == 410;
-                if (!gone && !(after.status >= 200 && after.status < 300)) {
-                    uncertain = true;
-                    details["checkStatus"] = after.status;
-                    if (after.status == 0) details["checkTransport"] = after.detail;
-                    error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was inconclusive (%2). "
-                             "It may or may not be deleted; Retry asks again.").arg(r.status).arg(after.status ? QString("HTTP %1").arg(after.status) : after.detail), details};
-                    return {{"status", "unknown"}, {"progress", progress}};
-                }
+                if (!same) return finish("removed");
+                // With nothing to compare (a check cut off before any of the file came)
+                // the link still answers, and that is all that is known.
+                error = partial && common == 0
+                    ? Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), and the link still answers, but the check of the link was cut off before any of the file came, "
+                            "so it shows nothing either way. Nothing is confirmed deleted; try again later or delete it on the server.").arg(r.status), details}
+                    : Error{"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file%2. Nothing is confirmed deleted. "
+                            "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; try again later or delete it on the server.").arg(r.status)
+                            .arg(partial ? QStringLiteral(", as far as the check of the link got before its reply was cut off") : QString()), details};
+                return {{"status", "failed"}, {"progress", progress}};
             }
-            return finish("removed");
+            // Anything else shows nothing either way: a server error, no reply, a redirect,
+            // or a link that answers when the look before the deletion got nothing to
+            // compare it with. The intent stays journaled and Retry asks again.
+            uncertain = true;
+            details["checkStatus"] = after.status;
+            details["checkBeforeStatus"] = before.status;
+            if (after.status == 0) details["checkTransport"] = after.detail;
+            error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was inconclusive (%2). "
+                     "It may or may not be deleted; Retry asks again.").arg(r.status).arg(after.status ? QString("HTTP %1").arg(after.status) : after.detail), details};
+            return {{"status", "unknown"}, {"progress", progress}};
         }
         // Gone. It was this deletion when an earlier attempt's reply was lost, or when
         // the server closed the connection on this request and the transport, which

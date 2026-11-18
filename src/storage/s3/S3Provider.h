@@ -24,6 +24,7 @@ public:
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
     void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
     void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
+    void refreshLinkForCopy(const StorageReceipt&, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)>) override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void statForRemoval(const StorageReceipt&, std::shared_ptr<std::atomic_bool> kill, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;

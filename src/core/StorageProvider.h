@@ -104,6 +104,9 @@ public:
  virtual ~StorageProvider()=default;
  // Explicit user action only: never called by refreshLink or background history reads.
  virtual void unlockLinkCredentials(const StorageReceipt&,std::function<void(Error)> reply) {reply({"link_refresh_unsupported","No saved link credentials are available",{}});}
+ // Copy Link's renewal of an expiring link. A provider whose renewal runs in a helper
+ // kills it when `kill` is set (quit, #1602) and answers unknown: the recorded link stays.
+ virtual void refreshLinkForCopy(const StorageReceipt& receipt,std::shared_ptr<std::atomic_bool> /*kill*/,std::function<void(StatResult)> reply) {refreshLink(receipt,std::move(reply));}
  // Explicit copy-time renewal. Implementations use only this saved receipt and cached credentials.
  virtual void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> reply) {
   reply({"unknown",receipt,{"link_refresh_unsupported","This provider cannot refresh an expiring link",{}}});

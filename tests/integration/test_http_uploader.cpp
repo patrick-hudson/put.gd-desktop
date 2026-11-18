@@ -378,18 +378,30 @@ private slots:
         QCOMPARE(f.fetch(uploaded.receipt.directUrl).first, 200);
         QCOMPARE(f.stored(), 1);
     }
-    // Review of #1603. The server answers a deletion politely, and the check of the link
-    // after it gets a server error: nothing shows the file went, so it is unknown with
-    // its intent journaled, never removed.
+    // Review of #1603. The server answers a deletion politely (and deletes nothing), and
+    // the checks of the link show nothing either way: a server error after it, or one
+    // before it so there is nothing to compare with. The deletion is unknown with its
+    // intent journaled, never removed: the look before never stands in for the one after.
+    void aDeletionWhoseCheckFailsIsUnknown_data() {
+        QTest::addColumn<int>("before");
+        QTest::addColumn<int>("after");
+        QTest::newRow("after-503") << 0 << 503;
+        QTest::newRow("before-503-after-same") << 503 << 0;
+        QTest::newRow("before-503-after-503") << 503 << 503;
+    }
     void aDeletionWhoseCheckFailsIsUnknown() {
+        QFETCH(int, before);
+        QFETCH(int, after);
         HttpFixture f;
         f.reset();
         auto destination = f.destination;
         destination.settings = f.settings("pretend");
         const auto uploaded = f.upload(f.image(), destination);
         QCOMPARE(uploaded.status, QString("uploaded"));
-        f.rules({{{"call", "file"}}, {{"call", "file"}, {"status", 503}}});
+        const auto check = [](int status) { return status ? QJsonObject{{"call", "file"}, {"status", status}} : QJsonObject{{"call", "file"}}; };
+        f.rules({check(before), check(after)});
         const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
         QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(result.error.code, QString("http_outcome_unknown"));
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));

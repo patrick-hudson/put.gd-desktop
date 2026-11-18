@@ -45,7 +45,8 @@ QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
    data=store.detail(id,&e);if(e)return QJsonObject{};
    if(data["linkRefreshable"].toBool()) {
     receipt=StorageReceipt::fromJson(data["receipt"].toObject());
-    auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLink(receipt,cb);});
+    // Quit kills a renewal helper waiting on a stalled server; a link not renewed stays as recorded (#1602).
+    auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLinkForCopy(receipt,quitting_,cb);});
     if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","The original uploaded object is no longer available",{}};return QJsonObject{};}
     if((e=store.refreshLink(id,receipt,result.receipt)))return QJsonObject{};
     data=store.detail(id,&e);
