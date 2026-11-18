@@ -12,9 +12,11 @@
 struct AVFrame;
 namespace putgd::record {
 // The one edited-media model shared by preview and export: a frame at clip
-// time t is retained when trimStart <= t < trimEnd, and a mask applies while
-// mask.start <= t < mask.end (half-open, source time). Export rebases output
-// time to zero; masks are then enabled on gte(t, a) * lt(t, b) in output time.
+// time t is retained when t lies in a kept span (the trim minus every cut,
+// recording::KeptSpans), and a mask applies while mask.start <= t < mask.end
+// (half-open, source time). Export lays the kept spans end to end from zero on
+// the clip's own frame grid (#1613), video and audio cut at the same instants;
+// masks are enabled on gte(t, a) * lt(t, b) per output part of their interval.
 struct ExportRequest {
     QString input;      // the working clip (Matroska, H.264 [+ AAC])
     QString output;     // final file; the extension is informational, the format decides
@@ -24,11 +26,12 @@ struct ExportRequest {
     QSize canvas;
 };
 struct ExportResult {
-    qint64 bytes = 0, durationUs = 0;
+    qint64 bytes = 0, durationUs = 0;  // durationUs: the output's (kept) length
     int frames = 0;
     QString videoEncoder, audioEncoder;
     QSize size;
 };
+// progress runs 0..1 over the output (kept) duration.
 Error exportClip(const ExportRequest&, ExportResult&, const std::atomic_bool& cancelled, const std::function<void(double)>& progress = {});
 // One decoded frame at clip time with the masks active at that time applied,
 // scaled so the long edge is at most maxEdge. Trimmed-out times still render.
