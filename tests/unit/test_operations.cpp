@@ -5,6 +5,7 @@
 #include <QSignalSpy>
 #include <QRegularExpression>
 #include <QSqlQuery>
+#include <QSqlDatabase>
 #include <QUuid>
 #include <QBuffer>
 #include <QElapsedTimer>
@@ -257,6 +258,60 @@ private slots:
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data"),staging=root+"/artifacts/.817effa3-cd94-4a25-b066-d85f7fbbdb9a-4c0b1d4a-13a3-46ba-9316-90859b0cfe4e";
   {OperationService owner(root,settings,registry,source);PUTGD_TRY_VERIFY(owner.ready());QVERIFY(QDir().mkpath(staging));const auto artifact=fixture(staging,"cad9f544-c88c-4d8e-875b-576db75867dd","unfinished synthetic bytes"),local=fixture(staging,"user-owned-copy.txt","user archive");OperationService second(root,settings,registry,source);QSignalSpy initialized(&second,&OperationService::initialized);PUTGD_TRY_COMPARE(initialized.count(),1);QVERIFY(!second.ready());QString code;second.invoke("clipboard",[&](Error e,QJsonObject){code=e.code;});QCOMPARE(code,QString("journal_busy"));QVERIFY(QFile::exists(artifact));QVERIFY(QFile::exists(local));}
   OperationService restarted(root,settings,registry,source);PUTGD_TRY_VERIFY(restarted.ready());QVERIFY(!QFile::exists(staging+"/cad9f544-c88c-4d8e-875b-576db75867dd"));QVERIFY(QFile::exists(staging+"/user-owned-copy.txt"));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+ }
+ // A failure that passes (a full disk, an I/O error, a database another tool holds) must not leave the resident unable to use its journal until
+ // the next start, and until it recovers every reply names the real error (#1576).
+ void failedJournalRecoveryIsRetriedAndNamesItsError() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root+"/history.sqlite"));  // the database cannot be opened: the first recovery fails
+  OperationService operations(root,settings,registry,source);operations.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(operations.notReadyError().code=="history_io");QVERIFY(!operations.ready());
+  QString code;operations.invoke("clipboard",[&](Error e,QJsonObject){code=e.code;});QCOMPARE(code,QString("history_io"));
+  QVERIFY(QDir().rmdir(root+"/history.sqlite"));  // the fault passes
+  PUTGD_TRY_VERIFY(operations.ready());QVERIFY(!operations.notReadyError());
+ }
+ // A lock that cannot be taken is retried too: QLockFile answers a stale lock it failed to remove (an I/O error) like a live owner, and a resident that
+ // starts while its predecessor is still leaving must not stay refused for good (#1576).
+ void journalLockHeldAtStartIsTakenOnceItIsReleased() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root));QLockFile owner(root+"/resident.lock");QVERIFY(owner.tryLock(0));
+  OperationService second(root,settings,registry,source);second.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(second.notReadyError().code=="journal_busy");QVERIFY(!second.ready());
+  owner.unlock();
+  PUTGD_TRY_VERIFY(second.ready());
+ }
+ // A disk error can leave resident.lock empty or unreadable. Qt cannot verify such a lock as stale and put.gd adds no
+ // reclaim of its own (a safe one needs a lock protocol across versions): it stays journal_busy, keeps retrying, and
+ // tells the user the one manual step (#1576).
+ void malformedJournalLockStaysBusyAndIsNeverRemoved() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root));const auto lockPath=root+"/resident.lock";
+  {QFile f(lockPath);QVERIFY(f.open(QIODevice::WriteOnly|QIODevice::Truncate));QVERIFY(f.write("not a lock")>0);QVERIFY(f.flush());QVERIFY(f.setFileTime(QDateTime::currentDateTime().addSecs(-3600),QFileDevice::FileModificationTime));}
+  QVERIFY(QFileInfo(lockPath).lastModified().secsTo(QDateTime::currentDateTime())>3000);   // the backdated time held
+  OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(ops.notReadyError().code=="journal_busy");
+  const auto message=ops.notReadyError().message;
+  QCOMPARE(message,QString("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove %1 and start it again.").arg(QDir::toNativeSeparators(lockPath)));
+  QCOMPARE(ops.notReadyError().details["lockPath"].toString(),QDir::toNativeSeparators(lockPath));
+  PUTGD_VERIFY_STEADY(!ops.ready(),500);   // several retries later: still busy
+  QFile lock(lockPath);QVERIFY(lock.open(QIODevice::ReadOnly));QCOMPARE(lock.readAll(),QByteArray("not a lock"));
+ }
+ // A recovery that fails partway (here its deletion scan) is retried whole: the artifacts it recovered before the
+ // failure are written, but that write must not clear the error and leave the resident ready with records unrecovered (#1576).
+ void recoveryThatFailsAfterRecoveringArtifactsIsNotReady() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("6f1d1f8e-5b0e-4f2b-9a51-0c7c2f0d6b11");
+  {Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));
+   ArtifactStore artifacts(root+"/artifacts");QVERIFY(!artifacts.acquire(id,textPayload(),ResourceLimits{}).error);
+  }
+  // The deletion table's page becomes unreadable, as on a disk read error: its scan fails after the operations were recovered.
+  const auto page=[&](bool readable){int rootPage=0;const auto name=QUuid::createUuid().toString();{auto db=QSqlDatabase::addDatabase("QSQLITE",name);db.setDatabaseName(d.filePath("data/history.sqlite"));if(db.open()){QSqlQuery q(db);if(q.exec("SELECT rootpage FROM sqlite_master WHERE type='table' AND name='deletions'")&&q.next())rootPage=q.value(0).toInt();}}QSqlDatabase::removeDatabase(name);
+   QFile file(d.filePath("data/history.sqlite"));if(rootPage<2||!file.open(QIODevice::ReadWrite))return false;file.seek(16);const auto size=file.read(2);const qint64 pageSize=size.size()==2?((uchar(size[0])<<8)|uchar(size[1])):0;if(pageSize<512)return false;
+   file.seek((rootPage-1)*pageSize);return file.write(QByteArray(1,readable?char(0x0d):char(0)))==1&&file.flush();};
+  QVERIFY(page(false));
+  Source source;OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(ops.notReadyError().code=="history_io");PUTGD_VERIFY_STEADY(!ops.ready(),200);
+  QVERIFY(page(true));
+  PUTGD_TRY_VERIFY(ops.ready());HistoryStore store(root+"/history.sqlite");const auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);
  }
  void committedAcquisitionRecoversAfterMissingItemCheckpoint() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5");Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));ArtifactStore artifacts(root+"/artifacts");auto acquired=artifacts.acquire(id,textPayload(),ResourceLimits{});QVERIFY(!acquired.error);Source source;source.payload=textPayload();OperationService ops(root,settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);QCOMPARE(recovered.items[0].artifact.sha256,acquired.artifacts[0].sha256);QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));QVERIFY(!store.operation(id).items[0].candidate.isEmpty());QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,0);

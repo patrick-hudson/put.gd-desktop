@@ -17,6 +17,8 @@ public:
  QString revision()const{return metadata_["acceptedRevision"].toString();}
  QString path()const{return metadata_["path"].toString();}
  bool ready()const{return ready_;}
+ // While the journal is unavailable, why: the resident's recovery error, or "initializing" during its first attempt.
+ Error journalError()const{return journalError_;}
  QJsonObject diagnostics()const{return diagnostics_;}
  QJsonObject build()const{return build_;}
  QString residentEpoch()const{return epoch_;}
@@ -43,6 +45,7 @@ private:
  SessionClient& client_;
  QJsonObject document_,metadata_,diagnostics_,build_;
  QString epoch_;
+ Error journalError_;
  QThreadPool previews_;
  bool ready_=false,snapshotActive_=false,snapshotPending_=false;
  int mutations_=0;

@@ -145,7 +145,22 @@ private slots:
   QLockFile running(legacyData(d.path())+"/resident.lock");QVERIFY(running.tryLock(0));const auto before=snapshot(d.path());
   const auto locations=StorageLocations::prepare(d.filePath("c"),d.filePath("d"));
   QCOMPARE(locations.error.code,QString("storage_busy"));QCOMPARE(snapshot(d.path()),before);
+  // The same step as journal recovery gives: no owner named, the lock's path to remove by hand (#1576).
+  QCOMPARE(locations.error.details["lockPath"].toString(),QDir::toNativeSeparators(legacyData(d.path())+"/resident.lock"));
+  QVERIFY2(locations.error.message.startsWith("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove "),qPrintable(locations.error.message));
   running.unlock();verifyMoved(d.path(),StorageLocations::prepare(d.filePath("c"),d.filePath("d")));
+ }
+ // A lock file that cannot be created is not a held lock: no removal step for a file that never existed (#1576).
+ void unwritableDataFolderIsNotReportedAsAHeldLock() {
+  QTemporaryDir d;QVERIFY(copyTree(templateDir_.path(),d.path()));
+  const auto data=d.filePath("d/putgd");QVERIFY(QFileInfo(data).isDir());QVERIFY(!QFileInfo::exists(data+"/resident.lock"));
+  QVERIFY(QFile::setPermissions(data,QFile::ReadOwner|QFile::ExeOwner));
+  if(QFileInfo(data).isWritable()) {QFile::setPermissions(data,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);QSKIP("permissions are not enforced for this user");}
+  const auto locations=StorageLocations::prepare(d.filePath("c"),d.filePath("d"));
+  QFile::setPermissions(data,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+  QCOMPARE(locations.error.code,QString("storage_unavailable"));
+  QCOMPARE(locations.error.message,QString("Cannot create the journal lock file"));
+  QCOMPARE(locations.error.details["lockPath"].toString(),QDir::toNativeSeparators(data+"/resident.lock"));
  }
  void bothRootsExistLeavesBothUnchanged() {
   QTemporaryDir d;QVERIFY(copyTree(templateDir_.path(),d.path()));
