@@ -323,7 +323,9 @@ class LiveOutcomes(unittest.TestCase):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
         ctx=SimpleNamespace(destination='s3',expect=expect)
-        service=Fixture(profile_id='owned-profile',credential_reference='owned-reference',prefix='owned/')
+        recorded=[]
+        service=Fixture(profile_id='owned-profile',credential_reference='owned-reference',prefix='owned/',
+                        object_key='owned/object',pending=SimpleNamespace(record_key=recorded.append))
         detail={'operationId':'owned-operation','receipt':{'destination':{'profileId':'owned-profile',
           'providerId':'s3','credentials':{'reference':'owned-reference'},'settings':{'objectPrefix':'owned/'}},
           'objectReference':{'key':'foreign/object'}}}
@@ -331,6 +333,10 @@ class LiveOutcomes(unittest.TestCase):
         detail['receipt']['objectReference']['key']='owned/object'
         outcomes_live._owned(ctx,service,detail,'owned-operation')
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'different-operation')
+        # A key under the prefix that is not the one recorded before publishing fails, after the marker follows it.
+        detail['receipt']['objectReference']['key']='owned/renamed'
+        with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'owned-operation')
+        self.assertEqual(recorded[-1],'owned/renamed')
 
     def test_s3_caption_binding_still_refuses_foreign_prepared_target(self):
         def expect(ok,note):
