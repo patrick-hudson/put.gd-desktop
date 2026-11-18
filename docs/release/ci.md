@@ -776,7 +776,7 @@ and dwz steps. It works in three layers:
   download themselves. See [Stalled installs](#stalled-installs).
 - **Package snapshot.** The native package jobs restore
   `/var/cache/putgd-packages` from `actions/cache`, under the key
-  `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>`. It holds the
+  `putgd-pkgs-v1-<target>-<hash of both scripts>-<ISO week>` (ubuntu24.04 also hashes `tools/ci/appimage-packages.txt`). It holds the
   package metadata and exactly the packages of the last successful install.
   Online attempts start from a copy of it, so packages already in it aren't
   downloaded again. After an online success, the copy, pruned to the installed
@@ -788,14 +788,32 @@ and dwz steps. It works in three layers:
   changed since the snapshot can't be satisfied offline, and the step fails.
   On apt the snapshot also keeps the sources it was made with, and the offline
   install reads the metadata through them, because apt names its metadata files
-  after the source URI. The AppImage job restores the ubuntu24.04 snapshot and
-  installs everything from it offline the same way. The native ubuntu24.04 job
-  adds that job's extra packages (`tools/ci/appimage-packages.txt`) and `weston`
-  to the snapshot with `--download-only`. The AppImage job also switches off the
-  runner's non-Ubuntu apt sources (`tools/ci/hosted_apt_mirrors.py`), so a 429
-  from `packages.microsoft.com` can't fail the metadata refresh.
-  `PUTGD_PKG_ATTEMPTS=0` skips the online attempts, which exercises the fallback
-  on demand.
+  after the source URI.
+
+  The AppImage job restores the ubuntu24.04 snapshot and runs every apt install
+  of its own through it: the standard build dependencies, the packages in
+  `tools/ci/appimage-packages.txt` (which include the system libraries
+  `jurplel/install-qt-action` would otherwise install itself, so the action runs
+  with `install-deps: false`) and `weston`. Nothing in that job runs `apt-get`
+  outside the fallback. The job only reads the snapshot
+  (`PUTGD_PKG_KEEP_SNAPSHOT=true`): an online install early in the job doesn't
+  replace the snapshot's metadata and packages with newer ones, so a later
+  install that finds every mirror down still falls back to a matching set.
+
+  The native ubuntu24.04 job adds the AppImage packages and `weston` to its
+  snapshot with `--download-only` after its own install, reusing that install's
+  metadata (`PUTGD_PKG_REUSE_METADATA=true`). Those downloads have no offline
+  fallback. If one fails, the step reports an error annotation but the native
+  build goes on, and that run saves no snapshot. Only the ubuntu24.04 cache key
+  includes `tools/ci/appimage-packages.txt`, so changing the list rebuilds that
+  snapshot and no other. Until the native job has saved it, an AppImage run on
+  the new key restores nothing, or the previous week's snapshot, and has no
+  fallback for packages it doesn't hold: that first run depends on the mirrors.
+
+  The AppImage job also switches off the runner's non-Ubuntu apt sources
+  (`tools/ci/hosted_apt_mirrors.py`), so a 429 from `packages.microsoft.com`
+  can't fail the metadata refresh. `PUTGD_PKG_ATTEMPTS=0` skips the online
+  attempts, which exercises the fallback on demand.
 - **Reporting.** Each failed or stopped attempt, a retry that passed and a
   snapshot install are warning annotations and rows of a "Package install
   retries" table in the job summary. A stopped attempt's row says
