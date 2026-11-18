@@ -90,7 +90,7 @@ Nightly 26.1117.5114 in aurora-amd guests (4 vCPU, 4.5 GB, two heads), 2026-11-1
 | Desktop | Walk time | Seeds | Steps | Result |
 | --- | --- | --- | --- | --- |
 | Plasma 6.8 | 3.4 h | 34 | 12,969 | no put.gd defect ([#1565](https://github.com/patrick-hudson/put.gd-desktop/pull/1565)) |
-| GNOME 50 | 4.5 h | 38 | 14,625 | no put.gd crash, shell error or leaked grab. 3 h on the first guest, 1.5 h more after its data folder moved to a bigger disk. The resident held 28 MB for 3 h (40 MB after the restart, with a bigger history). `gnome-shell` moved between 600 and 840 MB with no trend |
+| GNOME 50 | 3.75 h | 38 | 14,625 | no put.gd crash, shell error or leaked grab. 2.95 h (30 seeds) on the first setup, 0.8 h (8 seeds) more after its data folder moved to a bigger disk. The resident held 28 MB for 3 h (40 MB after the restart, with a bigger history). `gnome-shell` moved between 600 and 840 MB with no trend |
 | Cinnamon 6.6 | 2.4 h | 25 | 9,609 | one put.gd bug: the History expanded preview shrank to 150x145 with no picture when the screen reported no work area ([#1625](https://github.com/patrick-hudson/put.gd-desktop/issues/1625), fixed in [#1626](https://github.com/patrick-hudson/put.gd-desktop/pull/1626)). `nemo-desktop` crashed 5 times on output changes, which is Mint's |
 
 Findings that were not put.gd's: Ubuntu's app store opened for a file with no handler and took the focus (the watchdog
