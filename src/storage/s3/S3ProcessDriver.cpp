@@ -4,10 +4,10 @@
 #include "ipc/UiControl.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
+#include "storage/worker/ProviderExchange.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
-#include <QFileInfo>
 #include <QJsonDocument>
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -69,10 +69,11 @@ public:
   process_->setProcessEnvironment(environment);
   process_->start(helperPath(),{});
   if(!process_->waitForStarted(10000)){
-   // An installed worker that cannot start right now (no descriptors or memory left) is not a
-   // missing or incompatible one: say why, and that trying again helps.
+   // A worker that is installed but cannot start right now (no descriptors or memory left) is not a
+   // missing or incompatible one: the message says whether trying again helps, as for the custom
+   // uploader's helper (#1598). Qt's text can name the wrong cause, so it stays in the details.
    const auto reason=process_->errorString();output_.failedToStart(reason);
-   if(QFileInfo(helperPath()).isExecutable())startError_={"s3_module_unavailable","S3 support could not start ("+reason+"); try again",{{"reason",reason}}};
+   startError_={"s3_module_unavailable",worker::startFailureMessage(worker::classifyStartFailure(helperPath(),reason),unavailable().message,QStringLiteral("S3 support couldn't start")),{{"reason",reason}}};
    failed_=true;resetProcess();return false;
   }
   output_.started(process_->processId(),{{"generation",qint64(generation_)}});
