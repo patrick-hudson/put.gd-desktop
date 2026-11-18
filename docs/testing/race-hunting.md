@@ -43,7 +43,8 @@ What is excused, and how:
   race (`KNOWN_QT_RACES`: Qt's `QThread::started` hand-off in `QNetworkAccessManager`, the
   `QNetworkReply` destructor chain, QtDBus's own thread, and QtDBus's pending-call
   bookkeeping) whose two racing accesses both start in a Qt library with no put.gd frame in
-  their top six frames. A put.gd frame there, such as put.gd reading a `QNetworkReply` that
+  their top six frames. An entry that names a generic Qt function (`maybeSignalConnected`) also names the one Qt caller its
+  diagnosis covers (`QNetworkReplyHttpImplPrivate::postRequest`). A put.gd frame there, such as put.gd reading a `QNetworkReply` that
   Qt destroys, makes the same report a put.gd one. Add an entry only after reading the report
   and showing that both racing accesses are inside Qt. Never add a put.gd function.
 
