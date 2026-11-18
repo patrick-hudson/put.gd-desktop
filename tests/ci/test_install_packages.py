@@ -9,7 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'tools/ci/install-packages.sh'
-TOOLS = ('bash', 'cat', 'comm', 'cp', 'cut', 'date', 'dirname', 'find', 'grep', 'mkdir', 'mktemp', 'mv', 'rm',
+TOOLS = ('bash', 'cat', 'comm', 'cp', 'cut', 'date', 'dirname', 'find', 'grep', 'mkdir', 'mktemp', 'mv', 'rm', 'rmdir',
          'sleep', 'sort', 'tail', 'tee', 'timeout', 'touch', 'tr')
 MIRROR_ERROR = 'Librepo error: Cannot download Packages/m/mesa-vulkan-drivers-26.2.4-1.fc44.x86_64.rpm: All mirrors were tried'
 # The last line nightly run 39851369595 printed before it hung for 93 minutes (#467).
@@ -221,6 +221,35 @@ class InstallPackages(unittest.TestCase):
         self.assertIn('--no-download', calls[-1])
         self.assertIn('-o Dir::Etc::sourcelist=/dev/null', calls[-1])
         self.assertIn(f'-o Dir::Etc::sourceparts={self.snapshot}/sources', calls[-1])
+
+    def fake_apt_config(self, list_file, parts):
+        (self.bin / 'apt-config').write_text(f"#!/bin/bash\necho \"list='{list_file}'\"\necho \"parts='{parts}/'\"\n")
+        (self.bin / 'apt-config').chmod(0o755)
+
+    def test_the_snapshot_saves_the_sources_apt_really_reads(self):
+        # A custom APT_CONFIG moves them away from /etc/apt.
+        custom = self.dir / 'custom'
+        (custom / 'parts').mkdir(parents=True)
+        (custom / 'main.list').write_text('deb http://archive.ubuntu.com/ubuntu noble main\n')
+        (custom / 'parts/ubuntu.sources').write_text('URIs: http://archive.ubuntu.com/ubuntu\n')
+        self.fake_apt_config(custom / 'main.list', custom / 'parts')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(sorted(p.name for p in (self.snapshot / 'sources').iterdir()),
+                         ['00-sources-list.list', 'ubuntu.sources'])
+
+    def test_no_sources_found_saves_none_and_the_offline_install_keeps_the_hosts(self):
+        empty = self.dir / 'empty'
+        (empty / 'parts').mkdir(parents=True)
+        self.fake_apt_config(empty / 'sources.list', empty / 'parts')
+        result, _, _ = self.run_script('apt-get', 'dwz', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertFalse((self.snapshot / 'sources').exists())
+        self.calls.unlink()
+        (self.dir / 'count').unlink()
+        result, calls, _ = self.run_script('apt-get', 'dwz', FAKE_FAILURES='9', PUTGD_PKG_CACHE=str(self.snapshot))
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn('Dir::Etc::sourcelist', calls[-1])
 
     def test_no_online_attempts_installs_from_the_snapshot_at_once(self):
         self.snapshot.mkdir()

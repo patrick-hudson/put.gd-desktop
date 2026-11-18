@@ -129,13 +129,20 @@ online() {
 
 # Keep the apt sources beside the metadata that was downloaded through them.
 save_sources() {
-  local file
+  local file list=$apt_root/sources.list parts=$apt_root/sources.list.d
+  # The sources apt really reads, so a custom APT_CONFIG is followed (PUTGD_APT_ROOT overrides, for tests).
+  if [ -z "${PUTGD_APT_ROOT:-}" ] && command -v apt-config >/dev/null; then
+    eval "$(apt-config shell list Dir::Etc::sourcelist/f parts Dir::Etc::sourceparts/d)"
+    parts=${parts%/}
+  fi
   mkdir -p "$1/sources"
   rm -f "$1"/sources/*
-  [ ! -s "$apt_root/sources.list" ] || cp "$apt_root/sources.list" "$1/sources/00-sources-list.list"
-  for file in "$apt_root"/sources.list.d/*.list "$apt_root"/sources.list.d/*.sources; do
+  [ ! -s "$list" ] || cp "$list" "$1/sources/00-sources-list.list"
+  for file in "$parts"/*.list "$parts"/*.sources; do
     [ ! -f "$file" ] || cp "$file" "$1/sources/"
   done
+  # No sources found: save none, so the offline install keeps the host's own instead of an empty set.
+  rmdir "$1/sources" 2>/dev/null || true
 }
 
 offline() {

@@ -207,6 +207,9 @@ jobs:
         # saved only when every download worked, so a failure here never fails this build.
         id: appimage-prefetch
         continue-on-error: true
+        # Its own small budget, so cache warming can't eat the native job's time: two attempts of five
+        # minutes, and the step itself stops at 15.
+        timeout-minutes: 15
         if: matrix.name == 'ubuntu24.04' && env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true'
         env:
           PUTGD_PKG_CACHE: /var/cache/putgd-packages
@@ -214,7 +217,15 @@ jobs:
           # Never refreshes the indexes: the packages are fetched against the ones the install above
           # downloaded, so the snapshot's indexes and packages match.
           PUTGD_PKG_REUSE_METADATA: 'true'
-        run: bash tools/ci/install-packages.sh --download-only $(grep -hv '^#' tools/ci/appimage-packages.txt) weston
+          PUTGD_PKG_ATTEMPTS: '2'
+          PUTGD_PKG_BACKOFF: '10'
+          PUTGD_PKG_TIMEOUT: '300'
+          PUTGD_PKG_STALL: '120'
+        run: |
+          # --reinstall also downloads packages this image already has at the candidate version, which the install
+          # above never fetched: the ones this job's bootstrap installed (git, ca-certificates) and any overlap
+          # with the list. A runner with an older version needs those archives for the offline install.
+          bash tools/ci/install-packages.sh --download-only --reinstall $(sed 's/#.*//' tools/ci/appimage-packages.txt) weston git ca-certificates
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # Only a snapshot an online install just refreshed, never one it fell back to; for ubuntu24.04, with the AppImage packages in it.
         if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (matrix.name != 'ubuntu24.04' || steps.appimage-prefetch.outcome == 'success') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -457,7 +468,7 @@ jobs:
           # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
           # system libraries the Qt action would install) and weston. It installs entirely online or
           # entirely from the package snapshot, never a mix of the two. sudo keeps the summary file for the retry report (#368).
-          PUTGD_EXTRA_PACKAGES="$(grep -hv '^#' tools/ci/appimage-packages.txt) weston"
+          PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' tools/ci/appimage-packages.txt) weston"
           export PUTGD_EXTRA_PACKAGES
           # actions/cache stores this path relative to the container's shallower workspace,
           # so here it restores three levels above this workspace, not to /var/cache.

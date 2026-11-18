@@ -108,6 +108,24 @@ class HostedAptMirrors(unittest.TestCase):
                           '# disabled for the AppImage job: deb https://packages.microsoft.com/repos/x noble main'])
         self.assertEqual(mirrors.disable_third_party(self.root), [])
 
+    def test_deb822_field_names_are_case_insensitive_and_enabled_yes_is_turned_off(self):
+        lower = self.root / 'sources.list.d/lower.sources'
+        lower.write_text('types: deb\nuris: https://vendor.example/apt\nsuites: stable\n')
+        yes = self.root / 'sources.list.d/yes.sources'
+        yes.write_text('Types: deb\nURIs: https://packages.microsoft.com/ubuntu/24.04/prod\nSuites: noble\nenabled: Yes\n')
+        no = self.root / 'sources.list.d/no.sources'
+        no.write_text('Types: deb\nURIs: https://vendor.example/apt\nEnabled: no\n')
+        ubuntu = self.root / 'sources.list.d/ubuntu.sources'
+        ubuntu.write_text('Types: deb\nURIS: http://security.ubuntu.com/ubuntu/\nENABLED: yes\n')
+        self.assertEqual(sorted(mirrors.disable_third_party(self.root)),
+                         ['sources.list.d/lower.sources', 'sources.list.d/yes.sources'])
+        self.assertTrue(lower.read_text().endswith('suites: stable\nEnabled: no\n'))
+        self.assertEqual(yes.read_text(), 'Types: deb\nURIs: https://packages.microsoft.com/ubuntu/24.04/prod\n'
+                                          'Suites: noble\nenabled: no\n')
+        self.assertEqual(no.read_text(), 'Types: deb\nURIs: https://vendor.example/apt\nEnabled: no\n')
+        self.assertEqual(ubuntu.read_text(), 'Types: deb\nURIS: http://security.ubuntu.com/ubuntu/\nENABLED: yes\n')
+        self.assertEqual(mirrors.disable_third_party(self.root), [])
+
     def test_an_ubuntu_look_alike_host_is_third_party(self):
         path = self.root / 'sources.list'
         path.write_text('deb https://archive.ubuntu.com.example.invalid/ubuntu noble main\n'

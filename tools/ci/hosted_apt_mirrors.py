@@ -14,6 +14,8 @@ import re
 
 AZURE = re.compile(r'(?<!\S)https?://azure\.archive\.ubuntu\.com/ubuntu/?(?=\s|$)')
 ARCHIVE = 'https://archive.ubuntu.com/ubuntu/'
+# The values apt reads as false for a deb822 boolean.
+DISABLED = frozenset({'no', 'false', 'without', 'off', 'disable', '0'})
 
 
 def configure(root):
@@ -83,18 +85,29 @@ def disable_third_party(root):
                 lines = stanzas[index].splitlines(keepends=True)
                 uris = []
                 collecting = False
-                for line in lines:
-                    if not line[:1].isspace() and not line.lstrip().startswith('#'):
-                        collecting = line.startswith('URIs:')
-                        line = line.partition(':')[2]
-                    elif line.lstrip().startswith('#'):
+                enabled = None
+                for number, line in enumerate(lines):
+                    if line.lstrip().startswith('#'):
                         continue
+                    if not line[:1].isspace():
+                        # deb822 field names are case-insensitive.
+                        name, _, value = line.partition(':')
+                        collecting = name.strip().lower() == 'uris'
+                        if name.strip().lower() == 'enabled':
+                            enabled = number
+                        line = value
                     if collecting:
                         uris += line.split()
-                if uris and not all(official(uri) for uri in uris) and not any(
-                        line.lower().startswith('enabled:') for line in lines):
-                    text = stanzas[index]
+                if not uris or all(official(uri) for uri in uris):
+                    continue
+                text = stanzas[index]
+                if enabled is None:
                     stanzas[index] = text + ('' if text.endswith('\n') else '\n') + 'Enabled: no\n'
+                elif lines[enabled].partition(':')[2].strip().lower() not in DISABLED:
+                    # An explicit `Enabled: yes` would keep the source active.
+                    name = lines[enabled].partition(':')[0]
+                    lines[enabled] = f'{name}: no\n'
+                    stanzas[index] = ''.join(lines)
             after = ''.join(stanzas)
         else:
             lines = []
