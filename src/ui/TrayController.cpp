@@ -247,6 +247,10 @@ TrayController::TrayController(OperationService& operations,
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
   if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
  });
+ // History could not save some results; a restart's recovery saves them (#1579). Once per session.
+ connect(&operations_,&OperationService::historyResultsUnsaved,this,[this]{
+  if(available())notifyMessage("history_results_unsaved","put.gd — History not saved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",true);
+ });
  // Uploads an automatic cleanup could not abort, once for each (#226).
  connect(&operations_,&OperationService::incompleteUploadsKept,this,[this](const QJsonObject& notice) {
   if(available())notifyMessage("incomplete_uploads_kept","put.gd — incomplete uploads left",notice["message"].toString(),true);

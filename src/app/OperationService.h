@@ -184,6 +184,8 @@ signals:
  // An automatic cleanup kept uploads the destination refused to abort that the user
  // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.
  void incompleteUploadsKept(const QJsonObject& notice);
+ // History could not save an operation's result (#1579); sent once per resident session.
+ void historyResultsUnsaved();
  // A text recognition ended (#1428). record is its terminal record, which holds
  // nothing recognized; notification is the Copy text message for an operation
  // that asked for a copy (after the clipboard's acknowledgement), else empty.
@@ -249,6 +251,11 @@ private:
  QHash<QString,Error> previewFailures_;
  std::shared_ptr<std::atomic_bool> posterCancel_=std::make_shared<std::atomic_bool>(false);
  void releaseActive(const QString&);
+ // Operations whose result History could not save (#1579). Their rows stay as last saved until a restart's
+ // recovery fixes them; Retry refuses them until then. One notification per session says so.
+ QSet<QString> unsavedHistory_;
+ bool unsavedHistoryNotified_=false;
+ void rememberUnsavedHistory(const QString& id);
  // A finished operation keeps its slot until its link copy and source cleanup are done, while its outcome is already
  // visible. A Retry then is answered operation_settling, which is worth repeating in a moment (#1578).
  QSet<QString> finishing_;

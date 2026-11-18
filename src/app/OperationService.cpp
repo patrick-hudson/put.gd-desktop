@@ -1237,6 +1237,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted)&&op.copyStatus=="pending")op.copyStatus="no_result";
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
+  if(e.code=="history_io")rememberUnsavedHistory(id);
   clearObservation(id);emit changed(id);emit observationsChanged();
   if(e) {logging::error(logHistory(),"Cannot record the operation result",{{"operationId",id},{"error",logging::errorFields(e)}});abandonUploadCopies(id);releaseActive(id);if(reply)reply(e,{});return;}
   const auto op=Operation::fromJson(document);
@@ -1378,7 +1379,16 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  // link or a failure in History. Only a row a failed journal write left active is.
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};if(!op.active()){e={"operation_inactive","This operation has finished; only an active operation can be cancelled",{{"state",op.stateName()}}};return QJsonObject{};}op.cancelled=true;op.advance(OperationState::Cancelled);op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
 }
+namespace {
+Error unsavedHistoryError() {return {"history_io","put.gd couldn't save this upload's result to History. Restart put.gd to finish saving it, then retry.",{}};}
+}
+void OperationService::rememberUnsavedHistory(const QString& id) {
+ unsavedHistory_.insert(id);
+ if(!unsavedHistoryNotified_){unsavedHistoryNotified_=true;emit historyResultsUnsaved();}
+}
 void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly) {
+ // Its saved row is stale until a restart recovers it: retrying from it could upload again (#1579).
+ if(unsavedHistory_.contains(id)){reply(unsavedHistoryError(),{});return;}
  // This operation's own state answers first: a Retry refused as settling or busy is never queued behind cleanup or
  // turned into queue_full (#1578).
  if(active_.contains(id)) {reply(settling(id)?settlingError():Error{"operation_busy","Operation is already active",{}},{});return;}
@@ -1404,6 +1414,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  });
 }
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
+ if(unsavedHistory_.contains(id)){reply(unsavedHistoryError(),{});return;}
  if(active_.contains(id)){reply(settling(id)?settlingError():Error{"operation_busy","Operation is active",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
@@ -1424,6 +1435,7 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
   }
   e=store.saveOperation(op);return op.publicJson();
  },[this,id,reply](Error e,QJsonObject r) {
+  if(e.code=="history_io")rememberUnsavedHistory(id);
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
   if(failed)emit operationError(id,r);
@@ -1567,7 +1579,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"unsavedHistoryResults",int(unsavedHistory_.size())},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_}}}};
 }
