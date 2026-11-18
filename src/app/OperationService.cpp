@@ -906,9 +906,12 @@ void OperationService::pump() {
 }
 Operation OperationService::run(Job job) {
  auto op=job.op;HistoryStore store(databasePath());ArtifactStore artifacts(root_+"/artifacts");
- auto save=[&]() {auto e=store.saveOperation(op,&providers_);if(e) {op.error=e;op.advance(OperationState::Failed);}else observe(op.publicJson());return !e;};
+ // Any History write of this run that fails with history_io marks the operation, even if a later write succeeds:
+ // a checkpoint it skipped can leave a row that only a restart's recovery fixes (#1579).
+ const auto refused=[this,id=op.id](const Error& e){if(e.code=="history_io"){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,id]{if(owner)owner->rememberUnsavedHistory(id);},Qt::QueuedConnection);}return e;};
+ auto save=[&]() {auto e=refused(store.saveOperation(op,&providers_));if(e) {op.error=e;op.advance(OperationState::Failed);}else observe(op.publicJson());return !e;};
  auto saveItem=[&](const OperationItem& item) {
-  auto e=store.checkpointOperation(op,{item.artifact.id},&providers_);
+  auto e=refused(store.checkpointOperation(op,{item.artifact.id},&providers_));
   if(e){op.error=e;op.advance(OperationState::Failed);return false;}
   observe(op.publicJson());
   if(item.linkAvailable()) {
@@ -1006,7 +1009,7 @@ Operation OperationService::run(Job job) {
  // writes the whole operation from there, so a checkpoint never mixes item states.
  std::mutex itemsMutex;std::atomic_bool persisted=true;
  std::function<Error(const OperationItem&,int)> persist=[&](const OperationItem& item,int index)->Error {
-  std::lock_guard lock(itemsMutex);op.items[index]=item;HistoryStore durable(databasePath());return durable.checkpointOperation(op,{item.artifact.id},&providers_);
+  std::lock_guard lock(itemsMutex);op.items[index]=item;HistoryStore durable(databasePath());return refused(durable.checkpointOperation(op,{item.artifact.id},&providers_));
  };
  auto show=[&](const OperationItem& item,int index){std::lock_guard lock(itemsMutex);op.items[index]=item;observe(op.publicJson());};
  auto commit=[&](const OperationItem& item,int index)->bool {
@@ -1172,10 +1175,10 @@ Operation OperationService::run(Job job) {
    // A diagnostics package's share link expires (#123).
    const auto options=op.action==diagnosticsAction&&item.shareIntentOptions.isEmpty()?QJsonObject{{"expirationDays",diagnosticsShareDays}}:item.shareIntentOptions;
    QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action",action},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",options}};
-   if(auto e=store.saveSharing(doc)){item.error=e;op.advance(OperationState::Partial);saveItem(item);return op;}
+   if(auto e=refused(store.saveSharing(doc))){item.error=e;op.advance(OperationState::Partial);saveItem(item);return op;}
    const auto path=root_+"/history.sqlite";
-   auto checkpoint=[path,&doc](const QJsonObject& progress,std::function<void(Error)> ack){
-    auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto e=durable.saveSharing(proposed);if(!e)doc=std::move(proposed);ack(e);
+   auto checkpoint=[path,&doc,refused](const QJsonObject& progress,std::function<void(Error)> ack){
+    auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto e=refused(durable.saveSharing(proposed));if(!e)doc=std::move(proposed);ack(e);
    };
    ShareRequest request{shareId,doc["action"].toString(),item.receipt,doc["options"].toObject(),doc["progress"].toObject(),job.cancelled};
    auto result=storageRequest<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
@@ -1185,7 +1188,7 @@ Operation OperationService::run(Job job) {
    {auto fields=itemFields(op,item);fields["action"]=request.action;fields["status"]=result.status;if(result.error)fields["error"]=logging::errorFields(result.error);logging::write(providerLog(op.destination.providerId),result.status=="shared"||result.status=="private"?QtInfoMsg:QtWarningMsg,"Sharing finished",fields);}
    doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();
    if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
-   if(auto e=store.saveSharing(doc)){
+   if(auto e=refused(store.saveSharing(doc))){
     item.error=e;op.advance(OperationState::Partial);
     QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,doc,e]{if(owner)emit owner->sharingStopped(doc,e);},Qt::QueuedConnection);
     return op;
@@ -1236,7 +1239,9 @@ void OperationService::finish(Operation op,JsonReply reply) {
  op.phase=op.stateName();
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state()==OperationState::Failed||op.state()==OperationState::Interrupted)&&op.copyStatus=="pending")op.copyStatus="no_result";
- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
+ // Only a failed outcome write marks the operation; reading the saved row back is not a write (#1579).
+ const auto path=databasePath();background([path,op,failReadback=failFinalReadbackForTesting_](Error& e) {HistoryStore store(path);e=store.saveOperation(op);if(e)return QJsonObject{{"writeFailed",true}};if(failReadback){e={"history_io","Synthetic readback failure",{}};return QJsonObject{};}return store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
+  if(e.code=="history_io"&&document["writeFailed"].toBool())rememberUnsavedHistory(id);
   clearObservation(id);emit changed(id);emit observationsChanged();
   if(e) {logging::error(logHistory(),"Cannot record the operation result",{{"operationId",id},{"error",logging::errorFields(e)}});abandonUploadCopies(id);releaseActive(id);if(reply)reply(e,{});return;}
   const auto op=Operation::fromJson(document);
@@ -1378,7 +1383,16 @@ void OperationService::cancel(const QString& id,JsonReply reply,const QString& i
  // link or a failure in History. Only a row a failed journal write left active is.
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};if(!op.active()){e={"operation_inactive","This operation has finished; only an active operation can be cancelled",{{"state",op.stateName()}}};return QJsonObject{};}op.cancelled=true;op.advance(OperationState::Cancelled);op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
 }
+namespace {
+Error unsavedHistoryError() {return {"history_io","put.gd couldn't save this upload's result to History. Restart put.gd to finish saving it, then retry.",{}};}
+}
+void OperationService::rememberUnsavedHistory(const QString& id) {
+ unsavedHistory_.insert(id);
+ if(!unsavedHistoryNotified_){unsavedHistoryNotified_=true;emit historyResultsUnsaved();}
+}
 void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly) {
+ // Its saved row is stale until a restart recovers it: retrying from it could upload again (#1579).
+ if(unsavedHistory_.contains(id)){reply(unsavedHistoryError(),{});return;}
  // This operation's own state answers first: a Retry refused as settling or busy is never queued behind cleanup or
  // turned into queue_full (#1578).
  if(active_.contains(id)) {reply(settling(id)?settlingError():Error{"operation_busy","Operation is already active",{}},{});return;}
@@ -1404,6 +1418,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  });
 }
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
+ if(unsavedHistory_.contains(id)){reply(unsavedHistoryError(),{});return;}
  if(active_.contains(id)){reply(settling(id)?settlingError():Error{"operation_busy","Operation is active",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
@@ -1422,8 +1437,12 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
    if(auto error=artifacts.verify(item.artifact)){item.local.status="failed";item.local.error=error;}
    else item.local=LocalArchive::save(item.artifact,op.settings.archive);
   }
-  e=store.saveOperation(op);return op.publicJson();
- },[this,id,reply](Error e,QJsonObject r) {
+  e=store.saveOperation(op);return QJsonObject{{"operation",op.publicJson()},{"writeFailed",bool(e)}};
+ },[this,id,reply](Error e,QJsonObject result) {
+  // A failed read of the operation changed nothing; only a failed write of its outcome marks it (#1579).
+  // The snapshot stays with the failure: the tray names the files that failed from it.
+  if(e.code=="history_io"&&result["writeFailed"].toBool())rememberUnsavedHistory(id);
+  const auto r=result["operation"].toObject();
   clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);
   bool failed=bool(e);for(const auto& value:r["items"].toArray())failed=failed||value.toObject()["local"].toObject()["status"]=="failed";
   if(failed)emit operationError(id,r);
@@ -1567,7 +1586,7 @@ QJsonObject OperationService::diagnostics() const {
 #endif
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  const auto logStatus=logging::status();
- return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
+ return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"text",QJsonObject{{"active",text_->active()},{"resultCacheBytes",double(text_->cachedBytes())}}},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"unsavedHistoryResults",int(unsavedHistory_.size())},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
   {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_}}}};
 }
