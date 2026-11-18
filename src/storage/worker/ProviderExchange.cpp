@@ -1,5 +1,6 @@
 #include "ProviderExchange.h"
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QProcess>
 #include <future>
@@ -10,7 +11,13 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
     QProcess process;
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start(program, {"--stdio"});
-    if (!process.waitForStarted(10000)) { error = {policy.prefix + "_worker_start", policy.startMessage, {}}; return {}; }
+    if (!process.waitForStarted(10000)) {
+        // A helper that is installed but cannot start right now (no descriptors or memory left, a full disk) is not a broken installation: say why, and that trying again helps.
+        const auto reason = process.errorString();
+        const bool installed = QFileInfo(program).isExecutable();
+        error = {policy.prefix + "_worker_start", installed ? "The " + policy.name + " helper could not start (" + reason + "); try again" : policy.startMessage, {{"reason", reason}}};
+        return {};
+    }
     auto bytes = QJsonDocument(params).toJson(QJsonDocument::Compact);
     params = {};
     bytes.append('\n');
