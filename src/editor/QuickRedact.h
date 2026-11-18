@@ -3,6 +3,7 @@
 #include <QList>
 #include <QRect>
 #include <QStringList>
+#include <functional>
 
 // Quick redact (#1428, decision 5): suggested Redact marks over recognized
 // words of five kinds. It only suggests: recognition can miss text, so a page
@@ -54,6 +55,10 @@ QList<Match> find(const QList<RecognizedWord>& candidates,const QStringList& cat
 // result, and the matches found so far are kept. A budget of 0 or less skips
 // every pattern. Blocking: call it off the UI thread (src/ui/QuickRedactRunner.h).
 Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs=2000);
+// The same, calling `progress` (on the calling thread) after the name and list
+// terms and after each pattern with everything found so far, the patterns not
+// yet finished counted as skipped: a caller that stops waiting can still use it.
+Result find(const QList<RecognizedWord>& candidates,const QStringList& categories,const Sources&,int budgetMs,const std::function<void(const Result&)>& progress);
 // The Redact marks for a match: its word boxes, one box per line, padded by a
 // quarter of the line height above and below and by one and a half characters
 // either side, clamped to `bounds` (the image).
