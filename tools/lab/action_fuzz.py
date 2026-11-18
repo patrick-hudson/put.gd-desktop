@@ -1532,7 +1532,10 @@ class Fuzzer:
         self.receiver.rules([])
         time.sleep(0.3)
         self.wait_journal(120)  # a startup recovery that failed under a fault must finish once the fault is gone
-        for identifier in sorted(self.open_editors):  # an editor session waits for its user for ever: close them, the uploads are what is checked
+        # An editor session waits for its user for ever: close them (the ones this run opened and any other in the activity list); the uploads are what is checked.
+        recent = (self.resident.call('operation.recent', raw=True).get('result') or {}).get('operations', [])
+        editing = {o.get('id') for o in recent if o.get('action') == 'edit' and o.get('state') not in ('completed', 'failed', 'cancelled', 'interrupted', 'partial')}
+        for identifier in sorted(self.open_editors | editing):
             self.call('editor.cancel', {'id': identifier}, timeout=60)
         if not self.drain(120):
             self.settle()
@@ -1559,6 +1562,8 @@ class Fuzzer:
     def probe_recovery(self):
         """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
         before = self.receiver.upload_events()
+        # The run's own settings steps may have set a small limit (a_settings): back to the defaults, so only a fault can fail the probe.
+        self.call('settings.patch', {'patch': {'limits': {'pendingArtifactBytes': 'auto', 'maxFileBytes': 'auto'}}, 'expectedRevision': self.revision()})
         path = self.new_upload_file('notes.txt')
         reply = self.call('upload.files', {'paths': [str(path)], 'profileId': self.profile}, timeout=90)
         if not reply.get('ok'):
