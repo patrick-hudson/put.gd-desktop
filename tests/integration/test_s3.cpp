@@ -212,6 +212,8 @@ private slots:
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "HEAD"}, {"key", "prefix é/plain.txt"}, {"status", 403}}}}});
         const auto plain = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "plain.txt", cb); });
         QCOMPARE(plain.error.code, QString("s3_permission_denied"));
+        // A plain key never gets the hint, so the baseline below holds none.
+        QVERIFY(!plain.error.message.contains(nameCharactersHint()));
         f.destination.settings["objectPrefix"] = prefix;
         f.reset();
         const auto checked = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, name, cb); });
@@ -248,6 +250,8 @@ private slots:
         const auto special = attempt("a:b@c.bin");
         QCOMPARE(plain.status, QString("failed"));QCOMPARE(special.status, QString("failed"));
         QCOMPARE(plain.error.code, code);QCOMPARE(special.error.code, code);
+        QVERIFY(!plain.error.message.contains(nameCharactersHint()));
+        if (!hint) QVERIFY(!special.error.message.contains(nameCharactersHint()));
         QCOMPARE(special.error.message, plain.error.message + (hint ? nameCharactersHint() : QString()));
     }
     // The SDK drops empty path segments, so the receipt, the link and the stored
