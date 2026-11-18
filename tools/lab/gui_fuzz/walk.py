@@ -332,6 +332,14 @@ class Walker:
                     pass
                 time.sleep(0.8)
         time.sleep(2.0)
+        for _ in range(2):  # a capture started a moment before the checkpoint shows its selector late: give it its Escape too
+            if not self.watch.settle_checks(self.a):
+                break
+            try:
+                self.a.chord('esc')
+            except Denied:
+                pass
+            time.sleep(2.0)
         for problem in self.watch.settle_checks(self.a):
             helper = [open('/proc/%d/cmdline' % p, 'rb').read().replace(b'\0', b' ').decode()[:200] for p, c in self.w.pids().items() if c == 'putgd-record']
             self.findings.add('stuck_grab', problem, extra={'helpers': helper, 'recording': (self.a.cli('recording.capabilities').get('result') or {}).get('active'),
