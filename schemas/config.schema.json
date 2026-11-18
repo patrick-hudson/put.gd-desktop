@@ -1171,7 +1171,7 @@
             "maxLength": 1000,
             "not": {"pattern": "[\\r\\n\u2028\u2029]"}
           },
-          "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering, matched against the text of each recognized line. Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns. Loose bounds only (no line feed, carriage return, U+2028 or U+2029; at most 1000 characters raw). The editor applies the full rules and its answer is authoritative: a pattern is not blank, at most 500 code points, does not start with (* (patterns can't set their own matching limits), has no \\C, no nested unbounded repeat such as (a+)+, compiles, and does not match empty text."
+          "description": "Regular expressions (PCRE2 syntax, case as written) Quick redact's My redaction list suggests covering, matched against the text of each recognized line. Never uploaded, logged or written to diagnostics bundles. Omitted means no patterns. Loose bounds only (no line feed, carriage return, U+2028 or U+2029; at most 1000 characters raw). The editor applies the full rules and its answer is authoritative: a pattern is not blank, at most 500 code points, compiles, and does not match empty text."
         },
         "appearance": {
           "type": "object",

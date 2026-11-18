@@ -100,7 +100,7 @@ class ConfigurationSchema(unittest.TestCase):
                     self.assertFalse(accepted, (kind, repr(row['value'][:40])))
                 elif row['rule'] == 'ok':
                     self.assertTrue(accepted, (kind, row['value'][:40]))
-        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['(*LIMIT_MATCH=1000000000)a+']}))  # the editor refuses it, not the schema
+        self.assertTrue(validator.is_valid(legacy | {'quickRedactPatterns': ['(*LIMIT_MATCH=1000000000)a+', '(a+)+', '\\C']}))  # the editor decides what a pattern may do, not the schema
 
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
