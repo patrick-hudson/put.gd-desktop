@@ -180,33 +180,47 @@ class ChooserSave(unittest.TestCase):
                 review._check_saved_actions(ctx, 'current', path)
         drive.assert_not_called()
 
-    def test_directory_wait_prevents_unneeded_open_and_requires_exact_folder_for_retry(self):
+    def test_directory_wait_allows_late_focus_and_requires_exact_folder_for_retry(self):
         path = Path('/tmp/private/out/test.mp4')
         folder = str(path.parent)
         marker = [{'showing': True, 'ancestors': [{'name': 'Files', 'role': 'tree'}]}]
-        for load, filename, expected_opens in (('delayed', folder, 1), ('retry', folder, 2), ('retry', '/tmp', 1)):
-            with self.subTest(load=load, filename=filename):
+        cases = (
+            ('delayed marker', [[], marker, marker], [], 1),
+            ('immediate focus', [[], [], marker], [folder], 2),
+            ('late focus', [[], [], [], marker], [None, folder], 2),
+            ('marker during focus wait', [[], [], marker, marker], [None, None], 1),
+            ('wrong folder', [[], [], []], ['/tmp', '/tmp'], 1),
+        )
+        for case, markers, filenames, expected_opens in cases:
+            with self.subTest(case=case):
                 ctx = Mock()
                 ctx.shell.return_value = {'returncode': 0}
                 ctx.geometry.return_value = {'pid': 937}
                 ctx.expect.side_effect = lambda value, why: value or self.fail(why)
 
                 def wait(predicate, why, timeout=10):
-                    if 'directory witness' in why and timeout == 5:
-                        self.assertFalse(predicate())
-                        if load == 'retry':
-                            raise RecipeFailed('timeout: ' + why)
-                    self.assertTrue(predicate())
+                    attempts = 1
+                    if timeout == 5 and case == 'delayed marker':
+                        attempts = 2
+                    if 'before retrying Open' in why:
+                        self.assertEqual(timeout, 3)
+                        attempts = 2
+                    for _ in range(attempts):
+                        if result := predicate():
+                            return result
+                    raise RecipeFailed('timeout: ' + why)
 
                 ctx.wait.side_effect = wait
-                ctx.accessible.side_effect = [[], marker, marker] if load == 'delayed' else [[], [], marker]
+                ctx.accessible.side_effect = markers
                 with patch.object(dialogs, '_type_review_filename'), \
-                     patch.object(dialogs, '_review_filename', side_effect=[{'text': folder}, {'text': filename}]):
-                    if filename == folder:
-                        dialogs._enter_review_path(ctx, path, 'Save a copy')
-                    else:
-                        with self.assertRaisesRegex(AssertionError, 'exact private folder'):
+                     patch.object(dialogs, '_review_filename', side_effect=[
+                         {'text': value} if value is not None else None for value in [folder, *filenames]
+                     ]):
+                    if case == 'wrong folder':
+                        with self.assertRaisesRegex(RecipeFailed, 'timeout: .*exact private folder'):
                             dialogs._enter_review_path(ctx, path, 'Save a copy')
+                    else:
+                        dialogs._enter_review_path(ctx, path, 'Save a copy')
                 self.assertEqual(sum(call.args[0] == 'text:Open' for call in ctx.click.call_args_list), expected_opens)
 
     def test_export_fault_restores_owned_working_file_on_input_error(self):

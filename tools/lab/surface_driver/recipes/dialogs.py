@@ -255,9 +255,15 @@ def _enter_review_path(ctx, path, title):
         # Qt's completer may consume the first pointer click to dismiss itself.
         # Open again only with the same verified directory still in the field.
         ctx.click('class:QLineEdit', window='putgdFileDialog')
-        still_entered = (_review_filename(ctx, title) or {}).get('text') == folder
-        if not has_witness():
-            ctx.expect(still_entered, 'the owned chooser still shows the exact private folder before retrying Open')
+
+        def retry_state():
+            still_entered = (_review_filename(ctx, title) or {}).get('text') == folder
+            if has_witness():
+                return 'arrived'
+            return 'retry' if still_entered else None
+
+        ready = ctx.wait(retry_state, 'the directory marker or focused exact private folder before retrying Open', timeout=3)
+        if ready == 'retry':
             ctx.click('text:Open', window='putgdFileDialog')
             ctx.note('Retried Open after waiting for the directory marker and rechecking the exact folder')
     _frame(ctx, 'directory-navigation', 'fallback')
