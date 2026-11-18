@@ -280,6 +280,23 @@ private slots:
   owner.unlock();
   PUTGD_TRY_VERIFY(second.ready());
  }
+ // A disk error can leave resident.lock empty or unreadable. It names no owner, and Qt never calls it stale, so it is
+ // reclaimed on a later retry once nothing can own it; a live owner's lock, whatever it holds, never is (#1576).
+ void brokenJournalLockIsReclaimedOnlyWhenNothingOwnsIt() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root));const auto lockPath=root+"/resident.lock";
+  const auto age=[&](int seconds){QFile f(lockPath);return f.open(QIODevice::ReadWrite)&&f.setFileTime(QDateTime::currentDateTime().addSecs(-seconds),QFileDevice::FileModificationTime);};
+  // A live owner whose lock content was lost: never reclaimed.
+  {QLockFile owner(lockPath);QVERIFY(owner.tryLock(0));{QFile f(lockPath);QVERIFY(f.open(QIODevice::WriteOnly|QIODevice::Truncate));}QVERIFY(age(60));
+   OperationService second(root,settings,registry,source);second.setRecoveryRetryForTesting(40);
+   PUTGD_TRY_VERIFY(second.notReadyError().code=="journal_busy");QCOMPARE(second.notReadyError().message,QString("The operation journal lock could not be acquired"));
+   PUTGD_VERIFY_STEADY(!second.ready(),500);}
+  // A lock write that failed just now: the first attempts stay busy, a later retry reclaims it.
+  {QFile f(lockPath);QVERIFY(f.open(QIODevice::WriteOnly|QIODevice::Truncate));QVERIFY(f.write("not a lock")>0);}
+  OperationService third(root,settings,registry,source);third.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(third.notReadyError().code=="journal_busy");
+  PUTGD_TRY_VERIFY(third.ready());
+ }
  // A recovery that fails partway (here its deletion scan) is retried whole: the artifacts it recovered before the
  // failure are written, but that write must not clear the error and leave the resident ready with records unrecovered (#1576).
  void recoveryThatFailsAfterRecoveringArtifactsIsNotReady() {

@@ -28,7 +28,6 @@
 #include <QScopeGuard>
 #include <QTimer>
 #include <QUuid>
-#include <QSysInfo>
 #include <chrono>
 #include <thread>
 #include <vector>
@@ -36,8 +35,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <csignal>
-#include <cerrno>
+#include <sys/file.h>
 #else
 #include <QBuffer>
 #include <QImageReader>
@@ -171,13 +169,18 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  recoverJournal();
 }
 namespace {
-// Qt reports a live owner and a stale lock it could not remove (an I/O error) alike. Only a lock naming a process that
-// is running on this computer is another resident's; otherwise the lock simply could not be taken (#1576).
-Error journalLockBusy(const QLockFile& lock) {
+// A lock file that a failed write left empty or unreadable names no owner, and Qt never treats it as stale (the
+// resident sets no stale age), so every retry would stay busy after the disk recovers. It is removed only when no
+// process can own it: nothing holds its native lock (a live QLockFile owner always does) and it is older than any
+// owner's first write (#1576).
+bool reclaimBrokenJournalLock(const QString& path) {
  qint64 pid=0;QString host,application;
- if(lock.getLockInfo(&pid,&host,&application)&&pid>0&&host==QSysInfo::machineHostName()&&(::kill(pid_t(pid),0)==0||errno==EPERM))
-  return {"journal_busy","Another resident owns this operation journal",{{"pid",double(pid)}}};
- return {"journal_busy","The operation journal lock could not be acquired",{}};
+ const QFileInfo file(path);
+ if(!file.isFile()||QLockFile(path).getLockInfo(&pid,&host,&application))return false;
+ if(file.lastModified().msecsTo(QDateTime::currentDateTime())<2000)return false;
+ const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC);if(fd<0)return false;
+ const bool removed=::flock(fd,LOCK_EX|LOCK_NB)==0&&::unlink(QFile::encodeName(path).constData())==0;
+ ::close(fd);return removed;
 }
 }
 void OperationService::recoverJournal() {
@@ -186,7 +189,10 @@ void OperationService::recoverJournal() {
  background([this,path,artifactsRoot](Error& e) {
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   if(!journalOwner_||!journalOwner_->isLocked()) {journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);}
-  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)) {e=journalOwner_->error()==QLockFile::LockFailedError?journalLockBusy(*journalOwner_):Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};}
+  if(!journalOwner_->isLocked()&&!journalOwner_->tryLock(0)&&!(journalOwner_->error()==QLockFile::LockFailedError&&reclaimBrokenJournalLock(root_+"/resident.lock")&&journalOwner_->tryLock(0))) {
+   // Qt answers a live owner and a stale lock it could not remove alike, so no owner is named (#1576).
+   e=journalOwner_->error()==QLockFile::LockFailedError?Error{"journal_busy","The operation journal lock could not be acquired",{}}:Error{"history_io","Cannot create the journal lock file",{}};return QJsonObject{};
+  }
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
   RecordingService::discardStaging(root_+"/recording");
