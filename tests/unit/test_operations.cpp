@@ -5,6 +5,7 @@
 #include <QSignalSpy>
 #include <QRegularExpression>
 #include <QSqlQuery>
+#include <QSqlDatabase>
 #include <QUuid>
 #include <QBuffer>
 #include <QElapsedTimer>
@@ -258,6 +259,60 @@ private slots:
   {OperationService owner(root,settings,registry,source);PUTGD_TRY_VERIFY(owner.ready());QVERIFY(QDir().mkpath(staging));const auto artifact=fixture(staging,"cad9f544-c88c-4d8e-875b-576db75867dd","unfinished synthetic bytes"),local=fixture(staging,"user-owned-copy.txt","user archive");OperationService second(root,settings,registry,source);QSignalSpy initialized(&second,&OperationService::initialized);PUTGD_TRY_COMPARE(initialized.count(),1);QVERIFY(!second.ready());QString code;second.invoke("clipboard",[&](Error e,QJsonObject){code=e.code;});QCOMPARE(code,QString("journal_busy"));QVERIFY(QFile::exists(artifact));QVERIFY(QFile::exists(local));}
   OperationService restarted(root,settings,registry,source);PUTGD_TRY_VERIFY(restarted.ready());QVERIFY(!QFile::exists(staging+"/cad9f544-c88c-4d8e-875b-576db75867dd"));QVERIFY(QFile::exists(staging+"/user-owned-copy.txt"));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }
+ // A failure that passes (a full disk, an I/O error, a database another tool holds) must not leave the resident unable to use its journal until
+ // the next start, and until it recovers every reply names the real error (#1576).
+ void failedJournalRecoveryIsRetriedAndNamesItsError() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root+"/history.sqlite"));  // the database cannot be opened: the first recovery fails
+  OperationService operations(root,settings,registry,source);operations.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(operations.notReadyError().code=="history_io");QVERIFY(!operations.ready());
+  QString code;operations.invoke("clipboard",[&](Error e,QJsonObject){code=e.code;});QCOMPARE(code,QString("history_io"));
+  QVERIFY(QDir().rmdir(root+"/history.sqlite"));  // the fault passes
+  PUTGD_TRY_VERIFY(operations.ready());QVERIFY(!operations.notReadyError());
+ }
+ // A lock that cannot be taken is retried too: QLockFile answers a stale lock it failed to remove (an I/O error) like a live owner, and a resident that
+ // starts while its predecessor is still leaving must not stay refused for good (#1576).
+ void journalLockHeldAtStartIsTakenOnceItIsReleased() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root));QLockFile owner(root+"/resident.lock");QVERIFY(owner.tryLock(0));
+  OperationService second(root,settings,registry,source);second.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(second.notReadyError().code=="journal_busy");QVERIFY(!second.ready());
+  owner.unlock();
+  PUTGD_TRY_VERIFY(second.ready());
+ }
+ // A disk error can leave resident.lock empty or unreadable. Qt cannot verify such a lock as stale and put.gd adds no
+ // reclaim of its own (a safe one needs a lock protocol across versions): it stays journal_busy, keeps retrying, and
+ // tells the user the one manual step (#1576).
+ void malformedJournalLockStaysBusyAndIsNeverRemoved() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;const auto root=d.filePath("data");
+  QVERIFY(QDir().mkpath(root));const auto lockPath=root+"/resident.lock";
+  {QFile f(lockPath);QVERIFY(f.open(QIODevice::WriteOnly|QIODevice::Truncate));QVERIFY(f.write("not a lock")>0);QVERIFY(f.flush());QVERIFY(f.setFileTime(QDateTime::currentDateTime().addSecs(-3600),QFileDevice::FileModificationTime));}
+  QVERIFY(QFileInfo(lockPath).lastModified().secsTo(QDateTime::currentDateTime())>3000);   // the backdated time held
+  OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(ops.notReadyError().code=="journal_busy");
+  const auto message=ops.notReadyError().message;
+  QCOMPARE(message,QString("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove %1 and start it again.").arg(QDir::toNativeSeparators(lockPath)));
+  QCOMPARE(ops.notReadyError().details["lockPath"].toString(),QDir::toNativeSeparators(lockPath));
+  PUTGD_VERIFY_STEADY(!ops.ready(),500);   // several retries later: still busy
+  QFile lock(lockPath);QVERIFY(lock.open(QIODevice::ReadOnly));QCOMPARE(lock.readAll(),QByteArray("not a lock"));
+ }
+ // A recovery that fails partway (here its deletion scan) is retried whole: the artifacts it recovered before the
+ // failure are written, but that write must not clear the error and leave the resident ready with records unrecovered (#1576).
+ void recoveryThatFailsAfterRecoveringArtifactsIsNotReady() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("6f1d1f8e-5b0e-4f2b-9a51-0c7c2f0d6b11");
+  {Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));
+   ArtifactStore artifacts(root+"/artifacts");QVERIFY(!artifacts.acquire(id,textPayload(),ResourceLimits{}).error);
+  }
+  // The deletion table's page becomes unreadable, as on a disk read error: its scan fails after the operations were recovered.
+  const auto page=[&](bool readable){int rootPage=0;const auto name=QUuid::createUuid().toString();{auto db=QSqlDatabase::addDatabase("QSQLITE",name);db.setDatabaseName(d.filePath("data/history.sqlite"));if(db.open()){QSqlQuery q(db);if(q.exec("SELECT rootpage FROM sqlite_master WHERE type='table' AND name='deletions'")&&q.next())rootPage=q.value(0).toInt();}}QSqlDatabase::removeDatabase(name);
+   QFile file(d.filePath("data/history.sqlite"));if(rootPage<2||!file.open(QIODevice::ReadWrite))return false;file.seek(16);const auto size=file.read(2);const qint64 pageSize=size.size()==2?((uchar(size[0])<<8)|uchar(size[1])):0;if(pageSize<512)return false;
+   file.seek((rootPage-1)*pageSize);return file.write(QByteArray(1,readable?char(0x0d):char(0)))==1&&file.flush();};
+  QVERIFY(page(false));
+  Source source;OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
+  PUTGD_TRY_VERIFY(ops.notReadyError().code=="history_io");PUTGD_VERIFY_STEADY(!ops.ready(),200);
+  QVERIFY(page(true));
+  PUTGD_TRY_VERIFY(ops.ready());HistoryStore store(root+"/history.sqlite");const auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);
+ }
  void committedAcquisitionRecoversAfterMissingItemCheckpoint() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));const auto root=d.filePath("data"),id=QString("2e0c5cf4-ce1a-4c36-979d-e56c7d28c9e5");Operation accepted;accepted.id=id;accepted.action="clipboard";accepted.restore(OperationState::Acquiring);accepted.created="2026-10-07T00:00:00.000Z";accepted.settings=settings.snapshot();accepted.settingsRevision=settings.revision();accepted.destination={"opaque","test",settings.revision(),{{"workspace","fixture-workspace"}},{{"mode","session"},{"reference",QJsonValue::Null}}};HistoryStore store(root+"/history.sqlite");QVERIFY(!store.saveOperation(accepted));ArtifactStore artifacts(root+"/artifacts");auto acquired=artifacts.acquire(id,textPayload(),ResourceLimits{});QVERIFY(!acquired.error);Source source;source.payload=textPayload();OperationService ops(root,settings,registry,source);PUTGD_TRY_VERIFY(ops.ready());auto recovered=store.operation(id);QCOMPARE(recovered.stateName(),QString("interrupted"));QCOMPARE(recovered.items.size(),1);QCOMPARE(recovered.items[0].artifact.sha256,acquired.artifacts[0].sha256);QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.reads,0);bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);PUTGD_TRY_COMPARE(store.operation(id).items[0].uploadStatus,QString("uploaded"));QVERIFY(!store.operation(id).items[0].candidate.isEmpty());QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,0);
  }
@@ -275,7 +330,7 @@ private slots:
   const auto disconnectEarly=qScopeGuard([&]{disconnect(connection);});
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
   PUTGD_TRY_VERIFY(earlyAnswered);disconnect(connection);
-  QCOMPARE(earlyError.code,QString("operation_busy"));
+  QCOMPARE(earlyError.code,QString("operation_settling"));  // the outcome is out, the slot not yet free (#1578)
   QJsonObject op;PUTGD_TRY_VERIFY([&]{auto done=std::make_shared<bool>(false);ops.inspect(id,[&op,done](Error,QJsonObject r){op=r;*done=true;});if(!putgd::test::waitFor([&]{return *done;}))return false;return op["state"]=="partial";}());
   QCOMPARE(op["items"].toArray()[0].toObject()["uploadStatus"].toString(),QString("unknown"));
   // The journal is durable on the item but never part of the public operation.
@@ -284,11 +339,66 @@ private slots:
   QCOMPARE(saved.items[0].uploadJournal,QJsonObject({{"schemaVersion",1},{"upload","opaque-resumable"}}));
   // The worker's durable partial state precedes finish()/clipboard bookkeeping.
   // Wait for the owner to release the operation, rather than racing retry()
-  // against that separate completion (which correctly returns operation_busy).
+  // against that separate completion (which answers operation_settling).
   PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);
   provider->journalThenUnknown=false;bool retried=false;ops.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});PUTGD_TRY_VERIFY(retried);
   PUTGD_TRY_COMPARE(provider->uploads.load(),2);PUTGD_TRY_VERIFY(!ops.storageActive()&&ops.activeObservations().isEmpty());
   QMutexLocker lock(&provider->mutex);QVERIFY(provider->resumes[0].isEmpty());QCOMPARE(provider->resumes[1],saved.items[0].uploadJournal);
+ }
+ // History offers Retry once the outcome is stored, while the operation still holds its slot until its link copy is
+ // recorded. A Retry in that gap is answered operation_settling (try again in a moment), the operation reports
+ // settling meanwhile, and the same Retry succeeds once the slot is free. A running operation stays operation_busy (#1578).
+ void retryWhileTheOutcomeSettlesIsAnsweredSettlingThenSucceeds() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
+  source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("settle-%1.txt").arg(i),"synthetic batch"));
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();                         // the first file is uploaded
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();  // the second fails
+  // The outcome is stored and visible; the link copy still waits, so the operation holds its slot.
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("partial"));PUTGD_TRY_VERIFY(source.pending);
+  provider->failUpload=false;provider->deferUploads=false;
+  const auto inspect=[&]{QJsonObject op;bool done=false;operations.inspect(id,[&](Error,QJsonObject r){op=r;done=true;});return putgd::test::waitFor([&]{return done;})?op:QJsonObject{};};
+  QVERIFY(inspect()["settling"].toBool());
+  Error early;bool answered=false;operations.retry(id,[&](Error e,QJsonObject){early=e;answered=true;});
+  PUTGD_TRY_VERIFY(answered);QCOMPARE(early.code,QString("operation_settling"));QCOMPARE(provider->uploads.load(),2);
+  source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QVERIFY(!inspect().contains("settling"));
+  Error again;answered=false;operations.retry(id,[&](Error e,QJsonObject){again=e;answered=true;});PUTGD_TRY_VERIFY(answered);QVERIFY2(!again,qPrintable(again.code));
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(provider->uploads.load(),3);
+  PUTGD_TRY_VERIFY([&]{if(source.pending)source.acknowledge();return operations.diagnostics()["activeOperations"].toInt()==0;}());
+  // A Retry of an operation that is genuinely running is still operation_busy.
+  provider->deferUploads=true;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  Error running;answered=false;operations.retry(id,[&](Error e,QJsonObject){running=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(running.code,QString("operation_busy"));
+ }
+ // A Retry of a settling operation is answered by that operation's own state before anything else: not queue_full when
+ // the slots are full, and never queued behind an artifact cleanup to run later without a second request (#1578).
+ void settlingRetryIsRefusedBeforeCapacityAndNeverQueuedBehindCleanup() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->concurrency=8;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto document=configuration(d.path());auto limits=document["limits"].toObject();limits["pendingOperations"]=1;limits["concurrentUploads"]=1;document["limits"]=limits;QVERIFY(settings.save(document,{}));
+  DeferredClipboardSource source;source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("order-%1.txt").arg(i),"synthetic batch"));
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});
+  QString settlingId;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);settlingId=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();
+  PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();provider->failUpload=false;
+  PUTGD_TRY_COMPARE(journal.operation(settlingId).stateName(),QString("partial"));PUTGD_TRY_VERIFY(source.pending);   // settling: its link copy waits
+  // A second operation fills the last slot.
+  source.payload=textPayload();QString runningId;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);runningId=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
+  QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);
+  const auto ask=[&](auto call){Error error;bool answered=false;call([&](Error e,QJsonObject){error=e;answered=true;});return std::make_pair(answered,error);};
+  {auto [answered,error]=ask([&](JsonReply r){operations.retry(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  {auto [answered,error]=ask([&](JsonReply r){operations.retryLocalSave(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  {auto [answered,error]=ask([&](JsonReply r){operations.retry(runningId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_busy"));}
+  // An automatic cleanup pass is running: the Retry is still answered at once, not queued behind it.
+  operations.cleanupExpired();
+  {auto [answered,error]=ask([&](JsonReply r){operations.retry(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  {auto [answered,error]=ask([&](JsonReply r){operations.retryLocalSave(settlingId,r);});QVERIFY(answered);QCOMPARE(error.code,QString("operation_settling"));}
+  provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();
+  PUTGD_TRY_VERIFY([&]{if(source.pending)source.acknowledge();return operations.diagnostics()["activeOperations"].toInt()==0;}());
+  PUTGD_COMPARE_STEADY(provider->uploads.load(),3,300);   // nothing that was refused ran later
  }
  // #202: retention applies without the user, on the resident's own clock.
  void automaticCleanupAppliesRetentionWithoutTheUser() {

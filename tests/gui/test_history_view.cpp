@@ -42,6 +42,16 @@ class HistoryGui:public QObject {
  static void selectRow(QListView* view,int row){view->selectionModel()->select(view->model()->index(row,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);view->setCurrentIndex(view->model()->index(row,0));}
 private slots:
 
+ // A journal whose recovery failed says why, not "waiting to initialize" forever (#1576).
+ void failedJournalRecoveryShowsItsError(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;
+  QVERIFY(QDir().mkpath(d.filePath("data/history.sqlite")));  // the database cannot be opened
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.notReadyError().code=="history_io");
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
+  bool refreshed=false;fixture.session.refreshSnapshot([&](Error){refreshed=true;});PUTGD_TRY_VERIFY(refreshed);QVERIFY(!fixture.session.ready());QCOMPARE(fixture.session.journalError().code,QString("history_io"));
+  window.refresh();QLabel* status=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;
+  QVERIFY(status);PUTGD_TRY_VERIFY(status->text().contains("history_io"));QVERIFY(!status->text().contains("Waiting for the resident journal"));
+ }
  // Cancel all cancels only the uploads that were running when it was confirmed.
  void cancelAllCapturesExactIdsAndRequiresConfirmation(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();fixture.server.setUiCommand([&](const QString& name,const QJsonObject& p,JsonReply reply){QCOMPARE(name,QString("history"));window.command(p,std::move(reply));});

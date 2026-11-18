@@ -724,6 +724,43 @@ private slots:
         QVERIFY2(!first.error && second.error, qPrintable(first.error.code + " / " + second.error.code));
         QCOMPARE(second.error.code, QString("import_busy"));
     }
+    // Sol round 4 of #1614: what is saved, returned and logged is checked as saved: the ID
+    // after it was made unique, and a caller's own ID and label.
+    void importSavesNoIdOrLabelThatRepeatsACredential() {
+        QTemporaryDir dir;
+        CredentialStore credentials;
+        ProviderRegistry registry;
+        registry.add("custom-http", std::make_shared<HttpUploaderProvider>(credentials));
+        SettingsService settings(dir.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(putgd::test::configuration(dir.path(), true), {}));
+        const auto path = dir.filePath("backup.sxcu");
+        {
+            QFile out(path);
+            if (!out.open(QIODevice::WriteOnly)) qFatal("cannot write the synthetic .sxcu file");
+            out.write(QJsonDocument(QJsonObject{{"Version", "17.0.0"}, {"Name", "backup"}, {"DestinationType", "ImageUploader"}, {"RequestMethod", "POST"},
+                                                {"RequestURL", "https://media.example.test/upload"}, {"Headers", QJsonObject{{"Authorization", "Bearer backup-2"}}},
+                                                {"Body", "MultipartFormData"}, {"FileFormName", "file"}, {"URL", "{json:url}"}}).toJson());
+        }
+        const auto run = [&](QJsonObject extra) {
+            QJsonObject params{{"path", path}, {"expectedRevision", settings.metadata()["observedRevision"].toString()}, {"credentialMode", "session"}};
+            for (auto it = extra.begin(); it != extra.end(); ++it) params[it.key()] = it.value();
+            struct { bool done = false; Error error; QJsonObject result; } outcome;
+            http::importUploaderFile(settings, credentials, params, [&](Error e, QJsonObject r) { outcome = {true, e, r}; });
+            if (!waitFor([&] { return outcome.done; }, 10000)) qFatal("the import did not answer");
+            if (outcome.error) qFatal("the import was refused");
+            return outcome.result;
+        };
+        // The first takes the ID "backup"; the second would be "backup-2", the credential.
+        QCOMPARE(run({})["profileId"].toString(), QString("backup"));
+        auto second = run({});
+        QCOMPARE(second["profileId"].toString(), QString("imported-uploader"));
+        // A caller's own ID and label that repeat it give way too.
+        auto third = run({{"profileId", "backup-2"}, {"label", "Bearer backup-2"}});
+        QCOMPARE(third["profileId"].toString(), QString("imported-uploader-2"));
+        QCOMPARE(third["label"].toString(), QString("Imported uploader"));
+        const auto saved = QJsonDocument(settings.document()).toJson();
+        QVERIFY(!saved.contains("backup-2"));
+    }
     // The shared pipeline: journal, explicit retry and history deletion.
     void lostReplyWaitsForAnExplicitRetryThatMayDuplicate() {
         HttpFixture f;
@@ -760,6 +797,9 @@ private slots:
         // A retry the server refuses leaves the item unknown, never failed: the first
         // request's copy may still be there, and History has to keep saying so.
         f.rules({{{"call", "upload"}, {"status", 400}}});
+        // History shows the outcome as soon as it is stored; the operation stays active until its link copy has
+        // been recorded, and a Retry in between is answered operation_settling.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         bool refusedRetry = false;
         operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); refusedRetry = true; });
         PUTGD_TRY_VERIFY(refusedRetry);
@@ -773,6 +813,7 @@ private slots:
         PUTGD_TRY_VERIFY(!detail.isEmpty());
         QCOMPARE(detail["uploadStatus"].toString(), QString("unknown"));
         // The explicit retry sends the file again: the server now holds two copies.
+        PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
         bool accepted = false;
         operations.retry(id, [&](Error e, QJsonObject) { QVERIFY2(!e, qPrintable(e.code)); accepted = true; });
         PUTGD_TRY_VERIFY(accepted);

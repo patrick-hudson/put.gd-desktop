@@ -27,11 +27,11 @@ plain HTTP sends the file and its token unencrypted.
 ## What an import does with secrets
 
 A `.sxcu` file carries its token as plain JSON, in `Headers`, `Parameters`, `Arguments`
-or `Data`. put.gd treats every such value as a secret:
+or `Data`. put.gd treats every such value it keeps as a secret:
 
-- Each header, parameter and argument value becomes a **secret row**: its name is
-  saved, its value is not. The only exceptions are values that are exactly `{filename}`
-  or `{input}`. Clear **Secret** on a row to keep an ordinary value, such as a format
+- Each header, parameter and argument value that is sent becomes a **secret row**: its name is
+  saved, its value is not. The only exceptions are empty values and values that are
+  `{filename}` or `{input}` (ignoring spaces around them and letter case). Clear **Secret** on a row to keep an ordinary value, such as a format
   name, in the configuration instead.
 - The `Data` body of a JSON or XML uploader is one secret value.
 - A credential that the file repeats as literal text in the request URL or the
@@ -50,6 +50,11 @@ or `Data`. put.gd treats every such value as a secret:
   from **Other secret values**. A shorter part that mixes letters and digits stays as
   written, and the notes say where it is (its position, never its text) so you can move
   it yourself.
+- A key that the import finds in both the request URL and the deletion URL is stored
+  once for each, under a generated name such as `url-key` or `deletion-key-2` (the
+  number counts every key taken out so far); a deletion key that only begins like the
+  request key is stored whole. A row's whole credential repeated in both URLs is
+  named in both by that row, `{secret:arguments/token}`.
 - Imports are taken one at a time. A second one that arrives while the first is still
   being saved is refused with `import_busy`; a destination that could not be saved
   leaves no stored values behind. When the destination was written and only reading
@@ -62,8 +67,59 @@ or `Data`. put.gd treats every such value as a secret:
   prompt that nobody answers ends it with `credential_store_timeout` and lets the next
   import in; if the keychain answers later, what it wrote is removed again.
 - A credential may not appear in the link, which is shared and recorded in History.
-  A file whose `URL` repeats one is refused, and the message names the row. A
-  `ThumbnailURL` or `ErrorMessage` that repeats one is left out, with a note.
+  A file whose `URL` repeats one is refused. A `ThumbnailURL` or `ErrorMessage` that
+  repeats one is left out, with a note. The import also refuses a file whose
+  `RequestURL` keeps a credential where it cannot be replaced by its name (inside a
+  placeholder, in the user name or host, or across the `?`). It leaves out a
+  `DeletionURL` that does the same. Any key it took out of that URL stays stored under
+  **Other secret values**, unused. A `FileFormName` or row name that repeats a
+  credential is refused too, and a `Name` that does is replaced by `Imported uploader`.
+- These checks read the whole text that would be kept, host and user name included.
+  Inside a placeholder or across a `\` escape they look only for values of sixteen
+  characters or more; shorter ones there are more often part of a path than a key.
+  Names are read as plain text, braces and all.
+- Credentials include keys the import took out of an address and the values of rows
+  that are not sent. Arguments without a form body, headers put.gd sets itself, a query
+  value that a `Parameters` row of the same name replaces, and a `Data` body that is
+  not sent are left out of the destination, not stored as secret rows. Their values
+  are still looked for, and they have the same size limits as the rows that are kept.
+  If such a value also stands in the request URL or the deletion URL, it is handled
+  like any credential there. It can be kept as a **Parameters** row (from the request
+  URL's query), named after a kept row whose value it equals, or kept under **Other
+  secret values**. A query value that a `Parameters` row of the same name replaces is
+  dropped.
+- Messages and notes never quote the file. They name a row by its list and its place
+  (`argument 2`, `header 1`) and a field by its ShareX name (`URL`, `ThumbnailURL`),
+  never by its text.
+- As a last check, the import is refused if anything it would keep or show still holds a
+  recognised credential, in any letter case. That covers each settings value (read one
+  by one, not as JSON), the names of the stored values, the Name and the ID made from
+  it, and the notes. Values under sixteen characters count as whole words. The message
+  names the field. This check is stricter than the ones above: it can refuse a short credential that
+  stands as a whole word inside a placeholder, or one that contains `|`.
+- When the import is saved, the destination ID it ends up with (after a number is
+  added to make it unique), and any ID or label the caller gave, are checked the same
+  way. One that repeats a credential is replaced by `imported-uploader` (with a number
+  if taken) or `Imported uploader`, with a note. The Settings notice after an import
+  says "Imported uploader." and never repeats the file's Name.
+- Limits: in templates, the import does not recognize a credential written in another
+  spelling, such as percent-encoded or base64. Query values are decoded before they are
+  checked. When the checks before the last one replace or leave out a field, they find a
+  value that contains `{`, `}`, `|` or `\` only by its key-like parts and, for a row
+  named as a credential, its words; the last check looks for such a value whole. A
+  credential written with a `\` escape across the `?` of the request URL is not found.
+  When an upload runs, the returned link is checked for credentials from its path on: a
+  link with a user name is refused, and its host is checked only for pointing at this
+  computer.
+- The ID and label check for a new destination runs in put.gd's resident process, which
+  `putgd-cli` and the MCP helper also use. Importing in Settings into an existing
+  destination uses the file's name, already checked, only when it replaces the default
+  label "Custom uploader".
+- A credential that is exactly a fallback put.gd generates (`imported-uploader-2`,
+  "Imported uploader") is not caught: the fallback is saved and shown without a check.
+- A credential that is exactly the keychain reference put.gd builds from the ID (such as
+  `putgd/http/backup`) is not caught: that reference is written to the configuration and
+  can appear in the error when another destination already uses it.
 
 The values are held in the Settings window until **Store credentials** puts them in
 the system keychain or, for this session only, in memory, exactly as S3 keys are. They
@@ -74,8 +130,8 @@ a reply template's text.
 
 ### What counts as a credential
 
-Every imported value is stored as a secret, because a file does not say which of its
-values is the token. That does not make every stored value a credential. An argument
+Every imported value is stored as a secret, except empty values and `{filename}` or
+`{input}`, because a file does not say which of its values is the token. That does not make every stored value a credential. An argument
 `folder: screenshots` is stored like a token, yet a link `https://host/screenshots/a.png`
 is an ordinary link. So when put.gd looks for a destination's secrets in an address or
 in a server's message, it looks for what is credential-like:
