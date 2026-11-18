@@ -57,8 +57,16 @@ Part of [Screen recording](../recording.md).
 - Every accepted `edit` advances `revision`. `upload` and `edit` take the
   revision they were reviewed at and fail with `recording_stale` otherwise. An upload
   exports **exactly the revision it started with, or it is refused**: the resident refuses
-  an upload at any other revision (`recording_stale`) and any export request while an
-  export runs, and reopens the window with the reason. Nothing is dropped silently.
+  an upload at any other revision (`recording_stale`), an upload whose output is not the
+  one the window shows (`recording_config`) and any export request while an export runs
+  (`recording_state`), and reopens the window with the reason and **no Try again**: pressing
+  Upload again is the answer. A proposal the resident answers during an export is held and
+  delivered when review resumes. Nothing is dropped silently.
+- **The window's output choice is authoritative.** The review's format, codec and audio
+  choice reach the resident as `configChanged` events carrying a sequence number; the
+  resident applies them, echoes the last sequence it applied, and the window ignores any
+  older config it is sent. An upload carries the output the window shows, and the resident
+  refuses any other.
 - **Undo history.** The resident keeps one undo history per review session. Every
   accepted `edit` batch pushes the edit it replaced; at most 200 steps are kept (the
   oldest is dropped). A new batch clears the redo steps. `undo` and `redo` each go in a
@@ -142,7 +150,8 @@ missing image-copy global or a failed connection, named in the message; `inspect
 later commands on a recording that has ended return it with no reason),
 `disk_space_insufficient`, `recording_disk_full` (capture could not be finalized),
 `recording_unsupported`, `recording_active`, `recording_state`,
-`recording_busy`, `recording_stale`, `recording_mask_unknown`,
+`recording_busy`, `recording_stale`, `recording_config` (the upload's output no longer
+matches the window's), `recording_mask_unknown`,
 `recording_cut_unknown` (no cut has that `cutId`), `recording_cut_empty` (the cuts
 and trim would leave less than one frame), `recording_history_empty` (nothing to
 undo or redo),

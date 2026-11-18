@@ -83,7 +83,7 @@ pixels.
 | `speed` | `speed` 0.5, 1, 2 or 4 | the Play menu's speed |
 | `frameStep` | `delta` 1 or −1 | `.` and `,`: one frame |
 | `setIn` | | I: the trim's start at the playhead |
-| `setOut` | | O: the trim's end at the playhead **plus one nominal frame interval** (bounded by the recording's end), so the playhead frame stays in the clip |
+| `setOut` | | O: the trim's end at the **next frame edge after the playhead frame**, round((*k* + 1) × 10⁶ / `fps`) from the frame's index (bounded by the recording's end), so the shown frame stays in the clip |
 | `setTrim` | `start`, `end` (null or omitted: the recording's end) | the brackets, in one step. The window needs `start < end` within the recording (`invalid_request`). A trim shorter than one nominal frame is always `invalid_request`; a trim long enough by itself that leaves less than one frame once the cuts are subtracted is `recording_cut_empty` |
 | `resetTrim` | | the Edits row's Reset |
 | `trimToLimit` | | trims the end so the kept time fits the GIF or WebP limit; refused when it already does |
@@ -104,8 +104,8 @@ pixels.
 | `nextEdit`, `previousEdit` | | Alt+→ and Alt+← |
 | `seekCoverStart`, `seekCoverEnd` | | Shows from → and Until →: the first or last *kept* covered frame of the selected cover |
 | `setCoverEdge` | `edge` start or end, `time` | types a time into the cover's **Shows from** or **Until** field and commits it, with the field's snap to a whole frame. It changes nothing (and succeeds) when the time snaps to the edge the cover already has, and is `invalid_request` when it snaps to or across the cover's other edge. Needs the cover's time fields to exist (`recording_state` when they are not shown) |
-| `setCoverEdgeToPlayhead` | `edge` start or end | Set to playhead for the selected cover; `edge: end` adds one nominal frame interval like `setOut`, so the playhead frame stays covered |
-| `setMaskIn`, `setMaskOut` | | the selected cover's start, or its end plus one frame interval, at the playhead (Shift+I and Shift+O) |
+| `setCoverEdgeToPlayhead` | `edge` start or end | Set to playhead for the selected cover; `edge: end` uses the next frame edge like `setOut`, so the playhead frame stays covered |
+| `setMaskIn`, `setMaskOut` | | the selected cover's start at the playhead, or its end at the next frame edge after it (Shift+I and Shift+O), so the shown frame stays covered |
 | `coverKind` | `kind` solid or blur | the panel's Redact \| Blur choice for the selected cover |
 | `useSolidCover` | | turns the selected blur, or an armed Blur, into a redaction |
 | `strength` | `strength` 2–64 | the selected blur's strength |
@@ -122,7 +122,7 @@ pixels.
 | `saveCopyDialog`, `closeFileDialog` | | opens **Save a copy…** as the button does, or closes it as a cancel |
 | `dismissStatus`, `showAdvice` | | clears the status line, or opens an error's details |
 | `showInFolder`, `copyPath`, `dismissSavedCopy` | | the saved-copy result's actions |
-| `retryExport` | | Try again. It has **two layers of outcome, and an agent checks both**: first the window's guard (`recording_state` when nothing failed or a cover is being placed), then the resident's own result, the export-start reply (`state: exporting`, `pending`) or its refusal (`recording_stale` and so on), as `recording.saveCopy` and `recording.upload` reply. The last failed **Save a copy…** or Upload is repeated with the same path or destination at the **current** revision, and the agent then polls `lastExport`. If the failed request was an Upload, **this publishes** |
+| `retryExport` | | Try again. It has **two layers of outcome, and an agent checks both**: first the window's guard (`recording_state` when nothing failed or a cover is being placed), then the resident's own result, the export-start reply (`state: exporting`, `pending`) or its refusal (`recording_stale` and so on), as `recording.saveCopy` and `recording.upload` reply. The last failed **Save a copy…** is repeated with the same path at the **current** revision; a failed Upload is repeated at **its own revision**, and if the edit changed since it is refused (`recording_stale`, "Press Upload to upload them"). It is also blocked while a change or gesture is still unanswered. The agent then polls `lastExport`. If the failed request was an Upload, **this publishes** |
 | `retryPreview` | | decodes the playhead frame again |
 | `discard`, `keepReviewing`, `confirmDiscard` | | Discard… asks; the other two answer it. `confirmDiscard` ends the session, so its reply can time out after the recording was discarded: verify with `operation.inspect` (the operation ends `cancelled`) |
 
@@ -153,7 +153,8 @@ removed: those controls no longer exist.
 | `size` | the window's `[width, height]` |
 | `timeline` | `zoom`, `visible {start, end}`, `selection {start, end}` or `null`, `selectedEdit {kind, id}` (empty strings when nothing is selected), `skim {time, exact}` or `null`, `lanes`, `hiddenCovers`, `tiles {shown, placeholders}`, and the rectangles `rect`, `strip` and `ruler` (window coordinates) |
 | `lastRefusal` | `null`, or `{code, message, revision, proposal}` for the latest edit the resident refused |
-| `uploadWaiting` | true while an Upload waits for the resident to accept pending proposals; a refusal, 2 s without an answer, more editing, a cover being placed or an export starting cancels it |
+| `uploadWaiting` | true while an Upload waits for the resident to answer every proposal. Anything cancels it: input in the window, a dialog or menu opening, any `recording.review` action except `inspect`, a format or audio change, an export starting, a push other than the awaited answer, a refusal, or 2 s without an answer (see [Commit and upload](overlay-and-review.md#interaction-rules)) |
+| `playbackQueuedEnd` | true when the latest playback run played to the end and queued its last frame (so an agent can tell a finished run from a stopped one) |
 | `preview` | `{error, stale, frameTimeUs, frameSize [w, h], skimSize [w, h]}`: the shown frame's error, whether it is an earlier frame, its time (`null` before the first frame) and its size in pixels (at 100 % the source size), and the size of the skim picture in the viewer (`[0, 0]` when not skimming) |
 | `timeline.skim` | `null`, or `{time, exact}`: the skimmed time and whether the exact frame has arrived (`false` while only the tile shows) |
 | `statusFacts` | every status fact that holds for the current state, as `{text, tone, actions}` (each action is the drive call it makes). The window shows one line at a time, an error first: `statusRow` is that line |

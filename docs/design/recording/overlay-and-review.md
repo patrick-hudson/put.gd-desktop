@@ -231,7 +231,8 @@ action does not change it.
   viewer or timeline removes it; **Delete on a focused Edits row** removes that row's
   cover, except that with a time selection it cuts the selection instead.
 - **Trim** with the brackets or I and O at the playhead (the end action keeps the playhead
-  frame, so it adds one frame interval, bounded by the recording's end); Shift+I and
+  frame: its end is the next frame edge, round((*k* + 1) × 10⁶ / `fps`), from the frame's
+  index, bounded by the recording's end); Shift+I and
   Shift+O retime the selected cover the same way. Dragging an edge of a cut or cover
   retimes it.
 - **Keys.** The keys act on the window unless a text field has focus, which keeps its
@@ -259,19 +260,32 @@ action does not change it.
 - **Commit and upload.** A timeline drag proposes its edit when the pointer is released;
   a keyboard nudge of a cover is proposed 350 ms after the last key. **Upload, Ctrl+Enter
   and Enter do nothing during a drag** (the drag's edit has not been proposed), and
-  Upload is disabled while a cover is being placed. Otherwise they commit a pending
-  nudge, wait for every proposal's answer from the resident, then send **that revision**:
-  an upload exports exactly the revision it started with, or it is refused. While the
-  upload waits (`inspect` shows `uploadWaiting`), it is cancelled by:
-  - any new local change: an edit, a nudge, a cover move or resize, an edge drag or a
-    placement; the status line says "Upload cancelled because you kept editing.";
-  - a refusal of one of its proposals; the status line says what was not applied;
-  - 2 s without an answer; the status line says "Upload didn't start";
-  - an export starting.
+  Upload is disabled while a cover is being placed. Otherwise they send a pending nudge
+  first, then **wait for every proposal's answer** from the resident, and send **that
+  revision** with the output the window shows: an upload exports exactly the revision it
+  started with, or it is refused. While the upload waits (`inspect` shows
+  `uploadWaiting`), **anything cancels it**:
+  - a mouse press, double-click, key press or wheel anywhere in the window, its dialogs or
+    menus (auto-repeating keys do not count);
+  - a dialog, menu or popup opening, including the destination menu and the **Save a
+    copy…** chooser;
+  - any `recording.review` action except `inspect`;
+  - a format or audio change, or an export starting;
+  - a push from the resident other than the awaited answer;
+  - a refusal of one of its proposals, or 2 s without an answer.
 
-  The resident refuses an upload at any other revision (`recording_stale`) and any export
-  request while an export runs, and reopens the window with the reason; nothing is dropped
-  silently. **Try again** (`retryExport`) is refused while a cover is being placed.
+  The status line then reads "Upload cancelled: … Press Upload again." (the reason fills
+  the gap: "you kept editing", what was not applied, and so on). It is not a dialog, and
+  it stays visible after the awaited answer arrives. The resident refuses an upload at any
+  other revision (`recording_stale`), with an output other than the one shown
+  (`recording_config`), and any export request while an export runs; it reopens the window
+  with the reason and **no Try again** (`retry: false`), since pressing Upload again is the
+  answer. A proposal the resident answers during an export is held and delivered when
+  review resumes. Nothing is dropped silently.
+- **Try again** after a failed Upload retries **that Upload's own revision**: if the edit
+  changed since, it is refused ("Press Upload to upload them"). It is refused while a cover
+  is being placed, and blocked while a change or gesture is still unanswered. A failed
+  **Save a copy…** is retried at the current revision.
 - **Held keys.** An auto-repeated Enter is ignored, so a held key places or restores once
   and never uploads, and Ctrl+Enter does not auto-repeat.
 
@@ -409,7 +423,7 @@ round of [removed tests](../../testing/removed-tests.md#second-round).
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review; after `budget` the resident sends the helper `notice {text}`, which the review window shows as its banner |
 | `cancelled` | Cancel on the bar, Discard in the review, the window closed |
-| `configChanged {config, microphoneRequested?}` | format/codec/audio changed on the bar (ready) or the format changed in review; `microphoneRequested` is the Microphone toggle as the user left it, which the resident remembers |
+| `configChanged {config, microphoneRequested?, seq?}` | format/codec/audio changed on the bar (ready) or in review (where `seq` numbers the change; the resident echoes the last one it applied and the window ignores older config); `microphoneRequested` is the Microphone toggle as the user left it, which the resident remembers |
 | `edit {revision, commands}` | a review-window proposal at the revision it displayed |
-| `uploadRequested {revision}`, `saveCopyRequested {path, revision}` | the review's Upload / Save copy |
+| `uploadRequested {revision, config}`, `saveCopyRequested {path, revision}` | the review's Upload (with the output it shows) / Save copy |
 | `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |

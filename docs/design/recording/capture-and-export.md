@@ -251,7 +251,9 @@ rules at a span's start S and end E are:
   be half the audio container's tick off (24 samples at 48 kHz for Matroska's
   millisecond), each kept range is heard from that many samples inside both its edges and
   never from outside it. A gap in the clip's own audio (such as a pause leaves) stays
-  silent without moving the audio after it across a cut.
+  silent without moving the audio after it across a cut. **Known limit:** when the source
+  audio has a millisecond timestamp gap, up to about 1 ms of audio near a cut edge can stay,
+  under the seam's 4 ms fade. It is inaudible.
 
 **Seeking over cuts.** A decode pass reads on through a cut when the next span's
 keyframe lies before it (nothing is wasted), and seeks past the cut when the keyframe
@@ -268,7 +270,9 @@ the trim, still covers a picture that is held into a kept span**: the picture on
 that kept time may come from inside the cut. Container timestamp rounding does not
 matter: a GIF that shows a frame at 70 ms instead of 66.7 ms covers it the same, and a
 capture time within the timestamp tolerance of the cover's bound counts as inside
-(uncertainty is covered). To gather the frame times under each cover the exporter reads
+(uncertainty is covered). **Known limit:** in a GIF the frame before a cover starts can stay
+visible up to one centisecond into the cover (GIF times are centiseconds). That picture was
+captured before the cover, so it shows nothing covered. To gather the frame times under each cover the exporter reads
 each cover's kept parts once more, demux only.
 
 **Previews.** `previewFrame` and the review's exact skim frame check the cover against
