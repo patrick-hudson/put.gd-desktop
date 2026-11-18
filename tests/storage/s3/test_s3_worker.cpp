@@ -125,6 +125,59 @@ private slots:
         PUTGD_TRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
         QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
     }
+    // The resident asks for idle upload lanes every 100 ms while it waits, so one such update can
+    // cross the worker's result on the wire. A valid one is dropped and the worker still exits cleanly;
+    // a worker that exits with an error makes the resident discard a finished answer as "ended
+    // unexpectedly". A count that is invalid is a protocol failure before and after the result alike:
+    // the worker exits with code 3.
+    void lanesUpdateAfterTheResult_data() {
+        QTest::addColumn<double>("lanes");
+        QTest::addColumn<int>("exitCode");
+        QTest::newRow("valid") << 1.0 << 0;
+        QTest::newRow("negative") << -1.0 << 3;
+        QTest::newRow("fraction") << 1.5 << 3;
+        QTest::newRow("too-many") << double(s3MaximumPartLanes) << 3;
+    }
+    void lanesUpdateAfterTheResult() {
+        QFETCH(double, lanes);
+        QFETCH(int, exitCode);
+        test::S3Fixture fixture;
+        const auto request = fixture.request("late-lanes.txt", QByteArray(1024, 'l'));
+        QProcess child;child.setProcessChannelMode(QProcess::SeparateChannels);
+        UiControl control(child);
+        const auto nonce = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        auto envelope = [&] {return QJsonObject{{"role", "s3-worker"}, {"nonce", nonce}, {"generation", "1"}};};
+        auto acknowledge = [&](const QString& kind,const QString& sequence,const QJsonObject& data) {
+            auto value=envelope();value["kind"]=kind;value["replyTo"]=sequence;value["data"]=data;
+            return !control.send("checkpointAccepted",value).isEmpty();
+        };
+        bool ready=false,wireFailed=false,terminal=false;QJsonObject result;
+        connect(&control,&UiControl::failed,this,[&](Error){wireFailed=true;});
+        connect(&control,&UiControl::frame,this,[&](const QString& type,const QString&,const QJsonObject& value) {
+            if(type=="ready"){ready=true;return;}
+            const auto kind=value["kind"].toString();
+            if(type=="observed"&&kind=="credentials")
+                acknowledge(kind,value["rpc"].toString(),{{"credentials",s3wire::encode(Credentials{"PUTGD_SYNTHETIC_ACCESS","putgd-synthetic-secret-not-a-real-key",{},1})}});
+            else if(type=="observed"&&kind=="readiness")
+                acknowledge(kind,value["rpc"].toString(),{{"error",s3wire::encode(Error{})}});
+            else if(type=="checkpoint"&&kind=="result") {
+                result=value["data"].toObject();terminal=true;
+                auto update=envelope();update["lanes"]=lanes;
+                control.send("lanes",update);
+                acknowledge("result","terminal",{});
+            }
+        });
+        child.start(QString::fromUtf8(S3_REAL_WORKER_PATH),{});QVERIFY(child.waitForStarted(5000));
+        auto boot=envelope();boot["build"]=QJsonDocument::fromJson(buildManifestJson()).object();
+        boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=S3Module::defaultPath();
+        QVERIFY(!control.send("bootstrap",boot).isEmpty());PUTGD_TRY_VERIFY_WITH_TIMEOUT(ready&&!wireFailed,5000);
+        auto active=envelope();active["method"]="upload";active["request"]=s3wire::encode(request);
+        QVERIFY(!control.send("activate",active).isEmpty());
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(terminal,10000);
+        QCOMPARE(result["status"].toString(),QString("uploaded"));
+        PUTGD_TRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
+        QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),exitCode);QVERIFY(!wireFailed);
+    }
     void faultyChildren_data() {
         QTest::addColumn<QString>("mode");
         for (const auto* mode : {"normal", "wrong_build", "duplicate_ready", "wrong_nonce", "normal_missing_terminal",
