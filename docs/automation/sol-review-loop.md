@@ -143,15 +143,16 @@ the required `CI` summary passed at the reviewed head (`gh pr checks <n>`), then
 Always post one comment on the pull request when the loop ends, approved or not, with
 `gh pr comment <n> --body-file <file>`. Write it in plain English
 ([PR and issue writing](pr-and-issue-writing.md)) and starting with the attribution note from
-[Leaving comments on GitHub](github-comments.md):
+[Leaving comments on GitHub](github-comments.md). `<writer model>` is the model posting the
+comment (usually the coordinator, not Sol); `<Sol model>` is the reviewer:
 
 ```markdown
 > [!NOTE]
-> 🤖 **<model> responding on behalf of Patrick Hudson**
+> 🤖 **<writer model> responding on behalf of Patrick Hudson**
 
 **Sol review: approved** (or: **changes still open** / **disputed, needs a decision**)
 
-Reviewed head `<sha>` against `<base>` in <N> rounds with <model> on <effort>.
+Reviewed head `<sha>` against `<base>` in <N> rounds with <Sol model> on <effort>.
 
 | ID | Severity | Where | Finding | Outcome |
 |---|---|---|---|---|
