@@ -182,25 +182,6 @@ Error HistoryStore::persistOperation(const Operation& op,const ProviderRegistry*
 }
 Error HistoryStore::indexPublications(const ProviderRegistry& providers) {
  if(error_)return error_;
- // Each identity is worked out from its receipt by the provider's serializationKey. When
- // that rule changes (#1582: S3 keys in their stored form) every History row is worked
- // out again once, so an overwrite still finds the row it replaces. Receipts, deletion
- // journals and item states are unchanged; rows whose provider is missing stay unindexed
- // until it is restored, as before. A marker table, not user_version, so older builds
- // still open this history.
- {
-  QSqlQuery marker(db_);
-  if(!marker.exec("CREATE TABLE IF NOT EXISTS history_markers(name TEXT PRIMARY KEY)"))return sqlError();
-  marker.prepare("SELECT 1 FROM history_markers WHERE name='publication-identity-2'");if(!marker.exec())return sqlError();
-  if(!marker.next()) {
-   marker.finish();if(!db_.transaction())return sqlError();
-   QSqlQuery reset(db_);
-   const bool ok=reset.exec("UPDATE item_state SET publication_identity='' WHERE id IN (SELECT id FROM history WHERE upload_status='uploaded')")
-    &&reset.exec("UPDATE history SET publication_identity='' WHERE upload_status='uploaded'")
-    &&reset.exec("INSERT INTO history_markers(name) VALUES('publication-identity-2')");
-   if(!ok||!db_.commit()){db_.rollback();return sqlError();}
-  }
- }
  // Stream bounded pages; unknown/unavailable providers remain unindexed until restored.
  QString after=QStringLiteral("");
  for(;;) {
