@@ -56,8 +56,11 @@ LoadedSettings loadValidated(const QString& path,const ProfileValidator& validat
     }
     loaded.candidate=candidate;loaded.error=error;return loaded;
 }
-Error writeCandidate(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator,const QJsonObject& candidate,const QString& expectedRevision) {
-    if (auto error = Settings::validate(candidate, validator, credentialValidator)) return error;
+Error writeCandidate(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator,const QJsonObject& proposed,const QString& expectedRevision) {
+    // What was sent is checked as sent, so 201 repeats of one word are refused like 201 words; only then
+    // are Quick redact's saved lists written trimmed and without repeats, whoever sent them (#1618).
+    if (auto error = Settings::validate(proposed, validator, credentialValidator)) return error;
+    const auto candidate = Settings::withCleanRedactLists(proposed);
     const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
     if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
     const auto parent = QFileInfo(path).absolutePath();

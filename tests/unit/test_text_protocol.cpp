@@ -2,6 +2,10 @@
 // screen or a caller supplies and what put.gd copies, shows or passes on.
 // Links Qt Core and the library only, as the putgd-ocr helper does.
 #include "core/TextJobProtocol.h"
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QFile>
 #include <QtTest>
 
 using namespace putgd;
@@ -44,6 +48,43 @@ private slots:
   for(const auto* bad:{"","en","ENG","eng.traineddata","../eng","/usr/share/eng","eng deu","eng+deu","osd","equ","eng_","eng_a_b_c","-c","eng\n"})QVERIFY2(!validLanguage(bad),bad);
   QVERIFY(validLanguages({"eng","deu","fra"}));
   QVERIFY(!validLanguages({}));QVERIFY(!validLanguages({"eng","deu","fra","spa"}));QVERIFY(!validLanguages({"eng","eng"}));QVERIFY(!validLanguages({"eng","../deu"}));
+ }
+ // #1618, round 2 of #1631 (U8): the shared table the MCP server reads too,
+ // one row per rule, with ordinary patterns that must stay allowed.
+ void redactValidationTable_data() {
+  QTest::addColumn<bool>("pattern");QTest::addColumn<QString>("value");QTest::addColumn<QString>("error");QTest::addColumn<QString>("prefix");
+  QFile file(QStringLiteral(PUTGD_SOURCE_DIR "/tests/fixtures/text/redact-validation.json"));
+  QVERIFY(file.open(QIODevice::ReadOnly));
+  const auto table=QJsonDocument::fromJson(file.readAll()).object();
+  int index=0;
+  for(const auto* list:{"terms","patterns"})for(const auto& value:table[list].toArray()){
+   const auto row=value.toObject();
+   QTest::addRow("%s %d %s",list,index++,qPrintable(row["rule"].toString()))<<(QString(list)=="patterns")<<row["value"].toString()<<row["error"].toString()<<row["errorPrefix"].toString();
+  }
+  QVERIFY(index>50);
+ }
+ void redactValidationTable() {
+  QFETCH(bool,pattern);QFETCH(QString,value);QFETCH(QString,error);QFETCH(QString,prefix);
+  const auto got=pattern?redactPatternError(value):redactTermError(value);
+  if(!prefix.isEmpty())QVERIFY2(got.startsWith(prefix),qPrintable(got));
+  else QCOMPARE(got,error);
+ }
+ // #1618: what the table cannot show. A message never repeats the value, and
+ // a compile error gives Qt's message with the offset in the pattern.
+ void redactErrorsNeverRepeatTheValue() {
+  const QString canary=QStringLiteral("zq1618canary");
+  for(const auto& bad:{canary+"\n"+canary+"x",canary+"\r"+canary,canary+QChar(0x2028)+canary,canary+QString(maxRedactTermLength,'a'),QStringLiteral("..")}){
+   const auto error=redactTermError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
+  }
+  for(const auto& bad:{canary+"(abc",canary+"[",canary+"(?<",canary+"\n",canary+"|",canary+"("}){
+   const auto error=redactPatternError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
+  }
+  const auto unclosed=redactPatternError(canary+"(abc");
+  QVERIFY2(unclosed.startsWith("This pattern does not compile: ")&&unclosed.endsWith(" at offset 16"),qPrintable(unclosed));
+  // 500 characters outside the BMP are 1000 UTF-16 units and still fit.
+  const QString astral=QString::fromUcs4(U"\U0001D538");
+  QCOMPARE(redactPatternError(astral.repeated(maxRedactPatternLength)),QString());
+  QCOMPARE(redactPatternError(astral.repeated(maxRedactPatternLength+1)),QString("A pattern is longer than 500 characters"));
  }
 };
 QTEST_APPLESS_MAIN(TextProtocolTest)

@@ -71,6 +71,7 @@ TOLERATED = {
     ('src/ui/CustomUploaderPanel.cpp', 'storage/http'): 'the custom uploader form reads .sxcu files and names secret values with the provider\'s rules',
     ('src/ui/EditorWindow.h', 'editor'): 'the editor window hosts the canvas; editor and ui are not yet split',
     ('src/ui/ImageEditor.cpp', 'editor'): 'the image editor drives the edit document; editor and ui are not yet split',
+    ('src/ui/QuickRedactRunner.h', 'editor'): 'the editor window runs Quick redact matching off its thread; editor and ui are not yet split',
     ('src/ui/SettingsWindow.cpp', 'storage/b2'): 'Settings bounds its link fields with the provider\'s limits',
     ('src/ui/SettingsWindow.cpp', 'storage/proton'): 'Settings bounds its timeout field with the provider\'s limit',
     ('src/ui/SettingsWindow.cpp', 'storage/s3'): 'Settings previews public links with the S3 URL rules',

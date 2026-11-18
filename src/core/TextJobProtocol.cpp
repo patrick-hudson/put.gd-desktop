@@ -89,7 +89,43 @@ struct Tongue {const char* locale;const char* language;};
 // ISO 639-1 to the Tesseract data file of that language.
 constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},{"bg","bul"},{"bn","ben"},{"ca","cat"},{"cs","ces"},{"cy","cym"},{"da","dan"},{"de","deu"},{"el","ell"},{"en","eng"},{"es","spa"},{"et","est"},{"eu","eus"},{"fa","fas"},{"fi","fin"},{"fr","fra"},{"ga","gle"},{"gl","glg"},{"he","heb"},{"hi","hin"},{"hr","hrv"},{"hu","hun"},{"hy","hye"},{"id","ind"},{"is","isl"},{"it","ita"},{"ja","jpn"},{"ka","kat"},{"kk","kaz"},{"ko","kor"},{"lt","lit"},{"lv","lav"},{"mk","mkd"},{"ms","msa"},{"mt","mlt"},{"nb","nor"},{"nl","nld"},{"nn","nor"},{"no","nor"},{"pl","pol"},{"pt","por"},{"ro","ron"},{"ru","rus"},{"sk","slk"},{"sl","slv"},{"sq","sqi"},{"sr","srp"},{"sv","swe"},{"sw","swa"},{"ta","tam"},{"te","tel"},{"th","tha"},{"tr","tur"},{"uk","ukr"},{"ur","urd"},{"uz","uzb"},{"vi","vie"}};
 }
-QStringList redactCategories(){return {"email","phone","ip","card","key"};}
+QStringList redactCategories(){return {"email","phone","ip","card","key","name","list"};}
+// #1618: Quick redact terms and patterns. A message never repeats the value,
+// since a configuration error may be logged and these are the user's own words.
+// The rules, in order, are the same in the editor and the MCP server (the
+// shared table: tests/fixtures/text/redact-validation.json). Lengths count
+// code points, the line breaks are \n, \r, U+2028 and U+2029, and trimming is
+// QString::trimmed (QChar::isSpace). A pattern's shape is not judged: the
+// editor matches patterns in a child process it kills at the deadline
+// (src/ui/QuickRedactRunner.h), so any pattern PCRE2 compiles is allowed.
+namespace {
+bool lineBreak(QChar c) {return c=='\n'||c=='\r'||c==QChar(0x2028)||c==QChar(0x2029);}
+qsizetype codePoints(const QString& text) {return QStringView(text).toUcs4().size();}
+}
+QString redactTermError(const QString& term){
+ if(std::any_of(term.cbegin(),term.cend(),lineBreak))return QStringLiteral("An entry has a line break");
+ const auto t=term.trimmed();
+ if(t.isEmpty())return QStringLiteral("An entry is empty");
+ if(codePoints(t)>maxRedactTermLength)return QStringLiteral("An entry is longer than %1 characters").arg(maxRedactTermLength);
+ // Matching splits an entry at its letters and digits; punctuation alone
+ // would match nothing reliably and everything nearby.
+ const auto points=QStringView(t).toUcs4();
+ if(std::none_of(points.cbegin(),points.cend(),[](uint c){return QChar::isLetterOrNumber(char32_t(c));}))return QStringLiteral("An entry needs a letter or digit");
+ return {};
+}
+QString redactPatternError(const QString& pattern){
+ if(std::any_of(pattern.cbegin(),pattern.cend(),lineBreak))return QStringLiteral("A pattern has a line break");
+ const auto t=pattern.trimmed();
+ if(t.isEmpty())return QStringLiteral("A pattern is empty");
+ if(codePoints(t)>maxRedactPatternLength)return QStringLiteral("A pattern is longer than %1 characters").arg(maxRedactPatternLength);
+ // Compiled as Quick redact runs it (src/editor/QuickRedact.cpp). PCRE2's
+ // messages describe the syntax, not the text, and the offset counts from the
+ // start of the pattern.
+ const QRegularExpression compiled(pattern,QRegularExpression::UseUnicodePropertiesOption);
+ if(!compiled.isValid())return QStringLiteral("This pattern does not compile: %1 at offset %2").arg(compiled.errorString()).arg(compiled.patternErrorOffset());
+ if(compiled.match(QString()).hasMatch())return QStringLiteral("This pattern matches empty text");
+ return {};
+}
 QStringList childErrorCodes(){return {"input_excessive","text_job_io","language_unavailable","engine_unavailable","helper_sandbox_unavailable"};}
 QStringList parentErrorCodes(){return {"text_job_timeout","text_job_failed","text_incompatible","text_busy","text_helper_missing"};}
 Error failure(const QString& code,const QString& language){

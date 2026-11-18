@@ -92,6 +92,7 @@ protected:
  void keyReleaseEvent(QKeyEvent*) override;
  bool eventFilter(QObject*,QEvent*) override;
 private:
+ void abandonDrag();
  void announce();
  bool nudge(const QPoint& delta,bool resize);
  enum class Drag {None,Create,Move,Resize,Pan,CropNew,CropMove,CropResize};

@@ -53,7 +53,7 @@ DELAY_SECONDS = {0, 3, 5, 10}
 DELAYABLE_ACTIONS = {'region', 'window', 'monitor', 'desktop', 'repeat', 'edit', 'text'}
 EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo', 'redactText'}
 # The editor window's view and selection controls, one per drive_editor call.
-EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'place', 'geometry', 'applyCrop',
+EDITOR_VIEW_ACTIONS = {'inspect', 'tool', 'select', 'selectNext', 'selectPrevious', 'selectAffectedText', 'removeMark', 'removeSuggestions', 'place', 'geometry', 'applyCrop',
                        'cancelCrop', 'zoom', 'fit', 'actualSize', 'pan', 'showSavedCopy', 'copySavedPath', 'dismissSavedCopy', 'discard',
                        'keepEditing', 'confirmDiscard', 'keyboardHelp', 'geometryDetails', 'saveDetails', 'propertiesWidth',
                        'blurStyle', 'stepNumber'}
@@ -96,7 +96,10 @@ DESKTOP_SETUP_RECHECK_TIMEOUT = 100
 TEXT_SOURCES = {'region', 'window', 'monitor', 'desktop', 'clipboard', 'file', 'history'}
 TEXT_SCREEN_SOURCES = {'region', 'window', 'monitor', 'desktop'}
 TEXT_LANGUAGE = re.compile(r'[a-z]{3,4}(_[a-z0-9]+){0,2}')
-REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key'}
+REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key', 'name', 'list'}
+# Quick redact terms and patterns (#1618): the editor checks each pattern compiles.
+REDACT_TERMS_MAX, REDACT_TERM_LENGTH = 200, 100
+REDACT_PATTERNS_MAX, REDACT_PATTERN_LENGTH = 50, 500
 QR_MODES = {'copy', 'save', 'show'}
 
 
@@ -133,11 +136,46 @@ def result_identity(value: Any) -> bool:
     return type(value) is int and 1 <= value <= 2147483647
 
 
+REDACT_BREAKS = {'\n', '\r', '\u2028', '\u2029'}
+# What Qt's QChar::isSpace (so QString::trimmed) treats as white space. Python's str.strip() also removes
+# U+001C to U+001F, which Qt keeps, so a value is trimmed by this set instead.
+QT_SPACE = ''.join(map(chr, [*range(0x09, 0x0E), 0x20, 0x85, 0xA0, 0x1680, *range(0x2000, 0x200B), 0x2028, 0x2029, 0x202F, 0x205F, 0x3000]))
+
+
+def safe_redact_term(value: Any) -> bool:
+    # The editor's rules (redactTermError). The line breaks are checked on the raw value, then it is
+    # trimmed; what is left is 1 to 100 code points with a letter or digit.
+    if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
+        return False
+    term = value.strip(QT_SPACE)
+    return 0 < len(term) <= REDACT_TERM_LENGTH and any(c.isalnum() for c in term)
+
+
+def safe_redact_pattern(value: Any) -> bool:
+    # redactPatternError as far as it can be checked without PCRE2: no line break in the raw value, not blank
+    # once trimmed, and at most 500 code points as written. Whether it compiles and whether it matches empty text
+    # are the editor's to say (its edit_command_invalid is authoritative); a pattern runs in a child
+    # process the editor stops at a deadline, so its shape is not restricted here.
+    if not isinstance(value, str) or any(c in REDACT_BREAKS for c in value):
+        return False
+    # Not trimmed when it runs, so its length is counted as written; only a blank one is refused after trimming.
+    return bool(value.strip(QT_SPACE)) and len(value) <= REDACT_PATTERN_LENGTH
+
+
+def safe_redact_list(values: Any, most: int, entry_ok: Any) -> bool:
+    return isinstance(values, list) and 1 <= len(values) <= most and all(entry_ok(value) for value in values)
+
+
 def safe_redact_text(command: Any) -> bool:
     categories = command.get('categories')
-    return (set(command) == {'op', 'categories'} and isinstance(categories, list) and 1 <= len(categories) <= 5 and
+    # terms and patterns add to the saved list for this run; they need the list category.
+    return (set(command) <= {'op', 'categories', 'terms', 'patterns'} and 'op' in command and 'categories' in command and
+            isinstance(categories, list) and 1 <= len(categories) <= 7 and
             all(isinstance(category, str) and category in REDACT_CATEGORIES for category in categories) and
-            len(set(categories)) == len(categories))
+            len(set(categories)) == len(categories) and
+            ('terms' not in command or safe_redact_list(command['terms'], REDACT_TERMS_MAX, safe_redact_term)) and
+            ('patterns' not in command or safe_redact_list(command['patterns'], REDACT_PATTERNS_MAX, safe_redact_pattern)) and
+            ('terms' not in command and 'patterns' not in command or 'list' in categories))
 
 
 def safe_commands(commands: Any) -> bool:
@@ -313,7 +351,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-5 of email, phone, ip, card, key} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step; it must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category, and gives suggestions only: recognition can miss text."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/ellipse/highlight {kind, rect:[x,y,w,h]}, arrow/line {kind, from:[x,y], to:[x,y]}, pen {kind, points:[[x,y],...] 1-2000}, step {kind, at:[x,y] centre, optional number 1-999 (default one more than the highest step) and size 16-256 diameter}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64 (arrow, line, rectangle, ellipse, pen), strength 2-64 and style 'blur' or 'pixelate' (blur; strength is the block size when pixelated), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur and pixelate are only visual effects. redactText {categories: 1-7 of email, phone, ip, card, key, name, list, optional terms: up to 200 words or phrases of up to 100 characters each, on one line, with a letter or digit; optional patterns: up to 50 regular expressions of up to 500 characters each, on one line} (Quick redact) recognizes the image and adds ordinary Redact marks over what matches, as one undo step. name is the account's username and real name; list is the saved list from Settings plus any terms and patterns given here, which are for this call only and need list in categories (a pattern that does not compile fails the command naming its index). It must be the only command in its batch, answers when recognition is done with the created shape ids and counts per category (skippedPatterns: the indexes of patterns that did not finish and were skipped; nameUnchecked: true when the account lookup for name did not answer in time, so name was not checked), and gives suggestions only: recognition can miss text. Marks it adds report suggested: <category> in editor state; update keeps that, add cannot set it."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})
@@ -372,7 +410,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                            rect: list[int] | None = None, percent: float | None = None,
                            delta: list[int] | None = None, pixels: int | None = None,
                            style: str | None = None, number: int | None = None) -> Json:
-        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, geometryDetails {open, visible}, propertiesWidth (logical pixels), editingText, busy, the tool style (with blurStyle and stepSize), nextStepNumber, copying, lastCopy (copying/copied/failed with reason), the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, saveFeedbackVisible, saveDetailsOpen, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|line|rectangle|ellipse|pen|highlight|text|step}, blurStyle {style blur|pixelate: the Blur tool's Style buttons, restyling a selected blur}, stepNumber {number 1-999: the Step tool's Next number, or a selected step's Number}, select {shape_id, or none to clear}, selectNext / selectPrevious (] and [; Tab leaves the canvas with the selection kept), selectAffectedText (cycle annotation text clipped by the saved image or pending crop, preserving that crop), removeMark (Remove mark / Delete, one undoable step on the selection), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, propertiesWidth {pixels 200-10000, capped at one third of the window}, showSavedCopy (Show in folder for the last saved copy), geometryDetails (toggle Position and size for annotation marks; crop fields stay visible), keyboardHelp (toggle the named keyboard help disclosure), copySavedPath (Copy path: its full path to the clipboard), saveDetails (toggle the save failure's full path and reason), dismissSavedCopy (dismiss the footer feedback, keeping its saved path), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Other shape edits go through edit_image; nothing uploads; cancel_editor still discards without asking."""
+        """Work the open editor window's view and selection controls as a user does, one action per call; each reply is the window's view: tool, selectedShapeId, geometry [x,y,w,h] of the selection or pending crop (an arrow's tail at x,y and head at x+w,y+h), cropPending, the accessible selection summary, zoomPercent, fitted, visibleRect (image pixels shown), canvasSize, geometryDetails {open, visible}, propertiesWidth (logical pixels), editingText, busy, the tool style (with blurStyle and stepSize), nextStepNumber, copying, lastCopy (copying/copied/failed with reason), the footer message, lastSave (saved/failed, stage chooser/write, path, reason; a saved copy's current is false once the draft changed after it), lastShowInFolder, lastCopiedPath, saveFeedbackVisible, saveDetailsOpen, cancelLabel (Cancel, or Discard… once there are edits), destination, preparationFailure and discardConfirmation {open, text}. Actions: inspect, tool {tool select|redact|blur|crop|arrow|line|rectangle|ellipse|pen|highlight|text|step}, blurStyle {style blur|pixelate: the Blur tool's Style buttons, restyling a selected blur}, stepNumber {number 1-999: the Step tool's Next number, or a selected step's Number}, select {shape_id, or none to clear}, selectNext / selectPrevious (] and [; Tab leaves the canvas with the selection kept), selectAffectedText (cycle annotation text clipped by the saved image or pending crop, preserving that crop), removeMark (Remove mark / Delete, one undoable step on the selection), removeSuggestions (Quick redact's Remove suggestions: every suggested mark that is still there, one undoable step; marks you drew stay; fails when there are none), place (the current drawing tool's mark centred at a quarter of the image, Insert), geometry {rect [x,y,w,h] in image pixels for the selection or the pending crop; one undo step}, applyCrop / cancelCrop, zoom {percent 2-3200}, fit, actualSize, pan {delta [dx,dy] canvas pixels}, propertiesWidth {pixels 200-10000, capped at one third of the window}, showSavedCopy (Show in folder for the last saved copy), geometryDetails (toggle Position and size for annotation marks; crop fields stay visible), keyboardHelp (toggle the named keyboard help disclosure), copySavedPath (Copy path: its full path to the clipboard), saveDetails (toggle the save failure's full path and reason), dismissSavedCopy (dismiss the footer feedback, keeping its saved path), discard (the Cancel / Discard… button: closes at once without edits, else opens the discard confirmation), keepEditing (answers that confirmation, or dismisses a preparation failure) and confirmDiscard (discards; nothing uploads). Other actions wait while the confirmation is open. Other shape edits go through edit_image; nothing uploads; cancel_editor still discards without asking."""
         if not identifier(id) or action not in EDITOR_VIEW_ACTIONS:
             return invalid()
         params: Json = {'id': id, 'action': action}

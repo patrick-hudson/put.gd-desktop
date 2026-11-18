@@ -541,6 +541,15 @@ int main(int argc,char** argv){
 {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());
  // #1363: the Capture delay section, between Region selection and Screen recording.
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("captureDelayShortcuts"),0,160);if(!save("settings-capture-delay"))return 2;
+ // #1618: Quick redact's saved words and regular expressions, under Text recognition; empty, then filled.
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list-empty"))return 2;
+ window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");window.findChild<QPlainTextEdit*>("quickRedactPatterns")->setPlainText("\\bJIRA-\\d+\\b\n(?i)\\b[a-z0-9-]+\\.corp\\.example\\b");
+ putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("quickRedactPatterns"),0,160);if(!save("settings-quick-redact-list"))return 2;
+ // A no-break space inside a word is kept as typed (the draft reads each line's own text), and blank lines and repeats go.
+ {const QString nbsp(QChar(0xA0));
+  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("Project"+nbsp+"Aurora\n\nProject"+nbsp+"Aurora\n  acme  ");
+  const auto kept=window.settings()->saveViewState()["draft"].toObject()["preferences"].toObject()["quickRedactTerms"].toArray();if(kept!=QJsonArray{"Project"+nbsp+"Aurora","acme"})return 2;}
+ window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingFrameRate"),0,160);if(!save("settings-recording-frame-rate"))return 2;
  // #1364: the microphone choice and click highlights, as the resident answers for this desktop.
  window.settings()->showRecordingMicrophones({{"available",true},{"device",QJsonObject{{"id","alsa_input.usb-Example_Microphone-00.mono-fallback"},{"label","Example USB Microphone"}}},{"devices",QJsonArray{QJsonObject{{"id","alsa_input.usb-Example_Microphone-00.mono-fallback"},{"label","Example USB Microphone"},{"default",true}},QJsonObject{{"id","alsa_input.pci-0000_00_1f.3.analog-stereo"},{"label","Built-in Audio Analog Stereo"},{"default",false}}}},{"defaultIsMonitor",false}});
@@ -843,6 +852,18 @@ int main(int argc,char** argv){
   editor.text().layer().select(8,14);editor.textSelectionEdited();if(!grab("30l-editor-copy-text"))return 2;
   editor.selectTool(editor::Tool::Redact);bool redacted=false;editor.quickRedact({"email","phone","ip"},[&](Error error,QJsonObject){redacted=!error;});if(!waitUntil([&]{return redacted;}))return 2;
   editor.canvas().select(0);if(!grab("30m-editor-quick-redact"))return 2;
+  // #1618: a selected suggested mark names the kind of text that suggested it in the Redact panel.
+  if(doc.shapes().isEmpty()||doc.shapes().first().suggested!="email")return 2;
+  editor.canvas().select(doc.shapes().first().id);if(!grab("30p-editor-quick-redact-suggested-selected"))return 2;
+  // #1618: the menu with My username and name and My redaction list, the list entry off until Settings has a list, then on; and Remove suggestions once marks were suggested.
+  {auto* menu=editor.findChild<QToolButton*>("quickRedact")->menu();
+   const auto shot=[&](const QString& name){menu->popup(editor.mapToGlobal(QPoint(40,300)));putgd::test::settle(200);app.processEvents();const auto image=menu->grab();menu->hide();if(!image.save(QDir(output).filePath(name+".png")))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+   if(!menu->findChild<QAction*>("quickRedact_name")||!menu->findChild<QAction*>("quickRedact_list")||!menu->findChild<QAction*>("quickRedact_remove"))return 2;
+   if(menu->findChild<QAction*>("quickRedact_list")->isEnabled())return 2; // nothing saved: off, with a tooltip pointing to Settings
+   if(!shot("30n-editor-quick-redact-menu-list-off"))return 2;
+   editor.setRedactList({"build-host-7","Project Aurora"},{"\\bJIRA-\\d+\\b"});
+   if(!menu->findChild<QAction*>("quickRedact_list")->isEnabled())return 2;
+   if(!shot("30o-editor-quick-redact-menu"))return 2;}
   editor.allowClose();editor.close();
  }
  {

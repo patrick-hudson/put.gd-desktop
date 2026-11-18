@@ -1,5 +1,6 @@
 #include "core/SettingsService.h"
 #include "core/CommandText.h"
+#include "core/TextJobProtocol.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -157,6 +158,60 @@ private slots:
         QVERIFY(!service.patch({{"retention", QJsonObject{{"recentActivityLimit", 50}}}}, service.metadata()["observedRevision"].toString()).error);
         const auto saved = QJsonDocument::fromJson(read(path)).object();
         QCOMPARE(saved["limits"].toObject()["maxFileBytes"], QJsonValue("auto"));
+    }
+    // #1618: settings.patch, the CLI and agents write Quick redact's lists as given; the file
+    // always holds them trimmed and without repeats, the way the Settings window writes them.
+    void quickRedactListsAreStoredTrimmedAndOnceWhoeverSendsThem() {
+        QTemporaryDir dir;
+        const auto path = dir.filePath("config.json");
+        putgd::SettingsService service(path);
+        QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
+        const auto patched = service.patch({{"preferences", QJsonObject{{"quickRedactTerms", QJsonArray{"  Project Aurora ", "Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "d69 ", "acme"}},
+                                                                        {"quickRedactPatterns", QJsonArray{"\\bJIRA-\\d+\\b", "\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}}}}},
+                                          service.metadata()["observedRevision"].toString());
+        QVERIFY2(!patched.error, qPrintable(patched.error.message));
+        const auto saved = QJsonDocument::fromJson(read(path)).object()["preferences"].toObject();
+        // Only exact repeats go: entries that differ in case can match differently (ProjectAlpha also reads as Project Alpha).
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "acme"}));
+        // A pattern's spaces are part of it, so only exact repeats go.
+        QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bJIRA-\\d+\\b", " \\bJIRA-\\d+\\b"}));
+        QCOMPARE(service.snapshot().quickRedactTerms, (QStringList{"Project Aurora", "project aurora", "projectalpha", "ProjectAlpha", "d69", "acme"}));
+    }
+    // Round 2 (U12): the limits apply to what was sent, before repeats are dropped.
+    void quickRedactListLimitsCountRepeatsToo() {
+        QTemporaryDir dir;
+        putgd::SettingsService service(dir.filePath("config.json"));
+        QVERIFY(service.save(putgd::SettingsService::defaults(), QString{}));
+        const auto many = [](int count, const QString& entry) { QJsonArray list; for (int i = 0; i < count; ++i) list.append(entry); return list; };
+        const auto send = [&](const char* key, const QJsonArray& list) { return service.patch({{"preferences", QJsonObject{{key, list}}}}, service.metadata()["observedRevision"].toString()); };
+        const auto terms = send("quickRedactTerms", many(201, "same"));
+        QCOMPARE(terms.error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(terms.error.details["path"].toString(), QStringLiteral("/preferences/quickRedactTerms"));
+        const auto patterns = send("quickRedactPatterns", many(51, "\\bsame\\b"));
+        QCOMPARE(patterns.error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(patterns.error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns"));
+        QVERIFY(!QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject().contains("quickRedactTerms"));
+        // At the limits they are accepted, and stored once.
+        QVERIFY(!send("quickRedactTerms", many(200, "same")).error);
+        QVERIFY(!send("quickRedactPatterns", many(50, "\\bsame\\b")).error);
+        const auto saved = QJsonDocument::fromJson(read(dir.filePath("config.json"))).object()["preferences"].toObject();
+        QCOMPARE(saved["quickRedactTerms"].toArray(), (QJsonArray{"same"}));
+        QCOMPARE(saved["quickRedactPatterns"].toArray(), (QJsonArray{"\\bsame\\b"}));
+    }
+    // CodeRabbit 4613753597: a pattern is never trimmed when it runs, so its length is counted as written.
+    void quickRedactPatternLengthCountsThePatternAsWritten() {
+        const auto withPattern = [](const QString& pattern) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences["quickRedactPatterns"] = QJsonArray{pattern};
+            document["preferences"] = preferences;
+            return putgd::Settings::validate(document);
+        };
+        QVERIFY(!withPattern(QString(500, 'x')));
+        const auto error = withPattern(QString(500, ' ') + "x");
+        QCOMPARE(error.code, QStringLiteral("config_invalid"));
+        QCOMPARE(error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns/0"));
+        QVERIFY(error.message.startsWith("Pattern 1:"));
     }
     void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
         auto document = putgd::Settings::defaults();
@@ -507,6 +562,85 @@ private slots:
         QCOMPARE(putgd::Settings::fromValidated(withLanguages(QJsonArray{"deu", "eng"})).textRecognitionLanguages, (QStringList{"deu", "eng"}));
         for (const auto& refused : {QJsonValue(QJsonArray{}), QJsonValue(QJsonArray{"eng", "eng"}), QJsonValue(QJsonArray{"../eng"}), QJsonValue(QJsonArray{"eng", "deu", "fra", "spa"}), QJsonValue("eng")})
             QCOMPARE(putgd::Settings::validate(withLanguages(refused)).details["path"].toString(), QStringLiteral("/preferences/textRecognitionLanguages"));
+    }
+    // #1618: Quick redact's saved words and regular expressions are optional
+    // arrays under preferences, absent by default.
+    void quickRedactListDefaultsAndRoundTrip() {
+        const auto defaults = putgd::Settings::defaults();
+        QVERIFY(!defaults["preferences"].toObject().contains("quickRedactTerms"));
+        QVERIFY(!defaults["preferences"].toObject().contains("quickRedactPatterns"));
+        QVERIFY(!putgd::Settings::validate(defaults));
+        const auto none = putgd::Settings::fromValidated(defaults);
+        QVERIFY(none.quickRedactTerms.isEmpty());
+        QVERIFY(none.quickRedactPatterns.isEmpty());
+        auto document = defaults;
+        auto preferences = document["preferences"].toObject();
+        // Terms are trimmed and each exact repeat is dropped, in the order written; a different case is a different entry.
+        preferences["quickRedactTerms"] = QJsonArray{"Project Aurora", "  acme.corp  ", "Project Aurora ", "PROJECT aurora", "d69"};
+        preferences["quickRedactPatterns"] = QJsonArray{"\\bJIRA-\\d+\\b", "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b"};
+        document["preferences"] = preferences;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto settings = putgd::Settings::fromValidated(document);
+        QCOMPARE(settings.quickRedactTerms, (QStringList{"Project Aurora", "acme.corp", "PROJECT aurora", "d69"}));
+        QCOMPARE(settings.quickRedactPatterns, (QStringList{"\\bJIRA-\\d+\\b", "(?i)\\b[a-z0-9-]+\\.corp\\.example\\b"}));
+        QVERIFY(!putgd::Settings::validate(putgd::Settings::normalized(document)));
+    }
+    void quickRedactListLimitsAndErrors() {
+        const auto withPreference = [](const char* key, const QJsonValue& value) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences[key] = value;
+            document["preferences"] = preferences;
+            return document;
+        };
+        const auto repeated = [](int count, const QString& entry) {
+            QJsonArray array;
+            for (int i = 0; i < count; ++i) array.append(entry + QString::number(i));
+            return array;
+        };
+        // The limits: 200 words of 1 to 100 characters, 50 patterns of up to 500.
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactTerms", repeated(200, "w"))));
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactTerms", QJsonArray{QString(100, 'a')})));
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactPatterns", repeated(50, "x"))));
+        QVERIFY(!putgd::Settings::validate(withPreference("quickRedactPatterns", QJsonArray{QString(500, 'a')})));
+        const auto refuse = [&](const char* key, const QJsonValue& value, const QString& path) {
+            const auto error = putgd::Settings::validate(withPreference(key, value));
+            QTest::qVerify(static_cast<bool>(error), "refused", qPrintable(path), __FILE__, __LINE__);
+            QTest::qCompare(error.code, QStringLiteral("config_invalid"), "error.code", "config_invalid", __FILE__, __LINE__);
+            QTest::qCompare(error.details["path"].toString(), path, "path", "expected", __FILE__, __LINE__);
+            return error;
+        };
+        refuse("quickRedactTerms", repeated(201, "w"), "/preferences/quickRedactTerms");
+        refuse("quickRedactTerms", QJsonValue("word"), "/preferences/quickRedactTerms");
+        refuse("quickRedactTerms", QJsonArray{3}, "/preferences/quickRedactTerms");
+        refuse("quickRedactPatterns", repeated(51, "x"), "/preferences/quickRedactPatterns");
+        refuse("quickRedactPatterns", QJsonValue(true), "/preferences/quickRedactPatterns");
+        // A bad entry is named by its position, and its text is in no error.
+        const QString secret = QStringLiteral("Synthetic-Hostname-Not-Real");
+        for (const auto& bad : {QString(), QString("   "), QString(101, 'a'), secret + "\nsecond line", secret + "\rsecond line"}) {
+            const auto error = refuse("quickRedactTerms", QJsonArray{"fine", bad}, "/preferences/quickRedactTerms/1");
+            QVERIFY(error.message.startsWith("Word 2:"));
+            QVERIFY(!error.message.contains(secret));
+            QVERIFY(!QJsonDocument(error.details).toJson().contains(secret.toUtf8()));
+        }
+        refuse("quickRedactPatterns", QJsonArray{QString(501, 'a')}, "/preferences/quickRedactPatterns/0");
+        refuse("quickRedactPatterns", QJsonArray{"ok", QString()}, "/preferences/quickRedactPatterns/1");
+    }
+    // A pattern that does not compile or matches empty text is refused by its position.
+    void quickRedactInvalidPatternsAreRefusedWithoutTheirText() {
+        const QString secret = QStringLiteral("(Synthetic-Pattern-Not-Real");
+        for (const auto& bad : {QString("("), QString("[a-"), secret, QString("a*"), QString("^"), QString("(?:)")}) {
+            auto document = putgd::Settings::defaults();
+            auto preferences = document["preferences"].toObject();
+            preferences["quickRedactPatterns"] = QJsonArray{"\\bJIRA-\\d+\\b", bad};
+            document["preferences"] = preferences;
+            const auto error = putgd::Settings::validate(document);
+            QVERIFY2(error, qPrintable(bad));
+            QCOMPARE(error.details["path"].toString(), QStringLiteral("/preferences/quickRedactPatterns/1"));
+            QVERIFY(error.message.startsWith("Pattern 2:"));
+            QVERIFY(!error.message.contains("Synthetic-Pattern"));
+            QVERIFY(!QJsonDocument(error.details).toJson().contains("Synthetic-Pattern"));
+        }
     }
     // validate() once read each action through a reference into a destroyed
     // temporary object, and the Debian 13 resident crashed saving this document
