@@ -39,6 +39,7 @@
 #include <QResizeEvent>
 #include <QScreen>
 #include <QScrollArea>
+#include <QSet>
 #include <QShortcut>
 #include <QThread>
 #include <QToolButton>
@@ -2075,6 +2076,12 @@ QJsonObject ReviewWindow::inspect() const {
 ReviewWindow::DriveResult ReviewWindow::drive(const QJsonObject& params) {
     const quint64 before = proposalSeq_;
     auto result = driveAction(params);
+    // An edit-proposing action refused here (bad values, nothing selected, a
+    // dialog open, an export running) is a change not applied: like a refused
+    // gesture it cancels a waiting Upload (#1635 W2). The error code is kept.
+    static const QSet<QString> edits{"setIn", "setOut", "resetTrim", "addMask", "placeMask", "useSolidCover", "trimToLimit", "setMaskIn", "setMaskOut",
+        "strength", "removeMask", "cut", "adjustCut", "restoreCut", "undo", "redo", "setCoverEdge", "setCoverEdgeToPlayhead", "coverKind", "setTrim"};
+    if (!result.code.isEmpty() && edits.contains(params["action"].toString())) refuseChange(result.message);
     if (result.code.isEmpty() && proposalSeq_ != before) {
         QJsonArray made;
         for (quint64 n = before + 1; n <= proposalSeq_; ++n) made.append(double(n));

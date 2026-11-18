@@ -578,7 +578,7 @@ private slots:
     void aWaitingUploadIsCancelledOnlyByAChange_data() {
         QTest::addColumn<QString>("trigger");
         QTest::addColumn<bool>("cancels");
-        for (const char* row : {"accepted edit", "undo", "redo", "agent edit", "format change", "audio change", "agent config change", "local refusal", "refusal", "timeout"})
+        for (const char* row : {"accepted edit", "undo", "redo", "agent edit", "format change", "audio change", "agent config change", "local refusal", "agent refusal", "refusal", "timeout"})
             QTest::newRow(row) << QString::fromLatin1(row) << true;
         for (const char* row : {"hover", "save a copy dialog", "discard dialog", "menu", "inspect", "dismissStatus", "raise", "saved copy", "unchanged push", "key press", "review action", "second upload"})
             QTest::newRow(row) << QString::fromLatin1(row) << false;
@@ -619,6 +619,7 @@ private slots:
             QVERIFY(!configs.last().at(0).value<RecordingConfig>().audio.system);
         }
         else if (trigger == "local refusal") QTest::keyClick(&window, Qt::Key_O, Qt::ShiftModifier);  // no cover selected: refused here, never proposed
+        else if (trigger == "agent refusal") QCOMPARE(window.drive({{"action", "setCoverEdgeToPlayhead"}, {"edge", "end"}}).code, QString("recording_state"));  // no cover selected
         else if (trigger == "agent config change") { auto webm = config(); webm.format = "webm"; webm.codec = "vp9"; QVERIFY(window.setConfig(webm)); }
         else if (trigger == "refusal") window.setEdit(edit, answer(1, "invalid_request"));
         else if (trigger == "timeout") QTest::qWait(2300);
@@ -655,6 +656,12 @@ private slots:
             QVERIFY2(left > 0 && left < 1100, qPrintable(QString::number(left)));
         }
         else QFAIL("unknown trigger");
+        // The accepted-edit, undo and redo rows each made a second proposal, of their own op.
+        static const QHash<QString, QString> op{{"accepted edit", "addCut"}, {"undo", "undo"}, {"redo", "redo"}};
+        if (op.contains(trigger)) {
+            QCOMPARE(proposals.size(), 2);
+            QCOMPARE(proposed(proposals)["op"].toString(), op[trigger]);
+        }
         // Proposal 1's answer, then the answer to a proposal the trigger made.
         auto accepted = edit;
         accepted.revision = 3;
@@ -666,7 +673,7 @@ private slots:
             QCOMPARE(retries.size(), 0);
             QVERIFY2(status().contains("Upload cancelled"), qPrintable(status()));
             if (trigger == "timeout") QVERIFY2(status().contains("wasn't confirmed in time"), qPrintable(status()));
-            if (trigger == "refusal" || trigger == "local refusal") QVERIFY2(status().contains("wasn't applied"), qPrintable(status()));
+            if (trigger == "refusal" || trigger == "local refusal" || trigger == "agent refusal") QVERIFY2(status().contains("wasn't applied"), qPrintable(status()));
         } else {
             QCOMPARE(uploads.size(), 1);
             QCOMPARE(uploads[0][0].toULongLong(), 3ull);
@@ -829,6 +836,7 @@ private slots:
         // Through the exporter: its frame k is the frame on screen, kept by the trim and covered.
         int ordinal = 0;
         while (pts(ordinal) * 1000 != shownUs) ++ordinal;
+        int frames = 0;
         const auto exported = [&](const QString& name, const RecordingEdit& e, QImage& last) {
             ExportRequest request;
             request.input = clip;
@@ -840,6 +848,7 @@ private slots:
             ExportResult result;
             std::atomic_bool cancelled{false};
             if (const auto error = exportClip(request, result, cancelled)) return error.code == "recording_unsupported" ? QStringLiteral("skip") : error.message;
+            frames = result.frames;
             if (auto error = previewFrame(request.output, {}, c, std::llround(double(k) * 1e6 / fps), 64, {}, last)) return error.message;
             return QString();
         };
@@ -849,6 +858,7 @@ private slots:
         auto failure = exported("trim.mp4", trimmed, last);
         if (failure == "skip") QSKIP("No MP4 encoder in this FFmpeg");
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
+        QCOMPARE(qint64(frames), k + 1);  // frames 0 to k, the one on screen last
         const int grey = test::gopclip::grayOf(level(ordinal));
         QVERIFY2(std::abs(qGray(last.pixel(last.width() - 4, last.height() - 4)) - grey) <= 3, qPrintable(QStringLiteral("the trim's last frame is grey %1, the frame on screen %2").arg(qGray(last.pixel(last.width() - 4, last.height() - 4))).arg(grey)));
         RecordingEdit covered;
