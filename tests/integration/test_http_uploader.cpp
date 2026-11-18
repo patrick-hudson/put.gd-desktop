@@ -456,6 +456,33 @@ private slots:
         QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         QCOMPARE(f.stored(), 1);
     }
+    // Review of #1603. A check of the link that is not the link's own whole answer proves
+    // nothing: "before-offhost" sends the look before the deletion to another host (a
+    // different page), and the look after serves the file; "cut-404" gets a 404 after the
+    // deletion whose reply is cut off. Both are unknown with the intent kept.
+    void aLinkCheckThatIsNotTheLinksAnswerIsUnknown_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::newRow("before-offhost") << QString("before-offhost");
+        QTest::newRow("cut-404") << QString("cut-404");
+    }
+    void aLinkCheckThatIsNotTheLinksAnswerIsUnknown() {
+        QFETCH(QString, shape);
+        HttpFixture f;
+        f.reset();
+        auto destination = f.destination;
+        destination.settings = f.settings("pretend");
+        const auto uploaded = f.upload(f.image(), destination);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto elsewhere = QString(f.base).replace("127.0.0.1", "localhost") + "/__state";
+        if (shape == "before-offhost") f.rules({{{"call", "file"}, {"status", 302}, {"location", elsewhere}}, {{"call", "file"}}});
+        else f.rules({{{"call", "file"}}, {{"call", "file"}, {"status", 404}, {"body", "gone"}, {"cut", "length"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(f.events("file").size(), 2);
+        QVERIFY2(result.status == "unknown", qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+        QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        QCOMPARE(f.stored(), 1);
+    }
     // Review of #1603. A check of the link whose reply was cut off before any of it came
     // leaves nothing to compare: unknown, never removed or failed.
     void aDeletionWithNothingToCompareIsUnknown_data() {

@@ -205,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
             # with its "body"), as an upload rule does.
             self.cut = rule.get('cut')
             if rule.get('status'):
-                return self.reply(rule['status'], rule.get('body', ''))
+                return self.reply(rule['status'], rule.get('body', ''), headers={'Location': rule['location']} if rule.get('location') else None)
             with lock:
                 entry = state['files'].get(parts[1])
             if not entry or entry.get('deleted'):

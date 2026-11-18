@@ -908,9 +908,11 @@ private:
         };
         // What the link serves now, to tell afterwards whether the file really went. The
         // link is fetched under the same rules as any address a reply named; one that
-        // may not be fetched is simply not compared.
+        // may not be fetched is simply not compared. A redirect to another host (a login
+        // page, say) is not followed: what that host serves says nothing about the file.
         const QUrl link(expected.directUrl, QUrl::StrictMode);
-        const auto before = client_.get(link, allowInsecure());
+        QString beforeRefused;
+        const auto before = client_.get(link, allowInsecure(), &beforeRefused, true);
         if (cancelled.load()) { error = stoppedError(); return {{"status", "failed"}, {"progress", progress}}; }
         QString refused;
         auto r = client_.get(url, allowInsecure(), &refused, named);
@@ -941,20 +943,31 @@ private:
         // served before show it was replaced, and the same bytes show it is still there
         // (failed). Anything else shows nothing either way: a reply cut off or larger than
         // the reply cap, an empty reply, an error or no reply. That is unknown, with the
-        // intent kept, and Retry asks again. A redirect to another host is not followed
-        // and is unknown too (above).
+        // intent kept, and Retry asks again. A redirect of the deletion, or of either check
+        // of the link, to another host is not followed, and is unknown too. A 404 or 410
+        // counts only when its reply came whole.
         if (confirmed || (r.status >= 200 && r.status < 400) || r.status == 404 || r.status == 410) {
-            const auto after = client_.get(link, allowInsecure());
-            const auto gone = [](int status) { return status == 404 || status == 410; };
-            if (gone(after.status)) return finish(gone(before.status) && phase != "delete_intent" ? "missing" : "removed");
+            QString afterRefused;
+            const auto after = client_.get(link, allowInsecure(), &afterRefused, true);
             details["checkStatus"] = after.status;
             details["checkBeforeStatus"] = before.status;
+            // Only whole replies count, a 404 or 410 among them.
+            const auto whole = [](const auto& reply) { return !reply.cut && reply.received == reply.body.size(); };
+            const auto gone = [&](const auto& reply) { return (reply.status == 404 || reply.status == 410) && whole(reply); };
+            if (!beforeRefused.isEmpty() || !afterRefused.isEmpty()) {
+                // Either check was sent elsewhere: nothing is known of the file.
+                uncertain = true;
+                details["checkRedirected"] = true;
+                error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), but the check of the link was not answered by the link's own host (%2). "
+                         "It may or may not be deleted; Retry asks again.").arg(r.status).arg(beforeRefused.isEmpty() ? afterRefused : beforeRefused), details};
+                return {{"status", "unknown"}, {"progress", progress}};
+            }
+            if (gone(after)) return finish(gone(before) && phase != "delete_intent" ? "missing" : "removed");
             const bool compared = after.status >= 200 && after.status < 300 && before.status >= 200 && before.status < 300 && !before.body.isEmpty() && !after.body.isEmpty();
             // Only two whole replies count: one cut off, or stopped at the reply cap, shows
             // neither that the file is still there (a matching start) nor that it went (a
             // differing one). For a file larger than the cap, only a link that is gone
             // proves the deletion.
-            const auto whole = [](const auto& reply) { return !reply.cut && reply.received == reply.body.size(); };
             if (compared && whole(before) && whole(after)) {
                 if (after.body != before.body) return finish("removed");
                 // The whole file, byte for byte, is still there: the deletion did not work.
