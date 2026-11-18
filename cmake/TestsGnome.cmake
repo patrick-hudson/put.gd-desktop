@@ -35,8 +35,12 @@
       set_tests_properties(gnome_region_selection_contract PROPERTIES TIMEOUT 30)
       add_test(NAME gnome_ui_ownership_contract COMMAND "${PUTGD_GJS}" -m "${PROJECT_SOURCE_DIR}/tests/desktop/test_gnome_ownership.mjs" "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js")
       set_tests_properties(gnome_ui_ownership_contract PROPERTIES TIMEOUT 30)
+    elseif("$ENV{CI}" STREQUAL "true")
+      # A hosted run must not drop these contracts without a word: that is how the palette
+      # contract went stale unseen (#1663). The CI jobs install gjs.
+      message(FATAL_ERROR "gjs is not installed, so gnome_region_selection_contract and gnome_ui_ownership_contract would not be registered. CI=true requires them; install gjs.")
     else()
-      message(STATUS "GNOME extension ownership contract runs in the GNOME lab with its native GJS runtime")
+      message(WARNING "gjs is not installed: gnome_region_selection_contract and gnome_ui_ownership_contract are skipped here. Install gjs to run them; the GNOME lab runs them with its native runtime.")
     endif()
     add_executable(test_kwin_transfer tests/integration/test_kwin_transfer.cpp)
     target_link_libraries(test_kwin_transfer PRIVATE putgd_kde Qt6::Test)
