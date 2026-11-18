@@ -21,10 +21,12 @@ bool decode(const QJsonObject&, UploadRequest&);
 bool decode(const QJsonObject&, DeleteRequest&);
 bool decode(const QJsonObject&, NameCheck&);
 bool decode(const QJsonObject&, UploadResult&);
-bool decode(const QJsonObject&, StatResult&);
+// A stat or link refresh of `checked` may return its recorded link as it is; any other
+// result receipt must link the key it is stored under (#1582).
+bool decode(const QJsonObject&, StatResult&, const StorageReceipt& checked = {});
 bool decode(const QJsonObject&, DeleteResult&);
 bool decode(const QJsonObject&, Destination&);
-bool decode(const QJsonObject&, StorageReceipt&);
+bool decode(const QJsonObject&, StorageReceipt&, const QString& recordedLink = {});
 bool decode(const QJsonObject&, Artifact&);
 bool decode(const QJsonObject&, Error&);
 bool decode(const QJsonObject&, Credentials&);

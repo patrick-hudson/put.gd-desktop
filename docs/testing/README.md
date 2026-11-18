@@ -23,6 +23,7 @@ What must be tested, how, and what has been recorded.
 - [Surface driver prerequisites](surface-driver-prerequisites.md): target tools and cleanup for the surface driver.
 - [Fuzzing](fuzzing.md): libFuzzer targets for the code that decodes what another process sends, and the corpus replay in `clang-asan`.
 - [Live S3 acceptance](live-s3.md): acceptance against an isolated synthetic S3 destination.
+- [S3 differential test](s3-differential.md): one seeded sequence against several S3-compatible servers, and the Minisign verifier against the reference tool.
 - [Hotkey dispatch](shortcut-dispatch.md): testing that a hotkey's capture is accepted, not only registered.
 - [Tray progress](tray-progress.md): the replay path for tray progress on the disposable desktop lab.
 - [X11 hotkey refresh](x11-shortcut-refresh.md): the X11 keyboard-mapping regression and its checks.

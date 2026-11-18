@@ -1,0 +1,1 @@
+{"accepts":["image","file","file"],"allowInsecureHttp":false,"arguments":[{"name":"token","secret":true},{"name":"file","secret":false,"val":false,"value":"fast"}],"parameters":[{"name":"q","secret":false,"value":"{input}"}],"requestMethod":"POST","requestTimeoutMs":600000,"requestUrl":"https://media.example.test/uploa"}

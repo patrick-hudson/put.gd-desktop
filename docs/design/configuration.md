@@ -275,7 +275,11 @@ S3 settings are validated by the registered adapter. `bucket` is a bucket
 name from 3 to 63 UTF-8 bytes; `region` must be nonempty. `endpoint` is an absolute HTTPS
 URL without user information, query or fragment (literal-loopback HTTP is allowed
 for local endpoints). `objectPrefix` is at most 1022 UTF-8 bytes; the final prefix/key
-is limited to 1024 bytes. A separator is added only when a nonempty prefix lacks one.
+is limited to 1024 bytes. Empty path segments of the prefix are dropped, as the SDK
+drops them from the request path, and one separator joins a nonempty prefix to the
+name (#1582). A prefix with a `.` or `..` segment passes this validation, so a saved
+configuration still loads, but uploads and Test upload and link refuse it with
+`s3_settings_invalid`.
 `storageClass` accepts STANDARD, REDUCED_REDUNDANCY, STANDARD_IA, ONEZONE_IA,
 INTELLIGENT_TIERING, GLACIER, DEEP_ARCHIVE or GLACIER_IR. Cold storage may not support
 immediate public GET. `aclMode` is public-read or omit; no error changes that choice.

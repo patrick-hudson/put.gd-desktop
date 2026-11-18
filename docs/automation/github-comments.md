@@ -17,7 +17,7 @@ Actual comment starts here.
 ```
 
 - `<model>` is the verified public name of the model that wrote the comment, for example
-  Claude Opus 5.5 or GPT-6.1 Sol. If the harness doesn't expose the model name, use the
+  Claude Opus 5.5 or the GPT Sol version that wrote it. If the harness doesn't expose the model name, use the
   harness name. Don't guess.
 - The attribution stays inside the note and the reply goes below it. The note's line starts
   with the robot emoji.

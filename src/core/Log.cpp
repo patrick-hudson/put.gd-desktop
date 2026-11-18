@@ -119,14 +119,16 @@ public:
   std::lock_guard lock(mutex_);
   return {{"available",true},{"directory",directory_},{"files",files_},{"bytes",total_},{"oldestRecord",oldest_.isEmpty()?QJsonValue():QJsonValue(oldest_)},
    {"degraded",degraded_},{"degradedReason",degraded_?QJsonValue(reason_):QJsonValue()},{"droppedRecords",qint64(dropped_)},
-   {"retention",QJsonObject{{"days",retention_.days},{"bytes",retention_.bytes}}},{"rotationBytes",rotationLimit()}};
+   {"retention",QJsonObject{{"days",retention_.days},{"bytes",retention_.bytes}}},{"rotationBytes",rotationLimitFor(retention_.bytes)}};
  }
  void setRetention(Retention retention) {{std::lock_guard lock(mutex_);retention_=retention;}push({Command::Cleanup,{},{}});}
  QStringList files() {std::lock_guard lock(mutex_);return names_;}
  QString current() {std::lock_guard lock(mutex_);return current_.isEmpty()?QString():directory_+"/"+current_;}
  QString directory() const {return directory_;}
 private:
- qint64 rotationLimit() const {return qBound(qint64(64*1024),retention_.bytes/4,rotationBytes);}
+ static qint64 rotationLimitFor(qint64 retentionBytes) {return qBound(qint64(64*1024),retentionBytes/4,rotationBytes);}
+ // retention_ is replaced by setRetention on another thread: read it under the lock.
+ qint64 rotationLimit() {std::lock_guard lock(mutex_);return rotationLimitFor(retention_.bytes);}
  void run() {
   prepare();
   for(;;) {

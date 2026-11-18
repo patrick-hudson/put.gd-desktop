@@ -1,0 +1,1 @@
+{"accepts":["imrequestTimeoutMsage","t%xt","f'ile"],"allowInsecureHttp":false,"arguments":[],"body":"multipart","connectTimeoutMs":10000,"data":"","dataSecret":false,"deletionUrl":"","errorMessage":"","fileFormName":"file","headers":[],"parameters":[],"requestMethod":"POST","requestTimeoutMs":600000,"requestUrl":"","responseUrl":"","secrets":[],"thumbnailUrl":""}

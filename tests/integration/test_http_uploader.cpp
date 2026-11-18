@@ -7,6 +7,7 @@
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
 #include "storage/http/HttpTemplate.h"
+#include "storage/worker/ProviderExchange.h"
 #include <QDirIterator>
 #include <QElapsedTimer>
 #include <QJsonArray>
@@ -16,6 +17,8 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUrl>
+#include <cerrno>
+#include <cstring>
 using namespace putgd;
 using namespace putgd::test;
 namespace {
@@ -147,6 +150,49 @@ class HttpUploaderTest : public QObject {
         return result;
     }
 private slots:
+    // Review of #1598. A helper that did not start is advised only from facts that cannot
+    // change meanwhile: reinstall when it is not a regular executable file, try again for a
+    // shortage Qt names, and both otherwise. The message never repeats Qt's reason, which can
+    // name the wrong cause ("No such file or directory" for an existing helper).
+    void helperStartAdviceFitsTheCause() {
+        using worker::StartFailure;
+        QTemporaryDir dir;
+        const auto script = [&](const QString& name, const QByteArray& text) {
+            const auto path = dir.filePath(name);
+            QFile file(path);
+            if (!file.open(QIODevice::WriteOnly) || file.write(text) != text.size()) qFatal("cannot write the synthetic helper");
+            file.close();
+            file.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+            return path;
+        };
+        const auto helper = script("putgd-helper", "#!/bin/sh\nexit 0\n");
+        const auto noLoader = script("putgd-no-loader", "#!/nonexistent/putgd-interpreter\n");
+        const auto reason = [](const QString& program) {
+            QProcess process;
+            process.start(program, {"--stdio"});
+            if (process.waitForStarted(10000)) { process.kill(); process.waitForFinished(); return QString(); }
+            return process.errorString();
+        };
+        const auto strerror = [](int code) { return QString::fromLocal8Bit(std::strerror(code)); };
+        // Not a helper: a searchable directory is executable too.
+        QCOMPARE(worker::classifyStartFailure(dir.path(), reason(dir.path())), StartFailure::Installation);
+        QCOMPARE(worker::classifyStartFailure(dir.filePath("missing"), reason(dir.filePath("missing"))), StartFailure::Installation);
+        QCOMPARE(worker::startFailureMessage(StartFailure::Installation, "reinstall"), QString("reinstall"));
+        // A shortage Qt names, as it writes it.
+        for (const int code : {EMFILE, ENFILE, ENOMEM, EAGAIN, ETXTBSY})
+            QCOMPARE(worker::classifyStartFailure(helper, "pipe: " + strerror(code)), StartFailure::Temporary);
+        const auto temporary = worker::startFailureMessage(StartFailure::Temporary, "reinstall");
+        QVERIFY2(temporary.contains("just now; try again") && !temporary.contains("reinstall"), qPrintable(temporary));
+        // Everything else: an executable whose interpreter is missing, and Qt's misleading
+        // "No such file or directory" for a helper that exists.
+        const auto missing = reason(noLoader);
+        QVERIFY2(!missing.isEmpty(), "a helper without its interpreter started");
+        QCOMPARE(worker::classifyStartFailure(noLoader, missing), StartFailure::Unclear);
+        QCOMPARE(worker::classifyStartFailure(helper, "execve: " + strerror(ENOENT)), StartFailure::Unclear);
+        const auto unclear = worker::startFailureMessage(StartFailure::Unclear, "reinstall");
+        QCOMPARE(unclear, QString("put.gd couldn't start its upload helper. Try again; if it keeps failing, reinstall put.gd."));
+        for (const auto& message : {temporary, unclear}) QVERIFY2(!message.contains(strerror(ENOENT)), qPrintable(message));
+    }
     // A diagnostics package says which fields a destination sets and where its request
     // goes: never a row value, a path someone typed a key into, or a reply template's text.
     void diagnosticsShowTheShapeOfSettingsNotTheirText() {
