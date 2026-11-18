@@ -30,9 +30,13 @@ request-boundary activity tracking. S3, Backblaze B2 and Proton declare phase re
 
 Capabilities explicitly describe conditional create/replace/delete, version addressing,
 stat, removal, URL availability, naming byte limits and deletion effects. Unsupported
-required safeguards fail explicitly. `checkName` returns absent, present or inconclusive,
-an opaque target reference and an opaque precondition. Denied/time-limited checks are
-never treated as available names. Conditional PUT is the final race protection.
+required safeguards fail explicitly when the service refuses them (an S3 501). An S3
+endpoint that accepts the condition headers and ignores them (Garage, Zenko CloudServer,
+and for `DeleteObject` also MinIO and R2) can't be detected that way; its race windows
+are documented in [S3-compatible services](../user/s3.md#s3-compatible-services).
+`checkName` returns absent, present or inconclusive, an opaque target reference and an
+opaque precondition. Denied/time-limited checks are never treated as available names.
+Conditional PUT is the final race protection on a service that enforces it.
 
 A destination whose server names each upload declares `serverNamesObjects` (#1361).
 It has no name to check, so `checkName` answers absent with a fresh nonce and contacts
