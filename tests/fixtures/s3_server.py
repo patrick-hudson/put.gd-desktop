@@ -143,6 +143,10 @@ class Handler(BaseHTTPRequestHandler):
             rule = None
             for candidate in state['rules']:
                 if candidate.get('method') == self.command and (not candidate.get('key') or candidate['key'] == key) and (not candidate.get('query') or candidate['query'] in parsed.query) and candidate.get('remaining', 1) > 0:
+                    # 'after': let that many matching requests through first.
+                    if candidate.get('after', 0) > 0:
+                        candidate['after'] -= 1
+                        continue
                     candidate['remaining'] = candidate.get('remaining', 1) - 1
                     rule = candidate
                     break
