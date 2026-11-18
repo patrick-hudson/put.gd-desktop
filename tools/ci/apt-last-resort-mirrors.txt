@@ -1,0 +1,15 @@
+# Last-resort Ubuntu mirrors for the AppImage job's package install (#1668). install-packages.sh
+# probes only these, after the ranked mirrors in putgd-mirrors.txt have failed. A checked-in list,
+# so nothing fetched at run time chooses where the privileged runner connects. Public HTTPS mirrors
+# from Ubuntu's US list (mirrors.ubuntu.com/US.txt), other than the four the mirror probe ranks.
+# Each carried noble, noble-updates and noble-security for amd64 on 2026-11-18.
+https://mirrors.mit.edu/ubuntu/
+https://mirrors.ocf.berkeley.edu/ubuntu/
+https://mirror.us.leaseweb.net/ubuntu/
+https://mirror.team-cymru.com/ubuntu/
+https://plug-mirror.rcac.purdue.edu/ubuntu/
+https://mirror.rnet.missouri.edu/ubuntu/
+https://atl.mirrors.clouvider.net/ubuntu/
+https://mirror.its.umich.edu/ubuntu/
+https://mirrors.xmission.com/ubuntu/
+https://mirror.pit.teraswitch.com/ubuntu/

@@ -193,7 +193,12 @@ jobs:
         with:
           path: /var/cache/putgd-packages
           key: putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
-          restore-keys: putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
+          # Then any older snapshot of this target, the newest first, so new dependency scripts still have one
+          # to fall back to (#1668). Its own indexes either satisfy the new list or the offline install fails
+          # before dpkg starts.
+          restore-keys: |
+            putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
+            putgd-pkgs-v1-${{ matrix.name }}-
       - name: Standard distro dependencies
         env:
           PUTGD_PKG_CACHE: /var/cache/putgd-packages
@@ -446,9 +451,17 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Use official Ubuntu archive mirrors
-        # Keep signed distro metadata and archive/security failover without adding
-        # a ~650-package snapshot to the repository's shared 10 GB cache (#500).
-        run: sudo python3 tools/ci/hosted_apt_mirrors.py
+        # The runner names one mirror, and one slow mirror then stalls every attempt (#1668). Hand its Ubuntu
+        # sources to the container jobs' probe, which ranks four mirrors into one mirror+file list. The
+        # sources keep their suites, components and Signed-By, so apt verifies everything as before (#500).
+        run: |
+          sudo python3 tools/ci/hosted_apt_mirrors.py
+          sudo --preserve-env=PUTGD_UBUNTU_MIRRORS bash -c 'eval "$PUTGD_UBUNTU_MIRRORS"'
+          if ! grep -rqs 'mirror+file:/etc/apt/putgd-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d; then
+            echo '::error::The Ubuntu sources do not use the ranked mirror list /etc/apt/putgd-mirrors.txt'
+            exit 1
+          fi
+          cat /etc/apt/putgd-mirrors.txt
       - name: Identify the package snapshot
         id: pkg-key
         run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
@@ -458,13 +471,19 @@ jobs:
         with:
           path: /var/cache/putgd-packages
           key: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-${{ steps.pkg-key.outputs.week }}
-          restore-keys: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-
+          # native (ubuntu24.04) saves the snapshot for a new key in parallel, so the first run after a package
+          # list or script change has none under it: then the newest older snapshot (#1668).
+          restore-keys: |
+            putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-
+            putgd-pkgs-v1-ubuntu24.04-
       - name: Standard build dependencies
         env:
           PUTGD_PKG_LABEL: appimage
           PUTGD_PKG_TIMEOUT: '300'
           PUTGD_PKG_STALL: '120'
           PUTGD_PKG_ATTEMPTS: '3'
+          # After the ranked mirrors and the snapshot: a checked-in list of public HTTPS mirrors (#1668).
+          PUTGD_APT_LAST_RESORT_MIRRORS: ${{ github.workspace }}/tools/ci/apt-last-resort-mirrors.txt
         run: |
           # One apt transaction (#1652): the base dependencies, the packages in tools/ci/appimage-packages.txt
           # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
@@ -476,7 +495,7 @@ jobs:
           # so here it restores three levels above this workspace, not to /var/cache.
           PUTGD_PKG_CACHE=$(realpath -m "$GITHUB_WORKSPACE/../../../var/cache/putgd-packages")
           export PUTGD_PKG_CACHE
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_EXTRA_PACKAGES,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/releases/install-native-deps.sh
+          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_EXTRA_PACKAGES,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS,PUTGD_APT_LAST_RESORT_MIRRORS bash tools/releases/install-native-deps.sh
       - name: The locked Qt version
         # Renovate updates it in the lock (#420), where the AppImage tools read it too.
         id: qt
@@ -604,9 +623,15 @@ jobs:
           PUTGD_PKG_STALL: '120'
           PUTGD_PKG_ATTEMPTS: '3'
         run: |
-          sudo python3 tools/ci/hosted_apt_mirrors.py
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
           printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
+          # The ranked mirror list, as in the appimage job, for the source indexes too (#1668).
+          sudo python3 tools/ci/hosted_apt_mirrors.py
+          sudo --preserve-env=PUTGD_UBUNTU_MIRRORS bash -c 'eval "$PUTGD_UBUNTU_MIRRORS"'
+          if ! grep -rqs 'mirror+file:/etc/apt/putgd-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d; then
+            echo '::error::The Ubuntu sources do not use the ranked mirror list /etc/apt/putgd-mirrors.txt'
+            exit 1
+          fi
           sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS bash tools/ci/install-packages.sh
       - name: Key distro source downloads by the bundled Ubuntu packages
         id: source-key
