@@ -27,14 +27,14 @@ void HistoryService::expireConfigured() {
  const int days=operations_.settingsSnapshot().historyRetentionDays;if(days<=0||!operations_.ready())return;
  const auto before=QDateTime::currentDateTimeUtc().addDays(-days).toString(Qt::ISODateWithMs),path=operations_.databasePath();operations_.background([before,path](Error& e) {HistoryStore store(path);e=store.expireBefore(before);return QJsonObject{};},[this](Error e,QJsonObject) {if(!e)notifyChanged();});
 }
-void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,query](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;return page.toJson();},std::move(reply));}
-void HistoryService::counts(const HistoryQuery& query,const QList<std::pair<QString,QString>>& days,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,query,days](Error& e) {HistoryStore store(path);return store.counts(query,days,&e);},std::move(reply));}
-void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([this,path,id](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
+void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();operations_.background([path,query](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;return page.toJson();},std::move(reply));}
+void HistoryService::counts(const HistoryQuery& query,const QList<std::pair<QString,QString>>& days,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();operations_.background([path,query,days](Error& e) {HistoryStore store(path);return store.counts(query,days,&e);},std::move(reply));}
+void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();operations_.background([this,path,id](Error& e) {HistoryStore store(path);auto data=store.detail(id,&e);if(!e){auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);if(provider)data["capabilities"]=provider->receiptCapabilities(receipt).toJson();
   // No receipt yet (a failed upload, or one whose outcome is unknown): the operation's destination says what its provider can do.
   else{Error ignored;const auto operation=store.operation(data["operationId"].toString(),&ignored);if(!ignored)if(auto planned=operations_.providers().find(operation.destination.providerId))data["capabilities"]=planned->capabilities(operation.destination).toJson();}}return data;},reply);}
 void HistoryService::preview(const QString& id,JsonReply reply,bool retry) {operations_.makePreview(id,std::move(reply),retry);}
-void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});}
-void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}operations_.copyHistoryImage(id,std::move(reply));}
+void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});}
+void HistoryService::copyImage(const QString& id,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}operations_.copyHistoryImage(id,std::move(reply));}
 QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
 
   HistoryStore store(operations_.databasePath());auto data=store.detail(id,&e);if(e)return QJsonObject{};
@@ -65,7 +65,7 @@ void HistoryService::unlockLinkCredentials(const QString& id,JsonReply reply) {
  });
 }
 void HistoryService::copyLink(const QString& id,JsonReply reply) {
- if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();
  operations_.background([this,id](Error& e) {return copyableLink(id,e); },[this,id,reply,ticket](Error e,QJsonObject data) {
   if(e){reply(e,{});return;}
@@ -83,7 +83,7 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
  });
 }
 void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
- if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();
  operations_.background([this,ids](Error& e) {
   QStringList urls;
@@ -100,7 +100,7 @@ void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
  });
 }
 void HistoryService::qr(const QString& id,const QString& mode,const QString& path,bool overwrite,JsonReply reply,QrShow show) {
- if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  if(mode=="save"&&!path.endsWith(".png",Qt::CaseInsensitive)){reply({"invalid_request","Save a QR code to an absolute .png path",{}},{});return;}
  if(mode=="show"&&!show){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
  // Copy image is an explicit copy from the moment it is asked for, as Copy link is.
@@ -159,7 +159,7 @@ QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
  return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Copies already cached by browsers or a CDN can stay visible for a while"}};
 }
-void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}operations_.background([this,ids](Error& e) {return prepare(ids,e);},reply);}
+void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}operations_.background([this,ids](Error& e) {return prepare(ids,e);},reply);}
 namespace {Error quittingError() {return {"cancelled","put.gd is quitting; delete or retry after it starts again",{}};}}
 void HistoryService::stopDeletions() {quitting_->store(true);}
 void HistoryService::deleteConfirmed(const QStringList& ids,const QString& acknowledgement,JsonReply reply) {
@@ -175,7 +175,7 @@ void HistoryService::deleteConfirmed(const QStringList& ids,const QString& ackno
 }
 void HistoryService::inspectSharing(const QString& id,JsonReply reply){if(stoppedSharing_.contains(id)){reply({},stoppedSharing_.value(id));return;}const auto path=operations_.databasePath();operations_.background([path,id](Error& e){HistoryStore store(path);return store.sharing(id,&e);},std::move(reply));}
 void HistoryService::changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply reply){
- if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  if(!QStringList{"create","revoke","inspect"}.contains(action)){reply({"invalid_request","Invalid sharing action",{}},{});return;}
  for(auto i=options.begin();i!=options.end();++i)if(i.key()!="expirationDays"&&i.key()!="passwordReference"){reply({"invalid_request","Sharing options contain unsupported fields",{}},{});return;}
  if(options.contains("expirationDays")){const auto n=options["expirationDays"].toDouble(-1);if(n<0||n>365||n!=int(n)){reply({"invalid_request","Invalid link expiration",{}},{});return;}}
