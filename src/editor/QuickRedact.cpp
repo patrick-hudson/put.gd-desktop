@@ -354,7 +354,13 @@ const QList<Rule>& rules() {
  return list;
 }
 }
-QStringList categories() {return {"email","phone","ip","card","key"};}
+QStringList categories() {return {"email","phone","ip","card","key","name","list"};}
+// #1618 stub: the integration branch's shared interface; the matcher worker
+// replaces it.
+Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,const Sources&,int) {
+ QStringList builtIn;for(const auto& c:chosen)if(c!="name"&&c!="list")builtIn.append(c);
+ return {find(candidates,builtIn),{}};
+}
 QStringList keyShapes() {return {"AWS access key IDs","GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_, github_pat_)","GitLab tokens (glpat- and the other gl prefixes)","Slack tokens (xox…, xapp-)","Stripe keys (sk_, pk_, rk_, whsec_)","JSON web tokens","PEM private-key blocks","Unbroken hex or base64 runs of 32 characters or more"};}
 bool luhn(const QString& number) {
  int sum=0;bool twice=false;int count=0;

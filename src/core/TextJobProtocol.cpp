@@ -89,7 +89,10 @@ struct Tongue {const char* locale;const char* language;};
 // ISO 639-1 to the Tesseract data file of that language.
 constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},{"bg","bul"},{"bn","ben"},{"ca","cat"},{"cs","ces"},{"cy","cym"},{"da","dan"},{"de","deu"},{"el","ell"},{"en","eng"},{"es","spa"},{"et","est"},{"eu","eus"},{"fa","fas"},{"fi","fin"},{"fr","fra"},{"ga","gle"},{"gl","glg"},{"he","heb"},{"hi","hin"},{"hr","hrv"},{"hu","hun"},{"hy","hye"},{"id","ind"},{"is","isl"},{"it","ita"},{"ja","jpn"},{"ka","kat"},{"kk","kaz"},{"ko","kor"},{"lt","lit"},{"lv","lav"},{"mk","mkd"},{"ms","msa"},{"mt","mlt"},{"nb","nor"},{"nl","nld"},{"nn","nor"},{"no","nor"},{"pl","pol"},{"pt","por"},{"ro","ron"},{"ru","rus"},{"sk","slk"},{"sl","slv"},{"sq","sqi"},{"sr","srp"},{"sv","swe"},{"sw","swa"},{"ta","tam"},{"te","tel"},{"th","tha"},{"tr","tur"},{"uk","ukr"},{"ur","urd"},{"uz","uzb"},{"vi","vie"}};
 }
-QStringList redactCategories(){return {"email","phone","ip","card","key"};}
+QStringList redactCategories(){return {"email","phone","ip","card","key","name","list"};}
+// #1618 stubs: the matcher worker replaces them.
+QString redactTermError(const QString& term){const auto t=term.trimmed();if(t.isEmpty())return QStringLiteral("An entry is empty");if(t.size()>maxRedactTermLength)return QStringLiteral("An entry is longer than 100 characters");if(t.contains('\n')||t.contains('\r'))return QStringLiteral("An entry has a line break");return {};}
+QString redactPatternError(const QString& pattern){if(pattern.isEmpty())return QStringLiteral("A pattern is empty");if(pattern.size()>maxRedactPatternLength)return QStringLiteral("A pattern is longer than 500 characters");return {};}
 QStringList childErrorCodes(){return {"input_excessive","text_job_io","language_unavailable","engine_unavailable","helper_sandbox_unavailable"};}
 QStringList parentErrorCodes(){return {"text_job_timeout","text_job_failed","text_incompatible","text_busy","text_helper_missing"};}
 Error failure(const QString& code,const QString& language){
