@@ -509,6 +509,15 @@ class NightlyTests(unittest.TestCase):
         self.assertTrue(slot and record['cleanupBlocked'])
         self.assertIn('live remote cleanup unresolved', record['notRunReason'])
 
+    def test_an_unresolved_live_cleanup_stops_the_row_before_any_retry_or_later_flow(self):
+        record, cells, retire, slot = self.lost_session_row([], marker=True)
+        self.assertEqual(cells, ['idle_memory-1'])
+        self.assertTrue(record['notRunReason'].startswith('live remote cleanup unresolved in idle_memory attempt 1'))
+        self.assertEqual(record['stoppedEarly']['flow'], 'idle_memory')
+        retire.assert_not_called()
+        self.reset.assert_not_called()
+        self.assertTrue(slot and record['cleanupBlocked'])
+
     def test_a_live_cleanup_marker_keeps_the_guest_without_any_receipt_flag(self):
         """A runner killed after publishing writes no receipt flag; the marker file in the run directory is enough."""
         errors = ['notification monitor cleanup unavailable',

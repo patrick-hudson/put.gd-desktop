@@ -22,9 +22,12 @@ def _owned(ctx, service, detail, oid):
                and destination['credentials']['reference'] == service.credential_reference,
                'cleanup receipt belongs to this exact operation and bridged destination')
     if ctx.destination == 's3':
-        # Keep the pending-cleanup marker on the key the destination really stored, then require it to be
-        # the one recorded before publishing (a unique prefix and name leave nothing to rename).
-        service.pending.record_key(receipt['objectReference']['key'])
+        # Only a key inside this campaign's prefix may replace the marker's key; a rejected receipt leaves the
+        # planned key in place. Then require it to be the one recorded before publishing (a unique prefix and
+        # name leave nothing to rename).
+        if (destination['providerId'] == 's3' and destination['settings']['objectPrefix'] == service.prefix
+                and receipt['objectReference']['key'].startswith(service.prefix)):
+            service.pending.record_key(receipt['objectReference']['key'])
         ctx.expect(destination['providerId'] == 's3' and destination['settings']['objectPrefix'] == service.prefix
                    and receipt['objectReference']['key'].startswith(service.prefix),
                    'cleanup cannot leave the new S3 campaign prefix')

@@ -236,6 +236,15 @@ class Running(unittest.TestCase):
         self.assertEqual(environment['guest_local_cleanup'],['cleanup incomplete'])
         self.assertIs(environment['unresolved_live_cleanup'],True)
         self.assertEqual(require_terminal(self.path/'run-error')['exit_code'], 2)
+        # A fixture that refused to start over an earlier marker never set its pending state; the file still counts.
+        target.live_cleanup_pending=None
+        (self.path/'live-cleanup-pending.json').write_text('{}')
+        args[args.index('--out')+1]=str(self.path/'run-marker')
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
+            self.assertEqual(main(args),2)
+        environment=json.loads((self.path/'run-marker/receipt.json').read_text())['environment']
+        self.assertIs(environment['unresolved_live_cleanup'],True)
+        (self.path/'live-cleanup-pending.json').unlink()
 
     def test_target_removes_only_its_private_session_root_after_exit(self):
         target=Target.__new__(Target)
@@ -342,6 +351,35 @@ class Running(unittest.TestCase):
         self.assertFalse(pending['remote'])
         pending.record_key(prefix+'late.png')
         self.assertFalse(marker.exists())
+
+    def test_an_answered_clipboard_refusal_is_not_erased_by_a_later_lost_connection(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        def restore_after(first):
+            def restore():
+                try:
+                    raise first
+                except RecipeBlocked:
+                    raise GuestUnreachable('exact stop lost ssh')
+            return restore
+        for first,local in ((RecipeBlocked('clipboard keeper failed to restore and exit'),[]),
+                            (GuestUnreachable('keeper pipe lost'),['previous clipboard restoration unavailable; private session retained'])):
+            with self.subTest(first=type(first).__name__):
+                target=Target.__new__(Target)
+                target._rfb=None;target._probe_process=None;target.monitor_pid=None;target.started=False
+                target._clipboard_lease=object();target._kwin_entries=False;target.restore_clipboard=restore_after(first)
+                self.assertEqual(target.close(),['previous clipboard restoration unavailable; private session retained'])
+                self.assertEqual(target.guest_local_cleanup,local)
+
+    def test_kwin_cleanup_stays_armed_after_a_restart_that_staged_nothing(self):
+        from tools.lab.surface_driver import appimage
+        target=self.closing_target(RecipeBlocked('unused'))
+        target.monitor_pid=None;target.started=False;target._clipboard_lease=None
+        target.execute=lambda script,**kwargs:{'returncode':0,'stdout':json.dumps({'files':['putgd-appimage-1.desktop']}),'stderr':''}
+        appimage.prepare(target)
+        # A later launch without APPIMAGE stages nothing, yet the first launch's mirrors still exist.
+        target.execute=lambda script,**kwargs:{'returncode':0,'stdout':'null','stderr':''}
+        appimage.prepare(target)
+        self.assertTrue(target._kwin_entries)
 
     def test_a_guest_that_staged_no_kwin_entries_has_none_to_clean_up(self):
         from tools.lab.surface_driver.api import GuestUnreachable

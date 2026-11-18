@@ -330,6 +330,8 @@ class LiveOutcomes(unittest.TestCase):
           'providerId':'s3','credentials':{'reference':'owned-reference'},'settings':{'objectPrefix':'owned/'}},
           'objectReference':{'key':'foreign/object'}}}
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'owned-operation')
+        # A rejected receipt never replaces the key recorded before publishing.
+        self.assertEqual(recorded,[])
         detail['receipt']['objectReference']['key']='owned/object'
         outcomes_live._owned(ctx,service,detail,'owned-operation')
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'different-operation')

@@ -266,6 +266,23 @@ def checked_socket(path):
     return path
 
 
+def only_unreachable(error):
+    """Whether every blocked step behind ``error`` was the guest being unreachable.
+
+    A later transport failure can replace an earlier refusal the guest answered (the clipboard keeper
+    failed, then the exact stop lost SSH). The chain keeps both, and an answer keeps the guest from being
+    retired as lost.
+    """
+    seen = False
+    while error is not None:
+        if isinstance(error, RecipeBlocked):
+            if not isinstance(error, GuestUnreachable):
+                return False
+            seen = True
+        error = error.__context__ or error.__cause__
+    return seen
+
+
 def desktop_transport(function):
     @wraps(function)
     def invoke(*args, **kwargs):
@@ -813,7 +830,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 self.execute('kill '+str(self.monitor_pid)+' 2>/dev/null || true')
                 self.monitor_pid=None
             except RecipeBlocked as error:
-                record('notification monitor cleanup unavailable', isinstance(error, GuestUnreachable))
+                record('notification monitor cleanup unavailable', only_unreachable(error))
         if self.started:
             try:
                 result=self.cli('ui.quit')
@@ -823,17 +840,17 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 else:
                     self.started=False
             except RecipeBlocked as error:
-                record('resident quit transport unavailable; private session retained', isinstance(error, GuestUnreachable))
+                record('resident quit transport unavailable; private session retained', only_unreachable(error))
         if getattr(self, 'clipboard_pid', None) or getattr(self, '_clipboard_lease', None):
             try:
                 self.restore_clipboard()
             except RecipeBlocked as error:
-                record('previous clipboard restoration unavailable; private session retained', isinstance(error, GuestUnreachable))
+                record('previous clipboard restoration unavailable; private session retained', only_unreachable(error))
         try:
             from .appimage import prepare
             prepare(self, cleanup=True)
         except RecipeBlocked as error:
-            record('exact mirrored KWin entry cleanup refused; private session retained', isinstance(error, GuestUnreachable))
+            record('exact mirrored KWin entry cleanup refused; private session retained', only_unreachable(error))
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.
@@ -868,5 +885,5 @@ shutil.rmtree(root)
                     self._owns_root=False
                     self.private_cleanup = 'resident-log-and-state-root-removed'
             except RecipeBlocked as error:
-                record('private session root cleanup unavailable', isinstance(error, GuestUnreachable))
+                record('private session root cleanup unavailable', only_unreachable(error))
         return errors

@@ -960,10 +960,13 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
                                 if not returned:
                                     raise NotRun('Proton guest provisioning did not complete; source check passed')
-                            if lost_guest_session(target):
-                                # The failing cell is the row's reported result (#1214).
+                            marker_left = (run/lab.LIVE_CLEANUP_MARKER).exists()
+                            if marker_left or lost_guest_session(target):
+                                # The failing cell is the row's reported result (#1214). A live cleanup that is
+                                # still unresolved stops the row the same way: no retry or Proton lend on this guest.
                                 note = failed_recipe_note(target, observed.get('assertion', ''))
-                                reason = f'guest session lost in {flow} attempt {attempt}: {note}'
+                                what = 'live remote cleanup unresolved' if marker_left else 'guest session lost'
+                                reason = f'{what} in {flow} attempt {attempt}: {note}'
                                 record['stoppedEarly'] = dict(flow=flow, attempt=attempt, reason=reason)
                                 record['notRunReason'] = reason
                                 cells[flow]['assertion'] = reason
