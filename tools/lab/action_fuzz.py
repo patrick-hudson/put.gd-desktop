@@ -36,6 +36,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import secrets
 import select
 import shutil
@@ -50,9 +51,13 @@ import urllib.request
 import zlib
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'faults'))  # python -I does not put the script's folder on the path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fault_control  # noqa: E402
+import tsan_summary  # noqa: E402
 
 SOCKET_LIMIT = 107
+# Every wait scales with it: rr record --chaos runs several times slower than a plain run (ACTION_FUZZ_SLOW=5), ThreadSanitizer about three.
+SLOW = float(os.environ.get('ACTION_FUZZ_SLOW', '1'))
 TOKEN = 'putgd-synthetic-uploader-token-not-real'
 # What a clean sanitizer run never writes: any of these in a log is a finding.
 BAD_MARKERS = ('AddressSanitizer', 'LeakSanitizer', 'runtime error:', 'ThreadSanitizer', 'UndefinedBehaviorSanitizer',
@@ -272,7 +277,15 @@ class S3Receiver(Receiver):
         key, version_id = reference.get('key'), reference.get('versionId')
         if not key:
             return 'the receipt names no object key'
-        versions = [v for v in self.snapshot().get(key, []) if not v.get('marker') and v.get('version') != 'competitor']
+        stored = self.snapshot().get(key, [])
+        if not version_id and stored:
+            # An unversioned receipt is read as the newest entry (GET and HEAD without versionId): that one must be the probe's object.
+            newest = stored[-1]
+            if newest.get('marker'):
+                return 'the newest entry of %s is a delete marker: an unversioned read finds nothing' % key
+            if newest.get('version') == 'competitor':
+                return 'the newest entry of %s is a competitor\'s object: an unversioned read returns its bytes' % key
+        versions = [v for v in stored if not v.get('marker') and v.get('version') != 'competitor']
         if version_id:  # a versioned receipt names one version: that one must hold the bytes
             versions = [v for v in versions if v.get('version') == version_id]
         if not versions:
@@ -309,8 +322,10 @@ class S3Receiver(Receiver):
 # ---------------------------------------------------------------------------------------------- resident
 
 class Resident:
-    def __init__(self, run, build, runtime=None):
+    def __init__(self, run, build, runtime=None, options=None):
         self.run, self.build = run, Path(build)
+        self.options = options
+        self.wrapped = bool(options is not None and options.wrap)  # under a recorder such as rr: self.process is the recorder
         self.root = run / 'r'
         self.runtime = Path(runtime) if runtime else self.root / 'rt'
         self.socket_path = str(self.runtime / 'putgd' / 'session.sock')
@@ -324,6 +339,8 @@ class Resident:
         self.token = 'PUTGD_FUZZ_RUN=%s' % secrets.token_hex(12)
         self.pids_seen = set()   # every PID of the resident itself, for the shim's no-helper check
         self.retries = {}        # operation id -> accepted operation.retry calls
+        self.on_retry = None     # called with the operation id of every accepted retry (the fuzzer credits that operation's rows)
+        self.on_rows = None      # called with the records of every history.list reply, whoever asked (the fuzzer's row caches)
         self.extra_env = {}   # fault mode: the LD_PRELOAD shim and its rule file
         # Fault mode: start (self.starts) -> [(first byte, end byte or None)] of its log written while the harness held the resident at its
         # open-file limit on purpose. Only there is UBSan's invalid-vptr report expected.
@@ -342,6 +359,11 @@ class Resident:
         os.chmod(self.runtime, 0o700)
         self.san.mkdir(exist_ok=True)
         env = {k: os.environ[k] for k in ('PATH', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'XDG_DATA_DIRS') if k in os.environ}
+        # A private TMPDIR inside the run folder, for the resident and a recorder around it alike: it lives where --run-dir does (tmpfs
+        # for rr, which aborts on FS_IOC_GETFSLABEL on ext4 and btrfs) and never in a shared /tmp.
+        tmp = self.run / 'tmp'
+        tmp.mkdir(mode=0o700, exist_ok=True)
+        env['TMPDIR'] = str(tmp)
         env.update(self.extra_env)
         env[self.token.split('=', 1)[0]] = self.token.split('=', 1)[1]
         env.update(HOME=str(self.root / 'home'), XDG_CONFIG_HOME=str(self.root / 'config'), XDG_DATA_HOME=str(self.root / 'data'),
@@ -351,6 +373,28 @@ class Resident:
                        self.san, ':verify_asan_link_order=0' if 'LD_PRELOAD' in self.extra_env else ''),
                    UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=%s/ubsan' % self.san,
                    LSAN_OPTIONS='log_path=%s/lsan' % self.san)
+        options = self.options
+        if options is not None and options.tsan_prefix:
+            # ThreadSanitizer build against the instrumented Qt and D-Bus (docs/testing/thread-sanitizer.md): the libraries come from the
+            # test prefix, and reports go to files next to the ASan ones so check_sanitizers sees them. No suppressions file: every report
+            # is kept, and tools/lab/tsan_summary.py separates verified Qt-only pairs from the rest.
+            prefix = Path(options.tsan_prefix)
+            env['LD_LIBRARY_PATH'] = ':'.join(str(p) for p in (prefix / 'deps-tsan' / 'lib', prefix / 'qtbase-tsan-build' / 'lib'))
+            env['PATH'] = '%s:%s' % (prefix / 'deps-tsan' / 'bin', env['PATH'])
+            suppressions = Path(__file__).resolve().parents[2] / 'tests/sanitizer/tsan.supp'
+            # ignore_noninstrumented_modules=1 stays: without it a seed fails within a few steps on reports from the recording helper's
+            # distribution GStreamer plugins (mutex misuse, new/delete and getrandom races seen on m74). What it hides: TSan then ignores
+            # the memory and synchronization calls (memcpy, free, mutexes) that uninstrumented libraries make through its interceptors, so
+            # a race in which one access is put.gd's and the other happens inside such a library (GStreamer, libcurl, OpenSSL, the AWS
+            # SDK) is not reported.
+            env['TSAN_OPTIONS'] = 'halt_on_error=0:ignore_noninstrumented_modules=1:history_size=5:second_deadlock_stack=1:suppressions=%s:log_path=%s/tsan' % (
+                suppressions, self.san)
+            env['QT_PLUGIN_PATH'] = str(prefix / 'qtbase-tsan-build' / 'plugins')
+            # GStreamer's plugin scanner is a distribution binary that would load the instrumented GLib without libtsan and crash.
+            env['GST_REGISTRY_FORK'] = 'no'
+        for assignment in (options.env if options is not None else []):
+            name, _, value = assignment.partition('=')
+            env[name] = value
         return env
 
     def launch(self, log):
@@ -363,6 +407,10 @@ class Resident:
             command = ['/bin/sh', '-c', 'PUTGD_FAULT_PID=$$; export PUTGD_FAULT_PID; exec "$0" "$@"'] + command
         if self.nofile:
             command = ['prlimit', '--nofile=%d:%d' % (self.nofile, self.nofile), '--'] + command
+        if self.wrapped:
+            command = self.options.wrap.split() + command  # a recorder such as `rr record --chaos`: the resident is its tracee
+        if self.options is not None and self.options.tsan_prefix:
+            command = ['setarch', 'x86_64', '-R'] + command  # GCC's TSan runtime aborts on the host's address randomization
         if self.memory_max:
             # A scope of the real user manager: it needs the real user bus, and the resident its private one, set by env(1) inside.
             inner = ['env'] + ['%s=%s' % (k, v) for k, v in env.items()]
@@ -401,7 +449,7 @@ class Resident:
         self.opened_log()
         log = open(self.run / 'logs' / ('resident-%d.log' % self.starts), 'w')
         self.process = self.launch(log)
-        deadline = time.monotonic() + 90
+        deadline = time.monotonic() + 90 * SLOW
         while time.monotonic() < deadline:
             if self.returncode() is not None:
                 raise Finding('startup', 'the resident exited %s while starting' % self.returncode())
@@ -415,9 +463,12 @@ class Resident:
         else:
             raise Finding('hang', 'the resident did not answer capabilities within 90 s')
         # "initializing" resolves on its own; wait for a settled snapshot.
-        end = time.monotonic() + 60
+        end = time.monotonic() + 60 * SLOW
         while time.monotonic() < end:
-            reply = self.call('settings.get', raw=True)
+            try:
+                reply = self.call('settings.get', raw=True)
+            except OSError as error:  # the resident (or the recorder it runs under) went away right after it answered
+                raise Finding('startup', 'settings.get failed while the resident started: %s (exit %s)' % (error, self.returncode()))
             if reply.get('ok'):
                 return
             if (reply.get('error') or {}).get('code') not in BUSY_CODES:
@@ -432,7 +483,7 @@ class Resident:
         request = json.dumps({'schemaVersion': 1, 'requestId': request_id, 'session': self.socket_path, 'method': method,
                               'params': {} if params is None else params}, ensure_ascii=False).encode() + b'\n'
         client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        client.settimeout(timeout)
+        client.settimeout(timeout * SLOW)
         try:
             client.connect(self.socket_path)
             client.sendall(request)
@@ -451,11 +502,30 @@ class Resident:
             raise OSError('no reply to %s (connection closed)' % method)
         if reply.get('requestId') != request_id or reply.get('schemaVersion') != 1:
             raise Finding('protocol', 'reply to %s has a wrong envelope: %s' % (method, str(reply)[:200]))
-        # A retry with scope "sharing" only finishes share links; it sends nothing again.
-        if method == 'operation.retry' and reply.get('ok') and isinstance(params, dict) and isinstance(params.get('id'), str) and 'scope' not in params:
-            with self.lock:  # every accepted retry, from any step or burst thread: each may send its files once more
-                self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
+        self.note_retry(method, params, reply)
+        self.note_rows(method, reply)
         return reply if raw else reply.get('result')
+
+    def note_rows(self, method, reply):
+        """Hand every row a history.list reply shows to on_rows, so each reader of a row's status (a step, a burst thread, a check)
+        updates the same caches that retry credit reads."""
+        if method != 'history.list' or not reply.get('ok') or not getattr(self, 'on_rows', None):
+            return
+        records = [row for row in (reply.get('result') or {}).get('records') or [] if isinstance(row, dict) and row.get('id')]
+        with self.lock:  # from any step or burst thread, never at the same time as a retry's credit
+            self.on_rows(records)
+
+    def note_retry(self, method, params, reply):
+        """Count an operation.retry that put.gd accepted (result.retryAccepted true): each may send its files once more. A copy-only
+        success, or a retry with scope "sharing" (it only finishes share links), sends nothing again."""
+        if method != 'operation.retry' or not reply.get('ok') or not isinstance(params, dict) or not isinstance(params.get('id'), str):
+            return
+        if 'scope' in params or (reply.get('result') or {}).get('retryAccepted') is not True:
+            return
+        with self.lock:  # from any step or burst thread
+            self.retries[params['id']] = self.retries.get(params['id'], 0) + 1
+            if getattr(self, 'on_retry', None):
+                self.on_retry(params['id'])
 
     # The resident is reaped only once its session has been cleared (kill_tree, quit, the next launch). Until then its PID, which is also
     # the session ID of every helper, stays taken (a zombie holds it), so a session match cannot be a reused number.
@@ -610,6 +680,25 @@ class Resident:
         finally:
             os.close(fd)
 
+    def resident_pid(self):
+        """The resident's own process: the one started, or under a recorder (rr) its tracee, whose command line carries --background."""
+        if self.wrapped:
+            for pid in self.children():
+                try:
+                    if pid != self.process.pid and b'--background' in Path('/proc/%d/cmdline' % pid).read_bytes().split(b'\0'):
+                        return pid
+                except OSError:
+                    pass
+        return self.process.pid
+
+    def tracees(self):
+        """Everything of the resident's tree except the recorder itself."""
+        return [pid for pid in self.children() if pid != self.process.pid]
+
+    def hold(self, pid):
+        """A pidfd on one of this launch's processes, to signal it more than once (stop, then continue) without looking its PID up again."""
+        return self.owned(pid)
+
     def rss_kib(self):
         total = 0
         for pid in self.children():
@@ -622,9 +711,12 @@ class Resident:
         return total
 
     def kill_tree(self, sig=signal.SIGKILL):
-        """SIGKILL the resident and its helpers (exact PIDs found from /proc; never a pattern kill)."""
+        """SIGKILL the resident and its helpers (exact PIDs found from /proc, each signalled through a pidfd checked as this launch's; never a
+        pattern kill). Under a recorder only the tracees are killed: rr then flushes its trace and exits by itself."""
         if self.process is not None and self.process.returncode is None and not self.open_late():
             self.kill_pinned_session(sig)
+        if self.wrapped and self.process is not None and self.alive():
+            self.kill_tracees(sig)
         for _ in range(3):
             if self.process is not None and self.handle() is not None:
                 try:
@@ -633,14 +725,49 @@ class Resident:
                     pass
             for pid in reversed(self.children()):
                 self.send(pid, sig)
-            if self.process is not None and not self.wait_exit(20):
+            if self.process is not None and not self.wait_exit(20 * SLOW):
                 raise Finding('hang', 'the resident did not die after SIGKILL')
             # Whatever the resident left behind in its session (a child it started in the last moment) dies too.
             if not self.session_members():
                 self.reap()
                 return
             time.sleep(0.05)
-        raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
+        # A wrapper such as rr leaves a process of its own that ends after the tracees: give it the time a recording needs.
+        end = time.monotonic() + (10 * SLOW if self.options is not None and self.options.wrap else 0)
+        while self.session_members() and time.monotonic() < end:
+            for pid in self.session_members():
+                self.send(pid, sig)
+            time.sleep(0.2)
+        if self.session_members():
+            raise Finding('hang', 'processes of the killed resident are still alive: %s' % self.session_members())
+        self.reap()
+
+    # Under rr a trace is complete once rr has written it: rr removes the `incomplete` marker of its trace folder at the end of recording.
+    def kill_tracees(self, sig):
+        for _ in range(3):
+            for pid in reversed(self.tracees()):
+                self.send(pid, sig)
+            if self.wait_exit(60 * SLOW):  # rr notices its tracees are gone, finishes the trace and exits
+                return
+            if not self.tracees():
+                break
+        # rr itself did not end: SIGTERM asks it to stop recording cleanly before the SIGKILL of kill_tree.
+        if self.handle() is not None:
+            try:
+                signal.pidfd_send_signal(self.pidfd, signal.SIGTERM)
+            except OSError:
+                pass
+        self.wait_exit(30 * SLOW)
+
+    def traces(self):
+        """(complete, incomplete) rr trace folders of this run, from _RR_TRACE_DIR."""
+        folder = next((a.partition('=')[2] for a in (self.options.env if self.options is not None else []) if a.startswith('_RR_TRACE_DIR=')), None)
+        if not folder:
+            return [], []
+        found = [p for p in sorted(Path(folder).glob('*-*')) if p.is_dir() and not p.is_symlink()]
+        # Complete: rr wrote its `version` file and removed its `incomplete` marker. A folder with neither is not a trace rr finished.
+        complete = [p for p in found if (p / 'version').is_file() and not os.path.lexists(p / 'incomplete')]
+        return [str(p) for p in complete], [str(p) for p in found if p not in complete]
 
     def quit(self, how='ui.quit'):
         """A graceful stop: ui.quit, or the signal a session manager sends. The resident must exit by itself, with its leak check clean."""
@@ -652,14 +779,14 @@ class Resident:
             except (OSError, Finding, ValueError):
                 pass
         else:
-            self.send(self.process.pid, getattr(signal, how))
-        if not self.wait_exit(60):
+            self.send(self.resident_pid(), getattr(signal, how))
+        if not self.wait_exit(60 * SLOW):
             raise Finding('hang', 'the resident did not exit within 60 s of %s' % how)
         # After SIGTERM or SIGINT the status is the signal's or 0; a sanitizer abort is neither.
-        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT):
+        if self.returncode() not in (0, -signal.SIGTERM, -signal.SIGINT, 128 + signal.SIGTERM, 128 + signal.SIGINT) and not self.tsan_exit_excused():
             raise Finding('exit', 'the resident exited with %s after %s' % (self.returncode(), how))
         # Helpers it started leave with it.
-        end = time.monotonic() + 10
+        end = time.monotonic() + 10 * SLOW
         while self.session_members() and time.monotonic() < end:
             time.sleep(0.1)
         if self.session_members():
@@ -682,8 +809,45 @@ class Resident:
         return '\n'.join(out)
 
     def sanitizer_output(self):
-        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p))
+        found = sorted(p for p in self.san.glob('*') if p.is_file() and not self.third_party(p) and not self.known_qt_races_only(p))
         return found
+
+    TSAN_REPORTED = 66  # GCC TSan's exit status when it reported anything (exitcode= in TSAN_OPTIONS)
+
+    def tsan_exit_excused(self):
+        """Exit 66 from a ThreadSanitizer resident means only that TSan reported something. It is accepted when the run has TSan report
+        files, they hold at least one recognised report, every report in them is on tools/lab/tsan_summary.py's known list, and no file
+        in san/ holds a fatal sanitizer line. Any other non-zero exit, and exit 66 without a recognised report, fails as before."""
+        if self.returncode() != self.TSAN_REPORTED or self.options is None or not self.options.tsan_prefix:
+            return False
+        files = [p for p in self.san.glob('tsan.*') if p.is_file()]
+        if not files or any(self.fatal_sanitizer_error(p) for p in self.san.glob('*') if p.is_file()):
+            return False  # a fatal sanitizer error (an allocator diagnostic exits 66 too) is never excused
+        return all(self.known_qt_races_only(p) for p in files)  # each needs a recognised report, all of them known
+
+    # A sanitizer that stopped rather than reported: ERROR:/FATAL: lines, a failed internal CHECK, a deadly signal, a fatal-error banner.
+    FATAL = re.compile(r'(ERROR|FATAL): \w*Sanitizer|\w*Sanitizer: CHECK failed|\w*Sanitizer:DEADLYSIGNAL|Sanitizer has encountered a fatal error')
+
+    @classmethod
+    def fatal_sanitizer_error(cls, path):
+        """True when a report file holds a fatal sanitizer line (ERROR: or FATAL: ThreadSanitizer, ThreadSanitizer: CHECK failed and the
+        like), which tsan_summary.py's report parser does not read: it reads only WARNING blocks."""
+        try:
+            return bool(cls.FATAL.search(path.read_text(errors='replace')))
+        except OSError:
+            return True
+
+    @staticmethod
+    def known_qt_races_only(path):
+        """A TSan report file holding nothing but reports on tools/lab/tsan_summary.py's exact known list. Every other report, any with a
+        put.gd frame above main() included, is a finding."""
+        if not path.name.startswith('tsan.'):
+            return False
+        try:
+            text = path.read_text(errors='replace')
+        except OSError:
+            return False
+        return 'WARNING: ThreadSanitizer' in text and not tsan_summary.unexplained(path)
 
     @staticmethod
     def third_party(path):
@@ -804,7 +968,9 @@ class Fuzzer:
         self.faults = None
         for name in ('logs', 'fixtures', 'saves', 'archive'):
             (self.run / name).mkdir(parents=True, exist_ok=True)
-        self.resident = Resident(self.run, options.build)
+        self.resident = Resident(self.run, options.build, options=options)
+        self.resident.on_retry = self.credit_retry
+        self.resident.on_rows = self.note_rows
         self.proxy_port = None
         self.fault_classes = set(options.fault_classes.split(',')) if options.mode == 'faults' else set()
         self.fixtures = {}
@@ -1415,8 +1581,9 @@ class Fuzzer:
             self.call('ui.show', {'view': rng.choice(('history', 'settings'))}, timeout=60)
         time.sleep(rng.choice((0, 0.05, 0.3, 1.0)))
         helpers = []
+        resident = self.resident.resident_pid()
         for pid in self.resident.children():
-            if pid == self.resident.process.pid:
+            if pid in (self.resident.process.pid, resident):  # the resident (also as a recorder's tracee) and the recorder are not helpers
                 continue
             try:
                 helpers.append((pid, Path('/proc/%d/comm' % pid).read_text().strip()))
@@ -1428,20 +1595,28 @@ class Fuzzer:
         pid, name = rng.choice(helpers)
         action = rng.choice(('kill', 'kill', 'freeze'))
         self.log('helper-chaos', helper=name, pid=pid, what=action)
+        # One pidfd, checked once, for every signal to this helper: a SIGCONT after a long pause reaches the helper that was stopped or nobody.
+        handle = self.resident.hold(pid)
+        if handle is None:
+            return
         try:
             if action == 'kill':
-                self.resident.send(pid, signal.SIGKILL)
+                signal.pidfd_send_signal(handle, signal.SIGKILL)
             else:
-                self.resident.send(pid, signal.SIGSTOP)
+                signal.pidfd_send_signal(handle, signal.SIGSTOP)
                 hold = rng.choice((0.5, 3.0, 12.0))
                 end = time.monotonic() + hold
-                # The resident keeps answering while the helper is frozen.
-                while time.monotonic() < end:
-                    self.call(rng.choice(('capabilities', 'history.list', 'operation.recent', 'settings.get')), {}, timeout=30)
-                    time.sleep(0.3)
-                self.resident.send(pid, signal.SIGCONT)
+                try:
+                    # The resident keeps answering while the helper is frozen.
+                    while time.monotonic() < end:
+                        self.call(rng.choice(('capabilities', 'history.list', 'operation.recent', 'settings.get')), {}, timeout=30)
+                        time.sleep(0.3)
+                finally:
+                    signal.pidfd_send_signal(handle, signal.SIGCONT)
         except OSError:
             pass
+        finally:
+            os.close(handle)
 
     def config_path(self):
         return self.resident.root / 'config' / 'putgd' / 'config.json'
@@ -1610,7 +1785,7 @@ class Fuzzer:
 
     def drain(self, seconds):
         """Wait for every active operation to settle; one that stays active is a stuck upload."""
-        end = time.monotonic() + seconds
+        end = time.monotonic() + seconds * SLOW
         while time.monotonic() < end:
             if not self.active():
                 return True
@@ -1703,7 +1878,7 @@ class Fuzzer:
             raise Finding('driver', str(error))
 
     def resident_pids(self):
-        return [self.resident.process.pid] if self.resident.alive() else []
+        return [self.resident.resident_pid()] if self.resident.alive() else []
 
     def run_faults(self):
         """The fault loop. Setup and every step run inside main()'s one cleanup path (Fuzzer.cleanup)."""
@@ -1767,11 +1942,33 @@ class Fuzzer:
             return False
         # UBSan, halting, reads files to check object types: with no descriptor left it reports valid objects as invalid and exits 1.
         sanitizer_without_descriptors = self.resident.returncode() == 1 and runtime_errors
-        if 'Too many open files' not in text and not sanitizer_without_descriptors:
+        if not sanitizer_without_descriptors and not self.exhaustion_ended_it(text, start):
             return False
         self.log('emfile-abort', exit=self.resident.returncode(), first_runtime_errors=[l for l in text.splitlines() if 'runtime error' in l][:3])
         self.resident.judged_logs.add(log.name)
         return True
+
+    # The lines a library inside the resident prints when it gives up for want of a descriptor, and the exit each one ends in (put.gd has no
+    # such line of its own). A plain EMFILE warning (an open that failed and was handled) is not one of them and excuses nothing.
+    GIVE_UP = ((b'Creating pipes for GWakeup: Too many open files', -signal.SIGTRAP),     # GLib's g_error: a breakpoint trap
+               (b'Can not continue without a thread pipe', -signal.SIGABRT))              # Qt's qFatal in QEventDispatcherUNIX
+
+    def exhaustion_ended_it(self, text, start):
+        """True when the resident's own give-up line (GIVE_UP) was written inside a window in which the harness held the open-file limit
+        low, the exit status is the one that line ends in, and no other fatal marker follows it. A warning about a failed open, or an
+        earlier exhaustion the resident survived, never excuses a later crash."""
+        windows = self.resident.descriptor_windows.get(start) or []
+        lines = text.encode('utf-8', 'surrogateescape').splitlines(keepends=True)
+        offset, last = 0, None
+        for index, line in enumerate(lines):
+            begin, offset = offset, offset + len(line)
+            for marker, status in self.GIVE_UP:
+                if marker in line and status == self.resident.returncode() and any(first <= begin and (end is None or begin < end) for first, end in windows):
+                    last = index
+        if last is None:
+            return False
+        markers = [m.encode() for m in BAD_MARKERS if m != 'runtime error:']
+        return not any(m in line for line in lines[last + 1:] for m in markers)
 
     def recover_from_abort(self):
         """The resident is gone: do what a restart after a crash must do, and check it like a restart after a kill."""
@@ -1787,7 +1984,22 @@ class Fuzzer:
         """A finding is judged against what the server saw: keep its events and files before the receiver goes away."""
         try:
             state = self.receiver.state()
-            (self.run / 'receiver-state.json').write_text(json.dumps({'events': state.get('events'), 'files': state.get('files'), 'uploads': state.get('uploads')}, default=str)[:20_000_000])
+            # files: the custom uploader's; objects: the S3 oracle's, as metadata and digests only (never the bodies), so the file stays a
+            # small, complete JSON document however much was uploaded.
+            # Request events keep their metadata and digests (bodyBytes, bodySha256), never an inline body.
+            kept = {name: state.get(name) for name in ('files', 'uploads')}
+            kept['events'] = [{k: v for k, v in event.items() if k != 'body'} if isinstance(event, dict) else event for event in state.get('events') or []]
+            kept['objects'] = {key: [Fuzzer.object_summary(v) for v in versions] for key, versions in (state.get('objects') or {}).items()}
+            # Written whole to a temporary file and renamed into place: a failed write leaves no file, never a cut one.
+            final = self.run / 'receiver-state.json'
+            temporary = self.run / 'receiver-state.json.partial'
+            try:
+                with open(temporary, 'w') as out:
+                    json.dump(kept, out, default=str)
+                os.replace(temporary, final)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
         except (OSError, ValueError):
             pass
 
@@ -1840,7 +2052,17 @@ class Fuzzer:
                 raise Finding('unknown-lost', 'History row %s was unknown and is now %s while the server holds its content %s: the warning that a copy may be on the server is gone\nrow: %s' % (
                     row.get('id'), row.get('uploadStatus'), stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'error')}, default=str)))
 
-    def probe_recovery(self):
+    PROBE_CREDENTIAL_REFRESHES = 2
+
+    @staticmethod
+    def object_summary(version):
+        """An S3 oracle object version without its body: key data a finding is judged by."""
+        body = base64.b64decode(version.get('body') or '') if version.get('body') else b''
+        return {'version': version.get('version'), 'marker': bool(version.get('marker')), 'etag': version.get('etag'),
+                'size': len(body) if version.get('body') else version.get('size'),
+                'sha256': version.get('blob') or (hashlib.sha256(body).hexdigest() if version.get('body') else None)}
+
+    def probe_recovery(self, credential_refreshes=PROBE_CREDENTIAL_REFRESHES):
         """With every fault lifted the app must work: a fresh upload ends up on the server and in History as uploaded; a settings write succeeds."""
         before = self.receiver.upload_events()
         # The run's own settings steps may have set a small limit (a_settings): back to the defaults, so only a fault can fail the probe.
@@ -1857,8 +2079,11 @@ class Fuzzer:
         if rows and all((row.get('error') or {}).get('code') == 'credential_setup_required' for row in rows):
             # Session-mode credentials live in memory only; whatever dropped them (a restart, a helper) is not the fault under test.
             self.log('probe-credentials-lost')
+            if credential_refreshes <= 0:
+                raise Finding('not-recovered', 'the probe upload %s still needs credentials after %d refreshes: %s' % (
+                    operation, self.PROBE_CREDENTIAL_REFRESHES, json.dumps(rows, default=str)[:600]))
             self.credentials_check()
-            return self.probe_recovery()
+            return self.probe_recovery(credential_refreshes - 1)
         if not rows or any(row.get('uploadStatus') != 'uploaded' for row in rows):
             raise Finding('not-recovered', 'the probe upload %s is %s after every fault was lifted (server saw %d new uploads): %s' % (
                 operation, [(r.get('uploadStatus'), r.get('error')) for r in rows], self.receiver.upload_events() - before, json.dumps(rows, default=str)[:600]))
@@ -2160,6 +2385,24 @@ class Fuzzer:
         if result != ['ok']:
             raise Finding('history', 'history.sqlite integrity_check (a backup of the live database): %s' % result[:5])
 
+    def note_rows(self, batch):
+        """The row caches, from rows a history.list reply shows. Resident.call runs this for every history.list reply, whichever step, burst
+        thread or check asked, so a row's latest status is the one retry credit (credit_retry) reads."""
+        for row in batch:
+            self.seen.setdefault(row.get('id'), set()).add(row.get('uploadStatus'))
+            self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
+            self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
+            self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
+            if row.get('id') not in self.row_operations:
+                # Listed for the first time: its status when its operation's earlier retries were accepted is unknown, so each of them
+                # may have sent it again.
+                self.row_retry_credit[row.get('id')] = self.resident.retries.get(row.get('operationId'), 0)
+            self.row_operations[row.get('id')] = row.get('operationId')
+            # Monotonic for retry credit: an older reply processed after a newer one (burst threads) never turns uploaded back into
+            # uploading, since a retry never sends an uploaded row again.
+            if self.row_status.get(row.get('id')) != 'uploaded':
+                self.row_status[row.get('id')] = row.get('uploadStatus')
+
     TERMINAL = ('uploaded', 'failed', 'unknown', 'stored', 'cancelled', 'canceled', 'local_only', 'skipped', 'conflict')
 
     def rows(self):
@@ -2168,12 +2411,7 @@ class Fuzzer:
             reply = self.resident.call('history.list', {'limit': 200, 'offset': offset}, raw=True)
             if not reply.get('ok'):
                 raise Finding('recovery', 'history.list fails after a kill: %s' % str(reply)[:300])
-            batch = reply['result'].get('records') or []
-            for row in batch:
-                self.seen.setdefault(row.get('id'), set()).add(row.get('uploadStatus'))
-                self.seen_digest.setdefault(row.get('sha256'), set()).add(row.get('uploadStatus'))
-                self.digest_operations.setdefault(row.get('sha256'), set()).add(row.get('operationId'))
-                self.digest_rows.setdefault(row.get('sha256'), set()).add(row.get('id'))
+            batch = reply['result'].get('records') or []  # the resident's on_rows hook has noted them (note_rows)
             found.extend(batch)
             if len(batch) < 200:
                 return found
@@ -2244,14 +2482,37 @@ class Fuzzer:
     stuck_rows = set()
 
     def allowed_copies(self, digest):
-        """How many copies of this content the server may hold, counted from the upload attempts the run saw: one per History row that ever
-        had it (the same file twice in a call, or the same bytes under two names, are two rows), one more per accepted operation.retry of an
-        operation holding it, and one more per row that was ever unknown (its first attempt may have landed; the custom uploader cannot look
-        a file up before sending it again)."""
-        rows = self.digest_rows.get(digest, set())
-        retries = sum(self.resident.retries.get(operation, 0) for operation in self.digest_operations.get(digest, ()))
-        unknown = sum(1 for row in rows if 'unknown' in self.seen.get(row, ()))
-        return len(rows) + retries + unknown
+        """How many copies of this content the server may hold, counted per History row that ever had it: one for its first send, and one
+        more for every accepted operation.retry of that row's operation that came while the row was not uploaded (a retry may send each of
+        those rows again, so the same file twice in one call, retried once, may leave four copies; it never sends an uploaded row again).
+        An unknown outcome adds nothing by itself: put.gd sends again only on an explicit retry, which is counted."""
+        return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()))
+
+    def row_allowance(self, row):
+        """The copies one History row may account for on the server: its first send plus one per accepted retry of its operation that came
+        while the row was not uploaded. A retry never sends an uploaded row again, so a second copy of one is a duplicate."""
+        return 1 + self.row_retry_credit.get(row, 0)
+
+    def credit_retry(self, operation):
+        """An accepted retry of `operation`: every row of it not uploaded at that moment (by its latest listed status) may be sent again."""
+        for row, owner in list(self.row_operations.items()):
+            if owner == operation and self.row_status.get(row) != 'uploaded':
+                self.row_retry_credit[row] = self.row_retry_credit.get(row, 0) + 1
+
+    def refused(self, row):
+        """A row put.gd settled as not on the server: failed or stored, never unknown, and with no direct address."""
+        return row.get('uploadStatus') in ('stored', 'failed') and 'unknown' not in self.seen.get(row.get('id'), ()) \
+            and not (row.get('receipt') or {}).get('directUrl')
+
+    def copies_explained_without_refused(self, digest, rows):
+        """The copies of this content that rows other than refused ones account for, row by row (rows no longer listed count as not refused)."""
+        listed = {row.get('id'): row for row in rows}
+        return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()) if not (row in listed and self.refused(listed[row])))
+
+    def lost_to_refusal(self, row, stored, rows):
+        """A refused row whose content the server holds more copies of than the other rows of that content account for: a lost upload."""
+        digest = row.get('sha256')
+        return bool(digest) and self.refused(row) and len(stored.get(digest, [])) > self.copies_explained_without_refused(digest, rows)
 
     def verify_rows(self):
         """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
@@ -2280,8 +2541,10 @@ class Fuzzer:
             # one that is still there.
             if status == 'uploaded' and digest and not present.get(digest) and not self.row_removed_by_delete(row) and not removed:
                 raise Finding('recovery', 'History row %s is uploaded but the receiver holds no copy of it' % row.get('id'))
-            # A retry that fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss.
-            if status in ('stored', 'failed') and digest and stored.get(digest) and 'unknown' not in self.seen.get(row.get('id'), ()) and not row.get('receipt', {}).get('directUrl'):
+            # A refused row is not expected on the server: it is a loss only when the server holds more copies than the other rows of the
+            # same content account for, row by row (one row of a duplicate-file batch uploaded, the other refused, is fine). A retry that
+            # fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss, so not refused.
+            if self.lost_to_refusal(row, stored, rows):
                 raise Finding('lost-upload', 'History row %s is %s but the receiver stored its content (%s): the upload is on the server and not in History as uploaded or unknown\nrow: %s\nevents: %s' % (
                     row.get('id'), status, stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'name', 'sha256', 'bytes', 'error', 'uploadJournal')}, default=str),
                     self.receiver.describe(digest)))
@@ -2341,6 +2604,9 @@ class Fuzzer:
     seen_digest = {}
     digest_operations = {}
     digest_rows = {}
+    row_operations = {}
+    row_status = {}        # row id -> its latest listed uploadStatus, kept at uploaded once seen uploaded
+    row_retry_credit = {}  # row id -> accepted retries of its operation that may have sent it again
 
     def finish_deletion(self, rows):
         """The kill came during a deletion: inspect it, retry it, and require every chosen row removed on both sides."""
@@ -2386,15 +2652,21 @@ class Fuzzer:
         if not self.drain(90):
             raise Finding('recovery', 'a retry stays active 90 s')
         stored = self.receiver.stored()
-        statuses = {row.get('sha256'): row.get('uploadStatus') for row in self.rows()}
+        listed = self.rows()
         for digest, files in stored.items():
-            # An unknown outcome may legitimately send a second copy (the custom uploader cannot look a file up);
-            # a file History already showed as uploaded, or never sent, must not.
-            if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) >= 1 and 'unknown' not in self.seen_digest.get(digest, ()):
-                raise Finding('duplicate-upload', 'a retry stored content %s %d times although History had it as %r (%s)\nrows: %s\nevents: %s' % (
-                    digest[:12], len(files), before_status.get(digest), files,
-                    json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'publicationId')} for row in self.rows() if row.get('sha256') == digest]),
+            # Every row is capped at its allowance (allowed_copies): an unknown row retried once may leave two copies, never three.
+            if len(files) > max(1, self.allowed_copies(digest)):
+                raise Finding('duplicate-upload', 'a retry stored content %s %d times, more than the %d sends its rows account for; History had it as %r (%s)\nrows: %s\nevents: %s' % (
+                    digest[:12], len(files), self.allowed_copies(digest), before_status.get(digest), files,
+                    json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'publicationId')} for row in listed if row.get('sha256') == digest]),
                     self.receiver.describe(digest)))
+            # The same refused-row rule as the History check: a row the retry left failed or stored, never unknown, while the server
+            # holds its content beyond what the other rows account for, is an upload History lost.
+            for row in listed:
+                if row.get('sha256') == digest and self.lost_to_refusal(row, stored, listed):
+                    raise Finding('lost-upload', 'after a retry, History row %s is %s but the receiver stored its content (%s)\nrow: %s\nevents: %s' % (
+                        row.get('id'), row.get('uploadStatus'), files, json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'error')}, default=str),
+                        self.receiver.describe(digest)))
             if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) == 0 and before_status.get(digest) in ('uploaded',):
                 raise Finding('lost-upload', 'History had %s as uploaded with nothing on the server; a retry then stored it' % digest[:12])
 
@@ -2415,6 +2687,13 @@ def write_finding(fuzzer, error):
               'rss_samples': fuzzer.rss[-20:]}
     if error.kind in ('hang', 'transport') and fuzzer.resident.alive():
         (run / 'stacks.txt').write_text(fuzzer.resident.stacks())
+    if error.kind in ('hang', 'transport', 'stuck') and fuzzer.resident.alive():
+        # What the resident says about its operations at the moment of the finding.
+        try:
+            (run / 'state.json').write_text(json.dumps({'operation.recent': fuzzer.resident.call('operation.recent', {}, timeout=20, raw=True),
+                                                        'ui.snapshot': fuzzer.resident.call('ui.snapshot', {}, timeout=20, raw=True)}, indent=1)[:200000])
+        except (OSError, ValueError, Finding):
+            pass
     if getattr(fuzzer, 'faults', None):
         record['fault_rules'] = fuzzer.faults.rules
         record['fault_log_tail'] = fuzzer.faults.tail(60)
@@ -2471,6 +2750,17 @@ def cleanup_finding(fuzzer, error, status):
     return status
 
 
+def report_traces(fuzzer):
+    """After cleanup (rr finishes a trace only once its tracees are gone): which traces rr completed, and so can be replayed."""
+    complete, incomplete = fuzzer.resident.traces()
+    print('rr traces: %d complete (replayable) %s; %d incomplete %s' % (len(complete), complete, len(incomplete), incomplete), flush=True)
+    finding = fuzzer.run / 'finding.json'
+    if finding.exists():
+        record = json.loads(finding.read_text())
+        record['rr_traces'] = {'complete': complete, 'incomplete': incomplete}
+        finding.write_text(json.dumps(record, indent=1))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('mode', choices=('run', 'crash', 'faults'))
@@ -2481,6 +2771,9 @@ def main():
     parser.add_argument('--run-dir', help='a new short private folder (default /tmp/at/<mode>-<seed>)')
     parser.add_argument('--fixture-server', help='tests/fixtures/http_uploader_server.py when not run from the repository')
     parser.add_argument('--destination', choices=('http', 's3'), default='http', help='the loopback destination: the custom uploader or put.gd\'s S3 provider')
+    parser.add_argument('--tsan-prefix', help='the folder holding deps-tsan and qtbase-tsan-build (docs/testing/thread-sanitizer.md): run a ThreadSanitizer build')
+    parser.add_argument('--wrap', help='a command prefix for the resident, such as "rr record --chaos" (put an absolute _RR_TRACE_DIR in --env)')
+    parser.add_argument('--env', action='append', default=[], help='NAME=VALUE for the resident (repeatable)')
     parser.add_argument('--verbose', action='store_true')
     faults = parser.add_argument_group('faults mode')
     faults.add_argument('--fault-classes', default='fs,net', help='comma list of fs (the LD_PRELOAD shim), net (the proxy), res (the open-file limit)')
@@ -2496,8 +2789,14 @@ def main():
     # without job control has) is reset at exec, so the resident still gets the default action of the signals a graceful-stop step sends.
     signal.signal(signal.SIGINT, interrupted)
     signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGQUIT, signal.SIG_DFL)  # a background shell job inherits SIGQUIT ignored, and the resident would too
     if not options.run_dir:
         options.run_dir = str(Path.home() / 'work' / 'apptest-runs' / ('%s-%d' % (options.mode, options.seed)))
+    # Absolute before anything uses it: the resident's XDG_RUNTIME_DIR and the socket-length check need the real path, and a recorder
+    # (rr) or a caller with another working folder would resolve a relative one elsewhere.
+    options.run_dir = os.path.abspath(options.run_dir)
+    if options.wrap and options.mode == 'faults':
+        raise SystemExit('--wrap and the faults mode do not combine: the fault shim would load into the recorder')
     run = Path(options.run_dir)
     if run.exists():
         raise SystemExit('%s exists: pick a new --run-dir (a failed run is evidence)' % run)
@@ -2519,6 +2818,8 @@ def main():
                 fuzzer.cleanup()
             except Finding as error:  # cleanup did everything first, then raised what it met: a harness finding of its own
                 status = cleanup_finding(fuzzer, error, status)
+            if fuzzer.resident.wrapped:
+                report_traces(fuzzer)
     if status is not None:
         return status
     if os.environ.get('ACTION_FUZZ_STATS'):

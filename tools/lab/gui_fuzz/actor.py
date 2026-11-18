@@ -16,7 +16,7 @@ HOTKEYS = {'region': 'ctrl+shift+1', 'window': 'ctrl+shift+2', 'desktop': 'ctrl+
            'monitor': 'ctrl+shift+5', 'repeat': 'ctrl+shift+6', 'text': 'ctrl+shift+7', 'scroll': 'ctrl+shift+8',
            'record': 'ctrl+shift+9', 'clipboard': 'ctrl+shift+0'}
 HOTKEY_CHORDS = set(HOTKEYS.values())
-EDGE = 8  # keep clear of Plasma's screen edges and hot corners
+EDGE = 8  # keep clear of the desktop's screen edges and hot corners
 
 
 class Denied(Exception):
@@ -57,29 +57,54 @@ class Actor:
         self.sleep(self.rng.uniform(low, high))
 
     # -- pointer ---------------------------------------------------------------------------------
+    def sent(self):
+        """Note the fence's snapshot number at the moment an input goes out: a window first seen in a later snapshot may be what it opened."""
+        self.world.input_serials.append(getattr(self.world.fence, 'serial', 0))
+        self.ops += 1
+
+    def checked(self, what):
+        """The pointer is where the fence says put.gd owns, read after the last input and 1 px inside the window; else the input is denied."""
+        if self.replaying:
+            return
+        cursor = self.world.fresh_cursor()
+        if cursor is None:
+            self.denied += 1
+            raise Denied('%s: no fresh snapshot of the pointer arrived in time' % what)
+        x, y = cursor
+        if not self.world.inside(x, y, margin=1):
+            self.denied += 1
+            raise Denied('%s with the pointer at %d,%d, which is not inside a put.gd window' % (what, x, y))
+
     def move(self, x, y, drag=False):
-        """Jump the pointer to (x, y) inside the fence, closed loop on KWin's own cursor position."""
+        """Jump the pointer to (x, y) inside the fence, closed loop on the compositor's own cursor position. The pointer's actual position
+        is read again afterwards and fenced: a jump that landed on an edge or on something else leaves nothing pressed."""
         x, y = int(x), int(y)
         if not self.replaying:
-            if not self.world.on_output(x, y) or not (drag or self.world.inside(x, y)):
+            if not self.world.on_output(x, y) or not (drag or self.world.inside(x, y, margin=1)):
                 self.denied += 1
                 raise Denied('pointer target outside the fence: %d,%d' % (x, y))
         self.log.write({'op': 'move', 'x': x, 'y': y, 'drag': drag})
-        self.ops += 1
         for _ in range(8):
             cx, cy = self.world.cursor()
             dx, dy = x - cx, y - cy
             if abs(dx) <= 1 and abs(dy) <= 1:
-                return
+                break
+            self.sent()  # an input is recorded only when device events really go out: a move to where the pointer already is records nothing
             self.dev.rel(dx, dy)
             time.sleep(0.045)
-        cx, cy = self.world.cursor()
-        if not drag and (abs(cx - x) > 3 or abs(cy - y) > 3):
-            self.missed = getattr(self, 'missed', 0) + 1  # KWin clamped the jump (a gap between outputs): never click there
-            raise Denied('pointer stopped at %d,%d, short of %d,%d' % (cx, cy, x, y))
+        else:
+            cx, cy = self.world.cursor()
+            if not drag and (abs(cx - x) > 3 or abs(cy - y) > 3):
+                self.missed = getattr(self, 'missed', 0) + 1  # the compositor clamped the jump (a gap between outputs): never click there
+                raise Denied('pointer stopped at %d,%d, short of %d,%d' % (cx, cy, x, y))
+        if not drag:
+            self.checked('pointer moved')
 
     def button(self, name, pressed):
+        if pressed:
+            self.checked('button press')  # the target is checked again before every press, a multi-click's second and third included
         self.log.write({'op': 'btn', 'b': name, 'down': pressed})
+        self.sent()
         self.dev.button(name, pressed)
 
     def click(self, x, y, button='left', count=1):
@@ -103,23 +128,53 @@ class Actor:
             self.button(button, False)
 
     def wheel(self, notches, horizontal=False):
-        self.log.write({'op': 'wheel', 'n': notches, 'h': horizontal})
-        self.dev.wheel(notches, horizontal)
+        """One wheel event at a time: each is checked against the fence, logged as it is sent, and recorded."""
+        step = 1 if notches > 0 else -1
+        for _ in range(abs(notches)):
+            self.checked('wheel')
+            self.log.write({'op': 'wheel', 'n': step, 'h': horizontal})
+            self.sent()
+            self.dev.wheel(step, horizontal)
 
     # -- keys ------------------------------------------------------------------------------------
+    def key_view(self):
+        """The world as a snapshot taken after this call shows it, when keys may go anywhere at all: None when no such snapshot arrives within
+        0.3 s, or while the GNOME overview is visible (it takes every key, put.gd's own hotkeys included)."""
+        view = self.world.fresh_view()
+        if view is None or (view.snapshot().get('chrome') or {}).get('overview'):
+            return None
+        return view
+
+    @staticmethod
+    def focused_in(view, desk):
+        """Positive evidence from that snapshot: KDE counts the selector while it is up; GNOME and Cinnamon need a put.gd window with the focus, or the
+        selector holding the Shell's modal grab or the X input focus (the fence marks it active)."""
+        if not desk.strict_input and view.overlays():
+            return True
+        active = view.active()
+        return bool(active and view.mine(active))
+
     def mine_focused(self):
-        if self.world.overlays():
-            return True  # the selector is put.gd's, whichever surface KWin calls active
-        active = self.world.active()
-        return bool(active and self.world.mine(active))
+        """Keys go to put.gd only on positive evidence from a snapshot taken after this call, within 0.3 s; with none, the key is denied and the
+        cached active window is never used."""
+        view = self.key_view()
+        return view is not None and self.focused_in(view, self.world.desk)
+
+    def quit_item(self):
+        """Note that the next resident exit is the Quit item the actor activated."""
+        self.log.last_quit_at = time.time()
+        self.log.write({'op': 'note', 'action': 'quit item'})
 
     def chord(self, text, hold=0.03):
-        if not self.replaying and not chord_allowed(text, self.mine_focused()):
-            self.denied += 1
-            raise Denied('key chord not allowed here: ' + text)
+        if not self.replaying:
+            view = self.key_view()  # without a fresh snapshot, or under the overview, not even put.gd's global hotkeys go out
+            if view is None or not chord_allowed(text, self.focused_in(view, self.world.desk)):
+                self.denied += 1
+                raise Denied('key chord not allowed here: ' + text)
         keys = text.split('+')
         ordered = [k for k in keys if k in MODIFIERS] + [k for k in keys if k not in MODIFIERS]
         self.log.write({'op': 'chord', 'k': text})
+        self.sent()
         for key in ordered:
             self.dev.key(key, True)
             time.sleep(0.004)
@@ -137,6 +192,7 @@ class Actor:
             name = {' ': 'space', '-': 'minus', '=': 'equal', ',': 'comma', '.': 'dot', '/': 'slash'}.get(char, lower)
             if name not in KEYS:
                 continue
+            self.sent()
             if char.isupper():
                 self.dev.key('shift', True)
             self.dev.key(name, True)
