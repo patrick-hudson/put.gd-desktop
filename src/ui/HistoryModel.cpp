@@ -122,6 +122,7 @@ QJsonArray rowFiles(const QJsonObject& r){auto files=r["records"].toArray();if(f
 }
 // The resident refuses the link-only retry when any file of the operation still needs
 // its upload, so a row this rule misjudges never uploads anything.
+bool HistoryModel::settling(const QJsonObject& r){return settlingRow(r);}
 bool HistoryModel::finishShareLink(const QJsonObject& r){
  if(active(r)||settlingRow(r)||r["operationId"].toString().isEmpty()||retryUpload(r))return false;
  for(const auto& v:operationFiles(r))if(!terminalUpload(v.toObject()["uploadStatus"].toString()))return false;

@@ -303,7 +303,7 @@ private slots:
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();                         // the first file is uploaded
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();  // the second fails
   // The outcome is stored and visible; the link copy still waits, so the operation holds its slot.
-  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("partial"));QVERIFY(source.pending);
+  PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("partial"));PUTGD_TRY_VERIFY(source.pending);
   provider->failUpload=false;provider->deferUploads=false;
   const auto inspect=[&]{QJsonObject op;bool done=false;operations.inspect(id,[&](Error,QJsonObject r){op=r;done=true;});return putgd::test::waitFor([&]{return done;})?op:QJsonObject{};};
   QVERIFY(inspect()["settling"].toBool());
@@ -329,7 +329,7 @@ private slots:
   QString settlingId;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);settlingId=r["operationId"].toString();});
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();
   PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();provider->failUpload=false;
-  PUTGD_TRY_COMPARE(journal.operation(settlingId).stateName(),QString("partial"));QVERIFY(source.pending);   // settling: its link copy waits
+  PUTGD_TRY_COMPARE(journal.operation(settlingId).stateName(),QString("partial"));PUTGD_TRY_VERIFY(source.pending);   // settling: its link copy waits
   // A second operation fills the last slot.
   source.payload=textPayload();QString runningId;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);runningId=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
   QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);
