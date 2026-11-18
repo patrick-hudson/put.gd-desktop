@@ -24,6 +24,20 @@ private slots:
   QCOMPARE(minisign::verify(tampered,signature,minisign::releaseKey("nightly")).details["check"].toString(),QString("signature"));
   QVERIFY(minisign::releaseKey("beta").isEmpty());
  }
+ // The reference minisign (0.12) verifies a signature file or key file whose lines end in CRLF and reports the comment without the CR;
+ // put.gd refused it with check "trustedComment" because the CR stayed in the comment it checked.
+ void acceptsCrlfLineEndingsLikeTheReference() {
+  MinisignKey key;const QByteArray sums="abc  putgd.AppImage\n";
+  for(const bool prehashed:{true,false}) {
+   auto signature=key.signature(sums,"put.gd v1.0.0 stable",prehashed);auto publicFile=key.publicFile();
+   signature.replace('\n',"\r\n");publicFile.replace('\n',"\r\n");
+   QString trusted;const auto error=minisign::verify(sums,signature,publicFile,&trusted);
+   QVERIFY2(!error,qPrintable(error.message));QCOMPARE(trusted,QString("put.gd v1.0.0 stable"));
+  }
+  // The CR is no part of what was signed: a different comment still fails, with or without it.
+  auto signature=key.signature(sums,"put.gd v1.0.0 stable");signature.replace("stable","STABLE").replace('\n',"\r\n");
+  QCOMPARE(minisign::verify(sums,signature,key.publicFile()).details["check"].toString(),QString("trustedComment"));
+ }
  void checksTheSignatureAndItsTrustedComment() {
   MinisignKey key;const QByteArray sums="abc  putgd.AppImage\n";
   QString trusted;
