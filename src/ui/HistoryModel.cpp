@@ -160,11 +160,6 @@ QString HistoryModel::remoteStateText(const QJsonObject& r){
 }
 bool HistoryModel::localCopyUnavailable(const QJsonObject& r){return (r["local"].toObject()["status"]=="saved"||r["uploadStatus"]=="local_only")&&!QFileInfo(r["local"].toObject()["path"].toString()).isFile();}
 QString HistoryModel::statusText(const QJsonObject& r){
- // The resident reached this outcome but could not save it in History yet (#1579).
- if(r.contains("resultUnsaved")||r["operation"].toObject().contains("resultUnsaved")){
-  auto plain=r;plain.remove("resultUnsaved");if(plain.contains("operation")){auto operation=plain["operation"].toObject();operation.remove("resultUnsaved");plain["operation"]=operation;}
-  return statusText(plain)+" · Not saved in History yet; put.gd keeps trying";
- }
  const auto op=r["operation"].toObject();if(!op["note"].toString().isEmpty()){
   auto plain=r;auto operation=op;operation.remove("note");plain["operation"]=operation;
   if(active(r)||op["state"]=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled"||r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial"||localSaveFailed(r))return statusText(plain)+" · "+op["note"].toString();
@@ -185,6 +180,8 @@ QString HistoryModel::statusText(const QJsonObject& r){
   {const auto items=op["items"].toArray();bool linksOnly=!items.isEmpty();for(const auto& v:items)linksOnly&=terminalUpload(v.toObject()["uploadStatus"].toString());
    if(linksOnly&&QStringList{"queued","preflight","sharing"}.contains(phase))return "Creating share link…";}
   if(phase=="queued")return "Waiting to upload…";
+  // The upload is over; its result waits for the History database to take it (#1579).
+  if(phase=="finishing")return "Finishing · Saving the result to History…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
   if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":op["action"]=="files"?"Copying the files…":"Selecting a capture…";

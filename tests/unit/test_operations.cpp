@@ -352,35 +352,34 @@ private slots:
   QCOMPARE(source.copies,1);QVERIFY(op.items[0].receipt.directUrl.startsWith("https://example.invalid/shared#"));QCOMPARE(source.copied.text,op.items[0].receipt.directUrl);
  }
  // The journal refuses writes while an upload finishes (a full disk, an I/O error): SQLite cannot create its rollback
- // journal where a directory stands. The final result is kept, reported as it really ended, never acted on from its
- // stale "uploading" row, and written once the journal works again (#1579).
- void finalResultTheJournalRefusedIsWrittenOnceItWorksAgain() {
+ // journal where a directory stands. The operation stays active with its slot held, Retry gets the busy answer, and
+ // the same final write lands once the journal works, with the upload as it really ended and no late clipboard copy (#1579).
+ void finalWriteTheJournalRefusedKeepsTheOperationActiveUntilItLands() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
   OperationService ops(d.filePath("data"),settings,registry,source);ops.setResultRetryForTesting(40);PUTGD_TRY_VERIFY(ops.ready());
   const auto fault=ops.databasePath()+"-journal";auto lift=qScopeGuard([&]{QDir().rmdir(fault);});
   QString id;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
-  QString itemId;{HistoryStore journal(ops.databasePath());const auto running=journal.operation(id);QCOMPARE(running.items.size(),1);QCOMPARE(running.items[0].uploadStatus,QString("uploading"));itemId=running.items[0].artifact.id;}
+  QString itemId;{HistoryStore journal(ops.databasePath());const auto running=journal.operation(id);QCOMPARE(running.items[0].uploadStatus,QString("uploading"));itemId=running.items[0].artifact.id;}
   QVERIFY(QDir().mkdir(fault));provider->completions.takeFirst()();
-  PUTGD_TRY_COMPARE(ops.unsavedResultCount(),1);PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(ops.diagnostics()["unsavedResults"].toInt(),1);
-  // What History shows meanwhile is the uploaded file, marked as not saved yet.
-  const auto shown=ops.withUnsavedResult({{"operationId",id},{"itemId",itemId},{"uploadStatus","uploading"}});QCOMPARE(shown["uploadStatus"].toString(),QString("uploaded"));QVERIFY(!shown.contains("id"));QCOMPARE(shown["resultUnsaved"].toObject()["code"].toString(),QString("history_io"));
-  // Nothing acts on the stale row: Retry would upload the file again.
-  Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});PUTGD_TRY_VERIFY(answered);QCOMPARE(retried.code,QString("history_io"));
-  PUTGD_COMPARE_STEADY(ops.unsavedResultCount(),1,300);  // still refused, still kept
+  PUTGD_TRY_COMPARE(ops.diagnostics()["unsavedResults"].toInt(),1);
+  PUTGD_COMPARE_STEADY(ops.diagnostics()["activeOperations"].toInt(),1,300);   // still active: nothing claims the result is saved
+  QCOMPARE(ops.activeObservations().first().toObject()["phase"].toString(),QString("finishing"));
+  Error retried;bool answered=false;ops.retry(id,[&](Error e,QJsonObject){retried=e;answered=true;});PUTGD_TRY_VERIFY(answered);QVERIFY(retried);
   QVERIFY(QDir().rmdir(fault));
-  PUTGD_TRY_COMPARE(ops.unsavedResultCount(),0);
-  HistoryStore journal(ops.databasePath());const auto saved=journal.operation(id);QCOMPARE(saved.stateName(),QString("completed"));QCOMPARE(saved.items[0].uploadStatus,QString("uploaded"));QVERIFY(!saved.items[0].receipt.validate());QCOMPARE(journal.detail(itemId)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(provider->uploads.load(),1);
+  PUTGD_TRY_COMPARE(ops.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(ops.diagnostics()["unsavedResults"].toInt(),0);
+  HistoryStore journal(ops.databasePath());const auto saved=journal.operation(id);QVERIFY(!saved.active());QCOMPARE(saved.items[0].uploadStatus,QString("uploaded"));QVERIFY(!saved.items[0].receipt.validate());
+  QCOMPARE(journal.detail(itemId)["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.copies,0);
  }
- // A resident that stops before the journal takes the result does not wait for it. The next start finds the stale
+ // A resident that stops before the journal takes the result does not wait for it. The next start finds the saved
  // "uploading" row and recovers it as after a crash: interrupted, its upload unknown, never published again (#1579).
- void unsavedResultAtShutdownRecoversAsUnknown() {
+ void unsavedFinalWriteAtShutdownRecoversAsUnknown() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
   const auto root=d.filePath("data");QString id;
   {OperationService ops(root,settings,registry,source);ops.setResultRetryForTesting(40);PUTGD_TRY_VERIFY(ops.ready());
    ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);
-   QVERIFY(QDir().mkdir(ops.databasePath()+"-journal"));provider->completions.takeFirst()();PUTGD_TRY_COMPARE(ops.unsavedResultCount(),1);
+   QVERIFY(QDir().mkdir(ops.databasePath()+"-journal"));provider->completions.takeFirst()();PUTGD_TRY_COMPARE(ops.diagnostics()["unsavedResults"].toInt(),1);
    QElapsedTimer stopping;stopping.start();ops.shutdown();QVERIFY(stopping.elapsed()<5000);}
   QVERIFY(QDir().rmdir(root+"/history.sqlite-journal"));
   OperationService restarted(root,settings,registry,source);PUTGD_TRY_VERIFY(restarted.ready());

@@ -94,11 +94,7 @@ public:
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
- // A History record as the user should see it: an operation whose final result is not yet
- // in the journal (#1579) shows the outcome it really reached, marked as not saved yet.
- QJsonObject withUnsavedResult(QJsonObject record) const;
- int unsavedResultCount() const {return int(unsavedResults_.size());}
- // Tests shorten the pause before an unsaved result is written again.
+ // Tests shorten the pause before a failed final write is tried again.
  void setResultRetryForTesting(int ms) {resultRetryMs_=ms;}
  bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
@@ -228,17 +224,13 @@ private:
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
- // An operation's final result that the journal could not take (a full disk, an I/O error).
- // The work is over, so its slot is free, but nothing may act on its stale journal row:
- // the result is written again with a growing pause (2 s doubling to 30 s) until it lands,
- // and reported meanwhile as it really ended. Shutdown drops it; startup recovery then
- // turns the stale row into an interrupted outcome, as after a crash (#1579).
- struct UnsavedResult {Operation op;Error error;int attempts=0;};
- QHash<QString,UnsavedResult> unsavedResults_;
+ // An operation whose final journal write failed (a full disk, an I/O error) stays active, its slot held exactly as
+ // while it ran, and the same final write is tried again after 2 s, doubling to 30 s, until it lands (#1579).
+ // Nothing reports a result the journal does not hold. Shutdown drops the retry; recovery then sees the saved row.
+ QSet<QString> unsavedResults_;
  int resultRetryMs_=2000;
- void keepUnsavedResult(const Operation&,const Error&);
- void saveUnsavedResult(const QString& id);
- Error unsavedResultError(const QString& id) const;
+ void commitFinal(Operation op,JsonReply reply,int attempt);
+ void finalCommitted(const QString& id,JsonReply reply,Error e,QJsonObject document,bool late);
  void enqueue(Job);
  void pump();
  bool heapReclamationIdle() const;

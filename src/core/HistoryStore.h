@@ -12,7 +12,8 @@ struct HistoryPage { QJsonArray records; qint64 total=0; Error error; QJsonObjec
 // Instances belong to the creating worker thread; never share a Qt SQL connection.
 class HistoryStore {
 public:
- explicit HistoryStore(QString path);
+ // busyTimeoutMs bounds how long a call waits for another connection's lock.
+ explicit HistoryStore(QString path,int busyTimeoutMs=10000);
  ~HistoryStore();
  HistoryStore(const HistoryStore&)=delete;
  Error error() const {return error_;}
