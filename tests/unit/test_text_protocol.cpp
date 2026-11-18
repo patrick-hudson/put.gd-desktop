@@ -2,6 +2,10 @@
 // screen or a caller supplies and what put.gd copies, shows or passes on.
 // Links Qt Core and the library only, as the putgd-ocr helper does.
 #include "core/TextJobProtocol.h"
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QFile>
 #include <QtTest>
 
 using namespace putgd;
@@ -45,47 +49,42 @@ private slots:
   QVERIFY(validLanguages({"eng","deu","fra"}));
   QVERIFY(!validLanguages({}));QVERIFY(!validLanguages({"eng","deu","fra","spa"}));QVERIFY(!validLanguages({"eng","eng"}));QVERIFY(!validLanguages({"eng","../deu"}));
  }
- // #1618: Quick redact's list entries and patterns, as Settings and redactText
- // check them. A message never repeats the value.
- void redactTermsAndPatternsAreChecked() {
+ // #1618, round 2 of #1631 (U8): the shared table the MCP server reads too,
+ // one row per rule, with ordinary patterns that must stay allowed.
+ void redactValidationTable_data() {
+  QTest::addColumn<bool>("pattern");QTest::addColumn<QString>("value");QTest::addColumn<QString>("error");QTest::addColumn<QString>("prefix");
+  QFile file(QStringLiteral(PUTGD_SOURCE_DIR "/tests/fixtures/text/redact-validation.json"));
+  QVERIFY(file.open(QIODevice::ReadOnly));
+  const auto table=QJsonDocument::fromJson(file.readAll()).object();
+  int index=0;
+  for(const auto* list:{"terms","patterns"})for(const auto& value:table[list].toArray()){
+   const auto row=value.toObject();
+   QTest::addRow("%s %d %s",list,index++,qPrintable(row["rule"].toString()))<<(QString(list)=="patterns")<<row["value"].toString()<<row["error"].toString()<<row["errorPrefix"].toString();
+  }
+  QVERIFY(index>50);
+ }
+ void redactValidationTable() {
+  QFETCH(bool,pattern);QFETCH(QString,value);QFETCH(QString,error);QFETCH(QString,prefix);
+  const auto got=pattern?redactPatternError(value):redactTermError(value);
+  if(!prefix.isEmpty())QVERIFY2(got.startsWith(prefix),qPrintable(got));
+  else QCOMPARE(got,error);
+ }
+ // #1618: what the table cannot show. A message never repeats the value, and
+ // a compile error gives Qt's message with the offset in the pattern.
+ void redactErrorsNeverRepeatTheValue() {
   const QString canary=QStringLiteral("zq1618canary");
-  QCOMPARE(redactTermError(canary),QString());QCOMPARE(redactTermError(" Patrick Hudson "),QString());QCOMPARE(redactTermError("x+y?"),QString());
-  QCOMPARE(redactTermError(""),QString("An entry is empty"));QCOMPARE(redactTermError("  \t"),QString("An entry is empty"));
-  QCOMPARE(redactTermError(QString(maxRedactTermLength,'a')),QString());
-  for(const auto& bad:{canary+"\n"+canary+"x",canary+"\r"+canary,canary+QChar(0x2028)+canary,canary+QString(maxRedactTermLength,'a')}){
+  for(const auto& bad:{canary+"\n"+canary+"x",canary+"\r"+canary,canary+QChar(0x2028)+canary,canary+QString(maxRedactTermLength,'a'),QStringLiteral("..")}){
    const auto error=redactTermError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
   }
-  QCOMPARE(redactTermError(canary+"\n"+canary+"x"),QString("An entry has a line break"));
-  QCOMPARE(redactTermError(QString(maxRedactTermLength+1,'a')),QString("An entry is longer than 100 characters"));
-  for(const auto* valid:{R"(\bJIRA-\d+\b)",R"((?i)\b[a-z0-9-]+\.corp\.example\b)",".+",R"(\p{Lu}{3}-\d{4})","(a+)+$"})QVERIFY2(redactPatternError(valid).isEmpty(),valid);
-  QCOMPARE(redactPatternError(""),QString("A pattern is empty"));
-  QCOMPARE(redactPatternError(QString(maxRedactPatternLength,'a')),QString());
-  QCOMPARE(redactPatternError(QString(maxRedactPatternLength+1,'a')),QString("A pattern is longer than 500 characters"));
-  for(const auto* empty:{"a*","^","x?","(?:)","|x"})QCOMPARE(redactPatternError(empty),QString("This pattern matches empty text"));
-  // Qt's message for the error and its offset, never the pattern.
+  for(const auto& bad:{canary+"(abc",canary+"(a+)+",canary+"\\C",canary+"(\\w)\\1",canary+"("}){
+   const auto error=redactPatternError(bad);QVERIFY(!error.isEmpty());QVERIFY2(!error.contains(canary),qPrintable(error));
+  }
   const auto unclosed=redactPatternError(canary+"(abc");
   QVERIFY2(unclosed.startsWith("This pattern does not compile: ")&&unclosed.endsWith(" at offset 16"),qPrintable(unclosed));
-  QVERIFY(!unclosed.contains(canary));QVERIFY(!unclosed.contains("abc"));
-  QVERIFY(redactPatternError("[z-a]").startsWith("This pattern does not compile: "));
-  QCOMPARE(redactPatternError(canary+"\n"),QString("A pattern has a line break"));
-  // Round 1 (#1631). Lengths count code points, as the schemas do: 100
-  // characters outside the BMP are 200 UTF-16 units and still fit.
+  // 500 characters outside the BMP are 1000 UTF-16 units and still fit.
   const QString astral=QString::fromUcs4(U"\U0001D538");
-  QCOMPARE(redactTermError(astral.repeated(maxRedactTermLength)),QString());
-  QCOMPARE(redactTermError(astral.repeated(maxRedactTermLength+1)),QString("An entry is longer than 100 characters"));
   QCOMPARE(redactPatternError(astral.repeated(maxRedactPatternLength)),QString());
   QCOMPARE(redactPatternError(astral.repeated(maxRedactPatternLength+1)),QString("A pattern is longer than 500 characters"));
-  // The same four line breaks everywhere; other controls are not line breaks.
-  for(const auto brk:{QChar('\n'),QChar('\r'),QChar(0x2028),QChar(0x2029)}){
-   QCOMPARE(redactTermError(canary+brk+canary),QString("An entry has a line break"));
-   QCOMPARE(redactPatternError(canary+brk+canary),QString("A pattern has a line break"));
-  }
-  QCOMPARE(redactTermError(canary+QChar(0x85)+canary),QString());
-  // M1: a pattern's own start-of-pattern items could lift the limits.
-  for(const auto* own:{"(*LIMIT_MATCH=99999999)(a+)+$","(*LIMIT_DEPTH=99999999)x","(*LIMIT_HEAP=999999)x","(*NO_JIT)x","(*UCP)\\w+"})QCOMPARE(redactPatternError(own),QString("Patterns can't set their own matching limits"));
-  // M4: an entry needs a letter or digit; punctuation around one is fine.
-  for(const auto* bare:{".","--","*?","..."})QCOMPARE(redactTermError(bare),QString("An entry needs a letter or digit"));
-  for(const auto* edged:{".env","env.","-x-","#1"})QCOMPARE(redactTermError(edged),QString());
  }
 };
 QTEST_APPLESS_MAIN(TextProtocolTest)

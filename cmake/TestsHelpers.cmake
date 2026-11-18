@@ -28,6 +28,8 @@
       # against test_text_job_fixture, the fake putgd-ocr helper every text test uses.
       add_executable(test_text_protocol tests/unit/test_text_protocol.cpp)
       target_link_libraries(test_text_protocol PRIVATE putgd_text_protocol Qt6::Test)
+      # The Quick redact validation table it shares with the MCP server (#1618).
+      target_compile_definitions(test_text_protocol PRIVATE "PUTGD_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
       add_test(NAME text_protocol_contract COMMAND test_text_protocol)
       set_tests_properties(text_protocol_contract PROPERTIES TIMEOUT 30)
       add_executable(test_text_job_fixture tests/fixtures/text_job_fixture.cpp)

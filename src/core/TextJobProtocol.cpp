@@ -7,6 +7,8 @@
 #include <QRegularExpression>
 #include <QtEndian>
 #include <algorithm>
+#include <optional>
+#include <functional>
 #include <cstring>
 
 namespace putgd {
@@ -92,16 +94,284 @@ constexpr Tongue tongues[]={{"af","afr"},{"ar","ara"},{"az","aze"},{"be","bel"},
 QStringList redactCategories(){return {"email","phone","ip","card","key","name","list"};}
 // #1618: Quick redact terms and patterns. A message never repeats the value,
 // since a configuration error may be logged and these are the user's own words.
-// Lengths count code points, and the line breaks are \n, \r, U+2028 and
-// U+2029, as in the schemas and the MCP server.
+// The rules, in order, are the same in the editor and the MCP server (the
+// shared table: tests/fixtures/text/redact-validation.json). Lengths count
+// code points, and the line breaks are \n, \r, U+2028 and U+2029.
 namespace {
 bool lineBreak(QChar c) {return c=='\n'||c=='\r'||c==QChar(0x2028)||c==QChar(0x2029);}
 qsizetype codePoints(const QString& text) {return QStringView(text).toUcs4().size();}
+// The shape check: patterns that can run for a very long time, refused when
+// saved. It reads a pattern that already compiled, so it never decides what is
+// valid; where it cannot tell what an atom matches it assumes everything, which
+// only ever refuses more.
+//
+// Refused: a back reference, a recursion or a subroutine call; and a group
+// repeated without a bound ( *, +, {n,} ) that itself holds a repeat without a
+// bound, the shape of (a+)+ and (\w+\s?)*. Allowed: such a group whose every
+// alternative starts or ends with a required character that none of the inner
+// repeats can match, since each pass then has one place to end: (?:\.\w+)+,
+// (?:[a-z0-9-]+\.)+, (?:\w+\s)+. Possessive repeats and atomic groups never
+// give back, so they do not count.
+class Shape {
+public:
+ explicit Shape(const QString& pattern):p_(pattern.toUcs4()) {
+  for(qsizetype i=0;i+2<p_.size();++i)if(p_[i]=='('&&p_[i+1]=='?'){
+   // Inline options anywhere: case folding and extended mode, taken as global
+   // (case-insensitive compares more, so it can only refuse more).
+   qsizetype k=i+2;bool off=false;
+   for(;k<p_.size()&&(QChar::isLetter(char32_t(p_[k]))||p_[k]=='-'||p_[k]=='^');++k){if(p_[k]=='-')off=true;if(!off&&p_[k]=='i')caseless_=true;if(!off&&p_[k]=='x')extended_=true;}
+  }
+  body();
+ }
+ bool backReference() const {return back_;}
+ bool nestedRepeat() const {return nested_;}
+private:
+ using Test=std::function<bool(char32_t)>;
+ struct Edge {bool set=false;Test test;};
+ struct Body {bool unbounded=false;QList<Test> repeated,atoms;QList<std::pair<Edge,Edge>> alternatives;};
+ struct Item {enum {Atom,Group,Assert} kind=Assert;Test test;Body inner;bool atomic=false;};
+ struct Quantifier {bool present=false;qsizetype min=1,max=1;bool possessive=false;bool unbounded() const {return present&&max<0&&!possessive;}};
+ QList<uint> p_;qsizetype i_=0;bool caseless_=false,extended_=false,back_=false,nested_=false;
+ static Test all() {return [](char32_t){return true;};}
+ Test literal(char32_t c) const {
+  if(!caseless_)return [c](char32_t x){return x==c;};
+  return [c](char32_t x){return x==c||QChar::toCaseFolded(x)==QChar::toCaseFolded(c);};
+ }
+ bool at(char32_t c,qsizetype k=0) const {return i_+k<p_.size()&&p_[i_+k]==c;}
+ void skipSpace() {
+  if(!extended_)return;
+  while(i_<p_.size()){
+   if(QChar::isSpace(char32_t(p_[i_]))){++i_;continue;}
+   if(p_[i_]=='#'){i_=p_.size();return;} // patterns have no line breaks
+   return;
+  }
+ }
+ // What an escape outside a class matches, or none for an assertion.
+ std::optional<Test> escape() {
+  const char32_t c=char32_t(p_[i_++]);
+  switch(c){
+  case 'd':return Test([](char32_t x){return QChar::isDigit(x);});
+  case 'D':return Test([](char32_t x){return !QChar::isDigit(x);});
+  case 's':return Test([](char32_t x){return QChar::isSpace(x);});
+  case 'S':return Test([](char32_t x){return !QChar::isSpace(x);});
+  case 'w':return Test([](char32_t x){return QChar::isLetterOrNumber(x)||QChar::isMark(x)||x=='_';});
+  case 'W':return Test([](char32_t x){return !(QChar::isLetterOrNumber(x)||QChar::isMark(x)||x=='_');});
+  case 't':return literal('\t');case 'n':return literal('\n');case 'r':return literal('\r');case 'f':return literal('\f');case 'e':return literal(0x1b);case 'a':return literal(0x07);
+  case 'b':case 'B':case 'A':case 'z':case 'Z':case 'G':case 'K':return std::nullopt;
+  case 'k':back_=true;skipName();return all();
+  case 'g':back_=true;skipName();return all();
+  case 'x':{
+   QString hex;
+   if(at('{')){++i_;while(i_<p_.size()&&!at('}'))hex+=QChar(char16_t(p_[i_++]));++i_;}
+   else for(int n=0;n<2&&i_<p_.size()&&QStringLiteral("0123456789abcdefABCDEF").contains(QChar(char16_t(p_[i_])));++n)hex+=QChar(char16_t(p_[i_++]));
+   bool ok=false;const auto v=hex.toUInt(&ok,16);return ok?literal(char32_t(v)):all();
+  }
+  case 'p':case 'P':if(at('{')){while(i_<p_.size()&&!at('}'))++i_;++i_;}else ++i_;return all();
+  case 'c':++i_;return all();
+  case 'o':if(at('{')){while(i_<p_.size()&&!at('}'))++i_;++i_;}return all();
+  case 'Q':return std::nullopt; // handled by the caller
+  default:
+   if(c>='1'&&c<='9'){back_=true;while(i_<p_.size()&&QChar::isDigit(char32_t(p_[i_])))++i_;return all();}
+   if(c=='0'){while(i_<p_.size()&&p_[i_]>='0'&&p_[i_]<='7')++i_;return all();}
+   if(QChar::isLetterOrNumber(c))return all(); // \h, \v, \R, \N, \X and the rest
+   return literal(c);
+  }
+ }
+ void skipName() {
+  if(at('{')||at('<')||at('\'')){const char32_t close=at('{')?'}':at('<')?'>':'\'';++i_;while(i_<p_.size()&&!at(close))++i_;++i_;return;}
+  if(at('-')||at('+'))++i_;
+  while(i_<p_.size()&&QChar::isDigit(char32_t(p_[i_])))++i_;
+ }
+ // A character class, as a test; unknown parts match everything.
+ Test bracket() {
+  bool negated=false,unknown=false;QList<Test> parts;
+  if(at('^')){negated=true;++i_;}
+  bool first=true;
+  while(i_<p_.size()&&(first||!at(']'))){
+   first=false;
+   if(at('[')&&at(':',1)){while(i_<p_.size()&&!(at(':')&&at(']',1)))++i_;i_+=2;unknown=true;continue;}
+   char32_t low=0;bool single=false;
+   if(at('\\')){
+    ++i_;const char32_t c=char32_t(p_[i_]);
+    if(c=='Q'||c=='E'){++i_;continue;}
+    if(QChar::isLetterOrNumber(c)){
+     // \d, \s, \w and their opposites, and \t, \n, \x41 and the like, are
+     // known; the rest, or one that starts a range, matches everything.
+     const bool known=QStringLiteral("dDsSwWtnrfeax").contains(QChar(char16_t(c)));
+     const auto t=escape();if(t)parts.append(*t);
+     if(!known||!t||(at('-')&&!at(']',1)))unknown=true;
+     continue;
+    }
+    low=c;++i_;single=true;
+   }else{low=char32_t(p_[i_++]);single=true;}
+   if(single&&at('-')&&i_+1<p_.size()&&!at(']',1)){
+    ++i_;char32_t high=char32_t(p_[i_]);
+    if(high=='\\'){++i_;high=char32_t(p_[i_]);if(QChar::isLetterOrNumber(high)){unknown=true;++i_;continue;}}
+    ++i_;
+    const bool fold=caseless_;
+    parts.append([low,high,fold](char32_t x){if(x>=low&&x<=high)return true;if(!fold)return false;const auto u=QChar::toUpper(x),l=QChar::toLower(x);return (u>=low&&u<=high)||(l>=low&&l<=high);});
+   }else parts.append(literal(low));
+  }
+  ++i_;
+  if(unknown)return all();
+  Test any=[parts](char32_t x){for(const auto& t:parts)if(t(x))return true;return false;};
+  if(negated)return [any](char32_t x){return !any(x);};
+  return any;
+ }
+ Quantifier quantifier() {
+  skipSpace();Quantifier q;
+  if(at('*')){q={true,0,-1};++i_;}
+  else if(at('+')){q={true,1,-1};++i_;}
+  else if(at('?')){q={true,0,1};++i_;}
+  else if(at('{')){
+   qsizetype k=i_+1;QString min,max;bool comma=false;
+   while(k<p_.size()&&(QChar::isDigit(char32_t(p_[k]))||p_[k]==','||p_[k]==' ')){if(p_[k]==',')comma=true;else if(p_[k]!=' ')(comma?max:min)+=QChar(char16_t(p_[k]));++k;}
+   if(k<p_.size()&&p_[k]=='}'&&(!min.isEmpty()||!max.isEmpty())){
+    q.present=true;q.min=min.isEmpty()?0:min.toLongLong();q.max=comma?(max.isEmpty()?-1:max.toLongLong()):q.min;i_=k+1;
+   }
+  }
+  if(q.present){if(at('+')){q.possessive=true;++i_;}else if(at('?'))++i_;}
+  return q;
+ }
+ // One item: an atom, a group or an assertion. False at the end of a sequence.
+ bool item(Item& out) {
+  skipSpace();
+  if(i_>=p_.size()||at('|')||at(')'))return false;
+  const char32_t c=char32_t(p_[i_]);
+  out=Item{};
+  if(c=='('){++i_;group(out);return true;}
+  if(c=='['){++i_;out.kind=Item::Atom;out.test=bracket();return true;}
+  if(c=='^'||c=='$'){++i_;return true;}
+  if(c=='.'){++i_;out.kind=Item::Atom;out.test=all();return true;}
+  if(c=='\\'){
+   ++i_;
+   if(at('Q')){
+    // \Q...\E: each character a literal; the last one is the item.
+    // \Q...\E: literal characters, as a group of one alternative from the
+    // first to the last.
+    ++i_;qsizetype end=i_;while(end<p_.size()&&!(p_[end]=='\\'&&end+1<p_.size()&&p_[end+1]=='E'))++end;
+    if(end>i_){
+     out.kind=Item::Group;
+     for(qsizetype k=i_;k<end;++k)out.inner.atoms.append(literal(char32_t(p_[k])));
+     out.inner.alternatives.append({Edge{true,literal(char32_t(p_[i_]))},Edge{true,literal(char32_t(p_[end-1]))}});
+    }
+    i_=qMin(p_.size(),end+2);return true;
+   }
+   if(at('E')){++i_;return true;}
+   const auto t=escape();
+   if(t){out.kind=Item::Atom;out.test=*t;}
+   return true;
+  }
+  ++i_;out.kind=Item::Atom;out.test=literal(c);return true;
+ }
+ void group(Item& out) {
+  out.kind=Item::Group;
+  bool lookaround=false;
+  if(at('*')){
+   // (*VERB) or (*name: ...) groups.
+   ++i_;QString name;while(i_<p_.size()&&(QChar::isLetter(char32_t(p_[i_]))||p_[i_]=='_'))name+=QChar(char16_t(p_[i_++]));
+   static const QStringList groups{"pla","plb","nla","nlb","napla","naplb","positive_lookahead","negative_lookahead","positive_lookbehind","negative_lookbehind","non_atomic_positive_lookahead","non_atomic_positive_lookbehind","atomic","sr","asr","script_run","atomic_script_run"};
+   if(at(':')&&groups.contains(name)){++i_;out.atomic=name.contains("atomic")||name=="asr";lookaround=name.contains('l')&&name!="atomic";}
+   else{while(i_<p_.size()&&!at(')'))++i_;++i_;out.kind=Item::Assert;return;}
+  }else if(at('?')){
+   ++i_;
+   if(at('#')){while(i_<p_.size()&&!at(')'))++i_;++i_;out.kind=Item::Assert;return;}
+   if(at('R')||(i_<p_.size()&&QChar::isDigit(char32_t(p_[i_])))||at('&')||((at('+')||at('-'))&&i_+1<p_.size()&&QChar::isDigit(char32_t(p_[i_+1])))){back_=true;while(i_<p_.size()&&!at(')'))++i_;++i_;out.kind=Item::Atom;out.test=all();return;}
+   if(at('P')&&(at('=',1)||at('>',1))){back_=true;while(i_<p_.size()&&!at(')'))++i_;++i_;out.kind=Item::Atom;out.test=all();return;}
+   if(at('P')&&at('<',1)){i_+=2;while(i_<p_.size()&&!at('>'))++i_;++i_;}
+   else if(at('<')&&(at('=',1)||at('!',1))){i_+=2;lookaround=true;}
+   else if(at('<')||at('\'')){const char32_t close=at('<')?'>':'\'';++i_;while(i_<p_.size()&&!at(close))++i_;++i_;}
+   else if(at('=')||at('!')){++i_;lookaround=true;}
+   else if(at('>')){++i_;out.atomic=true;}
+   else if(at(':')||at('|')){++i_;}
+   else if(at('(')){
+    // A condition: skip it (it only tests, it repeats nothing).
+    ++i_;int depth=1;while(i_<p_.size()&&depth){if(at('('))++depth;else if(at(')'))--depth;++i_;}
+   }else{
+    // Options: (?i) applies to what follows, (?i:...) is a group.
+    while(i_<p_.size()&&!at(')')&&!at(':'))++i_;
+    if(at(')')){++i_;out.kind=Item::Assert;return;}
+    ++i_;
+   }
+  }
+  out.inner=body();
+  if(at(')'))++i_;
+  if(lookaround){out.kind=Item::Assert;}
+ }
+ // A sequence of alternatives up to the closing parenthesis.
+ Body body() {
+  Body b;
+  while(true){
+   Edge first,last;bool optionalBefore=false;bool seenRequired=false;
+   Item it;
+   while(item(it)){
+    const auto q=quantifier();
+    const bool required=!q.present||q.min>=1;
+    Test edge;bool hasEdge=false;
+    if(it.kind==Item::Atom){
+     b.atoms.append(it.test);
+     if(q.unbounded()){b.unbounded=true;b.repeated.append(it.test);}
+     edge=it.test;hasEdge=true;
+    }else if(it.kind==Item::Group){
+     const auto& in=it.inner;
+     if(!it.atomic){
+      if(q.unbounded()){
+       if(in.unbounded&&!passesEnd(in))nested_=true;
+       b.unbounded=true;b.repeated+=in.atoms;
+      }else{b.unbounded=b.unbounded||in.unbounded;b.repeated+=in.repeated;}
+     }
+     b.atoms+=in.atoms;
+     // A group's edges are its alternatives' edges together, where every
+     // alternative has one.
+     bool firsts=!in.alternatives.isEmpty(),lasts=firsts;
+     QList<Test> f,l;for(const auto& [a,z]:in.alternatives){firsts=firsts&&a.set;lasts=lasts&&z.set;if(a.set)f.append(a.test);if(z.set)l.append(z.test);}
+     const auto any=[](QList<Test> tests){return Test([tests](char32_t x){for(const auto& t:tests)if(t(x))return true;return false;});};
+     const Edge start=firsts?Edge{true,any(f)}:Edge{},end=lasts?Edge{true,any(l)}:Edge{};
+     if(required){if(!seenRequired&&!optionalBefore)first=start;last=end;seenRequired=true;}
+     else{if(!seenRequired)optionalBefore=true;last={};}
+     continue;
+    }else continue; // assertions are transparent
+    if(hasEdge&&required){if(!seenRequired&&!optionalBefore)first={true,edge};last={true,edge};seenRequired=true;}
+    else{if(!seenRequired)optionalBefore=true;last={};}
+   }
+   b.alternatives.append({first,last});
+   if(at('|')){++i_;continue;}
+   break;
+  }
+  return b;
+ }
+ // Whether every pass of a group has one place to end: each alternative starts
+ // or ends with a required character none of the inner repeats can match.
+ static bool disjoint(const Test& edge,const QList<Test>& repeated) {
+  static const QList<char32_t> probes=[]{
+   QList<char32_t> list{0x09,0x0a,0x0d,0x100,0x3b1,0x391,0x430,0x410,0x5d0,0x627,0x915,0x93f,0x4e00,0x3042,0xac00,0x2013,0x2014,0x2019,0x201c,0x20ac,0x1f600,0x1d538};
+   for(char32_t c=0x20;c<0x7f;++c)list.append(c);
+   for(char32_t c=0xa0;c<=0xff;++c)list.append(c);
+   return list;}();
+  for(const auto c:probes)if(edge(c))for(const auto& t:repeated)if(t(c))return false;
+  return true;
+ }
+ static bool passesEnd(const Body& in) {
+  for(const auto& [first,last]:in.alternatives)
+   if(!((first.set&&disjoint(first.test,in.repeated))||(last.set&&disjoint(last.test,in.repeated))))return false;
+  return true;
+ }
+};
+// \C matches one UTF-16 unit, half a character outside the BMP.
+bool halfCharacter(const QString& pattern) {
+ for(qsizetype i=0;i+1<pattern.size();++i){
+  if(pattern.at(i)!='\\')continue;
+  if(pattern.at(i+1)=='Q'){const auto end=pattern.indexOf(QStringLiteral("\\E"),i+2);if(end<0)return false;i=end+1;continue;}
+  if(pattern.at(i+1)=='C')return true;
+  ++i;
+ }
+ return false;
+}
 }
 QString redactTermError(const QString& term){
+ if(std::any_of(term.cbegin(),term.cend(),lineBreak))return QStringLiteral("An entry has a line break");
  const auto t=term.trimmed();
  if(t.isEmpty())return QStringLiteral("An entry is empty");
- if(std::any_of(t.cbegin(),t.cend(),lineBreak))return QStringLiteral("An entry has a line break");
  if(codePoints(t)>maxRedactTermLength)return QStringLiteral("An entry is longer than %1 characters").arg(maxRedactTermLength);
  // Matching splits an entry at its letters and digits; punctuation alone
  // would match nothing reliably and everything nearby.
@@ -110,18 +380,23 @@ QString redactTermError(const QString& term){
  return {};
 }
 QString redactPatternError(const QString& pattern){
- if(pattern.trimmed().isEmpty())return QStringLiteral("A pattern is empty");
  if(std::any_of(pattern.cbegin(),pattern.cend(),lineBreak))return QStringLiteral("A pattern has a line break");
- if(codePoints(pattern)>maxRedactPatternLength)return QStringLiteral("A pattern is longer than %1 characters").arg(maxRedactPatternLength);
+ const auto t=pattern.trimmed();
+ if(t.isEmpty())return QStringLiteral("A pattern is empty");
+ if(codePoints(t)>maxRedactPatternLength)return QStringLiteral("A pattern is longer than %1 characters").arg(maxRedactPatternLength);
  // Quick redact puts its own start-of-pattern items first (match and depth
- // limits, no empty matches); one of the user's own could override them.
- if(pattern.startsWith(QStringLiteral("(*")))return QStringLiteral("Patterns can't set their own matching limits");
+ // limits); one of the user's own could override them.
+ if(t.startsWith(QStringLiteral("(*")))return QStringLiteral("Patterns can't set their own matching limits");
+ if(halfCharacter(pattern))return QStringLiteral("Patterns can't match half a character");
  // Compiled as Quick redact runs it (src/editor/QuickRedact.cpp). PCRE2's
  // messages describe the syntax, not the text, and the offset counts from the
  // start of the pattern.
  const QRegularExpression compiled(pattern,QRegularExpression::UseUnicodePropertiesOption);
  if(!compiled.isValid())return QStringLiteral("This pattern does not compile: %1 at offset %2").arg(compiled.errorString()).arg(compiled.patternErrorOffset());
  if(compiled.match(QString()).hasMatch())return QStringLiteral("This pattern matches empty text");
+ const Shape shape(pattern);
+ if(shape.backReference())return QStringLiteral("This pattern refers back to an earlier group, which can run for a very long time. Simplify it.");
+ if(shape.nestedRepeat())return QStringLiteral("This pattern can run for a very long time (a repeated group inside a repeat). Simplify it.");
  return {};
 }
 QStringList childErrorCodes(){return {"input_excessive","text_job_io","language_unavailable","engine_unavailable","helper_sandbox_unavailable"};}
