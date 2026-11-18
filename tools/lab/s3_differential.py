@@ -143,13 +143,19 @@ class Target:
             status = self.remove(key)
             if status not in (200, 204):
                 failed.append(('delete', key[-60:], status))
-        for key, upload in self.uploads(prefix) or []:
+        listed = self.uploads(prefix)
+        if listed is None:
+            failed.append(('uploads-unlisted', prefix[-40:], None))
+        for key, upload in listed or []:
             status = self.abort(key, upload)
             # 404 is an upload that is already gone (NoSuchUpload); any other answer means it may still be there.
             if status not in (200, 204, 404):
                 failed.append(('abort', key[-60:], status))
         remaining_keys = self.raw_keys(prefix)
-        remaining_uploads = self.uploads(prefix) or []
+        remaining_uploads = self.uploads(prefix)
+        if remaining_uploads is None:
+            failed.append(('uploads-unlisted-after-cleanup', prefix[-40:], None))
+            remaining_uploads = []
         if remaining_keys:
             failed.append(('still-stored', [k[-60:] for k, _s, _e in remaining_keys[:3]], len(remaining_keys)))
         if remaining_uploads:
@@ -679,7 +685,7 @@ def prefix_shapes(lab, rec):
         for item in summary['items']:
             if item['uploadStatus'] == 'uploaded':
                 heads = rec.data.setdefault('receipt_key_head', {})
-                heads[shape] = {'receiptKey': relative(rec.prefix, item['key']), 'head': lab.target.head(item['key']).status}
+                heads['^/<run>/ls/' if shape.startswith('^') else shape] = {'receiptKey': relative(rec.prefix, item['key']), 'head': lab.target.head(item['key']).status}
     check_integrity(rec, {}, lab)
 
 
@@ -1162,9 +1168,11 @@ def run_server(options, name, run_id):
     selected = [c for c in (options.cases.split(',') if options.cases else CASES) if c in CASES]
     results = []
     clean = True
+    preflight_ok = False
     try:
         # A cloud bucket that keeps versions would keep what cleanup deletes: refuse before the first byte is written.
         target.require_unversioned()
+        preflight_ok = True
         lab.start()
         for case_name in selected:
             print('[%s] %s ...' % (name, case_name), flush=True)
@@ -1179,7 +1187,9 @@ def run_server(options, name, run_id):
             results.append(result)
     finally:
         lab.stop()
-        clean = final_leftover_check(target, lab, name, run_id) and clean
+        # A refused bucket was never written to by this run, so nothing of it is deleted (a reused --run-id could otherwise
+        # delete older objects, and a versioned bucket would gain delete markers).
+        clean = (final_leftover_check(target, lab, name, run_id) and clean) if preflight_ok else False
         target.close()
     return results, clean
 
@@ -1200,7 +1210,8 @@ def final_leftover_check(target, lab, name, run_id):
                 print('[%s] LEFTOVERS removed (exact keys and upload IDs of this run)' % name, flush=True)
             except Exception as error:  # noqa: BLE001
                 print('[%s] LEFTOVERS NOT REMOVED: %r' % (name, error), flush=True)
-        return not found
+        # An upload listing the server would not give is unverified, never clean.
+        return not found and uploads is not None
     except Exception as error:  # noqa: BLE001
         print('[%s] leftover check failed: %r' % (name, error), flush=True)
         return False
@@ -1257,7 +1268,8 @@ def signature(result):
         signed['lost_delete'] = {'first': deletion_outcome(result['lost_delete']),
                                  'retry': {'ok': retry.get('ok'), 'error': (retry.get('error') or {}).get('code') if isinstance(retry.get('error'), dict) else retry.get('error'),
                                            'outcome': deletion_outcome(retry.get('final'))} if retry else None}
-    heads = {shape: {'receiptKey': normalise_key(entry.get('receiptKey')), 'head': entry.get('head')} for shape, entry in sorted((result.get('receipt_key_head') or {}).items())}
+    # The leading-slash shape names the whole prefix, run ID included; it is the same shape on every server and run.
+    heads = {('^/<run>/ls/' if shape.startswith('^') else shape): {'receiptKey': normalise_key(entry.get('receiptKey')), 'head': entry.get('head')} for shape, entry in sorted((result.get('receipt_key_head') or {}).items())}
     if heads:
         signed['receipt_key_head'] = heads
     return signed

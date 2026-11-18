@@ -57,6 +57,13 @@ class Signature(unittest.TestCase):
     def test_receipt_key_head_results_are_compared(self):
         self.assertNotEqual(diff.signature(result('d/r/x/', UUID_A, head=200)), diff.signature(result('d/r/x/', UUID_A, head=404)))
 
+    def test_the_leading_slash_shape_does_not_carry_the_run_prefix(self):
+        def shaped(prefix):
+            record = result(prefix, UUID_A)
+            record['receipt_key_head'] = {'^/' + prefix + 'ls/': {'receiptKey': '/ls/p13.txt', 'head': 404}}
+            return record
+        self.assertEqual(diff.signature(shaped('d/r1/x/')), diff.signature(shaped('acceptance/s3diff-r2/x/')))
+
     def test_the_leading_slash_namespace_stays_distinct_from_the_case_prefix(self):
         self.assertEqual(diff.relative('d/r/x/', 'd/r/x/ls/p.txt'), 'ls/p.txt')
         self.assertEqual(diff.relative('d/r/x/', '/d/r/x/ls/p.txt'), '/ls/p.txt')
@@ -116,6 +123,39 @@ class Cleanup(unittest.TestCase):
         target = Liar(uploads=[('d/r/x/big', 'u1')])
         with self.assertRaisesRegex(RuntimeError, 'still-incomplete'):
             target.cleanup('d/r/x/')
+
+    def test_an_upload_listing_the_server_refuses_fails_the_cleanup(self):
+        class Unlisted(Memory):
+            def uploads_in(self, prefix):
+                return None
+        with self.assertRaisesRegex(RuntimeError, 'uploads-unlisted'):
+            Unlisted(keys=['d/r/x/a.txt']).cleanup('d/r/x/')
+
+    def test_an_unlisted_upload_listing_is_never_a_clean_final_check(self):
+        import tempfile
+        class Unlisted(Memory):
+            root_prefix = 'd'
+            def uploads_in(self, prefix):
+                return None
+        with tempfile.TemporaryDirectory() as root:
+            lab = type('Lab', (), {'root': Path(root)})()
+            self.assertFalse(diff.final_leftover_check(Unlisted(), lab, 'memory', 'r'))
+
+    def test_a_refused_bucket_loses_nothing_to_the_final_cleanup(self):
+        import tempfile
+        from unittest import mock
+        class Versioned(Memory):
+            root_prefix = 'd'
+            def require_unversioned(self):
+                raise SystemExit('versioned')
+        target = Versioned(keys=['d/r/old.txt'])
+        with tempfile.TemporaryDirectory() as work:
+            options = type('Options', (), {'work': work, 'cases': ''})()
+            lab = type('Lab', (), {'root': Path(work), 'stop': lambda self: None})()
+            with mock.patch.object(diff, 'build_targets', return_value={'memory': target}), mock.patch.object(diff, 'Lab', return_value=lab):
+                with self.assertRaises(SystemExit):
+                    diff.run_server(options, 'memory', 'r')
+        self.assertEqual(sorted(target.keys), ['d/r/old.txt'])
 
 
 class Exit(unittest.TestCase):
