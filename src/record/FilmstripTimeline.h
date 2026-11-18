@@ -4,14 +4,13 @@
 #include "MaskNames.h"
 #include <QImage>
 #include <QJsonObject>
-#include <QPointer>
 #include <QTimer>
 #include <QWidget>
+#include <functional>
 #include <memory>
 #include <optional>
 
 namespace putgd::record {
-class Filmstrip;
 
 // #1613: the review window's timeline (replaces ReviewTimeline). From the top:
 // a ruler in source time captioned "recording time" at its right end; a
@@ -32,7 +31,13 @@ class Filmstrip;
 class FilmstripTimeline final : public QWidget {
     Q_OBJECT
 public:
-    explicit FilmstripTimeline(Filmstrip* tiles, std::shared_ptr<MaskNames> names, QWidget* parent = nullptr);
+    explicit FilmstripTimeline(std::shared_ptr<MaskNames> names, QWidget* parent = nullptr);
+    // Where tile images come from: the tile covering a source time, or a null
+    // image (painted as a surface placeholder). The window passes
+    // Filmstrip::tile and calls tilesChanged() on Filmstrip::tileReady.
+    using TileSource = std::function<QImage(qint64 sourceUs)>;
+    void setTileSource(TileSource);
+    void tilesChanged();
     void setDuration(qint64 durationUs, int fps);
     void setEdit(const RecordingEdit&);
     void setPlayhead(qint64 sourceUs);
@@ -110,7 +115,7 @@ protected:
     void resizeEvent(QResizeEvent*) override;
     bool event(QEvent*) override;  // tooltips
 private:
-    QPointer<Filmstrip> tiles_;
+    TileSource tiles_;
     std::shared_ptr<MaskNames> names_;
     qint64 duration_ = 1;
     int fps_ = 30;
