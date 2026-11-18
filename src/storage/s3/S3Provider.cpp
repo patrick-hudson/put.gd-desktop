@@ -9,9 +9,7 @@ namespace putgd {
 namespace {
 constexpr bool s3SafeDeleteTransport = PUTGD_SDK_CURL_TRANSPORT;
 QString objectKey(const Destination& destination, const QString& candidate) {
-    auto prefix = destination.settings["objectPrefix"].toString();
-    if (!prefix.isEmpty() && !prefix.endsWith('/')) prefix += '/';
-    return prefix + candidate;
+    return s3ObjectKey(destination.settings, candidate);
 }
 Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this original destination. Choose Unlock saved credentials, or restore its session credentials in Settings", {}}; }
 Error cancelled() { return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}}; }
@@ -177,7 +175,7 @@ QJsonObject S3Provider::diagnostics() const {
             {"moduleLiveDrivers", live}, {"workerStarted", started}, {"lanes", lanes}};
 }
 ProviderCapabilities S3Provider::capabilities(const Destination& destination) const {
-    const auto prefix = destination.settings["objectPrefix"].toString().toUtf8().size();
+    const auto prefix = s3StoredKey(destination.settings["objectPrefix"].toString()).toUtf8().size();
     ProviderCapabilities result{true, true, s3SafeDeleteTransport, true, true, s3SafeDeleteTransport, true, int(qMax(1, 1024 - prefix - (prefix ? 1 : 0))),
             "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes"};
     // Larger files upload in parts; S3 itself stores objects of at most 5 TiB.
@@ -186,7 +184,18 @@ ProviderCapabilities S3Provider::capabilities(const Destination& destination) co
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
     return destination.settings["endpoint"].toString() + "/" + destination.settings["bucket"].toString() + "/" +
-           (object["key"].isString() ? object["key"].toString() : objectKey(destination, candidate));
+           (object["key"].isString() ? s3StoredKey(object["key"].toString()) : objectKey(destination, candidate));
+}
+QString S3Provider::currentLink(const StorageReceipt& receipt) const {
+    // Public links recorded before #1582 kept an empty or leading path segment that
+    // the stored key does not have, so they named no object. A browser drops a "." or
+    // ".." part as libcurl does, so no link reaches a key that has one.
+    const auto key = receipt.objectReference["key"].toString();
+    const auto& settings = receipt.destination.settings;
+    if (!s3KeyAddressable(key)) return {};
+    if (settings.value("linkMode") == "presigned" || s3StoredKey(key) == key ||
+        receipt.directUrl != s3LegacyPublicObjectUrl(settings, key)) return receipt.directUrl;
+    return publicObjectUrl(settings, key);
 }
 Error S3Provider::validateSettings(const QJsonObject& settings) const {
     const QStringList fields{"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase", "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"};

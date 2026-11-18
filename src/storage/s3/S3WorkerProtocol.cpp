@@ -88,9 +88,7 @@ bool credentialReference(const QJsonObject& object) {
              object["reference"].toString().toUcs4().size() <= 256));
 }
 QString objectKey(const Destination& destination, const QString& candidate) {
-    auto prefix = destination.settings["objectPrefix"].toString();
-    if (!prefix.isEmpty() && !prefix.endsWith('/')) prefix += '/';
-    return prefix + candidate;
+    return s3ObjectKey(destination.settings, candidate);
 }
 // checkName emits a two-field absent reference or a three-field present reference.
 // Receipts have exactly five fields. No generic provider object is accepted here.
@@ -214,11 +212,14 @@ bool decode(const QJsonObject& object, StorageReceipt& receipt) {
     value.directUrl = object["directUrl"].toString();
     auto unsignedSettings=value.destination.settings;unsignedSettings["publicUrlBase"]=QJsonValue::Null;
     const QUrl url(value.directUrl);auto origin=url;origin.setQuery(QString{});
+    // Receipts made before #1582 wrote the URL for the key exactly as recorded.
+    const auto key=value.objectReference["key"].toString();
+    auto names=[&key](const QString& url,const QJsonObject& settings){return url==publicObjectUrl(settings,key)||url==s3LegacyPublicObjectUrl(settings,key);};
     if(value.destination.settings.value("linkMode")=="presigned") {
-        if(origin.toString(QUrl::FullyEncoded)!=publicObjectUrl(unsignedSettings,value.objectReference["key"].toString()) ||
+        if(!names(origin.toString(QUrl::FullyEncoded),unsignedSettings) ||
            !QUrlQuery(url).hasQueryItem("X-Amz-Signature") ||
            !QDateTime::fromString(value.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs).isValid())return false;
-    } else if(value.directUrl!=publicObjectUrl(value.destination.settings,value.objectReference["key"].toString()))return false;
+    } else if(!names(value.directUrl,value.destination.settings))return false;
     if(value.validate())return false;
     receipt = std::move(value);
     return true;

@@ -24,6 +24,7 @@ public:
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
     void unlockLinkCredentials(const StorageReceipt&, std::function<void(Error)>) override;
     void refreshLink(const StorageReceipt&, std::function<void(StatResult)>) override;
+    QString currentLink(const StorageReceipt&) const override;
     void stat(const StorageReceipt&, std::function<void(StatResult)>) override;
     void reconcile(const UploadRequest&, std::function<void(StatResult)>) override;
     void remove(const DeleteRequest&, DurableCheckpoint, std::function<void(DeleteResult)>) override;

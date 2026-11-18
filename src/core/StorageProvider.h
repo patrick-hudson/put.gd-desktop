@@ -101,6 +101,9 @@ public:
  // Explicit user action only: never called by refreshLink or background history reads.
  virtual void unlockLinkCredentials(const StorageReceipt&,std::function<void(Error)> reply) {reply({"link_refresh_unsupported","No saved link credentials are available",{}});}
  // Explicit copy-time renewal. Implementations use only this saved receipt and cached credentials.
+ // The link to show for a recorded receipt, worked out without a request: a provider
+ // whose recorded links were once written wrongly corrects them here; empty means no link.
+ virtual QString currentLink(const StorageReceipt& receipt) const { return receipt.directUrl; }
  virtual void refreshLink(const StorageReceipt& receipt,std::function<void(StatResult)> reply) {
   reply({"unknown",receipt,{"link_refresh_unsupported","This provider cannot refresh an expiring link",{}}});
  }
