@@ -10,14 +10,10 @@ license=('MIT' 'Apache-2.0' 'GPL-3.0-or-later')
 # tesseract-data-eng stays before tesseract: pacman resolves in this order, and with the data first
 # tesseract's own need for "tessdata" is already met. The other way round pacman asks which of 128
 # language packages to use and takes Afrikaans by default.
-# 'libcrypto.so' is replaced by makepkg with the versioned soname the binaries link, for example
-# libcrypto.so=4-64. Pacman then refuses the package on a system whose OpenSSL has another soname (Omarchy
-# follows Arch with a delay) instead of installing a putgd-cli that cannot start. tools/releases/arch.py
-# fails the build if the entry stays unversioned.
 depends=('tesseract-data-eng' 'tesseract' 'zxing-cpp' 'gcc-libs' 'glibc' 'qt6-base>=6.4.2' 'qt6-svg' 'qt6-wayland'
          'qt6-imageformats' 'qtkeychain-qt6' 'layer-shell-qt' 'libxcb'
          'xcb-util-keysyms' 'xcb-util-image' 'libxcursor' 'libxkbcommon'
-         'libxkbcommon-x11' 'curl' 'libcrypto.so' 'zlib' 'glib2' 'gtk3'
+         'libxkbcommon-x11' 'curl' 'openssl' 'zlib' 'glib2' 'gtk3'
          'gstreamer' 'gst-plugins-base-libs' 'gst-plugins-base' 'gst-plugins-good'
          'gst-plugins-bad' 'gst-plugins-ugly' 'gst-libav' 'gst-plugin-pipewire'
          'ffmpeg' 'libsecret' 'xdg-utils' 'hicolor-icon-theme')

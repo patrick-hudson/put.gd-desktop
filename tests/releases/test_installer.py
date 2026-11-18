@@ -50,12 +50,17 @@ class Installer(unittest.TestCase):
         pacman.write_text(pacman.read_text().replace(
             'import json, os, sys\n', "import json, os, sys\nif sys.argv[1:2] == ['-Q']: sys.exit(0 if os.environ.get('INSTALLED') == '1' else 1)\n", 1))
         with (self.bin / 'pacman').open('a') as f:
-            # The installer asks pacman to resolve putgd (-Sp, or -Syp) before it installs anything.
-            f.write('''if sys.argv[1:2] in (['-Sp'], ['-Syp']) and os.environ.get('RESOLVE') == 'unsatisfied':
-    sys.stderr.write('error: failed to prepare transaction (could not satisfy dependencies)\\n'
-                     ':: unable to satisfy dependency libcrypto.so=4-64 required by putgd\\n')
+            # The installer asks pacman for the package's OpenSSL soname before it installs anything: `-T` for what
+            # is installed, then a resolve (-Sp, or -Syp) against the repositories. RESOLVE picks the answers:
+            # unset = installed, unsatisfied = nowhere, sync = only a repository has it, network = pacman failed.
+            f.write('''args, mode = sys.argv[1:], os.environ.get('RESOLVE', '')
+if args[:1] == ['-T'] and mode:
+    print(args[1])
+    sys.exit(127)
+if args[:1] in (['-Sp'], ['-Syp']) and mode == 'unsatisfied':
+    sys.stderr.write('error: target not found: ' + args[-1] + '\\n')
     sys.exit(1)
-if sys.argv[1:2] in (['-Sp'], ['-Syp']) and os.environ.get('RESOLVE') == 'network':
+if args[:1] in (['-Sp'], ['-Syp']) and mode == 'network':
     sys.stderr.write('error: failed retrieving file putgd.db from pkg.put.gd : Could not resolve host\\n')
     sys.exit(1)
 ''')
@@ -215,7 +220,7 @@ else:
         trust = next(i for i,c in enumerate(calls) if Path(c[0]).name == 'pacman-key')
         self.assertLess(update, trust)
         self.assertEqual(calls[update][1:], ['-y'])
-        self.assertEqual([c[1:] for c in calls if Path(c[0]).name == 'pacman'], [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-Sp', 'putgd'], ['-S', 'putgd']])
+        self.assertEqual([c[1:] for c in calls if Path(c[0]).name == 'pacman'], [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-T', 'libcrypto.so=4-64'], ['-S', 'putgd']])
 
     def test_omarchy_dry_run_explains_update_without_running_it(self):
         self.arch_with_updater()
@@ -269,7 +274,7 @@ else:
         (self.root / 'pacman.d').mkdir()
         (self.root / 'pacman.conf').write_text('[options]\n')
         self.run_script('--channel', 'nightly')
-        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syp', 'putgd'], ['-Syu','putgd']])
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-T', 'libcrypto.so=4-64'], ['-Syu', 'putgd']])
 
     def test_arch_installs_from_signed_repo_without_direct_release_download(self):
         self.os_release.write_text('ID=arch\n')
@@ -280,7 +285,7 @@ else:
         self.run_script('--channel', 'nightly')
         config = self.root / 'pacman.d/putgd.conf'
         self.assertIn('PackageRequired DatabaseRequired', config.read_text())
-        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-Syp', 'putgd'], ['-Syu', 'putgd']])
+        self.assertEqual([c[1:] for c in self.calls() if Path(c[0]).name == 'pacman'], [['-T', 'libcrypto.so=4-64'], ['-Syu', 'putgd']])
 
     def arch_cannot_satisfy(self, updater=False):
         if updater:
@@ -299,9 +304,9 @@ else:
     def test_arch_falls_back_to_appimage_when_pacman_cannot_satisfy_the_package(self):
         self.arch_cannot_satisfy()
         out = self.run_script('--channel', 'nightly')
-        self.assertIn('could not satisfy dependencies', out)
+        self.assertIn('target not found', out)
         self.assertIn('Using the AppImage', out)
-        self.assertEqual(self.pacman_calls(), [['-Syp', 'putgd']])
+        self.assertEqual(self.pacman_calls(), [['-T', 'libcrypto.so=4-64'], ['-Syp', '--needed', 'libcrypto.so=4-64']])
         self.assertEqual((self.home / '.local/bin/putgd.AppImage').read_bytes(), PAYLOAD)
         probes = [call[-1] for call in self.calls() if '--write-out' in call]
         self.assertEqual(probes, ['https://app.put.gd/dl/nightly/archlinux', 'https://app.put.gd/dl/nightly/appimage'])
@@ -313,14 +318,14 @@ else:
         self.env['INSTALLED'] = '1'
         out = self.run_script('--channel', 'nightly')
         self.assertIn('sudo pacman -R putgd', out)
-        self.assertIn('block system updates', out)
+        self.assertIn('cannot run putgd-cli', out)
 
     def test_omarchy_falls_back_to_appimage_after_its_update(self):
         self.arch_cannot_satisfy(updater=True)
         out = self.run_script('--channel', 'nightly', terminal_input='y\n')
         calls = self.calls()
         self.assertTrue(any(Path(c[0]).name == 'omarchy-update' for c in calls))
-        self.assertEqual(self.pacman_calls(), [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-Sp', 'putgd']])
+        self.assertEqual(self.pacman_calls(), [['--config', str(self.root / 'pacman.d/putgd.conf'), '-Sy'], ['-T', 'libcrypto.so=4-64'], ['-Sp', '--needed', 'libcrypto.so=4-64']])
         self.assertIn('Using the AppImage', out)
         self.assertEqual((self.home / '.local/bin/putgd.AppImage').read_bytes(), PAYLOAD)
 
@@ -334,7 +339,15 @@ else:
         self.arch_cannot_satisfy()
         self.env['RESOLVE'] = 'network'
         self.assertIn('Could not resolve host', self.run_script('--channel', 'nightly', ok=False))
-        self.assertEqual(self.pacman_calls(), [['-Syp', 'putgd']])
+        self.assertEqual(self.pacman_calls(), [['-T', 'libcrypto.so=4-64'], ['-Syp', '--needed', 'libcrypto.so=4-64']])
+        self.assertFalse((self.home / '.local').exists())
+
+    def test_arch_installs_natively_when_only_a_repository_has_the_openssl(self):
+        # A stale Arch system: -T fails, the repositories carry the OpenSSL, and -Syu brings it in.
+        self.arch_cannot_satisfy()
+        self.env['RESOLVE'] = 'sync'
+        self.run_script('--channel', 'nightly')
+        self.assertEqual(self.pacman_calls(), [['-T', 'libcrypto.so=4-64'], ['-Syp', '--needed', 'libcrypto.so=4-64'], ['-Syu', 'putgd']])
         self.assertFalse((self.home / '.local').exists())
 
     def test_arch_dry_run_says_the_appimage_is_the_fallback(self):

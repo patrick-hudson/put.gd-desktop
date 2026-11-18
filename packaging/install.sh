@@ -18,14 +18,16 @@ Usage: curl -fsSL https://app.put.gd/install | sh -s -- [OPTIONS]
   --dry-run                 Show the plan; only checks channel availability online
   --help                    Show this help
 Native packages use sudo only for apt/dnf/pacman install, with prompts on your terminal.
-On Arch-family systems where pacman cannot satisfy the package (for example, one whose OpenSSL is
-older than Arch's), the AppImage is installed instead.
+On Arch-family systems whose OpenSSL is older than the package's (Omarchy, for example), the
+AppImage is installed instead.
 AppImage requires glibc 2.39+ and a working AppImage/FUSE runtime.
 HELP
     }
 
     channel=stable
     package=
+    # The OpenSSL soname the Arch package links (tools/releases/arch.py fails the build when it changes).
+    arch_libcrypto='libcrypto.so=4-64'
     dry_run=false
     while [ "$#" -gt 0 ]; do
         case "$1" in
@@ -122,7 +124,7 @@ HELP
                 else
                     note 'Would trust the channel signing key, add /etc/pacman.d/putgd.conf to pacman.conf, and run pacman -Syu putgd from the signed pkg.put.gd repository.'
                 fi
-                note 'If pacman cannot satisfy the package (an Arch derivative with an older OpenSSL), the AppImage is installed instead.'
+                note 'If this system has an older OpenSSL than the package was built against (an Arch derivative), the AppImage is installed instead.'
                 ;;
             fedora44|fedora45)
                 note "Would run sudo dnf install ./putgd-VERSION$suffix; package adds the signed pkg.put.gd update repository. Start: putgd"
@@ -231,33 +233,36 @@ HELP
                 else
                     resolve=-Syp
                 fi
-                # Ask pacman whether it can satisfy the package here, library dependencies such as
-                # libcrypto.so=4-64 included, before installing anything. Status 73 asks the installer
-                # to use the AppImage; any other failure is reported as it is.
-                if ! failure=$(LC_ALL=C pacman "$resolve" putgd 2>&1 >/dev/null); then
-                    printf "%s\n" "$failure" >&2
-                    case "$failure" in *"could not satisfy dependencies"*) exit 73 ;; esac
-                    exit 1
+                # Ask pacman whether this system can provide the OpenSSL the package was built against ($5, for
+                # example libcrypto.so=4-64), installed or from the synced repositories, before installing
+                # anything. Omarchy follows Arch with a delay and can still have the older one, where the
+                # putgd-cli and the S3 libraries of the package would not load. Status 73 asks the installer to use
+                # the AppImage; any other failure is reported as it is.
+                if ! pacman -T "$5" > /dev/null; then
+                    if ! failure=$(LC_ALL=C pacman "$resolve" --needed "$5" 2>&1 > /dev/null); then
+                        printf "%s\n" "$failure" >&2
+                        case "$failure" in *"target not found"*) exit 73 ;; esac
+                        exit 1
+                    fi
                 fi
                 if [ "$4" = true ]; then
                     pacman -S putgd
                 else
                     pacman -Syu putgd
                 fi
-            ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" < /dev/tty || arch_status=$?
+            ' sh "$work/putgd.asc" "$fingerprint" "$channel" "$arch_updated" "$arch_libcrypto" < /dev/tty || arch_status=$?
             case "$arch_status" in
                 0) ;;
                 73)
-                    note "pacman cannot satisfy this package's library dependencies here (an Arch derivative with an older OpenSSL than Arch's, for example), so the native package would not run. Using the AppImage."
+                    note "This system's OpenSSL is not the one the native package was built against ($arch_libcrypto; Arch derivatives such as Omarchy follow Arch with a delay), so its putgd-cli and S3, B2 and R2 uploads would not load. Using the AppImage."
                     package=appimage
                     check_appimage_host
                     check_download
                     fetch_package
                     install_appimage
-                    # pacman -Syu stops on a package it cannot upgrade, which blocks the whole system update
-                    # (omarchy update included) until the package is removed or ignored.
+                    # An installed native package keeps running as before but cannot load putgd-cli or its S3 libraries.
                     if pacman -Q putgd >/dev/null 2>&1; then
-                        note 'The put.gd pacman package installed here cannot be upgraded and will block system updates. Remove it with: sudo pacman -R putgd (or add putgd to IgnorePkg in /etc/pacman.conf).'
+                        note 'The put.gd pacman package installed here cannot run putgd-cli or upload to S3, B2 or R2 on this system. Remove it with: sudo pacman -R putgd (the AppImage now installed replaces it).'
                     fi
                     ;;
                 *) exit "$arch_status" ;;

@@ -18,9 +18,20 @@ def pkgver(version):
     return version.replace('-nightly', 'nightly').replace('-dev+', 'dev.').replace('~', '')
 
 
-def versioned_libcrypto(dependencies):
-    """True when makepkg recorded the soname (libcrypto.so=4-64) and left no bare libcrypto.so entry."""
-    return 'libcrypto.so' not in dependencies and any(re.fullmatch(r'libcrypto\.so=\d+-64', d) for d in dependencies)
+def linked_libcrypto(elf_dependencies):
+    """The pacman soname entry (libcrypto.so=4-64) for the OpenSSL the package's ELF files link."""
+    needed = {name for item in elf_dependencies.values() for name in item.get('needed', []) if name.startswith('libcrypto.so.')}
+    if len(needed) != 1:
+        raise ValueError('Arch package must link exactly one libcrypto soname, found: ' + ', '.join(sorted(needed)))
+    return 'libcrypto.so=' + needed.pop().split('.so.', 1)[1] + '-64'
+
+
+def installer_libcrypto(installer):
+    """The soname packaging/install.sh asks pacman about before it installs the package."""
+    found = re.findall(r"^[ ]*arch_libcrypto='(libcrypto\.so=\d+-64)'$", installer, re.M)
+    if len(found) != 1:
+        raise ValueError("packaging/install.sh must set arch_libcrypto='libcrypto.so=N-64' exactly once")
+    return found[0]
 
 
 def main():
@@ -56,17 +67,18 @@ def main():
     required = {'tesseract', 'tesseract-data-eng', 'zxing-cpp', 'qt6-imageformats', 'qt6-wayland', 'qt6-base>=6.4.2', 'gst-plugins-bad', 'gst-plugin-pipewire', 'ffmpeg', 'layer-shell-qt'}
     if not required.issubset(dependencies):
         raise ValueError('Missing Arch runtime dependency: ' + ', '.join(sorted(required - set(dependencies))))
-    # makepkg turns 'libcrypto.so' into the soname the binaries link (libcrypto.so=4-64). An entry left bare is met by
-    # any OpenSSL, which is how pacman once accepted the package on a system where putgd-cli cannot start.
-    if not versioned_libcrypto(dependencies):
-        raise ValueError('Arch package must depend on a versioned libcrypto soname, such as libcrypto.so=4-64')
     # pacman resolves in listed order; tesseract first makes it also pick a default "tessdata" (Afrikaans).
     if dependencies.index('tesseract-data-eng') > dependencies.index('tesseract'):
         raise ValueError('tesseract-data-eng must be listed before tesseract')
     result = audit_tree(extracted, identity, require_kde=True, require_proton=True, package_target='archlinux')
     result['fileManagerPlugins'] = audit_plugins(extracted, build, package_target='archlinux')
+    # The installer decides between this package and the AppImage by asking pacman for this soname, so it
+    # must name what the binaries link. Arch moves OpenSSL on its own schedule: bump the installer then.
+    libcrypto = linked_libcrypto(result['elfDependencies'])
+    if libcrypto != installer_libcrypto(Path('packaging/install.sh').read_text()):
+        raise ValueError(f"packaging/install.sh arch_libcrypto must be '{libcrypto}', the OpenSSL this package links")
     result['package'] = {'format': 'PACMAN', 'name': 'putgd', 'version': metadata['pkgver'],
-                         'architecture': 'x86_64', 'requires': dependencies, 'file': package.name,
+                         'architecture': 'x86_64', 'requires': dependencies, 'libcrypto': libcrypto, 'file': package.name,
                          'sha256': sha256(package), 'size': package.stat().st_size}
     (output / 'native-audit.json').write_text(json.dumps(result, indent=2) + '\n')
     shutil.copy2(build / 'build-identity/build-info.json', output / 'build-info.json')

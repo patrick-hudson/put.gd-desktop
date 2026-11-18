@@ -11,8 +11,6 @@ pacman -U --noconfirm "$package"
 pacman -Qkk putgd
 pacman -Ql putgd
 pacman -Qi putgd
-# The installed package must say which OpenSSL soname it needs (see packaging/arch/PKGBUILD).
-pacman -Qi putgd | grep -Eq 'libcrypto\.so=[0-9]+-64'
 putgd-cli --version
 for binary in /usr/bin/putgd /usr/bin/putgd-cli /usr/bin/putgd-ui /usr/bin/putgd-record /usr/bin/putgd-region; do
   test -x "$binary"
