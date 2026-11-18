@@ -318,6 +318,40 @@ private slots:
   }
   QCOMPARE(texts,(QStringList{"JIRA-12","JIRA-3","JIRA-77","quick\nredact"}));
  }
+ // CodeRabbit 4612083918: a match across two visual rows makes two marks, one
+ // per row, even when recognition gave both rows one line id; each mark comes
+ // with its own words' box. One row with two line ids is one mark.
+ void marksFollowVisualRows() {
+  const QList<RecognizedWord> two{{"ALPHA-",QRect(0,0,48,20),90,0},{"BETA",QRect(200,40,32,20),90,0}};
+  const auto boxes=quickRedact::markBoxes(two,{"list",{0,1}},QRect(0,0,400,200));
+  QCOMPARE(boxes.size(),2);
+  QCOMPARE(boxes.at(0).words,QRect(0,0,48,20));QCOMPARE(boxes.at(1).words,QRect(200,40,32,20));
+  QVERIFY(!boxes.at(0).mark.intersects(boxes.at(1).mark));
+  const QList<RecognizedWord> one{{"split",QRect(0,0,40,20),90,0},{"line",QRect(48,1,32,20),90,1}};
+  const auto row=quickRedact::markBoxes(one,{"list",{0,1}},QRect(0,0,400,200));
+  QCOMPARE(row.size(),1);QCOMPARE(row.first().words,QRect(0,0,80,21));
+  QCOMPARE(quickRedact::marks(two,{"list",{0,1}},QRect(0,0,400,200)).size(),2);
+ }
+ // CodeRabbit 4613753565: the first initial is a whole character, even outside the BMP.
+ void anInitialOutsideTheBmp() {
+  const auto candidates=words(QStringLiteral("\U00010400Stone wrote"));
+  QCOMPARE(found(candidates,quickRedact::find(candidates,{"name"},account("zz",QStringLiteral("\U00010400\U00010401 Stone")))),QStringList{QStringLiteral("name: \U00010400Stone")});
+ }
+ // CodeRabbit 4613753585: patterns see the recognized text as shown, the exact
+ // regex as typed: case, accents and full-width digits are not folded for them.
+ void patternsSeeTheTextAsShown() {
+  const auto candidates=words(QStringLiteral("Café | cafe | abc-1 | XYZ-2 | １２３"));
+  const auto result=quickRedact::find(candidates,{"list"},patterns({QStringLiteral("^Café$"),R"([A-Z]{3}-\d+)",QStringLiteral("^１２３$")}));
+  QCOMPARE(result.skippedPatterns,QList<int>{});
+  QCOMPARE(found(candidates,result),(QStringList{QStringLiteral("list: Café"),"list: XYZ-2",QStringLiteral("list: １２３")}));
+ }
+ // CodeRabbit 4613753575: each subject is made valid once; a lone surrogate in
+ // it does not stop the pattern.
+ void aLoneSurrogateDoesNotStopAPattern() {
+  QList<quickRedact::PatternOutcome> out;
+  quickRedact::matchPatterns({QString(QChar(0xd800))+" JIRA-1"},{R"(JIRA-\d)"},[&](quickRedact::PatternOutcome outcome){out.append(outcome);});
+  QCOMPARE(out.size(),1);QVERIFY(out.first().finished);QCOMPARE(out.first().hits,(QList<quickRedact::PatternHit>{{0,2,6}}));
+ }
  // A pattern that does not compile is named as skipped, never silently empty.
  void aPatternThatDoesNotCompileIsSkipped() {
   const auto candidates=words("JIRA-1 TICKET2");

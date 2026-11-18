@@ -51,6 +51,10 @@ int exitChild(int argc,char** argv) {
  return app.exec();
 }
 }
+// CodeRabbit 4613753658: a test that replaces the matcher program or the
+// account lookup restores both however it ends, so a failed assertion cannot
+// leave later tests on a deleted script.
+struct Restore {~Restore(){ui::setQuickRedactMatcherProgram(QStringLiteral(PUTGD_UI_BINARY));ui::setQuickRedactAccountLookup({});}};
 class QuickRedactRunnerTest final:public QObject {
  Q_OBJECT
 private slots:
@@ -112,7 +116,7 @@ private slots:
  }
  // A missing matcher program skips the patterns and nothing else.
  void aMissingMatcherSkipsOnlyPatterns() {
-  ui::setQuickRedactMatcherProgram(QStringLiteral("/nonexistent/putgd-ui"));
+  Restore restore;ui::setQuickRedactMatcherProgram(QStringLiteral("/nonexistent/putgd-ui"));
   const auto candidates=words("Hammond filed JIRA-9");
   std::optional<quickRedact::Result> result;
   ui::runQuickRedact(this,candidates,{"list"},quickRedact::Sources{{},{},{"Hammond"},{R"(JIRA-\d)"}},[&](quickRedact::Result r){result=std::move(r);});
@@ -135,7 +139,7 @@ private slots:
    "printf '%s\\n' '{\"p\":4,\"f\":true,\"h\":[[0,14,6]]}'\n"
    "printf '%s' '{\"p\":5,\"f\":true,\"h\":[[0,0'\n");
   script.close();QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
-  ui::setQuickRedactMatcherProgram(script.fileName());
+  Restore restore;ui::setQuickRedactMatcherProgram(script.fileName());
   const auto candidates=words("Hammond filed JIRA-9");
   std::optional<quickRedact::Result> result;
   ui::runQuickRedact(this,candidates,{"list"},quickRedact::Sources{{},{},{},{"a","b","c","d","e","f"}},[&](quickRedact::Result r){result=std::move(r);},1500);
@@ -154,7 +158,7 @@ private slots:
    "printf '%s\\n' '{\"p\":1,\"f\":true,\"h\":[[0,14,6]]}' '{\"p\":1,\"f\":true,\"h\":[[0,99,1]]}'\n"
    "printf '%s\\n' '{\"p\":2,\"f\":true,\"h\":[[0,14,6]]}'\n");
   script.close();QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
-  ui::setQuickRedactMatcherProgram(script.fileName());
+  Restore restore;ui::setQuickRedactMatcherProgram(script.fileName());
   const auto candidates=words("Hammond filed JIRA-9");
   std::optional<quickRedact::Result> result;
   ui::runQuickRedact(this,candidates,{"list"},quickRedact::Sources{{},{},{},{"a","b","c"}},[&](quickRedact::Result r){result=std::move(r);},1500);
@@ -179,11 +183,10 @@ private slots:
  // M2, U6: exit cancels the worker, which kills the child within 50 ms.
  void exitKillsTheChild() {
   auto* context=new QObject;bool called=false;
-  std::atomic_bool started{false};
-  ui::setQuickRedactAccountLookup([&started](const std::function<bool()>&){started=true;return ui::Account{QStringLiteral("someone"),{}};});
-  ui::runQuickRedact(context,words(longLine()+" 7"),{"name","list"},quickRedact::Sources{{},{},{},runaways},[&](quickRedact::Result){called=true;},10000);
-  ui::setQuickRedactAccountLookup({});
-  PUTGD_TRY_VERIFY(started.load());
+  // CodeRabbit 4613753668: cancel only once the matcher child is running.
+  const int before=ui::quickRedactMatcherStarts();
+  ui::runQuickRedact(context,words(longLine()+" 7"),{"list"},quickRedact::Sources{{},{},{},runaways},[&](quickRedact::Result){called=true;},10000);
+  PUTGD_TRY_VERIFY(ui::quickRedactMatcherStarts()>before);
   // The editor closes mid-way: its window (the context) goes first.
   delete context;
   QElapsedTimer clock;clock.start();
@@ -200,21 +203,41 @@ private slots:
   // Asked only when the password entry had no full name to give.
   if(!account.realName.isEmpty())QVERIFY(!asked);else QVERIFY(asked);
  }
- // M2, U6: the timeout path itself. A worker stuck in the account lookup is
- // waited for only up to the limit, then left to end on its own; when the
- // lookup returns it sees the cancel and matches nothing.
- void exitStopsWaitingAtTheLimit() {
-  std::atomic_bool returned{false};
-  ui::setQuickRedactAccountLookup([&returned](const std::function<bool()>&){QThread::msleep(1500);returned=true;return ui::Account{QStringLiteral("someone"),{}};});
+ // CodeRabbit 4612083939, 4613753618: a stalled account lookup never holds
+ // the other categories. After quickRedactAccountWaitMs they run on, the name
+ // is reported unchecked, and a second run while the lookup is still stalled
+ // waits for that same lookup rather than starting another.
+ void aSlowAccountLookupNeverHoldsTheRest() {
+  Restore restore;std::atomic_int calls{0};
+  ui::setQuickRedactAccountLookup([&calls](const std::function<bool()>&){++calls;QThread::msleep(2500);return ui::Account{QStringLiteral("someone"),{}};});
+  const auto candidates=words("Write to jane@example.com about Hammond and JIRA-9 someone");
+  quickRedact::Sources sources;sources.terms={"Hammond"};sources.patterns={R"(JIRA-\d)"};
+  for(int run=0;run<2;++run){
+   std::optional<quickRedact::Result> result;qint64 elapsed=0;QElapsedTimer clock;clock.start();
+   ui::runQuickRedact(this,candidates,{"email","name","list"},sources,[&](quickRedact::Result r){result=std::move(r);elapsed=clock.elapsed();});
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.has_value(),5000);
+   QVERIFY2(elapsed<ui::quickRedactAccountWaitMs+test::scaled(500),qPrintable(QString::number(elapsed)));
+   QVERIFY(result->nameUnchecked);
+   QCOMPARE(found(candidates,*result),(QStringList{"email: jane@example.com","list: Hammond","list: JIRA-9"}));
+  }
+  QCOMPARE(calls.load(),1);
+  // The stalled lookup ends on its own; the next run asks again.
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(!ui::quickRedactAccountLookupRunning(),5000);
+ }
+ // M2, U6: a worker waiting on a stalled lookup stops at once when the editor
+ // closes; the lookup is left to end on its own.
+ void exitDoesNotWaitOnAStalledLookup() {
+  Restore restore;
+  ui::setQuickRedactAccountLookup([](const std::function<bool()>&){QThread::msleep(1500);return ui::Account{QStringLiteral("someone"),{}};});
   std::optional<quickRedact::Result> result;
   ui::runQuickRedact(this,words("someone filed JIRA-9"),{"name","list"},quickRedact::Sources{{},{},{},{R"(JIRA-\d)"}},[&](quickRedact::Result r){result=std::move(r);});
-  ui::setQuickRedactAccountLookup({});
+  PUTGD_TRY_VERIFY(ui::quickRedactAccountLookupRunning());
   QElapsedTimer clock;clock.start();
-  QVERIFY(!ui::stopQuickRedactWorkers(QDeadlineTimer(200)));
-  QVERIFY2(clock.elapsed()>=200&&clock.elapsed()<test::scaled(400),qPrintable(QString::number(clock.elapsed())));
-  QVERIFY(!returned);
-  PUTGD_TRY_VERIFY_WITH_TIMEOUT(result.has_value(),5000);
-  QVERIFY(returned);QVERIFY(result->matches.isEmpty());QCOMPARE(result->skippedPatterns,QList<int>{0});
+  QVERIFY(ui::stopQuickRedactWorkers(QDeadlineTimer(ui::quickRedactExitWaitMs)));
+  QVERIFY2(clock.elapsed()<test::scaled(200),qPrintable(QString::number(clock.elapsed())));
+  PUTGD_TRY_VERIFY(result.has_value());
+  QVERIFY(result->matches.isEmpty());QCOMPARE(result->skippedPatterns,QList<int>{0});
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(!ui::quickRedactAccountLookupRunning(),5000);
  }
  // M20: a real exit. A child process starts a run whose account lookup does
  // not return, then quits; QApplication's destructor must cancel the worker

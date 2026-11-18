@@ -14,6 +14,8 @@
 #include <QProcessEnvironment>
 #include <QThread>
 #include <QTimer>
+#include <thread>
+#include <QWaitCondition>
 #include <atomic>
 #include <cerrno>
 #include <cmath>
@@ -51,6 +53,34 @@ QMutex& settingsMutex() {static auto* value=new QMutex;return *value;}
 AccountLookup& lookup() {static auto* value=new AccountLookup([](const std::function<bool()>& stopped){return currentAccount(stopped);});return *value;}
 QString& matcherProgram() {static auto* value=new QString;return *value;}
 std::atomic_int starts{0};
+// The process is exiting (QApplication's destructor): an account lookup
+// still running must not reach the system bus.
+std::atomic_bool exiting{false};
+// One account lookup at a time for the whole process, on a thread of its own
+// (getpwuid_r cannot be interrupted). A run waits for it at most
+// quickRedactAccountWaitMs; a run that starts while one is still going waits
+// for that one instead of starting another, so a stalled directory service
+// never stacks lookups. Never destroyed: the thread may outlive everything.
+struct SharedLookup {QMutex mutex;QWaitCondition answered;bool running=false;bool done=false;Account account;};
+SharedLookup& sharedLookup() {static auto* value=new SharedLookup;return *value;}
+std::optional<Account> accountWithin(const AccountLookup& read,const std::atomic_bool& cancel) {
+ auto& shared=sharedLookup();
+ QMutexLocker lock(&shared.mutex);
+ if(!shared.running){
+  shared.running=true;shared.done=false;
+  std::thread([read]{
+   const auto account=read([]{return exiting.load();});
+   auto& shared=sharedLookup();QMutexLocker lock(&shared.mutex);
+   shared.account=account;shared.done=true;shared.running=false;shared.answered.wakeAll();
+  }).detach();
+ }
+ const QDeadlineTimer deadline(quickRedactAccountWaitMs);
+ while(!shared.done){
+  if(cancel.load()||deadline.hasExpired())return std::nullopt;
+  shared.answered.wait(&shared.mutex,QDeadlineTimer(qMin<qint64>(50,deadline.remainingTime())));
+ }
+ return shared.account;
+}
 // At exit the process's static data goes away, matching's compiled
 // expressions among it. QApplication's destructor (a post routine) therefore
 // stops the workers first: it sets their cancel flags, which they read after
@@ -58,7 +88,16 @@ std::atomic_int starts{0};
 // the matcher child runs (which they then kill), and waits at most
 // quickRedactExitWaitMs. A worker still running then (in a directory-service
 // lookup that does not return, say) is left to end on its own.
-void stopAtExit() {stopQuickRedactWorkers(QDeadlineTimer(quickRedactExitWaitMs));}
+void stopAtExit() {
+ exiting.store(true);
+ const QDeadlineTimer deadline(quickRedactExitWaitMs);
+ stopQuickRedactWorkers(deadline);
+ // A lookup still running gets the rest of the same limit: told the process is
+ // exiting, it skips the bus and ends; one stuck in the directory service is
+ // left behind.
+ auto& shared=sharedLookup();QMutexLocker lock(&shared.mutex);
+ while(shared.running&&!deadline.hasExpired())shared.answered.wait(&shared.mutex,deadline);
+}
 QString program() {
  QMutexLocker lock(&settingsMutex());
  if(!matcherProgram().isEmpty())return matcherProgram();
@@ -165,6 +204,7 @@ void setQuickRedactAccountLookup(AccountLookup replacement) {
  QMutexLocker lock(&settingsMutex());
  lookup()=replacement?std::move(replacement):AccountLookup([](const std::function<bool()>& stopped){return currentAccount(stopped);});
 }
+bool quickRedactAccountLookupRunning() {auto& shared=sharedLookup();QMutexLocker lock(&shared.mutex);return shared.running;}
 void setQuickRedactMatcherProgram(QString path) {QMutexLocker lock(&settingsMutex());matcherProgram()=std::move(path);}
 int quickRedactMatcherStarts() {return starts.load();}
 bool stopQuickRedactWorkers(QDeadlineTimer limit) {
@@ -184,15 +224,22 @@ void runQuickRedact(QObject* context,QList<editor::RecognizedWord> candidates,QS
  const QDeadlineTimer deadline(budgetMs);
  auto* thread=QThread::create([candidates=std::move(candidates),categories=std::move(categories),sources=std::move(sources),progress,budgetMs,read=std::move(read),deadline]() mutable {
   const auto stopped=[&progress]{return progress->cancel.load();};
-  // The account is read here, off the interface thread: getpwuid_r can wait on
-  // a directory service and the AccountsService fallback on the system bus.
-  if(categories.contains(QStringLiteral("name"))&&sources.login.isEmpty()){const auto account=read(stopped);sources.login=account.login;sources.realName=account.realName;}
+  // The account is read off the interface thread: getpwuid_r can wait on a
+  // directory service and the AccountsService fallback on the system bus. The
+  // other categories never wait longer than quickRedactAccountWaitMs for it:
+  // without an answer by then they run on, and the name is reported unchecked.
+  bool nameUnchecked=false;
+  if(categories.contains(QStringLiteral("name"))&&sources.login.isEmpty()){
+   if(const auto account=accountWithin(read,progress->cancel)){sources.login=account->login;sources.realName=account->realName;}
+   else{categories.removeAll(QStringLiteral("name"));nameUnchecked=true;}
+  }
   // The editor may have closed meanwhile.
   if(stopped())return;
   const editor::quickRedact::PatternMatcher matcher=[&](const QStringList& subjects,const QList<qsizetype>& lineBreaks,const QStringList& patterns){return matchInChild(subjects,lineBreaks,patterns,deadline,progress->cancel);};
-  auto result=editor::quickRedact::find(candidates,categories,sources,budgetMs,[&progress](const editor::quickRedact::Result& partial){
-   QMutexLocker lock(&progress->mutex);progress->result=partial;
+  auto result=editor::quickRedact::find(candidates,categories,sources,budgetMs,[&progress,nameUnchecked](const editor::quickRedact::Result& partial){
+   QMutexLocker lock(&progress->mutex);progress->result=partial;progress->result->nameUnchecked=nameUnchecked;
   },&progress->cancel,matcher);
+  result.nameUnchecked=nameUnchecked;
   QMutexLocker lock(&progress->mutex);progress->result=std::move(result);
  });
  auto deliver=[progress,allPatterns,done=std::move(done)]{

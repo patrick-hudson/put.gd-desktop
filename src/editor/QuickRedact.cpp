@@ -538,8 +538,9 @@ QList<Form> nameForms(const QString& login,const QString& realName) {
     QList<bool> comma(last.size()-1,false);comma.append(true);
     add(form(last+first,false,comma));
     // A first name of one letter is its own initial: the whole name covers it.
-    const auto initial=first.first().left(1);
-    if(letters(first.join(QString()))>=2&&!initial.isEmpty()&&initial.at(0).isLetter()&&points(last.join(QString()))>=3)add(form(QStringList{initial}+last,true));
+    // The first character, whole: a letter outside the BMP is two UTF-16 units.
+    const auto initial=first.first().left(first.first().at(0).isHighSurrogate()&&first.first().size()>1?2:1);
+    if(letters(first.join(QString()))>=2&&!initial.isEmpty()&&QChar::isLetter(pointAt(initial,0))&&points(last.join(QString()))>=3)add(form(QStringList{initial}+last,true));
    }
   }
   for(const auto& word:words)for(const auto& part:termParts(word))if(points(part)>=3)add(form({part}));
@@ -611,7 +612,14 @@ void matchPatterns(const QStringList& subjects,const QStringList& patterns,const
   const QRegularExpression longer(limits+QStringLiteral("(*NOTEMPTY_ATSTART)")+patterns.at(p),options);
   bool finished=pattern.isValid()&&longer.isValid();
   for(int s=0;finished&&s<subjects.size();++s){
-   const auto& text=subjects.at(s);
+   // Made valid UTF-16 once (a lone surrogate becomes U+FFFD, the same length),
+   // so no search has to check the whole subject again.
+   auto text=subjects.at(s);
+   for(qsizetype k=0;k<text.size();++k){
+    const bool paired=(text.at(k).isHighSurrogate()&&k+1<text.size()&&text.at(k+1).isLowSurrogate())||(text.at(k).isLowSurrogate()&&k>0&&text.at(k-1).isHighSurrogate());
+    if(text.at(k).isSurrogate()&&!paired)text[k]=QChar(QChar::ReplacementCharacter);
+   }
+   constexpr auto checked=QRegularExpression::DontCheckSubjectStringMatchOption;
    // Global iteration as Qt's: the next start is the previous match's end;
    // after an empty match, a non-empty one is tried at the same place
    // (anchored, PCRE2_NOTEMPTY_ATSTART), else the start moves one whole code
@@ -621,13 +629,13 @@ void matchPatterns(const QStringList& subjects,const QStringList& patterns,const
    const auto whole=[&](qsizetype i){return lowSurrogateAt(text,i)?i+1:i;};
    const auto nextPoint=[&](qsizetype i){return i+(i+1<text.size()&&text.at(i).isHighSurrogate()&&text.at(i+1).isLowSurrogate()?2:1);};
    for(qsizetype at=0;(at=whole(at))<=text.size();){
-    auto found=pattern.match(text,at);
+    auto found=pattern.match(text,at,QRegularExpression::NormalMatch,checked);
     if(!found.isValid()){finished=false;break;}
     if(!found.hasMatch())break;
     if(found.capturedLength()==0){
      const auto empty=whole(found.capturedStart());
      if(empty>text.size())break;
-     const auto retry=longer.match(text,empty,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption);
+     const auto retry=longer.match(text,empty,QRegularExpression::NormalMatch,QRegularExpression::AnchorAtOffsetMatchOption|checked);
      if(!retry.isValid()){finished=false;break;}
      // An empty retry (\K can make one) counts as none: move on.
      if(!retry.hasMatch()||retry.capturedLength()==0){at=nextPoint(empty);continue;}
@@ -700,7 +708,10 @@ Result find(const QList<RecognizedWord>& candidates,const QStringList& chosen,co
   if(cancelled()){skipRest(0);return mapped(std::move(result),original);}
   publish(false);
   if(patternCount){
-   const auto subjects=patternSubjects(plain,ordered);
+   // Patterns see the recognized text as shown (the exact regex as typed): no
+   // NFKC, digit or case folding, which are for list words and names only.
+   QList<QString> shown;for(const auto& word:ordered)shown.append(word.text);
+   const auto subjects=patternSubjects(shown,ordered);
    QStringList texts;QList<qsizetype> breaks;for(const auto& subject:subjects){texts.append(subject.text.text);breaks.append(subject.lineBreak);}
    // The outcomes, by pattern. In process (no matcher), the budget is read
    // between patterns; a pattern still running is not stopped.
@@ -789,15 +800,33 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
  return matches;
 }
 }
-QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
- QMap<int,QRect> lines;
- for(const int index:match.words)if(index>=0&&index<candidates.size()){const auto& word=candidates.at(index);lines[word.line]=lines.value(word.line).united(word.rect);}
- QList<QRect> out;
+// One box per visual row of the match, as find groups rows (centres within
+// half the median word height), never by the recognizer's line id: a match
+// that spans two rows makes two marks, so nothing between them is covered.
+QList<MarkBox> markBoxes(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
+ QList<int> words;for(const int index:match.words)if(index>=0&&index<candidates.size())words.append(index);
+ std::stable_sort(words.begin(),words.end(),[&](int a,int b){return candidates.at(a).rect.center().y()<candidates.at(b).rect.center().y();});
+ QList<int> heights;for(const int w:words)heights.append(candidates.at(w).rect.height());std::sort(heights.begin(),heights.end());
+ const double tolerance=qMax(2.0,heights.isEmpty()?2.0:heights.at(heights.size()/2)*0.5);
+ struct Row {QRect box;int characters=0;double centre=0;int count=0;};
+ QList<Row> rows;
+ for(const int w:words){
+  const auto& word=candidates.at(w);const double y=word.rect.center().y();
+  if(rows.isEmpty()||std::abs(y-rows.last().centre)>tolerance)rows.append(Row{});
+  auto& row=rows.last();row.box=row.box.united(word.rect);row.characters+=int(word.text.size());++row.count;row.centre+=(y-row.centre)/row.count;
+ }
+ QList<MarkBox> out;
  // A quarter of the line height above and below; beside it, at least one and
  // a half characters, since a recognized box can stop a whole glyph short of
  // the first or last character (measured: 7 px at 13 px type).
- QMap<int,int> characters;for(const int index:match.words)if(index>=0&&index<candidates.size())characters[candidates.at(index).line]+=int(candidates.at(index).text.size());
- for(auto it=lines.cbegin();it!=lines.cend();++it){const auto& box=it.value();const int pad=qMax(1,(box.height()+3)/4);const int side=qMax(pad,box.width()*3/qMax(2,2*characters.value(it.key())));const auto mark=box.adjusted(-side,-pad,side,pad).intersected(bounds);if(!mark.isEmpty())out.append(mark);}
+ for(const auto& row:std::as_const(rows)){
+  const auto& box=row.box;const int pad=qMax(1,(box.height()+3)/4);const int side=qMax(pad,box.width()*3/qMax(2,2*row.characters));
+  const auto mark=box.adjusted(-side,-pad,side,pad).intersected(bounds);if(!mark.isEmpty())out.append({mark,box});
+ }
+ return out;
+}
+QList<QRect> marks(const QList<RecognizedWord>& candidates,const Match& match,const QRect& bounds) {
+ QList<QRect> out;for(const auto& box:markBoxes(candidates,match,bounds))out.append(box.mark);
  return out;
 }
 }
