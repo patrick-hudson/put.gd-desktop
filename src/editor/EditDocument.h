@@ -105,6 +105,8 @@ public:
  // Live drags update without a history entry; commit once on release.
  void preview(const Shape&);
  void beginGesture();
+ // True between beginGesture and commitGesture or cancelGesture: a drag is still in progress.
+ bool inGesture() const {return gesture_;}
  void commitGesture();
  void cancelGesture();
 

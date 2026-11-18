@@ -3,7 +3,6 @@
 #include "Theme.h"
 #include "Ui.h"
 #include "BlurRadius.h"
-#include "AccountName.h"
 #include "QuickRedactRunner.h"
 #include "core/TextJobProtocol.h"
 #include "platform/HostOpen.h"
@@ -978,6 +977,10 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
  }else if(action=="removeMark"){
   if(!only({}))return fail("invalid_request","removeMark has no other parameters");
   if(!canvas_->removeSelected())return fail("editor_no_selection","Select a mark first");
+ }else if(action=="removeSuggestions"){
+  // Quick redact's "Remove suggestions": every suggested mark, one undo step; marks drawn by hand stay (#1618).
+  if(!only({}))return fail("invalid_request","removeSuggestions has no other parameters");
+  if(removeSuggestions()==0)return fail("edit_shape_missing","There are no suggested marks to remove");
  }else if(action=="selectAffectedText"){
   if(!only({}))return fail("invalid_request","selectAffectedText has no other parameters");
   if(!canvas_->selectAffectedText())return fail("edit_shape_missing","No annotation text will be clipped");
@@ -1037,7 +1040,7 @@ QJsonObject EditorWindow::viewCommand(const QJsonObject& params,QString& code,QS
   // As Cancel / Discard… does: asks first when there are edits.
   if(!only({}))return fail("invalid_request","discard has no other parameters");
   requestCancel();if(busy_)return viewState();
- }else return fail("invalid_request","action must be inspect, tool, select, removeMark, selectNext, selectPrevious, selectAffectedText, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, propertiesWidth, blurStyle, stepNumber, keyboardHelp, geometryDetails, showSavedCopy, copySavedPath, saveDetails, dismissSavedCopy, discard, keepEditing or confirmDiscard");
+ }else return fail("invalid_request","action must be inspect, tool, select, removeMark, removeSuggestions, selectNext, selectPrevious, selectAffectedText, place, geometry, applyCrop, cancelCrop, zoom, fit, actualSize, pan, propertiesWidth, blurStyle, stepNumber, keyboardHelp, geometryDetails, showSavedCopy, copySavedPath, saveDetails, dismissSavedCopy, discard, keepEditing or confirmDiscard");
  refresh();return viewState();
 }
 
@@ -1183,43 +1186,59 @@ int EditorWindow::removeSuggestions(){
 }
 void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStringList terms,QStringList patterns){
  if(quickRedacting_){if(done)done({"editor_busy","Quick redact is already waiting for recognition",{}},{});return;}
+ // The list alone, with nothing saved and nothing given: there is nothing to find, so no recognition starts (and none can fail).
+ if(categories==QStringList{"list"}&&redactTerms_.isEmpty()&&redactPatterns_.isEmpty()&&terms.isEmpty()&&patterns.isEmpty()){
+  if(busy_){if(done)done({"editor_finalizing","The edit was already submitted or discarded",{}},{});return;}
+  quickRedactResult_->setText("Your redaction list is empty. Add words in Settings → Capture → Text recognition.");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();
+  if(done)done({},{{"created",QJsonArray{}},{"counts",QJsonObject{{"list",0}}}});
+  return;
+ }
  quickRedacting_=true;quickRedactResult_->setText("Recognizing…");Ui::role(quickRedactResult_,"body");quickRedactResult_->show();refresh();
  text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,terms=std::move(terms),patterns=std::move(patterns)](Error error){
   if(!g)return;
   const auto stopWith=[&](const QString& text,const char* role,Error failure){g->quickRedacting_=false;g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,role);g->refresh();if(done)done(failure,{});};
   if(g->busy_){stopWith("Quick redact added nothing: the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
   if(error){stopWith(error.code=="edit_stale"?QStringLiteral("A redaction or the crop changed, so nothing was added. Try again."):error.message,"danger",error);return;}
-  // The account, the saved list and an agent's own terms, for this run (#1618). Never stored or logged.
-  const auto account=ui::currentAccount();
-  editor::quickRedact::Sources sources;sources.login=account.login;sources.realName=account.realName;
+  // The saved list and an agent's own terms, for this run (#1618). Never stored or logged. The account is
+  // looked up by the runner, on its worker thread, only when name is chosen.
+  editor::quickRedact::Sources sources;
   sources.terms=g->redactTerms_+terms;sources.patterns=g->redactPatterns_+patterns;
   // Matching runs off the UI thread: a pattern can be slow. The document may change meanwhile.
-  const auto signature=editor::TextLayer::inputSignature(g->doc_);
+  const auto revision=g->text_->revision();
   const auto candidates=g->text_->candidates();
-  ui::runQuickRedact(g,candidates,categories,sources,[g=QPointer<EditorWindow>(g),candidates,categories,signature,done](editor::quickRedact::Result found){
-   if(!g)return;g->quickRedacting_=false;
-   const auto fail=[&](const QString& text,Error failure){g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(failure,{});};
-   if(g->busy_){fail("Quick redact added nothing: the edit was already submitted.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
-   if(editor::TextLayer::inputSignature(g->doc_)!=signature){fail("A redaction or the crop changed, so nothing was added. Try again.",{"edit_stale","A Redact mark or the crop changed while Quick redact was matching",{}});return;}
-   // Every match is ordinary Redact marks, all added as one undo step. A mark the user deleted from an earlier run is not added back.
-   QJsonObject counts;for(const auto& category:categories)counts[category]=0;QJsonArray created;
-   g->doc_.beginGesture();
-   for(const auto& match:found.matches){
-    bool any=false;
-    for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){
-     if(g->doc_.dismissed(rect))continue;
-     editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=rect;created.append(double(g->doc_.add(shape)));any=true;
+  ui::runQuickRedact(g,candidates,categories,sources,[g=QPointer<EditorWindow>(g),candidates,categories,revision,done](editor::quickRedact::Result found){
+   if(!g)return;
+   // The marks join the document as one undo step of their own, so they wait for a drag in progress to end.
+   // The revision is checked then, not now: a drag can add a Redact mark, and an edit that was undone is still a new revision.
+   auto apply=std::make_shared<std::function<void()>>();
+   *apply=[g,candidates,categories,revision,done,found,self=std::weak_ptr<std::function<void()>>(apply)]{
+    if(!g)return;
+    if(g->doc_.inGesture()){if(auto keep=self.lock())QTimer::singleShot(40,g.data(),[keep]{(*keep)();});return;}
+    g->quickRedacting_=false;
+    const auto fail=[&](const QString& text,Error failure){g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(failure,{});};
+    if(g->busy_){fail("Quick redact added nothing: the edit was already submitted.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
+    if(g->text_->revision()!=revision){fail("A redaction or the crop changed, so nothing was added. Try again.",{"edit_stale","A Redact mark or the crop changed while Quick redact was matching",{}});return;}
+    // Every match is ordinary Redact marks, all added as one undo step. A mark the user deleted from an earlier run is not added back.
+    QJsonObject counts;for(const auto& category:categories)counts[category]=0;QJsonArray created;
+    g->doc_.beginGesture();
+    for(const auto& match:found.matches){
+     bool any=false;
+     for(const auto& rect:editor::quickRedact::marks(candidates,match,g->doc_.imageRect())){
+      if(g->doc_.dismissed(rect))continue;
+      editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=rect;created.append(double(g->doc_.add(shape)));any=true;
+     }
+     if(any)counts[match.category]=counts[match.category].toInt()+1;
     }
-    if(any)counts[match.category]=counts[match.category].toInt()+1;
-   }
-   g->doc_.commitGesture();
-   const auto added=created.size();
-   QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
-   QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 took too long and was skipped.").arg(index+1);}
-   g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
-   g->documentEdited();
-   QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;
-   if(done)done({},result);
+    g->doc_.commitGesture();
+    const auto added=created.size();
+    QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
+    QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 took too long and was skipped.").arg(index+1);}
+    g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
+    g->documentEdited();
+    QJsonObject result{{"created",created},{"counts",counts}};if(!skipped.isEmpty())result["skippedPatterns"]=skipped;
+    if(done)done({},result);
+   };
+   (*apply)();
   });
  });
 }

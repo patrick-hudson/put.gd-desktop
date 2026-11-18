@@ -41,6 +41,8 @@ private slots:
   const auto wider=request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",280}});QVERIFY2(wider["ok"].toBool(),QJsonDocument(wider).toJson().constData());const int bounded=wider["result"].toObject()["propertiesWidth"].toInt();QVERIFY(bounded>=240&&bounded<=280);
   QCOMPARE(request("editor.view",{{"id",id},{"action","inspect"}})["result"].toObject()["propertiesWidth"].toInt(),bounded);
   QVERIFY(!request("editor.view",{{"id",id},{"action","propertiesWidth"},{"pixels",199}})["ok"].toBool());
+  // #1618: removeSuggestions is a known view action: with no suggested mark the editor answers edit_shape_missing, not invalid_request.
+  const auto noSuggestions=request("editor.view",{{"id",id},{"action","removeSuggestions"}});QVERIFY(!noSuggestions["ok"].toBool());QCOMPARE(noSuggestions["error"].toObject()["code"].toString(),QString("edit_shape_missing"));
   const auto applied=request("editor.apply",{{"id",id},{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{310,190}},{"text","Clipped annotation"}}}}}}});QVERIFY2(applied["ok"].toBool(),QJsonDocument(applied).toJson().constData());
   const auto affected=request("editor.view",{{"id",id},{"action","selectAffectedText"}});QVERIFY2(affected["ok"].toBool(),QJsonDocument(affected).toJson().constData());QVERIFY(affected["result"].toObject()["selectedShapeId"].toDouble()>0);QVERIFY(affected["result"].toObject()["textOutsideImage"].toBool());
   const auto saved=request("editor.saveCopy",{{"id",id},{"path",d.filePath("synthetic-copy.png")}});QVERIFY2(saved["ok"].toBool(),QJsonDocument(saved).toJson().constData());
