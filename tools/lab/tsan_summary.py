@@ -5,16 +5,16 @@ TSan with log_path writes one file per process (tsan.<pid>). Reports are capture
 the D-Bus lock-order rule), and this lists each distinct report once with how often it occurred, in three parts:
 
   put.gd     a put.gd frame within the top frames of either racing access: read these first
-  qt-known   a known Qt-internal race (KNOWN_QT_RACES, each diagnosed in docs/testing/thread-sanitizer.md): both racing access stacks
-             start in a Qt library and hold no put.gd frame in any of their frames, except a bottom-most main()
+  qt-known   a diagnosed Qt-internal race (KNOWN_QT_RACES, each diagnosed in docs/testing/thread-sanitizer.md) that passes the rule below
   external   everything else: Qt, GLib, GStreamer or the C library with no known race; read it before adding an entry
 
-Only qt-known reports are excused, under one strict rule: neither racing access stack contains a put.gd frame anywhere, except that
-the bottom-most frame may be put.gd's main() (the root of every main-thread stack; a put.gd frame directly above it still counts),
-both start in Qt, and an entry's function is in the top frames of
-one of the two stacks, with its anchor (the diagnosed Qt caller), when it has one, in that same stack. Any other report counts,
-including every report that involves put.gd at any depth. Thread-creation, mutex and allocation stacks are not read. The
-action-sequence fuzzer uses unexplained() to fail a seed on anything but qt-known reports.
+Only qt-known reports are excused, under one rule. For each of the two racing access stacks, read from the top (the racing access)
+down: every frame must be Qt or the C, C++ or TSan runtime until the walk reaches the bottom of the stack, main(), or one of the
+public Qt entry points listed for that diagnosis. Below that point anything may follow, put.gd callers included: they only called a
+public Qt function. A put.gd frame (or any other library's) above that point, at any depth, means the report is shown. The diagnosed
+function must be in the top frames of one stack, and its anchor, when it has one, in that same stack above its stopping point. An
+entry point that is not on the diagnosis's own list does not stop the walk. Thread-creation, mutex and allocation stacks are not
+read. The action-sequence fuzzer uses unexplained() to fail a seed on anything but qt-known reports.
 
   python3 -I tools/lab/tsan_summary.py --source . "$report_dir"
 
@@ -26,29 +26,50 @@ from pathlib import Path
 import re
 import sys
 
-TOP = 6  # frames of a racing access in which a known function must appear
+TOP = 6  # frames of a racing access in which a diagnosed function must appear
 
-# The Qt-internal races diagnosed in the race hunt (docs/testing/thread-sanitizer.md), as (function, anchor). A report is excused only
-# when neither racing access stack holds a put.gd frame, the function is in the top frames of one stack, and the anchor (when given) is
-# in that same stack. The anchor ties a generic Qt function to the one Qt caller the diagnosis covers.
+# Public Qt calls put.gd makes. A walk down a racing stack stops at one of these only when the diagnosis lists it: put.gd frames below it
+# called Qt and are not part of the race. Each list is the smallest one the diagnosis needs.
+QNAM_REQUESTS = ('QNetworkAccessManager::get', 'QNetworkAccessManager::post', 'QNetworkAccessManager::put', 'QNetworkAccessManager::head',
+                 'QNetworkAccessManager::deleteResource', 'QNetworkAccessManager::sendCustomRequest', 'QNetworkAccessManager::createRequest')
+DBUS_CALLS = ('QDBusConnection::call', 'QDBusConnection::callWithCallback', 'QDBusConnection::asyncCall', 'QDBusAbstractInterface::call',
+              'QDBusAbstractInterface::callWithArgumentList', 'QDBusAbstractInterface::asyncCall', 'QDBusAbstractInterface::asyncCallWithArgumentList')
+
+# The Qt-internal races diagnosed in the race hunt (docs/testing/thread-sanitizer.md): what must be in the stack ((function, anchor)
+# pairs, the anchor in the same stack) and the public entry points that end the walk.
 KNOWN_QT_RACES = (
-    # QNetworkAccessManager starts its HTTP thread, then connects to that QThread's started() from the calling thread; the new thread reads
-    # the connection list with a relaxed load (qobject.cpp maybeSignalConnected) while connect() publishes it under the signal mutex.
-    ('QThread::started', None),
-    # In the reports the new thread reads in maybeSignalConnected while emitting QThread::started (same stack); the main thread writes
-    # in addConnection under QNetworkReplyHttpImplPrivate::postRequest, a stack the no-put.gd-frame rule already guards.
-    ('QObjectPrivate::maybeSignalConnected', 'QThread::started'),
-    # A QNetworkReply is deleted on its own thread while the access manager's HTTP thread still runs the QObject destructor chain of the
-    # delegate (vptr report in ~QNetworkReply / ~QObject).
-    ('QNetworkReply::~QNetworkReply', None),
-    # QtDBus's own thread dispatches posted events while the main thread runs ~QCoreApplication at exit and clears QCoreApplication::self.
-    ('QCoreApplication::~QCoreApplication', None),
-    # The same QtDBus thread destroys QDBusPendingCallWatcherHelper (vptr reset) while it finishes a call.
-    ('QDBusPendingCallWatcherHelper::~QDBusPendingCallWatcherHelper', None),
-    # QtDBus completes a call on its own thread and the calling thread reads the reply after its wait.
-    ('QDBusConnectionPrivate::processFinishedCall', None),
-    ('QDBusConnectionPrivate::sendWithReply', None),
+    {   # QNetworkAccessManager starts its HTTP thread, then connects to that QThread's started() from the calling thread (postRequest); the
+        # new thread reads the connection list with a relaxed load (qobject.cpp maybeSignalConnected) while it emits started() and
+        # connect() publishes the list under the signal mutex. The calling side enters Qt through a request call.
+        'name': 'QNetworkAccessManager QThread::started hand-off',
+        'match': (('QThread::started', None), ('QObjectPrivate::maybeSignalConnected', 'QThread::started')),
+        'entries': QNAM_REQUESTS,
+    },
+    {   # A QNetworkReply is deleted on its own thread while the access manager's HTTP thread still runs the QObject destructor chain of the
+        # delegate (vptr report in ~QNetworkReply / ~QObject). The reply comes from a request call.
+        'name': 'QNetworkReply destructor chain',
+        'match': (('QNetworkReply::~QNetworkReply', None),),
+        'entries': QNAM_REQUESTS,
+    },
+    {   # QtDBus's own thread dispatches posted events while the main thread runs ~QCoreApplication at exit and clears
+        # QCoreApplication::self. The main-thread side is the destructor run from main(); no entry point is needed.
+        'name': 'QtDBus thread against ~QCoreApplication',
+        'match': (('QCoreApplication::~QCoreApplication', None),),
+        'entries': (),
+    },
+    {   # The QtDBus thread destroys QDBusPendingCallWatcherHelper (vptr reset) while it finishes a call put.gd made.
+        'name': 'QDBusPendingCallWatcherHelper reset',
+        'match': (('QDBusPendingCallWatcherHelper::~QDBusPendingCallWatcherHelper', None),),
+        'entries': DBUS_CALLS,
+    },
+    {   # QtDBus completes a call on its own thread and the calling thread reads the reply in sendWithReply after its wait.
+        'name': 'QtDBus pending-call bookkeeping',
+        'match': (('QDBusConnectionPrivate::processFinishedCall', None), ('QDBusConnectionPrivate::sendWithReply', None)),
+        'entries': DBUS_CALLS,
+    },
 )
+
+RUNTIME = ('libc.so', 'libstdc++.so', 'libtsan.so', 'libgcc_s.so', 'ld-linux', 'libm.so', 'libpthread.so')
 
 
 def function(line):
@@ -56,22 +77,42 @@ def function(line):
     return re.sub(r' (/|\.\./|<null>).*', '', line)[:110]
 
 
+def module(frame):
+    found = re.search(r'\(([^()\s+]+)\+0x[0-9a-f]+\)', frame)
+    return Path(found.group(1)).name if found else ''
+
+
 def is_qt(frame):
-    return 'libQt6' in frame or '/qtbase' in frame
+    return module(frame).startswith('libQt6') or '/qtbase' in frame
+
+
+def is_runtime(frame):
+    return module(frame).startswith(RUNTIME)
 
 
 def is_own(frame, own_prefixes):
-    module = re.search(r'\(([^()+]+)\+0x[0-9a-f]+\)\s*$', frame)
-    name = Path(module.group(1)).name if module else ''
-    return any(p in frame for p in own_prefixes) or name.startswith(('putgd', 'libputgd'))
+    return any(p in frame for p in own_prefixes) or module(frame).startswith(('putgd', 'libputgd'))
 
 
-def below_main(frames, own_prefixes):
-    """The frames that count against an excuse: all of them, except the bottom-most when it is put.gd's main(). main() is the root of
-    every main-thread stack and runs no racing code itself; any other put.gd frame, directly above main() included, still counts."""
-    if frames and function(frames[-1]).split('(')[0].strip() == 'main' and is_own(frames[-1], own_prefixes):
-        return frames[:-1]
-    return frames
+def name_of(frame):
+    """The function's qualified name, without arguments or a return type."""
+    text = function(frame)
+    text = text.split('(')[0].strip()
+    return text.split(' ')[-1]
+
+
+def above_stop(frames, entries):
+    """The frames from the racing access down to the first stop (main(), one of `entries`, or the bottom), or None when a frame on the
+    way is neither Qt nor the C, C++ or TSan runtime."""
+    above = []
+    for frame in frames:
+        name = name_of(frame)
+        if name == 'main' or name in entries:
+            return above
+        if not (is_qt(frame) or is_runtime(frame)):
+            return None
+        above.append(frame)
+    return above
 
 
 def reports(text):
@@ -93,15 +134,16 @@ def classify(block, own_prefixes):
     key = (kind.group(1) if kind else '?', ' || '.join(function(frames[0]) if frames else '?' for frames in stacks), tuple(sorted(set(own)))[:2])
     if own:
         return 'put.gd', key
-    # Strict: no put.gd frame anywhere in either racing access stack (every frame but a bottom-most main()), both start in Qt, and a known
-    # function sits in the top frames of one stack whose own frames also hold its anchor (the diagnosed Qt caller), when it has one.
-    clean = len(stacks) == 2 and all(frames and is_qt(frames[0]) and not any(is_own(l, own_prefixes) for l in below_main(frames, own_prefixes))
-                                     for frames in stacks)
-    if clean and kind and kind.group(1) == 'data race':
-        for frames in stacks:
-            top = ' '.join(function(l) for l in frames[:TOP])
-            whole = ' '.join(function(l) for l in frames)
-            if any(name in top and (anchor is None or anchor in whole) for name, anchor in KNOWN_QT_RACES):
+    if len(stacks) != 2 or not all(stacks) or not kind or kind.group(1) != 'data race':
+        return 'external', key
+    for race in KNOWN_QT_RACES:
+        walks = [above_stop(frames, race['entries']) for frames in stacks]
+        if any(walk is None or not walk for walk in walks):
+            continue  # a frame that is not Qt above the stopping point, or a stack that stops before any Qt frame
+        for walk in walks:
+            top = ' '.join(function(l) for l in walk[:TOP])
+            whole = ' '.join(function(l) for l in walk)
+            if any(name in top and (anchor is None or anchor in whole) for name, anchor in race['match']):
                 return 'qt-known', key
     return 'external', key
 
