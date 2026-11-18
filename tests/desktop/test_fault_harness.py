@@ -116,7 +116,7 @@ class Fuzzer(unittest.TestCase):
         """The same file twice in one call (two rows of one operation), retried once: four sends, so four copies may be stored."""
         fake = fuzzer(digest_rows={'d': {'row1', 'row2'}}, digest_operations={'d': {'op1'}}, row_operations={'row1': 'op1', 'row2': 'op1'}, seen={},
                       resident=types.SimpleNamespace(retries={'op1': 1}))
-        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 4)
+        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(bound(fake, *ACCOUNTING), 'd'), 4)
 
     def test_review_s3_only_an_accepted_retry_earns_credit(self):
         """A copy-only success of operation.retry sends nothing again; only result.retryAccepted earns a retry's extra copy."""
@@ -148,7 +148,79 @@ class Fuzzer(unittest.TestCase):
         """One row, unknown once, retried once: two sends, so two copies at most (it used to allow three)."""
         fake = fuzzer(digest_rows={'d': {'row1'}}, digest_operations={'d': {'op1'}}, row_operations={'row1': 'op1'}, seen={'row1': {'unknown', 'failed'}},
                       resident=types.SimpleNamespace(retries={'op1': 1}))
-        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(fake, 'd'), 2)
+        self.assertEqual(action_fuzz.Fuzzer.allowed_copies(bound(fake, *ACCOUNTING), 'd'), 2)
+
+
+def bound(fake, *names):
+    """Bind the Fuzzer methods `names` to a fake, as far as the class has them (so a test also runs against an older harness)."""
+    for name in names:
+        if hasattr(action_fuzz.Fuzzer, name):
+            setattr(fake, name, getattr(action_fuzz.Fuzzer, name).__get__(fake))
+    return fake
+
+
+ACCOUNTING = ('allowed_copies', 'row_allowance', 'refused', 'copies_explained_without_refused')
+
+
+class PerRowRecovery(unittest.TestCase):
+    def recovery(self, rows, stored, retries=None, seen=None):
+        receiver = types.SimpleNamespace(stored=lambda: stored, present=lambda: stored, snapshot=lambda: {}, remote=lambda row, files=None: None,
+                                         names=lambda: {}, describe=lambda digest: '[]')
+        fake = fuzzer(rows=lambda: rows, receiver=receiver, TERMINAL=action_fuzz.Fuzzer.TERMINAL, known_stuck=lambda row: False,
+                      row_removed_by_delete=lambda row: False, seen=seen or {}, seen_digest={}, deleting=set(),
+                      digest_rows={'d': {row['id'] for row in rows}}, digest_operations={'d': {row['operationId'] for row in rows}},
+                      row_operations={row['id']: row['operationId'] for row in rows}, resident=types.SimpleNamespace(retries=retries or {}))
+        return bound(fake, *ACCOUNTING)
+
+    def test_review_s2_one_row_of_a_duplicate_batch_refused_is_no_lost_upload(self):
+        """Same file twice in one call: one row uploaded, the other refused; the one copy on the server is the uploaded row's."""
+        rows = [{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'uploaded', 'sha256': 'd', 'receipt': {}},
+                {'id': 'row2', 'operationId': 'op1', 'uploadStatus': 'failed', 'sha256': 'd', 'receipt': {}}]
+        action_fuzz.Fuzzer.verify_rows(self.recovery(rows, {'d': ['f1']}))  # no Finding
+
+    def test_a_refused_row_whose_content_is_on_the_server_is_still_a_lost_upload(self):
+        rows = [{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'failed', 'sha256': 'd', 'receipt': {}}]
+        with self.assertRaises(action_fuzz.Finding) as caught:
+            action_fuzz.Fuzzer.verify_rows(self.recovery(rows, {'d': ['f1']}))
+        self.assertEqual(caught.exception.kind, 'lost-upload')
+
+    def test_review_s2_an_unknown_row_retried_once_may_not_leave_three_copies(self):
+        rows = [{'id': 'row1', 'operationId': 'op1', 'uploadStatus': 'unknown', 'sha256': 'd', 'receipt': {}}]
+        fake = self.recovery(rows, {'d': ['f1', 'f2', 'f3']}, retries={'op1': 1}, seen={'row1': {'unknown'}})
+        fake.seen_digest = {'d': {'unknown'}}
+        fake.operations_to_retry = lambda: [{'id': 'op1'}]
+        fake.call = lambda method, params=None, timeout=60: {'ok': True, 'result': {'operationId': 'op1', 'retryAccepted': True}}
+        fake.drain = lambda seconds: True
+        with self.assertRaises(action_fuzz.Finding) as caught:
+            action_fuzz.Fuzzer.retry_interrupted(fake, {'d': 'unknown'}, {'d': 1})
+        self.assertEqual(caught.exception.kind, 'duplicate-upload')
+        fake.receiver.stored = lambda: {'d': ['f1', 'f2']}  # two copies: the first send and the retry
+        action_fuzz.Fuzzer.retry_interrupted(fake, {'d': 'unknown'}, {'d': 1})
+
+
+class ReceiverSnapshot(unittest.TestCase):
+    def keep(self, state):
+        folder = tempfile.mkdtemp()
+        fake = fuzzer(run=Path(folder), receiver=types.SimpleNamespace(state=lambda: state))
+        action_fuzz.Fuzzer.keep_receiver_state(fake)
+        return Path(folder)
+
+    def test_review_s4_request_events_are_saved_without_their_bodies(self):
+        import base64
+        body = base64.b64encode(os.urandom(1 << 20)).decode()
+        events = [{'method': 'PUT', 'path': '/isolated-fixture/p/%d.bin' % n, 'body': body, 'bodyBytes': 1 << 20, 'bodySha256': 'sha%d' % n} for n in range(16)]
+        folder = self.keep({'events': events, 'objects': {}, 'uploads': {}})
+        text = (folder / 'receiver-state.json').read_text()
+        kept = json.loads(text)
+        self.assertLess(len(text), 20000)
+        self.assertEqual(kept['events'][3], {'method': 'PUT', 'path': '/isolated-fixture/p/3.bin', 'bodyBytes': 1 << 20, 'bodySha256': 'sha3'})
+
+    def test_a_failed_write_leaves_no_file(self):
+        class Unwritable:
+            def __str__(self):
+                raise ValueError('cannot be written')
+        folder = self.keep({'events': [{'method': 'PUT', 'note': 'x' * 100000}, {'method': 'PUT', 'odd': Unwritable()}], 'objects': {}, 'uploads': {}})
+        self.assertEqual(sorted(p.name for p in folder.iterdir()), [])
 
 
 class S3Holds(unittest.TestCase):

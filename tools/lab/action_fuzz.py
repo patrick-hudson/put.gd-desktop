@@ -1966,9 +1966,20 @@ class Fuzzer:
             state = self.receiver.state()
             # files: the custom uploader's; objects: the S3 oracle's, as metadata and digests only (never the bodies), so the file stays a
             # small, complete JSON document however much was uploaded.
-            kept = {name: state.get(name) for name in ('events', 'files', 'uploads')}
+            # Request events keep their metadata and digests (bodyBytes, bodySha256), never an inline body.
+            kept = {name: state.get(name) for name in ('files', 'uploads')}
+            kept['events'] = [{k: v for k, v in event.items() if k != 'body'} if isinstance(event, dict) else event for event in state.get('events') or []]
             kept['objects'] = {key: [Fuzzer.object_summary(v) for v in versions] for key, versions in (state.get('objects') or {}).items()}
-            (self.run / 'receiver-state.json').write_text(json.dumps(kept, default=str))
+            # Written whole to a temporary file and renamed into place: a failed write leaves no file, never a cut one.
+            final = self.run / 'receiver-state.json'
+            temporary = self.run / 'receiver-state.json.partial'
+            try:
+                with open(temporary, 'w') as out:
+                    json.dump(kept, out, default=str)
+                os.replace(temporary, final)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
         except (OSError, ValueError):
             pass
 
@@ -2443,8 +2454,21 @@ class Fuzzer:
         more for every accepted operation.retry of that row's operation (a retry may send each of its rows again, so the same file twice in
         one call, retried once, may leave four copies). An unknown outcome adds nothing by itself: put.gd sends again only on an explicit
         retry, which is counted."""
-        rows = self.digest_rows.get(digest, set())
-        return sum(1 + self.resident.retries.get(self.row_operations.get(row), 0) for row in rows)
+        return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()))
+
+    def row_allowance(self, row):
+        """The copies one History row may account for on the server: its first send plus one per accepted retry of its operation."""
+        return 1 + self.resident.retries.get(self.row_operations.get(row), 0)
+
+    def refused(self, row):
+        """A row put.gd settled as not on the server: failed or stored, never unknown, and with no direct address."""
+        return row.get('uploadStatus') in ('stored', 'failed') and 'unknown' not in self.seen.get(row.get('id'), ()) \
+            and not (row.get('receipt') or {}).get('directUrl')
+
+    def copies_explained_without_refused(self, digest, rows):
+        """The copies of this content that rows other than refused ones account for, row by row (rows no longer listed count as not refused)."""
+        listed = {row.get('id'): row for row in rows}
+        return sum(self.row_allowance(row) for row in self.digest_rows.get(digest, set()) if not (row in listed and self.refused(listed[row])))
 
     def verify_rows(self):
         """History against the receiver, with nothing active: no row stuck, nothing uploaded that is not on the server, nothing on the
@@ -2473,8 +2497,10 @@ class Fuzzer:
             # one that is still there.
             if status == 'uploaded' and digest and not present.get(digest) and not self.row_removed_by_delete(row) and not removed:
                 raise Finding('recovery', 'History row %s is uploaded but the receiver holds no copy of it' % row.get('id'))
-            # A retry that fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss.
-            if status in ('stored', 'failed') and digest and stored.get(digest) and 'unknown' not in self.seen.get(row.get('id'), ()) and not row.get('receipt', {}).get('directUrl'):
+            # A refused row is not expected on the server: it is a loss only when the server holds more copies than the other rows of the
+            # same content account for, row by row (one row of a duplicate-file batch uploaded, the other refused, is fine). A retry that
+            # fails turns an unknown outcome into "failed" while the first attempt's copy is on the server: not a loss, so not refused.
+            if digest and self.refused(row) and len(stored.get(digest, [])) > self.copies_explained_without_refused(digest, rows):
                 raise Finding('lost-upload', 'History row %s is %s but the receiver stored its content (%s): the upload is on the server and not in History as uploaded or unknown\nrow: %s\nevents: %s' % (
                     row.get('id'), status, stored[digest], json.dumps({k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'phase', 'name', 'sha256', 'bytes', 'error', 'uploadJournal')}, default=str),
                     self.receiver.describe(digest)))
@@ -2582,11 +2608,10 @@ class Fuzzer:
         stored = self.receiver.stored()
         statuses = {row.get('sha256'): row.get('uploadStatus') for row in self.rows()}
         for digest, files in stored.items():
-            # An unknown outcome may legitimately send a second copy (the custom uploader cannot look a file up);
-            # a file History already showed as uploaded, or never sent, must not.
-            if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) >= 1 and 'unknown' not in self.seen_digest.get(digest, ()):
-                raise Finding('duplicate-upload', 'a retry stored content %s %d times although History had it as %r (%s)\nrows: %s\nevents: %s' % (
-                    digest[:12], len(files), before_status.get(digest), files,
+            # Every row is capped at its allowance (allowed_copies): an unknown row retried once may leave two copies, never three.
+            if len(files) > max(1, self.allowed_copies(digest)):
+                raise Finding('duplicate-upload', 'a retry stored content %s %d times, more than the %d sends its rows account for; History had it as %r (%s)\nrows: %s\nevents: %s' % (
+                    digest[:12], len(files), self.allowed_copies(digest), before_status.get(digest), files,
                     json.dumps([{k: row.get(k) for k in ('id', 'operationId', 'uploadStatus', 'remoteStatus', 'name', 'sha256', 'publicationId')} for row in self.rows() if row.get('sha256') == digest]),
                     self.receiver.describe(digest)))
             if len(files) > before_count.get(digest, 0) and before_count.get(digest, 0) == 0 and before_status.get(digest) in ('uploaded',):
