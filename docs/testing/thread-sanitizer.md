@@ -77,6 +77,15 @@ setarch x86_64 -R meson compile -C "$putgd_tsan_root/libsecret-tsan-build" -j 2
 setarch x86_64 -R meson install -C "$putgd_tsan_root/libsecret-tsan-build"
 ```
 
+The application's icon target (`packaging/linux/icons`) also needs Qt Svg, which this recipe does not
+build. Build the thread checks with that one `add_subdirectory(icons)` line in
+`packaging/linux/CMakeLists.txt` commented out in the scratch copy; no thread-check target uses the icons.
+
+Run the suites with `ignore_noninstrumented_modules=1` in `TSAN_OPTIONS` as well, so that GStreamer,
+FFmpeg, libcurl, OpenSSL and the AWS SDK (distribution builds without TSan) do not report races that
+exist only because TSan cannot see their atomics. See [race-hunting.md](race-hunting.md) for the full
+`TSAN_OPTIONS`, the action fuzzer and rr.
+
 Configure Qt in a fresh build directory so cached system GLib discovery cannot
 replace the instrumented dependency. Keep GLib enabled: libsecret requires its
 main context to dispatch asynchronous credential results.
