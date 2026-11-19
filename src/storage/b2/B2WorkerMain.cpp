@@ -759,17 +759,23 @@ private:
             else if (unclear) largeError = {"b2_large_unconfirmed", "Backblaze B2 started the large file without returning its file ID; it may remain unfinished", {{"requestStage", "large_start"}}};
             else {
                 large["fileId"] = fileId;
-                if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_started"}, {"name", largeName}, {"fileId", fileId}})) largeError = e;
-                // Only B2's own success confirms the cancel; any refusal leaves it unconfirmed (#1690).
-                const auto cancel = client_.call("b2_cancel_large_file", {{"fileId", fileId}}, true);
-                const bool confirmed = cancel.ok() && cancel.json["fileId"].toString() == fileId;
-                large["cancel"] = confirmed ? "cancelled" : "not_confirmed";
-                if (!confirmed && !largeError) {
-                    largeError = cancel.ok() ? Error{"b2_large_unconfirmed", "Backblaze B2 answered the cancel without naming the test's large file.", {{"requestStage", "large_cancel"}}}
-                                             : Client::failure(cancel, "large_cancel");
-                    largeError.message = "Backblaze B2 did not confirm cancelling the test's unfinished large file " + largeName + "; check the bucket for it. " + largeError.message;
+                // The cancel is sent only once the file ID is on record (#1690): without it the result
+                // still names the file, and the cancel stays not confirmed.
+                if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_started"}, {"name", largeName}, {"fileId", fileId}})) {
+                    largeError = e;
+                    large["cancel"] = "not_confirmed";
+                } else {
+                    // Only B2's own success confirms the cancel; any refusal leaves it unconfirmed (#1690).
+                    const auto cancel = client_.call("b2_cancel_large_file", {{"fileId", fileId}}, true);
+                    const bool confirmed = cancel.ok() && cancel.json["fileId"].toString() == fileId;
+                    large["cancel"] = confirmed ? "cancelled" : "not_confirmed";
+                    if (!confirmed && !largeError) {
+                        largeError = cancel.ok() ? Error{"b2_large_unconfirmed", "Backblaze B2 answered the cancel without naming the test's large file.", {{"requestStage", "large_cancel"}}}
+                                                 : Client::failure(cancel, "large_cancel");
+                        largeError.message = "Backblaze B2 did not confirm cancelling the test's unfinished large file " + largeName + "; check the bucket for it. " + largeError.message;
+                    }
+                    if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_finished"}, {"name", largeName}, {"fileId", fileId}, {"cancel", large["cancel"]}}); e && !largeError) largeError = e;
                 }
-                if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_finished"}, {"name", largeName}, {"fileId", fileId}, {"cancel", large["cancel"]}}); e && !largeError) largeError = e;
             }
         }
         out["largeFile"] = large;

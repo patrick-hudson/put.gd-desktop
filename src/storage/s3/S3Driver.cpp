@@ -1557,6 +1557,12 @@ void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject&
     reply(abortMultipart(*client, aws(destination.settings["bucket"].toString()), key, uploadId));
 }
 void NetworkS3Driver::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
+    // Its synthetic writes are sent once only through the transport that can refuse libcurl's own
+    // resend (#1690), as its cleanup needs: without it the test sends nothing at all.
+    if (!SdkRuntime::safeDeleteTransport()) {
+        reply({}, {"unsupported_capability", "Safe destructive HTTP transport is unavailable on this SDK build", {}});
+        return;
+    }
     // The explicit setup caller owns this asynchronous operation. No captured input.
     auto temporary = std::make_shared<QTemporaryDir>();
     const QByteArray bytes("put.gd synthetic destination test\n");
