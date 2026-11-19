@@ -249,10 +249,75 @@ An editor ignoring the lock can race a write; this is cooperative conflict detec
 The shared patch service recursively overlays objects, replaces arrays/scalars, and treats
 JSON `null` as an explicit value. It is not RFC 7396 merge patch: `null` clears optional
 folder/profile fields rather than removing required keys. The complete resulting document
-must validate. GUI forms autosave finished changes through the same revision check. Dirty drafts survive
-external acceptance and require explicit reload or reconciliation; focusing an unchanged
-field issues no save. Invalid fields retain local feedback while independently valid fields
-may save. A transport/write failure blocks automatic replay until Retry saving is pressed.
+must validate.
+
+GUI forms autosave through the same revision check, one request at a time. Each edit becomes an
+operation: a destination's fields, keyed by its ID; a removal with the routes that fall back; the
+destination order; or one setting outside the list, each capture route being one of those. Each
+operation is applied to the latest accepted document when it is sent.
+
+- **When edits are queued.** Typed text is queued after a 600 ms pause or when the field loses
+  focus; choices, toggles and pastes at once. Focusing an unchanged field issues no save.
+- **Queue order.** A later edit of a destination, or a later move, replaces the queued one in its
+  place. A setting outside the list changed again goes to the end, after the destinations its
+  routes may name. An operation waiting for a destination lets later ones go first.
+- **The form's own check.** A group of fields that fails it is never sent, whether it was typed
+  or comes from a restored draft: an S3 destination's Region and Endpoint, which always save
+  together (Region checked against the Endpoint, so `aws-global` only with Amazon S3; an S3
+  destination on a Cloudflare R2 account endpoint skips the Region check, since R2 requests are
+  signed with `auto`), and a Cloudflare R2 destination's Account ID, Jurisdiction
+  and Bucket, which save together once all three are valid ([r2.md](../user/r2.md)). The accepted
+  values stay, and unrelated fields and other destinations still save. A new R2 destination, or
+  a switch of a destination to R2 made in the open window, waits as a whole until those three are
+  valid, and route changes to it wait with it; captures meanwhile use the saved settings. A switch
+  restored from a checkpoint is replayed field by field and can be refused until the three are
+  valid.
+- **Refusals.** A field the resident refuses holds back only its own group. A request the
+  resident refuses again unchanged, such as an edit of a destination whose saved Region today's
+  rules refuse, stops with its reason while the rest of the queue goes on.
+- **Failures and conflicts.** A transport/write failure stops the queue until Retry saving is
+  pressed. A `config_conflict` keeps the queue, except a reorder not saved yet: whether the
+  conflict comes back as the answer to any save or the window finds it itself (snapshot or file
+  watcher), the queued reorder is dropped and the list goes back to the order the window last
+  accepted, then follows the file's order once the window reads it again, with an add not saved
+  yet kept after its neighbour. A refused reorder does the same unless
+  a later one is queued, and a later order that settles clears an older one's refusal.
+- **Retry saving after a conflict, and restored drafts.** The resident reads the file again and, only if that file
+  validates, the queue is applied to it. Queued values equal to what the window last had accepted
+  are dropped, so a setting changed elsewhere that the window didn't touch keeps its new value.
+  A group goes whole if any of it changed: Region with Endpoint, R2's three fields, and a route's
+  destination with its profile ID. So changing one field of a group writes the window's value of
+  the others over a change made elsewhere. A restored draft's changes are replayed against the
+  configuration it was based on in the same groups, so the same overwrite can happen there. An edit of a destination no longer in the file is
+  dropped and named in the footer; an add whose ID is now taken gets a fresh ID. The form keeps
+  a refused field group or setting as typed, and an add the resident refused goes again as typed.
+  A destination already in the file whose whole change was refused, such as a switch to another
+  service, shows what the file has.
+- **Routes.** Each capture route carries only the fields that changed (destination and profile
+  ID together). With no default output in the file, the sharing mode shown is the Region
+  action's and is sent only if changed. A sharing mode the user chose is sent as is; when the
+  request leaves the default output without one, it takes the Region action's mode from the
+  file as it is when sent. A route that names a destination
+  still being added waits until that add is saved. If the resident refuses the add, the routes
+  waiting on it are dropped from the queue and the footer says "A route to <name> wasn't saved:
+  <name> wasn't saved."; a route chosen to it afterwards isn't queued either, and the footer says
+  "A route to a destination that wasn't saved isn't saved yet." The form keeps those routes, and
+  once the add is saved they are sent. A route to a destination removed elsewhere is dropped and
+  the footer says so. An action set to "default" (inherit the default output) while the file has
+  no default output waits while the default output's route is queued, isn't queued while that
+  route names an add that was refused, and is dropped when that route is dropped; it goes with
+  the default output once the add is saved. Recording, which follows Region by leaving its route unset,
+  waits for nothing.
+- **Removals.** A removal's route fallbacks are worked out from the file when it is sent, for
+  the routes that still name it there. Removing a destination cancels any route still queued to
+  it, and the form's routes to it show the file's again. An add removed before it was sent
+  leaves nothing to remove. One removed while in flight is removed once its save is confirmed.
+  If that answer was lost, it is removed only when the resident's settings hold exactly the
+  destination that was sent, decided once the window has the resident's current settings again
+  (`ui.snapshot`, or the file read again on a conflict's Retry saving); Retry saving waits for
+  that, and if it fails the removal stays pending.
+- Reload discards the queue before it reads the file, so if the file can't be loaded, values the
+  form still shows aren't queued.
 
 Access keys, secrets, session tokens, and source payloads are never configuration values.
 Provider adapters must reject secret-bearing settings fields. Credential references identify

@@ -183,19 +183,52 @@ do not change. The `order` must name every current profile ID exactly once:
 a missing, extra or duplicate ID returns `profile_order_invalid` with
 `details.missing`, `details.extra` and `details.duplicate`, and a stale
 `expectedRevision` returns `config_conflict`. Neither writes anything. An order that
-matches the current one returns `changed: false` without rewriting the file.
+matches the current one returns `changed: false` without rewriting the file. Pass the
+`acceptedRevision` from `settings.get`: the order is applied to the accepted document,
+and the write then checks the file under its lock. While the file has an edit the resident
+refused (`observedRevision` differs from `acceptedRevision`), a reorder that changes the
+order returns `config_conflict` until the file is fixed or reloaded.
 
 ```sh
-putgd-cli settings.reorderProfiles '{"order":["proton","s3-1"],"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+putgd-cli settings.reorderProfiles '{"order":["proton","s3-1"],"expectedRevision":"RETURNED-ACCEPTED-REVISION"}'
 ```
 
-`ui.moveDestination` is the UI path for agents and tests: it acts on an open Settings
-window like **Move up** / **Move down** in the destination's ⋯ menu. With `profileId`
-it first selects that destination. It moves the selection one place, keeps it
-selected and saves through the window's revision-checked autosave. The reply gives
-`order`, `selected` and `saving`; confirm the save with `settings.get`. Without an open
-Settings window it returns `ui_view_closed`; at the top or bottom of the list it
-returns `destination_move_invalid`.
+`ui.moveDestination` (MCP `move_destination`) is the UI path for agents and tests: it acts
+on Settings like **Move up** / **Move down** in the destination's ⋯ menu. It needs put.gd's
+window open, on any page; it doesn't switch to Settings. With `profileId` it first selects
+that destination. It moves the selection one place, keeps it
+selected and queues the new order. What is queued is the list of destination IDs in the order
+shown when the move is made. A later move while that order is still waiting replaces it in its
+place in the queue, so it can be sent before edits made between the two moves.
+When it is sent, the accepted destinations are put in that order, and any the list doesn't
+name keep their accepted order after it. The values sent are the accepted ones, so an edit
+still in flight, or one the resident refused, is never carried by the reorder. A refused
+reorder puts the list back to the order the file has (a destination added but not saved yet
+stays after its neighbour), unless a later reorder is queued: that one stays shown and is sent.
+A conflict with a reorder not saved yet does the same, whether it is the answer to any save or
+the window finds the change itself, and drops the queued reorder, so Retry saving doesn't send it:
+compare the IDs of `result.document.profiles` from `settings.get` (the saved order) and make
+the move again after Retry saving or a reload. The reply gives `order`, `selected` and `saving` (true
+while the order is queued or in flight); confirm the save with `settings.get`. Errors:
+
+| Code | When |
+| --- | --- |
+| `invalid_request` | `direction` isn't `up` or `down`, or `profileId` isn't a nonempty string of at most 64 characters |
+| `ui_unavailable` | this resident has no graphical interface, or the helper can't be reached |
+| `ui_view_closed` | put.gd's window isn't open, or the UI helper isn't ready; with `details.outcomeUnknown: true`, the window closed before answering |
+| `ui_command_timeout` | the window didn't answer in time (`details.outcomeUnknown: true`) |
+| `ui_busy` | Settings is reloading, or the helper has too many commands waiting |
+| `profile_not_found` | no destination has that `profileId`, whatever its form |
+| `destination_not_selected` | no `profileId` and no destination selected |
+| `destination_move_invalid` | the destination is already at the top or bottom |
+| `config_conflict` | settings changed elsewhere; Retry saving or reload first |
+| `setup_pending` | a destination setup is still running |
+
+With `details.outcomeUnknown: true` the move may have happened or may still be queued in the
+window. If the IDs of `result.document.profiles` from `settings.get` show the order you wanted, it
+saved. If they still show the old order, the outcome is still unknown, because a queued move can still
+be sent: read `settings.get` again after a while before moving again, so the destination isn't
+moved twice.
 
 `ui.diagnostics` drives Settings → Advanced → Diagnostics in the open window
 ([diagnostics.md](../design/diagnostics.md#settings-and-notifications)). Every reply is the
