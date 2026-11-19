@@ -669,6 +669,29 @@ class NightlyTests(unittest.TestCase):
             with self.assertRaisesRegex(nightly.NotRun, 'does not record a confirmed cleanup'):
                 nightly.live_resolution(Path(owner['run']), Path(owner['evidence']), owner['session'])
 
+    def test_operator_commands_refuse_before_writing_or_checking_anything(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            evidence = Path(owner['evidence'])
+            def main(*argv):
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        patch.object(lab, 'state', return_value=dict(id='n12345678')), \
+                        patch.object(sys, 'argv', ['nightly_desktops.py', *argv]):
+                    with self.assertRaises(SystemExit) as caught:
+                        nightly.main()
+                return str(caught.exception)
+            # A wrong run is refused before the unaudited record is written.
+            self.assertIn('not the run you checked', main('--unaudited-attempt', 'idle-1', '--resolve-live-cleanup', 'n87654321'))
+            self.assertFalse((evidence/'idle-1'/nightly.UNAUDITED_ATTEMPT).exists())
+            # No absence check while an orphaned recipe or lend may still publish.
+            with patch.object(nightly, 'guest_clients_live', return_value=True), \
+                    patch.object(nightly, 'check_s3_absent') as check:
+                self.assertIn('still live', main('--check-live-cleanup'))
+            check.assert_not_called()
+            self.assertTrue((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
+
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
             pass
@@ -699,7 +722,14 @@ class NightlyTests(unittest.TestCase):
         # A versioned bucket can keep the upload behind a delete marker.
         kept = client(versioning={'Status': 'Suspended'}, versions={'IsTruncated': False, 'Versions': [{}]})
         self.assertFalse(nightly.check_s3_absent(publication, client=kept)['versionsGone'])
-        kept.list_object_versions.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1)
+        kept.list_object_versions.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1000)
+        # Pages of delete markers alone do not hide a version: follow every page.
+        paged = client(versioning={'Status': 'Enabled'})
+        paged.list_object_versions.side_effect = [
+            {'IsTruncated': True, 'DeleteMarkers': [{}], 'NextKeyMarker': 'k', 'NextVersionIdMarker': 'v'},
+            {'IsTruncated': False, 'DeleteMarkers': [{}]}]
+        self.assertTrue(nightly.check_s3_absent(publication, client=paged)['versionsGone'])
+        self.assertEqual(paged.list_object_versions.call_args.kwargs['KeyMarker'], 'k')
         broken = client()
         broken.get_bucket_versioning.side_effect = RuntimeError('secret-looking detail')
         with self.assertRaises(nightly.NotRun) as caught:
@@ -739,6 +769,11 @@ class NightlyTests(unittest.TestCase):
                         self.assertRaisesRegex(nightly.NotRun, 'has a terminal.json'):
                     nightly.record_unaudited_attempt(owner, 'idle-2')
                 (evidence/'idle-2/terminal.json').unlink()
+                # A dangling terminal.json symlink is not an absent proof, at record or retirement time.
+                (evidence/'idle-1/terminal.json').symlink_to(evidence/'missing')
+                with self.assertRaisesRegex(nightly.NotRun, 'does not match'):
+                    nightly.unaudited_attempt(evidence/'idle-1')
+                (evidence/'idle-1/terminal.json').unlink()
                 (evidence/'idle-2/receipt.json').unlink()
                 (evidence/'idle-2').rmdir()
                 nightly.retire(run, evidence, {})

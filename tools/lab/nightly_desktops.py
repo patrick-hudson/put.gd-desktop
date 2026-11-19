@@ -562,7 +562,7 @@ def unaudited_attempt(attempt):
         return False
     record = json.loads(private_file(path).read_text())
     if (record.get('schemaVersion') != 1 or record.get('kind') != 'unaudited-attempt'
-            or record.get('attempt') != attempt.name or (attempt/'terminal.json').exists()
+            or record.get('attempt') != attempt.name or os.path.lexists(attempt/'terminal.json')
             or record.get('receiptSha256') != digest(attempt/'receipt.json')):
         raise NotRun('guest retained: '+str(path)+' does not match the attempt receipt')
     return True
@@ -681,8 +681,19 @@ def check_s3_absent(publication, *, client=None):
         if status is None:
             versions_gone = True
         else:
-            versions = client.list_object_versions(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1)
-            versions_gone = versions.get('IsTruncated') is False and not versions.get('Versions')
+            # Delete markers can fill pages; follow them (bounded) and look for any remaining version.
+            versions_gone, page = False, dict(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1000)
+            for _ in range(20):
+                versions = client.list_object_versions(**page)
+                if versions.get('Versions'):
+                    break
+                if versions.get('IsTruncated') is False:
+                    versions_gone = True
+                    break
+                if versions.get('IsTruncated') is not True or not versions.get('NextKeyMarker'):
+                    break
+                page.update(KeyMarker=versions['NextKeyMarker'],
+                            VersionIdMarker=versions.get('NextVersionIdMarker', ''))
     except Exception:
         raise NotRun('S3 check could not complete; keep the guest and try again') from None
     return dict(objectKeyAbsent=key_absent, prefixEmpty=prefix_empty, versionsGone=versions_gone)
@@ -699,7 +710,7 @@ def record_unaudited_attempt(owner, name, *, now=None):
     if Path(name).name != name or name in ('.', '..') or not (attempt/'receipt.json').is_file():
         raise NotRun('attempt must be a directory of this row with a receipt.json')
     # Only a runner killed before it wrote terminal.json; a terminal proof that fails its checks stays a refusal.
-    if (attempt/'terminal.json').exists() or (attempt/'terminal.json').is_symlink():
+    if os.path.lexists(attempt/'terminal.json'):
         raise NotRun('attempt has a terminal.json; only an attempt killed before its terminal proof can be unaudited')
     record = dict(schemaVersion=1, kind='unaudited-attempt', attempt=name, session=owner['session'],
                   receiptSha256=digest(attempt/'receipt.json'),
@@ -1610,6 +1621,9 @@ def main():
         try:
             owner = retained_owner()
             run, _ = owned_overlay(owner)
+            # An absence seen while an orphaned recipe or lend can still publish proves nothing.
+            if guest_clients_live(run):
+                raise NotRun('a lend or recipe for this run is still live; wait until it has stopped')
             marker = run/lab.LIVE_CLEANUP_MARKER
             if marker.exists():
                 details = json.loads(private_file(marker).read_text())
@@ -1631,6 +1645,8 @@ def main():
         try:
             with recovery_mutex():
                 owner = retained_owner()
+                if args.resolve_live_cleanup:
+                    settled_overlay(owner, args.resolve_live_cleanup)
                 for name in args.unaudited_attempt:
                     print(json.dumps(record_unaudited_attempt(owner, name), indent=2))
                 if args.resolve_live_cleanup:
