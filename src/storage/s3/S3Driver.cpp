@@ -245,6 +245,12 @@ template<class E> bool ambiguous(const E& error) {
     // 501 Not Implemented is a definite refusal of an unsupported request.
     return status < 200 || (status >= 500 && status != 501);
 }
+// A bucket versioning check denied to the key (an R2 token scoped to one bucket can't read
+// bucket configuration) or not implemented by the service (#1677).
+template<class E> bool versioningUnreadable(const E& error) {
+    const int status = int(error.GetResponseCode());
+    return status == 403 || status == 501;
+}
 // Only the explicit synthetic destination test uses this unsigned GET. Keep
 // its response bounded even when a public endpoint returns unexpected content.
 class SyntheticResponseStream final : public Aws::IOStream {
@@ -312,6 +318,14 @@ Head head(Client& client, const Destination& destination, const QString& key, co
     if (cancellation) request.SetContinueRequestHandler([cancellation](const Aws::Http::HttpRequest*) { return !stopped(cancellation); });
     return client.HeadObject(request);
 }
+// Whether the service answers 501 to a HEAD naming a version, as Cloudflare R2 does: it keeps
+// no versions, so a key holds one object. Asked only when GetBucketVersioning is denied, as
+// it is to an R2 token scoped to one bucket (#1677). Amazon S3 answers such a HEAD with the
+// version, 404 or 403, never 501, so a denied check there still stops deletion.
+bool versionsRefused(Client& client, const Destination& destination, const QString& key, const QString& version) {
+    const auto named = head(client, destination, key, version.isEmpty() ? QStringLiteral("null") : version);
+    return !named.IsSuccess() && int(named.GetError().GetResponseCode()) == 501;
+}
 QString metadata(const Aws::S3::Model::HeadObjectResult& result, const char* name) {
     const auto it = result.GetMetadata().find(name);
     return it == result.GetMetadata().end() ? QString{} : qt(it->second);
@@ -337,6 +351,11 @@ void signLink(Client& client, StorageReceipt& value) {
         const auto status=client.GetBucketVersioning(request);
         // R2 returns an opaque write ID but has no version addressing.
         if(status.IsSuccess()&&status.GetResult().GetStatus()==Aws::S3::Model::BucketVersioningStatus::NOT_SET)version.clear();
+        // An R2 token scoped to one bucket can't read its versioning (#1677). A link naming
+        // the version would then be refused, so ask for the version itself: a 501 means
+        // the service keeps none, and the link names the key alone.
+        else if(!status.IsSuccess()&&versioningUnreadable(status.GetError())&&
+                versionsRefused(client,value.destination,s3StoredKey(value.objectReference["key"].toString()),version))version.clear();
     }
     if(version.isEmpty())value.directUrl=qt(client.GeneratePresignedUrl(aws(value.destination.settings["bucket"].toString()),
         aws(s3StoredKey(value.objectReference["key"].toString())),Aws::Http::HttpMethod::HTTP_GET,seconds));
@@ -383,10 +402,14 @@ StorageReceipt withoutVersion(StorageReceipt receipt) {
 // the object and no version ID, which the identity check takes for another object. A
 // bucket whose versioning was never enabled holds one object per key, so a receipt from it
 // is checked and removed like an unversioned one.
+// An R2 API token with Object Read & Write scoped to one bucket can't read bucket
+// configuration, so GetBucketVersioning is denied (#1677). The 501 already shows the
+// service keeps no versions; only a bucket that says its versioning is on overrides it.
 // Yes: check and remove it unversioned. No: the first answer stands. Unknown: a read
 // needed to tell a version-only mismatch from another object failed; the caller reports
 // unknown with this error, so a Retry checks again instead of settling on "changed".
-struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; };
+// refused: the service answered 501 to a request naming a version.
+struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; bool refused = false; };
 Versionless versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
     const auto version = expected.objectReference["versionId"].toString();
     if (version.isEmpty() || version == "null") return {};
@@ -403,9 +426,12 @@ Versionless versionless(Client& client, const StorageReceipt& expected, const St
     QElapsedTimer timer;
     timer.start();
     const auto outcome = client.GetBucketVersioning(request);
-    // R2 keeps its earlier handling: its 501 already leaves the identity unknown.
-    if (!outcome.IsSuccess()) return refused ? Versionless{} : Versionless{Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
-    return {outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET ? Versionless::Yes : Versionless::No, {}};
+    if (!outcome.IsSuccess()) {
+        if (refused && versioningUnreadable(outcome.GetError())) return {Versionless::Yes, {}, true};
+        return {Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
+    }
+    const bool none = outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    return {none ? Versionless::Yes : Versionless::No, {}, refused && none};
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -1373,11 +1399,16 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     QElapsedTimer versioningTimer;
     versioningTimer.start();
     auto bucket = client->GetBucketVersioning(versioning);
-    if (!bucket.IsSuccess()) {
+    auto state = Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    if (bucket.IsSuccess()) state = bucket.GetResult().GetStatus();
+    // A service that refuses version-naming requests keeps no versions, so a denied check
+    // there leaves nothing an unversioned delete could hide behind a marker (#1677). A
+    // recorded version is never deleted without a bucket that confirms its versioning.
+    else if (!(version.isEmpty() && versioningUnreadable(bucket.GetError()) &&
+               (check.refused || versionsRefused(*client, destination, key, {})))) {
         finish("unknown", wireError(bucket.GetError(), S3Stage::DeleteVersioning, versioningTimer.elapsed()));
         return;
     }
-    auto state = bucket.GetResult().GetStatus();
     const bool versioned = state == Aws::S3::Model::BucketVersioningStatus::Enabled || state == Aws::S3::Model::BucketVersioningStatus::Suspended;
     if (version.isEmpty() && versioned) {
         finish("unsupported_safe_removal", {"unsupported_safe_removal", "A recorded version identity is required after bucket versioning changes", {}});

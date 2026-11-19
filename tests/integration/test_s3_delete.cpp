@@ -324,12 +324,28 @@ private slots:
         QCOMPARE(f.events("DELETE").size(), 1);
     }
     // Cloudflare R2 (#145): a version ID on every write, no versioning, 501 for versionId.
+    // An R2 token with Object Read & Write scoped to one bucket is also denied
+    // GetBucketVersioning (#1677); the 501 alone shows the key holds one object.
+    void versionlessBucketChecksAndRemovesLikeUnversioned_data() {
+        QTest::addColumn<bool>("versioningDenied");QTest::addColumn<bool>("recordedVersion");
+        QTest::newRow("versioning-readable") << false << true;
+        QTest::newRow("scoped-token") << true << true;
+        QTest::newRow("scoped-token-no-version-id") << true << false;
+    }
     void versionlessBucketChecksAndRemovesLikeUnversioned() {
+        QFETCH(bool, versioningDenied);QFETCH(bool, recordedVersion);
         S3Fixture f;
         f.reset({{"versionless", true}});
-        const auto uploaded = f.upload(f.request());
+        auto uploaded = f.upload(f.request());
         QCOMPARE(uploaded.status, QString("uploaded"));
         QVERIFY(!uploaded.receipt.objectReference["versionId"].toString().isEmpty());
+        if (!recordedVersion) uploaded.receipt.objectReference["versionId"] = "";
+        if (versioningDenied) {
+            auto configuration = rules({{{"method", "GET"}, {"query", "versioning"}, {"status", 403}, {"remaining", 1000}}});
+            configuration["objects"] = f.state()["objects"];
+            configuration["versionless"] = true;
+            f.reset(configuration);
+        }
         // History checks the recorded identity before deleting; the receipt stays as recorded.
         const auto stat = f.await<StatResult>([&](auto cb) { f.provider.stat(uploaded.receipt, cb); });
         QCOMPARE(stat.status, QString("own"));
@@ -342,9 +358,10 @@ private slots:
             journal = progress;
             ack({});
         });
+        QVERIFY2(!removed.error, qPrintable(removed.error.message));
         QCOMPARE(removed.status, QString("removed"));
         QCOMPARE(phases, QStringList({"object_intent", "done"}));
-        QVERIFY(journal["versionless"].toBool());
+        QCOMPARE(journal["versionless"].toBool(), recordedVersion);
         QCOMPARE(journal["target"].toObject(), uploaded.receipt.toJson());
         const auto deletes = f.events("DELETE");
         QCOMPARE(deletes.size(), 1);
@@ -429,6 +446,32 @@ private slots:
         f.reset(configuration);
         const auto result = f.remove(uploaded.receipt);
         QCOMPARE(result.status, QString("changed"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
+    // A denied versioning check on a service that answers version-naming requests (Amazon S3)
+    // still stops deletion with the versioning guidance (#1677): only a 501 shows that an
+    // unversioned delete can't leave a hidden version behind.
+    void deniedVersioningCheckNeverDeletesWithoutProof_data() {
+        QTest::addColumn<QString>("versioning");
+        QTest::newRow("versioned-bucket") << QString("Enabled");
+        QTest::newRow("unversioned-bucket") << QString();
+    }
+    void deniedVersioningCheckNeverDeletesWithoutProof() {
+        QFETCH(QString, versioning);
+        S3Fixture f;
+        f.reset({{"versioning", versioning}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        QCOMPARE(uploaded.receipt.objectReference["versionId"].toString().isEmpty(), versioning.isEmpty());
+        auto configuration = rules({{{"method", "GET"}, {"query", "versioning"}, {"status", 403}, {"remaining", 1000}}});
+        configuration["objects"] = f.state()["objects"];
+        configuration["versioning"] = versioning;
+        f.reset(configuration);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
+        QVERIFY(!result.progress.contains("versionless"));
         QCOMPARE(f.events("DELETE").size(), 0);
     }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
