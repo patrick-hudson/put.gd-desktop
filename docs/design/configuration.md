@@ -291,9 +291,9 @@ Null derives an object URL from endpoint/bucket/addressing. `addressing` is path
 virtual or auto; virtual rejects dotted buckets and literal IP endpoints, and auto
 uses virtual only for an AWS host with an undotted bucket. Path mode is required for
 the development dotted bucket. Validation performs no network or secret-store IO.
-For S3-compatible services, the endpoint must support conditional writes. Cloudflare
-R2 works with its account endpoint, region `auto`, ACL omit and the bucket's r2.dev
-or custom domain as `publicUrlBase`. Backblaze B2's S3 API lacks conditional writes,
+For S3-compatible services, the endpoint must support conditional writes. An `s3`
+profile whose endpoint host is an R2 account endpoint signs with `auto` whatever
+`region` holds; new R2 destinations use the `cloudflare-r2` provider below. Backblaze B2's S3 API lacks conditional writes,
 so Test connection fails there; use the `backblaze-b2` provider instead. See
 [S3-compatible services](../user/s3.md#s3-compatible-services).
 
@@ -302,6 +302,19 @@ so Test connection fails there; use the `backblaze-b2` provider instead. See
 (null or HTTPS, public links only), `connectTimeoutMs` and `requestTimeoutMs`.
 Credentials are a keychain or session reference to the application key ID and key.
 See [Backblaze B2](../user/b2.md).
+
+`cloudflare-r2` profiles (#1678) hold exactly `accountId` (32 lowercase hexadecimal
+digits), `jurisdiction` (`default`, `eu` or `fedramp`), `bucket` (R2's rule: 3–63
+lowercase letters, digits and hyphens, starting and ending with a letter or digit),
+`objectPrefix`, `linkMode` (`public` or `presigned`, default `presigned`),
+`linkValidityDays` (1–7), `publicUrlBase` (null or HTTPS; public links need the
+bucket's r2.dev address or a custom domain), `connectTimeoutMs`, `requestTimeoutMs`,
+`lowSpeedBytesPerSecond` and `lowSpeedTimeSeconds`. Requests go through the S3
+adapter with the endpoint `https://ACCOUNT[.eu|.fedramp].r2.cloudflarestorage.com`,
+region `auto`, path addressing, ACL omit and storage class STANDARD; the S3 rules
+then apply to those settings. Credentials are a keychain or session reference to the
+R2 API token's access key ID and secret. Receipts record the `cloudflare-r2`
+destination. See [Cloudflare R2](../user/r2.md).
 
 `custom-http` profiles (#1361) hold exactly `requestMethod`, `requestUrl`,
 `allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`,

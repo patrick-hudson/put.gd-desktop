@@ -4,7 +4,8 @@ Implement `StorageProvider` and register it in `ProviderRegistry`. Settings vali
 must be pure and must not read source content, unlock secrets or contact the network.
 No profile is accepted without its registered validator. The production registry has
 no test provider. S3 implementation belongs exclusively under `src/storage/s3/`,
-Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)) and the custom HTTP
+Backblaze B2's under `src/storage/b2/` ([b2.md](../user/b2.md)), Cloudflare R2's under
+`src/storage/s3/` as a provider over the S3 one (`R2Provider`, [r2.md](../user/r2.md)) and the custom HTTP
 uploader's under `src/storage/http/` ([custom-uploader.md](../user/custom-uploader.md)).
 
 All network methods complete through a callback exactly once, including cancellation,
