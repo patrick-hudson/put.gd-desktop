@@ -686,18 +686,25 @@ checkout, while no nightly worker is running there. They refuse a slot whose
 worker is still alive. Only the manual nightly trigger (`--now`) runs on the d69
 controller.
 
+An orphaned recipe or Proton lend for the run can still be uploading after its
+worker died. `--check-live-cleanup` and `--resolve-live-cleanup` both refuse
+while one is live. If either refuses for that reason, wait until it stops, then
+start again from step 1: a check made while it ran proves nothing.
+
 1. **Read the marker.** `cat` the run directory's
    `live-cleanup-pending.json`. Note `destination`, `prefix` and `objectKey`.
    The slot's `retained.json` (or `owner.json`) names the run and the row's
    evidence directory. If the marker is already gone, find the three values in
    the attempt's evidence or the provider console. The prefix is the folder
-   before the file name. If you can't pin them down, keep the guest and ask
+   before the file name, with its trailing `/`
+   (`acceptance/tier1-live/<32 hex>/`). If you can't pin them down, keep the guest and ask
    your coordinator.
 2. **Make sure the object is gone.** If it isn't, delete it in the provider's
-   own console, matching the exact key or folder from step 1. The kept guest's
-   put.gd may already have quit, so don't count on its History row. If it is
-   still running and shows the row, **Delete from destination** or **Retry
-   deletion** works too, but only on the row whose key matches exactly.
+   own console, matching the exact key or folder from step 1. For S3 only, if
+   the kept guest's put.gd is still running and shows the row, **Delete from
+   destination** or **Retry deletion** on the row whose key matches exactly
+   works too. It may already have quit, so don't count on it. put.gd can't
+   delete a Proton file, so use the Proton web app.
    - **S3:** run `python3 tools/lab/nightly_desktops.py --check-live-cleanup`
      (add `--destination`, `--prefix` and `--object-key` when the marker is
      gone). It reads key set 2 in memory and changes nothing. It makes an
@@ -707,12 +714,15 @@ controller.
      `prefixEmpty` and `versionsGone` must all be `true` (exit 0). This check
      decides. `https://put.gd/<objectKey>` can keep serving a cached copy for
      a while after the object is deleted, so a response there doesn't keep the
-     guest.
+     guest. If `versionsGone` is `false`, turn on **Show versions** in the S3
+     console, permanently delete the remaining versions of the exact test key
+     (and anything else under the prefix), and run the check again.
    - **Proton:** sign in to the put.gd Proton test account at
      `drive.proton.me`. The cell's folder is the prefix without its trailing
      slash (`putgd-tier1-<32 hex>`). Check all three places every time:
      **My files** must not have it, **Shared** (shared by me) must have no link
-     for it or anything in it, and **Trash** must not hold it. Revoke any link
+     for it or anything in it, and **Trash** must hold neither the folder nor
+     any of its files (the file can be in Trash on its own). Revoke any link
      that is left, and permanently delete only that folder or its files.
 3. **Read the row's receipts.** For each `*/receipt.json` in the evidence
    directory, read `environment.cleanup_errors` and
@@ -725,7 +735,7 @@ controller.
    service. The same text in another receipt needs its own check. Errors you
    can't explain keep the guest: ask your coordinator.
 4. **Record attempts killed before their terminal proof.** An attempt
-   directory with `receipt.json` but no valid `terminal.json` makes retirement
+   directory with `receipt.json` but no `terminal.json` makes retirement
    refuse the whole row. Record each one:
 
    ```sh
@@ -741,10 +751,10 @@ controller.
 5. **Record the resolution.**
 
    ```sh
-   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup n<8 hex>
+   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup RUN_NAME
    ```
 
-   Give the run directory name you checked. The command refuses when the slot
+   `RUN_NAME` is the run directory name you checked, such as `n1234abcd`. The command refuses when the slot
    now holds another run, or while a lend or recipe for the run is still live
    (it may still be uploading). Add `--guest-only-error 'EXACT TEXT'` once for each error you checked in
    step 3. If the marker is already gone, add `--destination`, `--prefix` and
