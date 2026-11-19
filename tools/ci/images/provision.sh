@@ -79,13 +79,16 @@ case "$profile" in
     qt=${PUTGD_QT_VERSION:-$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["buildInputs"]["qt"])' "$root/packaging/appimage/tools.lock.json")}
     python3 -m venv /opt/aqt
     /opt/aqt/bin/pip install --no-cache-dir 'aqtinstall==3.3.*' 'py7zr==1.1.0'
+    # tools/ci/aqt-logging.ini writes aqt's debug log to $RUNNER_TEMP, which only GitHub's runners set.
+    aqt_logs=$(mktemp -d)
     for attempt in 1 2 3; do
-      LOG_CFG=$root/tools/ci/aqt-logging.ini /opt/aqt/bin/aqt install-qt linux desktop "$qt" linux_gcc_64 -m qtimageformats -O /opt/Qt && break
+      RUNNER_TEMP=$aqt_logs LOG_CFG=$root/tools/ci/aqt-logging.ini /opt/aqt/bin/aqt install-qt linux desktop "$qt" linux_gcc_64 -m qtimageformats -O /opt/Qt && break
       [ "$attempt" != 3 ] || exit 1
       echo "::warning::Qt $qt install: attempt $attempt of 3 failed"
       rm -rf "/opt/Qt/$qt"
       sleep $((attempt * 30))
     done
+    rm -rf "$aqt_logs"
     test -x "/opt/Qt/$qt/gcc_64/bin/qmake"
     ;;
   pipewire)
