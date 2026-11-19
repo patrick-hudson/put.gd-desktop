@@ -594,27 +594,51 @@ def settled_overlay(owner, checked_run):
 def frozen_overlay(owner, checked_run):
     """settled_overlay, plus a guest VM that stayed paused since --check-live-cleanup paused it."""
     run, evidence = settled_overlay(owner, checked_run)
-    if not guest_paused(run):
+    paused = guest_paused(run)
+    if paused is None:
         raise NotRun('the guest VM is running; run --check-live-cleanup (it pauses the VM), then check the destination again')
+    if time.time()-paused < PAUSE_SETTLE_SECONDS:
+        raise NotRun('the guest VM was paused under '+str(PAUSE_SETTLE_SECONDS)+' s ago; check the destination again after that')
     return run, evidence
 
 
+# An upload request whose body reached the destination before the pause can still commit just after it.
+# Proton and S3 multipart uploads need a final call from the paused client; a single S3 PUT commits within
+# seconds of its body arriving. Destination checks count only this long after the pause.
+PAUSE_SETTLE_SECONDS = 120
+PAUSE_RECORD = 'live-cleanup-paused.json'
+
+
 def guest_paused(run, *, pause=False):
-    """True when the guest's VM is paused (or gone), so nothing in it can publish. ``pause`` pauses it first.
+    """When the guest's VM is paused, the time.time() it was paused; else None. ``pause`` pauses it first.
 
     A recipe killed on the host can leave put.gd in the guest finishing an upload; a destination check made
-    while the VM runs proves nothing. Retirement still quits a paused VM; QMP ``cont`` resumes it.
+    while the VM runs proves nothing. Retirement still quits a paused VM; QMP ``cont`` resumes it, and the
+    next pause starts a new settle period. A run with neither disk nor state has no VM (paused at 0).
     """
     from tools.lab import lab
     if not (run/'qmp.sock').exists():
-        return not (run/'disk.qcow2').exists() or not (run/'state.json').exists()
+        return 0 if not (run/'disk.qcow2').exists() and not (run/'state.json').exists() else None
+    record = run/PAUSE_RECORD
     try:
         with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
-            if pause:
+            running = qmp.execute('query-status').get('running')
+            if pause and running is not False:
                 qmp.execute('stop')
-            return qmp.execute('query-status').get('running') is False
+                running = qmp.execute('query-status').get('running')
+                if running is False:
+                    save(record, dict(pausedAt=time.time()))
+            if running is not False:
+                return None
     except (OSError, lab.LabError):
-        return False
+        return None
+    if pause and not record.exists():
+        # Paused by something else: the settle period starts now.
+        save(record, dict(pausedAt=time.time()))
+    try:
+        return float(json.loads(private_file(record).read_text())['pausedAt'])
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
+        return None
 
 
 def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_errors=(), now=None):
@@ -1662,8 +1686,11 @@ def main():
             else:
                 raise NotRun('no live cleanup marker in '+str(run)+'; give --destination, --prefix and --object-key')
             # Nothing in the guest may publish after this point; the destination check follows the pause.
-            if not guest_paused(run, pause=True):
+            paused = guest_paused(run, pause=True)
+            if paused is None:
                 raise NotRun('could not pause the guest VM; keep the guest')
+            # Let an upload that had already reached the destination commit before reading it.
+            time.sleep(max(0, paused+PAUSE_SETTLE_SECONDS-time.time()))
             result = dict(guestPaused=True)
             if publication['destination'] == 's3':
                 result.update(check_s3_absent(publication))

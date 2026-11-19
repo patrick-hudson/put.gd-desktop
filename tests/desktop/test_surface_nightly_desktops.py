@@ -583,7 +583,8 @@ class NightlyTests(unittest.TestCase):
     def resolve(self, root, **kwargs):
         from tools.lab import lab
         with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
-                patch.object(lab, 'state', return_value=dict(id=kwargs.pop('run_id', 'n12345678'))):
+                patch.object(lab, 'state', return_value=dict(id=kwargs.pop('run_id', 'n12345678'))), \
+                patch.object(nightly, 'guest_paused', return_value=kwargs.pop('paused', 0)):
             return nightly.resolve_live_cleanup(nightly.retained_owner(), kwargs.pop('checked', 'n12345678'), **kwargs)
 
     def test_a_confirmed_live_cleanup_record_lets_recovery_retire_the_kept_guest(self):
@@ -652,9 +653,11 @@ class NightlyTests(unittest.TestCase):
                     self.assertRaisesRegex(nightly.NotRun, 'still live'):
                 self.resolve(root)
             # put.gd in a running guest can still finish an upload; only a check made while the VM is paused counts.
-            with patch.object(nightly, 'guest_paused', return_value=False), \
-                    self.assertRaisesRegex(nightly.NotRun, 'VM is running'):
-                self.resolve(root)
+            with self.assertRaisesRegex(nightly.NotRun, 'VM is running'):
+                self.resolve(root, paused=None)
+            # A pause too recent for an already-sent upload to have committed does not count yet.
+            with self.assertRaisesRegex(nightly.NotRun, 'paused under'):
+                self.resolve(root, paused=nightly.time.time()-10)
             with self.assertRaisesRegex(nightly.NotRun, 'differs from the marker'):
                 self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/other.png'))
             self.assertTrue(marker.exists())
@@ -697,32 +700,53 @@ class NightlyTests(unittest.TestCase):
             paused.assert_not_called()
             # The VM is paused before the destination is read, and a guest that won't pause is never checked.
             order = []
-            with patch.object(nightly, 'guest_paused', side_effect=lambda run, pause=False: order.append('pause') or False), \
+            with patch.object(nightly, 'guest_paused', side_effect=lambda run, pause=False: order.append('pause')), \
                     patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check')):
                 self.assertIn('could not pause', main('--check-live-cleanup'))
             self.assertEqual(order, ['pause'])
+            # After a pause, the destination is read only once the settle period has passed.
+            with patch.object(nightly, 'guest_paused', return_value=nightly.time.time()), \
+                    patch.object(nightly.time, 'sleep', side_effect=lambda seconds: order.append(round(seconds, -1))), \
+                    patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check') or {}):
+                main('--check-live-cleanup')
+            self.assertEqual(order[1:], [nightly.PAUSE_SETTLE_SECONDS, 'check'])
             self.assertTrue((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
 
     def test_guest_paused_stops_the_vm_and_reports_only_a_confirmed_pause(self):
         from tools.lab import lab
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp)
+            # Without a QMP socket only a run with neither disk nor state has no VM.
+            self.assertEqual(nightly.guest_paused(run), 0)
+            for name in ('state.json', 'disk.qcow2'):
+                (run/name).write_text('{}')
+                self.assertIsNone(nightly.guest_paused(run))
+                (run/name).unlink()
             (run/'state.json').write_text('{}')
             (run/'disk.qcow2').write_text('')
-            self.assertFalse(nightly.guest_paused(run))  # a disk without its QMP socket is not known paused
             (run/'qmp.sock').write_text('')
+            status = {'running': True}
             qmp = Mock()
             qmp.__enter__ = Mock(return_value=qmp)
             qmp.__exit__ = Mock(return_value=False)
-            qmp.execute.side_effect = lambda name, *a: {'running': False} if name == 'query-status' else {}
+            def execute(name, *a):
+                if name == 'stop':
+                    status['running'] = False
+                return dict(status) if name == 'query-status' else {}
+            qmp.execute.side_effect = execute
             with patch.object(lab, 'QMP', return_value=qmp):
-                self.assertTrue(nightly.guest_paused(run, pause=True))
-            self.assertEqual([c.args[0] for c in qmp.execute.call_args_list], ['stop', 'query-status'])
-            qmp.execute.side_effect = lambda name, *a: {'running': True}
+                self.assertIsNone(nightly.guest_paused(run))
+                paused = nightly.guest_paused(run, pause=True)
+                self.assertAlmostEqual(paused, nightly.time.time(), delta=5)
+                # A second check of a still-paused VM keeps the first pause time.
+                self.assertEqual(nightly.guest_paused(run, pause=True), paused)
+            self.assertEqual([c.args[0] for c in qmp.execute.call_args_list],
+                             ['query-status', 'query-status', 'stop', 'query-status', 'query-status'])
+            status['running'] = True
             with patch.object(lab, 'QMP', return_value=qmp):
-                self.assertFalse(nightly.guest_paused(run))
+                self.assertIsNone(nightly.guest_paused(run))
             with patch.object(lab, 'QMP', side_effect=OSError):
-                self.assertFalse(nightly.guest_paused(run, pause=True))
+                self.assertIsNone(nightly.guest_paused(run, pause=True))
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
