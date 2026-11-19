@@ -1636,6 +1636,15 @@ bool SettingsWindow::selectedDestinationChanged()const{
 namespace {
 QJsonValue atPath(QJsonValue value,const QStringList& path){for(const auto& part:path)value=value.isArray()?value.toArray().at(part.toInt()):value.toObject().value(part);return value;}
 QJsonValue replacePath(QJsonValue value,const QStringList& path,int index,const QJsonValue& replacement){if(index==path.size())return replacement;if(value.isArray()){auto array=value.toArray();const int row=path[index].toInt();if(row<0||row>=array.size())return value;array[row]=replacePath(array[row],path,index+1,replacement);return array;}auto object=value.toObject();object[path[index]]=replacePath(object[path[index]],path,index+1,replacement);return object;}
+// #1676: a pending Region and Endpoint pair holds only those two values. They are written onto the
+// destination's settings in whichever document the edit is applied to, when it is applied, so a
+// Bucket or Folder saved meanwhile is never reverted by a copy taken when the pair was queued.
+const QString regionEndpointPair=QStringLiteral("putgdRegionEndpointPair");
+QJsonValue applyEdit(const QJsonValue& document,const QString& path,const QJsonValue& value){
+ const auto parts=path.split('/',Qt::SkipEmptyParts);
+ if(value.isObject()&&value.toObject().contains(regionEndpointPair)){auto settings=atPath(document,parts).toObject();settings["region"]=value.toObject()["region"];settings["endpoint"]=value.toObject()["endpoint"];return replacePath(document,parts,0,settings);}
+ return replacePath(document,parts,0,value);
+}
 }
 QStringList SettingsWindow::profileOrder()const{QStringList ids;for(const auto& p:draft_["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
 void SettingsWindow::applyProfileOrder(const QStringList& order){
@@ -1665,7 +1674,7 @@ Error SettingsWindow::moveDestination(int from,int to){
  // that was rejected earlier cannot block the reorder. Index-addressed edits
  // are folded in; the "/profiles" edit supersedes them.
  auto projected=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
- for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)projected=replacePath(projected,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+ for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)projected=applyEdit(projected,it.key(),it.value()).toObject();
  QJsonObject reordered;QJsonArray value=Settings::reorderProfiles(projected,QJsonArray::fromStringList(order),reordered)?candidate()["profiles"].toArray():reordered["profiles"].toArray();
  for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(it.key()=="/profiles"||it.key().startsWith("/profiles/")){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  stageEdit("/profiles",value,destinationList_);dirty();
@@ -2023,13 +2032,15 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
  for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||(it.key().startsWith(path+"/")&&(!pair||it.key()==path+"/region"||it.key()==path+"/endpoint"))){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  const auto parts=path.split('/',Qt::SkipEmptyParts);
  auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
- for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+ for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=applyEdit(baseline,it.key(),it.value()).toObject();
  auto value=atPath(doc,parts);
- // The pair goes on top of the accepted document and the edits pending at or above it, never on
- // a document still being saved.
- if(pair){auto base=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()=="/"||it.key()==path||path.startsWith(it.key()+"/"))base=replacePath(base,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
-  auto settings=atPath(base,parts).toObject();const auto draft=value.toObject();settings["region"]=draft["region"];settings["endpoint"]=draft["endpoint"];value=settings;}
- if(value==atPath(baseline,parts)){
+ // A pair is just the two values, applied when it is submitted (applyEdit). A full settings edit
+ // already pending at this path takes them in instead.
+ if(pair){const auto draft=value.toObject();const auto pending=pendingEdits_.value(path);
+  if(pending.isObject()&&!pending.toObject().contains(regionEndpointPair)){auto settings=pending.toObject();settings["region"]=draft["region"];settings["endpoint"]=draft["endpoint"];value=settings;}
+  else value=QJsonObject{{regionEndpointPair,true},{"region",draft["region"]},{"endpoint",draft["endpoint"]}};}
+ const auto unchanged=pair?atPath(applyEdit(baseline,path,value),parts)==atPath(baseline,parts):value==atPath(baseline,parts);
+ if(unchanged){
   pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);if(!formOwnsFeedback(control))inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
  stageEdit(path,value,control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
@@ -2171,7 +2182,7 @@ bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosave
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(pendingEdits_.isEmpty())return;
- storeProfile();auto doc=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();++it)doc=replacePath(doc,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+ storeProfile();auto doc=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();++it)doc=applyEdit(doc,it.key(),it.value()).toObject();
  if(doc==settings_.document()){pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
  saving_=true;savingDocument_=doc;submittedEditSerials_=pendingEditSerials_;emit viewStateChanged();
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this)](Result result){
@@ -2205,7 +2216,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
 }
 void SettingsWindow::persistNextEdit(){
  if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
- const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
+ const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=applyEdit(accepted,path,value).toObject();
  if(doc==accepted){if(!formOwnsFeedback(control))inlineError(control,{});persistNextEdit();return;}
  savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
