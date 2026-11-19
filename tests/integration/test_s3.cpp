@@ -52,23 +52,28 @@ private slots:
             for(const char* secret:{"X-Amz-Signature","X-Amz-Credential","PUTGD_SYNTHETIC_ACCESS"})QVERIFY2(!written.contains(secret),secret);
     }
 
-    // Cloudflare R2 with a token of Object Read & Write scoped to one bucket (#1677): writes
-    // return a version ID, a request naming one gets 501, and GetBucketVersioning is denied.
-    // Test upload and link must sign a link R2 serves (no versionId) and remove its test file.
-    void r2ScopedTokenTestUploadAndLinkSignsAndCleansUp() {
+    // #1677: off Cloudflare R2's endpoint, a front that denies the versioning check and answers 501
+    // to requests naming a version may still keep versions behind it. The expiring link keeps
+    // naming the recorded version, so it never opens a replacement, and once a replacement is
+    // current Refresh hands out no new link.
+    void signedLinkKeepsTheRecordedVersionOffR2() {
         S3Fixture f;
-        f.reset({{"private",true},{"versionless",true},{"unsignedAuthError",true},
-                 {"rules",QJsonArray{QJsonObject{{"method","GET"},{"query","versioning"},{"status",403},{"remaining",1000}}}}});
+        const QJsonArray front{QJsonObject{{"method","GET"},{"query","versioning"},{"status",403},{"remaining",1000}},
+                               QJsonObject{{"method","HEAD"},{"query","versionId"},{"status",501},{"code","NotImplemented"},{"remaining",1000}}};
+        f.reset({{"private",true},{"versioning","Enabled"},{"rules",front}});
         f.destination.settings["linkMode"]="presigned";
-        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
-            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
-        QVERIFY2(!tested.second,qPrintable(tested.second.message));
-        QVERIFY(tested.first["presignedReachable"].toBool());
-        QCOMPARE(tested.first["cleanupStatus"].toString(),QString("removed"));
-        for(const auto& event:f.events("GET"))if(event.toObject()["path"].toString().contains("X-Amz-Signature"))
-            QVERIFY(!event.toObject()["path"].toString().contains("versionId"));
-        const auto objects=f.state()["objects"].toObject();
-        for(auto it=objects.begin();it!=objects.end();++it)QVERIFY2(it.value().toArray().isEmpty(),qPrintable(it.key()));
+        const auto uploaded=f.upload(f.request("kept.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        const auto recorded=uploaded.receipt.objectReference["versionId"].toString();
+        QVERIFY(!recorded.isEmpty());
+        QCOMPARE(QUrlQuery(QUrl(uploaded.receipt.directUrl)).queryItemValue("versionId"),recorded);
+        auto objects=f.state()["objects"].toObject();auto versions=objects["prefix é/kept.txt"].toArray();
+        versions.append(QJsonObject{{"version","replacement"},{"body",QString::fromLatin1(QByteArray("replacement").toBase64())},{"metadata",QJsonObject{}},{"etag","\"replacement\""},{"marker",false}});
+        objects["prefix é/kept.txt"]=versions;
+        f.reset({{"private",true},{"versioning","Enabled"},{"objects",objects},{"rules",front}});
+        const auto renewed=f.await<StatResult>([&](auto cb){f.provider.refreshLink(uploaded.receipt,cb);});
+        QVERIFY(renewed.status!="own");
+        QVERIFY(renewed.receipt.directUrl.isEmpty()||QUrlQuery(QUrl(renewed.receipt.directUrl)).queryItemValue("versionId")==recorded);
     }
 
     void failedNameHeadRetainsSafeTransportDiagnostics() {
