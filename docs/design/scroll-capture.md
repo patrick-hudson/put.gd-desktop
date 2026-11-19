@@ -500,6 +500,10 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
 - **What changes in every frame inside something that sticks** (a video advertisement in
   a sticky rail beside the Al Jazeera article in Chrome) can leave a few of its pixels in
   the page beside it, where the tracker had too little evidence to hold it back.
+- **A header that sticks from the second frame on** over rows only the first frame showed
+  clear can leave its own flat colour there when three or more later frames showed it
+  over those rows: frames that agree outweigh one screen (which is what drops a notice
+  dismissed after the first frame).
 - **Something that slides in during the first frames** (Chrome's link bubble at the bottom
   left, from auto-scroll's visit with the pointer) can move by the page's step for a frame
   and be taken as the page there.
