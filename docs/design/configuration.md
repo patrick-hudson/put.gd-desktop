@@ -267,17 +267,20 @@ operation is applied to the latest accepted document when it is sent.
   destination on a Cloudflare R2 account endpoint skips the Region check, since R2 requests are
   signed with `auto`), and a Cloudflare R2 destination's Account ID, Jurisdiction
   and Bucket, which save together once all three are valid ([r2.md](../user/r2.md)). The accepted
-  values stay, and the destination's other fields and other destinations still save. A new R2
-  destination, or a switch of a destination to R2, waits as a whole until those three are valid,
-  and routes to it wait with it.
+  values stay, and unrelated fields and other destinations still save. A new R2 destination, or
+  a switch of a destination to R2 made in the open window, waits as a whole until those three are
+  valid, and route changes to it wait with it; captures meanwhile use the saved settings. A switch
+  restored from a checkpoint is replayed field by field and can be refused until the three are
+  valid.
 - **Refusals.** A field the resident refuses holds back only its own group. A request the
   resident refuses again unchanged, such as an edit of a destination whose saved Region today's
   rules refuse, stops with its reason while the rest of the queue goes on.
 - **Failures and conflicts.** A transport/write failure stops the queue until Retry saving is
   pressed. A `config_conflict` keeps the queue, except a reorder not saved yet: whether the
   conflict comes back as the answer to any save or the window finds it itself (snapshot or file
-  watcher), the list goes back at once to the order the file has, with an add not saved yet kept
-  after its neighbour, and the queued reorder is dropped. A refused reorder does the same unless
+  watcher), the queued reorder is dropped and the list goes back to the order the window last
+  accepted, then follows the file's order once the window reads it again, with an add not saved
+  yet kept after its neighbour. A refused reorder does the same unless
   a later one is queued, and a later order that settles clears an older one's refusal.
 - **Retry saving after a conflict, and restored drafts.** The resident reads the file again and, only if that file
   validates, the queue is applied to it. Queued values equal to what the window last had accepted
