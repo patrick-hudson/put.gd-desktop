@@ -786,11 +786,12 @@ and dwz steps. It works in three layers:
   first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
   than one mirror answered the probe, so the next attempt starts on another mirror. (The
   workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
-  than 128 MiB.) `putgd_apt_install` gives each of its three attempts 6 minutes for the
-  update and the download only; the install of what was downloaded runs to the end. After
-  a failed attempt it waits up to 600 s for any `dpkg` or `apt-get` still running, such as
-  a dpkg that outlived its stopped `apt-get` and still holds the dpkg lock, before
-  `dpkg --configure -a` and the retry
+  than 128 MiB.) `putgd_apt_install` gives each of its three attempts 8 minutes for the
+  update and the download only (`PUTGD_APT_ATTEMPT_SECONDS=480`): 24 minutes of downloading
+  inside the install steps' 30-minute limit, with room for the install, which runs to the
+  end. After a failed attempt it waits up to 600 s for any process holding a dpkg or apt
+  lock, such as a dpkg that outlived its stopped `apt-get`, before `dpkg --configure -a`
+  and the retry
   ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702)).
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
@@ -890,7 +891,8 @@ and dwz steps. It works in three layers:
   install writes nothing. The pre-checkout bootstrap (git and ca-certificates, plus zstd
   on ubuntu24.04) retries 3 times inline and reports in a table of the same form. Each
   attempt's update and download are limited to 10 minutes. On apt the install of what was
-  downloaded has no limit, and a failed attempt waits for any leftover dpkg and runs
+  downloaded has no limit of its own, and the step's 30-minute limit bounds it. A failed
+  attempt that is not the last waits for any process holding a dpkg or apt lock and runs
   `dpkg --configure -a` before the retry.
 
 The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
@@ -899,7 +901,7 @@ Not covered yet: a package snapshot for `ci.yml`. The `linux` and `sanitizers`
 installs run before checkout, so they use the workflow's own `putgd_apt_install`
 instead of `tools/ci/install-packages.sh`
 ([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). That gives
-them the mirror probe, three attempts with a 6-minute limit on each update and
+them the mirror probe, three attempts with an 8-minute limit on each update and
 download, a kept archives directory, mirror demotion and a 30-minute step limit.
 They restore no package snapshot, so when all three attempts fail there is no
 offline install. The `contracts` install runs `tools/ci/install-packages.sh` with
