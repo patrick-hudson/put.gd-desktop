@@ -74,15 +74,15 @@ its expiring S3 link or authorized B2 link but writes it to the destination-test
 journal and result without its query or fragment, so they hold no signature, access
 key ID or download token (#1680). The resident strips these links from every S3 and
 B2 test checkpoint it writes, whatever the worker sends. During journal recovery,
-under the resident lock and before any destination test starts, it also rewrites
+under the resident lock and before any S3 or B2 destination test starts, it also rewrites
 the same links in journals written by earlier builds. That pass covers only the
 S3 and B2 receipt links (the receipt, a cleanup target, and both inside a finished
 result). It is best effort: a file that is not a regular `<uuid>.json` of the
 journal schema, or that is a symbolic link, too large, unreadable or unparseable,
 stays as it is, so treat older journals as sensitive too. Destination-test
 journals are kept; put.gd does not remove them. A Custom uploader test journal is
-never rewritten and keeps the link and deletion URL the server returned, as
-History does for every upload.
+never rewritten by this pass; it keeps the receipt the test accepted, the same
+receipt History keeps for an upload.
 The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
