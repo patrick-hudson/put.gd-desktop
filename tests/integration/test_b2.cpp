@@ -274,6 +274,26 @@ private slots:
         const auto refused=f.await<StatResult>([&](auto cb){f.provider.refreshLink(expired,cb);});
         QCOMPARE(refused.status,QString("foreign"));QVERIFY(f.events("b2_get_download_authorization").isEmpty());
     }
+    // Test upload and link opens its authorized link, but the journal and the result keep it
+    // without the download token (#1680).
+    void authorizedLinkTestKeepsNoTokenInItsJournal() {
+        B2Fixture f;
+        f.reset();
+        f.destination.settings["bucket"] = "putgd-fixture-private";
+        f.destination.settings["linkMode"] = "authorized";
+        QJsonArray journal;
+        const auto tested = f.await<std::pair<QJsonObject, Error>>([&](auto cb) {
+            f.provider.testDestination(f.destination, [&journal](auto value, auto ack) { journal.append(value); ack({}); },
+                                       [cb](QJsonObject value, Error e) { cb({std::move(value), std::move(e)}); });
+        });
+        QVERIFY2(!tested.second, qPrintable(tested.second.message));
+        QVERIFY(tested.first["publicReachable"].toBool());
+        QCOMPARE(tested.first["cleanupStatus"].toString(), QString("removed"));
+        QVERIFY(!journal.isEmpty());
+        QVERIFY(!f.events("b2_get_download_authorization").isEmpty());
+        for (const auto& written : {QJsonDocument(journal).toJson(), QJsonDocument(tested.first).toJson()})
+            QVERIFY(!written.contains("Authorization="));
+    }
     // #1602, review of #1603. Copy Link renews an expired authorized link and its request
     // stalls, holding the file; a deletion of the same file waits behind it. Quit kills the
     // renewal's helper as it does a deletion's: shutdown ends quickly, no helper survives,

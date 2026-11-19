@@ -200,7 +200,10 @@ bool decode(const QJsonObject& object, Artifact& artifact) {
     artifact = Artifact::fromJson(object);
     return true;
 }
-bool decode(const QJsonObject& object, StorageReceipt& receipt, const QString& recordedLink) {
+namespace {
+// signedLink: an expiring link carries its signed query. A destination test's result never
+// does (#1680): it holds the link without its query, and one that has a query is refused.
+bool receiptFrom(const QJsonObject& object, StorageReceipt& receipt, const QString& recordedLink, bool signedLink) {
     StorageReceipt value;
     if (!bounded(object) || !keys(object, {"schemaVersion", "destination", "objectReference", "concurrencyToken", "publicationId", "directUrl"}) ||
         !integer(object["schemaVersion"], 1, 1) || !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
@@ -220,12 +223,16 @@ bool decode(const QJsonObject& object, StorageReceipt& receipt, const QString& r
     auto names=[&key,kept](const QString& url,const QJsonObject& settings){return url==publicObjectUrl(settings,key)||(kept&&url==s3LegacyPublicObjectUrl(settings,key));};
     if(value.destination.settings.value("linkMode")=="presigned") {
         if(!names(origin.toString(QUrl::FullyEncoded),unsignedSettings) ||
-           !QUrlQuery(url).hasQueryItem("X-Amz-Signature") ||
+           (signedLink ? !QUrlQuery(url).hasQueryItem("X-Amz-Signature") : url.hasQuery() || url.hasFragment()) ||
            !QDateTime::fromString(value.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs).isValid())return false;
     } else if(!names(value.directUrl,value.destination.settings))return false;
     if(value.validate())return false;
     receipt = std::move(value);
     return true;
+}
+}
+bool decode(const QJsonObject& object, StorageReceipt& receipt, const QString& recordedLink) {
+    return receiptFrom(object, receipt, recordedLink, true);
 }
 bool decode(const QJsonObject& object, Error& error) {
     static const QRegularExpression codePattern(QStringLiteral("\\A[a-z][a-z0-9_]{0,127}\\z"));
@@ -425,10 +432,16 @@ bool decodeTestDestinationResult(const QJsonObject& object) {
     if (!choice(object["uploadStatus"], {"uploaded", "collision", "failed", "unknown"})) return false;
     if (object["uploadStatus"] != QJsonValue("uploaded")) return keys(object, {"uploadStatus"});
     StorageReceipt receipt;
-    if (!object["receipt"].isObject() || !decode(object["receipt"].toObject(), receipt)) return false;
+    if (!object["receipt"].isObject() || !receiptFrom(object["receipt"].toObject(), receipt, {}, false)) return false;
     if (keys(object, {"uploadStatus", "receipt"})) return true;
     if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart","presignedReachable","unsignedDenied"}) ||
         !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject()) return false;
+    // Its cleanup target is the same receipt, and its link carries no query or fragment either (#1680).
+    const auto target = object["cleanupProgress"].toObject().value("target");
+    if (!target.isUndefined()) {
+        const auto link = target.toObject().value("directUrl");
+        if (!target.isObject() || !link.isString() || QUrl(link.toString()).hasQuery() || QUrl(link.toString()).hasFragment()) return false;
+    }
     if (!object.contains("multipart")) return true;
     // The multipart permission probe: created, listed and aborted, or the stage S3 refused.
     const auto probe = object["multipart"].toObject();

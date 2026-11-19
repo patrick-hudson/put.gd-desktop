@@ -20,6 +20,7 @@
 #include "app/RecordingHelperBackend.h"
 #include "app/ScrollHelperBackend.h"
 #include "app/SetupService.h"
+#include "app/DestinationTestJournal.h"
 #include "app/StorageLocations.h"
 #include "ui/Appearance.h"
 #include "ui/ResidentTheme.h"
@@ -380,10 +381,16 @@ int main(int argc,char* argv[]) {
   const auto provider=profile["provider"].toString();
   if(provider!="s3"&&provider!="backblaze-b2"){reply({"test_unsupported","This provider has no destination test",{}});return;}
   const putgd::Destination destination{provider,profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  // Journal recovery first takes the journal lock and rewrites earlier tests' journals without
+  // signed links (#1680). A History database recovery can't finish doesn't hold tests back.
+  if(!operations.destinationTestsReady()){reply(operations.notReadyError());return;}
   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
-  auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
+  // The storage test journal boundary (#1680): whatever the worker sends, and whatever its
+  // receipts say they are, no storage test journal keeps a link's query. The Custom uploader's
+  // test writes its journal on its own path below.
+  auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,putgd::withoutSignedTestLinks(data)));};
   auto finished=[path,reply](QJsonObject result,putgd::Error error){
-   auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+   auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
    reply(error);
