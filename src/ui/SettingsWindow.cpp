@@ -2677,7 +2677,11 @@ void SettingsWindow::queueDraftDifferences(const QJsonObject& base){
    SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key="destination:"+id;op.id=id;
    for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==op.key)op=queuedOp;
    SaveOperation edit;edit.kind=op.kind;edit.profile=profile;
-   for(auto path:std::as_const(changed)){path=path.mid(1);for(const auto& field:fieldGroup(path,profile["provider"].toString()))if(!notSaved_.contains(id+"|"+fieldGroup(path,profile["provider"].toString()).join('+')))edit.values[field]=valueAt(profile,pathParts(field));}
+   for(auto path:std::as_const(changed)){
+    path=path.mid(1);const auto group=fieldGroup(path,profile["provider"].toString());const auto groupKey=id+"|"+group.join('+');
+    // A group that fails the form's own check stays as typed and isn't sent, as when it is typed (#1712).
+    if(!notSaved_.contains(groupKey))if(const auto problem=localProblem(profile,group);!problem.isEmpty())notSaved_[groupKey]=problem;
+    if(!notSaved_.contains(groupKey))for(const auto& field:group)edit.values[field]=valueAt(profile,pathParts(field));}
    op=merged(std::move(op),edit);if(!op.values.isEmpty())enqueue(std::move(op));
   }
   for(const auto& id:std::as_const(savedOrder))if(!drafted.contains(id))queueRemoval(id);

@@ -257,6 +257,28 @@ private slots:
   PUTGD_TRY_VERIFY(window.settings()->flushAutosave());
   QCOMPARE(sentGlobal,0);QCOMPARE(saved()["settings"].toObject()["region"].toString(),QString("us-east-1"));
  }
+ // #1712: a restored draft holding that aws-global, replayed by Retry saving, sends the label
+ // typed with it but not the Region, which stays as typed in the form.
+ void restoredAwsGlobalOffAmazonIsNeverSent(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();fields["endpoint"]="https://minio.example.com";fields["region"]="us-east-1";profile["settings"]=fields;profiles[0]=profile;doc["profiles"]=profiles;
+  {const auto saved=service.save(doc,{});QVERIFY2(saved,qPrintable(saved.error.message));}
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  int sentGlobal=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="settings.save"&&params["document"].toObject()["profiles"].toArray()[0].toObject()["settings"].toObject()["region"]==QJsonValue(QStringLiteral("aws-global")))++sentGlobal;};
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();
+   auto* label=first.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed here");QMetaObject::invokeMethod(label,"editingFinished");
+   PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());
+   auto* region=first.findChild<QLineEdit*>("s3Region");region->setText("aws-global");QMetaObject::invokeMethod(region,"editingFinished");
+   checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));}
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();
+  auto* retry=second.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  PUTGD_TRY_COMPARE(saved()["label"].toString(),QString("Renamed here"));
+  PUTGD_TRY_VERIFY(second.settings()->flushAutosave());
+  QCOMPARE(sentGlobal,0);QCOMPARE(saved()["settings"].toObject()["region"].toString(),QString("us-east-1"));
+  QCOMPARE(second.findChild<QLineEdit*>("s3Region")->text(),QString("aws-global"));
+ }
  // #1704: a reply that arrives while another field is being typed in changes nothing there: its
  // text, its cursor and its message stay as they are.
  void replyWhileTypingLeavesTheField(){
