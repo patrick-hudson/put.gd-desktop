@@ -21,10 +21,10 @@ QJsonObject withoutSignedTestLinks(QJsonObject checkpoint);
 // link in the result, a url, deletion URL or nonce in a receipt), or records that disagree,
 // leave it as it is.
 void scrubDestinationTestJournals(const QString& directory);
-// What a storage destination test's checkpoints show once they are on disk (#1690), for a test
-// whose worker ended without a result. A step whose own checkpoints show it finished keeps its
-// outcome (an upload confirmed by its receipt, a cleanup that reached "done"); every other step
-// it started is unknown.
+// What a destination test's checkpoints show once they are on disk (#1690), for a test whose
+// worker ended without a result. Each step reports only what its own terminal checkpoint shows:
+// an upload confirmed by its receipt, a cleanup that reached "done" or recorded a retained delete
+// marker, a large file whose start was recorded. Everything else it started is unknown.
 class DestinationTestTrail {
 public:
     // Called with each checkpoint after it was written.
@@ -35,6 +35,7 @@ private:
     mutable std::mutex mutex_;
     bool intent_ = false, multipartOpen_ = false, multipartFinished_ = false, largeOpen_ = false, largeFinished_ = false;
     QJsonObject receipt_, cleanup_;
+    QString largeFileId_;
     QJsonValue abort_, cancel_;
 };
 }

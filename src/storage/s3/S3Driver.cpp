@@ -1514,11 +1514,11 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             return;
         }
         // A delete marker in reply means the bucket keeps versions after all: the object is hidden
-        // and its bytes stay behind the marker, so the removal is not complete (#1690). A marker
-        // whose version is "null" comes from a bucket with versioning suspended, where the delete
-        // removed the null version itself: the object is gone.
+        // and its bytes stay behind the marker, so the removal is not complete (#1690). The one
+        // exception: deleting a receipt's "null" version in a bucket with versioning suspended can
+        // be answered with a "null" marker, and the null version itself is gone.
         const auto markerVersion = qt(removed.GetResult().GetVersionId());
-        if (removed.GetResult().GetDeleteMarker() && markerVersion != "null") {
+        if (removed.GetResult().GetDeleteMarker() && !(markerVersion == "null" && version == "null")) {
             progress["markerVersionId"] = markerVersion;
             Error retained{"delete_marker_created", "S3 hid the object behind a delete marker instead of removing it: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}};
             if (auto error = persist(S3DeletePhase::ObjectFailed))

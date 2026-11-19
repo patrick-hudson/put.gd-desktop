@@ -445,17 +445,17 @@ int main(int argc,char* argv[]) {
   // server offered deletion (#1361). The helper call blocks, so it runs on a worker.
   if(kind=="testDestination"&&destination.providerId==putgd::http::providerId){
    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
-   auto intent=std::make_shared<std::atomic_bool>(false);
-   auto checkpoint=[path,intent](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+   auto trail=std::make_shared<putgd::DestinationTestTrail>();
+   auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
     auto error=checkpointFile(path,data);
-    // The intent counts once it is on disk (#1690).
-    if(!error&&data["phase"].toString()=="upload_intent")*intent=true;
+    // Only a checkpoint on disk counts (#1690).
+    if(!error)trail->record(data);
     ack(error);
    };
    operations.background([http,destination,checkpoint](putgd::Error& error){
     QJsonObject out;http->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
-   },[path,intent,reply=std::move(reply)](putgd::Error error,QJsonObject result){
-    if(*intent&&!result.contains("uploadStatus"))result["uploadStatus"]="unknown";
+   },[path,trail,reply=std::move(reply)](putgd::Error error,QJsonObject result){
+    result=trail->completed(result);
     auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
     if(!error&&journalError)error=journalError;
     reply(error,result);

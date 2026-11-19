@@ -664,15 +664,15 @@ private:
             const bool reports = configured && plan.file;
             const auto sent = [&](qint64 bytes) { progress("uploading", bytes - plan.before.size(), artifact.bytes); };
             r = client_.send(verb, url, withValues ? plan.headers : Headers{}, body.get(), reports ? std::function<void(qint64)>(sent) : std::function<void(qint64)>{});
-            if (!QList<int>{301, 302, 303, 307, 308}.contains(r.status)) return r;
-            // Test upload and link sends its file once: a request to send it again, wherever to and
-            // whatever its address, leaves the upload unclear (#1690).
-            if (configured && synthetic_ && (r.status == 307 || r.status == 308)) {
+            // Test upload and link sends its file once and follows no redirect: any 3xx to it, whatever
+            // its address or lack of one, leaves the upload unclear (#1690).
+            if (configured && synthetic_ && r.status >= 300 && r.status < 400) {
                 answered = true;
-                error = {"http_outcome_unknown", QString("The server asked for the test upload again at another address (HTTP %1). Test upload and link sends its file once, so put.gd did not follow; "
-                         "the server may have stored it.").arg(r.status), {{"requestStage", "redirect"}, {"httpStatus", r.status}}};
+                error = {"http_outcome_unknown", QString("The server answered the test upload with a redirect (HTTP %1). Test upload and link sends its file once and follows no redirect, "
+                         "so whether the server stored it is not known.").arg(r.status), {{"requestStage", "redirect"}, {"httpStatus", r.status}}};
                 return r;
             }
+            if (!QList<int>{301, 302, 303, 307, 308}.contains(r.status)) return r;
             const auto location = r.header("location");
             const auto target = url.resolved(QUrl(location));
             const QJsonObject details{{"requestStage", "redirect"}, {"httpStatus", r.status}};
@@ -991,7 +991,9 @@ private:
             // the file is gone (#1690).
             if (r.status == 202) {
                 uncertain = true;
-                error = {"http_delete_pending", "The server accepted the deletion for later (HTTP 202) but the link still answers. Retry checks again, or check the file on the server.", details};
+                error = {"http_delete_pending", after.status
+                    ? QString("The server accepted the deletion for later (HTTP 202), but the link still answers (HTTP %1). Retry checks again, or check the file on the server.").arg(after.status)
+                    : "The server accepted the deletion for later (HTTP 202), and checking the link got no reply (" + after.detail + "). Retry checks again, or check the file on the server.", details};
                 return {{"status", "unknown"}, {"progress", progress}};
             }
             if (gone(after) && alreadyGone) return finish(phase == "delete_intent" ? "removed" : "missing");
