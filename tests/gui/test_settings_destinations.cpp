@@ -600,6 +600,79 @@ private slots:
   PUTGD_TRY_VERIFY(label("development-s3")=="Renamed here"&&label("later-2")=="Later");
   PUTGD_VERIFY_STEADY(label("elsewhere-added")=="Theirs elsewhere-added"&&label("later")=="Theirs later",800);
  }
+ // #1716: a destination order kept in a checkpoint is never restored. A move not saved yet is kept
+ // with a rename, then another client reorders the file or changes something else. The restored
+ // window shows the file's order at once, the kept order is never sent, and Retry saving still
+ // saves the rename.
+ void restoredMoveYieldsToAnotherClientsReorder_data(){QTest::addColumn<bool>("reordered");QTest::newRow("reordered elsewhere")<<true;QTest::newRow("other change elsewhere")<<false;}
+ void restoredMoveYieldsToAnotherClientsReorder(){
+  QFETCH(bool,reordered);
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  const auto before=profileIds(service.document());const QStringList kept{before[1],before[0],before[2]};
+  int sentKept=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="settings.save"&&profileIds(params["document"].toObject())==kept)++sentKept;};
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();
+   auto* label=first.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed here");QMetaObject::invokeMethod(label,"editingFinished");
+   PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());
+   QJsonObject result;QVERIFY(!first.settings()->moveSelectedDestination(1,before[0],result));
+   checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));QVERIFY(checkpoint.contains("baseDocument"));}
+  QCOMPARE(sentKept,0);
+  auto elsewhere=service.document();
+  if(reordered){QJsonArray reversed;const auto profiles=elsewhere["profiles"].toArray();for(int i=profiles.size()-1;i>=0;--i)reversed.append(profiles[i]);elsewhere["profiles"]=reversed;}
+  else{auto preferences=elsewhere["preferences"].toObject();preferences["captureDelaySeconds"]=5;elsewhere["preferences"]=preferences;}
+  QVERIFY(service.save(elsewhere,service.revision()));
+  const auto filed=profileIds(service.document());
+  PUTGD_TRY_COMPARE(fixture.session.revision(),service.revision());
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();
+  auto* shown=second.settings()->findChild<QComboBox*>("destinationProfile");QVERIFY(shown);
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  QCOMPARE(shownIds(),filed);
+  auto* retry=second.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  const auto renamed=[&]{for(const auto& value:service.document()["profiles"].toArray())if(value.toObject()["id"]==before[0])return value.toObject()["label"].toString();return QString();};
+  PUTGD_TRY_COMPARE(renamed(),QString("Renamed here"));
+  PUTGD_TRY_VERIFY(second.settings()->flushAutosave());
+  QCOMPARE(sentKept,0);QCOMPARE(profileIds(service.document()),filed);QCOMPARE(shownIds(),filed);
+ }
+ // #1716: replaying a checkpoint never queues an order. Its rename fails on the first Retry, another
+ // client reorders again, and the second Retry saves the rename over that client's order intact.
+ void restoredReplayQueuesNoOrderAcrossRetries(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  const auto before=profileIds(service.document());
+  const auto reorder=[&](const QStringList& ids){auto doc=service.document();QHash<QString,QJsonValue> byId;for(const auto& value:doc["profiles"].toArray())byId.insert(value.toObject()["id"].toString(),value);QJsonArray ordered;for(const auto& id:ids)ordered.append(byId.value(id));doc["profiles"]=ordered;return service.save(doc,service.revision());};
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();
+   auto* label=first.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed here");QMetaObject::invokeMethod(label,"editingFinished");
+   PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());
+   QJsonObject result;QVERIFY(!first.settings()->moveSelectedDestination(1,before[0],result));
+   checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));}
+  QVERIFY(reorder({before[2],before[1],before[0]}));PUTGD_TRY_COMPARE(fixture.session.revision(),service.revision());
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();
+  auto* retry=second.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());
+  fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});retry->click();
+  PUTGD_TRY_VERIFY(retry->isVisible()&&retry->isEnabled()&&!fixture.client.failOnce.contains("settings.save"));
+  const QStringList theirs{before[0],before[2],before[1]};QVERIFY(reorder(theirs));
+  auto* banner=second.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(banner->isVisible());retry->click();
+  const auto renamed=[&]{for(const auto& value:service.document()["profiles"].toArray())if(value.toObject()["id"]==before[0])return value.toObject()["label"].toString();return QString();};
+  PUTGD_TRY_COMPARE(renamed(),QString("Renamed here"));PUTGD_TRY_VERIFY(second.settings()->flushAutosave());
+  QCOMPARE(profileIds(service.document()),theirs);
+ }
+ // #1716: a checkpoint that held only a move holds nothing once the move isn't restored: Settings
+ // opens saved, with no Retry saving offered.
+ void moveOnlyCheckpointRestoresAsSaved(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  const auto before=profileIds(service.document());
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();
+   QJsonObject result;QVERIFY(!first.settings()->moveSelectedDestination(1,before[0],result));
+   PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());
+   checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));QVERIFY(checkpoint["dirty"].toBool());}
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();
+  PUTGD_VERIFY_STEADY(!second.findChild<QPushButton*>("retryDestinationAutosave")->isVisible()&&!second.settings()->saveViewState()["dirty"].toBool(),500);
+  QCOMPARE(profileIds(service.document()),before);
+ }
  // #1704: an older checkpoint has no base, and the file has changed since: Retry saving says the
  // changes can't be merged and writes nothing; the draft stays visible.
  void legacyCheckpointIsNotMergedIntoAChangedFile(){
