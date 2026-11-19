@@ -301,6 +301,594 @@ void testPinned() {
   }
 }
 
+// ------------------------------------------------------------------ pinned columns
+
+// A page in columns (#1538): an article of paragraphs in [x0, x1), nothing in
+// the columns beside it, and at its end a footer of text lines in [fx0, fx1),
+// under a side column too.
+Image columnPage(uint64_t seed, int W, int H, int x0, int x1, int footerH, int fx0, int fx1) {
+  Image img(W, H, kBg);
+  Rng rng(seed);
+  for (int y = 30; y < H - footerH - 160;) {
+    const int lines = rng.range(3, 9);
+    for (int i = 0; i < lines; ++i, y += 16) drawTextLine(img, y, x0, x0 + int((x1 - x0) * (0.4 + 0.6 * rng.unit())), rng);
+    y += rng.range(24, 40);
+  }
+  const int f = H - footerH;
+  for (int x = fx0; x < fx1; ++x) img.at(x, f) = 0xC8CCD0;
+  for (int y = f + 24; y + 12 < H - 8; y += 18) drawTextLine(img, y, fx0 + 16, fx1 - 16 - rng.range(0, 160), rng);
+  return img;
+}
+
+// The differing pixels of an image, in the columns [0, split) and the rest.
+std::string where(const Played& r, const Image& expected, int split) {
+  long long side = 0, rest = 0;
+  int sideRow0 = -1, sideRow1 = -1;
+  const long long rows = std::min<long long>(r.totals.bottom - r.totals.top, expected.h);
+  for (int y = 0; y < rows; ++y)
+    for (int x = 0; x < expected.w; ++x) {
+      uint32_t v;
+      std::memcpy(&v, &r.image[(size_t(y) * r.width + x) * 4], 4);
+      if ((v & 0xFFFFFF) == (expected.at(x, y) & 0xFFFFFF)) continue;
+      if (x < split) {
+        ++side;
+        if (sideRow0 < 0) sideRow0 = y;
+        sideRow1 = y;
+      } else {
+        ++rest;
+      }
+    }
+  return fmt("%lld in the side column (rows %d to %d), %lld elsewhere", side, sideRow0, sideRow1, rest);
+}
+
+void testPinnedColumns() {
+  std::printf("\n[pinned columns] a column pinned beside the page is in the image once, whole (#1538)\n");
+  const int W = 640, V = 400, F = 160;
+  Rng rng(43);
+  // Steps of a wheel, and a person's: mostly a few rows a frame, now and then a flick.
+  const auto styles = [&](int end) {
+    return std::vector<std::pair<const char*, std::vector<int>>>{
+        {"wheel steps", steps(0, end, [&] { return rng.range(60, 160); })},
+        {"a person's scrolling", steps(0, end, [&] { return rng.range(0, 99) < 85 ? rng.range(1, 9) : rng.range(30, 250); })}};
+  };
+  {
+    // Wikipedia's contents column: laid out under the title, it moves with
+    // the page until it reaches the top, stays there beside the article, and
+    // moves with the page again where its column ends above the footer. In
+    // the image once, where the first screen shows it (where the page lays
+    // it out); beside the article's end its column is plain, and the footer
+    // under it is whole.
+    const Image doc = columnPage(31, W, 3600, 200, 620, F, 8, W - 8);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart toc{16, 8, 160, 330, kBg, 0x3366CC, 0, 41};
+    toc.border = false;
+    toc.stickFrom = 60;
+    toc.stickTo = doc.h - F - 24;
+    ss.pinned.push_back(toc);
+    const Scene scene(doc, ss);
+    Image expected = pageRows(doc, 0, doc.h, W);
+    for (int y = 0; y < toc.h; ++y) std::memcpy(&expected.px[size_t(toc.stickFrom + y) * W + toc.x], scene.part(0).row(y), size_t(toc.w) * 4);
+    for (const auto& [style, pos] : styles(doc.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("a contents column that sticks, %s: once, footer whole", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d): %s", r.wrong, r.firstWrong.c_str(), bad, firstBad,
+                             where(r, expected, 200).c_str()));
+    }
+  }
+  {
+    // The same column scrolled back up to the page's start (a capture
+    // started halfway down): it comes down to where the page lays it out and
+    // moves with the page there. That is the page: in the image once, at its
+    // place, and nowhere else.
+    const Image doc = columnPage(31, W, 3600, 200, 620, F, 8, W - 8);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart toc{16, 8, 160, 330, kBg, 0x3366CC, 0, 41};
+    toc.border = false;
+    toc.stickFrom = 60;
+    toc.stickTo = doc.h - F - 24;
+    ss.pinned.push_back(toc);
+    const Scene scene(doc, ss);
+    const auto pos = steps(1500, 0, [&] { return rng.range(60, 160); });
+    const Played r = play(scene, pos);
+    Image expected = pageRows(doc, 0, 1500 + V, W);
+    for (int y = 0; y < toc.h; ++y) std::memcpy(&expected.px[size_t(toc.stickFrom + y) * W + toc.x], scene.part(0).row(y), size_t(toc.w) * 4);
+    // Outside its place, the page exact; at its place, the column within a
+    // hundredth of its pixels (a line of it can come from a frame in which it
+    // was still moving into place, as before #1538).
+    int firstBad = 0;
+    const Box place{toc.x, toc.stickFrom, toc.x + toc.w, toc.stickFrom + toc.h};
+    const long long outside = differing(r, expected, {place}, 0, &firstBad);
+    const long long all = differing(r, expected, {}, 0, &firstBad);
+    report("a contents column scrolled back up to its place: once, there", r.wrong == 0 && outside == 0 && 100 * (all - outside) <= toc.w * toc.h,
+           counts(r) + fmt(", %d wrong%s, %lld pixels differ outside its place, %lld at it", r.wrong, r.firstWrong.c_str(), outside, all - outside));
+  }
+  // An advertisement pinned in both margins beside a news article (Al
+  // Jazeera's in Firefox): artwork at its top over a plain dark colour.
+  Image news = columnPage(37, W, 3600, 140, 500, F, 140, 500);
+  {
+    // Dark boxes in the article (a video player, an advertisement of the
+    // same dark colour) that move with the page: the colour is the page's too.
+    Rng ink(61);
+    for (const int y0 : {700, 1500, 2300})
+      for (int y = y0; y < y0 + 260; ++y)
+        for (int x = 150; x < 490; ++x) news.at(x, y) = 0x1E2266;
+    for (const int y0 : {700, 1500, 2300})
+      for (int y = y0 + 20; y + 12 < y0 + 240; y += 30) drawTextLine(news, y, 170, 470, ink, 0xF0F0FF);
+  }
+  const auto adScene = [&](int fromPos) {
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    for (const int x : {0, 520}) {
+      PinnedPart ad{x, 0, 120, V, 0x1E2266, 0xF0F0FF, fromPos, uint64_t(51 + x)};
+      ad.border = false;
+      ad.inkRows = 110;
+      ss.pinned.push_back(ad);
+    }
+    return ss;
+  };
+  {
+    // Loaded once the page has moved: the first screen showed the page in the
+    // margins, so the image is the page, as for a header that comes late.
+    const Scene scene(news, adScene(900));
+    const Image expected = pageRows(news, 0, news.h, W);
+    for (const auto& [style, pos] : styles(news.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("an advertisement in the margins that comes late, %s: none", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d): %s", r.wrong, r.firstWrong.c_str(), bad, firstBad,
+                             where(r, expected, 140).c_str()));
+    }
+  }
+  {
+    // There from the start: once, where the first screen shows it, then its
+    // own background (a side bar's rule). Also when the page jumps by itself
+    // (a photo loaded above it) while auto-scroll's hint says nothing moved.
+    const Scene scene(news, adScene(0));
+    Image expected = pageRows(news, 0, news.h, W);
+    for (size_t i = 0; i < 2; ++i)
+      for (int y = 0; y < news.h; ++y)
+        for (int x = 0; x < 120; ++x) expected.at(int(i) * 520 + x, y) = y < V ? scene.part(i).at(x, y) : 0x1E2266;
+    for (const auto& [style, pos] : styles(news.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("an advertisement in the margins from the start, %s: once", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d): %s", r.wrong, r.firstWrong.c_str(), bad, firstBad,
+                             where(r, expected, 140).c_str()));
+    }
+    // Auto-scroll's steps of 60 rows; before one frame the page jumped 250
+    // rows by itself, where the hint says no step was owed.
+    std::vector<int> pos{0};
+    while (pos.back() < news.h - V) pos.push_back(std::min(news.h - V, pos.back() + (pos.back() == 1200 ? 250 : 60)));
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    Played r;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      const int moved = i ? pos[i] - pos[i - 1] : 0;
+      const TrackResult t =
+          tracker.addFrame(f.view(), i == 0 ? TrackerHint{} : moved == 250 ? TrackerHint{true, 0, 2} : TrackerHint{true, 60, 25});
+      if (t.status != TrackStatus::Placed) continue;
+      ++r.placed;
+      r.wrong += t.position != pos[i];
+    }
+    r.totals = tracker.finish();
+    r.image = canvas.image(r.totals.top, r.totals.bottom);
+    r.width = W;
+    int firstBad = 0;
+    const long long bad = differing(r, expected, {}, 0, &firstBad);
+    report("the page jumps by itself under auto-scroll's hint: the advertisement once", r.wrong == 0 && bad == 0,
+           fmt("%zu frames, %d placed, %d wrong, %lld pixels differ (row %d): %s", pos.size(), r.placed, r.wrong, bad, firstBad,
+               where(r, expected, 140).c_str()));
+  }
+  {
+    // A cookie banner fixed at the bottom across the whole width (Al Jazeera's
+    // in Firefox), shown once the page has moved: its text in the middle, its
+    // plain dark colour out to both edges, over the empty margins. Once, at
+    // the bottom, as the last screen shows it; nowhere in the margins above.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart plain{0, V - 96, W, 96, 0x1E2266, 0xF0F0FF, 600, 71};
+    plain.border = false;
+    plain.inkRows = 0;
+    ss.pinned.push_back(plain);
+    PinnedPart text{150, V - 84, 340, 72, 0x1E2266, 0xF0F0FF, 600, 73};
+    text.border = false;
+    ss.pinned.push_back(text);
+    const Scene scene(news, ss);
+    Image expected = pageRows(news, 0, news.h, W);
+    const Image last = scene.frame(news.h - V, 0);
+    for (int y = news.h - 96; y < news.h; ++y) std::memcpy(&expected.px[size_t(y) * W], last.row(y - (news.h - V)), size_t(W) * 4);
+    for (const auto& [style, pos] : styles(news.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      long long margins = 0;
+      for (long long y = 0; y < std::min<long long>(r.totals.bottom - r.totals.top, news.h - 96); ++y)
+        for (const int x : {40, 600}) {
+          const uint8_t* q = &r.image[(size_t(y) * W + x) * 4];
+          margins += q[0] == 0x66 && q[1] == 0x22 && q[2] == 0x1E;
+        }
+      report(fmt("a cookie banner across the bottom, %s: once, not down the margins", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d), %lld margin rows dark: %s", r.wrong, r.firstWrong.c_str(), bad,
+                             firstBad, margins, where(r, expected, 140).c_str()));
+    }
+  }
+  {
+    // The browser's view moves: an information bar opens above the page and
+    // pushes everything down, the header and a banner at the bottom with it
+    // (Firefox's DRM bar on the Al Jazeera article). They are not loose: no
+    // piece of either is written into the page.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    // The header's own colour well off the page's (one within the tolerance
+    // of the page's background is the page's, as far as pixels can tell).
+    ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
+    PinnedPart banner{0, V - 64, W, 64, 0x5A1E66, 0xF0F0FF, 0, 9};
+    ss.pinned.push_back(banner);
+    const Scene scene(news, ss);
+    const int bar = 24;
+    Image info(W, bar, 0xE4E4E8);
+    Rng words(83);
+    drawTextLine(info, 6, 40, 300, words, 0x303034);
+    std::vector<int> pos{0};
+    while (pos.back() < news.h - V) pos.push_back(std::min(news.h - V, pos.back() + rng.range(60, 140)));
+    // The bar opens between two frames of a page at rest.
+    const size_t from = pos.size() / 3;
+    pos.insert(pos.begin() + std::ptrdiff_t(from), pos[from - 1]);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    Played r;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      if (i >= from) {
+        // The view `bar` rows lower, its last rows below the region, the bar above it.
+        Image moved(W, V);
+        for (int y = 0; y < V; ++y) std::memcpy(&moved.px[size_t(y) * W], y < bar ? info.row(y) : f.row(y - bar), size_t(W) * 4);
+        f = moved;
+      }
+      const TrackResult t = tracker.addFrame(f.view());
+      if (t.status != TrackStatus::Placed) continue;
+      ++r.placed;
+    }
+    r.totals = tracker.finish();
+    r.image = canvas.image(r.totals.top, r.totals.bottom);
+    r.width = W;
+    long long header = 0, navy = 0;
+    const long long rows = r.totals.bottom - r.totals.top;
+    dump("view-moved", r.image.data(), W, int(rows));
+    for (long long y = 48; y + 100 < rows; ++y)
+      for (int x = 0; x < W; ++x) {
+        uint32_t v;
+        std::memcpy(&v, &r.image[(size_t(y) * W + x) * 4], 4);
+        header += (v & 0xFFFFFF) == 0xD8DCE6;
+        navy += (v & 0xFFFFFF) == 0x5A1E66;
+      }
+    report("the view moves down, header and banner with it: neither in the page, the page to its end",
+           header == 0 && navy == 0 && rows == news.h - bar,
+           fmt("%zu frames, %d placed, %lld header pixels and %lld banner pixels between the image's ends, %lld rows (want %d)", pos.size(),
+               r.placed, header, navy, rows, news.h - bar));
+  }
+  {
+    // The same bar opening in steps that ease out (Firefox's DRM bar: 14,
+    // then 6, 3 and a row at a time), the page at rest: no step of it is
+    // the page scrolling.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
+    ss.pinned.push_back({0, V - 64, W, 64, 0x5A1E66, 0xF0F0FF, 0, 9});
+    const Scene scene(news, ss);
+    Image info(W, 24, 0xE4E4E8);
+    Rng words(83);
+    drawTextLine(info, 6, 40, 300, words, 0x303034);
+    std::vector<int> pos{0};
+    while (pos.back() < news.h - V) pos.push_back(std::min(news.h - V, pos.back() + rng.range(60, 140)));
+    const size_t from = pos.size() / 3;
+    const std::vector<int> opening{14, 20, 22, 23, 24};
+    pos.insert(pos.begin() + std::ptrdiff_t(from), opening.size(), pos[from - 1]);
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    Played r;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      const int bar = i < from ? 0 : i - from < opening.size() ? opening[i - from] : 24;
+      if (bar > 0) {
+        Image moved(W, V);
+        for (int y = 0; y < V; ++y) std::memcpy(&moved.px[size_t(y) * W], y < bar ? info.row(24 - bar + y) : f.row(y - bar), size_t(W) * 4);
+        f = moved;
+      }
+      const TrackResult t = tracker.addFrame(f.view());
+      if (t.status != TrackStatus::Placed) continue;
+      ++r.placed;
+    }
+    r.totals = tracker.finish();
+    r.image = canvas.image(r.totals.top, r.totals.bottom);
+    r.width = W;
+    long long header = 0, navy = 0;
+    const long long rows = r.totals.bottom - r.totals.top;
+    for (long long y = 48; y + 100 < rows; ++y)
+      for (int x = 0; x < W; ++x) {
+        uint32_t v;
+        std::memcpy(&v, &r.image[(size_t(y) * W + x) * 4], 4);
+        header += (v & 0xFFFFFF) == 0xD8DCE6;
+        navy += (v & 0xFFFFFF) == 0x5A1E66;
+      }
+    report("the view moves down in easing steps: header and banner not in the page, the page to its end",
+           header == 0 && navy == 0 && rows == news.h - 24,
+           fmt("%zu frames, %d placed, %lld header pixels and %lld banner pixels between the image's ends, %lld rows (want %d)", pos.size(),
+               r.placed, header, navy, rows, news.h - 24));
+  }
+  {
+    // A sticky header that shows up once the page has moved (GitHub's pull
+    // request header): plain white across the frame with its title in the
+    // middle and a line under it, over a page with dark boxes. The page
+    // exact: nothing of the header's white over the boxes, no speck of it in
+    // the text (its title a shade off the page's text where they cross).
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart white{0, 0, W, 46, 0xFFFFFF, 0x202024, 600, 101};
+    white.border = false;
+    white.inkRows = 0;
+    ss.pinned.push_back(white);
+    PinnedPart title{180, 10, 280, 26, 0xFFFFFF, 0x202024, 600, 103};
+    title.border = false;
+    ss.pinned.push_back(title);
+    PinnedPart line{0, 46, W, 2, 0xC8CCD0, 0xC8CCD0, 600, 105};
+    line.border = false;
+    line.inkRows = 0;
+    ss.pinned.push_back(line);
+    const Scene scene(news, ss);
+    const Image expected = pageRows(news, 0, news.h, W);
+    for (const auto& [style, pos] : styles(news.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("a header that shows up over a page with dark boxes, %s: page exact", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+  }
+  {
+    // A contents column on the right that lets go where its column ends above
+    // the footer, under a header whose own buttons sit above a toolbar across
+    // the frame (MDN). The buttons and the column are two things the toolbar
+    // keeps apart: when the column moves off with the page, the article
+    // beside it is whole to its last row.
+    const Image doc = columnPage(47, W, 3600, 30, 500, F, 8, W - 8);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart buttons{360, 0, 220, 26, kBg, 0x202024, 0, 111};
+    buttons.border = false;
+    ss.pinned.push_back(buttons);
+    PinnedPart toolbar{0, 26, W, 26, 0xEEEEF0, 0x303034, 0, 113};
+    ss.pinned.push_back(toolbar);
+    PinnedPart toc{512, 56, 120, 300, kBg, 0x3366CC, 0, 115};
+    toc.border = false;
+    toc.stickFrom = 56;
+    toc.stickTo = doc.h - F - 16;
+    ss.pinned.push_back(toc);
+    const Scene scene(doc, ss);
+    const Image expected = pageRows(doc, 0, doc.h, W);
+    long long ink = 0;
+    for (const uint32_t v : scene.part(0).px) ink += (v & 0xFFFFFF) != (kBg & 0xFFFFFF);
+    report("the buttons above the toolbar have ink", ink > 0, fmt("%lld pixels of ink", ink));
+    // Wheel steps: a person's flick can leave a row of the article seen only
+    // under the toolbar's edge, two rows into a block of the page (a known
+    // limit of the 8-row blocks, not of this scene's rule).
+    for (const auto& [style, pos] : styles(doc.h - V)) {
+      if (std::string(style) != "wheel steps") continue;
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      // The article and its margin: left of the column, below the header.
+      const long long bad = differing(r, expected, {{0, 0, W, 52}, {508, 0, W, doc.h}}, 0, &firstBad);
+      report(fmt("a column lets go under a header with buttons over a toolbar, %s: the article whole", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ beside the column (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+  }
+  {
+    // The bar opens right after the page was scrolled back to its top, and
+    // the capture ends there: no rows above the page's top, nothing of the
+    // bar in the image.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
+    ss.pinned.push_back({0, V - 64, W, 64, 0x5A1E66, 0xF0F0FF, 0, 9});
+    const Scene scene(news, ss);
+    Image info(W, 24, 0xE4E4E8);
+    Rng words(89);
+    drawTextLine(info, 6, 40, 300, words, 0x303034);
+    const std::vector<int> pos{0, 90, 200, 320, 200, 90, 0, 0};
+    MemoryCanvas canvas(W);
+    // A cap just over the page shown: the bar's frame must not count against it.
+    TrackerOptions o;
+    o.maxOutputRows = 320 + V + 10;
+    ScrollTracker tracker(canvas, o);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      if (i + 1 == pos.size()) {
+        Image moved(W, V);
+        for (int y = 0; y < V; ++y) std::memcpy(&moved.px[size_t(y) * W], y < 24 ? info.row(y) : f.row(y - 24), size_t(W) * 4);
+        f = moved;
+      }
+      tracker.addFrame(f.view());
+    }
+    const TrackTotals t = tracker.finish();
+    const std::vector<uint8_t> image = canvas.image(t.top, t.bottom);
+    long long bar = 0;
+    for (size_t i = 0; i + 3 < image.size(); i += 4) {
+      uint32_t v;
+      std::memcpy(&v, &image[i], 4);
+      bar += (v & 0xFFFFFF) == 0xE4E4E8;
+    }
+    report("a bar opens at the page's top and the capture ends: no rows of it", t.bottom - t.top == 320 + V && bar == 0 && !t.capReached,
+           fmt("%lld rows (the page shows %d), %lld pixels of the bar%s", t.bottom - t.top, 320 + V, bar, t.capReached ? ", cap reached" : ""));
+  }
+  {
+    // Two side columns that stick until their column ends above the footer
+    // and let go together, with nothing across the frame: columns moving off
+    // with the page, not the whole view moving. Each once, the rest whole.
+    // A frame wide enough that the article beside them places it.
+    const int WW = 960;
+    const Image doc = columnPage(53, WW, 3600, 200, 760, F, 8, WW - 8);
+    SceneSpec ss;
+    ss.width = WW;
+    ss.height = V;
+    for (const int x : {16, 784}) {
+      PinnedPart col{x, 8, 160, 330, kBg, 0x3366CC, 0, uint64_t(57 + x)};
+      col.border = false;
+      col.stickFrom = 60;
+      col.stickTo = doc.h - F - 24;
+      ss.pinned.push_back(col);
+    }
+    const Scene scene(doc, ss);
+    Image expected = pageRows(doc, 0, doc.h, WW);
+    for (size_t i = 0; i < 2; ++i)
+      for (int y = 0; y < 330; ++y)
+        std::memcpy(&expected.px[size_t(60 + y) * WW + ss.pinned[i].x], scene.part(i).row(y), size_t(160) * 4);
+    for (const auto& [style, pos] : styles(doc.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("two side columns let go together, %s: each once, the rest whole", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+  }
+  {
+    // A rule down the page beside its text (a quotation's bar), in a column
+    // of the screen nothing moves across: plain in every frame, and the
+    // page's. Nothing is pinned: the page exact.
+    Image doc = columnPage(59, W, 3600, 200, 600, F, 8, W - 8);
+    for (int y = 0; y < doc.h; ++y)
+      for (int x = 100; x < 104; ++x) doc.at(x, y) = 0x8C96A0;
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    const Image expected = pageRows(doc, 0, doc.h, W);
+    for (const auto& [style, pos] : styles(doc.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("a rule down a page with nothing pinned, %s: exact", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+  }
+  {
+    // A side column over a third of the frame wide and a narrow one let go
+    // together: no bar across the frame moved, so no view move.
+    const int WW = 960;
+    const Image doc = columnPage(61, WW, 3600, 360, 776, F, 8, WW - 8);
+    SceneSpec ss;
+    ss.width = WW;
+    ss.height = V;
+    // Stuck from the first frame (half the frame moving into place in the
+    // first step would be a layer of its own to the pair).
+    const int xs[2] = {8, 792}, ws[2] = {336, 160};
+    for (int k = 0; k < 2; ++k) {
+      PinnedPart col{xs[k], 8, ws[k], 330, kBg, 0x3366CC, 0, uint64_t(67 + k)};
+      col.border = false;
+      col.stickFrom = 8;
+      col.stickTo = doc.h - F - 24;
+      ss.pinned.push_back(col);
+    }
+    const Scene scene(doc, ss);
+    Image expected = pageRows(doc, 0, doc.h, WW);
+    for (size_t i = 0; i < 2; ++i)
+      for (int y = 0; y < 330; ++y)
+        std::memcpy(&expected.px[size_t(8 + y) * WW + ss.pinned[i].x], scene.part(i).row(y), size_t(ss.pinned[i].w) * 4);
+    Rng own(71);
+    const auto pos = steps(0, doc.h - V, [&] { return own.range(60, 160); });
+    const Played r = play(scene, pos);
+    int firstBad = 0;
+    const long long bad = differing(r, expected, {}, 0, &firstBad);
+    report("a wide side column and a narrow one let go together: each once, the rest whole", r.wrong == 0 && bad == 0,
+           counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+  }
+  {
+    // An information bar above the page closes and the capture ends: the
+    // view moves up and shows the page's next rows at the bottom, which are
+    // the page's and in the image. A header and a sub-navigation a little
+    // under it (two parts), nothing at the bottom.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
+    ss.pinned.push_back({0, 56, W, 24, 0xEDEFF4, 0x303034, 0, 7});
+    const Scene scene(news, ss);
+    Image info(W, 24, 0xE4E4E8);
+    Rng words(97);
+    drawTextLine(info, 6, 40, 300, words, 0x303034);
+    const std::vector<int> pos{0, 110, 220, 330, 440, 440};
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      if (i + 1 < pos.size()) {
+        Image moved(W, V);
+        for (int y = 0; y < V; ++y) std::memcpy(&moved.px[size_t(y) * W], y < 24 ? info.row(y) : f.row(y - 24), size_t(W) * 4);
+        f = moved;
+      }
+      tracker.addFrame(f.view());
+    }
+    const TrackTotals t = tracker.finish();
+    const std::vector<uint8_t> image = canvas.image(t.top, t.bottom);
+    // Tracker row y is the page's row y - 24 (the first frames showed the bar
+    // above the page); the last 24 rows only the last frame showed.
+    long long wrongRows = 0;
+    const long long rows = t.bottom - t.top;
+    for (long long y = std::max(0LL, rows - 24); y < rows; ++y) {
+      const int docRow = int(y) - 24;
+      if (docRow < 0 || docRow >= news.h || std::memcmp(&image[size_t(y) * W * 4], news.row(docRow), size_t(W) * 4) != 0) ++wrongRows;
+    }
+    report("a bar above the page closes and the capture ends: the rows it uncovered are in the image",
+           rows == 440 + V + 24 && wrongRows == 0, fmt("%lld rows (want %d), %lld of the last 24 differ from the page", rows, 440 + V + 24, wrongRows));
+  }
+  {
+    // A notice over the page's margin in the first frame only (a cookie
+    // notice dismissed before the next): the frames after it show the margin
+    // clear, and nothing of the notice is in the image.
+    const Image doc = columnPage(89, W, 3600, 200, 600, F, 8, W - 8);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    Image notice(168, 80, 0x1E2266);
+    Rng words(91);
+    for (int y = 10; y + 12 < 80; y += 18) drawTextLine(notice, y, 10, 150, words, 0xF0F0FF);
+    // A person's small steps: the margin shows in many frames after it.
+    Rng own(93);
+    std::vector<int> pos{0};
+    while (pos.back() < 600) pos.push_back(pos.back() + own.range(4, 12));
+    while (pos.back() < doc.h - V) pos.push_back(std::min(doc.h - V, pos.back() + own.range(60, 160)));
+    const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
+      if (i == 0)
+        for (int y = 0; y < notice.h; ++y) std::memcpy(&f.px[size_t(250 + y) * W + 16], notice.row(y), size_t(notice.w) * 4);
+      return false;
+    });
+    long long left = 0;
+    for (size_t i = 0; i + 3 < r.image.size(); i += 4) {
+      uint32_t v;
+      std::memcpy(&v, &r.image[i], 4);
+      left += (v & 0xFFFFFF) == 0x1E2266 || (v & 0xFFFFFF) == 0xF0F0FF;
+    }
+    report("a notice over the margin in the first frame only: nothing of it in the image", r.wrong == 0 && left == 0,
+           counts(r) + fmt(", %lld pixels of the notice", left));
+  }
+}
+
 // ------------------------------------------------------------------ the rest
 
 void testChangesAndRecovery() {
@@ -988,6 +1576,7 @@ void testJumpPastLookAlikes() {
 int main() {
   testOffsets();
   testPinned();
+  testPinnedColumns();
   testChangesAndRecovery();
   testExcluded();
   testLive();
