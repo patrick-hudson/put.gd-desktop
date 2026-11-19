@@ -239,6 +239,24 @@ private slots:
   auto* footer=window.findChild<QLabel*>("settingsStatus");QVERIFY(footer);
   PUTGD_TRY_VERIFY2(footer->text().startsWith(first["label"].toString()+" wasn't saved:"),qPrintable(footer->text()));
  }
+ // #1712: aws-global on an S3 destination whose Endpoint isn't Amazon S3 fails the check the form
+ // shows, so it is never sent: the label typed with it saves, and the saved Region stays.
+ void awsGlobalOffAmazonIsNeverSent(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();fields["endpoint"]="https://minio.example.com";fields["region"]="us-east-1";profile["settings"]=fields;profiles[0]=profile;doc["profiles"]=profiles;
+  {const auto saved=service.save(doc,{});QVERIFY2(saved,qPrintable(saved.error.message));}
+  UiSessionFixture fixture(service,secrets);int sentGlobal=0;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="settings.save"&&params["document"].toObject()["profiles"].toArray()[0].toObject()["settings"].toObject()["region"]==QJsonValue(QStringLiteral("aws-global")))++sentGlobal;};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* region=window.findChild<QLineEdit*>("s3Region");auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* message=window.findChild<QLabel*>("s3RegionChoicesError");QVERIFY(region&&label&&message);
+  region->setText("aws-global");QMetaObject::invokeMethod(region,"editingFinished");
+  PUTGD_TRY_VERIFY(message->isVisible()&&message->text().contains("aws-global is only for Amazon S3"));
+  label->setText("Renamed");QMetaObject::invokeMethod(label,"editingFinished");
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  PUTGD_TRY_COMPARE(saved()["label"].toString(),QString("Renamed"));
+  PUTGD_TRY_VERIFY(window.settings()->flushAutosave());
+  QCOMPARE(sentGlobal,0);QCOMPARE(saved()["settings"].toObject()["region"].toString(),QString("us-east-1"));
+ }
  // #1704: a reply that arrives while another field is being typed in changes nothing there: its
  // text, its cursor and its message stay as they are.
  void replyWhileTypingLeavesTheField(){

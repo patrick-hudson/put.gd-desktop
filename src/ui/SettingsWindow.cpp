@@ -2467,7 +2467,8 @@ QString SettingsWindow::localProblem(const QJsonObject& profile,const QStringLis
   return {};}
  if(profile["provider"]!="s3"||!group.contains("settings/region"))return {};
  const auto settings=profile["settings"].toObject();const auto endpoint=settings["endpoint"].toString();
- if(!s3CloudflareR2Endpoint(endpoint))if(const auto problem=s3RegionProblem(settings["region"].toString());!problem.isEmpty())return problem;
+ // The same check the form shows (updateRegionFeedback): aws-global only with Amazon S3 (#1712).
+ if(!s3CloudflareR2Endpoint(endpoint))if(const auto problem=s3RegionProblem(settings["region"].toString(),endpoint);!problem.isEmpty())return problem;
  return s3EndpointProblem(endpoint,true);
 }
 QJsonObject SettingsWindow::acceptedDocument()const{return settings_.document().isEmpty()?Settings::defaults():settings_.document();}
