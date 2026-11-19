@@ -2,6 +2,7 @@
 #include "core/ByteSize.h"
 #include "core/Operation.h"
 #include "PreviewReader.h"
+#include "Ui.h"
 #include <QDateTime>
 #include <QFileInfo>
 #include <QImageReader>
@@ -223,7 +224,7 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==RecordRole)return r;
  if(role==Qt::DisplayRole){const auto name=r["name"].toString();return r["mime"].toString().startsWith("image/")?QFileInfo(name).completeBaseName():name;}
  if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+statusText(r);
- if(role==Qt::ToolTipRole)return r["name"].toString()+"\n"+statusText(r);
+ if(role==Qt::ToolTipRole)return Ui::tooltipText(r["name"].toString()+"\n"+statusText(r));
  if(role==DayRole){if(!daySections())return QString{};const auto current=section(i.row());return i.row()==0||current!=section(i.row()-1)?current:QString{};}
  if(role==SectionRole)return daySections()?section(i.row()):QString{};
  if(role==DayCountRole){if(!daySections()||facts_.at(i.row()).active)return QString{};const auto date=createdAt_.at(i.row()).date();return dayCounts_.contains(date)?itemCount(dayCounts_.value(date)):QString{};}

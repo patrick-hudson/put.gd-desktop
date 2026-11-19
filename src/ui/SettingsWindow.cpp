@@ -473,7 +473,7 @@ protected:
   painter.drawText(area,Qt::AlignLeft|Qt::AlignVCenter,fontMetrics().elidedText(text(),Qt::ElideRight,area.width()));
  }
  bool event(QEvent* event)override{
-  if(event->type()==QEvent::ToolTip&&!hasFocus()&&elided()){QToolTip::showText(static_cast<QHelpEvent*>(event)->globalPos(),text(),this);return true;}
+  if(event->type()==QEvent::ToolTip&&!hasFocus()&&elided()){QToolTip::showText(static_cast<QHelpEvent*>(event)->globalPos(),Ui::tooltipText(text()),this);return true;}
   return QLineEdit::event(event);
  }
 private:

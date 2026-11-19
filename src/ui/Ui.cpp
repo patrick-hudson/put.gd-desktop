@@ -448,59 +448,71 @@ QPalette palette() {
     palette.setColor(QPalette::Disabled, QPalette::HighlightedText, p.textMuted);
     return palette;
 }
+QString tooltipText(const QString& text) {
+    // Qt shows a plain-text tooltip on one line however long it is. Breaking
+    // the text into lines here leaves sizing and placement to Qt, which places
+    // the tip on X11 and anchors it on Wayland, including when it reuses an
+    // open tip. Rich text keeps Qt's own wrapping.
+    if (text.isEmpty() || Qt::mightBeRichText(text) || !qobject_cast<QApplication*>(QCoreApplication::instance())) return text;
+    const QFont font = QToolTip::font();
+    const QFontMetricsF fm(font);
+    // About 45 characters a line, never more than two fifths of the screen.
+    qreal cap = fm.averageCharWidth() * 45;
+    if (const auto* screen = QGuiApplication::primaryScreen()) cap = std::min(cap, screen->availableGeometry().width() * 0.4);
+    QStringList lines;
+    bool changed = false;
+    for (const auto& paragraph : text.split(QLatin1Char('\n'))) {
+        if (fm.horizontalAdvance(paragraph) <= cap) { lines << paragraph; continue; }
+        // Words wrap at spaces; a word longer than a line (a file name) breaks inside it.
+        QTextLayout layout(paragraph, font);
+        QTextOption option;
+        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        layout.setTextOption(option);
+        layout.beginLayout();
+        for (auto line = layout.createLine(); line.isValid(); line = layout.createLine()) {
+            line.setLineWidth(cap);
+            QString part = paragraph.mid(line.textStart(), line.textLength());
+            while (part.endsWith(QLatin1Char(' '))) part.chop(1);
+            lines << part;
+        }
+        layout.endLayout();
+        changed = true;
+    }
+    return changed ? lines.join(QLatin1Char('\n')) : text;
+}
 namespace {
-// Qt lays a plain-text tooltip out on one line however long it is. Every tip
-// in every process goes through Qt's private tooltip label, so one filter on
-// the application wraps them all to a reading width: widget tips, list-row
-// tips, menu tips and the hand-placed QToolTip::showText calls alike.
+// Widget and menu tooltips are shown from a QHelpEvent. Showing the wrapped
+// text here, the way QWidget and QMenu would show the original, wraps every
+// such tip in every process.
 class TooltipWrap final : public QObject {
 public:
     using QObject::QObject;
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override {
-        const auto type = event->type();
-        if ((type == QEvent::Show || type == QEvent::Resize || type == QEvent::Move) && !fitting_ && watched->isWidgetType() && watched->inherits("QTipLabel"))
-            fit(static_cast<QLabel*>(watched));
-        return false;
-    }
-private:
-    void fit(QLabel* label) {
-        const auto text = label->text();
-        if (label->wordWrap() || text.isEmpty() || label->textFormat() == Qt::RichText || Qt::mightBeRichText(text)) return;
-        const QFontMetrics fm(label->font());
-        // About 45 characters a line, never more than 40% of the screen.
-        auto* screen = label->screen() ? label->screen() : QGuiApplication::primaryScreen();
-        int cap = fm.averageCharWidth() * 45;
-        if (screen) cap = std::min(cap, screen->availableGeometry().width() * 2 / 5);
-        const int natural = fm.boundingRect(QRect(0, 0, 100000, 100000), 0, text).width();
-        if (natural <= cap) return;
-        const int extraWidth = std::max(0, label->sizeHint().width() - natural);
-        const int extraHeight = std::max(0, label->height() - label->sizeHint().height());
-        const int wrapped = fm.boundingRect(QRect(0, 0, cap, 100000), Qt::TextWordWrap, text).width();
-        fitting_ = true;
-        const QRect before = label->geometry();
-        label->setWordWrap(true);
-        const int width = wrapped + extraWidth + 1;
-        QRect after(before.topLeft(), QSize(width, label->heightForWidth(width) + extraHeight));
-        if (screen) {
-            // Qt placed the tip for its one-line size, often shifted far left so
-            // the long line fit. A tip shown at the pointer starts at the
-            // pointer again; then it stays on the same side of the pointer and
-            // inside the screen at its new size.
-            const int margin = scaled(8);
-            const QRect area = screen->availableGeometry().adjusted(margin, margin, -margin, -margin);
-            const QPoint cursor = QCursor::pos();
-            if (cursor.x() >= before.left() - 4 && cursor.x() <= before.right() + 4) after.moveLeft(cursor.x() + 2);
-            if (before.bottom() < cursor.y()) after.moveBottom(before.bottom());
-            else if (after.bottom() > area.bottom()) after.moveBottom(before.top() - 24);
-            if (after.right() > area.right()) after.moveRight(area.right());
-            if (after.left() < area.left()) after.moveLeft(area.left());
-            if (after.top() < area.top()) after.moveTop(area.top());
+        if (event->type() != QEvent::ToolTip || !watched->isWidgetType()) return false;
+        auto* widget = static_cast<QWidget*>(watched);
+        const auto* help = static_cast<QHelpEvent*>(event);
+        if (auto* menu = qobject_cast<QMenu*>(widget)) {
+            // QMenu shows only an explicit action tooltip, not the default one made from its text.
+            const auto* action = menu->toolTipsVisible() ? menu->actionAt(help->pos()) : nullptr;
+            if (!action) return false;
+            QString label = action->text();
+            label.remove(QLatin1Char('&'));
+            const auto tip = action->toolTip();
+            if (tip.isEmpty() || tip == label.trimmed()) return false;
+            const auto wrapped = tooltipText(tip);
+            if (wrapped == tip) return false;
+            QToolTip::showText(help->globalPos(), wrapped, menu);
+            return true;
         }
-        label->setGeometry(after);
-        fitting_ = false;
+        // A tab bar shows its tabs' tooltips; leave it to Qt.
+        if (qobject_cast<QTabBar*>(widget)) return false;
+        const auto tip = widget->toolTip();
+        const auto wrapped = tooltipText(tip);
+        if (wrapped == tip) return false;
+        QToolTip::showText(help->globalPos(), wrapped, widget, QRect(), widget->toolTipDuration());
+        return true;
     }
-    bool fitting_ = false;
 };
 }
 
@@ -2508,7 +2520,7 @@ void focusTooltips(QAbstractButton* button) {
                 const bool iconOnly = tool ? tool->toolButtonStyle() == Qt::ToolButtonIconOnly : button_->text().isEmpty();
                 if (iconOnly && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason)) {
                     const auto text = button_->toolTip().isEmpty() ? button_->accessibleName() : button_->toolTip();
-                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), text, button_); }
+                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), tooltipText(text), button_); }
                 }
             } else if (shown_ && (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide || event->type() == QEvent::MouseButtonPress)) {
                 QToolTip::hideText(); shown_ = false;
