@@ -52,7 +52,8 @@ QString s3RegionProblem(const QString& region) {
     if (!valid) return QStringLiteral("Region takes a region code such as us-east-1: letters, digits and hyphens, without spaces. For Cloudflare R2, enter auto, not the location the Cloudflare dashboard shows.");
     // The SDK reads "fips-" and "-fips" as a request for AWS FIPS endpoints, which it refuses
     // next to the endpoint put.gd always sets.
-    if (region.startsWith(QLatin1String("fips-"), Qt::CaseInsensitive) || region.endsWith(QLatin1String("-fips"), Qt::CaseInsensitive))
+    // Case-sensitive, as the SDK checks it: "FIPS-lab" is an ordinary label to it.
+    if (region.startsWith(QLatin1String("fips-")) || region.endsWith(QLatin1String("-fips")))
         return QStringLiteral("Region takes the plain region code, such as us-east-1, without fips. For FIPS, enter the FIPS endpoint in Endpoint, such as https://s3-fips.us-east-1.amazonaws.com.");
     return {};
 }

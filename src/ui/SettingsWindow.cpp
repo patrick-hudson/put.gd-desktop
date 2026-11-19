@@ -1205,7 +1205,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // A Region message follows Endpoint: moving a destination to Cloudflare R2, which ignores Region,
  // clears it at once, under the field, in the footer and in the destination status. It is only
  // ever cleared here; a save reports a Region that is still wrong.
- connect(s3_["endpoint"],&QLineEdit::textChanged,this,[this]{if(!loading_)clearStaleRegionFeedback();});
+ for(auto* field:{s3_["endpoint"],s3_["region"]}){
+  connect(field,&QLineEdit::textChanged,this,[this,field]{if(!loading_&&!field->hasFocus())updateRegionFeedback();});
+  connect(field,&QLineEdit::editingFinished,this,[this]{if(!loading_)updateRegionFeedback();});
+ }
  connect(credentials,&QPushButton::clicked,this,[this]{if(!admitSetup())return;resetCredentialSecretDisplay();
   // #1361: a custom uploader stores the values typed into its Secret rows, by name.
   if(providerType_->currentData()==CustomUploaderPanel::provider()){QJsonObject values;const auto typed=uploader_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();if(values.isEmpty()){status({"credential_invalid","Type a value into a row marked Secret first; those are the values stored here.",{}});return;}beginSetup("storeCredentials",{{"values",values}});return;}
@@ -1298,22 +1301,25 @@ void SettingsWindow::refreshMetadata(){if(configPath_)static_cast<Ui::ElidedLabe
   for(const auto& key:QStringList{"accepted","observed"}){auto* value=static_cast<MetadataLabel*>(capabilities_->findChild<QLabel*>(key+"Revision"));value->setExact(key=="accepted"?accepted:observed);value->setVisible(differs);capabilities_->findChild<QLabel*>(key+"RevisionLabel")->setVisible(differs);}
 }
 void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChanged();}
-// #1675: a Region refusal is about the Endpoint and Region that were submitted. Once the form's
-// own Endpoint and Region would no longer be refused for Region, it is out of date.
-bool SettingsWindow::regionFeedbackStale(const Error& e)const{
- if(e.code!="s3_settings_invalid"||e.details["field"].toString()!="region")return false;
- return providerType_->currentData()!="s3"||s3CloudflareR2Endpoint(s3_["endpoint"]->text())||s3RegionProblem(s3_["region"]->text()).isEmpty();
-}
-void SettingsWindow::clearStaleRegionFeedback(){
- if(!regionFeedbackStale({"s3_settings_invalid",{},{{"field","region"}}}))return;
- inlineError(s3_["region"],{});
- for(auto* label:{status_,destinationStatus_})if(label&&label->property("errorField").toString()=="region"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
+// #1675: Region feedback comes only from the shown destination's current Endpoint and Region,
+// checked as the provider checks them, here and nowhere else: no save answer writes or restores
+// it. It sets or clears the message under Region, in the footer and in the destination status.
+void SettingsWindow::updateRegionFeedback(){
+ const bool s3=providerType_->currentData()=="s3";
+ const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text()):QString();
+ inlineError(s3_["region"],problem);
+ if(conflict_)return;
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;
+  if(!problem.isEmpty()){plain(label);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",QStringLiteral("region"));label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,problem,true);}
+  else if(label->property("errorField").toString()=="region"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
+ }
 }
 void SettingsWindow::status(const Error& error){
- // A late answer about a Region the form no longer has is not shown.
- if(regionFeedbackStale(error))return;
+ const bool fromFile=error.details["source"].toString()=="file";
+ // A save or test answer about Region doesn't decide what the form shows (updateRegionFeedback).
+ if(!fromFile&&error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region"){updateRegionFeedback();return;}
  auto e=error;
- if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
+ if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"&&!fromFile){
   const auto bucket=s3_["bucket"]->text();QString reason;
   if(bucket.isEmpty())reason="Enter a bucket name to finish setting up this destination.";
   else if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))reason="Enter only the bucket name, without a URL, folder path or spaces.";
@@ -1325,7 +1331,7 @@ void SettingsWindow::status(const Error& error){
  // People read the message; the code and path go to the tooltip, the
  // accessible description and errorCode, for a report or an agent.
  const auto detail=e?(e.code+(e.details["path"].toString().isEmpty()?QString{}:" · "+e.details["path"].toString())):QString{};
- for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e&&!fromFile?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
  if(destinationStatus_)Ui::feedback(destinationStatus_,e.message,bool(e));
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){Ui::feedback(status_,"Changes save automatically when valid.");placeConflictBanners();return;}
  Ui::feedback(status_,e?e.message:"Done.",bool(e));
@@ -1932,10 +1938,7 @@ void SettingsWindow::restoreReorderBaseline(){
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
 // #1675: a Region saved before today's rules shows its problem when the destination opens.
 // Cloudflare R2 ignores Region (#1678), so an R2 destination never shows one.
-void SettingsWindow::showS3SettingsProblems(){
- const bool checked=providerType_->currentData()=="s3"&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text());
- inlineError(s3_["region"],checked?s3RegionProblem(s3_["region"]->text()):QString());
-}
+void SettingsWindow::showS3SettingsProblems(){updateRegionFeedback();}
 void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;if(control==root_)if(auto* hint=findChild<QLabel*>("archiveRootHint"))hint->setVisible(message.isEmpty()&&(root_->text().isEmpty()||!QDir::isAbsolutePath(root_->text())));control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){Ui::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
 bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
  return pendingEdits_.contains(path)&&(!saving_||!submittedEditSerials_.contains(path)||pendingEditSerials_.value(path)!=submittedEditSerials_.value(path));
@@ -2145,9 +2148,8 @@ void SettingsWindow::persistNextEdit(){
  savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
-  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}// A Region answer for another destination, or for a Region the form no longer has, isn't shown on this form.
-  const bool otherDestination=path.startsWith("/profiles/")&&!(path+"/").startsWith("/profiles/"+QString::number(g->profileIndex_)+"/");
-  if(!(result.error.details["field"].toString()=="region"&&(otherDestination||g->regionFeedbackStale(result.error))))g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}// A Region answer is shown from the form's own state by status(), never from the answer.
+  if(result.error.details["field"].toString()!="region")g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
   g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
@@ -2370,7 +2372,9 @@ void SettingsWindow::configurationChanged(){
   // Keep a conflict message that is already shown, such as a restored destination order.
   const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict",conflictMessage(),{}});showConflictActions();emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
- auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty())status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
+ auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty()){
+  // The file on disk was refused: say so, whatever the form still shows from the last accepted file.
+  auto details=error["details"].toObject();details["source"]="file";status({error["code"].toString(),"The configuration file wasn't loaded: "+error["message"].toString(),details});}
 }
 QString SettingsWindow::checkState(const QJsonObject& profile)const{
  const auto record=settings_.destinationStatus()[profile["id"].toString()].toObject();

@@ -89,7 +89,7 @@ private:
  QWidget* captureOutputBlock_=nullptr;QPushButton* chooseOutput_=nullptr;
  bool editChangedSinceSubmission(const QString&)const;
  void stageEdit(const QString&,const QJsonValue&,QWidget*);
- void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);bool regionFeedbackStale(const Error&)const;void clearStaleRegionFeedback();void showS3SettingsProblems();void autosaveFailure(const Error&);
+ void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);void updateRegionFeedback();void showS3SettingsProblems();void autosaveFailure(const Error&);
  QMap<QString,QJsonValue> pendingEdits_;QHash<QString,quint64> pendingEditSerials_,submittedEditSerials_;quint64 editSerial_=0;QHash<QString,QPointer<QWidget>> editControls_;
  QHash<QWidget*,QLabel*> errors_;QSet<QString> requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
