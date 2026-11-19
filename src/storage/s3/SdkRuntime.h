@@ -14,6 +14,20 @@ public:
     static void ensureInitialized();
     ~SdkRuntime();
     static bool safeDeleteTransport();
+    // While one lives on a thread, every request that thread sends goes out on a fresh connection
+    // that is never reused, and with redirect following off (#1690). Test upload and link's
+    // synthetic PutObject and CreateMultipartUpload use it: libcurl could otherwise send such a
+    // request again by itself after losing a reused connection's reply, or follow a redirect with
+    // it, and leave an object or upload behind that the test's journal can't account for.
+    class SingleSendScope final {
+    public:
+        SingleSendScope();
+        ~SingleSendScope();
+        SingleSendScope(const SingleSendScope&) = delete;
+        SingleSendScope& operator=(const SingleSendScope&) = delete;
+    private:
+        bool previous_;
+    };
     // AWS SDK log records go to stderr as "putgd-aws<TAB>E|W|I<TAB>tag<TAB>text"
     // lines, which the resident collects into its log (#74). The level comes
     // from PUTGD_AWS_LOG_LEVEL: "error", "info" (debug logging) or anything

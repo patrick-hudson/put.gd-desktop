@@ -468,6 +468,9 @@ public:
     }
 private:
     QJsonObject request_;
+    // Test upload and link (#1690): its upload is sent once. A 307 or 308 asking for it again
+    // elsewhere ends it unclear instead of sending the file a second time.
+    bool synthetic_ = false;
     Destination destination_;
     Client client_;
     // The checks of a file's link around a deletion: a visitor with no cookies and no
@@ -661,6 +664,14 @@ private:
             const bool reports = configured && plan.file;
             const auto sent = [&](qint64 bytes) { progress("uploading", bytes - plan.before.size(), artifact.bytes); };
             r = client_.send(verb, url, withValues ? plan.headers : Headers{}, body.get(), reports ? std::function<void(qint64)>(sent) : std::function<void(qint64)>{});
+            // Test upload and link sends its file once and follows no redirect: any 3xx to it, whatever
+            // its address or lack of one, leaves the upload unclear (#1690).
+            if (configured && synthetic_ && r.status >= 300 && r.status < 400) {
+                answered = true;
+                error = {"http_outcome_unknown", QString("The server answered the test upload with a redirect (HTTP %1). Test upload and link sends its file once and follows no redirect, "
+                         "so whether the server stored it is not known.").arg(r.status), {{"requestStage", "redirect"}, {"httpStatus", r.status}}};
+                return r;
+            }
             if (!QList<int>{301, 302, 303, 307, 308}.contains(r.status)) return r;
             const auto location = r.header("location");
             const auto target = url.resolved(QUrl(location));
@@ -976,6 +987,15 @@ private:
             const bool deleted = r.status >= 200 && r.status < 300;
             const bool alreadyGone = !confirmed && ownAnswer && gone(r);
             if (gone(after) && deleted) return finish("removed");
+            // A 202 accepts the deletion for later; while the link still answers, nothing confirms
+            // the file is gone (#1690).
+            if (r.status == 202) {
+                uncertain = true;
+                error = {"http_delete_pending", after.status
+                    ? QString("The server accepted the deletion for later (HTTP 202), but the link still answers (HTTP %1). Retry checks again, or check the file on the server.").arg(after.status)
+                    : "The server accepted the deletion for later (HTTP 202), and checking the link got no reply (" + after.detail + "). Retry checks again, or check the file on the server.", details};
+                return {{"status", "unknown"}, {"progress", progress}};
+            }
             if (gone(after) && alreadyGone) return finish(phase == "delete_intent" ? "removed" : "missing");
             if (before.status == 200 && after.status == 200 && whole(before) && whole(after) && !before.body.isEmpty() && after.body == before.body) {
                 // The whole file, byte for byte, is still there: the deletion did not work.
@@ -1025,9 +1045,13 @@ private:
         request_["publicationId"] = synthetic;
         request_["objectReference"] = QJsonObject{{"schemaVersion", 1}, {"nonce", synthetic}};
         request_["includeReply"] = true;
-        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "upload_intent"}, {"name", artifact.name}})) { error = e; return out; }
+        // Where the file goes, without what could hold a credential: no user info, query or fragment.
+        const auto destination = QUrl(settings()["requestUrl"].toString()).toString(QUrl::RemoveUserInfo | QUrl::RemoveQuery | QUrl::RemoveFragment);
+        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "upload_intent"}, {"name", artifact.name}, {"destination", destination}})) { error = e; return out; }
         bool uncertain = false;
+        synthetic_ = true;
         const auto uploaded = upload(error, uncertain);
+        synthetic_ = false;
         out["uploadStatus"] = uploaded["status"].toString(error ? "failed" : "unknown");
         if (uploaded.contains("replyExcerpt")) out["replyExcerpt"] = uploaded["replyExcerpt"];
         if (error || uploaded["status"] != "uploaded") return out;

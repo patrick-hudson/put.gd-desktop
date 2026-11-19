@@ -115,4 +115,45 @@ void scrubDestinationTestJournals(const QString& directory) {
         if (out.write(bytes) == bytes.size()) out.commit();
     }
 }
+void DestinationTestTrail::record(const QJsonObject& checkpoint) {
+    std::lock_guard lock(mutex_);
+    const auto phase = checkpoint.value("phase").toString();
+    if (phase == "synthetic_upload_intent" || phase == "upload_intent") intent_ = true;
+    else if (phase == "synthetic_uploaded" || phase == "uploaded") receipt_ = checkpoint.value("receipt").toObject();
+    else if (phase == "synthetic_multipart_intent") multipartOpen_ = true;
+    else if (phase == "synthetic_multipart_finished") { multipartOpen_ = false; multipartFinished_ = true; abort_ = checkpoint.value("abort"); }
+    else if (phase == "synthetic_large_intent") largeOpen_ = true;
+    else if (phase == "synthetic_large_started") largeFileId_ = checkpoint.value("fileId").toString();
+    else if (phase == "synthetic_large_finished") {
+        // It names the file and the cancel's outcome on its own, even if the start record wasn't saved.
+        largeOpen_ = false; largeFinished_ = true; cancel_ = checkpoint.value("cancel");
+        if (!checkpoint.value("fileId").toString().isEmpty()) largeFileId_ = checkpoint.value("fileId").toString();
+    }
+    // A cleanup checkpoint carries its target.
+    if (checkpoint.value("target").isObject()) cleanup_ = checkpoint;
+}
+QJsonObject DestinationTestTrail::completed(QJsonObject result) const {
+    std::lock_guard lock(mutex_);
+    if (result.contains("uploadStatus") || !intent_) return result;
+    // Each step reports only what its own terminal checkpoint shows; without one it is unknown.
+    if (receipt_.isEmpty()) result["uploadStatus"] = "unknown";
+    else {
+        result["uploadStatus"] = "uploaded";
+        result["receipt"] = receipt_;
+        // A version is retained only where the record says the deletion stopped with the marker in
+        // place; a version deletion in flight (version_intent, version_unknown) may have succeeded.
+        static const QStringList retainedPhases{"object_failed", "marker_done", "version_failed", "version_cancelled"};
+        const auto cleanupPhase = cleanup_.value("phase").toString();
+        result["cleanupStatus"] = cleanupPhase == "done" ? "removed"
+                                : retainedPhases.contains(cleanupPhase) && cleanup_.value("markerVersionId").isString() ? "hidden_version_retained" : "unknown";
+        if (!cleanup_.isEmpty()) result["cleanupProgress"] = cleanup_;
+    }
+    // The multipart check's listing isn't journaled, so even an aborted check stays unknown.
+    if (multipartOpen_) result["multipart"] = QJsonObject{{"status", "unknown"}};
+    else if (multipartFinished_) result["multipart"] = QJsonObject{{"status", "unknown"}, {"abort", abort_}};
+    if (!largeFileId_.isEmpty())
+        result["largeFile"] = QJsonObject{{"start", "ok"}, {"fileId", largeFileId_}, {"cancel", largeFinished_ ? cancel_ : QJsonValue("unknown")}};
+    else if (largeOpen_) result["largeFile"] = QJsonObject{{"start", "unknown"}};
+    return result;
+}
 }

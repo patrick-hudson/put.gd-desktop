@@ -35,6 +35,11 @@ public:
     void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) override;
     void abandon(const Destination&, const QJsonObject&, std::function<void(Error)>) override;
 private:
+    // synthetic: Test upload and link's file (#1690). It is sent once, on a fresh connection with
+    // redirects off, and a reply that doesn't prove a refusal (a lost reply, 5xx, 408) leaves it
+    // unknown: a resend could be cleaned up before the first request lands, leaving an object no
+    // journal records. Ordinary uploads keep three attempts.
+    void upload(const UploadRequest&, std::function<void(UploadResult)>, bool synthetic);
     struct State;
     std::unique_ptr<State> state_;
 };

@@ -97,7 +97,9 @@ best effort: a file
 that is not a regular `<uuid>.json` of the journal schema, that is a symbolic
 link, too large, unreadable or unparseable, or whose records don't show which
 test it was, stays as it is, so treat older journals as sensitive too. Destination-test
-journals are kept; put.gd does not remove them. A Custom uploader test journal is
+journals are kept, one per test; put.gd does not remove them (#1690). Each step that
+can create something at the destination is journaled, and written to disk with the
+file and folder synced, before it is sent. A Custom uploader test journal is
 never rewritten by this pass; it keeps the receipt the test accepted, the same
 receipt History keeps for an upload.
 The log redacts authorization headers, session
