@@ -1,5 +1,6 @@
 #include "OperationService.h"
 #include "StorageLocations.h"
+#include "DestinationTestJournal.h"
 #include "core/ImagePages.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
@@ -182,6 +183,8 @@ void OperationService::recoverJournal() {
   // Unsubmitted editor sources and recording exports never survive their resident.
   EditorJob::discardStaging(root_+"/editing");
   RecordingService::discardStaging(root_+"/recording");
+  // Earlier destination tests' journals lose their signed links before any test is admitted (#1680).
+  scrubDestinationTestJournals(root_+"/destination-tests");
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
   // A recovery that failed partway is retried whole: a later write below must not clear its error (#1576).
   if(e)return QJsonObject{};

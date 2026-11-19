@@ -208,28 +208,41 @@ private slots:
    QVERIFY(!ArtifactStore(d.filePath("d/putgd/artifacts")).recover(template_.interrupted).error);
   }
  }
- // #1680: a destination test's journal goes once the test finished and left nothing behind. Any other
- // journal stays, so a leftover test object remains traceable, but keeps no signed link query.
- void destinationTestJournalsSettle() {
+ // #1680: journals of earlier S3 and B2 tests lose their links' signed queries and keep
+ // everything that traces the test object. Nothing else in the folder is rewritten: Custom
+ // uploader journals, symbolic links, other names and other schemas stay byte for byte.
+ void destinationTestJournalsLoseOnlySignedLinkQueries() {
   QTemporaryDir d;const auto dir=d.filePath("destination-tests");QVERIFY(QDir().mkpath(dir));
-  const QString link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
-  const QJsonObject receipt{{"directUrl",link},{"publicationId","pub-1"},{"objectReference",QJsonObject{{"key","putgd-test-1.txt"}}}};
-  auto write=[&](const QString& name,QJsonArray checkpoints){QFile f(dir+"/"+name);QVERIFY(f.open(QIODevice::WriteOnly));
-   f.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson());};
-  const QJsonObject uploaded{{"schemaVersion",1},{"phase","synthetic_uploaded"},{"receipt",receipt}};
-  auto finished=[&](QJsonObject result){return QJsonObject{{"schemaVersion",1},{"phase","finished"},{"result",result}};};
-  write("settled.json",{uploaded,finished({{"uploadStatus","uploaded"},{"receipt",receipt},{"cleanupStatus","removed"},{"multipart",QJsonObject{{"status","ok"},{"abort","aborted"}}}})});
-  write("cleanup-unknown.json",{uploaded,finished({{"uploadStatus","uploaded"},{"receipt",receipt},{"cleanupStatus","unknown"}})});
-  write("multipart-left.json",{uploaded,finished({{"uploadStatus","uploaded"},{"receipt",receipt},{"cleanupStatus","removed"},{"multipart",QJsonObject{{"status","failed"},{"abort","failed"}}}})});
-  write("unfinished.json",{uploaded});
-  const auto journals=destinationTestJournals(dir);QCOMPARE(journals.size(),4);
-  for(const auto& path:journals)settleDestinationTestJournal(path);
-  QVERIFY(!QFile::exists(dir+"/settled.json"));
-  for(const auto* name:{"cleanup-unknown.json","multipart-left.json","unfinished.json"}){
-   QFile f(dir+"/"+name);QVERIFY2(f.open(QIODevice::ReadOnly),name);const auto bytes=f.readAll();
-   QVERIFY2(!bytes.contains("X-Amz-Signature")&&!bytes.contains("AKIDSYNTHETIC"),name);
-   QVERIFY2(bytes.contains("putgd-test-1.txt")&&bytes.contains("pub-1"),name);
+  auto receipt=[](const QString& provider,const QString& link){return QJsonObject{{"destination",QJsonObject{{"providerId",provider}}},{"directUrl",link},
+   {"publicationId","pub-1"},{"objectReference",QJsonObject{{"key","putgd-test-1.txt"}}}};};
+  const auto s3=receipt("s3","https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123");
+  const auto b2=receipt("backblaze-b2","https://f000.example/file/b/putgd-test-1.txt?Authorization=b2tokensynthetic");
+  const auto custom=receipt("custom-http","https://up.example/i/1.png");
+  auto journal=[](QJsonArray checkpoints){return QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson();};
+  auto write=[&](const QString& name,const QByteArray& bytes){QFile f(dir+"/"+name);QVERIFY(f.open(QIODevice::WriteOnly));f.write(bytes);};
+  auto read=[&](const QString& name){QFile f(dir+"/"+name);return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();};
+  const QString s3Name="11111111-1111-1111-1111-111111111111.json",b2Name="22222222-2222-2222-2222-222222222222.json",
+                customName="33333333-3333-3333-3333-333333333333.json",linkName="44444444-4444-4444-4444-444444444444.json";
+  write(s3Name,journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}},QJsonObject{{"phase","object_intent"},{"target",s3}},
+   QJsonObject{{"phase","finished"},{"result",QJsonObject{{"uploadStatus","uploaded"},{"receipt",s3},{"cleanupStatus","removed"},{"cleanupProgress",QJsonObject{{"target",s3}}}}}}}));
+  write(b2Name,journal({QJsonObject{{"phase","delete_intent"},{"target",b2}}}));
+  auto customReceipt=custom;customReceipt["objectReference"]=QJsonObject{{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}};
+  const auto customBytes=journal({QJsonObject{{"phase","uploaded"},{"receipt",customReceipt}}});write(customName,customBytes);
+  const auto signedBytes=journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}}});
+  write("notes.json",signedBytes);write("55555555-5555-5555-5555-555555555555.json",QJsonDocument(QJsonObject{{"checkpoints",QJsonArray{QJsonObject{{"receipt",s3}}}}}).toJson());
+  QTemporaryDir outside;QFile target(outside.filePath("elsewhere.json"));QVERIFY(target.open(QIODevice::WriteOnly));target.write(signedBytes);target.close();
+  QVERIFY(QFile::link(target.fileName(),dir+"/"+linkName));
+  scrubDestinationTestJournals(dir);
+  for(const auto& name:{s3Name,b2Name}){
+   const auto bytes=read(name);
+   QVERIFY2(!bytes.contains("X-Amz-")&&!bytes.contains("AKIDSYNTHETIC")&&!bytes.contains("Authorization=")&&!bytes.contains("b2tokensynthetic"),qPrintable(name));
+   QVERIFY2(bytes.contains("putgd-test-1.txt")&&bytes.contains("pub-1"),qPrintable(name));
   }
+  QVERIFY(read(s3Name).contains("\"phase\":\"finished\""));
+  QCOMPARE(read(customName),customBytes);QCOMPARE(read("notes.json"),signedBytes);
+  QVERIFY(read("55555555-5555-5555-5555-555555555555.json").contains("X-Amz-Signature"));
+  QVERIFY(QFileInfo(dir+"/"+linkName).isSymLink());
+  QFile untouched(target.fileName());QVERIFY(untouched.open(QIODevice::ReadOnly));QCOMPARE(untouched.readAll(),signedBytes);
  }
  void stagedEntryNeverReplacesTheRoot() {
   QTemporaryDir d;const auto root=d.filePath("d/putgd"),staging=StorageLocations::stagingRoot(root);
