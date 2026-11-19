@@ -24,4 +24,9 @@ QString s3RegionProblem(const QString& region);
 // Cloudflare R2's S3 API, also under a jurisdiction such as ACCOUNT.eu.r2.cloudflarestorage.com.
 // R2 has no regions: requests to it are signed with auto whatever Region holds (#1678).
 bool s3CloudflareR2Endpoint(const QString& endpoint);
+// What to tell someone whose Endpoint has a path, or an empty string. Requests and
+// links add the bucket after that path, so a bucket typed there is named twice (#1676).
+// `quoteTyped` names the part to remove as typed, for the screen only: the message without it
+// carries no part of the path, so refused saves and errors never log one.
+QString s3EndpointProblem(const QString& endpoint, bool quoteTyped = false);
 }

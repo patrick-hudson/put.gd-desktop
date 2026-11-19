@@ -233,6 +233,10 @@ Error settingsError(const QJsonObject& settings, bool current) {
         if (!settings[field].isDouble() || value < 1 || value > 2147483647 || value != qint64(value)) return bad();
     }
     if (s3VirtualAddressing(settings) && (bucket.contains('.') || address.numeric)) return bad();
+    // An Endpoint path is refused on every host, Cloudflare R2 included: requests and links add
+    // the bucket after it, so a bucket typed there is named twice (#1676).
+    if (const auto problem = s3EndpointProblem(settings["endpoint"].toString()); current && !problem.isEmpty())
+        return {"s3_settings_invalid", problem, {{"field", "endpoint"}}};
     return {};
 }
 }
@@ -271,7 +275,11 @@ void S3Provider::reconcile(const UploadRequest& request, std::function<void(Stat
 }
 void S3Provider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
     reply = once(std::move(reply));
-    if (auto error = validateSettings(request.destination.settings)) { reply({"failed", {}, error}); return; }
+    // A multipart upload already started (its upload id is recorded) continues at its recorded
+    // target under the rules it started with, so it can finish or be aborted there (#1676); only
+    // a new upload meets today's rules.
+    const bool resuming = !request.resume["uploadId"].toString().isEmpty();
+    if (auto error = resuming ? validateStoredSettings(request.destination.settings) : validateSettings(request.destination.settings)) { reply({"failed", {}, error}); return; }
     auto planned = request;
     // A new large upload starts as a multipart plan. An existing journal keeps
     // its own part size: its uploaded parts were cut with it.

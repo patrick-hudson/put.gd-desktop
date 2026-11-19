@@ -1232,7 +1232,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* testSection=new FormRow;testSection->setObjectName("destinationTestSection");auto* testBox=new QVBoxLayout(testSection);testBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));testBox->setSpacing(space(Space::s));auto* testLine=new QHBoxLayout;testLine->setSpacing(space(Space::l));auto* testText=new QVBoxLayout;testText->setSpacing(space(Space::xs));testText->setAlignment(Qt::AlignVCenter);testText->addWidget(Ui::label("Connection test","body"));testText->addWidget(testScope);testLine->addLayout(testText,1);testLine->addWidget(test,0,Qt::AlignRight|Qt::AlignVCenter);testBox->addLayout(testLine);new ConnectionTestSizer(testSection,testLine,testScope,test);credentialForm->addRow(testSection);testSection->setProperty("preferenceRow",true);testSection->setProperty("preferenceRowInset",true);testSection->setProperty("preferenceNaturalHeight",true);
  connect(scrollHeight_,&QSpinBox::valueChanged,this,[this]{queueEdit(scrollHeight_);});
  autosave_=new QTimer(this);autosave_->setSingleShot(true);autosave_->setInterval(400);connect(autosave_,&QTimer::timeout,this,&SettingsWindow::save);
- for(auto* edit:findChildren<QLineEdit*>()){if(edit==access_||edit==secret_||edit==token_||edit==protonPassword_||edit->property("configPath").toString().isEmpty())continue;connect(edit,&QLineEdit::textChanged,this,[this,edit]{dirty();if(!edit->hasFocus()||edit->isReadOnly())queueEdit(edit);});connect(edit,&QLineEdit::editingFinished,this,[this,edit]{queueEdit(edit);});}
+ for(auto* edit:findChildren<QLineEdit*>()){if(edit==access_||edit==secret_||edit==token_||edit==protonPassword_||edit->property("configPath").toString().isEmpty())continue;connect(edit,&QLineEdit::textChanged,this,[this,edit]{dirty();if((!edit->hasFocus()||edit->isReadOnly())&&!(edit==s3_.value("endpoint")&&s3_.value("region")&&s3_.value("region")->hasFocus()))queueEdit(edit);});connect(edit,&QLineEdit::editingFinished,this,[this,edit]{queueEdit(edit);});}
  for(auto* edit:{access_,secret_,token_,protonPassword_})connect(edit,&QLineEdit::textChanged,this,&SettingsWindow::viewStateChanged);
  for(auto* combo:findChildren<QComboBox*>())if(combo!=profile_&&!combo->property("configPath").toString().isEmpty())connect(combo,&QComboBox::currentIndexChanged,this,[this,combo]{queueEdit(combo);});
  for(auto* box:{quickRedactTerms_,quickRedactPatterns_})connect(box,&QPlainTextEdit::textChanged,this,[this,box]{dirty();queueEdit(box);});
@@ -1293,6 +1293,9 @@ SettingsWindow::~SettingsWindow(){
 }
 bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==destinationPage_&&event->type()==QEvent::Hide)resetCredentialSecretDisplay();
+ // A destination opened before its page was on screen scrolls to its Endpoint problem now (#1676).
+ if(watched==destinationPage_&&event->type()==QEvent::Show&&!loading_)showS3SettingsProblems();
+ if(watched==destinationPage_&&event->type()==QEvent::Hide)s3_["endpoint"]->setProperty("revealedFor",{});
  if(watched==tabs_->tabBar()&&event->type()==QEvent::Wheel){event->ignore();return true;}
  if(event->type()==QEvent::Wheel&&qobject_cast<QAbstractSpinBox*>(watched)){event->ignore();return true;}
  if(revealUpdates_&&(event->type()==QEvent::Move||event->type()==QEvent::Resize)&&watched==updatesCard_)revealUpdates();
@@ -1311,14 +1314,21 @@ void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChange
 // checked as the provider checks them, here and nowhere else: no save answer writes or restores
 // it. It sets or clears the message under Region, in the footer and in the destination status.
 bool SettingsWindow::updateRegionFeedback(bool clearOnly){
+ // #1676: Endpoint feedback comes from the same check of the shown destination, never from an answer.
  const bool s3=providerType_->currentData()=="s3";
  const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text()):QString();
- if(clearOnly&&!problem.isEmpty())return false;
- inlineError(s3_["region"],problem);
+ const auto endpointProblem=s3?s3EndpointProblem(s3_["endpoint"]->text(),true):QString();
+ // The Endpoint message quotes what was typed: shown as text, never as markup.
+ if(auto* label=errors_.value(s3_["endpoint"]))label->setTextFormat(Qt::PlainText);
+ if(clearOnly){if(problem.isEmpty())inlineError(s3_["region"],{});if(endpointProblem.isEmpty())inlineError(s3_["endpoint"],{});
+  for(auto* label:{status_,destinationStatus_})if(label){const auto field=label->property("errorField").toString();if((field=="region"&&problem.isEmpty())||(field=="endpoint"&&endpointProblem.isEmpty())){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}}
+  if(!problem.isEmpty()||!endpointProblem.isEmpty())return false;}
+ inlineError(s3_["region"],problem);inlineError(s3_["endpoint"],endpointProblem);
  if(conflict_)return true;
+ const auto message=problem.isEmpty()?endpointProblem:problem;const QString field=problem.isEmpty()?"endpoint":"region";
  for(auto* label:{status_,destinationStatus_}){if(!label)continue;
-  if(!problem.isEmpty()){plain(label);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",QStringLiteral("region"));label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,problem,true);}
-  else if(label->property("errorField").toString()=="region"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
+  if(!message.isEmpty()){plain(label);label->setTextFormat(Qt::PlainText);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",field);label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,message,true);}
+  else if(QStringList{"region","endpoint"}.contains(label->property("errorField").toString())){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
  }
  return true;
 }
@@ -1329,7 +1339,7 @@ void SettingsWindow::showFileError(){
 }
 bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(control==s3_.value("region")||control==s3_.value("endpoint"));}
 void SettingsWindow::status(const Error& error){
- // A save or test answer about Region shows nothing: the form's own check, after typing pauses,
+ // A save or test answer about Region or Endpoint shows nothing: the form's own check, after typing pauses,
  // is the only thing that publishes Region feedback (updateRegionFeedback).
  // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
  if(error.code=="s3_settings_invalid"&&QStringList{"region","endpoint"}.contains(error.details["field"].toString())){
@@ -1345,7 +1355,7 @@ void SettingsWindow::status(const Error& error){
   else if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))reason="Enter only the bucket name, without a URL, folder path or spaces.";
   else if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)reason="Bucket names must contain 3–63 characters.";
   if(!reason.isEmpty()){e.message="Invalid S3 settings: "+reason;inlineError(s3_["bucket"],reason);}
-  // #1675: a refused Region is shown at that field.
+  // #1675, #1676: a refused Region or Endpoint is shown at that field.
   else if(const auto field=e.details["field"].toString();s3_.contains(field))inlineError(s3_[field],e.message);
  }
  // People read the message; the code and path go to the tooltip, the
@@ -1626,6 +1636,15 @@ bool SettingsWindow::selectedDestinationChanged()const{
 namespace {
 QJsonValue atPath(QJsonValue value,const QStringList& path){for(const auto& part:path)value=value.isArray()?value.toArray().at(part.toInt()):value.toObject().value(part);return value;}
 QJsonValue replacePath(QJsonValue value,const QStringList& path,int index,const QJsonValue& replacement){if(index==path.size())return replacement;if(value.isArray()){auto array=value.toArray();const int row=path[index].toInt();if(row<0||row>=array.size())return value;array[row]=replacePath(array[row],path,index+1,replacement);return array;}auto object=value.toObject();object[path[index]]=replacePath(object[path[index]],path,index+1,replacement);return object;}
+// #1676: a pending Region and Endpoint pair holds only those two values. They are written onto the
+// destination's settings in whichever document the edit is applied to, when it is applied, so a
+// Bucket or Folder saved meanwhile is never reverted by a copy taken when the pair was queued.
+const QString regionEndpointPair=QStringLiteral("putgdRegionEndpointPair");
+QJsonValue applyEdit(const QJsonValue& document,const QString& path,const QJsonValue& value){
+ const auto parts=path.split('/',Qt::SkipEmptyParts);
+ if(value.isObject()&&value.toObject().contains(regionEndpointPair)){auto settings=atPath(document,parts).toObject();settings["region"]=value.toObject()["region"];settings["endpoint"]=value.toObject()["endpoint"];return replacePath(document,parts,0,settings);}
+ return replacePath(document,parts,0,value);
+}
 }
 QStringList SettingsWindow::profileOrder()const{QStringList ids;for(const auto& p:draft_["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
 void SettingsWindow::applyProfileOrder(const QStringList& order){
@@ -1655,7 +1674,7 @@ Error SettingsWindow::moveDestination(int from,int to){
  // that was rejected earlier cannot block the reorder. Index-addressed edits
  // are folded in; the "/profiles" edit supersedes them.
  auto projected=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
- for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)projected=replacePath(projected,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+ for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)projected=applyEdit(projected,it.key(),it.value()).toObject();
  QJsonObject reordered;QJsonArray value=Settings::reorderProfiles(projected,QJsonArray::fromStringList(order),reordered)?candidate()["profiles"].toArray():reordered["profiles"].toArray();
  for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(it.key()=="/profiles"||it.key().startsWith("/profiles/")){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  stageEdit("/profiles",value,destinationList_);dirty();
@@ -1956,9 +1975,28 @@ void SettingsWindow::restoreReorderBaseline(){
  applyProfileOrder(order);
 }
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
-// #1675: a Region saved before today's rules shows its problem when the destination opens.
-// Cloudflare R2 ignores Region (#1678), so an R2 destination never shows one.
-void SettingsWindow::showS3SettingsProblems(){updateRegionFeedback();}
+// #1675, #1676: a Region or Endpoint saved before today's rules shows its problem when the
+// destination opens, with the Endpoint row in view. Region feedback is updateRegionFeedback's;
+// an Endpoint path is refused on every host.
+void SettingsWindow::showS3SettingsProblems(){
+ // Another destination: forget the scroll and close the sections this opened by itself, so
+ // they don't stay open for B2, Proton Drive or another S3 destination.
+ auto* field=s3_["endpoint"];
+ if(field->property("shownFor")!=profileId_->text()){
+  field->setProperty("shownFor",profileId_->text());field->setProperty("revealedFor",{});
+  for(const auto* name:{"customEndpoint","advancedSettings"})if(auto* toggle=findControl<QAbstractButton*>(name);toggle&&toggle->property("openedForProblem").toBool()){toggle->setProperty("openedForProblem",false);toggle->setChecked(false);}
+ }
+ updateRegionFeedback();
+ const auto endpoint=providerType_->currentData()=="s3"?s3EndpointProblem(s3_["endpoint"]->text()):QString();
+ if(endpoint.isEmpty())return;
+ // findControl: the destination page may live in the main window, outside this one.
+ for(const auto* name:{"advancedSettings","customEndpoint"})if(auto* toggle=findControl<QAbstractButton*>(name);toggle&&!toggle->isChecked()){toggle->setChecked(true);toggle->setProperty("openedForProblem",true);}
+ // Scrolled into view once per destination shown, after the opened section is laid out; a later
+ // reload, such as after saving another field, leaves the page where the user put it.
+ if(s3_["endpoint"]->property("revealedFor")==profileId_->text())return;
+ QTimer::singleShot(0,this,[this,id=profileId_->text()]{auto* field=s3_["endpoint"];if(profileId_->text()!=id||!field->isVisible())return;
+  for(auto* parent=field->parentWidget();parent;parent=parent->parentWidget())if(auto* area=qobject_cast<QScrollArea*>(parent)){if(area->widget()&&area->widget()->layout())area->widget()->layout()->activate();if(auto* label=errors_.value(field))area->ensureWidgetVisible(label,0,Ui::scaled(24));area->ensureWidgetVisible(field,0,Ui::scaled(24));field->setProperty("revealedFor",id);break;}});
+}
 void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;if(control==root_)if(auto* hint=findChild<QLabel*>("archiveRootHint"))hint->setVisible(message.isEmpty()&&(root_->text().isEmpty()||!QDir::isAbsolutePath(root_->text())));control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){Ui::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
 bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
  return pendingEdits_.contains(path)&&(!saving_||!submittedEditSerials_.contains(path)||pendingEditSerials_.value(path)!=submittedEditSerials_.value(path));
@@ -1973,7 +2011,12 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
  if(path.startsWith("/actions/")&&!path.endsWith("/shortcut")){
   const auto action=path.split('/')[2];if(useCaptureDefault_.contains(action)){const QSignalBlocker block(useCaptureDefault_[action]);useCaptureDefault_[action]->setChecked(false);queueCaptureEdit(control);return;}
  }
- path.replace("{profile}",QString::number(profileIndex_));if(path.contains("/-1"))return;if(path.endsWith("/settings/region"))path=path.left(path.lastIndexOf('/'));
+ path.replace("{profile}",QString::number(profileIndex_));if(path.contains("/-1"))return;
+ // #1676: Region and Endpoint save together, so a fix to one is never refused because of the
+ // other's saved value and then left looking saved. Both go as one edit of the destination's
+ // settings; when the save widens (a new destination, a provider or id change), the whole
+ // candidate goes, which carries both.
+ const bool pairField=path.endsWith("/settings/region")||path.endsWith("/settings/endpoint");if(pairField)path=path.left(path.lastIndexOf('/'));
  const auto doc=candidate();
  if(path.startsWith("/profiles")){
   if(providerType_->currentData()=="proton-drive")updateProtonAccountDisplay();
@@ -1984,14 +2027,23 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
    if(draft["provider"]!=saved["provider"]||draft["id"]!=saved["id"])path="/profiles/"+QString::number(profileIndex_);
   }
  }
- for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||it.key().startsWith(path+"/")){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
+ // Still the destination's settings after widening: an edit of just those two fields.
+ const bool pair=pairField&&path.endsWith("/settings");
+ for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||(it.key().startsWith(path+"/")&&(!pair||it.key()==path+"/region"||it.key()==path+"/endpoint"))){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  const auto parts=path.split('/',Qt::SkipEmptyParts);
  auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
- for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
- if(atPath(doc,parts)==atPath(baseline,parts)){
+ for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=applyEdit(baseline,it.key(),it.value()).toObject();
+ auto value=atPath(doc,parts);
+ // A pair is just the two values, applied when it is submitted (applyEdit). A full settings edit
+ // already pending at this path takes them in instead.
+ if(pair){const auto draft=value.toObject();const auto pending=pendingEdits_.value(path);
+  if(pending.isObject()&&!pending.toObject().contains(regionEndpointPair)){auto settings=pending.toObject();settings["region"]=draft["region"];settings["endpoint"]=draft["endpoint"];value=settings;}
+  else value=QJsonObject{{regionEndpointPair,true},{"region",draft["region"]},{"endpoint",draft["endpoint"]}};}
+ const auto unchanged=pair?atPath(applyEdit(baseline,path,value),parts)==atPath(baseline,parts):value==atPath(baseline,parts);
+ if(unchanged){
   pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);if(!formOwnsFeedback(control))inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
- stageEdit(path,atPath(doc,parts),control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
+ stageEdit(path,value,control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
  if(updateProviderVisibility_)updateProviderVisibility_();
 }
 void SettingsWindow::updateCaptureInheritance(){
@@ -2130,7 +2182,7 @@ bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosave
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(pendingEdits_.isEmpty())return;
- storeProfile();auto doc=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();++it)doc=replacePath(doc,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+ storeProfile();auto doc=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();++it)doc=applyEdit(doc,it.key(),it.value()).toObject();
  if(doc==settings_.document()){pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
  saving_=true;savingDocument_=doc;submittedEditSerials_=pendingEditSerials_;emit viewStateChanged();
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this)](Result result){
@@ -2164,7 +2216,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
 }
 void SettingsWindow::persistNextEdit(){
  if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
- const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
+ const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=applyEdit(accepted,path,value).toObject();
  if(doc==accepted){if(!formOwnsFeedback(control))inlineError(control,{});persistNextEdit();return;}
  savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
@@ -2179,7 +2231,7 @@ void SettingsWindow::persistNextEdit(){
    g->persistNextEdit();return;}
   // Region and Endpoint inline messages are the form's own: no answer writes them.
   QWidget* target=result.error.code=="s3_settings_invalid"&&g->s3_.contains(refusedField)?g->s3_[refusedField]:control.data();
-  if(refusedField!="region"&&!g->formOwnsFeedback(target))g->inlineError(target,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  if(!QStringList{"region","endpoint"}.contains(refusedField)&&!g->formOwnsFeedback(target))g->inlineError(target,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
   g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();if(!g->formOwnsFeedback(control))g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });

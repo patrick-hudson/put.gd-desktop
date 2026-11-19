@@ -666,6 +666,10 @@ UploadResult multipartUpload(Client& client, const UploadRequest& request, const
         for (const auto& [number, etag] : done) completed += qMin(partBytes, bytes - qint64(number - 1) * partBytes);
     }
     if (uploadId.isEmpty()) {
+        // An Endpoint with a path is allowed here only to finish or abort an upload it started
+        // (#1676): a new multipart upload there would land under the doubled key again.
+        if (const auto problem = s3EndpointProblem(settings["endpoint"].toString()); !problem.isEmpty())
+            return {"failed", {}, {"s3_settings_invalid", problem, {{"field", "endpoint"}}}};
         done.clear();
         completed = 0;
         Aws::S3::Model::CreateMultipartUploadRequest create;
