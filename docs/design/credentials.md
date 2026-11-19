@@ -71,13 +71,18 @@ operation journals, payload spools, the persistent log or exported diagnostics.
 Operation journals and the History database can retain bearer download links in
 receipts; treat those private records as sensitive. **Test upload and link** opens
 its expiring S3 link or authorized B2 link but writes it to the destination-test
-journal and result without its query, so they hold no signature, access key ID or
-download token (#1680). A destination-test journal is removed when its test has
-finished and nothing of it can remain at the destination. Any other journal is
-kept so a leftover test object stays traceable, with signed link queries removed;
-put.gd applies the same rule once at startup to the journals already there,
-including those of earlier builds. A Custom uploader test journal keeps the link
-and deletion URL the server returned until it is removed.
+journal and result without its query or fragment, so they hold no signature, access
+key ID or download token (#1680). The resident strips these links from every S3 and
+B2 test checkpoint it writes, whatever the worker sends. During journal recovery,
+under the resident lock and before any destination test starts, it also rewrites
+the same links in journals written by earlier builds. That pass covers only the
+S3 and B2 receipt links (the receipt, a cleanup target, and both inside a finished
+result). It is best effort: a file that is not a regular `<uuid>.json` of the
+journal schema, or that is a symbolic link, too large, unreadable or unparseable,
+stays as it is, so treat older journals as sensitive too. Destination-test
+journals are kept; put.gd does not remove them. A Custom uploader test journal is
+never rewritten and keeps the link and deletion URL the server returned, as
+History does for every upload.
 The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
