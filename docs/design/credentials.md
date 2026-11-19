@@ -79,8 +79,10 @@ recovery, under the resident lock and before any S3 or B2 destination test start
 (History recovery is not waited for), it also rewrites the same links in journals
 written by earlier builds. That pass covers only the S3 and B2 receipt links (the
 receipt, a cleanup target, and both inside a finished result), and only in a
-journal whose own records show an S3 or B2 test: the destination saved with its
-intent, or B2's file and bucket IDs in every receipt. It is best effort: a file
+journal whose own records show an S3 or B2 test: every destination saved in its
+checkpoints names that same provider, or, when none was saved, every receipt carries
+B2's file and bucket IDs. A journal whose saved destinations disagree, or with any
+receipt that looks like a Custom uploader one, is not rewritten. It is best effort: a file
 that is not a regular `<uuid>.json` of the journal schema, that is a symbolic
 link, too large, unreadable or unparseable, or whose records don't show which
 test it was, stays as it is, so treat older journals as sensitive too. Destination-test
