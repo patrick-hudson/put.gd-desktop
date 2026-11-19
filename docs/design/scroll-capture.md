@@ -504,9 +504,10 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   three or more: a lead of three outweighs one screen (which is what drops a notice
   dismissed after the first frame, once the page's colour under it reaches that lead).
 - **An information bar above the page that closes while a banner is pinned at the
-  bottom**: the banner's rows the bar had pushed out of view are not in the last screen
-  kept for what is pinned, so the image's last rows can show something else there (24
-  rows of a 64-row banner in a synthetic case, when the capture ended right after).
+  bottom**: if the last screen kept for what is pinned still shows the banner clipped
+  (no later frame replaced it), the image's last rows can lack the banner's rows the bar
+  had pushed out of view (24 rows of a 64-row banner in a synthetic case, when the
+  capture ended right after).
 - **Something that slides in during the first frames** (Chrome's link bubble at the bottom
   left, from auto-scroll's visit with the pointer) can move by the page's step for a frame
   and be taken as the page there.
