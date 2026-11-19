@@ -208,15 +208,15 @@ Error settingsError(const QJsonObject& settings, bool current) {
     if (settings["region"].toString().isEmpty())
         return {"s3_settings_invalid", s3RegionProblem({}), {{"field", "region"}}};
     // Region first: on AWS, Settings writes Region into the generated endpoint host, so a
-    // Region with spaces would otherwise read as a bad endpoint. Cloudflare R2 ignores
-    // Region: its requests are signed with auto (S3Driver), so a saved location is harmless.
-    if (const auto problem = s3RegionProblem(settings["region"].toString());
-        current && !problem.isEmpty() && !s3CloudflareR2Endpoint(settings["endpoint"].toString()))
-        return {"s3_settings_invalid", problem, {{"field", "region"}}};
+    // Region with spaces would otherwise read as a bad endpoint, under either set of rules.
+    // Cloudflare R2 ignores Region: its requests are signed with auto (S3Driver).
+    const auto regionProblem = s3CloudflareR2Endpoint(settings["endpoint"].toString()) ? QString() : s3RegionProblem(settings["region"].toString());
+    const Error regionError{"s3_settings_invalid", regionProblem, {{"field", "region"}}};
+    if (current && !regionProblem.isEmpty()) return regionError;
     const auto endpoint = QUrl(settings["endpoint"].toString());
     const auto address=classifyIpAddress(endpoint.host());
     if (!endpoint.isValid() || endpoint.host().isEmpty() || !endpoint.userInfo().isEmpty() || endpoint.hasQuery() || endpoint.hasFragment() ||
-        (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && address.loopback))) return bad();
+        (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && address.loopback))) return regionProblem.isEmpty() ? bad() : regionError;
     if (settings["publicUrlBase"].isString()) {
         const auto base = QUrl(settings["publicUrlBase"].toString());
         const auto host=classifyIpAddress(base.host());
