@@ -250,8 +250,9 @@ private slots:
   const QJsonObject bareCustom{{"directUrl",s3Link},{"publicationId","pub-1"},{"objectReference",QJsonObject{{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}}}};
   const QJsonObject s3Destination{{"providerId","s3"}};
   unchanged[uuid('8')]=journal({QJsonObject{{"phase","upload_intent"},{"name","putgd-test-1.txt"}},QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",bareCustom}}});
-  unchanged[uuid('9')]=journal({QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",QJsonObject{{"directUrl",s3Link},{"objectReference",QJsonObject{{"url","https://up.example/i/1.png"}}}}}},
-   QJsonObject{{"phase","finished"},{"destination",s3Destination},{"result",QJsonObject{{"link","https://up.example/i/1.png"},{"receipt",bareCustom}}}}});
+  const QJsonObject urlOnly{{"directUrl",s3Link},{"objectReference",QJsonObject{{"url","https://up.example/i/1.png"}}}};
+  unchanged[uuid('9')]=journal({QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",urlOnly}}});
+  unchanged[uuid('b')]=journal({QJsonObject{{"phase","finished"},{"destination",s3Destination},{"result",QJsonObject{{"link","https://up.example/i/1.png"},{"receipt",QJsonObject{{"directUrl",s3Link}}}}}}});
   unchanged[uuid('a')]=journal({QJsonObject{{"phase","delete_intent"},{"target",receipt("backblaze-b2",s3Link,{{"fileId",""},{"bucketId",""}})}}});
   unchanged["notes.json"]=journal({s3Intent,QJsonObject{{"receipt",s3}}});
   unchanged[uuid('5')]=QJsonDocument(QJsonObject{{"checkpoints",QJsonArray{s3Intent,QJsonObject{{"receipt",s3}}}}}).toJson();
