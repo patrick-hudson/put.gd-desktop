@@ -787,12 +787,15 @@ and dwz steps. It works in three layers:
   than one mirror answered the probe, so the next attempt starts on another mirror. (The
   workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
   than 128 MiB.) `putgd_apt_install` gives each of its three attempts 8 minutes for the
-  update and the download only (`PUTGD_APT_ATTEMPT_SECONDS=480`): 24 minutes of downloading
-  inside the install steps' 30-minute limit, with room for the install, which runs to the
-  end. After a failed attempt it waits up to 600 s for any process holding a dpkg or apt
+  update and the download only (`PUTGD_APT_ATTEMPT_SECONDS=480`). The install of what was
+  downloaded has no limit of its own: it runs under the step's outer `timeout-minutes` (30
+  for the `linux` and `sanitizers` installs), which has to hold the three download attempts
+  too. After a failed attempt it waits up to 600 s for any process holding a dpkg or apt
   lock, such as a dpkg that outlived its stopped `apt-get`, before `dpkg --configure -a`
   and the retry
-  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702)).
+  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702)). Those recovery
+  waits come out of the same 30 minutes, so when they run, the third attempt and the
+  install have less headroom left.
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
