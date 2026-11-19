@@ -39,9 +39,16 @@ one. Connect then fails with "The private keychain is unavailable."
 unlock a default keyring, then connect again. KWallet and KeePassXC secret
 services were not tested; see [the round-11 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-round11-proton/README.md).
 
-Use **Test connection** to check that the saved account and selected upload folder
-are still accessible. A successful check satisfies the current session's
-untested-destination warning when choosing **Make default**. This check is
+Use **Check account and folder** to check that the saved account and selected upload
+folder are still accessible. A successful check shows **Account and folder checked**,
+and **Make default** then asks no confirmation. put.gd keeps that result across
+closing Settings and restarting. It shows **Configured** again when you choose another
+folder or connect the same account again with **Reconnect account…**. Connecting a
+different account clears the folder and shows **Choose a folder**. A later upload that
+Proton refuses because the sign-in is no longer valid, the connected account changed,
+access was denied or the folder is unavailable shows **Needs checking**; a network
+failure or timeout changes nothing
+([destination checks](../design/configuration.md#destination-checks)). This check is
 read-only: it does not verify upload permission, file transfer, or share-link
 creation. Its result states those limits explicitly.
 

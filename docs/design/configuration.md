@@ -11,7 +11,7 @@ absolute paths, hotkey syntax, and cross-profile references.
 | Folder | Linux |
 | --- | --- |
 | Configuration: `config.json` and its `config.json.lock` | `$XDG_CONFIG_HOME/putgd`, normally `~/.config/putgd` |
-| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` |
+| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, `destination-status.json`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` |
 
 These are Qt's `GenericConfigLocation` and `GenericDataLocation` plus `putgd`, so they
 do not depend on Qt's organization or application name. The screen-recording helper
@@ -344,3 +344,112 @@ with `image_memory_limit`; the app does not silently substitute a later clipboar
 Encoding workspace, native frozen monitor frames and the current clipboard result
 are separate transient/ownership costs. Retry artifacts and previews live on disk;
 previewCacheBytes bounds disk bytes rather than a preloaded image heap.
+
+## Destination checks
+
+The resident keeps each destination's last check in `destination-status.json` in the
+data folder (#1692), owner-only. A check is **passed** or **failed**, and comes from
+**Test** (`source: test`) or from an upload (`source: upload`). The file holds no
+credential, link or object name: per destination its state, source, the error code of
+a failure, a connection fingerprint and a credential revision. Closing Settings,
+restarting put.gd and logging in again keep it. The resident does not rerun the check
+on a timer, and the row shows no age.
+
+A record counts only while it matches the destination as saved now:
+
+- **Connection fingerprint.** A SHA-256 of the provider, the credential reference
+  (`mode` and `reference`) and these settings, compared exactly:
+
+  | Provider | Settings in the fingerprint |
+  | --- | --- |
+  | `s3` | `endpoint`, `bucket`, `region`, `addressing`, `objectPrefix`, `storageClass`, `aclMode`, `linkMode`, `publicUrlBase` |
+  | `backblaze-b2` | `apiUrl`, `bucket`, `objectPrefix`, `linkMode`, `publicUrlBase` |
+  | `proton-drive` | `accountRootUid`, `folderUid` |
+  | `custom-http` | `requestMethod`, `requestUrl`, `allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`, `secrets`, `data`, `dataSecret`, `responseUrl`, `deletionUrl`, `accepts` |
+
+  These decide where requests go, who signs them, what a bucket or key policy can
+  scope to (the folder in the bucket), what the server may refuse (storage class,
+  ACL), the link and cleanup the test followed, and for a custom uploader the file
+  types it accepts, which decide the synthetic file its test sends. Left out, so
+  changing them keeps the record: the label, the destination's place in the list,
+  being the capture default or an action's destination, timeouts and slow-transfer
+  limits, S3/B2 link validity days, the Proton folder name, share preferences and
+  share password, and a custom uploader's thumbnail URL and error message. A provider
+  with no list is fingerprinted by all of its settings.
+- **Credential revision.** A count per destination, kept in the same file. Every
+  Store of credentials (keychain or this session) and every Proton sign-in
+  (`connectAccount`, including **Reconnect account…**) adds one when it starts and one
+  more when it succeeds, so a finished check does not vouch for keys stored after it.
+  Each advance is saved as a best effort: when the status file cannot be written, the
+  Store still goes ahead, and a restart can show the earlier result until the next
+  Test or upload replaces it. A failed Store also leaves the destination untested. Two destinations can name the same
+  keychain entry ([credentials](credentials.md)): a Store or sign-in for one advances
+  the revision of every configured destination with the same `mode` and `reference`.
+  Session keys are each destination's own. Reading saved keychain credentials (Unlock,
+  or the startup read) adds nothing.
+
+Changing a fingerprinted setting makes the record stale without a write; the
+destination shows untested. A Store or sign-in writes the new revision. Changing a
+setting back shows the earlier result again only while that record is still kept and
+its revision is still the current one: a Test or an upload that updates the record
+for the changed settings replaces it, and new credentials outdate it for good. Removing a destination forgets
+its record.
+
+**Session-only keys.** A destination in `mode: session` whose provider keeps keys (S3,
+Backblaze B2, a custom uploader with secret values) has its record and revision in
+memory only; neither is written to the file. Its keys end with the resident, so after
+a restart it is untested. A destination with no keys, such as a custom uploader
+without secret values (saved in `mode: session`), and every keychain destination are
+saved as described above. The rule looks at the destination's mode when the file is
+written: a session-only pass of a destination switched to keychain mode is written by
+the next save of any record. Loading does not filter by mode, so after switching back
+that written pass survives a restart unless a successful save in session mode has
+dropped it, until a Test or upload replaces it.
+
+What updates the record:
+
+- **Test.** Its result replaces an upload's record, passed or failed with its error
+  code, with `source: test`, even when the state and code are the same. A Test whose
+  result equals the Test record already kept leaves it as it is, without a write.
+  A Test held back before it reached the provider, such as one asked for while journal
+  recovery is still running (its error carries `details.notAttempted`), leaves the
+  record as it was.
+- **Uploads.** When an upload operation ends, a file that became uploaded in that run,
+  including a Retry that confirms an earlier uncertain upload without sending it
+  again, records passed; an existing pass, from a Test or an upload, stays as it
+  was. Otherwise a refusal that this run met, on an upload or on its link, records
+  failed. An item error that a Retry carried from History and that is still the same
+  error code does not count. A refusal above counts even when the item's upload or
+  link outcome stays unknown. The refusals are `s3_authentication_failed`,
+  `s3_permission_denied`, `s3_bucket_not_found`, `b2_authentication_failed`,
+  `b2_permission_denied`, `b2_key_restricted`, `b2_bucket_not_found`,
+  `proton_credentials_invalid`, `proton_account_changed`, `proton_folder_unavailable`,
+  `http_authentication_failed`, and the Proton helper's own `authentication_required`,
+  `permission_denied`, `account_changed` and `destination_unavailable`, which only the
+  Proton provider passes on. Every other outcome, such as a network failure, a
+  timeout, a rate limit, a cancel, a size limit or an unknown outcome, leaves the
+  record.
+- A Test or upload records nothing when, at the moment it finishes, the destination's
+  fingerprint or credential revision differs from the ones it started with.
+
+A file that cannot be read whole starts empty. On reading, a revision must be an exact
+integer from 0 to 2^53, and a record's `errorCode` must be one of the refusals above;
+anything else drops that entry. A failed Test whose error was not a refusal, such as
+a timeout, is therefore shown after a restart as untested.
+
+`ui.snapshot` and `settings.get` (MCP `inspect`, at
+`result.configuration.result.destinationStatus`) carry `destinationStatus`, keyed by
+profile ID, with an entry for every configured destination against its saved settings
+and current credential revision. An untested entry is `{state: "untested"}`. A passed
+entry adds `source` and `fingerprint`; a failed one adds `errorCode` too. Settings →
+Destinations shows it: **Connected** (Proton: **Account and folder checked**), **Test
+failed** (Proton: **Check failed**), **Needs testing** after an upload failure
+(Proton: **Needs checking**), and **Ready to test** (Proton: **Configured**)
+otherwise. Needs-credentials, signed-out and folder states come first. **Make
+default** asks for confirmation unless the destination is passed. The Settings window
+computes the same fingerprint for the destination being edited, so an unsaved
+connection edit shows untested at once, and a test's completion message follows the
+same rule: a test whose destination was renamed or moved while it ran reports its
+result as current. The message compares only the profile ID and fingerprint, not the
+credential revision: when keys are stored while a Test runs, the message can report
+success while the resident discards the result and the row stays untested.
