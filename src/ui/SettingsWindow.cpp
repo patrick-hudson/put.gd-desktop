@@ -2310,7 +2310,7 @@ void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& edited
  // A destination switched to another service here isn't saved field by field: until its new service
  // is saved, each edit sends all of it, so a field never lands in the old service's settings.
  // Only a service changed in this window counts: one another writer changed is never undone from here.
- QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id){if(value.toObject()["provider"]==profile["provider"])serviceSwitched_.remove(id);else if(serviceSwitched_.contains(id))path.clear();}
+ QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id){if(value.toObject()["provider"]==serviceSwitched_.value(id))serviceSwitched_.remove(id);else if(serviceSwitched_.contains(id)&&value.toObject()["provider"]!=profile["provider"])path.clear();}
  const QString key="destination:"+id;
  SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key=key;op.id=id;op.adding=!acceptedHas(id);
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
@@ -2738,7 +2738,7 @@ void SettingsWindow::drainSaves(){
   return;
  }
  // A switch the resident accepted is done: a later service change elsewhere is never undone from here.
- for(auto it=serviceSwitched_.begin();it!=serviceSwitched_.end();){bool done=true;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==*it)for(const auto& drafted:draft_["profiles"].toArray())if(drafted.toObject()["id"]==*it&&drafted.toObject()["provider"]!=value.toObject()["provider"])done=false;if(done)it=serviceSwitched_.erase(it);else ++it;}
+ for(auto it=serviceSwitched_.begin();it!=serviceSwitched_.end();){bool done=true;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==it.key()&&value.toObject()["provider"]!=it.value())done=false;if(done)it=serviceSwitched_.erase(it);else ++it;}
  settleDirty();updateR2Feedback();if(std::exchange(answered_,false))showUnsavedDestinations();emit viewStateChanged();
 }
 // What an operation's end, accepted or with nothing to send, settles beyond the accepted document.
@@ -2754,7 +2754,7 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
  saving_=false;sending_={};answered_=true;
  // A switch the resident accepted is done before anything else is sent: a later service change
  // made elsewhere is never undone from here (#1699).
- if(result&&op.kind==SaveOperation::Kind::Fields)for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==op.id&&value.toObject()["provider"]==op.profile["provider"])serviceSwitched_.remove(op.id);
+ if(result&&op.kind==SaveOperation::Kind::Fields)for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==op.id&&serviceSwitched_.contains(op.id)&&value.toObject()["provider"]==serviceSwitched_.value(op.id))serviceSwitched_.remove(op.id);
  if(!result){
   const auto& error=result.error;const bool refused=error.code=="config_invalid"||error.code=="s3_settings_invalid"||error.code.startsWith("http_");
   // An add removed here while it was in flight, and not saved: nothing of it is kept, and the
@@ -3034,7 +3034,9 @@ Error SettingsWindow::moveToCloudflareR2(){
  profileEditors_[profileIndex_]=QJsonValue::Null;
  profiles[profileIndex_]=profile;draft_["profiles"]=profiles;
  // One Fields operation on the existing ID: the service and its settings change together.
- serviceSwitched_.insert(profile["id"].toString());
+ serviceSwitched_[profile["id"].toString()]=r2::providerId;
+ // The bucket now shown came with the moved account and jurisdiction (#1699).
+ r2BucketFrom_[profile["id"].toString()]=(*settings)["accountId"].toString()+"|"+(*settings)["jurisdiction"].toString();
  for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(profile["id"].toString()+"|"))it=notSaved_.erase(it);else ++it;
  loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");return {};
 }
@@ -3141,7 +3143,7 @@ void SettingsWindow::switchProvider(){
  auto editor=retained["editor"].toObject();
  if(!editor.isEmpty()){editor["id"]=profile["id"];editor["label"]=profile["label"];}
  editor["providers"]=providers;profileEditors_[profileIndex_]=editor;
- profiles[profileIndex_]=profile;draft_["profiles"]=profiles;serviceSwitched_.insert(profile["id"].toString());
+ profiles[profileIndex_]=profile;draft_["profiles"]=profiles;serviceSwitched_[profile["id"].toString()]=selected;
  // What wasn't saved belonged to the old service's fields: the new service's are checked afresh.
  for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(profile["id"].toString()+"|"))it=notSaved_.erase(it);else ++it;
  loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");

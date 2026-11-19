@@ -123,8 +123,9 @@ private:
  QWidget* settingsField(const QString& field)const;
  // Move to Cloudflare R2 (#1678): converts the selected S3 destination in place, one operation.
  Error moveToCloudflareR2();
- // Destinations whose service was switched in this window and isn't saved as that service yet.
- QSet<QString> serviceSwitched_;
+ // Destinations whose service was switched in this window, by ID, and the service they were switched
+ // to: the mark ends only when the file has that service.
+ QHash<QString,QString> serviceSwitched_;
  // Cloudflare R2's field messages, the line under Bucket and its status line (#1699), from the shown
  // destination's current values and the queue's record of what isn't saved.
  void updateR2Feedback();
