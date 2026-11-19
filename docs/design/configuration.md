@@ -402,8 +402,9 @@ a restart it is untested. A destination with no keys, such as a custom uploader
 without secret values (saved in `mode: session`), and every keychain destination are
 saved as described above. The rule looks at the destination's mode when the file is
 written: a session-only pass of a destination switched to keychain mode is written by
-the next save of any record, and switching back before a restart can bring it back
-until a Test or upload replaces it.
+the next save of any record. Loading does not filter by mode, so after switching back
+that written pass survives a restart unless a successful save in session mode has
+dropped it, until a Test or upload replaces it.
 
 What updates the record:
 
