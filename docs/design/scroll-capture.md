@@ -183,9 +183,8 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   pushes everything down, Firefox's DRM bar among them: two pinned parts or more moved
   together, one of them a bar across two thirds of the frame or more), nothing is painted
   from that frame but the page's rows it uncovered below the image (a bar above the page
-  closing), which are written like any frame's. It never replaces the first screen kept for
-  what is pinned, nor the last one unless the view moved back up (then it shows the
-  bottom's pinned parts where they belong). A move
+  closing), which are written like any frame's, and it never replaces the first or last screen
+  kept for what is pinned. A move
   against the way the page was scrolling is carried on to the next placed frames that move
   the same way, up to 8 after each frame it finds, while fewer than half of the pinned
   parts it can follow are found back in place (the bar's opening eases out).
@@ -504,6 +503,10 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   clear can leave its own flat colour there where that colour reaches a vote lead of
   three or more: a lead of three outweighs one screen (which is what drops a notice
   dismissed after the first frame, once the page's colour under it reaches that lead).
+- **An information bar above the page that closes while a banner is pinned at the
+  bottom**: the banner's rows the bar had pushed out of view are not in the last screen
+  kept for what is pinned, so the image's last rows can show something else there (24
+  rows of a 64-row banner in a synthetic case, when the capture ended right after).
 - **Something that slides in during the first frames** (Chrome's link bubble at the bottom
   left, from auto-scroll's visit with the pointer) can move by the page's step for a frame
   and be taken as the page there.
