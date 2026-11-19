@@ -548,7 +548,9 @@ int main(int argc,char** argv){
  // A no-break space inside a word is kept as typed (the draft reads each line's own text), and blank lines and repeats go.
  {const QString nbsp(QChar(0xA0));
   window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("Project"+nbsp+"Aurora\n\nProject"+nbsp+"Aurora\n  acme  ");
-  const auto kept=window.settings()->saveViewState()["draft"].toObject()["preferences"].toObject()["quickRedactTerms"].toArray();if(kept!=QJsonArray{"Project"+nbsp+"Aurora","acme"})return 2;}
+  // A value set for the user is sent at once, and a checkpoint waits for its answer (#1704).
+  QJsonObject state;if(!waitUntil([&]{state=window.settings()->saveViewState();return !state.contains("stateError");}))return 2;
+  const auto kept=state["draft"].toObject()["preferences"].toObject()["quickRedactTerms"].toArray();if(kept!=QJsonArray{"Project"+nbsp+"Aurora","acme"})return 2;}
  window.findChild<QPlainTextEdit*>("quickRedactTerms")->setPlainText("build-host-7\nProject Aurora\nacme.corp");
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingFrameRate"),0,160);if(!save("settings-recording-frame-rate"))return 2;
  // #1364: the microphone choice and click highlights, as the resident answers for this desktop.

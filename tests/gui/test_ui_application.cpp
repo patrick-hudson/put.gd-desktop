@@ -54,6 +54,30 @@ private slots:
   window->findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(bool(complete));const auto output=dir.filePath("saved-before-close");window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->close();
   PUTGD_VERIFY_STEADY(device.last("closeRequested").isEmpty(),500);complete({});PUTGD_TRY_COMPARE(settings.document()["archive"].toObject()["root"].toString(),output);
  }
+ // #1704: the sequence an agent drives through the resident. A move sent while a label save is
+ // held reports saving, quitting waits for the whole queue, and the resident's document has both.
+ void agentMoveAndQuitSaveTheWholeQueue(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();
+  for(const auto* id:{"second","third"}){auto profile=profiles.first().toObject();profile["id"]=id;profile["label"]=QString(id)+" destination";profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference",QString("putgd/")+id}};profiles.append(profile);}
+  document["profiles"]=profiles;QVERIFY(settings.save(document,{}));
+  CredentialStore secrets;UiSessionFixture fixture(settings,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=mainWindow();QVERIFY(window);window->navigate("destinations");
+  auto* label=window->findChild<QLineEdit*>("destinationLabel");QVERIFY(label);label->setText("Renamed first");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  device.send("command",{{"version",1},{"command","moveDestination"},{"params",QJsonObject{{"direction","up"},{"profileId","third"}}}});
+  PUTGD_TRY_VERIFY(!device.last("commandResult").isEmpty());
+  const auto moved=device.last("commandResult")["payload"].toObject();
+  QVERIFY2(moved["error"].toObject().isEmpty()||moved["error"].toObject()["code"].toString().isEmpty(),qPrintable(QJsonDocument(moved).toJson()));
+  QCOMPARE(moved["result"].toObject()["saving"].toBool(),true);
+  bool quit=false;QJsonObject atQuit;fixture.server.setUiQuit([&]{quit=true;atQuit=settings.document();});
+  emit window->quitRequested();
+  PUTGD_VERIFY_STEADY(!quit,500);
+  PUTGD_TRY_VERIFY((fixture.client.release(),quit));
+  QStringList ids;for(const auto& value:atQuit["profiles"].toArray())ids.append(value.toObject()["id"].toString());
+  QCOMPARE(ids,QStringList({"development-s3","third","second"}));
+  QCOMPARE(atQuit["profiles"].toArray()[0].toObject()["label"].toString(),QString("Renamed first"));
+ }
  // A refused close keeps the window and its draft, sends no unsaved secret
  // to the resident, and a second close can still succeed.
  void closeRejectionRetainsTheDraftAndAllowsRetry(){
