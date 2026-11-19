@@ -11,7 +11,7 @@ absolute paths, hotkey syntax, and cross-profile references.
 | Folder | Linux |
 | --- | --- |
 | Configuration: `config.json` and its `config.json.lock` | `$XDG_CONFIG_HOME/putgd`, normally `~/.config/putgd` |
-| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` |
+| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, `destination-status.json`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` |
 
 These are Qt's `GenericConfigLocation` and `GenericDataLocation` plus `putgd`, so they
 do not depend on Qt's organization or application name. The screen-recording helper
@@ -344,3 +344,70 @@ with `image_memory_limit`; the app does not silently substitute a later clipboar
 Encoding workspace, native frozen monitor frames and the current clipboard result
 are separate transient/ownership costs. Retry artifacts and previews live on disk;
 previewCacheBytes bounds disk bytes rather than a preloaded image heap.
+
+## Destination checks
+
+The resident keeps each destination's last check in `destination-status.json` in the
+data folder (#1692), owner-only. A check is **passed** or **failed**, and comes from
+**Test** (`source: test`) or from an upload (`source: upload`). The file holds no
+credential, link or object name: per destination its state, source, the error code of
+a failure, a connection fingerprint and a credential revision. Closing Settings,
+restarting put.gd and logging in again keep it. Nothing checks a destination on a
+timer, and the row shows no age.
+
+A record counts only while it matches the destination as saved now:
+
+- **Connection fingerprint.** A SHA-256 of the provider, the credential reference
+  (`mode` and `reference`) and these settings, compared exactly:
+
+  | Provider | Settings in the fingerprint |
+  | --- | --- |
+  | `s3` | `endpoint`, `bucket`, `region`, `addressing`, `objectPrefix`, `storageClass`, `aclMode`, `linkMode`, `publicUrlBase` |
+  | `backblaze-b2` | `apiUrl`, `bucket`, `objectPrefix`, `linkMode`, `publicUrlBase` |
+  | `proton-drive` | `accountRootUid`, `folderUid` |
+  | `custom-http` | `requestMethod`, `requestUrl`, `allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`, `secrets`, `data`, `dataSecret`, `responseUrl`, `deletionUrl` |
+
+  These decide where requests go, who signs them, what a bucket or key policy can
+  scope to (the folder in the bucket), what the server may refuse (storage class,
+  ACL) and the link and cleanup the test followed. Left out, so changing them keeps
+  the record: the label, the destination's place in the list, being the capture
+  default or an action's destination, timeouts and slow-transfer limits, S3/B2 link
+  validity days, the Proton folder name, share preferences and share password, and a
+  custom uploader's accepted file types, thumbnail URL and error message. A provider
+  with no list is fingerprinted by all of its settings.
+- **Credential revision.** A count per destination, kept in the same file. A completed
+  **Store** of new credentials (keychain or this session) and a completed Proton
+  sign-in add one; reading saved keychain credentials (Unlock, or the startup read)
+  does not. Session credentials typed again after a restart therefore show the
+  destination untested until it is tested or uploads.
+
+Changing a fingerprinted setting or storing new credentials makes the record stale
+without a write; the destination shows untested. Changing the setting back shows the
+earlier record again, since it was made for that same connection. Removing a
+destination forgets its record.
+
+What updates the record:
+
+- **Test** records passed, or failed with its error code. A test that ran while the
+  destination's fingerprint or credential revision changed records nothing.
+- **Uploads.** When an upload operation ends, a file it uploaded to the destination in
+  that run records passed (a passed Test stays as it was). Otherwise a refusal that
+  means the destination does not work as configured records failed:
+  `s3_authentication_failed`, `s3_permission_denied`, `s3_bucket_not_found`,
+  `b2_authentication_failed`, `b2_permission_denied`, `b2_key_restricted`,
+  `b2_bucket_not_found`, `proton_credentials_invalid`, `proton_account_changed`,
+  `proton_folder_unavailable` and `http_authentication_failed`. Every other outcome,
+  such as a network failure, a timeout, a cancel, a size limit or an unknown outcome,
+  leaves the record. An upload made with settings or credentials that have changed
+  since records nothing.
+
+`ui.snapshot` and `settings.get` (MCP `inspect`, under `configuration.result`) carry
+`destinationStatus`: for every configured destination `{state}`, where `state` is
+`passed`, `failed` or `untested` against its current settings and credentials, plus
+`source`, `fingerprint` and, for a failure, `errorCode`. Settings → Destinations shows
+it: **Connected** (Proton: **Account and folder checked**), **Test failed** (Proton:
+**Check failed**), **Needs testing** after an upload failure (Proton: **Needs
+checking**), and **Ready to test** (Proton: **Configured**) otherwise. Needs-credentials,
+signed-out and folder states come first. **Make default** asks for confirmation unless
+the destination is passed. The Settings window computes the same fingerprint for the
+destination being edited, so an unsaved connection edit shows untested at once.

@@ -40,8 +40,10 @@ unlock a default keyring, then connect again. KWallet and KeePassXC secret
 services were not tested; see [the round-11 evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-20-round11-proton/README.md).
 
 Use **Test connection** to check that the saved account and selected upload folder
-are still accessible. A successful check satisfies the current session's
-untested-destination warning when choosing **Make default**. This check is
+are still accessible. A successful check shows **Account and folder checked**, and
+**Make default** then asks no confirmation. put.gd keeps that result across closing
+Settings and restarting until the account or folder changes, or an upload is refused
+([destination checks](../design/configuration.md#destination-checks)). This check is
 read-only: it does not verify upload permission, file transfer, or share-link
 creation. Its result states those limits explicitly.
 

@@ -27,7 +27,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 | --- | --- | --- |
 | `ui.show` | `view`: settings/updates/history/activity/destinations/about/editFile (`updates` is Settings scrolled to Updates, as the rail's Update available link opens it; `activity` is the same as `history`, kept for older callers) | `shown` only after helper acknowledgement |
 | `ui.quit` | `{}` | `quitting:true`, then explicit resident shutdown |
-| `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata and diagnostics |
+| `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata, diagnostics and `destinationStatus`, each destination's last check ([destination checks](configuration.md#destination-checks)) |
 | `ui.moveDestination` | `direction` up/down, optional `profileId` | the open Settings window's new `order`, `selected` ID and `saving`, after the helper's `commandResult` |
 | `ui.viewState` | `{}` | helper `state`; with a Settings checkpoint, `settings.section` and the derived `settings.captureRouting` only, and the derived `appearance` (see [state](ui-process-state.md)) |
 | `settings.save` | `document`, `expectedRevision` | authoritative document and metadata |
@@ -55,7 +55,12 @@ are accessible, with no upload or sharing test. S3 success requires its syntheti
 upload, unauthenticated public GET and confirmed cleanup.
 
 Jobs are process-lifetime status, not another persistent operation journal.
-A restart cannot silently replay a credential write or destination test.
+A restart cannot silently replay a credential write or destination test. What a test
+found outlives its job: the resident records it as the destination's last check, on
+disk, before the job's change is announced, so an open window's next snapshot shows it
+and a later helper or resident reads it back
+([destination checks](configuration.md#destination-checks)). The helper keeps no
+record of its own.
 Existing settings.patch/reload and CLI/MCP response contracts remain unchanged.
 
 ## Private helper control

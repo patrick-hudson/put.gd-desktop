@@ -99,7 +99,7 @@ Methods and parameters:
 | `delete.inspect`, `.retry`, `.cancel` | deletion-operation `id` |
 | `settings.developmentTemplate` | empty object; inspection only |
 | `settings.importDevelopment` | `expectedRevision`; explicit validated setup |
-| `settings.get`, `.reload` | empty object |
+| `settings.get`, `.reload` | empty object. `settings.get` also answers `destinationStatus`: each destination's last check, `passed`, `failed` or `untested` against its current settings and credentials ([destination checks](../design/configuration.md#destination-checks)) |
 | `settings.validate` | complete `document` |
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
 | `settings.reorderProfiles` | `order` (every profile ID exactly once), `expectedRevision`; display order only |
