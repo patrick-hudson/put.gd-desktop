@@ -1320,7 +1320,9 @@ bool SettingsWindow::updateRegionFeedback(bool clearOnly){
  const auto endpointProblem=s3?s3EndpointProblem(s3_["endpoint"]->text(),true):QString();
  // The Endpoint message quotes what was typed: shown as text, never as markup.
  if(auto* label=errors_.value(s3_["endpoint"]))label->setTextFormat(Qt::PlainText);
- if(clearOnly){if(problem.isEmpty())inlineError(s3_["region"],{});if(endpointProblem.isEmpty())inlineError(s3_["endpoint"],{});if(!problem.isEmpty()||!endpointProblem.isEmpty())return false;}
+ if(clearOnly){if(problem.isEmpty())inlineError(s3_["region"],{});if(endpointProblem.isEmpty())inlineError(s3_["endpoint"],{});
+  for(auto* label:{status_,destinationStatus_})if(label){const auto field=label->property("errorField").toString();if((field=="region"&&problem.isEmpty())||(field=="endpoint"&&endpointProblem.isEmpty())){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}}
+  if(!problem.isEmpty()||!endpointProblem.isEmpty())return false;}
  inlineError(s3_["region"],problem);inlineError(s3_["endpoint"],endpointProblem);
  if(conflict_)return true;
  const auto message=problem.isEmpty()?endpointProblem:problem;const QString field=problem.isEmpty()?"endpoint":"region";
@@ -2000,7 +2002,10 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
  if(path.startsWith("/actions/")&&!path.endsWith("/shortcut")){
   const auto action=path.split('/')[2];if(useCaptureDefault_.contains(action)){const QSignalBlocker block(useCaptureDefault_[action]);useCaptureDefault_[action]->setChecked(false);queueCaptureEdit(control);return;}
  }
- path.replace("{profile}",QString::number(profileIndex_));if(path.contains("/-1"))return;if(path.endsWith("/settings/region"))path=path.left(path.lastIndexOf('/'));
+ path.replace("{profile}",QString::number(profileIndex_));if(path.contains("/-1"))return;
+ // #1676: Region and Endpoint save together, as one edit of just those two fields, so a fix to
+ // one is never refused because of the other's saved value and then left looking saved.
+ const bool pair=path.endsWith("/settings/region")||path.endsWith("/settings/endpoint");if(pair)path=path.left(path.lastIndexOf('/'));
  const auto doc=candidate();
  if(path.startsWith("/profiles")){
   if(providerType_->currentData()=="proton-drive")updateProtonAccountDisplay();
@@ -2011,14 +2016,16 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
    if(draft["provider"]!=saved["provider"]||draft["id"]!=saved["id"])path="/profiles/"+QString::number(profileIndex_);
   }
  }
- for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||it.key().startsWith(path+"/")){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
+ for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||(it.key().startsWith(path+"/")&&(!pair||it.key()==path+"/region"||it.key()==path+"/endpoint"))){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  const auto parts=path.split('/',Qt::SkipEmptyParts);
  auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
  for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
- if(atPath(doc,parts)==atPath(baseline,parts)){
+ auto value=atPath(doc,parts);
+ if(pair){auto settings=(pendingEdits_.contains(path)?pendingEdits_.value(path):atPath(baseline,parts)).toObject();const auto draft=value.toObject();settings["region"]=draft["region"];settings["endpoint"]=draft["endpoint"];value=settings;}
+ if(value==atPath(baseline,parts)){
   pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);if(!formOwnsFeedback(control))inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
- stageEdit(path,atPath(doc,parts),control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
+ stageEdit(path,value,control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
  if(updateProviderVisibility_)updateProviderVisibility_();
 }
 void SettingsWindow::updateCaptureInheritance(){

@@ -34,6 +34,24 @@ private slots:
   window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
   PUTGD_TRY_VERIFY(!status->text().contains("fips")&&!footer->text().contains("fips"));
  }
+ // #1676: a destination saved with a Region and an Endpoint that today's rules both refuse.
+ // Fixing Region, then Endpoint, saves both: neither fix is refused because of the other's
+ // saved value and then left looking saved while uploads keep using the old pair.
+ void regionAndEndpointSaveAsOnePair(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();
+  fields["endpoint"]="https://storage.example.net/my-bucket";fields["region"]="Western North America (WNAM)";profile["settings"]=fields;profiles[0]=profile;doc["profiles"]=profiles;
+  QFile file(dir.filePath("config.json"));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());file.close();
+  SettingsService service(file.fileName(),[&](auto,auto value){return provider.validateSettings(value);},nullptr,{},[&](auto,auto value){return provider.validateStoredSettings(value);});
+  const auto saved=[&]{return service.document()["profiles"].toArray()[0].toObject()["settings"].toObject();};QCOMPARE(saved()["region"].toString(),QString("Western North America (WNAM)"));
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* region=window.findChild<QLineEdit*>("s3Region");auto* endpoint=window.findChild<QLineEdit*>("s3Endpoint");QVERIFY(region&&endpoint);
+  region->setText("us-east-1");QMetaObject::invokeMethod(region,"editingFinished");
+  // The Region save is tried and refused on the saved Endpoint path before Endpoint changes.
+  PUTGD_VERIFY_STEADY(saved()["region"]=="Western North America (WNAM)",1500);
+  endpoint->setText("https://storage.example.net");QMetaObject::invokeMethod(endpoint,"editingFinished");
+  PUTGD_TRY_VERIFY(saved()["region"]=="us-east-1"&&saved()["endpoint"]=="https://storage.example.net");
+ }
  void removingDestinationBeforeDebounceNeverAppliesItsEditToNextDestination(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="second-destination";second["label"]="Second destination";auto fields=second["settings"].toObject();fields["bucket"]="second-bucket";second["settings"]=fields;profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QLineEdit*>("s3Bucket")->setText("edited-first-bucket");QMetaObject::invokeMethod(window.findChild<QLineEdit*>("s3Bucket"),"editingFinished");QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();PUTGD_TRY_COMPARE(service.document()["profiles"].toArray().size(),1);QCOMPARE(service.document()["profiles"].toArray()[0].toObject(),second);
  }

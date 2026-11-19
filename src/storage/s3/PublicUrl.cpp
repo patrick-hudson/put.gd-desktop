@@ -1,4 +1,5 @@
 #include "PublicUrl.h"
+#include <QRegularExpression>
 #include <QUrl>
 namespace putgd {
 bool s3VirtualAddressing(const QJsonObject& settings) {
@@ -65,6 +66,9 @@ bool s3CloudflareR2Endpoint(const QString& endpoint) {
 // The path as sent, still encoded: "%2F" is a character of a name, not a separator.
 QString s3EndpointProblem(const QString& endpoint, bool quoteTyped) {
     const QUrl url(endpoint);
+    // Without a scheme and host this isn't an address yet ("s3.example.com", or "h" mid-typing):
+    // the address check speaks for it, not this one.
+    if (url.scheme().isEmpty() || url.host().isEmpty()) return {};
     const auto path = url.path(QUrl::FullyEncoded);
     if (path.isEmpty() || path == QLatin1String("/")) return {};
     if (!quoteTyped)
@@ -72,7 +76,9 @@ QString s3EndpointProblem(const QString& endpoint, bool quoteTyped) {
     // The text after the host, exactly as the field shows it.
     const auto authority = endpoint.indexOf(QLatin1String("://"));
     const auto start = authority < 0 ? -1 : endpoint.indexOf('/', authority + 3);
-    const auto typed = start < 0 ? path : endpoint.mid(start);
+    auto typed = start < 0 ? path : endpoint.mid(start);
+    // Only the path: a pasted presigned URL's query or a fragment isn't repeated on screen.
+    if (const auto end = typed.indexOf(QRegularExpression(QStringLiteral("[?#]"))); end >= 0) typed.truncate(end);
     return QStringLiteral("Endpoint takes only the service address. Remove \"%1\" from the end of Endpoint and put the bucket name in Bucket; a folder goes in Folder in bucket.").arg(typed);
 }
 }

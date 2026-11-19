@@ -331,7 +331,7 @@ private slots:
     // typed there lands uploads under another key. New work through such an Endpoint is
     // refused before any request; uploads already made through one still check and delete.
     void endpointPathRefusedButItsUploadsStayDeletable() {
-        S3Fixture f;f.reset();
+        S3Fixture f;
         auto doubled=f.destination;doubled.settings["endpoint"]=f.endpoint+"/isolated-fixture";
         auto request=f.request("p.txt");request.destination=doubled;
         f.reset();
