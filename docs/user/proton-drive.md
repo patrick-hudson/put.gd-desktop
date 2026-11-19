@@ -43,7 +43,8 @@ Use **Check account and folder** to check that the saved account and selected up
 folder are still accessible. A successful check shows **Account and folder checked**,
 and **Make default** then asks no confirmation. put.gd keeps that result across
 closing Settings and restarting. It shows **Configured** again when you choose another
-folder or connect the account again with **Reconnect account…**. A later upload that
+folder or connect the same account again with **Reconnect account…**. Connecting a
+different account clears the folder and shows **Choose a folder**. A later upload that
 Proton refuses because the sign-in is no longer valid, the connected account changed,
 access was denied or the folder is unavailable shows **Needs checking**; a network
 failure or timeout changes nothing

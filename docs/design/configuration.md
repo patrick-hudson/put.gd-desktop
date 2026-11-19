@@ -379,9 +379,10 @@ A record counts only while it matches the destination as saved now:
 - **Credential revision.** A count per destination, kept in the same file. Every
   Store of credentials (keychain or this session) and every Proton sign-in
   (`connectAccount`, including **Reconnect account…**) adds one when it starts and one
-  more when it succeeds, so a check never vouches for keys written after it, even when
-  the resident stops between the keychain write and the status write. A failed Store
-  therefore also leaves the destination untested. Two destinations can name the same
+  more when it succeeds, so a finished check does not vouch for keys stored after it.
+  Each advance is saved as a best effort: when the status file cannot be written, the
+  Store still goes ahead, and a restart can show the earlier result until the next
+  Test or upload replaces it. A failed Store also leaves the destination untested. Two destinations can name the same
   keychain entry ([credentials](credentials.md)): a Store or sign-in for one advances
   the revision of every configured destination with the same `mode` and `reference`.
   Session keys are each destination's own. Reading saved keychain credentials (Unlock,
@@ -390,8 +391,8 @@ A record counts only while it matches the destination as saved now:
 Changing a fingerprinted setting makes the record stale without a write; the
 destination shows untested. A Store or sign-in writes the new revision. Changing a
 setting back shows the earlier result again only while that record is still kept and
-its revision is still the current one: a Test or upload for the changed settings
-replaces it, and new credentials outdate it for good. Removing a destination forgets
+its revision is still the current one: a Test or an upload that updates the record
+for the changed settings replaces it, and new credentials outdate it for good. Removing a destination forgets
 its record.
 
 **Session-only keys.** A destination in `mode: session` whose provider keeps keys (S3,
@@ -399,17 +400,23 @@ Backblaze B2, a custom uploader with secret values) has its record and revision 
 memory only; neither is written to the file. Its keys end with the resident, so after
 a restart it is untested. A destination with no keys, such as a custom uploader
 without secret values (saved in `mode: session`), and every keychain destination are
-saved as described above.
+saved as described above. The rule looks at the destination's mode when the file is
+written: a session-only pass of a destination switched to keychain mode is written by
+the next save of any record, and switching back before a restart can bring it back
+until a Test or upload replaces it.
 
 What updates the record:
 
-- **Test.** Its result always replaces the record: passed, or failed with its error
-  code, with `source: test`, even when the state and code are the same as before.
-- **Uploads.** When an upload operation ends, a file it uploaded to the destination in
-  that run records passed; an existing pass, from a Test or an upload, stays as it
+- **Test.** Its result replaces an upload's record, passed or failed with its error
+  code, with `source: test`, even when the state and code are the same. A Test whose
+  result equals the Test record already kept leaves it as it is, without a write.
+- **Uploads.** When an upload operation ends, a file that became uploaded in that run,
+  including a Retry that confirms an earlier uncertain upload without sending it
+  again, records passed; an existing pass, from a Test or an upload, stays as it
   was. Otherwise a refusal that this run met, on an upload or on its link, records
   failed. An item error that a Retry carried from History and that is still the same
-  error code does not count. The refusals are `s3_authentication_failed`,
+  error code does not count. A refusal above counts even when the item's upload or
+  link outcome stays unknown. The refusals are `s3_authentication_failed`,
   `s3_permission_denied`, `s3_bucket_not_found`, `b2_authentication_failed`,
   `b2_permission_denied`, `b2_key_restricted`, `b2_bucket_not_found`,
   `proton_credentials_invalid`, `proton_account_changed`, `proton_folder_unavailable`,
@@ -439,4 +446,6 @@ default** asks for confirmation unless the destination is passed. The Settings w
 computes the same fingerprint for the destination being edited, so an unsaved
 connection edit shows untested at once, and a test's completion message follows the
 same rule: a test whose destination was renamed or moved while it ran reports its
-result as current.
+result as current. The message compares only the profile ID and fingerprint, not the
+credential revision: when keys are stored while a Test runs, the message can report
+success while the resident discards the result and the row stays untested.
