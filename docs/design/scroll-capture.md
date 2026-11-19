@@ -165,8 +165,8 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   step away counts only if it matches within a tighter tolerance (a table of equal rows). A flat cell (white
   space, a banner's flat inside) proves nothing either way: the frames vote on its colour,
   and the leading colour is used where nothing better was written; the first or last
-  screen's copy fills a cell nothing was written for, unless the lead of its vote is three
-  or more and the copy shows that cell flat. Outside the part of the
+  screen's copy fills a cell nothing was written for only while the lead of its vote is
+  below three. Outside the part of the
   screen that shows the page, in a screen column where something is held back, only the
   page's own background colour can start or take over a cell's lead, written flat except in the cell right beside that
   part (the page's own edge). A cell seen in one
@@ -183,8 +183,9 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   pushes everything down, Firefox's DRM bar among them: two pinned parts or more moved
   together, one of them a bar across two thirds of the frame or more), nothing is painted
   from that frame but the page's rows it uncovered below the image (a bar above the page
-  closing), which are written like any frame's, and it never replaces the first or last
-  screen kept for what is pinned. A move
+  closing), which are written like any frame's. It never replaces the first screen kept for
+  what is pinned, nor the last one unless the view moved back up (then it shows the
+  bottom's pinned parts where they belong). A move
   against the way the page was scrolling is carried on to the next placed frames that move
   the same way, up to 8 after each frame it finds, while fewer than half of the pinned
   parts it can follow are found back in place (the bar's opening eases out).
