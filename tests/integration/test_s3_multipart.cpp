@@ -169,6 +169,22 @@ private slots:
         QCOMPARE(f.state()["objects"].toObject()["prefix é/race.bin"].toArray().last().toObject()["etag"].toString(), QString("\"competitor\""));
         QVERIFY(journal.last().isEmpty());
     }
+    // #1676: an Endpoint with a path is allowed only to finish or abort the upload it started. A
+    // journal that no longer matches is aborted there, and no new multipart upload is created,
+    // which would land under the doubled key again.
+    void resumeAtAPathEndpointStartsNoNewUpload() {
+        S3Fixture f(policy);
+        auto request = f.request("path.bin", synthetic(12 * mib));
+        request.destination.settings["endpoint"] = f.endpoint + "/isolated-fixture";
+        request.resume = {{"schemaVersion", 1}, {"partBytes", double(6 * mib)}, {"uploadId", "synthetic-upload-old"}, {"key", "other/old.bin"},
+                          {"bytes", double(12 * mib)}, {"sha256", QString(64, 'a')}, {"phase", "parts"}};
+        f.control("/__clear_events", {}, true);
+        const auto result = f.upload(request);
+        QVERIFY2(result.status == "failed", qPrintable(result.status + " " + result.error.code));
+        QCOMPARE(result.error.details["field"].toString(), QString("endpoint"));
+        QCOMPARE(count(f, "POST", "uploads"), 0);
+        QCOMPARE(count(f, "DELETE", "uploadId=synthetic-upload-old"), 1);
+    }
     void interruptedUploadResumesFromMatchingParts() {
         S3Fixture f(policy);
         auto request = f.request("resume.bin", synthetic(16 * mib));

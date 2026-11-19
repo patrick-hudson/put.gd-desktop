@@ -1232,7 +1232,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* testSection=new FormRow;testSection->setObjectName("destinationTestSection");auto* testBox=new QVBoxLayout(testSection);testBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));testBox->setSpacing(space(Space::s));auto* testLine=new QHBoxLayout;testLine->setSpacing(space(Space::l));auto* testText=new QVBoxLayout;testText->setSpacing(space(Space::xs));testText->setAlignment(Qt::AlignVCenter);testText->addWidget(Ui::label("Connection test","body"));testText->addWidget(testScope);testLine->addLayout(testText,1);testLine->addWidget(test,0,Qt::AlignRight|Qt::AlignVCenter);testBox->addLayout(testLine);new ConnectionTestSizer(testSection,testLine,testScope,test);credentialForm->addRow(testSection);testSection->setProperty("preferenceRow",true);testSection->setProperty("preferenceRowInset",true);testSection->setProperty("preferenceNaturalHeight",true);
  connect(scrollHeight_,&QSpinBox::valueChanged,this,[this]{queueEdit(scrollHeight_);});
  autosave_=new QTimer(this);autosave_->setSingleShot(true);autosave_->setInterval(400);connect(autosave_,&QTimer::timeout,this,&SettingsWindow::save);
- for(auto* edit:findChildren<QLineEdit*>()){if(edit==access_||edit==secret_||edit==token_||edit==protonPassword_||edit->property("configPath").toString().isEmpty())continue;connect(edit,&QLineEdit::textChanged,this,[this,edit]{dirty();if(!edit->hasFocus()||edit->isReadOnly())queueEdit(edit);});connect(edit,&QLineEdit::editingFinished,this,[this,edit]{queueEdit(edit);});}
+ for(auto* edit:findChildren<QLineEdit*>()){if(edit==access_||edit==secret_||edit==token_||edit==protonPassword_||edit->property("configPath").toString().isEmpty())continue;connect(edit,&QLineEdit::textChanged,this,[this,edit]{dirty();if((!edit->hasFocus()||edit->isReadOnly())&&!(edit==s3_.value("endpoint")&&s3_.value("region")&&s3_.value("region")->hasFocus()))queueEdit(edit);});connect(edit,&QLineEdit::editingFinished,this,[this,edit]{queueEdit(edit);});}
  for(auto* edit:{access_,secret_,token_,protonPassword_})connect(edit,&QLineEdit::textChanged,this,&SettingsWindow::viewStateChanged);
  for(auto* combo:findChildren<QComboBox*>())if(combo!=profile_&&!combo->property("configPath").toString().isEmpty())connect(combo,&QComboBox::currentIndexChanged,this,[this,combo]{queueEdit(combo);});
  for(auto* box:{quickRedactTerms_,quickRedactPatterns_})connect(box,&QPlainTextEdit::textChanged,this,[this,box]{dirty();queueEdit(box);});
@@ -2003,9 +2003,11 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
   const auto action=path.split('/')[2];if(useCaptureDefault_.contains(action)){const QSignalBlocker block(useCaptureDefault_[action]);useCaptureDefault_[action]->setChecked(false);queueCaptureEdit(control);return;}
  }
  path.replace("{profile}",QString::number(profileIndex_));if(path.contains("/-1"))return;
- // #1676: Region and Endpoint save together, as one edit of just those two fields, so a fix to
- // one is never refused because of the other's saved value and then left looking saved.
- const bool pair=path.endsWith("/settings/region")||path.endsWith("/settings/endpoint");if(pair)path=path.left(path.lastIndexOf('/'));
+ // #1676: Region and Endpoint save together, so a fix to one is never refused because of the
+ // other's saved value and then left looking saved. Both go as one edit of the destination's
+ // settings; when the save widens (a new destination, a provider or id change), the whole
+ // candidate goes, which carries both.
+ const bool pairField=path.endsWith("/settings/region")||path.endsWith("/settings/endpoint");if(pairField)path=path.left(path.lastIndexOf('/'));
  const auto doc=candidate();
  if(path.startsWith("/profiles")){
   if(providerType_->currentData()=="proton-drive")updateProtonAccountDisplay();
@@ -2016,12 +2018,17 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
    if(draft["provider"]!=saved["provider"]||draft["id"]!=saved["id"])path="/profiles/"+QString::number(profileIndex_);
   }
  }
+ // Still the destination's settings after widening: an edit of just those two fields.
+ const bool pair=pairField&&path.endsWith("/settings");
  for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||(it.key().startsWith(path+"/")&&(!pair||it.key()==path+"/region"||it.key()==path+"/endpoint"))){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  const auto parts=path.split('/',Qt::SkipEmptyParts);
  auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
  for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
  auto value=atPath(doc,parts);
- if(pair){auto settings=(pendingEdits_.contains(path)?pendingEdits_.value(path):atPath(baseline,parts)).toObject();const auto draft=value.toObject();settings["region"]=draft["region"];settings["endpoint"]=draft["endpoint"];value=settings;}
+ // The pair goes on top of the accepted document and the edits pending at or above it, never on
+ // a document still being saved.
+ if(pair){auto base=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()=="/"||it.key()==path||path.startsWith(it.key()+"/"))base=replacePath(base,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+  auto settings=atPath(base,parts).toObject();const auto draft=value.toObject();settings["region"]=draft["region"];settings["endpoint"]=draft["endpoint"];value=settings;}
  if(value==atPath(baseline,parts)){
   pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);if(!formOwnsFeedback(control))inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
