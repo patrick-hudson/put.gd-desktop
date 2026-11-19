@@ -1,3 +1,4 @@
+#include <QJsonArray>
 #include "SettingsGuiFixture.h"
 // Secrets typed, stored or revealed in Settings never reach the configuration,
 // saved view state, a credential hint reply or another destination.
@@ -35,7 +36,11 @@ private slots:
   auto* list=window.findChild<QListWidget*>("destinationList");list->setCurrentRow(1);QVERIFY(secret->text().isEmpty());list->setCurrentRow(0);QVERIFY(secret->text().isEmpty());
  }
  void uiStateStrictlyRejectsUnexpectedAndSecretFields(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto state=QJsonObject{{"schemaVersion",1},{"settings",window.settings()->saveViewState()},{"main",window.saveViewState()}};QVERIFY(!validateUiState(state));auto main=state["main"].toObject();main["secretKey"]="synthetic-secret";state["main"]=main;auto error=validateUiState(state);QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto state=QJsonObject{{"schemaVersion",1},{"settings",window.settings()->saveViewState()},{"main",window.saveViewState()}};QVERIFY(!validateUiState(state));
+  // A Test still running when Settings closes carries the fingerprint it started with (#1692).
+  {auto settings=state["settings"].toObject();settings["setupJobs"]=QJsonArray{QJsonObject{{"setupId","job"},{"kind","testDestination"},{"profileId","p"},{"revision","1"},{"fingerprint",QString(64,'a')}}};auto withJob=state;withJob["settings"]=settings;QVERIFY(!validateUiState(withJob));
+   settings["setupJobs"]=QJsonArray{QJsonObject{{"setupId","job"},{"kind","testDestination"},{"profileId","p"},{"fingerprint","https://example.invalid/bucket"}}};withJob["settings"]=settings;QVERIFY(validateUiState(withJob));}
+  auto main=state["main"].toObject();main["secretKey"]="synthetic-secret";state["main"]=main;auto error=validateUiState(state);QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
  }
 };
 QTEST_MAIN(SettingsGui)
