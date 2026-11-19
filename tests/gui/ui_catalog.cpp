@@ -633,6 +633,9 @@ int main(int argc,char** argv){
   service->setCurrentIndex(1);emit service->activated(1);endpoint->setText("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com");emit endpoint->editingFinished();
   if(!waitUntil([&]{return window.settings()->flushAutosave()&&savedRegion()=="auto";}))return 2;
   destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-s3-r2"))return 2;
+  // #1679: public links on R2 with no Link domain are called out at Link domain.
+  {auto* domain=window.findChild<QLineEdit*>("s3PublicUrlBase");const auto original=domain->text();domain->clear();auto* warning=window.findChild<QWidget*>("s3LinkDomainWarning");if(!warning||!waitUntil([&]{return warning->isVisible();}))return 2;
+   if(!save("settings-s3-r2-link-domain",scrollPose(destinationScroll,warning,40)))return 2;domain->setText(original);if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;}
   service->setCurrentIndex(0);emit service->activated(0);region->setText(originalRegion);window.findChild<QToolButton*>("advancedSettings")->setChecked(false);
   if(!waitUntil([&]{return window.settings()->flushAutosave()&&savedRegion()==originalRegion;}))return 2;
  }
