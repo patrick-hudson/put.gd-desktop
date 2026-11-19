@@ -411,6 +411,9 @@ What updates the record:
 - **Test.** Its result replaces an upload's record, passed or failed with its error
   code, with `source: test`, even when the state and code are the same. A Test whose
   result equals the Test record already kept leaves it as it is, without a write.
+  A Test held back before it reached the provider, such as one asked for while journal
+  recovery is still running (its error carries `details.notAttempted`), leaves the
+  record as it was.
 - **Uploads.** When an upload operation ends, a file that became uploaded in that run,
   including a Retry that confirms an earlier uncertain upload without sending it
   again, records passed; an existing pass, from a Test or an upload, stays as it
