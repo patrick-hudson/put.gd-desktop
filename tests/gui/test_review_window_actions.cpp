@@ -1,6 +1,7 @@
 #include "ReviewWindowFixture.h"
 #include "fixtures/GopClip.h"
 #include "record/ClipExporter.h"
+#include "ui/Ui.h"
 #include <atomic>
 #include <QThread>
 #include <QToolTip>
@@ -631,7 +632,7 @@ private slots:
             QHelpEvent rest(QEvent::ToolTip, at, button->mapToGlobal(at));
             QApplication::sendEvent(button, &rest);
             PUTGD_TRY_VERIFY(QToolTip::isVisible());
-            QCOMPARE(QToolTip::text(), button->toolTip());
+            QCOMPARE(QToolTip::text(), putgd::Ui::tooltipText(button->toolTip()));
         }
         else if (trigger == "save a copy dialog") { window.findChild<QPushButton*>("saveCopy")->click(); QVERIFY(window.inspect()["fileDialog"].toObject()["open"].toBool()); }
         else if (trigger == "discard dialog") { window.drive({{"action", "discard"}}); QVERIFY(window.inspect()["discardConfirmation"].toObject()["open"].toBool()); }

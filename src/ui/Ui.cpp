@@ -448,11 +448,93 @@ QPalette palette() {
     palette.setColor(QPalette::Disabled, QPalette::HighlightedText, p.textMuted);
     return palette;
 }
+QString tooltipText(const QString& text) {
+    // Qt shows a plain-text tooltip on one line however long it is. Breaking
+    // the text into lines here leaves sizing and placement to Qt, which places
+    // the tip on X11 and anchors it on Wayland, including when it reuses an
+    // open tip. Rich text keeps Qt's own wrapping.
+    if (text.isEmpty() || Qt::mightBeRichText(text) || !qobject_cast<QApplication*>(QCoreApplication::instance())) return text;
+    // The font Style::polish gives the tip label; about 45 characters a line.
+    const QFont tipFont = font(Type::metadata);
+    const QFontMetricsF fm(tipFont);
+    const qreal cap = fm.averageCharWidth() * 45;
+    QStringList lines;
+    bool changed = false;
+    for (const auto& paragraph : text.split(QLatin1Char('\n'))) {
+        if (fm.horizontalAdvance(paragraph) <= cap) { lines << paragraph; continue; }
+        // Words wrap at spaces; a word longer than a line (a file name) breaks inside it.
+        QTextLayout layout(paragraph, tipFont);
+        QTextOption option;
+        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        layout.setTextOption(option);
+        layout.beginLayout();
+        for (auto line = layout.createLine(); line.isValid(); line = layout.createLine()) {
+            line.setLineWidth(cap);
+            QString part = paragraph.mid(line.textStart(), line.textLength());
+            while (part.endsWith(QLatin1Char(' '))) part.chop(1);
+            lines << part;
+        }
+        layout.endLayout();
+        changed = true;
+    }
+    return changed ? lines.join(QLatin1Char('\n')) : text;
+}
+namespace {
+// Widget, menu and drop-down list tooltips are shown from a QHelpEvent.
+// Showing the wrapped text here, the way QWidget, QMenu and the list's
+// delegate would show the original, wraps every such tip in every process
+// and leaves the stored text (and accessibility built from it) unchanged.
+class TooltipWrap final : public QObject {
+public:
+    using QObject::QObject;
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (event->type() != QEvent::ToolTip || !watched->isWidgetType()) return false;
+        auto* widget = static_cast<QWidget*>(watched);
+        const auto* help = static_cast<QHelpEvent*>(event);
+        if (auto* menu = qobject_cast<QMenu*>(widget)) {
+            // QMenu shows only an explicit action tooltip, not the default one made from its text.
+            const auto* action = menu->toolTipsVisible() ? menu->actionAt(help->pos()) : nullptr;
+            if (!action) return false;
+            // An action with the same texts and no tooltip gives Qt's default one.
+            QAction fallback;
+            fallback.setText(action->text());
+            fallback.setIconText(action->iconText());
+            const auto tip = action->toolTip();
+            if (tip.isEmpty() || tip == fallback.toolTip()) return false;
+            const auto wrapped = tooltipText(tip);
+            if (wrapped == tip) return false;
+            QToolTip::showText(help->globalPos(), wrapped, menu);
+            return true;
+        }
+        // A drop-down list's rows show their Qt::ToolTipRole text.
+        if (auto* view = qobject_cast<QAbstractItemView*>(widget->parentWidget()); view && view->viewport() == widget) {
+            const auto* container = view->parentWidget();
+            if (!container || !qobject_cast<QComboBox*>(container->parentWidget())) return false;
+            const auto index = view->indexAt(help->pos());
+            const auto tip = index.data(Qt::ToolTipRole).toString();
+            const auto wrapped = tooltipText(tip);
+            if (wrapped == tip) return false;
+            QToolTip::showText(help->globalPos(), wrapped, widget, view->visualRect(index));
+            return true;
+        }
+        // A tab bar shows its tabs' tooltips; leave it to Qt.
+        if (qobject_cast<QTabBar*>(widget)) return false;
+        const auto tip = widget->toolTip();
+        const auto wrapped = tooltipText(tip);
+        if (wrapped == tip) return false;
+        QToolTip::showText(help->globalPos(), wrapped, widget, QRect(), widget->toolTipDuration());
+        return true;
+    }
+};
+}
+
 void install(QApplication& app) {
     // Once per process: a later call (another window, a test) never resets
     // the application font a caller enlarged, nor the scale it implies.
     if (app.property("putgdUiStyle").toBool()) return;
     app.setProperty("putgdUiStyle", true);
+    app.installEventFilter(new TooltipWrap(&app));
     if (!qobject_cast<Style*>(app.style())) app.setStyle(new Style);
     app.setPalette(palette());
     QToolTip::setPalette(palette());
@@ -2451,7 +2533,7 @@ void focusTooltips(QAbstractButton* button) {
                 const bool iconOnly = tool ? tool->toolButtonStyle() == Qt::ToolButtonIconOnly : button_->text().isEmpty();
                 if (iconOnly && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason)) {
                     const auto text = button_->toolTip().isEmpty() ? button_->accessibleName() : button_->toolTip();
-                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), text, button_); }
+                    if (!text.isEmpty()) { shown_ = true; QToolTip::showText(button_->mapToGlobal(QPoint(button_->width() / 2, button_->height())), tooltipText(text), button_); }
                 }
             } else if (shown_ && (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide || event->type() == QEvent::MouseButtonPress)) {
                 QToolTip::hideText(); shown_ = false;

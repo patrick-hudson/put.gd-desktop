@@ -529,9 +529,9 @@ public:
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
   // Qt also asks about the gaps between gallery tiles, where there is no row.
   if(!i.isValid())return QStyledItemDelegate::helpEvent(event,view,option,i);
-  if(wide(option.rect,i)&&timeRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"Created "+i.data(HistoryModel::CreatedTipRole).toString(),view);return true;}
-  if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),failureDescription(i),view);return true;}
-  if(inlineActions(i)&&menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString(),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
+  if(wide(option.rect,i)&&timeRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),Ui::tooltipText("Created "+i.data(HistoryModel::CreatedTipRole).toString()),view);return true;}
+  if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),Ui::tooltipText(failureDescription(i)),view);return true;}
+  if(inlineActions(i)&&menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),Ui::tooltipText("More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString()),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
  }
  bool eventFilter(QObject* watched,QEvent* event)override{
   if(grid()&&watched==view_->viewport()&&(event->type()==QEvent::MouseMove||event->type()==QEvent::Leave)){

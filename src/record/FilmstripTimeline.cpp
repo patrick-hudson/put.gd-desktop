@@ -1018,7 +1018,7 @@ bool FilmstripTimeline::event(QEvent* e) {
             if (list[i].kind == "cut") text += QStringLiteral(". Click to select it; its panel can restore it.");
             else if (list[i].kind == "cover") text += QStringLiteral(". Click to select it.");
             else if (list[i].kind.startsWith(QLatin1String("trim"))) text += QStringLiteral(". Drag to trim.");
-            QToolTip::showText(help->globalPos(), text, this);
+            QToolTip::showText(help->globalPos(), Ui::tooltipText(text), this);
             return true;
         }
         QToolTip::hideText();
