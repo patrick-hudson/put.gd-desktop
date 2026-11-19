@@ -966,18 +966,26 @@ struct NetworkS3Driver::State {
     std::shared_ptr<Client> client(const Destination& destination) {
         const auto credential = credentials(destination.profileId, destination.credentialReference);
         if (!credential) return {};
-        const auto key = QJsonDocument(destination.settings).toJson(QJsonDocument::Compact) + QByteArray::number(credential->generation);
+        // What the SDK is handed: the endpoint as classified (lowercase scheme and host; the SDK
+        // matches the scheme case-sensitively) and the effective Region. Cloudflare R2 has no
+        // regions and signs with auto; a saved dashboard location such as "Western North
+        // America (WNAM)", or none, would otherwise make the SDK refuse every request (#1675).
+        // Receipts, History and object locks keep the saved settings.
+        auto effective = destination.settings;
+        QUrl endpointUrl(effective["endpoint"].toString());
+        endpointUrl.setScheme(endpointUrl.scheme().toLower());
+        endpointUrl.setHost(endpointUrl.host().toLower());
+        effective["endpoint"] = endpointUrl.toString(QUrl::FullyEncoded);
+        if (s3CloudflareR2Endpoint(effective["endpoint"].toString())) effective["region"] = QStringLiteral("auto");
+        const auto key = QJsonDocument(effective).toJson(QJsonDocument::Compact) + QByteArray::number(credential->generation);
         if (clients.contains(key)) return clients[key];
         // Validation and credential lookup above are Qt-only. Initialize before
         // client configuration touches SDK endpoint, crypto and HTTP globals.
         SdkRuntime::ensureInitialized();
         Aws::S3::S3ClientConfiguration config(false, "legacy", true);
-        // Cloudflare R2 has no regions and signs with auto; a saved dashboard location such as
-        // "Western North America (WNAM)" would make the SDK refuse every request (#1675).
-        // Receipts and History keep the saved settings; only the region handed to the SDK changes.
-        config.region = aws(s3CloudflareR2Endpoint(destination.settings["endpoint"].toString()) ? QStringLiteral("auto") : destination.settings["region"].toString());
-        config.endpointOverride = aws(destination.settings["endpoint"].toString());
-        config.scheme = QUrl(destination.settings["endpoint"].toString()).scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
+        config.region = aws(effective["region"].toString());
+        config.endpointOverride = aws(effective["endpoint"].toString());
+        config.scheme = endpointUrl.scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
         config.verifySSL = true;
         useHostCaFile(config);
         config.connectTimeoutMs = destination.settings["connectTimeoutMs"].toInt();
@@ -988,7 +996,7 @@ struct NetworkS3Driver::State {
         config.maxConnections = s3MaximumPartLanes;
         config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>("putgd", 0);
         config.executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("putgd", 1);
-        config.useVirtualAddressing = s3VirtualAddressing(destination.settings);
+        config.useVirtualAddressing = s3VirtualAddressing(effective);
         config.disableS3ExpressAuth = true;
         config.disableMultiRegionAccessPoints = true;
         config.payloadSigningPolicy = Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Always;

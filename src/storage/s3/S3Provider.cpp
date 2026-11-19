@@ -205,12 +205,14 @@ Error settingsError(const QJsonObject& settings, bool current) {
     if (bucket.toUtf8().size() < 3 || bucket.toUtf8().size() > 63 || bucket.contains('/') || bucket.contains(':') || bucket.contains(' ') ||
         settings["objectPrefix"].toString().toUtf8().size() > 1022 ||
         settings["objectPrefix"].toString().contains(QChar(0))) return bad();
-    if (settings["region"].toString().isEmpty())
+    // Cloudflare R2 needs no Region at all: its requests are signed with auto (S3Driver).
+    const bool r2 = s3CloudflareR2Endpoint(settings["endpoint"].toString());
+    if (settings["region"].toString().isEmpty() && !r2)
         return {"s3_settings_invalid", s3RegionProblem({}), {{"field", "region"}}};
     // Region first: on AWS, Settings writes Region into the generated endpoint host, so a
     // Region with spaces would otherwise read as a bad endpoint, under either set of rules.
     // Cloudflare R2 ignores Region: its requests are signed with auto (S3Driver).
-    const auto regionProblem = s3CloudflareR2Endpoint(settings["endpoint"].toString()) ? QString() : s3RegionProblem(settings["region"].toString());
+    const auto regionProblem = r2 ? QString() : s3RegionProblem(settings["region"].toString());
     const Error regionError{"s3_settings_invalid", regionProblem, {{"field", "region"}}};
     if (current && !regionProblem.isEmpty()) return regionError;
     const auto endpoint = QUrl(settings["endpoint"].toString());

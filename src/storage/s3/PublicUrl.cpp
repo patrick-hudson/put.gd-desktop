@@ -49,7 +49,12 @@ QString s3RegionProblem(const QString& region) {
     const auto alnum = [](QChar c) { return c.unicode() < 128 && c.isLetterOrNumber(); };
     bool valid = region.size() <= 63 && alnum(region.front()) && alnum(region.back());
     for (const auto c : region) valid = valid && (alnum(c) || c == '-');
-    return valid ? QString() : QStringLiteral("Region takes a region code such as us-east-1: letters, digits and hyphens, without spaces. For Cloudflare R2, enter auto, not the location the Cloudflare dashboard shows.");
+    if (!valid) return QStringLiteral("Region takes a region code such as us-east-1: letters, digits and hyphens, without spaces. For Cloudflare R2, enter auto, not the location the Cloudflare dashboard shows.");
+    // The SDK reads "fips-" and "-fips" as a request for AWS FIPS endpoints, which it refuses
+    // next to the endpoint put.gd always sets.
+    if (region.startsWith(QLatin1String("fips-"), Qt::CaseInsensitive) || region.endsWith(QLatin1String("-fips"), Qt::CaseInsensitive))
+        return QStringLiteral("Region takes the plain region code, such as us-east-1, without fips. For FIPS, enter the FIPS endpoint in Endpoint, such as https://s3-fips.us-east-1.amazonaws.com.");
+    return {};
 }
 bool s3CloudflareR2Endpoint(const QString& endpoint) {
     return QUrl(endpoint).host().endsWith(QLatin1String(".r2.cloudflarestorage.com"), Qt::CaseInsensitive);

@@ -70,7 +70,7 @@ bool settings(const QJsonObject& input) {
     if(input.contains("linkValidityDays")&&!integer(input.value("linkValidityDays"),1,7))return false;
     if (!keys(object, {"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase",
                        "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"})) return false;
-    if (!text(object["bucket"], 3, 63) || !text(object["region"], 1, maximumFrameBytes) || !text(object["objectPrefix"], 0, 1022) ||
+    if (!text(object["bucket"], 3, 63) || !text(object["region"], s3CloudflareR2Endpoint(object["endpoint"].toString()) ? 0 : 1, maximumFrameBytes) || !text(object["objectPrefix"], 0, 1022) ||
         !webUrl(object["endpoint"], true) || (!object["publicUrlBase"].isNull() && !webUrl(object["publicUrlBase"], true)) ||
         !choice(object["storageClass"], {"STANDARD", "REDUCED_REDUNDANCY", "STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}) ||
         !choice(object["aclMode"], {"public-read", "omit"}) || !choice(object["addressing"], {"path", "virtual", "auto"})) return false;
