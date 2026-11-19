@@ -454,17 +454,16 @@ QString tooltipText(const QString& text) {
     // the tip on X11 and anchors it on Wayland, including when it reuses an
     // open tip. Rich text keeps Qt's own wrapping.
     if (text.isEmpty() || Qt::mightBeRichText(text) || !qobject_cast<QApplication*>(QCoreApplication::instance())) return text;
-    const QFont font = QToolTip::font();
-    const QFontMetricsF fm(font);
-    // About 45 characters a line, never more than two fifths of the screen.
-    qreal cap = fm.averageCharWidth() * 45;
-    if (const auto* screen = QGuiApplication::primaryScreen()) cap = std::min(cap, screen->availableGeometry().width() * 0.4);
+    // The font Style::polish gives the tip label; about 45 characters a line.
+    const QFont tipFont = font(Type::metadata);
+    const QFontMetricsF fm(tipFont);
+    const qreal cap = fm.averageCharWidth() * 45;
     QStringList lines;
     bool changed = false;
     for (const auto& paragraph : text.split(QLatin1Char('\n'))) {
         if (fm.horizontalAdvance(paragraph) <= cap) { lines << paragraph; continue; }
         // Words wrap at spaces; a word longer than a line (a file name) breaks inside it.
-        QTextLayout layout(paragraph, font);
+        QTextLayout layout(paragraph, tipFont);
         QTextOption option;
         option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
         layout.setTextOption(option);
@@ -481,9 +480,10 @@ QString tooltipText(const QString& text) {
     return changed ? lines.join(QLatin1Char('\n')) : text;
 }
 namespace {
-// Widget and menu tooltips are shown from a QHelpEvent. Showing the wrapped
-// text here, the way QWidget and QMenu would show the original, wraps every
-// such tip in every process.
+// Widget, menu and drop-down list tooltips are shown from a QHelpEvent.
+// Showing the wrapped text here, the way QWidget, QMenu and the list's
+// delegate would show the original, wraps every such tip in every process
+// and leaves the stored text (and accessibility built from it) unchanged.
 class TooltipWrap final : public QObject {
 public:
     using QObject::QObject;
@@ -496,13 +496,27 @@ protected:
             // QMenu shows only an explicit action tooltip, not the default one made from its text.
             const auto* action = menu->toolTipsVisible() ? menu->actionAt(help->pos()) : nullptr;
             if (!action) return false;
+            // Qt's default tooltip is the text without mnemonics or a trailing ellipsis.
             QString label = action->text();
             label.remove(QLatin1Char('&'));
+            if (label.endsWith(QLatin1String("..."))) label.chop(3);
+            else if (label.endsWith(QChar(0x2026))) label.chop(1);
             const auto tip = action->toolTip();
             if (tip.isEmpty() || tip == label.trimmed()) return false;
             const auto wrapped = tooltipText(tip);
             if (wrapped == tip) return false;
             QToolTip::showText(help->globalPos(), wrapped, menu);
+            return true;
+        }
+        // A drop-down list's rows show their Qt::ToolTipRole text.
+        if (auto* view = qobject_cast<QAbstractItemView*>(widget->parentWidget()); view && view->viewport() == widget) {
+            const auto* container = view->parentWidget();
+            if (!container || !qobject_cast<QComboBox*>(container->parentWidget())) return false;
+            const auto index = view->indexAt(help->pos());
+            const auto tip = index.data(Qt::ToolTipRole).toString();
+            const auto wrapped = tooltipText(tip);
+            if (wrapped == tip) return false;
+            QToolTip::showText(help->globalPos(), wrapped, view, view->visualRect(index));
             return true;
         }
         // A tab bar shows its tabs' tooltips; leave it to Qt.

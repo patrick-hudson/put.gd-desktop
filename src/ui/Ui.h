@@ -381,9 +381,9 @@ void responsiveColumns(QBoxLayout*, QWidget* watched, int threshold);
 void showTextStartWhenUnfocused(QLineEdit*);
 // Icon-only controls also name themselves when reached by keyboard.
 void focusTooltips(QAbstractButton*);
-// Plain tooltip text broken into lines of a reading width. Widget and menu
-// tooltips get it from Ui::install; pass text shown with QToolTip::showText
-// or Qt::ToolTipRole through it.
+// Plain tooltip text broken into lines of a reading width. Widget, menu and
+// drop-down list tooltips get it from Ui::install; pass text shown with
+// QToolTip::showText, or another view's Qt::ToolTipRole, through it.
 QString tooltipText(const QString&);
 // A disclosure button: a quiet, checkable button with one chevron (right when
 // collapsed, down when expanded) whose accessible description says which.

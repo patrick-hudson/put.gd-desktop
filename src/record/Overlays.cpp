@@ -448,8 +448,8 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     format_->setToolTip("The format the recording is reviewed and exported in");
     for (const auto& format : options.formats) {
         const auto codecs = options.codecs[format].toArray();
-        if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, Ui::tooltipText(formatLabel(format, {}) + "\n" + formatHint(format, {})), Qt::ToolTipRole); }
-        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, Ui::tooltipText(formatLabel(format, codec.toString()) + "\n" + formatHint(format, codec.toString())), Qt::ToolTipRole); }
+        if (codecs.isEmpty()) { format_->addItem(formatLabel(format, {}), QStringList{format, QString()}); format_->setItemData(format_->count() - 1, formatLabel(format, {}) + "\n" + formatHint(format, {}), Qt::ToolTipRole); }
+        for (const auto& codec : codecs) { format_->addItem(formatLabel(format, codec.toString()), QStringList{format, codec.toString()}); format_->setItemData(format_->count() - 1, formatLabel(format, codec.toString()) + "\n" + formatHint(format, codec.toString()), Qt::ToolTipRole); }
     }
     format_->setToolTip((options_.targetLabel.isEmpty() ? QString() : options_.targetLabel + QStringLiteral("\n")) + format_->currentData(Qt::ToolTipRole).toString());
     for (int i = 0; i < format_->count(); ++i) { const auto value = format_->itemData(i).toStringList(); if (value.size() == 2 && value[0] == config.format && value[1] == config.codec) format_->setCurrentIndex(i); }
