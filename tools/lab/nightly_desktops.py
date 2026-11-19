@@ -591,6 +591,32 @@ def settled_overlay(owner, checked_run):
     return run, evidence
 
 
+def frozen_overlay(owner, checked_run):
+    """settled_overlay, plus a guest VM that stayed paused since --check-live-cleanup paused it."""
+    run, evidence = settled_overlay(owner, checked_run)
+    if not guest_paused(run):
+        raise NotRun('the guest VM is running; run --check-live-cleanup (it pauses the VM), then check the destination again')
+    return run, evidence
+
+
+def guest_paused(run, *, pause=False):
+    """True when the guest's VM is paused (or gone), so nothing in it can publish. ``pause`` pauses it first.
+
+    A recipe killed on the host can leave put.gd in the guest finishing an upload; a destination check made
+    while the VM runs proves nothing. Retirement still quits a paused VM; QMP ``cont`` resumes it.
+    """
+    from tools.lab import lab
+    if not (run/'qmp.sock').exists():
+        return not (run/'disk.qcow2').exists() or not (run/'state.json').exists()
+    try:
+        with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
+            if pause:
+                qmp.execute('stop')
+            return qmp.execute('query-status').get('running') is False
+    except (OSError, lab.LabError):
+        return False
+
+
 def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_errors=(), now=None):
     """Record that a person confirmed the remote object is gone, then remove the marker.
 
@@ -600,7 +626,7 @@ def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_err
     guest-local for those receipts and nothing more.
     """
     from tools.lab import lab
-    run, evidence = settled_overlay(owner, checked_run)
+    run, evidence = frozen_overlay(owner, checked_run)
     marker = run/lab.LIVE_CLEANUP_MARKER
     identity = run_identity(run)
     if marker.exists():
@@ -690,10 +716,11 @@ def check_s3_absent(publication, *, client=None):
                 if versions.get('IsTruncated') is False:
                     versions_gone = True
                     break
-                if versions.get('IsTruncated') is not True or not versions.get('NextKeyMarker'):
+                # Both markers or stop: a key marker alone can resume past that key's remaining versions.
+                if (versions.get('IsTruncated') is not True or not versions.get('NextKeyMarker')
+                        or not versions.get('NextVersionIdMarker')):
                     break
-                page.update(KeyMarker=versions['NextKeyMarker'],
-                            VersionIdMarker=versions.get('NextVersionIdMarker', ''))
+                page.update(KeyMarker=versions['NextKeyMarker'], VersionIdMarker=versions['NextVersionIdMarker'])
     except Exception:
         raise NotRun('S3 check could not complete; keep the guest and try again') from None
     return dict(objectKeyAbsent=key_absent, prefixEmpty=prefix_empty, versionsGone=versions_gone)
@@ -1610,7 +1637,7 @@ def main():
     operator.add_argument('--prefix', help='when the marker is already gone')
     operator.add_argument('--object-key', help='when the marker is already gone')
     operator.add_argument('--guest-only-error', action='append', default=[], metavar='ERROR', help='an exact receipt cleanup error you checked is held only in the guest')
-    operator.add_argument('--check-live-cleanup', action='store_true', help='S3 only: read-only check that the marker object and its prefix are gone')
+    operator.add_argument('--check-live-cleanup', action='store_true', help='pause the guest VM so nothing in it can publish; for S3, then check that the object, its prefix and its versions are gone')
     operator.add_argument('--unaudited-attempt', action='append', default=[], metavar='NAME', help='record an attempt killed before its terminal proof as unaudited')
     args = parser.parse_args()
     given = dict(destination=args.destination, prefix=args.prefix, objectKey=args.object_key)
@@ -1634,7 +1661,12 @@ def main():
                 publication = given
             else:
                 raise NotRun('no live cleanup marker in '+str(run)+'; give --destination, --prefix and --object-key')
-            result = check_s3_absent(publication)
+            # Nothing in the guest may publish after this point; the destination check follows the pause.
+            if not guest_paused(run, pause=True):
+                raise NotRun('could not pause the guest VM; keep the guest')
+            result = dict(guestPaused=True)
+            if publication['destination'] == 's3':
+                result.update(check_s3_absent(publication))
         except NotRun as error:
             raise SystemExit(str(error)) from None
         print(json.dumps(result, indent=2))
@@ -1646,7 +1678,7 @@ def main():
             with recovery_mutex():
                 owner = retained_owner()
                 if args.resolve_live_cleanup:
-                    settled_overlay(owner, args.resolve_live_cleanup)
+                    frozen_overlay(owner, args.resolve_live_cleanup)
                 for name in args.unaudited_attempt:
                     print(json.dumps(record_unaudited_attempt(owner, name), indent=2))
                 if args.resolve_live_cleanup:

@@ -651,6 +651,10 @@ class NightlyTests(unittest.TestCase):
             with patch.object(nightly, 'guest_clients_live', return_value=True), \
                     self.assertRaisesRegex(nightly.NotRun, 'still live'):
                 self.resolve(root)
+            # put.gd in a running guest can still finish an upload; only a check made while the VM is paused counts.
+            with patch.object(nightly, 'guest_paused', return_value=False), \
+                    self.assertRaisesRegex(nightly.NotRun, 'VM is running'):
+                self.resolve(root)
             with self.assertRaisesRegex(nightly.NotRun, 'differs from the marker'):
                 self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/other.png'))
             self.assertTrue(marker.exists())
@@ -687,10 +691,38 @@ class NightlyTests(unittest.TestCase):
             self.assertFalse((evidence/'idle-1'/nightly.UNAUDITED_ATTEMPT).exists())
             # No absence check while an orphaned recipe or lend may still publish.
             with patch.object(nightly, 'guest_clients_live', return_value=True), \
-                    patch.object(nightly, 'check_s3_absent') as check:
+                    patch.object(nightly, 'guest_paused') as paused, patch.object(nightly, 'check_s3_absent') as check:
                 self.assertIn('still live', main('--check-live-cleanup'))
             check.assert_not_called()
+            paused.assert_not_called()
+            # The VM is paused before the destination is read, and a guest that won't pause is never checked.
+            order = []
+            with patch.object(nightly, 'guest_paused', side_effect=lambda run, pause=False: order.append('pause') or False), \
+                    patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check')):
+                self.assertIn('could not pause', main('--check-live-cleanup'))
+            self.assertEqual(order, ['pause'])
             self.assertTrue((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
+
+    def test_guest_paused_stops_the_vm_and_reports_only_a_confirmed_pause(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            (run/'state.json').write_text('{}')
+            (run/'disk.qcow2').write_text('')
+            self.assertFalse(nightly.guest_paused(run))  # a disk without its QMP socket is not known paused
+            (run/'qmp.sock').write_text('')
+            qmp = Mock()
+            qmp.__enter__ = Mock(return_value=qmp)
+            qmp.__exit__ = Mock(return_value=False)
+            qmp.execute.side_effect = lambda name, *a: {'running': False} if name == 'query-status' else {}
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertTrue(nightly.guest_paused(run, pause=True))
+            self.assertEqual([c.args[0] for c in qmp.execute.call_args_list], ['stop', 'query-status'])
+            qmp.execute.side_effect = lambda name, *a: {'running': True}
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertFalse(nightly.guest_paused(run))
+            with patch.object(lab, 'QMP', side_effect=OSError):
+                self.assertFalse(nightly.guest_paused(run, pause=True))
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
@@ -730,6 +762,12 @@ class NightlyTests(unittest.TestCase):
             {'IsTruncated': False, 'DeleteMarkers': [{}]}]
         self.assertTrue(nightly.check_s3_absent(publication, client=paged)['versionsGone'])
         self.assertEqual(paged.list_object_versions.call_args.kwargs['KeyMarker'], 'k')
+        # A key marker without its version marker could skip that key's remaining versions.
+        cursor = client(versioning={'Status': 'Enabled'})
+        cursor.list_object_versions.side_effect = [
+            {'IsTruncated': True, 'DeleteMarkers': [{}], 'NextKeyMarker': 'k'}, {'IsTruncated': False}]
+        self.assertFalse(nightly.check_s3_absent(publication, client=cursor)['versionsGone'])
+        cursor.list_object_versions.assert_called_once()
         broken = client()
         broken.get_bucket_versioning.side_effect = RuntimeError('secret-looking detail')
         with self.assertRaises(nightly.NotRun) as caught:
