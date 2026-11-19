@@ -92,6 +92,27 @@ QString deniedGuidance(S3Stage stage) {
     Q_UNREACHABLE();
     return {};
 }
+// A 501 names the request the service refused (#1677). The conditional writes have their own text.
+QString unsupportedGuidance(S3Stage stage) {
+    QString request;
+    switch (stage) {
+    case S3Stage::NameHead: request = "the check for an existing file of this name (HEAD)"; break;
+    case S3Stage::ObjectHead: request = "the check of the recorded object (HEAD, naming its version when one was recorded)"; break;
+    case S3Stage::CurrentHead:
+    case S3Stage::DeleteCurrentHead: request = "the check of the current object (HEAD)"; break;
+    case S3Stage::UploadPut:
+    case S3Stage::UploadComplete: request = "a conditional write (If-None-Match or If-Match)"; break;
+    case S3Stage::UploadCreate: request = ByteSize::labels("starting the multipart upload that files over 64 MiB use (CreateMultipartUpload)"); break;
+    case S3Stage::UploadPart: request = "uploading a part of a multipart upload (UploadPart)"; break;
+    case S3Stage::UploadListParts: request = "listing the parts of an interrupted multipart upload (ListParts)"; break;
+    case S3Stage::UploadAbort: request = "removing an incomplete multipart upload (AbortMultipartUpload)"; break;
+    case S3Stage::DeleteVersioning: request = "the bucket versioning check (GetBucketVersioning) that safe cleanup needs"; break;
+    case S3Stage::DeleteMarker: request = "hiding the object behind a delete marker (DeleteObject with If-Match)"; break;
+    case S3Stage::DeleteVersion: request = "deleting the recorded object version (DeleteObject with a version ID)"; break;
+    case S3Stage::DeleteObject: request = "deleting the object only if it is unchanged (DeleteObject with If-Match)"; break;
+    }
+    return "The storage service does not implement " + request + ", which put.gd needs here. Check that the endpoint supports it.";
+}
 // The requests that carry If-None-Match or If-Match.
 bool conditionalWrite(S3Stage stage) {
     switch (stage) {
@@ -128,7 +149,7 @@ QString requestGuidance(const QString& name, int status, S3Stage stage, int curl
     if (name == "BadDigest" || name == "XAmzContentSHA256Mismatch") return "The storage service received different bytes than put.gd sent. Retry the upload; if it continues, check proxies or network equipment that change request bodies.";
     if ((name == "NotImplemented" || status == 501) && conditionalWrite(stage))
         return "The storage service does not support conditional writes (If-None-Match and If-Match), which put.gd uses so an upload never replaces another file. Use a storage service or endpoint that implements S3 conditional writes.";
-    if (name == "NotImplemented" || status == 501) return "The storage service does not support a request put.gd needs, such as conditional multipart completion. Check that the endpoint implements S3 conditional writes for multipart uploads.";
+    if (name == "NotImplemented" || status == 501) return unsupportedGuidance(stage);
     if (status == 403) return deniedGuidance(stage);
     if (curlCode == 6) return "The S3 endpoint hostname could not be resolved. Check the endpoint, DNS and network connection.";
     if (curlCode == 7) return "Could not connect to the S3 endpoint. Check the endpoint, network connection, proxy and firewall.";
