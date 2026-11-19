@@ -183,26 +183,41 @@ do not change. The `order` must name every current profile ID exactly once:
 a missing, extra or duplicate ID returns `profile_order_invalid` with
 `details.missing`, `details.extra` and `details.duplicate`, and a stale
 `expectedRevision` returns `config_conflict`. Neither writes anything. An order that
-matches the current one returns `changed: false` without rewriting the file.
+matches the current one returns `changed: false` without rewriting the file. Pass the
+`acceptedRevision` from `settings.get`: the order is applied to the accepted document,
+and the write then checks the file under its lock. While the file has an edit the resident
+refused (`observedRevision` differs from `acceptedRevision`), a reorder that changes the
+order returns `config_conflict` until the file is fixed or reloaded.
 
 ```sh
-putgd-cli settings.reorderProfiles '{"order":["proton","s3-1"],"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+putgd-cli settings.reorderProfiles '{"order":["proton","s3-1"],"expectedRevision":"RETURNED-ACCEPTED-REVISION"}'
 ```
 
-`ui.moveDestination` is the UI path for agents and tests: it acts on an open Settings
-window like **Move up** / **Move down** in the destination's ⋯ menu. With `profileId`
-it first selects that destination. It moves the selection one place, keeps it
+`ui.moveDestination` (MCP `move_destination`) is the UI path for agents and tests: it acts
+on Settings like **Move up** / **Move down** in the destination's ⋯ menu. It needs put.gd's
+window open, on either page; it doesn't switch to Settings. With `profileId` it first selects
+that destination. It moves the selection one place, keeps it
 selected and queues the new order. What is queued is the list of destination IDs in the order
 shown when the move is made. A later move while that order is still waiting replaces it in its
 place in the queue, so it can be sent before edits made between the two moves.
 When it is sent, the accepted destinations are put in that order, and any the list doesn't
 name keep their accepted order after it. The values sent are the accepted ones, so an edit
 still in flight, or one the resident refused, is never carried by the reorder. A refused
-reorder puts the list back to the accepted order, unless a later reorder is queued: that one stays
-shown and is sent. The reply gives `order`, `selected` and `saving` (true
-while the order is queued or in flight); confirm the save with `settings.get`. Without an open
-Settings window it returns `ui_view_closed`; at the top or bottom of the list it
-returns `destination_move_invalid`.
+reorder puts the list back to the last saved order, unless a later reorder is queued: that one
+stays shown and is sent. A conflict answering a reorder not saved yet also puts the list back to
+the last saved order and drops the queued reorder; a conflict the file watcher finds first leaves
+it queued, and Retry saving sends it. The reply gives `order`, `selected` and `saving` (true
+while the order is queued or in flight); confirm the save with `settings.get`. Errors:
+
+| Code | When |
+| --- | --- |
+| `ui_view_closed` | put.gd's window isn't open, or the UI helper isn't ready |
+| `ui_busy` | Settings is reloading, or the helper has too many commands waiting |
+| `profile_not_found` | no destination has that `profileId` |
+| `destination_not_selected` | no `profileId` and no destination selected |
+| `destination_move_invalid` | the destination is already at the top or bottom |
+| `config_conflict` | settings changed elsewhere; Retry saving or reload first |
+| `setup_pending` | a destination setup is still running |
 
 `ui.diagnostics` drives Settings → Advanced → Diagnostics in the open window
 ([diagnostics.md](../design/diagnostics.md#settings-and-notifications)). Every reply is the
