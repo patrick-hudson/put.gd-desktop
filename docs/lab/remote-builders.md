@@ -687,17 +687,24 @@ worker is still alive. Only the manual nightly trigger (`--now`) runs on the d69
 controller.
 
 An orphaned recipe or Proton lend for the run can still be uploading after its
-worker died. `--check-live-cleanup` and `--resolve-live-cleanup` both refuse
-while one is live. If either refuses for that reason, wait until it stops, then
-start again from step 1: a check made while it ran proves nothing.
+worker died, so make sure none is running before step 1. This must print
+nothing (the guest's own QEMU process doesn't count):
+
+```sh
+ps -u "$USER" -o pid=,args= | grep -F "lab-runs/RUN_NAME" | grep -E 'surface_driver\.run|proton_lab\.py' | grep -v grep
+```
+
+`--check-live-cleanup` and `--resolve-live-cleanup` also refuse while one is
+live. If either refuses for that reason, wait until it stops, then start again
+from step 1: a check made while it ran proves nothing.
 
 1. **Read the marker.** `cat` the run directory's
    `live-cleanup-pending.json`. Note `destination`, `prefix` and `objectKey`.
    The slot's `retained.json` (or `owner.json`) names the run and the row's
    evidence directory. If the marker is already gone, find the three values in
    the attempt's evidence or the provider console. The prefix is the folder
-   before the file name, with its trailing `/`
-   (`acceptance/tier1-live/<32 hex>/`). If you can't pin them down, keep the guest and ask
+   before the file name, with its trailing `/`: `acceptance/tier1-live/<32 hex>/`
+   for S3, `putgd-tier1-<32 hex>/` for Proton. If you can't pin them down, keep the guest and ask
    your coordinator.
 2. **Make sure the object is gone.** If it isn't, delete it in the provider's
    own console, matching the exact key or folder from step 1. For S3 only, if
