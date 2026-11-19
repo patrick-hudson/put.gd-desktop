@@ -356,7 +356,8 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   answers with the bytes it had is `http_delete_unconfirmed` as well, and so is one
   whose check brought none of the file (the message then says that the check shows
   nothing either way).
-- A 202 accepts the deletion for later without confirming it: the deletion is unknown
+- A 202 accepts the deletion for later. When the link then answers a whole 404 or 410,
+  the file is removed. While the link still answers, the deletion is unknown
   (`http_delete_pending`), and **Retry** checks again (#1690).
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
   the file gone. A redirect that put.gd does not follow is unknown too: the server
