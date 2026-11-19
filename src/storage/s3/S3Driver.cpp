@@ -92,6 +92,27 @@ QString deniedGuidance(S3Stage stage) {
     Q_UNREACHABLE();
     return {};
 }
+// A 501 names the request the service refused (#1677). The conditional writes have their own text.
+QString unsupportedGuidance(S3Stage stage) {
+    QString request;
+    switch (stage) {
+    case S3Stage::NameHead: request = "the check for an existing file of this name (HEAD)"; break;
+    case S3Stage::ObjectHead: request = "the check of the recorded object (HEAD, naming its version when one was recorded)"; break;
+    case S3Stage::CurrentHead:
+    case S3Stage::DeleteCurrentHead: request = "the check of the current object (HEAD)"; break;
+    case S3Stage::UploadPut:
+    case S3Stage::UploadComplete: request = "a conditional write (If-None-Match or If-Match)"; break;
+    case S3Stage::UploadCreate: request = ByteSize::labels("starting the multipart upload that files over 64 MiB use (CreateMultipartUpload)"); break;
+    case S3Stage::UploadPart: request = "uploading a part of a multipart upload (UploadPart)"; break;
+    case S3Stage::UploadListParts: request = "listing the parts of an interrupted multipart upload (ListParts)"; break;
+    case S3Stage::UploadAbort: request = "removing an incomplete multipart upload (AbortMultipartUpload)"; break;
+    case S3Stage::DeleteVersioning: request = "the bucket versioning check (GetBucketVersioning) that safe cleanup needs"; break;
+    case S3Stage::DeleteMarker: request = "hiding the object behind a delete marker (DeleteObject with If-Match)"; break;
+    case S3Stage::DeleteVersion: request = "deleting the recorded object version (DeleteObject with a version ID)"; break;
+    case S3Stage::DeleteObject: request = "deleting the object only if it is unchanged (DeleteObject with If-Match)"; break;
+    }
+    return "The storage service does not implement " + request + ", which put.gd needs here. Check that the endpoint supports it.";
+}
 // The requests that carry If-None-Match or If-Match.
 bool conditionalWrite(S3Stage stage) {
     switch (stage) {
@@ -128,7 +149,7 @@ QString requestGuidance(const QString& name, int status, S3Stage stage, int curl
     if (name == "BadDigest" || name == "XAmzContentSHA256Mismatch") return "The storage service received different bytes than put.gd sent. Retry the upload; if it continues, check proxies or network equipment that change request bodies.";
     if ((name == "NotImplemented" || status == 501) && conditionalWrite(stage))
         return "The storage service does not support conditional writes (If-None-Match and If-Match), which put.gd uses so an upload never replaces another file. Use a storage service or endpoint that implements S3 conditional writes.";
-    if (name == "NotImplemented" || status == 501) return "The storage service does not support a request put.gd needs, such as conditional multipart completion. Check that the endpoint implements S3 conditional writes for multipart uploads.";
+    if (name == "NotImplemented" || status == 501) return unsupportedGuidance(stage);
     if (status == 403) return deniedGuidance(stage);
     if (curlCode == 6) return "The S3 endpoint hostname could not be resolved. Check the endpoint, DNS and network connection.";
     if (curlCode == 7) return "Could not connect to the S3 endpoint. Check the endpoint, network connection, proxy and firewall.";
@@ -245,6 +266,20 @@ template<class E> bool ambiguous(const E& error) {
     // 501 Not Implemented is a definite refusal of an unsupported request.
     return status < 200 || (status >= 500 && status != 501);
 }
+// A bucket versioning check denied to the key (an R2 token scoped to one bucket can't read
+// bucket configuration) or not implemented by the service (#1677).
+template<class E> bool versioningUnreadable(const E& error) {
+    const int status = int(error.GetResponseCode());
+    return status == 403 || status == 501;
+}
+// Only Cloudflare R2 itself is trusted to keep no versions when it answers a request naming one
+// with 501. A proxy or another S3-compatible front could answer so while the bucket behind it
+// keeps versions, and an unversioned delete there would leave the recorded version behind a
+// marker, or remove a null version for good. Elsewhere a denied versioning check stops.
+bool cloudflareR2(const Destination& destination) {
+    const auto endpoint = destination.settings["endpoint"].toString();
+    return QUrl(endpoint).scheme() == QLatin1String("https") && s3CloudflareR2Endpoint(endpoint);
+}
 // Only the explicit synthetic destination test uses this unsigned GET. Keep
 // its response bounded even when a public endpoint returns unexpected content.
 class SyntheticResponseStream final : public Aws::IOStream {
@@ -312,6 +347,14 @@ Head head(Client& client, const Destination& destination, const QString& key, co
     if (cancellation) request.SetContinueRequestHandler([cancellation](const Aws::Http::HttpRequest*) { return !stopped(cancellation); });
     return client.HeadObject(request);
 }
+// Whether the service answers 501 to a HEAD naming a version, as Cloudflare R2 does: it keeps
+// no versions, so a key holds one object. Asked only when GetBucketVersioning is denied, as
+// it is to an R2 token scoped to one bucket (#1677). Amazon S3 answers such a HEAD with the
+// version, 404 or 403, never 501, so a denied check there still stops deletion.
+bool versionsRefused(Client& client, const Destination& destination, const QString& key, const QString& version) {
+    const auto named = head(client, destination, key, version.isEmpty() ? QStringLiteral("null") : version);
+    return !named.IsSuccess() && int(named.GetError().GetResponseCode()) == 501;
+}
 QString metadata(const Aws::S3::Model::HeadObjectResult& result, const char* name) {
     const auto it = result.GetMetadata().find(name);
     return it == result.GetMetadata().end() ? QString{} : qt(it->second);
@@ -328,15 +371,23 @@ StorageReceipt receipt(const Destination& destination, const QString& key, const
     return result;
 }
 // Called only in the SDK worker, using the receipt's saved destination and identity.
-void signLink(Client& client, StorageReceipt& value) {
+// versionless: a check just made (see versionless()) found the key holds one object, so the
+// link names the key alone without asking again.
+void signLink(Client& client, StorageReceipt& value, bool versionless = false) {
     if (value.destination.settings.value("linkMode") != "presigned") return;
     const auto seconds = value.destination.settings.value("linkValidityDays").toInt(7) * 86400;
     auto version=value.objectReference.value("versionId").toString();
+    if(versionless)version.clear();
     if(!version.isEmpty()&&version!="null") {
         Aws::S3::Model::GetBucketVersioningRequest request;request.SetBucket(aws(value.destination.settings["bucket"].toString()));
         const auto status=client.GetBucketVersioning(request);
         // R2 returns an opaque write ID but has no version addressing.
         if(status.IsSuccess()&&status.GetResult().GetStatus()==Aws::S3::Model::BucketVersioningStatus::NOT_SET)version.clear();
+        // An R2 token scoped to one bucket can't read its versioning (#1677). A link naming
+        // the version would then be refused, so ask for the version itself: a 501 means
+        // the service keeps none, and the link names the key alone.
+        else if(!status.IsSuccess()&&versioningUnreadable(status.GetError())&&cloudflareR2(value.destination)&&
+                versionsRefused(client,value.destination,s3StoredKey(value.objectReference["key"].toString()),version))version.clear();
     }
     if(version.isEmpty())value.directUrl=qt(client.GeneratePresignedUrl(aws(value.destination.settings["bucket"].toString()),
         aws(s3StoredKey(value.objectReference["key"].toString())),Aws::Http::HttpMethod::HTTP_GET,seconds));
@@ -383,10 +434,15 @@ StorageReceipt withoutVersion(StorageReceipt receipt) {
 // the object and no version ID, which the identity check takes for another object. A
 // bucket whose versioning was never enabled holds one object per key, so a receipt from it
 // is checked and removed like an unversioned one.
+// An R2 API token with Object Read & Write scoped to one bucket can't read bucket
+// configuration, so GetBucketVersioning is denied (#1677). On R2's own endpoint the 501
+// already shows the service keeps no versions; only a bucket that says its versioning is
+// on overrides it.
 // Yes: check and remove it unversioned. No: the first answer stands. Unknown: a read
 // needed to tell a version-only mismatch from another object failed; the caller reports
 // unknown with this error, so a Retry checks again instead of settling on "changed".
-struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; };
+// refused: the service answered 501 to a request naming a version.
+struct Versionless { enum Kind { No, Yes, Unknown } kind = No; Error error = {}; bool refused = false; };
 Versionless versionless(Client& client, const StorageReceipt& expected, const StatResult& found) {
     const auto version = expected.objectReference["versionId"].toString();
     if (version.isEmpty() || version == "null") return {};
@@ -403,9 +459,26 @@ Versionless versionless(Client& client, const StorageReceipt& expected, const St
     QElapsedTimer timer;
     timer.start();
     const auto outcome = client.GetBucketVersioning(request);
-    // R2 keeps its earlier handling: its 501 already leaves the identity unknown.
-    if (!outcome.IsSuccess()) return refused ? Versionless{} : Versionless{Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
-    return {outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET ? Versionless::Yes : Versionless::No, {}};
+    if (!outcome.IsSuccess()) {
+        if (refused && versioningUnreadable(outcome.GetError()) && cloudflareR2(expected.destination)) return {Versionless::Yes, {}, true};
+        return {Versionless::Unknown, wireError(outcome.GetError(), S3Stage::DeleteVersioning, timer.elapsed())};
+    }
+    const bool none = outcome.GetResult().GetStatus() == Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    return {none ? Versionless::Yes : Versionless::No, {}, refused && none};
+}
+// stat() and refreshLink(): versionlessKey says the key was found to hold one object.
+StatResult checkedStat(Client& client, const StorageReceipt& expected, bool& versionlessKey) {
+    auto found = inspect(client, expected);
+    const auto check = versionless(client, expected, found);
+    if (check.kind == Versionless::Unknown) return {"unknown", {}, check.error};
+    versionlessKey = check.kind == Versionless::Yes;
+    if (versionlessKey) {
+        found = inspect(client, withoutVersion(expected), true);
+        // The recorded ID names the only object the key can hold; keep the receipt as recorded.
+        if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
+    }
+    if (found.status == "own" && expected.destination.settings.value("linkMode")=="presigned") found.receipt=expected;
+    return found;
 }
 Error checkpoint(const DurableCheckpoint& save, const QJsonObject& progress) {
     std::mutex mutex;
@@ -1066,25 +1139,25 @@ void NetworkS3Driver::stat(const StorageReceipt& expected, std::function<void(St
         reply({"unknown", {}, accessError()});
         return;
     }
-    auto found = inspect(*client, expected);
-    const auto check = versionless(*client, expected, found);
-    if (check.kind == Versionless::Unknown) {
-        reply({"unknown", {}, check.error});
-        return;
-    }
-    if (check.kind == Versionless::Yes) {
-        found = inspect(*client, withoutVersion(expected), true);
-        // The recorded ID names the only object the key can hold; keep the receipt as recorded.
-        if (found.status == "own") found.receipt.objectReference["versionId"] = expected.objectReference["versionId"];
-    }
-    if (found.status == "own" && expected.destination.settings.value("linkMode")=="presigned") found.receipt=expected;
-    reply(found);
+    bool versionlessKey = false;
+    reply(checkedStat(*client, expected, versionlessKey));
 }
 void NetworkS3Driver::refreshLink(const StorageReceipt& expected,std::function<void(StatResult)> reply) {
-    stat(expected,[this,reply](StatResult found){
-        if(found.status=="own")if(auto client=state_->client(found.receipt.destination))signLink(*client,found.receipt);
-        reply(found);
-    });
+    if (auto error = state_->readiness(expected.destination)) {
+        reply({"unknown", {}, error});
+        return;
+    }
+    auto client = state_->client(expected.destination);
+    if (!client) {
+        reply({"unknown", {}, accessError()});
+        return;
+    }
+    // The check that found the object also settled whether the key holds one object; the
+    // link reuses it instead of asking for the bucket's versioning again.
+    bool versionlessKey = false;
+    auto found = checkedStat(*client, expected, versionlessKey);
+    if (found.status == "own") signLink(*client, found.receipt, versionlessKey);
+    reply(found);
 }
 void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void(StatResult)> reply) {
     if (auto error = state_->readiness(request.destination)) {
@@ -1377,11 +1450,16 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     QElapsedTimer versioningTimer;
     versioningTimer.start();
     auto bucket = client->GetBucketVersioning(versioning);
-    if (!bucket.IsSuccess()) {
+    auto state = Aws::S3::Model::BucketVersioningStatus::NOT_SET;
+    if (bucket.IsSuccess()) state = bucket.GetResult().GetStatus();
+    // Cloudflare R2 refuses requests naming a version and keeps none, so on its endpoint a denied
+    // check leaves nothing an unversioned delete could hide behind a marker (#1677). Anywhere
+    // else, and for a recorded version, a denied check stops here (see cloudflareR2()).
+    else if (!(version.isEmpty() && versioningUnreadable(bucket.GetError()) && cloudflareR2(destination) &&
+               (check.refused || versionsRefused(*client, destination, key, {})))) {
         finish("unknown", wireError(bucket.GetError(), S3Stage::DeleteVersioning, versioningTimer.elapsed()));
         return;
     }
-    auto state = bucket.GetResult().GetStatus();
     const bool versioned = state == Aws::S3::Model::BucketVersioningStatus::Enabled || state == Aws::S3::Model::BucketVersioningStatus::Suspended;
     if (version.isEmpty() && versioned) {
         finish("unsupported_safe_removal", {"unsupported_safe_removal", "A recorded version identity is required after bucket versioning changes", {}});
@@ -1424,8 +1502,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                     }
                 }
                 // External versioning changes are outside the object ETag guard.
+                versioningTimer.restart();
                 const auto rechecked = client->GetBucketVersioning(versioning);
-                if (!rechecked.IsSuccess() || rechecked.GetResult().GetStatus() != state) {
+                if (!rechecked.IsSuccess()) {
+                    finish("unknown", wireError(rechecked.GetError(), S3Stage::DeleteVersioning, versioningTimer.elapsed()));
+                    return;
+                }
+                if (rechecked.GetResult().GetStatus() != state) {
                     finish("unknown", {"versioning_changed", "Bucket versioning changed before marker creation", {}});
                     return;
                 }

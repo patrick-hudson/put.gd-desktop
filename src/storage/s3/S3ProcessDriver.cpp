@@ -207,7 +207,11 @@ private:
   // A multipart upload makes up to three attempts per part plus its create,
   // listing, completion and abort calls; each part is bounded like one PUT.
   const auto resume=request["resume"].toObject();const qint64 parts=method=="upload"?qBound<qint64>(0LL,s3PartCount(request["artifact"].toObject()["bytes"].toInteger(),qBound<qint64>(0LL,resume["partBytes"].toInteger(),s3MaximumPartBytes)),s3MaximumParts):0;
-  const qint64 calls=method=="testDestination"?20:method=="remove"?8:method=="abandon"?3:method=="upload"?6+parts*3+(parts?16:0):1;
+  // A check of a recorded version can take four: HEAD with the version, HEAD of the current
+  // object, the bucket versioning check and HEAD again unversioned. Refresh signs with that
+  // answer and adds none; reconcile adds the link's versioning check and its HEAD (#1677).
+  const qint64 calls=method=="testDestination"?20:method=="remove"?8:method=="abandon"?3:method=="upload"?6+parts*3+(parts?16:0):
+                     method=="stat"||method=="refreshLink"?4:method=="reconcile"?3:1;
   const auto settings=destination.settings;
   const auto timeout=[&](const char* key){return qBound<qint64>(1LL,settings[key].toInteger(),2147483647LL);};
   const qint64 perCall=qMax<qint64>(timeout("requestTimeoutMs"),timeout("connectTimeoutMs")+timeout("lowSpeedTimeSeconds")*1000)+1000;

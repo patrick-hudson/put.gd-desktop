@@ -52,6 +52,29 @@ private slots:
             for(const char* secret:{"X-Amz-Signature","X-Amz-Credential","PUTGD_SYNTHETIC_ACCESS"})QVERIFY2(!written.contains(secret),secret);
     }
 
+    // #1677: off Cloudflare R2's endpoint, a front that denies the versioning check and answers 501
+    // to requests naming a version may still keep versions behind it. The expiring link keeps
+    // naming the recorded version, so it never opens a replacement, and once a replacement is
+    // current Refresh hands out no new link.
+    void signedLinkKeepsTheRecordedVersionOffR2() {
+        S3Fixture f;
+        const QJsonArray front{QJsonObject{{"method","GET"},{"query","versioning"},{"status",403},{"remaining",1000}},
+                               QJsonObject{{"method","HEAD"},{"query","versionId"},{"status",501},{"code","NotImplemented"},{"remaining",1000}}};
+        f.reset({{"private",true},{"versioning","Enabled"},{"rules",front}});
+        f.destination.settings["linkMode"]="presigned";
+        const auto uploaded=f.upload(f.request("kept.txt"));
+        QCOMPARE(uploaded.status,QString("uploaded"));
+        const auto recorded=uploaded.receipt.objectReference["versionId"].toString();
+        QVERIFY(!recorded.isEmpty());
+        QCOMPARE(QUrlQuery(QUrl(uploaded.receipt.directUrl)).queryItemValue("versionId"),recorded);
+        auto objects=f.state()["objects"].toObject();auto versions=objects["prefix é/kept.txt"].toArray();
+        versions.append(QJsonObject{{"version","replacement"},{"body",QString::fromLatin1(QByteArray("replacement").toBase64())},{"metadata",QJsonObject{}},{"etag","\"replacement\""},{"marker",false}});
+        objects["prefix é/kept.txt"]=versions;
+        f.reset({{"private",true},{"versioning","Enabled"},{"objects",objects},{"rules",front}});
+        const auto renewed=f.await<StatResult>([&](auto cb){f.provider.refreshLink(uploaded.receipt,cb);});
+        QVERIFY(renewed.status!="own");
+        QVERIFY(renewed.receipt.directUrl.isEmpty()||QUrlQuery(QUrl(renewed.receipt.directUrl)).queryItemValue("versionId")==recorded);
+    }
 
     void failedNameHeadRetainsSafeTransportDiagnostics() {
         S3Fixture f;

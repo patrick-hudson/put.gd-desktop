@@ -431,6 +431,34 @@ private slots:
         QCOMPARE(result.status, QString("changed"));
         QCOMPARE(f.events("DELETE").size(), 0);
     }
+    // A denied versioning check stops deletion with the versioning guidance (#1677). Off Cloudflare
+    // R2's endpoint that holds even when a front answers 501 to requests naming a version: the
+    // bucket behind it may keep versions, and an unversioned delete would leave the recorded
+    // version behind a marker (Enabled) or remove a null version for good (Suspended).
+    void deniedVersioningCheckNeverDeletesWithoutProof_data() {
+        QTest::addColumn<QString>("versioning");QTest::addColumn<bool>("refusesVersions");QTest::addColumn<bool>("recordedVersion");
+        QTest::newRow("versioned-bucket") << QString("Enabled") << false << true;
+        QTest::newRow("unversioned-bucket") << QString() << false << true;
+        QTest::newRow("versioned-bucket-behind-501") << QString("Enabled") << true << true;
+        QTest::newRow("suspended-bucket-behind-501") << QString("Suspended") << true << false;
+    }
+    void deniedVersioningCheckNeverDeletesWithoutProof() {
+        QFETCH(QString, versioning);QFETCH(bool, refusesVersions);QFETCH(bool, recordedVersion);
+        S3Fixture f;
+        f.reset({{"versioning", versioning}});
+        auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        if (!recordedVersion) uploaded.receipt.objectReference["versionId"] = "";
+        QJsonArray denied{QJsonObject{{"method", "GET"}, {"query", "versioning"}, {"status", 403}, {"remaining", 1000}}};
+        if (refusesVersions) denied.append(QJsonObject{{"method", "HEAD"}, {"query", "versionId"}, {"status", 501}, {"code", "NotImplemented"}, {"remaining", 1000}});
+        f.reset({{"objects", f.state()["objects"]}, {"versioning", versioning}, {"rules", denied}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
+        QVERIFY(!result.progress.contains("versionless"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
         S3Fixture f;
         f.reset({{"versioning", "Enabled"}});
