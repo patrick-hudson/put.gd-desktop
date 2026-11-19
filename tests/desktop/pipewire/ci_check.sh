@@ -6,24 +6,18 @@
 #   tests/desktop/pipewire/ci_check.sh APPDIR
 #
 # APPDIR is an extracted AppImage (squashfs-root). Runs in a container with
-# PipeWire >= 1.5.81 (Ubuntu 26.04); with --install it first installs the
-# distro packages it needs. Needs no session manager, devices or D-Bus.
+# PipeWire >= 1.5.81 (Ubuntu 26.04): CI's pipewire image
+# (tools/ci/images/provision.sh). With --install it first installs the distro
+# packages it needs, and with no APPDIR it stops there. Needs no session manager,
+# devices or D-Bus.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
 if [ "${1:-}" = --install ]; then
     shift
-    export DEBIAN_FRONTEND=noninteractive
-    eval "${PUTGD_UBUNTU_MIRRORS:-}"
-    apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-    packages=(--no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev gcc g++ pkg-config qt6-base-dev)
-    # CI's mirror block also defines the bounded, mirror-rotating install.
-    if declare -F putgd_apt_install >/dev/null; then
-        putgd_apt_install "${packages[@]}"
-    else
-        apt-get update "${apt[@]}"
-        apt-get install -y "${apt[@]}" "${packages[@]}"
-    fi
+    bash "$root/tools/ci/ubuntu-mirrors.sh"
+    bash "$root/tools/ci/install-packages.sh" --no-install-recommends pipewire-bin gstreamer1.0-tools libpipewire-0.3-dev gcc g++ pkg-config qt6-base-dev
+    [ $# -gt 0 ] || exit 0
 fi
 [ $# -eq 1 ] || { sed -n 2,10p "$0"; exit 64; }
 plugins=$(cd "$1/usr/lib/gstreamer-1.0" && pwd)

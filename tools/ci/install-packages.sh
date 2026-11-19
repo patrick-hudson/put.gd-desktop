@@ -34,7 +34,7 @@
 # Downloaded packages stay in the cache, so the next attempt resumes. apt and dnf drop a connection that
 # moves nothing (apt) or under 1 kB/s (dnf) for 60 s and retry it themselves.
 # On apt, a failed attempt moves the first mirror of $PUTGD_APT_ROOT/putgd-mirrors.txt (the
-# PUTGD_UBUNTU_MIRRORS probe's ranked list) behind the other usable ones, so the next attempt
+# tools/ci/ubuntu-mirrors.sh probe's ranked list) behind the other usable ones, so the next attempt
 # starts on another mirror.
 #   PUTGD_APT_LAST_RESORT_MIRRORS  (apt) a checked-in file of HTTPS mirrors, one URI a line, such as
 #                       tools/ci/apt-last-resort-mirrors.txt. Once the online attempts have failed,

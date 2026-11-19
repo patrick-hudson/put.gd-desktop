@@ -23,199 +23,6 @@ permissions:
 concurrency:
   group: ci-${{ inputs.release_tag || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ !inputs.release_tag }}
-env:
-  # Ubuntu containers name one archive host, so an outage there fails every
-  # retry. Rank alternatives by bounded download throughput, including mirrors
-  # that answer HTTP 200 but deliver packages too slowly. APT fails over file by
-  # file and still verifies everything against the Ubuntu keyring, but it goes
-  # back to the first mirror for every file. A mirror can probe fast and then
-  # stall on real downloads, so putgd_apt_install bounds each attempt's download, keeps
-  # what it downloaded, and demotes a first mirror that delivered too little.
-  PUTGD_UBUNTU_MIRRORS: |
-    apt_root=${PUTGD_APT_ROOT:-/etc/apt}
-    # security.ubuntu.com too: the mirrors carry the -security pocket, and that
-    # host has stalled together with archive.ubuntu.com.
-    sources=$(grep -lE 'http://(archive|security)\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
-    if [ -n "$sources" ]; then
-      probe_dir=$(mktemp -d)
-      # Four sequential probes: <= 12.8 s, <= 8 MiB of response bodies.
-      # 1 MiB/s fetches 483 MiB in ~8 minutes, within two of the three install attempts.
-      floor=1048576
-      for endpoint in ${PUTGD_UBUNTU_MIRROR_HOSTS:-us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com}; do
-        host=${endpoint%%:*}; port=${endpoint#*:}; [ "$port" != "$endpoint" ] || port=80
-        start=$(date +%s%N)
-        # Sample a base noble package: cached indexes can be fast while pool
-      # downloads crawl. This version remains referenced by noble/main.
-      # HTTP/1.0 avoids chunked encoding. Range bounds cooperative servers;
-        # head also bounds servers that ignore Range. A partial body at timeout
-        # is measured too, so a live trickle cannot pass as a fast mirror.
-        timeout --kill-after=0.2s 3s bash -c '
-          exec 3<>/dev/tcp/$1/$2 || exit 1
-          printf "GET /ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8_amd64.deb HTTP/1.0\r\nHost: %s\r\nRange: bytes=0-2097151\r\n\r\n" "$1" >&3
-          IFS= read -r status <&3
-          case "$status" in *" 200 "*|*" 206 "*) ;; *) exit 1;; esac
-          while IFS= read -r line <&3; do [ "$line" != $'"'"'\r'"'"' ] || break; done
-          head -c 2097152 <&3 > "$3"
-        ' _ "$host" "$port" "$probe_dir/body" 2>/dev/null || true
-        elapsed=$(( ($(date +%s%N) - start) / 1000000 ))
-        [ "$elapsed" -gt 0 ] || elapsed=1
-        bytes=0
-        [ ! -f "$probe_dir/body" ] || bytes=$(wc -c < "$probe_dir/body")
-        speed=$(( bytes * 1000 / elapsed ))
-        tier=2; label=unavailable
-        if [ "$speed" -ge "$floor" ]; then tier=0; label=fast
-        elif [ "$speed" -gt 0 ]; then tier=1; label=below-floor; fi
-        echo "Ubuntu mirror throughput: $endpoint $speed B/s ($bytes bytes in $elapsed ms; $label; floor=$floor B/s)"
-        printf '%d %d %s\n' "$tier" "$speed" "$endpoint" >> "$probe_dir/rank"
-        rm -f "$probe_dir/body"
-      done
-      priority=0
-      : > "$apt_root/putgd-mirrors.txt"
-      while read -r tier speed endpoint; do
-        priority=$((priority + 1))
-        printf 'http://%s/ubuntu/\tpriority:%d\n' "$endpoint" "$priority" >> "$apt_root/putgd-mirrors.txt"
-      done < <(LC_ALL=C sort -s -k1,1n -k2,2nr "$probe_dir/rank")
-      awk '$1 < 2' "$probe_dir/rank" | wc -l > "$apt_root/putgd-mirrors.txt.usable"
-      rm -f "$probe_dir/rank"
-      rmdir "$probe_dir"
-      sed -i -E "s#http://(archive|security)\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
-    fi
-    # Move the first mirror behind the others that answered the probe. Mirrors
-    # that gave nothing stay last: rotating one to the front costs 40 s a file.
-    putgd_demote_mirror() {
-      local list=${PUTGD_APT_ROOT:-/etc/apt}/putgd-mirrors.txt usable first
-      [ -s "$list" ] || return 0
-      usable=$(cat "$list.usable" 2>/dev/null || true)
-      [ "${usable:-0}" -gt 0 ] || usable=$(wc -l < "$list")
-      [ "$usable" -gt 1 ] || return 0
-      first=$(head -n 1 "$list" | cut -f1)
-      cut -f1 "$list" | awk -v n="$usable" 'NR == 1 { first = $0; next } { print } NR == n { print first }' |
-        awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$list.new"
-      mv "$list.new" "$list"
-      echo "Ubuntu mirror moved behind the other usable mirrors: $first"
-    }
-    # putgd_lock_holder FILE: print the PID that holds a lock on FILE, asked of the
-    # kernel with F_GETLK, so every lock on it counts and no other lock does: 0 for a
-    # holder outside this PID namespace, -1 for an open file description lock.
-    # Prints nothing when FILE does not exist or the query finds no lock. Any other
-    # failure (FILE can't be opened, F_GETLK fails, no perl) is an error: it says why
-    # and returns non-zero, because it can't tell whether FILE is locked. perl is
-    # perl-base, essential on Debian and Ubuntu; the layout is struct flock on 64-bit Linux.
-    putgd_lock_holder() {
-      perl -MFcntl -e 'my $f; unless (open($f, "<", $ARGV[0])) { exit 0 if $!{ENOENT}; die "cannot open $ARGV[0]: $!\n" }
-        my $l = pack("s s x4 q q i x4", F_WRLCK, 0, 0, 0, 0);
-        fcntl($f, F_GETLK, $l) or die "F_GETLK on $ARGV[0] failed: $!\n";
-        my ($type, $pid) = (unpack("s s x4 q q i x4", $l))[0, 4];
-        print "$pid\n" if $type != F_UNLCK' "$1"
-    }
-    # putgd_wait_for_dpkg SECONDS: wait up to SECONDS until no process holds a dpkg
-    # or apt lock. A dpkg that outlived its apt-get still holds the dpkg lock, and
-    # dpkg --configure -a and apt-get fail at once on that lock. Returns 1 when a lock
-    # is still held after SECONDS, and 2 when a lock can't be checked.
-    putgd_wait_for_dpkg() {
-      local until=$((SECONDS + $1)) said= busy file pid name
-      while :; do
-        busy=
-        for file in /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock \
-          /var/cache/apt/archives/lock "${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}/lock"; do
-          if ! pid=$(putgd_lock_holder "$file"); then
-            echo "::warning::Package install: could not tell whether $file is locked"
-            return 2
-          fi
-          [ -n "$pid" ] || continue
-          name=; [ "$pid" -le 0 ] || read -r name < "/proc/$pid/comm" 2>/dev/null || true
-          busy="${name:-a process} (pid $pid) holding $file"
-          break
-        done
-        [ -n "$busy" ] || return 0
-        [ -n "$said" ] || echo "Package install: waiting up to $1 s for $busy"
-        said=1
-        if [ "$SECONDS" -ge "$until" ]; then
-          echo "::warning::Package install: $busy after $1 s"
-          return 1
-        fi
-        sleep 2
-      done
-    }
-    # putgd_timed END COMMAND...: run COMMAND under timeout so that it is gone, timeout's 30 s
-    # kill grace included, by the time SECONDS reaches END. The time is taken right before
-    # COMMAND starts; with none left, COMMAND is skipped and the call fails as a stopped one
-    # would (124). timeout 0 would mean no limit at all.
-    putgd_timed() {
-      local t=$(( $1 - SECONDS - 30 )); shift
-      if [ "$t" -le 0 ]; then
-        echo "::warning::Package install: no time left for $*"
-        return 124
-      fi
-      timeout --kill-after=30s "$t" "$@"
-    }
-    # putgd_apt_install [OPTION|PACKAGE]...: apt-get update and install with the
-    # caller's apt=() options. Everything before the install of what was downloaded
-    # shares one budget, PUTGD_APT_BUDGET_SECONDS: 25 minutes, so 5 of the install
-    # steps' 30 stay for the install, which takes 1-2 minutes on a runner. The budget
-    # covers the update and download attempts (at most PUTGD_APT_ATTEMPT_SECONDS, 8
-    # minutes, each, timeout's kill grace included), the waits for a leftover dpkg and
-    # the recovery. Attempts keep what they fetched and go on while they make
-    # progress; three in a row that each add under 4 MiB (PUTGD_APT_STALL_KB), or
-    # whose install fails, end it, and so does a lock that stays held. The install of
-    # what was downloaded is never stopped, so dpkg is never stopped halfway; the
-    # step's timeout-minutes bounds it. The indexes are downloaded once.
-    # Downloads go to their own directory: Docker images delete apt's default
-    # archives after every update, which would discard a stopped attempt's
-    # progress. A download attempt that fetched under 128 MiB demotes its first mirror.
-    putgd_apt_install() {
-      local budget=${PUTGD_APT_BUDGET_SECONDS:-1500} limit=${PUTGD_APT_ATTEMPT_SECONDS:-480} grace=30
-      local attempt=0 deadline=$((SECONDS + ${PUTGD_APT_BUDGET_SECONDS:-1500})) start end left
-      local updated= downloaded before fetched total=0 stalled=0
-      local archives=${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}
-      mkdir -p "$archives/partial"
-      while :; do
-        attempt=$((attempt + 1)) downloaded= start=$SECONDS
-        # The attempt ends by the earlier of its own limit and the budget, and each command in
-        # it gets what is left minus timeout's kill grace, so even a command that ignores TERM
-        # is gone by then.
-        end=$((deadline - start)); [ "$end" -le "$limit" ] || end=$limit; end=$((start + end))
-        if [ $((end - SECONDS - grace)) -lt 30 ]; then
-          echo "::warning::Package install: the $budget s budget ran out after $((total / 1024)) MiB"
-          break
-        fi
-        before=$(du -sk "$archives" | cut -f1)
-        if [ -n "$updated" ] || putgd_timed "$end" apt-get update --error-on=any "${apt[@]}"; then
-          updated=1
-          if putgd_timed "$end" env DEBIAN_FRONTEND=noninteractive apt-get install -y --download-only "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
-            downloaded=1
-            if DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
-              apt-get clean -o "Dir::Cache::Archives=$archives/" || true
-              return 0
-            fi
-          fi
-        fi
-        fetched=$(( $(du -sk "$archives" | cut -f1) - before ))
-        total=$((total + fetched))
-        if [ -n "$downloaded" ]; then
-          echo "::warning::Package install: attempt $attempt downloaded everything, then the install failed"
-        else
-          echo "::warning::Package install: attempt $attempt failed or ran over $((end - start)) s after fetching $((fetched / 1024)) MiB ($((total / 1024)) MiB in all)"
-        fi
-        if [ -n "$downloaded" ] || [ "$fetched" -lt "${PUTGD_APT_STALL_KB:-4096}" ]; then stalled=$((stalled + 1)); else stalled=0; fi
-        if [ "$stalled" -ge 3 ]; then
-          echo "::warning::Package install: stopped after three attempts in a row that failed or fetched under $(( ${PUTGD_APT_STALL_KB:-4096} / 1024 )) MiB"
-          break
-        fi
-        [ -n "$downloaded" ] || [ "$fetched" -ge "${PUTGD_APT_PROGRESS_KB:-131072}" ] || putgd_demote_mirror
-        # A failed attempt can leave dpkg half done; apt-get refuses to install until it is
-        # finished. The wait and the recovery come out of the budget, and neither starts
-        # once it is spent: a lock still held or no time left ends the install here.
-        left=$((deadline - SECONDS)); [ "$left" -le "${PUTGD_APT_DPKG_WAIT_SECONDS:-600}" ] || left=${PUTGD_APT_DPKG_WAIT_SECONDS:-600}
-        if [ "$left" -le 0 ] || ! putgd_wait_for_dpkg "$left"; then
-          echo "::warning::Package install: stopped with a dpkg or apt lock held or unknown, or the $budget s budget spent"
-          break
-        fi
-        putgd_timed "$deadline" env DEBIAN_FRONTEND=noninteractive dpkg --configure -a || true
-      done
-      return 1
-    }
-
 jobs:
   changes:
     runs-on: ubuntu-24.04
@@ -246,6 +53,17 @@ jobs:
           path: build/reused-ci.json
           if-no-files-found: error
           retention-days: 90
+
+  images:
+    # The prebuilt images the container jobs below and in package.yml run in: no job downloads
+    # distro packages (.github/workflows/ci-images.yml).
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/ci-images.yml
+    with:
+      ref: ${{ inputs.release_tag || github.sha }}
+      ci: true
 
   contracts:
     runs-on: ubuntu-24.04
@@ -320,15 +138,21 @@ jobs:
 
   linux:
     name: linux (${{ matrix.distribution }})
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
     # Normally 5-10 minutes (#467).
     timeout-minutes: 60
     permissions:
       contents: read
+      packages: read  # the CI image
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
-    container: ubuntu:${{ matrix.distribution }}
+    container:
+      # tools/ci/images/provision.sh installed its packages and the putgd-ci test user.
+      image: ${{ fromJSON(needs.images.outputs.images)[format('linux-{0}', matrix.distribution)] }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
@@ -337,23 +161,6 @@ jobs:
       matrix:
         distribution: ['24.04', '26.04']
     steps:
-      - name: Install distro dependencies
-        # Bounded attempts that keep their downloads and share a 25-minute budget, leaving 5 minutes
-        # for the install; a mirror that delivers too little is demoted (#467, #1702, #1706).
-        timeout-minutes: 30
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-          eval "$PUTGD_UBUNTU_MIRRORS"
-          packages=(build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config libtesseract-dev libleptonica-dev libzxing-dev tesseract-ocr-eng qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon gjs libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-libav)
-          if [ '${{ matrix.distribution }}' = '26.04' ]; then
-            # faketime pins the UI catalog clock; Pillow and numpy support shared image-diff tests.
-            packages+=(liblayershellqtinterface-dev faketime python3-pil python3-numpy)
-            # budgie_labwc_integration runs the Budgie adapter against a real headless labwc (#1275).
-            packages+=(labwc wl-clipboard wlr-randr)
-          fi
-          putgd_apt_install "${packages[@]}"
-          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -511,29 +318,24 @@ jobs:
   sanitizers:
     # Not in the required `CI` summary until it has proven stable (#90).
     name: sanitizers (clang ASan/UBSan)
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.sanitizers == 'true'
     permissions:
       contents: read
+      packages: read  # the CI image
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     runs-on: ubuntu-24.04
     # Normally 5-10 minutes, more when the instrumented QtCore is rebuilt (#467).
     timeout-minutes: 90
-    container: ubuntu:26.04
+    container:
+      image: ${{ fromJSON(needs.images.outputs.images).sanitizers }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     steps:
-      - name: Install distro dependencies
-        # Bounded attempts that keep their downloads and share a 25-minute budget, leaving 5 minutes
-        # for the install; a mirror that delivers too little is demoted (#467, #1702, #1706).
-        timeout-minutes: 30
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-          eval "$PUTGD_UBUNTU_MIRRORS"
-          putgd_apt_install build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config libtesseract-dev libleptonica-dev libzxing-dev tesseract-ocr-eng qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon gjs libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
-          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -684,19 +486,26 @@ jobs:
         run: python3 tools/ci/cache_prune.py --repo "$GITHUB_REPOSITORY"
 
   packages:
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.packages == 'true'
+    permissions:
+      contents: read
+      packages: read  # the CI images
     uses: ./.github/workflows/package.yml
     with:
       release_tag: ${{ inputs.release_tag || '' }}
+      images: ${{ needs.images.outputs.images }}
 
   pipewire:
     # Package runs test their own image immediately after assembly. Only
     # recorder/check-only PRs need the last published image here.
-    needs: [changes, packages]
-    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' }}
+    needs: [changes, images, packages]
+    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' && needs.images.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read  # the CI image
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -716,13 +525,13 @@ jobs:
           chmod +x "$image"
           (cd build/pipewire && "$image" --appimage-extract > /dev/null)
       - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
-        # The job has 30 minutes. The package download and its waits get a 12-minute budget
-        # (#1706), and the step 20 minutes, which keeps time for the install and the check itself.
-        timeout-minutes: 20
+        env:
+          IMAGE: ${{ fromJSON(needs.images.outputs.images).pipewire }}
+          TOKEN: ${{ github.token }}
         run: |
-          docker run --rm --env PUTGD_UBUNTU_MIRRORS --env PUTGD_APT_BUDGET_SECONDS=720 --volume "$PWD:/src:ro" --workdir /src \
-            ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
-            bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
+          printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src "$IMAGE" \
+            bash tests/desktop/pipewire/ci_check.sh build/pipewire/squashfs-root
 
   ci:
     name: CI

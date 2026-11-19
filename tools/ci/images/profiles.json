@@ -1,0 +1,37 @@
+{
+  "description": [
+    "CI images (docs/release/ci.md, 'CI images'). Each profile is one tag of the registry's putgd-ci package:",
+    "<profile>-<ISO week>-<hash of its base, build arguments and input files>. tools/ci/ci_images.py builds a",
+    "missing tag once and every job pulls it, so CI jobs never download distro packages. The native package",
+    "builders' bases must equal their .github/workflows/package.yml matrix images (tests/ci/test_ci_images.py)."
+  ],
+  "common": [
+    "tools/ci/images/Dockerfile",
+    "tools/ci/images/provision.sh",
+    "tools/ci/ubuntu-mirrors.sh",
+    "tools/ci/install-packages.sh",
+    "tools/ci/apt-last-resort-mirrors.txt"
+  ],
+  "profiles": {
+    "linux-24.04": {"base": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55"},
+    "linux-26.04": {"base": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7"},
+    "sanitizers": {"base": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7"},
+    "native-ubuntu24.04": {"base": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+                           "inputs": ["tools/releases/install-native-deps.sh"]},
+    "native-ubuntu26.04": {"base": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+                           "inputs": ["tools/releases/install-native-deps.sh"]},
+    "native-debian13": {"base": "debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5",
+                        "inputs": ["tools/releases/install-native-deps.sh"]},
+    "native-fedora44": {"base": "fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+                        "inputs": ["tools/releases/install-native-deps.sh"]},
+    "native-fedora45": {"base": "fedora:45@sha256:a7d72ba2745b100a3351087472e5ee7b2450af7cf331e7673007e3817612839c",
+                        "inputs": ["tools/releases/install-native-deps.sh"]},
+    "native-archlinux": {"base": "archlinux:base@sha256:823e937464d1528b306a8e1137ef406b9c56e5fee43c7a19e93684d554af74e1",
+                         "inputs": ["tools/releases/install-native-deps.sh"]},
+    "appimage": {"base": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+                 "target": "appimage", "qt": true,
+                 "inputs": ["tools/releases/install-native-deps.sh", "tools/ci/appimage-packages.txt", "tools/ci/aqt-logging.ini"]},
+    "pipewire": {"base": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+                 "inputs": ["tests/desktop/pipewire/ci_check.sh"]}
+  }
+}
