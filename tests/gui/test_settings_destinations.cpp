@@ -608,6 +608,63 @@ private slots:
   PUTGD_TRY_VERIFY((fixture.client.release(),!banner->isVisible()&&fixture.client.held.isEmpty()&&window.settings()->flushAutosave()&&!profileIds(service.document()).contains("synthetic-third")));
   QCOMPARE(service.document()["actions"].toObject()["clipboard"].toObject()["profileId"].toString(),QString("synthetic-alternate"));
  }
+ // #1704 (CodeRabbit): an add queued behind another save, the default output routed to it, and the
+ // add removed before it is sent: nothing of either goes. Another writer then routes the default
+ // output to a third destination, and after Retry saving it stays there.
+ void unsentAddsRouteMovedElsewhereStays(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(label&&route);
+  label->setText("First renamed");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
+  QVERIFY(route->findData("later")>=0);route->setCurrentIndex(route->findData("later"));
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
+  QVERIFY(route->findData("later")<0);
+  auto elsewhere=service.document();auto capture=elsewhere["captureDefaults"].toObject();capture["profileId"]="synthetic-third";elsewhere["captureDefaults"]=capture;QVERIFY(service.save(elsewhere,service.revision()));
+  QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY((fixture.client.release(),!banner->isVisible()&&fixture.client.held.isEmpty()&&window.settings()->flushAutosave()&&service.document()["profiles"].toArray()[0].toObject()["label"]=="First renamed"));
+  QCOMPARE(service.document().value("captureDefaults").toObject().value("profileId"),QJsonValue(QStringLiteral("synthetic-third")));
+  QVERIFY(!profileIds(service.document()).contains("later"));
+ }
+ // #1704 (CodeRabbit): an add removed while in flight that the resident saved, though its answer
+ // was lost. The removal waits until the window has read the file again, so Retry saving clicked
+ // before that read answers, or after it fails, never drops it; once the file shows the add as it
+ // was sent, it is removed.
+ void lostAddAnswerRemovalWaitsForTheFile_data(){QTest::addColumn<bool>("readFails");QTest::newRow("read held")<<false;QTest::newRow("read fails")<<true;}
+ void lostAddAnswerRemovalWaitsForTheFile(){
+  QFETCH(bool,readFails);
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);
+  // The held requests' methods, in the order the fake resident holds them.
+  QStringList methods;QJsonObject sent;bool holdReads=false;
+  fixture.client.hold=[&](const QString& method,const QJsonObject& params){const bool hold=method=="settings.save"||(holdReads&&method=="ui.snapshot");if(hold){methods.append(method);if(method=="settings.save"&&sent.isEmpty())sent=params;}return hold;};
+  const auto releaseFirst=[&](const QString& method){const int i=methods.indexOf(method);if(i<0)return false;methods.removeAt(i);return fixture.client.release(i);};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
+  PUTGD_TRY_COMPARE(methods.count("settings.save"),qsizetype(1));
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
+  // The resident saves the add, but its answer is lost, and the window's reads of the file wait.
+  holdReads=true;
+  {const auto saved=service.save(sent["document"].toObject(),service.revision());QVERIFY2(saved,qPrintable(saved.error.message));}QVERIFY(profileIds(service.document()).contains("later"));
+  fixture.client.failOnce.insert("settings.save",Error{"client_unavailable","Synthetic lost answer",{}});QVERIFY(releaseFirst("settings.save"));
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible()&&methods.contains("ui.snapshot"));
+  retry->click();
+  if(readFails){
+   fixture.client.failOnce.insert("ui.snapshot",Error{"client_unavailable","Synthetic read failure",{}});QVERIFY(releaseFirst("ui.snapshot"));
+   // The removal stays pending: nothing is removed, and Retry saving is offered again.
+   PUTGD_TRY_VERIFY(retry->isVisible()&&retry->isEnabled());
+   PUTGD_VERIFY_STEADY(profileIds(service.document()).contains("later")&&!methods.contains("settings.save"),500);
+   retry->click();
+  }else PUTGD_VERIFY_STEADY(profileIds(service.document()).contains("later")&&!methods.contains("settings.save"),500);
+  holdReads=false;
+  PUTGD_TRY_VERIFY((releaseFirst("ui.snapshot")||releaseFirst("settings.save"),!profileIds(service.document()).contains("later")));
+  PUTGD_TRY_VERIFY((releaseFirst("ui.snapshot")||releaseFirst("settings.save"),fixture.client.held.isEmpty()&&!retry->isVisible()&&window.settings()->flushAutosave()));
+ }
  // #1704: the default route goes to a destination another writer then removes and routes past.
  // After Retry saving the form shows the file's route, not an empty choice, so picking "No
  // destination" is a change and saves.

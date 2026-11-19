@@ -2126,6 +2126,8 @@ bool SettingsWindow::setsInheritance(const SaveOperation& op){
  return false;
 }
 bool SettingsWindow::waitsForDestination(const SaveOperation& op,const QJsonObject& accepted)const{
+ // A removal whose add's answer was lost waits until the file has been read again.
+ if(op.kind==SaveOperation::Kind::Remove)return op.reconciling;
  if(op.kind!=SaveOperation::Kind::Global)return false;
  // An action set to inherit the default output waits while that default output is still queued.
  if(!accepted.value("captureDefaults").isObject()&&setsInheritance(op)&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& other){return other.key=="routing:/captureDefaults";}))return true;
@@ -2637,7 +2639,10 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
    // saved and nothing is removed. Otherwise its outcome is unknown: the removal goes only if the
    // file then holds exactly the destination that was sent, so nobody else's is ever removed.
    const bool unknown=!refused&&error.code!="config_conflict";QJsonObject added;for(const auto& value:sent["profiles"].toArray())if(value.toObject()["id"]==op.id)added=value.toObject();
-   for(auto it=saveQueue_.begin();it!=saveQueue_.end();)if(it->kind==SaveOperation::Kind::Remove&&it->id==op.id&&it->adding){if(unknown&&!added.isEmpty()){it->profile=added;++it;}else it=saveQueue_.erase(it);}else ++it;
+   bool reconciling=false;
+   for(auto it=saveQueue_.begin();it!=saveQueue_.end();)if(it->kind==SaveOperation::Kind::Remove&&it->id==op.id&&it->adding){if(unknown&&!added.isEmpty()){it->profile=added;it->reconciling=reconciling=true;++it;}else it=saveQueue_.erase(it);}else ++it;
+   // The file this window knows predates the add: the removal is decided once it is read again.
+   if(reconciling)settings_.refreshSnapshot([g=QPointer<SettingsWindow>(this)](Error e){if(g&&!e)g->reconciled();});
    if(refused)drainSaves();else autosaveFailure(error);return;}
   if(refused){saveRefused(std::move(op),error,sent);drainSaves();return;}
   // Anything else stops the queue with this operation first in it, for Retry saving.
@@ -2784,9 +2789,21 @@ void SettingsWindow::autosaveFailure(const Error& error){
 // #1704: Retry saving sends the kept queue. After a conflict the resident reads the file again
 // first, and saving stays stopped, with the file's own line saying why, unless that file is valid:
 // a refused file's revision must never let these edits overwrite it.
+// The file has been read again since an add's answer was lost: removals waiting on it are decided.
+void SettingsWindow::reconciled(){for(auto& op:saveQueue_)op.reconciling=false;}
 void SettingsWindow::retrySaving(){
  if(resetting_)return;
  flushTyping();
+ // An add's answer was lost and the file hasn't been read since: Retry waits until it is. If that
+ // fails, the removal stays pending and Retry saving stays.
+ if(!conflict_&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& op){return op.reconciling;})){
+  for(auto* button:std::as_const(retryAutosave_))button->setEnabled(false);
+  settings_.refreshSnapshot([g=QPointer<SettingsWindow>(this)](Error e){
+   if(!g)return;
+   for(auto* button:std::as_const(g->retryAutosave_))button->setEnabled(true);
+   if(e){g->status(e);emit g->viewStateChanged();return;}
+   g->reconciled();g->retrySaving();});
+  return;}
  if(!conflict_){autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();if(restoredDraft_){if(!replayRestoredDraft()){autosaveBlocked_=true;for(auto* button:std::as_const(retryAutosave_))button->show();emit viewStateChanged();return;}}else if(!savePending())queueDraftDifferences({});drainSaves();return;}
  for(auto* button:std::as_const(retryAutosave_))button->setEnabled(false);
  settings_.reloadAsync([g=QPointer<SettingsWindow>(this)](Result result){
@@ -2796,7 +2813,7 @@ void SettingsWindow::retrySaving(){
   const auto code=g->settings_.metadata()["validation"].toObject()["error"].toObject()["code"].toString();
   if(!code.isEmpty()&&code!="config_missing"){emit g->viewStateChanged();return;}
   if(!result){g->status(result.error);emit g->viewStateChanged();return;}
-  g->retryAfterConflict();g->drainSaves();
+  g->reconciled();g->retryAfterConflict();g->drainSaves();
  });
 }
 // Retry saving after a conflict: the window takes the file as it is now with its queued edits on
