@@ -204,7 +204,7 @@ template<class E> Error notSentError(const E& error, S3Stage stage) {
     else if (reason.contains("endpoint", Qt::CaseInsensitive) || reason.contains("URI", Qt::CaseSensitive) || reason.contains("hostname", Qt::CaseInsensitive))
         why = "Endpoint is not an address it can send S3 requests to.";
     return {"s3_settings_invalid", "put.gd's S3 library refused these settings before sending anything: " + why +
-            " Check Region and Endpoint in Settings. Region takes a code such as us-east-1; for Cloudflare R2, enter auto.",
+            " Check Region and Endpoint in Settings. Region takes a code such as us-east-1.",
             {{"httpStatus", int(error.GetResponseCode())}, {"sdkErrorType", int(error.GetErrorType())}, {"requestStage", s3StageName(stage)}, {"requestSent", false}}};
 }
 template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedMs) {

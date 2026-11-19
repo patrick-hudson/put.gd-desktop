@@ -1221,6 +1221,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // #1675: a configuration file the resident refused has its own line, which form feedback never
  // writes or clears; only a successful reload or save does (configurationChanged).
  for(auto** line:{&fileError_,&destinationFileError_}){*line=new QLabel;(*line)->setObjectName(line==&fileError_?"configFileError":"destinationConfigFileError");(*line)->setAccessibleName("Configuration file status");(*line)->setWordWrap(true);(*line)->setTextFormat(Qt::PlainText);Ui::role(*line,"error");(*line)->hide();}
+ showFileError();
  status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);Ui::role(status_,"meta");destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");Ui::role(destinationStatus_,"muted");
  // Settings' status is a footer under the scrolling page, set off by a hairline.
  QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));auto* holder=new QWidget;auto* held=new QVBoxLayout(holder);held->setContentsMargins(0,0,0,0);held->addWidget(i?destinationStatus_:status_);text->addWidget(holder);text->addWidget(i?destinationFileError_:fileError_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
@@ -1321,6 +1322,12 @@ bool SettingsWindow::updateRegionFeedback(bool clearOnly){
  }
  return true;
 }
+// #1675: the refused-file line follows the configuration's validation state alone.
+void SettingsWindow::showFileError(){
+ const auto error=settings_.metadata()["validation"].toObject()["error"].toObject();const auto code=error["code"].toString();const bool refused=!code.isEmpty()&&code!="config_missing";
+ for(auto* line:{fileError_,destinationFileError_})if(line){line->setText(refused?"The configuration file wasn't loaded: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}
+}
+bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(control==s3_.value("region")||control==s3_.value("endpoint"));}
 void SettingsWindow::status(const Error& error){
  // A save or test answer about Region doesn't decide what the form shows (updateRegionFeedback).
  if(error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region"){updateRegionFeedback();return;}
@@ -2125,13 +2132,12 @@ void SettingsWindow::save(){
   // The whole draft was accepted: nothing in the custom uploader form is refused any more.
   if(g->uploader_)g->uploader_->showProblem({},{});
   g->saving_=false;g->autosaveBlocked_=false;for(auto* button:std::as_const(g->retryAutosave_))button->hide();g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
-  for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
+  for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());if(QWidget* control=g->editControls_.take(it.key());!g->formOwnsFeedback(control))g->inlineError(control,{});}
   g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();if(!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();
   if(!g->pendingEdits_.contains(themePath))g->endAppearancePreview();
   if(!g->pendingEdits_.isEmpty())g->autosave_->start();
-  else if(!g->dirty_){Ui::feedback(plain(g->status_),{});Ui::feedback(plain(g->destinationStatus_),{});}
-  // A save answer doesn't decide Region feedback: it is the shown destination's own again.
-  g->updateRegionFeedback();
+  // Region and Endpoint feedback belongs to the form (updateRegionFeedback); an answer leaves it.
+  else if(!g->dirty_)for(auto* label:{g->status_,g->destinationStatus_})if(!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});
   g->refreshMetadata();g->refreshDestinationList();g->refreshCredentialHint();emit g->viewStateChanged();
  });
 }
@@ -2157,9 +2163,15 @@ void SettingsWindow::persistNextEdit(){
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}// A Region answer is shown from the form's own state by status(), never from the answer.
-  if(result.error.details["field"].toString()!="region")g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  // A refused Region or Endpoint for a destination that isn't shown any more names it in the footer.
+  const auto refusedField=result.error.details["field"].toString();const auto refusedIndex=path.startsWith("/profiles/")?path.section('/',2,2):QString();
+  if(QStringList{"region","endpoint"}.contains(refusedField)&&!refusedIndex.isEmpty()&&refusedIndex!=QString::number(g->profileIndex_)){
+   const auto label=g->settings_.document()["profiles"].toArray()[refusedIndex.toInt()].toObject()["label"].toString();
+   for(auto* line:{g->status_,g->destinationStatus_}){plain(line);line->setProperty("errorCode",result.error.code);Ui::feedback(line,label+" wasn't saved: "+result.error.message,true);}
+   g->persistNextEdit();return;}
+  if(refusedField!="region")g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
-  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});g->updateRegionFeedback();if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
+  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();if(!g->formOwnsFeedback(control))g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
 }
 void SettingsWindow::refreshCredentialHint(){
@@ -2376,8 +2388,7 @@ bool SettingsWindow::hasRetainedDrafts()const{
 void SettingsWindow::configurationChanged(){
  if(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString())resetCredentialSecretDisplay();
  refreshMetadata();
- {const auto error=settings_.metadata()["validation"].toObject()["error"].toObject();const auto code=error["code"].toString();const bool refused=!code.isEmpty()&&code!="config_missing";
-  for(auto* line:{fileError_,destinationFileError_}){line->setText(refused?"The configuration file wasn't loaded: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}}
+ showFileError();
  if(saving_||resetting_)return;
  if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){
   // Keep a conflict message that is already shown, such as a restored destination order.

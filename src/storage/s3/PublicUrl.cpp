@@ -58,6 +58,8 @@ QString s3RegionProblem(const QString& region) {
     return {};
 }
 bool s3CloudflareR2Endpoint(const QString& endpoint) {
-    return QUrl(endpoint).host().endsWith(QLatin1String(".r2.cloudflarestorage.com"), Qt::CaseInsensitive);
+    auto host = QUrl(endpoint).host();
+    if (host.endsWith('.')) host.chop(1);  // a fully qualified "host." names the same host
+    return host.endsWith(QLatin1String(".r2.cloudflarestorage.com"), Qt::CaseInsensitive);
 }
 }
