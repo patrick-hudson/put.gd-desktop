@@ -363,6 +363,14 @@ private slots:
         const QJsonObject completed{{"uploadStatus", "uploaded"}, {"receipt", receipt().toJson()}, {"publicReachable", true},
                                    {"cleanupStatus", "removed"}, {"cleanupProgress", QJsonObject{}}};
         QVERIFY(wire::decodeTestDestinationResult(completed));
+        // #1680: the result's cleanup target never carries a signed link back into the test journal.
+        for (const auto* suffix : {"?x-amz-signature=abc&X-Amz-Credential=AKIDSYNTHETIC", "#Authorization=token"}) {
+            auto target = receipt().toJson();
+            target["directUrl"] = target["directUrl"].toString() + suffix;
+            auto withTarget = completed;
+            withTarget["cleanupProgress"] = QJsonObject{{"target", target}};
+            QVERIFY2(!wire::decodeTestDestinationResult(withTarget), suffix);
+        }
         auto modified = completed;
         modified["publicReachable"] = "true";
         QVERIFY(!wire::decodeTestDestinationResult(modified));

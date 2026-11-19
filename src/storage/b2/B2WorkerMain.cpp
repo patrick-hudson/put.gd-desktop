@@ -701,11 +701,17 @@ private:
         out["uploadStatus"] = uploaded["status"].toString(error ? "failed" : "unknown");
         if (error || uploaded["status"] != "uploaded") return out;
         const auto receipt = StorageReceipt::fromJson(uploaded["receipt"].toObject());
-        out["receipt"] = receipt.toJson();
+        // An authorized link's query holds a working download token (#1680). It is opened only
+        // here; the result and the cleanup journal keep the link without its query.
+        auto recorded = receipt;
+        QUrl link(recorded.directUrl);
+        link.setQuery(QString());
+        recorded.directUrl = link.toString(QUrl::FullyEncoded);
+        out["receipt"] = recorded.toJson();
         const auto fetched = client_.send("GET", QUrl(receipt.directUrl, QUrl::StrictMode), {});
         out["publicReachable"] = fetched.status == 200 && fetched.body == bytes;
         QJsonObject progress;
-        request_["receipt"] = receipt.toJson();
+        request_["receipt"] = recorded.toJson();
         request_["progress"] = progress;
         Error cleanup;
         bool cleanupUncertain = false;

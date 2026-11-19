@@ -68,8 +68,34 @@ download URLs are bearer secrets retained as History links; they do not serve as
 object identity and their query values never enter logs or diagnostics.
 Access keys, secret keys and session tokens are never written to configuration,
 operation journals, payload spools, the persistent log or exported diagnostics.
-Operation journals, destination-test journals and the History database can retain
-bearer download links in receipts; treat those private records as sensitive.
+Operation journals and the History database can retain bearer download links in
+receipts; treat those private records as sensitive. **Test upload and link** opens
+its expiring S3 link or authorized B2 link but writes it to the destination-test
+journal and result without its query or fragment, so they hold no signature, access
+key ID or download token (#1680). The resident strips these links at its storage
+test journal boundary, from every checkpoint of every storage destination test it
+writes (S3 and B2, and any later provider whose test goes through that writer), whatever the worker sends and
+whatever provider a receipt names. The Custom uploader test writes its journal on
+its own path, which this boundary doesn't touch. During journal
+recovery, under the resident lock and before any S3 or B2 destination test starts
+(History recovery is not waited for), it also rewrites the same links in journals
+written by earlier builds. That pass covers only the S3 and B2 receipt links (the
+receipt, a cleanup target, and both inside a finished result), and only in a
+journal whose own records show an S3 or B2 test: every destination saved by the
+records that save one (an S3 upload intent and the multipart check's records) names
+that same provider, or, when none was saved, there is at least one receipt and every
+receipt carries non-empty B2 file and bucket IDs. A journal is not rewritten when its
+saved destinations disagree, when it saves an S3 destination but has receipts that all
+carry B2 IDs, or when anything in it looks like a Custom uploader's records: an
+`upload_intent` record, a `link` in the result, a receipt labelled `custom-http`, or an
+`objectReference` with `url`, `deletionUrl`, `deletionUrlLeftOut` or `nonce`. It is
+best effort: a file
+that is not a regular `<uuid>.json` of the journal schema, that is a symbolic
+link, too large, unreadable or unparseable, or whose records don't show which
+test it was, stays as it is, so treat older journals as sensitive too. Destination-test
+journals are kept; put.gd does not remove them. A Custom uploader test journal is
+never rewritten by this pass; it keeps the receipt the test accepted, the same
+receipt History keeps for an upload.
 The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),

@@ -157,6 +157,9 @@ public:
  // reference) is leased to one operation's provider work at a time.
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
+ // S3 and B2 destination tests may start: this resident holds the journal lock and has scrubbed
+ // earlier tests' journals (#1680). Unlike ready(), it doesn't wait for History recovery.
+ bool destinationTestsReady() const {return destinationTestsReady_.load();}
  // Why the journal is not ready: the error that stopped its recovery (kept while the recovery is retried), or "initializing" while the
  // first attempt is still running. Every reply to a call that needs the journal carries this, never a bare wait message (#1576).
  Error notReadyError() const {return ready_?Error{}:startupError_?startupError_:Error{"initializing","Wait for resident journal recovery",{}};}
@@ -362,6 +365,7 @@ private:
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;
+ std::atomic_bool destinationTestsReady_{false};
  QString installation_;
  std::function<Error()> uploadGate_;
  Error startupError_;
