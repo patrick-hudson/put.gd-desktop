@@ -3312,9 +3312,7 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
   if (first || (!viewMoved_ && pos <= topCopy_.pos)) keepCopy(f, topCopy_, pos, first || young, 0);
   // Only parts that start in the lower half are drawn from the bottommost
   // frame (see finish).
-  // (Moving back up, a bar above the page closing, it shows the bottom's
-  // pinned parts where they belong again, their clipped end included.)
-  if (first || ((!viewMoved_ || d > 0) && pos >= bottomCopy_.pos)) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
+  if (first || (!viewMoved_ && pos >= bottomCopy_.pos)) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
   const int frames = std::max(1, framesSincePlaced_);
   if (!first) velocity_ = double(d) / frames;
   if (!first && d != 0) lastMove_ = d;
