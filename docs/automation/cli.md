@@ -205,8 +205,9 @@ name keep their accepted order after it. The values sent are the accepted ones, 
 still in flight, or one the resident refused, is never carried by the reorder. A refused
 reorder puts the list back to the last saved order, unless a later reorder is queued: that one
 stays shown and is sent. A conflict answering a reorder not saved yet also puts the list back to
-the last saved order and drops the queued reorder; a conflict the file watcher finds first leaves
-it queued, and Retry saving sends it. The reply gives `order`, `selected` and `saving` (true
+the last saved order and drops the queued reorder, so Retry saving doesn't send it: check `order`
+in `settings.get` and make the move again after Retry saving or a reload. A conflict the file
+watcher finds first leaves the reorder queued, and Retry saving sends it. The reply gives `order`, `selected` and `saving` (true
 while the order is queued or in flight); confirm the save with `settings.get`. Errors:
 
 | Code | When |
