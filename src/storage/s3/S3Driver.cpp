@@ -1559,9 +1559,16 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 reply({{"uploadStatus", uploaded.status}}, uploaded.error);
                 return;
             }
-            const QJsonObject confirmed{{"schemaVersion", 1}, {"phase", "synthetic_uploaded"}, {"receipt", uploaded.receipt.toJson()}};
+            // An expiring link's query holds the access key ID and a working signature (#1680).
+            // The test opens it only here; the journal, the result and cleanup keep the link
+            // without its query, and cleanup needs only the key and the object's identity.
+            auto recorded = uploaded.receipt;
+            QUrl link(recorded.directUrl);
+            link.setQuery(QString());
+            recorded.directUrl = link.toString(QUrl::FullyEncoded);
+            const QJsonObject confirmed{{"schemaVersion", 1}, {"phase", "synthetic_uploaded"}, {"receipt", recorded.toJson()}};
             if (auto error = checkpoint(save, confirmed)) {
-                reply({{"uploadStatus", "uploaded"}, {"receipt", uploaded.receipt.toJson()}}, error);
+                reply({{"uploadStatus", "uploaded"}, {"receipt", recorded.toJson()}}, error);
                 return;
             }
             const bool signedReachable = publicFixtureMatches(uploaded.receipt, bytes);
@@ -1571,10 +1578,10 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 unsignedReceipt.directUrl=publicObjectUrl(settings,unsignedReceipt.objectReference["key"].toString());
                 int status=0;bool authorizationRequired=false;publicFixtureMatches(unsignedReceipt,bytes,&status,&authorizationRequired);unsignedDenied=status==401||status==403||authorizationRequired;}
             const bool reachable=signedReachable&&unsignedDenied;
-            QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", uploaded.receipt.toJson()}};
+            QJsonObject result{{"uploadStatus", "uploaded"}, {"publicReachable", reachable}, {"receipt", recorded.toJson()}};
             if(presigned){result["presignedReachable"]=signedReachable;result["unsignedDenied"]=unsignedDenied;}
-            DeleteRequest removeRequest{QUuid::createUuid().toString(QUuid::WithoutBraces), uploaded.receipt, {}, {}};
-            remove(removeRequest, save, [this, destination = uploaded.receipt.destination, save, result, reachable, reply](DeleteResult removed) mutable {
+            DeleteRequest removeRequest{QUuid::createUuid().toString(QUuid::WithoutBraces), recorded, {}, {}};
+            remove(removeRequest, save, [this, destination = recorded.destination, save, result, reachable, reply](DeleteResult removed) mutable {
                 result["cleanupStatus"] = removed.status;
                 result["cleanupProgress"] = removed.progress;
                 Error multipart;

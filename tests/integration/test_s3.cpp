@@ -38,11 +38,17 @@ private slots:
         QCOMPARE(renewed.receipt.destination.toJson(),uploaded.receipt.destination.toJson());
         QCOMPARE(renewed.receipt.publicationId,uploaded.receipt.publicationId);
         // The reply comes from the S3 worker thread: await hands the result and error back through a promise.
+        // The test journal and result keep no signed query: it holds the access key ID and a working signature (#1680).
+        auto journal=std::make_shared<QJsonArray>();
         const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
-            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+            f.provider.testDestination(f.destination,[journal](auto value,auto ack){journal->append(value);ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
         const auto& result=tested.first;const auto& error=tested.second;
         QVERIFY2(!error,qPrintable(error.code));
         QVERIFY(result["presignedReachable"].toBool());QVERIFY(result["unsignedDenied"].toBool());
+        QCOMPARE(result["cleanupStatus"].toString(),QString("removed"));
+        QVERIFY(journal->size()>=3);
+        for(const auto& written:{QJsonDocument(*journal).toJson(),QJsonDocument(result).toJson()})
+            for(const char* secret:{"X-Amz-Signature","X-Amz-Credential","PUTGD_SYNTHETIC_ACCESS"})QVERIFY2(!written.contains(secret),secret);
     }
 
 
