@@ -224,6 +224,19 @@ private slots:
         QVERIFY(f.events("DELETE")[0].toObject()["path"].toString().contains("versionId=null"));
         QCOMPARE(f.events("DELETE")[0].toObject()["headers"].toObject()["if-match"].toString(), uploaded.receipt.concurrencyToken);
     }
+    // #1690 review: deleting a suspended bucket's null version can be answered with a delete marker
+    // whose version is "null". The null version itself is gone, so the object is removed, and Test
+    // upload and link's cleanup doesn't fail on such buckets.
+    void suspendedNullVersionAnsweredWithANullMarkerIsRemoved() {
+        S3Fixture f;
+        f.reset({{"versioning", "Suspended"}});
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.receipt.objectReference["versionId"].toString(), QString("null"));
+        f.reset({{"objects", f.state()["objects"]}, {"versioning", "Suspended"}, {"rules", QJsonArray{QJsonObject{{"method", "DELETE"}, {"markerReply", true}}}}});
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.status, QString("removed"));
+        QVERIFY(f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+    }
     void partialVersionFailureRetainsMarkerAndResumesOnlyExactVersion() {
         S3Fixture f;
         f.reset({{"versioning", "Enabled"}});

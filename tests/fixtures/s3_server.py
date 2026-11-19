@@ -230,6 +230,8 @@ class Handler(BaseHTTPRequestHandler):
                 if 'versionId' in query:
                     versions[:] = [v for v in versions if v['version'] != query['versionId'][0]]
                     headers['x-amz-version-id'] = query['versionId'][0]
+                    # 'markerReply': answer as some services do when a suspended bucket's null version goes.
+                    if rule and rule.get('markerReply'): headers['x-amz-delete-marker'] = 'true'
                 elif state['versioning']:
                     state['sequence'] += 1
                     marker = str(state['sequence']) if state['versioning'] == 'Enabled' else 'null'

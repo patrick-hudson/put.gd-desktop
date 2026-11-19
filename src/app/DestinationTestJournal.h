@@ -1,6 +1,7 @@
 #pragma once
 #include <QJsonObject>
 #include <QString>
+#include <mutex>
 
 namespace putgd {
 // One checkpoint of a storage destination test (S3, B2, or any other provider whose test goes
@@ -20,4 +21,20 @@ QJsonObject withoutSignedTestLinks(QJsonObject checkpoint);
 // link in the result, a url, deletion URL or nonce in a receipt), or records that disagree,
 // leave it as it is.
 void scrubDestinationTestJournals(const QString& directory);
+// What a storage destination test's checkpoints show once they are on disk (#1690), for a test
+// whose worker ended without a result. A step whose own checkpoints show it finished keeps its
+// outcome (an upload confirmed by its receipt, a cleanup that reached "done"); every other step
+// it started is unknown.
+class DestinationTestTrail {
+public:
+    // Called with each checkpoint after it was written.
+    void record(const QJsonObject& checkpoint);
+    // `result` when the worker sent one, otherwise what the recorded checkpoints show.
+    QJsonObject completed(QJsonObject result) const;
+private:
+    mutable std::mutex mutex_;
+    bool intent_ = false, multipartOpen_ = false, multipartFinished_ = false, largeOpen_ = false, largeFinished_ = false;
+    QJsonObject receipt_, cleanup_;
+    QJsonValue abort_, cancel_;
+};
 }

@@ -152,7 +152,6 @@ bool syncToDisk(const QString& path,bool folder) {
 }
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  const auto parent=QFileInfo(path).absolutePath();
- const bool created=!QFileInfo::exists(parent);
  if(!QDir().mkpath(parent)||!QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner))return {"setup_journal_io","Cannot create private destination test journal",{}};
  QJsonArray checkpoints;
  QFile existing(path);
@@ -169,8 +168,8 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson(QJsonDocument::Compact);
  if(file.write(bytes)!=bytes.size()||!file.commit())return {"setup_journal_io","Cannot commit destination test journal",{}};
  // The record is on disk before the step it records is sent (#1690): the file, the folder that
- // names it, and the data folder when this created destination-tests/.
- if(!syncToDisk(path,false)||!syncToDisk(parent,true)||(created&&!syncToDisk(QFileInfo(parent).absolutePath(),true)))
+ // names it, and the data folder that names destination-tests/, every time.
+ if(!syncToDisk(path,false)||!syncToDisk(parent,true)||!syncToDisk(QFileInfo(parent).absolutePath(),true))
   return {"setup_journal_io","Cannot write the destination test journal to disk",{}};
  return {};
 }
@@ -404,15 +403,18 @@ int main(int argc,char* argv[]) {
   // The storage test journal boundary (#1680): whatever the worker sends, and whatever its
   // receipts say they are, no storage test journal keeps a link's query. The Custom uploader's
   // test writes its journal on its own path below.
-  auto intent=std::make_shared<std::atomic_bool>(false);
-  auto checkpoint=[path,intent](const QJsonObject& data,std::function<void(putgd::Error)> ack){
-   if(data["phase"].toString().endsWith("upload_intent"))*intent=true;
-   ack(checkpointFile(path,putgd::withoutSignedTestLinks(data)));
+  auto trail=std::make_shared<putgd::DestinationTestTrail>();
+  auto checkpoint=[path,trail](const QJsonObject& data,std::function<void(putgd::Error)> ack){
+   const auto written=putgd::withoutSignedTestLinks(data);
+   auto error=checkpointFile(path,written);
+   // Only a checkpoint on disk counts as acknowledged (#1690).
+   if(!error)trail->record(written);
+   ack(error);
   };
-  auto finished=[path,intent,reply](QJsonObject result,putgd::Error error){
-   // A worker that ended after journaling its upload intent sent no outcome: the upload may have
-   // happened, so the journal says unknown, never nothing (#1690).
-   if(*intent&&!result.contains("uploadStatus"))result["uploadStatus"]="unknown";
+  auto finished=[path,trail,reply](QJsonObject result,putgd::Error error){
+   // A worker that ended mid-test sent no outcome: each step keeps what its own checkpoints show,
+   // and one they don't show finished is unknown, never nothing (#1690).
+   result=trail->completed(result);
    auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
@@ -445,8 +447,10 @@ int main(int argc,char* argv[]) {
    const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
    auto intent=std::make_shared<std::atomic_bool>(false);
    auto checkpoint=[path,intent](const QJsonObject& data,std::function<void(putgd::Error)> ack){
-    if(data["phase"].toString()=="upload_intent")*intent=true;
-    ack(checkpointFile(path,data));
+    auto error=checkpointFile(path,data);
+    // The intent counts once it is on disk (#1690).
+    if(!error&&data["phase"].toString()=="upload_intent")*intent=true;
+    ack(error);
    };
    operations.background([http,destination,checkpoint](putgd::Error& error){
     QJsonObject out;http->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;

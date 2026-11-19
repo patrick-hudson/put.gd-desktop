@@ -115,4 +115,32 @@ void scrubDestinationTestJournals(const QString& directory) {
         if (out.write(bytes) == bytes.size()) out.commit();
     }
 }
+void DestinationTestTrail::record(const QJsonObject& checkpoint) {
+    std::lock_guard lock(mutex_);
+    const auto phase = checkpoint.value("phase").toString();
+    if (phase == "synthetic_upload_intent") intent_ = true;
+    else if (phase == "synthetic_uploaded") receipt_ = checkpoint.value("receipt").toObject();
+    else if (phase == "synthetic_multipart_intent") multipartOpen_ = true;
+    else if (phase == "synthetic_multipart_finished") { multipartOpen_ = false; multipartFinished_ = true; abort_ = checkpoint.value("abort"); }
+    else if (phase == "synthetic_large_intent") largeOpen_ = true;
+    else if (phase == "synthetic_large_finished") { largeOpen_ = false; largeFinished_ = true; cancel_ = checkpoint.value("cancel"); }
+    // A cleanup checkpoint carries its target.
+    if (checkpoint.value("target").isObject()) cleanup_ = checkpoint;
+}
+QJsonObject DestinationTestTrail::completed(QJsonObject result) const {
+    std::lock_guard lock(mutex_);
+    if (result.contains("uploadStatus") || !intent_) return result;
+    if (receipt_.isEmpty()) result["uploadStatus"] = "unknown";
+    else {
+        result["uploadStatus"] = "uploaded";
+        result["receipt"] = receipt_;
+        result["cleanupStatus"] = cleanup_.value("phase") == "done" ? "removed" : "unknown";
+        if (!cleanup_.isEmpty()) result["cleanupProgress"] = cleanup_;
+    }
+    if (multipartOpen_) result["multipart"] = QJsonObject{{"status", "unknown"}};
+    else if (multipartFinished_) result["multipart"] = QJsonObject{{"status", abort_ == "aborted" ? "ok" : "unknown"}, {"abort", abort_}};
+    if (largeOpen_) result["largeFile"] = QJsonObject{{"start", "unknown"}};
+    else if (largeFinished_) result["largeFile"] = QJsonObject{{"start", "ok"}, {"cancel", cancel_}};
+    return result;
+}
 }

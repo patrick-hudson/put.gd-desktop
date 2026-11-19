@@ -906,6 +906,11 @@ QJsonObject multipartProbe(Client& client, const Destination& destination, const
         return {{"status", status == 403 ? "denied" : ambiguous(created.GetError()) || status == 408 ? "unknown" : "failed"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
     }
     const auto uploadId = qt(created.GetResult().GetUploadId());
+    // A success without an upload ID created an upload nothing can name or abort (#1690).
+    if (uploadId.isEmpty()) {
+        error = {"s3_multipart_unconfirmed", "S3 answered the multipart check without an upload ID; an incomplete upload may remain. Check the bucket for incomplete multipart uploads.", {}};
+        return {{"status", "unknown"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
+    }
     journal["phase"] = "synthetic_multipart_created";
     journal["uploadId"] = uploadId;
     QJsonObject result{{"status", "ok"}};
@@ -1306,6 +1311,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         finish("unknown", {"delete_unknown", "Marker creation may have completed; its identity is unresolved", {}});
         return;
     }
+    // An earlier attempt found a delete marker in place of the removal: the object's bytes are
+    // still kept as a version, whatever the current HEAD says now (#1690).
+    if (objectPhase && progress.value("markerVersionId").isString()) {
+        finish("hidden_version_retained", {"delete_marker_created", "An earlier deletion left the object behind a delete marker: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}});
+        return;
+    }
     auto identity = inspect(*client, expected);
     const auto check = phase == S3DeletePhase::None && immutable ? versionless(*client, expected, identity) : Versionless{};
     if (check.kind == Versionless::Unknown) {
@@ -1503,11 +1514,16 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             return;
         }
         // A delete marker in reply means the bucket keeps versions after all: the object is hidden
-        // and its bytes stay behind the marker, so the removal is not complete (#1690).
-        if (removed.GetResult().GetDeleteMarker()) {
-            progress["markerVersionId"] = qt(removed.GetResult().GetVersionId());
-            persist(S3DeletePhase::ObjectFailed);
-            finish("hidden_version_retained", {"delete_marker_created", "S3 hid the object behind a delete marker instead of removing it: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}});
+        // and its bytes stay behind the marker, so the removal is not complete (#1690). A marker
+        // whose version is "null" comes from a bucket with versioning suspended, where the delete
+        // removed the null version itself: the object is gone.
+        const auto markerVersion = qt(removed.GetResult().GetVersionId());
+        if (removed.GetResult().GetDeleteMarker() && markerVersion != "null") {
+            progress["markerVersionId"] = markerVersion;
+            Error retained{"delete_marker_created", "S3 hid the object behind a delete marker instead of removing it: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}};
+            if (auto error = persist(S3DeletePhase::ObjectFailed))
+                retained.message += " put.gd could not record the marker's version ID, so its journal doesn't name it.";
+            finish("hidden_version_retained", retained);
             return;
         }
     }

@@ -665,6 +665,14 @@ private:
             const auto sent = [&](qint64 bytes) { progress("uploading", bytes - plan.before.size(), artifact.bytes); };
             r = client_.send(verb, url, withValues ? plan.headers : Headers{}, body.get(), reports ? std::function<void(qint64)>(sent) : std::function<void(qint64)>{});
             if (!QList<int>{301, 302, 303, 307, 308}.contains(r.status)) return r;
+            // Test upload and link sends its file once: a request to send it again, wherever to and
+            // whatever its address, leaves the upload unclear (#1690).
+            if (configured && synthetic_ && (r.status == 307 || r.status == 308)) {
+                answered = true;
+                error = {"http_outcome_unknown", QString("The server asked for the test upload again at another address (HTTP %1). Test upload and link sends its file once, so put.gd did not follow; "
+                         "the server may have stored it.").arg(r.status), {{"requestStage", "redirect"}, {"httpStatus", r.status}}};
+                return r;
+            }
             const auto location = r.header("location");
             const auto target = url.resolved(QUrl(location));
             const QJsonObject details{{"requestStage", "redirect"}, {"httpStatus", r.status}};
@@ -681,12 +689,6 @@ private:
             }
             const bool same = sameHost(url, target);
             if (r.status == 307 || r.status == 308) {
-                if (configured && synthetic_) {
-                    answered = true;
-                    error = {"http_outcome_unknown", QString("The server asked for the test upload again at another address (HTTP %1). Test upload and link sends its file once, so put.gd did not follow; "
-                             "the server may have stored it.").arg(r.status), details};
-                    return r;
-                }
                 // The server asks for the same request elsewhere: only on its own host.
                 if (configured && !same) {
                     error = {"http_redirect_refused", "The server redirected the upload to another host (" + shown(target.host(), 96) +
@@ -964,12 +966,6 @@ private:
                 confirmed = true;
             }
         }
-        // A 202 accepts the deletion for later: nothing confirms the file is gone (#1690).
-        if (r.status == 202) {
-            uncertain = true;
-            error = {"http_delete_pending", "The server accepted the deletion for later (HTTP 202) but has not confirmed it. Retry checks again, or check the file on the server.", details};
-            return {{"status", "unknown"}, {"progress", progress}};
-        }
         // The outcome. Byte comparisons cannot tell a deleted file from a page that only
         // changed (an error banner on an HTML host), so only these show anything:
         // - removed: the deletion itself succeeded (a 2xx from the deletion URL, or from
@@ -991,6 +987,13 @@ private:
             const bool deleted = r.status >= 200 && r.status < 300;
             const bool alreadyGone = !confirmed && ownAnswer && gone(r);
             if (gone(after) && deleted) return finish("removed");
+            // A 202 accepts the deletion for later; while the link still answers, nothing confirms
+            // the file is gone (#1690).
+            if (r.status == 202) {
+                uncertain = true;
+                error = {"http_delete_pending", "The server accepted the deletion for later (HTTP 202) but the link still answers. Retry checks again, or check the file on the server.", details};
+                return {{"status", "unknown"}, {"progress", progress}};
+            }
             if (gone(after) && alreadyGone) return finish(phase == "delete_intent" ? "removed" : "missing");
             if (before.status == 200 && after.status == 200 && whole(before) && whole(after) && !before.body.isEmpty() && after.body == before.body) {
                 // The whole file, byte for byte, is still there: the deletion did not work.

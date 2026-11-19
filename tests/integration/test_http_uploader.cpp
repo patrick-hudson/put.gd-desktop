@@ -529,6 +529,8 @@ private slots:
         QTest::newRow("same-file") << QString("same-file") << QString("failed");
         QTest::newRow("session-cookie") << QString("session-cookie") << QString("failed");
         QTest::newRow("redirected-404") << QString("redirected-404") << QString("unknown");
+        // #1690: a 202 for a deletion the link then confirms (404) is removed, not pending.
+        QTest::newRow("accepted-202-then-gone") << QString("accepted-202") << QString("removed");
     }
     void aDeletionOutcomeFollowsTheRule() {
         QFETCH(QString, shape);
@@ -549,6 +551,7 @@ private slots:
         else if (shape == "session-cookie") f.rules({{{"call", "file"}}, {{"call", "delete"}, {"status", 200}, {"body", "<html>Rejected</html>"}, {"setCookie", "session=rejected-delete"}},
                                                      {{"call", "file"}, {"notFoundFor", "session=rejected-delete"}}});
         else if (shape == "redirected-404") f.rules({notFound, {{"call", "delete"}, {"status", 302}, {"location", f.base + "/gone"}}, notFound});
+        else if (shape == "accepted-202") f.rules({{{"call", "delete"}, {"status", 202}, {"store", true}, {"body", "{}"}}});
         const auto result = f.remove(uploaded.receipt);
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         if (expected == "unknown") {

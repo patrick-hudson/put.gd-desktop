@@ -466,10 +466,11 @@ private:
             client_.sentBytes = [&](qint64 sent) { progress("uploading", sent, artifact.bytes); };
             const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body);
             client_.sentBytes = {};
-            if (r.ok() && !r.json["fileId"].toString().isEmpty()) return r.json["fileId"].toString();
-            // A success without a usable file ID (a cut-off reply, or an empty ID): the file may be
-            // stored, and nothing names it (#1690).
-            if (r.ok()) {
+            const auto stored = r.json["fileId"].toString();
+            if (r.ok() && (synthetic_ ? !stored.isEmpty() : r.json["fileId"].isString())) return stored;
+            // Test upload and link: a success without a usable file ID (a cut-off reply, or an empty
+            // ID) may have stored a file nothing names (#1690).
+            if (r.ok() && synthetic_) {
                 error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
                 uncertain = true;
                 return {};
@@ -480,7 +481,8 @@ private:
                 const auto found = published(name, publication, lookup);
                 if (found && found->contains("fileId")) return (*found)["fileId"].toString();
                 if (!found) { error = lookup; uncertain = true; return {}; }
-                if (r.aborted && cancelled.load()) { error = stoppedError(); return {}; }
+                // A synthetic upload cancelled once sent may still have been stored (#1690).
+                if (r.aborted && cancelled.load()) { error = stoppedError(); uncertain = synthetic_; return {}; }
                 error = Client::failure(r, "upload_file");
                 if (synthetic_) { uncertain = true; return {}; }
                 continue;
@@ -760,9 +762,11 @@ private:
                 if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_started"}, {"name", largeName}, {"fileId", fileId}})) largeError = e;
                 // Only B2's own success confirms the cancel; any refusal leaves it unconfirmed (#1690).
                 const auto cancel = client_.call("b2_cancel_large_file", {{"fileId", fileId}}, true);
-                large["cancel"] = cancel.ok() ? "cancelled" : "not_confirmed";
-                if (!cancel.ok() && !largeError) {
-                    largeError = Client::failure(cancel, "large_cancel");
+                const bool confirmed = cancel.ok() && cancel.json["fileId"].toString() == fileId;
+                large["cancel"] = confirmed ? "cancelled" : "not_confirmed";
+                if (!confirmed && !largeError) {
+                    largeError = cancel.ok() ? Error{"b2_large_unconfirmed", "Backblaze B2 answered the cancel without naming the test's large file.", {{"requestStage", "large_cancel"}}}
+                                             : Client::failure(cancel, "large_cancel");
                     largeError.message = "Backblaze B2 did not confirm cancelling the test's unfinished large file " + largeName + "; check the bucket for it. " + largeError.message;
                 }
                 if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_finished"}, {"name", largeName}, {"fileId", fileId}, {"cancel", large["cancel"]}}); e && !largeError) largeError = e;
