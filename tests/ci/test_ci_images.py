@@ -32,7 +32,7 @@ class CiImages(unittest.TestCase):
         package = (WORKFLOWS / 'package.yml').read_text()
         named = set()
         for text in (ci, package):
-            named |= {a or b for a, b in re.findall(r"(?:tags|images)\)(?:\.([a-z0-9-]+)|\['([a-z0-9.-]+)'\])", text)}
+            named |= {a or b for a, b in re.findall(r"images\)(?:\.([a-z0-9-]+)|\['([a-z0-9.-]+)'\])", text)}
         named |= {'native-' + name for name in re.findall(r'- name: (\S+)\n\s+(?:#.*\n\s+)*format:', package)}
         named |= {'linux-' + version for version in re.search(r"distribution: \[(.*)\]", ci).group(1).replace("'", '').split(', ')}
         self.assertEqual(named, set(self.config['profiles']))

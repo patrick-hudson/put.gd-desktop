@@ -13,9 +13,9 @@ on:
         type: string
         default: ''
     outputs:
-      tags:
+      images:
         description: JSON object, profile -> image reference
-        value: ${{ jobs.plan.outputs.tags }}
+        value: ${{ jobs.plan.outputs.images }}
   schedule:
     # Monday 00:17 UTC, from nightly: the branch pull requests target.
     - cron: '17 0 * * 1'
@@ -30,7 +30,7 @@ jobs:
       contents: read
       packages: read
     outputs:
-      tags: ${{ steps.plan.outputs.tags }}
+      images: ${{ steps.plan.outputs.images }}
       missing: ${{ steps.plan.outputs.missing }}
       week: ${{ steps.plan.outputs.week }}
     steps:

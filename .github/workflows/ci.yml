@@ -148,7 +148,7 @@ jobs:
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     container:
       # tools/ci/images/provision.sh installed its packages and the putgd-ci test user.
-      image: ${{ fromJSON(needs.images.outputs.tags)[format('linux-{0}', matrix.distribution)] }}
+      image: ${{ fromJSON(needs.images.outputs.images)[format('linux-{0}', matrix.distribution)] }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -327,7 +327,7 @@ jobs:
     # Normally 5-10 minutes, more when the instrumented QtCore is rebuilt (#467).
     timeout-minutes: 90
     container:
-      image: ${{ fromJSON(needs.images.outputs.tags).sanitizers }}
+      image: ${{ fromJSON(needs.images.outputs.images).sanitizers }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -493,7 +493,7 @@ jobs:
     uses: ./.github/workflows/package.yml
     with:
       release_tag: ${{ inputs.release_tag || '' }}
-      images: ${{ needs.images.outputs.tags }}
+      images: ${{ needs.images.outputs.images }}
 
   pipewire:
     # Package runs test their own image immediately after assembly. Only
@@ -525,7 +525,7 @@ jobs:
           (cd build/pipewire && "$image" --appimage-extract > /dev/null)
       - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
         env:
-          IMAGE: ${{ fromJSON(needs.images.outputs.tags).pipewire }}
+          IMAGE: ${{ fromJSON(needs.images.outputs.images).pipewire }}
           TOKEN: ${{ github.token }}
         run: |
           printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin

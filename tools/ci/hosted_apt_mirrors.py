@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Hand the AppImage job's Ubuntu sources to the shared mirror probe (#500, #1668).
+"""Hand a hosted runner's Ubuntu sources to the shared mirror probe (#500, #1668).
 
 The hosted runner names one Ubuntu mirror (its region's, or Azure's) through
 /etc/apt/apt-mirrors.txt. One slow mirror then stalls every install attempt.
 Write the Ubuntu archive and security sources as plain archive.ubuntu.com and
-security.ubuntu.com URIs, which `PUTGD_UBUNTU_MIRRORS` (the container jobs'
-probe) then replaces with its ranked list of four mirrors. Suites, components
+security.ubuntu.com URIs, which tools/ci/ubuntu-mirrors.sh (the probe the CI
+images are built with) then replaces with its ranked list of four mirrors. Suites, components
 and Signed-By stay as they are, so apt verifies everything against the Ubuntu
 keyring as before. No package snapshot of its own: the shared Actions cache
 budget stays unchanged.
@@ -22,7 +22,7 @@ import re
 UBUNTU_ARCHIVE = re.compile(r'(?<!\S)(?:mirror\+file:\S*/apt-mirrors\.txt'
                             r'|https?://(?:[a-z0-9-]+\.)*archive\.ubuntu\.com/ubuntu/?)(?=\s|$)')
 UBUNTU_SECURITY = re.compile(r'(?<!\S)https?://security\.ubuntu\.com/ubuntu/?(?=\s|$)')
-# The exact forms PUTGD_UBUNTU_MIRRORS rewrites to its mirror list.
+# The exact forms tools/ci/ubuntu-mirrors.sh rewrites to its mirror list.
 ARCHIVE = 'http://archive.ubuntu.com/ubuntu/'
 SECURITY = 'http://security.ubuntu.com/ubuntu/'
 # The values apt reads as false for a deb822 boolean.

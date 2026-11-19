@@ -25,9 +25,9 @@ def job(text, name):
 
 
 class Workflows(unittest.TestCase):
-    def test_exactly_five_workflows_and_no_tag_or_cross_workflow_triggers(self):
+    def test_exactly_six_workflows_and_no_tag_or_cross_workflow_triggers(self):
         self.assertEqual(sorted(path.name for path in WORKFLOWS.glob('*.yml')),
-                         ['ci.yml', 'nightly.yml', 'package.yml', 'release.yml', 'renovate.yml'])
+                         ['ci-images.yml', 'ci.yml', 'nightly.yml', 'package.yml', 'release.yml', 'renovate.yml'])
         for path in WORKFLOWS.glob('*.yml'):
             text = path.read_text()
             with self.subTest(workflow=path.name):

@@ -8,7 +8,7 @@ A profile's tag is <profile>-<ISO week>-<hash>. The hash covers the base image,
 the build target and arguments, and the bytes of every input file, and the build
 context holds exactly those files, so an image can't contain anything its tag
 does not name. The week makes every image at most a week old. `plan` writes the
-`tags` (profile -> image) and `missing` (the build matrix) step outputs; with
+`images` (profile -> image) and `missing` (the build matrix) step outputs; with
 --check, an image already in the registry is not missing.
 """
 import argparse
@@ -129,7 +129,7 @@ def main():
     registry = args.registry.lower()
     if args.command == 'plan':
         tags, missing = plan(registry, args.week, args.check)
-        output('tags', json.dumps(tags, separators=(',', ':')))
+        output('images', json.dumps(tags, separators=(',', ':')))
         output('missing', json.dumps(missing, separators=(',', ':')))
         output('week', args.week)
         if os.environ.get('GITHUB_STEP_SUMMARY'):

@@ -130,6 +130,18 @@ def exclusive_json(path, value):
 
 def ci_packages(checkout):
     """Fail closed if CI no longer has the single supported Ubuntu dependency line."""
+    provision = checkout / 'tools/ci/images/provision.sh'
+    if provision.is_file():
+        # The linux jobs' CI image: the shared test list plus the linux profiles' first additions.
+        text = provision.read_text()
+        base = re.search(r'^test_packages=\(([^)]*)\)', text, re.M)
+        linux = re.search(r'^    packages=\("\$\{test_packages\[@\]\}" ([^)]*)\)', text, re.M)
+        if not base or not linux:
+            raise ValueError('CI dependency recipe changed; review before provisioning')
+        packages = shlex.split(base[1] + ' ' + linux[1], comments=True)
+        if not packages or any(not re.fullmatch('[a-z0-9+.-]+', p) for p in packages):
+            raise ValueError('unsupported CI package expression')
+        return packages
     workflow = (checkout / '.github/workflows/ci.yml').read_text()
     # The base list for both Ubuntu versions: packages=(...) since the install moved into
     # putgd_apt_install, an apt-get install line in older commits.
