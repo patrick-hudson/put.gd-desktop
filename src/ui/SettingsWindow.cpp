@@ -2441,7 +2441,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
    else if(kind=="storeSharePassword"){protonPassword_->clear();rememberCredentialInputs();}
   }
   for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}
-  setupJobs_.append(QJsonObject{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision}});
+  setupJobs_.append(QJsonObject{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",destinationcheck::fingerprint(editedProfile())}});
   // Say what is happening; the confirmed result replaces it. Folder loading is
   // shown beside the folder, so the page status doesn't repeat it.
   static const QHash<QString,QString> progress{{"connectAccount","Connecting account…"},{"storeCredentials","Storing credentials…"},{"unlockCredentials","Unlocking saved credentials…"},{"createFolder","Creating folder…"},{"storeSharePassword","Storing link password…"}};
@@ -2530,11 +2530,13 @@ void SettingsWindow::pollSetup(){
    setupJobs_.removeAt(index);updateSetupButton();if(setupJobs_.isEmpty())setupTimer_->stop();
    if(e)e.message="This setup result is no longer available; the action was not repeated.";
    else{const auto error=data["error"].toObject();e={error["code"].toString(),error["message"].toString(),error["details"].toObject()};}
-   if(e){if(job["kind"]=="testDestination"&&(job["profileId"]!=profileId_->text()||(!job["revision"].toString().isEmpty()&&job["revision"]!=settings_.revision())))e.message="Connection test failed for the original destination settings. "+e.message;
+   // A test is for the shown destination while its connection is the one tested, the rule
+   // its row follows: a rename or a reorder during the test keeps it current (#1692).
+   const bool currentTest=job["profileId"]==profileId_->text()&&job["fingerprint"]==destinationcheck::fingerprint(editedProfile());
+   if(e){if(job["kind"]=="testDestination"&&!currentTest)e.message="Connection test failed for the original destination settings. "+e.message;
     // A custom uploader's test shows the start of a reply it could not read, so the Response fields can be fixed.
     if(const auto excerpt=data["result"].toObject()["replyExcerpt"].toString();!excerpt.isEmpty())e.message+=" The reply began: "+excerpt;
     status(e);if(data["kind"]=="connectAccount"&&data["profileId"]==profileId_->text())protonAccount_->setText("Connection failed: "+e.message);}else {
-    const bool currentTest=data["profileId"]==profileId_->text()&&(job["revision"].toString().isEmpty()||job["revision"]==settings_.revision())&&!selectedDestinationChanged();
     if(data["kind"]=="storeCredentials"&&data["profileId"]==profileId_->text()&&providerType_->currentData()==CustomUploaderPanel::provider()){clearCurrentCredentialInputs();uploader_->setNotice({});}
     if(data["kind"]=="storeCredentials"||data["kind"]=="unlockCredentials")refreshCredentialHint();
     const auto result=data["result"].toObject();const auto kind=data["kind"].toString();

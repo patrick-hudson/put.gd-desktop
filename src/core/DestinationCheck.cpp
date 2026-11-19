@@ -12,8 +12,9 @@ QStringList connectionKeys(const QString& provider) {
  // share preferences apply after an upload.
  if(provider=="proton-drive")return {"accountRootUid","folderUid"};
  // A custom uploader: its request, and how the reply gives the link and the deletion URL
- // the test followed. Accepted file types, a thumbnail and the error message text are not.
- if(provider=="custom-http")return {"requestMethod","requestUrl","allowInsecureHttp","body","fileFormName","headers","parameters","arguments","secrets","data","dataSecret","responseUrl","deletionUrl"};
+ // the test followed, and the file types it accepts, which decide what the test sends. A
+ // thumbnail and the error message text are not.
+ if(provider=="custom-http")return {"requestMethod","requestUrl","allowInsecureHttp","body","fileFormName","headers","parameters","arguments","secrets","data","dataSecret","responseUrl","deletionUrl","accepts"};
  return {};
 }
 QString fingerprint(const QString& provider,const QJsonObject& settings,const QJsonObject& credentials) {
@@ -34,6 +35,8 @@ bool rejectsDestination(const Error& error) {
   "s3_authentication_failed","s3_permission_denied","s3_bucket_not_found",
   "b2_authentication_failed","b2_permission_denied","b2_key_restricted","b2_bucket_not_found",
   "proton_credentials_invalid","proton_account_changed","proton_folder_unavailable",
+  // The Proton helper's own codes, which only the Proton provider passes on.
+  "authentication_required","permission_denied","account_changed","destination_unavailable",
   "http_authentication_failed"};
  return codes.contains(error.code);
 }

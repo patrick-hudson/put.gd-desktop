@@ -398,6 +398,8 @@ int main(int argc,char* argv[]) {
  // Each destination's last check (#1692): what a Test found, new credentials, and what
  // uploads found, kept in the data folder so Settings shows it after a restart.
  putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
+ // The destinations whose keys a session-mode check would outlive: the ones SetupService stores keys for.
+ destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
  destinationStatus.load();destinationStatus.prune();destinationStatus.follow(operations);
  server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);

@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QObject>
 #include <QSet>
+#include <functional>
 namespace putgd {
 class OperationService;
 // The resident's record of each destination's last check (#1692): passed or failed, by a
@@ -22,15 +23,22 @@ public:
  void load();
  // Follows uploads and forgets removed destinations from then on.
  void follow(OperationService& operations);
+ // Whether a destination keeps keys: S3, B2, a custom uploader with secret values. A
+ // session-mode destination that does is kept in memory only, so after a restart it is
+ // untested. Unset, every destination counts as keeping keys.
+ void setUsesCredentials(std::function<bool(const QJsonObject& profile)> uses){usesCredentials_=std::move(uses);}
  // Counts stores of new credentials (and Proton sign-ins) for a destination.
  quint64 credentialRevision(const QString& profileId) const {return credentialRevisions_.value(profileId);}
+ // A store of credentials starts or succeeds: every configured destination that names the
+ // same keychain entry has new keys too.
  void credentialsChanged(const QString& profileId);
  // A Test ended. fingerprint and revision are the ones it started with: a test that ran
  // while the settings or credentials changed records nothing.
  void testFinished(const QString& profileId,const QString& fingerprint,quint64 revision,const Error& error);
  // An upload operation starts its provider work, and its end. A file uploaded in this
  // run passes the destination; a sign-in, permission or missing bucket/folder refusal
- // fails it; anything else, such as a network failure, a timeout or a cancel, leaves it.
+ // this run met fails it; anything else, such as a network failure, a timeout, a cancel
+ // or an error a retry carried unchanged from History, leaves it.
  void uploadStarting(const Operation& operation);
  void uploadSettled(const Operation& operation);
  // Forgets destinations that are no longer configured.
@@ -38,12 +46,13 @@ public:
  // {profileId: {state: passed|failed|untested, source: test|upload, errorCode, fingerprint}}
  // for every configured destination, against its current settings and credentials.
  QJsonObject publicJson() const;
- QString path() const {return path_;}
 signals:
  void changed();
 private:
  struct Record {QString state,source,errorCode,fingerprint;quint64 credentialRevision=0;};
- struct Attempt {quint64 credentialRevision=0;QSet<QString> uploaded;};
+ // What the operation held when this run started: its uploaded files and each item's
+ // error code.
+ struct Attempt {quint64 credentialRevision=0;QSet<QString> uploaded;QHash<QString,QString> errors;};
  bool current(const QString& profileId,const QString& fingerprint,quint64 revision) const;
  void put(const QString& profileId,Record record);
  void save();
@@ -52,5 +61,6 @@ private:
  QHash<QString,Record> records_;
  QHash<QString,quint64> credentialRevisions_;
  QHash<QString,Attempt> attempts_;
+ std::function<bool(const QJsonObject&)> usesCredentials_;
 };
 }

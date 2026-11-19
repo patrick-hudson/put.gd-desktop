@@ -59,6 +59,9 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  jobs_.insert(id,{{"setupId",id},{"kind",kind},{"profileId",profileId},{"state","running"},{"error",Error{}.toJson()}});
  active_.insert(key);
  if(kind=="testDestination"&&status_)testStarts_.insert(id,{destinationcheck::fingerprint(profile),status_->credentialRevision(profileId)});
+ // The keys change from here on, so an earlier check never vouches for the new ones, even
+ // when the resident stops before this job ends.
+ if(status_&&(kind=="storeCredentials"||kind=="connectAccount"))status_->credentialsChanged(profileId);
  // Only a safe job ID and lifetime context cross the asynchronous boundary.
  // Queue under the lock so destruction cannot race the context passed to Qt.
  const auto complete=[context=completion_,id](Error error) {
