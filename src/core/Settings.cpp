@@ -243,7 +243,12 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             (credentials["mode"] == "session" && !credentials["reference"].isNull()))
             return invalid("/profiles/credentials", "Use a keychain reference or explicitly selected session credentials.");
         if (!validateProfile) return invalid("/profiles/provider", "Provider validation is unavailable.");
-        if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) return error;
+        // The refused destination, as the submitted document names it (#1675).
+        if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) {
+            error.details["profileId"] = profile["id"];
+            error.details["profileLabel"] = profile["label"];
+            return error;
+        }
         if (validateCredentials)
             if (auto error = validateCredentials(profile["provider"].toString(), credentials)) return error;
     }

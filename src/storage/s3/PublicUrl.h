@@ -17,4 +17,11 @@ bool s3KeyAddressable(const QString& key);
 // The key an upload of `candidate` uses: the stored form of the folder in bucket,
 // a separator, then the candidate.
 QString s3ObjectKey(const QJsonObject& settings, const QString& candidate);
+// What to tell someone whose Region the AWS SDK refuses, or an empty string. The SDK
+// takes only a DNS label; anything else it drops, then fails every request before
+// sending it (#1675).
+QString s3RegionProblem(const QString& region);
+// Cloudflare R2's S3 API, also under a jurisdiction such as ACCOUNT.eu.r2.cloudflarestorage.com.
+// R2 has no regions: requests to it are signed with auto whatever Region holds (#1678).
+bool s3CloudflareR2Endpoint(const QString& endpoint);
 }

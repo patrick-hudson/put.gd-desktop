@@ -5,6 +5,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QLockFile>
 #include <QSaveFile>
@@ -56,10 +58,26 @@ LoadedSettings loadValidated(const QString& path,const ProfileValidator& validat
     }
     loaded.candidate=candidate;loaded.error=error;return loaded;
 }
-Error writeCandidate(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator,const QJsonObject& proposed,const QString& expectedRevision) {
+// A destination keeps the rules it was saved under while the file holds it with the same id,
+// provider and settings, so fixing one destination or any other setting never needs every
+// other one fixed first. Any other destination, a copy under a new id included, meets
+// today's rules. `current` is the file as the revision check read it.
+Error currentRules(const QJsonObject& proposed,const QByteArray& current,const ProfileValidator& validator) {
+    QHash<QString,QJsonObject> saved;
+    for(const auto& entry:Settings::normalized(QJsonDocument::fromJson(current).object())["profiles"].toArray())
+        saved.insert(entry.toObject()["id"].toString(),entry.toObject());
+    for(const auto& entry:Settings::normalized(proposed)["profiles"].toArray()) {
+        const auto profile=entry.toObject();const auto kept=saved.value(profile["id"].toString());
+        if(!kept.isEmpty()&&kept["provider"]==profile["provider"]&&kept["settings"]==profile["settings"])continue;
+        if(auto error=validator(profile["provider"].toString(),profile["settings"].toObject())){error.details["profileId"]=profile["id"];error.details["profileLabel"]=profile["label"];return error;}
+    }
+    return {};
+}
+Error writeCandidate(const QString& path,const ProfileValidator& validator,const ProfileValidator& stored,const CredentialValidator& credentialValidator,const QJsonObject& proposed,const QString& expectedRevision) {
     // What was sent is checked as sent, so 201 repeats of one word are refused like 201 words; only then
     // are Quick redact's saved lists written trimmed and without repeats, whoever sent them (#1618).
-    if (auto error = Settings::validate(proposed, validator, credentialValidator)) return error;
+    // The rules a saved destination met first; today's rules once the file is locked and read.
+    if (auto error = Settings::validate(proposed, stored ? stored : validator, credentialValidator)) return error;
     const auto candidate = Settings::withCleanRedactLists(proposed);
     const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
     if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
@@ -81,6 +99,8 @@ Error writeCandidate(const QString& path,const ProfileValidator& validator,const
     const auto actualRevision = exists ? revisionOf(current) : QString{};
     if (actualRevision != expectedRevision)
         return {"config_conflict", "Configuration changed; reload or rebase before saving.", {{"observedRevision", actualRevision}}};
+    if (validator)
+        if (auto error = currentRules(proposed, current, validator)) return error;
     QSaveFile output(path);
     output.setDirectWriteFallback(false);
     if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner) ||
@@ -91,8 +111,8 @@ Error writeCandidate(const QString& path,const ProfileValidator& validator,const
 
 }
 
-SettingsService::SettingsService(QString path, ProfileValidator validator, QObject* parent, CredentialValidator credentialValidator)
-    : QObject(parent), path_(QFileInfo(path).absoluteFilePath()), validator_(std::move(validator)), credentialValidator_(std::move(credentialValidator)),
+SettingsService::SettingsService(QString path, ProfileValidator validator, QObject* parent, CredentialValidator credentialValidator, ProfileValidator storedValidator)
+    : QObject(parent), path_(QFileInfo(path).absoluteFilePath()), validator_(std::move(validator)), storedValidator_(storedValidator?std::move(storedValidator):validator_), credentialValidator_(std::move(credentialValidator)),
       settings_(Settings::fromValidated(Settings::defaults())) {
     debounce_.setSingleShot(true);
     debounce_.setInterval(75);
@@ -142,24 +162,24 @@ Result SettingsService::acceptLoaded(const QJsonObject& candidate,const QString&
     return {error,changed};
 }
 Result SettingsService::reload() {
-    std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,validator_,credentialValidator_);
+    std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,storedValidator_,credentialValidator_);
     return acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);
 }
 Result SettingsService::save(const QJsonObject& candidate,const QString& expectedRevision) {
-    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision)){logRejected(error,"save");return {error};}
-    auto loaded=loadValidated(path_,validator_,credentialValidator_);auto result=acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);result.written=true;return result;
+    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,storedValidator_,credentialValidator_,candidate,expectedRevision)){logRejected(error,"save");return {error};}
+    auto loaded=loadValidated(path_,storedValidator_,credentialValidator_);auto result=acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);result.written=true;return result;
 }
 Result SettingsService::patch(const QJsonObject& patchObject, const QString& expectedRevision) {
     return save(overlay(document(), patchObject), expectedRevision);
 }
 SettingsService::~SettingsService() {workerThread_.quit();workerThread_.wait();}
 void SettingsService::asyncLoad(const QJsonObject& candidate,const QString& expected,bool write,std::function<void(Result)> callback) {
-    QPointer<SettingsService> guarded(this);const auto path=path_;const auto validator=validator_;const auto credentialValidator=credentialValidator_;
-    QMetaObject::invokeMethod(worker_,[guarded,path,validator,credentialValidator,candidate,expected,write,callback] {
+    QPointer<SettingsService> guarded(this);const auto path=path_;const auto validator=validator_;const auto stored=storedValidator_;const auto credentialValidator=credentialValidator_;
+    QMetaObject::invokeMethod(worker_,[guarded,path,validator,stored,credentialValidator,candidate,expected,write,callback] {
         if(!guarded)return;
         std::lock_guard guard(guarded->ioMutex_);
-        Error error;if(write)error=writeCandidate(path,validator,credentialValidator,candidate,expected);
-        LoadedSettings loaded;if(!error)loaded=loadValidated(path,validator,credentialValidator);
+        Error error;if(write)error=writeCandidate(path,validator,stored,credentialValidator,candidate,expected);
+        LoadedSettings loaded;if(!error)loaded=loadValidated(path,stored,credentialValidator);
         const auto sequence=++guarded->sequence_;
         QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback,write] {
             if(!guarded)return;

@@ -4,6 +4,7 @@
 #include <QBuffer>
 #include <QUrlQuery>
 #include "fixtures/Waits.h"
+#include "core/SettingsService.h"
 using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
@@ -325,6 +326,33 @@ private slots:
         QCOMPARE(found.receipt.objectReference["key"].toString(),QString("a/b/lost.txt"));
         QCOMPARE(found.receipt.directUrl,f.endpoint+"/isolated-fixture/a/b/lost.txt");
         QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/lost.txt"));
+    }
+    // #1675: a destination saved with a Region that today's rules refuse still loads, and
+    // other settings still save; changing that destination needs it fixed.
+    void refusedSettingsSavedEarlierStillLoad() {
+        S3Fixture f;ProviderRegistry registry;registry.add("s3",std::shared_ptr<S3Provider>(&f.provider,[](S3Provider*){}));
+        auto doc=test::configuration(f.directory.path());auto bad=f.destination.settings;bad["region"]="Western North America (WNAM)";
+        doc["profiles"]=QJsonArray{QJsonObject{{"id",f.destination.profileId},{"label","Old"},{"provider","s3"},{"settings",bad},{"credentials",f.destination.credentialReference}}};
+        auto actions=doc["actions"].toObject();for(const auto& key:Settings::actionNames()){auto action=actions[key].toObject();action["profileId"]=f.destination.profileId;actions[key]=action;}doc["actions"]=actions;
+        QFile file(f.directory.filePath("config.json"));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());file.close();
+        SettingsService settings(file.fileName(),[&](auto id,auto value){return registry.validate(id,value);},nullptr,{},[&](auto id,auto value){return registry.validateStored(id,value);});
+        QVERIFY2(settings.metadata()["validation"].toObject()["ok"].toBool(),qPrintable(QJsonDocument(settings.metadata()).toJson()));
+        QCOMPARE(settings.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["region"].toString(),QString("Western North America (WNAM)"));
+        auto other=settings.document();auto limits=other["retention"].toObject();limits["historyRetentionDays"]=30;other["retention"]=limits;
+        const auto savedOther=settings.save(other,settings.revision());QVERIFY2(savedOther,qPrintable(savedOther.error.message));
+        auto changed=settings.document();auto profiles=changed["profiles"].toArray();auto profile=profiles[0].toObject();auto s=profile["settings"].toObject();
+        s["bucket"]="another-bucket";profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
+        const auto refused=settings.save(changed,settings.revision());
+        QCOMPARE(refused.error.code,QString("s3_settings_invalid"));QCOMPARE(refused.error.details["field"].toString(),QString("region"));
+        // A copy of that destination under a new id meets today's rules too.
+        auto copied=settings.document();auto copies=copied["profiles"].toArray();auto copy=copies[0].toObject();copy["id"]="copied-destination";copy["label"]="Copy";copies.append(copy);copied["profiles"]=copies;
+        QCOMPARE(settings.save(copied,settings.revision()).error.details["field"].toString(),QString("region"));
+        s["region"]="auto";profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
+        const auto fixed=settings.save(changed,settings.revision());QVERIFY2(fixed,qPrintable(fixed.error.message));
+        // Cloudflare R2 signs with auto whatever Region holds (#1678): its saved dashboard location stays valid.
+        auto r2=f.destination.settings;r2["region"]="Western North America (WNAM)";r2["endpoint"]="https://ACCOUNT.R2.cloudflarestorage.com";
+        QVERIFY(!f.provider.validateSettings(r2));
+        r2["endpoint"]="https://r2.cloudflarestorage.com.example.net";QCOMPARE(f.provider.validateSettings(r2).details["field"].toString(),QString("region"));
     }
     // A "." or ".." part is removed by libcurl after the SDK signed it, so no request
     // names it exactly: new uploads are refused and old receipts are left alone.

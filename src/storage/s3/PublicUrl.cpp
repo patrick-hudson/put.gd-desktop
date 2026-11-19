@@ -42,4 +42,24 @@ QString s3LegacyPublicObjectUrl(const QJsonObject& settings, const QString& key)
 QString publicObjectUrl(const QJsonObject& settings, const QString& key) {
     return s3LegacyPublicObjectUrl(settings, s3StoredKey(key));
 }
+QString s3RegionProblem(const QString& region) {
+    if (region.isEmpty()) return QStringLiteral("Enter the bucket's region, such as us-east-1. For Cloudflare R2, enter auto.");
+    // Aws::Utils::IsValidDnsLabel: 1-63 ASCII letters, digits and hyphens,
+    // starting and ending with a letter or digit.
+    const auto alnum = [](QChar c) { return c.unicode() < 128 && c.isLetterOrNumber(); };
+    bool valid = region.size() <= 63 && alnum(region.front()) && alnum(region.back());
+    for (const auto c : region) valid = valid && (alnum(c) || c == '-');
+    if (!valid) return QStringLiteral("Region takes a region code such as us-east-1: letters, digits and hyphens, without spaces. For Cloudflare R2, enter auto, not the location the Cloudflare dashboard shows.");
+    // The SDK reads "fips-" and "-fips" as a request for AWS FIPS endpoints, which it refuses
+    // next to the endpoint put.gd always sets.
+    // Case-sensitive, as the SDK checks it: "FIPS-lab" is an ordinary label to it.
+    if (region.startsWith(QLatin1String("fips-")) || region.endsWith(QLatin1String("-fips")))
+        return QStringLiteral("Region takes the plain region code, such as us-east-1, without fips. For FIPS, enter the FIPS endpoint in Endpoint, such as https://s3-fips.us-east-1.amazonaws.com.");
+    return {};
+}
+bool s3CloudflareR2Endpoint(const QString& endpoint) {
+    auto host = QUrl(endpoint).host();
+    if (host.endsWith('.')) host.chop(1);  // a fully qualified "host." names the same host
+    return host.endsWith(QLatin1String(".r2.cloudflarestorage.com"), Qt::CaseInsensitive);
+}
 }

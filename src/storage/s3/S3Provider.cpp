@@ -187,7 +187,11 @@ QString S3Provider::serializationKey(const Destination& destination, const QJson
     return destination.settings["endpoint"].toString() + "/" + destination.settings["bucket"].toString() + "/" +
            (object["key"].isString() ? s3StoredKey(object["key"].toString()) : objectKey(destination, candidate));
 }
-Error S3Provider::validateSettings(const QJsonObject& settings) const {
+namespace {
+// `current` holds settings to today's rules. Without it, a Region accepted before
+// #1675 still loads, so Settings can show and fix it, and work on uploads made
+// before then still runs.
+Error settingsError(const QJsonObject& settings, bool current) {
     const QStringList fields{"bucket", "region", "endpoint", "objectPrefix", "storageClass", "aclMode", "publicUrlBase", "addressing", "connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"};
     auto bad = [] { return Error{"s3_settings_invalid", "Invalid S3 settings; use a supported endpoint, addressing, ACL, storage class and positive timeouts", {}}; };
     auto base = settings; base.remove("linkMode"); base.remove("linkValidityDays");
@@ -199,12 +203,22 @@ Error S3Provider::validateSettings(const QJsonObject& settings) const {
         if (!settings[field].isString()) return bad();
     const auto bucket = settings["bucket"].toString();
     if (bucket.toUtf8().size() < 3 || bucket.toUtf8().size() > 63 || bucket.contains('/') || bucket.contains(':') || bucket.contains(' ') ||
-        settings["region"].toString().isEmpty() || settings["objectPrefix"].toString().toUtf8().size() > 1022 ||
+        settings["objectPrefix"].toString().toUtf8().size() > 1022 ||
         settings["objectPrefix"].toString().contains(QChar(0))) return bad();
+    // Cloudflare R2 needs no Region at all: its requests are signed with auto (S3Driver).
+    const bool r2 = s3CloudflareR2Endpoint(settings["endpoint"].toString());
+    if (settings["region"].toString().isEmpty() && !r2)
+        return {"s3_settings_invalid", s3RegionProblem({}), {{"field", "region"}}};
+    // Region first: on AWS, Settings writes Region into the generated endpoint host, so a
+    // Region with spaces would otherwise read as a bad endpoint, under either set of rules.
+    // Cloudflare R2 ignores Region: its requests are signed with auto (S3Driver).
+    const auto regionProblem = r2 ? QString() : s3RegionProblem(settings["region"].toString());
+    const Error regionError{"s3_settings_invalid", regionProblem, {{"field", "region"}}};
+    if (current && !regionProblem.isEmpty()) return regionError;
     const auto endpoint = QUrl(settings["endpoint"].toString());
     const auto address=classifyIpAddress(endpoint.host());
     if (!endpoint.isValid() || endpoint.host().isEmpty() || !endpoint.userInfo().isEmpty() || endpoint.hasQuery() || endpoint.hasFragment() ||
-        (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && address.loopback))) return bad();
+        (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && address.loopback))) return regionProblem.isEmpty() ? bad() : regionError;
     if (settings["publicUrlBase"].isString()) {
         const auto base = QUrl(settings["publicUrlBase"].toString());
         const auto host=classifyIpAddress(base.host());
@@ -221,13 +235,18 @@ Error S3Provider::validateSettings(const QJsonObject& settings) const {
     if (s3VirtualAddressing(settings) && (bucket.contains('.') || address.numeric)) return bad();
     return {};
 }
+}
+Error S3Provider::validateSettings(const QJsonObject& settings) const { return settingsError(settings, true); }
+Error S3Provider::validateStoredSettings(const QJsonObject& settings) const { return settingsError(settings, false); }
 Error S3Provider::readiness(const Destination& destination) const {
-    if (auto error = validateSettings(destination.settings)) return error;
+    if (auto error = validateStoredSettings(destination.settings)) return error;
     if (!state_->credentials.cached(destination.profileId, destination.credentialReference)) return accessError();
     return {};
 }
 void S3Provider::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation) {
     reply = once(std::move(reply));
+    // New uploads and tests use today's rules; work on recorded uploads uses readiness.
+    if (auto error = validateSettings(destination.settings)) { reply({"inconclusive", {}, {}, error}); return; }
     state_->run(*this, destination, cancellation, [destination, candidate, reply, cancellation](S3Driver& driver) {
         driver.checkName(destination, candidate, reply, cancellation);
     }, [reply](Error error) { reply({"inconclusive", {}, {}, error}); });
@@ -252,6 +271,7 @@ void S3Provider::reconcile(const UploadRequest& request, std::function<void(Stat
 }
 void S3Provider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
     reply = once(std::move(reply));
+    if (auto error = validateSettings(request.destination.settings)) { reply({"failed", {}, error}); return; }
     auto planned = request;
     // A new large upload starts as a multipart plan. An existing journal keeps
     // its own part size: its uploaded parts were cut with it.
@@ -287,6 +307,7 @@ void S3Provider::abandonUpload(const Destination& destination, const QJsonObject
 }
 void S3Provider::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
     reply = once(std::move(reply));
+    if (auto error = validateSettings(destination.settings)) { reply({}, error); return; }
     state_->run(*this, destination, {}, [destination, save, reply](S3Driver& driver) {
         driver.testDestination(destination, save, reply);
     }, [reply](Error error) { reply({}, error); });

@@ -685,7 +685,7 @@ private:
  QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;
 };
 // A status set directly, not from an Error: no error code behind it.
-QLabel* plain(QLabel* label){label->setProperty("errorCode",{});label->setToolTip({});label->setAccessibleDescription({});return label;}
+QLabel* plain(QLabel* label){label->setProperty("errorCode",{});label->setProperty("errorField",{});label->setProperty("setupProgress",{});label->setToolTip({});label->setAccessibleDescription({});return label;}
 // Shows a status row only while its message or one of its actions is shown,
 // so an empty row leaves no gap in the page's spacing.
 class VisibleWithParts final:public QObject {
@@ -1150,6 +1150,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  for(const auto& key:QStringList{"bucket","region","endpoint","objectPrefix","publicUrlBase","storageClass","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"})s3_[key]=input(this,"s3"+title(key));
  auto* bucketHint=setting(destinationDetails,"Bucket",s3_["bucket"],"/profiles/{profile}/settings/bucket","Required before uploads can go here.");bucketHint->setProperty("preferenceInline",true);auto* bucketText=bucketHint->findChild<QLabel*>("s3BucketHint");bucketText->setTextFormat(Qt::PlainText);auto updateBucketHint=[this,bucketText]{static_cast<Ui::ElidedLabel*>(bucketText)->setText(s3_["bucket"]->text().isEmpty()?QString("Required before uploads can go here."):"Uploads go to "+QString(providerType_->currentData()=="backblaze-b2"?"b2://":"s3://")+s3_["bucket"]->text()+"/"+s3_["objectPrefix"]->text());};connect(providerType_,&QComboBox::currentIndexChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,updateBucketHint);connect(s3_["objectPrefix"],&QLineEdit::textChanged,this,updateBucketHint);updateBucketHint();s3_["bucket"]->setPlaceholderText("my-screenshots");
  regionChoices_=choices(this,"s3RegionChoices",s3Regions());regionChoices_->setEditable(true);regionChoices_->setInsertPolicy(QComboBox::NoInsert);regionChoices_->setLineEdit(s3_["region"]);setting(destinationDetails,"Region",regionChoices_,"/profiles/{profile}/settings/region");bind(s3_["region"],"/profiles/{profile}/settings/region");
+ errors_[s3_["region"]]=errors_[regionChoices_];
  setting(destinationDetails,"Folder in bucket",s3_["objectPrefix"],"/profiles/{profile}/settings/objectPrefix","Optional. Existing uploads stay where they are.")->setProperty("preferenceInline",true);
  s3_["objectPrefix"]->setPlaceholderText("Bucket root");
  auto* links=PreferenceRows::card(pageLayout,"Links");linksPanel_=links->parentWidget();// What the upload asks S3 for, not a promise about who can open the link.
@@ -1201,6 +1202,15 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(remove,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Remove destination","Remove \""+profileLabel_->text()+"\" from settings? Existing history and remote files remain.","Remove destination",true))return;storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();if(captureProfile_->currentData()==id){const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(0);updateCaptureInheritance();}for(const auto& action:Settings::presentationOrder())if(actionProfiles_[action]->currentData()==id){actionProfiles_[action]->setCurrentIndex(0);}captureDefaultsEnabled_=true;captureRoutingEdited_=true;profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);if(index<credentialDrafts_.size())credentialDrafts_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));queueEdit(defaultButton_,"/");refreshDestinationList();});
  connect(dev,&QPushButton::clicked,this,&SettingsWindow::importDevelopmentProfile);
  connect(s3_["region"],&QLineEdit::textChanged,this,[this](const QString& region){if(loading_)return;auto* endpoint=s3_["endpoint"];const auto previous=s3_["region"]->property("previousRegion").toString();if(endpoint->text()=="https://s3."+previous+".amazonaws.com")endpoint->setText("https://s3."+region+".amazonaws.com");s3_["region"]->setProperty("previousRegion",region);updateProviderVisibility_();});
+ // A Region message follows Endpoint: moving a destination to Cloudflare R2, which ignores Region,
+ // clears it at once, under the field, in the footer and in the destination status. It is only
+ // ever cleared here; a save reports a Region that is still wrong.
+ // A message that clears goes at once; a new one waits until typing pauses, so "us-" doesn't flash.
+ auto* settle=new QTimer(this);settle->setSingleShot(true);settle->setInterval(400);connect(settle,&QTimer::timeout,this,[this]{if(!loading_)updateRegionFeedback();});
+ for(auto* field:{s3_["endpoint"],s3_["region"]}){
+  connect(field,&QLineEdit::textChanged,this,[this,settle]{if(loading_)return;if(updateRegionFeedback(true))settle->stop();else settle->start();});
+  connect(field,&QLineEdit::editingFinished,this,[this,settle]{if(loading_)return;settle->stop();updateRegionFeedback();});
+ }
  connect(credentials,&QPushButton::clicked,this,[this]{if(!admitSetup())return;resetCredentialSecretDisplay();
   // #1361: a custom uploader stores the values typed into its Secret rows, by name.
   if(providerType_->currentData()==CustomUploaderPanel::provider()){QJsonObject values;const auto typed=uploader_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();if(values.isEmpty()){status({"credential_invalid","Type a value into a row marked Secret first; those are the values stored here.",{}});return;}beginSetup("storeCredentials",{{"values",values}});return;}
@@ -1208,13 +1218,17 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // Each page's status line carries its recovery actions beside the message:
  // Reload from file… for a conflict, Retry saving for a refused save. Saved
  // notes stay meta type; errors take body type (the style's meta role).
+ // #1675: a configuration file the resident refused has its own line, which form feedback never
+ // writes or clears; only a successful reload or save does (configurationChanged).
+ for(auto** line:{&fileError_,&destinationFileError_}){*line=new QLabel;(*line)->setObjectName(line==&fileError_?"configFileError":"destinationConfigFileError");(*line)->setAccessibleName("Configuration file status");(*line)->setWordWrap(true);(*line)->setTextFormat(Qt::PlainText);Ui::role(*line,"error");(*line)->hide();}
+ showFileError();
  status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);Ui::role(status_,"meta");destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");Ui::role(destinationStatus_,"muted");
  // Settings' status is a footer under the scrolling page, set off by a hairline.
- QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));text->addWidget(i?destinationStatus_:status_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
+ QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));auto* holder=new QWidget;auto* held=new QVBoxLayout(holder);held->setContentsMargins(0,0,0,0);held->addWidget(i?destinationStatus_:status_);text->addWidget(holder);text->addWidget(i?destinationFileError_:fileError_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
  // Council 22: a conflict is a warning, not a failure: a banner with Reload from file…, not red text.
  for(int i=0;i<2;++i){auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,conflictMessage());banner->setObjectName(i?"destinationConflictBanner":"settingsConflictBanner");banner->setAction("Reload from file…");auto* reload=banner->actionButton();reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();banner->hide();reloadConflict_.insert(i,reload);conflictBanners_.insert(i,banner);feedbackRows[i]->addBanner(banner);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
  for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
- for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,conflictBanners_[i],retryAutosave_[i]});
+ for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,conflictBanners_[i],retryAutosave_[i],i?destinationFileError_:fileError_});
  auto* testSection=new FormRow;testSection->setObjectName("destinationTestSection");auto* testBox=new QVBoxLayout(testSection);testBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));testBox->setSpacing(space(Space::s));auto* testLine=new QHBoxLayout;testLine->setSpacing(space(Space::l));auto* testText=new QVBoxLayout;testText->setSpacing(space(Space::xs));testText->setAlignment(Qt::AlignVCenter);testText->addWidget(Ui::label("Connection test","body"));testText->addWidget(testScope);testLine->addLayout(testText,1);testLine->addWidget(test,0,Qt::AlignRight|Qt::AlignVCenter);testBox->addLayout(testLine);new ConnectionTestSizer(testSection,testLine,testScope,test);credentialForm->addRow(testSection);testSection->setProperty("preferenceRow",true);testSection->setProperty("preferenceRowInset",true);testSection->setProperty("preferenceNaturalHeight",true);
  connect(scrollHeight_,&QSpinBox::valueChanged,this,[this]{queueEdit(scrollHeight_);});
  autosave_=new QTimer(this);autosave_->setSingleShot(true);autosave_->setInterval(400);connect(autosave_,&QTimer::timeout,this,&SettingsWindow::save);
@@ -1293,7 +1307,37 @@ void SettingsWindow::refreshMetadata(){if(configPath_)static_cast<Ui::ElidedLabe
   for(const auto& key:QStringList{"accepted","observed"}){auto* value=static_cast<MetadataLabel*>(capabilities_->findChild<QLabel*>(key+"Revision"));value->setExact(key=="accepted"?accepted:observed);value->setVisible(differs);capabilities_->findChild<QLabel*>(key+"RevisionLabel")->setVisible(differs);}
 }
 void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChanged();}
+// #1675: Region feedback comes only from the shown destination's current Endpoint and Region,
+// checked as the provider checks them, here and nowhere else: no save answer writes or restores
+// it. It sets or clears the message under Region, in the footer and in the destination status.
+bool SettingsWindow::updateRegionFeedback(bool clearOnly){
+ const bool s3=providerType_->currentData()=="s3";
+ const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text()):QString();
+ if(clearOnly&&!problem.isEmpty())return false;
+ inlineError(s3_["region"],problem);
+ if(conflict_)return true;
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;
+  if(!problem.isEmpty()){plain(label);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",QStringLiteral("region"));label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,problem,true);}
+  else if(label->property("errorField").toString()=="region"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
+ }
+ return true;
+}
+// #1675: the refused-file line follows the configuration's validation state alone.
+void SettingsWindow::showFileError(){
+ const auto error=settings_.metadata()["validation"].toObject()["error"].toObject();const auto code=error["code"].toString();const bool refused=!code.isEmpty()&&code!="config_missing";
+ for(auto* line:{fileError_,destinationFileError_})if(line){line->setText(refused?"The configuration file wasn't loaded: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}
+}
+bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(control==s3_.value("region")||control==s3_.value("endpoint"));}
 void SettingsWindow::status(const Error& error){
+ // A save or test answer about Region shows nothing: the form's own check, after typing pauses,
+ // is the only thing that publishes Region feedback (updateRegionFeedback).
+ // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
+ if(error.code=="s3_settings_invalid"&&QStringList{"region","endpoint"}.contains(error.details["field"].toString())){
+  for(auto* label:{status_,destinationStatus_}){if(!label)continue;
+   // Marked with its field, so the form's own check clears it once the field is fixed or another destination shows.
+   if(label->property("setupProgress").toBool()){plain(label);label->setProperty("errorCode",error.code);label->setProperty("errorField",error.details["field"].toString());Ui::feedback(label,error.message,true);}
+   else if(!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});}
+  return;}
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
   const auto bucket=s3_["bucket"]->text();QString reason;
@@ -1301,11 +1345,13 @@ void SettingsWindow::status(const Error& error){
   else if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))reason="Enter only the bucket name, without a URL, folder path or spaces.";
   else if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)reason="Bucket names must contain 3–63 characters.";
   if(!reason.isEmpty()){e.message="Invalid S3 settings: "+reason;inlineError(s3_["bucket"],reason);}
+  // #1675: a refused Region is shown at that field.
+  else if(const auto field=e.details["field"].toString();s3_.contains(field))inlineError(s3_[field],e.message);
  }
  // People read the message; the code and path go to the tooltip, the
  // accessible description and errorCode, for a report or an agent.
  const auto detail=e?(e.code+(e.details["path"].toString().isEmpty()?QString{}:" · "+e.details["path"].toString())):QString{};
- for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("setupProgress",{});label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
  if(destinationStatus_)Ui::feedback(destinationStatus_,e.message,bool(e));
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){Ui::feedback(status_,"Changes save automatically when valid.");placeConflictBanners();return;}
  Ui::feedback(status_,e?e.message:"Done.",bool(e));
@@ -1408,7 +1454,7 @@ void SettingsWindow::refresh(bool preserveDrafts){
  // Destinations are created only by an explicit Add action. Keep the legacy
  // first-launch draft flag only for restoring an older UI checkpoint.
  initialProfile_=false;
- populate();for(auto* field:errors_.keys())inlineError(field,{});refreshDestinationList();refreshCredentialHint();
+ populate();for(auto* field:errors_.keys())inlineError(field,{});showS3SettingsProblems();refreshDestinationList();refreshCredentialHint();
 }
 void SettingsWindow::populate(){
  loading_=true;const auto profiles=draft_["profiles"].toArray();const auto actions=draft_["actions"].toObject();
@@ -1483,11 +1529,11 @@ void SettingsWindow::resetDraft(bool reloadFile){
 void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile){const auto captureProfile=captureProfile_->currentData().toString();const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());profile_->setCurrentIndex(selected);loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}captureProfile_->setCurrentIndex(captureProfile_->findData(captureProfile.isEmpty()?defaultProfile:captureProfile));if(!defaultProfile.isEmpty()){captureDefaultsEnabled_=true;captureRoutingEdited_=true;}updateCaptureInheritance();loading_=previous;}
 void SettingsWindow::loadProfile(){
  const auto shownProfile=profileId_->text();
- credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(destinationStatus_,{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;const bool http=p["provider"]==CustomUploaderPanel::provider();
+ credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(plain(destinationStatus_),{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;const bool http=p["provider"]==CustomUploaderPanel::provider();
  // The form shows this destination's request; another destination's notice does not follow it.
  uploader_->setSettings(http?s:CustomUploaderPanel::defaultSettings());if(shownProfile!=p["id"].toString())uploader_->setNotice({});
  providerType_->setCurrentIndex(providerType_->findData(p["provider"].toString()));const bool proton=p["provider"]=="proton-drive";protonPanel_->setVisible(proton);protonAccountUid_=s["accountRootUid"].toString();protonAccountEmail_.clear();protonShare_->setChecked(s["shareByDefault"].toBool(true));protonExpiration_->setValue(s["linkExpirationDays"].toInt());protonTimeout_->setValue(s["requestTimeoutMs"].toInt(120000)/1000.0);protonFolder_->clear();addProtonFolder(protonFolder_,s["folderUid"].toString(),s["folderName"].toString());
- findControl<QPushButton*>("storeCredentials")->setVisible(storage||http);findControl<QPushButton*>("testDestination")->setVisible(storage||proton||http);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];setInputText(it.value(),v.isDouble()?ByteSize::exact(v.toInteger(),connectionUnit(it.key())):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key())));}allowControl(b2LinkMode_,storage);allowControl(b2LinkDays_,storage);b2LinkMode_->setItemData(1,s3?"presigned":"authorized");b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2||http?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
+ findControl<QPushButton*>("storeCredentials")->setVisible(storage||http);findControl<QPushButton*>("testDestination")->setVisible(storage||proton||http);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];setInputText(it.value(),v.isDouble()?ByteSize::exact(v.toInteger(),connectionUnit(it.key())):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key())));}allowControl(b2LinkMode_,storage);allowControl(b2LinkDays_,storage);b2LinkMode_->setItemData(1,s3?"presigned":"authorized");b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2||http?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();showS3SettingsProblems();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
 QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){auto value=connectionValue(it.key(),inputText(it.value()));s[it.key()]=value;}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}const auto linkMode=b2LinkMode_->currentData().toString();if(s.contains("linkMode")||linkMode!="public")s["linkMode"]=linkMode;if(s.contains("linkValidityDays")||linkMode!="public"||b2LinkDays_->value()!=7)s["linkValidityDays"]=b2LinkDays_->value();s["aclMode"]=acl_->currentData().toString();s["addressing"]=addressing_->currentData().toString();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->hasAcceptableInput()?QJsonValue(protonExpiration_->value()):QJsonValue(protonExpiration_->text());s["requestTimeoutMs"]=protonTimeout_->hasAcceptableInput()?QJsonValue(qRound64(protonTimeout_->value()*1000)):QJsonValue(protonTimeout_->text());}else if(p["provider"]=="backblaze-b2"){for(const auto& key:b2SharedKeys()){auto* field=s3_.value(key);if(key.endsWith("Ms"))s[key]=ByteSize::fromDecimal(inputText(field),1000);else if(key=="publicUrlBase"&&field->text().isEmpty())s[key]=QJsonValue::Null;else s[key]=field->text();}s["linkMode"]=b2LinkMode_->currentData().toString();s["linkValidityDays"]=b2LinkDays_->value();if(s["linkMode"]=="authorized")s["publicUrlBase"]=QJsonValue::Null;}else if(p["provider"]==CustomUploaderPanel::provider()){s=uploader_->settings();}else {auto parsed=QJsonDocument::fromJson(providerJson_->toPlainText().toUtf8());if(parsed.isObject())s=parsed.object();else s={{"invalidJson",true}};}p["settings"]=s;p["credentials"]=QJsonObject{{"mode",credentialMode_->currentData().toString()},{"reference",credentialMode_->currentData().toString()=="session"?QJsonValue(QJsonValue::Null):QJsonValue(reference_->text())}};return p;}
 void SettingsWindow::storeProfile(){
  auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;
@@ -1910,6 +1956,9 @@ void SettingsWindow::restoreReorderBaseline(){
  applyProfileOrder(order);
 }
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
+// #1675: a Region saved before today's rules shows its problem when the destination opens.
+// Cloudflare R2 ignores Region (#1678), so an R2 destination never shows one.
+void SettingsWindow::showS3SettingsProblems(){updateRegionFeedback();}
 void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;if(control==root_)if(auto* hint=findChild<QLabel*>("archiveRootHint"))hint->setVisible(message.isEmpty()&&(root_->text().isEmpty()||!QDir::isAbsolutePath(root_->text())));control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){Ui::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
 bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
  return pendingEdits_.contains(path)&&(!saving_||!submittedEditSerials_.contains(path)||pendingEditSerials_.value(path)!=submittedEditSerials_.value(path));
@@ -1940,9 +1989,9 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
  auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
  for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
  if(atPath(doc,parts)==atPath(baseline,parts)){
-  pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
+  pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);if(!formOwnsFeedback(control))inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
- stageEdit(path,atPath(doc,parts),control);inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
+ stageEdit(path,atPath(doc,parts),control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
  if(updateProviderVisibility_)updateProviderVisibility_();
 }
 void SettingsWindow::updateCaptureInheritance(){
@@ -2090,11 +2139,12 @@ void SettingsWindow::save(){
   // The whole draft was accepted: nothing in the custom uploader form is refused any more.
   if(g->uploader_)g->uploader_->showProblem({},{});
   g->saving_=false;g->autosaveBlocked_=false;for(auto* button:std::as_const(g->retryAutosave_))button->hide();g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
-  for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
+  for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());if(QWidget* control=g->editControls_.take(it.key());!g->formOwnsFeedback(control))g->inlineError(control,{});}
   g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();if(!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();
   if(!g->pendingEdits_.contains(themePath))g->endAppearancePreview();
   if(!g->pendingEdits_.isEmpty())g->autosave_->start();
-  else if(!g->dirty_){Ui::feedback(plain(g->status_),{});Ui::feedback(plain(g->destinationStatus_),{});}
+  // Region and Endpoint feedback belongs to the form (updateRegionFeedback); an answer leaves it.
+  else if(!g->dirty_)for(auto* label:{g->status_,g->destinationStatus_})if(!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});
   g->refreshMetadata();g->refreshDestinationList();g->refreshCredentialHint();emit g->viewStateChanged();
  });
 }
@@ -2115,13 +2165,23 @@ void SettingsWindow::autosaveFailure(const Error& error){
 void SettingsWindow::persistNextEdit(){
  if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
  const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
- if(doc==accepted){inlineError(control,{});persistNextEdit();return;}
+ if(doc==accepted){if(!formOwnsFeedback(control))inlineError(control,{});persistNextEdit();return;}
  savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
-  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}g->inlineError(control,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}// A Region answer is shown from the form's own state by status(), never from the answer.
+  // A refused Region or Endpoint for a destination that isn't shown any more names it in the footer.
+  // The validator names the refused destination as the submitted document had it.
+  const auto refusedField=result.error.details["field"].toString();const auto refusedId=result.error.details["profileId"].toString();
+  if(QStringList{"region","endpoint"}.contains(refusedField)&&!refusedId.isEmpty()&&refusedId!=g->profileId_->text()){
+   const auto label=result.error.details["profileLabel"].toString().isEmpty()?refusedId:result.error.details["profileLabel"].toString();
+   for(auto* line:{g->status_,g->destinationStatus_}){plain(line);line->setProperty("errorCode",result.error.code);Ui::feedback(line,label+" wasn't saved: "+result.error.message,true);}
+   g->persistNextEdit();return;}
+  // Region and Endpoint inline messages are the form's own: no answer writes them.
+  QWidget* target=result.error.code=="s3_settings_invalid"&&g->s3_.contains(refusedField)?g->s3_[refusedField]:control.data();
+  if(refusedField!="region"&&!g->formOwnsFeedback(target))g->inlineError(target,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
-  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
+  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();if(!g->formOwnsFeedback(control))g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
 }
 void SettingsWindow::refreshCredentialHint(){
@@ -2337,12 +2397,14 @@ bool SettingsWindow::hasRetainedDrafts()const{
 }
 void SettingsWindow::configurationChanged(){
  if(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString())resetCredentialSecretDisplay();
- refreshMetadata();if(saving_||resetting_)return;
+ refreshMetadata();
+ showFileError();
+ if(saving_||resetting_)return;
  if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){
   // Keep a conflict message that is already shown, such as a restored destination order.
   const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict",conflictMessage(),{}});showConflictActions();emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
- auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty())status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
+ auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(error["code"].toString()=="config_missing")status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }
 QString SettingsWindow::checkState(const QJsonObject& profile)const{
  const auto record=settings_.destinationStatus()[profile["id"].toString()].toObject();
@@ -2408,7 +2470,7 @@ void SettingsWindow::activateDestinations(bool forceRefresh){
 }
 void SettingsWindow::setupFeedback(const QString& message,bool success){
  for(auto* label:{status_,destinationStatus_}){
-  plain(label);if(success)Ui::success(label,message);else Ui::feedback(label,message);
+  plain(label);if(success)Ui::success(label,message);else{Ui::feedback(label,message);label->setProperty("setupProgress",true);}
  }
 }
 QString SettingsWindow::setupBlockedReason()const{
@@ -2445,7 +2507,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   // Say what is happening; the confirmed result replaces it. Folder loading is
   // shown beside the folder, so the page status doesn't repeat it.
   static const QHash<QString,QString> progress{{"connectAccount","Connecting account…"},{"storeCredentials","Storing credentials…"},{"unlockCredentials","Unlocking saved credentials…"},{"createFolder","Creating folder…"},{"storeSharePassword","Storing link password…"}};
-  updateSetupButton();if(kind=="inspectAccount")Ui::feedback(destinationStatus_,{});else setupFeedback(kind=="testDestination"?testMessage:progress.value(kind,"Working…"));
+  updateSetupButton();if(kind=="inspectAccount")Ui::feedback(plain(destinationStatus_),{});else setupFeedback(kind=="testDestination"?testMessage:progress.value(kind,"Working…"));
   if(kind=="connectAccount"&&profileId==profileId_->text())protonAccount_->setText("Connecting to Proton…");
   emit viewStateChanged();setupTimer_->start();pollSetup();
  });
@@ -2544,7 +2606,7 @@ void SettingsWindow::pollSetup(){
      const auto revision=job["revision"].toString();
      if(conflict_||(!revision.isEmpty()&&revision!=settings_.revision())||!applyProtonAccountResult(data["profileId"].toString(),result)){Ui::feedback(plain(status_),"Account details changed while loading. Refresh the original destination to continue.",true);emit viewStateChanged();return;}
      requestedFolders_.insert(data["profileId"].toString()+"/"+result["accountRootUid"].toString());
-     if(kind=="connectAccount")setupFeedback("Account connected. Folders loaded.",true);else{Ui::success(plain(status_),"Folders loaded.");Ui::feedback(destinationStatus_,{});}emit viewStateChanged();
+     if(kind=="connectAccount")setupFeedback("Account connected. Folders loaded.",true);else{Ui::success(plain(status_),"Folders loaded.");Ui::feedback(plain(destinationStatus_),{});}emit viewStateChanged();
      if(data["profileId"]!=profileId_->text()&&destinationPage_->isVisible())activateDestinations();
      return;
     }
