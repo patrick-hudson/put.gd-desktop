@@ -68,8 +68,12 @@ download URLs are bearer secrets retained as History links; they do not serve as
 object identity and their query values never enter logs or diagnostics.
 Access keys, secret keys and session tokens are never written to configuration,
 operation journals, payload spools, the persistent log or exported diagnostics.
-Operation journals, destination-test journals and the History database can retain
-bearer download links in receipts; treat those private records as sensitive.
+Operation journals and the History database can retain bearer download links in
+receipts; treat those private records as sensitive. **Test upload and link** opens
+its expiring S3 link or authorized B2 link but writes it to the destination-test
+journal and result without its query, so they hold no signature, access key ID or
+download token (#1680). A Custom uploader test keeps the link and deletion URL the
+server returned, as History does for every upload.
 The log redacts authorization headers, session
 tokens, presigned query strings, share-link fragments and secret-shaped values when it
 writes each record, and the AWS SDK never logs above Warn (Info with debug logging),
