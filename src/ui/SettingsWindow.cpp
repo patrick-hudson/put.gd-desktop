@@ -1205,8 +1205,11 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // A Region message follows Endpoint: moving a destination to Cloudflare R2, which ignores Region,
  // clears it at once, under the field, in the footer and in the destination status. It is only
  // ever cleared here; a save reports a Region that is still wrong.
+ // A message that clears goes at once; a new one waits until typing pauses, so "us-" doesn't flash.
+ auto* settle=new QTimer(this);settle->setSingleShot(true);settle->setInterval(400);connect(settle,&QTimer::timeout,this,[this]{if(!loading_)updateRegionFeedback();});
  for(auto* field:{s3_["endpoint"],s3_["region"]}){
-  connect(field,&QLineEdit::textChanged,this,[this]{if(!loading_)updateRegionFeedback();});
+  connect(field,&QLineEdit::textChanged,this,[this,settle]{if(loading_)return;if(updateRegionFeedback(true))settle->stop();else settle->start();});
+  connect(field,&QLineEdit::editingFinished,this,[this,settle]{if(loading_)return;settle->stop();updateRegionFeedback();});
  }
  connect(credentials,&QPushButton::clicked,this,[this]{if(!admitSetup())return;resetCredentialSecretDisplay();
   // #1361: a custom uploader stores the values typed into its Secret rows, by name.
@@ -1220,11 +1223,11 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  for(auto** line:{&fileError_,&destinationFileError_}){*line=new QLabel;(*line)->setObjectName(line==&fileError_?"configFileError":"destinationConfigFileError");(*line)->setAccessibleName("Configuration file status");(*line)->setWordWrap(true);(*line)->setTextFormat(Qt::PlainText);Ui::role(*line,"error");(*line)->hide();}
  status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);Ui::role(status_,"meta");destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");Ui::role(destinationStatus_,"muted");
  // Settings' status is a footer under the scrolling page, set off by a hairline.
- QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));text->addWidget(i?destinationStatus_:status_);text->addWidget(i?destinationFileError_:fileError_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
+ QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));auto* holder=new QWidget;auto* held=new QVBoxLayout(holder);held->setContentsMargins(0,0,0,0);held->addWidget(i?destinationStatus_:status_);text->addWidget(holder);text->addWidget(i?destinationFileError_:fileError_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
  // Council 22: a conflict is a warning, not a failure: a banner with Reload from file…, not red text.
  for(int i=0;i<2;++i){auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,conflictMessage());banner->setObjectName(i?"destinationConflictBanner":"settingsConflictBanner");banner->setAction("Reload from file…");auto* reload=banner->actionButton();reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();banner->hide();reloadConflict_.insert(i,reload);conflictBanners_.insert(i,banner);feedbackRows[i]->addBanner(banner);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
  for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
- for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,conflictBanners_[i],retryAutosave_[i]});
+ for(int i=0;i<2;++i)new VisibleWithParts(feedbackRows[i],{i?destinationStatus_:status_,conflictBanners_[i],retryAutosave_[i],i?destinationFileError_:fileError_});
  auto* testSection=new FormRow;testSection->setObjectName("destinationTestSection");auto* testBox=new QVBoxLayout(testSection);testBox->setContentsMargins(space(Space::l),space(Space::s),space(Space::l),space(Space::s));testBox->setSpacing(space(Space::s));auto* testLine=new QHBoxLayout;testLine->setSpacing(space(Space::l));auto* testText=new QVBoxLayout;testText->setSpacing(space(Space::xs));testText->setAlignment(Qt::AlignVCenter);testText->addWidget(Ui::label("Connection test","body"));testText->addWidget(testScope);testLine->addLayout(testText,1);testLine->addWidget(test,0,Qt::AlignRight|Qt::AlignVCenter);testBox->addLayout(testLine);new ConnectionTestSizer(testSection,testLine,testScope,test);credentialForm->addRow(testSection);testSection->setProperty("preferenceRow",true);testSection->setProperty("preferenceRowInset",true);testSection->setProperty("preferenceNaturalHeight",true);
  connect(scrollHeight_,&QSpinBox::valueChanged,this,[this]{queueEdit(scrollHeight_);});
  autosave_=new QTimer(this);autosave_->setSingleShot(true);autosave_->setInterval(400);connect(autosave_,&QTimer::timeout,this,&SettingsWindow::save);
@@ -1306,15 +1309,17 @@ void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChange
 // #1675: Region feedback comes only from the shown destination's current Endpoint and Region,
 // checked as the provider checks them, here and nowhere else: no save answer writes or restores
 // it. It sets or clears the message under Region, in the footer and in the destination status.
-void SettingsWindow::updateRegionFeedback(){
+bool SettingsWindow::updateRegionFeedback(bool clearOnly){
  const bool s3=providerType_->currentData()=="s3";
  const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text()):QString();
+ if(clearOnly&&!problem.isEmpty())return false;
  inlineError(s3_["region"],problem);
- if(conflict_)return;
+ if(conflict_)return true;
  for(auto* label:{status_,destinationStatus_}){if(!label)continue;
   if(!problem.isEmpty()){plain(label);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",QStringLiteral("region"));label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,problem,true);}
   else if(label->property("errorField").toString()=="region"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
  }
+ return true;
 }
 void SettingsWindow::status(const Error& error){
  // A save or test answer about Region doesn't decide what the form shows (updateRegionFeedback).
@@ -2125,6 +2130,8 @@ void SettingsWindow::save(){
   if(!g->pendingEdits_.contains(themePath))g->endAppearancePreview();
   if(!g->pendingEdits_.isEmpty())g->autosave_->start();
   else if(!g->dirty_){Ui::feedback(plain(g->status_),{});Ui::feedback(plain(g->destinationStatus_),{});}
+  // A save answer doesn't decide Region feedback: it is the shown destination's own again.
+  g->updateRegionFeedback();
   g->refreshMetadata();g->refreshDestinationList();g->refreshCredentialHint();emit g->viewStateChanged();
  });
 }
@@ -2152,7 +2159,7 @@ void SettingsWindow::persistNextEdit(){
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}// A Region answer is shown from the form's own state by status(), never from the answer.
   if(result.error.details["field"].toString()!="region")g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
-  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
+  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});g->updateRegionFeedback();if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
 }
 void SettingsWindow::refreshCredentialHint(){
