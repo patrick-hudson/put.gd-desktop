@@ -158,6 +158,21 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   floating box) do not vote, and are in the image once: what is pinned at the top as the
   first screen showed it, what is pinned at the bottom as the last screen showed it, a
   side bar where the first screen showed it.
+- It paints only what it can prove is the page
+  ([#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538)). A cell is
+  written when two frames show it moved by the page's step, and only if most of its
+  block moved with it. A flat cell (white space, a banner's flat inside) proves nothing
+  either way: the colour most frames showed at that spot of the page wins. Outside the
+  part of the screen that shows the page, only the page's own background colour counts,
+  and it is written flat. A cell seen in one frame only is written where the screen shows
+  the page there: a stretch of a screen column between stuck parts where the page moved
+  in the last 8 frames, or a column with nothing stuck in it at all.
+- A pinned part that starts to move is still that part: a side column that lets go where
+  its own column ends is followed, also while it slides under a header, and drawn once.
+  A bar is held back as a whole rectangle, the plain parts beside its text included.
+- When the whole view moves (an information bar opens above the page and pushes
+  everything down, Firefox's DRM bar among them), nothing is written from those frames,
+  also while the bar's opening eases out over several frames.
 - A frame it cannot place is skipped and nothing of it is written. After two in a row it
   is lost (the bar says **Scroll back a little**). It finds a later frame again in the
   image it has built, so scrolling back brings it back.
@@ -451,13 +466,27 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
 - [#1547](https://github.com/patrick-hudson/put.gd-desktop/issues/1547): auto-scroll can lose one period on a page that repeats every step.
 - [#1554](https://github.com/patrick-hudson/put.gd-desktop/issues/1554): moving the mouse on Hyprland does not always pause auto-scroll (8 of 20 lab guest runs).
 - [#1537](https://github.com/patrick-hudson/put.gd-desktop/issues/1537): a playing video can hold a capture you scroll yourself for minutes.
-- [#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538): pinned side columns can repeat or be drawn in fragments.
 - [#1559](https://github.com/patrick-hudson/put.gd-desktop/issues/1559): without a watch surface the pointer can be put back late; X11 can report stale hand events.
 
 - **A cookie banner at the bottom under a sticky header** leaves the tracker a narrow band to
   compare. On a news article in Chrome (Plasma 6.8.2) it skipped most frames, and the banner's
   colour was drawn in strips through the image while the capture ended `done`. Read
   `framesSkipped`: a capture that skipped many frames needs a look.
+- **Pinned parts that do not line up with the tracker's 8-row blocks** can leave a row or
+  two behind. A toolbar whose edge falls two rows into a block of the page keeps that
+  block from being held back; a page row seen only there (after a flick past it) is
+  written from the toolbar's edge. A banner that slides in at the page's own speed for a
+  few frames (Wikipedia's fundraising banner in Chrome) moves like the page while it does,
+  and its border can be left in the image where it arrived.
+- **A header that shows up while the steps are over half the frame** leaves page rows
+  that only one frame showed clear, and a few of them can come from under it (nightly did
+  the same).
+- **What changes in every frame inside something that sticks** (a video advertisement in
+  a sticky rail beside the Al Jazeera article in Chrome) is neither learned as pinned nor
+  proved as the page: a few of its pixels can be left in the page beside it.
+- **Something that slides in during the first frames** (Chrome's link bubble at the bottom
+  left, from auto-scroll's visit with the pointer) can move by the page's step for a frame
+  and be taken as the page there.
 - **A blank stretch taller than the region** shows nothing that moves (fewer rows with
   texture than the tracker needs as evidence, leaving out what it has learned as pinned, the
   bar and the side margins, so a pinned header and footer do not count). Auto-scroll stops
