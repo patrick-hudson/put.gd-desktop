@@ -584,7 +584,7 @@ class NightlyTests(unittest.TestCase):
         from tools.lab import lab
         with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
                 patch.object(lab, 'state', return_value=dict(id=kwargs.pop('run_id', 'n12345678'))):
-            return nightly.resolve_live_cleanup(nightly.retained_owner(), **kwargs)
+            return nightly.resolve_live_cleanup(nightly.retained_owner(), kwargs.pop('checked', 'n12345678'), **kwargs)
 
     def test_a_confirmed_live_cleanup_record_lets_recovery_retire_the_kept_guest(self):
         from tools.lab import lab
@@ -644,6 +644,13 @@ class NightlyTests(unittest.TestCase):
             marker = Path(owner['run'])/lab.LIVE_CLEANUP_MARKER
             with self.assertRaisesRegex(nightly.NotRun, 'does not belong to this run'):
                 self.resolve(root, run_id='n87654321')
+            # The person names the run they checked; a different guest in the slot is refused.
+            with self.assertRaisesRegex(nightly.NotRun, 'not the run you checked'):
+                self.resolve(root, checked='n87654321')
+            # An orphaned recipe or lend may still be publishing.
+            with patch.object(nightly, 'guest_clients_live', return_value=True), \
+                    self.assertRaisesRegex(nightly.NotRun, 'still live'):
+                self.resolve(root)
             with self.assertRaisesRegex(nightly.NotRun, 'differs from the marker'):
                 self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/other.png'))
             self.assertTrue(marker.exists())
@@ -665,24 +672,46 @@ class NightlyTests(unittest.TestCase):
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
             pass
-        client = Mock()
-        client.exceptions.NoSuchKey = NoSuchKey
-        client.get_object.side_effect = NoSuchKey()
-        client.list_objects_v2.return_value = {'KeyCount': 0}
+        def client(listing=None, versioning=None, versions=None):
+            value = Mock()
+            value.exceptions.NoSuchKey = NoSuchKey
+            value.get_object.side_effect = NoSuchKey()
+            value.list_objects_v2.return_value = {'KeyCount': 0, 'IsTruncated': False} if listing is None else listing
+            value.get_bucket_versioning.return_value = versioning or {}
+            value.list_object_versions.return_value = versions or {'IsTruncated': False}
+            return value
         prefix = 'acceptance/tier1-live/'+'a'*32+'/'
         publication = dict(destination='s3', prefix=prefix, objectKey=prefix+'shot.png')
-        self.assertEqual(nightly.check_s3_absent(publication, client=client), dict(objectKeyAbsent=True, prefixEmpty=True))
-        client.get_object.assert_called_once_with(Bucket='put.gd', Key=prefix+'shot.png')
-        client.list_objects_v2.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1)
-        client.get_object.side_effect = None
-        client.get_object.return_value = {'Body': Mock()}
-        client.list_objects_v2.return_value = {'KeyCount': 1}
-        self.assertEqual(nightly.check_s3_absent(publication, client=client), dict(objectKeyAbsent=False, prefixEmpty=False))
+        quiet = client()
+        self.assertEqual(nightly.check_s3_absent(publication, client=quiet),
+                         dict(objectKeyAbsent=True, prefixEmpty=True, versionsGone=True))
+        quiet.get_object.assert_called_once_with(Bucket='put.gd', Key=prefix+'shot.png')
+        quiet.list_objects_v2.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1)
+        quiet.list_object_versions.assert_not_called()
+        present = client(listing={'KeyCount': 1, 'IsTruncated': False, 'Contents': [{}]})
+        present.get_object.side_effect = None
+        present.get_object.return_value = {'Body': Mock()}
+        self.assertEqual(nightly.check_s3_absent(publication, client=present),
+                         dict(objectKeyAbsent=False, prefixEmpty=False, versionsGone=True))
+        # Only an explicit, complete, empty listing counts.
+        for listing in ({}, {'KeyCount': 0, 'IsTruncated': True}, {'KeyCount': 0}):
+            self.assertFalse(nightly.check_s3_absent(publication, client=client(listing=listing))['prefixEmpty'])
+        # A versioned bucket can keep the upload behind a delete marker.
+        kept = client(versioning={'Status': 'Suspended'}, versions={'IsTruncated': False, 'Versions': [{}]})
+        self.assertFalse(nightly.check_s3_absent(publication, client=kept)['versionsGone'])
+        kept.list_object_versions.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1)
+        broken = client()
+        broken.get_bucket_versioning.side_effect = RuntimeError('secret-looking detail')
+        with self.assertRaises(nightly.NotRun) as caught:
+            nightly.check_s3_absent(publication, client=broken)
+        self.assertNotIn('secret', str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
         for bad in (dict(publication, destination='proton'), dict(publication, prefix='acceptance/'),
                     dict(publication, objectKey='other/shot.png')):
             with self.assertRaises(nightly.NotRun):
-                nightly.check_s3_absent(bad, client=client)
-        self.assertFalse(client.delete_object.called or client.put_object.called)
+                nightly.check_s3_absent(bad, client=quiet)
+        for value in (quiet, present, kept):
+            self.assertFalse(value.delete_object.called or value.put_object.called)
 
     def test_an_attempt_killed_before_its_terminal_proof_retires_only_once_recorded_unaudited(self):
         from tools.lab import lab
@@ -702,6 +731,16 @@ class NightlyTests(unittest.TestCase):
                     with self.assertRaisesRegex(nightly.NotRun, 'directory of this row'):
                         nightly.record_unaudited_attempt(owner, '../idle-1')
                 self.assertEqual(record['receiptSha256'], nightly.digest(evidence/'idle-1/receipt.json'))
+                # A terminal proof that exists but fails its checks is a refusal, never an interruption.
+                (evidence/'idle-2').mkdir()
+                (evidence/'idle-2/receipt.json').write_text('{}')
+                (evidence/'idle-2/terminal.json').write_text('{}')
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        self.assertRaisesRegex(nightly.NotRun, 'has a terminal.json'):
+                    nightly.record_unaudited_attempt(owner, 'idle-2')
+                (evidence/'idle-2/terminal.json').unlink()
+                (evidence/'idle-2/receipt.json').unlink()
+                (evidence/'idle-2').rmdir()
                 nightly.retire(run, evidence, {})
                 cleanup.assert_called_once()
             manifest = json.loads((evidence/'completion-manifest.json').read_text())

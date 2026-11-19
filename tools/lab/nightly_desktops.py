@@ -562,7 +562,7 @@ def unaudited_attempt(attempt):
         return False
     record = json.loads(private_file(path).read_text())
     if (record.get('schemaVersion') != 1 or record.get('kind') != 'unaudited-attempt'
-            or record.get('attempt') != attempt.name
+            or record.get('attempt') != attempt.name or (attempt/'terminal.json').exists()
             or record.get('receiptSha256') != digest(attempt/'receipt.json')):
         raise NotRun('guest retained: '+str(path)+' does not match the attempt receipt')
     return True
@@ -580,7 +580,18 @@ def retained_owner():
     return owner
 
 
-def resolve_live_cleanup(owner, *, publication=None, guest_only_errors=(), now=None):
+def settled_overlay(owner, checked_run):
+    """The slot's run, only when it is the run the person checked and nothing still publishes from it."""
+    run, evidence = owned_overlay(owner)
+    if run.name != checked_run:
+        raise NotRun('the retained slot holds '+run.name+', not the run you checked ('+checked_run+')')
+    # An orphaned recipe or Proton lend may still be uploading after its worker died.
+    if guest_clients_live(run):
+        raise NotRun('a lend or recipe for this run is still live; wait until it has stopped')
+    return run, evidence
+
+
+def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_errors=(), now=None):
     """Record that a person confirmed the remote object is gone, then remove the marker.
 
     The record names the run, its lab run id, the publication from the marker and the hash of every
@@ -589,7 +600,7 @@ def resolve_live_cleanup(owner, *, publication=None, guest_only_errors=(), now=N
     guest-local for those receipts and nothing more.
     """
     from tools.lab import lab
-    run, evidence = owned_overlay(owner)
+    run, evidence = settled_overlay(owner, checked_run)
     marker = run/lab.LIVE_CLEANUP_MARKER
     identity = run_identity(run)
     if marker.exists():
@@ -636,27 +647,45 @@ def check_s3_absent(publication, *, client=None):
             or not re.fullmatch(r'acceptance/tier1-live/[0-9a-f]{32}/', publication.get('prefix', ''))
             or not publication.get('objectKey', '').startswith(publication['prefix'])):
         raise NotRun('the S3 check covers only a Tier 1 live acceptance prefix')
+    # Fixed messages only: credential-file values and SDK errors never reach output.
     if client is None:
-        from tools.lab import provision_live_credentials as bridge
-        from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two
-        import boto3
-        from botocore.config import Config
-        selected = key_set_two(bridge.read_private_credentials(Path.home()/'Documents/creds.txt'))
-        keys, region = selected['credentials'], selected['settings']['region']
-        if selected['settings'].get('bucket') != 'put.gd' or selected['settings'].get('endpoint'):
-            raise NotRun('key set 2 is not the standard put.gd bucket')
-        client = boto3.Session(region_name=region).client(
-            's3', region_name=region, endpoint_url='https://s3.'+region+'.amazonaws.com',
-            aws_access_key_id=keys['accessKey'], aws_secret_access_key=keys['secretKey'],
-            aws_session_token=keys.get('sessionToken') or None,
-            config=Config(connect_timeout=10, read_timeout=20, retries={'total_max_attempts': 2, 'mode': 'standard'}))
+        try:
+            from tools.lab import provision_live_credentials as bridge
+            from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two
+            import boto3
+            from botocore.config import Config
+            selected = key_set_two(bridge.read_private_credentials(Path.home()/'Documents/creds.txt'))
+            keys, region = selected['credentials'], selected['settings'].get('region', '')
+            if (selected['settings'].get('bucket') != 'put.gd' or selected['settings'].get('endpoint')
+                    or not re.fullmatch(r'[a-z]{2}(?:-gov)?-[a-z]+-[1-9][0-9]?', str(region))):
+                raise ValueError
+            client = boto3.Session(region_name=region).client(
+                's3', region_name=region, endpoint_url='https://s3.'+region+'.amazonaws.com',
+                aws_access_key_id=keys['accessKey'], aws_secret_access_key=keys['secretKey'],
+                aws_session_token=keys.get('sessionToken') or None,
+                config=Config(connect_timeout=10, read_timeout=20, retries={'total_max_attempts': 2, 'mode': 'standard'}))
+        except Exception:
+            raise NotRun('S3 check: key set 2 or its standard put.gd bucket settings are unavailable') from None
     try:
-        client.get_object(Bucket='put.gd', Key=publication['objectKey'])['Body'].close()
-        key_absent = False
-    except client.exceptions.NoSuchKey:
-        key_absent = True
-    listed = client.list_objects_v2(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1).get('KeyCount', 0)
-    return dict(objectKeyAbsent=key_absent, prefixEmpty=listed == 0)
+        try:
+            client.get_object(Bucket='put.gd', Key=publication['objectKey'])['Body'].close()
+            key_absent = False
+        except client.exceptions.NoSuchKey:
+            key_absent = True
+        listed = client.list_objects_v2(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1)
+        # Only an explicit, complete, empty listing proves the prefix is empty.
+        prefix_empty = (listed.get('KeyCount') == 0 and listed.get('IsTruncated') is False
+                        and not listed.get('Contents'))
+        # A delete in a versioned bucket can leave the uploaded version behind a delete marker.
+        status = client.get_bucket_versioning(Bucket='put.gd').get('Status')
+        if status is None:
+            versions_gone = True
+        else:
+            versions = client.list_object_versions(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1)
+            versions_gone = versions.get('IsTruncated') is False and not versions.get('Versions')
+    except Exception:
+        raise NotRun('S3 check could not complete; keep the guest and try again') from None
+    return dict(objectKeyAbsent=key_absent, prefixEmpty=prefix_empty, versionsGone=versions_gone)
 
 
 def record_unaudited_attempt(owner, name, *, now=None):
@@ -665,19 +694,15 @@ def record_unaudited_attempt(owner, name, *, now=None):
     Retirement then archives only the audited attempts and names this one, with its record and receipt
     hashes, in the completion manifest. It never makes the attempt count as a result.
     """
-    from tools.lab.surface_driver.collect import require_terminal
     _, evidence = owned_overlay(owner)
     attempt = evidence/name
     if Path(name).name != name or name in ('.', '..') or not (attempt/'receipt.json').is_file():
         raise NotRun('attempt must be a directory of this row with a receipt.json')
-    try:
-        require_terminal(attempt)
-    except RuntimeError:
-        pass
-    else:
-        raise NotRun('attempt has a valid terminal proof; it is audited')
+    # Only a runner killed before it wrote terminal.json; a terminal proof that fails its checks stays a refusal.
+    if (attempt/'terminal.json').exists() or (attempt/'terminal.json').is_symlink():
+        raise NotRun('attempt has a terminal.json; only an attempt killed before its terminal proof can be unaudited')
     record = dict(schemaVersion=1, kind='unaudited-attempt', attempt=name, session=owner['session'],
-                  receiptSha256=digest(attempt/'receipt.json'), terminalProof=(attempt/'terminal.json').exists(),
+                  receiptSha256=digest(attempt/'receipt.json'),
                   recordedAt=now or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()))
     save(attempt/UNAUDITED_ATTEMPT, record)
     return record
@@ -1569,32 +1594,38 @@ def main():
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     operator = parser.add_argument_group('a nightly guest kept for live cleanup (docs/lab/remote-builders.md); run on its builder')
-    operator.add_argument('--resolve-live-cleanup', action='store_true', help='record that you confirmed the remote object is gone, then remove the marker')
-    operator.add_argument('--destination', help='with --resolve-live-cleanup when the marker is already gone')
-    operator.add_argument('--prefix', help='with --resolve-live-cleanup when the marker is already gone')
-    operator.add_argument('--object-key', help='with --resolve-live-cleanup when the marker is already gone')
+    operator.add_argument('--resolve-live-cleanup', metavar='RUN', help='record that you confirmed the remote object of run RUN (n<8 hex>) is gone, then remove the marker')
+    operator.add_argument('--destination', help='when the marker is already gone')
+    operator.add_argument('--prefix', help='when the marker is already gone')
+    operator.add_argument('--object-key', help='when the marker is already gone')
     operator.add_argument('--guest-only-error', action='append', default=[], metavar='ERROR', help='an exact receipt cleanup error you checked is held only in the guest')
     operator.add_argument('--check-live-cleanup', action='store_true', help='S3 only: read-only check that the marker object and its prefix are gone')
     operator.add_argument('--unaudited-attempt', action='append', default=[], metavar='NAME', help='record an attempt killed before its terminal proof as unaudited')
     args = parser.parse_args()
+    given = dict(destination=args.destination, prefix=args.prefix, objectKey=args.object_key)
+    if any(given.values()) and not all(given.values()):
+        parser.error('--destination, --prefix and --object-key go together')
     if args.check_live_cleanup:
         from tools.lab import lab
         try:
             owner = retained_owner()
             run, _ = owned_overlay(owner)
             marker = run/lab.LIVE_CLEANUP_MARKER
-            if not marker.exists():
-                raise NotRun('no live cleanup marker in '+str(run))
-            details = json.loads(private_file(marker).read_text())
-            result = check_s3_absent({k: details.get(k) for k in ('destination', 'prefix', 'objectKey')})
+            if marker.exists():
+                details = json.loads(private_file(marker).read_text())
+                publication = {k: details.get(k) for k in ('destination', 'prefix', 'objectKey')}
+                if all(given.values()) and given != publication:
+                    raise NotRun('the given publication differs from the marker in '+str(marker))
+            elif all(given.values()):
+                publication = given
+            else:
+                raise NotRun('no live cleanup marker in '+str(run)+'; give --destination, --prefix and --object-key')
+            result = check_s3_absent(publication)
         except NotRun as error:
             raise SystemExit(str(error)) from None
         print(json.dumps(result, indent=2))
         raise SystemExit(0 if all(result.values()) else 1)
     if args.resolve_live_cleanup or args.unaudited_attempt:
-        given = dict(destination=args.destination, prefix=args.prefix, objectKey=args.object_key)
-        if any(given.values()) and not all(given.values()):
-            parser.error('--destination, --prefix and --object-key go together')
         if (any(given.values()) or args.guest_only_error) and not args.resolve_live_cleanup:
             parser.error('publication and --guest-only-error need --resolve-live-cleanup')
         try:
@@ -1603,7 +1634,7 @@ def main():
                 for name in args.unaudited_attempt:
                     print(json.dumps(record_unaudited_attempt(owner, name), indent=2))
                 if args.resolve_live_cleanup:
-                    print(json.dumps(resolve_live_cleanup(owner, publication=given if all(given.values()) else None,
+                    print(json.dumps(resolve_live_cleanup(owner, args.resolve_live_cleanup, publication=given if all(given.values()) else None,
                                                           guest_only_errors=args.guest_only_error), indent=2))
         except NotRun as error:
             raise SystemExit(str(error)) from None
