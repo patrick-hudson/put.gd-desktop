@@ -203,11 +203,11 @@ place in the queue, so it can be sent before edits made between the two moves.
 When it is sent, the accepted destinations are put in that order, and any the list doesn't
 name keep their accepted order after it. The values sent are the accepted ones, so an edit
 still in flight, or one the resident refused, is never carried by the reorder. A refused
-reorder puts the list back to the last saved order, unless a later reorder is queued: that one
-stays shown and is sent. A conflict answering a reorder not saved yet also puts the list back to
-the last saved order and drops the queued reorder, so Retry saving doesn't send it: check `order`
-in `settings.get` and make the move again after Retry saving or a reload. A conflict the file
-watcher finds first leaves the reorder queued, and Retry saving sends it. The reply gives `order`, `selected` and `saving` (true
+reorder puts the list back to the order the file has (a destination added but not saved yet
+stays after its neighbour), unless a later reorder is queued: that one stays shown and is sent.
+A conflict with a reorder not saved yet does the same, whether it is a save's answer or the
+window finds the change itself, and drops the queued reorder, so Retry saving doesn't send it:
+check `order` in `settings.get` and make the move again after Retry saving or a reload. The reply gives `order`, `selected` and `saving` (true
 while the order is queued or in flight); confirm the save with `settings.get`. Errors:
 
 | Code | When |

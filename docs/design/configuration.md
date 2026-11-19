@@ -272,9 +272,11 @@ operation is applied to the latest accepted document when it is sent.
   resident refuses again unchanged, such as an edit of a destination whose saved Region today's
   rules refuse, stops with its reason while the rest of the queue goes on.
 - **Failures and conflicts.** A transport/write failure stops the queue until Retry saving is
-  pressed. A `config_conflict` keeps the queue. When the conflict comes back as a save's answer,
-  a reorder not saved yet goes back at once to the last saved order and is dropped. When the
-  file watcher finds the change first, the queued reorder stays and Retry saving sends it.
+  pressed. A `config_conflict` keeps the queue, except a reorder not saved yet: whether the
+  conflict comes back as a save's answer or the window finds it itself (snapshot or file
+  watcher), the list goes back at once to the order the file has, with an add not saved yet kept
+  after its neighbour, and the queued reorder is dropped. A refused reorder does the same unless
+  a later one is queued, and a later order that settles clears an older one's refusal.
 - **Retry saving after a conflict.** The resident reads the file again and, only if that file
   validates, the queue is applied to it. Queued values equal to what the window last had accepted
   are dropped, so a setting changed elsewhere that the window didn't touch keeps its new value.
