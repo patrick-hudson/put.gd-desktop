@@ -686,35 +686,47 @@ checkout, while no nightly worker is running there. They refuse a slot whose
 worker is still alive. Only the manual nightly trigger (`--now`) runs on the d69
 controller.
 
-An orphaned recipe or Proton lend for the run can still be uploading after its
-worker died, so make sure none is running before step 1. This must print
-nothing (the guest's own QEMU process doesn't count):
-
-```sh
-ps -u "$USER" -o pid=,args= | grep -F "lab-runs/RUN_NAME" | grep -E 'surface_driver\.run|proton_lab\.py' | grep -v grep
-```
-
-`--check-live-cleanup` and `--resolve-live-cleanup` also refuse while one is
-live. If either refuses for that reason, wait until it stops, then start again
-from step 1: a check made while it ran proves nothing.
+An upload can still finish after its worker died, either from an orphaned
+recipe or Proton lend on the builder or from put.gd inside the guest. So no
+destination check counts until `--check-live-cleanup` has run (step 2). It
+refuses while a recipe or lend for the run is live, and otherwise pauses the
+guest's VM so nothing in it can publish. `--resolve-live-cleanup` refuses
+unless the VM is still paused. If a command refuses because a recipe or lend
+is live, wait until it stops, then start again from step 1.
 
 1. **Read the marker.** `cat` the run directory's
    `live-cleanup-pending.json`. Note `destination`, `prefix` and `objectKey`.
    The slot's `retained.json` (or `owner.json`) names the run and the row's
    evidence directory. If the marker is already gone, find the three values in
    the attempt's evidence or the provider console. The prefix is the folder
-   before the file name, with its trailing `/`: `acceptance/tier1-live/<32 hex>/`
-   for S3, `putgd-tier1-<32 hex>/` for Proton. If you can't pin them down, keep the guest and ask
-   your coordinator.
-2. **Make sure the object is gone.** If it isn't, delete it in the provider's
-   own console, matching the exact key or folder from step 1. For S3 only, if
-   the kept guest's put.gd is still running and shows the row, **Delete from
-   destination** or **Retry deletion** on the row whose key matches exactly
-   works too. It may already have quit, so don't count on it. put.gd can't
-   delete a Proton file, so use the Proton web app.
-   - **S3:** run `python3 tools/lab/nightly_desktops.py --check-live-cleanup`
-     (add `--destination`, `--prefix` and `--object-key` when the marker is
-     gone). It reads key set 2 in memory and changes nothing. It makes an
+   before the file name, with its trailing `/`:
+   `acceptance/tier1-live/<32 hex>/` for S3, `putgd-tier1-<32 hex>/` for
+   Proton. If you can't pin them down, keep the guest and ask your
+   coordinator.
+2. **Pause the guest, then make sure the object is gone.** First run
+   `python3 tools/lab/nightly_desktops.py --check-live-cleanup` (add
+   `--destination`, `--prefix` and `--object-key` when the marker is gone),
+   for either provider. It must print `"guestPaused": true`. Then check the
+   destination. If the object is still there, delete it in the provider's own
+   console, matching the exact key or folder from step 1, and run the command
+   again. For S3 only, you can instead use **Delete from destination** or
+   **Retry deletion** in the kept guest's put.gd, on the row whose key matches
+   exactly, if put.gd is still running there. Resume the VM for that, then
+   run `--check-live-cleanup` again: a check counts only while the VM stays
+   paused. put.gd can't delete a Proton file, so use the Proton web app.
+
+   ```sh
+   python3 - work/lab-runs/RUN_NAME <<'EOF'
+   import sys
+   from pathlib import Path
+   from tools.lab import lab
+   with lab.QMP(Path(sys.argv[1]) / 'qmp.sock') as qmp:
+       qmp.execute('cont')
+   EOF
+   ```
+
+   - **S3:** after pausing, the same command reads key set 2 in memory and
+     changes nothing on the destination. It makes an
      authenticated GET of the exact key and lists the prefix. If the bucket
      has ever had versioning, it also lists the prefix's object versions, and
      it fails when it can't read the versioning state. `objectKeyAbsent`,
