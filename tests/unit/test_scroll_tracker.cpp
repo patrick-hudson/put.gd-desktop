@@ -690,6 +690,92 @@ void testPinnedColumns() {
              counts(r) + fmt(", %d wrong%s, %lld pixels differ beside the column (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
     }
   }
+  {
+    // The bar opens right after the page was scrolled back to its top, and
+    // the capture ends there: no rows above the page's top, nothing of the
+    // bar in the image.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
+    ss.pinned.push_back({0, V - 64, W, 64, 0x5A1E66, 0xF0F0FF, 0, 9});
+    const Scene scene(news, ss);
+    Image info(W, 24, 0xE4E4E8);
+    Rng words(89);
+    drawTextLine(info, 6, 40, 300, words, 0x303034);
+    const std::vector<int> pos{0, 90, 200, 320, 200, 90, 0, 0};
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      if (i + 1 == pos.size()) {
+        Image moved(W, V);
+        for (int y = 0; y < V; ++y) std::memcpy(&moved.px[size_t(y) * W], y < 24 ? info.row(y) : f.row(y - 24), size_t(W) * 4);
+        f = moved;
+      }
+      tracker.addFrame(f.view());
+    }
+    const TrackTotals t = tracker.finish();
+    const std::vector<uint8_t> image = canvas.image(t.top, t.bottom);
+    long long bar = 0;
+    for (size_t i = 0; i + 3 < image.size(); i += 4) {
+      uint32_t v;
+      std::memcpy(&v, &image[i], 4);
+      bar += (v & 0xFFFFFF) == 0xE4E4E8;
+    }
+    report("a bar opens at the page's top and the capture ends: no rows of it", t.bottom - t.top == 320 + V && bar == 0,
+           fmt("%lld rows (the page shows %d), %lld pixels of the bar", t.bottom - t.top, 320 + V, bar));
+  }
+  {
+    // Two side columns that stick until their column ends above the footer
+    // and let go together, with nothing across the frame: columns moving off
+    // with the page, not the whole view moving. Each once, the rest whole.
+    // A frame wide enough that the article beside them places it.
+    const int WW = 960;
+    const Image doc = columnPage(53, WW, 3600, 200, 760, F, 8, WW - 8);
+    SceneSpec ss;
+    ss.width = WW;
+    ss.height = V;
+    for (const int x : {16, 784}) {
+      PinnedPart col{x, 8, 160, 330, kBg, 0x3366CC, 0, uint64_t(57 + x)};
+      col.border = false;
+      col.stickFrom = 60;
+      col.stickTo = doc.h - F - 24;
+      ss.pinned.push_back(col);
+    }
+    const Scene scene(doc, ss);
+    Image expected = pageRows(doc, 0, doc.h, WW);
+    for (size_t i = 0; i < 2; ++i)
+      for (int y = 0; y < 330; ++y)
+        std::memcpy(&expected.px[size_t(60 + y) * WW + ss.pinned[i].x], scene.part(i).row(y), size_t(160) * 4);
+    for (const auto& [style, pos] : styles(doc.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("two side columns let go together, %s: each once, the rest whole", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+  }
+  {
+    // A rule down the page beside its text (a quotation's bar), in a column
+    // of the screen nothing moves across: plain in every frame, and the
+    // page's. Nothing is pinned: the page exact.
+    Image doc = columnPage(59, W, 3600, 200, 600, F, 8, W - 8);
+    for (int y = 0; y < doc.h; ++y)
+      for (int x = 100; x < 104; ++x) doc.at(x, y) = 0x8C96A0;
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    const Scene scene(doc, ss);
+    const Image expected = pageRows(doc, 0, doc.h, W);
+    for (const auto& [style, pos] : styles(doc.h - V)) {
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, expected, {}, 0, &firstBad);
+      report(fmt("a rule down a page with nothing pinned, %s: exact", style), r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+  }
 }
 
 // ------------------------------------------------------------------ the rest

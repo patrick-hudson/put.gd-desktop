@@ -1638,6 +1638,7 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
       stayed_[i] = 0;
       if (pinned_[i]) {
         pinned_[i] = 0;
+        picAt_[i] = 0;
         changed = true;
       }
     } else {
@@ -1791,9 +1792,6 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
       // it unless it is the page's own background so far, also where
       // something of that colour moves with the page in this pair (a dark
       // photo, an advertisement in the banner's colour).
-      bool pinnedPart = false;
-      for (int i : part) pinnedPart |= pinned_[size_t(i)] != 0;
-      (void)pinnedPart;
       if (bg < 0 || pageBackground(bg)) continue;
       const auto flatOf = [&](size_t i) {
         const int colour = flatRaw(i);
@@ -2339,12 +2337,15 @@ int ScrollTracker::findLoose(const Loose& part, const Signature& cur, int lo, in
     int compared = 0;
     const double share = looseShare(part, cur, s, kLooseShare, &compared);
     if (share < kLooseShare || compared < kLooseCells || share <= bestShare) continue;
-    // Rows of it in the frame: enough of the part to tell its place.
-    int rows = 0, last = INT_MIN;
+    // Rows of it in the frame: enough of the part to tell its place (its
+    // samples go cell by cell, so a row is counted once however many cells
+    // of it there are).
+    int rows = 0;
+    std::vector<uint8_t> seen(size_t(height_), 0);
     for (size_t k = 0; k < part.ys.size(); ++k) {
       const int y = part.ys[k] + s;
-      if (y < 0 || y >= height_ || y == last || hiddenAt(part, y, part.cs[k])) continue;
-      last = y;
+      if (y < 0 || y >= height_ || seen[size_t(y)] || hiddenAt(part, y, part.cs[k])) continue;
+      seen[size_t(y)] = 1;
       ++rows;
     }
     if (rows < opts_.minEvidenceRows) continue;
@@ -2505,8 +2506,12 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
     // Jazeera article). Nothing came loose: where they lie now they are not
     // the page in this frame, and they stay pinned (learned again where they
     // stand from now on).
+    // A bar across the frame (a header, a banner) is among the parts that
+    // moved: two side columns that let go together where their column ends
+    // move with the page as the view does, and are no view move.
+    const auto barPart = [&](int g) { return (found[size_t(g)].c1 - found[size_t(g)].c0 + 1) * 3 >= C; };
     int moved = 0, still = 0, common = INT_MIN;
-    bool same = true;
+    bool same = true, barMoved = false;
     for (int g = 0; g < groups; ++g) {
       if (!followable[size_t(g)]) continue;
       const int s = shiftOf[size_t(g)] != INT_MIN ? shiftOf[size_t(g)] : viewOnly[size_t(g)];
@@ -2515,6 +2520,7 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
         continue;
       }
       ++moved;
+      barMoved |= barPart(g);
       if (common == INT_MIN) common = s;
       same &= std::abs(s - common) <= 1;
     }
@@ -2526,6 +2532,7 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
     // pass for the page moving); what sticks to the bottom of the view stays.
     // A column that comes loose at its end moves alone: the header stays.
     int pairMoved = 0, pairStill = 0;
+    bool pairBarMoved = false;
     if (d != 0) {
       const unsigned tol = unsigned(opts_.cellTolerance);
       for (int g = 0; g < groups; ++g) {
@@ -2545,11 +2552,16 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
             }
           }
         if (n < kLooseCells) continue;
-        if (double(stay) >= kInPlace * n) ++pairStill;
-        else if (withPage >= kLooseCells && double(withPage) >= kLooseShare * double(n - stay)) ++pairMoved;
+        if (double(stay) >= kInPlace * n) {
+          ++pairStill;
+        } else if (withPage >= kLooseCells && double(withPage) >= kLooseShare * double(n - stay)) {
+          ++pairMoved;
+          pairBarMoved |= barPart(g);
+        }
       }
     }
-    bool viewMoved = (moved >= 2 && same && still == 0) || (pairMoved >= 2 && pairMoved > pairStill && still == 0);
+    bool viewMoved = (moved >= 2 && same && still == 0 && barMoved) ||
+                     (pairMoved >= 2 && pairMoved > pairStill && still == 0 && pairBarMoved);
     // The view's move goes on while the frames keep moving its way (the bar's
     // opening eases out over a few frames of a pixel or two, too little to
     // tell apart), up to kViewRunFrames frames, while most of the parts are
@@ -2668,6 +2680,7 @@ void ScrollTracker::applyExcluded() {
   for (size_t i = 0; i < excl_.size(); ++i)
     if (excl_[i]) {
       pinned_[i] = stayed_[i] = wandering_[i] = stillNow_[i] = 0;
+      if (i < picAt_.size()) picAt_[i] = 0;
     }
   closeMask();
 }
@@ -3040,8 +3053,12 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
     pending_.pop_back();
   }
   // The extent follows the frame even where a row has nothing written yet.
-  top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, fTop)) : std::max(allowLo_, fTop);
-  bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, fBottom)) : std::min(allowHi_, fBottom);
+  // Not a frame of a move of the whole view: it shows no rows of the page the
+  // image lacks (an information bar opened above the page at its top).
+  if (!viewMoved_ || !hasFrame_) {
+    top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, fTop)) : std::max(allowLo_, fTop);
+    bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, fBottom)) : std::min(allowHi_, fBottom);
+  }
   r.addedTop = int(std::max<long long>(0, top0 - top_));
   r.addedBottom = int(std::max<long long>(0, bottom_ - bot0));
   if (!hasFrame_) {
@@ -3078,6 +3095,11 @@ void ScrollTracker::flushPending(const std::vector<uint64_t>& blocked, const std
   std::vector<uint64_t> full(static_cast<size_t>(words), ~0ull), mask(static_cast<size_t>(words));
   if (C % 64) full[size_t(words - 1)] = (1ull << (C % 64)) - 1;
   std::vector<uint8_t> flatCell(size_t(P) * 4);
+  // Screen columns with nothing held back in them anywhere: what a frame
+  // shows plain there can only be the page (a rule down the page, the page's
+  // own margin), so its votes count as in the page's area.
+  std::vector<uint64_t> clearCols(full);
+  for (size_t k = 0; k < blocked.size(); ++k) clearCols[k % size_t(words)] &= ~blocked[k];
   for (const Pending& pend : pending_)
     for (size_t slot = 0; slot < pend.rows.size(); ++slot) {
       const int y = pend.rows[slot];
@@ -3131,7 +3153,7 @@ void ScrollTracker::flushPending(const std::vector<uint64_t>& blocked, const std
         const uint64_t bit = 1ull << (c & 63);
         bool take = false;
         const uint8_t v = uint8_t(std::min(255, pend.cells[slot * size_t(C) + size_t(c)] / 64));
-        const bool inArea = (page[w] & bit) != 0;
+        const bool inArea = ((page[w] | clearCols[size_t(w)]) & bit) != 0;
         // Where the screen does not show the page, only the page's own
         // background counts: another colour there is the flat inside of what
         // stays on the screen (an advertisement's red beside its artwork,
@@ -3275,10 +3297,12 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
     pageCell_ = ((pageColour_ & 0xFFu) + 2u * ((pageColour_ >> 8) & 0xFFu) + ((pageColour_ >> 16) & 0xFFu)) * 16u;
   }
   const bool young = learnedSteps_ < opts_.pinAfterSteps + 1;
-  if (first || pos <= topCopy_.pos) keepCopy(f, topCopy_, pos, first || young, 0);
+  // Nor the first or the last screen: a frame of a move of the whole view
+  // shows what stays on the screen out of place.
+  if (first || (!viewMoved_ && pos <= topCopy_.pos)) keepCopy(f, topCopy_, pos, first || young, 0);
   // Only parts that start in the lower half are drawn from the bottommost
   // frame (see finish).
-  if (first || pos >= bottomCopy_.pos) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
+  if (first || (!viewMoved_ && pos >= bottomCopy_.pos)) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
   const int frames = std::max(1, framesSincePlaced_);
   if (!first) velocity_ = double(d) / frames;
   if (!first && d != 0) lastMove_ = d;
