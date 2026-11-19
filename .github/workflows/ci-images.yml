@@ -1,10 +1,12 @@
 name: CI images
 # The prebuilt images every container job in ci.yml and package.yml runs in
 # (tools/ci/images/profiles.json, docs/release/ci.md "CI images"). CI calls this
-# first: when every tag is already in the registry it only checks them, so jobs
-# never download distro packages. A tag is missing after a change to its inputs or
-# at the start of an ISO week; this run then builds it once, and later runs reuse
-# it. The schedule builds each new week's tags before the first pull request does.
+# first. When every tag is in the registry it only checks them, so jobs never
+# download distro packages. Building an image still does, and mirrors stall, so CI
+# never waits on a weekly refresh: until this week's tag is built, its jobs run the
+# last one built from the same inputs (tools/ci/ci_images.py). CI builds a tag only
+# when a change to its inputs leaves nothing to fall back to. The daily schedule
+# builds the new week's tags, and retries the next day when a mirror stalls one.
 on:
   workflow_call:
     inputs:
@@ -12,13 +14,17 @@ on:
         description: The commit or tag whose image inputs to use
         type: string
         default: ''
+      ci:
+        description: Called by CI; build only images with nothing to fall back to
+        type: boolean
+        default: false
     outputs:
       images:
         description: JSON object, profile -> image reference
         value: ${{ jobs.plan.outputs.images }}
   schedule:
-    # Monday 00:17 UTC, on the default branch (nightly).
-    - cron: '17 0 * * 1'
+    # Daily at 00:17 UTC, on the default branch (nightly).
+    - cron: '17 0 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,7 +37,7 @@ jobs:
       packages: read
     outputs:
       images: ${{ steps.plan.outputs.images }}
-      missing: ${{ steps.plan.outputs.missing }}
+      build: ${{ inputs.ci && steps.plan.outputs.missing || steps.plan.outputs.refresh }}
       week: ${{ steps.plan.outputs.week }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,24 +48,24 @@ jobs:
         env:
           TOKEN: ${{ github.token }}
         run: printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-      - name: Name the images and find the missing ones
+      - name: Name the images and find the missing and stale ones
         id: plan
         run: python3 tools/ci/ci_images.py plan --registry "ghcr.io/$GITHUB_REPOSITORY_OWNER/putgd-ci" --check
 
   build:
     name: build (${{ matrix.profile }})
     needs: plan
-    if: needs.plan.outputs.missing != '[]'
+    if: needs.plan.outputs.build != '[]'
     runs-on: ubuntu-24.04
-    # Normally 3-10 minutes; the image build itself retries slow mirrors (#467).
-    timeout-minutes: 60
+    # Normally 3-20 minutes. A stalled mirror gets four bounded attempts and the HTTPS last resort (#467, #1668).
+    timeout-minutes: 100
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
-        profile: ${{ fromJSON(needs.plan.outputs.missing) }}
+        profile: ${{ fromJSON(needs.plan.outputs.build) }}
     # No concurrency group: a third queued run would cancel the second's pending build. Two runs that
     # miss the same tag may both build it; a build that starts after the other's push finds it and stops.
     steps:

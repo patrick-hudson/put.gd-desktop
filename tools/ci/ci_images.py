@@ -7,9 +7,14 @@
 A profile's tag is <profile>-<ISO week>-<hash>. The hash covers the base image,
 the build target and arguments, and the bytes of every input file, and the build
 context holds exactly those files, so an image can't contain anything its tag
-does not name. The week makes every image at most a week old. `plan` writes the
-`images` (profile -> image) and `missing` (the build matrix) step outputs; with
---check, an image already in the registry is not missing.
+does not name. The week makes a refreshed image at most a week old.
+
+Building an image still downloads its packages, and mirrors stall (#467), so a
+weekly refresh never holds CI up: when this week's tag is missing but one of the
+last FALLBACK_WEEKS weeks has an image with the same hash, CI runs that one and
+the tag is `stale`. Only a change to a profile's inputs leaves nothing to fall
+back to; that tag is `missing`, and CI builds it before its jobs start. `plan`
+writes the `images` (profile -> image), `missing` and `stale` step outputs.
 """
 import argparse
 import datetime
@@ -25,6 +30,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 PROFILES = ROOT / 'tools/ci/images/profiles.json'
 DOCKERFILE = 'tools/ci/images/Dockerfile'
+# How far back CI looks for an image with unchanged inputs while this week's is not built yet.
+FALLBACK_WEEKS = 4
 
 
 def load(path=PROFILES):
@@ -52,6 +59,13 @@ def inputs(config, name):
     return sorted(set(config['common']) | set(config['profiles'][name].get('inputs', ())))
 
 
+def earlier(period, weeks):
+    """The ISO week `weeks` weeks before `period` (YYYYwNN)."""
+    year, number = period.split('w')
+    monday = datetime.date.fromisocalendar(int(year), int(number), 1)
+    return week(monday - datetime.timedelta(weeks=weeks))
+
+
 def tag(config, name, period, root=ROOT):
     profile = config['profiles'][name]
     files = {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in inputs(config, name)}
@@ -71,10 +85,24 @@ def exists(image):
 
 
 def plan(registry, period, check, root=ROOT):
+    """(images, missing, stale): the image each profile's jobs run, the profiles that have no usable
+    image and must be built first, and those running an earlier week's image of the same inputs."""
     config = load(root / 'tools/ci/images/profiles.json')
-    tags = {name: f'{registry}:{tag(config, name, period, root)}' for name in config['profiles']}
-    missing = [name for name, image in tags.items() if not (check and exists(image))]
-    return tags, missing
+    images, missing, stale = {}, [], []
+    for name in config['profiles']:
+        current = f'{registry}:{tag(config, name, period, root)}'
+        images[name] = current
+        if not check or exists(current):
+            continue
+        for weeks in range(1, FALLBACK_WEEKS + 1):
+            older = f'{registry}:{tag(config, name, earlier(period, weeks), root)}'
+            if exists(older):
+                images[name] = older
+                stale.append(name)
+                break
+        else:
+            missing.append(name)
+    return images, missing, stale
 
 
 def context(config, name, directory, root=ROOT):
@@ -128,16 +156,22 @@ def main():
     args = parser.parse_args()
     registry = args.registry.lower()
     if args.command == 'plan':
-        tags, missing = plan(registry, args.week, args.check)
+        tags, missing, stale = plan(registry, args.week, args.check)
         output('images', json.dumps(tags, separators=(',', ':')))
         output('missing', json.dumps(missing, separators=(',', ':')))
+        output('stale', json.dumps(stale, separators=(',', ':')))
+        # The scheduled refresh builds the stale tags too.
+        output('refresh', json.dumps(missing + stale, separators=(',', ':')))
         output('week', args.week)
         if os.environ.get('GITHUB_STEP_SUMMARY'):
             with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
                 stream.write('| CI image | State |\n| --- | --- |\n')
                 for name, image in tags.items():
-                    stream.write(f"| `{image}` | {'built in this run' if name in missing else 'in the registry'} |\n")
-        print(json.dumps({'tags': tags, 'missing': missing}, indent=2))
+                    state = ('built in this run' if name in missing else
+                             "an earlier week's, until the scheduled refresh builds this week's" if name in stale
+                             else 'in the registry')
+                    stream.write(f'| `{image}` | {state} |\n')
+        print(json.dumps({'images': tags, 'missing': missing, 'stale': stale}, indent=2))
     else:
         print(build(args.profile, registry, args.week, args.push))
 

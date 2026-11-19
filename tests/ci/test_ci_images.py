@@ -7,6 +7,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/ci'))
@@ -63,6 +64,21 @@ class CiImages(unittest.TestCase):
             (root / 'packaging/appimage/tools.lock.json').write_text(json.dumps(lock))
             self.assertNotEqual(ci_images.tag(self.config, 'appimage', '2026w47', root), after['appimage'])
             self.assertEqual(ci_images.tag(self.config, 'pipewire', '2026w47', root), after['pipewire'])
+
+    def test_ci_runs_an_earlier_weeks_image_of_the_same_inputs_and_builds_only_new_inputs(self):
+        tags = {name: ci_images.tag(self.config, name, '2026w45', ROOT) for name in self.config['profiles']}
+        # The registry has week 45 of every profile except pipewire, whose inputs this change edits.
+        registry = {f'r:{value}' for name, value in tags.items() if name != 'pipewire'}
+        with unittest.mock.patch.object(ci_images, 'exists', lambda image: image in registry):
+            images, missing, stale = ci_images.plan('r', '2026w47', check=True)
+        self.assertEqual(missing, ['pipewire'])
+        self.assertEqual(set(stale), set(tags) - {'pipewire'})
+        self.assertEqual(images['linux-24.04'], f"r:{tags['linux-24.04']}")
+        self.assertTrue(images['pipewire'].startswith('r:pipewire-2026w47-'))
+        # Older than FALLBACK_WEEKS is not used: it is rebuilt first.
+        with unittest.mock.patch.object(ci_images, 'exists', lambda image: image in registry):
+            _, missing, _ = ci_images.plan('r', '2026w51', check=True)
+        self.assertEqual(set(missing), set(tags))
 
     def test_the_week_is_the_iso_week(self):
         self.assertEqual(ci_images.week(datetime.date(2026, 11, 19)), '2026w47')

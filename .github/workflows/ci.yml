@@ -63,6 +63,7 @@ jobs:
     uses: ./.github/workflows/ci-images.yml
     with:
       ref: ${{ inputs.release_tag || github.sha }}
+      ci: true
 
   contracts:
     runs-on: ubuntu-24.04
