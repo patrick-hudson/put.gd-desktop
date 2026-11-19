@@ -101,13 +101,17 @@ private:
   QStringList stripped; // Fields: groups refused here, saved with their accepted or default values
   QStringList order;    // Order: destination IDs in their intended order
   QHash<QString,QPointer<QWidget>> controls; // the control that made each value, for its inline message
+  // Fields: the destination wasn't accepted when this was queued, so it is added; an edit of one
+  // that is gone is dropped, and an add whose ID was taken meanwhile gets a fresh one.
+  bool adding=false;
+  QStringList probing;  // Fields: after a refusal that names no field, the groups still to send one at a time
  };
  QList<SaveOperation> saveQueue_;SaveOperation sending_;
  // Unsaved destination groups and settings, "<id>|<group>" or "|<path>", with the reason.
  QMap<QString,QString> notSaved_;
  QPointer<QWidget> typingControl_;
  void queueEdit(QWidget*,QString path={});void queueDestinationEdit(QWidget*,const QString& path);void queueWholeDestination(const QString& id,QWidget*);void queueGlobal(const QString& key,const QStringList& paths,QWidget*);void queueOrder();void queueRemoval(const QString& id);QStringList routingPaths()const;
- void enqueue(SaveOperation);void drainSaves();void operationSettled(const SaveOperation&);void saveAnswered(SaveOperation,const Result&);void saveRefused(SaveOperation,const Error&);void showUnsavedDestinations();void settleDirty();void retryAfterConflict();void queueDraftDifferences();bool answered_=false;
+ void enqueue(SaveOperation);void requeue(SaveOperation);SaveOperation merged(SaveOperation older,const SaveOperation& newer)const;void checkQueue()const;bool acceptedHas(const QString& id)const;bool waitsForDestination(const SaveOperation&,const QJsonObject& accepted)const;bool meetsPreconditions(SaveOperation&);void renameAddedDestination(const QString& from,const QString& to);void queueRouting(QWidget*);void strip(SaveOperation&,const QString& group)const;void retrySaving();QStringList removedElsewhere_;QPointer<QWidget> pasting_;bool restoredDraft_=false;void drainSaves();void operationSettled(const SaveOperation&);void saveAnswered(SaveOperation,const Result&);void saveRefused(SaveOperation,const Error&);void showUnsavedDestinations();void settleDirty();void retryAfterConflict();void queueDraftDifferences();bool answered_=false;
  QJsonObject acceptedDocument()const;QJsonObject applyOperation(QJsonObject,const SaveOperation&)const;QMap<QString,QJsonValue> sendableValues(const SaveOperation&,const QJsonObject& accepted,QJsonObject* insertion)const;QJsonValue fallbackValue(const SaveOperation&,const QJsonObject& accepted,const QString& path)const;
  QString localProblem(const QJsonObject& profile,const QStringList& group)const;bool savePending()const{return saving_||!saveQueue_.isEmpty();}bool queued(const QString& key)const;void flushTyping();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);bool updateRegionFeedback(bool clearOnly=false);void showFileError();bool formOwnsFeedback(QWidget*)const;void showS3SettingsProblems();void autosaveFailure(const Error&);
  QHash<QWidget*,QLabel*> errors_;QSet<QString> requestedFolders_;
@@ -147,7 +151,7 @@ private:
  // unsaved connection edit is untested at once; a label edit is not.
  QString checkState(const QJsonObject& profile)const;
  QString checkText(const QJsonObject& profile,const QString& passed,const QString& testFailed,const QString& uploadFailed,const QString& untested)const;
- void updateProtonAccountDisplay();void sizeProtonAccountButtons();bool applyProtonAccountResult(const QString&,const QJsonObject&);
+ void updateProtonAccountDisplay();void sizeProtonAccountButtons();bool applyProtonAccountResult(const QString&,const QJsonObject&,bool write);
  QString setupBlockedReason()const;bool admitSetup();
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void updateStoreButtons();void configurationChanged();
  // A control's own (provider) enabled state; setup in progress disables it on top.

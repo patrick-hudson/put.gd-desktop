@@ -99,9 +99,13 @@ private slots:
  void removingDestinationBeforeDebounceNeverAppliesItsEditToNextDestination(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="second-destination";second["label"]="Second destination";auto fields=second["settings"].toObject();fields["bucket"]="second-bucket";second["settings"]=fields;profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QLineEdit*>("s3Bucket")->setText("edited-first-bucket");QMetaObject::invokeMethod(window.findChild<QLineEdit*>("s3Bucket"),"editingFinished");QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();PUTGD_TRY_COMPARE(service.document()["profiles"].toArray().size(),1);QCOMPARE(service.document()["profiles"].toArray()[0].toObject(),second);
  }
- // #1704: random label, bucket and refused-bucket edits, adds, removes, moves and a toggle, with
- // each save the resident sees released at a random point. Whatever the timing, the accepted
- // document ends as the last value given to each destination, in the order shown.
+ // #1704: random label, bucket and refused-bucket edits, adds, removes, moves, route changes and a
+ // toggle, with each save the resident sees released at a random point, transport failures and
+ // conflicts answered with Retry saving, and edits made elsewhere before the Retry: a destination
+ // removed, the default route and a prefix changed, and a new destination's ID taken. Whatever the
+ // timing, one request is in flight at most, every legal move succeeds, and the accepted document
+ // ends as the last value given to each destination, in the order shown, with what changed
+ // elsewhere and wasn't touched here kept.
  void saveQueueEndsWithLastIntentPerDestination_data(){QTest::addColumn<int>("seed");const int first=qEnvironmentVariableIsSet("PUTGD_SAVE_QUEUE_SEED")?qEnvironmentVariableIntValue("PUTGD_SAVE_QUEUE_SEED"):1704;for(int seed=first;seed<first+4;++seed)QTest::newRow(qPrintable(QString::number(seed)))<<seed;}
  void saveQueueEndsWithLastIntentPerDestination(){
   QFETCH(int,seed);
@@ -111,24 +115,71 @@ private slots:
   UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
   MainWindow window(fixture.session);window.navigate("destinations");window.show();
   auto* list=window.findChild<QListWidget*>("destinationList");auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
-  auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;
-  QVERIFY(list&&label&&bucket&&notifications&&add);
-  struct Intent{QString id,label,bucket;bool refused=false;};QList<Intent> model;
-  for(const auto& value:service.document()["profiles"].toArray()){const auto p=value.toObject();model.append({p["id"].toString(),p["label"].toString(),p["settings"].toObject()["bucket"].toString()});}
-  bool notify=notifications->isChecked();int added=0;
+  auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");
+  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;
+  QVERIFY(list&&label&&bucket&&notifications&&route&&shown&&retry&&banner&&add);
+  struct Intent{QString id,label,bucket,prefix;bool refused=false;};QList<Intent> model;
+  const auto intentOf=[](const QJsonObject& p){const auto s=p["settings"].toObject();return Intent{p["id"].toString(),p["label"].toString(),s["bucket"].toString(),s["objectPrefix"].toString()};};
+  for(const auto& value:service.document()["profiles"].toArray())model.append(intentOf(value.toObject()));
+  QString routed=service.document()["captureDefaults"].toObject()["profileId"].toString();
+
+  bool notify=notifications->isChecked();int added=0,elsewhere=0;
   const auto type=[](QLineEdit* field,const QString& text){field->setText(text);QMetaObject::invokeMethod(field,"editingFinished");};
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  const auto where=[&](const QString& id){for(int i=0;i<model.size();++i)if(model[i].id==id)return i;return -1;};
+  // A rename of some destination, sent and held, so the next answer can be made to fail.
+  const auto oneInFlight=[&](int step){const int r=random.bounded(int(model.size()));list->setCurrentRow(r);model[r].label=QString("Held %1").arg(step);type(label,model[r].label);return putgd::test::waitFor([&]{return !fixture.client.held.isEmpty();},2000);};
   for(int step=0;step<80;++step){
+   QVERIFY2(fixture.client.held.size()<=1,qPrintable(QString("seed %1: %2 requests in flight").arg(seed).arg(fixture.client.held.size())));
    const int row=random.bounded(int(model.size()));list->setCurrentRow(row);
-   switch(random.bounded(8)){
+   switch(random.bounded(11)){
    case 0:model[row].label=QString("Label %1").arg(step);type(label,model[row].label);break;
    case 1:model[row].bucket=QString("bucket-%1").arg(step);model[row].refused=false;type(bucket,model[row].bucket);break;
    // Too short: the resident refuses it, naming no field, and a later valid bucket replaces it.
-   // The label given with it still saves.
-   // Both are sent before anything else replaces them.
+   // The label given with it still saves. Both are sent before anything else replaces them.
    case 2:model[row].refused=true;type(bucket,"ab");model[row].label=QString("Kept %1").arg(step);type(label,model[row].label);for(int i=0;i<8;++i){fixture.client.release();putgd::test::settle(5);}break;
-   case 3:if(model.size()<12){const auto name=QString("Added %1").arg(++added);QTimer::singleShot(0,[name]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue(name);dialog->accept();}});add->trigger();model.append({QString("added-%1").arg(added),name,{}});}break;
-   case 4:if(model.size()>1){QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();model.removeAt(row);}break;
-   case 5:case 6:{const int delta=random.bounded(2)?1:-1;QJsonObject result;if(row+delta>=0&&row+delta<model.size()&&!window.settings()->moveSelectedDestination(delta,model[row].id,result))model.move(row,row+delta);break;}
+   case 3:if(model.size()<12){const auto name=QString("Added %1").arg(++added);QTimer::singleShot(0,[name]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue(name);dialog->accept();}});add->trigger();model.append({QString("added-%1").arg(added),name,{},{}});}break;
+   // The destination the default route uses stays: its removal's fallback is the file's business.
+   case 4:if(model.size()>1&&routed!=model[row].id){QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();model.removeAt(row);}break;
+   case 5:case 6:{const int delta=random.bounded(2)?1:-1;if(row+delta<0||row+delta>=model.size())break;QJsonObject result;const auto error=window.settings()->moveSelectedDestination(delta,model[row].id,result);QVERIFY2(!error,qPrintable(QString("seed %1: %2").arg(seed).arg(error.message)));model.move(row,row+delta);break;}
+   case 7:{const int pick=random.bounded(int(model.size())+1);const auto id=pick<model.size()?model[pick].id:QString();const int index=route->findData(id);if(index>=0){route->setCurrentIndex(index);routed=id;}break;}
+   case 8:{
+    // A transport failure stops the queue; Retry saving sends it again.
+    if(!oneInFlight(step))break;
+    fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});QVERIFY(fixture.client.release());
+    QVERIFY(putgd::test::waitFor([&]{return retry->isVisible();},3000));retry->click();break;}
+   case 9:{
+    // A conflict: the file changes elsewhere while a save is held.
+    if(!oneInFlight(step))break;
+    auto doc=service.document();auto profiles=doc["profiles"].toArray();const auto ids=profileIds(doc);
+    // Removed elsewhere: an accepted destination this window isn't routing to.
+    QString gone;{QStringList candidates;for(const auto& id:ids)if(id!=routed&&where(id)>=0)candidates.append(id);if(candidates.size()>1&&ids.size()>2)gone=candidates[random.bounded(int(candidates.size()))];}
+    if(!gone.isEmpty()){for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]==gone){profiles.removeAt(i);break;}
+     auto actions=doc["actions"].toObject();for(auto it=actions.begin();it!=actions.end();++it){auto action=it.value().toObject();if(action.value("profileId")==QJsonValue(gone)){action["destination"]="local";action["profileId"]=QJsonValue::Null;it.value()=action;}}doc["actions"]=actions;
+     if(auto capture=doc.value("captureDefaults").toObject();capture.value("profileId")==QJsonValue(gone)){capture["destination"]="local";capture["profileId"]=QJsonValue::Null;doc["captureDefaults"]=capture;}
+     model.removeAt(where(gone));}
+    // A prefix changed elsewhere on a destination this window keeps.
+    // There is always this one, so the file does change.
+    {QList<int> kept;for(int i=0;i<profiles.size();++i)if(where(profiles[i].toObject()["id"].toString())>=0)kept.append(i);
+     if(!kept.isEmpty()){const int i=kept[random.bounded(int(kept.size()))];auto p=profiles[i].toObject();auto settings=p["settings"].toObject();settings["objectPrefix"]=QString("elsewhere-%1/").arg(++elsewhere);p["settings"]=settings;profiles[i]=p;model[where(p["id"].toString())].prefix=settings["objectPrefix"].toString();}
+     else{auto preferences=doc["preferences"].toObject();preferences["captureDelaySeconds"]=QList<int>{3,5,10}[++elsewhere%3];doc["preferences"]=preferences;}}
+    // The default route changed elsewhere, while this window's own route is saved: it stays.
+    {QStringList others;for(const auto& value:std::as_const(profiles))if(where(value.toObject()["id"].toString())>=0)others.append(value.toObject()["id"].toString());const auto capture=doc.value("captureDefaults").toObject();const bool mineSaved=capture.value("profileId")==(routed.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(routed));
+     if(mineSaved&&!others.isEmpty()&&random.bounded(2)){const auto to=others[random.bounded(int(others.size()))];auto changed=capture;changed["destination"]="upload";changed["profileId"]=to;doc["captureDefaults"]=changed;routed=to;}}
+    // A new destination's ID taken elsewhere before it was saved.
+    QString taken;for(const auto& intent:std::as_const(model))if(!ids.contains(intent.id)&&intent.id!=gone){taken=intent.id;break;}
+    if(!taken.isEmpty()){auto p=Settings::developmentTemplate()["profiles"].toArray().first().toObject();p["id"]=taken;p["label"]=QString("Elsewhere %1").arg(++elsewhere);auto settings=p["settings"].toObject();settings["bucket"]="elsewhere-bucket";settings["objectPrefix"]="";p["settings"]=settings;p["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/"+taken}};profiles.append(p);}
+    doc["profiles"]=profiles;{const auto saved=service.save(doc,service.revision());QVERIFY2(saved,qPrintable(saved.error.message+" "+profileIds(doc).join(",")+" "+QJsonDocument(saved.error.details).toJson(QJsonDocument::Compact)));}
+    // The saves held now meet the changed file; one that is invalid anyway is refused first.
+    QVERIFY2(putgd::test::waitFor([&]{fixture.client.release();return banner->isVisible()&&retry->isVisible();},3000),qPrintable(QString("seed %1: no conflict").arg(seed)));
+    retry->click();
+    QVERIFY(putgd::test::waitFor([&]{return !banner->isVisible();},3000));
+    // The form is the file as it is now with this window's edits on top: an ID taken elsewhere
+    // went to the other destination, and this window's one has a fresh ID.
+    if(!taken.isEmpty()){const auto now=shownIds();QString fresh;for(const auto& id:now)if(where(id)<0&&id!=taken)fresh=id;QVERIFY2(!fresh.isEmpty(),qPrintable(QString("seed %1: %2 not renamed").arg(seed).arg(taken)));model[where(taken)].id=fresh;Intent other=intentOf(profiles.last().toObject());model.append(other);if(routed==taken)routed=fresh;}
+    {const auto now=shownIds();QList<Intent> ordered;for(const auto& id:now){QVERIFY2(where(id)>=0,qPrintable(QString("seed %1: %2 shown but not expected").arg(seed).arg(id)));ordered.append(model[where(id)]);}QCOMPARE(ordered.size(),model.size());model=ordered;}
+    break;}
    default:notifications->click();notify=!notify;
    }
    if(random.bounded(4)==0)fixture.client.release();
@@ -139,7 +190,8 @@ private slots:
   PUTGD_TRY_VERIFY((fixture.client.release(),fixture.client.held.isEmpty()&&window.settings()->flushAutosave()));
   const auto profiles=service.document()["profiles"].toArray();QStringList ids;for(const auto& intent:std::as_const(model))ids.append(intent.id);
   QVERIFY2(profileIds(service.document())==ids,qPrintable(QString("seed %1: %2 != %3").arg(seed).arg(profileIds(service.document()).join(','),ids.join(','))));
-  for(int row=0;row<model.size();++row){const auto p=profiles[row].toObject();QVERIFY2(p["label"]==model[row].label&&p["settings"].toObject()["bucket"]==model[row].bucket,qPrintable(QString("seed %1, %2: %3/%4").arg(seed).arg(model[row].id,p["label"].toString(),p["settings"].toObject()["bucket"].toString())));}
+  for(int row=0;row<model.size();++row){const auto p=profiles[row].toObject();const auto s=p["settings"].toObject();QVERIFY2(p["label"]==model[row].label&&s["bucket"]==model[row].bucket&&s["objectPrefix"]==model[row].prefix,qPrintable(QString("seed %1, %2: %3/%4/%5, expected %6/%7/%8").arg(seed).arg(model[row].id,p["label"].toString(),s["bucket"].toString(),s["objectPrefix"].toString(),model[row].label,model[row].bucket,model[row].prefix)));}
+  QCOMPARE(service.document()["captureDefaults"].toObject()["profileId"],routed.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(routed));
   QCOMPARE(service.document()["preferences"].toObject()["notifications"].toBool(),notify);
  }
  // #1701: a Region that can't be saved on one destination never stops another from saving. The
@@ -214,6 +266,48 @@ private slots:
   QCOMPARE(saved(0)["settings"].toObject()["region"],savedRegion);QCOMPARE(region->text(),QString("Western North America (WNAM)"));
   auto* status=window.findChild<QLabel*>("destinationStatus");PUTGD_TRY_VERIFY(status->isVisible()&&status->property("errorField").toString()=="region");
   window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("changed-elsewhere"));
+ }
+ // #1704: after a conflict with a configuration file the resident refuses, Retry saving keeps
+ // saving stopped and the file as it is: that file's revision never lets the queued edit replace it.
+ void retryNeverOverwritesARefusedFile(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);const auto path=dir.filePath("config.json");
+  SettingsService service(path,[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed here");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  // Edited elsewhere into a file the resident refuses.
+  auto refused=service.document();auto profiles=refused["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();fields["bucket"]="x";profile["settings"]=fields;profile["label"]="Edited elsewhere";profiles[0]=profile;refused["profiles"]=profiles;
+  {QFile file(path);QVERIFY(file.open(QIODevice::WriteOnly|QIODevice::Truncate));file.write(QJsonDocument(refused).toJson());}
+  QFile read(path);QVERIFY(read.open(QIODevice::ReadOnly));const auto written=read.readAll();read.close();
+  QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");auto* fileLine=window.findChild<QLabel*>("destinationConfigFileError");QVERIFY(retry&&banner&&fileLine);
+  PUTGD_TRY_VERIFY(banner->isVisible()&&retry->isVisible());
+  retry->click();
+  PUTGD_TRY_VERIFY(fileLine->isVisible()&&fileLine->text().startsWith("The configuration file wasn't loaded"));
+  PUTGD_VERIFY_STEADY(banner->isVisible()&&fixture.client.held.isEmpty(),800);
+  QVERIFY(read.open(QIODevice::ReadOnly));QCOMPARE(read.readAll(),written);
+ }
+ // #1704: removing the destination the default route uses falls back only the routes the file still
+ // has on it when the removal is sent: a route changed elsewhere to another destination meanwhile
+ // stays after Retry saving.
+ void removalFallbackKeepsARouteChangedElsewhere(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  QCOMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("development-s3"));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  // A rename of another destination is in flight, so the removal waits behind it.
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);auto* label=window.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed alternate");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(0);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
+  // Elsewhere the default route moves to the third destination.
+  auto elsewhere=service.document();auto capture=elsewhere["captureDefaults"].toObject();capture["profileId"]="synthetic-third";elsewhere["captureDefaults"]=capture;QVERIFY(service.save(elsewhere,service.revision()));
+  QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible()&&window.findChild<QWidget*>("destinationConflictBanner")->isVisible());
+  retry->click();
+  PUTGD_TRY_VERIFY((fixture.client.release(),!profileIds(service.document()).contains("development-s3")&&service.document()["profiles"].toArray()[0].toObject()["label"]=="Renamed alternate"));
+  PUTGD_VERIFY_STEADY((fixture.client.release(),service.document()["captureDefaults"].toObject()["profileId"]=="synthetic-third"),800);
  }
  void customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints(){
   const QByteArray token="PUTGD-SYNTHETIC-GUI-TOKEN-0123456789abcdef";
