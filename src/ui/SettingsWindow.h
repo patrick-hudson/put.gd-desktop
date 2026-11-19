@@ -107,7 +107,7 @@ private:
  QPushButton* credentialStoreButton_=nullptr;
  QLabel *credentialStoreReason_=nullptr,*passwordStoreReason_=nullptr,*credentialStorageNotice_=nullptr;
  QLabel* credentialHint_=nullptr;QFormLayout* credentialForm_=nullptr;
- QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
+ QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr,*fileError_=nullptr,*destinationFileError_=nullptr;
  QToolButton* resourceLimitsToggle_=nullptr;QWidget* resourceLimits_=nullptr;QLabel* uploadReserveHint_=nullptr;void updateResourceLimits();void refreshEffectiveLimits();void updateLimitHints();QHash<QString,QLabel*> limitHints_;QJsonObject effectiveLimits_;
  void refreshUpdateStatus();void checkForUpdates(std::function<void(Error,QJsonObject)> done);
  // The Channel choice (#344): Stable or Nightly, showing this build's own

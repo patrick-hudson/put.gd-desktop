@@ -1206,8 +1206,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // clears it at once, under the field, in the footer and in the destination status. It is only
  // ever cleared here; a save reports a Region that is still wrong.
  for(auto* field:{s3_["endpoint"],s3_["region"]}){
-  connect(field,&QLineEdit::textChanged,this,[this,field]{if(!loading_&&!field->hasFocus())updateRegionFeedback();});
-  connect(field,&QLineEdit::editingFinished,this,[this]{if(!loading_)updateRegionFeedback();});
+  connect(field,&QLineEdit::textChanged,this,[this]{if(!loading_)updateRegionFeedback();});
  }
  connect(credentials,&QPushButton::clicked,this,[this]{if(!admitSetup())return;resetCredentialSecretDisplay();
   // #1361: a custom uploader stores the values typed into its Secret rows, by name.
@@ -1216,9 +1215,12 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // Each page's status line carries its recovery actions beside the message:
  // Reload from file… for a conflict, Retry saving for a refused save. Saved
  // notes stay meta type; errors take body type (the style's meta role).
+ // #1675: a configuration file the resident refused has its own line, which form feedback never
+ // writes or clears; only a successful reload or save does (configurationChanged).
+ for(auto** line:{&fileError_,&destinationFileError_}){*line=new QLabel;(*line)->setObjectName(line==&fileError_?"configFileError":"destinationConfigFileError");(*line)->setAccessibleName("Configuration file status");(*line)->setWordWrap(true);(*line)->setTextFormat(Qt::PlainText);Ui::role(*line,"error");(*line)->hide();}
  status_=new QLabel;status_->setObjectName("settingsStatus");status_->setAccessibleName("Settings status");status_->setWordWrap(true);Ui::role(status_,"meta");destinationStatus_=new QLabel;destinationStatus_->setObjectName("destinationStatus");destinationStatus_->setWordWrap(true);destinationStatus_->setAccessibleName("Destination status");Ui::role(destinationStatus_,"muted");
  // Settings' status is a footer under the scrolling page, set off by a hairline.
- QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));text->addWidget(i?destinationStatus_:status_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
+ QList<SettingsStatusRow*> feedbackRows;QList<QHBoxLayout*> statusRows;for(int i=0;i<2;++i){auto* message=new QWidget;auto* text=new QVBoxLayout(message);text->setContentsMargins(0,0,0,0);text->setSpacing(space(Space::xs));text->addWidget(i?destinationStatus_:status_);text->addWidget(i?destinationFileError_:fileError_);auto* row=new SettingsStatusRow(message,i==1);row->setObjectName(i?"destinationStatusRow":"settingsStatusRow");feedbackRows.append(row);statusRows.append(row->actions());if(i){destinationContentLayout->addWidget(row);}else layout->addWidget(row);}
  // Council 22: a conflict is a warning, not a failure: a banner with Reload from file…, not red text.
  for(int i=0;i<2;++i){auto* banner=new Ui::Banner(Ui::Banner::Tone::Warning,conflictMessage());banner->setObjectName(i?"destinationConflictBanner":"settingsConflictBanner");banner->setAction("Reload from file…");auto* reload=banner->actionButton();reload->setObjectName(i?"reloadDestinationConflict":"reloadConflict");reload->setAccessibleName("Reload settings from file");reload->setToolTip("Replace this window's settings with the configuration file as it is now. Asks first, naming the unsaved edits it discards.");reload->hide();banner->hide();reloadConflict_.insert(i,reload);conflictBanners_.insert(i,banner);feedbackRows[i]->addBanner(banner);connect(reload,&QPushButton::clicked,this,&SettingsWindow::reloadFromFile);}
  for(int i=0;i<2;++i){auto* retry=new QPushButton("Retry saving");retry->setObjectName(i?"retryDestinationAutosave":"retryAutosave");retry->hide();retryAutosave_.append(retry);statusRows[i]->addWidget(retry,0,Qt::AlignTop);connect(retry,&QPushButton::clicked,this,[this,retry]{autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();if(pendingEdits_.isEmpty()){for(const auto& group:QStringList{"archive","preferences","naming","limits","retention","actions","profiles","captureDefaults"})if((group!="profiles"||!initialProfile_)&&(group!="captureDefaults"||captureDefaultsEnabled_))queueEdit(retry,"/"+group);}save();});}
@@ -1315,11 +1317,10 @@ void SettingsWindow::updateRegionFeedback(){
  }
 }
 void SettingsWindow::status(const Error& error){
- const bool fromFile=error.details["source"].toString()=="file";
  // A save or test answer about Region doesn't decide what the form shows (updateRegionFeedback).
- if(!fromFile&&error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region"){updateRegionFeedback();return;}
+ if(error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region"){updateRegionFeedback();return;}
  auto e=error;
- if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"&&!fromFile){
+ if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
   const auto bucket=s3_["bucket"]->text();QString reason;
   if(bucket.isEmpty())reason="Enter a bucket name to finish setting up this destination.";
   else if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))reason="Enter only the bucket name, without a URL, folder path or spaces.";
@@ -1331,7 +1332,7 @@ void SettingsWindow::status(const Error& error){
  // People read the message; the code and path go to the tooltip, the
  // accessible description and errorCode, for a report or an agent.
  const auto detail=e?(e.code+(e.details["path"].toString().isEmpty()?QString{}:" · "+e.details["path"].toString())):QString{};
- for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e&&!fromFile?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
  if(destinationStatus_)Ui::feedback(destinationStatus_,e.message,bool(e));
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){Ui::feedback(status_,"Changes save automatically when valid.");placeConflictBanners();return;}
  Ui::feedback(status_,e?e.message:"Done.",bool(e));
@@ -2367,14 +2368,15 @@ bool SettingsWindow::hasRetainedDrafts()const{
 }
 void SettingsWindow::configurationChanged(){
  if(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString())resetCredentialSecretDisplay();
- refreshMetadata();if(saving_||resetting_)return;
+ refreshMetadata();
+ {const auto error=settings_.metadata()["validation"].toObject()["error"].toObject();const auto code=error["code"].toString();const bool refused=!code.isEmpty()&&code!="config_missing";
+  for(auto* line:{fileError_,destinationFileError_}){line->setText(refused?"The configuration file wasn't loaded: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}}
+ if(saving_||resetting_)return;
  if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){
   // Keep a conflict message that is already shown, such as a restored destination order.
   const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict",conflictMessage(),{}});showConflictActions();emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
- auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty()){
-  // The file on disk was refused: say so, whatever the form still shows from the last accepted file.
-  auto details=error["details"].toObject();details["source"]="file";status({error["code"].toString(),"The configuration file wasn't loaded: "+error["message"].toString(),details});}
+ auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(error["code"].toString()=="config_missing")status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }
 QString SettingsWindow::checkState(const QJsonObject& profile)const{
  const auto record=settings_.destinationStatus()[profile["id"].toString()].toObject();
