@@ -1314,14 +1314,19 @@ void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChange
 // checked as the provider checks them, here and nowhere else: no save answer writes or restores
 // it. It sets or clears the message under Region, in the footer and in the destination status.
 bool SettingsWindow::updateRegionFeedback(bool clearOnly){
+ // #1676: Endpoint feedback comes from the same check of the shown destination, never from an answer.
  const bool s3=providerType_->currentData()=="s3";
  const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text()):QString();
- if(clearOnly&&!problem.isEmpty())return false;
- inlineError(s3_["region"],problem);
+ const auto endpointProblem=s3?s3EndpointProblem(s3_["endpoint"]->text(),true):QString();
+ // The Endpoint message quotes what was typed: shown as text, never as markup.
+ if(auto* label=errors_.value(s3_["endpoint"]))label->setTextFormat(Qt::PlainText);
+ if(clearOnly){if(problem.isEmpty())inlineError(s3_["region"],{});if(endpointProblem.isEmpty())inlineError(s3_["endpoint"],{});if(!problem.isEmpty()||!endpointProblem.isEmpty())return false;}
+ inlineError(s3_["region"],problem);inlineError(s3_["endpoint"],endpointProblem);
  if(conflict_)return true;
+ const auto message=problem.isEmpty()?endpointProblem:problem;const QString field=problem.isEmpty()?"endpoint":"region";
  for(auto* label:{status_,destinationStatus_}){if(!label)continue;
-  if(!problem.isEmpty()){plain(label);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",QStringLiteral("region"));label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,problem,true);}
-  else if(label->property("errorField").toString()=="region"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
+  if(!message.isEmpty()){plain(label);label->setTextFormat(Qt::PlainText);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",field);label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,message,true);}
+  else if(QStringList{"region","endpoint"}.contains(label->property("errorField").toString())){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
  }
  return true;
 }
@@ -1332,7 +1337,7 @@ void SettingsWindow::showFileError(){
 }
 bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(control==s3_.value("region")||control==s3_.value("endpoint"));}
 void SettingsWindow::status(const Error& error){
- // A save or test answer about Region shows nothing: the form's own check, after typing pauses,
+ // A save or test answer about Region or Endpoint shows nothing: the form's own check, after typing pauses,
  // is the only thing that publishes Region feedback (updateRegionFeedback).
  // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
  if(error.code=="s3_settings_invalid"&&QStringList{"region","endpoint"}.contains(error.details["field"].toString())){
@@ -1972,7 +1977,6 @@ void SettingsWindow::showS3SettingsProblems(){
  }
  updateRegionFeedback();
  const auto endpoint=providerType_->currentData()=="s3"?s3EndpointProblem(s3_["endpoint"]->text()):QString();
- inlineError(s3_["endpoint"],endpoint);
  if(endpoint.isEmpty())return;
  // findControl: the destination page may live in the main window, outside this one.
  for(const auto* name:{"advancedSettings","customEndpoint"})if(auto* toggle=findControl<QAbstractButton*>(name);toggle&&!toggle->isChecked()){toggle->setChecked(true);toggle->setProperty("openedForProblem",true);}
@@ -2202,7 +2206,7 @@ void SettingsWindow::persistNextEdit(){
    g->persistNextEdit();return;}
   // Region and Endpoint inline messages are the form's own: no answer writes them.
   QWidget* target=result.error.code=="s3_settings_invalid"&&g->s3_.contains(refusedField)?g->s3_[refusedField]:control.data();
-  if(refusedField!="region"&&!g->formOwnsFeedback(target))g->inlineError(target,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  if(!QStringList{"region","endpoint"}.contains(refusedField)&&!g->formOwnsFeedback(target))g->inlineError(target,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
   g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();if(!g->formOwnsFeedback(control))g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });

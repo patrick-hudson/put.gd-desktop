@@ -236,7 +236,7 @@ Error settingsError(const QJsonObject& settings, bool current) {
     // An Endpoint path is refused on every host, Cloudflare R2 included: requests and links add
     // the bucket after it, so a bucket typed there is named twice (#1676).
     if (const auto problem = s3EndpointProblem(settings["endpoint"].toString()); current && !problem.isEmpty())
-        return {"s3_settings_invalid", problem, {{"field", "endpoint"}}};
+        return {"s3_settings_invalid", problem, {{"field", "endpoint"}, {"pathBytes", int(QUrl(settings["endpoint"].toString()).path(QUrl::FullyEncoded).toUtf8().size())}}};
     return {};
 }
 }

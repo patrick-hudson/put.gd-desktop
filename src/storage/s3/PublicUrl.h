@@ -26,5 +26,7 @@ QString s3RegionProblem(const QString& region);
 bool s3CloudflareR2Endpoint(const QString& endpoint);
 // What to tell someone whose Endpoint has a path, or an empty string. Requests and
 // links add the bucket after that path, so a bucket typed there is named twice (#1676).
-QString s3EndpointProblem(const QString& endpoint);
+// `quoteTyped` names the part to remove as typed, for the screen only: the message without it
+// carries no part of the path, so refused saves and errors never log one.
+QString s3EndpointProblem(const QString& endpoint, bool quoteTyped = false);
 }
