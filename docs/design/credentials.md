@@ -72,17 +72,22 @@ Operation journals and the History database can retain bearer download links in
 receipts; treat those private records as sensitive. **Test upload and link** opens
 its expiring S3 link or authorized B2 link but writes it to the destination-test
 journal and result without its query or fragment, so they hold no signature, access
-key ID or download token (#1680). The resident strips these links from every S3 and
-B2 test checkpoint it writes, whatever the worker sends and whatever provider a
-receipt names: it goes by the provider it started the test for. During journal
+key ID or download token (#1680). The resident strips these links at its storage
+test journal boundary, from every checkpoint of every storage destination test it
+writes (S3, B2 and any later storage provider), whatever the worker sends and
+whatever provider a receipt names. The Custom uploader test writes its journal on
+its own path, which this boundary doesn't touch. During journal
 recovery, under the resident lock and before any S3 or B2 destination test starts
 (History recovery is not waited for), it also rewrites the same links in journals
 written by earlier builds. That pass covers only the S3 and B2 receipt links (the
 receipt, a cleanup target, and both inside a finished result), and only in a
-journal whose own records show an S3 or B2 test: every destination saved in its
-checkpoints names that same provider, or, when none was saved, every receipt carries
-B2's file and bucket IDs. A journal whose saved destinations disagree, or with any
-receipt that looks like a Custom uploader one, is not rewritten. It is best effort: a file
+journal whose own records show an S3 or B2 test: every destination saved by the
+records that save one (an S3 upload intent and the multipart check's records) names
+that same provider, or, when none was saved, every receipt carries non-empty B2 file
+and bucket IDs. A journal whose saved destinations disagree is not rewritten, and
+neither is one with anything shaped like a Custom uploader's records: an
+`upload_intent` record, a link in the result, or a receipt with a URL, deletion URL
+or nonce. It is best effort: a file
 that is not a regular `<uuid>.json` of the journal schema, that is a symbolic
 link, too large, unreadable or unparseable, or whose records don't show which
 test it was, stays as it is, so treat older journals as sensitive too. Destination-test
