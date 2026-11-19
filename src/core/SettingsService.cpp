@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLockFile>
@@ -57,23 +58,26 @@ LoadedSettings loadValidated(const QString& path,const ProfileValidator& validat
     }
     loaded.candidate=candidate;loaded.error=error;return loaded;
 }
-// A destination's settings exactly as the file holds them keep the stored rules, so
-// fixing one destination or any other setting never needs every other one fixed first.
-ProfileValidator savedOrCurrent(const QString& path,const ProfileValidator& validator,const ProfileValidator& stored) {
-    QByteArray bytes;bool exists=false;
-    if(readConfig(path,bytes,exists)||!exists)return validator;
-    QList<QPair<QString,QJsonObject>> saved;
-    for(const auto& profile:Settings::normalized(QJsonDocument::fromJson(bytes).object())["profiles"].toArray())
-        saved.append({profile.toObject()["provider"].toString(),profile.toObject()["settings"].toObject()});
-    if(saved.isEmpty())return validator;
-    return [validator,stored,saved](const QString& provider,const QJsonObject& settings) {
-        return saved.contains(qMakePair(provider,settings))?stored(provider,settings):validator(provider,settings);
-    };
+// A destination keeps the rules it was saved under while the file holds it with the same id,
+// provider and settings, so fixing one destination or any other setting never needs every
+// other one fixed first. Any other destination, a copy under a new id included, meets
+// today's rules. `current` is the file as the revision check read it.
+Error currentRules(const QJsonObject& proposed,const QByteArray& current,const ProfileValidator& validator) {
+    QHash<QString,QJsonObject> saved;
+    for(const auto& entry:Settings::normalized(QJsonDocument::fromJson(current).object())["profiles"].toArray())
+        saved.insert(entry.toObject()["id"].toString(),entry.toObject());
+    for(const auto& entry:Settings::normalized(proposed)["profiles"].toArray()) {
+        const auto profile=entry.toObject();const auto kept=saved.value(profile["id"].toString());
+        if(!kept.isEmpty()&&kept["provider"]==profile["provider"]&&kept["settings"]==profile["settings"])continue;
+        if(auto error=validator(profile["provider"].toString(),profile["settings"].toObject()))return error;
+    }
+    return {};
 }
 Error writeCandidate(const QString& path,const ProfileValidator& validator,const ProfileValidator& stored,const CredentialValidator& credentialValidator,const QJsonObject& proposed,const QString& expectedRevision) {
     // What was sent is checked as sent, so 201 repeats of one word are refused like 201 words; only then
     // are Quick redact's saved lists written trimmed and without repeats, whoever sent them (#1618).
-    if (auto error = Settings::validate(proposed, validator&&stored?savedOrCurrent(path,validator,stored):validator, credentialValidator)) return error;
+    // The rules a saved destination met first; today's rules once the file is locked and read.
+    if (auto error = Settings::validate(proposed, stored ? stored : validator, credentialValidator)) return error;
     const auto candidate = Settings::withCleanRedactLists(proposed);
     const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
     if (bytes.size() > maximumConfigBytes) return {"config_too_large", ByteSize::labels("Configuration exceeds the 1 MiB limit."), {}};
@@ -95,6 +99,8 @@ Error writeCandidate(const QString& path,const ProfileValidator& validator,const
     const auto actualRevision = exists ? revisionOf(current) : QString{};
     if (actualRevision != expectedRevision)
         return {"config_conflict", "Configuration changed; reload or rebase before saving.", {{"observedRevision", actualRevision}}};
+    if (validator)
+        if (auto error = currentRules(proposed, current, validator)) return error;
     QSaveFile output(path);
     output.setDirectWriteFallback(false);
     if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner) ||

@@ -207,6 +207,12 @@ Error settingsError(const QJsonObject& settings, bool current) {
         settings["objectPrefix"].toString().contains(QChar(0))) return bad();
     if (settings["region"].toString().isEmpty())
         return {"s3_settings_invalid", s3RegionProblem({}), {{"field", "region"}}};
+    // Region first: on AWS, Settings writes Region into the generated endpoint host, so a
+    // Region with spaces would otherwise read as a bad endpoint. Cloudflare R2 ignores
+    // Region: its requests are signed with auto (S3Driver), so a saved location is harmless.
+    if (const auto problem = s3RegionProblem(settings["region"].toString());
+        current && !problem.isEmpty() && !s3CloudflareR2Endpoint(settings["endpoint"].toString()))
+        return {"s3_settings_invalid", problem, {{"field", "region"}}};
     const auto endpoint = QUrl(settings["endpoint"].toString());
     const auto address=classifyIpAddress(endpoint.host());
     if (!endpoint.isValid() || endpoint.host().isEmpty() || !endpoint.userInfo().isEmpty() || endpoint.hasQuery() || endpoint.hasFragment() ||
@@ -225,10 +231,6 @@ Error settingsError(const QJsonObject& settings, bool current) {
         if (!settings[field].isDouble() || value < 1 || value > 2147483647 || value != qint64(value)) return bad();
     }
     if (s3VirtualAddressing(settings) && (bucket.contains('.') || address.numeric)) return bad();
-    if (!current) return {};
-    // Cloudflare R2 ignores Region (#1678), so a dashboard location saved there is harmless.
-    if (const auto problem = s3RegionProblem(settings["region"].toString()); !problem.isEmpty() && !s3CloudflareR2Endpoint(settings["endpoint"].toString()))
-        return {"s3_settings_invalid", problem, {{"field", "region"}}};
     return {};
 }
 }

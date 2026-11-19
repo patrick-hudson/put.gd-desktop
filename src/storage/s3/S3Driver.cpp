@@ -972,7 +972,10 @@ struct NetworkS3Driver::State {
         // client configuration touches SDK endpoint, crypto and HTTP globals.
         SdkRuntime::ensureInitialized();
         Aws::S3::S3ClientConfiguration config(false, "legacy", true);
-        config.region = aws(destination.settings["region"].toString());
+        // Cloudflare R2 has no regions and signs with auto; a saved dashboard location such as
+        // "Western North America (WNAM)" would make the SDK refuse every request (#1675).
+        // Receipts and History keep the saved settings; only the region handed to the SDK changes.
+        config.region = aws(s3CloudflareR2Endpoint(destination.settings["endpoint"].toString()) ? QStringLiteral("auto") : destination.settings["region"].toString());
         config.endpointOverride = aws(destination.settings["endpoint"].toString());
         config.scheme = QUrl(destination.settings["endpoint"].toString()).scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
         config.verifySSL = true;

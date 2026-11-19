@@ -344,6 +344,9 @@ private slots:
         s["bucket"]="another-bucket";profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
         const auto refused=settings.save(changed,settings.revision());
         QCOMPARE(refused.error.code,QString("s3_settings_invalid"));QCOMPARE(refused.error.details["field"].toString(),QString("region"));
+        // A copy of that destination under a new id meets today's rules too.
+        auto copied=settings.document();auto copies=copied["profiles"].toArray();auto copy=copies[0].toObject();copy["id"]="copied-destination";copy["label"]="Copy";copies.append(copy);copied["profiles"]=copies;
+        QCOMPARE(settings.save(copied,settings.revision()).error.details["field"].toString(),QString("region"));
         s["region"]="auto";profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
         const auto fixed=settings.save(changed,settings.revision());QVERIFY2(fixed,qPrintable(fixed.error.message));
         // Cloudflare R2 signs with auto whatever Region holds (#1678): its saved dashboard location stays valid.
