@@ -78,8 +78,8 @@ characters wide, measured in the scaled font the tooltip is shown in, so a long
 tip reads as a short paragraph instead of one long line. A word longer than a
 line, such as a file name, breaks inside the word; rich text is left to Qt. Qt
 then sizes and places the tip as usual. `Ui::install` applies it when Qt shows a
-widget's tooltip, a menu action's own tooltip (in a menu with tooltips turned
-on) or a combo box row's tooltip; stored tooltip text, and accessibility text
+widget's tooltip, a menu action's tooltip that differs from its label (in a
+menu with tooltips turned on) or a combo box row's tooltip; stored tooltip text, and accessibility text
 built from it, stay unchanged. Tab bars keep Qt's own tooltips. Code that calls
 `QToolTip::showText` itself, or returns `Qt::ToolTipRole` text for any other
 view, must pass the text through `Ui::tooltipText` first. Write tooltips as
