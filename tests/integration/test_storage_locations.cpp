@@ -208,41 +208,61 @@ private slots:
    QVERIFY(!ArtifactStore(d.filePath("d/putgd/artifacts")).recover(template_.interrupted).error);
   }
  }
- // #1680: journals of earlier S3 and B2 tests lose their links' signed queries and keep
- // everything that traces the test object. Nothing else in the folder is rewritten: Custom
- // uploader journals, symbolic links, other names and other schemas stay byte for byte.
+ // #1680: a test's checkpoints are scrubbed for the provider the resident started it for, so a
+ // receipt with a missing or forged provider ID still reaches the journal without its signed query.
+ void destinationTestCheckpointsLoseSignedLinksWhateverTheyClaim() {
+  const QString link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
+  const QJsonObject unlabelled{{"directUrl",link},{"publicationId","pub-1"}};
+  const QJsonObject forged{{"destination",QJsonObject{{"providerId","custom-http"}}},{"directUrl",link},{"publicationId","pub-1"}};
+  const QJsonObject checkpoint{{"phase","finished"},{"receipt",unlabelled},{"target",forged},
+   {"result",QJsonObject{{"receipt",forged},{"cleanupProgress",QJsonObject{{"target",unlabelled}}}}}};
+  for(const auto* provider:{"s3","backblaze-b2"}){
+   const auto written=QJsonDocument(withoutSignedTestLinks(checkpoint,provider)).toJson();
+   QVERIFY2(!written.contains("X-Amz-")&&!written.contains("AKIDSYNTHETIC"),provider);QVERIFY2(written.contains("putgd-test-1.txt"),provider);
+  }
+  QCOMPARE(withoutSignedTestLinks(checkpoint,"custom-http"),checkpoint);
+ }
+ // Journals of earlier tests are rewritten only when their own records show an S3 or B2 test, and
+ // then lose every link's signed query while keeping what traces the test object. Anything else
+ // in the folder stays byte for byte: Custom uploader journals (however labelled), journals whose
+ // records don't say, symbolic links, other names and other schemas.
  void destinationTestJournalsLoseOnlySignedLinkQueries() {
   QTemporaryDir d;const auto dir=d.filePath("destination-tests");QVERIFY(QDir().mkpath(dir));
-  auto receipt=[](const QString& provider,const QString& link){return QJsonObject{{"destination",QJsonObject{{"providerId",provider}}},{"directUrl",link},
-   {"publicationId","pub-1"},{"objectReference",QJsonObject{{"key","putgd-test-1.txt"}}}};};
-  const auto s3=receipt("s3","https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123");
-  const auto b2=receipt("backblaze-b2","https://f000.example/file/b/putgd-test-1.txt?Authorization=b2tokensynthetic");
-  const auto custom=receipt("custom-http","https://up.example/i/1.png");
+  auto receipt=[](const QString& provider,const QString& link,QJsonObject reference){reference["key"]="putgd-test-1.txt";
+   QJsonObject r{{"directUrl",link},{"publicationId","pub-1"},{"objectReference",reference}};if(!provider.isEmpty())r["destination"]=QJsonObject{{"providerId",provider}};return r;};
+  const QString s3Link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
+  const auto s3=receipt("s3",s3Link,{{"versionId","v1"}});
+  const auto s3Unlabelled=receipt({},s3Link,{{"versionId","v1"}});
+  const auto b2=receipt("backblaze-b2","https://f000.example/file/b/putgd-test-1.txt?Authorization=b2tokensynthetic",{{"fileId","4_z1"},{"bucketId","b1"}});
+  const auto custom=receipt("custom-http","https://up.example/i/1.png",{{"nonce","n1"},{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}});
+  const auto customAsS3=receipt("s3",s3Link,{{"nonce","n1"},{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}});
   auto journal=[](QJsonArray checkpoints){return QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson();};
   auto write=[&](const QString& name,const QByteArray& bytes){QFile f(dir+"/"+name);QVERIFY(f.open(QIODevice::WriteOnly));f.write(bytes);};
   auto read=[&](const QString& name){QFile f(dir+"/"+name);return f.open(QIODevice::ReadOnly)?f.readAll():QByteArray();};
-  const QString s3Name="11111111-1111-1111-1111-111111111111.json",b2Name="22222222-2222-2222-2222-222222222222.json",
-                customName="33333333-3333-3333-3333-333333333333.json",linkName="44444444-4444-4444-4444-444444444444.json";
-  write(s3Name,journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}},QJsonObject{{"phase","object_intent"},{"target",s3}},
+  auto uuid=[](char c){return QString(8,c)+"-"+QString(4,c)+"-"+QString(4,c)+"-"+QString(4,c)+"-"+QString(12,c)+".json";};
+  const QJsonObject s3Intent{{"phase","synthetic_upload_intent"},{"destination",QJsonObject{{"providerId","s3"}}}};
+  write(uuid('1'),journal({s3Intent,QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}},QJsonObject{{"phase","object_intent"},{"target",s3Unlabelled}},
    QJsonObject{{"phase","finished"},{"result",QJsonObject{{"uploadStatus","uploaded"},{"receipt",s3},{"cleanupStatus","removed"},{"cleanupProgress",QJsonObject{{"target",s3}}}}}}}));
-  write(b2Name,journal({QJsonObject{{"phase","delete_intent"},{"target",b2}}}));
-  auto customReceipt=custom;customReceipt["objectReference"]=QJsonObject{{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}};
-  const auto customBytes=journal({QJsonObject{{"phase","uploaded"},{"receipt",customReceipt}}});write(customName,customBytes);
-  const auto signedBytes=journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}}});
-  write("notes.json",signedBytes);write("55555555-5555-5555-5555-555555555555.json",QJsonDocument(QJsonObject{{"checkpoints",QJsonArray{QJsonObject{{"receipt",s3}}}}}).toJson());
-  QTemporaryDir outside;QFile target(outside.filePath("elsewhere.json"));QVERIFY(target.open(QIODevice::WriteOnly));target.write(signedBytes);target.close();
-  QVERIFY(QFile::link(target.fileName(),dir+"/"+linkName));
+  write(uuid('2'),journal({QJsonObject{{"phase","delete_intent"},{"target",b2}}}));
+  QMap<QString,QByteArray> unchanged;
+  unchanged[uuid('3')]=journal({QJsonObject{{"phase","uploaded"},{"receipt",custom}}});
+  unchanged[uuid('6')]=journal({s3Intent,QJsonObject{{"phase","uploaded"},{"receipt",customAsS3}}});
+  unchanged[uuid('7')]=journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}}});
+  unchanged["notes.json"]=journal({s3Intent,QJsonObject{{"receipt",s3}}});
+  unchanged[uuid('5')]=QJsonDocument(QJsonObject{{"checkpoints",QJsonArray{s3Intent,QJsonObject{{"receipt",s3}}}}}).toJson();
+  for(auto it=unchanged.begin();it!=unchanged.end();++it)write(it.key(),it.value());
+  QTemporaryDir outside;QFile target(outside.filePath("elsewhere.json"));QVERIFY(target.open(QIODevice::WriteOnly));target.write(unchanged["notes.json"]);target.close();
+  QVERIFY(QFile::link(target.fileName(),dir+"/"+uuid('4')));
   scrubDestinationTestJournals(dir);
-  for(const auto& name:{s3Name,b2Name}){
+  for(const auto& name:{uuid('1'),uuid('2')}){
    const auto bytes=read(name);
    QVERIFY2(!bytes.contains("X-Amz-")&&!bytes.contains("AKIDSYNTHETIC")&&!bytes.contains("Authorization=")&&!bytes.contains("b2tokensynthetic"),qPrintable(name));
    QVERIFY2(bytes.contains("putgd-test-1.txt")&&bytes.contains("pub-1"),qPrintable(name));
   }
-  QVERIFY(read(s3Name).contains("\"phase\":\"finished\""));
-  QCOMPARE(read(customName),customBytes);QCOMPARE(read("notes.json"),signedBytes);
-  QVERIFY(read("55555555-5555-5555-5555-555555555555.json").contains("X-Amz-Signature"));
-  QVERIFY(QFileInfo(dir+"/"+linkName).isSymLink());
-  QFile untouched(target.fileName());QVERIFY(untouched.open(QIODevice::ReadOnly));QCOMPARE(untouched.readAll(),signedBytes);
+  QVERIFY(read(uuid('1')).contains("\"phase\":\"finished\""));
+  for(auto it=unchanged.begin();it!=unchanged.end();++it)QVERIFY2(read(it.key())==it.value(),qPrintable(it.key()));
+  QVERIFY(QFileInfo(dir+"/"+uuid('4')).isSymLink());
+  QFile untouched(target.fileName());QVERIFY(untouched.open(QIODevice::ReadOnly));QCOMPARE(untouched.readAll(),unchanged["notes.json"]);
  }
  void stagedEntryNeverReplacesTheRoot() {
   QTemporaryDir d;const auto root=d.filePath("d/putgd"),staging=StorageLocations::stagingRoot(root);

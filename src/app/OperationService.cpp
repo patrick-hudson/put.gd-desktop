@@ -185,6 +185,7 @@ void OperationService::recoverJournal() {
   RecordingService::discardStaging(root_+"/recording");
   // Earlier destination tests' journals lose their signed links before any test is admitted (#1680).
   scrubDestinationTestJournals(root_+"/destination-tests");
+  destinationTestsReady_=true;
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
   // A recovery that failed partway is retried whole: a later write below must not clear its error (#1576).
   if(e)return QJsonObject{};
