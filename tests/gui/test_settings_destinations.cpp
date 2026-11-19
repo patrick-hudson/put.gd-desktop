@@ -1,5 +1,6 @@
 #include "SettingsGuiFixture.h"
 #include <QThread>
+#include <QRandomGenerator>
 // Destination edits, credentials and routes stay with the destination they belong to.
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
@@ -97,6 +98,122 @@ private slots:
  }
  void removingDestinationBeforeDebounceNeverAppliesItsEditToNextDestination(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="second-destination";second["label"]="Second destination";auto fields=second["settings"].toObject();fields["bucket"]="second-bucket";second["settings"]=fields;profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QLineEdit*>("s3Bucket")->setText("edited-first-bucket");QMetaObject::invokeMethod(window.findChild<QLineEdit*>("s3Bucket"),"editingFinished");QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();PUTGD_TRY_COMPARE(service.document()["profiles"].toArray().size(),1);QCOMPARE(service.document()["profiles"].toArray()[0].toObject(),second);
+ }
+ // #1704: random label, bucket and refused-bucket edits, adds, removes, moves and a toggle, with
+ // each save the resident sees released at a random point. Whatever the timing, the accepted
+ // document ends as the last value given to each destination, in the order shown.
+ void saveQueueEndsWithLastIntentPerDestination_data(){QTest::addColumn<int>("seed");const int first=qEnvironmentVariableIsSet("PUTGD_SAVE_QUEUE_SEED")?qEnvironmentVariableIntValue("PUTGD_SAVE_QUEUE_SEED"):1704;for(int seed=first;seed<first+4;++seed)QTest::newRow(qPrintable(QString::number(seed)))<<seed;}
+ void saveQueueEndsWithLastIntentPerDestination(){
+  QFETCH(int,seed);
+  QRandomGenerator random{quint32(seed)};
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);
+  SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* list=window.findChild<QListWidget*>("destinationList");auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
+  auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;
+  QVERIFY(list&&label&&bucket&&notifications&&add);
+  struct Intent{QString id,label,bucket;bool refused=false;};QList<Intent> model;
+  for(const auto& value:service.document()["profiles"].toArray()){const auto p=value.toObject();model.append({p["id"].toString(),p["label"].toString(),p["settings"].toObject()["bucket"].toString()});}
+  bool notify=notifications->isChecked();int added=0;
+  const auto type=[](QLineEdit* field,const QString& text){field->setText(text);QMetaObject::invokeMethod(field,"editingFinished");};
+  for(int step=0;step<80;++step){
+   const int row=random.bounded(int(model.size()));list->setCurrentRow(row);
+   switch(random.bounded(8)){
+   case 0:model[row].label=QString("Label %1").arg(step);type(label,model[row].label);break;
+   case 1:model[row].bucket=QString("bucket-%1").arg(step);model[row].refused=false;type(bucket,model[row].bucket);break;
+   // Too short: the resident refuses it, naming no field, and a later valid bucket replaces it.
+   // The label given with it still saves.
+   // Both are sent before anything else replaces them.
+   case 2:model[row].refused=true;type(bucket,"ab");model[row].label=QString("Kept %1").arg(step);type(label,model[row].label);for(int i=0;i<8;++i){fixture.client.release();putgd::test::settle(5);}break;
+   case 3:if(model.size()<12){const auto name=QString("Added %1").arg(++added);QTimer::singleShot(0,[name]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue(name);dialog->accept();}});add->trigger();model.append({QString("added-%1").arg(added),name,{}});}break;
+   case 4:if(model.size()>1){QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();model.removeAt(row);}break;
+   case 5:case 6:{const int delta=random.bounded(2)?1:-1;QJsonObject result;if(row+delta>=0&&row+delta<model.size()&&!window.settings()->moveSelectedDestination(delta,model[row].id,result))model.move(row,row+delta);break;}
+   default:notifications->click();notify=!notify;
+   }
+   if(random.bounded(4)==0)fixture.client.release();
+   putgd::test::settle(int(random.bounded(25)));
+  }
+  // A destination still without a saved bucket gets one: nothing in the model is refused at the end.
+  for(int row=0;row<model.size();++row)if(model[row].bucket.isEmpty()||model[row].refused){list->setCurrentRow(row);model[row].bucket=QString("final-%1").arg(row);type(bucket,model[row].bucket);}
+  PUTGD_TRY_VERIFY((fixture.client.release(),fixture.client.held.isEmpty()&&window.settings()->flushAutosave()));
+  const auto profiles=service.document()["profiles"].toArray();QStringList ids;for(const auto& intent:std::as_const(model))ids.append(intent.id);
+  QVERIFY2(profileIds(service.document())==ids,qPrintable(QString("seed %1: %2 != %3").arg(seed).arg(profileIds(service.document()).join(','),ids.join(','))));
+  for(int row=0;row<model.size();++row){const auto p=profiles[row].toObject();QVERIFY2(p["label"]==model[row].label&&p["settings"].toObject()["bucket"]==model[row].bucket,qPrintable(QString("seed %1, %2: %3/%4").arg(seed).arg(model[row].id,p["label"].toString(),p["settings"].toObject()["bucket"].toString())));}
+  QCOMPARE(service.document()["preferences"].toObject()["notifications"].toBool(),notify);
+ }
+ // #1701: a Region that can't be saved on one destination never stops another from saving. The
+ // new destination saves, the first keeps its accepted Region, and the footer names the first.
+ void unsavableRegionNeverBlocksAnotherDestination(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  const auto first=service.document()["profiles"].toArray()[0].toObject();
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* region=window.findChild<QLineEdit*>("s3Region");QVERIFY(region);region->setText("Western North America (WNAM)");QMetaObject::invokeMethod(region,"editingFinished");
+  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Second");dialog->accept();}});add->trigger();
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("second-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
+  const auto profiles=[&]{return service.document()["profiles"].toArray();};
+  PUTGD_TRY_VERIFY(profiles().size()==2&&profiles()[1].toObject()["settings"].toObject()["bucket"]=="second-bucket");
+  QCOMPARE(profiles()[0].toObject()["settings"].toObject()["region"],first["settings"].toObject()["region"]);
+  auto* footer=window.findChild<QLabel*>("settingsStatus");QVERIFY(footer);
+  PUTGD_TRY_VERIFY2(footer->text().startsWith(first["label"].toString()+" wasn't saved:"),qPrintable(footer->text()));
+ }
+ // #1704: a reply that arrives while another field is being typed in changes nothing there: its
+ // text, its cursor and its message stay as they are.
+ void replyWhileTypingLeavesTheField(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();window.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&window));
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");auto* region=window.findChild<QLineEdit*>("s3Region");auto* message=window.findChild<QLabel*>("s3RegionChoicesError");QVERIFY(bucket&&region&&message);
+  // Typed Bucket is sent once typing pauses; the resident hasn't answered yet.
+  bucket->setFocus();bucket->selectAll();QTest::keyClicks(bucket,"typed-bucket");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  region->setFocus();region->selectAll();QTest::keyClicks(region,"Western North America (WNAM)");
+  PUTGD_TRY_VERIFY(message->isVisible()&&!message->text().isEmpty());
+  region->setCursorPosition(7);const auto text=region->text(),shown=message->text();
+  QVERIFY(fixture.client.release());
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["bucket"].toString(),QString("typed-bucket"));
+  PUTGD_VERIFY_STEADY(region->text()==text&&region->cursorPosition()==7&&message->isVisible()&&message->text()==shown&&bucket->text()=="typed-bucket",800);
+ }
+ // #1704: an edit made while a connection test runs waits for it, then saves when it ends.
+ void editDuringConnectionTestSavesWhenItEnds(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  std::function<void(Error)> finish;UiSessionFixture fixture(service,secrets,[&](const QString&,const QJsonObject&,auto reply){finish=std::move(reply);});
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QPushButton*>("testDestination")->click();PUTGD_TRY_VERIFY(bool(finish));
+  auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");QVERIFY(notifications);
+  const auto saved=[&]{return service.document()["preferences"].toObject()["notifications"].toBool();};const bool before=saved();
+  notifications->click();
+  PUTGD_VERIFY_STEADY(saved()==before,800);
+  finish({});
+  PUTGD_TRY_COMPARE(saved(),!before);
+ }
+ // #1704: a save refused because the file changed elsewhere stops the queue and keeps it. Retry
+ // saving applies the kept edit to the file as it is now: the other change stays, and the form
+ // shows it.
+ void conflictKeepsTheQueueForRetry(){
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  // A Region that can't be saved stays as typed through all of it.
+  auto* region=window.findChild<QLineEdit*>("s3Region");const auto savedRegion=service.document()["profiles"].toArray()[0].toObject()["settings"].toObject().value("region");
+  region->setText("Western North America (WNAM)");QMetaObject::invokeMethod(region,"editingFinished");
+  const auto original=service.document()["profiles"].toArray()[0].toObject().value("label");
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed first");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  auto elsewhere=service.document();auto profiles=elsewhere["profiles"].toArray();auto second=profiles[1].toObject();auto fields=second["settings"].toObject();fields["bucket"]="changed-elsewhere";second["settings"]=fields;profiles[1]=second;elsewhere["profiles"]=profiles;QVERIFY(service.save(elsewhere,service.revision()));
+  QVERIFY(fixture.client.release());
+  auto* banner=window.findChild<QWidget*>("destinationConflictBanner");auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");QVERIFY(banner&&retry);
+  PUTGD_TRY_VERIFY(banner->isVisible()&&retry->isVisible());
+  const auto saved=[&](int row){return service.document()["profiles"].toArray()[row].toObject();};
+  QCOMPARE(saved(0)["label"],original);
+  retry->click();
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));QVERIFY(fixture.client.release());
+  PUTGD_TRY_VERIFY(saved(0)["label"]=="Renamed first"&&saved(1)["settings"].toObject()["bucket"]=="changed-elsewhere");
+  PUTGD_TRY_VERIFY(!banner->isVisible());
+  QCOMPARE(saved(0)["settings"].toObject()["region"],savedRegion);QCOMPARE(region->text(),QString("Western North America (WNAM)"));
+  auto* status=window.findChild<QLabel*>("destinationStatus");PUTGD_TRY_VERIFY(status->isVisible()&&status->property("errorField").toString()=="region");
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("changed-elsewhere"));
  }
  void customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints(){
   const QByteArray token="PUTGD-SYNTHETIC-GUI-TOKEN-0123456789abcdef";

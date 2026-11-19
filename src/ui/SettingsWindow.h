@@ -87,10 +87,29 @@ private:
  QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_,captureSummary_;QHash<QString,QCheckBox*> captureOverride_;
  // The no-output notice under Destination, with Keep a local copy and Choose/Add a destination.
  QWidget* captureOutputBlock_=nullptr;QPushButton* chooseOutput_=nullptr;
- bool editChangedSinceSubmission(const QString&)const;
- void stageEdit(const QString&,const QJsonValue&,QWidget*);
- void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);bool updateRegionFeedback(bool clearOnly=false);void showFileError();bool formOwnsFeedback(QWidget*)const;void showS3SettingsProblems();void autosaveFailure(const Error&);
- QMap<QString,QJsonValue> pendingEdits_;QHash<QString,quint64> pendingEditSerials_,submittedEditSerials_;quint64 editSerial_=0;QHash<QString,QPointer<QWidget>> editControls_;
+ // #1704: one queue of save operations, one request in flight. Each operation is applied to the
+ // latest accepted document when it is sent, so an edit never carries another edit's stale copy
+ // and a destination that can't be saved never blocks another one.
+ struct SaveOperation {
+  enum class Kind{Fields,Remove,Order,Global};
+  Kind kind=Kind::Global;
+  QString key,id; // "destination:<id>", "remove:<id>", "order" or the global key; the destination's ID
+  // Fields: paths inside the destination ("label", "settings/region"). Remove and Global: document
+  // paths ("/preferences/notifications"). An undefined value removes the key.
+  QMap<QString,QJsonValue> values;
+  QJsonObject profile; // Fields: the destination as the draft has it, inserted when it isn't accepted yet
+  QStringList stripped; // Fields: groups refused here, saved with their accepted or default values
+  QStringList order;    // Order: destination IDs in their intended order
+  QHash<QString,QPointer<QWidget>> controls; // the control that made each value, for its inline message
+ };
+ QList<SaveOperation> saveQueue_;SaveOperation sending_;
+ // Unsaved destination groups and settings, "<id>|<group>" or "|<path>", with the reason.
+ QMap<QString,QString> notSaved_;
+ QPointer<QWidget> typingControl_;
+ void queueEdit(QWidget*,QString path={});void queueDestinationEdit(QWidget*,const QString& path);void queueWholeDestination(const QString& id,QWidget*);void queueGlobal(const QString& key,const QStringList& paths,QWidget*);void queueOrder();void queueRemoval(const QString& id);QStringList routingPaths()const;
+ void enqueue(SaveOperation);void drainSaves();void operationSettled(const SaveOperation&);void saveAnswered(SaveOperation,const Result&);void saveRefused(SaveOperation,const Error&);void showUnsavedDestinations();void settleDirty();void retryAfterConflict();void queueDraftDifferences();bool answered_=false;
+ QJsonObject acceptedDocument()const;QJsonObject applyOperation(QJsonObject,const SaveOperation&)const;QMap<QString,QJsonValue> sendableValues(const SaveOperation&,const QJsonObject& accepted,QJsonObject* insertion)const;QJsonValue fallbackValue(const SaveOperation&,const QJsonObject& accepted,const QString& path)const;
+ QString localProblem(const QJsonObject& profile,const QStringList& group)const;bool savePending()const{return saving_||!saveQueue_.isEmpty();}bool queued(const QString& key)const;void flushTyping();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);bool updateRegionFeedback(bool clearOnly=false);void showFileError();bool formOwnsFeedback(QWidget*)const;void showS3SettingsProblems();void autosaveFailure(const Error&);
  QHash<QWidget*,QLabel*> errors_;QSet<QString> requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
  // Reload from file…, beside the conflict on Settings and on Destinations, and
@@ -102,7 +121,7 @@ private:
  QJsonObject baseDocument_;
  // Sidebars as wide as their labels need, between the baseline and the cap.
  void fitRails();QWidget *settingsRail_=nullptr,*destinationRail_=nullptr;QListWidget* settingsNavigation_=nullptr;QPushButton* addDestination_=nullptr;
- QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
+ QTimer* typingPause_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
  QPushButton* credentialStoreButton_=nullptr;
  QLabel *credentialStoreReason_=nullptr,*passwordStoreReason_=nullptr,*credentialStorageNotice_=nullptr;
@@ -136,7 +155,7 @@ private:
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void endAppearancePreview();
- void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
  QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
  QStringList reorderBaseline_;QAction *moveUp_=nullptr,*moveDown_=nullptr;
@@ -157,7 +176,7 @@ private:
  QJsonArray profileEditors_;int setupAccepting_=0;
  QString baseRevision_;
  QString metadataText_; // Canonical metadata; display-only wrap characters never enter diagnostics copies.
- QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
+ QJsonObject draft_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
  QLabel *status_=nullptr,*metadata_=nullptr;QWidget* capabilities_=nullptr;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
