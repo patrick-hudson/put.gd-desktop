@@ -126,13 +126,13 @@ env:
     }
     # putgd_apt_install [OPTION|PACKAGE]...: apt-get update and install with the
     # caller's apt=() options, in three attempts whose update and download take
-    # at most 6 minutes each. Only those are limited: the install of what was
+    # at most 8 minutes each. Only those are limited: the install of what was
     # downloaded runs to the end, so the limit never stops dpkg halfway.
     # Downloads go to their own directory: Docker images delete apt's default
     # archives after every update, which would discard a stopped attempt's
     # progress. An attempt that fetched under 128 MiB demotes its first mirror.
     putgd_apt_install() {
-      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-360} deadline left updated= before fetched
+      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-480} deadline left updated= before fetched
       local archives=${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}
       mkdir -p "$archives/partial"
       for attempt in 1 2 3; do
