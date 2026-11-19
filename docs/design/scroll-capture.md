@@ -182,9 +182,9 @@ up or down, and composes the page into a canvas the helper owns. In brief:
 - When it finds that the whole view moved (an information bar opens above the page and
   pushes everything down, Firefox's DRM bar among them: two pinned parts or more moved
   together, one of them a bar across two thirds of the frame or more), nothing is painted
-  from that frame and it never replaces the first or last screen kept for what is pinned.
-  It adds to the image only the page's rows it uncovered at the bottom (a bar above the
-  page closing), which are written like any frame's. A move
+  from that frame but the page's rows it uncovered below the image (a bar above the page
+  closing), which are written like any frame's, and it never replaces the first or last
+  screen kept for what is pinned. A move
   against the way the page was scrolling is carried on to the next placed frames that move
   the same way, up to 8 after each frame it finds, while fewer than half of the pinned
   parts it can follow are found back in place (the bar's opening eases out).
