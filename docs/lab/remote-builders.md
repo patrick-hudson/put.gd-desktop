@@ -681,36 +681,49 @@ reference that can delete the object. The slot stays in
 stops at `guest retained: live remote cleanup unresolved` until a person
 resolves it. The guest stays kept until you finish these steps.
 
-Run every command on the builder that holds the slot, from its nightly checkout,
-while no nightly worker is running there. The commands refuse a slot whose
-worker is still alive.
+Run the commands below on the builder that holds the slot, from its nightly
+checkout, while no nightly worker is running there. They refuse a slot whose
+worker is still alive. Only the manual nightly trigger (`--now`) runs on the d69
+controller.
 
 1. **Read the marker.** `cat` the run directory's
    `live-cleanup-pending.json`. Note `destination`, `prefix` and `objectKey`.
    The slot's `retained.json` (or `owner.json`) names the run and the row's
-   evidence directory.
-2. **Make sure the object is gone.** If it isn't, delete it first: use the
-   kept guest's History row (**Delete from destination**) or the provider's own
-   console.
-   - **S3:** run `python3 tools/lab/nightly_desktops.py --check-live-cleanup`.
-     It reads key set 2 in memory, makes an authenticated GET of the exact
-     object key and lists the prefix, and changes nothing. Both
-     `objectKeyAbsent` and `prefixEmpty` must be `true` (exit 0). Also check
-     that `https://put.gd/<objectKey>` no longer serves the file.
+   evidence directory. If the marker is already gone, find the three values in
+   the attempt's evidence or the provider console. The prefix is the folder
+   before the file name. If you can't pin them down, keep the guest and ask
+   your coordinator.
+2. **Make sure the object is gone.** If it isn't, delete it in the provider's
+   own console, matching the exact key or folder from step 1. The kept guest's
+   put.gd may already have quit, so don't count on its History row. If it is
+   still running and shows the row, **Delete from destination** or **Retry
+   deletion** works too, but only on the row whose key matches exactly.
+   - **S3:** run `python3 tools/lab/nightly_desktops.py --check-live-cleanup`
+     (add `--destination`, `--prefix` and `--object-key` when the marker is
+     gone). It reads key set 2 in memory and changes nothing. It makes an
+     authenticated GET of the exact key and lists the prefix. If the bucket
+     has ever had versioning, it also lists the prefix's object versions, and
+     it fails when it can't read the versioning state. `objectKeyAbsent`,
+     `prefixEmpty` and `versionsGone` must all be `true` (exit 0). This check
+     decides. `https://put.gd/<objectKey>` can keep serving a cached copy for
+     a while after the object is deleted, so a response there doesn't keep the
+     guest.
    - **Proton:** sign in to the put.gd Proton test account at
      `drive.proton.me`. The cell's folder is the prefix without its trailing
-     slash (`putgd-tier1-<32 hex>`) in **My files**. It must not be there, and
-     **Shared** (shared by me) must have no link for it or for anything in it.
-     If you delete it in the web app, empty it from **Trash** too.
+     slash (`putgd-tier1-<32 hex>`). Check all three places every time:
+     **My files** must not have it, **Shared** (shared by me) must have no link
+     for it or anything in it, and **Trash** must not hold it. Revoke any link
+     that is left, and permanently delete only that folder or its files.
 3. **Read the row's receipts.** For each `*/receipt.json` in the evidence
    directory, read `environment.cleanup_errors` and
    `environment.guest_local_cleanup`. Recovery retires the guest only when
-   every cleanup error is guest-local. A failed live cleanup often also leaves
-   `private session root cleanup refused`, because the cell kept its fixture
-   files in the guest on purpose. For each other error, check on the guest that
-   only the guest holds it (its own files, processes or keyring entries, and
-   nothing on the host or a remote service). Errors you can't explain keep the
-   guest: ask your coordinator.
+   every cleanup error is guest-local. Check every other error on the guest,
+   one by one, including `private session root cleanup refused`, which a failed
+   live cleanup often leaves because the cell kept its fixture files on
+   purpose. An error counts as guest-only when it is about the guest's own
+   files, processes or keyring entries, and nothing on the host or a remote
+   service. The same text in another receipt needs its own check. Errors you
+   can't explain keep the guest: ask your coordinator.
 4. **Record attempts killed before their terminal proof.** An attempt
    directory with `receipt.json` but no valid `terminal.json` makes retirement
    refuse the whole row. Record each one:
@@ -728,24 +741,25 @@ worker is still alive.
 5. **Record the resolution.**
 
    ```sh
-   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup \
-       [--guest-only-error 'private session root cleanup refused' ...]
+   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup
    ```
 
-   It writes `live-cleanup-resolution.json` in the evidence directory and then
-   removes the marker. The record names the run, its lab run id, the
-   publication from the marker and the hash of every receipt in the row.
-   `--guest-only-error` names, exactly, each error you checked in step 3. If
-   the marker was already deleted by hand, add `--destination`, `--prefix` and
-   `--object-key` with the values you checked. The command refuses a marker for
-   another run, values that differ from the marker, and an error that no
+   Add `--guest-only-error 'EXACT TEXT'` once for each error you checked in
+   step 3. If the marker is already gone, add `--destination`, `--prefix` and
+   `--object-key` with the values you checked in step 2. The command writes
+   `live-cleanup-resolution.json` in the evidence directory and then removes
+   the marker. The record names the run, its lab run id, the publication and
+   the hash of every receipt in the row. The command refuses a marker for
+   another run, values that differ from the marker and an error that no
    receipt holds.
-6. **Let the next nightly recover the slot**, or start one with `--now`. Its
-   recovery accepts the record only for the receipts it hashed. It clears only
-   the live-cleanup gate and the errors you named. A receipt that changed or
-   appeared after the record keeps the guest. Every other check still applies:
-   the Proton lend receipts, the overlay owner and the exact QEMU process. The
-   records stay with the row's evidence.
+6. **Let the next nightly recover the slot**, or start one from d69 with
+   `--now`. Recovery uses the record only for receipts whose hash still
+   matches. For those receipts it clears the live-cleanup gate and the errors
+   you named, and nothing else. A receipt that changed or appeared after the
+   record goes through the ordinary checks, so its own live-cleanup flag still
+   keeps the guest. The other checks still apply too: the Proton lend
+   receipts, the overlay owner and the exact QEMU process. The records stay
+   with the row's evidence.
 
 ## Weekly stress lane on k72
 
