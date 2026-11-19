@@ -55,6 +55,8 @@ public:
  // import (path: the .sxcu file is read into the form; its secrets wait there
  // until stored), store (the Save to keychain button) or test.
  void uploaderCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ // ui.s3Destination (#1684): the S3 service picker and the rows it changes, the way a user sees and picks them.
+ void s3Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
  // used, a cancel changes nothing, a failure shows its reason beside the
  // originating row with Try again (tests drive failures through here).
@@ -131,7 +133,7 @@ private:
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void endAppearancePreview();
- void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&,const QJsonObject& submitted={});
  void switchProvider();void importDevelopmentProfile();
  QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
  QStringList reorderBaseline_;QAction *moveUp_=nullptr,*moveDown_=nullptr;

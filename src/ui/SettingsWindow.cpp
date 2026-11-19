@@ -1225,6 +1225,11 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  updateProviderVisibility_=[=,this]{for(const auto& update:connectionDefaults)update();const auto provider=providerType_->currentData().toString();for(auto* action:services->actions())action->setChecked(action->data()==provider);const bool s3=provider=="s3";const bool b2=provider=="backblaze-b2";const bool storage=s3||b2;const bool http=provider==CustomUploaderPanel::provider();const bool authorized=(b2&&b2LinkMode_->currentData()=="authorized")||(s3&&b2LinkMode_->currentData()=="presigned");const bool expanded=advanced->isChecked();advancedCaption->setText(storage?"Advanced connection settings":"Advanced link settings");advanced->setAccessibleName(advancedCaption->text());description->setProperty("compactText",s3?"Amazon S3":b2?"Backblaze B2 · Native API":http?"Custom uploader · HTTP":"Proton Drive · Third-party integration");description->setProperty("fullText",s3?"Amazon S3 or compatible storage. Existing uploads keep their original destination.":b2?"Backblaze B2 through its native API. Existing uploads keep their original destination.":http?"Your own server or any service with a ShareX custom uploader, through one HTTP request. Existing uploads keep their original destination.":"Third-party Proton Drive integration. Share links open a Proton page.");description->setText(description->property("fullText").toString());for(auto* field:{s3_["bucket"],s3_["objectPrefix"]})destinationDetails->setRowVisible(formRow(field),storage);PreferenceRows::sectionFor(destinationDetails)->setVisible(storage);destinationDetails->setRowVisible(formRow(providerType_),false);destinationDetails->setRowVisible(s3ServiceRow,s3);connection->setRowVisible(PreferenceRows::rowFor(endpointHint_),s3&&!customEndpoint->isChecked());destinationDetails->setRowVisible(endpointWarning,s3&&s3_["endpoint"]->text().contains("backblazeb2.com"));connection->setRowVisible(customEndpointRow,s3);connection->setRowVisible(formRow(s3_["endpoint"]),s3&&customEndpoint->isChecked());PreferenceRows::sectionFor(links)->setVisible(storage);links->setRowVisible(aclRow,s3&&!authorized);aclHint->setVisible(s3&&!authorized);links->setRowVisible(b2ModeRow,storage);links->setRowVisible(b2DaysRow,authorized);if(b2DaysHint){const auto hint=s3?QString("Uses the S3 endpoint host, ignoring Link domain. Temporary credentials can expire sooner than the chosen 1–7 days. Files stay in the bucket."):QString("Links expire after 1–7 days; files stay in the bucket.");b2DaysHint->setText(hint);b2LinkDays_->setAccessibleDescription(hint);b2LinkDays_->setToolTip(hint);b2LinkDays_->setProperty("settingDescription",hint);}links->setRowVisible(formRow(s3_["publicUrlBase"]),storage&&!authorized);auto* exampleHost=s3&&authorized?b2DaysRow:linkDomainRow;if(exampleLine->parentWidget()!=exampleHost){exampleHost->layout()->addWidget(exampleLine);exampleLine->show();}connectionPanel_->setVisible(storage&&expanded);for(auto it=connectionRows.begin();it!=connectionRows.end();++it)connection->setRowVisible(it.value(),s3||it.key()=="connectTimeoutMs"||it.key()=="requestTimeoutMs");connection->setRowVisible(addressRow,s3);PreferenceRows::sectionFor(credentialForm)->setVisible(storage||http);credentialForm->setRowVisible(tokenRow,s3);credentialForm->setRowVisible(accessRow,storage);credentialForm->setRowVisible(secretRow,storage);currentKeyCaption->setText(http?"Stored values":"Current key");uploader_->setVisible(http);relabel(credentialForm,accessRow,b2?"Application key ID":"Access key ID");relabel(credentialForm,secretRow,b2?"Application key":"Secret access key");access_->setAccessibleName(b2?"Application key ID":"Access key ID");secret_->setAccessibleName(b2?"Application key":"Secret access key");protonPanel_->setVisible(provider=="proton-drive");if(auto* footer=findControl<QWidget*>("destinationTestSection");footer&&footer->parentWidget()!=(storage||http?credentialForm->parentWidget():protonForm->parentWidget())){auto* previous=storage||http?protonForm:credentialForm;auto taken=previous->takeRow(footer);delete taken.fieldItem;delete taken.labelItem;(storage||http?credentialForm:protonForm)->addRow(footer);footer->show();}if(auto* footer=findControl<QWidget*>("destinationTestSection"))footer->show();test->setVisible(storage||http||provider=="proton-drive");test->setText(storage||http?"Test upload and link":"Check account and folder");sizeProtonAccountButtons();test->setAccessibleName(test->text());testScope->setText(storage?"Tests an upload, its link and cleanup.":http?"Uploads a small test file and opens its link. The file is deleted when the server returns a deletion URL.":"Checks account and folder access. Upload and sharing aren't tested.");showSecret_->setAccessibleName((showSecret_->isChecked()?QString("Hide "):QString("Show "))+secret_->accessibleName().toLower());reveal->setText(showSecret_->accessibleName());reveal->setToolTip(reveal->text());test->setToolTip(s3?"Checks an upload, link access and cleanup. Expiring links must work while unsigned access is denied.":http?"Uploads a small synthetic file with this destination's request, opens the returned link, and deletes the file when a deletion URL came back.":b2?"Checks the application key, a test upload, the link put.gd hands out, cleanup and a large-file start.":"Checks the signed-in Proton account and selected folder without uploading. Upload and sharing aren't tested.");if(advancedRow->parentWidget()!=(storage?destinationDetails->parentWidget():publicationForm->parentWidget())){auto* previous=storage?publicationForm:destinationDetails;auto taken=previous->takeRow(advancedRow);delete taken.fieldItem;delete taken.labelItem;auto* target=storage?destinationDetails:publicationForm;int row=-1;QFormLayout::ItemRole role;target->getWidgetPosition(storage?connectionPanel_:protonAdvancedPanel,&row,&role);target->insertRow(row<0?target->rowCount():row,advancedRow);}advancedRow->show();advanced->setVisible(true);if(http)advancedRow->hide();QStringList departures;if(s3&&s3_["storageClass"]->text()!="STANDARD")departures.append(storageClassLabel(s3_["storageClass"]->text()));if(s3&&addressing_->currentData()!="auto")departures.append(addressing_->currentText());for(const auto& timeout:{QString("connectTimeoutMs"),QString("requestTimeoutMs")})if(inputText(s3_[timeout]).toDouble()!=(timeout=="connectTimeoutMs"?5:60))departures.append(inputText(s3_[timeout])+(timeout=="connectTimeoutMs"?" s connect":" s request"));connectionSummary->setText(departures.join(" · "));connectionSummary->setVisible(storage&&!expanded&&!departures.isEmpty());protonAdvancedForm->parentWidget()->setVisible(provider=="proton-drive"&&expanded);endpointHint_->setText(s3_["endpoint"]->text());{const QSignalBlocker block(s3Service);const auto endpoint=s3_["endpoint"]->text();const int named=s3CloudflareR2Endpoint(endpoint)?1:s3AmazonEndpoint(endpoint)?0:-1;if(named>=0)s3ServiceChoice_=-1;s3Service->setCurrentIndex(named>=0?named:s3ServiceChoice_>=0?s3ServiceChoice_:2);s3ServiceShown_=s3Service->currentIndex();}
  const bool r2=s3&&s3Service->currentIndex()==1;
  destinationDetails->setRowVisible(formRow(regionChoices_),s3&&!r2);destinationDetails->setRowVisible(regionNoteRow,r2);updateBucketHint();
+ // auto is Cloudflare R2's region (#1684): another service shown with it says so at Region instead of keeping it quietly.
+ {const bool autoElsewhere=s3&&!r2&&s3_["region"]->text()=="auto"&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text());
+  if(autoElsewhere)inlineError(s3_["region"],"auto is Cloudflare R2's region. Enter this service's region, such as us-east-1.");
+  else if(s3_["region"]->property("autoElsewhere").toBool())inlineError(s3_["region"],{});
+  s3_["region"]->setProperty("autoElsewhere",autoElsewhere);}
  if(b2){const auto settings=editedProfile()["settings"].toObject();static_cast<Ui::ElidedLabel*>(linkExample_)->setText(b2::fileUrl(settings,"https://f000.backblazeb2.com",b2::fileName(settings,"Screenshot.png"))+(authorized?QStringLiteral("?Authorization=…"):QString()));}else{auto settings=editedProfile()["settings"].toObject();if(s3&&authorized)settings["publicUrlBase"]=QJsonValue::Null;static_cast<Ui::ElidedLabel*>(linkExample_)->setText(publicObjectUrl(settings,s3_["objectPrefix"]->text()+"Screenshot.png")+(s3&&authorized?QStringLiteral("?X-Amz-Signature=…"):QString()));}};
  // Keep advanced controls and the connection test inside the provider's cards.
  pageLayout->removeWidget(advanced);pageLayout->removeWidget(connectionPanel_);destinationDetails->addRow(connectionPanel_);protonLayout->removeWidget(protonAdvancedForm->parentWidget());publicationForm->addRow(protonAdvancedForm->parentWidget());
@@ -1335,10 +1340,10 @@ static QString s3BucketProblem(const QString& bucket){
  if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)return "Bucket names must contain 3–63 characters.";
  return {};
 }
-void SettingsWindow::status(const Error& error){
+void SettingsWindow::status(const Error& error,const QJsonObject& submitted){
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
-  const auto reason=s3BucketProblem(s3_["bucket"]->text());
+  const auto reason=s3BucketProblem(submitted.contains("bucket")?submitted["bucket"].toString():s3_["bucket"]->text());
   if(!reason.isEmpty()){e.message="Invalid S3 settings: "+reason;inlineError(s3_["bucket"],reason);}
   // #1675: a refused Region is shown at that field.
   else if(const auto field=e.details["field"].toString();s3_.contains(field))inlineError(s3_[field],e.message);
@@ -2167,18 +2172,31 @@ void SettingsWindow::autosaveFailure(const Error& error){
 }
 void SettingsWindow::persistNextEdit(){
  if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
- const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
- if(doc==accepted){inlineError(control,{});persistNextEdit();return;}
- savingDocument_=doc;submittedEditSerials_={{path,serial}};
- settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
+ // Edits are retried one by one after a refused save, but Region and Endpoint stay one unit (#1684): both
+ // are saved or neither, so a refused endpoint never leaves its region saved against the old one.
+ const auto first=pendingEdits_.firstKey();QStringList paths{first};
+ if(first.endsWith("/settings/region")||first.endsWith("/settings/endpoint")){const auto sibling=first.left(first.lastIndexOf('/'))+(first.endsWith("/region")?"/endpoint":"/region");if(pendingEdits_.contains(sibling))paths.append(sibling);}
+ const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();auto doc=accepted;
+ QList<QJsonValue> values;QList<QPointer<QWidget>> controls;QHash<QString,quint64> serials;
+ for(const auto& path:paths){values.append(pendingEdits_.take(path));serials[path]=pendingEditSerials_.take(path);controls.append(editControls_.take(path));doc=replacePath(doc,path.split('/',Qt::SkipEmptyParts),0,values.last()).toObject();}
+ if(doc==accepted){for(const auto& control:controls)inlineError(control,{});persistNextEdit();return;}
+ savingDocument_=doc;submittedEditSerials_=serials;
+ // The destination as this save submitted it: a refusal is explained by its fields, not by drafts in the form.
+ const auto parts=first.split('/',Qt::SkipEmptyParts);const int index=parts.size()>1&&parts[0]=="profiles"?parts[1].toInt():profileIndex_;
+ const auto submitted=index>=0&&index<doc["profiles"].toArray().size()?doc["profiles"].toArray()[index].toObject()["settings"].toObject():QJsonObject{};
+ settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),controls,paths,values,submitted](Result result){
   if(!g)return;
-  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}const bool fieldError=result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString());
-   // A bucket problem is shown under Bucket (status below), not under the field whose save met it, such as
-   // Region on a new destination that has no bucket yet.
-   const bool bucketProblem=!fieldError&&result.error.code=="s3_settings_invalid"&&g->providerType_->currentData()=="s3"&&!s3BucketProblem(g->s3_["bucket"]->text()).isEmpty();
-   g->inlineError(fieldError?g->s3_[result.error.details["field"].toString()]:bucketProblem?g->s3_["bucket"]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  const auto& control=controls.first();const auto& path=paths.first();
+  if(!result){
+   if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||paths.contains(it.key())||path.startsWith(it.key()+"/"))superseded=true;if(!superseded)for(int i=0;i<paths.size();++i)g->stageEdit(paths[i],values[i],controls[i]);g->autosaveFailure(result.error);return;}
+   const bool fieldError=result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString());
+   // A bucket problem in what was submitted shows under Bucket (status below), not under the field whose save
+   // met it, such as Region on a new destination with no bucket yet.
+   const bool bucketProblem=!fieldError&&result.error.code=="s3_settings_invalid"&&g->providerType_->currentData()=="s3"&&submitted.contains("bucket")&&!s3BucketProblem(submitted["bucket"].toString()).isEmpty();
+   g->inlineError(fieldError?g->s3_[result.error.details["field"].toString()]:bucketProblem?g->s3_["bucket"]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error,submitted);g->persistNextEdit();return;
+  }
   if(control==g->uploader_)g->uploader_->showProblem({},{});
-  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
+  g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();for(const auto& done:controls)g->inlineError(done,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
 }
 void SettingsWindow::refreshCredentialHint(){
@@ -2520,6 +2538,25 @@ void SettingsWindow::uploaderCommand(const QJsonObject& params,std::function<voi
   button->click();answer({});return;
  }
  reply({"invalid_request","Unknown custom uploader action.",{}},{});
+}
+void SettingsWindow::s3Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply){
+ static const QStringList services{"amazon-s3","cloudflare-r2","other"};
+ const auto requested=params["profileId"].toString();
+ if(!requested.isEmpty()&&requested!=profileId_->text()){const int index=profile_->findData(requested);if(index<0){reply({"profile_not_found","No destination has this ID.",{}},{});return;}profile_->setCurrentIndex(index);}
+ if(profileIndex_<0||providerType_->currentData()!="s3"){reply({"s3_not_selected","Select an Amazon S3 or S3-compatible destination in Destinations first, or name it with profileId.",{}},{});return;}
+ auto* service=findControl<QComboBox*>("s3Service");
+ // Picked as a user picks it: the same handler, so a service already shown changes nothing.
+ if(params["action"]=="selectService"){const int index=services.indexOf(params["service"].toString());service->setCurrentIndex(index);emit service->activated(index);}
+ const auto shown=[this](QWidget* widget){return widget&&widget->isVisibleTo(destinationPage_);};
+ auto* note=findControl<QLabel*>("s3RegionNote");auto* hint=findControl<QLabel*>("s3BucketHint");auto* regionError=errors_.value(s3_["region"]);
+ const auto endpoint=s3_["endpoint"]->text();
+ QJsonObject state{{"profileId",profileId_->text()},{"label",profileLabel_->text()},{"service",services.value(service->currentIndex())},
+  // Region as the form holds it, and the one requests are signed with: auto for any R2 endpoint (#1688).
+  {"region",QJsonObject{{"shown",shown(regionChoices_)},{"value",s3_["region"]->text()},{"message",shown(regionError)?regionError->text():QString()}}},
+  {"regionNote",shown(note)?QJsonValue(note->text()):QJsonValue()},{"signingRegion",s3CloudflareR2Endpoint(endpoint)?QStringLiteral("auto"):s3_["region"]->text()},
+  {"endpoint",endpoint},{"endpointPlaceholder",s3_["endpoint"]->placeholderText()},{"bucketHint",hint?hint->text():QString()},
+  {"saved",!selectedDestinationChanged()&&!saving_&&pendingEdits_.isEmpty()}};
+ reply({},state);
 }
 void SettingsWindow::allowControl(QWidget* control,bool allowed){control->setProperty("providerEnabled",allowed);control->setEnabled(allowed&&!setupBusy_);}
 void SettingsWindow::updateSetupButton(){

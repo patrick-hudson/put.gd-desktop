@@ -149,6 +149,14 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("customUploader",p,std::move(reply));return;
  }
+ // #1684: the S3 service picker in the open Destinations page, picked as a user picks it, and the
+ // rows it changes (Region or its Cloudflare R2 note, the region requests sign with, the Bucket hint).
+ if(method=="ui.s3Destination") {
+  static const QStringList actions{"inspect","selectService"},services{"amazon-s3","cloudflare-r2","other"};const auto action=p["action"].toString();
+  if(!fields(p,{"action"},{"service","profileId"})||!actions.contains(action)||(action=="selectService")!=p.contains("service")||(p.contains("service")&&!services.contains(p["service"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("s3Destination",p,std::move(reply));return;
+ }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode","delaySeconds"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;

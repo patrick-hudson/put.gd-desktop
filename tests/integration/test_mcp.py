@@ -61,6 +61,10 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
             ('patch_configuration', {'patch': {'captureDefaults': {'accessKey': 'synthetic'}}, 'expected_revision': 'r'}),
             ('install_update', {'confirm': True, 'image': '/tmp/x.AppImage'}),
+            # #1678: the S3 service picker takes one of its three services, and only with selectService.
+            ('drive_s3_destination', {'action': 'selectService'}),
+            ('drive_s3_destination', {'action': 'selectService', 'service': 'r2'}),
+            ('drive_s3_destination', {'action': 'inspect', 'service': 'other'}),
         ]:
             result = await server.call_tool(name, args)
             envelope = result.structured_content or json.loads(result.content[0].text)
@@ -241,6 +245,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
                     ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
+                    ('drive_s3_destination', {'action': 'selectService', 'service': 'cloudflare-r2', 'profile_id': 'synthetic-s3'},
+                     'ui.s3Destination', {'action': 'selectService', 'service': 'cloudflare-r2', 'profileId': 'synthetic-s3'}),
                 ]:
                     await call(name, args)
                     self.assertEqual(self.calls[-1]['method'], method)
@@ -470,6 +476,133 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.files_with_token(), [])
         self.assertTrue((self.root / 'config/putgd/config.json').is_file())
         self.assertTrue(any((self.root / 'state/putgd/logs').glob('*.jsonl')))
+
+
+
+class S3ServicePickerResidentTests(unittest.IsolatedAsyncioTestCase):
+    """#1678 through the MCP helper against a real private resident and its Settings window
+    (offscreen): pick Cloudflare R2 and Amazon S3 as a user does, read the rows that change,
+    and check that showing a saved R2 destination writes nothing. Set PUTGD_APP and PUTGD_CLI to
+    the built production binaries. Synthetic settings, no credentials, no network."""
+    AWS = 'https://s3.us-east-1.amazonaws.com'
+    R2 = 'https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com'
+
+    async def asyncSetUp(self):
+        self.cli, self.app = os.environ.get('PUTGD_CLI'), os.environ.get('PUTGD_APP')
+        if not self.cli or not self.app:
+            self.fail('PUTGD_CLI and PUTGD_APP must select the built production putgd-cli and putgd')
+        self.directory = tempfile.TemporaryDirectory(prefix='putgd-s3ui-')
+        self.addAsyncCleanup(self.stop_resident)
+        self.root = Path(self.directory.name)
+        runtime = self.root / 'rt'
+        runtime.mkdir(mode=0o700)
+        self.socket = str(runtime / 'putgd/session.sock')
+        self.assertLessEqual(len(self.socket.encode('utf-8')), 107, 'Test socket exceeds Linux path limit')
+        environment = os.environ | {'QT_QPA_PLATFORM': 'offscreen', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(self.root / 'config'),
+                                    'XDG_DATA_HOME': str(self.root / 'data'), 'XDG_STATE_HOME': str(self.root / 'state'),
+                                    'XDG_CACHE_HOME': str(self.root / 'cache'), 'XDG_SESSION_TYPE': 'unspecified', 'XDG_CURRENT_DESKTOP': 'putgd-mcp-fixture'}
+        for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
+            environment.pop(key, None)
+        self.log = (self.root / 'resident.log').open('w')
+        self.resident = subprocess.Popen([self.app, '--background'], env=environment, stdout=self.log, stderr=self.log)
+        deadline = time.monotonic() + 15
+        while not Path(self.socket).exists() and self.resident.poll() is None and time.monotonic() < deadline:
+            await asyncio.sleep(.05)
+        self.assertTrue(Path(self.socket).exists(), 'Private resident did not start')
+
+    async def stop_resident(self):
+        if getattr(self, 'resident', None) is not None and self.resident.poll() is None:
+            self.resident.terminate()
+            try:
+                self.resident.wait(10)
+            except subprocess.TimeoutExpired:
+                self.resident.kill()
+                self.resident.wait()
+        if hasattr(self, 'log'):
+            self.log.close()
+        if hasattr(self, 'directory'):
+            self.directory.cleanup()
+
+    def profile(self, endpoint, region):
+        return {'id': 'picker', 'label': 'Picker', 'provider': 's3', 'credentials': {'mode': 'session', 'reference': None},
+                'settings': {'bucket': 'my-screenshots', 'region': region, 'endpoint': endpoint, 'objectPrefix': '', 'storageClass': 'STANDARD',
+                             'aclMode': 'omit', 'linkMode': 'public', 'linkValidityDays': 7, 'publicUrlBase': None, 'addressing': 'auto',
+                             'connectTimeoutMs': 5000, 'requestTimeoutMs': 60000, 'lowSpeedBytesPerSecond': 1, 'lowSpeedTimeSeconds': 30}}
+
+    async def test_service_picker_rows_and_no_save_from_display(self):
+        adapter = CliAdapter(self.cli, self.socket)
+        parameters = StdioServerParameters(command=sys.executable, args=['-m', 'share_mcp.server', '--cli', self.cli, '--socket', self.socket])
+        async with stdio_client(parameters) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+
+                async def call(name, args):
+                    reply = await session.call_tool(name, args)
+                    self.assertFalse(reply.is_error, reply)
+                    return reply.structured_content
+
+                async def configuration():
+                    return (await call('inspect', {}))['result']['configuration']['result']
+
+                async def saved():
+                    document = (await configuration())['document']
+                    return next(entry for entry in document['profiles'] if entry['id'] == 'picker')['settings']
+
+                async def picker(args, done, seconds=30):
+                    deadline = time.monotonic() + seconds
+                    while True:
+                        reply = await call('drive_s3_destination', {**args, 'profile_id': 'picker'})
+                        if (reply['ok'] and done(reply['result'])) or time.monotonic() > deadline:
+                            self.assertTrue(reply['ok'], reply)
+                            return reply['result']
+                        await asyncio.sleep(.1)
+
+                async def patch(endpoint, region):
+                    revision = (await configuration())['metadata']['observedRevision']
+                    patched = await call('patch_configuration', {'patch': {'profiles': [self.profile(endpoint, region)]}, 'expected_revision': revision})
+                    self.assertTrue(patched['ok'], patched)
+
+                await patch(self.AWS, 'us-east-1')
+                deadline = time.monotonic() + 30
+                while not (shown := await adapter.call('ui.show', {'view': 'destinations'}))['ok'] and time.monotonic() < deadline:
+                    await asyncio.sleep(.25)
+                self.assertTrue(shown['ok'], shown)
+
+                state = await picker({'action': 'inspect'}, lambda result: result['endpoint'] == self.AWS)
+                self.assertEqual((state['service'], state['region']['shown'], state['region']['value'], state['regionNote'], state['signingRegion']),
+                                 ('amazon-s3', True, 'us-east-1', None, 'us-east-1'))
+                self.assertEqual(state['bucketHint'], 'Uploads go to s3://my-screenshots/')
+
+                # Cloudflare R2: the note replaces Region, the region is auto, and the AWS endpoint waits, unsaved, for the account endpoint.
+                state = await picker({'action': 'selectService', 'service': 'cloudflare-r2'}, lambda result: True)
+                self.assertEqual((state['service'], state['region']['shown'], state['region']['value'], state['endpoint']), ('cloudflare-r2', False, 'auto', ''))
+                self.assertIn('Cloudflare R2 has no regions', state['regionNote'])
+                self.assertIn('r2.cloudflarestorage.com', state['endpointPlaceholder'])
+                self.assertEqual(state['bucketHint'], 'Uploads go to my-screenshots/ on Cloudflare R2')
+                self.assertFalse(state['saved'])
+                self.assertEqual((await saved())['endpoint'], self.AWS)
+
+                # Amazon S3 again: an AWS region and its standard endpoint, saved.
+                state = await picker({'action': 'selectService', 'service': 'amazon-s3'}, lambda result: True)
+                self.assertEqual((state['service'], state['region']['value'], state['endpoint']), ('amazon-s3', 'us-east-1', self.AWS))
+                await picker({'action': 'inspect'}, lambda result: result['saved'])
+                self.assertEqual(((await saved())['region'], (await saved())['endpoint']), ('us-east-1', self.AWS))
+
+                # A saved R2 destination (EU jurisdiction) holding the dashboard location: the note shows,
+                # requests sign with auto, and neither showing it nor picking R2 again writes anything.
+                await patch(self.R2, 'Western North America (WNAM)')
+                revision = (await configuration())['metadata']['observedRevision']
+                state = await picker({'action': 'inspect'}, lambda result: result['endpoint'] == self.R2)
+                self.assertEqual((state['service'], state['region']['value'], state['signingRegion'], state['saved']),
+                                 ('cloudflare-r2', 'Western North America (WNAM)', 'auto', True))
+                self.assertIsNotNone(state['regionNote'])
+                state = await picker({'action': 'selectService', 'service': 'cloudflare-r2'}, lambda result: True)
+                self.assertEqual(state['endpoint'], self.R2)
+                await asyncio.sleep(1.5)
+                self.assertEqual((await configuration())['metadata']['observedRevision'], revision)
+
+                missing = await call('drive_s3_destination', {'action': 'inspect', 'profile_id': 'no-such-destination'})
+                self.assertEqual(missing['error']['code'], 'profile_not_found', missing)
 
 
 if __name__ == '__main__':
