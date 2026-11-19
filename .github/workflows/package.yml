@@ -126,35 +126,37 @@ env:
     # caller's apt=() options. Everything before the install of what was downloaded
     # shares one budget, PUTGD_APT_BUDGET_SECONDS: 25 minutes, so 5 of the install
     # steps' 30 stay for the install, which takes 1-2 minutes on a runner. The budget
-    # covers the update and download attempts (at most 8 minutes each, timeout's
-    # kill grace included), the waits for a leftover dpkg and the recovery. Attempts
-    # keep what they fetched and go on while they make progress; three in a row that
-    # each add under 4 MiB (PUTGD_APT_STALL_KB), or whose install fails, end it.
-    # The install of what was downloaded is never stopped, so dpkg is never stopped
-    # halfway; the step's timeout-minutes bounds it.
+    # covers the update and download attempts (at most PUTGD_APT_ATTEMPT_SECONDS, 8
+    # minutes, each, timeout's kill grace included), the waits for a leftover dpkg and
+    # the recovery. Attempts keep what they fetched and go on while they make
+    # progress; three in a row that each add under 4 MiB (PUTGD_APT_STALL_KB), or
+    # whose install fails, end it, and so does a lock that stays held. The install of
+    # what was downloaded is never stopped, so dpkg is never stopped halfway; the
+    # step's timeout-minutes bounds it. The indexes are downloaded once.
     # Downloads go to their own directory: Docker images delete apt's default
     # archives after every update, which would discard a stopped attempt's
     # progress. A download attempt that fetched under 128 MiB demotes its first mirror.
     putgd_apt_install() {
       local budget=${PUTGD_APT_BUDGET_SECONDS:-1500} limit=${PUTGD_APT_ATTEMPT_SECONDS:-480} grace=30
-      local attempt=0 deadline=$((SECONDS + ${PUTGD_APT_BUDGET_SECONDS:-1500})) window end left wait
+      local attempt=0 deadline=$((SECONDS + ${PUTGD_APT_BUDGET_SECONDS:-1500})) start end left
       local updated= downloaded before fetched total=0 stalled=0
       local archives=${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}
       mkdir -p "$archives/partial"
       while :; do
-        attempt=$((attempt + 1)) downloaded=
-        # The attempt, kill grace included, ends by the earlier of its own limit and the budget.
-        window=$((deadline - SECONDS - grace)); [ "$window" -le "$limit" ] || window=$limit
-        if [ "$window" -lt 30 ]; then
+        attempt=$((attempt + 1)) downloaded= start=$SECONDS
+        # The attempt ends by the earlier of its own limit and the budget, and each command in
+        # it gets what is left minus timeout's kill grace, so even a command that ignores TERM
+        # is gone by then.
+        end=$((deadline - start)); [ "$end" -le "$limit" ] || end=$limit; end=$((start + end))
+        if [ $((end - SECONDS - grace)) -lt 30 ]; then
           echo "::warning::Package install: the $budget s budget ran out after $((total / 1024)) MiB"
           break
         fi
-        end=$((SECONDS + window))
         before=$(du -sk "$archives" | cut -f1)
-        if [ -n "$updated" ] || timeout --kill-after=${grace}s "$window" apt-get update --error-on=any "${apt[@]}"; then
+        if [ -n "$updated" ] || timeout --kill-after=${grace}s $((end - SECONDS - grace)) apt-get update --error-on=any "${apt[@]}"; then
           updated=1
-          left=$((end - SECONDS)); [ "$left" -gt 0 ] || left=1
-          if DEBIAN_FRONTEND=noninteractive timeout --kill-after=${grace}s "$left" apt-get install -y --download-only "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
+          left=$((end - SECONDS - grace))
+          if [ "$left" -gt 0 ] && DEBIAN_FRONTEND=noninteractive timeout --kill-after=${grace}s "$left" apt-get install -y --download-only "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
             downloaded=1
             if DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
               apt-get clean -o "Dir::Cache::Archives=$archives/" || true
@@ -167,7 +169,7 @@ env:
         if [ -n "$downloaded" ]; then
           echo "::warning::Package install: attempt $attempt downloaded everything, then the install failed"
         else
-          echo "::warning::Package install: attempt $attempt failed or ran over $window s after fetching $((fetched / 1024)) MiB ($((total / 1024)) MiB in all)"
+          echo "::warning::Package install: attempt $attempt failed or ran over $((end - start)) s after fetching $((fetched / 1024)) MiB ($((total / 1024)) MiB in all)"
         fi
         if [ -n "$downloaded" ] || [ "$fetched" -lt "${PUTGD_APT_STALL_KB:-4096}" ]; then stalled=$((stalled + 1)); else stalled=0; fi
         if [ "$stalled" -ge 3 ]; then
@@ -176,10 +178,19 @@ env:
         fi
         [ -n "$downloaded" ] || [ "$fetched" -ge "${PUTGD_APT_PROGRESS_KB:-131072}" ] || putgd_demote_mirror
         # A failed attempt can leave dpkg half done; apt-get refuses to install until it is
-        # finished. The wait comes out of the budget.
-        wait=$((deadline - SECONDS)); [ "$wait" -le "${PUTGD_APT_DPKG_WAIT_SECONDS:-600}" ] || wait=${PUTGD_APT_DPKG_WAIT_SECONDS:-600}
-        [ "$wait" -le 0 ] || putgd_wait_for_dpkg "$wait" || true
-        DEBIAN_FRONTEND=noninteractive dpkg --configure -a || true
+        # finished. The wait and the recovery come out of the budget, and neither starts
+        # once it is spent: a lock still held or no time left ends the install here.
+        left=$((deadline - SECONDS)); [ "$left" -le "${PUTGD_APT_DPKG_WAIT_SECONDS:-600}" ] || left=${PUTGD_APT_DPKG_WAIT_SECONDS:-600}
+        if [ "$left" -le 0 ] || ! putgd_wait_for_dpkg "$left"; then
+          echo "::warning::Package install: stopped with a dpkg or apt lock still held or the $budget s budget spent"
+          break
+        fi
+        left=$((deadline - SECONDS - grace))
+        if [ "$left" -lt 1 ]; then
+          echo "::warning::Package install: the $budget s budget ran out before dpkg --configure -a"
+          break
+        fi
+        DEBIAN_FRONTEND=noninteractive timeout --kill-after=${grace}s "$left" dpkg --configure -a || true
       done
       return 1
     }
@@ -225,48 +236,42 @@ jobs:
             plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
     steps:
       - name: Bootstrap checkout tools
-        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368, #467).
-        # The updates and downloads (each at most 10 minutes, kill grace included), the dpkg waits
-        # and the back-off share one 20-minute budget, so 10 of the step's 30 minutes stay for
-        # installing what was downloaded. That install is never stopped, so dpkg is never stopped
-        # halfway (#1702, #1706); a hung maintainer script fails the job at the step's 30 minutes.
-        # A normal bootstrap takes under a minute.
+        # tools/ci/install-packages.sh is not checked out yet. On apt the workflow's own
+        # putgd_apt_install does it (#1702, #1706): one 20-minute budget for its updates, downloads
+        # (10-minute attempts, kill grace included), dpkg waits and recovery, in its own archive
+        # directory with the indexes downloaded once, so 10 of the step's 30 minutes stay for the
+        # install. That install is never stopped, so dpkg is never stopped halfway; a hung
+        # maintainer script fails the job at the step's 30 minutes. On dnf, three attempts share
+        # the same budget (#368, #467). A normal bootstrap takes under a minute.
         timeout-minutes: 30
         shell: bash
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
           eval "$PUTGD_UBUNTU_MIRRORS"
+          summary() { printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"; }
+          if command -v apt-get >/dev/null; then
+            # actions/cache needs zstd to write what the AppImage job, outside any container, can restore.
+            zstd=$([ '${{ matrix.name }}' != ubuntu24.04 ] || echo zstd)
+            PUTGD_APT_BUDGET_SECONDS=1200 PUTGD_APT_ATTEMPT_SECONDS=600 putgd_apt_install git ca-certificates $zstd && exit 0
+            echo "::warning::Package install (bootstrap): failed"
+            summary; echo "| all | failed |" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           deadline=$((SECONDS + 1200))
-          # Run "$@" until the earlier of 10 minutes and the budget, kill grace included.
+          # Run "$@" until the earlier of 10 minutes and the budget, with timeout's kill grace inside that.
           bounded() {
-            local t=$((deadline - SECONDS - 30)); [ "$t" -le 600 ] || t=600
+            local t=$((deadline - SECONDS)); [ "$t" -le 600 ] || t=600; t=$((t - 30))
             if [ "$t" -lt 30 ]; then echo "::warning::Package install (bootstrap): the 20-minute budget ran out"; return 124; fi
             timeout --kill-after=30s "$t" "$@"
           }
-          # The rest of the budget, at most $1 seconds.
-          budget_left() { local t=$((deadline - SECONDS)); [ "$t" -le "$1" ] || t=$1; [ "$t" -gt 0 ] || t=0; echo "$t"; }
-          # actions/cache needs zstd to write what the AppImage job, outside any container, can restore.
-          zstd=$([ '${{ matrix.name }}' != ubuntu24.04 ] || echo zstd)
           for attempt in 1 2 3; do
-            if command -v apt-get >/dev/null; then
-              bounded apt-get update --error-on=any "${apt[@]}" &&
-                bounded apt-get install -y --download-only "${apt[@]}" git ca-certificates $zstd &&
-                apt-get install -y --no-download "${apt[@]}" git ca-certificates $zstd && exit 0
-            else
-              bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
-            fi
+            bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
-            if [ "$attempt" != 3 ] && command -v apt-get >/dev/null; then
-              # A failed attempt can leave dpkg running or half done; the retry would fail on its lock.
-              wait=$(budget_left 600)
-              [ "$wait" -eq 0 ] || putgd_wait_for_dpkg "$wait" || true
-              dpkg --configure -a || true
-            fi
-            putgd_demote_mirror
-            [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
+            [ "$attempt" != 1 ] || summary
             echo "| $attempt of 3 | failed |" >> "$GITHUB_STEP_SUMMARY"
-            [ "$attempt" = 3 ] || sleep "$(budget_left $((attempt * 30)))"
+            left=$((deadline - SECONDS)); [ "$left" -le $((attempt * 30)) ] || left=$((attempt * 30))
+            [ "$attempt" = 3 ] || [ "$left" -le 0 ] || sleep "$left"
           done
           exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
