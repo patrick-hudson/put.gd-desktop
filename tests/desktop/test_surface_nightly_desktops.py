@@ -8,6 +8,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -550,6 +551,321 @@ class NightlyTests(unittest.TestCase):
                 lab.cleanup_overlay(run)
             (run/lab.LIVE_CLEANUP_MARKER).unlink()
             self.assertIn(lab.reset(run)['status'], ('stopped', 'already-stopped'))
+
+    def kept_live_row(self, root, *, errors=(), guest_local=()):
+        """A retained slot whose row receipt and run marker record an unresolved live publication (#1660)."""
+        from tools.lab import lab
+        slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+        run, evidence = Path(owner['run']), Path(owner['evidence'])
+        (evidence/'idle-1').mkdir()
+        (evidence/'idle-1/receipt.json').write_text(json.dumps(dict(environment=dict(
+            unresolved_live_cleanup=True, cleanup_errors=list(errors), guest_local_cleanup=list(guest_local)))))
+        nightly.save(run/lab.LIVE_CLEANUP_MARKER, dict(schemaVersion=1, destination='s3', prefix='acceptance/tier1-live/x/',
+                     objectKey='acceptance/tier1-live/x/shot.png', runId='n12345678'))
+        return slot, out, owner, desktop, proton
+
+    def recover_kept(self, root, out, desktop, proton):
+        from tools.lab import lab
+        with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                      proton if kw.get('resource') == 'proton' else desktop), \
+                patch.object(lab, 'state', return_value=dict(id='n12345678')), \
+                patch.object(nightly, 'retire') as retire:
+            # Each nightly run recovers into its own new output directory.
+            attempt = out/uuid.uuid4().hex
+            attempt.mkdir()
+            try:
+                nightly.recover_stale_guest(dict(host='d69'), attempt)
+            except nightly.NotRun as error:
+                return retire, str(error)
+        return retire, None
+
+    def resolve(self, root, **kwargs):
+        from tools.lab import lab
+        with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                patch.object(lab, 'state', return_value=dict(id=kwargs.pop('run_id', 'n12345678'))), \
+                patch.object(nightly, 'guest_paused', return_value=kwargs.pop('paused', 0)):
+            return nightly.resolve_live_cleanup(nightly.retained_owner(), kwargs.pop('checked', 'n12345678'), **kwargs)
+
+    def test_a_confirmed_live_cleanup_record_lets_recovery_retire_the_kept_guest(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('live remote cleanup unresolved', error)
+            record = self.resolve(root)
+            self.assertFalse((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
+            self.assertEqual(record['publication'], dict(destination='s3', prefix='acceptance/tier1-live/x/',
+                             objectKey='acceptance/tier1-live/x/shot.png'))
+            self.assertTrue(record['markerPresent'] and record['objectConfirmedGone'])
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            retire.assert_called_once()
+            self.assertFalse(slot.exists())
+
+    def test_a_live_cleanup_record_speaks_only_for_the_receipts_it_hashed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            self.resolve(root)
+            # A later attempt (or a changed receipt) the person never saw keeps the guest.
+            evidence = Path(owner['evidence'])
+            (evidence/'idle-2').mkdir()
+            (evidence/'idle-2/receipt.json').write_text(json.dumps(dict(environment=dict(unresolved_live_cleanup=True))))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('idle-2', error)
+            retire.assert_not_called()
+            self.assertTrue(slot.exists())
+
+    def test_a_live_cleanup_record_clears_no_other_cleanup_error_unless_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root, errors=['private session root cleanup refused'])
+            self.resolve(root)
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('inspect private cleanup', error)
+            retire.assert_not_called()
+            with self.assertRaisesRegex(nightly.NotRun, 'exact cleanup error'):
+                self.resolve(root, guest_only_errors=['some other error'],
+                             publication=dict(destination='s3', prefix='acceptance/tier1-live/x/',
+                                              objectKey='acceptance/tier1-live/x/shot.png'))
+            self.resolve(root, guest_only_errors=['private session root cleanup refused'],
+                         publication=dict(destination='s3', prefix='acceptance/tier1-live/x/',
+                                          objectKey='acceptance/tier1-live/x/shot.png'))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            retire.assert_called_once()
+
+    def test_resolving_live_cleanup_refuses_a_marker_or_publication_of_another_run(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            marker = Path(owner['run'])/lab.LIVE_CLEANUP_MARKER
+            with self.assertRaisesRegex(nightly.NotRun, 'does not belong to this run'):
+                self.resolve(root, run_id='n87654321')
+            # The person names the run they checked; a different guest in the slot is refused.
+            with self.assertRaisesRegex(nightly.NotRun, 'not the run you checked'):
+                self.resolve(root, checked='n87654321')
+            # An orphaned recipe or lend may still be publishing.
+            with patch.object(nightly, 'guest_clients_live', return_value=True), \
+                    self.assertRaisesRegex(nightly.NotRun, 'still live'):
+                self.resolve(root)
+            # put.gd in a running guest can still finish an upload; only a check made while the VM is paused counts.
+            with self.assertRaisesRegex(nightly.NotRun, 'VM is running'):
+                self.resolve(root, paused=None)
+            # A pause too recent for an already-sent upload to have committed does not count yet.
+            with self.assertRaisesRegex(nightly.NotRun, 'paused under'):
+                self.resolve(root, paused=nightly.time.time()-10)
+            with self.assertRaisesRegex(nightly.NotRun, 'differs from the marker'):
+                self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/other.png'))
+            self.assertTrue(marker.exists())
+            self.assertFalse((Path(owner['evidence'])/nightly.LIVE_RESOLUTION).exists())
+            marker.unlink()
+            with self.assertRaisesRegex(nightly.NotRun, 'give --destination'):
+                self.resolve(root)
+            with self.assertRaisesRegex(nightly.NotRun, 'outside its prefix'):
+                self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='q/shot.png'))
+            # A record for another session or run id is refused, never ignored.
+            self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/shot.png'))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            path = Path(owner['evidence'])/nightly.LIVE_RESOLUTION
+            nightly.save(path, dict(json.loads(path.read_text()), session='other'))
+            with self.assertRaisesRegex(nightly.NotRun, 'does not record a confirmed cleanup'):
+                nightly.live_resolution(Path(owner['run']), Path(owner['evidence']), owner['session'])
+
+    def test_operator_commands_refuse_before_writing_or_checking_anything(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            evidence = Path(owner['evidence'])
+            def main(*argv):
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        patch.object(lab, 'state', return_value=dict(id='n12345678')), \
+                        patch.object(sys, 'argv', ['nightly_desktops.py', *argv]):
+                    with self.assertRaises(SystemExit) as caught:
+                        nightly.main()
+                return str(caught.exception)
+            # A wrong run is refused before the unaudited record is written.
+            self.assertIn('not the run you checked', main('--unaudited-attempt', 'idle-1', '--resolve-live-cleanup', 'n87654321'))
+            self.assertFalse((evidence/'idle-1'/nightly.UNAUDITED_ATTEMPT).exists())
+            # No absence check while an orphaned recipe or lend may still publish.
+            with patch.object(nightly, 'guest_clients_live', return_value=True), \
+                    patch.object(nightly, 'guest_paused') as paused, patch.object(nightly, 'check_s3_absent') as check:
+                self.assertIn('still live', main('--check-live-cleanup'))
+            check.assert_not_called()
+            paused.assert_not_called()
+            # The VM is paused before the destination is read, and a guest that won't pause is never checked.
+            order = []
+            with patch.object(nightly, 'guest_paused', side_effect=lambda run, pause=False: order.append('pause')), \
+                    patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check')):
+                self.assertIn('could not pause', main('--check-live-cleanup'))
+            self.assertEqual(order, ['pause'])
+            # After a pause, the destination is read only once the settle period has passed.
+            paused_at = nightly.time.time()
+            with patch.object(nightly, 'guest_paused', return_value=paused_at), \
+                    patch.object(nightly.time, 'sleep', side_effect=lambda seconds: order.append(round(seconds, -1))), \
+                    patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check') or {}):
+                main('--check-live-cleanup')
+            self.assertEqual(order[1:], [nightly.PAUSE_SETTLE_SECONDS, 'check'])
+            # A resume during the wait voids the pause; the destination is never read.
+            del order[:]
+            with patch.object(nightly, 'guest_paused', side_effect=lambda run, pause=False: paused_at if pause else None), \
+                    patch.object(nightly.time, 'sleep'), \
+                    patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check')):
+                self.assertIn('resumed during the wait', main('--check-live-cleanup'))
+            self.assertEqual(order, [])
+            self.assertTrue((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
+
+    def test_guest_paused_stops_the_vm_and_reports_only_a_confirmed_pause(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            # Without a QMP socket only a run with neither disk nor state has no VM.
+            self.assertEqual(nightly.guest_paused(run), 0)
+            for name in ('state.json', 'disk.qcow2'):
+                (run/name).write_text('{}')
+                self.assertIsNone(nightly.guest_paused(run))
+                (run/name).unlink()
+            (run/'state.json').write_text('{}')
+            (run/'disk.qcow2').write_text('')
+            (run/'qmp.sock').write_text('')
+            status = {'running': True}
+            qmp = Mock()
+            qmp.__enter__ = Mock(return_value=qmp)
+            qmp.__exit__ = Mock(return_value=False)
+            def execute(name, *a):
+                if name == 'stop':
+                    status['running'] = False
+                return dict(status) if name == 'query-status' else {}
+            qmp.execute.side_effect = execute
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertIsNone(nightly.guest_paused(run))
+                paused = nightly.guest_paused(run, pause=True)
+                self.assertAlmostEqual(paused, nightly.time.time(), delta=5)
+                # A second check of a still-paused VM keeps the first pause time.
+                self.assertEqual(nightly.guest_paused(run, pause=True), paused)
+            self.assertEqual([c.args[0] for c in qmp.execute.call_args_list],
+                             ['query-status', 'query-status', 'stop', 'query-status', 'query-status'])
+            status['running'] = True
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertIsNone(nightly.guest_paused(run))
+            with patch.object(lab, 'QMP', side_effect=OSError):
+                self.assertIsNone(nightly.guest_paused(run, pause=True))
+            # A stop whose reply is lost leaves no old pause time behind for a retry to reuse.
+            def lost(name, *a):
+                if name == 'stop':
+                    raise lab.LabError('timeout')
+                return {'running': True}
+            qmp.execute.side_effect = lost
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertIsNone(nightly.guest_paused(run, pause=True))
+            self.assertFalse((run/nightly.PAUSE_RECORD).exists())
+
+    def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
+        class NoSuchKey(Exception):
+            pass
+        def client(listing=None, versioning=None, versions=None):
+            value = Mock()
+            value.exceptions.NoSuchKey = NoSuchKey
+            value.get_object.side_effect = NoSuchKey()
+            value.list_objects_v2.return_value = {'KeyCount': 0, 'IsTruncated': False} if listing is None else listing
+            value.get_bucket_versioning.return_value = versioning or {}
+            value.list_object_versions.return_value = versions or {'IsTruncated': False}
+            return value
+        prefix = 'acceptance/tier1-live/'+'a'*32+'/'
+        publication = dict(destination='s3', prefix=prefix, objectKey=prefix+'shot.png')
+        quiet = client()
+        self.assertEqual(nightly.check_s3_absent(publication, client=quiet),
+                         dict(objectKeyAbsent=True, prefixEmpty=True, versionsGone=True))
+        quiet.get_object.assert_called_once_with(Bucket='put.gd', Key=prefix+'shot.png')
+        quiet.list_objects_v2.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1)
+        quiet.list_object_versions.assert_not_called()
+        present = client(listing={'KeyCount': 1, 'IsTruncated': False, 'Contents': [{}]})
+        present.get_object.side_effect = None
+        present.get_object.return_value = {'Body': Mock()}
+        self.assertEqual(nightly.check_s3_absent(publication, client=present),
+                         dict(objectKeyAbsent=False, prefixEmpty=False, versionsGone=True))
+        # Only an explicit, complete, empty listing counts.
+        for listing in ({}, {'KeyCount': 0, 'IsTruncated': True}, {'KeyCount': 0}):
+            self.assertFalse(nightly.check_s3_absent(publication, client=client(listing=listing))['prefixEmpty'])
+        # A versioned bucket can keep the upload behind a delete marker.
+        kept = client(versioning={'Status': 'Suspended'}, versions={'IsTruncated': False, 'Versions': [{}]})
+        self.assertFalse(nightly.check_s3_absent(publication, client=kept)['versionsGone'])
+        kept.list_object_versions.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1000)
+        # Pages of delete markers alone do not hide a version: follow every page.
+        paged = client(versioning={'Status': 'Enabled'})
+        paged.list_object_versions.side_effect = [
+            {'IsTruncated': True, 'DeleteMarkers': [{}], 'NextKeyMarker': 'k', 'NextVersionIdMarker': 'v'},
+            {'IsTruncated': False, 'DeleteMarkers': [{}]}]
+        self.assertTrue(nightly.check_s3_absent(publication, client=paged)['versionsGone'])
+        self.assertEqual(paged.list_object_versions.call_args.kwargs['KeyMarker'], 'k')
+        # A key marker without its version marker could skip that key's remaining versions.
+        cursor = client(versioning={'Status': 'Enabled'})
+        cursor.list_object_versions.side_effect = [
+            {'IsTruncated': True, 'DeleteMarkers': [{}], 'NextKeyMarker': 'k'}, {'IsTruncated': False}]
+        self.assertFalse(nightly.check_s3_absent(publication, client=cursor)['versionsGone'])
+        cursor.list_object_versions.assert_called_once()
+        broken = client()
+        broken.get_bucket_versioning.side_effect = RuntimeError('secret-looking detail')
+        with self.assertRaises(nightly.NotRun) as caught:
+            nightly.check_s3_absent(publication, client=broken)
+        self.assertNotIn('secret', str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
+        for bad in (dict(publication, destination='proton'), dict(publication, prefix='acceptance/'),
+                    dict(publication, objectKey='other/shot.png')):
+            with self.assertRaises(nightly.NotRun):
+                nightly.check_s3_absent(bad, client=quiet)
+        for value in (quiet, present, kept):
+            self.assertFalse(value.delete_object.called or value.put_object.called)
+
+    def test_an_attempt_killed_before_its_terminal_proof_retires_only_once_recorded_unaudited(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+            run, evidence = Path(owner['run']), Path(owner['evidence'])
+            (evidence/'idle-1').mkdir()
+            (evidence/'idle-1/receipt.json').write_text('{"environment": {}}')
+            with patch.object(lab, 'state', return_value=dict(id='n12345678', golden=str(root/'g/a/b/golden'))), \
+                    patch.object(lab, 'reset') as reset, patch.object(lab, 'cleanup_overlay', return_value={}) as cleanup:
+                with self.assertRaisesRegex(RuntimeError, 'collection refused'):
+                    nightly.retire(run, evidence, {})
+                cleanup.assert_not_called()
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root):
+                    record = nightly.record_unaudited_attempt(nightly.retained_owner(), 'idle-1')
+                    with self.assertRaisesRegex(nightly.NotRun, 'directory of this row'):
+                        nightly.record_unaudited_attempt(owner, '../idle-1')
+                self.assertEqual(record['receiptSha256'], nightly.digest(evidence/'idle-1/receipt.json'))
+                # A terminal proof that exists but fails its checks is a refusal, never an interruption.
+                (evidence/'idle-2').mkdir()
+                (evidence/'idle-2/receipt.json').write_text('{}')
+                (evidence/'idle-2/terminal.json').write_text('{}')
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        self.assertRaisesRegex(nightly.NotRun, 'has a terminal.json'):
+                    nightly.record_unaudited_attempt(owner, 'idle-2')
+                (evidence/'idle-2/terminal.json').unlink()
+                # A dangling terminal.json symlink is not an absent proof, at record or retirement time.
+                (evidence/'idle-1/terminal.json').symlink_to(evidence/'missing')
+                with self.assertRaisesRegex(nightly.NotRun, 'does not match'):
+                    nightly.unaudited_attempt(evidence/'idle-1')
+                (evidence/'idle-1/terminal.json').unlink()
+                (evidence/'idle-2/receipt.json').unlink()
+                (evidence/'idle-2').rmdir()
+                nightly.retire(run, evidence, {})
+                cleanup.assert_called_once()
+            manifest = json.loads((evidence/'completion-manifest.json').read_text())
+            self.assertEqual(manifest['outcome'], 'failed')
+            self.assertEqual(manifest['unauditedAttempts'], ['idle-1'])
+            self.assertEqual(sorted(manifest['files']), ['completion.json', 'idle-1/receipt.json', 'idle-1/unaudited-attempt.json'])
+            self.assertTrue((evidence/'idle-1/receipt.json').exists())
+            # A receipt changed after the record is no longer the one the person saw.
+            (evidence/'idle-1/receipt.json').write_text('{"environment": {"changed": true}}')
+            with self.assertRaisesRegex(nightly.NotRun, 'does not match'):
+                nightly.unaudited_attempt(evidence/'idle-1')
 
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -516,6 +516,262 @@ def guest_clients_live(run):
     return False
 
 
+# Operator records for a guest kept over live cleanup (docs/lab/remote-builders.md#a-nightly-guest-kept-for-live-cleanup).
+# Each lives in the row's evidence and clears one recovery gate only.
+LIVE_RESOLUTION = 'live-cleanup-resolution.json'
+UNAUDITED_ATTEMPT = 'unaudited-attempt.json'
+
+
+def owned_overlay(owner):
+    run, evidence = Path(owner['run']), Path(owner['evidence'])
+    if run.parent != ROOT/'work/lab-runs' or not re.fullmatch(r'n[0-9a-f]{8}', run.name):
+        raise NotRun('guest recovery refused: run is not an owned nightly overlay')
+    from tools.lab.overlay_cleanup import _no_symlinks
+    _no_symlinks(run)
+    _no_symlinks(evidence)
+    return run, evidence
+
+
+def run_identity(run):
+    """The overlay's lab run id, or None once the run directory is gone."""
+    from tools.lab import lab
+    return lab.state(run)['id'] if (run/'state.json').exists() else None
+
+
+def live_resolution(run, evidence, session):
+    """The operator's resolution record for this run and session, or None. A record that does not match is refused."""
+    path = evidence/LIVE_RESOLUTION
+    if not path.exists():
+        return None
+    record = json.loads(private_file(path).read_text())
+    publication = record.get('publication')
+    if (record.get('schemaVersion') != 1 or record.get('kind') != 'live-cleanup-resolution'
+            or record.get('run') != str(run) or record.get('session') != session
+            or record.get('runId') != run_identity(run) or record.get('objectConfirmedGone') is not True
+            or not isinstance(publication, dict) or sorted(publication) != ['destination', 'objectKey', 'prefix']
+            or not all(isinstance(v, str) and v for v in publication.values())
+            or not isinstance(record.get('receipts'), dict) or not isinstance(record.get('guestOnlyErrors'), dict)):
+        raise NotRun('guest retained: '+str(path)+' does not record a confirmed cleanup of this run')
+    return record
+
+
+def unaudited_attempt(attempt):
+    """True when the operator recorded this attempt as unaudited and its receipt is the one they saw."""
+    path = attempt/UNAUDITED_ATTEMPT
+    if not path.exists():
+        return False
+    record = json.loads(private_file(path).read_text())
+    if (record.get('schemaVersion') != 1 or record.get('kind') != 'unaudited-attempt'
+            or record.get('attempt') != attempt.name or os.path.lexists(attempt/'terminal.json')
+            or record.get('receiptSha256') != digest(attempt/'receipt.json')):
+        raise NotRun('guest retained: '+str(path)+' does not match the attempt receipt')
+    return True
+
+
+def retained_owner():
+    """The retained nightly slot's owner, only when its worker is gone. Operator commands act on nothing else."""
+    slot = Path.home()/'putgd-lab/locks/tier1-guest.lock.d'
+    if not slot.exists():
+        raise NotRun('no retained nightly guest slot on this builder')
+    owner = json.loads(private_file(slot/('retained.json' if (slot/'retained.json').exists()
+                                          else 'owner.json')).read_text())
+    if (slot/'session').read_text().strip() != owner['session'] or not previous_worker_gone(owner):
+        raise NotRun('nightly guest slot belongs to a live or unverified worker')
+    return owner
+
+
+def settled_overlay(owner, checked_run):
+    """The slot's run, only when it is the run the person checked and nothing still publishes from it."""
+    run, evidence = owned_overlay(owner)
+    if run.name != checked_run:
+        raise NotRun('the retained slot holds '+run.name+', not the run you checked ('+checked_run+')')
+    # An orphaned recipe or Proton lend may still be uploading after its worker died.
+    if guest_clients_live(run):
+        raise NotRun('a lend or recipe for this run is still live; wait until it has stopped')
+    return run, evidence
+
+
+def frozen_overlay(owner, checked_run):
+    """settled_overlay, plus a guest VM that stayed paused since --check-live-cleanup paused it."""
+    run, evidence = settled_overlay(owner, checked_run)
+    paused = guest_paused(run)
+    if paused is None:
+        raise NotRun('the guest VM is running; run --check-live-cleanup (it pauses the VM), then check the destination again')
+    if time.time()-paused < PAUSE_SETTLE_SECONDS:
+        raise NotRun('the guest VM was paused under '+str(PAUSE_SETTLE_SECONDS)+' s ago; check the destination again after that')
+    return run, evidence
+
+
+# An upload request whose body reached the destination before the pause can still commit just after it.
+# Proton and S3 multipart uploads need a final call from the paused client; a single S3 PUT commits within
+# seconds of its body arriving. Destination checks count only this long after the pause.
+PAUSE_SETTLE_SECONDS = 120
+PAUSE_RECORD = 'live-cleanup-paused.json'
+
+
+def guest_paused(run, *, pause=False):
+    """When the guest's VM is paused, the time.time() it was paused; else None. ``pause`` pauses it first.
+
+    A recipe killed on the host can leave put.gd in the guest finishing an upload; a destination check made
+    while the VM runs proves nothing. Retirement still quits a paused VM; QMP ``cont`` resumes it, and the
+    next pause starts a new settle period. A run with neither disk nor state has no VM (paused at 0).
+    """
+    from tools.lab import lab
+    if not (run/'qmp.sock').exists():
+        return 0 if not (run/'disk.qcow2').exists() and not (run/'state.json').exists() else None
+    record = run/PAUSE_RECORD
+    try:
+        with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
+            running = qmp.execute('query-status').get('running')
+            if pause and running is not False:
+                # A stale time must never outlive a resume, even if the stop reply is lost.
+                record.unlink(missing_ok=True)
+                qmp.execute('stop')
+                running = qmp.execute('query-status').get('running')
+                if running is False:
+                    save(record, dict(pausedAt=time.time()))
+            if running is not False:
+                return None
+    except (OSError, lab.LabError):
+        return None
+    if pause and not record.exists():
+        # Paused by something else: the settle period starts now.
+        save(record, dict(pausedAt=time.time()))
+    try:
+        return float(json.loads(private_file(record).read_text())['pausedAt'])
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
+        return None
+
+
+def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_errors=(), now=None):
+    """Record that a person confirmed the remote object is gone, then remove the marker.
+
+    The record names the run, its lab run id, the publication from the marker and the hash of every
+    receipt in the row, so it clears the live-cleanup gate for exactly those receipts. ``guest_only_errors``
+    are receipt cleanup errors the person checked are held only in the guest; recovery counts them as
+    guest-local for those receipts and nothing more.
+    """
+    from tools.lab import lab
+    run, evidence = frozen_overlay(owner, checked_run)
+    marker = run/lab.LIVE_CLEANUP_MARKER
+    identity = run_identity(run)
+    if marker.exists():
+        details = json.loads(private_file(marker).read_text())
+        found = {k: details.get(k) for k in ('destination', 'prefix', 'objectKey')}
+        if details.get('schemaVersion') != 1 or details.get('runId') != identity:
+            raise NotRun('live cleanup marker does not belong to this run; inspect '+str(marker))
+        if publication and publication != found:
+            raise NotRun('the given publication differs from the marker; check the object named in '+str(marker))
+        publication = found
+    elif not publication:
+        raise NotRun('no live cleanup marker; give --destination, --prefix and --object-key of the confirmed object')
+    if not all(isinstance(v, str) and v for v in publication.values()):
+        raise NotRun('live cleanup publication needs a destination, prefix and object key')
+    if not publication['objectKey'].startswith(publication['prefix']):
+        raise NotRun('live cleanup object key is outside its prefix')
+    receipts, errors = {}, {}
+    for path in sorted(evidence.glob('*/receipt.json')):
+        receipts[path.parent.name] = digest(path)
+        held = json.loads(path.read_text()).get('environment', {}).get('cleanup_errors', [])
+        if matched := [e for e in guest_only_errors if e in held]:
+            errors[path.parent.name] = matched
+    unknown = [e for e in guest_only_errors if not any(e in v for v in errors.values())]
+    if unknown:
+        raise NotRun('--guest-only-error must be an exact cleanup error of a receipt in this row')
+    record = dict(schemaVersion=1, kind='live-cleanup-resolution', run=str(run), runId=identity,
+                  session=owner['session'], publication=publication, objectConfirmedGone=True,
+                  markerPresent=marker.exists(), receipts=receipts, guestOnlyErrors=errors,
+                  resolvedAt=now or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()))
+    if (evidence/LIVE_RESOLUTION).exists():
+        shutil.copy2(evidence/LIVE_RESOLUTION, evidence/(LIVE_RESOLUTION+'.before-'+uuid.uuid4().hex[:8]))
+    # The record first: a crash in between leaves both, which still keeps the guest.
+    save(evidence/LIVE_RESOLUTION, record)
+    marker.unlink(missing_ok=True)
+    return record
+
+
+def check_s3_absent(publication, *, client=None):
+    """Read-only proof that a Tier 1 S3 publication is gone: exact-key GET 404 and an empty prefix.
+
+    Uses key set 2 in memory, as the live fixture does; it prints no credential and changes nothing.
+    """
+    if (publication.get('destination') != 's3'
+            or not re.fullmatch(r'acceptance/tier1-live/[0-9a-f]{32}/', publication.get('prefix', ''))
+            or not publication.get('objectKey', '').startswith(publication['prefix'])):
+        raise NotRun('the S3 check covers only a Tier 1 live acceptance prefix')
+    # Fixed messages only: credential-file values and SDK errors never reach output.
+    if client is None:
+        try:
+            from tools.lab import provision_live_credentials as bridge
+            from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two
+            import boto3
+            from botocore.config import Config
+            selected = key_set_two(bridge.read_private_credentials(Path.home()/'Documents/creds.txt'))
+            keys, region = selected['credentials'], selected['settings'].get('region', '')
+            if (selected['settings'].get('bucket') != 'put.gd' or selected['settings'].get('endpoint')
+                    or not re.fullmatch(r'[a-z]{2}(?:-gov)?-[a-z]+-[1-9][0-9]?', str(region))):
+                raise ValueError
+            client = boto3.Session(region_name=region).client(
+                's3', region_name=region, endpoint_url='https://s3.'+region+'.amazonaws.com',
+                aws_access_key_id=keys['accessKey'], aws_secret_access_key=keys['secretKey'],
+                aws_session_token=keys.get('sessionToken') or None,
+                config=Config(connect_timeout=10, read_timeout=20, retries={'total_max_attempts': 2, 'mode': 'standard'}))
+        except Exception:
+            raise NotRun('S3 check: key set 2 or its standard put.gd bucket settings are unavailable') from None
+    try:
+        try:
+            client.get_object(Bucket='put.gd', Key=publication['objectKey'])['Body'].close()
+            key_absent = False
+        except client.exceptions.NoSuchKey:
+            key_absent = True
+        listed = client.list_objects_v2(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1)
+        # Only an explicit, complete, empty listing proves the prefix is empty.
+        prefix_empty = (listed.get('KeyCount') == 0 and listed.get('IsTruncated') is False
+                        and not listed.get('Contents'))
+        # A delete in a versioned bucket can leave the uploaded version behind a delete marker.
+        status = client.get_bucket_versioning(Bucket='put.gd').get('Status')
+        if status is None:
+            versions_gone = True
+        else:
+            # Delete markers can fill pages; follow them (bounded) and look for any remaining version.
+            versions_gone, page = False, dict(Bucket='put.gd', Prefix=publication['prefix'], MaxKeys=1000)
+            for _ in range(20):
+                versions = client.list_object_versions(**page)
+                if versions.get('Versions'):
+                    break
+                if versions.get('IsTruncated') is False:
+                    versions_gone = True
+                    break
+                # Both markers or stop: a key marker alone can resume past that key's remaining versions.
+                if (versions.get('IsTruncated') is not True or not versions.get('NextKeyMarker')
+                        or not versions.get('NextVersionIdMarker')):
+                    break
+                page.update(KeyMarker=versions['NextKeyMarker'], VersionIdMarker=versions['NextVersionIdMarker'])
+    except Exception:
+        raise NotRun('S3 check could not complete; keep the guest and try again') from None
+    return dict(objectKeyAbsent=key_absent, prefixEmpty=prefix_empty, versionsGone=versions_gone)
+
+
+def record_unaudited_attempt(owner, name, *, now=None):
+    """Mark one attempt killed before its terminal proof as unaudited, keeping its receipt in place.
+
+    Retirement then archives only the audited attempts and names this one, with its record and receipt
+    hashes, in the completion manifest. It never makes the attempt count as a result.
+    """
+    _, evidence = owned_overlay(owner)
+    attempt = evidence/name
+    if Path(name).name != name or name in ('.', '..') or not (attempt/'receipt.json').is_file():
+        raise NotRun('attempt must be a directory of this row with a receipt.json')
+    # Only a runner killed before it wrote terminal.json; a terminal proof that fails its checks stays a refusal.
+    if os.path.lexists(attempt/'terminal.json'):
+        raise NotRun('attempt has a terminal.json; only an attempt killed before its terminal proof can be unaudited')
+    record = dict(schemaVersion=1, kind='unaudited-attempt', attempt=name, session=owner['session'],
+                  receiptSha256=digest(attempt/'receipt.json'),
+                  recordedAt=now or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()))
+    save(attempt/UNAUDITED_ATTEMPT, record)
+    return record
+
+
 def recover_guest(config, owner, out, cells):
     """Recover only this slot's credential baton, then guarded overlay retirement.
 
@@ -524,12 +780,8 @@ def recover_guest(config, owner, out, cells):
     """
     from tools.lab.desktop_lock import Desktop
     from tools.lab import lab
-    run, evidence, session = Path(owner['run']), Path(owner['evidence']), owner['session']
-    if run.parent != ROOT/'work/lab-runs' or not re.fullmatch(r'n[0-9a-f]{8}', run.name):
-        raise NotRun('guest recovery refused: run is not an owned nightly overlay')
-    from tools.lab.overlay_cleanup import _no_symlinks
-    _no_symlinks(run)
-    _no_symlinks(evidence)
+    run, evidence = owned_overlay(owner)
+    session = owner['session']
     if (run/lab.LIVE_CLEANUP_MARKER).exists():
         raise NotRun('guest retained: live remote cleanup unresolved (marker in the run directory); resolve it before recovery')
     if guest_clients_live(run):
@@ -572,16 +824,22 @@ def recover_guest(config, owner, out, cells):
             save(out/'proton-release.json', proton.release(session, verified_clean=True))
     elif state['state'] != 'free':
         raise NotRun('guest recovery refused: owned Proton lease has no matching lend receipt')
+    resolution = live_resolution(run, evidence, session)
     for path in evidence.glob('*/receipt.json'):
         environment = json.loads(path.read_text()).get('environment', {})
         errors = environment.get('cleanup_errors', [])
+        # Only a resolution that hashed this very receipt speaks for it.
+        resolved = bool(resolution) and resolution['receipts'].get(path.parent.name) == digest(path)
         # A live destination that still holds an object or share link keeps its History row and credential
-        # reference in this guest. Retiring would discard the only way to remove it (never retire).
-        if environment.get('unresolved_live_cleanup'):
+        # reference in this guest. Retiring would discard the only way to remove it (never retire) until a
+        # person confirms the object is gone and records it (LIVE_RESOLUTION).
+        if environment.get('unresolved_live_cleanup') and not resolved:
             raise NotRun('guest retained: live remote cleanup unresolved in '+str(path)+'; resolve it before recovery')
         # The receipt's own record of which cleanup errors only the guest holds (the guest was unreachable
         # or its resident refused to quit). Retire only when every error is one of those.
-        guest_local = environment.get('guest_local_cleanup', [])
+        guest_local = list(environment.get('guest_local_cleanup', []))
+        if resolved:
+            guest_local += resolution['guestOnlyErrors'].get(path.parent.name, [])
         if (any(error not in guest_local for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
@@ -593,6 +851,17 @@ def recover_guest(config, owner, out, cells):
     save(out/'guest-recovered.json', dict(session=session, run=str(run), evidence=str(evidence)))
 
 
+@contextmanager
+def recovery_mutex():
+    """One recovery or operator record at a time on this builder."""
+    with (Path.home()/'putgd-lab/locks/tier1-recovery.lock').open('a') as mutex:
+        try:
+            fcntl.flock(mutex, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise NotRun('nightly guest recovery is already running in another worker') from None
+        yield
+
+
 def recover_stale_guest(config, out):
     """Before waiting, reconcile one dead worker's durable slot. Never steal a live lease."""
     from tools.lab.desktop_lock import Desktop
@@ -601,15 +870,8 @@ def recover_stale_guest(config, out):
     if not slot.exists():
         return
     try:
-        with (locks/'tier1-recovery.lock').open('a') as mutex:
-            try:
-                fcntl.flock(mutex, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                raise NotRun('nightly guest recovery is already running in another worker') from None
-            owner = json.loads(private_file(slot/('retained.json' if (slot/'retained.json').exists()
-                                                  else 'owner.json')).read_text())
-            if (slot/'session').read_text().strip() != owner['session'] or not previous_worker_gone(owner):
-                raise NotRun('nightly guest slot belongs to a live or unverified worker')
+        with recovery_mutex():
+            owner = retained_owner()
             desktop = Desktop(locks, config['host'])
             state = desktop.status()
             if state['state'] != 'free' and (state.get('lock', {}).get('session') != owner['session']
@@ -785,6 +1047,10 @@ def retire(run, out, rows):
     # writing the existing guarded cleanup manifest; never remove failed evidence.
     from tools.lab.surface_driver.collect import collect
     attempts = [p.parent for p in out.glob('*/receipt.json')]
+    # An attempt killed before its terminal proof is archived nowhere and stays in place; its operator
+    # record and receipt are hashed into the completion manifest instead.
+    unaudited = sorted((a for a in attempts if unaudited_attempt(a)), key=lambda a: a.name)
+    attempts = [a for a in attempts if a not in unaudited]
     archive = out/'attachments.tgz'
     if archive.exists():
         archive = out/('attachments-recovery-'+uuid.uuid4().hex[:8]+'.tgz')
@@ -801,9 +1067,14 @@ def retire(run, out, rows):
             shutil.copy2(out/name, out/(name+'.before-recovery-'+uuid.uuid4().hex[:8]))
     completion = dict(schemaVersion=1, kind='vm-overlay-cleanup-evidence', run=str(run),
         runId=info['id'], completed=True, evidenceExportVerified=True,
-        outcome='passed' if rows and all(c['green'] for c in rows.values()) else 'failed')
+        outcome='passed' if rows and not unaudited and all(c['green'] for c in rows.values()) else 'failed')
+    if unaudited:
+        completion['unauditedAttempts'] = [a.name for a in unaudited]
     save(out/'completion.json', completion)
     files = {'completion.json': digest(out/'completion.json')}
+    for attempt in unaudited:
+        for name in (UNAUDITED_ATTEMPT, 'receipt.json'):
+            files[attempt.name+'/'+name] = digest(attempt/name)
     if archive.exists():
         files[archive.name] = digest(archive)
     save(out/'completion-manifest.json', dict(completion, files=files))
@@ -1386,7 +1657,67 @@ def main():
     parser.add_argument('--worker', choices=HOSTS, help=argparse.SUPPRESS)
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
+    operator = parser.add_argument_group('a nightly guest kept for live cleanup (docs/lab/remote-builders.md); run on its builder')
+    operator.add_argument('--resolve-live-cleanup', metavar='RUN', help='record that you confirmed the remote object of run RUN (n<8 hex>) is gone, then remove the marker')
+    operator.add_argument('--destination', help='when the marker is already gone')
+    operator.add_argument('--prefix', help='when the marker is already gone')
+    operator.add_argument('--object-key', help='when the marker is already gone')
+    operator.add_argument('--guest-only-error', action='append', default=[], metavar='ERROR', help='an exact receipt cleanup error you checked is held only in the guest')
+    operator.add_argument('--check-live-cleanup', action='store_true', help='pause the guest VM so nothing in it can publish; for S3, then check that the object, its prefix and its versions are gone')
+    operator.add_argument('--unaudited-attempt', action='append', default=[], metavar='NAME', help='record an attempt killed before its terminal proof as unaudited')
     args = parser.parse_args()
+    given = dict(destination=args.destination, prefix=args.prefix, objectKey=args.object_key)
+    if any(given.values()) and not all(given.values()):
+        parser.error('--destination, --prefix and --object-key go together')
+    if args.check_live_cleanup:
+        from tools.lab import lab
+        try:
+            owner = retained_owner()
+            run, _ = owned_overlay(owner)
+            # An absence seen while an orphaned recipe or lend can still publish proves nothing.
+            if guest_clients_live(run):
+                raise NotRun('a lend or recipe for this run is still live; wait until it has stopped')
+            marker = run/lab.LIVE_CLEANUP_MARKER
+            if marker.exists():
+                details = json.loads(private_file(marker).read_text())
+                publication = {k: details.get(k) for k in ('destination', 'prefix', 'objectKey')}
+                if all(given.values()) and given != publication:
+                    raise NotRun('the given publication differs from the marker in '+str(marker))
+            elif all(given.values()):
+                publication = given
+            else:
+                raise NotRun('no live cleanup marker in '+str(run)+'; give --destination, --prefix and --object-key')
+            # Nothing in the guest may publish after this point; the destination check follows the pause.
+            paused = guest_paused(run, pause=True)
+            if paused is None:
+                raise NotRun('could not pause the guest VM; keep the guest')
+            # Let an upload that had already reached the destination commit before reading it.
+            time.sleep(max(0, paused+PAUSE_SETTLE_SECONDS-time.time()))
+            if guest_paused(run) != paused:
+                raise NotRun('the guest VM was resumed during the wait; run --check-live-cleanup again')
+            result = dict(guestPaused=True)
+            if publication['destination'] == 's3':
+                result.update(check_s3_absent(publication))
+        except NotRun as error:
+            raise SystemExit(str(error)) from None
+        print(json.dumps(result, indent=2))
+        raise SystemExit(0 if all(result.values()) else 1)
+    if args.resolve_live_cleanup or args.unaudited_attempt:
+        if (any(given.values()) or args.guest_only_error) and not args.resolve_live_cleanup:
+            parser.error('publication and --guest-only-error need --resolve-live-cleanup')
+        try:
+            with recovery_mutex():
+                owner = retained_owner()
+                if args.resolve_live_cleanup:
+                    frozen_overlay(owner, args.resolve_live_cleanup)
+                for name in args.unaudited_attempt:
+                    print(json.dumps(record_unaudited_attempt(owner, name), indent=2))
+                if args.resolve_live_cleanup:
+                    print(json.dumps(resolve_live_cleanup(owner, args.resolve_live_cleanup, publication=given if all(given.values()) else None,
+                                                          guest_only_errors=args.guest_only_error), indent=2))
+        except NotRun as error:
+            raise SystemExit(str(error)) from None
+        return
     if args.desktops and (not (args.now or args.stable_draft) or args.worker):
         parser.error('--desktops requires --now or --stable-draft on the controller')
     if args.stable_draft and (not args.tag or not STABLE_TAG.fullmatch(args.tag) or args.worker):
