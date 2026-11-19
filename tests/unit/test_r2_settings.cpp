@@ -87,6 +87,19 @@ private slots:
                                    "failed:s3_settings_invalid;abandon:s3_settings_invalid;"));
         }
     }
+    // A public R2 upload with no Link domain would copy an S3 API link R2 never serves: it is refused
+    // before anything is sent (#1699 P3).
+    void publicUploadWithoutLinkDomainRefusesFirst() {
+        auto value = settings("default");
+        value["linkMode"] = "public";
+        CredentialStore secrets;
+        R2Provider provider(std::make_shared<S3Provider>(secrets));
+        UploadRequest request;
+        request.destination = Destination{r2::providerId, "r2", "revision", value, QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}}};
+        QString seen;
+        provider.upload(request, [&](UploadResult result) { seen = result.status + ":" + result.error.code + ":" + result.error.details["field"].toString(); });
+        QCOMPARE(seen, QString("failed:s3_settings_invalid:publicUrlBase"));
+    }
     // An upload through a moved Cloudflare R2 destination and one through the old S3 destination on
     // the same endpoint name the same object (#1699 A4); signed R2 requests never follow a redirect (A3).
     void movedDestinationSharesIdentityAndFollowsNoRedirect() {
@@ -122,6 +135,12 @@ private slots:
         QCOMPARE(r2::s3Settings(*moved)["endpoint"], s3["endpoint"]);
         QCOMPARE((*moved)["publicUrlBase"], s3["publicUrlBase"]);
         QVERIFY(!r2::validate(*moved));
+        // Expiring links never use Link domain: one R2 would refuse isn't carried over (#1699 P8).
+        auto presigned = s3;
+        presigned["linkMode"] = "presigned";
+        presigned["publicUrlBase"] = "https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com";
+        QVERIFY((*r2::fromS3Settings(presigned))["publicUrlBase"].isNull());
+        QVERIFY(!r2::validate(*r2::fromS3Settings(presigned)));
         for (const auto& endpoint : {"https://s3.us-east-1.amazonaws.com", "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/lab-bucket",
                                      "https://acct.r2.cloudflarestorage.com.example"}) {
             s3["endpoint"] = endpoint;

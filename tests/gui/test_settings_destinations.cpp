@@ -747,6 +747,13 @@ private slots:
   PUTGD_TRY_COMPARE(saved()["bucket"].toString(),QString("good-bucket"));
   QCOMPARE(saved()["accountId"].toString(),nextAccount);QCOMPARE(saved()["jurisdiction"].toString(),QString("default"));
   PUTGD_TRY_VERIFY(!unitLine->isVisible());
+  // #1699 Q5: an address with no bucket, for another account, empties Bucket: the bucket shown is the
+  // old account's, and nothing is saved until one is entered for this account.
+  QGuiApplication::clipboard()->setText("https://"+oldAccount+".r2.cloudflarestorage.com");
+  account->setFocus();account->selectAll();QTest::keyClick(account,Qt::Key_V,Qt::ControlModifier);
+  QCOMPARE(account->text(),oldAccount);QVERIFY(bucket->text().isEmpty());
+  PUTGD_COMPARE_STEADY(saved()["accountId"].toString(),nextAccount,300);QCOMPARE(saved()["bucket"].toString(),QString("good-bucket"));
+  PUTGD_TRY_VERIFY(unitLine->isVisible());
   QVERIFY(service.revision()!=shown);
  }
  // #1699: a Cloudflare R2 destination saves as one profile, latest state winning. A revert typed
@@ -770,12 +777,42 @@ private slots:
   fixture.client.replyDelayMs.remove("settings.save");
   // An incomplete draft is not sent and says why; the new destination doesn't wait for it or carry it.
   type("");auto* unitLine=window.findChild<QLabel*>("r2UnitStatus");PUTGD_TRY_VERIFY(unitLine->isVisible());
+  // #1699 Q4: an R2 destination isn't added until Account ID, Jurisdiction and Bucket are valid, so the
+  // resident is never sent one it must refuse.
+  QStringList sent;fixture.client.hold=[&](const QString& method,const QJsonObject& params){if(method=="settings.save")sent.append(QString::fromUtf8(QJsonDocument(params).toJson(QJsonDocument::Compact)));return false;};
   QJsonObject added;window.settings()->r2Command({{"action","add"},{"label","Second R2"}},[&](Error error,QJsonObject state){QVERIFY2(!error,qPrintable(error.message));added=state;});
   const auto second=added["profileId"].toString();QVERIFY(!second.isEmpty());
+  PUTGD_COMPARE_STEADY(std::any_of(sent.cbegin(),sent.cend(),[&](const QString& doc){return doc.contains("\""+second+"\"");}),false,300);
   window.settings()->r2Command({{"action","paste"},{"text","https://00112233445566778899aabbccddeeff.eu.r2.cloudflarestorage.com/second-bucket"}},[](Error error,QJsonObject){QVERIFY2(!error,qPrintable(error.message));});
   PUTGD_TRY_COMPARE(saved(second)["settings"].toObject()["bucket"].toString(),QString("second-bucket"));
   QCOMPARE(saved(second)["provider"].toString(),r2::providerId);
   QCOMPARE(saved("r2-lab")["settings"].toObject()["bucket"].toString(),QString("old-bucket"));
+ }
+ // #1699 Q1: a destination another writer converted to Cloudflare R2 while this window showed it as
+ // S3 is never converted back from here: an edit made in the stale form sends that edit, not the
+ // whole old destination, even after the conflict and Retry saving.
+ void conversionElsewhereIsNeverUndoneFromAStaleForm(){
+  QTemporaryDir dir;CredentialStore secrets;auto s3=std::make_shared<S3Provider>(secrets);R2Provider r2(s3);
+  SettingsService service(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return id==r2::providerId?r2.validateSettings(value):s3->validateSettings(value);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");QVERIFY(label&&retry);
+  label->setFocus();label->setText("Renamed once");emit label->editingFinished();
+  PUTGD_TRY_VERIFY(!fixture.client.held.isEmpty());
+  // Elsewhere: the destination becomes Cloudflare R2 while this window's rename is in flight.
+  auto doc=service.document();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto settings=r2::defaults();
+  settings["accountId"]="0123456789abcdef0123456789abcdef";settings["bucket"]="elsewhere-bucket";profile["provider"]=r2::providerId;profile["settings"]=settings;profiles[0]=profile;doc["profiles"]=profiles;
+  QVERIFY(service.save(doc,service.revision()));
+  // The window learns of it as the resident's notice makes it: the accepted document is R2 now, while
+  // the form still shows the S3 destination with this window's rename on top.
+  fixture.client.hold={};QVERIFY(fixture.client.release());
+  bool refreshed=false;fixture.session.refreshSnapshot([&](Error){refreshed=true;});PUTGD_TRY_VERIFY(refreshed);
+  QCOMPARE(window.findChild<QComboBox*>("storageProvider")->currentData().toString(),QString("s3"));
+  label->setFocus();label->setText("Renamed twice");emit label->editingFinished();
+  PUTGD_TRY_VERIFY((retry->isVisible()?retry->click():void(),!retry->isVisible()&&window.settings()->flushAutosave()));
+  const auto saved=service.document()["profiles"].toArray()[0].toObject();
+  QCOMPARE(saved["provider"].toString(),r2::providerId);QCOMPARE(saved["settings"].toObject()["bucket"].toString(),QString("elsewhere-bucket"));
  }
  // #1678: an S3 destination on Cloudflare R2 becomes a Cloudflare R2 destination only when Move to
  // Cloudflare R2 is pressed, keeping its ID, routes and credentials; showing it saves nothing.
@@ -784,11 +821,20 @@ private slots:
   SettingsService service(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return id==r2::providerId?r2.validateSettings(value):s3->validateSettings(value);});
   auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto settings=profile["settings"].toObject();
   settings["endpoint"]="https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com";settings["region"]="Western North America (WNAM)";settings["bucket"]="lab-bucket";settings["aclMode"]="omit";settings["storageClass"]="STANDARD";
+  // A Link domain S3 accepts (plain HTTP on loopback) and R2 refuses.
+  settings["linkMode"]="public";settings["publicUrlBase"]="http://127.0.0.1:9000/pub";
   profile["settings"]=settings;profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
-  const auto before=service.document();
+  auto before=service.document();
   UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
   auto* move=window.findChild<QPushButton*>("moveToCloudflareR2");QVERIFY(move);PUTGD_TRY_VERIFY(move->isVisibleTo(&window));
   PUTGD_COMPARE_STEADY(service.document(),before,300);
+  // #1699 Q2: what R2 would refuse is said first and nothing moves, so the move never saves without it.
+  move->click();
+  PUTGD_COMPARE_STEADY(service.document(),before,300);
+  QVERIFY2(window.findChild<QLabel*>("destinationStatus")->text().startsWith("Before moving to Cloudflare R2:"),qPrintable(window.findChild<QLabel*>("destinationStatus")->text()));
+  auto* link=window.findChild<QLineEdit*>("s3PublicUrlBase");link->setFocus();link->setText("https://pub-0123456789abcdef.r2.dev");emit link->editingFinished();
+  PUTGD_TRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["publicUrlBase"].toString(),QString("https://pub-0123456789abcdef.r2.dev"));
+  settings["publicUrlBase"]="https://pub-0123456789abcdef.r2.dev";before=service.document();
   move->click();
   const auto moved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
   PUTGD_TRY_COMPARE(moved()["provider"].toString(),r2::providerId);

@@ -122,7 +122,9 @@ private:
  // The control a settings key is edited in, for a field error.
  QWidget* settingsField(const QString& field)const;
  // Move to Cloudflare R2 (#1678): converts the selected S3 destination in place, one operation.
- void moveToCloudflareR2();
+ Error moveToCloudflareR2();
+ // Destinations whose service was switched in this window and isn't saved as that service yet.
+ QSet<QString> serviceSwitched_;
  // Cloudflare R2's field messages, the line under Bucket and its status line (#1699), from the shown
  // destination's current values and the queue's record of what isn't saved.
  void updateR2Feedback();
@@ -171,7 +173,7 @@ private:
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void endAppearancePreview();
- void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination",const QString& name={});void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination",const QString& name={},const QString& provider={});void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
  QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
  QStringList reorderBaseline_;QAction *moveUp_=nullptr,*moveDown_=nullptr;

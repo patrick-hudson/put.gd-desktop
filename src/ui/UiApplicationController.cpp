@@ -198,7 +198,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   // #1361: the Custom uploader form in Destinations; its secret values never leave the window.
   else if(name=="customUploader"){main_->navigate("destinations");main_->settings()->uploaderCommand(params,answer);return;}
   // #1678: the Cloudflare R2 form in Destinations and Move to Cloudflare R2; it carries no credentials.
-  else if(name=="r2Destination"){main_->navigate("destinations");main_->settings()->r2Command(params,answer);return;}
+  // It acts on Destinations as shown, never opening it: inspect changes nothing on screen.
+  else if(name=="r2Destination"){main_->settings()->r2Command(params,answer);return;}
   else error=main_->settings()->moveSelectedDestination(params["direction"].toString()=="up"?-1:1,params["profileId"].toString(),result);
   answer(error,result);return;
  }

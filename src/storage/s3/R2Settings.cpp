@@ -64,6 +64,9 @@ std::optional<QJsonObject> fromS3Settings(const QJsonObject& s3) {
                    {"linkMode", s3["linkMode"].toString("public")}, {"linkValidityDays", s3["linkValidityDays"].toInt(7)},
                    {"publicUrlBase", s3["publicUrlBase"].isString() ? s3["publicUrlBase"] : QJsonValue(QJsonValue::Null)}};
     for (const auto& key : {"connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"}) r2[key] = s3[key];
+    // Expiring links never use Link domain: one R2 couldn't use, such as the S3 API address, isn't
+    // carried over into a field the R2 form would then refuse (#1699).
+    if (r2["linkMode"] == QLatin1String("presigned") && !problem(r2, QStringLiteral("publicUrlBase")).isEmpty()) r2["publicUrlBase"] = QJsonValue::Null;
     return r2;
 }
 QString problem(const QJsonObject& settings, const QString& field) {

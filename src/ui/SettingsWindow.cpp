@@ -321,6 +321,7 @@ QLineEdit* input(QWidget* parent,const QString& name){auto* e=new FormInput(pare
 // #1699: Cloudflare R2's Account ID, Jurisdiction and Bucket, which name one account endpoint and its
 // bucket: a bucket never saves beside an account it wasn't entered with. An S3 or B2 destination has
 // no Account ID or Jurisdiction, so for it this group is its Bucket alone.
+QJsonObject destinationDefaults(const QString& provider,const QString& id);
 const QStringList& r2Group(){static const QStringList group{"settings/accountId","settings/jurisdiction","settings/bucket"};return group;}
 // Backblaze B2 settings edited through the S3 panel's shared rows (#282).
 const QStringList& b2SharedKeys(){static const QStringList keys{"bucket","objectPrefix","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};return keys;}
@@ -1180,7 +1181,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  destinationMenu->addSeparator();connect(destinationMenu->addAction("Copy details"),&QAction::triggered,this,[this]{qApp->clipboard()->setText(QString::fromUtf8(QJsonDocument(editedProfile()).toJson(QJsonDocument::Indented)));});
  auto* dev=new QPushButton("Import development S3",this);dev->setObjectName("importDevelopmentS3");dev->hide();auto* addMenu=new QMenu(add);add->setMenu(addMenu);connect(addMenu->addAction("Amazon S3 / S3-compatible"),&QAction::triggered,this,[this]{addS3Profile();});connect(addMenu->addAction("Proton Drive"),&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Proton Drive");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData("proton-drive"));queueEdit(profileLabel_);});connect(addMenu->addAction("Backblaze B2"),&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Backblaze B2");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData("backblaze-b2"));queueEdit(profileLabel_);});
  // #1678: Cloudflare R2, its own destination type over the S3 API.
- {auto* r2Add=addMenu->addAction("Cloudflare R2");r2Add->setObjectName("addCloudflareR2");connect(r2Add,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Cloudflare R2");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(r2::providerId));queueEdit(profileLabel_);});}
+ {auto* r2Add=addMenu->addAction("Cloudflare R2");r2Add->setObjectName("addCloudflareR2");connect(r2Add,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Cloudflare R2",{},r2::providerId);if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(r2::providerId));queueEdit(profileLabel_);});}
  // #1361: one HTTP request the user describes, or imports from a ShareX .sxcu file.
  {auto* custom=addMenu->addAction("Custom uploader (HTTP)");custom->setObjectName("addCustomUploader");connect(custom,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Custom uploader");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(CustomUploaderPanel::provider()));queueEdit(profileLabel_);});}
 #ifndef NDEBUG
@@ -1201,8 +1202,12 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const auto readS3ApiAddress=[this]{
   if(loading_||providerType_->currentData()!=r2::providerId)return;
   const auto address=r2::parseS3ApiAddress(r2AccountId_->text());if(!address)return;
+  // An address with no bucket for another account or jurisdiction than the saved one leaves Bucket
+  // empty: the bucket shown was saved with that account, and saving it with this one would be wrong.
+  QJsonObject before;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==profileId_->text()&&value.toObject()["provider"]==r2::providerId)before=value.toObject()["settings"].toObject();
+  const bool otherAccount=!before.isEmpty()&&(before["accountId"].toString()!=address->accountId||before["jurisdiction"].toString()!=address->jurisdiction);
   const QSignalBlocker account(r2AccountId_),jurisdiction(r2Jurisdiction_),bucket(s3_["bucket"]);
-  r2AccountId_->setText(address->accountId);r2Jurisdiction_->setCurrentIndex(r2Jurisdiction_->findData(address->jurisdiction));if(!address->bucket.isEmpty())s3_["bucket"]->setText(address->bucket);
+  r2AccountId_->setText(address->accountId);r2Jurisdiction_->setCurrentIndex(r2Jurisdiction_->findData(address->jurisdiction));if(!address->bucket.isEmpty())s3_["bucket"]->setText(address->bucket);else if(otherAccount)s3_["bucket"]->clear();
  };
  connect(r2AccountId_,&QLineEdit::textChanged,this,[this,readS3ApiAddress]{if(pasting_==r2AccountId_)readS3ApiAddress();});
  connect(r2AccountId_,&QLineEdit::editingFinished,this,[this,readS3ApiAddress]{if(r2AccountId_->isModified())readS3ApiAddress();});
@@ -1595,6 +1600,7 @@ void SettingsWindow::refreshDiagnostics(){
 }
 
 void SettingsWindow::refresh(bool preserveDrafts){
+ if(!preserveDrafts)serviceSwitched_.clear();
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
  autosaveBlocked_=false;restoredDraft_=false;restoredBase_={};for(auto* button:std::as_const(retryAutosave_))button->hide();reorderBaseline_.clear();
  loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseDocument_=draft_;baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
@@ -1643,7 +1649,7 @@ void SettingsWindow::updateLimitHints(){
   it.value()->setToolTip(text.isEmpty()?QString{}:QString("On this computer, Auto sets no size limit of put.gd's own. Each upload still needs room on the disk: put.gd keeps %1 free (5% of the disk, between 1 and 4 GB), and the destination's own maximum object size applies.").arg(ByteSize::summary(qMax<qint64>(reserve,0))));
  }
 }
-void SettingsWindow::addS3Profile(const QString& defaultLabel,const QString& name){
+void SettingsWindow::addS3Profile(const QString& defaultLabel,const QString& name,const QString& provider){
  flushTyping();storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();if(profiles.size()>=32){status({"profile_limit","At most 32 destinations are supported",{}});return;}
  bool accepted=false;// An agent names the destination itself (ui.r2Destination add); a person types it in the dialog.
  const auto destinationName=name.isEmpty()?QInputDialog::getText(this,"Add destination","Destination name",QLineEdit::Normal,defaultLabel,&accepted).trimmed():(accepted=true,name.trimmed());if(!accepted||destinationName.isEmpty())return;
@@ -1655,7 +1661,8 @@ void SettingsWindow::addS3Profile(const QString& defaultLabel,const QString& nam
  if(id.isEmpty()||takenId(id))do{auto slug=destinationName.toLower();static const QRegularExpression runOfOthers("[^a-z0-9]+");slug.replace(runOfOthers,"-");slug=slug.left(48);if(slug.isEmpty()||!slug[0].isLetterOrNumber())slug="destination";id=slug+(number==1?QString{}:"-"+QString::number(number));++number;}while(takenId(id));
  while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
  credentialDrafts_.resize(profiles.size()+1);
- if(restored.isEmpty()){auto profile=s3Profile(id);profile["label"]=destinationName;profiles.append(profile);profileEditors_.append(QJsonValue::Null);}
+ // A Cloudflare R2 destination starts as one (#1699), never as an S3 draft that is then switched.
+ if(restored.isEmpty()){auto profile=s3Profile(id);if(!provider.isEmpty()){const auto defaults=destinationDefaults(provider,id);profile["provider"]=provider;profile["settings"]=defaults["settings"];profile["credentials"]=defaults["credentials"];}profile["label"]=destinationName;profiles.append(profile);profileEditors_.append(QJsonValue::Null);}
  else{
   restored["id"]=id;profiles.append(restored);auto editor=provisionalProfile_["editor"].toObject();editor["id"]=id;profileEditors_.append(editor);
   credentialDrafts_.last()=std::move(provisionalCredentials_);provisionalProfile_={};provisionalCredentials_.clear();
@@ -1803,8 +1810,9 @@ QJsonObject destinationDefaults(const QString& provider,const QString& id){
 bool within(const QString& path,const QString& ancestor){return ancestor.isEmpty()||path==ancestor||path.startsWith(ancestor+"/");}
 // Fields that save only together. #1676: Region and Endpoint, so a fix to one is never refused
 // because of the other's saved value and then left looking saved.
-const QList<QStringList>& fieldGroups(){static const QList<QStringList> groups{{"settings/endpoint","settings/region"},r2Group()};return groups;}
-QStringList fieldGroup(const QString& path){for(const auto& group:fieldGroups())if(group.contains(path))return group;return {path};}
+// Cloudflare R2's group belongs to R2 destinations alone (#1699): an S3 or B2 Bucket stays a field of its own.
+QList<QStringList> fieldGroups(const QString& provider){QList<QStringList> groups{{"settings/endpoint","settings/region"}};if(provider==r2::providerId)groups.append(r2Group());return groups;}
+QStringList fieldGroup(const QString& path,const QString& provider){for(const auto& group:fieldGroups(provider))if(group.contains(path))return group;return {path};}
 }
 QStringList SettingsWindow::profileOrder()const{QStringList ids;for(const auto& p:draft_["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
 void SettingsWindow::applyProfileOrder(const QStringList& order){
@@ -2221,6 +2229,9 @@ bool SettingsWindow::setsInheritance(const SaveOperation& op){
 bool SettingsWindow::waitsForDestination(const SaveOperation& op,const QJsonObject& accepted)const{
  // A removal whose add's answer was lost waits until the file has been read again.
  if(op.kind==SaveOperation::Kind::Remove)return op.reconciling;
+ // A Cloudflare R2 destination is added, or switched to, only once Account ID, Jurisdiction and
+ // Bucket are valid (#1699): nothing the resident must refuse is sent, and its routes wait with it.
+ if(op.kind==SaveOperation::Kind::Fields)return op.profile["provider"]==r2::providerId&&(op.adding||op.values.contains(QString()))&&!localProblem(op.profile,r2Group()).isEmpty();
  if(op.kind!=SaveOperation::Kind::Global)return false;
  // An action set to inherit the default output waits while that default output is still queued.
  if(!accepted.value("captureDefaults").isObject()&&setsInheritance(op)&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& other){return other.key=="routing:/captureDefaults";}))return true;
@@ -2290,18 +2301,19 @@ void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& edited
  if(profileIndex_<0)return;
  if(providerType_->currentData()=="proton-drive")updateProtonAccountDisplay();
  const auto profile=editedProfile();const auto id=profile["id"].toString();if(id.isEmpty())return;
- // A destination saved as another service isn't saved field by field: until its new service is
- // saved, each edit sends all of it, so a field never lands in the old service's settings.
- QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id&&value.toObject()["provider"]!=profile["provider"])path.clear();
+ // A destination switched to another service here isn't saved field by field: until its new service
+ // is saved, each edit sends all of it, so a field never lands in the old service's settings.
+ // Only a service changed in this window counts: one another writer changed is never undone from here.
+ QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id){if(value.toObject()["provider"]==profile["provider"])serviceSwitched_.remove(id);else if(serviceSwitched_.contains(id))path.clear();}
  const QString key="destination:"+id;
  SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key=key;op.id=id;op.adding=!acceptedHas(id);
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
  op.profile=profile;
- const auto group=fieldGroup(path);
+ const auto group=fieldGroup(path,profile["provider"].toString());
  // A group this edit contains that can't be saved as typed keeps its accepted value: it is never
  // sent, it never blocks another destination, and it is named until it is fixed (#1701).
  bool blocked=false;
- for(const auto& checked:fieldGroups()){
+ for(const auto& checked:fieldGroups(profile["provider"].toString())){
   if(!std::any_of(checked.cbegin(),checked.cend(),[&](const QString& field){return within(field,path);}))continue;
   const auto groupKey=id+"|"+checked.join('+');
   if(const auto problem=localProblem(profile,checked);!problem.isEmpty()){notSaved_[groupKey]=problem;if(checked==group)blocked=true;}
@@ -2329,7 +2341,7 @@ void SettingsWindow::queueWholeDestination(const QString& id,QWidget* control){
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
  op.profile=profile;op.values.clear();op.controls.clear();op.probing.clear();op.values[QString()]=profile;op.controls[QString()]=control;
  notSaved_.remove(id+"|*");
- for(const auto& checked:fieldGroups()){const auto groupKey=id+"|"+checked.join('+');if(const auto problem=localProblem(profile,checked);!problem.isEmpty())notSaved_[groupKey]=problem;else notSaved_.remove(groupKey);}
+ for(const auto& checked:fieldGroups(profile["provider"].toString())){const auto groupKey=id+"|"+checked.join('+');if(const auto problem=localProblem(profile,checked);!problem.isEmpty())notSaved_[groupKey]=problem;else notSaved_.remove(groupKey);}
  enqueue(std::move(op));dirty();drainSaves();
 }
 // The destination and its queued edits go. The routes the file still has on it fall back when the
@@ -2481,7 +2493,7 @@ QJsonObject SettingsWindow::applyOperation(QJsonObject doc,const SaveOperation& 
    profiles.insert(position<0?(at<0?int(profiles.size()):0):position,profile);
   }else{
    QJsonValue profile=profiles[index];auto values=sendableValues(op,doc,nullptr);
-   if(!op.probing.isEmpty())for(auto it=values.begin();it!=values.end();)if(fieldGroup(it.key()).join('+')!=op.probing.first())it=values.erase(it);else ++it;
+   if(!op.probing.isEmpty())for(auto it=values.begin();it!=values.end();)if(fieldGroup(it.key(),op.profile["provider"].toString()).join('+')!=op.probing.first())it=values.erase(it);else ++it;
    for(auto it=values.cbegin();it!=values.cend();++it)profile=withValue(profile,pathParts(it.key()),0,it.value());
    auto object=profile.toObject();object["id"]=op.id;profiles[index]=object;
   }
@@ -2653,7 +2665,7 @@ void SettingsWindow::queueDraftDifferences(const QJsonObject& base){
    SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key="destination:"+id;op.id=id;
    for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==op.key)op=queuedOp;
    SaveOperation edit;edit.kind=op.kind;edit.profile=profile;
-   for(auto path:std::as_const(changed)){path=path.mid(1);for(const auto& field:fieldGroup(path))if(!notSaved_.contains(id+"|"+fieldGroup(path).join('+')))edit.values[field]=valueAt(profile,pathParts(field));}
+   for(auto path:std::as_const(changed)){path=path.mid(1);for(const auto& field:fieldGroup(path,profile["provider"].toString()))if(!notSaved_.contains(id+"|"+fieldGroup(path,profile["provider"].toString()).join('+')))edit.values[field]=valueAt(profile,pathParts(field));}
    op=merged(std::move(op),edit);if(!op.values.isEmpty())enqueue(std::move(op));
   }
   for(const auto& id:std::as_const(savedOrder))if(!drafted.contains(id))queueRemoval(id);
@@ -2757,7 +2769,7 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
   // Routes to it that the form holds and that waited for nothing go now.
   if(op.adding)queueRouting(nullptr,op.id);
   // One group of a refusal that named no field went through; the next is sent on its own.
-  if(!op.probing.isEmpty()){const auto group=op.probing.takeFirst();op.adding=false;for(auto it=op.values.begin();it!=op.values.end();)if(fieldGroup(it.key()).join('+')==group){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;if(!op.values.isEmpty())requeue(op);}
+  if(!op.probing.isEmpty()){const auto group=op.probing.takeFirst();op.adding=false;for(auto it=op.values.begin();it!=op.values.end();)if(fieldGroup(it.key(),op.profile["provider"].toString()).join('+')==group){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;if(!op.values.isEmpty())requeue(op);}
  }
  autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();
  operationSettled(op);
@@ -2786,7 +2798,7 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
   bool report=false;QString refusedGroup;
   if(!path.isEmpty()){
    // Only the refused group stops, unless it was edited again since; the rest is sent again.
-   refusedGroup=fieldGroup(path).join('+');
+   refusedGroup=fieldGroup(path,op.profile["provider"].toString()).join('+');
    // While groups go one at a time, a refusal about a group this operation is itself repairing
    // (a saved Region today's rules refuse, while a fix for it waits its turn) sends that repair first.
    if(!op.probing.isEmpty()&&op.probing.first()!=refusedGroup&&op.probing.contains(refusedGroup)&&!op.promoted.contains(refusedGroup)){op.promoted.append(refusedGroup);op.probing.removeAll(refusedGroup);op.probing.prepend(refusedGroup);requeue(std::move(op));return;}
@@ -2797,9 +2809,9 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
    if(applyOperation(acceptedDocument(),next)==sent){notSaved_[id+"|*"]=error.message;report=true;saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[&](const SaveOperation& queuedOp){return queuedOp.key==op.key;}),saveQueue_.end());}
    else requeue(std::move(op));
   }else{
-   QStringList fresh;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key()).join('+');!group.isEmpty()&&!edited(group)&&!fresh.contains(group))fresh.append(group);
+   QStringList fresh;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key(),op.profile["provider"].toString()).join('+');!group.isEmpty()&&!edited(group)&&!fresh.contains(group))fresh.append(group);
    const bool whole=op.values.contains(QString())||!acceptedHas(op.id);
-   QStringList sentGroups;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key()).join('+');!sentGroups.contains(group))sentGroups.append(group);
+   QStringList sentGroups;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key(),op.profile["provider"].toString()).join('+');!sentGroups.contains(group))sentGroups.append(group);
    if(!whole&&newer&&fresh.size()<sentGroups.size()){
     // What it refused may be a value edited again since: the newer one goes with the rest, and
     // nothing is called unsaved yet.
@@ -2938,7 +2950,7 @@ void SettingsWindow::retryAfterConflict(){
    else if(op.kind==SaveOperation::Kind::Fields&&before.contains(op.id)){
     // A group, such as Region with Endpoint, goes whole if any of it changed.
     const auto unchanged=[&](const QString& path){return !op.values.contains(path)||valueAt(before.value(op.id),pathParts(path))==op.values.value(path);};
-    for(auto it=op.values.begin();it!=op.values.end();){const auto group=fieldGroup(it.key());const bool drop=!it.key().isEmpty()&&std::all_of(group.cbegin(),group.cend(),unchanged);if(drop){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}}
+    for(auto it=op.values.begin();it!=op.values.end();){const auto group=fieldGroup(it.key(),op.profile["provider"].toString());const bool drop=!it.key().isEmpty()&&std::all_of(group.cbegin(),group.cend(),unchanged);if(drop){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}}
   }
   saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[](const SaveOperation& op){return op.kind==SaveOperation::Kind::Global&&op.values.isEmpty();}),saveQueue_.end());}
  // A destination added here and never saved, with nothing queued for it, stays: it goes again as
@@ -2991,13 +3003,17 @@ QWidget* SettingsWindow::settingsField(const QString& field)const{
  if(field=="jurisdiction")return r2Jurisdiction_;
  return s3_.value(field);
 }
-void SettingsWindow::moveToCloudflareR2(){
- if(loading_||providerType_->currentData()!="s3")return;
+Error SettingsWindow::moveToCloudflareR2(){
+ const Error unavailable{"control_unavailable","Move to Cloudflare R2 isn't offered for this destination.",{}};
+ if(loading_||providerType_->currentData()!="s3")return unavailable;
  flushTyping();storeProfile();
- auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;
+ auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return unavailable;
  auto profile=profiles[profileIndex_].toObject();
  const auto settings=r2::fromS3Settings(profile["settings"].toObject());
- if(!settings){status({"r2_move_unavailable","This destination's endpoint is not a Cloudflare R2 account endpoint put.gd can move.",{}});return;}
+ if(!settings){status(unavailable);return unavailable;}
+ // What Cloudflare R2 would refuse, such as a Link domain it can't use, is said first and nothing
+ // moves: a refused move would otherwise save without that value while the form still shows it.
+ if(const auto invalid=r2::validate(*settings)){const Error error{"r2_move_refused","Before moving to Cloudflare R2: "+invalid.message,invalid.details};status(error);return error;}
  // In place: the same ID, so routes, shortcuts and the default still name it, and the same
  // credential reference, so its stored keys stay with it.
  profile["provider"]=r2::providerId;profile["settings"]=*settings;
@@ -3005,17 +3021,17 @@ void SettingsWindow::moveToCloudflareR2(){
  profileEditors_[profileIndex_]=QJsonValue::Null;
  profiles[profileIndex_]=profile;draft_["profiles"]=profiles;
  // One Fields operation on the existing ID: the service and its settings change together.
- loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
+ serviceSwitched_.insert(profile["id"].toString());loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");return {};
 }
 
 void SettingsWindow::refreshCredentialHint(){
  if(!credentialHint_)return;
  findControl<QPushButton*>("unlockCredentials")->hide();credentialHint_->clear();credentialForm_->setRowVisible(PreferenceRows::rowFor(credentialHint_),false);access_->setPlaceholderText({});secret_->setPlaceholderText({});token_->setPlaceholderText("Paste a session token (optional)");
  uploader_->setStored({},false);
- if(!QStringList{"s3","backblaze-b2",CustomUploaderPanel::provider()}.contains(providerType_->currentData().toString())||initialProfile_||profileIndex_<0)return;
+ if(!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(providerType_->currentData().toString())||initialProfile_||profileIndex_<0)return;
  const auto id=profileId_->text();const auto revision=settings_.revision();
  settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision](Error error,QJsonObject hint){
-  if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",CustomUploaderPanel::provider()}.contains(g->providerType_->currentData().toString()))return;
+  if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(g->providerType_->currentData().toString()))return;
   if(error)return;
   // #1361: a custom uploader stores named values. The hint says which are loaded, never a value.
   if(g->providerType_->currentData()==CustomUploaderPanel::provider()){
@@ -3110,7 +3126,7 @@ void SettingsWindow::switchProvider(){
  auto editor=retained["editor"].toObject();
  if(!editor.isEmpty()){editor["id"]=profile["id"];editor["label"]=profile["label"];}
  editor["providers"]=providers;profileEditors_[profileIndex_]=editor;
- profiles[profileIndex_]=profile;draft_["profiles"]=profiles;loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
+ profiles[profileIndex_]=profile;draft_["profiles"]=profiles;serviceSwitched_.insert(profile["id"].toString());loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
 }
 QJsonObject SettingsWindow::retainedProfileEditor()const{
  auto editor=profileEditorState();
@@ -3367,11 +3383,14 @@ void SettingsWindow::r2Command(const QJsonObject& params,std::function<void(Erro
  // A person can only act on a control they can see and use; neither can an agent.
  const auto usable=[this,&shown](QWidget* widget){return shown(widget)&&widget->isEnabled();};
  const Error unavailable{"control_unavailable","That control isn't shown or can't be used for this destination right now.",{}};
+ // Destinations as a person sees it: open, and not behind a dialog that blocks its controls.
+ if(!destinationPage_||!destinationPage_->isVisible()){reply({"ui_view_closed","Open Destinations before driving it.",{}},{});return;}
+ if(QApplication::activeModalWidget()){reply(unavailable,{});return;}
  if(action=="add"){
   // Add destination → Cloudflare R2, named as the dialog would be.
   // The Add button as a person finds it: shown and usable, or the agent can't use it either.
   if(!usable(addDestination_)){reply(unavailable,{});return;}
-  const auto count=profile_->count();addS3Profile("Cloudflare R2",params["label"].toString());
+  const auto count=profile_->count();addS3Profile("Cloudflare R2",params["label"].toString(),r2::providerId);
   if(profile_->count()==count){reply({"profile_limit","The destination could not be added.",{}},{});return;}
   providerType_->setCurrentIndex(providerType_->findData(r2::providerId));queueEdit(profileLabel_);
  }else{
@@ -3383,7 +3402,7 @@ void SettingsWindow::r2Command(const QJsonObject& params,std::function<void(Erro
  const auto provider=providerType_->currentData().toString();
  // Move to Cloudflare R2 that isn't offered for the selected destination, whatever its service, is an
  // unavailable control.
- if(action=="move"){auto* move=findControl<QPushButton*>("moveToCloudflareR2");if(profileIndex_<0||provider!="s3"||!usable(move)){reply(unavailable,{});return;}move->click();}
+ if(action=="move"){auto* move=findControl<QPushButton*>("moveToCloudflareR2");if(profileIndex_<0||provider!="s3"||!usable(move)){reply(unavailable,{});return;}if(const auto error=moveToCloudflareR2()){reply(error,{});return;}}
  // After a Move the destination is Cloudflare R2: what is selected now decides the rest.
  if(const auto now=providerType_->currentData().toString();profileIndex_<0||(now!=r2::providerId&&!(now=="s3"&&action=="inspect"))){reply({"r2_not_selected","Select a Cloudflare R2 destination in Destinations first, or name it with profileId.",{}},{});return;}
  // What a person does: type a value and leave the field, pick an item, step a number or open a section.
