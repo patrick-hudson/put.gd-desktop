@@ -786,7 +786,12 @@ and dwz steps. It works in three layers:
   first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
   than one mirror answered the probe, so the next attempt starts on another mirror. (The
   workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
-  than 128 MiB.)
+  than 128 MiB.) `putgd_apt_install` gives each of its three attempts 6 minutes for the
+  update and the download only; the install of what was downloaded runs to the end. After
+  a failed attempt it waits up to 600 s for any `dpkg` or `apt-get` still running, such as
+  a dpkg that outlived its stopped `apt-get` and still holds the dpkg lock, before
+  `dpkg --configure -a` and the retry
+  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702)).
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
@@ -882,8 +887,11 @@ and dwz steps. It works in three layers:
   snapshot install are warning annotations and rows of a "Package install
   retries" table in the job summary. A stopped attempt's row says
   `**stopped**`, which limit stopped it and the last line it printed. A clean
-  install writes nothing. The pre-checkout bootstrap (git only) retries 3 times
-  inline, each attempt limited to 10 minutes, and reports in a table of the same form.
+  install writes nothing. The pre-checkout bootstrap (git and ca-certificates, plus zstd
+  on ubuntu24.04) retries 3 times inline and reports in a table of the same form. Each
+  attempt's update and download are limited to 10 minutes. On apt the install of what was
+  downloaded has no limit, and a failed attempt waits for any leftover dpkg and runs
+  `dpkg --configure -a` before the retry.
 
 The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
 
