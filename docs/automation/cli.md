@@ -192,12 +192,14 @@ putgd-cli settings.reorderProfiles '{"order":["proton","s3-1"],"expectedRevision
 `ui.moveDestination` is the UI path for agents and tests: it acts on an open Settings
 window like **Move up** / **Move down** in the destination's ⋯ menu. With `profileId`
 it first selects that destination. It moves the selection one place, keeps it
-selected and queues the new order behind the window's earlier edits. What is queued is
-the list of destination IDs in the order shown when the move is made; a later move replaces it.
+selected and queues the new order. What is queued is the list of destination IDs in the order
+shown when the move is made. A later move while that order is still waiting replaces it in its
+place in the queue, so it can be sent before edits made between the two moves.
 When it is sent, the accepted destinations are put in that order, and any the list doesn't
 name keep their accepted order after it. The values sent are the accepted ones, so an edit
 still in flight, or one the resident refused, is never carried by the reorder. A refused
-reorder puts the list back to the accepted order. The reply gives `order`, `selected` and `saving` (true
+reorder puts the list back to the accepted order, unless a later reorder is queued: that one stays
+shown and is sent. The reply gives `order`, `selected` and `saving` (true
 while the order is queued or in flight); confirm the save with `settings.get`. Without an open
 Settings window it returns `ui_view_closed`; at the top or bottom of the list it
 returns `destination_move_invalid`.
