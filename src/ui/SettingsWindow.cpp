@@ -1334,7 +1334,8 @@ void SettingsWindow::status(const Error& error){
  // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
  if(error.code=="s3_settings_invalid"&&QStringList{"region","endpoint"}.contains(error.details["field"].toString())){
   for(auto* label:{status_,destinationStatus_}){if(!label)continue;
-   if(label->property("setupProgress").toBool())Ui::feedback(plain(label),error.message,true);
+   // Marked with its field, so the form's own check clears it once the field is fixed or another destination shows.
+   if(label->property("setupProgress").toBool()){plain(label);label->setProperty("errorCode",error.code);label->setProperty("errorField",error.details["field"].toString());Ui::feedback(label,error.message,true);}
    else if(!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});}
   return;}
  auto e=error;
@@ -1528,7 +1529,7 @@ void SettingsWindow::resetDraft(bool reloadFile){
 void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile){const auto captureProfile=captureProfile_->currentData().toString();const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());profile_->setCurrentIndex(selected);loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}captureProfile_->setCurrentIndex(captureProfile_->findData(captureProfile.isEmpty()?defaultProfile:captureProfile));if(!defaultProfile.isEmpty()){captureDefaultsEnabled_=true;captureRoutingEdited_=true;}updateCaptureInheritance();loading_=previous;}
 void SettingsWindow::loadProfile(){
  const auto shownProfile=profileId_->text();
- credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(destinationStatus_,{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;const bool http=p["provider"]==CustomUploaderPanel::provider();
+ credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(plain(destinationStatus_),{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;const bool http=p["provider"]==CustomUploaderPanel::provider();
  // The form shows this destination's request; another destination's notice does not follow it.
  uploader_->setSettings(http?s:CustomUploaderPanel::defaultSettings());if(shownProfile!=p["id"].toString())uploader_->setNotice({});
  providerType_->setCurrentIndex(providerType_->findData(p["provider"].toString()));const bool proton=p["provider"]=="proton-drive";protonPanel_->setVisible(proton);protonAccountUid_=s["accountRootUid"].toString();protonAccountEmail_.clear();protonShare_->setChecked(s["shareByDefault"].toBool(true));protonExpiration_->setValue(s["linkExpirationDays"].toInt());protonTimeout_->setValue(s["requestTimeoutMs"].toInt(120000)/1000.0);protonFolder_->clear();addProtonFolder(protonFolder_,s["folderUid"].toString(),s["folderName"].toString());
@@ -2506,7 +2507,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   // Say what is happening; the confirmed result replaces it. Folder loading is
   // shown beside the folder, so the page status doesn't repeat it.
   static const QHash<QString,QString> progress{{"connectAccount","Connecting account…"},{"storeCredentials","Storing credentials…"},{"unlockCredentials","Unlocking saved credentials…"},{"createFolder","Creating folder…"},{"storeSharePassword","Storing link password…"}};
-  updateSetupButton();if(kind=="inspectAccount")Ui::feedback(destinationStatus_,{});else setupFeedback(kind=="testDestination"?testMessage:progress.value(kind,"Working…"));
+  updateSetupButton();if(kind=="inspectAccount")Ui::feedback(plain(destinationStatus_),{});else setupFeedback(kind=="testDestination"?testMessage:progress.value(kind,"Working…"));
   if(kind=="connectAccount"&&profileId==profileId_->text())protonAccount_->setText("Connecting to Proton…");
   emit viewStateChanged();setupTimer_->start();pollSetup();
  });
@@ -2605,7 +2606,7 @@ void SettingsWindow::pollSetup(){
      const auto revision=job["revision"].toString();
      if(conflict_||(!revision.isEmpty()&&revision!=settings_.revision())||!applyProtonAccountResult(data["profileId"].toString(),result)){Ui::feedback(plain(status_),"Account details changed while loading. Refresh the original destination to continue.",true);emit viewStateChanged();return;}
      requestedFolders_.insert(data["profileId"].toString()+"/"+result["accountRootUid"].toString());
-     if(kind=="connectAccount")setupFeedback("Account connected. Folders loaded.",true);else{Ui::success(plain(status_),"Folders loaded.");Ui::feedback(destinationStatus_,{});}emit viewStateChanged();
+     if(kind=="connectAccount")setupFeedback("Account connected. Folders loaded.",true);else{Ui::success(plain(status_),"Folders loaded.");Ui::feedback(plain(destinationStatus_),{});}emit viewStateChanged();
      if(data["profileId"]!=profileId_->text()&&destinationPage_->isVisible())activateDestinations();
      return;
     }

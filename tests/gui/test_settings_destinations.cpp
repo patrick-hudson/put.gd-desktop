@@ -19,7 +19,8 @@ private slots:
  // refusal, also while the footer was showing that Region's message; it never stays stuck.
  void refusedTestReplacesItsProgressLine(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);
-  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();fields["region"]="fips-us-east-1";profile["settings"]=fields;profiles[0]=profile;doc["profiles"]=profiles;
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();fields["region"]="fips-us-east-1";profile["settings"]=fields;profiles[0]=profile;
+  auto valid=profiles[0].toObject();valid["id"]="valid-destination";valid["label"]="Valid destination";auto validFields=valid["settings"].toObject();validFields["region"]="us-east-2";valid["settings"]=validFields;profiles.append(valid);doc["profiles"]=profiles;
   QFile file(dir.filePath("config.json"));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());file.close();
   SettingsService service(file.fileName(),[&](auto,auto value){return provider.validateSettings(value);},nullptr,{},[&](auto,auto value){return provider.validateStoredSettings(value);});
   UiSessionFixture fixture(service,secrets,[&](const QString&,const QJsonObject& profile,auto reply){reply(provider.validateSettings(profile["settings"].toObject()));});
@@ -28,6 +29,10 @@ private slots:
   PUTGD_TRY_COMPARE(status->property("errorField").toString(),QString("region"));
   window.findChild<QPushButton*>("testDestination")->click();
   PUTGD_TRY_VERIFY(!status->text().contains("Testing upload")&&status->text().contains("fips"));
+  // Showing a valid destination clears that refusal from both footers.
+  auto* footer=window.findChild<QLabel*>("settingsStatus");QVERIFY(footer);QVERIFY(footer->text().contains("fips"));
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  PUTGD_TRY_VERIFY(!status->text().contains("fips")&&!footer->text().contains("fips"));
  }
  void removingDestinationBeforeDebounceNeverAppliesItsEditToNextDestination(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="second-destination";second["label"]="Second destination";auto fields=second["settings"].toObject();fields["bucket"]="second-bucket";second["settings"]=fields;profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();window.findChild<QLineEdit*>("s3Bucket")->setText("edited-first-bucket");QMetaObject::invokeMethod(window.findChild<QLineEdit*>("s3Bucket"),"editingFinished");QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QMessageBox*>(widget))dialog->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();PUTGD_TRY_COMPARE(service.document()["profiles"].toArray().size(),1);QCOMPARE(service.document()["profiles"].toArray()[0].toObject(),second);
