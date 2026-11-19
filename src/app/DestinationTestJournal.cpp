@@ -120,8 +120,8 @@ bool hasPhase(const QJsonArray& checkpoints, const QString& phase) {
     return std::any_of(checkpoints.begin(), checkpoints.end(), [&](const QJsonValue& value) { return value.toObject().value("phase") == phase; });
 }
 QJsonObject lastPhase(const QJsonArray& checkpoints, const QString& phase) {
-    for (auto it = checkpoints.rbegin(); it != checkpoints.rend(); ++it)
-        if (it->toObject().value("phase") == phase) return it->toObject();
+    for (auto i = checkpoints.size() - 1; i >= 0; --i)
+        if (checkpoints[i].toObject().value("phase") == phase) return checkpoints[i].toObject();
     return {};
 }
 }
