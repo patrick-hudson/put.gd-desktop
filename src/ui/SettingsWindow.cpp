@@ -1235,8 +1235,15 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(providerType_,&QComboBox::currentIndexChanged,this,&SettingsWindow::switchProvider);
  connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;flushTyping();storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
  connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination","This connection has not passed a test with its current settings. Use \""+profileLabel_->text()+"\" as the capture default? Per-action exceptions will stay unchanged.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
- connect(remove,&QPushButton::clicked,this,[this]{flushTyping();if(!Ui::confirm(this,"Remove destination","Remove \""+profileLabel_->text()+"\" from settings? Existing history and remote files remain.","Remove destination",true))return;storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();if(captureProfile_->currentData()==id){const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(0);updateCaptureInheritance();}{// Quietly: the removal's own fallback, worked out from the file when it is sent, covers these.
-   const QScopedValueRollback quiet(loading_,true);for(const auto& action:Settings::presentationOrder())if(actionProfiles_[action]->currentData()==id){actionProfiles_[action]->setCurrentIndex(0);}}updateCaptureInheritance();captureDefaultsEnabled_=true;captureRoutingEdited_=true;profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);if(index<credentialDrafts_.size())credentialDrafts_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));queueRemoval(id);refreshDestinationList();});
+ connect(remove,&QPushButton::clicked,this,[this]{flushTyping();if(!Ui::confirm(this,"Remove destination","Remove \""+profileLabel_->text()+"\" from settings? Existing history and remote files remain.","Remove destination",true))return;storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();// Routes to it go back to what the file has: no destination where the file routes to it too.
+  const auto accepted=acceptedDocument();const auto back=[&](const QJsonValue& route){const auto object=route.toObject();const auto named=object.value("profileId").toString();return object.value("destination")=="upload"&&named!=id?named:QString();};
+  if(captureProfile_->currentData()==id){const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(qMax(0,captureProfile_->findData(back(accepted.value("captureDefaults")))));updateCaptureInheritance();}
+  {// Quietly: the removal's own fallback, worked out from the file when it is sent, covers these.
+   const QScopedValueRollback quiet(loading_,true);for(const auto& action:Settings::presentationOrder())if(actionProfiles_[action]->currentData()==id)actionProfiles_[action]->setCurrentIndex(qMax(0,actionProfiles_[action]->findData(back(accepted.value("actions").toObject().value(action)))));}
+  updateCaptureInheritance();captureDefaultsEnabled_=true;captureRoutingEdited_=true;
+  // Routes the draft itself holds, such as a recording route the form hasn't touched, stop naming it.
+  {auto actions=draft_.value("actions").toObject();const auto saved=accepted.value("actions").toObject();for(auto it=actions.begin();it!=actions.end();++it){auto action=it.value().toObject();if(action.value("profileId")!=QJsonValue(id))continue;const auto file=saved.value(it.key()).toObject();if(file.value("profileId")!=QJsonValue(id)&&file.contains("destination")){for(const auto* key:{"destination","profileId","publicationMode"}){if(file.contains(key))action[key]=file.value(key);else action.remove(key);}}else{action["destination"]="local";action["profileId"]=QJsonValue::Null;}it.value()=action;}draft_["actions"]=actions;}
+  profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);if(index<credentialDrafts_.size())credentialDrafts_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));queueRemoval(id);refreshDestinationList();});
  connect(dev,&QPushButton::clicked,this,&SettingsWindow::importDevelopmentProfile);
  connect(s3_["region"],&QLineEdit::textChanged,this,[this](const QString& region){if(loading_)return;auto* endpoint=s3_["endpoint"];const auto previous=s3_["region"]->property("previousRegion").toString();if(endpoint->text()=="https://s3."+previous+".amazonaws.com")endpoint->setText("https://s3."+region+".amazonaws.com");s3_["region"]->setProperty("previousRegion",region);updateProviderVisibility_();});
  // A Region message follows Endpoint: moving a destination to Cloudflare R2, which ignores Region,
@@ -2113,11 +2120,15 @@ void SettingsWindow::checkQueue(){
 }
 bool SettingsWindow::acceptedHas(const QString& id)const{for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id)return true;return false;}
 // A route that names a destination the resident doesn't have yet waits until it does.
+// An operation that sets an action to inherit the default output.
+bool SettingsWindow::setsInheritance(const SaveOperation& op){
+ for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(it.key().startsWith("/actions/")&&((it.key().endsWith("/destination")&&it.value()==QJsonValue("default"))||it.value().toObject().value("destination")==QJsonValue("default")))return true;
+ return false;
+}
 bool SettingsWindow::waitsForDestination(const SaveOperation& op,const QJsonObject& accepted)const{
  if(op.kind!=SaveOperation::Kind::Global)return false;
  // An action set to inherit the default output waits while that default output is still queued.
- if(!accepted.value("captureDefaults").isObject()&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& other){return other.key=="routing:/captureDefaults";}))
-  for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(it.key().startsWith("/actions/")&&((it.key().endsWith("/destination")&&it.value()==QJsonValue("default"))||it.value().toObject().value("destination")==QJsonValue("default")))return true;
+ if(!accepted.value("captureDefaults").isObject()&&setsInheritance(op)&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& other){return other.key=="routing:/captureDefaults";}))return true;
  QSet<QString> ids;for(const auto& value:accepted["profiles"].toArray())ids.insert(value.toObject()["id"].toString());
  for(auto it=op.values.cbegin();it!=op.values.cend();++it){
   QString id;if(it.key()=="/captureDefaults")id=it.value().toObject()["profileId"].toString();else if(it.key().startsWith("/actions/")||it.key().startsWith("/captureDefaults/")){if(it.key().endsWith("/profileId"))id=it.value().toString();else if(it.value().isObject())id=it.value().toObject()["profileId"].toString();}
@@ -2130,7 +2141,13 @@ bool SettingsWindow::waitsForDestination(const SaveOperation& op,const QJsonObje
 // renamed first.
 bool SettingsWindow::meetsPreconditions(SaveOperation& op){
  // A removal of an add that was in flight goes only if that add was saved.
- if(op.kind==SaveOperation::Kind::Remove)return !op.adding;
+ if(op.kind==SaveOperation::Kind::Remove){
+  if(!op.adding)return true;
+  // An add whose outcome was unknown: removed only if the file holds exactly what was sent.
+  if(op.profile.isEmpty())return false;
+  for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==op.id&&value.toObject()==op.profile){op.adding=false;return true;}
+  return false;
+ }
  if(op.kind!=SaveOperation::Kind::Fields)return true;
  const bool has=acceptedHas(op.id);
  if(!op.adding&&!has){
@@ -2226,9 +2243,8 @@ void SettingsWindow::queueRemoval(const QString& id){
  const bool addInFlight=saving_&&sending_.kind==Kind::Fields&&sending_.id==id&&sending_.adding,saved=acceptedHas(id)&&!addInFlight;
  saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[&](const SaveOperation& op){return op.kind==Kind::Fields&&op.id==id;}),saveQueue_.end());
  for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(id+"|"))it=notSaved_.erase(it);else ++it;
- const auto doc=candidate();
- for(auto& op:saveQueue_)if(op.key.startsWith("routing:")&&std::any_of(op.values.cbegin(),op.values.cend(),[&](const QJsonValue& value){return value==QJsonValue(id)||(value.isObject()&&value.toObject().value("profileId")==QJsonValue(id));}))
-  for(auto it=op.values.begin();it!=op.values.end();++it)it.value()=valueAt(doc,pathParts(it.key()));
+ // A queued route to it is cancelled: the route stays what the file has, with nothing queued.
+ saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[&](const SaveOperation& op){return op.key.startsWith("routing:")&&std::any_of(op.values.cbegin(),op.values.cend(),[&](const QJsonValue& value){return value==QJsonValue(id)||(value.isObject()&&value.toObject().value("profileId")==QJsonValue(id));});}),saveQueue_.end());
  if(!saved&&!addInFlight){dirty();drainSaves();return;}
  SaveOperation op;op.kind=Kind::Remove;op.key="remove:"+id;op.id=id;op.adding=addInFlight;
  enqueue(std::move(op));dirty();drainSaves();
@@ -2245,6 +2261,9 @@ void SettingsWindow::dropRoutesTo(const QString& id,const QString& reason){
  const auto names=[&id](const QJsonValue& value){return value==QJsonValue(id)||(value.isObject()&&value.toObject().value("profileId")==QJsonValue(id));};
  const auto before=saveQueue_.size();
  saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[&](const SaveOperation& op){return op.key.startsWith("routing:")&&std::any_of(op.values.cbegin(),op.values.cend(),names);}),saveQueue_.end());
+ // Actions set to inherit a default output the file doesn't have, and that is no longer queued,
+ // have nothing to inherit: the resident would refuse them.
+ if(!acceptedDocument().value("captureDefaults").isObject()&&!queued("/captureDefaults"))saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[](const SaveOperation& op){return op.key.startsWith("routing:/actions/")&&setsInheritance(op);}),saveQueue_.end());
  if(saveQueue_.size()!=before){const auto message=reason.isEmpty()?QStringLiteral("A route to a destination removed elsewhere wasn't saved."):reason;if(!removedElsewhere_.contains(message))removedElsewhere_.append(message);answered_=true;}
 }
 void SettingsWindow::queueOrder(){
@@ -2268,13 +2287,18 @@ void SettingsWindow::queueRouting(QWidget* control,const QString& onlyFor){
   // A route that only falls back because its destination is being removed is the removal's,
   // worked out from the file when it is sent.
   const auto named=valueAt(accepted,pathParts(route)).toObject().value("profileId").toString(),shown=valueAt(doc,pathParts(route)).toObject().value("profileId").toString();
+  // An action inheriting a default output the file doesn't have yet goes with that default output.
+  const bool inherits=route.startsWith("/actions/")&&!accepted.value("captureDefaults").isObject()&&valueAt(doc,pathParts(route)).toObject().value("destination")==QJsonValue("default");
+  const auto inherited=valueAt(doc,pathParts(QStringLiteral("/captureDefaults"))).toObject().value("profileId").toString();
   // After an add is saved, only the routes to it.
-  if(!onlyFor.isEmpty()&&shown!=onlyFor)continue;
+  if(!onlyFor.isEmpty()&&shown!=onlyFor&&!(inherits&&inherited==onlyFor))continue;
   if(removing.contains(named)&&shown.isEmpty()&&!queued(path))continue;
   // A route to an add refused outright waits for nothing: it goes once that add is saved.
-  if(refusedAdd(shown)){const auto message=QStringLiteral("A route to a destination that wasn't saved isn't saved yet.");if(!removedElsewhere_.contains(message)){removedElsewhere_.append(message);answered_=true;}continue;}
+  if(refusedAdd(shown)||(inherits&&refusedAdd(inherited))){const auto message=QStringLiteral("A route to a destination that wasn't saved isn't saved yet.");if(!removedElsewhere_.contains(message)){removedElsewhere_.append(message);answered_=true;}continue;}
   // A route set back to the accepted one still goes when a queued or sent operation is changing it.
-  if(path=="/captureDefaults/publicationMode"&&!accepted.value("captureDefaults").isObject()&&valueAt(doc,pathParts(path))==QJsonValue("default")&&!queued(path))continue;
+  // With no default output in the file, the sharing mode shown is the Region action's: it goes
+  // only if the user changed it.
+  if(path=="/captureDefaults/publicationMode"&&!accepted.value("captureDefaults").isObject()&&valueAt(doc,pathParts(path))==QJsonValue(Settings::effectiveAction(accepted,"region").value("publicationMode").toString("default"))&&!queued(path))continue;
   if(valueAt(doc,pathParts(path))!=valueAt(accepted,pathParts(path))||queued(path))changed[route].append(path);
  }
  // Each field of a route goes only when it changed; destination and profileId always together. A
@@ -2375,7 +2399,9 @@ QJsonObject SettingsWindow::applyOperation(QJsonObject doc,const SaveOperation& 
  }
  QJsonValue value=doc;for(auto it=op.values.cbegin();it!=op.values.cend();++it)value=withValue(value,pathParts(it.key()),0,it.value());
  auto result=value.toObject();
- if(auto capture=result.value("captureDefaults").toObject();result.value("captureDefaults").isObject()&&!capture.contains("publicationMode")){capture["publicationMode"]="default";result["captureDefaults"]=capture;}
+ // A default output made by this request takes the sharing mode the window showed for it, the
+ // Region action's in the file as it is now.
+ if(auto capture=result.value("captureDefaults").toObject();result.value("captureDefaults").isObject()&&!capture.contains("publicationMode")){capture["publicationMode"]=Settings::effectiveAction(doc,"region").value("publicationMode").toString("default");result["captureDefaults"]=capture;}
  return result;
 }
 void SettingsWindow::updateCaptureInheritance(){
@@ -2540,9 +2566,15 @@ void SettingsWindow::queueDraftDifferences(const QJsonObject& base){
  }
  // A route object the base lacks goes field by field, the pair together, never as a whole object.
  {QStringList expanded;for(const auto& path:std::as_const(routes)){if(path!=routeOf(path)){if(!expanded.contains(path))expanded.append(path);continue;}
-   const auto object=valueAt(draft,pathParts(path)).toObject();for(const auto* key:{"destination","profileId","publicationMode"})if(object.contains(key)&&!(QString(key)=="publicationMode"&&object.value(key)==QJsonValue("default")))expanded.append(path+"/"+key);}
+   const auto object=valueAt(draft,pathParts(path)).toObject();const auto shown=path=="/captureDefaults"?Settings::effectiveAction(accepted,"region").value("publicationMode").toString("default"):QStringLiteral("default");
+   for(const auto* key:{"destination","profileId","publicationMode"})if(object.contains(key)&&!(QString(key)=="publicationMode"&&object.value(key)==QJsonValue(shown)))expanded.append(path+"/"+key);}
   routes=expanded;}
- {QMap<QString,QStringList> byRoute;for(const auto& path:std::as_const(routes))byRoute[routeOf(path)].append(path);for(auto it=byRoute.cbegin();it!=byRoute.cend();++it)queueGlobal("routing:"+it.key(),it.value(),nullptr);}
+ // A route's destination and profile go together; the default output goes first, since an action
+ // inheriting it needs it in the file.
+ {QMap<QString,QStringList> byRoute;for(const auto& path:std::as_const(routes))byRoute[routeOf(path)].append(path);
+  for(auto it=byRoute.begin();it!=byRoute.end();++it)if(it.value().contains(it.key()+"/destination")||it.value().contains(it.key()+"/profileId"))for(const auto* key:{"/destination","/profileId"})if(!it.value().contains(it.key()+key))it.value().append(it.key()+key);
+  if(byRoute.contains("/captureDefaults"))queueGlobal("routing:/captureDefaults",byRoute.value("/captureDefaults"),nullptr);
+  for(auto it=byRoute.cbegin();it!=byRoute.cend();++it)if(it.key()!="/captureDefaults")queueGlobal("routing:"+it.key(),it.value(),nullptr);}
  if(!settings.isEmpty())queueGlobal("restored",settings,nullptr);
 }
 // A restored checkpoint's draft against the configuration saved with it: only the user's own
@@ -2601,8 +2633,11 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
   // An add removed here while it was in flight, and not saved: nothing of it is kept, and the
   // removal queued for it goes too (meetsPreconditions).
   if(op.kind==SaveOperation::Kind::Fields&&!profileOrder().contains(op.id)){
-   // Its removal waited on the add being saved: it wasn't confirmed, so nothing is removed by ID.
-   saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[&](const SaveOperation& queuedOp){return queuedOp.kind==SaveOperation::Kind::Remove&&queuedOp.id==op.id&&queuedOp.adding;}),saveQueue_.end());
+   // Its removal waited on the add being saved. Refused or met with a conflict, the add wasn't
+   // saved and nothing is removed. Otherwise its outcome is unknown: the removal goes only if the
+   // file then holds exactly the destination that was sent, so nobody else's is ever removed.
+   const bool unknown=!refused&&error.code!="config_conflict";QJsonObject added;for(const auto& value:sent["profiles"].toArray())if(value.toObject()["id"]==op.id)added=value.toObject();
+   for(auto it=saveQueue_.begin();it!=saveQueue_.end();)if(it->kind==SaveOperation::Kind::Remove&&it->id==op.id&&it->adding){if(unknown&&!added.isEmpty()){it->profile=added;++it;}else it=saveQueue_.erase(it);}else ++it;
    if(refused)drainSaves();else autosaveFailure(error);return;}
   if(refused){saveRefused(std::move(op),error,sent);drainSaves();return;}
   // Anything else stops the queue with this operation first in it, for Retry saving.
@@ -2649,7 +2684,7 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
    refusedGroup=fieldGroup(path).join('+');
    // While groups go one at a time, a refusal about a group this operation is itself repairing
    // (a saved Region today's rules refuse, while a fix for it waits its turn) sends that repair first.
-   if(!op.probing.isEmpty()&&op.probing.first()!=refusedGroup&&op.probing.contains(refusedGroup)){op.probing.removeAll(refusedGroup);op.probing.prepend(refusedGroup);requeue(std::move(op));return;}
+   if(!op.probing.isEmpty()&&op.probing.first()!=refusedGroup&&op.probing.contains(refusedGroup)&&!op.promoted.contains(refusedGroup)){op.promoted.append(refusedGroup);op.probing.removeAll(refusedGroup);op.probing.prepend(refusedGroup);requeue(std::move(op));return;}
    if(!edited(refusedGroup)){strip(op,refusedGroup);notSaved_[op.id+"|"+refusedGroup]=error.message;report=true;}
    // What would go next is what was refused, such as an edit of a destination whose saved Region
    // today's rules refuse: it stops, said so, and the rest of the queue goes on.
@@ -2783,7 +2818,10 @@ void SettingsWindow::retryAfterConflict(){
     for(auto it=op.values.begin();it!=op.values.end();){const auto& path=it.key();bool drop=valueAt(baseDocument_,pathParts(path))==it.value();
      if(drop&&(path.endsWith("/destination")||path.endsWith("/profileId"))&&op.key.startsWith("routing:")){const auto route=path.section('/',0,-2);drop=unchanged(route+"/destination")&&unchanged(route+"/profileId");}
      if(drop){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}}
-   else if(op.kind==SaveOperation::Kind::Fields&&before.contains(op.id)){for(auto it=op.values.begin();it!=op.values.end();)if(!it.key().isEmpty()&&valueAt(before.value(op.id),pathParts(it.key()))==it.value()){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}
+   else if(op.kind==SaveOperation::Kind::Fields&&before.contains(op.id)){
+    // A group, such as Region with Endpoint, goes whole if any of it changed.
+    const auto unchanged=[&](const QString& path){return !op.values.contains(path)||valueAt(before.value(op.id),pathParts(path))==op.values.value(path);};
+    for(auto it=op.values.begin();it!=op.values.end();){const auto group=fieldGroup(it.key());const bool drop=!it.key().isEmpty()&&std::all_of(group.cbegin(),group.cend(),unchanged);if(drop){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}}
   }
   saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[](const SaveOperation& op){return op.kind==SaveOperation::Kind::Global&&op.values.isEmpty();}),saveQueue_.end());}
  // A destination added here and never saved, with nothing queued for it, stays: it goes again as
@@ -2809,6 +2847,10 @@ void SettingsWindow::retryAfterConflict(){
   QJsonObject typed;for(const auto& value:before["profiles"].toArray())if(value.toObject()["id"]==id)typed=value.toObject();
   for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]==id){QJsonValue profile=profiles[i];for(const auto& field:group.split('+'))profile=withValue(profile,pathParts(field),0,valueAt(typed,pathParts(field)));profiles[i]=profile;}
  }
+ // A route to a destination this window added and hasn't saved yet stays in the form, to go once
+ // that destination is saved. One removed elsewhere is in neither the file nor the rebuilt list.
+ QSet<QString> kept;for(const auto& value:std::as_const(profiles))kept.insert(value.toObject()["id"].toString());
+ for(const auto& path:routingPaths()){const auto route=routeOf(path);const auto id=valueAt(before,pathParts(route)).toObject().value("profileId").toString();if(!id.isEmpty()&&kept.contains(id)&&!acceptedHas(id))rebuilt=withValue(rebuilt,pathParts(path),0,valueAt(before,pathParts(path))).toObject();}
  // A setting the resident refused stays as typed too, so the form still shows what isn't saved.
  for(auto it=notSaved_.cbegin();it!=notSaved_.cend();++it)if(it.key().startsWith("|/")){const auto path=it.key().mid(1);rebuilt=withValue(rebuilt,pathParts(path),0,valueAt(before,pathParts(path))).toObject();}
  rebuilt["profiles"]=profiles;
@@ -2893,7 +2935,9 @@ QJsonObject SettingsWindow::saveViewState()const{
  if(saving_||setupAccepting_||resetting_)return {{"stateError","request_awaiting_acceptance"}};
  QJsonObject numbers;for(auto it=numbers_.begin();it!=numbers_.end();++it)numbers[it.key()]=it.value()->text()=="Forever"?(it.key()=="failedArtifactDays"?QString("0"):QString{}):it.value()->text();
  auto editors=profileEditors_;const auto count=draft_["profiles"].toArray().size();while(editors.size()<count)editors.append(QJsonValue::Null);if(profileIndex_>=0&&profileIndex_<count)editors[profileIndex_]=retainedProfileEditor();
- QJsonObject state{{"draft",candidate()},{"numbers",numbers},{"profileEditors",editors},{"baseRevision",baseRevision_},{"baseDocument",restoredDraft_?restoredBase_:baseDocument_.isEmpty()?acceptedDocument():baseDocument_},{"observedRevision",observed_},{"dirty",dirty_},{"autosaveBlocked",autosaveBlocked_},{"conflict",conflict_},{"initialProfile",initialProfile_},{"profileIndex",profile_->currentIndex()},{"section",tabs_->currentIndex()},{"advanced",findControl<QToolButton*>("advancedSettings")->isChecked()},{"resourceLimits",resourceLimitsToggle_->isChecked()},{"desktopSupportDetails",findChild<QToolButton*>("desktopSupportDetailsToggle")->isChecked()},{"geometry",QJsonArray{x(),y(),width(),height()}},{"setupJobs",setupJobs_},{"provisionalProfile",provisionalProfile_},{"captureRouting",captureRoutingState()}};
+ QJsonObject state{{"draft",candidate()},{"numbers",numbers},{"profileEditors",editors},{"baseRevision",baseRevision_},{"observedRevision",observed_},{"dirty",dirty_},{"autosaveBlocked",autosaveBlocked_},{"conflict",conflict_},{"initialProfile",initialProfile_},{"profileIndex",profile_->currentIndex()},{"section",tabs_->currentIndex()},{"advanced",findControl<QToolButton*>("advancedSettings")->isChecked()},{"resourceLimits",resourceLimitsToggle_->isChecked()},{"desktopSupportDetails",findChild<QToolButton*>("desktopSupportDetailsToggle")->isChecked()},{"geometry",QJsonArray{x(),y(),width(),height()}},{"setupJobs",setupJobs_},{"provisionalProfile",provisionalProfile_},{"captureRouting",captureRoutingState()}};
+ // The configuration the draft was based on, when it is known (#1704).
+ if(const auto base=restoredDraft_?restoredBase_:baseDocument_.isEmpty()?acceptedDocument():baseDocument_;!base.isEmpty())state["baseDocument"]=base;
  // Do not even export unclassified provider text to the resident. A content-free
  // rejection keeps the actual draft in this window until the user corrects it.
  if(auto error=validateUiState({{"schemaVersion",1},{"settings",state}}))return {{"stateError",error.code}};

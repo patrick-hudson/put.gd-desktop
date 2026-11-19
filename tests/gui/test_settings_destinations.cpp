@@ -107,7 +107,9 @@ private slots:
  // timing, one request is in flight at most, every legal move succeeds, and the accepted document
  // ends as the last value given to each destination, in the order shown, with what changed
  // elsewhere and wasn't touched here kept.
- void saveQueueEndsWithLastIntentPerDestination_data(){QTest::addColumn<int>("seed");const int first=qEnvironmentVariableIsSet("PUTGD_SAVE_QUEUE_SEED")?qEnvironmentVariableIntValue("PUTGD_SAVE_QUEUE_SEED"):1704;for(int seed=first;seed<first+4;++seed)QTest::newRow(qPrintable(QString::number(seed)))<<seed;}
+ // Two seeds per run keep the suite inside its CI time; PUTGD_SAVE_QUEUE_SEED and
+ // PUTGD_SAVE_QUEUE_SEEDS (a count) run more on a builder.
+ void saveQueueEndsWithLastIntentPerDestination_data(){QTest::addColumn<int>("seed");const int first=qEnvironmentVariableIsSet("PUTGD_SAVE_QUEUE_SEED")?qEnvironmentVariableIntValue("PUTGD_SAVE_QUEUE_SEED"):1704;const int count=qEnvironmentVariableIsSet("PUTGD_SAVE_QUEUE_SEEDS")?qMax(1,qEnvironmentVariableIntValue("PUTGD_SAVE_QUEUE_SEEDS")):2;for(int seed=first;seed<first+count;++seed)QTest::newRow(qPrintable(QString::number(seed)))<<seed;}
  void saveQueueEndsWithLastIntentPerDestination(){
   QFETCH(int,seed);
   QRandomGenerator random{quint32(seed)};
@@ -131,9 +133,6 @@ private slots:
   const auto type=[](QLineEdit* field,const QString& text){field->setText(text);QMetaObject::invokeMethod(field,"editingFinished");};
   const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
   const auto where=[&](const QString& id){for(int i=0;i<model.size();++i)if(model[i].id==id)return i;return -1;};
-  // A route to a destination whose add the resident refuses isn't saved until that destination is;
-  // a Retry or the destination's removal before then leaves the file's route.
-  const auto routedRefused=[&]{const int r=where(routed);return !routed.isEmpty()&&r>=0&&!profileIds(service.document()).contains(routed)&&(model[r].bucket.isEmpty()||model[r].refused);};
   // A rename of some destination, sent and held, so the next answer can be made to fail.
   const auto oneInFlight=[&](int step){const int r=random.bounded(int(model.size()));list->setCurrentRow(r);model[r].label=QString("Held %1").arg(step);type(label,model[r].label);return putgd::test::waitFor([&]{return !fixture.client.held.isEmpty();},2000);};
   for(int step=0;step<80;++step){
@@ -149,8 +148,11 @@ private slots:
    // Removing the destination the default route uses leaves no destination there.
    case 4:if(model.size()>1){if(routed==model[row].id){
      // A route to an add the resident refused was never saved: the file's route stays.
-     PUTGD_TRY_VERIFY((fixture.client.release(),fixture.client.held.isEmpty()));
-     if(routedRefused())routed=service.document()["captureDefaults"].toObject()["profileId"].toString();else routed.clear();}QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();model.removeAt(row);}break;
+     // Removing it cancels any route to it still queued: the route is what the file has, or no
+     // destination if the file routes there too.
+     // Nothing in flight either: a save already sent may still be on its way to the resident.
+     PUTGD_TRY_VERIFY((fixture.client.release(),fixture.client.held.isEmpty()&&window.settings()->flushAutosave()));
+     const auto filed=service.document()["captureDefaults"].toObject()["profileId"].toString();routed=filed==model[row].id?QString():filed;}QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();model.removeAt(row);}break;
    case 5:case 6:{const int delta=random.bounded(2)?1:-1;if(row+delta<0||row+delta>=model.size())break;QJsonObject result;if(orderBaseline.isEmpty())for(const auto& intent:std::as_const(model))orderBaseline.append(intent.id);const auto error=window.settings()->moveSelectedDestination(delta,model[row].id,result);QVERIFY2(!error,qPrintable(QString("seed %1: %2").arg(seed).arg(error.message)));model.move(row,row+delta);break;}
    case 7:{const int pick=random.bounded(int(model.size())+1);const auto id=pick<model.size()?model[pick].id:QString();const int index=route->findData(id);if(index>=0){route->setCurrentIndex(index);routed=id;}break;}
    case 8:{
@@ -195,7 +197,6 @@ private slots:
     if(!taken.isEmpty()){const auto now=shownIds();QString fresh;for(const auto& id:now)if(where(id)<0&&id!=taken)fresh=id;QVERIFY2(!fresh.isEmpty(),qPrintable(QString("seed %1: %2 not renamed").arg(seed).arg(taken)));model[where(taken)].id=fresh;renamed=fresh;if(routed==taken)routed=fresh;
      // The destination added elsewhere comes last in the file, after every one this window keeps.
      model.append(intentOf(profiles.last().toObject()));}
-    if(routedRefused())routed=service.document()["captureDefaults"].toObject()["profileId"].toString();
     // The order is the one this window had, less what went, with what came elsewhere at the end;
     // or, when moves weren't saved yet, the order before them, which a conflict puts back, with
     // destinations added since after it.
@@ -358,12 +359,13 @@ private slots:
   auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto fields=profile["settings"].toObject();fields["region"]="fips-us-east-1";profile["settings"]=fields;profiles[0]=profile;doc["profiles"]=profiles;
   QFile file(dir.filePath("config.json"));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());file.close();
   SettingsService service(file.fileName(),[&](auto,auto value){return provider.validateSettings(value);},nullptr,{},[&](auto,auto value){return provider.validateStoredSettings(value);});
-  UiSessionFixture fixture(service,secrets);int saves=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="settings.save")++saves;};
+  // Saves of the Prefix edit, told apart by the value they carry.
+  UiSessionFixture fixture(service,secrets);int prefixSaves=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="settings.save"&&params["document"].toObject()["profiles"].toArray()[0].toObject()["settings"].toObject()["objectPrefix"]=="screens/")++prefixSaves;};
   MainWindow window(fixture.session);window.navigate("destinations");window.show();
   auto* prefix=window.findChild<QLineEdit*>("s3ObjectPrefix");QVERIFY(prefix);prefix->setText("screens/");QMetaObject::invokeMethod(prefix,"editingFinished");
   auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");const bool before=service.document()["preferences"].toObject()["notifications"].toBool();notifications->click();
   PUTGD_TRY_COMPARE(service.document()["preferences"].toObject()["notifications"].toBool(),!before);
-  PUTGD_VERIFY_STEADY(saves<=3,1000);
+  PUTGD_VERIFY_STEADY(prefixSaves==1,1000);
   QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["objectPrefix"].toString(),QString());
   auto* status=window.findChild<QLabel*>("settingsStatus");PUTGD_TRY_VERIFY(status->text().contains("fips"));
  }
@@ -482,34 +484,168 @@ private slots:
   QCOMPARE(service.document()["captureDefaults"].toObject()["profileId"],QJsonValue(QJsonValue::Null));
   QCOMPARE(service.document()["captureDefaults"].toObject()["publicationMode"].toString(),QString("share"));
  }
- // #1704: a route to an add the resident refused outright waits for nothing: credential setup
- // stays available, the footer says the route isn't saved, and it goes once the add is saved.
+ // #1704: a route to an add the resident refuses outright waits for nothing, whether it was chosen
+ // before the refusal (as reported) or after it. With no default output in the file, choosing one
+ // also makes the actions inherit it; none of that is sent while the add can't be saved. Credential
+ // setup stays available, and once the add is saved the route and the inheritance go with it.
+ void routeToRefusedAddWaitsForNothing_data(){QTest::addColumn<bool>("beforeRefusal");QTest::newRow("before refusal")<<true;QTest::newRow("after refusal")<<false;}
  void routeToRefusedAddWaitsForNothing(){
+  QFETCH(bool,beforeRefusal);
+  QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));QVERIFY(!service.document().contains("captureDefaults"));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Second");dialog->accept();}});add->trigger();
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(route->findData("second")>=0);
+  // Before: chosen while the add is still in flight, so queued before the refusal.
+  if(beforeRefusal)route->setCurrentIndex(route->findData("second"));
+  QVERIFY(fixture.client.release());
+  // The refusal is answered when nothing is in flight.
+  PUTGD_TRY_VERIFY(fixture.client.held.isEmpty()&&window.settings()->flushAutosave());
+  if(!beforeRefusal)route->setCurrentIndex(route->findData("second"));
+  // Nothing goes while the add can't be saved: anything sent now would be held.
+  PUTGD_VERIFY_STEADY(fixture.client.held.isEmpty(),500);fixture.client.hold={};
+  auto* status=window.findChild<QLabel*>("settingsStatus");QVERIFY2(status->text().startsWith("A route to "),qPrintable(status->text()));
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(0);
+  window.findChild<QLineEdit*>("credentialAccessKey")->setText("SYNTHETICACCESSKEY");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-secret");
+  PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("storeCredentials")->isEnabled());
+  window.findChild<QLineEdit*>("credentialAccessKey")->clear();window.findChild<QLineEdit*>("credentialSecretKey")->clear();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("second-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
+  const auto action=[&](const QString& name){return service.document().value("actions").toObject().value(name).toObject().value("destination");};
+  PUTGD_TRY_VERIFY(service.document().value("captureDefaults").toObject().value("profileId")==QJsonValue(QStringLiteral("second"))&&action("region")==QJsonValue(QStringLiteral("default")));
+ }
+ // #1704: Paste from a field's context menu saves at once, like a paste from the keyboard.
+ void contextMenuPasteSavesAtOnce(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);QList<QJsonObject> held;fixture.client.hold=[&held](const QString& method,const QJsonObject& params){if(method!="settings.save")return false;held.append(params);return true;};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();window.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&window));
+  // The paste replaces the selected text, so no edit of its own comes before it.
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");QVERIFY(bucket&&!bucket->text().isEmpty());bucket->setFocus();bucket->selectAll();PUTGD_TRY_VERIFY(bucket->hasFocus());
+  QGuiApplication::clipboard()->setText("pasted-bucket");
+  QTimer::singleShot(0,[]{auto* menu=qobject_cast<QMenu*>(QApplication::activePopupWidget());if(!menu)return;for(auto* action:menu->actions())if(action->text().section('\t',0,0)==QCoreApplication::translate("QLineEdit","&Paste"))action->trigger();menu->close();});
+  QContextMenuEvent event(QContextMenuEvent::Mouse,QPoint(4,4),bucket->mapToGlobal(QPoint(4,4)));QApplication::sendEvent(bucket,&event);
+  QCOMPARE(bucket->text(),QString("pasted-bucket"));
+  // Sent at once, not after the typing pause: the save in flight is the paste's.
+  QCOMPARE(window.settings()->saveViewState()["stateError"].toString(),QString("request_awaiting_acceptance"));
+  PUTGD_TRY_COMPARE(held.size(),qsizetype(1));
+  QCOMPARE(held.first()["document"].toObject()["profiles"].toArray()[0].toObject()["settings"].toObject()["bucket"].toString(),QString("pasted-bucket"));
+ }
+ // #1704 (Sol T6): removing the destination an explicit recording route uses leaves no route to it
+ // behind: a later route edit doesn't queue one that would wait forever, and nothing stays unsaved.
+ void removingRecordingDestinationStrandsNoRoute(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=threeDestinations();auto actions=doc["actions"].toObject();auto record=actions["record"].toObject();record["destination"]="upload";record["profileId"]="synthetic-third";actions["record"]=record;doc["actions"]=actions;
+  {const auto saved=service.save(doc,{});QVERIFY2(saved,qPrintable(saved.error.message));}
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(2);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
+  PUTGD_TRY_VERIFY(!profileIds(service.document()).contains("synthetic-third"));
+  auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");route->setCurrentIndex(route->findData("synthetic-alternate"));
+  PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("synthetic-alternate"));
+  PUTGD_TRY_VERIFY(window.settings()->flushAutosave()&&!window.settings()->actionSaveError());
+  QCOMPARE(service.document()["actions"].toObject()["record"].toObject()["destination"].toString(),QString("local"));
+ }
+ // #1704 (Sol T5): a restored draft that switched the default output from one destination to
+ // another replays the destination with the profile, so it isn't left local by a writer elsewhere.
+ void restoredRouteSwitchKeepsItsDestination(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();auto* route=first.settings()->findChild<QComboBox*>("defaultCaptureDestination");route->setCurrentIndex(route->findData("synthetic-alternate"));
+   PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));}
+  auto elsewhere=service.document();elsewhere["captureDefaults"]=QJsonObject{{"destination","local"},{"profileId",QJsonValue::Null},{"publicationMode","default"}};QVERIFY(service.save(elsewhere,service.revision()));
+  PUTGD_TRY_COMPARE(fixture.session.revision(),service.revision());
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();
+  auto* retry=second.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY(service.document()["captureDefaults"].toObject()["profileId"]=="synthetic-alternate");
+  QCOMPARE(service.document()["captureDefaults"].toObject()["destination"].toString(),QString("upload"));
+ }
+ // #1704 (Sol T7): a route to an add the resident refused, then a conflict and Retry saving: once
+ // the add is fixed and saved, the route goes too.
+ void routeToRefusedAddSurvivesRetry(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
   QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Second");dialog->accept();}});add->trigger();
   auto* status=window.findChild<QLabel*>("destinationStatus");PUTGD_TRY_VERIFY(status->text().contains("bucket"));
   auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");route->setCurrentIndex(route->findData("second"));
-  window.findChild<QListWidget*>("destinationList")->setCurrentRow(0);
-  window.findChild<QLineEdit*>("credentialAccessKey")->setText("SYNTHETICACCESSKEY");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-secret");
-  PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("storeCredentials")->isEnabled());
-  window.findChild<QLineEdit*>("credentialAccessKey")->clear();window.findChild<QLineEdit*>("credentialSecretKey")->clear();
+  auto elsewhere=service.document();auto preferences=elsewhere["preferences"].toObject();preferences["captureDelaySeconds"]=5;elsewhere["preferences"]=preferences;QVERIFY(service.save(elsewhere,service.revision()));
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY(!window.findChild<QWidget*>("destinationConflictBanner")->isVisible());
   window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("second-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
   PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("second"));
  }
- // #1704: Paste from a field's context menu saves at once, like a paste from the keyboard.
- void contextMenuPasteSavesAtOnce(){
+ // #1704 (Sol T9): a restored draft that makes an action inherit a new default output replays the
+ // default output first, so the inheritance isn't refused and dropped.
+ void restoredInheritanceReplaysDefaultFirst(){
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  QVERIFY(!service.document().contains("captureDefaults"));
+  UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("settings");first.show();auto* inherit=first.settings()->findChild<QCheckBox*>("useDefaultRegion");QVERIFY(inherit);if(inherit->isChecked())inherit->click();inherit->click();
+   PUTGD_TRY_VERIFY(first.settings()->findChild<QPushButton*>("retryAutosave")->isVisible());checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));
+   QCOMPARE(checkpoint["draft"].toObject()["actions"].toObject()["region"].toObject()["destination"].toString(),QString("default"));}
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("settings");second.show();
+  auto* retry=second.settings()->findChild<QPushButton*>("retryAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY(service.document()["actions"].toObject()["region"].toObject()["destination"]=="default"&&service.document().contains("captureDefaults"));
+  PUTGD_TRY_VERIFY(second.settings()->flushAutosave()&&!second.settings()->actionSaveError());
+ }
+ // #1704 (CodeRabbit): removing the destination Clipboard uploads to, while another save is held,
+ // then another writer moving Clipboard to a third destination: after Retry saving it stays there.
+ void removedDestinationsRouteMovedElsewhereStays(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  QCOMPARE(service.document()["actions"].toObject()["clipboard"].toObject()["profileId"].toString(),QString("synthetic-third"));
   UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
-  MainWindow window(fixture.session);window.navigate("destinations");window.show();window.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&window));
-  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");QVERIFY(bucket);bucket->setFocus();bucket->clear();PUTGD_TRY_VERIFY(bucket->hasFocus());
-  QGuiApplication::clipboard()->setText("pasted-bucket");
-  QTimer::singleShot(0,[]{auto* menu=qobject_cast<QMenu*>(QApplication::activePopupWidget());if(!menu)return;for(auto* action:menu->actions())if(action->text().section('\t',0,0)==QCoreApplication::translate("QLineEdit","&Paste"))action->trigger();menu->close();});
-  QContextMenuEvent event(QContextMenuEvent::Mouse,QPoint(4,4),bucket->mapToGlobal(QPoint(4,4)));QApplication::sendEvent(bucket,&event);
-  QCOMPARE(bucket->text(),QString("pasted-bucket"));
-  // Sent at once, not after the typing pause: a save is in flight already.
-  QCOMPARE(window.settings()->saveViewState()["stateError"].toString(),QString("request_awaiting_acceptance"));
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* list=window.findChild<QListWidget*>("destinationList");auto* label=window.findChild<QLineEdit*>("destinationLabel");
+  list->setCurrentRow(0);label->setText("First renamed");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  list->setCurrentRow(2);QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
+  auto elsewhere=service.document();auto actions=elsewhere["actions"].toObject();auto clipboard=actions["clipboard"].toObject();clipboard["profileId"]="synthetic-alternate";actions["clipboard"]=clipboard;elsewhere["actions"]=actions;QVERIFY(service.save(elsewhere,service.revision()));
+  QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY((fixture.client.release(),!banner->isVisible()&&fixture.client.held.isEmpty()&&window.settings()->flushAutosave()&&!profileIds(service.document()).contains("synthetic-third")));
+  QCOMPARE(service.document()["actions"].toObject()["clipboard"].toObject()["profileId"].toString(),QString("synthetic-alternate"));
+ }
+ // #1704: the default route goes to a destination another writer then removes and routes past.
+ // After Retry saving the form shows the file's route, not an empty choice, so picking "No
+ // destination" is a change and saves.
+ void routeToDestinationRemovedElsewhereShowsTheFilesRoute(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");auto* label=window.findChild<QLineEdit*>("destinationLabel");QVERIFY(route&&label);
+  const auto filed=[&]{return service.document().value("captureDefaults").toObject().value("profileId");};
+  route->setCurrentIndex(route->findData("synthetic-alternate"));
+  PUTGD_TRY_VERIFY((fixture.client.release(),filed()==QJsonValue(QStringLiteral("synthetic-alternate"))));
+  label->setText("First renamed");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  auto elsewhere=service.document();auto profiles=elsewhere["profiles"].toArray();for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]=="synthetic-alternate"){profiles.removeAt(i);break;}elsewhere["profiles"]=profiles;
+  auto capture=elsewhere["captureDefaults"].toObject();capture["profileId"]="synthetic-third";elsewhere["captureDefaults"]=capture;QVERIFY(service.save(elsewhere,service.revision()));
+  QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY((fixture.client.release(),!banner->isVisible()&&fixture.client.held.isEmpty()&&window.settings()->flushAutosave()));
+  QCOMPARE(route->currentData().toString(),QString("synthetic-third"));
+  route->setCurrentIndex(route->findData(QString()));
+  PUTGD_TRY_VERIFY((fixture.client.release(),filed().isNull()));
+ }
+ // #1704 (CodeRabbit): with no default output in the file, the sharing mode shown is the Region
+ // action's. Choosing only a destination doesn't send it, so a default output another writer
+ // creates meanwhile keeps its own sharing mode after Retry saving.
+ void legacySharingShownIsNoEdit(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=Settings::developmentTemplate();auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["publicationMode"]="share";actions["region"]=region;doc["actions"]=actions;
+  {const auto saved=service.save(doc,{});QVERIFY2(saved,qPrintable(saved.error.message));}QVERIFY(!service.document().contains("captureDefaults"));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");route->setCurrentIndex(route->findData(QString()));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  auto elsewhere=service.document();elsewhere["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","private"}};{const auto saved=service.save(elsewhere,service.revision());QVERIFY2(saved,qPrintable(saved.error.message));}
+  QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
+  PUTGD_TRY_VERIFY((fixture.client.release(),service.document()["captureDefaults"].toObject()["destination"]=="local"));
+  QCOMPARE(service.document()["captureDefaults"].toObject()["publicationMode"].toString(),QString("private"));
  }
  void customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints(){
   const QByteArray token="PUTGD-SYNTHETIC-GUI-TOKEN-0123456789abcdef";
