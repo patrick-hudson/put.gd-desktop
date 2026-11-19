@@ -483,10 +483,14 @@ private:
         const int width = wrapped + extraWidth + 1;
         QRect after(before.topLeft(), QSize(width, label->heightForWidth(width) + extraHeight));
         if (screen) {
-            // Qt placed the tip for its one-line size. Keep it on the same
-            // side of the pointer and inside the screen at its new height.
-            const QRect area = screen->geometry();
+            // Qt placed the tip for its one-line size, often shifted far left so
+            // the long line fit. A tip shown at the pointer starts at the
+            // pointer again; then it stays on the same side of the pointer and
+            // inside the screen at its new size.
+            const int margin = scaled(8);
+            const QRect area = screen->availableGeometry().adjusted(margin, margin, -margin, -margin);
             const QPoint cursor = QCursor::pos();
+            if (cursor.x() >= before.left() - 4 && cursor.x() <= before.right() + 4) after.moveLeft(cursor.x() + 2);
             if (before.bottom() < cursor.y()) after.moveBottom(before.bottom());
             else if (after.bottom() > area.bottom()) after.moveBottom(before.top() - 24);
             if (after.right() > area.right()) after.moveRight(area.right());
