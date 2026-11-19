@@ -383,7 +383,8 @@ int main(int argc,char* argv[]) {
   const putgd::Destination destination{provider,profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
   // Journal recovery first takes the journal lock and rewrites earlier tests' journals without
   // signed links (#1680). A History database recovery can't finish doesn't hold tests back.
-  if(!operations.destinationTestsReady()){reply(operations.notReadyError());return;}
+  // A test that never reached the provider leaves the last check as it was (#1692).
+  if(!operations.destinationTestsReady()){auto error=operations.notReadyError();error.details["notAttempted"]=true;reply(error);return;}
   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
   // The storage test journal boundary (#1680): whatever the worker sends, and whatever its
   // receipts say they are, no storage test journal keeps a link's query. The Custom uploader's

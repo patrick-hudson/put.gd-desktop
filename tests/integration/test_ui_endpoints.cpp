@@ -66,6 +66,9 @@ private slots:
    PUTGD_TRY_COMPARE(check()["state"].toString(),QString("passed"));QCOMPARE(check()["source"].toString(),QString("test"));
    // settings.get, which MCP inspect returns, says the same.
    QJsonObject got;request(server,"settings.get",{},[&](Error,QJsonObject value){got=value;});QCOMPARE(got["destinationStatus"].toObject()["test"].toObject()["state"].toString(),QString("passed"));
+   // A Test held back before it reached the provider, as during journal recovery, keeps the pass.
+   finish={};setup.start("testDestination","test",settings.revision(),{},[](Error e,QJsonObject){QVERIFY(!e);});QVERIFY(finish);finish({"initializing","Synthetic journal recovery",QJsonObject{{"notAttempted",true}}});
+   PUTGD_COMPARE_STEADY(check()["state"].toString(),QString("passed"),50);
    QVERIFY(edited([](QJsonObject& profile){profile["label"]="Renamed destination";}));QCOMPARE(check()["state"].toString(),QString("passed"));
    provider->failUpload=true;provider->uploadError={"s3_transport_unknown","Synthetic network failure",{}};upload();
    QCOMPARE(check()["state"].toString(),QString("passed"));

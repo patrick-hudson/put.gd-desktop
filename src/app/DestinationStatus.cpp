@@ -87,6 +87,8 @@ void DestinationStatus::credentialsChanged(const QString& profileId) {
  save();emit changed();
 }
 void DestinationStatus::testFinished(const QString& profileId,const QString& fingerprint,quint64 revision,const Error& error) {
+ // A test held back before it reached the provider, such as during journal recovery, proves nothing.
+ if(error&&error.details.value("notAttempted").toBool())return;
  if(!current(profileId,fingerprint,revision))return;
  put(profileId,{error?QStringLiteral("failed"):QStringLiteral("passed"),QStringLiteral("test"),error.code,fingerprint,revision});
 }
