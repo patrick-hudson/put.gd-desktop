@@ -412,6 +412,8 @@ int main(int argc,char* argv[]) {
    ack(error);
   };
   auto finished=[path,trail,reply](QJsonObject result,putgd::Error error){
+   // A test refused before it recorded or sent anything leaves no journal and the last check (#1692).
+   if(result.isEmpty()&&error.details.value("notAttempted").toBool()){reply(error);return;}
    // A worker that ended mid-test sent no outcome: each step keeps what its own checkpoints show,
    // and one they don't show finished is unknown, never nothing (#1690).
    result=trail->completed(result);

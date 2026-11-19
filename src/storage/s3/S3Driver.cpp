@@ -1560,7 +1560,8 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
     // Its synthetic writes are sent once only through the transport that can refuse libcurl's own
     // resend (#1690), as its cleanup needs: without it the test sends nothing at all.
     if (!SdkRuntime::safeDeleteTransport()) {
-        reply({}, {"unsupported_capability", "Safe destructive HTTP transport is unavailable on this SDK build", {}});
+        // Nothing reached the destination: the last check stands (#1692).
+        reply({}, {"unsupported_capability", "Safe destructive HTTP transport is unavailable on this SDK build", {{"notAttempted", true}}});
         return;
     }
     // The explicit setup caller owns this asynchronous operation. No captured input.
