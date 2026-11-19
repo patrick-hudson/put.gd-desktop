@@ -690,8 +690,12 @@ An upload can still finish after its worker died, either from an orphaned
 recipe or Proton lend on the builder or from put.gd inside the guest. So no
 destination check counts until `--check-live-cleanup` has run (step 2). It
 refuses while a recipe or lend for the run is live, and otherwise pauses the
-guest's VM so nothing in it can publish. `--resolve-live-cleanup` refuses
-unless the VM is still paused. If a command refuses because a recipe or lend
+guest's VM so nothing in it can publish. An upload that had already reached
+the destination can still commit just after the pause, so the command waits
+until 120 s after it before it returns. `--resolve-live-cleanup` refuses
+unless the VM is still paused and that time has passed. Resuming the VM, for
+any reason, voids every check made before: run `--check-live-cleanup` again
+and repeat the destination checks before step 5. If a command refuses because a recipe or lend
 is live, wait until it stops, then start again from step 1.
 
 1. **Read the marker.** `cat` the run directory's
@@ -706,8 +710,8 @@ is live, wait until it stops, then start again from step 1.
 2. **Pause the guest, then make sure the object is gone.** First run
    `python3 tools/lab/nightly_desktops.py --check-live-cleanup` (add
    `--destination`, `--prefix` and `--object-key` when the marker is gone),
-   for either provider. It must print `"guestPaused": true`. Then check the
-   destination. If the object is still there, delete it in the provider's own
+   for either provider. It must print `"guestPaused": true`. Check the
+   destination only after it returns. If the object is still there, delete it in the provider's own
    console, matching the exact key or folder from step 1, and run the command
    again. For S3 only, you can instead use **Delete from destination** or
    **Retry deletion** in the kept guest's put.gd, on the row whose key matches
@@ -752,7 +756,8 @@ is live, wait until it stops, then start again from step 1.
    purpose. An error counts as guest-only when it is about the guest's own
    files, processes or keyring entries, and nothing on the host or a remote
    service. The same text in another receipt needs its own check. Errors you
-   can't explain keep the guest: ask your coordinator.
+   can't explain keep the guest: ask your coordinator. If you resumed the VM
+   to look inside the guest, go back to step 2 afterwards.
 4. **Record attempts killed before their terminal proof.** An attempt
    directory with `receipt.json` but no `terminal.json` makes retirement
    refuse the whole row. Record each one:
