@@ -105,6 +105,16 @@ Error validate(const QJsonObject& settings) {
     const auto days = settings["linkValidityDays"];
     if ((link != QLatin1String("public") && link != QLatin1String("presigned")) || !days.isDouble() || days.toDouble() != days.toInt() || days.toInt() < 1 || days.toInt() > 7)
         return {"s3_settings_invalid", "Invalid Cloudflare R2 settings: links are public or expire after 1–7 days", {}};
+    // The S3 rules the resident applies to the derived settings (#1699): checked here too, so Move
+    // never switches the form to settings the resident then refuses.
+    const auto prefix = settings["objectPrefix"];
+    if (!prefix.isString() || prefix.toString().toUtf8().size() > 1022 || prefix.toString().contains(QChar(0)))
+        return fieldError(QStringLiteral("objectPrefix"), QStringLiteral("Folder in bucket is at most 1022 bytes."));
+    for (const auto& key : {QStringLiteral("connectTimeoutMs"), QStringLiteral("requestTimeoutMs"), QStringLiteral("lowSpeedBytesPerSecond"), QStringLiteral("lowSpeedTimeSeconds")}) {
+        const auto value = settings[key];
+        if (!value.isDouble() || value.toDouble() < 1 || value.toDouble() > 2147483647 || value.toDouble() != qint64(value.toDouble()))
+            return fieldError(key, QStringLiteral("Advanced connection values are whole numbers of at least 1."));
+    }
     return {};
 }
 }

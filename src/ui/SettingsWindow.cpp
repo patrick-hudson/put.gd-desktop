@@ -1202,12 +1202,13 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const auto readS3ApiAddress=[this]{
   if(loading_||providerType_->currentData()!=r2::providerId)return;
   const auto address=r2::parseS3ApiAddress(r2AccountId_->text());if(!address)return;
-  // An address with no bucket for another account or jurisdiction than the saved one leaves Bucket
-  // empty: the bucket shown was saved with that account, and saving it with this one would be wrong.
-  QJsonObject before;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==profileId_->text()&&value.toObject()["provider"]==r2::providerId)before=value.toObject()["settings"].toObject();
-  const bool otherAccount=!before.isEmpty()&&(before["accountId"].toString()!=address->accountId||before["jurisdiction"].toString()!=address->jurisdiction);
+  // An address with no bucket, for another account or jurisdiction than the one the bucket shown came
+  // with, leaves Bucket empty: saving that bucket with this account would be wrong.
+  const auto from=address->accountId+"|"+address->jurisdiction;
+  const bool otherAccount=!r2BucketFrom_.section('|',0,0).isEmpty()&&r2BucketFrom_!=from;
   const QSignalBlocker account(r2AccountId_),jurisdiction(r2Jurisdiction_),bucket(s3_["bucket"]);
   r2AccountId_->setText(address->accountId);r2Jurisdiction_->setCurrentIndex(r2Jurisdiction_->findData(address->jurisdiction));if(!address->bucket.isEmpty())s3_["bucket"]->setText(address->bucket);else if(otherAccount)s3_["bucket"]->clear();
+  if(!address->bucket.isEmpty()||otherAccount)r2BucketFrom_=from;
  };
  connect(r2AccountId_,&QLineEdit::textChanged,this,[this,readS3ApiAddress]{if(pasting_==r2AccountId_)readS3ApiAddress();});
  connect(r2AccountId_,&QLineEdit::editingFinished,this,[this,readS3ApiAddress]{if(r2AccountId_->isModified())readS3ApiAddress();});
@@ -1222,7 +1223,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const QHash<QString,QString> s3Labels{{"bucket","Bucket"},{"region","Region"},{"endpoint","Endpoint"},{"objectPrefix","Folder in bucket"},{"publicUrlBase","Link domain"},{"storageClass","Storage class"},{"connectTimeoutMs","Connect timeout"},{"requestTimeoutMs","Request timeout"},{"lowSpeedBytesPerSecond","Minimum transfer speed"},{"lowSpeedTimeSeconds","Low-speed window"}};
  for(const auto& key:QStringList{"bucket","region","endpoint","objectPrefix","publicUrlBase","storageClass","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"})s3_[key]=input(this,"s3"+title(key));
  auto* bucketHint=setting(destinationDetails,"Bucket",s3_["bucket"],"/profiles/{profile}/settings/bucket","Required before uploads can go here.");bucketHint->setProperty("preferenceInline",true);auto* bucketText=bucketHint->findChild<QLabel*>("s3BucketHint");bucketText->setTextFormat(Qt::PlainText);// Cloudflare R2 has no URI scheme of its own, so its place is said in words rather than as s3://.
- auto updateBucketHint=[this,bucketText]{const auto place=s3_["bucket"]->text()+"/"+s3_["objectPrefix"]->text();static_cast<Ui::ElidedLabel*>(bucketText)->setText(s3_["bucket"]->text().isEmpty()?QString("Required before uploads can go here."):providerType_->currentData()==r2::providerId?"Uploads go to "+place+" on Cloudflare R2":"Uploads go to "+QString(providerType_->currentData()=="backblaze-b2"?"b2://":"s3://")+place);};connect(providerType_,&QComboBox::currentIndexChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,updateBucketHint);connect(s3_["objectPrefix"],&QLineEdit::textChanged,this,updateBucketHint);updateBucketHint();s3_["bucket"]->setPlaceholderText("my-screenshots");
+ auto updateBucketHint=[this,bucketText]{const auto place=s3_["bucket"]->text()+"/"+s3_["objectPrefix"]->text();static_cast<Ui::ElidedLabel*>(bucketText)->setText(s3_["bucket"]->text().isEmpty()?QString("Required before uploads can go here."):providerType_->currentData()==r2::providerId?"Uploads go to "+place+" on Cloudflare R2":"Uploads go to "+QString(providerType_->currentData()=="backblaze-b2"?"b2://":"s3://")+place);};connect(providerType_,&QComboBox::currentIndexChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,[this]{if(!loading_&&providerType_->currentData()==r2::providerId)r2BucketFrom_=r2AccountId_->text()+"|"+r2Jurisdiction_->currentData().toString();});connect(s3_["objectPrefix"],&QLineEdit::textChanged,this,updateBucketHint);updateBucketHint();s3_["bucket"]->setPlaceholderText("my-screenshots");
  // A Cloudflare R2 destination saves as one profile once every field is valid (#1699): this line says
  // when what the form shows isn't saved and won't be as it is, and why.
  r2UnitStatus_=new QLabel;r2UnitStatus_->setObjectName("r2UnitStatus");r2UnitStatus_->setWordWrap(true);Ui::role(r2UnitStatus_,"warning");destinationDetails->addRow(QString(),r2UnitStatus_);r2UnitStatus_->hide();
@@ -1692,7 +1693,7 @@ void SettingsWindow::loadProfile(){
  // The form shows this destination's request; another destination's notice does not follow it.
  uploader_->setSettings(http?s:CustomUploaderPanel::defaultSettings());if(shownProfile!=p["id"].toString()){uploader_->setNotice({});s3OtherService_={};}
  providerType_->setCurrentIndex(providerType_->findData(p["provider"].toString()));const bool proton=p["provider"]=="proton-drive";protonPanel_->setVisible(proton);protonAccountUid_=s["accountRootUid"].toString();protonAccountEmail_.clear();protonShare_->setChecked(s["shareByDefault"].toBool(true));protonExpiration_->setValue(s["linkExpirationDays"].toInt());protonTimeout_->setValue(s["requestTimeoutMs"].toInt(120000)/1000.0);protonFolder_->clear();addProtonFolder(protonFolder_,s["folderUid"].toString(),s["folderName"].toString());
- findControl<QPushButton*>("storeCredentials")->setVisible(storage||http);findControl<QPushButton*>("testDestination")->setVisible(storage||proton||http);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];setInputText(it.value(),v.isDouble()?ByteSize::exact(v.toInteger(),connectionUnit(it.key())):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key()))||(r2&&r2::settingKeys().contains(it.key())));}allowControl(b2LinkMode_,storage);allowControl(b2LinkDays_,storage);b2LinkMode_->setItemData(1,s3||r2?"presigned":"authorized");b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(r2AccountId_,r2);allowControl(r2Jurisdiction_,r2);r2AccountId_->setText(r2?s["accountId"].toString():QString());r2Jurisdiction_->setCurrentIndex(qMax(0,r2Jurisdiction_->findData(s["jurisdiction"].toString("default"))));allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2||r2||http?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();showS3SettingsProblems();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
+ findControl<QPushButton*>("storeCredentials")->setVisible(storage||http);findControl<QPushButton*>("testDestination")->setVisible(storage||proton||http);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];setInputText(it.value(),v.isDouble()?ByteSize::exact(v.toInteger(),connectionUnit(it.key())):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key()))||(r2&&r2::settingKeys().contains(it.key())));}allowControl(b2LinkMode_,storage);allowControl(b2LinkDays_,storage);b2LinkMode_->setItemData(1,s3||r2?"presigned":"authorized");b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(r2AccountId_,r2);allowControl(r2Jurisdiction_,r2);r2AccountId_->setText(r2?s["accountId"].toString():QString());r2BucketFrom_=r2?s["accountId"].toString()+"|"+s["jurisdiction"].toString("default"):QString();r2Jurisdiction_->setCurrentIndex(qMax(0,r2Jurisdiction_->findData(s["jurisdiction"].toString("default"))));allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2||r2||http?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();showS3SettingsProblems();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
 QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){auto value=connectionValue(it.key(),inputText(it.value()));s[it.key()]=value;}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}const auto linkMode=b2LinkMode_->currentData().toString();if(s.contains("linkMode")||linkMode!="public")s["linkMode"]=linkMode;if(s.contains("linkValidityDays")||linkMode!="public"||b2LinkDays_->value()!=7)s["linkValidityDays"]=b2LinkDays_->value();s["aclMode"]=acl_->currentData().toString();s["addressing"]=addressing_->currentData().toString();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->hasAcceptableInput()?QJsonValue(protonExpiration_->value()):QJsonValue(protonExpiration_->text());s["requestTimeoutMs"]=protonTimeout_->hasAcceptableInput()?QJsonValue(qRound64(protonTimeout_->value()*1000)):QJsonValue(protonTimeout_->text());}else if(p["provider"]==r2::providerId){
   // #1678: what the R2 form shows; the endpoint, region and addressing come from r2::s3Settings().
   QJsonObject r2;for(const auto& key:r2::settingKeys())if(s3_.contains(key)){auto* field=s3_.value(key);if(key.endsWith("Ms")||key.startsWith("lowSpeed"))r2[key]=connectionValue(key,inputText(field));else if(key=="publicUrlBase"&&field->text().isEmpty())r2[key]=QJsonValue::Null;else r2[key]=field->text();}
@@ -2231,11 +2232,15 @@ bool SettingsWindow::waitsForDestination(const SaveOperation& op,const QJsonObje
  if(op.kind==SaveOperation::Kind::Remove)return op.reconciling;
  // A Cloudflare R2 destination is added, or switched to, only once Account ID, Jurisdiction and
  // Bucket are valid (#1699): nothing the resident must refuse is sent, and its routes wait with it.
- if(op.kind==SaveOperation::Kind::Fields)return op.profile["provider"]==r2::providerId&&(op.adding||op.values.contains(QString()))&&!localProblem(op.profile,r2Group()).isEmpty();
+ const auto held=[this](const SaveOperation& fields){return fields.kind==SaveOperation::Kind::Fields&&fields.profile["provider"]==r2::providerId&&(fields.adding||fields.values.contains(QString()))&&!localProblem(fields.profile,r2Group()).isEmpty();};
+ if(op.kind==SaveOperation::Kind::Fields)return held(op);
  if(op.kind!=SaveOperation::Kind::Global)return false;
  // An action set to inherit the default output waits while that default output is still queued.
  if(!accepted.value("captureDefaults").isObject()&&setsInheritance(op)&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& other){return other.key=="routing:/captureDefaults";}))return true;
  QSet<QString> ids;for(const auto& value:accepted["profiles"].toArray())ids.insert(value.toObject()["id"].toString());
+ // A route to a destination whose switch to Cloudflare R2 waits, waits too: captures never follow
+ // it to the service it is leaving.
+ for(const auto& queuedOp:std::as_const(saveQueue_))if(held(queuedOp))ids.remove(queuedOp.id);
  for(auto it=op.values.cbegin();it!=op.values.cend();++it){
   QString id;if(it.key()=="/captureDefaults")id=it.value().toObject()["profileId"].toString();else if(it.key().startsWith("/actions/")||it.key().startsWith("/captureDefaults/")){if(it.key().endsWith("/profileId"))id=it.value().toString();else if(it.value().isObject())id=it.value().toObject()["profileId"].toString();}
   if(!id.isEmpty()&&!ids.contains(id))return true;
@@ -2308,6 +2313,8 @@ void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& edited
  const QString key="destination:"+id;
  SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key=key;op.id=id;op.adding=!acceptedHas(id);
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
+ // Groups held back for another service don't hold back this one's fields (#1699).
+ if(op.profile["provider"]!=profile["provider"]){op.stripped.clear();op.probing.clear();}
  op.profile=profile;
  const auto group=fieldGroup(path,profile["provider"].toString());
  // A group this edit contains that can't be saved as typed keeps its accepted value: it is never
@@ -2729,6 +2736,8 @@ void SettingsWindow::drainSaves(){
   settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),op,doc](Result result){if(g)g->saveAnswered(op,result,doc);});
   return;
  }
+ // A switch the resident accepted is done: a later service change elsewhere is never undone from here.
+ for(auto it=serviceSwitched_.begin();it!=serviceSwitched_.end();){bool done=true;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==*it)for(const auto& drafted:draft_["profiles"].toArray())if(drafted.toObject()["id"]==*it&&drafted.toObject()["provider"]!=value.toObject()["provider"])done=false;if(done)it=serviceSwitched_.erase(it);else ++it;}
  settleDirty();updateR2Feedback();if(std::exchange(answered_,false))showUnsavedDestinations();emit viewStateChanged();
 }
 // What an operation's end, accepted or with nothing to send, settles beyond the accepted document.
@@ -3021,7 +3030,9 @@ Error SettingsWindow::moveToCloudflareR2(){
  profileEditors_[profileIndex_]=QJsonValue::Null;
  profiles[profileIndex_]=profile;draft_["profiles"]=profiles;
  // One Fields operation on the existing ID: the service and its settings change together.
- serviceSwitched_.insert(profile["id"].toString());loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");return {};
+ serviceSwitched_.insert(profile["id"].toString());
+ for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(profile["id"].toString()+"|"))it=notSaved_.erase(it);else ++it;
+ loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");return {};
 }
 
 void SettingsWindow::refreshCredentialHint(){
@@ -3126,7 +3137,10 @@ void SettingsWindow::switchProvider(){
  auto editor=retained["editor"].toObject();
  if(!editor.isEmpty()){editor["id"]=profile["id"];editor["label"]=profile["label"];}
  editor["providers"]=providers;profileEditors_[profileIndex_]=editor;
- profiles[profileIndex_]=profile;draft_["profiles"]=profiles;serviceSwitched_.insert(profile["id"].toString());loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
+ profiles[profileIndex_]=profile;draft_["profiles"]=profiles;serviceSwitched_.insert(profile["id"].toString());
+ // What wasn't saved belonged to the old service's fields: the new service's are checked afresh.
+ for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(profile["id"].toString()+"|"))it=notSaved_.erase(it);else ++it;
+ loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
 }
 QJsonObject SettingsWindow::retainedProfileEditor()const{
  auto editor=profileEditorState();

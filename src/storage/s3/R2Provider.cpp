@@ -18,6 +18,10 @@ Error publicLinkRefused(const Destination& destination) {
     if (destination.settings["linkMode"] != QLatin1String("public") || destination.settings["publicUrlBase"].isString()) return {};
     return {"s3_settings_invalid", "Cloudflare R2 serves public links only from the bucket's r2.dev address or a custom domain. Enter it in Link domain, or choose Private bucket: links that expire.", {{"field", "publicUrlBase"}}};
 }
+// What deleting from R2 does, for the deletion preparation agents and History acknowledge (#1699).
+QString deletionEffect() {
+    return QStringLiteral("Removal after an identity check; R2 ignores the delete precondition, so an object replaced between that check and the removal is removed too; browser/CDN caches may retain bytes");
+}
 UploadRequest s3Request(const UploadRequest& request) {
     auto converted = request;
     converted.destination = R2Provider::s3Destination(request.destination);
@@ -36,10 +40,14 @@ StorageReceipt R2Provider::s3Receipt(const StorageReceipt& receipt) {
 int R2Provider::maximumConcurrentRequests(const Destination& destination) const { return s3_->maximumConcurrentRequests(s3Destination(destination)); }
 ProviderCapabilities R2Provider::capabilities(const Destination& destination) const {
     auto result = s3_->capabilities(s3Destination(destination));
-    result.deletionEffect = QStringLiteral("Removal after an identity check; R2 ignores the delete precondition, so an object replaced between that check and the removal is removed too; browser/CDN caches may retain bytes");
+    result.deletionEffect = deletionEffect();
     return result;
 }
-ProviderCapabilities R2Provider::receiptCapabilities(const StorageReceipt& receipt) const { return s3_->receiptCapabilities(s3Receipt(receipt)); }
+ProviderCapabilities R2Provider::receiptCapabilities(const StorageReceipt& receipt) const {
+    auto result = s3_->receiptCapabilities(s3Receipt(receipt));
+    result.deletionEffect = deletionEffect();
+    return result;
+}
 QString R2Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
     return s3_->serializationKey(s3Destination(destination), object, candidate);
 }
@@ -50,6 +58,7 @@ Error R2Provider::validateSettings(const QJsonObject& settings) const {
 Error R2Provider::validateCredentials(const QJsonObject& reference) const { return s3_->validateCredentials(reference); }
 void R2Provider::checkName(const Destination& destination, const QString& candidate, std::function<void(NameCheck)> reply, std::shared_ptr<std::atomic_bool> cancellation) {
     if (auto error = refused(destination)) { reply({"inconclusive", {}, {}, error}); return; }
+    if (auto error = publicLinkRefused(destination)) { reply({"inconclusive", {}, {}, error}); return; }
     s3_->checkName(s3Destination(destination), candidate, std::move(reply), std::move(cancellation));
 }
 void R2Provider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {

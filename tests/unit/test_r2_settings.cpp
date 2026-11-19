@@ -86,6 +86,13 @@ private slots:
             QCOMPARE(seen, QString("failed:s3_settings_invalid;unknown:s3_settings_invalid;unknown:s3_settings_invalid;unknown:s3_settings_invalid;"
                                    "failed:s3_settings_invalid;abandon:s3_settings_invalid;"));
         }
+        // The S3 rules the resident applies to the derived settings refuse here too (#1699 Q2).
+        auto zero = settings("default");
+        zero["connectTimeoutMs"] = 0;
+        QCOMPARE(r2::validate(zero).details["field"].toString(), QString("connectTimeoutMs"));
+        auto folder = settings("default");
+        folder["objectPrefix"] = QString(1023, 'a');
+        QCOMPARE(r2::validate(folder).details["field"].toString(), QString("objectPrefix"));
     }
     // A public R2 upload with no Link domain would copy an S3 API link R2 never serves: it is refused
     // before anything is sent (#1699 P3).
