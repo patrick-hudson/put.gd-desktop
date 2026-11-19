@@ -86,22 +86,31 @@ env:
       mv "$list.new" "$list"
       echo "Ubuntu mirror moved behind the other usable mirrors: $first"
     }
-    # putgd_wait_for_dpkg SECONDS: wait up to SECONDS for every dpkg and apt-get
-    # process to exit. A dpkg that outlived its apt-get still holds the dpkg lock,
-    # and dpkg --configure -a and apt-get fail at once on that lock.
+    # putgd_wait_for_dpkg SECONDS: wait up to SECONDS until no process holds a
+    # dpkg or apt lock. A dpkg that outlived its apt-get still holds the dpkg lock,
+    # and dpkg --configure -a and apt-get fail at once on that lock. A holder is a
+    # process with a POSIX lock in /proc/locks and one of the lock files open, so
+    # an exited dpkg (a zombie has no open files) or an apt-get that holds no lock
+    # is not waited for.
     putgd_wait_for_dpkg() {
-      local until=$((SECONDS + $1)) comm name busy said=
+      local until=$((SECONDS + $1)) said= busy pid fd file name
+      local locks=" /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock ${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}/lock "
       while :; do
         busy=
-        for comm in /proc/[0-9]*/comm; do
-          name=; read -r name < "$comm" 2>/dev/null || true
-          case $name in dpkg|apt-get) busy=${comm%/comm}; busy="$name (pid ${busy#/proc/})"; break ;; esac
+        for pid in $(awk '$2 == "POSIX" { print $5 }' /proc/locks | sort -u); do
+          for fd in /proc/"$pid"/fd/*; do
+            file=$(readlink "$fd" 2>/dev/null) || continue
+            case $locks in *" $file "*) ;; *) continue ;; esac
+            name=; read -r name < "/proc/$pid/comm" 2>/dev/null || true
+            busy="$name (pid $pid, $file)"
+            break 2
+          done
         done
         [ -n "$busy" ] || return 0
-        [ -n "$said" ] || echo "Package install: waiting up to $1 s for $busy to exit"
+        [ -n "$said" ] || echo "Package install: waiting up to $1 s for $busy to release its lock"
         said=1
         if [ "$SECONDS" -ge "$until" ]; then
-          echo "::warning::Package install: dpkg or apt-get still running after $1 s"
+          echo "::warning::Package install: $busy still holds its lock after $1 s"
           return 1
         fi
         sleep 2
@@ -136,7 +145,7 @@ env:
         [ "$fetched" -ge "${PUTGD_APT_PROGRESS_KB:-131072}" ] || putgd_demote_mirror
         # A failed attempt can leave dpkg half done; apt-get refuses to install until it is finished.
         putgd_wait_for_dpkg "${PUTGD_APT_DPKG_WAIT_SECONDS:-600}" || true
-        dpkg --configure -a || true
+        DEBIAN_FRONTEND=noninteractive dpkg --configure -a || true
       done
       return 1
     }
@@ -184,9 +193,14 @@ jobs:
       - name: Bootstrap checkout tools
         # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
         # each attempt stopped after 10 minutes (#467). On apt only the update and the download
-        # are limited, so the limit never stops dpkg halfway (#1702).
+        # are limited, so the limit never stops dpkg halfway (#1702). The step limit bounds the
+        # rest: a normal bootstrap takes under a minute, and 30 minutes still fits a fully
+        # stalled first attempt (two 10-minute calls) and a normal retry, so a hung maintainer
+        # script fails the job at 30 minutes, not at the job's 90.
+        timeout-minutes: 30
         shell: bash
         run: |
+          export DEBIAN_FRONTEND=noninteractive
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
           eval "$PUTGD_UBUNTU_MIRRORS"
           bounded() { timeout --kill-after=30s 10m "$@"; }
@@ -201,7 +215,7 @@ jobs:
               bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             fi
             echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
-            if command -v apt-get >/dev/null; then
+            if [ "$attempt" != 3 ] && command -v apt-get >/dev/null; then
               # A failed attempt can leave dpkg running or half done; the retry would fail on its lock.
               putgd_wait_for_dpkg 600 || true
               dpkg --configure -a || true
