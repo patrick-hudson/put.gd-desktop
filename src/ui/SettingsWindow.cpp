@@ -1328,13 +1328,17 @@ void SettingsWindow::refreshMetadata(){if(configPath_)static_cast<Ui::ElidedLabe
   for(const auto& key:QStringList{"accepted","observed"}){auto* value=static_cast<MetadataLabel*>(capabilities_->findChild<QLabel*>(key+"Revision"));value->setExact(key=="accepted"?accepted:observed);value->setVisible(differs);capabilities_->findChild<QLabel*>(key+"RevisionLabel")->setVisible(differs);}
 }
 void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChanged();}
+// Why a bucket name can't be saved, in words, or empty when it can.
+static QString s3BucketProblem(const QString& bucket){
+ if(bucket.isEmpty())return "Enter a bucket name to finish setting up this destination.";
+ if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))return "Enter only the bucket name, without a URL, folder path or spaces.";
+ if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)return "Bucket names must contain 3–63 characters.";
+ return {};
+}
 void SettingsWindow::status(const Error& error){
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
-  const auto bucket=s3_["bucket"]->text();QString reason;
-  if(bucket.isEmpty())reason="Enter a bucket name to finish setting up this destination.";
-  else if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))reason="Enter only the bucket name, without a URL, folder path or spaces.";
-  else if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)reason="Bucket names must contain 3–63 characters.";
+  const auto reason=s3BucketProblem(s3_["bucket"]->text());
   if(!reason.isEmpty()){e.message="Invalid S3 settings: "+reason;inlineError(s3_["bucket"],reason);}
   // #1675: a refused Region is shown at that field.
   else if(const auto field=e.details["field"].toString();s3_.contains(field))inlineError(s3_[field],e.message);
@@ -2168,7 +2172,11 @@ void SettingsWindow::persistNextEdit(){
  savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
-  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}const bool fieldError=result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString());
+   // A bucket problem is shown under Bucket (status below), not under the field whose save met it, such as
+   // Region on a new destination that has no bucket yet.
+   const bool bucketProblem=!fieldError&&result.error.code=="s3_settings_invalid"&&g->providerType_->currentData()=="s3"&&!s3BucketProblem(g->s3_["bucket"]->text()).isEmpty();
+   g->inlineError(fieldError?g->s3_[result.error.details["field"].toString()]:bucketProblem?g->s3_["bucket"]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
   g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
