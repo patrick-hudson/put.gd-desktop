@@ -1,5 +1,8 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/StorageLocations.h"
+#include "app/DestinationTestJournal.h"
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QDirIterator>
 #include <algorithm>
 #include <QLockFile>
@@ -203,6 +206,29 @@ private slots:
    SettingsService settings(d.filePath("c/putgd/config.json"),[&](auto id,auto value){return registry.validate(id,value);});QCOMPARE(settings.revision(),template_.configRevision);
    HistoryStore store(d.filePath("d/putgd/history.sqlite"));QCOMPARE(store.operation(template_.failed).items[0].artifact.sha256,QString::fromLatin1(QCryptographicHash::hash("synthetic source content",QCryptographicHash::Sha256).toHex()));
    QVERIFY(!ArtifactStore(d.filePath("d/putgd/artifacts")).recover(template_.interrupted).error);
+  }
+ }
+ // #1680: a destination test's journal goes once the test finished and left nothing behind. Any other
+ // journal stays, so a leftover test object remains traceable, but keeps no signed link query.
+ void destinationTestJournalsSettle() {
+  QTemporaryDir d;const auto dir=d.filePath("destination-tests");QVERIFY(QDir().mkpath(dir));
+  const QString link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
+  const QJsonObject receipt{{"directUrl",link},{"publicationId","pub-1"},{"objectReference",QJsonObject{{"key","putgd-test-1.txt"}}}};
+  auto write=[&](const QString& name,QJsonArray checkpoints){QFile f(dir+"/"+name);QVERIFY(f.open(QIODevice::WriteOnly));
+   f.write(QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson());};
+  const QJsonObject uploaded{{"schemaVersion",1},{"phase","synthetic_uploaded"},{"receipt",receipt}};
+  auto finished=[&](QJsonObject result){return QJsonObject{{"schemaVersion",1},{"phase","finished"},{"result",result}};};
+  write("settled.json",{uploaded,finished({{"uploadStatus","uploaded"},{"receipt",receipt},{"cleanupStatus","removed"},{"multipart",QJsonObject{{"status","ok"},{"abort","aborted"}}}})});
+  write("cleanup-unknown.json",{uploaded,finished({{"uploadStatus","uploaded"},{"receipt",receipt},{"cleanupStatus","unknown"}})});
+  write("multipart-left.json",{uploaded,finished({{"uploadStatus","uploaded"},{"receipt",receipt},{"cleanupStatus","removed"},{"multipart",QJsonObject{{"status","failed"},{"abort","failed"}}}})});
+  write("unfinished.json",{uploaded});
+  const auto journals=destinationTestJournals(dir);QCOMPARE(journals.size(),4);
+  for(const auto& path:journals)settleDestinationTestJournal(path);
+  QVERIFY(!QFile::exists(dir+"/settled.json"));
+  for(const auto* name:{"cleanup-unknown.json","multipart-left.json","unfinished.json"}){
+   QFile f(dir+"/"+name);QVERIFY2(f.open(QIODevice::ReadOnly),name);const auto bytes=f.readAll();
+   QVERIFY2(!bytes.contains("X-Amz-Signature")&&!bytes.contains("AKIDSYNTHETIC"),name);
+   QVERIFY2(bytes.contains("putgd-test-1.txt")&&bytes.contains("pub-1"),name);
   }
  }
  void stagedEntryNeverReplacesTheRoot() {

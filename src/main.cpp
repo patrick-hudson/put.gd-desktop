@@ -20,6 +20,7 @@
 #include "app/RecordingHelperBackend.h"
 #include "app/ScrollHelperBackend.h"
 #include "app/SetupService.h"
+#include "app/DestinationTestJournal.h"
 #include "app/StorageLocations.h"
 #include "ui/Appearance.h"
 #include "ui/ResidentTheme.h"
@@ -290,6 +291,12 @@ int main(int argc,char* argv[]) {
  if(!source)source=std::make_unique<putgd::UnavailableSource>();
  const auto dataRoot=locations.dataRoot;
  putgd::OperationService operations(dataRoot,settings,providers,*source);
+ // Journals of earlier tests, listed before any test can start (#1680): finished ones that left
+ // nothing behind go, and the rest lose their signed link queries.
+ operations.background([journals=putgd::destinationTestJournals(dataRoot+"/destination-tests")](putgd::Error&){
+  for(const auto& path:journals)putgd::settleDestinationTestJournal(path);
+  return QJsonObject{};
+ },[](putgd::Error,QJsonObject){});
  operations.setLocations(locations.report);
  // The recording helper is probed lazily; a missing binary reports recording_helper_missing.
  auto recordingBackend=std::make_unique<putgd::RecordingHelperBackend>();
@@ -384,6 +391,7 @@ int main(int argc,char* argv[]) {
   auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
   auto finished=[path,reply](QJsonObject result,putgd::Error error){
    auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+   putgd::settleDestinationTestJournal(path);
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
    reply(error);
@@ -410,6 +418,7 @@ int main(int argc,char* argv[]) {
     QJsonObject out;http->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
    },[path,reply=std::move(reply)](putgd::Error error,QJsonObject result){
     auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+    putgd::settleDestinationTestJournal(path);
     if(!error&&journalError)error=journalError;
     reply(error,result);
    });
