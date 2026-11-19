@@ -69,7 +69,7 @@ Error currentRules(const QJsonObject& proposed,const QByteArray& current,const P
     for(const auto& entry:Settings::normalized(proposed)["profiles"].toArray()) {
         const auto profile=entry.toObject();const auto kept=saved.value(profile["id"].toString());
         if(!kept.isEmpty()&&kept["provider"]==profile["provider"]&&kept["settings"]==profile["settings"])continue;
-        if(auto error=validator(profile["provider"].toString(),profile["settings"].toObject()))return error;
+        if(auto error=validator(profile["provider"].toString(),profile["settings"].toObject())){error.details["profileId"]=profile["id"];error.details["profileLabel"]=profile["label"];return error;}
     }
     return {};
 }

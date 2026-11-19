@@ -1329,8 +1329,9 @@ void SettingsWindow::showFileError(){
 }
 bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(control==s3_.value("region")||control==s3_.value("endpoint"));}
 void SettingsWindow::status(const Error& error){
- // A save or test answer about Region doesn't decide what the form shows (updateRegionFeedback).
- if(error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region"){updateRegionFeedback();return;}
+ // A save or test answer about Region shows nothing: the form's own check, after typing pauses,
+ // is the only thing that publishes Region feedback (updateRegionFeedback).
+ if(error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region")return;
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
   const auto bucket=s3_["bucket"]->text();QString reason;
@@ -2164,12 +2165,15 @@ void SettingsWindow::persistNextEdit(){
   if(!g)return;
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"&&!result.error.code.startsWith("http_")){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}// A Region answer is shown from the form's own state by status(), never from the answer.
   // A refused Region or Endpoint for a destination that isn't shown any more names it in the footer.
-  const auto refusedField=result.error.details["field"].toString();const auto refusedIndex=path.startsWith("/profiles/")?path.section('/',2,2):QString();
-  if(QStringList{"region","endpoint"}.contains(refusedField)&&!refusedIndex.isEmpty()&&refusedIndex!=QString::number(g->profileIndex_)){
-   const auto label=g->settings_.document()["profiles"].toArray()[refusedIndex.toInt()].toObject()["label"].toString();
+  // The validator names the refused destination as the submitted document had it.
+  const auto refusedField=result.error.details["field"].toString();const auto refusedId=result.error.details["profileId"].toString();
+  if(QStringList{"region","endpoint"}.contains(refusedField)&&!refusedId.isEmpty()&&refusedId!=g->profileId_->text()){
+   const auto label=result.error.details["profileLabel"].toString().isEmpty()?refusedId:result.error.details["profileLabel"].toString();
    for(auto* line:{g->status_,g->destinationStatus_}){plain(line);line->setProperty("errorCode",result.error.code);Ui::feedback(line,label+" wasn't saved: "+result.error.message,true);}
    g->persistNextEdit();return;}
-  if(refusedField!="region")g->inlineError(result.error.code=="s3_settings_invalid"&&g->s3_.contains(result.error.details["field"].toString())?g->s3_[result.error.details["field"].toString()]:control.data(),result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  // Region and Endpoint inline messages are the form's own: no answer writes them.
+  QWidget* target=result.error.code=="s3_settings_invalid"&&g->s3_.contains(refusedField)?g->s3_[refusedField]:control.data();
+  if(refusedField!="region"&&!g->formOwnsFeedback(target))g->inlineError(target,result.error.message);if(control==g->uploader_)g->uploader_->showProblem(result.error.details["field"].toString(),result.error.message);g->status(result.error);g->persistNextEdit();return;}
   if(control==g->uploader_)g->uploader_->showProblem({},{});
   g->baseRevision_=g->settings_.revision();g->baseDocument_=g->settings_.document();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();if(!g->formOwnsFeedback(control))g->inlineError(control,{});if(path=="/profiles"&&!g->pendingEdits_.contains("/profiles"))g->reorderBaseline_.clear();g->refreshMetadata();g->persistNextEdit();
  });
