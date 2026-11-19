@@ -15,6 +15,9 @@ if(BUILD_TESTING)
     add_test(NAME gui_${view} COMMAND test_gui_${view})
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
+  # The save-queue model test (saveQueueEndsWithLastIntentPerDestination) alone takes about 15 s,
+  # which leaves this suite near 60 s on CI.
+  set_tests_properties(gui_settings_destinations PROPERTIES TIMEOUT 120)
 endif()
 
 if(BUILD_TESTING)
