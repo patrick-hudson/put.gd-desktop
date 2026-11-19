@@ -155,6 +155,9 @@ private:
  QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
  // The S3 service picked while the endpoint names none yet (-1: follow the endpoint).
  int s3ServiceChoice_=-1;
+ // The S3 service the form shows now, and another service's region and endpoint kept while R2 is tried.
+ int s3ServiceShown_=-1;QPair<QString,QString> s3OtherService_;
+ bool pairingEdit_=false;
  QLabel *status_=nullptr,*metadata_=nullptr;QWidget* capabilities_=nullptr;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
