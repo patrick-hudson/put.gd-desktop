@@ -2508,10 +2508,11 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
     // Jazeera article). Nothing came loose: where they lie now they are not
     // the page in this frame, and they stay pinned (learned again where they
     // stand from now on).
-    // A bar across the frame (a header, a banner) is among the parts that
-    // moved: two side columns that let go together where their column ends
-    // move with the page as the view does, and are no view move.
-    const auto barPart = [&](int g) { return (found[size_t(g)].c1 - found[size_t(g)].c0 + 1) * 3 >= C; };
+    // A bar across the frame (a header, a banner: two thirds of its width or
+    // more) is among the parts that moved: side columns that let go together
+    // where their column ends, however wide, move with the page as the view
+    // does, and are no view move.
+    const auto barPart = [&](int g) { return (found[size_t(g)].c1 - found[size_t(g)].c0 + 1) * 3 >= 2 * C; };
     int moved = 0, still = 0, common = INT_MIN;
     bool same = true, barMoved = false;
     for (int g = 0; g < groups; ++g) {
@@ -2807,8 +2808,15 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   extentLo0_ = hasFrame_ ? top0 : pos;
   extentHi0_ = hasFrame_ ? bot0 : pos;
   // The frame's rows that count for the extent: not those the excluded
-  // rectangle covers across the whole width at its top or bottom.
-  const long long fTop = pos + effTop_, fBottom = pos + effBottom_;
+  // rectangle covers across the whole width at its top or bottom. A frame of
+  // a move of the whole view shows no new rows of the page above (a bar
+  // opened there), only below where the view moved up (a bar above the page
+  // closed and uncovered the page's next rows), for the cap as for the image.
+  long long fTop = pos + effTop_, fBottom = pos + effBottom_;
+  if (viewMoved_ && hasFrame_) {
+    fTop = std::max(fTop, top0);
+    if (d <= 0) fBottom = std::min(fBottom, std::max(fTop, bot0));
+  }
   long long lo = hasFrame_ ? std::min(top_, fTop) : fTop, hi = hasFrame_ ? std::max(bottom_, fBottom) : fBottom;
   // The cap: rows outside [allowLo_, allowHi_) are not written.
   if (!hasFrame_) {
@@ -2973,7 +2981,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   const int B = cur.bands, P = opts_.cellPx;
   for (int y = 0; y < H; ++y) {
     const long long p = pos + y;
-    if (p < allowLo_ || p >= allowHi_ || viewMoved_) continue;
+    if (p < allowLo_ || p >= allowHi_ || (viewMoved_ && !(d > 0 && p >= bot0))) continue;
     const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
     const size_t at = size_t(p - store_->origin) * words;
     // Page cells the excluded rectangle covered in a placed frame, and those
@@ -3055,12 +3063,8 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
     pending_.pop_back();
   }
   // The extent follows the frame even where a row has nothing written yet.
-  // Not a frame of a move of the whole view: it shows no rows of the page the
-  // image lacks (an information bar opened above the page at its top).
-  if (!viewMoved_ || !hasFrame_) {
-    top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, fTop)) : std::max(allowLo_, fTop);
-    bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, fBottom)) : std::min(allowHi_, fBottom);
-  }
+  top_ = hasFrame_ ? std::max(allowLo_, std::min(top_, fTop)) : std::max(allowLo_, fTop);
+  bottom_ = hasFrame_ ? std::min(allowHi_, std::max(bottom_, fBottom)) : std::min(allowHi_, fBottom);
   r.addedTop = int(std::max<long long>(0, top0 - top_));
   r.addedBottom = int(std::max<long long>(0, bottom_ - bot0));
   if (!hasFrame_) {
@@ -4115,15 +4119,26 @@ TrackTotals ScrollTracker::finish() {
         // Never under a part pinned at the other end: a side bar is at the top
         // once, and an advertisement's plain colour below its artwork (shown
         // only once the page had moved) is not drawn at the image's end.
-        // Not a plain cell three frames or more agreed on: one screen's copy
-        // does not outweigh them (the first screen's cookie banner over a
-        // margin the page showed in 36 frames after it); one or two may have
-        // been a header not learned yet over a heading only that screen
-        // showed clear.
+        // Not a plain cell three frames or more agreed on where the copy shows
+        // it plain too: a flat colour of one screen does not outweigh them
+        // (the first screen's cookie banner over a margin the page showed in
+        // 36 frames after it). Where the copy shows detail (a heading only
+        // that screen showed clear, under a header that came later), the copy.
+        const uint8_t* row = &copy->px[size_t(y) * width_ * 4];
+        const auto flatInCopy = [&](int cc) {
+          const int x0 = cc * P, x1 = std::min(width_, x0 + P);
+          int lo[3] = {255, 255, 255}, hi[3] = {0, 0, 0};
+          for (int x = x0; x < x1; ++x)
+            for (int k = 0; k < 3; ++k) {
+              lo[k] = std::min(lo[k], int(row[size_t(x) * 4 + size_t(k)]));
+              hi[k] = std::max(hi[k], int(row[size_t(x) * 4 + size_t(k)]));
+            }
+          return hi[0] - lo[0] <= 16 && hi[1] - lo[1] <= 16 && hi[2] - lo[2] <= 16;
+        };
         auto hole = [&](int cc) {
           const int l = owner[size_t(r) * C + cc];
-          return store_->level(p, cc) == 0 && store_->lead(p, cc) < 3 && copy->tag[size_t(r) * C + cc] == copy->serial &&
-                 (l < 0 || bool(topAnchored[size_t(l)]) == topSide);
+          return store_->level(p, cc) == 0 && copy->tag[size_t(r) * C + cc] == copy->serial &&
+                 (store_->lead(p, cc) < 3 || !flatInCopy(cc)) && (l < 0 || bool(topAnchored[size_t(l)]) == topSide);
         };
         if (!hole(c)) {
           ++c;

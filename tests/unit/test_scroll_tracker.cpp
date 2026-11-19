@@ -705,7 +705,10 @@ void testPinnedColumns() {
     drawTextLine(info, 6, 40, 300, words, 0x303034);
     const std::vector<int> pos{0, 90, 200, 320, 200, 90, 0, 0};
     MemoryCanvas canvas(W);
-    ScrollTracker tracker(canvas);
+    // A cap just over the page shown: the bar's frame must not count against it.
+    TrackerOptions o;
+    o.maxOutputRows = 320 + V + 10;
+    ScrollTracker tracker(canvas, o);
     for (size_t i = 0; i < pos.size(); ++i) {
       Image f = scene.frame(pos[i], int(i));
       if (i + 1 == pos.size()) {
@@ -723,8 +726,8 @@ void testPinnedColumns() {
       std::memcpy(&v, &image[i], 4);
       bar += (v & 0xFFFFFF) == 0xE4E4E8;
     }
-    report("a bar opens at the page's top and the capture ends: no rows of it", t.bottom - t.top == 320 + V && bar == 0,
-           fmt("%lld rows (the page shows %d), %lld pixels of the bar", t.bottom - t.top, 320 + V, bar));
+    report("a bar opens at the page's top and the capture ends: no rows of it", t.bottom - t.top == 320 + V && bar == 0 && !t.capReached,
+           fmt("%lld rows (the page shows %d), %lld pixels of the bar%s", t.bottom - t.top, 320 + V, bar, t.capReached ? ", cap reached" : ""));
   }
   {
     // Two side columns that stick until their column ends above the footer
@@ -775,6 +778,104 @@ void testPinnedColumns() {
       report(fmt("a rule down a page with nothing pinned, %s: exact", style), r.wrong == 0 && bad == 0,
              counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
     }
+  }
+  {
+    // A side column over a third of the frame wide and a narrow one let go
+    // together: no bar across the frame moved, so no view move.
+    const int WW = 960;
+    const Image doc = columnPage(61, WW, 3600, 360, 776, F, 8, WW - 8);
+    SceneSpec ss;
+    ss.width = WW;
+    ss.height = V;
+    // Stuck from the first frame (half the frame moving into place in the
+    // first step would be a layer of its own to the pair).
+    const int xs[2] = {8, 792}, ws[2] = {336, 160};
+    for (int k = 0; k < 2; ++k) {
+      PinnedPart col{xs[k], 8, ws[k], 330, kBg, 0x3366CC, 0, uint64_t(67 + k)};
+      col.border = false;
+      col.stickFrom = 8;
+      col.stickTo = doc.h - F - 24;
+      ss.pinned.push_back(col);
+    }
+    const Scene scene(doc, ss);
+    Image expected = pageRows(doc, 0, doc.h, WW);
+    for (size_t i = 0; i < 2; ++i)
+      for (int y = 0; y < 330; ++y)
+        std::memcpy(&expected.px[size_t(8 + y) * WW + ss.pinned[i].x], scene.part(i).row(y), size_t(ss.pinned[i].w) * 4);
+    Rng own(71);
+    const auto pos = steps(0, doc.h - V, [&] { return own.range(60, 160); });
+    const Played r = play(scene, pos);
+    int firstBad = 0;
+    const long long bad = differing(r, expected, {}, 0, &firstBad);
+    report("a wide side column and a narrow one let go together: each once, the rest whole", r.wrong == 0 && bad == 0,
+           counts(r) + fmt(", %d wrong%s, %lld pixels differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+  }
+  {
+    // An information bar above the page closes and the capture ends: the
+    // view moves up and shows the page's next rows at the bottom, which are
+    // the page's and in the image. A header and a sub-navigation under it,
+    // nothing at the bottom.
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
+    ss.pinned.push_back({0, 40, W, 24, 0xEDEFF4, 0x303034, 0, 7});
+    const Scene scene(news, ss);
+    Image info(W, 24, 0xE4E4E8);
+    Rng words(97);
+    drawTextLine(info, 6, 40, 300, words, 0x303034);
+    const std::vector<int> pos{0, 110, 220, 330, 440, 440};
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Image f = scene.frame(pos[i], int(i));
+      if (i + 1 < pos.size()) {
+        Image moved(W, V);
+        for (int y = 0; y < V; ++y) std::memcpy(&moved.px[size_t(y) * W], y < 24 ? info.row(y) : f.row(y - 24), size_t(W) * 4);
+        f = moved;
+      }
+      tracker.addFrame(f.view());
+    }
+    const TrackTotals t = tracker.finish();
+    const std::vector<uint8_t> image = canvas.image(t.top, t.bottom);
+    // Tracker row y is the page's row y - 24 (the first frames showed the bar
+    // above the page); the last 24 rows only the last frame showed.
+    long long wrongRows = 0;
+    const long long rows = t.bottom - t.top;
+    for (long long y = std::max(0LL, rows - 24); y < rows; ++y) {
+      const int docRow = int(y) - 24;
+      if (docRow < 0 || docRow >= news.h || std::memcmp(&image[size_t(y) * W * 4], news.row(docRow), size_t(W) * 4) != 0) ++wrongRows;
+    }
+    report("a bar above the page closes and the capture ends: the rows it uncovered are in the image",
+           rows == 440 + V + 24 && wrongRows == 0, fmt("%lld rows (want %d), %lld of the last 24 differ from the page", rows, 440 + V + 24, wrongRows));
+  }
+  {
+    // A header that sticks from the second frame on, over a heading that only
+    // the first frame showed clear: the frames after it vote for the header's
+    // white there many times, and the heading is still the page's.
+    const Image doc = columnPage(73, W, 3600, 40, 600, F, 8, W - 8);
+    SceneSpec ss;
+    ss.width = W;
+    ss.height = V;
+    PinnedPart white{0, 0, W, 48, 0xFFFFFF, 0x202024, 1, 79};
+    white.border = false;
+    white.inkRows = 0;
+    ss.pinned.push_back(white);
+    const Scene scene(doc, ss);
+    Rng own(83);
+    std::vector<int> pos{0};
+    while (pos.back() < 60) pos.push_back(pos.back() + own.range(2, 5));
+    while (pos.back() < doc.h - V) pos.push_back(std::min(doc.h - V, pos.back() + own.range(60, 140)));
+    const Played r = play(scene, pos);
+    long long bad = 0;
+    for (int y = 0; y < 48 && y < r.totals.bottom - r.totals.top; ++y)
+      for (int x = 0; x < W; ++x) {
+        uint32_t v;
+        std::memcpy(&v, &r.image[(size_t(y) * W + x) * 4], 4);
+        bad += (v & 0xFFFFFF) != (doc.at(x, y) & 0xFFFFFF);
+      }
+    report("a header sticks from the second frame over a heading only the first showed: the heading kept", r.wrong == 0 && bad == 0,
+           counts(r) + fmt(", %lld pixels of the first 48 rows differ", bad));
   }
 }
 
