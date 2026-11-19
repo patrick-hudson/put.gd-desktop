@@ -162,23 +162,25 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   ([#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538)). A cell is
   written when two frames show it moved by the page's step, unless more than half of its
   block's textured cells did not; a textured cell that looks the same where it was and a
-  step away counts only if it repeats exactly (a table of equal rows). A flat cell (white
+  step away counts only if it matches within a tighter tolerance (a table of equal rows). A flat cell (white
   space, a banner's flat inside) proves nothing either way: the frames vote on its colour,
   and the leading colour is used where nothing better was written. Outside the part of
   the screen that shows the page, only the page's own background colour counts, written
   flat except in the cell right beside that part (the page's own edge). A cell seen in one
   frame only is written where the screen shows the page there: a stretch of a screen
-  column between stuck parts where the page moved within the last 8 placed frames. When
-  the capture ends, the last frame's rows past what the frames before it showed are
-  written wherever nothing is held back.
+  column with nothing held back in it (between stuck parts or the frame's edges) where the
+  page moved within the last 8 placed frames. When the capture ends, the last placed
+  frame's rows past what the frames before it showed are written wherever nothing is held
+  back.
 - A pinned part that starts to move is still that part: a side column that lets go where
   its own column ends is followed, also while it slides under a header, and drawn once.
   A bar a third of the frame wide or more and a third of its height or less is held back
   as a whole rectangle, the plain parts beside its text included.
 - When it finds that the whole view moved (an information bar opens above the page and
   pushes everything down, Firefox's DRM bar among them), nothing is painted from that
-  frame, nor from the next few (8 at most) while the bar's opening eases out the same
-  way.
+  frame. A move against the way the page was scrolling is carried on to the next placed
+  frames that move the same way, up to 8 after each frame it finds, while most of the
+  pinned parts are still away from their places (the bar's opening eases out).
 - A frame it cannot place is skipped and nothing of it is written. After two in a row it
   is lost (the bar says **Scroll back a little**). It finds a later frame again in the
   image it has built, so scrolling back brings it back.
