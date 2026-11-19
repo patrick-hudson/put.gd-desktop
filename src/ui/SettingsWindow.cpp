@@ -685,7 +685,7 @@ private:
  QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;
 };
 // A status set directly, not from an Error: no error code behind it.
-QLabel* plain(QLabel* label){label->setProperty("errorCode",{});label->setToolTip({});label->setAccessibleDescription({});return label;}
+QLabel* plain(QLabel* label){label->setProperty("errorCode",{});label->setProperty("errorField",{});label->setProperty("setupProgress",{});label->setToolTip({});label->setAccessibleDescription({});return label;}
 // Shows a status row only while its message or one of its actions is shown,
 // so an empty row leaves no gap in the page's spacing.
 class VisibleWithParts final:public QObject {
@@ -1333,7 +1333,9 @@ void SettingsWindow::status(const Error& error){
  // is the only thing that publishes Region feedback (updateRegionFeedback).
  // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
  if(error.code=="s3_settings_invalid"&&QStringList{"region","endpoint"}.contains(error.details["field"].toString())){
-  for(auto* label:{status_,destinationStatus_})if(label&&!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});
+  for(auto* label:{status_,destinationStatus_}){if(!label)continue;
+   if(label->property("setupProgress").toBool())Ui::feedback(plain(label),error.message,true);
+   else if(!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});}
   return;}
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
@@ -1348,7 +1350,7 @@ void SettingsWindow::status(const Error& error){
  // People read the message; the code and path go to the tooltip, the
  // accessible description and errorCode, for a report or an agent.
  const auto detail=e?(e.code+(e.details["path"].toString().isEmpty()?QString{}:" · "+e.details["path"].toString())):QString{};
- for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;label->setProperty("setupProgress",{});label->setProperty("errorCode",e?e.code:QString{});label->setProperty("errorField",e?e.details["field"].toString():QString{});label->setToolTip(detail);label->setAccessibleDescription(detail);}
  if(destinationStatus_)Ui::feedback(destinationStatus_,e.message,bool(e));
  if(e.code=="config_missing"&&settings_.revision().isEmpty()){Ui::feedback(status_,"Changes save automatically when valid.");placeConflictBanners();return;}
  Ui::feedback(status_,e?e.message:"Done.",bool(e));
@@ -2162,7 +2164,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
 void SettingsWindow::persistNextEdit(){
  if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();endAppearancePreview();emit viewStateChanged();return;}
  const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
- if(doc==accepted){inlineError(control,{});persistNextEdit();return;}
+ if(doc==accepted){if(!formOwnsFeedback(control))inlineError(control,{});persistNextEdit();return;}
  savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
@@ -2467,7 +2469,7 @@ void SettingsWindow::activateDestinations(bool forceRefresh){
 }
 void SettingsWindow::setupFeedback(const QString& message,bool success){
  for(auto* label:{status_,destinationStatus_}){
-  plain(label);if(success)Ui::success(label,message);else Ui::feedback(label,message);
+  plain(label);if(success)Ui::success(label,message);else{Ui::feedback(label,message);label->setProperty("setupProgress",true);}
  }
 }
 QString SettingsWindow::setupBlockedReason()const{
