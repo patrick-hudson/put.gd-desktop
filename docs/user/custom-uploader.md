@@ -18,7 +18,10 @@ import.
 4. **Test upload and link** (Test connection). It uploads a small synthetic text file
    with your request (a PNG when the destination takes images only), opens the returned
    link, and deletes the file again when the reply carried a deletion URL. When it did
-   not, the result says the test file stays on the server.
+   not, the result says the test file stays on the server. The test journals the file
+   name and the request address (scheme, host and path, without query or user info)
+   before it sends, and sends the file once: a 307 or 308 asking for it again elsewhere
+   ends the test unknown instead of being followed (#1690).
 
 A plain `http://` address works for a loopback address without asking. Any other one
 needs **Allow plain HTTP for this destination**, which appears beside the address:
@@ -353,6 +356,8 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   answers with the bytes it had is `http_delete_unconfirmed` as well, and so is one
   whose check brought none of the file (the message then says that the check shows
   nothing either way).
+- A 202 accepts the deletion for later without confirming it: the deletion is unknown
+  (`http_delete_pending`), and **Retry** checks again (#1690).
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
   the file gone. A redirect that put.gd does not follow is unknown too: the server
   received the request. A deletion URL that names a stored value follows no redirect
