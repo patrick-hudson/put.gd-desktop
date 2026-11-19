@@ -249,10 +249,40 @@ An editor ignoring the lock can race a write; this is cooperative conflict detec
 The shared patch service recursively overlays objects, replaces arrays/scalars, and treats
 JSON `null` as an explicit value. It is not RFC 7396 merge patch: `null` clears optional
 folder/profile fields rather than removing required keys. The complete resulting document
-must validate. GUI forms autosave finished changes through the same revision check. Dirty drafts survive
-external acceptance and require explicit reload or reconciliation; focusing an unchanged
-field issues no save. Invalid fields retain local feedback while independently valid fields
-may save. A transport/write failure blocks automatic replay until Retry saving is pressed.
+must validate. GUI forms autosave through the same revision check, one request at a time:
+each edit becomes an operation (a destination's fields, keyed by its ID; a removal with the
+routes that fall back; the destination order; or one setting outside the list), and each
+operation is applied to the latest accepted document when it is sent. Typed text is queued
+after a 600 ms pause or when the field loses focus; choices, toggles and pastes at once.
+Focusing an unchanged field issues no save. A group of fields that fails the form's own check is
+never sent: today an S3 destination's Region and Endpoint, which always save together, and a
+Cloudflare R2 destination's Account ID, Jurisdiction and Bucket, which save together once all
+three are valid ([r2.md](../user/r2.md)). The accepted values stay, and the destination's other
+fields and other destinations still save. A field the resident refuses holds back only
+its own group. A transport/write failure stops the queue until Retry saving is pressed. A
+`config_conflict` keeps the queue. Retry saving has the resident read the file again and, only
+if that file validates, applies the queue to it: queued values equal to what the window last had
+accepted are dropped (a group such as Region with Endpoint, or a route's destination with its
+profile ID, only together), so only the window's own changes are written; an edit of a destination no
+longer in the file is dropped and named in the footer; an add whose ID is now taken gets a fresh
+ID. Each capture route is an operation of its own and carries only the fields that changed
+(destination and profile ID together). With no default output in the file, the sharing mode
+shown is the Region action's and is sent only if changed. A route that names a destination still
+being added waits until that add is saved. If the resident refuses the add, the routes waiting on
+it are dropped from the queue and the footer says "A route to <name> wasn't saved: <name> wasn't
+saved."; a route chosen to it afterwards isn't queued either, and the footer says "A route to a
+destination that wasn't saved isn't saved yet." The form keeps those routes, and once the add is
+saved they are sent. A route to a destination removed elsewhere is dropped and the footer says
+so. An action set to inherit a default output the file doesn't have yet goes with that default
+output: it waits for it, is left out while it can't be saved, and is dropped with it. A removal's route
+fallbacks are worked out from the file when it is sent, for the routes that still name it there.
+Removing a destination cancels any route still queued to it, and the form's routes to it show the
+file's again. An add removed before it was sent leaves nothing to remove; one removed while in
+flight is removed once its save is confirmed, or, if the answer was lost, only when the file holds
+exactly the destination that was sent, decided once the window has read the file again (Retry
+saving waits for that read; if it fails, the removal stays pending). A request the resident refuses again
+unchanged, such as an edit of a destination whose saved Region today's rules refuse, stops with
+its reason while the rest of the queue goes on. Reload discards the queue.
 
 Access keys, secrets, session tokens, and source payloads are never configuration values.
 Provider adapters must reject secret-bearing settings fields. Credential references identify
