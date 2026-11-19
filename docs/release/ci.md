@@ -895,14 +895,22 @@ and dwz steps. It works in three layers:
 
 The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
 
-Not covered yet: the `linux` and `sanitizers` installs in `ci.yml` run before
-checkout with bare `apt-get`. They have the acquire timeouts and a 20-minute
-step limit, but no retry or snapshot
-([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). The
-`contracts` install uses the helper. `npm ci` in the Proton helper step runs
-with `npm_config_fetch_retries=5`. Its separate exit-152 failure
-([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is a
-CPU-time kill, not a network error.
+Not covered yet: a package snapshot for `ci.yml`. The `linux` and `sanitizers`
+installs run before checkout, so they use the workflow's own `putgd_apt_install`
+instead of `tools/ci/install-packages.sh`
+([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). That gives
+them the mirror probe, three attempts with a 6-minute limit on each update and
+download, a kept archives directory, mirror demotion and a 30-minute step limit.
+They restore no package snapshot, so when all three attempts fail there is no
+offline install. The `contracts` install runs `tools/ci/install-packages.sh` with
+its online retries, also without a snapshot (`PUTGD_PKG_CACHE`). In `package.yml`'s
+native and AppImage jobs, `npm ci` in the Proton helper step runs with
+`npm_config_fetch_retries=5`. `ci.yml`'s `linux` job runs the same step with npm's
+default of 2 retries. All three have a 15-minute step limit. That step's exit-152
+failure ([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is
+128 + 24, SIGXCPU, which points to a CPU-time limit rather than a network error.
+It was last seen on 2026-10-21, and the issue was closed as stale with the cause
+unconfirmed.
 
 ### Stalled installs
 
