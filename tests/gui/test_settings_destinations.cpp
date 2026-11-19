@@ -279,6 +279,129 @@ private slots:
   QCOMPARE(sentGlobal,0);QCOMPARE(saved()["settings"].toObject()["region"].toString(),QString("us-east-1"));
   QCOMPARE(second.findChild<QLineEdit*>("s3Region")->text(),QString("aws-global"));
  }
+ // #1713: a move saved while a later one waits is the order the list goes back to when the later
+ // move meets a conflict or is refused, so the list shows the file's order, not the one from before
+ // both moves.
+ void conflictingMoveGoesBackToTheSavedMove_data(){QTest::addColumn<bool>("refused");QTest::newRow("conflict")<<false;QTest::newRow("refused")<<true;}
+ void conflictingMoveGoesBackToTheSavedMove(){
+  QFETCH(bool,refused);
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");QVERIFY(shown);
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  const auto before=profileIds(service.document());
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,before[0],result));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  QVERIFY(!window.settings()->moveSelectedDestination(1,before[0],result));
+  const QStringList saved{before[1],before[0],before[2]};
+  QVERIFY(fixture.client.release());PUTGD_TRY_COMPARE(profileIds(service.document()),saved);
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  if(refused)fixture.client.failOnce.insert("settings.save",Error{"config_invalid","Synthetic refusal",{}});
+  else{auto elsewhere=service.document();auto preferences=elsewhere["preferences"].toObject();preferences["captureDelaySeconds"]=5;elsewhere["preferences"]=preferences;QVERIFY(service.save(elsewhere,service.revision()));}
+  QVERIFY(fixture.client.release());
+  if(refused)PUTGD_TRY_VERIFY(fixture.client.held.isEmpty()&&!window.settings()->saveViewState()["stateError"].toString().contains("awaiting"));
+  else{auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(banner->isVisible());}
+  PUTGD_TRY_COMPARE(shownIds(),saved);QCOMPARE(profileIds(service.document()),saved);
+ }
+ // #1713: a destination added while a move is in flight, and moved up before that move saves, is
+ // saved beside its neighbour. When the later order, from that and one more move, is refused, the list goes back to the file's
+ // order, the added one in its saved place, not to the first move's order with it at the end.
+ void refusedMoveAfterAnAddShowsTheFilesOrder(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");QVERIFY(shown);
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  // A B C: A moves down (B A C) and that save is held; D is added (B A C D) and moved up (B A D C);
+  // B moves down (A B D C). The add saves after B, its neighbour (B D A C).
+  const auto ids=profileIds(service.document());
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,ids[0],result));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
+  QVERIFY(!window.settings()->moveSelectedDestination(-1,"later",result));
+  QVERIFY(!window.settings()->moveSelectedDestination(1,ids[1],result));
+  // The first move, then the add, save; the later order is refused.
+  QVERIFY(fixture.client.release());PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  QVERIFY(fixture.client.release());PUTGD_TRY_VERIFY(profileIds(service.document()).contains("later")&&fixture.client.held.size()==1);
+  const auto saved=profileIds(service.document());QVERIFY2(saved.last()!="later",qPrintable(saved.join(',')));
+  fixture.client.failOnce.insert("settings.save",Error{"config_invalid","Synthetic refusal",{}});QVERIFY(fixture.client.release());
+  PUTGD_TRY_COMPARE(shownIds(),saved);QCOMPARE(profileIds(service.document()),saved);
+ }
+ // #1713: a move refused while a newer one waits leaves nothing unsaved once the newer one saves.
+ void refusedMoveIsForgottenWhenANewerOneSaves(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  const auto first=profileIds(service.document())[0];
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,first,result));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  QVERIFY(!window.settings()->moveSelectedDestination(1,first,result));
+  fixture.client.failOnce.insert("settings.save",Error{"config_invalid","Synthetic refusal",{}});QVERIFY(fixture.client.release());
+  PUTGD_TRY_VERIFY((fixture.client.release(),fixture.client.held.isEmpty()&&window.settings()->flushAutosave()&&profileIds(service.document()).last()==first));
+  PUTGD_TRY_VERIFY(!window.settings()->saveViewState()["dirty"].toBool());
+ }
+ // #1713: after a move's save fails, another writer reorders the file and the window finds the
+ // change itself. The move not saved goes back, as when a save's answer is the conflict, so Retry
+ // saving keeps the other writer's order.
+ void watchedConflictPutsBackTheMove(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");QVERIFY(shown);
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  const auto before=profileIds(service.document());
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,before[0],result));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());
+  auto elsewhere=service.document();QJsonArray reordered;const auto profiles=elsewhere["profiles"].toArray();for(int i=profiles.size()-1;i>=0;--i)reordered.append(profiles[i]);elsewhere["profiles"]=reordered;QVERIFY(service.save(elsewhere,service.revision()));
+  const auto theirs=profileIds(service.document());
+  auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(banner->isVisible());
+  PUTGD_TRY_COMPARE(shownIds(),theirs);
+  retry->click();
+  PUTGD_TRY_VERIFY((fixture.client.release(),!banner->isVisible()&&fixture.client.held.isEmpty()&&window.settings()->flushAutosave()));
+  QCOMPARE(profileIds(service.document()),theirs);QCOMPARE(shownIds(),theirs);
+ }
+ // #1713: the list going back after a conflict the window finds itself moves only the rows: the
+ // name being typed in keeps its text, caret and undo history.
+ void conflictRollbackLeavesTheFieldBeingTyped(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();window.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&window));
+  auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");auto* label=window.findChild<QLineEdit*>("destinationLabel");QVERIFY(shown&&label);
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  const auto before=profileIds(service.document());
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,before[0],result));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});QVERIFY(fixture.client.release());
+  auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());
+  label->setFocus();PUTGD_TRY_VERIFY(label->hasFocus());label->end(false);QTest::keyClicks(label," edited");label->setCursorPosition(3);
+  const auto text=label->text();QVERIFY(label->isUndoAvailable());
+  auto elsewhere=service.document();auto preferences=elsewhere["preferences"].toObject();preferences["captureDelaySeconds"]=5;elsewhere["preferences"]=preferences;QVERIFY(service.save(elsewhere,service.revision()));
+  auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(banner->isVisible());
+  PUTGD_TRY_COMPARE(shownIds(),before);
+  QCOMPARE(label->text(),text);QCOMPARE(label->cursorPosition(),3);QVERIFY(label->isUndoAvailable());
+ }
+ // #1713: a move answered with a conflict because another client reordered meanwhile: once the
+ // window has the file again, the list shows that client's order, not the one before the move.
+ void conflictAnsweredMoveShowsTheOtherWritersOrder(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");QVERIFY(shown);
+  const auto shownIds=[&]{QStringList ids;for(int i=0;i<shown->count();++i)ids.append(shown->itemData(i).toString());return ids;};
+  const auto before=profileIds(service.document());
+  QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,before[0],result));
+  PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
+  auto elsewhere=service.document();QJsonArray reversed;const auto profiles=elsewhere["profiles"].toArray();for(int i=profiles.size()-1;i>=0;--i)reversed.append(profiles[i]);elsewhere["profiles"]=reversed;QVERIFY(service.save(elsewhere,service.revision()));
+  const auto theirs=profileIds(service.document());
+  QVERIFY(fixture.client.release());
+  auto* banner=window.findChild<QWidget*>("destinationConflictBanner");PUTGD_TRY_VERIFY(banner->isVisible());
+  PUTGD_TRY_COMPARE(fixture.session.revision(),service.revision());
+  PUTGD_TRY_COMPARE(shownIds(),theirs);
+ }
  // #1704: a reply that arrives while another field is being typed in changes nothing there: its
  // text, its cursor and its message stay as they are.
  void replyWhileTypingLeavesTheField(){
