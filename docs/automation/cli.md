@@ -205,21 +205,27 @@ name keep their accepted order after it. The values sent are the accepted ones, 
 still in flight, or one the resident refused, is never carried by the reorder. A refused
 reorder puts the list back to the order the file has (a destination added but not saved yet
 stays after its neighbour), unless a later reorder is queued: that one stays shown and is sent.
-A conflict with a reorder not saved yet does the same, whether it is a save's answer or the
-window finds the change itself, and drops the queued reorder, so Retry saving doesn't send it:
+A conflict with a reorder not saved yet does the same, whether it is the answer to any save or
+the window finds the change itself, and drops the queued reorder, so Retry saving doesn't send it:
 compare the IDs of `result.document.profiles` from `settings.get` (the saved order) and make
 the move again after Retry saving or a reload. The reply gives `order`, `selected` and `saving` (true
 while the order is queued or in flight); confirm the save with `settings.get`. Errors:
 
 | Code | When |
 | --- | --- |
-| `ui_view_closed` | put.gd's window isn't open, or the UI helper isn't ready |
+| `invalid_request` | `direction` isn't `up` or `down`, or `profileId` isn't a valid ID |
+| `ui_unavailable` | this resident has no graphical interface, or the helper can't be reached |
+| `ui_view_closed` | put.gd's window isn't open, or the UI helper isn't ready; with `details.outcomeUnknown: true`, the window closed before answering |
+| `ui_command_timeout` | the window didn't answer in time (`details.outcomeUnknown: true`) |
 | `ui_busy` | Settings is reloading, or the helper has too many commands waiting |
 | `profile_not_found` | no destination has that `profileId` |
 | `destination_not_selected` | no `profileId` and no destination selected |
 | `destination_move_invalid` | the destination is already at the top or bottom |
 | `config_conflict` | settings changed elsewhere; Retry saving or reload first |
 | `setup_pending` | a destination setup is still running |
+
+With `details.outcomeUnknown: true` the move may have happened: compare the IDs of
+`result.document.profiles` from `settings.get` before moving again.
 
 `ui.diagnostics` drives Settings → Advanced → Diagnostics in the open window
 ([diagnostics.md](../design/diagnostics.md#settings-and-notifications)). Every reply is the
