@@ -91,7 +91,7 @@ private:
  void stageEdit(const QString&,const QJsonValue&,QWidget*);
  void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);void autosaveFailure(const Error&);
  QMap<QString,QJsonValue> pendingEdits_;QHash<QString,quint64> pendingEditSerials_,submittedEditSerials_;quint64 editSerial_=0;QHash<QString,QPointer<QWidget>> editControls_;
- QHash<QWidget*,QLabel*> errors_;QHash<QString,QJsonObject> testedDestinations_;QSet<QString> requestedFolders_;
+ QHash<QWidget*,QLabel*> errors_;QSet<QString> requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
  // Reload from file…, beside the conflict on Settings and on Destinations, and
  // in Advanced → Config file: one confirmation naming the unsaved edits it
@@ -123,6 +123,11 @@ private:
  void refreshLoggingStatus();void clearLogs(std::function<void(Error,QJsonObject)> done);void choosePackageFolder(const QString& folder);
  QCheckBox* debugLogging_=nullptr;QLabel *debugLoggingStatus_=nullptr,*logSummary_=nullptr,*loggingWarning_=nullptr,*uncleanExit_=nullptr;QPushButton* clearLogs_=nullptr;
  QPointer<QDialog> packageDialog_;
+ // The resident's record of a destination's last check (#1692), for the connection in
+ // `profile`: its state (passed, failed or untested) and the row text that says it. An
+ // unsaved connection edit is untested at once; a label edit is not.
+ QString checkState(const QJsonObject& profile)const;
+ QString checkText(const QJsonObject& profile,const QString& passed,const QString& testFailed,const QString& uploadFailed,const QString& untested)const;
  void updateProtonAccountDisplay();void sizeProtonAccountButtons();bool applyProtonAccountResult(const QString&,const QJsonObject&);
  QString setupBlockedReason()const;bool admitSetup();
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void updateStoreButtons();void configurationChanged();

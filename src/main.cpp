@@ -395,7 +395,13 @@ int main(int argc,char* argv[]) {
   },[finished](putgd::Error error,QJsonObject result){finished(result,error);});
  };
  QJsonObject loginStatus,fileManagerStatus;
+ // Each destination's last check (#1692): what a Test found, new credentials, and what
+ // uploads found, kept in the data folder so Settings shows it after a restart.
+ putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
+ destinationStatus.load();destinationStatus.prune();destinationStatus.follow(operations);
+ server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);
+ setup.setDestinationStatus(&destinationStatus);
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
   if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2")){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
@@ -579,6 +585,7 @@ int main(int argc,char* argv[]) {
  QObject::connect(&operations,&putgd::OperationService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&history,&putgd::HistoryService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&setup,&putgd::SetupService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&destinationStatus,&putgd::DestinationStatus::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&updates,&putgd::UpdateService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&updates,&putgd::UpdateService::changed,&tray,[&]{tray.setUpdateStatus(updates.status());});
  QObject::connect(&updates,&putgd::UpdateService::updateAvailable,&tray,&putgd::TrayController::notifyUpdate);

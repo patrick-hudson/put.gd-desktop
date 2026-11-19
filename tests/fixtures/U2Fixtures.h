@@ -36,6 +36,8 @@ public:
  void abandonUpload(const Destination&,const QJsonObject& journal,std::function<void(Error)> cb) override {if(beforeAbandon)beforeAbandon();Error error;{QMutexLocker lock(&mutex);abandoned.append(journal);error=abandonError;}cb(error);}
  // Concurrent uploads (#28): requests the destination accepts at once, and names that fail.
  int concurrency=1;QSet<QString> failCandidates;
+ // What a failed upload answers (#1692), such as a refused sign-in; a generic failure without it.
+ Error uploadError;
  int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
  // The session one operation holds around its requests to a destination that takes one
  // at a time (Proton keeps a signed-in helper in it): how many were opened and are open,
@@ -60,7 +62,7 @@ public:
   if(journalThenUnknown&&request.checkpoint){request.checkpoint({{"schemaVersion",1},{"upload","opaque-resumable"}},[cb](Error e){cb({"unknown",{},e?e:Error{"fixture_interrupted","Synthetic interruption",{}}});});return;}
   if(prepareUploads&&request.progress)request.progress({"preparing",0,request.artifact.bytes});
   auto complete=[this,request,cb] {
-   if(failUpload||failCandidates.contains(request.candidate)) {cb({"failed",{}, {"fixture_failed","Synthetic failure",{}}});return;}
+   if(failUpload||failCandidates.contains(request.candidate)) {cb({"failed",{},uploadError?uploadError:Error{"fixture_failed","Synthetic failure",{}}});return;}
    QMutexLocker lock(&mutex);const auto id=request.objectReference["fileId"].toString();const auto existing=objects.value(id);
    if((request.condition=="absent"&&objects.contains(id))||(request.condition=="match"&&existing.concurrencyToken!=request.concurrencyToken)) {lock.unlock();cb({"collision",{}, {"precondition_changed","Synthetic collision",{}}});return;}
    StorageReceipt r;r.destination=request.destination;r.publicationId=request.publicationId;r.objectReference={{"format",1},{"fileId",id},{"revisionId","opaque-version!"+request.publicationId}};r.concurrencyToken="opaque-token!"+request.publicationId;r.directUrl="https://example.invalid/direct?file="+request.publicationId+"#unrelated";objects.insert(id,r);lock.unlock();cb({loseReply?"unknown":"uploaded",r,{}});
