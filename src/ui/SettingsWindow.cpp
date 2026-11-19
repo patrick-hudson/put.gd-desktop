@@ -2310,7 +2310,10 @@ void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& edited
  // A destination switched to another service here isn't saved field by field: until its new service
  // is saved, each edit sends all of it, so a field never lands in the old service's settings.
  // Only a service changed in this window counts: one another writer changed is never undone from here.
- QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id){if(value.toObject()["provider"]==serviceSwitched_.value(id))serviceSwitched_.remove(id);else if(serviceSwitched_.contains(id)&&value.toObject()["provider"]!=profile["provider"])path.clear();}
+ QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id){if(!serviceSwitched_.contains(id))continue;
+  // The switch is done once the file has the service it was switched to. Only an edit of that service
+  // sends all of it; a form rebuilt to another service drops the mark (#1699).
+  if(value.toObject()["provider"]==serviceSwitched_.value(id)||profile["provider"]!=serviceSwitched_.value(id))serviceSwitched_.remove(id);else path.clear();}
  const QString key="destination:"+id;
  SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key=key;op.id=id;op.adding=!acceptedHas(id);
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
