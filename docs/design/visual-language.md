@@ -73,11 +73,15 @@ instruction. Display-only wrapping must not change copied values: Copy diagnosti
 keyboard and context-menu copying, and X11 selections retain the original text,
 including any original Unicode characters.
 
-A plain-text tooltip longer than about 45 average characters wraps at word
-boundaries to that width, never wider than two fifths of the screen, so it reads
-as a short paragraph instead of one long line. `Ui::install` applies this to
-every tooltip in the process: widget, list-row, menu and hand-placed ones alike.
-Write the tooltip as plain prose and let it wrap; reserve explicit line breaks
+A plain-text tooltip longer than about 45 average characters is broken into
+lines of that width, never wider than two fifths of the screen, so it reads as a
+short paragraph instead of one long line. A word longer than a line, such as a
+file name, breaks inside the word. `Ui::tooltipText` does the breaking and Qt
+then sizes and places the tip as usual. `Ui::install` applies it when widget,
+menu and drop-down list tooltips are shown, so stored tooltip text and the
+accessibility text built from it stay unchanged. Text shown with
+`QToolTip::showText`, or another view's `Qt::ToolTipRole`, passes through
+`Ui::tooltipText`. Write tooltips as plain prose; use explicit line breaks only
 for separate facts.
 
 Desktop text size and display pixel ratio are separate concerns. Use
