@@ -1331,7 +1331,10 @@ bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(co
 void SettingsWindow::status(const Error& error){
  // A save or test answer about Region shows nothing: the form's own check, after typing pauses,
  // is the only thing that publishes Region feedback (updateRegionFeedback).
- if(error.code=="s3_settings_invalid"&&error.details["field"].toString()=="region")return;
+ // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
+ if(error.code=="s3_settings_invalid"&&QStringList{"region","endpoint"}.contains(error.details["field"].toString())){
+  for(auto* label:{status_,destinationStatus_})if(label&&!QStringList{"region","endpoint"}.contains(label->property("errorField").toString()))Ui::feedback(plain(label),{});
+  return;}
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
   const auto bucket=s3_["bucket"]->text();QString reason;
@@ -1983,9 +1986,9 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
  auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
  for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
  if(atPath(doc,parts)==atPath(baseline,parts)){
-  pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
+  pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);if(!formOwnsFeedback(control))inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
- stageEdit(path,atPath(doc,parts),control);inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
+ stageEdit(path,atPath(doc,parts),control);if(!formOwnsFeedback(control))inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
  if(updateProviderVisibility_)updateProviderVisibility_();
 }
 void SettingsWindow::updateCaptureInheritance(){
