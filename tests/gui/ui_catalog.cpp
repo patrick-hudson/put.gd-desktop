@@ -624,6 +624,18 @@ int main(int argc,char** argv){
   if(!save("settings-b2-stepper-1060",scrollPose(destinationScroll,hint,40,true)))return 2;
   mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));
  }
+ // #1678: Cloudflare R2 has no regions, so its Region row is a note and the region auto;
+ // choosing Amazon S3 again brings back an AWS region and its endpoint.
+ {
+  auto* service=window.findChild<QComboBox*>("s3Service");auto* endpoint=window.findChild<QLineEdit*>("s3Endpoint");auto* region=window.findChild<QLineEdit*>("s3Region");if(!service||!endpoint||!region)return 2;
+  const auto id=window.findChild<QLineEdit*>("destinationId")->text(),originalRegion=region->text();
+  const auto savedRegion=[&]{for(const auto& profile:settings.document()["profiles"].toArray())if(profile.toObject()["id"]==id)return profile.toObject()["settings"].toObject()["region"].toString();return QString();};
+  service->setCurrentIndex(1);emit service->activated(1);endpoint->setText("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com");emit endpoint->editingFinished();
+  if(!waitUntil([&]{return window.settings()->flushAutosave()&&savedRegion()=="auto";}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-s3-r2"))return 2;
+  service->setCurrentIndex(0);emit service->activated(0);region->setText(originalRegion);window.findChild<QToolButton*>("advancedSettings")->setChecked(false);
+  if(!waitUntil([&]{return window.settings()->flushAutosave()&&savedRegion()==originalRegion;}))return 2;
+ }
  // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
  // masked, and with its values stored for the session. The token is synthetic.
  {
