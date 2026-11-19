@@ -187,7 +187,9 @@ and nothing in CI could see it, since the runners have PipeWire 1.0.5. The job r
 It takes the AppImage from this run's `packages` job when that ran. Otherwise only
 `src/record` or the check changed, so it downloads the latest nightly's AppImage and
 checks it against that release's `SHA256SUMS`. It takes about two minutes, most of
-it installing the container's packages. A branch that drops `min-buffers=1` fails
+it installing the container's packages. That install is `putgd_apt_install` with a
+12-minute budget (`PUTGD_APT_BUDGET_SECONDS=720`), and the check step has a 20-minute limit,
+so the 30-minute job always keeps time for the install and the check itself. A branch that drops `min-buffers=1` fails
 it with the #137 error, `error alloc buffers: Invalid argument (-22)`. The job is
 part of the required `CI` summary when selected.
 
@@ -786,16 +788,23 @@ and dwz steps. It works in three layers:
   first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
   than one mirror answered the probe, so the next attempt starts on another mirror. (The
   workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
-  than 128 MiB.) `putgd_apt_install` gives each of its three attempts 8 minutes for the
-  update and the download only (`PUTGD_APT_ATTEMPT_SECONDS=480`). The install of what was
-  downloaded has no limit of its own: it runs under the step's outer `timeout-minutes` (30
-  for the `linux` and `sanitizers` installs), which has to hold the three download attempts
-  too. After a failed attempt it waits up to 600 s for any process holding a dpkg or apt
-  lock, such as a dpkg that outlived its stopped `apt-get`, before `dpkg --configure -a`
-  and the retry
-  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702)). Those recovery
-  waits come out of the same 30 minutes, so when they run, the third attempt and the
-  install have less headroom left.
+  than 128 MiB.) `putgd_apt_install` puts everything before the install in one budget
+  (`PUTGD_APT_BUDGET_SECONDS`, 25 minutes): the update and download attempts, timeout's
+  30 s kill grace, the waits for a leftover dpkg and the recovery. That leaves 5 of the
+  `linux` and `sanitizers` install steps' 30 minutes for the install, which takes 1-2
+  minutes on a runner, has no limit of its own, and runs under the step's
+  `timeout-minutes`. Each attempt is limited to the earlier of 8 minutes
+  (`PUTGD_APT_ATTEMPT_SECONDS=480`) and the budget, with the kill grace inside that.
+  Attempts resume from the kept archives and go on while they make progress. The helper
+  stops after three attempts in a row that each add under 4 MiB (`PUTGD_APT_STALL_KB`) or
+  whose install fails, or when the budget runs out. After a failed attempt it waits, up to
+  600 s and never past the budget, until no process holds a dpkg or apt lock. It asks the
+  kernel about each lock file with F_GETLK, through `perl` from `perl-base`, so an OFD lock
+  or a holder in another PID namespace counts and an unrelated lock doesn't. If the lock is
+  still held or the budget is spent, it stops; otherwise it runs `dpkg --configure -a`
+  under what is left of the budget and retries
+  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702),
+  [#1706](https://github.com/patrick-hudson/put.gd-desktop/issues/1706)).
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
@@ -891,12 +900,11 @@ and dwz steps. It works in three layers:
   snapshot install are warning annotations and rows of a "Package install
   retries" table in the job summary. A stopped attempt's row says
   `**stopped**`, which limit stopped it and the last line it printed. A clean
-  install writes nothing. The pre-checkout bootstrap (git and ca-certificates, plus zstd
-  on ubuntu24.04) retries 3 times inline and reports in a table of the same form. Each
-  attempt's update and download are limited to 10 minutes. On apt the install of what was
-  downloaded has no limit of its own, and the step's 30-minute limit bounds it. A failed
-  attempt that is not the last waits for any process holding a dpkg or apt lock and runs
-  `dpkg --configure -a` before the retry.
+  install writes nothing. The pre-checkout bootstrap installs git and ca-certificates,
+  plus zstd on ubuntu24.04, and reports in a table of the same form. On apt it runs
+  `putgd_apt_install` with a 20-minute budget and 10-minute attempts, which leaves 10 of
+  the step's 30 minutes for the install. On dnf it makes 3 attempts under the same budget,
+  each limited to 10 minutes with the kill grace inside.
 
 The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
 
@@ -904,10 +912,9 @@ Not covered yet: a package snapshot for `ci.yml`. The `linux` and `sanitizers`
 installs run before checkout, so they use the workflow's own `putgd_apt_install`
 instead of `tools/ci/install-packages.sh`
 ([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). That gives
-them the mirror probe, three attempts with an 8-minute limit on each update and
-download, a kept archives directory, mirror demotion and a 30-minute step limit.
-They restore no package snapshot, so when all three attempts fail there is no
-offline install. The `contracts` install runs `tools/ci/install-packages.sh` with
+them the mirror probe, 8-minute download attempts within a 25-minute budget, a kept
+archives directory, mirror demotion and a 30-minute step limit. They restore no package
+snapshot, so when the download stalls or the budget runs out there is no offline install. The `contracts` install runs `tools/ci/install-packages.sh` with
 its online retries, also without a snapshot (`PUTGD_PKG_CACHE`). In `package.yml`'s
 native and AppImage jobs, `npm ci` in the Proton helper step runs with
 `npm_config_fetch_retries=5`. `ci.yml`'s `linux` job runs the same step with npm's
