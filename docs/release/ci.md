@@ -188,8 +188,9 @@ It takes the AppImage from this run's `packages` job when that ran. Otherwise on
 `src/record` or the check changed, so it downloads the latest nightly's AppImage and
 checks it against that release's `SHA256SUMS`. It takes about two minutes, most of
 it installing the container's packages. That install is `putgd_apt_install` with a
-12-minute budget (`PUTGD_APT_BUDGET_SECONDS=720`), and the check step has a 20-minute limit,
-so the 30-minute job always keeps time for the install and the check itself. A branch that drops `min-buffers=1` fails
+12-minute budget (`PUTGD_APT_BUDGET_SECONDS=720`) for its downloads, waits and recovery,
+the work before the install itself. The check step's 20-minute limit and the job's 30 minutes
+cap the whole run; they don't reserve time for the check. A branch that drops `min-buffers=1` fails
 it with the #137 error, `error alloc buffers: Invalid argument (-22)`. The job is
 part of the required `CI` summary when selected.
 
@@ -790,19 +791,23 @@ and dwz steps. It works in three layers:
   workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
   than 128 MiB.) `putgd_apt_install` puts everything before the install in one budget
   (`PUTGD_APT_BUDGET_SECONDS`, 25 minutes): the update and download attempts, timeout's
-  30 s kill grace, the waits for a leftover dpkg and the recovery. That leaves 5 of the
-  `linux` and `sanitizers` install steps' 30 minutes for the install, which takes 1-2
-  minutes on a runner, has no limit of its own, and runs under the step's
-  `timeout-minutes`. Each attempt is limited to the earlier of 8 minutes
-  (`PUTGD_APT_ATTEMPT_SECONDS=480`) and the budget, with the kill grace inside that.
-  Attempts resume from the kept archives and go on while they make progress. The helper
-  stops after three attempts in a row that each add under 4 MiB (`PUTGD_APT_STALL_KB`) or
-  whose install fails, or when the budget runs out. After a failed attempt it waits, up to
-  600 s and never past the budget, until no process holds a dpkg or apt lock. It asks the
-  kernel about each lock file with F_GETLK, through `perl` from `perl-base`, so an OFD lock
-  or a holder in another PID namespace counts and an unrelated lock doesn't. If the lock is
-  still held or the budget is spent, it stops; otherwise it runs `dpkg --configure -a`
-  under what is left of the budget and retries
+  30 s kill grace, the waits for a leftover dpkg and the recovery. The budget starts when
+  the helper is called, after the mirror probe, so the 5 minutes of the `linux` and
+  `sanitizers` install steps' 30 that it leaves for the install are nominal. The install
+  takes 1-2 minutes on a runner, has no limit of its own, and runs under the step's
+  `timeout-minutes`. Each attempt, its update and download together, is limited to the
+  earlier of 8 minutes (`PUTGD_APT_ATTEMPT_SECONDS=480`) and the budget, with the kill grace
+  inside that; `putgd_timed` takes the time left right before each command and skips the
+  command when 30 s or less remain. Attempts resume from the kept archives and go on while
+  they make progress. The helper stops, without waiting or recovery, after the third attempt
+  in a row that adds under 4 MiB (`PUTGD_APT_STALL_KB`) or whose install fails, and when the
+  budget runs out. After any other failed attempt it waits, up to 600 s and not past the
+  budget except by its 2 s polling interval, until no process holds a dpkg or apt lock. It
+  asks the kernel about each lock file with F_GETLK, through `perl` from `perl-base`, so an
+  OFD lock or a holder in another PID namespace counts and an unrelated lock doesn't. A
+  query that fails for any reason but a missing file is a warning and stops the install. If
+  a lock is still held or the budget is spent, it stops too; otherwise it runs
+  `dpkg --configure -a` through `putgd_timed` with what is left of the budget and retries
   ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702),
   [#1706](https://github.com/patrick-hudson/put.gd-desktop/issues/1706)).
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
@@ -901,10 +906,13 @@ and dwz steps. It works in three layers:
   retries" table in the job summary. A stopped attempt's row says
   `**stopped**`, which limit stopped it and the last line it printed. A clean
   install writes nothing. The pre-checkout bootstrap installs git and ca-certificates,
-  plus zstd on ubuntu24.04, and reports in a table of the same form. On apt it runs
-  `putgd_apt_install` with a 20-minute budget and 10-minute attempts, which leaves 10 of
-  the step's 30 minutes for the install. On dnf it makes 3 attempts under the same budget,
-  each limited to 10 minutes with the kill grace inside.
+  plus zstd on ubuntu24.04. On apt it runs `putgd_apt_install` with a 20-minute budget and
+  10-minute attempts. That budget also starts after the mirror probe, so the 10 of the step's
+  30 minutes it leaves for the install are nominal. It writes one summary row, `| all |
+  failed |`, only when the whole install fails. On dnf it runs `dnf install` up to 3 times
+  under the same budget, each limited to 10 minutes with the kill grace inside. It stops at
+  the first success, and `putgd_timed` skips a command when 30 s or less remain. Each failed
+  attempt is a row of a table of the same form.
 
 The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
 
