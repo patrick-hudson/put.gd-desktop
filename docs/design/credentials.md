@@ -85,8 +85,8 @@ journal whose own records show an S3 or B2 test: every destination saved by the
 records that save one (an S3 upload intent and the multipart check's records) names
 that same provider, or, when none was saved, there is at least one receipt and every
 receipt carries non-empty B2 file and bucket IDs. A journal is not rewritten when its
-saved destinations disagree, when it saves an S3 destination but every receipt carries
-B2 IDs, or when anything in it looks like a Custom uploader's records: an
+saved destinations disagree, when it saves an S3 destination but has receipts that all
+carry B2 IDs, or when anything in it looks like a Custom uploader's records: an
 `upload_intent` record, a `link` in the result, a receipt labelled `custom-http`, or an
 `objectReference` with `url`, `deletionUrl`, `deletionUrlLeftOut` or `nonce`. It is
 best effort: a file
