@@ -3,6 +3,7 @@
 #include "fixtures/U2Fixtures.h"
 #include <QBuffer>
 #include <QUrlQuery>
+#include <QSet>
 #include "fixtures/Waits.h"
 #include "core/SettingsService.h"
 using namespace putgd::test;
@@ -74,6 +75,52 @@ private slots:
         const auto renewed=f.await<StatResult>([&](auto cb){f.provider.refreshLink(uploaded.receipt,cb);});
         QVERIFY(renewed.status!="own");
         QVERIFY(renewed.receipt.directUrl.isEmpty()||QUrlQuery(QUrl(renewed.receipt.directUrl)).queryItemValue("versionId")==recorded);
+    }
+
+    // #1690: Test upload and link sends its synthetic writes once. A reply that doesn't prove a
+    // refusal (a 503, a 408) leaves the upload or the multipart check unknown, with the upload's
+    // intent journaled first, instead of sending again: the first request could land after the
+    // second copy was cleaned up, leaving an object no journal records.
+    void testWritesStayUnknownAfterAnUnclearReply_data() {
+        QTest::addColumn<QJsonObject>("rule");QTest::addColumn<QString>("uploadStatus");QTest::addColumn<QString>("multipart");
+        QTest::newRow("put-503") << QJsonObject{{"method","PUT"},{"status",503},{"code","SlowDown"}} << QString("unknown") << QString();
+        QTest::newRow("put-408") << QJsonObject{{"method","PUT"},{"status",408},{"code","RequestTimeout"}} << QString("unknown") << QString();
+        QTest::newRow("multipart-create-408") << QJsonObject{{"method","POST"},{"query","uploads"},{"status",408},{"code","RequestTimeout"}} << QString("uploaded") << QString("unknown");
+    }
+    void testWritesStayUnknownAfterAnUnclearReply() {
+        QFETCH(QJsonObject,rule);QFETCH(QString,uploadStatus);QFETCH(QString,multipart);
+        S3Fixture f;
+        f.reset({{"rules",QJsonArray{rule}}});
+        QJsonArray journal;
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[&journal](auto value,auto ack){journal.append(value);ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        QVERIFY(tested.second);
+        QCOMPARE(tested.first["uploadStatus"].toString(),uploadStatus);
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(journal.first().toObject()["phase"].toString(),QString("synthetic_upload_intent"));
+        QVERIFY(journal.first().toObject()["objectReference"].toObject()["key"].toString().contains("putgd-test-"));
+        if(!multipart.isEmpty())QCOMPARE(tested.first["multipart"].toObject()["status"].toString(),multipart);
+    }
+    // #1690: the synthetic PutObject and CreateMultipartUpload follow the name check on a client
+    // whose connections are kept alive. Each goes out once, on a connection no earlier request
+    // used, so libcurl can't send it again by itself after losing a reused connection's reply.
+    void testWritesGoOutOnceOnAFreshConnection() {
+        S3Fixture f;
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}}}}});
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(tested.first["uploadStatus"].toString(),QString("uploaded"));
+        QSet<int> used;
+        bool create=false;
+        for(const auto& value:f.events()){
+            const auto event=value.toObject();const int port=event["port"].toInt();
+            const bool write=event["method"]=="PUT"||(event["method"]=="POST"&&event["path"].toString().contains("uploads"));
+            if(write)QVERIFY2(!used.contains(port),qPrintable(event["method"].toString()+" reused a connection"));
+            create=create||(event["method"]=="POST"&&event["path"].toString().contains("uploads"));
+            used.insert(port);
+        }
+        QVERIFY(create);
     }
 
     void failedNameHeadRetainsSafeTransportDiagnostics() {

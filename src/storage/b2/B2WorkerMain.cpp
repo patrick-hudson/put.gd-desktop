@@ -317,6 +317,9 @@ public:
 private:
     QJsonObject request_;
     Destination destination_;
+    // Test upload and link (#1690): its synthetic upload is sent once. After an unclear reply it
+    // stays unknown, because a resend could store a second version that nothing records.
+    bool synthetic_ = false;
     Client client_;
     QJsonObject settings() const { return destination_.settings; }
 
@@ -463,15 +466,25 @@ private:
             client_.sentBytes = [&](qint64 sent) { progress("uploading", sent, artifact.bytes); };
             const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body);
             client_.sentBytes = {};
-            if (r.ok() && r.json["fileId"].isString()) return r.json["fileId"].toString();
+            const auto stored = r.json["fileId"].toString();
+            if (r.ok() && (synthetic_ ? !stored.isEmpty() : r.json["fileId"].isString())) return stored;
+            // Test upload and link: a success without a usable file ID (a cut-off reply, or an empty
+            // ID) may have stored a file nothing names (#1690).
+            if (r.ok() && synthetic_) {
+                error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
+                uncertain = true;
+                return {};
+            }
             // A lost or failed reply may still have stored the file: look for it first.
             if (r.transport || r.status >= 500 || r.status == 408 || r.status == 429) {
                 Error lookup;
                 const auto found = published(name, publication, lookup);
                 if (found && found->contains("fileId")) return (*found)["fileId"].toString();
                 if (!found) { error = lookup; uncertain = true; return {}; }
-                if (r.aborted && cancelled.load()) { error = stoppedError(); return {}; }
+                // A synthetic upload cancelled once sent may still have been stored (#1690).
+                if (r.aborted && cancelled.load()) { error = stoppedError(); uncertain = synthetic_; return {}; }
                 error = Client::failure(r, "upload_file");
+                if (synthetic_) { uncertain = true; return {}; }
                 continue;
             }
             if (r.status == 401 && (r.code() == "expired_auth_token" || r.code() == "bad_auth_token")) continue; // a new upload URL
@@ -696,9 +709,18 @@ private:
         request_["condition"] = "absent";
         request_["objectReference"] = checked["objectReference"];
         request_["resume"] = QJsonObject{};
+        // What the upload may create is recorded before it is sent (#1690).
+        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_upload_intent"}, {"destination", destination_.toJson()},
+                                 {"objectReference", checked["objectReference"]}, {"publicationId", synthetic}, {"sha256", artifact.sha256}, {"bytes", double(artifact.bytes)}})) {
+            error = e;
+            return out;
+        }
+        synthetic_ = true;
         bool uncertain = false;
         const auto uploaded = upload(error, uncertain);
-        out["uploadStatus"] = uploaded["status"].toString(error ? "failed" : "unknown");
+        synthetic_ = false;
+        // An unclear outcome is unknown, never failed: the file may be stored.
+        out["uploadStatus"] = uploaded["status"].toString(uncertain || !error ? "unknown" : "failed");
         if (error || uploaded["status"] != "uploaded") return out;
         const auto receipt = StorageReceipt::fromJson(uploaded["receipt"].toObject());
         // An authorized link's query holds a working download token (#1680). It is opened only
@@ -708,6 +730,7 @@ private:
         link.setQuery(QString());
         recorded.directUrl = link.toString(QUrl::FullyEncoded);
         out["receipt"] = recorded.toJson();
+        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_uploaded"}, {"receipt", recorded.toJson()}})) error = e;
         const auto fetched = client_.send("GET", QUrl(receipt.directUrl, QUrl::StrictMode), {});
         out["publicReachable"] = fetched.status == 200 && fetched.body == bytes;
         QJsonObject progress;
@@ -718,18 +741,51 @@ private:
         const auto removed = remove(cleanup, cleanupUncertain);
         out["cleanupStatus"] = removed["status"];
         out["cleanupProgress"] = removed["progress"];
-        // Large files need writeFiles too; prove start and cancel without sending a part.
-        const auto start = client_.call("b2_start_large_file", {{"bucketId", client_.session.bucketId}, {"fileName", fileName(settings(), "putgd-test-large-" + synthetic)},
-                                                               {"contentType", "text/plain"}}, false);
-        QJsonObject large{{"start", start.ok() ? "ok" : "failed"}};
-        if (start.ok()) large["cancel"] = cancelLarge(start.json["fileId"].toString()) ? "failed" : "cancelled";
+        // Large files need writeFiles too; prove start and cancel without sending a part. The name
+        // is recorded before the start, the file ID before the cancel, and how the cancel ended.
+        const auto largeName = fileName(settings(), "putgd-test-large-" + synthetic);
+        QJsonObject large;
+        Error largeError;
+        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_intent"}, {"destination", destination_.toJson()}, {"name", largeName}})) {
+            large["start"] = "skipped";
+            largeError = e;
+        } else {
+            const auto start = client_.call("b2_start_large_file", {{"bucketId", client_.session.bucketId}, {"fileName", largeName}, {"contentType", "text/plain"}}, false);
+            const auto fileId = start.json["fileId"].toString();
+            // A success without a usable file ID started a large file nothing names (#1690).
+            const bool unclear = start.ok() ? fileId.isEmpty() : (start.transport || start.status >= 500 || start.status == 408 || start.status == 429);
+            large["start"] = start.ok() && !unclear ? "ok" : unclear ? "unknown" : "failed";
+            if (!start.ok()) largeError = Client::failure(start, "large_start");
+            else if (unclear) largeError = {"b2_large_unconfirmed", "Backblaze B2 started the large file without returning its file ID; it may remain unfinished", {{"requestStage", "large_start"}}};
+            else {
+                large["fileId"] = fileId;
+                // The cancel is sent only once the file ID is on record (#1690): without it the result
+                // still names the file, and the cancel stays not confirmed.
+                if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_started"}, {"name", largeName}, {"fileId", fileId}})) {
+                    largeError = e;
+                    large["cancel"] = "not_confirmed";
+                } else {
+                    // Only B2's own success confirms the cancel; any refusal leaves it unconfirmed (#1690).
+                    const auto cancel = client_.call("b2_cancel_large_file", {{"fileId", fileId}}, true);
+                    const bool confirmed = cancel.ok() && cancel.json["fileId"].toString() == fileId;
+                    large["cancel"] = confirmed ? "cancelled" : "not_confirmed";
+                    if (!confirmed && !largeError) {
+                        largeError = cancel.ok() ? Error{"b2_large_unconfirmed", "Backblaze B2 answered the cancel without naming the test's large file.", {{"requestStage", "large_cancel"}}}
+                                                 : Client::failure(cancel, "large_cancel");
+                        largeError.message = "Backblaze B2 did not confirm cancelling the test's unfinished large file " + largeName + "; check the bucket for it. " + largeError.message;
+                    }
+                    if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_finished"}, {"name", largeName}, {"fileId", fileId}, {"cancel", large["cancel"]}}); e && !largeError) largeError = e;
+                }
+            }
+        }
         out["largeFile"] = large;
         if (cleanup) error = cleanup;
+        else if (error) {}
         else if (!out["publicReachable"].toBool()) {
             error = {"public_url_unreachable", settings()["linkMode"].toString() == "authorized"
                 ? "Uploads work, but the authorized link did not open. Check that the key has shareFiles and the link domain."
                 : "Uploads work, but the public link did not open. Make the bucket public in B2, or check the link domain.", {{"httpStatus", fetched.status}}};
-        } else if (!start.ok()) error = Client::failure(start, "large_start");
+        } else if (largeError) error = largeError;
         return out;
     }
 };

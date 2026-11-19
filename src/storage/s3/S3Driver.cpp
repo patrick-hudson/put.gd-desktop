@@ -43,6 +43,7 @@
 #include <condition_variable>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <mutex>
 #include <thread>
 namespace putgd {
@@ -994,13 +995,21 @@ QJsonObject multipartProbe(Client& client, const Destination& destination, const
     create.AddMetadata("putgd-publication", aws(QUuid::createUuid().toString(QUuid::WithoutBraces)));
     QElapsedTimer timer;
     timer.start();
+    std::optional<SdkRuntime::SingleSendScope> once(std::in_place);
     const auto created = client.CreateMultipartUpload(create);
+    once.reset();
     if (!created.IsSuccess()) {
         error = wireError(created.GetError(), S3Stage::UploadCreate, timer.elapsed());
         const int status = int(created.GetError().GetResponseCode());
-        return {{"status", status == 403 ? "denied" : ambiguous(created.GetError()) ? "unknown" : "failed"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
+        // A 408 doesn't prove the service refused it: the upload may exist (#1690).
+        return {{"status", status == 403 ? "denied" : ambiguous(created.GetError()) || status == 408 ? "unknown" : "failed"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
     }
     const auto uploadId = qt(created.GetResult().GetUploadId());
+    // A success without an upload ID created an upload nothing can name or abort (#1690).
+    if (uploadId.isEmpty()) {
+        error = {"s3_multipart_unconfirmed", "S3 answered the multipart check without an upload ID; an incomplete upload may remain. Check the bucket for incomplete multipart uploads.", {}};
+        return {{"status", "unknown"}, {"stage", s3StageName(S3Stage::UploadCreate)}};
+    }
     journal["phase"] = "synthetic_multipart_created";
     journal["uploadId"] = uploadId;
     QJsonObject result{{"status", "ok"}};
@@ -1182,7 +1191,9 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
     if (found.status == "own") signLink(*client, found.receipt);
     reply(found);
 }
-void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
+void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) { upload(request, std::move(reply), false); }
+void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply, bool synthetic) {
+    const int attempts = synthetic ? 1 : 3;
     reply = [this, destination=request.destination, completion=std::move(reply)](UploadResult result) {
         if (result.status == "uploaded") {
             if (auto client = state_->client(destination)) signLink(*client, result.receipt);
@@ -1252,7 +1263,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
     }
     const auto expected = receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes, {}, {});
     bool uncertain = false;
-    for (int attempt = 0; attempt < 3; ++attempt) {
+    for (int attempt = 0; attempt < attempts; ++attempt) {
         if (stopped(request.cancellation)) {
             reply({uncertain ? "unknown" : "failed", {}, cancelled()});
             return;
@@ -1295,7 +1306,10 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         });
         QElapsedTimer requestTimer;
         requestTimer.start();
+        std::optional<SdkRuntime::SingleSendScope> once;
+        if (synthetic) once.emplace();
         const auto outcome = client->PutObject(put);
+        once.reset();
         report("finalizing", transferred);
         if (outcome.IsSuccess()) {
             reply({"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes,
@@ -1304,11 +1318,13 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
         }
         const auto error = wireError(outcome.GetError(), S3Stage::UploadPut, requestTimer.elapsed());
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
-        if (!ambiguous(outcome.GetError()) && !conflict) {
+        // A 408 doesn't prove the service refused the synthetic file (#1690).
+        const bool unclear = ambiguous(outcome.GetError()) || (synthetic && int(outcome.GetError().GetResponseCode()) == 408);
+        if (!unclear && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
             return;
         }
-        uncertain = uncertain || ambiguous(outcome.GetError());
+        uncertain = uncertain || unclear;
         auto found = inspect(*client, expected, true);
         if (found.status == "own") {
             reply({"uploaded", found.receipt, {}});
@@ -1409,6 +1425,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         // Retain the exact intent and never issue another marker-creating DELETE.
         head(*client, destination, key);
         finish("unknown", {"delete_unknown", "Marker creation may have completed; its identity is unresolved", {}});
+        return;
+    }
+    // An earlier attempt found a delete marker in place of the removal: the object's bytes are
+    // still kept as a version, whatever the current HEAD says now (#1690).
+    if (objectPhase && progress.value("markerVersionId").isString()) {
+        finish("hidden_version_retained", {"delete_marker_created", "An earlier deletion left the object behind a delete marker: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}});
         return;
     }
     auto identity = inspect(*client, expected);
@@ -1617,6 +1639,19 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish(unknown ? "unknown" : (int(removed.GetError().GetResponseCode()) == 412 || int(removed.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(removed.GetError(), S3Stage::DeleteObject, removeElapsedMs));
             return;
         }
+        // A delete marker in reply means the bucket keeps versions after all: the object is hidden
+        // and its bytes stay behind the marker, so the removal is not complete (#1690). The one
+        // exception: deleting a receipt's "null" version in a bucket with versioning suspended can
+        // be answered with a "null" marker, and the null version itself is gone.
+        const auto markerVersion = qt(removed.GetResult().GetVersionId());
+        if (removed.GetResult().GetDeleteMarker() && !(markerVersion == "null" && version == "null")) {
+            progress["markerVersionId"] = markerVersion;
+            Error retained{"delete_marker_created", "S3 hid the object behind a delete marker instead of removing it: the bucket keeps versions, so the object's bytes remain as an older version. Remove that version in the bucket.", {}};
+            if (auto error = persist(S3DeletePhase::ObjectFailed))
+                retained.message += " put.gd could not record the marker's version ID, so its journal doesn't name it.";
+            finish("hidden_version_retained", retained);
+            return;
+        }
     }
     if (auto error = persist(S3DeletePhase::Done)) {
         finish("unknown", error);
@@ -1648,6 +1683,13 @@ void NetworkS3Driver::abandon(const Destination& destination, const QJsonObject&
     reply(abortMultipart(*client, aws(destination.settings["bucket"].toString()), key, uploadId));
 }
 void NetworkS3Driver::testDestination(const Destination& destination, DurableCheckpoint save, std::function<void(QJsonObject, Error)> reply) {
+    // Its synthetic writes are sent once only through the transport that can refuse libcurl's own
+    // resend (#1690), as its cleanup needs: without it the test sends nothing at all.
+    if (!SdkRuntime::safeDeleteTransport()) {
+        // Nothing reached the destination: the last check stands (#1692).
+        reply({}, {"unsupported_capability", "Safe destructive HTTP transport is unavailable on this SDK build", {{"notAttempted", true}}});
+        return;
+    }
     // The explicit setup caller owns this asynchronous operation. No captured input.
     auto temporary = std::make_shared<QTemporaryDir>();
     const QByteArray bytes("put.gd synthetic destination test\n");
@@ -1735,7 +1777,7 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 else if (removed.status != "removed" && removed.status != "missing") error.message += " Test cleanup is incomplete; inspect the recorded test target before retrying.";
                 reply(result, error);
             });
-        });
+        }, true);
     });
 }
 }

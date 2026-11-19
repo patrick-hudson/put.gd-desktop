@@ -82,6 +82,8 @@ Aws::Utils::Logging::LogLevel sdkLevel(SdkRuntime::LogLevel level) {
 }
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
 thread_local bool destructiveRequest = false;
+// SdkRuntime::SingleSendScope: requests from this thread go out once, on a new connection.
+thread_local bool singleSendRequests = false;
 // The request on this thread whose continue handler can cut it (#203).
 thread_local const Aws::Http::HttpRequest* continuableRequest = nullptr;
 // The SDK asks a request's continue handler only while body bytes move, so a part
@@ -129,7 +131,7 @@ public:
                 destructiveRequest = previous;
                 continuableRequest = previousContinuable;
             }
-        } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE,
+        } scope(request->GetMethod() == Aws::Http::HttpMethod::HTTP_DELETE || singleSendRequests,
                 request->GetContinueRequestHandler() && !request->IsEventStreamRequest() ? request.get() : nullptr);
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
@@ -146,6 +148,7 @@ protected:
             curl_easy_setopt(handle, CURLOPT_FRESH_CONNECT, 1L);
             curl_easy_setopt(handle, CURLOPT_FORBID_REUSE, 1L);
         }
+        if (singleSendRequests) curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 0L);
         // The handle is reset when it returns to the pool, so this stays per request.
         if (continuableRequest) {
             curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
@@ -270,6 +273,13 @@ SdkRuntime::LogLevel SdkRuntime::logLevel(const char* value) {
     if (value && std::strcmp(value, "info") == 0) return LogLevel::Info;
     return LogLevel::Warn;
 }
+#if defined(PUTGD_SDK_CURL_TRANSPORT)
+SdkRuntime::SingleSendScope::SingleSendScope() : previous_(singleSendRequests) { singleSendRequests = true; }
+SdkRuntime::SingleSendScope::~SingleSendScope() { singleSendRequests = previous_; }
+#else
+SdkRuntime::SingleSendScope::SingleSendScope() : previous_(false) {}
+SdkRuntime::SingleSendScope::~SingleSendScope() = default;
+#endif
 bool SdkRuntime::safeDeleteTransport() {
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
     return true;

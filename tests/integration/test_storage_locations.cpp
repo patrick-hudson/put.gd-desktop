@@ -270,6 +270,36 @@ private slots:
   QVERIFY(QFileInfo(dir+"/"+uuid('4')).isSymLink());
   QFile untouched(target.fileName());QVERIFY(untouched.open(QIODevice::ReadOnly));QCOMPARE(untouched.readAll(),unchanged["notes.json"]);
  }
+ // #1690: when a test's worker ends without a result, each step reports only what its own
+ // terminal checkpoint shows; a step without one is unknown.
+ void destinationTestTrailReportsOnlyFinishedSteps() {
+  auto completed=[](QList<QJsonObject> checkpoints){DestinationTestTrail trail;for(const auto& c:checkpoints)trail.record(c);return trail.completed({});};
+  const QJsonObject intent{{"phase","synthetic_upload_intent"}},uploaded{{"phase","synthetic_uploaded"},{"receipt",QJsonObject{{"publicationId","pub-1"}}}};
+  QVERIFY(!completed({}).contains("uploadStatus"));
+  QCOMPARE(completed({intent})["uploadStatus"].toString(),QString("unknown"));
+  auto done=completed({intent,uploaded,QJsonObject{{"phase","object_intent"},{"target",QJsonObject{}}},QJsonObject{{"phase","done"},{"target",QJsonObject{}}}});
+  QCOMPARE(done["uploadStatus"].toString(),QString("uploaded"));QCOMPARE(done["cleanupStatus"].toString(),QString("removed"));
+  auto marker=completed({intent,uploaded,QJsonObject{{"phase","object_failed"},{"target",QJsonObject{}},{"markerVersionId","m1"}}});
+  QCOMPARE(marker["cleanupStatus"].toString(),QString("hidden_version_retained"));
+  // A version deletion in flight behind a marker may have succeeded: unknown, not retained.
+  auto inFlight=completed({intent,uploaded,QJsonObject{{"phase","version_intent"},{"target",QJsonObject{}},{"markerVersionId","m1"}}});
+  QCOMPARE(inFlight["cleanupStatus"].toString(),QString("unknown"));
+  QCOMPARE(completed({intent,uploaded})["cleanupStatus"].toString(),QString("unknown"));
+  QCOMPARE(completed({QJsonObject{{"phase","upload_intent"}},QJsonObject{{"phase","uploaded"},{"receipt",QJsonObject{{"publicationId","pub-1"}}}}})["uploadStatus"].toString(),QString("uploaded"));
+  const QJsonObject probe{{"phase","synthetic_multipart_intent"}};
+  QCOMPARE(completed({intent,uploaded,probe})["multipart"].toObject()["status"].toString(),QString("unknown"));
+  const auto aborted=completed({intent,uploaded,probe,QJsonObject{{"phase","synthetic_multipart_finished"},{"abort","aborted"}}})["multipart"].toObject();
+  QCOMPARE(aborted["status"].toString(),QString("unknown"));QCOMPARE(aborted["abort"].toString(),QString("aborted"));
+  const QJsonObject large{{"phase","synthetic_large_intent"}};
+  QCOMPARE(completed({intent,uploaded,large})["largeFile"].toObject()["start"].toString(),QString("unknown"));
+  const auto started=completed({intent,uploaded,large,QJsonObject{{"phase","synthetic_large_started"},{"fileId","f1"}}})["largeFile"].toObject();
+  QCOMPARE(started["start"].toString(),QString("ok"));QCOMPARE(started["fileId"].toString(),QString("f1"));QCOMPARE(started["cancel"].toString(),QString("unknown"));
+  // A saved finish record stands on its own when the start record wasn't saved.
+  const auto finishedOnly=completed({intent,uploaded,large,QJsonObject{{"phase","synthetic_large_finished"},{"fileId","f1"},{"cancel","cancelled"}}})["largeFile"].toObject();
+  QCOMPARE(finishedOnly["fileId"].toString(),QString("f1"));QCOMPARE(finishedOnly["cancel"].toString(),QString("cancelled"));
+  const QJsonObject reported{{"uploadStatus","failed"}};
+  DestinationTestTrail trail;trail.record(intent);QCOMPARE(trail.completed(reported),reported);
+ }
  void stagedEntryNeverReplacesTheRoot() {
   QTemporaryDir d;const auto root=d.filePath("d/putgd"),staging=StorageLocations::stagingRoot(root);
   QVERIFY(QDir().mkpath(staging+"/artifacts"));QVERIFY(!fixture(staging,"history.sqlite","staged").isEmpty());QVERIFY(!fixture(staging+"/artifacts","kept","staged artifact").isEmpty());

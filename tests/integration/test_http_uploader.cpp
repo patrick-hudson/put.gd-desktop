@@ -529,6 +529,10 @@ private slots:
         QTest::newRow("same-file") << QString("same-file") << QString("failed");
         QTest::newRow("session-cookie") << QString("session-cookie") << QString("failed");
         QTest::newRow("redirected-404") << QString("redirected-404") << QString("unknown");
+        // #1690: a 202 for a deletion the link then confirms (404) is removed, not pending.
+        QTest::newRow("accepted-202-then-gone") << QString("accepted-202") << QString("removed");
+        // A 202 whose link still answers is pending, not removed.
+        QTest::newRow("accepted-202-still-there") << QString("accepted-202-kept") << QString("pending");
     }
     void aDeletionOutcomeFollowsTheRule() {
         QFETCH(QString, shape);
@@ -549,7 +553,15 @@ private slots:
         else if (shape == "session-cookie") f.rules({{{"call", "file"}}, {{"call", "delete"}, {"status", 200}, {"body", "<html>Rejected</html>"}, {"setCookie", "session=rejected-delete"}},
                                                      {{"call", "file"}, {"notFoundFor", "session=rejected-delete"}}});
         else if (shape == "redirected-404") f.rules({notFound, {{"call", "delete"}, {"status", 302}, {"location", f.base + "/gone"}}, notFound});
+        else if (shape == "accepted-202") f.rules({{{"call", "delete"}, {"status", 202}, {"store", true}, {"body", "{}"}}});
+        else if (shape == "accepted-202-kept") f.rules({{{"call", "delete"}, {"status", 202}, {"body", "{}"}}});
         const auto result = f.remove(uploaded.receipt);
+        if (expected == "pending") {
+            QCOMPARE(result.status, QString("unknown"));
+            QCOMPARE(result.error.code, QString("http_delete_pending"));
+            QCOMPARE(f.stored(), 1);
+            return;
+        }
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
