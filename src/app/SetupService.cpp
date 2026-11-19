@@ -28,9 +28,9 @@ bool validInput(const QString& kind,const QJsonObject& input) {
 QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+kind;}
 }
 // Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
-// (#282), and a provider with named values when its settings need any (#1361).
+// (#282), Cloudflare R2 (#1678), and a provider with named values when its settings need any (#1361).
 bool SetupService::usesCredentialStore(const QJsonObject& profile) const {
- if(profile["provider"]=="s3"||profile["provider"]=="backblaze-b2")return true;
+ if(profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]=="cloudflare-r2")return true;
  QStringList names;
  return namedCredentials_&&!namedCredentials_(profile,{},&names)&&!names.isEmpty();
 }
@@ -154,7 +154,7 @@ void SetupService::revealCredentialSecret(const QString& profileId,const QString
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)){reply({"profile_not_found","Save the destination before showing credentials",{}},{});return;}
  const auto profile=profiles[profileId];
- if(profile["provider"]!="s3"&&profile["provider"]!="backblaze-b2"){reply({"setup_unsupported","This destination has no stored secret key",{}},{});return;}
+ if(profile["provider"]!="s3"&&profile["provider"]!="backblaze-b2"&&profile["provider"]!="cloudflare-r2"){reply({"setup_unsupported","This destination has no stored secret key",{}},{});return;}
  const auto cached=credentials_.cached(profileId,profile["credentials"].toObject());
  if(!cached){reply({"credential_setup_required","Unlock saved credentials first, or enter credentials for this session",{}},{});return;}
  reply({},{{"secretKey",cached->secretKey}});

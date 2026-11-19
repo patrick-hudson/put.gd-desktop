@@ -55,6 +55,8 @@ public:
  // import (path: the .sxcu file is read into the form; its secrets wait there
  // until stored), store (the Save to keychain button) or test.
  void uploaderCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ // ui.r2Destination (#1678): the Cloudflare R2 form, edited, pasted into and moved to as a user does.
+ void r2Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
  // used, a cancel changes nothing, a failure shows its reason beside the
  // originating row with Try again (tests drive failures through here).
@@ -117,6 +119,13 @@ private:
  void enqueue(SaveOperation);void requeue(SaveOperation);SaveOperation merged(SaveOperation older,const SaveOperation& newer)const;void checkQueue();bool acceptedHas(const QString& id)const;bool waitsForDestination(const SaveOperation&,const QJsonObject& accepted)const;bool meetsPreconditions(SaveOperation&);void renameAddedDestination(const QString& from,const QString& to);void queueRouting(QWidget*,const QString& onlyFor={});static QString routeOf(const QString& path);void strip(SaveOperation&,const QString& group)const;void retrySaving();QStringList removedElsewhere_;QPointer<QWidget> pasting_;bool restoredDraft_=false;QJsonObject restoredBase_;void drainSaves();void operationSettled(const SaveOperation&);void saveAnswered(SaveOperation,const Result&,const QJsonObject& sent);void saveRefused(SaveOperation,const Error&,const QJsonObject& sent);void showUnsavedDestinations();void settleDirty();void retryAfterConflict();void queueDraftDifferences(const QJsonObject& base);bool replayRestoredDraft();void reconciled();void dropRoutesTo(const QString& id,const QString& reason={});static bool setsInheritance(const SaveOperation& op);bool refusedAdd(const QString& id)const;bool removalInFlight(const QString& id)const;bool answered_=false;
  QJsonObject acceptedDocument()const;QJsonObject applyOperation(QJsonObject,const SaveOperation&)const;QMap<QString,QJsonValue> sendableValues(const SaveOperation&,const QJsonObject& accepted,QJsonObject* insertion)const;QJsonValue fallbackValue(const SaveOperation&,const QJsonObject& accepted,const QString& path)const;
  QString localProblem(const QJsonObject& profile,const QStringList& group)const;bool savePending()const{return saving_||!saveQueue_.isEmpty();}bool queued(const QString& key)const;void flushTyping();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);bool updateRegionFeedback(bool clearOnly=false);void showFileError();bool formOwnsFeedback(QWidget*)const;void showS3SettingsProblems();void autosaveFailure(const Error&);
+ // The control a settings key is edited in, for a field error.
+ QWidget* settingsField(const QString& field)const;
+ // Move to Cloudflare R2 (#1678): converts the selected S3 destination in place, one operation.
+ void moveToCloudflareR2();
+ // Cloudflare R2's field messages, the line under Bucket and its status line (#1699), from the shown
+ // destination's current values and the queue's record of what isn't saved.
+ void updateR2Feedback();
  QHash<QWidget*,QLabel*> errors_;QSet<QString> requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
  // Reload from file…, beside the conflict on Settings and on Destinations, and
@@ -162,7 +171,7 @@ private:
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void endAppearancePreview();
- void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination",const QString& name={});void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
  QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
  QStringList reorderBaseline_;QAction *moveUp_=nullptr,*moveDown_=nullptr;
@@ -184,6 +193,11 @@ private:
  QString baseRevision_;
  QString metadataText_; // Canonical metadata; display-only wrap characters never enter diagnostics copies.
  QJsonObject draft_;QString observed_;bool loading_=false,appearancePreviewed_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
+ // Cloudflare R2's Account ID and Jurisdiction (#1678), and the line saying Account ID, Jurisdiction
+ // and Bucket aren't saved.
+ QLineEdit* r2AccountId_=nullptr;QComboBox* r2Jurisdiction_=nullptr;QLabel* r2UnitStatus_=nullptr;
+ // Another S3-compatible service's region and endpoint, kept while Amazon S3 is picked (#1699).
+ QPair<QString,QString> s3OtherService_;
  QLabel *status_=nullptr,*metadata_=nullptr;QWidget* capabilities_=nullptr;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;

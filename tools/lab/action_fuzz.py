@@ -956,7 +956,7 @@ operation.recent operation.inspect operation.cancel operation.retry operation.co
 history.copyLink history.copyImage history.preview history.clear cache.clear logs.clear update.status delete.prepare delete.confirm delete.inspect delete.retry
 delete.cancel settings.developmentTemplate settings.get settings.reload settings.validate settings.patch settings.reorderProfiles setup.credentialHint
 setup.inspect desktop.setup desktop.setup.recheck ui.show ui.snapshot ui.viewState ui.moveDestination ui.diagnostics ui.history ui.historySaveDiagnostics
-ui.customUploader ui.fileDialog scroll.capabilities scroll.inspect scroll.cancel recording.capabilities recording.inspect'''.split()
+ui.customUploader ui.r2Destination ui.fileDialog scroll.capabilities scroll.inspect scroll.cancel recording.capabilities recording.inspect'''.split()
 
 
 class Fuzzer:

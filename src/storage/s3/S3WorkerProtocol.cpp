@@ -78,6 +78,8 @@ bool settings(const QJsonObject& input) {
     if (bucket.contains('/') || bucket.contains(':') || bucket.contains(' ')) return false;
     for (const auto* field : {"connectTimeoutMs", "requestTimeoutMs", "lowSpeedBytesPerSecond", "lowSpeedTimeSeconds"})
         if (!integer(object[QLatin1String(field)], 1, std::numeric_limits<int>::max())) return false;
+    // aws-global makes the SDK retry in another region; only an AWS endpoint takes it (#1699).
+    if (object["region"].toString() == QLatin1String("aws-global") && !s3AmazonEndpoint(object["endpoint"].toString())) return false;
     const auto host = QUrl(object["endpoint"].toString()).host();
     return !s3VirtualAddressing(object) || (!bucket.contains('.') && !classifyIpAddress(host).numeric);
 }

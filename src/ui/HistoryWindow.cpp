@@ -1771,7 +1771,7 @@ namespace {
 // service and the bucket or folder recorded at upload.
 QString originalDestination(const QJsonObject& receipt,const QJsonArray& profiles){
  const auto d=receipt["destination"].toObject();const auto provider=d["providerId"].toString();const auto settings=d["settings"].toObject();
- const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="proton-drive"?"Proton Drive":provider=="custom-http"?"Custom uploader":provider;QString label;
+ const QString service=provider=="s3"?"S3":provider=="backblaze-b2"?"Backblaze B2":provider=="cloudflare-r2"?"Cloudflare R2":provider=="proton-drive"?"Proton Drive":provider=="custom-http"?"Custom uploader":provider;QString label;
  for(const auto& v:profiles)if(v.toObject()["id"]==d["profileId"]&&!d["profileId"].toString().isEmpty())label=v.toObject()["label"].toString();
  QStringList parts{label.isEmpty()?service:label};
  if(!settings["bucket"].toString().isEmpty())parts<<settings["bucket"].toString();if(!settings["folderName"].toString().isEmpty())parts<<settings["folderName"].toString();
@@ -1791,6 +1791,7 @@ QDialog* HistoryWindow::deletionConfirmation(QWidget* parent,const QJsonObject& 
  bool unsupported=false;QStringList effects;QMap<QString,int> providerCounts;for(const auto& value:targets)++providerCounts[value.toObject()["receipt"].toObject()["destination"].toObject()["providerId"].toString()];
  for(auto it=providerCounts.cbegin();it!=providerCounts.cend();++it){const bool plural=it.value()>1;QString effect;
   if(it.key()=="proton-drive"){unsupported=true;effect=QString("Effect on Proton Drive: safe deletion of %1 unavailable. Files and share links remain. Revoke share links separately.").arg(plural?"these files is":"this file is");}
+  else if(it.key()=="cloudflare-r2")effect=QString("Effect on Cloudflare R2: removes %1 only if the recorded identity still matches. Other objects remain.").arg(plural?"the selected objects":"the selected object");
   else if(it.key()=="s3"){bool versioned=true;for(const auto& value:targets){const auto receipt=value.toObject()["receipt"].toObject();if(receipt["destination"].toObject()["providerId"]==it.key()&&receipt["objectReference"].toObject()["versionId"].toString().isEmpty())versioned=false;}effect=versioned?QString("Effect on S3: deletes only %1. Older versions and other objects remain.").arg(plural?"the selected object versions":"the selected object version"):QString("Effect on S3: removes %1 only if the recorded identity still matches. Other objects remain.").arg(plural?"the selected objects":"the selected object");}
   else if(it.key()=="backblaze-b2")effect=QString("Effect on Backblaze B2: deletes only %1 by %2. An older hidden version may become visible. Authorized links stop working when they expire.").arg(plural?"the selected file versions":"the selected file version",plural?"their IDs":"its ID");
   else for(const auto& value:targets){const auto target=value.toObject();if(target["receipt"].toObject()["destination"].toObject()["providerId"]==it.key()&&!target["effect"].toString().isEmpty()&&!effects.contains(target["effect"].toString()))effects.append(target["effect"].toString());}

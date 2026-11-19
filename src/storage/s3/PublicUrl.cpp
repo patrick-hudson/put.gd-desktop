@@ -6,9 +6,25 @@ bool s3VirtualAddressing(const QJsonObject& settings) {
     const auto mode = settings["addressing"].toString();
     if (mode == "virtual") return true;
     if (mode == "path") return false;
-    const auto host = QUrl(settings["endpoint"].toString()).host();
-    return host.endsWith("amazonaws.com") && !settings["bucket"].toString().contains('.');
+    return s3AmazonEndpoint(settings["endpoint"].toString()) && !settings["bucket"].toString().contains('.');
 }
+QString s3IdentityEndpoint(const QString& endpoint) {
+    QUrl url(endpoint);
+    if (!url.isValid() || url.host().isEmpty()) return endpoint;
+    url.setScheme(url.scheme().toLower());
+    url.setHost(url.host().toLower());
+    auto text = url.toString(QUrl::FullyEncoded);
+    while (text.endsWith('/')) text.chop(1);
+    return text;
+}
+bool s3AmazonEndpoint(const QString& endpoint) {
+    auto host = QUrl(endpoint).host().toLower();
+    if (host.endsWith('.')) host.chop(1);  // a fully qualified "host." names the same host
+    for (const auto* domain : {"amazonaws.com", "amazonaws.com.cn"})
+        if (host == QLatin1String(domain) || host.endsWith('.' + QLatin1String(domain))) return true;
+    return false;
+}
+bool s3FollowsRedirects(const QJsonObject& settings) { return s3AmazonEndpoint(settings["endpoint"].toString()); }
 QString s3StoredKey(const QString& key) {
     return key.split('/', Qt::SkipEmptyParts).join('/');
 }
@@ -56,6 +72,14 @@ QString s3RegionProblem(const QString& region) {
     // Case-sensitive, as the SDK checks it: "FIPS-lab" is an ordinary label to it.
     if (region.startsWith(QLatin1String("fips-")) || region.endsWith(QLatin1String("-fips")))
         return QStringLiteral("Region takes the plain region code, such as us-east-1, without fips. For FIPS, enter the FIPS endpoint in Endpoint, such as https://s3-fips.us-east-1.amazonaws.com.");
+    return {};
+}
+QString s3RegionProblem(const QString& region, const QString& endpoint) {
+    if (auto problem = s3RegionProblem(region); !problem.isEmpty()) return problem;
+    // The SDK reads aws-global as AWS's global endpoint and retries a refused request in the region
+    // the answer names; no other service is AWS, so it never gets that Region (#1699).
+    if (region == QLatin1String("aws-global") && !s3AmazonEndpoint(endpoint))
+        return QStringLiteral("aws-global is only for Amazon S3. Enter the region this service gives for the bucket, such as us-east-1.");
     return {};
 }
 bool s3CloudflareR2Endpoint(const QString& endpoint) {

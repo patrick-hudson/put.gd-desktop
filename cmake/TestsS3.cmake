@@ -38,6 +38,10 @@
   add_executable(test_public_url tests/unit/test_public_url.cpp)
   target_link_libraries(test_public_url PRIVATE putgd_s3 Qt6::Test)
   add_test(NAME public_url COMMAND test_public_url)
+  # Cloudflare R2 (#1678): the account endpoint, bucket and pasted S3 API address.
+  add_executable(test_r2_settings tests/unit/test_r2_settings.cpp)
+  target_link_libraries(test_r2_settings PRIVATE putgd_s3 Qt6::Test)
+  add_test(NAME r2_settings COMMAND test_r2_settings)
   find_package(Qt6 6.4.2 REQUIRED COMPONENTS Test)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(test_s3_worker_fixture tests/fixtures/s3_worker_fixture.cpp)

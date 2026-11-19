@@ -173,7 +173,8 @@ class Handler(BaseHTTPRequestHandler):
                 time.sleep(rule['delay'])
                 lock.acquire()
             if rule and rule.get('redirect'):
-                self.respond(307, headers={'Location': self.path}); return
+                # 'location': an absolute base, such as another host name for this server (#1699).
+                self.respond(307, headers={'Location': rule.get('location', '') + self.path}); return
             if rule and rule.get('status'):
                 self.error(rule['status'], rule.get('code', 'AccessDenied')); return
             # Like Cloudflare R2 (#145): writes return a version ID, but versions cannot be addressed.

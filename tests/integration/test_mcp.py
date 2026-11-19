@@ -61,6 +61,23 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
             ('patch_configuration', {'patch': {'captureDefaults': {'accessKey': 'synthetic'}}, 'expected_revision': 'r'}),
             ('install_update', {'confirm': True, 'image': '/tmp/x.AppImage'}),
+            # #1678: the Cloudflare R2 form takes only its own fields, each action only what it needs.
+            ('drive_r2_destination', {'action': 'set', 'field': 'endpoint', 'value': 'https://example.com'}),
+            ('drive_r2_destination', {'action': 'set', 'field': 'bucket'}),
+            ('drive_r2_destination', {'action': 'paste'}),
+            ('drive_r2_destination', {'action': 'inspect', 'text': 'https://example.com'}),
+            ('drive_r2_destination', {'action': 'inspect', 'text': ''}),
+            ('drive_r2_destination', {'action': 'inspect', 'text': '\x00'}),
+            ('drive_r2_destination', {'action': 'move', 'profile_id': '\x00', 'label': '\x00'}),
+            ('drive_r2_destination', {'action': 'move', 'label': 'Lab'}),
+            ('drive_r2_destination', {'action': 'add'}),
+            ('drive_r2_destination', {'action': 'add', 'label': 'Lab', 'profile_id': 'lab'}),
+            ('drive_r2_destination', {'action': 'set', 'field': 'advanced', 'value': 'half'}),
+            ('drive_r2_destination', {'action': 'set', 'field': 'bucket', 'value': 'x' * 2049}),
+            # A field an action does not take is omitted, never sent as null.
+            ('drive_r2_destination', {'action': 'inspect', 'field': None}),
+            ('drive_r2_destination', {'action': 'move', 'text': None}),
+            ('drive_r2_destination', {'action': 'set', 'field': 'bucket', 'value': None}),
         ]:
             result = await server.call_tool(name, args)
             envelope = result.structured_content or json.loads(result.content[0].text)
@@ -241,6 +258,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
                     ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
+                    ('drive_r2_destination', {'action': 'set', 'field': 'jurisdiction', 'value': 'eu', 'profile_id': 'synthetic-r2'},
+                     'ui.r2Destination', {'action': 'set', 'field': 'jurisdiction', 'value': 'eu', 'profileId': 'synthetic-r2'}),
                 ]:
                     await call(name, args)
                     self.assertEqual(self.calls[-1]['method'], method)
@@ -471,6 +490,168 @@ class CustomUploaderResidentTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue((self.root / 'config/putgd/config.json').is_file())
         self.assertTrue(any((self.root / 'state/putgd/logs').glob('*.jsonl')))
 
+
+
+class R2DestinationResidentTests(unittest.IsolatedAsyncioTestCase):
+    """#1678 through the MCP helper against a real private resident and its Settings window
+    (offscreen): Move to Cloudflare R2 from an S3 destination on R2, paste the dashboard's S3 API
+    address, read the form, and check that showing a destination writes nothing. Set PUTGD_APP and
+    PUTGD_CLI to the built production binaries. Synthetic settings, no credentials, no network."""
+    ENDPOINT = 'https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com'
+
+    async def asyncSetUp(self):
+        self.cli, self.app = os.environ.get('PUTGD_CLI'), os.environ.get('PUTGD_APP')
+        if not self.cli or not self.app:
+            self.fail('PUTGD_CLI and PUTGD_APP must select the built production putgd-cli and putgd')
+        self.directory = tempfile.TemporaryDirectory(prefix='putgd-r2ui-')
+        self.addAsyncCleanup(self.stop_resident)
+        self.root = Path(self.directory.name)
+        runtime = self.root / 'rt'
+        runtime.mkdir(mode=0o700)
+        self.socket = str(runtime / 'putgd/session.sock')
+        self.assertLessEqual(len(self.socket.encode('utf-8')), 107, 'Test socket exceeds Linux path limit')
+        environment = os.environ | {'QT_QPA_PLATFORM': 'offscreen', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(self.root / 'config'),
+                                    'XDG_DATA_HOME': str(self.root / 'data'), 'XDG_STATE_HOME': str(self.root / 'state'),
+                                    'XDG_CACHE_HOME': str(self.root / 'cache'), 'XDG_SESSION_TYPE': 'unspecified', 'XDG_CURRENT_DESKTOP': 'putgd-mcp-fixture'}
+        for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
+            environment.pop(key, None)
+        self.log = (self.root / 'resident.log').open('w')
+        self.resident = subprocess.Popen([self.app, '--background'], env=environment, stdout=self.log, stderr=self.log)
+        deadline = time.monotonic() + 15
+        while not Path(self.socket).exists() and self.resident.poll() is None and time.monotonic() < deadline:
+            await asyncio.sleep(.05)
+        self.assertTrue(Path(self.socket).exists(), 'Private resident did not start')
+
+    async def stop_resident(self):
+        if getattr(self, 'resident', None) is not None and self.resident.poll() is None:
+            self.resident.terminate()
+            try:
+                self.resident.wait(10)
+            except subprocess.TimeoutExpired:
+                self.resident.kill()
+                self.resident.wait()
+        if hasattr(self, 'log'):
+            self.log.close()
+        if hasattr(self, 'directory'):
+            self.directory.cleanup()
+
+    async def test_move_paste_and_no_save_from_display(self):
+        adapter = CliAdapter(self.cli, self.socket)
+        parameters = StdioServerParameters(command=sys.executable, args=['-m', 'share_mcp.server', '--cli', self.cli, '--socket', self.socket])
+        async with stdio_client(parameters) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+
+                async def call(name, args):
+                    reply = await session.call_tool(name, args)
+                    self.assertFalse(reply.is_error, reply)
+                    return reply.structured_content
+
+                async def configuration():
+                    return (await call('inspect', {}))['result']['configuration']['result']
+
+                async def profile():
+                    return next(entry for entry in (await configuration())['document']['profiles'] if entry['id'] == 'lab')
+
+                async def form(args, done, seconds=30):
+                    deadline = time.monotonic() + seconds
+                    while True:
+                        reply = await call('drive_r2_destination', {**args, 'profile_id': 'lab'})
+                        if (reply['ok'] and done(reply['result'])) or time.monotonic() > deadline:
+                            self.assertTrue(reply['ok'], reply)
+                            return reply['result']
+                        await asyncio.sleep(.1)
+
+                # An S3 destination on R2, saved with the dashboard location as its region (#1675).
+                revision = (await configuration())['metadata']['observedRevision']
+                s3 = {'id': 'lab', 'label': 'Lab', 'provider': 's3', 'credentials': {'mode': 'session', 'reference': None},
+                      'settings': {'bucket': 'lab-bucket', 'region': 'Western North America (WNAM)', 'endpoint': self.ENDPOINT, 'objectPrefix': '',
+                                   'storageClass': 'STANDARD', 'aclMode': 'omit', 'linkMode': 'public', 'linkValidityDays': 7, 'publicUrlBase': None,
+                                   'addressing': 'auto', 'connectTimeoutMs': 5000, 'requestTimeoutMs': 60000, 'lowSpeedBytesPerSecond': 1, 'lowSpeedTimeSeconds': 30}}
+                patched = await call('patch_configuration', {'patch': {'profiles': [s3]}, 'expected_revision': revision})
+                self.assertTrue(patched['ok'], patched)
+                deadline = time.monotonic() + 30
+                while not (shown := await adapter.call('ui.show', {'view': 'destinations'}))['ok'] and time.monotonic() < deadline:
+                    await asyncio.sleep(.25)
+                self.assertTrue(shown['ok'], shown)
+                state = await form({'action': 'inspect'}, lambda result: result['moveAvailable'])
+                self.assertEqual(state['provider'], 's3')
+                revision = (await configuration())['metadata']['observedRevision']
+                await asyncio.sleep(1)
+                self.assertEqual((await configuration())['metadata']['observedRevision'], revision, 'showing a destination saved it')
+
+                # Move to Cloudflare R2: in place, the same ID and credentials, the account and jurisdiction read from the endpoint.
+                await form({'action': 'move'}, lambda result: True)
+                deadline = time.monotonic() + 30
+                while (moved := await profile())['provider'] != 'cloudflare-r2' and time.monotonic() < deadline:
+                    await asyncio.sleep(.1)
+                self.assertEqual((moved['provider'], moved['credentials']), ('cloudflare-r2', s3['credentials']))
+                self.assertEqual((moved['settings']['accountId'], moved['settings']['jurisdiction'], moved['settings']['bucket']),
+                                 ('0123456789abcdef0123456789abcdef', 'eu', 'lab-bucket'))
+                from jsonschema import Draft202012Validator
+                Draft202012Validator(json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))).validate((await configuration())['document'])
+                state = await form({'action': 'inspect'}, lambda result: result['provider'] == 'cloudflare-r2' and result['saved'])
+                self.assertEqual(state['endpoint'], self.ENDPOINT)
+                self.assertFalse(state['moveAvailable'])
+                # Move isn't offered for a destination that isn't S3 (R2 here, as for B2, Proton Drive or a custom uploader).
+                again = await call('drive_r2_destination', {'action': 'move', 'profile_id': 'lab'})
+                self.assertEqual(again['error']['code'], 'control_unavailable', again)
+                # Public links with no Link domain are called out before any test (#1679).
+                self.assertIn('r2.dev', state['linkDomainWarning'])
+                self.assertEqual(state['bucketHint'], 'Uploads go to lab-bucket/ on Cloudflare R2')
+
+                # The dashboard's S3 API address fills Account ID, Jurisdiction and Bucket, saved as one edit.
+                pasted = await form({'action': 'paste', 'text': 'https://FEDCBA9876543210FEDCBA9876543210.r2.cloudflarestorage.com/other-bucket'},
+                                    lambda result: True)
+                self.assertEqual((pasted['accountId'], pasted['jurisdiction'], pasted['bucket']), ('fedcba9876543210fedcba9876543210', 'default', 'other-bucket'))
+                await form({'action': 'inspect'}, lambda result: result['saved'])
+                settings = (await profile())['settings']
+                self.assertEqual((settings['accountId'], settings['jurisdiction'], settings['bucket']), ('fedcba9876543210fedcba9876543210', 'default', 'other-bucket'))
+                # Percent-encoded text is not read as an address: it stays, with the Account ID message.
+                kept = await form({'action': 'paste', 'text': 'https://fedcba9876543210fedcba9876543210.r2.cloudflarestorage.com/other%2Dbucket'},
+                                  lambda result: result['errors']['accountId'] != '')
+                self.assertEqual(kept['bucket'], 'other-bucket')
+                self.assertEqual((await profile())['settings']['accountId'], 'fedcba9876543210fedcba9876543210')
+                # A new Cloudflare R2 destination through the form, named as the dialog would name it, saves on its
+                # own while Lab's draft is still incomplete (#1699): neither waits for or carries the other.
+                added = await call('drive_r2_destination', {'action': 'add', 'label': 'Second R2'})
+                self.assertTrue(added['ok'], added)
+                self.assertEqual((added['result']['provider'], added['result']['label']), ('cloudflare-r2', 'Second R2'))
+                second = added['result']['profileId']
+                pasted = await call('drive_r2_destination', {'action': 'paste', 'text': 'https://00112233445566778899aabbccddeeff.eu.r2.cloudflarestorage.com/second-bucket',
+                                                             'profile_id': second})
+                self.assertTrue(pasted['ok'], pasted)
+                deadline = time.monotonic() + 30
+                while time.monotonic() < deadline:
+                    saved = next((entry for entry in (await configuration())['document']['profiles'] if entry['id'] == second), None)
+                    if saved and saved['provider'] == 'cloudflare-r2' and saved['settings']['bucket'] == 'second-bucket':
+                        break
+                    await asyncio.sleep(.1)
+                self.assertEqual((saved['settings']['accountId'], saved['settings']['jurisdiction'], saved['settings']['bucket']),
+                                 ('00112233445566778899aabbccddeeff', 'eu', 'second-bucket'))
+                self.assertEqual((await profile())['settings']['accountId'], 'fedcba9876543210fedcba9876543210')
+                # Typed back to the saved account: nothing left to save, and no message.
+                await form({'action': 'set', 'field': 'accountId', 'value': 'fedcba9876543210fedcba9876543210'}, lambda result: result['errors']['accountId'] == '' and result['saved'])
+                # A Link domain clears the warning.
+                state = await form({'action': 'set', 'field': 'publicUrlBase', 'value': 'https://pub-0123456789abcdef.r2.dev'}, lambda result: result['linkDomainWarning'] is None)
+                self.assertIsNone(state['linkDomainWarning'])
+                # The S3 API address is not a Link domain: R2's own message says so at Link domain.
+                state = await form({'action': 'set', 'field': 'publicUrlBase', 'value': self.ENDPOINT}, lambda result: result['errors']['publicUrlBase'] != '')
+                self.assertIn('S3 API address', state['errors']['publicUrlBase'])
+                await form({'action': 'set', 'field': 'publicUrlBase', 'value': 'https://pub-0123456789abcdef.r2.dev'}, lambda result: result['errors']['publicUrlBase'] == '')
+
+                # Everything a person can reach: who can open files, Links last and the advanced connection values.
+                await form({'action': 'set', 'field': 'linkMode', 'value': 'presigned'}, lambda result: result['linkMode'] == 'presigned')
+                await form({'action': 'set', 'field': 'linkValidityDays', 'value': '3'}, lambda result: result['linkValidityDays'] == 3)
+                hidden = await call('drive_r2_destination', {'action': 'set', 'field': 'connectTimeoutMs', 'value': '9', 'profile_id': 'lab'})
+                self.assertEqual(hidden['error']['code'], 'control_unavailable', hidden)
+                await form({'action': 'set', 'field': 'advanced', 'value': 'open'}, lambda result: result['advancedOpen'])
+                for key, value in (('connectTimeoutMs', '9'), ('requestTimeoutMs', '90'), ('lowSpeedTimeSeconds', '45')):
+                    await form({'action': 'set', 'field': key, 'value': value}, lambda result: True)
+                await form({'action': 'inspect'}, lambda result: result['saved'])
+                settings = (await profile())['settings']
+                self.assertEqual((settings['linkMode'], settings['linkValidityDays'], settings['connectTimeoutMs'], settings['requestTimeoutMs'], settings['lowSpeedTimeSeconds']),
+                                 ('presigned', 3, 9000, 90000, 45))
 
 if __name__ == '__main__':
     unittest.main()

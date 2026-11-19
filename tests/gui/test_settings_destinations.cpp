@@ -1,7 +1,11 @@
 #include "SettingsGuiFixture.h"
+#include "storage/s3/R2Provider.h"
+#include "storage/s3/R2Settings.h"
+#include <QClipboard>
 #include <QThread>
 #include <QRandomGenerator>
 #include <QContextMenuEvent>
+#include <QMenu>
 // Destination edits, credentials and routes stay with the destination they belong to.
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
@@ -703,6 +707,96 @@ private slots:
   auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");PUTGD_TRY_VERIFY(retry->isVisible());retry->click();
   PUTGD_TRY_VERIFY((fixture.client.release(),service.document()["captureDefaults"].toObject()["destination"]=="local"));
   QCOMPARE(service.document()["captureDefaults"].toObject()["publicationMode"].toString(),QString("private"));
+ }
+ // #1678: the dashboard's S3 API address fills Account ID, Jurisdiction and Bucket, saved as one
+ // edit. A refused fill saves none of it and leaves what was pasted showing, so the saved bucket
+ // never pairs with an account it was not pasted with; nothing is saved just because it was shown.
+ void cloudflareR2PasteSavesAccountJurisdictionAndBucketTogether(){
+  QTemporaryDir dir;CredentialStore secrets;auto s3=std::make_shared<S3Provider>(secrets);R2Provider r2(s3);
+  SettingsService service(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){
+   if(id==r2::providerId&&value["bucket"]=="refused-bucket")return Error{"s3_settings_invalid","Synthetic refusal of this bucket",{{"field","bucket"}}};
+   return id==r2::providerId?r2.validateSettings(value):s3->validateSettings(value);});
+  const QString oldAccount="0123456789abcdef0123456789abcdef",pastedAccount="fedcba9876543210fedcba9876543210",nextAccount="00112233445566778899aabbccddeeff";
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto settings=r2::defaults();settings["accountId"]=oldAccount;settings["bucket"]="old-bucket";
+  profiles.append(QJsonObject{{"id","r2-lab"},{"label","R2 lab"},{"provider",r2::providerId},{"settings",settings},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
+  doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  const auto saved=[&]{for(const auto& profile:service.document()["profiles"].toArray())if(profile.toObject()["id"]=="r2-lab")return profile.toObject()["settings"].toObject();return QJsonObject{};};
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  auto* account=window.findChild<QLineEdit*>("r2AccountId");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");auto* jurisdiction=window.findChild<QComboBox*>("r2Jurisdiction");
+  auto* unitLine=window.findChild<QLabel*>("r2UnitStatus");QVERIFY(unitLine);
+  PUTGD_TRY_COMPARE(account->text(),oldAccount);
+  const auto shown=service.revision();PUTGD_COMPARE_STEADY(service.revision(),shown,300);
+  // Ctrl+V over a selection fills all three at once; the save is refused, so none of them is saved.
+  QGuiApplication::clipboard()->setText("https://"+pastedAccount.toUpper()+".eu.r2.cloudflarestorage.com/refused-bucket");
+  account->setFocus();account->selectAll();QTest::keyClick(account,Qt::Key_V,Qt::ControlModifier);
+  QCOMPARE(account->text(),pastedAccount);QCOMPARE(jurisdiction->currentData().toString(),QString("eu"));QCOMPARE(bucket->text(),QString("refused-bucket"));
+  PUTGD_TRY_VERIFY(window.settings()->flushAutosave()&&unitLine->isVisible()&&unitLine->text().contains("Synthetic refusal"));
+  QCOMPARE(saved()["accountId"].toString(),oldAccount);QCOMPARE(saved()["jurisdiction"].toString(),QString("default"));QCOMPARE(saved()["bucket"].toString(),QString("old-bucket"));
+  QCOMPARE(account->text(),pastedAccount);QCOMPARE(bucket->text(),QString("refused-bucket"));
+  // The answer writes no field message: the values are valid, and only the unit line says why they aren't saved.
+  QVERIFY(!window.findChild<QLabel*>("s3BucketError")->isVisible());
+  // Leaving the unchanged field does nothing.
+  emit account->editingFinished();
+  PUTGD_COMPARE_STEADY(saved()["bucket"].toString(),QString("old-bucket"),300);QVERIFY(unitLine->isVisible());
+  // The context menu's Paste over a selection: a valid address saves all three together.
+  QGuiApplication::clipboard()->setText("https://"+nextAccount+".r2.cloudflarestorage.com/good-bucket");
+  account->selectAll();
+  QTimer::singleShot(0,[]{auto* menu=qobject_cast<QMenu*>(QApplication::activePopupWidget());if(!menu)return;for(auto* action:menu->actions())if(action->text().section('\t',0,0)==QCoreApplication::translate("QLineEdit","&Paste"))action->trigger();menu->close();});
+  QContextMenuEvent event(QContextMenuEvent::Mouse,QPoint(4,4),account->mapToGlobal(QPoint(4,4)));QApplication::sendEvent(account,&event);
+  PUTGD_TRY_COMPARE(saved()["bucket"].toString(),QString("good-bucket"));
+  QCOMPARE(saved()["accountId"].toString(),nextAccount);QCOMPARE(saved()["jurisdiction"].toString(),QString("default"));
+  PUTGD_TRY_VERIFY(!unitLine->isVisible());
+  QVERIFY(service.revision()!=shown);
+ }
+ // #1699: a Cloudflare R2 destination saves as one profile, latest state winning. A revert typed
+ // while a save is in flight is sent once that save is answered, so what is saved ends as what is
+ // shown; a second R2 destination saves on its own while the first's draft can't be saved.
+ void cloudflareR2SavesLatestStateAndAddsBesideAnIncompleteDraft(){
+  QTemporaryDir dir;CredentialStore secrets;auto s3=std::make_shared<S3Provider>(secrets);R2Provider r2(s3);
+  SettingsService service(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return id==r2::providerId?r2.validateSettings(value):s3->validateSettings(value);});
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto settings=r2::defaults();settings["accountId"]="0123456789abcdef0123456789abcdef";settings["bucket"]="old-bucket";
+  profiles.append(QJsonObject{{"id","r2-lab"},{"label","R2 lab"},{"provider",r2::providerId},{"settings",settings},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
+  doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  const auto saved=[&](const QString& id){for(const auto& profile:service.document()["profiles"].toArray())if(profile.toObject()["id"]==id)return profile.toObject();return QJsonObject{};};
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");PUTGD_TRY_COMPARE(bucket->text(),QString("old-bucket"));
+  const auto type=[&](const QString& text){bucket->setFocus();bucket->setText(text);bucket->setModified(true);emit bucket->editingFinished();};
+  fixture.client.replyDelayMs["settings.save"]=400;const auto before=service.revision();
+  type("new-bucket");type("old-bucket");
+  PUTGD_TRY_VERIFY(service.revision()!=before);PUTGD_TRY_VERIFY(window.settings()->flushAutosave());
+  QCOMPARE(saved("r2-lab")["settings"].toObject()["bucket"].toString(),bucket->text());
+  fixture.client.replyDelayMs.remove("settings.save");
+  // An incomplete draft is not sent and says why; the new destination doesn't wait for it or carry it.
+  type("");auto* unitLine=window.findChild<QLabel*>("r2UnitStatus");PUTGD_TRY_VERIFY(unitLine->isVisible());
+  QJsonObject added;window.settings()->r2Command({{"action","add"},{"label","Second R2"}},[&](Error error,QJsonObject state){QVERIFY2(!error,qPrintable(error.message));added=state;});
+  const auto second=added["profileId"].toString();QVERIFY(!second.isEmpty());
+  window.settings()->r2Command({{"action","paste"},{"text","https://00112233445566778899aabbccddeeff.eu.r2.cloudflarestorage.com/second-bucket"}},[](Error error,QJsonObject){QVERIFY2(!error,qPrintable(error.message));});
+  PUTGD_TRY_COMPARE(saved(second)["settings"].toObject()["bucket"].toString(),QString("second-bucket"));
+  QCOMPARE(saved(second)["provider"].toString(),r2::providerId);
+  QCOMPARE(saved("r2-lab")["settings"].toObject()["bucket"].toString(),QString("old-bucket"));
+ }
+ // #1678: an S3 destination on Cloudflare R2 becomes a Cloudflare R2 destination only when Move to
+ // Cloudflare R2 is pressed, keeping its ID, routes and credentials; showing it saves nothing.
+ void moveToCloudflareR2KeepsIdRoutesAndCredentials(){
+  QTemporaryDir dir;CredentialStore secrets;auto s3=std::make_shared<S3Provider>(secrets);R2Provider r2(s3);
+  SettingsService service(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return id==r2::providerId?r2.validateSettings(value):s3->validateSettings(value);});
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();auto settings=profile["settings"].toObject();
+  settings["endpoint"]="https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com";settings["region"]="Western North America (WNAM)";settings["bucket"]="lab-bucket";settings["aclMode"]="omit";settings["storageClass"]="STANDARD";
+  profile["settings"]=settings;profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  const auto before=service.document();
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* move=window.findChild<QPushButton*>("moveToCloudflareR2");QVERIFY(move);PUTGD_TRY_VERIFY(move->isVisibleTo(&window));
+  PUTGD_COMPARE_STEADY(service.document(),before,300);
+  move->click();
+  const auto moved=[&]{return service.document()["profiles"].toArray()[0].toObject();};
+  PUTGD_TRY_COMPARE(moved()["provider"].toString(),r2::providerId);
+  QCOMPARE(moved()["id"],profile["id"]);QCOMPARE(moved()["label"],profile["label"]);QCOMPARE(moved()["credentials"],profile["credentials"]);
+  QCOMPARE(service.document()["actions"],before["actions"]);
+  QCOMPARE(moved()["settings"].toObject()["accountId"].toString(),QString("0123456789abcdef0123456789abcdef"));
+  QCOMPARE(r2::s3Settings(moved()["settings"].toObject())["endpoint"],settings["endpoint"]);
+  QVERIFY(!move->isVisibleTo(&window));
  }
  void customUploaderImportKeepsItsTokenOutOfSettingsAndCheckpoints(){
   const QByteArray token="PUTGD-SYNTHETIC-GUI-TOKEN-0123456789abcdef";

@@ -5,6 +5,8 @@
 #include "core/Log.h"
 #include "core/RunMarker.h"
 #include "storage/s3/S3Provider.h"
+#include "storage/s3/R2Provider.h"
+#include "storage/s3/R2Settings.h"
 #include "storage/b2/B2Provider.h"
 #include "storage/http/HttpImport.h"
 #include "storage/http/HttpProvider.h"
@@ -264,6 +266,7 @@ int main(int argc,char* argv[]) {
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
+ auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
  auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
@@ -393,7 +396,7 @@ int main(int argc,char* argv[]) {
  if(bindSource){bindSource();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bindSource);}
  auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
   const auto provider=profile["provider"].toString();
-  if(provider!="s3"&&provider!="backblaze-b2"){reply({"test_unsupported","This provider has no destination test",{}});return;}
+  if(provider!="s3"&&provider!="backblaze-b2"&&provider!=putgd::r2::providerId){reply({"test_unsupported","This provider has no destination test",{}});return;}
   const putgd::Destination destination{provider,profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
   // Journal recovery first takes the journal lock and rewrites earlier tests' journals without
   // signed links (#1680). A History database recovery can't finish doesn't hold tests back.
@@ -423,6 +426,7 @@ int main(int argc,char* argv[]) {
    reply(error);
   };
   if(provider=="s3"){s3->testDestination(destination,checkpoint,finished);return;}
+  if(provider==putgd::r2::providerId){r2->testDestination(destination,checkpoint,finished);return;}
   // The B2 helper call blocks; it runs on an operations worker, never this thread (#282).
   operations.background([b2,destination,checkpoint](putgd::Error& error){
    QJsonObject out;b2->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
@@ -439,7 +443,7 @@ int main(int argc,char* argv[]) {
  putgd::SetupService setup(settings,credentials,tester);
  setup.setDestinationStatus(&destinationStatus);
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
-  if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2")){
+  if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2"||destination.providerId==putgd::r2::providerId)){
    const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
    tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
   }
