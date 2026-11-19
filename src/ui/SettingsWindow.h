@@ -198,9 +198,9 @@ private:
  // Cloudflare R2's Account ID and Jurisdiction (#1678), and the line saying Account ID, Jurisdiction
  // and Bucket aren't saved.
  QLineEdit* r2AccountId_=nullptr;QComboBox* r2Jurisdiction_=nullptr;QLabel* r2UnitStatus_=nullptr;
- // The account and jurisdiction ("account|jurisdiction") the Bucket shown came with: loaded, pasted or
- // typed beside. An account-only paste for another account empties Bucket.
- QString r2BucketFrom_;
+ // By destination ID, the account and jurisdiction ("account|jurisdiction") its Bucket came with:
+ // first loaded, then pasted or typed beside. An account-only paste for another account empties Bucket.
+ QHash<QString,QString> r2BucketFrom_;
  // Another S3-compatible service's region and endpoint, kept while Amazon S3 is picked (#1699).
  QPair<QString,QString> s3OtherService_;
  QLabel *status_=nullptr,*metadata_=nullptr;QWidget* capabilities_=nullptr;
