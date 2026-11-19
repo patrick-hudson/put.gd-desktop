@@ -437,9 +437,9 @@ bool decodeTestDestinationResult(const QJsonObject& object) {
     if (!keys(object, {"uploadStatus", "receipt", "publicReachable", "cleanupStatus", "cleanupProgress"}, {"multipart","presignedReachable","unsignedDenied"}) ||
         !object["publicReachable"].isBool() || !deleteStatus(object["cleanupStatus"]) || !object["cleanupProgress"].isObject()) return false;
     // Its cleanup target is the same receipt, and its link carries no query or fragment either (#1680).
-    const auto target = object["cleanupProgress"].toObject()["target"];
+    const auto target = object["cleanupProgress"].toObject().value("target");
     if (!target.isUndefined()) {
-        const auto link = target.toObject()["directUrl"];
+        const auto link = target.toObject().value("directUrl");
         if (!target.isObject() || !link.isString() || QUrl(link.toString()).hasQuery() || QUrl(link.toString()).hasFragment()) return false;
     }
     if (!object.contains("multipart")) return true;
