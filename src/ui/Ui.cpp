@@ -448,11 +448,64 @@ QPalette palette() {
     palette.setColor(QPalette::Disabled, QPalette::HighlightedText, p.textMuted);
     return palette;
 }
+namespace {
+// Qt lays a plain-text tooltip out on one line however long it is. Every tip
+// in every process goes through Qt's private tooltip label, so one filter on
+// the application wraps them all to a reading width: widget tips, list-row
+// tips, menu tips and the hand-placed QToolTip::showText calls alike.
+class TooltipWrap final : public QObject {
+public:
+    using QObject::QObject;
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        const auto type = event->type();
+        if ((type == QEvent::Show || type == QEvent::Resize || type == QEvent::Move) && !fitting_ && watched->isWidgetType() && watched->inherits("QTipLabel"))
+            fit(static_cast<QLabel*>(watched));
+        return false;
+    }
+private:
+    void fit(QLabel* label) {
+        const auto text = label->text();
+        if (label->wordWrap() || text.isEmpty() || label->textFormat() == Qt::RichText || Qt::mightBeRichText(text)) return;
+        const QFontMetrics fm(label->font());
+        // About 45 characters a line, never more than 40% of the screen.
+        auto* screen = label->screen() ? label->screen() : QGuiApplication::primaryScreen();
+        int cap = fm.averageCharWidth() * 45;
+        if (screen) cap = std::min(cap, screen->availableGeometry().width() * 2 / 5);
+        const int natural = fm.boundingRect(QRect(0, 0, 100000, 100000), 0, text).width();
+        if (natural <= cap) return;
+        const int extraWidth = std::max(0, label->sizeHint().width() - natural);
+        const int extraHeight = std::max(0, label->height() - label->sizeHint().height());
+        const int wrapped = fm.boundingRect(QRect(0, 0, cap, 100000), Qt::TextWordWrap, text).width();
+        fitting_ = true;
+        const QRect before = label->geometry();
+        label->setWordWrap(true);
+        const int width = wrapped + extraWidth + 1;
+        QRect after(before.topLeft(), QSize(width, label->heightForWidth(width) + extraHeight));
+        if (screen) {
+            // Qt placed the tip for its one-line size. Keep it on the same
+            // side of the pointer and inside the screen at its new height.
+            const QRect area = screen->geometry();
+            const QPoint cursor = QCursor::pos();
+            if (before.bottom() < cursor.y()) after.moveBottom(before.bottom());
+            else if (after.bottom() > area.bottom()) after.moveBottom(before.top() - 24);
+            if (after.right() > area.right()) after.moveRight(area.right());
+            if (after.left() < area.left()) after.moveLeft(area.left());
+            if (after.top() < area.top()) after.moveTop(area.top());
+        }
+        label->setGeometry(after);
+        fitting_ = false;
+    }
+    bool fitting_ = false;
+};
+}
+
 void install(QApplication& app) {
     // Once per process: a later call (another window, a test) never resets
     // the application font a caller enlarged, nor the scale it implies.
     if (app.property("putgdUiStyle").toBool()) return;
     app.setProperty("putgdUiStyle", true);
+    app.installEventFilter(new TooltipWrap(&app));
     if (!qobject_cast<Style*>(app.style())) app.setStyle(new Style);
     app.setPalette(palette());
     QToolTip::setPalette(palette());
