@@ -327,11 +327,34 @@ private slots:
         QCOMPARE(found.receipt.directUrl,f.endpoint+"/isolated-fixture/a/b/lost.txt");
         QCOMPARE(f.events("HEAD").last().toObject()["key"].toString(),QString("a/b/lost.txt"));
     }
-    // #1675: a destination saved with a Region that today's rules refuse still loads, and
-    // other settings still save; changing that destination needs it fixed.
+    // #1676: requests and links add the bucket after the Endpoint's path, so a bucket
+    // typed there lands uploads under another key. New work through such an Endpoint is
+    // refused before any request; uploads already made through one still check and delete.
+    void endpointPathRefusedButItsUploadsStayDeletable() {
+        S3Fixture f;f.reset();
+        auto doubled=f.destination;doubled.settings["endpoint"]=f.endpoint+"/isolated-fixture";
+        auto request=f.request("p.txt");request.destination=doubled;
+        f.reset();
+        const auto refused=f.upload(request);
+        QCOMPARE(refused.status,QString("failed"));QCOMPARE(refused.error.details["field"].toString(),QString("endpoint"));
+        const auto checked=f.await<NameCheck>([&](auto cb){f.provider.checkName(doubled,"p.txt",cb);});
+        QCOMPARE(checked.error.code,QString("s3_settings_invalid"));QCOMPARE(checked.error.details["field"].toString(),QString("endpoint"));
+        QCOMPARE(f.events().size(),0);
+        // The object such an upload left: the bucket twice in its path.
+        f.destination.settings["objectPrefix"]="isolated-fixture";
+        const auto uploaded=f.upload(f.request("p.txt"));QCOMPARE(uploaded.status,QString("uploaded"));
+        auto legacy=uploaded.receipt;legacy.destination.settings=doubled.settings;legacy.objectReference["key"]="p.txt";
+        legacy.directUrl=s3LegacyPublicObjectUrl(legacy.destination.settings,"p.txt");
+        const auto stat=f.await<StatResult>([&](auto cb){f.provider.stat(legacy,cb);});
+        QVERIFY2(stat.status=="own",qPrintable(stat.error.code+": "+stat.error.message));
+        QCOMPARE(f.remove(legacy).status,QString("removed"));
+        QVERIFY(f.state()["objects"].toObject()["isolated-fixture/p.txt"].toArray().isEmpty());
+    }
+    // #1675: a destination saved with a Region or Endpoint that today's rules refuse still
+    // loads, and other settings still save; changing that destination needs it fixed.
     void refusedSettingsSavedEarlierStillLoad() {
         S3Fixture f;ProviderRegistry registry;registry.add("s3",std::shared_ptr<S3Provider>(&f.provider,[](S3Provider*){}));
-        auto doc=test::configuration(f.directory.path());auto bad=f.destination.settings;bad["region"]="Western North America (WNAM)";
+        auto doc=test::configuration(f.directory.path());auto bad=f.destination.settings;bad["region"]="Western North America (WNAM)";bad["endpoint"]=f.endpoint+"/isolated-fixture";
         doc["profiles"]=QJsonArray{QJsonObject{{"id",f.destination.profileId},{"label","Old"},{"provider","s3"},{"settings",bad},{"credentials",f.destination.credentialReference}}};
         auto actions=doc["actions"].toObject();for(const auto& key:Settings::actionNames()){auto action=actions[key].toObject();action["profileId"]=f.destination.profileId;actions[key]=action;}doc["actions"]=actions;
         QFile file(f.directory.filePath("config.json"));QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());file.close();
@@ -347,12 +370,14 @@ private slots:
         // A copy of that destination under a new id meets today's rules too.
         auto copied=settings.document();auto copies=copied["profiles"].toArray();auto copy=copies[0].toObject();copy["id"]="copied-destination";copy["label"]="Copy";copies.append(copy);copied["profiles"]=copies;
         QCOMPARE(settings.save(copied,settings.revision()).error.details["field"].toString(),QString("region"));
-        s["region"]="auto";profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
+        s["region"]="auto";s["endpoint"]=f.endpoint;profile["settings"]=s;profiles[0]=profile;changed["profiles"]=profiles;
         const auto fixed=settings.save(changed,settings.revision());QVERIFY2(fixed,qPrintable(fixed.error.message));
         // Cloudflare R2 signs with auto whatever Region holds (#1678): its saved dashboard location stays valid.
         auto r2=f.destination.settings;r2["region"]="Western North America (WNAM)";r2["endpoint"]="https://ACCOUNT.R2.cloudflarestorage.com";
         QVERIFY(!f.provider.validateSettings(r2));
         r2["endpoint"]="https://r2.cloudflarestorage.com.example.net";QCOMPARE(f.provider.validateSettings(r2).details["field"].toString(),QString("region"));
+        // An Endpoint path is refused on R2 too (#1676).
+        r2["endpoint"]="https://ACCOUNT.r2.cloudflarestorage.com/isolated-fixture";QCOMPARE(f.provider.validateSettings(r2).details["field"].toString(),QString("endpoint"));
     }
     // A "." or ".." part is removed by libcurl after the SDK signed it, so no request
     // names it exactly: new uploads are refused and old receipts are left alone.

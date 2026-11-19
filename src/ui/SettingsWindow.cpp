@@ -1293,6 +1293,9 @@ SettingsWindow::~SettingsWindow(){
 }
 bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==destinationPage_&&event->type()==QEvent::Hide)resetCredentialSecretDisplay();
+ // A destination opened before its page was on screen scrolls to its Endpoint problem now (#1676).
+ if(watched==destinationPage_&&event->type()==QEvent::Show&&!loading_)showS3SettingsProblems();
+ if(watched==destinationPage_&&event->type()==QEvent::Hide)s3_["endpoint"]->setProperty("revealedFor",{});
  if(watched==tabs_->tabBar()&&event->type()==QEvent::Wheel){event->ignore();return true;}
  if(event->type()==QEvent::Wheel&&qobject_cast<QAbstractSpinBox*>(watched)){event->ignore();return true;}
  if(revealUpdates_&&(event->type()==QEvent::Move||event->type()==QEvent::Resize)&&watched==updatesCard_)revealUpdates();
@@ -1345,7 +1348,7 @@ void SettingsWindow::status(const Error& error){
   else if(bucket.contains('/')||bucket.contains(':')||bucket.contains(' '))reason="Enter only the bucket name, without a URL, folder path or spaces.";
   else if(bucket.toUtf8().size()<3||bucket.toUtf8().size()>63)reason="Bucket names must contain 3–63 characters.";
   if(!reason.isEmpty()){e.message="Invalid S3 settings: "+reason;inlineError(s3_["bucket"],reason);}
-  // #1675: a refused Region is shown at that field.
+  // #1675, #1676: a refused Region or Endpoint is shown at that field.
   else if(const auto field=e.details["field"].toString();s3_.contains(field))inlineError(s3_[field],e.message);
  }
  // People read the message; the code and path go to the tooltip, the
@@ -1956,9 +1959,29 @@ void SettingsWindow::restoreReorderBaseline(){
  applyProfileOrder(order);
 }
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
-// #1675: a Region saved before today's rules shows its problem when the destination opens.
-// Cloudflare R2 ignores Region (#1678), so an R2 destination never shows one.
-void SettingsWindow::showS3SettingsProblems(){updateRegionFeedback();}
+// #1675, #1676: a Region or Endpoint saved before today's rules shows its problem when the
+// destination opens, with the Endpoint row in view. Region feedback is updateRegionFeedback's;
+// an Endpoint path is refused on every host.
+void SettingsWindow::showS3SettingsProblems(){
+ // Another destination: forget the scroll and close the sections this opened by itself, so
+ // they don't stay open for B2, Proton Drive or another S3 destination.
+ auto* field=s3_["endpoint"];
+ if(field->property("shownFor")!=profileId_->text()){
+  field->setProperty("shownFor",profileId_->text());field->setProperty("revealedFor",{});
+  for(const auto* name:{"customEndpoint","advancedSettings"})if(auto* toggle=findControl<QAbstractButton*>(name);toggle&&toggle->property("openedForProblem").toBool()){toggle->setProperty("openedForProblem",false);toggle->setChecked(false);}
+ }
+ updateRegionFeedback();
+ const auto endpoint=providerType_->currentData()=="s3"?s3EndpointProblem(s3_["endpoint"]->text()):QString();
+ inlineError(s3_["endpoint"],endpoint);
+ if(endpoint.isEmpty())return;
+ // findControl: the destination page may live in the main window, outside this one.
+ for(const auto* name:{"advancedSettings","customEndpoint"})if(auto* toggle=findControl<QAbstractButton*>(name);toggle&&!toggle->isChecked()){toggle->setChecked(true);toggle->setProperty("openedForProblem",true);}
+ // Scrolled into view once per destination shown, after the opened section is laid out; a later
+ // reload, such as after saving another field, leaves the page where the user put it.
+ if(s3_["endpoint"]->property("revealedFor")==profileId_->text())return;
+ QTimer::singleShot(0,this,[this,id=profileId_->text()]{auto* field=s3_["endpoint"];if(profileId_->text()!=id||!field->isVisible())return;
+  for(auto* parent=field->parentWidget();parent;parent=parent->parentWidget())if(auto* area=qobject_cast<QScrollArea*>(parent)){if(area->widget()&&area->widget()->layout())area->widget()->layout()->activate();if(auto* label=errors_.value(field))area->ensureWidgetVisible(label,0,Ui::scaled(24));area->ensureWidgetVisible(field,0,Ui::scaled(24));field->setProperty("revealedFor",id);break;}});
+}
 void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;if(control==root_)if(auto* hint=findChild<QLabel*>("archiveRootHint"))hint->setVisible(message.isEmpty()&&(root_->text().isEmpty()||!QDir::isAbsolutePath(root_->text())));control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){Ui::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
 bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
  return pendingEdits_.contains(path)&&(!saving_||!submittedEditSerials_.contains(path)||pendingEditSerials_.value(path)!=submittedEditSerials_.value(path));

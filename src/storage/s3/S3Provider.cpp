@@ -233,6 +233,10 @@ Error settingsError(const QJsonObject& settings, bool current) {
         if (!settings[field].isDouble() || value < 1 || value > 2147483647 || value != qint64(value)) return bad();
     }
     if (s3VirtualAddressing(settings) && (bucket.contains('.') || address.numeric)) return bad();
+    // An Endpoint path is refused on every host, Cloudflare R2 included: requests and links add
+    // the bucket after it, so a bucket typed there is named twice (#1676).
+    if (const auto problem = s3EndpointProblem(settings["endpoint"].toString()); current && !problem.isEmpty())
+        return {"s3_settings_invalid", problem, {{"field", "endpoint"}}};
     return {};
 }
 }

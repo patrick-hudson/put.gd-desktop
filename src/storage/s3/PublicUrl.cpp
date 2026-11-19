@@ -62,4 +62,11 @@ bool s3CloudflareR2Endpoint(const QString& endpoint) {
     if (host.endsWith('.')) host.chop(1);  // a fully qualified "host." names the same host
     return host.endsWith(QLatin1String(".r2.cloudflarestorage.com"), Qt::CaseInsensitive);
 }
+// The path as sent, still encoded: "%2F" is a character of a name, not a separator.
+QString s3EndpointProblem(const QString& endpoint) {
+    const QUrl url(endpoint);
+    const auto path = url.path(QUrl::FullyEncoded);
+    if (path.isEmpty() || path == QLatin1String("/")) return {};
+    return QStringLiteral("Endpoint takes only the service address. Remove \"%1\" from the end of Endpoint and put the bucket name in Bucket; a folder goes in Folder in bucket.").arg(url.path());
+}
 }
