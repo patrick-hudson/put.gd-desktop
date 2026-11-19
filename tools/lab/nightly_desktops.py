@@ -624,6 +624,8 @@ def guest_paused(run, *, pause=False):
         with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
             running = qmp.execute('query-status').get('running')
             if pause and running is not False:
+                # A stale time must never outlive a resume, even if the stop reply is lost.
+                record.unlink(missing_ok=True)
                 qmp.execute('stop')
                 running = qmp.execute('query-status').get('running')
                 if running is False:
@@ -1691,6 +1693,8 @@ def main():
                 raise NotRun('could not pause the guest VM; keep the guest')
             # Let an upload that had already reached the destination commit before reading it.
             time.sleep(max(0, paused+PAUSE_SETTLE_SECONDS-time.time()))
+            if guest_paused(run) != paused:
+                raise NotRun('the guest VM was resumed during the wait; run --check-live-cleanup again')
             result = dict(guestPaused=True)
             if publication['destination'] == 's3':
                 result.update(check_s3_absent(publication))

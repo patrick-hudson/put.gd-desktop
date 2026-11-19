@@ -705,11 +705,19 @@ class NightlyTests(unittest.TestCase):
                 self.assertIn('could not pause', main('--check-live-cleanup'))
             self.assertEqual(order, ['pause'])
             # After a pause, the destination is read only once the settle period has passed.
-            with patch.object(nightly, 'guest_paused', return_value=nightly.time.time()), \
+            paused_at = nightly.time.time()
+            with patch.object(nightly, 'guest_paused', return_value=paused_at), \
                     patch.object(nightly.time, 'sleep', side_effect=lambda seconds: order.append(round(seconds, -1))), \
                     patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check') or {}):
                 main('--check-live-cleanup')
             self.assertEqual(order[1:], [nightly.PAUSE_SETTLE_SECONDS, 'check'])
+            # A resume during the wait voids the pause; the destination is never read.
+            del order[:]
+            with patch.object(nightly, 'guest_paused', side_effect=lambda run, pause=False: paused_at if pause else None), \
+                    patch.object(nightly.time, 'sleep'), \
+                    patch.object(nightly, 'check_s3_absent', side_effect=lambda p: order.append('check')):
+                self.assertIn('resumed during the wait', main('--check-live-cleanup'))
+            self.assertEqual(order, [])
             self.assertTrue((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
 
     def test_guest_paused_stops_the_vm_and_reports_only_a_confirmed_pause(self):
@@ -747,6 +755,15 @@ class NightlyTests(unittest.TestCase):
                 self.assertIsNone(nightly.guest_paused(run))
             with patch.object(lab, 'QMP', side_effect=OSError):
                 self.assertIsNone(nightly.guest_paused(run, pause=True))
+            # A stop whose reply is lost leaves no old pause time behind for a retry to reuse.
+            def lost(name, *a):
+                if name == 'stop':
+                    raise lab.LabError('timeout')
+                return {'running': True}
+            qmp.execute.side_effect = lost
+            with patch.object(lab, 'QMP', return_value=qmp):
+                self.assertIsNone(nightly.guest_paused(run, pause=True))
+            self.assertFalse((run/nightly.PAUSE_RECORD).exists())
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
