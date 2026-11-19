@@ -1604,7 +1604,7 @@ void SettingsWindow::refreshDiagnostics(){
 void SettingsWindow::refresh(bool preserveDrafts){
  if(!preserveDrafts){serviceSwitched_.clear();r2BucketFrom_.clear();}
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
- autosaveBlocked_=false;restoredDraft_=false;restoredBase_={};for(auto* button:std::as_const(retryAutosave_))button->hide();reorderBaseline_.clear();
+ autosaveBlocked_=false;restoredDraft_=false;restoredBase_={};for(auto* button:std::as_const(retryAutosave_))button->hide();reorderPending_=false;
  loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseDocument_=draft_;baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
  Ui::feedback(plain(status_),{});plain(destinationStatus_);showConflictActions();
  // Destinations are created only by an explicit Add action. Keep the legacy
@@ -1687,7 +1687,7 @@ void SettingsWindow::resetDraft(bool reloadFile){
  else settings_.refreshSnapshot(finish);
 }
 
-void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile){const auto captureProfile=captureProfile_->currentData().toString();const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());profile_->setCurrentIndex(selected);loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}captureProfile_->setCurrentIndex(captureProfile_->findData(captureProfile.isEmpty()?defaultProfile:captureProfile));if(!defaultProfile.isEmpty()){captureDefaultsEnabled_=true;captureRoutingEdited_=true;}updateCaptureInheritance();loading_=previous;}
+void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile,bool keepEditor){const auto captureProfile=captureProfile_->currentData().toString();const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());profile_->setCurrentIndex(selected);if(keepEditor&&selected>=0&&selected<profiles.size()&&profiles[selected].toObject()["id"].toString()==profileId_->text())profileIndex_=selected;else loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}captureProfile_->setCurrentIndex(captureProfile_->findData(captureProfile.isEmpty()?defaultProfile:captureProfile));if(!defaultProfile.isEmpty()){captureDefaultsEnabled_=true;captureRoutingEdited_=true;}updateCaptureInheritance();loading_=previous;}
 void SettingsWindow::loadProfile(){
  const auto shownProfile=profileId_->text();
  credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(plain(destinationStatus_),{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool r2=p["provider"]==r2::providerId;const bool storage=s3||b2||r2;const bool http=p["provider"]==CustomUploaderPanel::provider();
@@ -1830,7 +1830,8 @@ void SettingsWindow::applyProfileOrder(const QStringList& order){
  for(qsizetype i=profiles.size();i<profileEditors_.size();++i)editors.append(profileEditors_[i]);
  for(qsizetype i=profiles.size();i<credentialDrafts_.size();++i)credentials.append(std::move(credentialDrafts_[i]));
  draft_["profiles"]=ordered;profileEditors_=editors;credentialDrafts_=std::move(credentials);
- rebuildProfiles(selectedIndex);refreshDestinationList();
+ // Only the rows move: the shown destination's editor stays live (#1713).
+ rebuildProfiles(selectedIndex,{},true);refreshDestinationList();
 }
 Error SettingsWindow::moveDestination(int from,int to){
  auto order=profileOrder();
@@ -1838,7 +1839,7 @@ Error SettingsWindow::moveDestination(int from,int to){
  if(resetting_||!typingPause_)return {"ui_busy","Settings are reloading. Try again when they finish.",{}};
  if(conflict_)return {"config_conflict","Settings changed elsewhere — reload to continue.",{}};
  if(setupAccepting_||!setupJobs_.isEmpty())return {"setup_pending","Wait for destination setup to finish before reordering destinations.",{}};
- if(reorderBaseline_.isEmpty())reorderBaseline_=order;
+ reorderPending_=true;
  order.move(from,to);applyProfileOrder(order);
  // #1704: the order goes as a list of IDs, applied to the accepted list when it is sent, so an
  // edit that was refused earlier cannot block it and it never carries another edit's copy.
@@ -2133,10 +2134,21 @@ Error SettingsWindow::moveSelectedDestination(int delta,const QString& profileId
  result={{"selected",profileId_->text()},{"order",QJsonArray::fromStringList(profileOrder())},{"saving",queued("order")}};return {};
 }
 void SettingsWindow::restoreReorderBaseline(){
- if(reorderBaseline_.isEmpty())return;
- const auto order=std::exchange(reorderBaseline_,{});
+ if(!std::exchange(reorderPending_,false))return;
  saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[](const SaveOperation& op){return op.key=="order";}),saveQueue_.end());
- applyProfileOrder(order);
+ showFileOrder();
+}
+// The order the file has now, with each destination only this window has (an add not saved yet)
+// kept after the one it follows here (#1713).
+void SettingsWindow::showFileOrder(){
+ // Only destinations this window knows as saved take the file's places: a row added here keeps
+ // its place even when another client has since saved a destination under the same ID.
+ QSet<QString> known;for(const auto& value:baseDocument_["profiles"].toArray())known.insert(value.toObject()["id"].toString());
+ QStringList order;for(const auto& value:acceptedDocument()["profiles"].toArray())if(const auto id=value.toObject()["id"].toString();known.contains(id))order.append(id);
+ const auto shown=profileOrder();
+ for(int i=0;i<shown.size();++i)if(!order.contains(shown[i])){int at=0;for(int j=i-1;j>=0;--j)if(const int k=order.indexOf(shown[j]);k>=0){at=k+1;break;}order.insert(at,shown[i]);}
+ QStringList wanted;for(const auto& id:std::as_const(order))if(shown.contains(id))wanted.append(id);
+ if(wanted!=shown)applyProfileOrder(order);
 }
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
 // #1675, #1676: a Region or Endpoint saved before today's rules shows its problem when the
@@ -2751,7 +2763,9 @@ void SettingsWindow::drainSaves(){
 }
 // What an operation's end, accepted or with nothing to send, settles beyond the accepted document.
 void SettingsWindow::operationSettled(const SaveOperation& op){
- if(op.kind==SaveOperation::Kind::Order&&!queued("order"))reorderBaseline_.clear();
+ // A saved order is the one a later conflicting move goes back to (#1713).
+ // A newer order settled: an older one's refusal no longer stands.
+ if(op.kind==SaveOperation::Kind::Order){notSaved_.remove("|order");if(!queued("order"))reorderPending_=false;}
  if(op.values.contains(themePath)&&!queued(themePath))endAppearancePreview();
  if(uploader_&&op.kind==SaveOperation::Kind::Fields&&std::any_of(op.controls.cbegin(),op.controls.cend(),[this](const QPointer<QWidget>& control){return control==uploader_;})&&!queued(op.key))uploader_->showProblem({},{});
 }
@@ -2914,7 +2928,7 @@ void SettingsWindow::autosaveFailure(const Error& error){
  // The theme shown goes back to the accepted one; the queue keeps the pick for Retry saving.
  endAppearancePreview();
  // A conflicting reorder is not kept: the list goes back to the saved order.
- const bool reordered=conflict_&&!reorderBaseline_.isEmpty();if(reordered)restoreReorderBaseline();
+ const bool reordered=conflict_&&reorderPending_;if(reordered)restoreReorderBaseline();
  auto message=error;if(conflict_)message.message=conflictMessage()+QString(reordered?" The previous destination order is restored.":"");else message.message+=" Your edits remain in this window. Retry saving when ready; the request won't repeat automatically.";status(message);
  for(auto* button:std::as_const(retryAutosave_))button->setVisible(true);showConflictActions();
  settleDirty();emit viewStateChanged();
@@ -3010,7 +3024,7 @@ void SettingsWindow::retryAfterConflict(){
  for(int i=0;i<previousOrder.size();++i){if(i<profileEditors_.size()){auto editor=profileEditors_[i].toObject();editor.remove("id");editors.insert(previousOrder[i],editor.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(editor));}if(i<credentialDrafts_.size())credentials.insert(previousOrder[i],std::move(credentialDrafts_[i]));}
  profileEditors_={};credentialDrafts_.clear();
  for(const auto& value:std::as_const(profiles)){const auto id=value.toObject()["id"].toString();profileEditors_.append(editors.value(id,QJsonValue::Null));credentialDrafts_.append(credentials.take(id));}
- loading_=true;draft_=rebuilt;baseDocument_=settings_.document();baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();conflict_=false;autosaveBlocked_=false;reorderBaseline_.clear();
+ loading_=true;draft_=rebuilt;baseDocument_=settings_.document();baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();conflict_=false;autosaveBlocked_=false;reorderPending_=false;
  for(auto* button:std::as_const(retryAutosave_))button->hide();
  populate();loading_=true;profile_->setCurrentIndex(profile_->findData(shown));loadProfile();loading_=false;
  Ui::feedback(plain(status_),{});plain(destinationStatus_);showConflictActions();updateRegionFeedback();refreshMetadata();refreshDestinationList();refreshCredentialHint();
@@ -3267,7 +3281,14 @@ void SettingsWindow::configurationChanged(){
  if(saving_||resetting_)return;
  if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){
   // Keep a conflict message that is already shown, such as a restored destination order.
-  const bool shown=conflict_&&!status_->text().isEmpty();conflict_=true;if(!shown)status({"config_conflict",conflictMessage(),{}});for(auto* button:std::as_const(retryAutosave_))button->show();showConflictActions();emit viewStateChanged();return;}
+  // A move not saved yet goes back, as when a save's answer is the conflict (autosaveFailure).
+  const bool reordered=!conflict_&&reorderPending_;
+  const bool shown=conflict_&&!status_->text().isEmpty();
+  // Already in a conflict, with no move waiting: the list shows the order the file has now, which a
+  // rollback at the conflict's answer could only take from what the window knew then.
+  if(conflict_&&!reorderPending_)showFileOrder();
+  conflict_=true;if(reordered)restoreReorderBaseline();
+  if(!shown)status({"config_conflict",conflictMessage()+QString(reordered?" The previous destination order is restored.":""),{}});for(auto* button:std::as_const(retryAutosave_))button->show();showConflictActions();emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
  auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(error["code"].toString()=="config_missing")status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }

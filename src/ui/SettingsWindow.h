@@ -174,10 +174,11 @@ private:
  void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void endAppearancePreview();
- void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination",const QString& name={},const QString& provider={});void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void addS3Profile(const QString& defaultLabel="S3 destination",const QString& name={},const QString& provider={});void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={},bool keepEditor=false);void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
- QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();
- QStringList reorderBaseline_;QAction *moveUp_=nullptr,*moveDown_=nullptr;
+ QStringList profileOrder()const;void applyProfileOrder(const QStringList&);Error moveDestination(int from,int to);void restoreReorderBaseline();void showFileOrder();
+ bool reorderPending_=false; // a move not saved yet, which a conflict or refusal puts back
+ QAction *moveUp_=nullptr,*moveDown_=nullptr;
  QJsonObject retainedProfileEditor()const;bool hasRetainedDrafts()const;
  void rememberCredentialInputs();void restoreCredentialInputs();void clearCurrentCredentialInputs();
  void toggleCredentialSecret(bool shown);void resetCredentialSecretDisplay();
