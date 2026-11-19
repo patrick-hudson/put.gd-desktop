@@ -572,6 +572,7 @@ class S3ServicePickerResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((state['service'], state['region']['shown'], state['region']['value'], state['regionNote'], state['signingRegion']),
                                  ('amazon-s3', True, 'us-east-1', None, 'us-east-1'))
                 self.assertEqual(state['bucketHint'], 'Uploads go to s3://my-screenshots/')
+                self.assertIsNone(state['linkDomainWarning'])
 
                 # Cloudflare R2: the note replaces Region, the region is auto, and the AWS endpoint waits, unsaved, for the account endpoint.
                 state = await picker({'action': 'selectService', 'service': 'cloudflare-r2'}, lambda result: True)
@@ -596,6 +597,8 @@ class S3ServicePickerResidentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((state['service'], state['region']['value'], state['signingRegion'], state['saved']),
                                  ('cloudflare-r2', 'Western North America (WNAM)', 'auto', True))
                 self.assertIsNotNone(state['regionNote'])
+                # #1679: public links on R2 with no Link domain are called out before any test.
+                self.assertIn('r2.dev', state['linkDomainWarning'])
                 state = await picker({'action': 'selectService', 'service': 'cloudflare-r2'}, lambda result: True)
                 self.assertEqual(state['endpoint'], self.R2)
                 await asyncio.sleep(1.5)

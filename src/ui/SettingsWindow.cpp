@@ -2565,6 +2565,8 @@ void SettingsWindow::s3Command(const QJsonObject& params,std::function<void(Erro
   {"regionNote",shown(note)?QJsonValue(note->text()):QJsonValue()},{"signingRegion",s3CloudflareR2Endpoint(endpoint)?QStringLiteral("auto"):s3_["region"]->text()},
   {"endpoint",endpoint},{"endpointPlaceholder",s3_["endpoint"]->placeholderText()},{"bucketHint",hint?hint->text():QString()},
   {"saved",!selectedDestinationChanged()&&!saving_&&pendingEdits_.isEmpty()}};
+ // #1679: Cloudflare R2 public links with no Link domain are called out at Link domain.
+ auto* linkWarning=findControl<QLabel*>("s3LinkDomainWarning");state["linkDomainWarning"]=shown(linkWarning)?QJsonValue(linkWarning->text()):QJsonValue();
  reply({},state);
 }
 void SettingsWindow::allowControl(QWidget* control,bool allowed){control->setProperty("providerEnabled",allowed);control->setEnabled(allowed&&!setupBusy_);}
