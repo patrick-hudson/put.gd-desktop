@@ -73,6 +73,15 @@ case "$profile" in
     PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' "$root/tools/ci/appimage-packages.txt") weston python3-venv sudo zstd file xz-utils curl unzip gnupg"
     export PUTGD_EXTRA_PACKAGES
     bash "$root/tools/releases/install-native-deps.sh"
+    # The hosted runner's CMake: Ubuntu 24.04 has 3.28, and ECM and the AppImage's other dependency
+    # builds need 3.30 or later. actions/runner-images pins 3.31.6 (its toolset-2404.json).
+    cmake_archive=$(mktemp)
+    curl --fail --location --retry 5 --retry-all-errors --output "$cmake_archive" \
+      https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-x86_64.tar.gz
+    echo "5a1133ff103c71eb5120e2cc3de922733e7d8a26a98ae716397e8676adb367bf  $cmake_archive" | sha256sum --check --strict
+    tar -xzf "$cmake_archive" -C /usr/local --strip-components=1 --exclude='*/doc' --exclude='*/man'
+    rm -f "$cmake_archive"
+    test "$(/usr/local/bin/cmake --version | head -n 1)" = 'cmake version 3.31.6'
     # The official Qt the AppImage bundles, as jurplel/install-qt-action installed it on the hosted runner:
     # aqtinstall 3.3 and py7zr 1.1.0, the locked version, linux_gcc_64 with qtimageformats.
     # The image build passes the version (tools/ci/ci_images.py), so the rest of the lock stays out of its inputs.

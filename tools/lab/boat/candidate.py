@@ -212,7 +212,7 @@ def recipe(target, packages, ci):
         # The image's Qt and the environment its Dockerfile sets (tools/ci/images/Dockerfile).
         script = common + provision('appimage')
         script += 'qt_version=$(python3 -c \'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])\')\n'
-        script += 'export QT_ROOT_DIR=/opt/Qt/$qt_version/gcc_64\nexport PATH=$QT_ROOT_DIR/bin:$PATH\nexport LD_LIBRARY_PATH=$QT_ROOT_DIR/lib\nexport QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml\n'
+        script += 'export QT_ROOT_DIR=/opt/Qt/$qt_version/gcc_64\nexport PATH=$QT_ROOT_DIR/bin:/usr/local/bin:$PATH\nexport LD_LIBRARY_PATH=$QT_ROOT_DIR/lib\nexport QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml\n'
         script += 'export PKG_CONFIG_PATH=$QT_ROOT_DIR/lib/pkgconfig\n'
         script += step(app, 'Verify pinned SDK source')
         script += 'bash tools/releases/provision-sdk.sh\npython3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"\n'
