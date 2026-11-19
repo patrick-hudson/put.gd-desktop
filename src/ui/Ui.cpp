@@ -496,13 +496,12 @@ protected:
             // QMenu shows only an explicit action tooltip, not the default one made from its text.
             const auto* action = menu->toolTipsVisible() ? menu->actionAt(help->pos()) : nullptr;
             if (!action) return false;
-            // Qt's default tooltip is the text without mnemonics or a trailing ellipsis.
-            QString label = action->text();
-            label.remove(QLatin1Char('&'));
-            if (label.endsWith(QLatin1String("..."))) label.chop(3);
-            else if (label.endsWith(QChar(0x2026))) label.chop(1);
+            // An action with the same texts and no tooltip gives Qt's default one.
+            QAction fallback;
+            fallback.setText(action->text());
+            fallback.setIconText(action->iconText());
             const auto tip = action->toolTip();
-            if (tip.isEmpty() || tip == label.trimmed()) return false;
+            if (tip.isEmpty() || tip == fallback.toolTip()) return false;
             const auto wrapped = tooltipText(tip);
             if (wrapped == tip) return false;
             QToolTip::showText(help->globalPos(), wrapped, menu);
@@ -516,7 +515,7 @@ protected:
             const auto tip = index.data(Qt::ToolTipRole).toString();
             const auto wrapped = tooltipText(tip);
             if (wrapped == tip) return false;
-            QToolTip::showText(help->globalPos(), wrapped, view, view->visualRect(index));
+            QToolTip::showText(help->globalPos(), wrapped, widget, view->visualRect(index));
             return true;
         }
         // A tab bar shows its tabs' tooltips; leave it to Qt.
