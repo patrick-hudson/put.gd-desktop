@@ -74,7 +74,7 @@ its expiring S3 link or authorized B2 link but writes it to the destination-test
 journal and result without its query or fragment, so they hold no signature, access
 key ID or download token (#1680). The resident strips these links at its storage
 test journal boundary, from every checkpoint of every storage destination test it
-writes (S3, B2 and any later storage provider), whatever the worker sends and
+writes (S3 and B2, and any later provider whose test goes through that writer), whatever the worker sends and
 whatever provider a receipt names. The Custom uploader test writes its journal on
 its own path, which this boundary doesn't touch. During journal
 recovery, under the resident lock and before any S3 or B2 destination test starts
@@ -83,11 +83,13 @@ written by earlier builds. That pass covers only the S3 and B2 receipt links (th
 receipt, a cleanup target, and both inside a finished result), and only in a
 journal whose own records show an S3 or B2 test: every destination saved by the
 records that save one (an S3 upload intent and the multipart check's records) names
-that same provider, or, when none was saved, every receipt carries non-empty B2 file
-and bucket IDs. A journal whose saved destinations disagree is not rewritten, and
-neither is one with anything shaped like a Custom uploader's records: an
-`upload_intent` record, a link in the result, or a receipt with a URL, deletion URL
-or nonce. It is best effort: a file
+that same provider, or, when none was saved, there is at least one receipt and every
+receipt carries non-empty B2 file and bucket IDs. A journal is not rewritten when its
+saved destinations disagree, when it saves an S3 destination but every receipt carries
+B2 IDs, or when anything in it looks like a Custom uploader's records: an
+`upload_intent` record, a `link` in the result, a receipt labelled `custom-http`, or an
+`objectReference` with `url`, `deletionUrl`, `deletionUrlLeftOut` or `nonce`. It is
+best effort: a file
 that is not a regular `<uuid>.json` of the journal schema, that is a symbolic
 link, too large, unreadable or unparseable, or whose records don't show which
 test it was, stays as it is, so treat older journals as sensitive too. Destination-test
