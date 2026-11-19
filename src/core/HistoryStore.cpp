@@ -17,7 +17,10 @@ QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry
  if(receipt.validate())return {};
  const auto provider=providers.find(receipt.destination.providerId);if(!provider)return {};
  const auto key=provider->serializationKey(receipt.destination,receipt.objectReference,{});if(key.isEmpty())return {};
- return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(QJsonArray{receipt.destination.providerId,key}).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
+ // A Cloudflare R2 destination reaches the same objects as an S3 destination on its endpoint (#1699):
+ // they share one identity, so an upload after Move to Cloudflare R2 replaces the older S3 row.
+ const auto provider_id=receipt.destination.providerId==QLatin1String("cloudflare-r2")?QStringLiteral("s3"):receipt.destination.providerId;
+ return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(QJsonArray{provider_id,key}).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
 }
 QJsonObject publicRecord(QJsonObject data) {
  if(data.contains("shareReceipt"))data["receipt"]=data.take("shareReceipt");

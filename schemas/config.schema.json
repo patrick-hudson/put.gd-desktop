@@ -701,6 +701,22 @@
             "if": {
               "properties": {
                 "provider": {
+                  "const": "cloudflare-r2"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/r2Settings"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
                   "const": "custom-http"
                 }
               }
@@ -1435,6 +1451,85 @@
           "minimum": 1000,
           "maximum": 3600000,
           "default": 600000
+        }
+      }
+    },
+    "r2Settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cloudflare R2 destination (#1678). Requests go to https://ACCOUNT[.eu|.fedramp].r2.cloudflarestorage.com with region auto and path addressing. The provider validator is authoritative.",
+      "required": [
+        "accountId",
+        "jurisdiction",
+        "bucket",
+        "objectPrefix",
+        "linkMode",
+        "linkValidityDays",
+        "publicUrlBase",
+        "connectTimeoutMs",
+        "requestTimeoutMs",
+        "lowSpeedBytesPerSecond",
+        "lowSpeedTimeSeconds"
+      ],
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}(?![\\s\\S])",
+          "description": "The account ID from R2 overview, Account details."
+        },
+        "jurisdiction": {
+          "enum": [
+            "default",
+            "eu",
+            "fedramp"
+          ],
+          "default": "default"
+        },
+        "bucket": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9](?![\\s\\S])"
+        },
+        "objectPrefix": {
+          "type": "string",
+          "maxLength": 1022
+        },
+        "linkMode": {
+          "enum": [
+            "public",
+            "presigned"
+          ],
+          "default": "presigned",
+          "description": "public needs the bucket's r2.dev address or a custom domain in publicUrlBase."
+        },
+        "linkValidityDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "default": 7
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lowSpeedBytesPerSecond": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lowSpeedTimeSeconds": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },

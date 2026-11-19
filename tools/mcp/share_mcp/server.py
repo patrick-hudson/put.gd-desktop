@@ -27,6 +27,14 @@ def invalid() -> Json:
     return failure('invalid_request', 'Invalid tool argument fields or values')
 
 
+class _Omitted(str):
+    """The default of an optional string field. It is told apart by identity, so any string a
+    client sends, even an empty one or a NUL, counts as given."""
+
+
+OMITTED = _Omitted()
+
+
 def identifier(value: str, maximum: int = 256) -> bool:
     return isinstance(value, str) and 0 < len(value) <= maximum
 
@@ -1130,6 +1138,28 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         if profile_id is not None:
             params['profileId'] = profile_id
         return await adapter.call('ui.customUploader', params)
+
+    @server.tool(annotations=effect)
+    async def drive_r2_destination(action: str, field: str = OMITTED, value: str = OMITTED, text: str = OMITTED, label: str = OMITTED, profile_id: str = OMITTED) -> Json:
+        """Drive the Cloudflare R2 destination form in the open Destinations page as a user does (#1678). Each action takes only its own fields; omit the others (null is refused). inspect (optional profile_id) reads the form: accountId, jurisdiction (default, eu, fedramp), bucket, objectPrefix, linkMode (public, presigned), linkValidityDays, publicUrlBase, connectTimeoutMs, requestTimeoutMs, lowSpeedBytesPerSecond and lowSpeedTimeSeconds as shown, advancedOpen, the endpoint requests go to, bucketHint, linkDomainWarning (shown for public links with no Link domain, else null), unitStatus (why Account ID, Jurisdiction and Bucket aren't saved: not all valid yet, or refused; else null), errors by field, saved, and moveAvailable. set (field, value, optional profile_id) types value into accountId, bucket, objectPrefix, publicUrlBase or an advanced connection value and leaves it; picks jurisdiction or linkMode; sets linkValidityDays (1-7); or opens or closes Advanced connection settings (field advanced, value open or closed) - advanced values need it open. paste (text, optional profile_id) pastes into Account ID: the bucket's S3 API address from the Cloudflare dashboard (https://ACCOUNT[.eu|.fedramp].r2.cloudflarestorage.com[/BUCKET]) fills Account ID, Jurisdiction and Bucket only when every part is valid. Account ID, Jurisdiction and Bucket save together, once all three are valid. move (optional profile_id) presses Move to Cloudflare R2 on an Amazon S3 or S3-compatible destination whose endpoint is an R2 account endpoint: it becomes a Cloudflare R2 destination in place, with the same ID, routes and credentials. add (label) adds a Cloudflare R2 destination with that name, as Add destination does. A control that isn't shown or usable, such as Move where it isn't offered or Add while it is disabled, answers control_unavailable. Carries no credentials. Open Destinations first (ui.show destinations)."""
+        allowed = {'inspect': {'profile_id'}, 'set': {'field', 'value', 'profile_id'}, 'paste': {'text', 'profile_id'}, 'move': {'profile_id'}, 'add': {'label'}}
+        # Presence first, by identity: an omitted field is OMITTED itself, while one given, even empty or
+        # a NUL, is checked; an explicit null is not a string and the schema refuses it.
+        given = {name for name, item in (('field', field), ('value', value), ('text', text), ('label', label), ('profile_id', profile_id)) if item is not OMITTED}
+        field, value, text, label, profile_id = (None if item is OMITTED else item for item in (field, value, text, label, profile_id))
+        fields = {'accountId', 'jurisdiction', 'bucket', 'objectPrefix', 'linkMode', 'linkValidityDays', 'publicUrlBase',
+                  'connectTimeoutMs', 'requestTimeoutMs', 'lowSpeedBytesPerSecond', 'lowSpeedTimeSeconds', 'advanced'}
+        if (action not in allowed or not given <= allowed[action] or (action == 'set' and (field not in fields or value is None)) or
+                (action == 'paste' and text is None) or (action == 'add' and label is None) or
+                (value is not None and (not isinstance(value, str) or len(value) > 2048 or (field == 'advanced' and value not in {'open', 'closed'}))) or
+                (text is not None and not identifier(text, 2048)) or (label is not None and not identifier(label, 128)) or
+                (profile_id is not None and not identifier(profile_id, 64))):
+            return invalid()
+        params: Json = {'action': action}
+        for key, item in (('field', field), ('value', value), ('text', text), ('label', label), ('profileId', profile_id)):
+            if item is not None:
+                params[key] = item
+        return await adapter.call('ui.r2Destination', params)
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,

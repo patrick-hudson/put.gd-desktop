@@ -212,7 +212,7 @@ Error settingsError(const QJsonObject& settings, bool current) {
     // Region first: on AWS, Settings writes Region into the generated endpoint host, so a
     // Region with spaces would otherwise read as a bad endpoint, under either set of rules.
     // Cloudflare R2 ignores Region: its requests are signed with auto (S3Driver).
-    const auto regionProblem = r2 ? QString() : s3RegionProblem(settings["region"].toString());
+    const auto regionProblem = r2 ? QString() : s3RegionProblem(settings["region"].toString(), settings["endpoint"].toString());
     const Error regionError{"s3_settings_invalid", regionProblem, {{"field", "region"}}};
     if (current && !regionProblem.isEmpty()) return regionError;
     const auto endpoint = QUrl(settings["endpoint"].toString());

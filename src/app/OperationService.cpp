@@ -48,7 +48,7 @@ constexpr int imagePageDelayMs=30*1000;
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 Error unsupported() {return {"source_unsupported","Native desktop adapter is not available",{}};}
 bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
-const QLoggingCategory& providerLog(const QString& provider) {return provider=="s3"?logS3():provider=="proton-drive"?logProton():logOperation();}
+const QLoggingCategory& providerLog(const QString& provider) {return provider=="s3"||provider=="cloudflare-r2"?logS3():provider=="proton-drive"?logProton():logOperation();}
 qint64 artifactBytes(const Operation& op) {qint64 total=0;for(const auto& item:op.items)total+=item.artifact.bytes;return total;}
 QJsonObject itemFields(const Operation& op,const OperationItem& item) {return {{"operationId",op.id},{"itemId",item.artifact.id},{"provider",op.destination.providerId}};}
 // A diagnostics upload (#123) has no action route: it goes to the destination
@@ -1698,6 +1698,8 @@ void OperationService::announceIncompleteUploads(QJsonObject& outcome,bool autom
  const auto providers=notice.value("providers").toArray();
  const auto hint=providers.contains("s3")
   ?QStringLiteral("Allow s3:AbortMultipartUpload for put.gd's access key, or add a lifecycle rule to the bucket that aborts incomplete multipart uploads after a few days.")
+  :providers.contains("cloudflare-r2")
+  ?QStringLiteral("Give put.gd's R2 API token Object Read & Write on the bucket, or add a lifecycle rule to the bucket that aborts incomplete multipart uploads after a few days.")
   :providers.contains("backblaze-b2")
   ?QStringLiteral("Give put.gd's B2 application key writeFiles, or cancel the unfinished large file in the Backblaze web console.")
   :QStringLiteral("Check that put.gd's account may cancel uploads at the destination.");

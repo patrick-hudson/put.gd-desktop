@@ -1,12 +1,13 @@
 # The S3 destination: its wire protocol, provider, SDK module and worker.
 # The resident facade and credential cache carry no SDK link requirement.
-add_library(putgd_s3_wire STATIC src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/IpAddress.cpp src/storage/s3/PublicUrl.cpp)
+add_library(putgd_s3_wire STATIC src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/IpAddress.cpp src/storage/s3/PublicUrl.cpp src/storage/s3/R2Settings.cpp)
 target_link_libraries(putgd_s3_wire PUBLIC putgd_core)
 # Non-Linux uses QHostAddress; the Linux resident keeps its native parser.
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_s3_wire PRIVATE Qt6::Network)
 endif()
-add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp)
+# Cloudflare R2 (#1678) is its own destination type over the S3 provider.
+add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp src/storage/s3/R2Provider.cpp)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(putgd_s3 PRIVATE src/storage/s3/S3ProcessDriver.cpp)
   # The worker's start-failure advice is shared with the custom uploader's helper.
@@ -29,6 +30,7 @@ foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
     src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp src/storage/s3/S3Provider.h src/storage/s3/S3Multipart.h src/storage/s3/S3Journal.h src/storage/s3/IpAddress.cpp src/storage/s3/IpAddress.h
     src/storage/s3/S3SdkContext.h src/storage/s3/S3SdkContext.cpp src/storage/s3/SdkRuntime.h
     src/storage/s3/SdkRuntime.cpp src/storage/s3/TlsCompatibility.h src/storage/s3/TlsCompatibility.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
+    src/storage/s3/R2Settings.h src/storage/s3/R2Settings.cpp
     src/core/StorageProvider.h src/core/StorageReceipt.h src/core/ArtifactStore.h
     src/core/BuildInfo.h src/core/Settings.h src/ipc/UiControl.h
     src/core/Error.h src/core/ClipboardPayload.h src/secrets/CredentialStore.h cmake/dependency-lock.json)

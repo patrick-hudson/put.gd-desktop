@@ -626,6 +626,28 @@ int main(int argc,char** argv){
   if(!save("settings-b2-stepper-1060",scrollPose(destinationScroll,hint,40,true)))return 2;
   mode->setCurrentIndex(mode->findData("public"));provider->setCurrentIndex(provider->findData("s3"));
  }
+ // #1678: Cloudflare R2 as its own destination type: the dashboard's S3 API address pasted into
+ // Account ID fills Jurisdiction and Bucket; public links with no Link domain are called out (#1679).
+ {
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("cloudflare-r2"));
+  auto* account=window.findChild<QLineEdit*>("r2AccountId");if(!account||!waitUntil([&]{return window.settings()->flushAutosave()&&account->isVisible();}))return 2;
+  // Pasted as a person pastes it, so the address is read: Account ID, Jurisdiction and Bucket filled.
+  window.settings()->r2Command({{"action","paste"},{"text","https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com/design-captures"}},[](putgd::Error,QJsonObject){});
+  auto* jurisdiction=window.findChild<QComboBox*>("r2Jurisdiction");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
+  if(account->text()!="0123456789abcdef0123456789abcdef"||jurisdiction->currentData().toString()!="eu"||bucket->text()!="design-captures")return 2;
+  if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-r2"))return 2;
+  auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());
+  auto* domain=window.findChild<QLineEdit*>("s3PublicUrlBase");domain->clear();emit domain->editingFinished();
+  auto* warning=window.findChild<QWidget*>("r2LinkDomainWarning");if(!warning||!waitUntil([&]{return window.settings()->flushAutosave()&&warning->isVisible();}))return 2;
+  if(!save("settings-r2-link-domain",scrollPose(destinationScroll,warning,40)))return 2;
+  provider->setCurrentIndex(provider->findData("s3"));if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+  // An S3 destination on R2 offers Move to Cloudflare R2.
+  auto* endpoint=window.findChild<QLineEdit*>("s3Endpoint");const auto original=endpoint->text();endpoint->setText("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com");emit endpoint->editingFinished();
+  auto* move=window.findChild<QWidget*>("moveToCloudflareR2Row");if(!move||!waitUntil([&]{return window.settings()->flushAutosave()&&move->isVisible();}))return 2;
+  destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-s3-move-to-r2"))return 2;
+  endpoint->setText(original);emit endpoint->editingFinished();if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
+ }
  // #1361: the custom uploader form: new, filled from an imported .sxcu with its token
  // masked, and with its values stored for the session. The token is synthetic.
  {

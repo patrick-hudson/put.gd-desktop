@@ -182,6 +182,17 @@ private slots:
         QCOMPARE(result.receipt.directUrl, QString("https://put.gd/base%2Fencoded/synthetic.png"));
         QVERIFY(headers["host"].toString().startsWith("127.0.0.1"));
     }
+    // #1699: a signed request to a non-AWS endpoint, such as Cloudflare R2, never follows a redirect
+    // to another host: the redirect target sees no request.
+    void redirectToAnotherHostIsNotFollowed() {
+        S3Fixture f;
+        const QUrl endpoint(f.endpoint);
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"redirect", true}, {"location", "http://localhost:" + QString::number(endpoint.port())}}}}});
+        const auto result = f.upload(f.request("redirected.txt"));
+        QVERIFY2(result.status != "uploaded", qPrintable(result.status));
+        QCOMPARE(f.events("PUT").size(), 1);
+        for (const auto& event : f.events("PUT")) QVERIFY(event.toObject()["headers"].toObject()["host"].toString().startsWith("127.0.0.1"));
+    }
     void lostPutReplyRecoversOwnMetadata() {
         S3Fixture f;
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"drop", true}}}}});

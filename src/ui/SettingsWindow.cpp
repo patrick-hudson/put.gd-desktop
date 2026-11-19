@@ -4,6 +4,7 @@
 #include "MainWindow.h"
 #include "storage/proton/ProtonProvider.h"
 #include "storage/s3/PublicUrl.h"
+#include "storage/s3/R2Settings.h"
 #include "storage/b2/B2Common.h"
 #include "platform/HostOpen.h"
 #include "core/HostEnvironment.h"
@@ -317,6 +318,11 @@ public:using QLineEdit::QLineEdit;
  QSize sizeHint()const override{auto size=QLineEdit::sizeHint();if(!qobject_cast<QComboBox*>(parentWidget()))size.setWidth(qMin(maximumWidth(),Ui::scaled(480)));return size;}
 };
 QLineEdit* input(QWidget* parent,const QString& name){auto* e=new FormInput(parent);e->setObjectName(name);e->setAccessibleName(name);return e;}
+// #1699: Cloudflare R2's Account ID, Jurisdiction and Bucket, which name one account endpoint and its
+// bucket: a bucket never saves beside an account it wasn't entered with. An S3 or B2 destination has
+// no Account ID or Jurisdiction, so for it this group is its Bucket alone.
+QJsonObject destinationDefaults(const QString& provider,const QString& id);
+const QStringList& r2Group(){static const QStringList group{"settings/accountId","settings/jurisdiction","settings/bucket"};return group;}
 // Backblaze B2 settings edited through the S3 panel's shared rows (#282).
 const QStringList& b2SharedKeys(){static const QStringList keys{"bucket","objectPrefix","publicUrlBase","connectTimeoutMs","requestTimeoutMs"};return keys;}
 QJsonObject s3Profile(const QString& id){
@@ -1169,31 +1175,87 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* testScope=new QLabel;testScope->setObjectName("destinationTestScope");testScope->setWordWrap(true);testScope->setTextFormat(Qt::PlainText);testScope->setProperty("uiStatus",true);Ui::role(testScope,"secondary");auto* test=new QPushButton("Test upload and link");test->setObjectName("testDestination");test->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed);defaultButton_=new QPushButton("Make default");defaultButton_->setObjectName("makeDefaultDestination");titleActions->addWidget(defaultButton_);auto* more=new QPushButton;more->setIcon(Ui::chromeIcon("more"));more->setToolTip("Destination actions");more->setProperty("noChevron",true);more->setAccessibleName("Destination actions");more->setObjectName("destinationActions");more->setFixedSize(Ui::scaled(36),Ui::scaled(36));titleActions->addWidget(more);
  headerLayout->addLayout(titleActions,0,1,Qt::AlignRight|Qt::AlignVCenter);
  auto* description=new QLabel("Amazon S3 or compatible storage. Existing uploads keep their original destination.");description->setWordWrap(true);description->setObjectName("destinationProviderDescription");Ui::role(description,"bodySecondary");description->setContentsMargins(0,space(Space::s),0,0);headerLayout->addWidget(description,1,0,1,2);
- auto* destinationMenu=new QMenu(more);more->setMenu(destinationMenu);auto* rename=destinationMenu->addAction("Rename destination");rename->setObjectName("renameDestination");connect(rename,&QAction::triggered,this,[this]{QTimer::singleShot(0,this,[this]{profileLabel_->setFocus(Qt::ShortcutFocusReason);profileLabel_->selectAll();});});destinationMenu->addSeparator();auto* serviceMenu=destinationMenu->addMenu("Storage service");auto* services=new QActionGroup(serviceMenu);services->setObjectName("storageServices");services->setExclusive(true);for(const auto& service:QList<QPair<QString,QString>>{{"Amazon S3 / compatible","s3"},{"Proton Drive","proton-drive"},{"Backblaze B2","backblaze-b2"},{"Custom uploader (HTTP)",CustomUploaderPanel::provider()}}){auto* action=serviceMenu->addAction(service.first);action->setCheckable(true);action->setData(service.second);services->addAction(action);connect(action,&QAction::triggered,this,[this,action]{providerType_->setCurrentIndex(providerType_->findData(action->data()));});}auto* remove=new QPushButton("Remove destination",this);remove->setObjectName("removeDestination");remove->hide();connect(destinationMenu->addAction("Remove destination…"),&QAction::triggered,remove,&QPushButton::click);destinationMenu->addSeparator();moveUp_=destinationMenu->addAction("Move up");moveDown_=destinationMenu->addAction("Move down");
+ auto* destinationMenu=new QMenu(more);more->setMenu(destinationMenu);auto* rename=destinationMenu->addAction("Rename destination");rename->setObjectName("renameDestination");connect(rename,&QAction::triggered,this,[this]{QTimer::singleShot(0,this,[this]{profileLabel_->setFocus(Qt::ShortcutFocusReason);profileLabel_->selectAll();});});destinationMenu->addSeparator();auto* serviceMenu=destinationMenu->addMenu("Storage service");auto* services=new QActionGroup(serviceMenu);services->setObjectName("storageServices");services->setExclusive(true);for(const auto& service:QList<QPair<QString,QString>>{{"Amazon S3 / compatible","s3"},{"Proton Drive","proton-drive"},{"Backblaze B2","backblaze-b2"},{"Cloudflare R2",r2::providerId},{"Custom uploader (HTTP)",CustomUploaderPanel::provider()}}){auto* action=serviceMenu->addAction(service.first);action->setCheckable(true);action->setData(service.second);services->addAction(action);connect(action,&QAction::triggered,this,[this,action]{providerType_->setCurrentIndex(providerType_->findData(action->data()));});}auto* remove=new QPushButton("Remove destination",this);remove->setObjectName("removeDestination");remove->hide();connect(destinationMenu->addAction("Remove destination…"),&QAction::triggered,remove,&QPushButton::click);destinationMenu->addSeparator();moveUp_=destinationMenu->addAction("Move up");moveDown_=destinationMenu->addAction("Move down");
  for(auto* move:{moveUp_,moveDown_}){move->setObjectName(move==moveUp_?"moveDestinationUp":"moveDestinationDown");move->setShortcut(QKeySequence(Qt::ALT|(move==moveUp_?Qt::Key_Up:Qt::Key_Down)));move->setShortcutContext(Qt::WidgetShortcut);destinationList_->addAction(move);connect(move,&QAction::triggered,this,[this,move]{QJsonObject result;if(auto error=moveSelectedDestination(move==moveUp_?-1:1,{},result))status(error);});}
  destinationList->moveRequested=[this](int from,int to){if(auto error=moveDestination(from,to))status(error);};
  destinationMenu->addSeparator();connect(destinationMenu->addAction("Copy details"),&QAction::triggered,this,[this]{qApp->clipboard()->setText(QString::fromUtf8(QJsonDocument(editedProfile()).toJson(QJsonDocument::Indented)));});
  auto* dev=new QPushButton("Import development S3",this);dev->setObjectName("importDevelopmentS3");dev->hide();auto* addMenu=new QMenu(add);add->setMenu(addMenu);connect(addMenu->addAction("Amazon S3 / S3-compatible"),&QAction::triggered,this,[this]{addS3Profile();});connect(addMenu->addAction("Proton Drive"),&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Proton Drive");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData("proton-drive"));queueEdit(profileLabel_);});connect(addMenu->addAction("Backblaze B2"),&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Backblaze B2");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData("backblaze-b2"));queueEdit(profileLabel_);});
+ // #1678: Cloudflare R2, its own destination type over the S3 API.
+ {auto* r2Add=addMenu->addAction("Cloudflare R2");r2Add->setObjectName("addCloudflareR2");connect(r2Add,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Cloudflare R2",{},r2::providerId);if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(r2::providerId));queueEdit(profileLabel_);});}
  // #1361: one HTTP request the user describes, or imports from a ShareX .sxcu file.
  {auto* custom=addMenu->addAction("Custom uploader (HTTP)");custom->setObjectName("addCustomUploader");connect(custom,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Custom uploader");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(CustomUploaderPanel::provider()));queueEdit(profileLabel_);});}
 #ifndef NDEBUG
  connect(addMenu->addAction("Import development S3"),&QAction::triggered,dev,&QPushButton::click);
 #endif
  auto* destinationDetails=PreferenceRows::card(pageLayout,"Where files go");destinationDetails->parentWidget()->setObjectName("destinationEditor");
- providerType_=choices(this,"storageProvider",{});providerType_->addItem("Amazon S3","s3");providerType_->addItem("Proton Drive","proton-drive");providerType_->addItem("Backblaze B2","backblaze-b2");providerType_->addItem("Custom uploader (HTTP)",CustomUploaderPanel::provider());connect(providerType_,&QComboBox::currentIndexChanged,this,[this,services]{for(auto* action:services->actions())action->setChecked(action->data()==providerType_->currentData());});setting(destinationDetails,"Storage service",providerType_,"/profiles/{profile}");
- auto* s3Service=choices(this,"s3Service",{"Amazon S3","Cloudflare R2","Other S3-compatible"});s3Service->setAccessibleName("S3-compatible service");auto* s3ServiceRow=setting(destinationDetails,"S3 service",s3Service,{});s3Service->setAccessibleName("S3-compatible service");
+ providerType_=choices(this,"storageProvider",{});providerType_->addItem("Amazon S3","s3");providerType_->addItem("Proton Drive","proton-drive");providerType_->addItem("Backblaze B2","backblaze-b2");providerType_->addItem("Cloudflare R2",r2::providerId);providerType_->addItem("Custom uploader (HTTP)",CustomUploaderPanel::provider());connect(providerType_,&QComboBox::currentIndexChanged,this,[this,services]{for(auto* action:services->actions())action->setChecked(action->data()==providerType_->currentData());});setting(destinationDetails,"Storage service",providerType_,"/profiles/{profile}");
+ auto* s3Service=choices(this,"s3Service",{"Amazon S3","Other S3-compatible"});s3Service->setAccessibleName("S3-compatible service");auto* s3ServiceRow=setting(destinationDetails,"S3 service",s3Service,{});s3Service->setAccessibleName("S3-compatible service");
+ // #1678: Cloudflare R2 names its account and jurisdiction; put.gd builds the endpoint from them.
+ r2AccountId_=input(this,"r2AccountId");r2AccountId_->setPlaceholderText("32 characters, such as 0123456789abcdef0123456789abcdef");
+ auto* r2AccountRow=setting(destinationDetails,"Account ID",r2AccountId_,"/profiles/{profile}/settings/accountId","R2 overview → Account details. Pasting the bucket's S3 API address here also fills Jurisdiction and Bucket.");r2AccountRow->setProperty("preferenceInline",true);
+ r2Jurisdiction_=choices(this,"r2Jurisdiction",{});r2Jurisdiction_->addItem("Default","default");r2Jurisdiction_->addItem("EU","eu");r2Jurisdiction_->addItem("FedRAMP","fedramp");
+ auto* r2JurisdictionRow=setting(destinationDetails,"Jurisdiction",r2Jurisdiction_,"/profiles/{profile}/settings/jurisdiction");
+ // The dashboard's S3 API address fills Account ID, Jurisdiction and Bucket at once, read from the
+ // raw text and only when every part is valid: on a paste (the queue's TypingWatch marks it) or when
+ // edited text is finished, never part-way through typing it. Connected before the queue's own
+ // handlers, so the edit they then queue is the field group with all three filled in (#1704).
+ const auto readS3ApiAddress=[this]{
+  if(loading_||providerType_->currentData()!=r2::providerId)return;
+  const auto address=r2::parseS3ApiAddress(r2AccountId_->text());if(!address)return;
+  // An address with no bucket, for another account or jurisdiction than the one the bucket shown came
+  // with, leaves Bucket empty: saving that bucket with this account would be wrong.
+  const auto from=address->accountId+"|"+address->jurisdiction;
+  const auto bucketFrom=r2BucketFrom_.value(profileId_->text());
+  const bool otherAccount=!bucketFrom.section('|',0,0).isEmpty()&&bucketFrom!=from;
+  const QSignalBlocker account(r2AccountId_),jurisdiction(r2Jurisdiction_),bucket(s3_["bucket"]);
+  r2AccountId_->setText(address->accountId);r2Jurisdiction_->setCurrentIndex(r2Jurisdiction_->findData(address->jurisdiction));if(!address->bucket.isEmpty())s3_["bucket"]->setText(address->bucket);else if(otherAccount)s3_["bucket"]->clear();
+  if(!address->bucket.isEmpty()||otherAccount)r2BucketFrom_[profileId_->text()]=from;
+ };
+ connect(r2AccountId_,&QLineEdit::textChanged,this,[this,readS3ApiAddress]{if(pasting_==r2AccountId_)readS3ApiAddress();});
+ connect(r2AccountId_,&QLineEdit::editingFinished,this,[this,readS3ApiAddress]{if(r2AccountId_->isModified())readS3ApiAddress();});
+ // An S3 destination on Cloudflare R2 offers to become a Cloudflare R2 destination: same name, ID,
+ // routes and credentials. Only this click converts it.
+ auto* moveToR2=new QPushButton("Move to Cloudflare R2",this);moveToR2->setObjectName("moveToCloudflareR2");moveToR2->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed);
+ auto* moveToR2Row=setting(destinationDetails,"Cloudflare R2",moveToR2,{},"This destination uses Cloudflare R2. As a Cloudflare R2 destination it keeps its name, routes and credentials, and asks for the Account ID instead of Region and Endpoint. Uploads already in History keep their recorded destination.");
+ moveToR2->setAccessibleName(moveToR2->text());moveToR2Row->setObjectName("moveToCloudflareR2Row");moveToR2Row->setProperty("preferenceInline",true);
+ // Left-aligned in its row, as the other row actions are.
+ for(auto* line:moveToR2Row->findChildren<QHBoxLayout*>())if(line->indexOf(moveToR2)>=0)line->setAlignment(moveToR2,Qt::AlignLeft|Qt::AlignVCenter);
+ connect(moveToR2,&QPushButton::clicked,this,&SettingsWindow::moveToCloudflareR2);
  const QHash<QString,QString> s3Labels{{"bucket","Bucket"},{"region","Region"},{"endpoint","Endpoint"},{"objectPrefix","Folder in bucket"},{"publicUrlBase","Link domain"},{"storageClass","Storage class"},{"connectTimeoutMs","Connect timeout"},{"requestTimeoutMs","Request timeout"},{"lowSpeedBytesPerSecond","Minimum transfer speed"},{"lowSpeedTimeSeconds","Low-speed window"}};
  for(const auto& key:QStringList{"bucket","region","endpoint","objectPrefix","publicUrlBase","storageClass","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"})s3_[key]=input(this,"s3"+title(key));
- auto* bucketHint=setting(destinationDetails,"Bucket",s3_["bucket"],"/profiles/{profile}/settings/bucket","Required before uploads can go here.");bucketHint->setProperty("preferenceInline",true);auto* bucketText=bucketHint->findChild<QLabel*>("s3BucketHint");bucketText->setTextFormat(Qt::PlainText);auto updateBucketHint=[this,bucketText]{static_cast<Ui::ElidedLabel*>(bucketText)->setText(s3_["bucket"]->text().isEmpty()?QString("Required before uploads can go here."):"Uploads go to "+QString(providerType_->currentData()=="backblaze-b2"?"b2://":"s3://")+s3_["bucket"]->text()+"/"+s3_["objectPrefix"]->text());};connect(providerType_,&QComboBox::currentIndexChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,updateBucketHint);connect(s3_["objectPrefix"],&QLineEdit::textChanged,this,updateBucketHint);updateBucketHint();s3_["bucket"]->setPlaceholderText("my-screenshots");
+ auto* bucketHint=setting(destinationDetails,"Bucket",s3_["bucket"],"/profiles/{profile}/settings/bucket","Required before uploads can go here.");bucketHint->setProperty("preferenceInline",true);auto* bucketText=bucketHint->findChild<QLabel*>("s3BucketHint");bucketText->setTextFormat(Qt::PlainText);// Cloudflare R2 has no URI scheme of its own, so its place is said in words rather than as s3://.
+ auto updateBucketHint=[this,bucketText]{const auto place=s3_["bucket"]->text()+"/"+s3_["objectPrefix"]->text();static_cast<Ui::ElidedLabel*>(bucketText)->setText(s3_["bucket"]->text().isEmpty()?QString("Required before uploads can go here."):providerType_->currentData()==r2::providerId?"Uploads go to "+place+" on Cloudflare R2":"Uploads go to "+QString(providerType_->currentData()=="backblaze-b2"?"b2://":"s3://")+place);};connect(providerType_,&QComboBox::currentIndexChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,updateBucketHint);connect(s3_["bucket"],&QLineEdit::textChanged,this,[this]{if(!loading_&&providerType_->currentData()==r2::providerId)r2BucketFrom_[profileId_->text()]=r2AccountId_->text()+"|"+r2Jurisdiction_->currentData().toString();});connect(s3_["objectPrefix"],&QLineEdit::textChanged,this,updateBucketHint);updateBucketHint();s3_["bucket"]->setPlaceholderText("my-screenshots");
+ // A Cloudflare R2 destination saves as one profile once every field is valid (#1699): this line says
+ // when what the form shows isn't saved and won't be as it is, and why.
+ r2UnitStatus_=new QLabel;r2UnitStatus_->setObjectName("r2UnitStatus");r2UnitStatus_->setWordWrap(true);Ui::role(r2UnitStatus_,"warning");destinationDetails->addRow(QString(),r2UnitStatus_);r2UnitStatus_->hide();
  regionChoices_=choices(this,"s3RegionChoices",s3Regions());regionChoices_->setEditable(true);regionChoices_->setInsertPolicy(QComboBox::NoInsert);regionChoices_->setLineEdit(s3_["region"]);setting(destinationDetails,"Region",regionChoices_,"/profiles/{profile}/settings/region");bind(s3_["region"],"/profiles/{profile}/settings/region");
  errors_[s3_["region"]]=errors_[regionChoices_];
  setting(destinationDetails,"Folder in bucket",s3_["objectPrefix"],"/profiles/{profile}/settings/objectPrefix","Optional. Existing uploads stay where they are.")->setProperty("preferenceInline",true);
  s3_["objectPrefix"]->setPlaceholderText("Bucket root");
  auto* links=PreferenceRows::card(pageLayout,"Links");linksPanel_=links->parentWidget();// What the upload asks S3 for, not a promise about who can open the link.
  acl_=choices(this,"s3AclMode",{"omit","public-read"});for(int i=0;i<acl_->count();++i)acl_->setItemData(i,acl_->itemText(i));acl_->setItemText(0,"Use bucket policy");acl_->setItemText(1,"Request public read");auto* aclRow=setting(links,"Upload access request",acl_,"/profiles/{profile}/settings/aclMode","Bucket policy also controls access. Test the resulting link.");auto* aclHint=aclRow->findChild<QLabel*>("s3AclModeHint");b2LinkMode_=choices(this,"b2LinkMode",{});b2LinkMode_->addItem("Public bucket: links that never expire","public");b2LinkMode_->addItem("Private bucket: links that expire","authorized");auto* b2ModeRow=setting(links,"Who can open files",b2LinkMode_,"/profiles/{profile}/settings/linkMode");b2LinkDays_=new QSpinBox;b2LinkDays_->setObjectName("b2LinkDays");b2LinkDays_->setRange(1,b2::maximumLinkDays);b2LinkDays_->setSuffix(" days");auto* b2DaysRow=setting(links,"Links last",b2LinkDays_,"/profiles/{profile}/settings/linkValidityDays","Links expire after 1–7 days; files stay in the bucket. S3 uses the endpoint host, ignoring Link domain. Temporary credentials can expire sooner than the chosen duration.");auto* b2DaysHint=b2DaysRow->findChild<QLabel*>("b2LinkDaysHint");connect(b2LinkMode_,&QComboBox::activated,this,[this]{queueEdit(b2LinkMode_);queueEdit(b2LinkDays_);if(providerType_->currentData()=="backblaze-b2")queueEdit(s3_["publicUrlBase"]);updateProviderVisibility_();});connect(b2LinkDays_,&QSpinBox::editingFinished,this,[this]{queueEdit(b2LinkDays_);});auto* linkDomainRow=setting(links,"Link domain",s3_["publicUrlBase"],"/profiles/{profile}/settings/publicUrlBase");s3_["publicUrlBase"]->setPlaceholderText("https://i.example.com");linkExample_=new Ui::ElidedLabel;linkExample_->setObjectName("linkExample");linkExample_->setWordWrap(false);static_cast<Ui::ElidedLabel*>(linkExample_)->setElideMode(Qt::ElideMiddle);linkExample_->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);linkExample_->setAccessibleName("Example link");Ui::role(linkExample_,"secondary");Ui::setMono(linkExample_,Ui::Type::technical);auto* exampleLine=new QWidget;exampleLine->setObjectName("linkExampleLine");auto* exampleBox=new QHBoxLayout(exampleLine);exampleBox->setContentsMargins(0,0,0,0);exampleBox->setSpacing(space(Space::xs));exampleBox->addWidget(Ui::label("Example:","secondary"));exampleBox->addWidget(linkExample_,1);linkDomainRow->layout()->addWidget(exampleLine);
+ // R2's S3 endpoint never serves public reads (#1679), so public links there need the bucket's
+ // r2.dev address or a custom domain: an empty Link domain is called out before any test.
+ auto* r2LinkWarning=new QLabel("Cloudflare R2 doesn't serve public links from its S3 endpoint. Enter the bucket's r2.dev address or a custom domain, or choose Private bucket: links that expire.");r2LinkWarning->setObjectName("r2LinkDomainWarning");r2LinkWarning->setWordWrap(true);Ui::role(r2LinkWarning,"warning");links->addRow(QString(),r2LinkWarning);
  auto* advanced=new QToolButton;advanced->setObjectName("advancedSettings");advanced->setText("Advanced connection settings");advanced->setAccessibleName("Advanced connection settings");Ui::disclosure(advanced);advanced->setProperty("uiFlush",true);pageLayout->addWidget(advanced);auto* connectionSummary=new QLabel;connectionSummary->setObjectName("connectionSummary");connectionSummary->setWordWrap(true);Ui::role(connectionSummary,"muted");pageLayout->addWidget(connectionSummary);auto* advancedRow=PreferenceRows::disclosure(destinationDetails,"Advanced connection settings",connectionSummary,advanced);advancedRow->setObjectName("advancedConnectionRow");auto* advancedCaption=static_cast<QLabel*>(advancedRow->property("preferenceLabel").value<QObject*>());auto* connectionPanel=new QWidget;connectionPanel->setMaximumWidth(Ui::scaled(760));auto* connectionBox=new QVBoxLayout(connectionPanel);connectionBox->setContentsMargins(0,0,0,0);auto* connection=new QFormLayout;Ui::styleForm(connection);connectionBox->addLayout(connection);pageLayout->addWidget(connectionPanel);connectionPanel_=connectionPanel;
  endpointHint_=new EndpointLabel;endpointHint_->setObjectName("s3EndpointValue");endpointHint_->setWordWrap(true);endpointHint_->setTextInteractionFlags(Qt::TextSelectableByMouse);endpointHint_->setAccessibleName("Endpoint in use");Ui::role(endpointHint_,"technical");auto* endpointCaption=new QLabel("Endpoint");connection->addRow(endpointCaption,endpointHint_);Ui::alignFormValue(endpointCaption,endpointHint_);
- auto* endpointWarning=new QLabel("Backblaze B2's S3 API lacks the conditional writes put.gd needs, so uploads to it fail. Use the Backblaze B2 storage service instead.");endpointWarning->setObjectName("s3EndpointWarning");endpointWarning->setWordWrap(true);Ui::role(endpointWarning,"warning");destinationDetails->addRow(QString(),endpointWarning);auto* customEndpoint=new QCheckBox("Use a custom endpoint");customEndpoint->setObjectName("customEndpoint");auto* customEndpointRow=Ui::settingRow("Use a custom endpoint",settingHelp({},"customEndpoint"),customEndpoint,this);connection->addRow(QString(),customEndpointRow);setting(connection,"Endpoint",s3_["endpoint"],"/profiles/{profile}/settings/endpoint");connect(s3Service,&QComboBox::activated,this,[=,this](int index){if(index){advanced->setChecked(true);customEndpoint->setChecked(true);s3_["endpoint"]->setPlaceholderText(index==1?"https://ACCOUNT.r2.cloudflarestorage.com":"https://your-storage-endpoint");s3_["endpoint"]->setFocus();}});
+ auto* endpointWarning=new QLabel("Backblaze B2's S3 API lacks the conditional writes put.gd needs, so uploads to it fail. Use the Backblaze B2 storage service instead.");endpointWarning->setObjectName("s3EndpointWarning");endpointWarning->setWordWrap(true);Ui::role(endpointWarning,"warning");destinationDetails->addRow(QString(),endpointWarning);auto* customEndpoint=new QCheckBox("Use a custom endpoint");customEndpoint->setObjectName("customEndpoint");auto* customEndpointRow=Ui::settingRow("Use a custom endpoint",settingHelp({},"customEndpoint"),customEndpoint,this);connection->addRow(QString(),customEndpointRow);setting(connection,"Endpoint",s3_["endpoint"],"/profiles/{profile}/settings/endpoint");// Picking a service switches to it (#1699): Amazon S3 sets an AWS region and its standard endpoint and
+ // keeps the other service's region and endpoint, which come back when Other S3-compatible is picked.
+ connect(s3Service,&QComboBox::activated,this,[=,this](int index){
+  auto* region=s3_["region"];auto* endpoint=s3_["endpoint"];
+  const bool aws=s3AmazonEndpoint(endpoint->text());if((index==0)==aws)return;
+  const auto set=[](QLineEdit* field,const QString& value){const QSignalBlocker block(field);field->setText(value);};
+  if(index==0){
+   s3OtherService_={region->text(),endpoint->text()};
+   const auto awsRegion=s3Regions().contains(region->text())?region->text():QStringLiteral("us-east-1");
+   set(region,awsRegion);region->setProperty("previousRegion",awsRegion);set(endpoint,"https://s3."+awsRegion+".amazonaws.com");customEndpoint->setChecked(false);queueEdit(region);
+  }else{
+   advanced->setChecked(true);customEndpoint->setChecked(true);endpoint->setPlaceholderText("https://your-storage-endpoint");
+   if(!s3OtherService_.second.isEmpty()){set(region,s3OtherService_.first);region->setProperty("previousRegion",s3OtherService_.first);set(endpoint,s3OtherService_.second);queueEdit(region);}
+   else{set(endpoint,QString());endpoint->setFocus();}
+  }
+  updateProviderVisibility_();
+ });
 
  QHash<QString,QWidget*> connectionRows;QList<std::function<void()>> connectionDefaults;addressing_=choices(this,"s3Addressing",{"path","virtual","auto"});for(int i=0;i<addressing_->count();++i)addressing_->setItemData(i,addressing_->itemText(i));addressing_->setItemText(0,"Bucket in URL path");addressing_->setItemText(1,"Bucket in hostname");addressing_->setItemText(2,"Automatic");
  for(const auto& key:QStringList{"storageClass","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"}){auto* field=s3_[key];QWidget* control=field;const auto suffix=key.endsWith("Ms")||key=="lowSpeedTimeSeconds"?QString("seconds"):key=="lowSpeedBytesPerSecond"?QString("KB/s"):QString{};if(!suffix.isEmpty()){auto* spin=new ConnectionSpin(connectionUnit(key),this);spin->setSuffix(" "+suffix);spin->setObjectName(field->objectName()+"Control");spin->editor()->setObjectName(field->objectName());delete field;field=s3_[key]=spin->editor();bind(field,"/profiles/{profile}/settings/"+key);control=spin;}
@@ -1227,10 +1289,10 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(storePassword,&QPushButton::clicked,this,[this]{if(!admitSetup())return;const auto reference="putgd/proton/link/"+QUuid::createUuid().toString(QUuid::Id128);auto value=protonPassword_->text();beginSetup("storeSharePassword",{{"password",value},{"reference",reference}});value.fill(QChar{});});connect(clearPassword,&QPushButton::clicked,this,[this]{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;auto p=profiles[profileIndex_].toObject();auto s=p["settings"].toObject();s["sharePasswordReference"]=QJsonValue::Null;p["settings"]=s;profiles[profileIndex_]=p;draft_["profiles"]=profiles;queueEdit(protonShare_,"/profiles/{profile}/settings");});
  auto formRow=[this](QWidget* field)->QWidget*{return errors_.contains(field)?errors_[field]->parentWidget():field;};
  const auto relabel=[](QFormLayout* form,QWidget* row,const QString& text){auto* holder=PreferenceRows::labelFor(form,row);if(auto* label=holder?holder->findChild<QLabel*>():nullptr)label->setText(text);};
- updateProviderVisibility_=[=,this]{for(const auto& update:connectionDefaults)update();const auto provider=providerType_->currentData().toString();for(auto* action:services->actions())action->setChecked(action->data()==provider);const bool s3=provider=="s3";const bool b2=provider=="backblaze-b2";const bool storage=s3||b2;const bool http=provider==CustomUploaderPanel::provider();const bool authorized=(b2&&b2LinkMode_->currentData()=="authorized")||(s3&&b2LinkMode_->currentData()=="presigned");const bool expanded=advanced->isChecked();advancedCaption->setText(storage?"Advanced connection settings":"Advanced link settings");advanced->setAccessibleName(advancedCaption->text());description->setProperty("compactText",s3?"Amazon S3":b2?"Backblaze B2 · Native API":http?"Custom uploader · HTTP":"Proton Drive · Third-party integration");description->setProperty("fullText",s3?"Amazon S3 or compatible storage. Existing uploads keep their original destination.":b2?"Backblaze B2 through its native API. Existing uploads keep their original destination.":http?"Your own server or any service with a ShareX custom uploader, through one HTTP request. Existing uploads keep their original destination.":"Third-party Proton Drive integration. Share links open a Proton page.");description->setText(description->property("fullText").toString());for(auto* field:{s3_["bucket"],s3_["objectPrefix"]})destinationDetails->setRowVisible(formRow(field),storage);PreferenceRows::sectionFor(destinationDetails)->setVisible(storage);destinationDetails->setRowVisible(formRow(providerType_),false);destinationDetails->setRowVisible(s3ServiceRow,s3);destinationDetails->setRowVisible(formRow(regionChoices_),s3);connection->setRowVisible(PreferenceRows::rowFor(endpointHint_),s3&&!customEndpoint->isChecked());destinationDetails->setRowVisible(endpointWarning,s3&&s3_["endpoint"]->text().contains("backblazeb2.com"));connection->setRowVisible(customEndpointRow,s3);connection->setRowVisible(formRow(s3_["endpoint"]),s3&&customEndpoint->isChecked());PreferenceRows::sectionFor(links)->setVisible(storage);links->setRowVisible(aclRow,s3&&!authorized);aclHint->setVisible(s3&&!authorized);links->setRowVisible(b2ModeRow,storage);links->setRowVisible(b2DaysRow,authorized);if(b2DaysHint){const auto hint=s3?QString("Uses the S3 endpoint host, ignoring Link domain. Temporary credentials can expire sooner than the chosen 1–7 days. Files stay in the bucket."):QString("Links expire after 1–7 days; files stay in the bucket.");b2DaysHint->setText(hint);b2LinkDays_->setAccessibleDescription(hint);b2LinkDays_->setToolTip(hint);b2LinkDays_->setProperty("settingDescription",hint);}links->setRowVisible(formRow(s3_["publicUrlBase"]),storage&&!authorized);auto* exampleHost=s3&&authorized?b2DaysRow:linkDomainRow;if(exampleLine->parentWidget()!=exampleHost){exampleHost->layout()->addWidget(exampleLine);exampleLine->show();}connectionPanel_->setVisible(storage&&expanded);for(auto it=connectionRows.begin();it!=connectionRows.end();++it)connection->setRowVisible(it.value(),s3||it.key()=="connectTimeoutMs"||it.key()=="requestTimeoutMs");connection->setRowVisible(addressRow,s3);PreferenceRows::sectionFor(credentialForm)->setVisible(storage||http);credentialForm->setRowVisible(tokenRow,s3);credentialForm->setRowVisible(accessRow,storage);credentialForm->setRowVisible(secretRow,storage);currentKeyCaption->setText(http?"Stored values":"Current key");uploader_->setVisible(http);relabel(credentialForm,accessRow,b2?"Application key ID":"Access key ID");relabel(credentialForm,secretRow,b2?"Application key":"Secret access key");access_->setAccessibleName(b2?"Application key ID":"Access key ID");secret_->setAccessibleName(b2?"Application key":"Secret access key");protonPanel_->setVisible(provider=="proton-drive");if(auto* footer=findControl<QWidget*>("destinationTestSection");footer&&footer->parentWidget()!=(storage||http?credentialForm->parentWidget():protonForm->parentWidget())){auto* previous=storage||http?protonForm:credentialForm;auto taken=previous->takeRow(footer);delete taken.fieldItem;delete taken.labelItem;(storage||http?credentialForm:protonForm)->addRow(footer);footer->show();}if(auto* footer=findControl<QWidget*>("destinationTestSection"))footer->show();test->setVisible(storage||http||provider=="proton-drive");test->setText(storage||http?"Test upload and link":"Check account and folder");sizeProtonAccountButtons();test->setAccessibleName(test->text());testScope->setText(storage?"Tests an upload, its link and cleanup.":http?"Uploads a small test file and opens its link. The file is deleted when the server returns a deletion URL.":"Checks account and folder access. Upload and sharing aren't tested.");showSecret_->setAccessibleName((showSecret_->isChecked()?QString("Hide "):QString("Show "))+secret_->accessibleName().toLower());reveal->setText(showSecret_->accessibleName());reveal->setToolTip(reveal->text());test->setToolTip(s3?"Checks an upload, link access and cleanup. Expiring links must work while unsigned access is denied.":http?"Uploads a small synthetic file with this destination's request, opens the returned link, and deletes the file when a deletion URL came back.":b2?"Checks the application key, a test upload, the link put.gd hands out, cleanup and a large-file start.":"Checks the signed-in Proton account and selected folder without uploading. Upload and sharing aren't tested.");if(advancedRow->parentWidget()!=(storage?destinationDetails->parentWidget():publicationForm->parentWidget())){auto* previous=storage?publicationForm:destinationDetails;auto taken=previous->takeRow(advancedRow);delete taken.fieldItem;delete taken.labelItem;auto* target=storage?destinationDetails:publicationForm;int row=-1;QFormLayout::ItemRole role;target->getWidgetPosition(storage?connectionPanel_:protonAdvancedPanel,&row,&role);target->insertRow(row<0?target->rowCount():row,advancedRow);}advancedRow->show();advanced->setVisible(true);if(http)advancedRow->hide();QStringList departures;if(s3&&s3_["storageClass"]->text()!="STANDARD")departures.append(storageClassLabel(s3_["storageClass"]->text()));if(s3&&addressing_->currentData()!="auto")departures.append(addressing_->currentText());for(const auto& timeout:{QString("connectTimeoutMs"),QString("requestTimeoutMs")})if(inputText(s3_[timeout]).toDouble()!=(timeout=="connectTimeoutMs"?5:60))departures.append(inputText(s3_[timeout])+(timeout=="connectTimeoutMs"?" s connect":" s request"));connectionSummary->setText(departures.join(" · "));connectionSummary->setVisible(storage&&!expanded&&!departures.isEmpty());protonAdvancedForm->parentWidget()->setVisible(provider=="proton-drive"&&expanded);endpointHint_->setText(s3_["endpoint"]->text());{const QSignalBlocker block(s3Service);const auto endpoint=s3_["endpoint"]->text();s3Service->setCurrentIndex(endpoint.contains("cloudflarestorage.com")?1:endpoint.contains("amazonaws.com")?0:2);}if(b2){const auto settings=editedProfile()["settings"].toObject();static_cast<Ui::ElidedLabel*>(linkExample_)->setText(b2::fileUrl(settings,"https://f000.backblazeb2.com",b2::fileName(settings,"Screenshot.png"))+(authorized?QStringLiteral("?Authorization=…"):QString()));}else{auto settings=editedProfile()["settings"].toObject();if(s3&&authorized)settings["publicUrlBase"]=QJsonValue::Null;static_cast<Ui::ElidedLabel*>(linkExample_)->setText(publicObjectUrl(settings,s3_["objectPrefix"]->text()+"Screenshot.png")+(s3&&authorized?QStringLiteral("?X-Amz-Signature=…"):QString()));}};
+ updateProviderVisibility_=[=,this]{for(const auto& update:connectionDefaults)update();const auto provider=providerType_->currentData().toString();for(auto* action:services->actions())action->setChecked(action->data()==provider);const bool s3=provider=="s3";const bool b2=provider=="backblaze-b2";const bool r2=provider==r2::providerId;const bool storage=s3||b2||r2;const bool http=provider==CustomUploaderPanel::provider();const bool authorized=(b2&&b2LinkMode_->currentData()=="authorized")||((s3||r2)&&b2LinkMode_->currentData()=="presigned");const bool expanded=advanced->isChecked();updateR2Feedback();s3_["publicUrlBase"]->setPlaceholderText(r2?"https://pub-….r2.dev":"https://i.example.com");links->setRowVisible(r2LinkWarning,r2&&!authorized&&s3_["publicUrlBase"]->text().trimmed().isEmpty());advancedCaption->setText(storage?"Advanced connection settings":"Advanced link settings");advanced->setAccessibleName(advancedCaption->text());description->setProperty("compactText",s3?"Amazon S3":r2?"Cloudflare R2":b2?"Backblaze B2 · Native API":http?"Custom uploader · HTTP":"Proton Drive · Third-party integration");description->setProperty("fullText",s3?"Amazon S3 or compatible storage. Existing uploads keep their original destination.":r2?"Cloudflare R2 through its S3 API. Existing uploads keep their original destination.":b2?"Backblaze B2 through its native API. Existing uploads keep their original destination.":http?"Your own server or any service with a ShareX custom uploader, through one HTTP request. Existing uploads keep their original destination.":"Third-party Proton Drive integration. Share links open a Proton page.");description->setText(description->property("fullText").toString());for(auto* field:{s3_["bucket"],s3_["objectPrefix"]})destinationDetails->setRowVisible(formRow(field),storage);PreferenceRows::sectionFor(destinationDetails)->setVisible(storage);destinationDetails->setRowVisible(formRow(providerType_),false);destinationDetails->setRowVisible(s3ServiceRow,s3);destinationDetails->setRowVisible(r2AccountRow,r2);destinationDetails->setRowVisible(r2JurisdictionRow,r2);destinationDetails->setRowVisible(moveToR2Row,s3&&r2::fromS3Settings(editedProfile()["settings"].toObject()).has_value());destinationDetails->setRowVisible(formRow(regionChoices_),s3);connection->setRowVisible(PreferenceRows::rowFor(endpointHint_),(s3&&!customEndpoint->isChecked())||r2);destinationDetails->setRowVisible(endpointWarning,s3&&s3_["endpoint"]->text().contains("backblazeb2.com"));connection->setRowVisible(customEndpointRow,s3);connection->setRowVisible(formRow(s3_["endpoint"]),s3&&customEndpoint->isChecked());PreferenceRows::sectionFor(links)->setVisible(storage);links->setRowVisible(aclRow,s3&&!authorized);aclHint->setVisible(s3&&!authorized);links->setRowVisible(b2ModeRow,storage);links->setRowVisible(b2DaysRow,authorized);if(b2DaysHint){const auto hint=s3||r2?QString("Uses the S3 endpoint host, ignoring Link domain. Temporary credentials can expire sooner than the chosen 1–7 days. Files stay in the bucket."):QString("Links expire after 1–7 days; files stay in the bucket.");b2DaysHint->setText(hint);b2LinkDays_->setAccessibleDescription(hint);b2LinkDays_->setToolTip(hint);b2LinkDays_->setProperty("settingDescription",hint);}links->setRowVisible(formRow(s3_["publicUrlBase"]),storage&&!authorized);auto* exampleHost=(s3||r2)&&authorized?b2DaysRow:linkDomainRow;if(exampleLine->parentWidget()!=exampleHost){exampleHost->layout()->addWidget(exampleLine);exampleLine->show();}connectionPanel_->setVisible(storage&&expanded);for(auto it=connectionRows.begin();it!=connectionRows.end();++it)connection->setRowVisible(it.value(),s3||(r2&&it.key()!="storageClass")||it.key()=="connectTimeoutMs"||it.key()=="requestTimeoutMs");connection->setRowVisible(addressRow,s3);PreferenceRows::sectionFor(credentialForm)->setVisible(storage||http);credentialForm->setRowVisible(tokenRow,s3);credentialForm->setRowVisible(accessRow,storage);credentialForm->setRowVisible(secretRow,storage);currentKeyCaption->setText(http?"Stored values":"Current key");uploader_->setVisible(http);relabel(credentialForm,accessRow,b2?"Application key ID":"Access key ID");relabel(credentialForm,secretRow,b2?"Application key":"Secret access key");access_->setAccessibleName(b2?"Application key ID":"Access key ID");secret_->setAccessibleName(b2?"Application key":"Secret access key");protonPanel_->setVisible(provider=="proton-drive");if(auto* footer=findControl<QWidget*>("destinationTestSection");footer&&footer->parentWidget()!=(storage||http?credentialForm->parentWidget():protonForm->parentWidget())){auto* previous=storage||http?protonForm:credentialForm;auto taken=previous->takeRow(footer);delete taken.fieldItem;delete taken.labelItem;(storage||http?credentialForm:protonForm)->addRow(footer);footer->show();}if(auto* footer=findControl<QWidget*>("destinationTestSection"))footer->show();test->setVisible(storage||http||provider=="proton-drive");test->setText(storage||http?"Test upload and link":"Check account and folder");sizeProtonAccountButtons();test->setAccessibleName(test->text());testScope->setText(storage?"Tests an upload, its link and cleanup.":http?"Uploads a small test file and opens its link. The file is deleted when the server returns a deletion URL.":"Checks account and folder access. Upload and sharing aren't tested.");showSecret_->setAccessibleName((showSecret_->isChecked()?QString("Hide "):QString("Show "))+secret_->accessibleName().toLower());reveal->setText(showSecret_->accessibleName());reveal->setToolTip(reveal->text());test->setToolTip(s3||r2?"Checks an upload, link access and cleanup. Expiring links must work while unsigned access is denied.":http?"Uploads a small synthetic file with this destination's request, opens the returned link, and deletes the file when a deletion URL came back.":b2?"Checks the application key, a test upload, the link put.gd hands out, cleanup and a large-file start.":"Checks the signed-in Proton account and selected folder without uploading. Upload and sharing aren't tested.");if(advancedRow->parentWidget()!=(storage?destinationDetails->parentWidget():publicationForm->parentWidget())){auto* previous=storage?publicationForm:destinationDetails;auto taken=previous->takeRow(advancedRow);delete taken.fieldItem;delete taken.labelItem;auto* target=storage?destinationDetails:publicationForm;int row=-1;QFormLayout::ItemRole role;target->getWidgetPosition(storage?connectionPanel_:protonAdvancedPanel,&row,&role);target->insertRow(row<0?target->rowCount():row,advancedRow);}advancedRow->show();advanced->setVisible(true);if(http)advancedRow->hide();QStringList departures;if(s3&&s3_["storageClass"]->text()!="STANDARD")departures.append(storageClassLabel(s3_["storageClass"]->text()));if(s3&&addressing_->currentData()!="auto")departures.append(addressing_->currentText());for(const auto& timeout:{QString("connectTimeoutMs"),QString("requestTimeoutMs")})if(inputText(s3_[timeout]).toDouble()!=(timeout=="connectTimeoutMs"?5:60))departures.append(inputText(s3_[timeout])+(timeout=="connectTimeoutMs"?" s connect":" s request"));connectionSummary->setText(departures.join(" · "));connectionSummary->setVisible(storage&&!expanded&&!departures.isEmpty());protonAdvancedForm->parentWidget()->setVisible(provider=="proton-drive"&&expanded);endpointHint_->setText(r2?r2::endpoint(r2AccountId_->text(),r2Jurisdiction_->currentData().toString()):s3_["endpoint"]->text());updateBucketHint();{const QSignalBlocker block(s3Service);const auto endpoint=s3_["endpoint"]->text();s3Service->setCurrentIndex(s3AmazonEndpoint(endpoint)?0:1);}if(b2){const auto settings=editedProfile()["settings"].toObject();static_cast<Ui::ElidedLabel*>(linkExample_)->setText(b2::fileUrl(settings,"https://f000.backblazeb2.com",b2::fileName(settings,"Screenshot.png"))+(authorized?QStringLiteral("?Authorization=…"):QString()));}else{auto settings=editedProfile()["settings"].toObject();if(r2)settings=r2::s3Settings(settings);if((s3||r2)&&authorized)settings["publicUrlBase"]=QJsonValue::Null;static_cast<Ui::ElidedLabel*>(linkExample_)->setText(publicObjectUrl(settings,s3_["objectPrefix"]->text()+"Screenshot.png")+((s3||r2)&&authorized?QStringLiteral("?X-Amz-Signature=…"):QString()));}};
  // Keep advanced controls and the connection test inside the provider's cards.
  pageLayout->removeWidget(advanced);pageLayout->removeWidget(connectionPanel_);destinationDetails->addRow(connectionPanel_);protonLayout->removeWidget(protonAdvancedForm->parentWidget());publicationForm->addRow(protonAdvancedForm->parentWidget());
- for(const auto& key:QStringList{"publicUrlBase","bucket","objectPrefix","endpoint"})connect(s3_[key],&QLineEdit::textChanged,this,[this]{if(!loading_&&updateProviderVisibility_)updateProviderVisibility_();});
+ for(const auto& key:QStringList{"publicUrlBase","bucket","objectPrefix","endpoint"})connect(s3_[key],&QLineEdit::textChanged,this,[this]{if(!loading_&&updateProviderVisibility_)updateProviderVisibility_();});connect(r2AccountId_,&QLineEdit::textChanged,this,[this]{if(!loading_&&updateProviderVisibility_)updateProviderVisibility_();});
  connect(advanced,&QToolButton::toggled,this,[this]{updateProviderVisibility_();emit viewStateChanged();});connect(customEndpoint,&QCheckBox::toggled,this,[this]{updateProviderVisibility_();});
  connect(providerType_,&QComboBox::currentIndexChanged,this,&SettingsWindow::switchProvider);
  connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;flushTyping();storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
@@ -1364,10 +1426,37 @@ void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChange
 // #1675: Region feedback comes only from the shown destination's current Endpoint and Region,
 // checked as the provider checks them, here and nowhere else: no save answer writes or restores
 // it. It sets or clears the message under Region, in the footer and in the destination status.
+void SettingsWindow::updateR2Feedback(){
+ if(!r2AccountId_||!r2UnitStatus_)return;
+ const bool r2=providerType_->currentData()==r2::providerId;
+ const auto settings=r2?editedProfile()["settings"].toObject():QJsonObject{};
+ const QList<QPair<QString,QWidget*>> fields{{"accountId",r2AccountId_},{"jurisdiction",r2Jurisdiction_},{"bucket",s3_["bucket"]},{"publicUrlBase",s3_["publicUrlBase"]}};
+ QString problem;
+ for(const auto& [key,control]:fields){
+  const auto message=r2?r2::problem(settings,key):QString();if(problem.isEmpty())problem=message;
+  // Only this check writes or clears these messages while the destination is Cloudflare R2.
+  if(r2||control->property("r2Feedback").toBool())inlineError(control,message);control->setProperty("r2Feedback",r2&&!message.isEmpty());
+ }
+ // The line under Bucket: the queue holds Account ID, Jurisdiction and Bucket back, as one group, because
+ // they aren't valid yet or were refused (#1704's record of what isn't saved).
+ QString unitLine;
+ if(r2){
+  const auto shown=editedProfile();
+  const auto reason=notSaved_.value(shown["id"].toString()+"|"+r2Group().join('+'));
+  if(!reason.isEmpty())unitLine=localProblem(shown,r2Group()).isEmpty()?"Account ID, Jurisdiction and Bucket aren't saved: "+reason:QStringLiteral("Account ID, Jurisdiction and Bucket save together once all three are valid.");
+ }
+ r2UnitStatus_->setText(unitLine);r2UnitStatus_->setVisible(!unitLine.isEmpty());
+ if(problem.isEmpty()&&!unitLine.isEmpty())problem=unitLine;
+ if(conflict_)return;
+ for(auto* label:{status_,destinationStatus_}){if(!label)continue;
+  if(!problem.isEmpty()){plain(label);label->setProperty("errorCode",QStringLiteral("s3_settings_invalid"));label->setProperty("errorField",QStringLiteral("r2"));label->setToolTip(QStringLiteral("s3_settings_invalid"));Ui::feedback(label,problem,true);}
+  else if(label->property("errorField").toString()=="r2"){label->setProperty("errorField",QString{});Ui::feedback(plain(label),{});}
+ }
+}
 bool SettingsWindow::updateRegionFeedback(bool clearOnly){
  // #1676: Endpoint feedback comes from the same check of the shown destination, never from an answer.
  const bool s3=providerType_->currentData()=="s3";
- const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text()):QString();
+ const auto problem=s3&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text())?s3RegionProblem(s3_["region"]->text(),s3_["endpoint"]->text()):QString();
  const auto endpointProblem=s3?s3EndpointProblem(s3_["endpoint"]->text(),true):QString();
  // The Endpoint message quotes what was typed: shown as text, never as markup.
  if(auto* label=errors_.value(s3_["endpoint"]))label->setTextFormat(Qt::PlainText);
@@ -1388,8 +1477,13 @@ void SettingsWindow::showFileError(){
  const auto error=settings_.metadata()["validation"].toObject()["error"].toObject();const auto code=error["code"].toString();const bool refused=!code.isEmpty()&&code!="config_missing";
  for(auto* line:{fileError_,destinationFileError_})if(line){line->setText(refused?"The configuration file wasn't loaded: "+error["message"].toString():QString());line->setToolTip(refused?code:QString());line->setVisible(refused);}
 }
-bool SettingsWindow::formOwnsFeedback(QWidget* control)const{return control&&(control==s3_.value("region")||control==s3_.value("endpoint"));}
+bool SettingsWindow::formOwnsFeedback(QWidget* control)const{
+ // Cloudflare R2's fields are the form's too (#1699): updateR2Feedback() alone writes their messages.
+ const bool r2=providerType_->currentData()==r2::providerId&&(control==r2AccountId_||control==r2Jurisdiction_||control==s3_.value("bucket")||control==s3_.value("publicUrlBase"));
+ return control&&(r2||control==s3_.value("region")||control==s3_.value("endpoint"));}
 void SettingsWindow::status(const Error& error){
+ // A save or test answer about a Cloudflare R2 field doesn't decide what the form shows (updateR2Feedback).
+ if(error.code=="s3_settings_invalid"&&providerType_->currentData()==r2::providerId&&QStringList{"accountId","jurisdiction","bucket","publicUrlBase"}.contains(error.details["field"].toString())){updateR2Feedback();return;}
  // A save or test answer about Region or Endpoint shows nothing: the form's own check, after typing pauses,
  // is the only thing that publishes Region feedback (updateRegionFeedback).
  // It still ends whatever the footer was showing, such as "Testing upload, link and cleanup…".
@@ -1508,6 +1602,7 @@ void SettingsWindow::refreshDiagnostics(){
 }
 
 void SettingsWindow::refresh(bool preserveDrafts){
+ if(!preserveDrafts){serviceSwitched_.clear();r2BucketFrom_.clear();}
  if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
  autosaveBlocked_=false;restoredDraft_=false;restoredBase_={};for(auto* button:std::as_const(retryAutosave_))button->hide();reorderBaseline_.clear();
  loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseDocument_=draft_;baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;refreshMetadata();
@@ -1556,9 +1651,10 @@ void SettingsWindow::updateLimitHints(){
   it.value()->setToolTip(text.isEmpty()?QString{}:QString("On this computer, Auto sets no size limit of put.gd's own. Each upload still needs room on the disk: put.gd keeps %1 free (5% of the disk, between 1 and 4 GB), and the destination's own maximum object size applies.").arg(ByteSize::summary(qMax<qint64>(reserve,0))));
  }
 }
-void SettingsWindow::addS3Profile(const QString& defaultLabel){
+void SettingsWindow::addS3Profile(const QString& defaultLabel,const QString& name,const QString& provider){
  flushTyping();storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();if(profiles.size()>=32){status({"profile_limit","At most 32 destinations are supported",{}});return;}
- bool accepted=false;const auto destinationName=QInputDialog::getText(this,"Add destination","Destination name",QLineEdit::Normal,defaultLabel,&accepted).trimmed();if(!accepted||destinationName.isEmpty())return;
+ bool accepted=false;// An agent names the destination itself (ui.r2Destination add); a person types it in the dialog.
+ const auto destinationName=name.isEmpty()?QInputDialog::getText(this,"Add destination","Destination name",QLineEdit::Normal,defaultLabel,&accepted).trimmed():(accepted=true,name.trimmed());if(!accepted||destinationName.isEmpty())return;
  QJsonObject restored=provisionalProfile_.value("profile").toObject();
  QString id=restored.value("id").toString();int number=1;
  // #1704: a new ID is one neither this window nor the file has, so a destination being removed
@@ -1567,7 +1663,8 @@ void SettingsWindow::addS3Profile(const QString& defaultLabel){
  if(id.isEmpty()||takenId(id))do{auto slug=destinationName.toLower();static const QRegularExpression runOfOthers("[^a-z0-9]+");slug.replace(runOfOthers,"-");slug=slug.left(48);if(slug.isEmpty()||!slug[0].isLetterOrNumber())slug="destination";id=slug+(number==1?QString{}:"-"+QString::number(number));++number;}while(takenId(id));
  while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
  credentialDrafts_.resize(profiles.size()+1);
- if(restored.isEmpty()){auto profile=s3Profile(id);profile["label"]=destinationName;profiles.append(profile);profileEditors_.append(QJsonValue::Null);}
+ // A Cloudflare R2 destination starts as one (#1699), never as an S3 draft that is then switched.
+ if(restored.isEmpty()){auto profile=s3Profile(id);if(!provider.isEmpty()){const auto defaults=destinationDefaults(provider,id);profile["provider"]=provider;profile["settings"]=defaults["settings"];profile["credentials"]=defaults["credentials"];}profile["label"]=destinationName;profiles.append(profile);profileEditors_.append(QJsonValue::Null);}
  else{
   restored["id"]=id;profiles.append(restored);auto editor=provisionalProfile_["editor"].toObject();editor["id"]=id;profileEditors_.append(editor);
   credentialDrafts_.last()=std::move(provisionalCredentials_);provisionalProfile_={};provisionalCredentials_.clear();
@@ -1593,12 +1690,16 @@ void SettingsWindow::resetDraft(bool reloadFile){
 void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile){const auto captureProfile=captureProfile_->currentData().toString();const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());profile_->setCurrentIndex(selected);loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}captureProfile_->setCurrentIndex(captureProfile_->findData(captureProfile.isEmpty()?defaultProfile:captureProfile));if(!defaultProfile.isEmpty()){captureDefaultsEnabled_=true;captureRoutingEdited_=true;}updateCaptureInheritance();loading_=previous;}
 void SettingsWindow::loadProfile(){
  const auto shownProfile=profileId_->text();
- credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(plain(destinationStatus_),{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool storage=s3||b2;const bool http=p["provider"]==CustomUploaderPanel::provider();
+ credentialStorageNotice_->hide();if(destinationStatus_&&!conflict_)Ui::feedback(plain(destinationStatus_),{});bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";const bool b2=p["provider"]=="backblaze-b2";const bool r2=p["provider"]==r2::providerId;const bool storage=s3||b2||r2;const bool http=p["provider"]==CustomUploaderPanel::provider();
  // The form shows this destination's request; another destination's notice does not follow it.
- uploader_->setSettings(http?s:CustomUploaderPanel::defaultSettings());if(shownProfile!=p["id"].toString())uploader_->setNotice({});
+ uploader_->setSettings(http?s:CustomUploaderPanel::defaultSettings());if(shownProfile!=p["id"].toString()){uploader_->setNotice({});s3OtherService_={};}
  providerType_->setCurrentIndex(providerType_->findData(p["provider"].toString()));const bool proton=p["provider"]=="proton-drive";protonPanel_->setVisible(proton);protonAccountUid_=s["accountRootUid"].toString();protonAccountEmail_.clear();protonShare_->setChecked(s["shareByDefault"].toBool(true));protonExpiration_->setValue(s["linkExpirationDays"].toInt());protonTimeout_->setValue(s["requestTimeoutMs"].toInt(120000)/1000.0);protonFolder_->clear();addProtonFolder(protonFolder_,s["folderUid"].toString(),s["folderName"].toString());
- findControl<QPushButton*>("storeCredentials")->setVisible(storage||http);findControl<QPushButton*>("testDestination")->setVisible(storage||proton||http);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];setInputText(it.value(),v.isDouble()?ByteSize::exact(v.toInteger(),connectionUnit(it.key())):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key())));}allowControl(b2LinkMode_,storage);allowControl(b2LinkDays_,storage);b2LinkMode_->setItemData(1,s3?"presigned":"authorized");b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2||http?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();showS3SettingsProblems();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
-QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){auto value=connectionValue(it.key(),inputText(it.value()));s[it.key()]=value;}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}const auto linkMode=b2LinkMode_->currentData().toString();if(s.contains("linkMode")||linkMode!="public")s["linkMode"]=linkMode;if(s.contains("linkValidityDays")||linkMode!="public"||b2LinkDays_->value()!=7)s["linkValidityDays"]=b2LinkDays_->value();s["aclMode"]=acl_->currentData().toString();s["addressing"]=addressing_->currentData().toString();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->hasAcceptableInput()?QJsonValue(protonExpiration_->value()):QJsonValue(protonExpiration_->text());s["requestTimeoutMs"]=protonTimeout_->hasAcceptableInput()?QJsonValue(qRound64(protonTimeout_->value()*1000)):QJsonValue(protonTimeout_->text());}else if(p["provider"]=="backblaze-b2"){for(const auto& key:b2SharedKeys()){auto* field=s3_.value(key);if(key.endsWith("Ms"))s[key]=ByteSize::fromDecimal(inputText(field),1000);else if(key=="publicUrlBase"&&field->text().isEmpty())s[key]=QJsonValue::Null;else s[key]=field->text();}s["linkMode"]=b2LinkMode_->currentData().toString();s["linkValidityDays"]=b2LinkDays_->value();if(s["linkMode"]=="authorized")s["publicUrlBase"]=QJsonValue::Null;}else if(p["provider"]==CustomUploaderPanel::provider()){s=uploader_->settings();}else {auto parsed=QJsonDocument::fromJson(providerJson_->toPlainText().toUtf8());if(parsed.isObject())s=parsed.object();else s={{"invalidJson",true}};}p["settings"]=s;p["credentials"]=QJsonObject{{"mode",credentialMode_->currentData().toString()},{"reference",credentialMode_->currentData().toString()=="session"?QJsonValue(QJsonValue::Null):QJsonValue(reference_->text())}};return p;}
+ findControl<QPushButton*>("storeCredentials")->setVisible(storage||http);findControl<QPushButton*>("testDestination")->setVisible(storage||proton||http);access_->setVisible(storage);secret_->setVisible(storage);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];setInputText(it.value(),v.isDouble()?ByteSize::exact(v.toInteger(),connectionUnit(it.key())):v.toString());allowControl(it.value(),s3||(b2&&b2SharedKeys().contains(it.key()))||(r2&&r2::settingKeys().contains(it.key())));}allowControl(b2LinkMode_,storage);allowControl(b2LinkDays_,storage);b2LinkMode_->setItemData(1,s3||r2?"presigned":"authorized");b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s["linkMode"].toString("public"))));b2LinkDays_->setValue(s["linkValidityDays"].toInt(b2::maximumLinkDays));s3_["region"]->setProperty("previousRegion",s["region"].toString());allowControl(regionChoices_,s3);allowControl(r2AccountId_,r2);allowControl(r2Jurisdiction_,r2);r2AccountId_->setText(r2?s["accountId"].toString():QString());if(r2&&!r2BucketFrom_.contains(p["id"].toString()))r2BucketFrom_[p["id"].toString()]=s["accountId"].toString()+"|"+s["jurisdiction"].toString("default");r2Jurisdiction_->setCurrentIndex(qMax(0,r2Jurisdiction_->findData(s["jurisdiction"].toString("default"))));allowControl(acl_,s3);allowControl(addressing_,s3);acl_->setCurrentIndex(acl_->findData(s["aclMode"].toString()));addressing_->setCurrentIndex(addressing_->findData(s["addressing"].toString()));allowControl(providerJson_,!storage);providerJson_->setPlainText(proton||b2||r2||http?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentIndex(credentialMode_->findData(ref["mode"].toString()));reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();showS3SettingsProblems();loading_=previous;updateProtonAccountDisplay();updateSetupButton();refreshDestinationList();refreshCredentialHint();}
+QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){auto value=connectionValue(it.key(),inputText(it.value()));s[it.key()]=value;}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}const auto linkMode=b2LinkMode_->currentData().toString();if(s.contains("linkMode")||linkMode!="public")s["linkMode"]=linkMode;if(s.contains("linkValidityDays")||linkMode!="public"||b2LinkDays_->value()!=7)s["linkValidityDays"]=b2LinkDays_->value();s["aclMode"]=acl_->currentData().toString();s["addressing"]=addressing_->currentData().toString();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->hasAcceptableInput()?QJsonValue(protonExpiration_->value()):QJsonValue(protonExpiration_->text());s["requestTimeoutMs"]=protonTimeout_->hasAcceptableInput()?QJsonValue(qRound64(protonTimeout_->value()*1000)):QJsonValue(protonTimeout_->text());}else if(p["provider"]==r2::providerId){
+  // #1678: what the R2 form shows; the endpoint, region and addressing come from r2::s3Settings().
+  QJsonObject r2;for(const auto& key:r2::settingKeys())if(s3_.contains(key)){auto* field=s3_.value(key);if(key.endsWith("Ms")||key.startsWith("lowSpeed"))r2[key]=connectionValue(key,inputText(field));else if(key=="publicUrlBase"&&field->text().isEmpty())r2[key]=QJsonValue::Null;else r2[key]=field->text();}
+  r2["accountId"]=r2AccountId_->text();r2["jurisdiction"]=r2Jurisdiction_->currentData().toString();r2["linkMode"]=b2LinkMode_->currentData().toString();r2["linkValidityDays"]=b2LinkDays_->value();s=r2;
+ }else if(p["provider"]=="backblaze-b2"){for(const auto& key:b2SharedKeys()){auto* field=s3_.value(key);if(key.endsWith("Ms"))s[key]=ByteSize::fromDecimal(inputText(field),1000);else if(key=="publicUrlBase"&&field->text().isEmpty())s[key]=QJsonValue::Null;else s[key]=field->text();}s["linkMode"]=b2LinkMode_->currentData().toString();s["linkValidityDays"]=b2LinkDays_->value();if(s["linkMode"]=="authorized")s["publicUrlBase"]=QJsonValue::Null;}else if(p["provider"]==CustomUploaderPanel::provider()){s=uploader_->settings();}else {auto parsed=QJsonDocument::fromJson(providerJson_->toPlainText().toUtf8());if(parsed.isObject())s=parsed.object();else s={{"invalidJson",true}};}p["settings"]=s;p["credentials"]=QJsonObject{{"mode",credentialMode_->currentData().toString()},{"reference",credentialMode_->currentData().toString()=="session"?QJsonValue(QJsonValue::Null):QJsonValue(reference_->text())}};return p;}
 void SettingsWindow::storeProfile(){
  auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;
  while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
@@ -1702,6 +1803,7 @@ QJsonValue withValue(const QJsonValue& value,const QStringList& parts,int index,
 }
 // A new destination's settings and credentials for a service.
 QJsonObject destinationDefaults(const QString& provider,const QString& id){
+ if(provider==r2::providerId)return {{"settings",r2::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/r2/"+id}}}};
  if(provider=="proton-drive")return {{"settings",ProtonProvider::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/proton/"+QUuid::createUuid().toString(QUuid::Id128)}}}};
  if(provider=="backblaze-b2")return {{"settings",b2::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/b2/"+id}}}};
  if(provider==CustomUploaderPanel::provider())return {{"settings",CustomUploaderPanel::defaultSettings()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/http/"+id}}}};
@@ -1710,8 +1812,9 @@ QJsonObject destinationDefaults(const QString& provider,const QString& id){
 bool within(const QString& path,const QString& ancestor){return ancestor.isEmpty()||path==ancestor||path.startsWith(ancestor+"/");}
 // Fields that save only together. #1676: Region and Endpoint, so a fix to one is never refused
 // because of the other's saved value and then left looking saved.
-const QList<QStringList>& fieldGroups(){static const QList<QStringList> groups{{"settings/endpoint","settings/region"}};return groups;}
-QStringList fieldGroup(const QString& path){for(const auto& group:fieldGroups())if(group.contains(path))return group;return {path};}
+// Cloudflare R2's group belongs to R2 destinations alone (#1699): an S3 or B2 Bucket stays a field of its own.
+QList<QStringList> fieldGroups(const QString& provider){QList<QStringList> groups{{"settings/endpoint","settings/region"}};if(provider==r2::providerId)groups.append(r2Group());return groups;}
+QStringList fieldGroup(const QString& path,const QString& provider){for(const auto& group:fieldGroups(provider))if(group.contains(path))return group;return {path};}
 }
 QStringList SettingsWindow::profileOrder()const{QStringList ids;for(const auto& p:draft_["profiles"].toArray())ids.append(p.toObject()["id"].toString());return ids;}
 void SettingsWindow::applyProfileOrder(const QStringList& order){
@@ -2128,10 +2231,17 @@ bool SettingsWindow::setsInheritance(const SaveOperation& op){
 bool SettingsWindow::waitsForDestination(const SaveOperation& op,const QJsonObject& accepted)const{
  // A removal whose add's answer was lost waits until the file has been read again.
  if(op.kind==SaveOperation::Kind::Remove)return op.reconciling;
+ // A Cloudflare R2 destination is added, or switched to, only once Account ID, Jurisdiction and
+ // Bucket are valid (#1699): nothing the resident must refuse is sent, and its routes wait with it.
+ const auto held=[this](const SaveOperation& fields){return fields.kind==SaveOperation::Kind::Fields&&fields.profile["provider"]==r2::providerId&&(fields.adding||fields.values.contains(QString()))&&!localProblem(fields.profile,r2Group()).isEmpty();};
+ if(op.kind==SaveOperation::Kind::Fields)return held(op);
  if(op.kind!=SaveOperation::Kind::Global)return false;
  // An action set to inherit the default output waits while that default output is still queued.
  if(!accepted.value("captureDefaults").isObject()&&setsInheritance(op)&&std::any_of(saveQueue_.cbegin(),saveQueue_.cend(),[](const SaveOperation& other){return other.key=="routing:/captureDefaults";}))return true;
  QSet<QString> ids;for(const auto& value:accepted["profiles"].toArray())ids.insert(value.toObject()["id"].toString());
+ // A route to a destination whose switch to Cloudflare R2 waits, waits too: captures never follow
+ // it to the service it is leaving.
+ for(const auto& queuedOp:std::as_const(saveQueue_))if(held(queuedOp))ids.remove(queuedOp.id);
  for(auto it=op.values.cbegin();it!=op.values.cend();++it){
   QString id;if(it.key()=="/captureDefaults")id=it.value().toObject()["profileId"].toString();else if(it.key().startsWith("/actions/")||it.key().startsWith("/captureDefaults/")){if(it.key().endsWith("/profileId"))id=it.value().toString();else if(it.value().isObject())id=it.value().toObject()["profileId"].toString();}
   if(!id.isEmpty()&&!ids.contains(id))return true;
@@ -2193,19 +2303,28 @@ void SettingsWindow::renameAddedDestination(const QString& from,const QString& t
  QMap<QString,QString> keys;for(auto it=notSaved_.cbegin();it!=notSaved_.cend();++it)keys.insert(it.key().startsWith(from+"|")?to+it.key().mid(from.size()):it.key(),it.value());notSaved_=keys;
  refreshDestinationList();
 }
-void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& path){
+void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& edited){
  if(profileIndex_<0)return;
  if(providerType_->currentData()=="proton-drive")updateProtonAccountDisplay();
  const auto profile=editedProfile();const auto id=profile["id"].toString();if(id.isEmpty())return;
+ // A destination switched to another service here isn't saved field by field: until its new service
+ // is saved, each edit sends all of it, so a field never lands in the old service's settings.
+ // Only a service changed in this window counts: one another writer changed is never undone from here.
+ QString path=edited;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==id){if(!serviceSwitched_.contains(id))continue;
+  // The switch is done once the file has the service it was switched to. Only an edit of that service
+  // sends all of it; a form rebuilt to another service drops the mark (#1699).
+  if(value.toObject()["provider"]==serviceSwitched_.value(id)||profile["provider"]!=serviceSwitched_.value(id))serviceSwitched_.remove(id);else path.clear();}
  const QString key="destination:"+id;
  SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key=key;op.id=id;op.adding=!acceptedHas(id);
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
+ // Groups held back for another service don't hold back this one's fields (#1699).
+ if(op.profile["provider"]!=profile["provider"]){op.stripped.clear();op.probing.clear();}
  op.profile=profile;
- const auto group=fieldGroup(path);
+ const auto group=fieldGroup(path,profile["provider"].toString());
  // A group this edit contains that can't be saved as typed keeps its accepted value: it is never
  // sent, it never blocks another destination, and it is named until it is fixed (#1701).
  bool blocked=false;
- for(const auto& checked:fieldGroups()){
+ for(const auto& checked:fieldGroups(profile["provider"].toString())){
   if(!std::any_of(checked.cbegin(),checked.cend(),[&](const QString& field){return within(field,path);}))continue;
   const auto groupKey=id+"|"+checked.join('+');
   if(const auto problem=localProblem(profile,checked);!problem.isEmpty()){notSaved_[groupKey]=problem;if(checked==group)blocked=true;}
@@ -2233,7 +2352,7 @@ void SettingsWindow::queueWholeDestination(const QString& id,QWidget* control){
  for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==key)op=queuedOp;
  op.profile=profile;op.values.clear();op.controls.clear();op.probing.clear();op.values[QString()]=profile;op.controls[QString()]=control;
  notSaved_.remove(id+"|*");
- for(const auto& checked:fieldGroups()){const auto groupKey=id+"|"+checked.join('+');if(const auto problem=localProblem(profile,checked);!problem.isEmpty())notSaved_[groupKey]=problem;else notSaved_.remove(groupKey);}
+ for(const auto& checked:fieldGroups(profile["provider"].toString())){const auto groupKey=id+"|"+checked.join('+');if(const auto problem=localProblem(profile,checked);!problem.isEmpty())notSaved_[groupKey]=problem;else notSaved_.remove(groupKey);}
  enqueue(std::move(op));dirty();drainSaves();
 }
 // The destination and its queued edits go. The routes the file still has on it fall back when the
@@ -2342,6 +2461,10 @@ void SettingsWindow::queueGlobal(const QString& key,const QStringList& paths,QWi
  dirty();drainSaves();
 }
 QString SettingsWindow::localProblem(const QJsonObject& profile,const QStringList& group)const{
+ // Cloudflare R2's group is sent only when all three are valid; until then it keeps its saved values.
+ if(profile["provider"]==r2::providerId&&group==r2Group()){
+  for(const auto* field:{"accountId","jurisdiction","bucket"})if(const auto problem=r2::problem(profile["settings"].toObject(),field);!problem.isEmpty())return problem;
+  return {};}
  if(profile["provider"]!="s3"||!group.contains("settings/region"))return {};
  const auto settings=profile["settings"].toObject();const auto endpoint=settings["endpoint"].toString();
  if(!s3CloudflareR2Endpoint(endpoint))if(const auto problem=s3RegionProblem(settings["region"].toString());!problem.isEmpty())return problem;
@@ -2381,7 +2504,7 @@ QJsonObject SettingsWindow::applyOperation(QJsonObject doc,const SaveOperation& 
    profiles.insert(position<0?(at<0?int(profiles.size()):0):position,profile);
   }else{
    QJsonValue profile=profiles[index];auto values=sendableValues(op,doc,nullptr);
-   if(!op.probing.isEmpty())for(auto it=values.begin();it!=values.end();)if(fieldGroup(it.key()).join('+')!=op.probing.first())it=values.erase(it);else ++it;
+   if(!op.probing.isEmpty())for(auto it=values.begin();it!=values.end();)if(fieldGroup(it.key(),op.profile["provider"].toString()).join('+')!=op.probing.first())it=values.erase(it);else ++it;
    for(auto it=values.cbegin();it!=values.cend();++it)profile=withValue(profile,pathParts(it.key()),0,it.value());
    auto object=profile.toObject();object["id"]=op.id;profiles[index]=object;
   }
@@ -2553,7 +2676,7 @@ void SettingsWindow::queueDraftDifferences(const QJsonObject& base){
    SaveOperation op;op.kind=SaveOperation::Kind::Fields;op.key="destination:"+id;op.id=id;
    for(const auto& queuedOp:std::as_const(saveQueue_))if(queuedOp.key==op.key)op=queuedOp;
    SaveOperation edit;edit.kind=op.kind;edit.profile=profile;
-   for(auto path:std::as_const(changed)){path=path.mid(1);for(const auto& field:fieldGroup(path))if(!notSaved_.contains(id+"|"+fieldGroup(path).join('+')))edit.values[field]=valueAt(profile,pathParts(field));}
+   for(auto path:std::as_const(changed)){path=path.mid(1);for(const auto& field:fieldGroup(path,profile["provider"].toString()))if(!notSaved_.contains(id+"|"+fieldGroup(path,profile["provider"].toString()).join('+')))edit.values[field]=valueAt(profile,pathParts(field));}
    op=merged(std::move(op),edit);if(!op.values.isEmpty())enqueue(std::move(op));
   }
   for(const auto& id:std::as_const(savedOrder))if(!drafted.contains(id))queueRemoval(id);
@@ -2617,7 +2740,9 @@ void SettingsWindow::drainSaves(){
   settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),op,doc](Result result){if(g)g->saveAnswered(op,result,doc);});
   return;
  }
- settleDirty();if(std::exchange(answered_,false))showUnsavedDestinations();emit viewStateChanged();
+ // A switch the resident accepted is done: a later service change elsewhere is never undone from here.
+ for(auto it=serviceSwitched_.begin();it!=serviceSwitched_.end();){bool done=true;for(const auto& value:acceptedDocument()["profiles"].toArray())if(value.toObject()["id"]==it.key()&&value.toObject()["provider"]!=it.value())done=false;if(done)it=serviceSwitched_.erase(it);else ++it;}
+ settleDirty();updateR2Feedback();if(std::exchange(answered_,false))showUnsavedDestinations();emit viewStateChanged();
 }
 // What an operation's end, accepted or with nothing to send, settles beyond the accepted document.
 void SettingsWindow::operationSettled(const SaveOperation& op){
@@ -2630,6 +2755,9 @@ void SettingsWindow::operationSettled(const SaveOperation& op){
 // update the destination list's state and the stored-credential hint.
 void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJsonObject& sent){
  saving_=false;sending_={};answered_=true;
+ // A switch the resident accepted is done before anything else is sent: a later service change
+ // made elsewhere is never undone from here (#1699).
+ if(result&&op.kind==SaveOperation::Kind::Fields)for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==op.id&&serviceSwitched_.contains(op.id)&&value.toObject()["provider"]==serviceSwitched_.value(op.id))serviceSwitched_.remove(op.id);
  if(!result){
   const auto& error=result.error;const bool refused=error.code=="config_invalid"||error.code=="s3_settings_invalid"||error.code.startsWith("http_");
   // An add removed here while it was in flight, and not saved: nothing of it is kept, and the
@@ -2657,7 +2785,7 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
   // Routes to it that the form holds and that waited for nothing go now.
   if(op.adding)queueRouting(nullptr,op.id);
   // One group of a refusal that named no field went through; the next is sent on its own.
-  if(!op.probing.isEmpty()){const auto group=op.probing.takeFirst();op.adding=false;for(auto it=op.values.begin();it!=op.values.end();)if(fieldGroup(it.key()).join('+')==group){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;if(!op.values.isEmpty())requeue(op);}
+  if(!op.probing.isEmpty()){const auto group=op.probing.takeFirst();op.adding=false;for(auto it=op.values.begin();it!=op.values.end();)if(fieldGroup(it.key(),op.profile["provider"].toString()).join('+')==group){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;if(!op.values.isEmpty())requeue(op);}
  }
  autosaveBlocked_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();
  operationSettled(op);
@@ -2686,7 +2814,7 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
   bool report=false;QString refusedGroup;
   if(!path.isEmpty()){
    // Only the refused group stops, unless it was edited again since; the rest is sent again.
-   refusedGroup=fieldGroup(path).join('+');
+   refusedGroup=fieldGroup(path,op.profile["provider"].toString()).join('+');
    // While groups go one at a time, a refusal about a group this operation is itself repairing
    // (a saved Region today's rules refuse, while a fix for it waits its turn) sends that repair first.
    if(!op.probing.isEmpty()&&op.probing.first()!=refusedGroup&&op.probing.contains(refusedGroup)&&!op.promoted.contains(refusedGroup)){op.promoted.append(refusedGroup);op.probing.removeAll(refusedGroup);op.probing.prepend(refusedGroup);requeue(std::move(op));return;}
@@ -2697,9 +2825,9 @@ void SettingsWindow::saveRefused(SaveOperation op,const Error& error,const QJson
    if(applyOperation(acceptedDocument(),next)==sent){notSaved_[id+"|*"]=error.message;report=true;saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[&](const SaveOperation& queuedOp){return queuedOp.key==op.key;}),saveQueue_.end());}
    else requeue(std::move(op));
   }else{
-   QStringList fresh;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key()).join('+');!group.isEmpty()&&!edited(group)&&!fresh.contains(group))fresh.append(group);
+   QStringList fresh;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key(),op.profile["provider"].toString()).join('+');!group.isEmpty()&&!edited(group)&&!fresh.contains(group))fresh.append(group);
    const bool whole=op.values.contains(QString())||!acceptedHas(op.id);
-   QStringList sentGroups;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key()).join('+');!sentGroups.contains(group))sentGroups.append(group);
+   QStringList sentGroups;for(auto it=op.values.cbegin();it!=op.values.cend();++it)if(const auto group=fieldGroup(it.key(),op.profile["provider"].toString()).join('+');!sentGroups.contains(group))sentGroups.append(group);
    if(!whole&&newer&&fresh.size()<sentGroups.size()){
     // What it refused may be a value edited again since: the newer one goes with the rest, and
     // nothing is called unsaved yet.
@@ -2838,7 +2966,7 @@ void SettingsWindow::retryAfterConflict(){
    else if(op.kind==SaveOperation::Kind::Fields&&before.contains(op.id)){
     // A group, such as Region with Endpoint, goes whole if any of it changed.
     const auto unchanged=[&](const QString& path){return !op.values.contains(path)||valueAt(before.value(op.id),pathParts(path))==op.values.value(path);};
-    for(auto it=op.values.begin();it!=op.values.end();){const auto group=fieldGroup(it.key());const bool drop=!it.key().isEmpty()&&std::all_of(group.cbegin(),group.cend(),unchanged);if(drop){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}}
+    for(auto it=op.values.begin();it!=op.values.end();){const auto group=fieldGroup(it.key(),op.profile["provider"].toString());const bool drop=!it.key().isEmpty()&&std::all_of(group.cbegin(),group.cend(),unchanged);if(drop){op.controls.remove(it.key());it=op.values.erase(it);}else ++it;}}
   }
   saveQueue_.erase(std::remove_if(saveQueue_.begin(),saveQueue_.end(),[](const SaveOperation& op){return op.kind==SaveOperation::Kind::Global&&op.values.isEmpty();}),saveQueue_.end());}
  // A destination added here and never saved, with nothing queued for it, stays: it goes again as
@@ -2886,14 +3014,48 @@ void SettingsWindow::endAppearancePreview(){
  if(!std::exchange(appearancePreviewed_,false))return;
  emit appearancePreview({});
 }
+QWidget* SettingsWindow::settingsField(const QString& field)const{
+ if(field=="accountId")return r2AccountId_;
+ if(field=="jurisdiction")return r2Jurisdiction_;
+ return s3_.value(field);
+}
+Error SettingsWindow::moveToCloudflareR2(){
+ const Error unavailable{"control_unavailable","Move to Cloudflare R2 isn't offered for this destination.",{}};
+ if(loading_||providerType_->currentData()!="s3")return unavailable;
+ flushTyping();storeProfile();
+ auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return unavailable;
+ auto profile=profiles[profileIndex_].toObject();
+ const auto settings=r2::fromS3Settings(profile["settings"].toObject());
+ if(!settings){status(unavailable);return unavailable;}
+ // What Cloudflare R2 would refuse, such as a Link domain it can't use, is said first and nothing
+ // moves: a refused move would otherwise save without that value while the form still shows it.
+ if(const auto invalid=r2::validate(*settings)){const Error error{"r2_move_refused","Before moving to Cloudflare R2: "+invalid.message,invalid.details};status(error);return error;}
+ // In place: the same ID, so routes, shortcuts and the default still name it, and the same
+ // credential reference, so its stored keys stay with it.
+ profile["provider"]=r2::providerId;profile["settings"]=*settings;
+ while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
+ profileEditors_[profileIndex_]=QJsonValue::Null;
+ profiles[profileIndex_]=profile;draft_["profiles"]=profiles;
+ // One Fields operation on the existing ID: the service and its settings change together.
+ serviceSwitched_[profile["id"].toString()]=r2::providerId;
+ // The bucket now shown came with the moved account and jurisdiction (#1699).
+ r2BucketFrom_[profile["id"].toString()]=(*settings)["accountId"].toString()+"|"+(*settings)["jurisdiction"].toString();
+ for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(profile["id"].toString()+"|"))it=notSaved_.erase(it);else ++it;
+ loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");return {};
+}
+
 void SettingsWindow::refreshCredentialHint(){
  if(!credentialHint_)return;
  findControl<QPushButton*>("unlockCredentials")->hide();credentialHint_->clear();credentialForm_->setRowVisible(PreferenceRows::rowFor(credentialHint_),false);access_->setPlaceholderText({});secret_->setPlaceholderText({});token_->setPlaceholderText("Paste a session token (optional)");
  uploader_->setStored({},false);
- if(!QStringList{"s3","backblaze-b2",CustomUploaderPanel::provider()}.contains(providerType_->currentData().toString())||initialProfile_||profileIndex_<0)return;
+ if(!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(providerType_->currentData().toString())||initialProfile_||profileIndex_<0)return;
  const auto id=profileId_->text();const auto revision=settings_.revision();
- settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision](Error error,QJsonObject hint){
-  if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",CustomUploaderPanel::provider()}.contains(g->providerType_->currentData().toString()))return;
+ // The saved credentials are this destination's only while it is saved as the service shown: a
+ // switch not saved yet (such as S3 to Cloudflare R2) shows no other service's key (#1699).
+ const auto savedAs=[this](const QString& profileId){for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId)return value.toObject()["provider"].toString();return QString();};
+ if(savedAs(id)!=providerType_->currentData().toString())return;
+ settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision,savedAs](Error error,QJsonObject hint){
+  if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(g->providerType_->currentData().toString())||savedAs(id)!=g->providerType_->currentData().toString())return;
   if(error)return;
   // #1361: a custom uploader stores named values. The hint says which are loaded, never a value.
   if(g->providerType_->currentData()==CustomUploaderPanel::provider()){
@@ -2935,10 +3097,10 @@ QJsonObject SettingsWindow::profileEditorState()const{
  QJsonObject s3{{"linkMode",b2LinkMode_->currentData().toString()},{"linkValidityDays",QString::number(b2LinkDays_->value())}};for(auto it=s3_.begin();it!=s3_.end();++it)s3[it.key()]=it.value()->text();
  QJsonArray folders;for(int i=0;i<protonFolder_->count();++i)folders.append(QJsonObject{{"uid",protonFolder_->itemData(i).toString()},{"name",protonFolder_->itemData(i,protonFolderNameRole).toString()},{"label",protonFolder_->itemText(i)}});
  const QJsonObject proton{{"accountRootUid",protonAccountUid_},{"accountEmail",protonAccountEmail_},{"folders",folders},{"folderIndex",protonFolder_->currentIndex()},{"share",protonShare_->isChecked()},{"expiration",protonExpiration_->findChild<QLineEdit*>()->text()},{"timeout",protonTimeout_->findChild<QLineEdit*>()->text()}};
- return {{"proton",proton},{"id",profileId_->text()},{"label",profileLabel_->text()},{"credentialMode",credentialMode_->currentData().toString()},{"reference",reference_->text()},{"acl",acl_->currentData().toString()},{"addressing",addressing_->currentData().toString()},{"s3",s3},{"providerJson",providerJson_->toPlainText()}};
+ return {{"proton",proton},{"r2",QJsonObject{{"accountId",r2AccountId_->text()},{"jurisdiction",r2Jurisdiction_->currentData().toString()}}},{"id",profileId_->text()},{"label",profileLabel_->text()},{"credentialMode",credentialMode_->currentData().toString()},{"reference",reference_->text()},{"acl",acl_->currentData().toString()},{"addressing",addressing_->currentData().toString()},{"s3",s3},{"providerJson",providerJson_->toPlainText()}};
 }
 void SettingsWindow::applyProfileEditor(const QJsonObject& state){
- profileId_->setText(state["id"].toString());profileLabel_->setText(state["label"].toString());credentialMode_->setCurrentIndex(credentialMode_->findData(state["credentialMode"].toString()));reference_->setText(state["reference"].toString());acl_->setCurrentIndex(acl_->findData(state["acl"].toString()));addressing_->setCurrentIndex(addressing_->findData(state["addressing"].toString()));const auto s3=state["s3"].toObject();if(s3.contains("linkMode"))b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s3["linkMode"].toString())));if(s3.contains("linkValidityDays"))b2LinkDays_->setValue(s3["linkValidityDays"].toString().toInt());for(auto it=s3_.begin();it!=s3_.end();++it)it.value()->setText(s3[it.key()].toString());s3_["region"]->setProperty("previousRegion",s3_["region"]->text());providerJson_->setPlainText(state["providerJson"].toString());
+ profileId_->setText(state["id"].toString());profileLabel_->setText(state["label"].toString());credentialMode_->setCurrentIndex(credentialMode_->findData(state["credentialMode"].toString()));reference_->setText(state["reference"].toString());acl_->setCurrentIndex(acl_->findData(state["acl"].toString()));addressing_->setCurrentIndex(addressing_->findData(state["addressing"].toString()));const auto s3=state["s3"].toObject();if(s3.contains("linkMode"))b2LinkMode_->setCurrentIndex(qMax(0,b2LinkMode_->findData(s3["linkMode"].toString())));if(s3.contains("linkValidityDays"))b2LinkDays_->setValue(s3["linkValidityDays"].toString().toInt());for(auto it=s3_.begin();it!=s3_.end();++it)it.value()->setText(s3[it.key()].toString());s3_["region"]->setProperty("previousRegion",s3_["region"]->text());if(state.contains("r2")){const auto r2=state["r2"].toObject();r2AccountId_->setText(r2["accountId"].toString());r2Jurisdiction_->setCurrentIndex(qMax(0,r2Jurisdiction_->findData(r2["jurisdiction"].toString())));}providerJson_->setPlainText(state["providerJson"].toString());
  if(state.contains("proton")){
   const auto proton=state["proton"].toObject();protonAccountUid_=proton["accountRootUid"].toString();protonAccountEmail_=proton["accountEmail"].toString();protonFolder_->clear();
   const auto folders=proton["folders"].toArray();const int selected=proton["folderIndex"].toInt(-1);int selectedIndex=-1;
@@ -2988,7 +3150,10 @@ void SettingsWindow::switchProvider(){
  auto editor=retained["editor"].toObject();
  if(!editor.isEmpty()){editor["id"]=profile["id"];editor["label"]=profile["label"];}
  editor["providers"]=providers;profileEditors_[profileIndex_]=editor;
- profiles[profileIndex_]=profile;draft_["profiles"]=profiles;loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
+ profiles[profileIndex_]=profile;draft_["profiles"]=profiles;serviceSwitched_[profile["id"].toString()]=selected;
+ // What wasn't saved belonged to the old service's fields: the new service's are checked afresh.
+ for(auto it=notSaved_.begin();it!=notSaved_.end();)if(it.key().startsWith(profile["id"].toString()+"|"))it=notSaved_.erase(it);else ++it;
+ loadProfile();dirty();queueEdit(providerType_,"/profiles/{profile}");
 }
 QJsonObject SettingsWindow::retainedProfileEditor()const{
  auto editor=profileEditorState();
@@ -3007,15 +3172,17 @@ void SettingsWindow::toggleCredentialSecret(bool shown){
  if(!shown){resetCredentialSecretDisplay();return;}
  showSecret_->setText("Hide");showSecret_->setAccessibleName("Hide "+secret_->accessibleName().toLower());
  if(!secret_->text().isEmpty()){secret_->setEchoMode(QLineEdit::Normal);return;}
- if(providerType_->currentData()!="s3"||selectedDestinationChanged()||saving_||conflict_||initialProfile_){
+ // Amazon S3 and Cloudflare R2 (#1699) keep a secret key the resident can show.
+ const auto reveals=[this]{return providerType_->currentData()=="s3"||providerType_->currentData()==r2::providerId;};
+ if(!reveals()||selectedDestinationChanged()||saving_||conflict_||initialProfile_){
   resetCredentialSecretDisplay();status({"save_first","Save valid destination settings before showing credentials",{}});return;
  }
  const auto serial=++secretRevealSerial_;const auto id=profileId_->text(),revision=settings_.revision();
  secret_->setReadOnly(true);
  settings_.request("setup.revealCredentialSecret",{{"profileId",id},{"expectedRevision",revision}},this,
-  [this,serial,id,revision](Error error,QJsonObject value){
+  [this,serial,id,revision,reveals](Error error,QJsonObject value){
    if(serial!=secretRevealSerial_)return;
-   if(profileId_->text()!=id||settings_.revision()!=revision||providerType_->currentData()!="s3"||selectedDestinationChanged()){
+   if(profileId_->text()!=id||settings_.revision()!=revision||!reveals()||selectedDestinationChanged()){
     resetCredentialSecretDisplay();return;
    }
    if(error){resetCredentialSecretDisplay();status(error);return;}
@@ -3238,6 +3405,75 @@ void SettingsWindow::uploaderCommand(const QJsonObject& params,std::function<voi
   button->click();answer({});return;
  }
  reply({"invalid_request","Unknown custom uploader action.",{}},{});
+}
+void SettingsWindow::r2Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply){
+ const auto action=params["action"].toString();
+ const auto shown=[this](QWidget* widget){return widget&&widget->isVisibleTo(destinationPage_);};
+ // A person can only act on a control they can see and use; neither can an agent.
+ const auto usable=[this,&shown](QWidget* widget){return shown(widget)&&widget->isEnabled();};
+ const Error unavailable{"control_unavailable","That control isn't shown or can't be used for this destination right now.",{}};
+ // Destinations as a person sees it: open, and not behind a dialog that blocks its controls.
+ if(!destinationPage_||!destinationPage_->isVisible()){reply({"ui_view_closed","Open Destinations before driving it.",{}},{});return;}
+ if(QApplication::activeModalWidget()){reply(unavailable,{});return;}
+ if(action=="add"){
+  // Add destination → Cloudflare R2, named as the dialog would be.
+  // The Add button as a person finds it: shown and usable, or the agent can't use it either.
+  if(!usable(addDestination_)){reply(unavailable,{});return;}
+  const auto count=profile_->count();addS3Profile("Cloudflare R2",params["label"].toString(),r2::providerId);
+  if(profile_->count()==count){reply({"profile_limit","The destination could not be added.",{}},{});return;}
+  providerType_->setCurrentIndex(providerType_->findData(r2::providerId));queueEdit(profileLabel_);
+ }else{
+  // Another destination is picked in the destination list, as a person picks it: only while the list
+  // is shown and usable (#1699).
+  const auto requested=params["profileId"].toString();
+  if(!requested.isEmpty()&&requested!=profileId_->text()){const int index=profile_->findData(requested);if(index<0){reply({"profile_not_found","No destination has this ID.",{}},{});return;}if(!usable(destinationList_)){reply(unavailable,{});return;}profile_->setCurrentIndex(index);}
+ }
+ const auto provider=providerType_->currentData().toString();
+ // Move to Cloudflare R2 that isn't offered for the selected destination, whatever its service, is an
+ // unavailable control.
+ if(action=="move"){auto* move=findControl<QPushButton*>("moveToCloudflareR2");if(profileIndex_<0||provider!="s3"||!usable(move)){reply(unavailable,{});return;}if(const auto error=moveToCloudflareR2()){reply(error,{});return;}}
+ // After a Move the destination is Cloudflare R2: what is selected now decides the rest.
+ if(const auto now=providerType_->currentData().toString();profileIndex_<0||(now!=r2::providerId&&!(now=="s3"&&action=="inspect"))){reply({"r2_not_selected","Select a Cloudflare R2 destination in Destinations first, or name it with profileId.",{}},{});return;}
+ // What a person does: type a value and leave the field, pick an item, step a number or open a section.
+ if(action=="set"){
+  const auto field=params["field"].toString(),value=params["value"].toString();
+  auto* advanced=findControl<QToolButton*>("advancedSettings");
+  if(field=="advanced"){if(!usable(advanced)){reply(unavailable,{});return;}if(advanced->isChecked()!=(value=="open"))advanced->click();}
+  else if(field=="jurisdiction"||field=="linkMode"){
+   auto* box=field=="jurisdiction"?r2Jurisdiction_:b2LinkMode_;const int index=box->findData(value);
+   if(index<0){reply({"invalid_request",field=="jurisdiction"?QStringLiteral("Jurisdiction is default, eu or fedramp."):QStringLiteral("Who can open files is public or presigned."),{}},{});return;}
+   if(!usable(box)){reply(unavailable,{});return;}box->setCurrentIndex(index);emit box->activated(index);
+  }else if(field=="linkValidityDays"){
+   bool number=false;const int days=value.toInt(&number);
+   if(!number||days<b2LinkDays_->minimum()||days>b2LinkDays_->maximum()){reply({"invalid_request","Links last 1–7 days.",{}},{});return;}
+   if(!usable(b2LinkDays_)){reply(unavailable,{});return;}b2LinkDays_->setValue(days);emit b2LinkDays_->editingFinished();
+  }else{
+   auto* edit=field=="accountId"?r2AccountId_:s3_.value(field);
+   if(!usable(edit)){reply(unavailable,{});return;}
+   edit->setFocus();edit->setText(value);edit->setModified(true);emit edit->editingFinished();
+  }
+ }
+ // A paste into Account ID, as Ctrl+V does: marked as a paste, so the S3 API address is read and the
+ // three fields are queued as one group.
+ if(action=="paste"){if(!usable(r2AccountId_)){reply(unavailable,{});return;}const QScopedValueRollback paste(pasting_,QPointer<QWidget>(r2AccountId_));r2AccountId_->setText(params["text"].toString());}
+ const auto message=[this,&shown](QWidget* control){auto* label=errors_.value(control);return shown(label)?label->text():QString();};
+ auto* warning=findControl<QLabel*>("r2LinkDomainWarning");auto* hint=findControl<QLabel*>("s3BucketHint");
+ const bool r2=providerType_->currentData()==r2::providerId;
+ const auto settings=editedProfile()["settings"].toObject();
+ QJsonObject state{{"profileId",profileId_->text()},{"label",profileLabel_->text()},{"provider",providerType_->currentData().toString()},
+  {"saved",!selectedDestinationChanged()&&!savePending()},{"moveAvailable",usable(findControl<QPushButton*>("moveToCloudflareR2"))}};
+ if(r2){
+  for(const auto& key:QStringList{"accountId","jurisdiction","bucket","objectPrefix","linkMode","linkValidityDays","publicUrlBase"})state[key]=settings[key];
+  // Advanced connection settings as shown, in seconds and KB/s.
+  for(const auto& key:QStringList{"connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"})state[key]=s3_[key]->text();
+  state["advancedOpen"]=findControl<QToolButton*>("advancedSettings")->isChecked();
+  // The endpoint requests go to, as Advanced connection settings shows it, and each field's message.
+  state["endpoint"]=r2::endpoint(r2AccountId_->text(),r2Jurisdiction_->currentData().toString());
+  state["bucketHint"]=hint?hint->text():QString();state["linkDomainWarning"]=shown(warning)?QJsonValue(warning->text()):QJsonValue();
+  state["unitStatus"]=shown(r2UnitStatus_)?QJsonValue(r2UnitStatus_->text()):QJsonValue();
+  state["errors"]=QJsonObject{{"accountId",message(r2AccountId_)},{"jurisdiction",message(r2Jurisdiction_)},{"bucket",message(s3_["bucket"])},{"publicUrlBase",message(s3_["publicUrlBase"])}};
+ }
+ reply({},state);
 }
 void SettingsWindow::allowControl(QWidget* control,bool allowed){control->setProperty("providerEnabled",allowed);control->setEnabled(allowed&&!setupBusy_);}
 void SettingsWindow::updateSetupButton(){

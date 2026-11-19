@@ -25,7 +25,7 @@ namespace {
 const QStringList& nameKeys() {static const QStringList value{"name","candidate","fileName","folderName","label","notificationText"};return value;}
 const QStringList& urlKeys() {static const QStringList value{"url","directUrl","publicUrl","publicUrlBase","link","shareUrl","requestUrl"};return value;}
 const QStringList& objectKeys() {static const QStringList value{"key","objectKey","objectPrefix"};return value;}
-const QStringList& idKeys() {static const QStringList value{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid"};return value;}
+const QStringList& idKeys() {static const QStringList value{"accountRootUid","folderUid","shareUid","linkUid","volumeId","nodeUid","accountId"};return value;}
 const QStringList& quickRedactKeys() {static const QStringList value{"quickRedactTerms","quickRedactPatterns"};return value;}
 QString iso(const QDateTime& time) {return time.toUTC().toString(Qt::ISODateWithMs);}
 QByteArray compact(const QJsonValue& value) {return value.isArray()?QJsonDocument(value.toArray()).toJson(QJsonDocument::Indented):QJsonDocument(value.toObject()).toJson(QJsonDocument::Indented);}
@@ -240,7 +240,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
  const auto profile=snapshot.profiles.value(profileId);
  if(profile.isEmpty()){done({"profile_not_found","No destination has this ID",{{"profileId",profileId}}},{});return;}
  const auto provider=profile["provider"].toString();const bool proton=provider=="proton-drive";
- const auto settings=profile["settings"].toObject();const bool authorizedB2=(provider=="backblaze-b2"&&settings["linkMode"]=="authorized")||(provider=="s3"&&settings["linkMode"]=="presigned");
+ const auto settings=profile["settings"].toObject();const bool authorizedB2=(provider=="backblaze-b2"&&settings["linkMode"]=="authorized")||((provider=="s3"||provider=="cloudflare-r2")&&settings["linkMode"]=="presigned");
  QJsonObject target{{"profileId",profileId},{"label",profile["label"].toString()},{"provider",provider},{"publicLink",true},
   {"warning",proton?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days.").arg(OperationService::diagnosticsShareDays)
    :authorizedB2?QStringLiteral("Anyone with the link can download this package until the link expires in %1 days. Delete it from History when it is no longer needed.").arg(settings["linkValidityDays"].toInt(7))
@@ -392,7 +392,8 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   redactor.literal("bucket",settings["bucket"].toString());redactor.literal("endpoint",settings["endpoint"].toString());
   redactor.literal("url",settings["publicUrlBase"].toString());redactor.literal("name",settings["folderName"].toString());
   redactor.literal("url",settings["requestUrl"].toString());
-  for(const auto* key:{"accountRootUid","folderUid"})redactor.literal("id",settings[key].toString());
+  // Cloudflare R2's account ID also names its endpoint host in logs and errors (#1699).
+  for(const auto* key:{"accountRootUid","folderUid","accountId"})redactor.literal("id",settings[key].toString());
  }
  HistoryStore store(context.databasePath);if(store.error()){error=store.error();return {};}
  QList<Operation> operations;

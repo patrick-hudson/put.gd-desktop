@@ -1079,6 +1079,8 @@ struct NetworkS3Driver::State {
         config.endpointOverride = aws(effective["endpoint"].toString());
         config.scheme = endpointUrl.scheme() == "http" ? Aws::Http::Scheme::HTTP : Aws::Http::Scheme::HTTPS;
         config.verifySSL = true;
+        // A signed request never follows a redirect to another host unless the endpoint is AWS (#1699).
+        if (!s3FollowsRedirects(destination.settings)) config.followRedirects = Aws::Client::FollowRedirectsPolicy::NEVER;
         useHostCaFile(config);
         config.connectTimeoutMs = destination.settings["connectTimeoutMs"].toInt();
         config.httpRequestTimeoutMs = destination.settings["requestTimeoutMs"].toInt();
