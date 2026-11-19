@@ -208,19 +208,16 @@ private slots:
    QVERIFY(!ArtifactStore(d.filePath("d/putgd/artifacts")).recover(template_.interrupted).error);
   }
  }
- // #1680: a test's checkpoints are scrubbed for the provider the resident started it for, so a
- // receipt with a missing or forged provider ID still reaches the journal without its signed query.
+ // #1680: every storage test checkpoint is scrubbed at the journal boundary, so a receipt with a
+ // missing or forged provider ID still reaches the journal without its signed query.
  void destinationTestCheckpointsLoseSignedLinksWhateverTheyClaim() {
   const QString link="https://s3.example/b/putgd-test-1.txt?X-Amz-Credential=AKIDSYNTHETIC&X-Amz-Signature=abc123";
   const QJsonObject unlabelled{{"directUrl",link},{"publicationId","pub-1"}};
   const QJsonObject forged{{"destination",QJsonObject{{"providerId","custom-http"}}},{"directUrl",link},{"publicationId","pub-1"}};
   const QJsonObject checkpoint{{"phase","finished"},{"receipt",unlabelled},{"target",forged},
    {"result",QJsonObject{{"receipt",forged},{"cleanupProgress",QJsonObject{{"target",unlabelled}}}}}};
-  for(const auto* provider:{"s3","backblaze-b2"}){
-   const auto written=QJsonDocument(withoutSignedTestLinks(checkpoint,provider)).toJson();
-   QVERIFY2(!written.contains("X-Amz-")&&!written.contains("AKIDSYNTHETIC"),provider);QVERIFY2(written.contains("putgd-test-1.txt"),provider);
-  }
-  QCOMPARE(withoutSignedTestLinks(checkpoint,"custom-http"),checkpoint);
+  const auto written=QJsonDocument(withoutSignedTestLinks(checkpoint)).toJson();
+  QVERIFY(!written.contains("X-Amz-")&&!written.contains("AKIDSYNTHETIC"));QVERIFY(written.contains("putgd-test-1.txt"));
  }
  // Journals of earlier tests are rewritten only when their own records show an S3 or B2 test, and
  // then lose every link's signed query while keeping what traces the test object. Anything else
@@ -248,6 +245,14 @@ private slots:
   unchanged[uuid('3')]=journal({QJsonObject{{"phase","uploaded"},{"receipt",custom}}});
   unchanged[uuid('6')]=journal({s3Intent,QJsonObject{{"phase","uploaded"},{"receipt",customAsS3}}});
   unchanged[uuid('7')]=journal({QJsonObject{{"phase","synthetic_uploaded"},{"receipt",s3}}});
+  // Custom uploader records with no label and no nonce, and an S3 destination on a record that
+  // never saves one: their deletion URL keeps its token. B2 receipts need real file and bucket IDs.
+  const QJsonObject bareCustom{{"directUrl",s3Link},{"publicationId","pub-1"},{"objectReference",QJsonObject{{"deletionUrl","https://up.example/delete/1?Authorization=customsecret"}}}};
+  const QJsonObject s3Destination{{"providerId","s3"}};
+  unchanged[uuid('8')]=journal({QJsonObject{{"phase","upload_intent"},{"name","putgd-test-1.txt"}},QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",bareCustom}}});
+  unchanged[uuid('9')]=journal({QJsonObject{{"phase","uploaded"},{"destination",s3Destination},{"receipt",QJsonObject{{"directUrl",s3Link},{"objectReference",QJsonObject{{"url","https://up.example/i/1.png"}}}}}},
+   QJsonObject{{"phase","finished"},{"destination",s3Destination},{"result",QJsonObject{{"link","https://up.example/i/1.png"},{"receipt",bareCustom}}}}});
+  unchanged[uuid('a')]=journal({QJsonObject{{"phase","delete_intent"},{"target",receipt("backblaze-b2",s3Link,{{"fileId",""},{"bucketId",""}})}}});
   unchanged["notes.json"]=journal({s3Intent,QJsonObject{{"receipt",s3}}});
   unchanged[uuid('5')]=QJsonDocument(QJsonObject{{"checkpoints",QJsonArray{s3Intent,QJsonObject{{"receipt",s3}}}}}).toJson();
   for(auto it=unchanged.begin();it!=unchanged.end();++it)write(it.key(),it.value());

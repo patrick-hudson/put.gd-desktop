@@ -385,11 +385,12 @@ int main(int argc,char* argv[]) {
   // signed links (#1680). A History database recovery can't finish doesn't hold tests back.
   if(!operations.destinationTestsReady()){reply(operations.notReadyError());return;}
   const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
-  // Whatever the worker sends, and whatever its receipts say they are, an S3 or B2 test journal
-  // never keeps a link's query (#1680): the provider is the one this test was started for.
-  auto checkpoint=[path,provider](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,putgd::withoutSignedTestLinks(data,provider)));};
-  auto finished=[path,provider,reply](QJsonObject result,putgd::Error error){
-   auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}},provider));
+  // The storage test journal boundary (#1680): whatever the worker sends, and whatever its
+  // receipts say they are, no storage test journal keeps a link's query. The Custom uploader's
+  // test writes its journal on its own path below.
+  auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,putgd::withoutSignedTestLinks(data)));};
+  auto finished=[path,reply](QJsonObject result,putgd::Error error){
+   auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
    reply(error);
