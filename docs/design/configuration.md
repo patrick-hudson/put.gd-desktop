@@ -352,8 +352,8 @@ data folder (#1692), owner-only. A check is **passed** or **failed**, and comes 
 **Test** (`source: test`) or from an upload (`source: upload`). The file holds no
 credential, link or object name: per destination its state, source, the error code of
 a failure, a connection fingerprint and a credential revision. Closing Settings,
-restarting put.gd and logging in again keep it. Nothing checks a destination on a
-timer, and the row shows no age.
+restarting put.gd and logging in again keep it. The resident does not rerun the check
+on a timer, and the row shows no age.
 
 A record counts only while it matches the destination as saved now:
 
@@ -365,49 +365,78 @@ A record counts only while it matches the destination as saved now:
   | `s3` | `endpoint`, `bucket`, `region`, `addressing`, `objectPrefix`, `storageClass`, `aclMode`, `linkMode`, `publicUrlBase` |
   | `backblaze-b2` | `apiUrl`, `bucket`, `objectPrefix`, `linkMode`, `publicUrlBase` |
   | `proton-drive` | `accountRootUid`, `folderUid` |
-  | `custom-http` | `requestMethod`, `requestUrl`, `allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`, `secrets`, `data`, `dataSecret`, `responseUrl`, `deletionUrl` |
+  | `custom-http` | `requestMethod`, `requestUrl`, `allowInsecureHttp`, `body`, `fileFormName`, `headers`, `parameters`, `arguments`, `secrets`, `data`, `dataSecret`, `responseUrl`, `deletionUrl`, `accepts` |
 
   These decide where requests go, who signs them, what a bucket or key policy can
   scope to (the folder in the bucket), what the server may refuse (storage class,
-  ACL) and the link and cleanup the test followed. Left out, so changing them keeps
-  the record: the label, the destination's place in the list, being the capture
-  default or an action's destination, timeouts and slow-transfer limits, S3/B2 link
-  validity days, the Proton folder name, share preferences and share password, and a
-  custom uploader's accepted file types, thumbnail URL and error message. A provider
+  ACL), the link and cleanup the test followed, and for a custom uploader the file
+  types it accepts, which decide the synthetic file its test sends. Left out, so
+  changing them keeps the record: the label, the destination's place in the list,
+  being the capture default or an action's destination, timeouts and slow-transfer
+  limits, S3/B2 link validity days, the Proton folder name, share preferences and
+  share password, and a custom uploader's thumbnail URL and error message. A provider
   with no list is fingerprinted by all of its settings.
-- **Credential revision.** A count per destination, kept in the same file. A completed
-  **Store** of new credentials (keychain or this session) and a completed Proton
-  sign-in add one; reading saved keychain credentials (Unlock, or the startup read)
-  does not. Session credentials typed again after a restart therefore show the
-  destination untested until it is tested or uploads.
+- **Credential revision.** A count per destination, kept in the same file. Every
+  Store of credentials (keychain or this session) and every Proton sign-in
+  (`connectAccount`, including **Reconnect account…**) adds one when it starts and one
+  more when it succeeds, so a check never vouches for keys written after it, even when
+  the resident stops between the keychain write and the status write. A failed Store
+  therefore also leaves the destination untested. Two destinations can name the same
+  keychain entry ([credentials](credentials.md)): a Store or sign-in for one advances
+  the revision of every configured destination with the same `mode` and `reference`.
+  Session keys are each destination's own. Reading saved keychain credentials (Unlock,
+  or the startup read) adds nothing.
 
-Changing a fingerprinted setting or storing new credentials makes the record stale
-without a write; the destination shows untested. Changing the setting back shows the
-earlier record again, since it was made for that same connection. Removing a
-destination forgets its record.
+Changing a fingerprinted setting makes the record stale without a write; the
+destination shows untested. A Store or sign-in writes the new revision. Changing a
+setting back shows the earlier result again only while that record is still kept and
+its revision is still the current one: a Test or upload for the changed settings
+replaces it, and new credentials outdate it for good. Removing a destination forgets
+its record.
+
+**Session-only keys.** A destination in `mode: session` whose provider keeps keys (S3,
+Backblaze B2, a custom uploader with secret values) has its record and revision in
+memory only; neither is written to the file. Its keys end with the resident, so after
+a restart it is untested. A destination with no keys, such as a custom uploader
+without secret values (saved in `mode: session`), and every keychain destination are
+saved as described above.
 
 What updates the record:
 
-- **Test** records passed, or failed with its error code. A test that ran while the
-  destination's fingerprint or credential revision changed records nothing.
+- **Test.** Its result always replaces the record: passed, or failed with its error
+  code, with `source: test`, even when the state and code are the same as before.
 - **Uploads.** When an upload operation ends, a file it uploaded to the destination in
-  that run records passed (a passed Test stays as it was). Otherwise a refusal that
-  means the destination does not work as configured records failed:
-  `s3_authentication_failed`, `s3_permission_denied`, `s3_bucket_not_found`,
-  `b2_authentication_failed`, `b2_permission_denied`, `b2_key_restricted`,
-  `b2_bucket_not_found`, `proton_credentials_invalid`, `proton_account_changed`,
-  `proton_folder_unavailable` and `http_authentication_failed`. Every other outcome,
-  such as a network failure, a timeout, a cancel, a size limit or an unknown outcome,
-  leaves the record. An upload made with settings or credentials that have changed
-  since records nothing.
+  that run records passed; an existing pass, from a Test or an upload, stays as it
+  was. Otherwise a refusal that this run met, on an upload or on its link, records
+  failed. An item error that a Retry carried from History and that is still the same
+  error code does not count. The refusals are `s3_authentication_failed`,
+  `s3_permission_denied`, `s3_bucket_not_found`, `b2_authentication_failed`,
+  `b2_permission_denied`, `b2_key_restricted`, `b2_bucket_not_found`,
+  `proton_credentials_invalid`, `proton_account_changed`, `proton_folder_unavailable`,
+  `http_authentication_failed`, and the Proton helper's own `authentication_required`,
+  `permission_denied`, `account_changed` and `destination_unavailable`, which only the
+  Proton provider passes on. Every other outcome, such as a network failure, a
+  timeout, a rate limit, a cancel, a size limit or an unknown outcome, leaves the
+  record.
+- A Test or upload records nothing when, at the moment it finishes, the destination's
+  fingerprint or credential revision differs from the ones it started with.
 
-`ui.snapshot` and `settings.get` (MCP `inspect`, under `configuration.result`) carry
-`destinationStatus`: for every configured destination `{state}`, where `state` is
-`passed`, `failed` or `untested` against its current settings and credentials, plus
-`source`, `fingerprint` and, for a failure, `errorCode`. Settings → Destinations shows
-it: **Connected** (Proton: **Account and folder checked**), **Test failed** (Proton:
-**Check failed**), **Needs testing** after an upload failure (Proton: **Needs
-checking**), and **Ready to test** (Proton: **Configured**) otherwise. Needs-credentials,
-signed-out and folder states come first. **Make default** asks for confirmation unless
-the destination is passed. The Settings window computes the same fingerprint for the
-destination being edited, so an unsaved connection edit shows untested at once.
+A file that cannot be read whole starts empty. On reading, a revision must be an exact
+integer from 0 to 2^53, and a record's `errorCode` must be one of the refusals above;
+anything else drops that entry. A failed Test whose error was not a refusal, such as
+a timeout, is therefore shown after a restart as untested.
+
+`ui.snapshot` and `settings.get` (MCP `inspect`, at
+`result.configuration.result.destinationStatus`) carry `destinationStatus`, keyed by
+profile ID, with an entry for every configured destination against its saved settings
+and current credential revision. An untested entry is `{state: "untested"}`. A passed
+entry adds `source` and `fingerprint`; a failed one adds `errorCode` too. Settings →
+Destinations shows it: **Connected** (Proton: **Account and folder checked**), **Test
+failed** (Proton: **Check failed**), **Needs testing** after an upload failure
+(Proton: **Needs checking**), and **Ready to test** (Proton: **Configured**)
+otherwise. Needs-credentials, signed-out and folder states come first. **Make
+default** asks for confirmation unless the destination is passed. The Settings window
+computes the same fingerprint for the destination being edited, so an unsaved
+connection edit shows untested at once, and a test's completion message follows the
+same rule: a test whose destination was renamed or moved while it ran reports its
+result as current.

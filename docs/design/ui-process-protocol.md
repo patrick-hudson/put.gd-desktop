@@ -56,12 +56,13 @@ upload, unauthenticated public GET and confirmed cleanup.
 
 Jobs are process-lifetime status, not another persistent operation journal.
 A restart cannot silently replay a credential write or destination test. What a test
-found outlives its job: the resident records it as the destination's last check, on
-disk, before the job's change is announced, so an open window's next snapshot shows it
-and a later helper or resident reads it back
+found outlives its job: before the resident announces that the job ended it updates
+the destination's last check in memory and tries to save it, so an open window's next
+snapshot shows it and, once saved, a later helper or resident reads it back
 ([destination checks](configuration.md#destination-checks)). The helper keeps no
 record of its own.
-Existing settings.patch/reload and CLI/MCP response contracts remain unchanged.
+Existing settings.patch/reload and CLI/MCP response contracts remain unchanged, except
+that `ui.snapshot` and `settings.get` answer one more field, `destinationStatus`.
 
 ## Private helper control
 

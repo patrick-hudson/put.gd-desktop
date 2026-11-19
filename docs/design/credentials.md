@@ -14,8 +14,9 @@ are resolved by a setup action; uploads and hotkeys cannot trigger unlock. Unles
 it starts. A locked desktop keyring may show its own unlock prompt for that read. A
 dismissed prompt leaves the cache empty until the user chooses Unlock.
 Missing credentials return `credential_setup_required` for the original destination.
-A completed Store of new credentials starts a new credential revision for the
-destination, so a passed test made with the earlier keys no longer counts
+A Store of new credentials advances the credential revision when it starts and again
+when it succeeds, for the destination and for every destination that names the same
+keychain entry, so a passed test made with the earlier keys no longer counts
 ([destination checks](configuration.md#destination-checks)); Unlock does not.
 
 `CredentialStore::unlock` reads a referenced OS secret with QtKeychain.
