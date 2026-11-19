@@ -1448,9 +1448,9 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     auto bucket = client->GetBucketVersioning(versioning);
     auto state = Aws::S3::Model::BucketVersioningStatus::NOT_SET;
     if (bucket.IsSuccess()) state = bucket.GetResult().GetStatus();
-    // A service that refuses version-naming requests keeps no versions, so a denied check
-    // there leaves nothing an unversioned delete could hide behind a marker (#1677). A
-    // recorded version is never deleted without a bucket that confirms its versioning.
+    // Cloudflare R2 refuses requests naming a version and keeps none, so on its endpoint a denied
+    // check leaves nothing an unversioned delete could hide behind a marker (#1677). Anywhere
+    // else, and for a recorded version, a denied check stops here (see cloudflareR2()).
     else if (!(version.isEmpty() && versioningUnreadable(bucket.GetError()) && cloudflareR2(destination) &&
                (check.refused || versionsRefused(*client, destination, key, {})))) {
         finish("unknown", wireError(bucket.GetError(), S3Stage::DeleteVersioning, versioningTimer.elapsed()));
