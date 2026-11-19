@@ -668,6 +668,135 @@ coordinator:
 `tests/desktop/test_desktop_lock.py` covers expiry, heartbeat staleness, atomic
 acquire, the release check and break rules; it runs in CI's `lab` contracts.
 
+### A nightly guest kept for live cleanup
+
+A live S3 or Proton cell publishes a real object. Before it publishes, it writes
+`live-cleanup-pending.json` in the run directory
+(`work/lab-runs/n<8 hex>/`), naming the destination, the prefix, the object key
+and the run id. It removes the file once the app's delete is confirmed. If the
+file is still there, or a receipt in the row says `unresolved_live_cleanup`,
+the nightly keeps the guest: it still holds the History row and credential
+reference that can delete the object. The slot stays in
+`~/putgd-lab/locks/tier1-guest.lock.d/`, and every later nightly on that builder
+stops at `guest retained: live remote cleanup unresolved` until a person
+resolves it. The guest stays kept until you finish these steps.
+
+Run the commands below on the builder that holds the slot, from its nightly
+checkout, while no nightly worker is running there. They refuse a slot whose
+worker is still alive. Only the manual nightly trigger (`--now`) runs on the d69
+controller.
+
+An upload can still finish after its worker died, either from an orphaned
+recipe or Proton lend on the builder or from put.gd inside the guest. So no
+destination check counts until `--check-live-cleanup` has run (step 2). It
+refuses while a recipe or lend for the run is live, and otherwise pauses the
+guest's VM so nothing in it can publish. An upload that had already reached
+the destination can still commit just after the pause, so the command waits
+until 120 s after it before it returns. `--resolve-live-cleanup` refuses
+unless the VM is still paused and that time has passed. Resuming the VM, for
+any reason, voids every check made before: run `--check-live-cleanup` again
+and repeat the destination checks before step 5. If a command refuses because a recipe or lend
+is live, wait until it stops, then start again from step 1.
+
+1. **Read the marker.** `cat` the run directory's
+   `live-cleanup-pending.json`. Note `destination`, `prefix` and `objectKey`.
+   The slot's `retained.json` (or `owner.json`) names the run and the row's
+   evidence directory. If the marker is already gone, find the three values in
+   the attempt's evidence or the provider console. The prefix is the folder
+   before the file name, with its trailing `/`:
+   `acceptance/tier1-live/<32 hex>/` for S3, `putgd-tier1-<32 hex>/` for
+   Proton. If you can't pin them down, keep the guest and ask your
+   coordinator.
+2. **Pause the guest, then make sure the object is gone.** First run
+   `python3 tools/lab/nightly_desktops.py --check-live-cleanup` (add
+   `--destination`, `--prefix` and `--object-key` when the marker is gone),
+   for either provider. It must print `"guestPaused": true`. Check the
+   destination only after it returns. If the object is still there, delete it in the provider's own
+   console, matching the exact key or folder from step 1, and run the command
+   again. For S3 only, you can instead use **Delete from destination** or
+   **Retry deletion** in the kept guest's put.gd, on the row whose key matches
+   exactly, if put.gd is still running there. Resume the VM for that, then
+   run `--check-live-cleanup` again: a check counts only while the VM stays
+   paused. put.gd can't delete a Proton file, so use the Proton web app.
+
+   ```sh
+   python3 - work/lab-runs/RUN_NAME <<'EOF'
+   import sys
+   from pathlib import Path
+   from tools.lab import lab
+   with lab.QMP(Path(sys.argv[1]) / 'qmp.sock') as qmp:
+       qmp.execute('cont')
+   EOF
+   ```
+
+   - **S3:** after pausing, the same command reads key set 2 in memory and
+     changes nothing on the destination. It makes an
+     authenticated GET of the exact key and lists the prefix. If the bucket
+     has ever had versioning, it also lists the prefix's object versions, and
+     it fails when it can't read the versioning state. `objectKeyAbsent`,
+     `prefixEmpty` and `versionsGone` must all be `true` (exit 0). This check
+     decides. `https://put.gd/<objectKey>` can keep serving a cached copy for
+     a while after the object is deleted, so a response there doesn't keep the
+     guest. If `versionsGone` is `false`, turn on **Show versions** in the S3
+     console, permanently delete the remaining versions of the exact test key
+     (and anything else under the prefix), and run the check again.
+   - **Proton:** sign in to the put.gd Proton test account at
+     `drive.proton.me`. The cell's folder is the prefix without its trailing
+     slash (`putgd-tier1-<32 hex>`). Check all three places every time:
+     **My files** must not have it, **Shared** (shared by me) must have no link
+     for it or anything in it, and **Trash** must hold neither the folder nor
+     any of its files (the file can be in Trash on its own). Revoke any link
+     that is left, and permanently delete only that folder or its files.
+3. **Read the row's receipts.** For each `*/receipt.json` in the evidence
+   directory, read `environment.cleanup_errors` and
+   `environment.guest_local_cleanup`. Recovery retires the guest only when
+   every cleanup error is guest-local. Check every other error on the guest,
+   one by one, including `private session root cleanup refused`, which a failed
+   live cleanup often leaves because the cell kept its fixture files on
+   purpose. An error counts as guest-only when it is about the guest's own
+   files, processes or keyring entries, and nothing on the host or a remote
+   service. The same text in another receipt needs its own check. Errors you
+   can't explain keep the guest: ask your coordinator. If you resumed the VM
+   to look inside the guest, go back to step 2 afterwards.
+4. **Record attempts killed before their terminal proof.** An attempt
+   directory with `receipt.json` but no `terminal.json` makes retirement
+   refuse the whole row. Record each one:
+
+   ```sh
+   python3 tools/lab/nightly_desktops.py --unaudited-attempt ATTEMPT_DIR_NAME
+   ```
+
+   This writes `unaudited-attempt.json` next to its receipt, with the receipt's
+   hash. Retirement then leaves that attempt out of `attachments.tgz`, keeps it
+   in place, marks the completion `failed`, lists it under
+   `unauditedAttempts` and hashes both files into `completion-manifest.json`.
+   It never counts as a result. The command refuses an attempt that has any
+   `terminal.json`: a terminal proof that fails its checks keeps the guest.
+5. **Record the resolution.**
+
+   ```sh
+   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup RUN_NAME
+   ```
+
+   `RUN_NAME` is the run directory name you checked, such as `n1234abcd`. The command refuses when the slot
+   now holds another run, or while a lend or recipe for the run is still live
+   (it may still be uploading). Add `--guest-only-error 'EXACT TEXT'` once for each error you checked in
+   step 3. If the marker is already gone, add `--destination`, `--prefix` and
+   `--object-key` with the values you checked in step 2. The command writes
+   `live-cleanup-resolution.json` in the evidence directory and then removes
+   the marker. The record names the run, its lab run id, the publication and
+   the hash of every receipt in the row. The command refuses a marker for
+   another run, values that differ from the marker and an error that no
+   receipt holds.
+6. **Let the next nightly recover the slot**, or start one from d69 with
+   `--now`. Recovery uses the record only for receipts whose hash still
+   matches. For those receipts it clears the live-cleanup gate and the errors
+   you named, and nothing else. A receipt that changed or appeared after the
+   record goes through the ordinary checks, so its own live-cleanup flag still
+   keeps the guest. The other checks still apply too: the Proton lend
+   receipts, the overlay owner and the exact QEMU process. The records stay
+   with the row's evidence.
+
 ## Weekly stress lane on k72
 
 k72 runs the weekly builder stress lane (see [ci.md](../release/ci.md#weekly-run-on-k72)).
