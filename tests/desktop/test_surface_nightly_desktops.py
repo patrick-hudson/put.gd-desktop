@@ -8,6 +8,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -550,6 +551,168 @@ class NightlyTests(unittest.TestCase):
                 lab.cleanup_overlay(run)
             (run/lab.LIVE_CLEANUP_MARKER).unlink()
             self.assertIn(lab.reset(run)['status'], ('stopped', 'already-stopped'))
+
+    def kept_live_row(self, root, *, errors=(), guest_local=()):
+        """A retained slot whose row receipt and run marker record an unresolved live publication (#1660)."""
+        from tools.lab import lab
+        slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+        run, evidence = Path(owner['run']), Path(owner['evidence'])
+        (evidence/'idle-1').mkdir()
+        (evidence/'idle-1/receipt.json').write_text(json.dumps(dict(environment=dict(
+            unresolved_live_cleanup=True, cleanup_errors=list(errors), guest_local_cleanup=list(guest_local)))))
+        nightly.save(run/lab.LIVE_CLEANUP_MARKER, dict(schemaVersion=1, destination='s3', prefix='acceptance/tier1-live/x/',
+                     objectKey='acceptance/tier1-live/x/shot.png', runId='n12345678'))
+        return slot, out, owner, desktop, proton
+
+    def recover_kept(self, root, out, desktop, proton):
+        from tools.lab import lab
+        with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                      proton if kw.get('resource') == 'proton' else desktop), \
+                patch.object(lab, 'state', return_value=dict(id='n12345678')), \
+                patch.object(nightly, 'retire') as retire:
+            # Each nightly run recovers into its own new output directory.
+            attempt = out/uuid.uuid4().hex
+            attempt.mkdir()
+            try:
+                nightly.recover_stale_guest(dict(host='d69'), attempt)
+            except nightly.NotRun as error:
+                return retire, str(error)
+        return retire, None
+
+    def resolve(self, root, **kwargs):
+        from tools.lab import lab
+        with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                patch.object(lab, 'state', return_value=dict(id=kwargs.pop('run_id', 'n12345678'))):
+            return nightly.resolve_live_cleanup(nightly.retained_owner(), **kwargs)
+
+    def test_a_confirmed_live_cleanup_record_lets_recovery_retire_the_kept_guest(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('live remote cleanup unresolved', error)
+            record = self.resolve(root)
+            self.assertFalse((Path(owner['run'])/lab.LIVE_CLEANUP_MARKER).exists())
+            self.assertEqual(record['publication'], dict(destination='s3', prefix='acceptance/tier1-live/x/',
+                             objectKey='acceptance/tier1-live/x/shot.png'))
+            self.assertTrue(record['markerPresent'] and record['objectConfirmedGone'])
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            retire.assert_called_once()
+            self.assertFalse(slot.exists())
+
+    def test_a_live_cleanup_record_speaks_only_for_the_receipts_it_hashed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            self.resolve(root)
+            # A later attempt (or a changed receipt) the person never saw keeps the guest.
+            evidence = Path(owner['evidence'])
+            (evidence/'idle-2').mkdir()
+            (evidence/'idle-2/receipt.json').write_text(json.dumps(dict(environment=dict(unresolved_live_cleanup=True))))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('idle-2', error)
+            retire.assert_not_called()
+            self.assertTrue(slot.exists())
+
+    def test_a_live_cleanup_record_clears_no_other_cleanup_error_unless_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root, errors=['private session root cleanup refused'])
+            self.resolve(root)
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('inspect private cleanup', error)
+            retire.assert_not_called()
+            with self.assertRaisesRegex(nightly.NotRun, 'exact cleanup error'):
+                self.resolve(root, guest_only_errors=['some other error'],
+                             publication=dict(destination='s3', prefix='acceptance/tier1-live/x/',
+                                              objectKey='acceptance/tier1-live/x/shot.png'))
+            self.resolve(root, guest_only_errors=['private session root cleanup refused'],
+                         publication=dict(destination='s3', prefix='acceptance/tier1-live/x/',
+                                          objectKey='acceptance/tier1-live/x/shot.png'))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            retire.assert_called_once()
+
+    def test_resolving_live_cleanup_refuses_a_marker_or_publication_of_another_run(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.kept_live_row(root)
+            marker = Path(owner['run'])/lab.LIVE_CLEANUP_MARKER
+            with self.assertRaisesRegex(nightly.NotRun, 'does not belong to this run'):
+                self.resolve(root, run_id='n87654321')
+            with self.assertRaisesRegex(nightly.NotRun, 'differs from the marker'):
+                self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/other.png'))
+            self.assertTrue(marker.exists())
+            self.assertFalse((Path(owner['evidence'])/nightly.LIVE_RESOLUTION).exists())
+            marker.unlink()
+            with self.assertRaisesRegex(nightly.NotRun, 'give --destination'):
+                self.resolve(root)
+            with self.assertRaisesRegex(nightly.NotRun, 'outside its prefix'):
+                self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='q/shot.png'))
+            # A record for another session or run id is refused, never ignored.
+            self.resolve(root, publication=dict(destination='s3', prefix='p/', objectKey='p/shot.png'))
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIsNone(error)
+            path = Path(owner['evidence'])/nightly.LIVE_RESOLUTION
+            nightly.save(path, dict(json.loads(path.read_text()), session='other'))
+            with self.assertRaisesRegex(nightly.NotRun, 'does not record a confirmed cleanup'):
+                nightly.live_resolution(Path(owner['run']), Path(owner['evidence']), owner['session'])
+
+    def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
+        class NoSuchKey(Exception):
+            pass
+        client = Mock()
+        client.exceptions.NoSuchKey = NoSuchKey
+        client.get_object.side_effect = NoSuchKey()
+        client.list_objects_v2.return_value = {'KeyCount': 0}
+        prefix = 'acceptance/tier1-live/'+'a'*32+'/'
+        publication = dict(destination='s3', prefix=prefix, objectKey=prefix+'shot.png')
+        self.assertEqual(nightly.check_s3_absent(publication, client=client), dict(objectKeyAbsent=True, prefixEmpty=True))
+        client.get_object.assert_called_once_with(Bucket='put.gd', Key=prefix+'shot.png')
+        client.list_objects_v2.assert_called_once_with(Bucket='put.gd', Prefix=prefix, MaxKeys=1)
+        client.get_object.side_effect = None
+        client.get_object.return_value = {'Body': Mock()}
+        client.list_objects_v2.return_value = {'KeyCount': 1}
+        self.assertEqual(nightly.check_s3_absent(publication, client=client), dict(objectKeyAbsent=False, prefixEmpty=False))
+        for bad in (dict(publication, destination='proton'), dict(publication, prefix='acceptance/'),
+                    dict(publication, objectKey='other/shot.png')):
+            with self.assertRaises(nightly.NotRun):
+                nightly.check_s3_absent(bad, client=client)
+        self.assertFalse(client.delete_object.called or client.put_object.called)
+
+    def test_an_attempt_killed_before_its_terminal_proof_retires_only_once_recorded_unaudited(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+            run, evidence = Path(owner['run']), Path(owner['evidence'])
+            (evidence/'idle-1').mkdir()
+            (evidence/'idle-1/receipt.json').write_text('{"environment": {}}')
+            with patch.object(lab, 'state', return_value=dict(id='n12345678', golden=str(root/'g/a/b/golden'))), \
+                    patch.object(lab, 'reset') as reset, patch.object(lab, 'cleanup_overlay', return_value={}) as cleanup:
+                with self.assertRaisesRegex(RuntimeError, 'collection refused'):
+                    nightly.retire(run, evidence, {})
+                cleanup.assert_not_called()
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root):
+                    record = nightly.record_unaudited_attempt(nightly.retained_owner(), 'idle-1')
+                    with self.assertRaisesRegex(nightly.NotRun, 'directory of this row'):
+                        nightly.record_unaudited_attempt(owner, '../idle-1')
+                self.assertEqual(record['receiptSha256'], nightly.digest(evidence/'idle-1/receipt.json'))
+                nightly.retire(run, evidence, {})
+                cleanup.assert_called_once()
+            manifest = json.loads((evidence/'completion-manifest.json').read_text())
+            self.assertEqual(manifest['outcome'], 'failed')
+            self.assertEqual(manifest['unauditedAttempts'], ['idle-1'])
+            self.assertEqual(sorted(manifest['files']), ['completion.json', 'idle-1/receipt.json', 'idle-1/unaudited-attempt.json'])
+            self.assertTrue((evidence/'idle-1/receipt.json').exists())
+            # A receipt changed after the record is no longer the one the person saw.
+            (evidence/'idle-1/receipt.json').write_text('{"environment": {"changed": true}}')
+            with self.assertRaisesRegex(nightly.NotRun, 'does not match'):
+                nightly.unaudited_attempt(evidence/'idle-1')
 
     def test_wait_does_not_outlive_worker_deadline(self):
         with tempfile.TemporaryDirectory() as tmp:
