@@ -3,6 +3,7 @@
 #include "fixtures/U2Fixtures.h"
 #include <QBuffer>
 #include <QUrlQuery>
+#include <QSet>
 #include "fixtures/Waits.h"
 using namespace putgd::test;
 class S3Test : public QObject {
@@ -76,17 +77,26 @@ private slots:
         QVERIFY(journal.first().toObject()["objectReference"].toObject()["key"].toString().contains("putgd-test-"));
         if(!multipart.isEmpty())QCOMPARE(tested.first["multipart"].toObject()["status"].toString(),multipart);
     }
-    // #1690: the synthetic PutObject follows the name check on the same connection. When that
-    // reused connection is lost under it, libcurl must not send it again by itself: one PUT
-    // reaches the server, and the test settles it with a HEAD.
-    void testUploadGoesOutOnceOnAReusedConnection() {
+    // #1690: the synthetic PutObject and CreateMultipartUpload follow the name check on a client
+    // whose connections are kept alive. Each goes out once, on a connection no earlier request
+    // used, so libcurl can't send it again by itself after losing a reused connection's reply.
+    void testWritesGoOutOnceOnAFreshConnection() {
         S3Fixture f;
         f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}}}}});
         const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
             f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
         QCOMPARE(f.events("PUT").size(),1);
         QCOMPARE(tested.first["uploadStatus"].toString(),QString("uploaded"));
-        QCOMPARE(tested.first["cleanupStatus"].toString(),QString("removed"));
+        QSet<int> used;
+        bool create=false;
+        for(const auto& value:f.events()){
+            const auto event=value.toObject();const int port=event["port"].toInt();
+            const bool write=event["method"]=="PUT"||(event["method"]=="POST"&&event["path"].toString().contains("uploads"));
+            if(write)QVERIFY2(!used.contains(port),qPrintable(event["method"].toString()+" reused a connection"));
+            create=create||(event["method"]=="POST"&&event["path"].toString().contains("uploads"));
+            used.insert(port);
+        }
+        QVERIFY(create);
     }
 
     void failedNameHeadRetainsSafeTransportDiagnostics() {

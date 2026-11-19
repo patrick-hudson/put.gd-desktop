@@ -142,7 +142,8 @@ class Handler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
         presigned = 'X-Amz-Signature' in query
         signed = bool(self.headers.get('Authorization')) or presigned
-        event = {'method': self.command, 'path': self.path, 'bucket': bucket, 'key': key,
+        # 'port': the client's port, which tells a reused connection from a new one.
+        event = {'port': self.client_address[1], 'method': self.command, 'path': self.path, 'bucket': bucket, 'key': key,
                  'headers': {k.lower(): v for k,v in self.headers.items()}, 'body': base64.b64encode(body).decode() if len(body) <= INLINE_BYTES else '',
                  'bodyBytes': len(body), 'bodySha256': digest(body),
                  'signatureValid': presigned_signature(self) if presigned else signature(self, body) if signed else False}
