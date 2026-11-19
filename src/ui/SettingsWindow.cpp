@@ -767,6 +767,8 @@ QStringList s3Regions(){
  // Offline suggestions from the AWS S3 regional endpoint table, checked 2026-10-08.
  return {"us-east-1","us-east-2","us-west-1","us-west-2","af-south-1","ap-east-1","ap-east-2","ap-south-1","ap-south-2","ap-southeast-1","ap-southeast-2","ap-southeast-3","ap-southeast-4","ap-southeast-5","ap-southeast-6","ap-southeast-7","ap-northeast-1","ap-northeast-2","ap-northeast-3","ca-central-1","ca-west-1","eu-central-1","eu-central-2","eu-west-1","eu-west-2","eu-west-3","eu-south-1","eu-south-2","eu-north-1","il-central-1","mx-central-1","me-south-1","me-central-1","sa-east-1","us-gov-east-1","us-gov-west-1"};
 }
+// What Region says when another service is shown with Cloudflare R2's region (#1684).
+QString regionAutoElsewhere(){return QStringLiteral("auto is Cloudflare R2's region. Enter this service's region, such as us-east-1.");}
 // Amazon S3: an endpoint whose host is under amazonaws.com or amazonaws.com.cn. Only the host counts.
 bool s3AmazonEndpoint(const QString& endpoint){const auto host=QUrl(endpoint).host().toLower();return host.endsWith(QLatin1String(".amazonaws.com"))||host.endsWith(QLatin1String(".amazonaws.com.cn"));}
 }
@@ -1227,7 +1229,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  destinationDetails->setRowVisible(formRow(regionChoices_),s3&&!r2);destinationDetails->setRowVisible(regionNoteRow,r2);updateBucketHint();
  // auto is Cloudflare R2's region (#1684): another service shown with it says so at Region instead of keeping it quietly.
  {const bool autoElsewhere=s3&&!r2&&s3_["region"]->text()=="auto"&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text());
-  if(autoElsewhere)inlineError(s3_["region"],"auto is Cloudflare R2's region. Enter this service's region, such as us-east-1.");
+  if(autoElsewhere)inlineError(s3_["region"],regionAutoElsewhere());
   else if(s3_["region"]->property("autoElsewhere").toBool())inlineError(s3_["region"],{});
   s3_["region"]->setProperty("autoElsewhere",autoElsewhere);}
  if(b2){const auto settings=editedProfile()["settings"].toObject();static_cast<Ui::ElidedLabel*>(linkExample_)->setText(b2::fileUrl(settings,"https://f000.backblazeb2.com",b2::fileName(settings,"Screenshot.png"))+(authorized?QStringLiteral("?Authorization=…"):QString()));}else{auto settings=editedProfile()["settings"].toObject();if(s3&&authorized)settings["publicUrlBase"]=QJsonValue::Null;static_cast<Ui::ElidedLabel*>(linkExample_)->setText(publicObjectUrl(settings,s3_["objectPrefix"]->text()+"Screenshot.png")+(s3&&authorized?QStringLiteral("?X-Amz-Signature=…"):QString()));}};
@@ -1960,7 +1962,10 @@ qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"
 // Cloudflare R2 ignores Region (#1678), so an R2 destination never shows one.
 void SettingsWindow::showS3SettingsProblems(){
  const bool checked=providerType_->currentData()=="s3"&&!s3CloudflareR2Endpoint(s3_["endpoint"]->text());
- inlineError(s3_["region"],checked?s3RegionProblem(s3_["region"]->text()):QString());
+ auto problem=checked?s3RegionProblem(s3_["region"]->text()):QString();
+ // #1684: auto is Cloudflare R2's region, so another service shown with it says so at Region.
+ const bool autoElsewhere=checked&&problem.isEmpty()&&s3_["region"]->text()=="auto";
+ inlineError(s3_["region"],autoElsewhere?regionAutoElsewhere():problem);s3_["region"]->setProperty("autoElsewhere",autoElsewhere);
 }
 void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;if(control==root_)if(auto* hint=findChild<QLabel*>("archiveRootHint"))hint->setVisible(message.isEmpty()&&(root_->text().isEmpty()||!QDir::isAbsolutePath(root_->text())));control->setProperty("invalid",!message.isEmpty());if(!message.isEmpty())updateResourceLimits();control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){Ui::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}const auto description=control->property("settingDescription").isValid()?control->property("settingDescription").toString():control->toolTip();control->setAccessibleDescription(message.isEmpty()?description:description+"\n"+message);}
 bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
