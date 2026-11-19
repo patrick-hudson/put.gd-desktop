@@ -183,7 +183,8 @@ jobs:
     steps:
       - name: Bootstrap checkout tools
         # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
-        # each attempt stopped after 10 minutes (#467).
+        # each attempt stopped after 10 minutes (#467). On apt only the update and the download
+        # are limited, so the limit never stops dpkg halfway (#1702).
         shell: bash
         run: |
           apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
@@ -193,11 +194,18 @@ jobs:
           zstd=$([ '${{ matrix.name }}' != ubuntu24.04 ] || echo zstd)
           for attempt in 1 2 3; do
             if command -v apt-get >/dev/null; then
-              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates $zstd && exit 0
+              bounded apt-get update --error-on=any "${apt[@]}" &&
+                bounded apt-get install -y --download-only "${apt[@]}" git ca-certificates $zstd &&
+                apt-get install -y --no-download "${apt[@]}" git ca-certificates $zstd && exit 0
             else
               bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
             fi
             echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
+            if command -v apt-get >/dev/null; then
+              # A failed attempt can leave dpkg running or half done; the retry would fail on its lock.
+              putgd_wait_for_dpkg 600 || true
+              dpkg --configure -a || true
+            fi
             putgd_demote_mirror
             [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
             echo "| $attempt of 3 | failed |" >> "$GITHUB_STEP_SUMMARY"
