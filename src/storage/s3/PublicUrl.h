@@ -7,10 +7,6 @@ QString publicObjectUrl(const QJsonObject& settings, const QString& key);
 // The URL as receipts recorded it before #1582, with the key exactly as given.
 QString s3LegacyPublicObjectUrl(const QJsonObject& settings, const QString& key);
 bool s3VirtualAddressing(const QJsonObject& settings);
-// The endpoint as an upload's identity names it (#1699): scheme and host lowercased and a
-// trailing slash dropped, so a Cloudflare R2 destination and an S3 destination on the same R2
-// endpoint serialize and match the same objects.
-QString s3IdentityEndpoint(const QString& endpoint);
 // Whether the endpoint's host is AWS: amazonaws.com or amazonaws.com.cn, or a host under one, with
 // one trailing dot ignored. The one check for Amazon S3 versus another S3-compatible service (#1699).
 bool s3AmazonEndpoint(const QString& endpoint);

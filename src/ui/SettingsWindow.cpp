@@ -3050,8 +3050,12 @@ void SettingsWindow::refreshCredentialHint(){
  uploader_->setStored({},false);
  if(!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(providerType_->currentData().toString())||initialProfile_||profileIndex_<0)return;
  const auto id=profileId_->text();const auto revision=settings_.revision();
- settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision](Error error,QJsonObject hint){
-  if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(g->providerType_->currentData().toString()))return;
+ // The saved credentials are this destination's only while it is saved as the service shown: a
+ // switch not saved yet (such as S3 to Cloudflare R2) shows no other service's key (#1699).
+ const auto savedAs=[this](const QString& profileId){for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId)return value.toObject()["provider"].toString();return QString();};
+ if(savedAs(id)!=providerType_->currentData().toString())return;
+ settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision,savedAs](Error error,QJsonObject hint){
+  if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",r2::providerId,CustomUploaderPanel::provider()}.contains(g->providerType_->currentData().toString())||savedAs(id)!=g->providerType_->currentData().toString())return;
   if(error)return;
   // #1361: a custom uploader stores named values. The hint says which are loaded, never a value.
   if(g->providerType_->currentData()==CustomUploaderPanel::provider()){
@@ -3168,15 +3172,17 @@ void SettingsWindow::toggleCredentialSecret(bool shown){
  if(!shown){resetCredentialSecretDisplay();return;}
  showSecret_->setText("Hide");showSecret_->setAccessibleName("Hide "+secret_->accessibleName().toLower());
  if(!secret_->text().isEmpty()){secret_->setEchoMode(QLineEdit::Normal);return;}
- if(providerType_->currentData()!="s3"||selectedDestinationChanged()||saving_||conflict_||initialProfile_){
+ // Amazon S3 and Cloudflare R2 (#1699) keep a secret key the resident can show.
+ const auto reveals=[this]{return providerType_->currentData()=="s3"||providerType_->currentData()==r2::providerId;};
+ if(!reveals()||selectedDestinationChanged()||saving_||conflict_||initialProfile_){
   resetCredentialSecretDisplay();status({"save_first","Save valid destination settings before showing credentials",{}});return;
  }
  const auto serial=++secretRevealSerial_;const auto id=profileId_->text(),revision=settings_.revision();
  secret_->setReadOnly(true);
  settings_.request("setup.revealCredentialSecret",{{"profileId",id},{"expectedRevision",revision}},this,
-  [this,serial,id,revision](Error error,QJsonObject value){
+  [this,serial,id,revision,reveals](Error error,QJsonObject value){
    if(serial!=secretRevealSerial_)return;
-   if(profileId_->text()!=id||settings_.revision()!=revision||providerType_->currentData()!="s3"||selectedDestinationChanged()){
+   if(profileId_->text()!=id||settings_.revision()!=revision||!reveals()||selectedDestinationChanged()){
     resetCredentialSecretDisplay();return;
    }
    if(error){resetCredentialSecretDisplay();status(error);return;}

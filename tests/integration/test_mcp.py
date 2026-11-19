@@ -559,6 +559,7 @@ class R2DestinationResidentTests(unittest.IsolatedAsyncioTestCase):
                         reply = await call('drive_r2_destination', {**args, 'profile_id': 'lab'})
                         if (reply['ok'] and done(reply['result'])) or time.monotonic() > deadline:
                             self.assertTrue(reply['ok'], reply)
+                            self.assertTrue(done(reply['result']), reply['result'])
                             return reply['result']
                         await asyncio.sleep(.1)
 
@@ -570,13 +571,14 @@ class R2DestinationResidentTests(unittest.IsolatedAsyncioTestCase):
                                    'addressing': 'auto', 'connectTimeoutMs': 5000, 'requestTimeoutMs': 60000, 'lowSpeedBytesPerSecond': 1, 'lowSpeedTimeSeconds': 30}}
                 patched = await call('patch_configuration', {'patch': {'profiles': [s3]}, 'expected_revision': revision})
                 self.assertTrue(patched['ok'], patched)
+                # The baseline is the seeded file, before Destinations shows it: neither showing nor inspecting saves.
+                revision = (await configuration())['metadata']['observedRevision']
                 deadline = time.monotonic() + 30
                 while not (shown := await adapter.call('ui.show', {'view': 'destinations'}))['ok'] and time.monotonic() < deadline:
                     await asyncio.sleep(.25)
                 self.assertTrue(shown['ok'], shown)
                 state = await form({'action': 'inspect'}, lambda result: result['moveAvailable'])
                 self.assertEqual(state['provider'], 's3')
-                revision = (await configuration())['metadata']['observedRevision']
                 await asyncio.sleep(1)
                 self.assertEqual((await configuration())['metadata']['observedRevision'], revision, 'showing a destination saved it')
 

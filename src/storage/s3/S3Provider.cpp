@@ -184,7 +184,7 @@ ProviderCapabilities S3Provider::capabilities(const Destination& destination) co
     return result;
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {
-    return s3IdentityEndpoint(destination.settings["endpoint"].toString()) + "/" + destination.settings["bucket"].toString() + "/" +
+    return destination.settings["endpoint"].toString() + "/" + destination.settings["bucket"].toString() + "/" +
            (object["key"].isString() ? s3StoredKey(object["key"].toString()) : objectKey(destination, candidate));
 }
 namespace {

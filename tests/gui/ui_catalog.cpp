@@ -631,7 +631,10 @@ int main(int argc,char** argv){
  {
   auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("cloudflare-r2"));
   auto* account=window.findChild<QLineEdit*>("r2AccountId");if(!account||!waitUntil([&]{return window.settings()->flushAutosave()&&account->isVisible();}))return 2;
-  account->setText("https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com/design-captures");emit account->editingFinished();
+  // Pasted as a person pastes it, so the address is read: Account ID, Jurisdiction and Bucket filled.
+  window.settings()->r2Command({{"action","paste"},{"text","https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com/design-captures"}},[](putgd::Error,QJsonObject){});
+  auto* jurisdiction=window.findChild<QComboBox*>("r2Jurisdiction");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
+  if(account->text()!="0123456789abcdef0123456789abcdef"||jurisdiction->currentData().toString()!="eu"||bucket->text()!="design-captures")return 2;
   if(!waitUntil([&]{return window.settings()->flushAutosave();}))return 2;
   destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-r2"))return 2;
   auto* mode=window.findChild<QComboBox*>("b2LinkMode");mode->setCurrentIndex(mode->findData("public"));emit mode->activated(mode->currentIndex());

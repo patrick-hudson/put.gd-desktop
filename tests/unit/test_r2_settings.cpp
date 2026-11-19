@@ -1,6 +1,7 @@
 #include "storage/s3/R2Settings.h"
 #include "storage/s3/R2Provider.h"
 #include "storage/s3/PublicUrl.h"
+#include "storage/s3/S3WorkerProtocol.h"
 #include "secrets/CredentialStore.h"
 #include <QTest>
 using namespace putgd;
@@ -109,15 +110,19 @@ private slots:
     }
     // An upload through a moved Cloudflare R2 destination and one through the old S3 destination on
     // the same endpoint name the same object (#1699 A4); signed R2 requests never follow a redirect (A3).
+    // What existing S3 work recorded keeps its meaning: an S3 identity uses the endpoint as saved, and
+    // an amazonaws.com.cn endpoint keeps path addressing, so recorded History rows and links still match.
     void movedDestinationSharesIdentityAndFollowsNoRedirect() {
         CredentialStore secrets;
         auto s3 = std::make_shared<S3Provider>(secrets);
         R2Provider r2(s3);
         const Destination moved{r2::providerId, "lab", "revision", settings("eu"), {}};
         auto old = R2Provider::s3Destination(moved);
-        old.settings["endpoint"] = "HTTPS://0123456789ABCDEF0123456789ABCDEF.eu.r2.cloudflarestorage.com/";
         old.settings["addressing"] = "auto";
         QCOMPARE(r2.serializationKey(moved, {}, "shot.png"), s3->serializationKey(old, {}, "shot.png"));
+        old.settings["endpoint"] = "HTTPS://0123456789ABCDEF0123456789ABCDEF.eu.r2.cloudflarestorage.com/";
+        QVERIFY(s3->serializationKey(old, {}, "shot.png").startsWith("HTTPS://0123456789ABCDEF0123456789ABCDEF.eu.r2.cloudflarestorage.com//lab-bucket/"));
+        QVERIFY(!s3VirtualAddressing(QJsonObject{{"endpoint", "https://s3.cn-north-1.amazonaws.com.cn"}, {"bucket", "lab-bucket"}, {"addressing", "auto"}}));
         QVERIFY(!s3FollowsRedirects(R2Provider::s3Destination(moved).settings));
         QVERIFY(s3FollowsRedirects(QJsonObject{{"endpoint", "https://s3.us-east-1.amazonaws.com"}}));
         QVERIFY(!s3FollowsRedirects(QJsonObject{{"endpoint", "http://127.0.0.1:9000"}}));
@@ -125,9 +130,16 @@ private slots:
         QVERIFY(s3AmazonEndpoint("https://s3.us-east-1.amazonaws.com.") && s3AmazonEndpoint("https://s3.cn-north-1.amazonaws.com.cn"));
         for (const auto* endpoint : {"https://amazonaws.com.storage.example", "https://storage-amazonaws.com", "https://storage.example/s3.amazonaws.com"})
             QVERIFY2(!s3AmazonEndpoint(endpoint) && !s3FollowsRedirects(QJsonObject{{"endpoint", endpoint}}), endpoint);
-        // aws-global sends a refused request on to another region; no other service gets it.
+        // aws-global sends a refused request on to another region; no other service gets it in new
+        // settings, while work recorded with it before still reaches the worker.
         QVERIFY(!s3RegionProblem("aws-global", "https://storage.example").isEmpty());
         QVERIFY(s3RegionProblem("aws-global", "https://s3.amazonaws.com").isEmpty());
+        auto recorded = R2Provider::s3Destination(moved);
+        recorded.settings["endpoint"] = "https://storage.example";
+        recorded.settings["region"] = "aws-global";
+        recorded.credentialReference = QJsonObject{{"mode", "session"}, {"reference", QJsonValue::Null}};
+        Destination decoded;
+        QVERIFY(s3wire::decode(recorded.toJson(), decoded));
     }
     void moveReadsOnlyAnR2AccountEndpoint() {
         QJsonObject s3{{"bucket", "lab-bucket"}, {"region", "Western North America (WNAM)"},

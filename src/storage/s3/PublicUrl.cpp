@@ -6,16 +6,10 @@ bool s3VirtualAddressing(const QJsonObject& settings) {
     const auto mode = settings["addressing"].toString();
     if (mode == "virtual") return true;
     if (mode == "path") return false;
-    return s3AmazonEndpoint(settings["endpoint"].toString()) && !settings["bucket"].toString().contains('.');
-}
-QString s3IdentityEndpoint(const QString& endpoint) {
-    QUrl url(endpoint);
-    if (!url.isValid() || url.host().isEmpty()) return endpoint;
-    url.setScheme(url.scheme().toLower());
-    url.setHost(url.host().toLower());
-    auto text = url.toString(QUrl::FullyEncoded);
-    while (text.endsWith('/')) text.chop(1);
-    return text;
+    // Unchanged by #1699's s3AmazonEndpoint: recorded links were built with this rule, and a receipt
+    // keeps decoding only while it still builds the same URL (an amazonaws.com.cn endpoint stays path).
+    const auto host = QUrl(settings["endpoint"].toString()).host();
+    return host.endsWith("amazonaws.com") && !settings["bucket"].toString().contains('.');
 }
 bool s3AmazonEndpoint(const QString& endpoint) {
     auto host = QUrl(endpoint).host().toLower();
