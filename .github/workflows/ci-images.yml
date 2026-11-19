@@ -1,0 +1,78 @@
+name: CI images
+# The prebuilt images every container job in ci.yml and package.yml runs in
+# (tools/ci/images/profiles.json, docs/release/ci.md "CI images"). CI calls this
+# first: when every tag is already in the registry it only checks them, so jobs
+# never download distro packages. A tag is missing after a change to its inputs or
+# at the start of an ISO week; this run then builds it once, and later runs reuse
+# it. The schedule builds each new week's tags before the first pull request does.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit or tag whose image inputs to use
+        type: string
+        default: ''
+    outputs:
+      tags:
+        description: JSON object, profile -> image reference
+        value: ${{ jobs.plan.outputs.tags }}
+  schedule:
+    # Monday 00:17 UTC, from nightly: the branch pull requests target.
+    - cron: '17 0 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      tags: ${{ steps.plan.outputs.tags }}
+      missing: ${{ steps.plan.outputs.missing }}
+      week: ${{ steps.plan.outputs.week }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || (github.event_name == 'schedule' && 'nightly') || github.sha }}
+          persist-credentials: false
+      - name: Log in to the registry
+        env:
+          TOKEN: ${{ github.token }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Name the images and find the missing ones
+        id: plan
+        run: python3 tools/ci/ci_images.py plan --registry "ghcr.io/$GITHUB_REPOSITORY_OWNER/putgd-ci" --check
+
+  build:
+    name: build (${{ matrix.profile }})
+    needs: plan
+    if: needs.plan.outputs.missing != '[]'
+    runs-on: ubuntu-24.04
+    # Normally 3-10 minutes; the image build itself retries slow mirrors (#467).
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.plan.outputs.missing) }}
+    # No concurrency group: a third queued run would cancel the second's pending build. Two runs that
+    # miss the same tag may both build it; a build that starts after the other's push finds it and stops.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || (github.event_name == 'schedule' && 'nightly') || github.sha }}
+          persist-credentials: false
+      - name: Log in to the registry
+        env:
+          TOKEN: ${{ github.token }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Build and push the image
+        env:
+          PROFILE: ${{ matrix.profile }}
+          PUTGD_CI_IMAGE_WEEK: ${{ needs.plan.outputs.week }}
+        run: python3 tools/ci/ci_images.py build "$PROFILE" --registry "ghcr.io/$GITHUB_REPOSITORY_OWNER/putgd-ci" --push

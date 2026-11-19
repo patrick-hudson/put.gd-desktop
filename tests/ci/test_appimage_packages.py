@@ -25,14 +25,11 @@ class AppimagePackages(unittest.TestCase):
         for name in names:
             self.assertRegex(name, r'^[a-z0-9][a-z0-9+.-]+$')
 
-    def test_every_workflow_reader_uses_that_comment_syntax(self):
-        workflow = (ROOT / '.github/workflows/package.yml').read_text()
-        uses = re.findall(r'appimage-packages\.txt', workflow)
-        readers = workflow.count(f'{READER} tools/ci/appimage-packages.txt')
-        self.assertEqual(readers, 2, 'the native prefetch and the AppImage install each read the list')
-        self.assertNotIn("grep -hv '^#' tools/ci/appimage-packages.txt", workflow)
-        self.assertGreaterEqual(len(uses), 4)
-
+    def test_the_image_build_is_the_one_reader_and_uses_that_comment_syntax(self):
+        provision = (ROOT / 'tools/ci/images/provision.sh').read_text()
+        self.assertEqual(provision.count(f'{READER} "$root/tools/ci/appimage-packages.txt"'), 1)
+        for workflow in (ROOT / '.github/workflows').glob('*.yml'):
+            self.assertNotIn('appimage-packages.txt', workflow.read_text(), workflow.name)
 
 if __name__ == '__main__':
     unittest.main()

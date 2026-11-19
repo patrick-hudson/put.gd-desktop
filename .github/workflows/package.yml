@@ -9,6 +9,10 @@ on:
         description: Existing exact release tag; empty builds development-identity packages
         type: string
         default: ''
+      images:
+        description: JSON object, CI image profile -> image reference (ci-images.yml)
+        type: string
+        required: true
 permissions:
   contents: read
 env:
@@ -16,112 +20,17 @@ env:
   CCACHE_DIR: ${{ github.workspace }}/build/ccache-package
   CCACHE_BASEDIR: ${{ github.workspace }}
   CCACHE_MAXSIZE: 256M
-  # Ubuntu containers name one archive host, so an outage there fails every
-  # retry. Rank alternatives by bounded download throughput, including mirrors
-  # that answer HTTP 200 but deliver packages too slowly. APT fails over file by
-  # file and still verifies everything against the Ubuntu keyring, but it goes
-  # back to the first mirror for every file. A mirror can probe fast and then
-  # stall on real downloads, so putgd_apt_install bounds each attempt, keeps
-  # what it downloaded, and demotes a first mirror that delivered too little.
-  PUTGD_UBUNTU_MIRRORS: |
-    apt_root=${PUTGD_APT_ROOT:-/etc/apt}
-    # security.ubuntu.com too: the mirrors carry the -security pocket, and that
-    # host has stalled together with archive.ubuntu.com.
-    sources=$(grep -lE 'http://(archive|security)\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
-    if [ -n "$sources" ]; then
-      probe_dir=$(mktemp -d)
-      # Four sequential probes: <= 12.8 s, <= 8 MiB of response bodies.
-      # 1 MiB/s fetches 483 MiB in ~8 minutes, within two of the three install attempts.
-      floor=1048576
-      for endpoint in ${PUTGD_UBUNTU_MIRROR_HOSTS:-us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com}; do
-        host=${endpoint%%:*}; port=${endpoint#*:}; [ "$port" != "$endpoint" ] || port=80
-        start=$(date +%s%N)
-        # Sample a base noble package: cached indexes can be fast while pool
-      # downloads crawl. This version remains referenced by noble/main.
-      # HTTP/1.0 avoids chunked encoding. Range bounds cooperative servers;
-        # head also bounds servers that ignore Range. A partial body at timeout
-        # is measured too, so a live trickle cannot pass as a fast mirror.
-        timeout --kill-after=0.2s 3s bash -c '
-          exec 3<>/dev/tcp/$1/$2 || exit 1
-          printf "GET /ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8_amd64.deb HTTP/1.0\r\nHost: %s\r\nRange: bytes=0-2097151\r\n\r\n" "$1" >&3
-          IFS= read -r status <&3
-          case "$status" in *" 200 "*|*" 206 "*) ;; *) exit 1;; esac
-          while IFS= read -r line <&3; do [ "$line" != $'"'"'\r'"'"' ] || break; done
-          head -c 2097152 <&3 > "$3"
-        ' _ "$host" "$port" "$probe_dir/body" 2>/dev/null || true
-        elapsed=$(( ($(date +%s%N) - start) / 1000000 ))
-        [ "$elapsed" -gt 0 ] || elapsed=1
-        bytes=0
-        [ ! -f "$probe_dir/body" ] || bytes=$(wc -c < "$probe_dir/body")
-        speed=$(( bytes * 1000 / elapsed ))
-        tier=2; label=unavailable
-        if [ "$speed" -ge "$floor" ]; then tier=0; label=fast
-        elif [ "$speed" -gt 0 ]; then tier=1; label=below-floor; fi
-        echo "Ubuntu mirror throughput: $endpoint $speed B/s ($bytes bytes in $elapsed ms; $label; floor=$floor B/s)"
-        printf '%d %d %s\n' "$tier" "$speed" "$endpoint" >> "$probe_dir/rank"
-        rm -f "$probe_dir/body"
-      done
-      priority=0
-      : > "$apt_root/putgd-mirrors.txt"
-      while read -r tier speed endpoint; do
-        priority=$((priority + 1))
-        printf 'http://%s/ubuntu/\tpriority:%d\n' "$endpoint" "$priority" >> "$apt_root/putgd-mirrors.txt"
-      done < <(LC_ALL=C sort -s -k1,1n -k2,2nr "$probe_dir/rank")
-      awk '$1 < 2' "$probe_dir/rank" | wc -l > "$apt_root/putgd-mirrors.txt.usable"
-      rm -f "$probe_dir/rank"
-      rmdir "$probe_dir"
-      sed -i -E "s#http://(archive|security)\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
-    fi
-    # Move the first mirror behind the others that answered the probe. Mirrors
-    # that gave nothing stay last: rotating one to the front costs 40 s a file.
-    putgd_demote_mirror() {
-      local list=${PUTGD_APT_ROOT:-/etc/apt}/putgd-mirrors.txt usable first
-      [ -s "$list" ] || return 0
-      usable=$(cat "$list.usable" 2>/dev/null || true)
-      [ "${usable:-0}" -gt 0 ] || usable=$(wc -l < "$list")
-      [ "$usable" -gt 1 ] || return 0
-      first=$(head -n 1 "$list" | cut -f1)
-      cut -f1 "$list" | awk -v n="$usable" 'NR == 1 { first = $0; next } { print } NR == n { print first }' |
-        awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$list.new"
-      mv "$list.new" "$list"
-      echo "Ubuntu mirror moved behind the other usable mirrors: $first"
-    }
-    # putgd_apt_install [OPTION|PACKAGE]...: apt-get update and install with the
-    # caller's apt=() options, in three attempts of at most 6 minutes each.
-    # Downloads go to their own directory: Docker images delete apt's default
-    # archives after every update, which would discard a stopped attempt's
-    # progress. An attempt that fetched under 128 MiB demotes its first mirror.
-    putgd_apt_install() {
-      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-360} deadline left updated= before fetched
-      local archives=${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}
-      mkdir -p "$archives/partial"
-      for attempt in 1 2 3; do
-        deadline=$((SECONDS + limit))
-        before=$(du -sk "$archives" | cut -f1)
-        if [ -n "$updated" ] || timeout --kill-after=30s "$limit" apt-get update --error-on=any "${apt[@]}"; then
-          updated=1
-          left=$((deadline - SECONDS)); [ "$left" -gt 0 ] || left=1
-          if DEBIAN_FRONTEND=noninteractive timeout --kill-after=30s "$left" apt-get install -y "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
-            apt-get clean -o "Dir::Cache::Archives=$archives/" || true
-            return 0
-          fi
-        fi
-        fetched=$(( $(du -sk "$archives" | cut -f1) - before ))
-        echo "::warning::Package install: attempt $attempt of 3 failed or ran over $limit s after fetching $((fetched / 1024)) MiB"
-        [ "$attempt" != 3 ] || break
-        [ "$fetched" -ge "${PUTGD_APT_PROGRESS_KB:-131072}" ] || putgd_demote_mirror
-        # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
-        timeout --kill-after=30s 120 dpkg --configure -a || true
-      done
-      return 1
-    }
-
 jobs:
   native:
     name: native (${{ matrix.name }})
     runs-on: ubuntu-24.04
-    container: ${{ matrix.image }}
-    # Normally 8-17 minutes. Above four stopped install attempts plus the snapshot fallback (#467).
+    # matrix.image plus the release builder's packages (tools/ci/images/profiles.json); lab tools build from matrix.image.
+    container:
+      image: ${{ fromJSON(inputs.images)[format('native-{0}', matrix.name)] }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    # Normally 8-17 minutes.
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -156,89 +65,12 @@ jobs:
             kde: --require-kde
             plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
     steps:
-      - name: Bootstrap checkout tools
-        # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
-        # each attempt stopped after 10 minutes (#467).
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-          eval "$PUTGD_UBUNTU_MIRRORS"
-          bounded() { timeout --kill-after=30s 10m "$@"; }
-          # actions/cache needs zstd to write what the AppImage job, outside any container, can restore.
-          zstd=$([ '${{ matrix.name }}' != ubuntu24.04 ] || echo zstd)
-          for attempt in 1 2 3; do
-            if command -v apt-get >/dev/null; then
-              bounded apt-get update --error-on=any "${apt[@]}" && bounded apt-get install -y "${apt[@]}" git ca-certificates $zstd && exit 0
-            else
-              bounded dnf install -y --setopt=retries=10 --setopt=timeout=60 --setopt=minrate=1000 $([ "$attempt" = 1 ] || echo --refresh) git ca-certificates && exit 0
-            fi
-            echo "::warning::Package install (bootstrap): attempt $attempt of 3 failed"
-            putgd_demote_mirror
-            [ "$attempt" != 1 ] || printf '### Package install retries (native (%s) bootstrap)\n\n| Attempt | Outcome |\n| --- | --- |\n' '${{ matrix.name }}' >> "$GITHUB_STEP_SUMMARY"
-            echo "| $attempt of 3 | failed |" >> "$GITHUB_STEP_SUMMARY"
-            [ "$attempt" = 3 ] || sleep $((attempt * 30))
-          done
-          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
-      - name: Identify the package snapshot
-        # Downloaded packages and their metadata, refreshed weekly: installs reuse them, and
-        # when every mirror attempt fails the install runs offline from them (#368).
-        id: pkg-key
-        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        id: pkg-cache
-        with:
-          path: /var/cache/putgd-packages
-          key: putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-${{ steps.pkg-key.outputs.week }}
-          # Then any older snapshot of this target, the newest first, so new dependency scripts still have one
-          # to fall back to (#1668). Its own indexes either satisfy the new list or the offline install fails
-          # before dpkg starts.
-          restore-keys: |
-            putgd-pkgs-v1-${{ matrix.name }}-${{ matrix.name == 'ubuntu24.04' && hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') || hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh') }}-
-            putgd-pkgs-v1-${{ matrix.name }}-
-      - name: Standard distro dependencies
-        env:
-          PUTGD_PKG_CACHE: /var/cache/putgd-packages
-          PUTGD_PKG_LABEL: native (${{ matrix.name }})
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          bash tools/releases/install-native-deps.sh
-      - name: Download the AppImage job's packages into the snapshot
-        # Download only: this build's packages stay as they are. The AppImage job restores the
-        # same snapshot and installs these from it when the mirrors fail (#1652). The snapshot is
-        # saved only when every download worked, so a failure here never fails this build.
-        id: appimage-prefetch
-        continue-on-error: true
-        # Its own small budget, so cache warming can't eat the native job's time: two attempts of five
-        # minutes, and the step itself stops at 15.
-        timeout-minutes: 15
-        if: matrix.name == 'ubuntu24.04' && env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true'
-        env:
-          PUTGD_PKG_CACHE: /var/cache/putgd-packages
-          PUTGD_PKG_LABEL: native (ubuntu24.04) AppImage packages
-          # Never refreshes the indexes: the packages are fetched against the ones the install above
-          # downloaded, so the snapshot's indexes and packages match.
-          PUTGD_PKG_REUSE_METADATA: 'true'
-          PUTGD_PKG_ATTEMPTS: '2'
-          PUTGD_PKG_BACKOFF: '10'
-          PUTGD_PKG_TIMEOUT: '300'
-          PUTGD_PKG_STALL: '120'
-        run: |
-          # The same list the AppImage job installs (the base list, the AppImage packages and weston), downloaded only.
-          # --reinstall also downloads packages this image already has at the candidate version, which the install
-          # above never fetched: the ones this job's bootstrap installed (git, ca-certificates) and the overlap with
-          # the list. A runner with an older version needs those archives for the offline install.
-          PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' tools/ci/appimage-packages.txt) weston" \
-            PUTGD_INSTALL_OPTIONS='--download-only --reinstall' bash tools/releases/install-native-deps.sh
-      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        # Only a snapshot an online install just refreshed, never one it fell back to; for ubuntu24.04, with the AppImage packages in it.
-        if: env.PUTGD_PKG_CACHE_REFRESHED == 'true' && steps.pkg-cache.outputs.cache-hit != 'true' && (matrix.name != 'ubuntu24.04' || steps.appimage-prefetch.outcome == 'success') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        with:
-          path: /var/cache/putgd-packages
-          key: ${{ steps.pkg-cache.outputs.cache-primary-key }}
+      - name: Trust the container checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Validate exact release source
         if: inputs.release_tag != ''
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
@@ -369,11 +201,13 @@ jobs:
 
   arch:
     runs-on: ubuntu-24.04
-    container: archlinux:base@sha256:823e937464d1528b306a8e1137ef406b9c56e5fee43c7a19e93684d554af74e1
+    container:
+      image: ${{ fromJSON(inputs.images)['native-archlinux'] }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     timeout-minutes: 90
     steps:
-      - name: Bootstrap checkout
-        run: pacman -Syu --noconfirm --needed git ca-certificates
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -385,11 +219,10 @@ jobs:
           path: build/ccache-package
           key: ccache-package-archlinux-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ccache-package-archlinux-
-      - name: Distro dependencies and build user
+      - name: Hand the workspace to the build user
+        # The image has the packages and the builder user (tools/ci/images/provision.sh).
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          bash tools/releases/install-native-deps.sh
-          useradd -m builder
           chown -R builder "$GITHUB_WORKSPACE"
       - name: Build verified dependencies and production package
         env:
@@ -443,74 +276,20 @@ jobs:
 
   appimage:
     runs-on: ubuntu-24.04
-    # Package attempts are bounded and bypass the hosted runner's slow Azure mirror (#500).
+    # Ubuntu 24.04 with the build packages and the locked official Qt in $QT_ROOT_DIR (tools/ci/images/provision.sh).
+    container:
+      image: ${{ fromJSON(inputs.images).appimage }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
-      - name: Use official Ubuntu archive mirrors
-        # The runner names one mirror, and one slow mirror then stalls every attempt (#1668). Hand its Ubuntu
-        # sources to the container jobs' probe, which ranks four mirrors into one mirror+file list. The
-        # sources keep their suites, components and Signed-By, so apt verifies everything as before (#500).
-        run: |
-          sudo python3 tools/ci/hosted_apt_mirrors.py
-          sudo --preserve-env=PUTGD_UBUNTU_MIRRORS bash -c 'eval "$PUTGD_UBUNTU_MIRRORS"'
-          if ! grep -rqs 'mirror+file:/etc/apt/putgd-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d; then
-            echo '::error::The Ubuntu sources do not use the ranked mirror list /etc/apt/putgd-mirrors.txt'
-            exit 1
-          fi
-          cat /etc/apt/putgd-mirrors.txt
-      - name: Identify the package snapshot
-        id: pkg-key
-        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
-      # The same Ubuntu 24.04 packages native (ubuntu24.04) already caches, so this
-      # avoids a 2.5-minute download without using more of the shared cache budget.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: /var/cache/putgd-packages
-          key: putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-${{ steps.pkg-key.outputs.week }}
-          # native (ubuntu24.04) saves the snapshot for a new key in parallel, so the first run after a package
-          # list or script change has none under it: then the newest older snapshot (#1668).
-          restore-keys: |
-            putgd-pkgs-v1-ubuntu24.04-${{ hashFiles('tools/releases/install-native-deps.sh', 'tools/ci/install-packages.sh', 'tools/ci/appimage-packages.txt') }}-
-            putgd-pkgs-v1-ubuntu24.04-
-      - name: Standard build dependencies
-        env:
-          PUTGD_PKG_LABEL: appimage
-          PUTGD_PKG_TIMEOUT: '300'
-          PUTGD_PKG_STALL: '120'
-          PUTGD_PKG_ATTEMPTS: '3'
-          # After the ranked mirrors and the snapshot: a checked-in list of public HTTPS mirrors (#1668).
-          PUTGD_APT_LAST_RESORT_MIRRORS: ${{ github.workspace }}/tools/ci/apt-last-resort-mirrors.txt
-        run: |
-          # One apt transaction (#1652): the base dependencies, the packages in tools/ci/appimage-packages.txt
-          # (patchelf, the bundled libraries, the screen recording build inputs, GStreamer plugins and the
-          # system libraries the Qt action would install) and weston. It installs entirely online or
-          # entirely from the package snapshot, never a mix of the two. sudo keeps the summary file for the retry report (#368).
-          PUTGD_EXTRA_PACKAGES="$(sed 's/#.*//' tools/ci/appimage-packages.txt) weston"
-          export PUTGD_EXTRA_PACKAGES
-          # actions/cache stores this path relative to the container's shallower workspace,
-          # so here it restores three levels above this workspace, not to /var/cache.
-          PUTGD_PKG_CACHE=$(realpath -m "$GITHUB_WORKSPACE/../../../var/cache/putgd-packages")
-          export PUTGD_PKG_CACHE
-          sudo --preserve-env=GITHUB_STEP_SUMMARY,PUTGD_PKG_CACHE,PUTGD_EXTRA_PACKAGES,PUTGD_PKG_LABEL,PUTGD_PKG_TIMEOUT,PUTGD_PKG_STALL,PUTGD_PKG_ATTEMPTS,PUTGD_APT_LAST_RESORT_MIRRORS bash tools/releases/install-native-deps.sh
-      - name: The locked Qt version
-        # Renovate updates it in the lock (#420), where the AppImage tools read it too.
-        id: qt
-        run: echo "version=$(python3 -c 'import json; print(json.load(open("packaging/appimage/tools.lock.json"))["buildInputs"]["qt"])')" >> "$GITHUB_OUTPUT"
-      - uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
-        env:
-          LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini
-        with:
-          version: ${{ steps.qt.outputs.version }}
-          # Its own apt-get update/install runs outside the snapshot fallback; its packages are in
-          # tools/ci/appimage-packages.txt and install in the one transaction above.
-          install-deps: false
-          arch: linux_gcc_64
-          modules: qtimageformats
-          cache: true
+      - name: Trust the container checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Validate exact release source
         if: inputs.release_tag != ''
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
@@ -625,9 +404,9 @@ jobs:
         run: |
           # The AppImage's GPL corresponding source includes the bundled distro source packages.
           printf 'Types: deb-src\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/putgd-appimage-src.sources > /dev/null
-          # The ranked mirror list, as in the appimage job, for the source indexes too (#1668).
+          # The ranked mirror list the CI images are built with, for the source indexes too (#1668).
           sudo python3 tools/ci/hosted_apt_mirrors.py
-          sudo --preserve-env=PUTGD_UBUNTU_MIRRORS bash -c 'eval "$PUTGD_UBUNTU_MIRRORS"'
+          sudo bash tools/ci/ubuntu-mirrors.sh
           if ! grep -rqs 'mirror+file:/etc/apt/putgd-mirrors.txt' /etc/apt/sources.list /etc/apt/sources.list.d; then
             echo '::error::The Ubuntu sources do not use the ranked mirror list /etc/apt/putgd-mirrors.txt'
             exit 1
@@ -690,10 +469,13 @@ jobs:
           chmod +x "$image"
           (cd build/pipewire && "$image" --appimage-extract > /dev/null)
       - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
+        env:
+          IMAGE: ${{ fromJSON(inputs.images).pipewire }}
+          TOKEN: ${{ github.token }}
         run: |
-          docker run --rm --env PUTGD_UBUNTU_MIRRORS --volume "$PWD:/src:ro" --workdir /src \
-            ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
-            bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
+          printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src "$IMAGE" \
+            bash tests/desktop/pipewire/ci_check.sh build/pipewire/squashfs-root
 
   sbom:
     # CycloneDX SBOMs of every package and their Grype report (#420, docs/release/release.md).

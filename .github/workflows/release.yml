@@ -53,6 +53,8 @@ jobs:
       pull-requests: read
       # ci.yml's test jobs record flaky tests in tracker issues.
       issues: write
+      # ci.yml's images job builds a missing CI image (ci-images.yml).
+      packages: write
     uses: ./.github/workflows/ci.yml
     with:
       release_tag: ${{ needs.tag.outputs.tag }}

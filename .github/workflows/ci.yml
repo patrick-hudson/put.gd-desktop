@@ -23,107 +23,6 @@ permissions:
 concurrency:
   group: ci-${{ inputs.release_tag || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ !inputs.release_tag }}
-env:
-  # Ubuntu containers name one archive host, so an outage there fails every
-  # retry. Rank alternatives by bounded download throughput, including mirrors
-  # that answer HTTP 200 but deliver packages too slowly. APT fails over file by
-  # file and still verifies everything against the Ubuntu keyring, but it goes
-  # back to the first mirror for every file. A mirror can probe fast and then
-  # stall on real downloads, so putgd_apt_install bounds each attempt, keeps
-  # what it downloaded, and demotes a first mirror that delivered too little.
-  PUTGD_UBUNTU_MIRRORS: |
-    apt_root=${PUTGD_APT_ROOT:-/etc/apt}
-    # security.ubuntu.com too: the mirrors carry the -security pocket, and that
-    # host has stalled together with archive.ubuntu.com.
-    sources=$(grep -lE 'http://(archive|security)\.ubuntu\.com/ubuntu' "$apt_root"/sources.list "$apt_root"/sources.list.d/* 2>/dev/null || true)
-    if [ -n "$sources" ]; then
-      probe_dir=$(mktemp -d)
-      # Four sequential probes: <= 12.8 s, <= 8 MiB of response bodies.
-      # 1 MiB/s fetches 483 MiB in ~8 minutes, within two of the three install attempts.
-      floor=1048576
-      for endpoint in ${PUTGD_UBUNTU_MIRROR_HOSTS:-us.archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com archive.ubuntu.com}; do
-        host=${endpoint%%:*}; port=${endpoint#*:}; [ "$port" != "$endpoint" ] || port=80
-        start=$(date +%s%N)
-        # Sample a base noble package: cached indexes can be fast while pool
-      # downloads crawl. This version remains referenced by noble/main.
-      # HTTP/1.0 avoids chunked encoding. Range bounds cooperative servers;
-        # head also bounds servers that ignore Range. A partial body at timeout
-        # is measured too, so a live trickle cannot pass as a fast mirror.
-        timeout --kill-after=0.2s 3s bash -c '
-          exec 3<>/dev/tcp/$1/$2 || exit 1
-          printf "GET /ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8_amd64.deb HTTP/1.0\r\nHost: %s\r\nRange: bytes=0-2097151\r\n\r\n" "$1" >&3
-          IFS= read -r status <&3
-          case "$status" in *" 200 "*|*" 206 "*) ;; *) exit 1;; esac
-          while IFS= read -r line <&3; do [ "$line" != $'"'"'\r'"'"' ] || break; done
-          head -c 2097152 <&3 > "$3"
-        ' _ "$host" "$port" "$probe_dir/body" 2>/dev/null || true
-        elapsed=$(( ($(date +%s%N) - start) / 1000000 ))
-        [ "$elapsed" -gt 0 ] || elapsed=1
-        bytes=0
-        [ ! -f "$probe_dir/body" ] || bytes=$(wc -c < "$probe_dir/body")
-        speed=$(( bytes * 1000 / elapsed ))
-        tier=2; label=unavailable
-        if [ "$speed" -ge "$floor" ]; then tier=0; label=fast
-        elif [ "$speed" -gt 0 ]; then tier=1; label=below-floor; fi
-        echo "Ubuntu mirror throughput: $endpoint $speed B/s ($bytes bytes in $elapsed ms; $label; floor=$floor B/s)"
-        printf '%d %d %s\n' "$tier" "$speed" "$endpoint" >> "$probe_dir/rank"
-        rm -f "$probe_dir/body"
-      done
-      priority=0
-      : > "$apt_root/putgd-mirrors.txt"
-      while read -r tier speed endpoint; do
-        priority=$((priority + 1))
-        printf 'http://%s/ubuntu/\tpriority:%d\n' "$endpoint" "$priority" >> "$apt_root/putgd-mirrors.txt"
-      done < <(LC_ALL=C sort -s -k1,1n -k2,2nr "$probe_dir/rank")
-      awk '$1 < 2' "$probe_dir/rank" | wc -l > "$apt_root/putgd-mirrors.txt.usable"
-      rm -f "$probe_dir/rank"
-      rmdir "$probe_dir"
-      sed -i -E "s#http://(archive|security)\.ubuntu\.com/ubuntu/?#mirror+file:$apt_root/putgd-mirrors.txt#" $sources
-    fi
-    # Move the first mirror behind the others that answered the probe. Mirrors
-    # that gave nothing stay last: rotating one to the front costs 40 s a file.
-    putgd_demote_mirror() {
-      local list=${PUTGD_APT_ROOT:-/etc/apt}/putgd-mirrors.txt usable first
-      [ -s "$list" ] || return 0
-      usable=$(cat "$list.usable" 2>/dev/null || true)
-      [ "${usable:-0}" -gt 0 ] || usable=$(wc -l < "$list")
-      [ "$usable" -gt 1 ] || return 0
-      first=$(head -n 1 "$list" | cut -f1)
-      cut -f1 "$list" | awk -v n="$usable" 'NR == 1 { first = $0; next } { print } NR == n { print first }' |
-        awk '{ printf "%s\tpriority:%d\n", $0, NR }' > "$list.new"
-      mv "$list.new" "$list"
-      echo "Ubuntu mirror moved behind the other usable mirrors: $first"
-    }
-    # putgd_apt_install [OPTION|PACKAGE]...: apt-get update and install with the
-    # caller's apt=() options, in three attempts of at most 6 minutes each.
-    # Downloads go to their own directory: Docker images delete apt's default
-    # archives after every update, which would discard a stopped attempt's
-    # progress. An attempt that fetched under 128 MiB demotes its first mirror.
-    putgd_apt_install() {
-      local attempt limit=${PUTGD_APT_ATTEMPT_SECONDS:-360} deadline left updated= before fetched
-      local archives=${PUTGD_APT_ARCHIVES:-/var/cache/putgd-apt}
-      mkdir -p "$archives/partial"
-      for attempt in 1 2 3; do
-        deadline=$((SECONDS + limit))
-        before=$(du -sk "$archives" | cut -f1)
-        if [ -n "$updated" ] || timeout --kill-after=30s "$limit" apt-get update --error-on=any "${apt[@]}"; then
-          updated=1
-          left=$((deadline - SECONDS)); [ "$left" -gt 0 ] || left=1
-          if DEBIAN_FRONTEND=noninteractive timeout --kill-after=30s "$left" apt-get install -y "${apt[@]}" -o "Dir::Cache::Archives=$archives/" "$@"; then
-            apt-get clean -o "Dir::Cache::Archives=$archives/" || true
-            return 0
-          fi
-        fi
-        fetched=$(( $(du -sk "$archives" | cut -f1) - before ))
-        echo "::warning::Package install: attempt $attempt of 3 failed or ran over $limit s after fetching $((fetched / 1024)) MiB"
-        [ "$attempt" != 3 ] || break
-        [ "$fetched" -ge "${PUTGD_APT_PROGRESS_KB:-131072}" ] || putgd_demote_mirror
-        # A stopped attempt can leave dpkg half done; apt-get refuses to install until it is finished.
-        timeout --kill-after=30s 120 dpkg --configure -a || true
-      done
-      return 1
-    }
-
 jobs:
   changes:
     runs-on: ubuntu-24.04
@@ -154,6 +53,16 @@ jobs:
           path: build/reused-ci.json
           if-no-files-found: error
           retention-days: 90
+
+  images:
+    # The prebuilt images the container jobs below and in package.yml run in: no job downloads
+    # distro packages (.github/workflows/ci-images.yml).
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/ci-images.yml
+    with:
+      ref: ${{ inputs.release_tag || github.sha }}
 
   contracts:
     runs-on: ubuntu-24.04
@@ -228,15 +137,21 @@ jobs:
 
   linux:
     name: linux (${{ matrix.distribution }})
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-24.04
     # Normally 5-10 minutes (#467).
     timeout-minutes: 60
     permissions:
       contents: read
+      packages: read  # the CI image
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
-    container: ubuntu:${{ matrix.distribution }}
+    container:
+      # tools/ci/images/provision.sh installed its packages and the putgd-ci test user.
+      image: ${{ fromJSON(needs.images.outputs.tags)[format('linux-{0}', matrix.distribution)] }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
@@ -245,22 +160,6 @@ jobs:
       matrix:
         distribution: ['24.04', '26.04']
     steps:
-      - name: Install distro dependencies
-        # Three bounded attempts that keep their downloads; a mirror that delivers too little is demoted (#467).
-        timeout-minutes: 30
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-          eval "$PUTGD_UBUNTU_MIRRORS"
-          packages=(build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config libtesseract-dev libleptonica-dev libzxing-dev tesseract-ocr-eng qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon gjs libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire gstreamer1.0-libav)
-          if [ '${{ matrix.distribution }}' = '26.04' ]; then
-            # faketime pins the UI catalog clock; Pillow and numpy support shared image-diff tests.
-            packages+=(liblayershellqtinterface-dev faketime python3-pil python3-numpy)
-            # budgie_labwc_integration runs the Budgie adapter against a real headless labwc (#1275).
-            packages+=(labwc wl-clipboard wlr-randr)
-          fi
-          putgd_apt_install "${packages[@]}"
-          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -418,28 +317,24 @@ jobs:
   sanitizers:
     # Not in the required `CI` summary until it has proven stable (#90).
     name: sanitizers (clang ASan/UBSan)
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.sanitizers == 'true'
     permissions:
       contents: read
+      packages: read  # the CI image
       issues: write  # the flaky-test tracker (tools/ci/flake_ledger.py)
     runs-on: ubuntu-24.04
     # Normally 5-10 minutes, more when the instrumented QtCore is rebuilt (#467).
     timeout-minutes: 90
-    container: ubuntu:26.04
+    container:
+      image: ${{ fromJSON(needs.images.outputs.tags).sanitizers }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     steps:
-      - name: Install distro dependencies
-        # Three bounded attempts that keep their downloads; a mirror that delivers too little is demoted (#467).
-        timeout-minutes: 30
-        shell: bash
-        run: |
-          apt=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
-          eval "$PUTGD_UBUNTU_MIRRORS"
-          putgd_apt_install build-essential clang libclang-rt-dev llvm ccache git ca-certificates curl passwd util-linux python3 cmake ninja-build pkg-config libtesseract-dev libleptonica-dev libzxing-dev tesseract-ocr-eng qt6-base-dev qt6-svg-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev liblayershellqtinterface-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon gjs libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev
-          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -590,19 +485,26 @@ jobs:
         run: python3 tools/ci/cache_prune.py --repo "$GITHUB_REPOSITORY"
 
   packages:
-    needs: changes
+    needs: [changes, images]
     if: needs.changes.outputs.packages == 'true'
+    permissions:
+      contents: read
+      packages: read  # the CI images
     uses: ./.github/workflows/package.yml
     with:
       release_tag: ${{ inputs.release_tag || '' }}
+      images: ${{ needs.images.outputs.tags }}
 
   pipewire:
     # Package runs test their own image immediately after assembly. Only
     # recorder/check-only PRs need the last published image here.
-    needs: [changes, packages]
-    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' }}
+    needs: [changes, images, packages]
+    if: ${{ always() && needs.changes.outputs.pipewire == 'true' && needs.packages.result == 'skipped' && needs.images.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read  # the CI image
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -622,10 +524,13 @@ jobs:
           chmod +x "$image"
           (cd build/pipewire && "$image" --appimage-extract > /dev/null)
       - name: Link pipewiresrc on Ubuntu 26.04's PipeWire
+        env:
+          IMAGE: ${{ fromJSON(needs.images.outputs.tags).pipewire }}
+          TOKEN: ${{ github.token }}
         run: |
-          docker run --rm --env PUTGD_UBUNTU_MIRRORS --volume "$PWD:/src:ro" --workdir /src \
-            ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7 \
-            bash tests/desktop/pipewire/ci_check.sh --install build/pipewire/squashfs-root
+          printf '%s' "$TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker run --rm --volume "$PWD:/src:ro" --workdir /src "$IMAGE" \
+            bash tests/desktop/pipewire/ci_check.sh build/pipewire/squashfs-root
 
   ci:
     name: CI
