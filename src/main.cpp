@@ -390,8 +390,14 @@ int main(int argc,char* argv[]) {
   // receipts say they are, no storage test journal keeps a link's query. The Custom uploader's
   // test writes its journal on its own path below.
   auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,putgd::withoutSignedTestLinks(data)));};
-  auto finished=[path,reply](QJsonObject result,putgd::Error error){
-   auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
+  auto finished=[path,provider,reply](QJsonObject result,putgd::Error error){
+   // A test whose every step ended with explicit evidence leaves nothing its journal must trace;
+   // that journal goes, and any other stays, saying it is unsettled (#1690).
+   auto record=putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+   auto checkpoints=putgd::destinationTestCheckpoints(path);checkpoints.append(record);
+   record["settled"]=putgd::destinationTestSettled(provider,checkpoints);
+   auto journalError=checkpointFile(path,record);
+   if(!journalError&&record["settled"].toBool())putgd::removeDestinationTestJournal(path);
    if(!error&&journalError)error=journalError;
    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
    reply(error);
@@ -425,7 +431,11 @@ int main(int argc,char* argv[]) {
    operations.background([http,destination,checkpoint](putgd::Error& error){
     QJsonObject out;http->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
    },[path,reply=std::move(reply)](putgd::Error error,QJsonObject result){
-    auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+    QJsonObject record{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}};
+    auto checkpoints=putgd::destinationTestCheckpoints(path);checkpoints.append(record);
+    record["settled"]=putgd::destinationTestSettled(QString::fromLatin1(putgd::http::providerId),checkpoints);
+    auto journalError=checkpointFile(path,record);
+    if(!journalError&&record["settled"].toBool())putgd::removeDestinationTestJournal(path);
     if(!error&&journalError)error=journalError;
     reply(error,result);
    });

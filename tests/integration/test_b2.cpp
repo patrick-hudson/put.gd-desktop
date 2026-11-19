@@ -294,6 +294,43 @@ private slots:
         for (const auto& written : {QJsonDocument(journal).toJson(), QJsonDocument(tested.first).toJson()})
             QVERIFY(!written.contains("Authorization="));
     }
+    // #1690: whatever Test upload and link may have left in the bucket, its journal names it. The
+    // synthetic upload is recorded before it is sent and sent once: after an unclear reply it
+    // stays unknown (never "failed") instead of storing a second version nothing records. The
+    // large-file probe records its name and file ID, and a refused cancel is not taken for done.
+    void testJournalNamesWhatAnUnclearStepMayHaveLeft_data() {
+        QTest::addColumn<QJsonArray>("faults");QTest::addColumn<QString>("uploadStatus");QTest::addColumn<QString>("cancel");
+        QTest::newRow("upload-reply-lost") << QJsonArray{QJsonObject{{"call", "upload_file"}, {"drop", true}}} << QString("unknown") << QString();
+        QTest::newRow("upload-reply-lost-lookup-failed")
+            << QJsonArray{QJsonObject{{"call", "upload_file"}, {"store", true}}, QJsonObject{{"call", "b2_list_file_versions"}, {"status", 500}, {"after", 2}, {"remaining", 10}}}
+            << QString("unknown") << QString();
+        QTest::newRow("large-cancel-refused") << QJsonArray{QJsonObject{{"call", "b2_cancel_large_file"}, {"status", 400}, {"code", "bad_request"}}} << QString("uploaded") << QString("failed");
+    }
+    void testJournalNamesWhatAnUnclearStepMayHaveLeft() {
+        QFETCH(QJsonArray, faults);QFETCH(QString, uploadStatus);QFETCH(QString, cancel);
+        B2Fixture f;
+        f.reset();
+        f.rules(faults);
+        QJsonArray journal;
+        const auto tested = f.await<std::pair<QJsonObject, Error>>([&](auto cb) {
+            f.provider.testDestination(f.destination, [&journal](auto value, auto ack) { journal.append(value); ack({}); },
+                                       [cb](QJsonObject value, Error e) { cb({std::move(value), std::move(e)}); });
+        });
+        QVERIFY(tested.second);
+        QCOMPARE(tested.first["uploadStatus"].toString(), uploadStatus);
+        const auto intent = journal.first().toObject();
+        QCOMPARE(intent["phase"].toString(), QString("synthetic_upload_intent"));
+        const auto name = intent["objectReference"].toObject()["key"].toString();
+        QVERIFY(name.contains("putgd-test-"));
+        QCOMPARE(f.events("upload_file").size(), 1);
+        if (cancel.isEmpty()) return;
+        QCOMPARE(tested.first["largeFile"].toObject()["cancel"].toString(), cancel);
+        bool started = false;
+        for (const auto& value : journal)
+            started = started || (value.toObject()["phase"] == "synthetic_large_started" && !value.toObject()["fileId"].toString().isEmpty());
+        QVERIFY(started);
+        QVERIFY(f.versions().size() == 1 && f.versions()[0].toObject()["action"] == "start");
+    }
     // #1602, review of #1603. Copy Link renews an expired authorized link and its request
     // stalls, holding the file; a deletion of the same file waits behind it. Quit kills the
     // renewal's helper as it does a deletion's: shutdown ends quickly, no helper survives,

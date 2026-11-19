@@ -35,6 +35,10 @@ public:
     void testDestination(const Destination&, DurableCheckpoint, std::function<void(QJsonObject, Error)>) override;
     void abandon(const Destination&, const QJsonObject&, std::function<void(Error)>) override;
 private:
+    // attempts: how often a PutObject whose outcome stayed unclear is sent again. Test upload and
+    // link sends its synthetic file once (#1690): a resend could be cleaned up before the first
+    // request lands, leaving an object no journal records.
+    void upload(const UploadRequest&, std::function<void(UploadResult)>, int attempts);
     struct State;
     std::unique_ptr<State> state_;
 };

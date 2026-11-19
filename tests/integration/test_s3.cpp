@@ -52,6 +52,22 @@ private slots:
     }
 
 
+    // #1690: Test upload and link sends its synthetic file once. After an unclear reply with the key
+    // still absent it stays unknown with its intent journaled, instead of sending again: the first
+    // request could land after the second copy was cleaned up, leaving an object no journal records.
+    void testUploadIsSentOnceAndAnUnclearOneStaysJournaled() {
+        S3Fixture f;
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"status",503},{"code","SlowDown"}}}}});
+        QJsonArray journal;
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[&journal](auto value,auto ack){journal.append(value);ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        QVERIFY(tested.second);
+        QCOMPARE(tested.first["uploadStatus"].toString(),QString("unknown"));
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(journal.first().toObject()["phase"].toString(),QString("synthetic_upload_intent"));
+        QVERIFY(journal.first().toObject()["objectReference"].toObject()["key"].toString().contains("putgd-test-"));
+    }
+
     void failedNameHeadRetainsSafeTransportDiagnostics() {
         S3Fixture f;
         f.process.terminate();

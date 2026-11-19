@@ -4,7 +4,7 @@
 Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions}, /__rules {rules}, GET /__state.
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
 "store": true (store, then drop the connection), "competitor": true (another upload of the same name lands first),
-"partNumber": n, "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
+"partNumber": n, "after": n (let n matching requests through first), "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
 """
 import base64, hashlib, json, os, socket, threading, time, urllib.parse, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -86,6 +86,10 @@ class Handler(BaseHTTPRequestHandler):
     def rule(self, call, part=None):
         for r in state['rules']:
             if r.get('call') == call and (part is None or r.get('partNumber') in (None, part)) and r.get('remaining', 1) > 0:
+                # 'after': let that many matching requests through first.
+                if r.get('after', 0) > 0:
+                    r['after'] -= 1
+                    continue
                 r['remaining'] = r.get('remaining', 1) - 1
                 return r
         return None

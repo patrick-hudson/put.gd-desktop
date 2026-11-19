@@ -1066,7 +1066,8 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
     if (found.status == "own") signLink(*client, found.receipt);
     reply(found);
 }
-void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
+void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) { upload(request, std::move(reply), 3); }
+void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply, int attempts) {
     reply = [this, destination=request.destination, completion=std::move(reply)](UploadResult result) {
         if (result.status == "uploaded") {
             if (auto client = state_->client(destination)) signLink(*client, result.receipt);
@@ -1136,7 +1137,7 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
     }
     const auto expected = receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes, {}, {});
     bool uncertain = false;
-    for (int attempt = 0; attempt < 3; ++attempt) {
+    for (int attempt = 0; attempt < attempts; ++attempt) {
         if (stopped(request.cancellation)) {
             reply({uncertain ? "unknown" : "failed", {}, cancelled()});
             return;
@@ -1609,7 +1610,7 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
                 else if (removed.status != "removed" && removed.status != "missing") error.message += " Test cleanup is incomplete; inspect the recorded test target before retrying.";
                 reply(result, error);
             });
-        });
+        }, 1);
     });
 }
 }

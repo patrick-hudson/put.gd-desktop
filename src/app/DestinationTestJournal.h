@@ -1,4 +1,5 @@
 #pragma once
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 
@@ -20,4 +21,15 @@ QJsonObject withoutSignedTestLinks(QJsonObject checkpoint);
 // link in the result, a url, deletion URL or nonce in a receipt), or records that disagree,
 // leave it as it is.
 void scrubDestinationTestJournals(const QString& directory);
+// Whether a finished destination test for `provider` (#1690) can have left nothing at the
+// destination that only its journal records: every step that could create something was recorded
+// before it was sent and ended with explicit evidence. The upload failed definitely or was
+// removed; a multipart (S3) or large-file (B2) upload was aborted or never created; and no S3
+// delete marker put.gd made can remain. A result without an outcome after an intent, such as a
+// worker that exited, is never settled. `checkpoints` ends with the resident's finished record.
+bool destinationTestSettled(const QString& provider, const QJsonArray& checkpoints);
+// The checkpoints saved in the journal at `path`, or none when it can't be read as a journal.
+QJsonArray destinationTestCheckpoints(const QString& path);
+// Removes a settled test's journal: a regular file only, never a symbolic link.
+void removeDestinationTestJournal(const QString& path);
 }
