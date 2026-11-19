@@ -158,6 +158,36 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   floating box) do not vote, and are in the image once: what is pinned at the top as the
   first screen showed it, what is pinned at the bottom as the last screen showed it, a
   side bar where the first screen showed it.
+- It paints the page from evidence of motion
+  ([#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538)). A cell is
+  written when two frames show it moved by the page's step, unless more than half of its
+  block's textured cells did not; a textured cell that looks the same where it was and a
+  step away counts only if it matches within a tighter tolerance (a table of equal rows). A flat cell (white
+  space, a banner's flat inside) proves nothing either way: the frames vote on its colour,
+  and the leading colour is used where nothing better was written; the first or last
+  screen's copy fills a cell nothing was written for only while the lead of its vote is
+  below three. Outside the part of the
+  screen that shows the page, in a screen column where something is held back, only the
+  page's own background colour can start or take over a cell's lead, written flat except in the cell right beside that
+  part (the page's own edge). A cell seen in one
+  frame only is written where the screen shows the page there: a stretch of a screen
+  column with nothing held back in it (between stuck parts or the frame's edges) where the
+  page moved within the last 8 placed frames. When the capture ends, the last placed
+  frame's rows past what the frames before it showed are written wherever nothing is held
+  back.
+- A pinned part that starts to move is still that part: a side column that lets go where
+  its own column ends is followed, also while it slides under a header, and drawn once.
+  A bar a third of the frame wide or more and a third of its height or less is held back
+  as a whole rectangle, the plain parts beside its text included.
+- When it finds that the whole view moved (an information bar opens above the page and
+  pushes everything down, Firefox's DRM bar among them: two pinned parts or more moved
+  together, one of them a bar across two thirds of the frame or more), nothing is painted
+  from that frame but the page's rows it uncovered below the image (a bar above the page
+  closing), which are written like any frame's, and it never replaces the first or last screen
+  kept for what is pinned. A move
+  against the way the page was scrolling is carried on to the next placed frames that move
+  the same way, up to 8 after each frame it finds, while fewer than half of the pinned
+  parts it can follow are found back in place (the bar's opening eases out).
 - A frame it cannot place is skipped and nothing of it is written. After two in a row it
   is lost (the bar says **Scroll back a little**). It finds a later frame again in the
   image it has built, so scrolling back brings it back.
@@ -451,13 +481,36 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
 - [#1547](https://github.com/patrick-hudson/put.gd-desktop/issues/1547): auto-scroll can lose one period on a page that repeats every step.
 - [#1554](https://github.com/patrick-hudson/put.gd-desktop/issues/1554): moving the mouse on Hyprland does not always pause auto-scroll (8 of 20 lab guest runs).
 - [#1537](https://github.com/patrick-hudson/put.gd-desktop/issues/1537): a playing video can hold a capture you scroll yourself for minutes.
-- [#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538): pinned side columns can repeat or be drawn in fragments.
 - [#1559](https://github.com/patrick-hudson/put.gd-desktop/issues/1559): without a watch surface the pointer can be put back late; X11 can report stale hand events.
 
 - **A cookie banner at the bottom under a sticky header** leaves the tracker a narrow band to
   compare. On a news article in Chrome (Plasma 6.8.2) it skipped most frames, and the banner's
   colour was drawn in strips through the image while the capture ended `done`. Read
   `framesSkipped`: a capture that skipped many frames needs a look.
+- **Pinned parts that do not line up with the tracker's 8-row blocks** can leave a row or
+  two behind. A toolbar whose edge falls two rows into a block of the page keeps that
+  block from being held back; a page row seen only there (after a flick past it) is
+  written from the toolbar's edge. A banner that slides in at the page's own speed for a
+  few frames (Wikipedia's fundraising banner in Chrome) moves like the page while it does,
+  and its border can be left in the image where it arrived.
+- **A header that shows up while the steps are over half the frame** leaves page rows
+  that only one frame showed clear, and a few of them can come from under it (nightly did
+  the same).
+- **What changes in every frame inside something that sticks** (a video advertisement in
+  a sticky rail beside the Al Jazeera article in Chrome) can leave a few of its pixels in
+  the page beside it, where the tracker had too little evidence to hold it back.
+- **A header that sticks from the second frame on** over rows only the first frame showed
+  clear can leave its own flat colour there where that colour reaches a vote lead of
+  three or more: a lead of three outweighs one screen (which is what drops a notice
+  dismissed after the first frame, once the page's colour under it reaches that lead).
+- **An information bar above the page that closes while a banner is pinned at the
+  bottom**: if the last screen kept for what is pinned still shows the banner clipped
+  (no later frame replaced it), the image's last rows can lack the banner's rows the bar
+  had pushed out of view (24 rows of a 64-row banner in a synthetic case, when the
+  capture ended right after).
+- **Something that slides in during the first frames** (Chrome's link bubble at the bottom
+  left, from auto-scroll's visit with the pointer) can move by the page's step for a frame
+  and be taken as the page there.
 - **A blank stretch taller than the region** shows nothing that moves (fewer rows with
   texture than the tracker needs as evidence, leaving out what it has learned as pinned, the
   bar and the side margins, so a pinned header and footer do not count). Auto-scroll stops
