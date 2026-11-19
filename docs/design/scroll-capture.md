@@ -158,21 +158,27 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   floating box) do not vote, and are in the image once: what is pinned at the top as the
   first screen showed it, what is pinned at the bottom as the last screen showed it, a
   side bar where the first screen showed it.
-- It paints only what it can prove is the page
+- It paints the page from evidence of motion
   ([#1538](https://github.com/patrick-hudson/put.gd-desktop/issues/1538)). A cell is
-  written when two frames show it moved by the page's step, and only if most of its
-  block moved with it. A flat cell (white space, a banner's flat inside) proves nothing
-  either way: the colour most frames showed at that spot of the page wins. Outside the
-  part of the screen that shows the page, only the page's own background colour counts,
-  and it is written flat. A cell seen in one frame only is written where the screen shows
-  the page there: a stretch of a screen column between stuck parts where the page moved
-  in the last 8 frames, or a column with nothing stuck in it at all.
+  written when two frames show it moved by the page's step, unless more than half of its
+  block's textured cells did not; a textured cell that looks the same where it was and a
+  step away counts only if it repeats exactly (a table of equal rows). A flat cell (white
+  space, a banner's flat inside) proves nothing either way: the frames vote on its colour,
+  and the leading colour is used where nothing better was written. Outside the part of
+  the screen that shows the page, only the page's own background colour counts, written
+  flat except in the cell right beside that part (the page's own edge). A cell seen in one
+  frame only is written where the screen shows the page there: a stretch of a screen
+  column between stuck parts where the page moved within the last 8 placed frames. When
+  the capture ends, the last frame's rows past what the frames before it showed are
+  written wherever nothing is held back.
 - A pinned part that starts to move is still that part: a side column that lets go where
   its own column ends is followed, also while it slides under a header, and drawn once.
-  A bar is held back as a whole rectangle, the plain parts beside its text included.
-- When the whole view moves (an information bar opens above the page and pushes
-  everything down, Firefox's DRM bar among them), nothing is written from those frames,
-  also while the bar's opening eases out over several frames.
+  A bar a third of the frame wide or more and a third of its height or less is held back
+  as a whole rectangle, the plain parts beside its text included.
+- When it finds that the whole view moved (an information bar opens above the page and
+  pushes everything down, Firefox's DRM bar among them), nothing is painted from that
+  frame, nor from the next few (8 at most) while the bar's opening eases out the same
+  way.
 - A frame it cannot place is skipped and nothing of it is written. After two in a row it
   is lost (the bar says **Scroll back a little**). It finds a later frame again in the
   image it has built, so scrolling back brings it back.
@@ -482,8 +488,8 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
   that only one frame showed clear, and a few of them can come from under it (nightly did
   the same).
 - **What changes in every frame inside something that sticks** (a video advertisement in
-  a sticky rail beside the Al Jazeera article in Chrome) is neither learned as pinned nor
-  proved as the page: a few of its pixels can be left in the page beside it.
+  a sticky rail beside the Al Jazeera article in Chrome) can leave a few of its pixels in
+  the page beside it, where the tracker had too little evidence to hold it back.
 - **Something that slides in during the first frames** (Chrome's link bubble at the bottom
   left, from auto-scroll's visit with the pointer) can move by the page's step for a frame
   and be taken as the page there.
