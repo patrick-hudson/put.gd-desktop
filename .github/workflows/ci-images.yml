@@ -17,7 +17,7 @@ on:
         description: JSON object, profile -> image reference
         value: ${{ jobs.plan.outputs.images }}
   schedule:
-    # Monday 00:17 UTC, from nightly: the branch pull requests target.
+    # Monday 00:17 UTC, on the default branch (nightly).
     - cron: '17 0 * * 1'
   workflow_dispatch:
 permissions:
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref || (github.event_name == 'schedule' && 'nightly') || github.sha }}
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - name: Log in to the registry
         env:
@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref || (github.event_name == 'schedule' && 'nightly') || github.sha }}
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - name: Log in to the registry
         env:
