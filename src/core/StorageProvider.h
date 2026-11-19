@@ -150,6 +150,9 @@ public:
  virtual QJsonObject diagnosticSettings(const QJsonObject& settings) const { return settings; }
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;
+ // Saved settings that met an earlier version's rules: they still load and can be
+ // fixed in Settings. New settings and new uploads use validateSettings.
+ virtual Error validateStoredSettings(const QJsonObject& settings) const { return validateSettings(settings); }
  virtual Error validateCredentials(const QJsonObject&) const { return {}; }
  // A cancelled name check must stop queued/in-flight work and complete promptly.
  // It is read-only: an inconclusive/cancelled result never reserves a target.
@@ -171,6 +174,7 @@ public:
  void add(const QString&,std::shared_ptr<StorageProvider>);
  std::shared_ptr<StorageProvider> find(const QString&) const;
  Error validate(const QString&,const QJsonObject&) const;
+ Error validateStored(const QString&,const QJsonObject&) const;
  Error validateCredentials(const QString&,const QJsonObject&) const;
  QJsonObject capabilities() const;
  QJsonObject diagnostics() const;
