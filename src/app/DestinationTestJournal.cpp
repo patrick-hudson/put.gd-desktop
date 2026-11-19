@@ -124,7 +124,11 @@ void DestinationTestTrail::record(const QJsonObject& checkpoint) {
     else if (phase == "synthetic_multipart_finished") { multipartOpen_ = false; multipartFinished_ = true; abort_ = checkpoint.value("abort"); }
     else if (phase == "synthetic_large_intent") largeOpen_ = true;
     else if (phase == "synthetic_large_started") largeFileId_ = checkpoint.value("fileId").toString();
-    else if (phase == "synthetic_large_finished") { largeOpen_ = false; largeFinished_ = true; cancel_ = checkpoint.value("cancel"); }
+    else if (phase == "synthetic_large_finished") {
+        // It names the file and the cancel's outcome on its own, even if the start record wasn't saved.
+        largeOpen_ = false; largeFinished_ = true; cancel_ = checkpoint.value("cancel");
+        if (!checkpoint.value("fileId").toString().isEmpty()) largeFileId_ = checkpoint.value("fileId").toString();
+    }
     // A cleanup checkpoint carries its target.
     if (checkpoint.value("target").isObject()) cleanup_ = checkpoint;
 }
@@ -136,8 +140,12 @@ QJsonObject DestinationTestTrail::completed(QJsonObject result) const {
     else {
         result["uploadStatus"] = "uploaded";
         result["receipt"] = receipt_;
-        result["cleanupStatus"] = cleanup_.value("phase") == "done" ? "removed"
-                                : cleanup_.value("markerVersionId").isString() ? "hidden_version_retained" : "unknown";
+        // A version is retained only where the record says the deletion stopped with the marker in
+        // place; a version deletion in flight (version_intent, version_unknown) may have succeeded.
+        static const QStringList retainedPhases{"object_failed", "marker_done", "version_failed", "version_cancelled"};
+        const auto cleanupPhase = cleanup_.value("phase").toString();
+        result["cleanupStatus"] = cleanupPhase == "done" ? "removed"
+                                : retainedPhases.contains(cleanupPhase) && cleanup_.value("markerVersionId").isString() ? "hidden_version_retained" : "unknown";
         if (!cleanup_.isEmpty()) result["cleanupProgress"] = cleanup_;
     }
     // The multipart check's listing isn't journaled, so even an aborted check stays unknown.
