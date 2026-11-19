@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <climits>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -96,6 +97,14 @@ struct PinnedPart {
   uint32_t ink = 0xE6E6E6;
   int fromPos = 0;  // shows once the page is scrolled at least this far (a header that comes late)
   uint64_t seed = 11;
+  bool border = true;  // a 1-pixel frame around the box
+  int inkRows = -1;    // text lines only in the box's first rows (an advertisement's artwork over a plain colour); -1: all
+  // A part that sticks inside a container of the page (CSS position: sticky):
+  // it lies at document row clamp(pos + y, stickFrom, stickTo - h), so it
+  // moves with the page until it reaches y, stays there, and moves with the
+  // page again once the container's end [stickTo] pushes it up. INT_MIN:
+  // fixed at y.
+  int stickFrom = INT_MIN, stickTo = INT_MAX;
 };
 
 struct SceneSpec {

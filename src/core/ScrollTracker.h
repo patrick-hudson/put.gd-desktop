@@ -52,6 +52,7 @@
 // composed.
 #pragma once
 
+#include <array>
 #include <climits>
 #include <cstddef>
 #include <cstdint>
@@ -424,11 +425,13 @@ class ScrollTracker {
   double storeCells(const Signature& cur, long long pos, int y0, int y1, StoreFit* fit) const;
   void learn(const Signature& cur, const Signature& ref, int d);
   void closeMask();
-  void close(const std::vector<uint8_t>& src, std::vector<uint8_t>& out) const;
+  void close(const std::vector<uint8_t>& src, std::vector<uint8_t>& out, bool lists = false) const;
   void blockedWords(std::vector<uint64_t>& out) const;
   void writeCells(long long p, const uint8_t* row, const uint16_t* bands, const uint16_t* tex, const uint64_t* mask,
                   int level, const uint64_t* blocked);
-  void flushPending(const std::vector<uint64_t>& blocked);
+  void flushPending(const std::vector<uint64_t>& blocked, const std::vector<uint64_t>& area, const std::vector<uint64_t>& near,
+                    bool finishing);
+  void pageArea(std::vector<uint64_t>& out, std::vector<uint64_t>* near = nullptr) const;
   void compose(const FrameView& frame, const Signature& cur, const Signature* ref, int d, long long pos,
                TrackResult& r);
   struct FrameCopy {
@@ -440,6 +443,43 @@ class ScrollTracker {
   void keepCopy(const FrameView& frame, FrameCopy& copy, long long pos, bool all, int fromRow);
   void placeFrame(const FrameView& frame, Signature& cur, const Signature* ref, int d, long long pos,
                   TrackResult& r);
+  // Pinned parts that move again (#1538): a column that sticks beside the
+  // page until its own column ends there, and then moves with the page. While
+  // a part is where it was pinned, its picture (each cell's value and texture)
+  // is kept. A part that no longer shows its picture there, but shows it some
+  // rows away, no further than the page moved, has come loose: it is not
+  // pinned any more (what it covered is the page's again, a footer under it),
+  // and where it lies now is not the page either. It is followed from frame to
+  // frame while its picture can be found, and pinned again where it stops at
+  // its old place.
+  struct Loose {
+    int r0 = 0, r1 = 0, c0 = 0, c1 = 0;  // its blocks' rectangle where it was pinned
+    std::vector<uint8_t> blocks;         // its blocks within that rectangle
+    std::vector<int> ys, cs;             // its textured cells: frame row and cell where it was pinned
+    std::vector<uint16_t> values;        // and their values
+    int shift = 0;                       // rows it lies below its pinned place now; negative above
+  };
+  void followPinned(const Signature& cur, const Signature& ref, int d);
+  bool hiddenAt(const Loose& part, int y, int c) const;
+  double looseShare(const Loose& part, const Signature& cur, int s, double floor, int* compared) const;
+  int findLoose(const Loose& part, const Signature& cur, int lo, int hi) const;
+  void markLoose(const Loose& part);
+  int pinnedGroups(const std::vector<uint8_t>& mask, std::vector<int>& groupOf) const;
+  std::vector<uint16_t> pinPic_;   // per frame row and cell: what a pinned block showed where it was pinned
+  std::vector<uint8_t> pinTex_;    // 1 where that cell was textured
+  std::vector<uint32_t> picAt_;    // per block: the placed frame (serial) whose picture pinPic_ holds; 0 none
+  std::vector<Loose> loose_;
+  std::vector<Loose> releasedPics_;  // the pictures of parts that came loose, for finish() (at most kKeptPictures)
+  std::vector<uint8_t> ghost_;     // per block: a loose part lies over it in the latest placed frame
+  bool viewMoved_ = false;          // the frame being placed: the whole view moved (followPinned)
+  int viewRun_ = 0, viewRunFrames_ = 0;  // the way the whole view last moved (-1, 1; 0 none), and frames since
+  std::vector<uint32_t> proofAt_;  // per block: the latest placed frame (serial) in which a pair proved the page there
+  std::vector<uint8_t> released_;  // per block: where a part that came loose was pinned (drawn once by finish)
+  std::vector<uint64_t> followArea_;  // followPinned: the page's area as the last placed frame left it (words per block row)
+  std::vector<uint8_t> ghostPrev_;     // followPinned: where loose parts lay in the last placed frame
+  long long extentLo0_ = 0, extentHi0_ = 0;  // the image's extent before the last placed frame (compose)
+  int pageBgBin_ = -1;             // the colour bin most often behind text that moved with the page; -1 none yet
+  bool pageBackgroundBin(int bin) const;
 
   TrackerCanvas& canvas_;
   TrackerOptions opts_;
@@ -464,6 +504,8 @@ class ScrollTracker {
   int skipRun_ = 0;
   // The pinned mask, per block: steps it stayed, steps it moved, pinned.
   std::vector<uint8_t> stayed_, wandering_, pinned_, closed_, stillNow_;
+  // Colours behind the text that moved with the page, by bin, over every pair learned from.
+  std::array<uint64_t, 256> behindSeen_{};
   // What a placed frame does not offer the image: pinned or stood still in
   // the last pair, closed and widened.
   std::vector<uint8_t> blocked_;
@@ -506,7 +548,8 @@ class ScrollTracker {
     std::vector<uint8_t> pixels;
     std::vector<uint16_t> bands;
     std::vector<uint64_t> open;
-    std::vector<uint64_t> agreed;  // of those, the ones the last frame showed the same
+    std::vector<uint64_t> plain;   // of those, the plain ones (a vote, not a write)
+    std::vector<uint16_t> cells;   // the row's cell values (the signature's)
   };
   std::vector<Pending> pending_, spare_;  // spare_: flushed, their buffers kept for reuse
   void narrowPending(Pending& p, const std::vector<uint64_t>& blocked) const;

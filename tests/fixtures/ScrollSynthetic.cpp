@@ -164,15 +164,16 @@ Scene::Scene(const Image& doc, SceneSpec spec) : doc_(doc), spec_(std::move(spec
   for (const PinnedPart& p : spec_.pinned) {
     Image part(p.w, p.h, p.background);
     Rng rng(p.seed);
-    for (int x = 0; x < p.w; ++x) {
+    for (int x = 0; p.border && x < p.w; ++x) {
       part.at(x, 0) = 0x9097A6;
       part.at(x, p.h - 1) = 0x9097A6;
     }
-    for (int y = 0; y < p.h; ++y) {
+    for (int y = 0; p.border && y < p.h; ++y) {
       part.at(0, y) = 0x9097A6;
       part.at(p.w - 1, y) = 0x9097A6;
     }
-    for (int y = 10; y + 12 < p.h; y += 22) drawTextLine(part, y, 10, std::max(12, p.w - 14), rng, p.ink);
+    const int inked = p.inkRows < 0 ? p.h : std::min(p.h, p.inkRows);
+    for (int y = 10; y + 12 < inked; y += 22) drawTextLine(part, y, 10, std::max(12, p.w - 14), rng, p.ink);
     parts_.push_back(std::move(part));
   }
 }
@@ -209,8 +210,9 @@ Image Scene::frame(int pos, int frame) const {
   for (size_t i = 0; i < spec_.pinned.size(); ++i) {
     const PinnedPart& p = spec_.pinned[i];
     if (pos < p.fromPos) continue;
-    for (int y = 0; y < p.h && p.y + y < H; ++y)
-      std::memcpy(&out.px[size_t(p.y + y) * W + p.x], parts_[i].row(y), size_t(std::min(p.w, W - p.x)) * 4);
+    const int top = p.stickFrom == INT_MIN ? p.y : std::max(p.stickFrom, std::min(pos + p.y, p.stickTo - p.h)) - pos;
+    for (int y = std::max(0, -top); y < p.h && top + y < H; ++y)
+      std::memcpy(&out.px[size_t(top + y) * W + p.x], parts_[i].row(y), size_t(std::min(p.w, W - p.x)) * 4);
   }
   return out;
 }
