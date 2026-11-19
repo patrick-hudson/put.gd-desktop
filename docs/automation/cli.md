@@ -207,7 +207,8 @@ reorder puts the list back to the order the file has (a destination added but no
 stays after its neighbour), unless a later reorder is queued: that one stays shown and is sent.
 A conflict with a reorder not saved yet does the same, whether it is a save's answer or the
 window finds the change itself, and drops the queued reorder, so Retry saving doesn't send it:
-check `order` in `settings.get` and make the move again after Retry saving or a reload. The reply gives `order`, `selected` and `saving` (true
+compare the IDs of `result.document.profiles` from `settings.get` (the saved order) and make
+the move again after Retry saving or a reload. The reply gives `order`, `selected` and `saving` (true
 while the order is queued or in flight); confirm the save with `settings.get`. Errors:
 
 | Code | When |
