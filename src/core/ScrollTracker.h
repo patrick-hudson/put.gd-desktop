@@ -462,7 +462,7 @@ class ScrollTracker {
   void followPinned(const Signature& cur, const Signature& ref, int d);
   bool hiddenAt(const Loose& part, int y, int c) const;
   double looseShare(const Loose& part, const Signature& cur, int s, double floor, int* compared) const;
-  int findLoose(const Loose& part, const Signature& cur, int lo, int hi) const;
+  int findLoose(const Loose& part, const Signature& cur, int prefer, int lo, int hi) const;
   void markLoose(const Loose& part);
   int pinnedGroups(const std::vector<uint8_t>& mask, std::vector<int>& groupOf) const;
   std::vector<uint16_t> pinPic_;   // per frame row and cell: what a pinned block showed where it was pinned

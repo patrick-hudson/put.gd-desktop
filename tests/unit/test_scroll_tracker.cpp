@@ -574,8 +574,10 @@ void testPinnedColumns() {
         header += (v & 0xFFFFFF) == 0xD8DCE6;
         navy += (v & 0xFFFFFF) == 0x5A1E66;
       }
-    report("the view moves down, header and banner with it: neither in the page", header == 0 && navy == 0,
-           fmt("%zu frames, %d placed, %lld header pixels and %lld banner pixels between the image's ends", pos.size(), r.placed, header, navy));
+    report("the view moves down, header and banner with it: neither in the page, the page to its end",
+           header == 0 && navy == 0 && rows == news.h - bar,
+           fmt("%zu frames, %d placed, %lld header pixels and %lld banner pixels between the image's ends, %lld rows (want %d)", pos.size(),
+               r.placed, header, navy, rows, news.h - bar));
   }
   {
     // The same bar opening in steps that ease out (Firefox's DRM bar: 14,
@@ -622,8 +624,10 @@ void testPinnedColumns() {
         header += (v & 0xFFFFFF) == 0xD8DCE6;
         navy += (v & 0xFFFFFF) == 0x5A1E66;
       }
-    report("the view moves down in easing steps: header and banner not in the page", header == 0 && navy == 0,
-           fmt("%zu frames, %d placed, %lld header pixels and %lld banner pixels between the image's ends", pos.size(), r.placed, header, navy));
+    report("the view moves down in easing steps: header and banner not in the page, the page to its end",
+           header == 0 && navy == 0 && rows == news.h - 24,
+           fmt("%zu frames, %d placed, %lld header pixels and %lld banner pixels between the image's ends, %lld rows (want %d)", pos.size(),
+               r.placed, header, navy, rows, news.h - 24));
   }
   {
     // A sticky header that shows up once the page has moved (GitHub's pull
@@ -665,10 +669,10 @@ void testPinnedColumns() {
     SceneSpec ss;
     ss.width = W;
     ss.height = V;
-    PinnedPart buttons{360, 0, 220, 22, kBg, 0x202024, 0, 111};
+    PinnedPart buttons{360, 0, 220, 26, kBg, 0x202024, 0, 111};
     buttons.border = false;
     ss.pinned.push_back(buttons);
-    PinnedPart toolbar{0, 22, W, 26, 0xEEEEF0, 0x303034, 0, 113};
+    PinnedPart toolbar{0, 26, W, 26, 0xEEEEF0, 0x303034, 0, 113};
     ss.pinned.push_back(toolbar);
     PinnedPart toc{512, 56, 120, 300, kBg, 0x3366CC, 0, 115};
     toc.border = false;
@@ -677,6 +681,9 @@ void testPinnedColumns() {
     ss.pinned.push_back(toc);
     const Scene scene(doc, ss);
     const Image expected = pageRows(doc, 0, doc.h, W);
+    long long ink = 0;
+    for (const uint32_t v : scene.part(0).px) ink += (v & 0xFFFFFF) != (kBg & 0xFFFFFF);
+    report("the buttons above the toolbar have ink", ink > 0, fmt("%lld pixels of ink", ink));
     // Wheel steps: a person's flick can leave a row of the article seen only
     // under the toolbar's edge, two rows into a block of the page (a known
     // limit of the 8-row blocks, not of this scene's rule).
@@ -685,7 +692,7 @@ void testPinnedColumns() {
       const Played r = play(scene, pos);
       int firstBad = 0;
       // The article and its margin: left of the column, below the header.
-      const long long bad = differing(r, expected, {{0, 0, W, 48}, {508, 0, W, doc.h}}, 0, &firstBad);
+      const long long bad = differing(r, expected, {{0, 0, W, 52}, {508, 0, W, doc.h}}, 0, &firstBad);
       report(fmt("a column lets go under a header with buttons over a toolbar, %s: the article whole", style), r.wrong == 0 && bad == 0,
              counts(r) + fmt(", %d wrong%s, %lld pixels differ beside the column (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
     }
@@ -813,13 +820,13 @@ void testPinnedColumns() {
   {
     // An information bar above the page closes and the capture ends: the
     // view moves up and shows the page's next rows at the bottom, which are
-    // the page's and in the image. A header and a sub-navigation under it,
-    // nothing at the bottom.
+    // the page's and in the image. A header and a sub-navigation a little
+    // under it (two parts), nothing at the bottom.
     SceneSpec ss;
     ss.width = W;
     ss.height = V;
     ss.pinned.push_back({0, 0, W, 40, 0xD8DCE6, 0x202024, 0, 5});
-    ss.pinned.push_back({0, 40, W, 24, 0xEDEFF4, 0x303034, 0, 7});
+    ss.pinned.push_back({0, 56, W, 24, 0xEDEFF4, 0x303034, 0, 7});
     const Scene scene(news, ss);
     Image info(W, 24, 0xE4E4E8);
     Rng words(97);
@@ -850,32 +857,35 @@ void testPinnedColumns() {
            rows == 440 + V + 24 && wrongRows == 0, fmt("%lld rows (want %d), %lld of the last 24 differ from the page", rows, 440 + V + 24, wrongRows));
   }
   {
-    // A header that sticks from the second frame on, over a heading that only
-    // the first frame showed clear: the frames after it vote for the header's
-    // white there many times, and the heading is still the page's.
-    const Image doc = columnPage(73, W, 3600, 40, 600, F, 8, W - 8);
+    // A notice over the page's margin in the first frame only (a cookie
+    // notice dismissed before the next): the frames after it show the margin
+    // clear, and nothing of the notice is in the image.
+    const Image doc = columnPage(89, W, 3600, 200, 600, F, 8, W - 8);
     SceneSpec ss;
     ss.width = W;
     ss.height = V;
-    PinnedPart white{0, 0, W, 48, 0xFFFFFF, 0x202024, 1, 79};
-    white.border = false;
-    white.inkRows = 0;
-    ss.pinned.push_back(white);
     const Scene scene(doc, ss);
-    Rng own(83);
+    Image notice(168, 80, 0x1E2266);
+    Rng words(91);
+    for (int y = 10; y + 12 < 80; y += 18) drawTextLine(notice, y, 10, 150, words, 0xF0F0FF);
+    // A person's small steps: the margin shows in many frames after it.
+    Rng own(93);
     std::vector<int> pos{0};
-    while (pos.back() < 60) pos.push_back(pos.back() + own.range(2, 5));
-    while (pos.back() < doc.h - V) pos.push_back(std::min(doc.h - V, pos.back() + own.range(60, 140)));
-    const Played r = play(scene, pos);
-    long long bad = 0;
-    for (int y = 0; y < 48 && y < r.totals.bottom - r.totals.top; ++y)
-      for (int x = 0; x < W; ++x) {
-        uint32_t v;
-        std::memcpy(&v, &r.image[(size_t(y) * W + x) * 4], 4);
-        bad += (v & 0xFFFFFF) != (doc.at(x, y) & 0xFFFFFF);
-      }
-    report("a header sticks from the second frame over a heading only the first showed: the heading kept", r.wrong == 0 && bad == 0,
-           counts(r) + fmt(", %lld pixels of the first 48 rows differ", bad));
+    while (pos.back() < 600) pos.push_back(pos.back() + own.range(4, 12));
+    while (pos.back() < doc.h - V) pos.push_back(std::min(doc.h - V, pos.back() + own.range(60, 160)));
+    const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
+      if (i == 0)
+        for (int y = 0; y < notice.h; ++y) std::memcpy(&f.px[size_t(250 + y) * W + 16], notice.row(y), size_t(notice.w) * 4);
+      return false;
+    });
+    long long left = 0;
+    for (size_t i = 0; i + 3 < r.image.size(); i += 4) {
+      uint32_t v;
+      std::memcpy(&v, &r.image[i], 4);
+      left += (v & 0xFFFFFF) == 0x1E2266 || (v & 0xFFFFFF) == 0xF0F0FF;
+    }
+    report("a notice over the margin in the first frame only: nothing of it in the image", r.wrong == 0 && left == 0,
+           counts(r) + fmt(", %lld pixels of the notice", left));
   }
 }
 

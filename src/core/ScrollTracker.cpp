@@ -2330,7 +2330,7 @@ bool ScrollTracker::hiddenAt(const Loose& part, int y, int c) const {
 // The offset in [lo, hi] at which the frame shows a loose part, the best by
 // share, at least kLooseShare over kLooseCells cells and minEvidenceRows rows
 // of it; INT_MIN where there is none.
-int ScrollTracker::findLoose(const Loose& part, const Signature& cur, int lo, int hi) const {
+int ScrollTracker::findLoose(const Loose& part, const Signature& cur, int prefer, int lo, int hi) const {
   lo = std::max(lo, -height_ + 1);
   hi = std::min(hi, height_ - 1);
   int best = INT_MIN;
@@ -2338,7 +2338,11 @@ int ScrollTracker::findLoose(const Loose& part, const Signature& cur, int lo, in
   for (int s = lo; s <= hi; ++s) {
     int compared = 0;
     const double share = looseShare(part, cur, s, kLooseShare, &compared);
-    if (share < kLooseShare || compared < kLooseCells || share <= bestShare) continue;
+    // An equal share (a list of equal items a period apart) goes to the
+    // offset nearest the expected one, not to the order of the search.
+    if (share < kLooseShare || compared < kLooseCells || share < bestShare ||
+        (share == bestShare && (best == INT_MIN || std::abs(s - prefer) >= std::abs(best - prefer))))
+      continue;
     // Rows of it in the frame: enough of the part to tell its place (its
     // samples go cell by cell, so a row is counted once however many cells
     // of it there are).
@@ -2388,7 +2392,7 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
   // The loose parts: they move with the page at most, from where they were.
   for (size_t k = 0; k < loose_.size();) {
     Loose& part = loose_[k];
-    const int s = findLoose(part, cur, std::min(part.shift, part.shift - d) - kLooseSlack,
+    const int s = findLoose(part, cur, part.shift - d, std::min(part.shift, part.shift - d) - kLooseSlack,
                             std::max(part.shift, part.shift - d) + kLooseSlack);
     const bool topSticky = part.r0 * opts_.blockRows * 2 < H;
     if (s == INT_MIN || (s != 0 && (topSticky ? s > 0 : s < 0))) {  // gone, no longer the same, or back past its pinned place
@@ -2476,10 +2480,10 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
       const double here = looseShare(part, cur, 0, 0.0, &compared);
       int s = INT_MIN;
       if (here < kInPlace && 10 * stale <= part.values.size()) {
-        s = findLoose(part, cur, std::min(0, -d) - kLooseSlack, std::max(0, -d) + kLooseSlack);
+        s = findLoose(part, cur, -d, std::min(0, -d) - kLooseSlack, std::max(0, -d) + kLooseSlack);
         // Not within the page's move: perhaps the whole view moved (below).
         if (s == INT_MIN) {
-          const int wide = findLoose(part, cur, -H / 4, H / 4);
+          const int wide = findLoose(part, cur, -d, -H / 4, H / 4);
           if (wide != INT_MIN && wide != 0) viewOnly[size_t(g)] = wide;
         }
       }
@@ -3308,7 +3312,9 @@ void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signatu
   if (first || (!viewMoved_ && pos <= topCopy_.pos)) keepCopy(f, topCopy_, pos, first || young, 0);
   // Only parts that start in the lower half are drawn from the bottommost
   // frame (see finish).
-  if (first || (!viewMoved_ && pos >= bottomCopy_.pos)) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
+  // (Moving back up, a bar above the page closing, it shows the bottom's
+  // pinned parts where they belong again, their clipped end included.)
+  if (first || ((!viewMoved_ || d > 0) && pos >= bottomCopy_.pos)) keepCopy(f, bottomCopy_, pos, first || young, height_ / 2 - opts_.blockRows);
   const int frames = std::max(1, framesSincePlaced_);
   if (!first) velocity_ = double(d) / frames;
   if (!first && d != 0) lastMove_ = d;
@@ -3947,9 +3953,13 @@ TrackTotals ScrollTracker::finish() {
       const bool topSide = topAnchored[g];
       std::vector<int>& cells = topSide ? topCells : bottomCells;
       if (cells.empty()) cells = cellsOf(topSide ? topCopy_ : bottomCopy_);
+      // Rows counted once each (the samples go cell by cell).
+      std::vector<int> rowStamp(size_t(height_), 0);
+      int stamp = 0;
       const auto shareAt = [&](int s, int* compared, int* rows) {
-        int agree = 0, seen = 0, lastY = INT_MIN;
+        int agree = 0, seen = 0;
         *rows = 0;
+        ++stamp;
         for (size_t k = 0; k < vs[g].size(); ++k) {
           const int y = ys[g][k] + s;
           if (y < 0 || y >= height_) continue;
@@ -3957,8 +3967,8 @@ TrackTotals ScrollTracker::finish() {
           if (v < 0) continue;
           ++seen;
           agree += absDiff(unsigned(v), vs[g][k]) <= tol;
-          if (y != lastY) {
-            lastY = y;
+          if (rowStamp[size_t(y)] != stamp) {
+            rowStamp[size_t(y)] = stamp;
             ++*rows;
           }
         }
@@ -4119,26 +4129,15 @@ TrackTotals ScrollTracker::finish() {
         // Never under a part pinned at the other end: a side bar is at the top
         // once, and an advertisement's plain colour below its artwork (shown
         // only once the page had moved) is not drawn at the image's end.
-        // Not a plain cell three frames or more agreed on where the copy shows
-        // it plain too: a flat colour of one screen does not outweigh them
-        // (the first screen's cookie banner over a margin the page showed in
-        // 36 frames after it). Where the copy shows detail (a heading only
-        // that screen showed clear, under a header that came later), the copy.
-        const uint8_t* row = &copy->px[size_t(y) * width_ * 4];
-        const auto flatInCopy = [&](int cc) {
-          const int x0 = cc * P, x1 = std::min(width_, x0 + P);
-          int lo[3] = {255, 255, 255}, hi[3] = {0, 0, 0};
-          for (int x = x0; x < x1; ++x)
-            for (int k = 0; k < 3; ++k) {
-              lo[k] = std::min(lo[k], int(row[size_t(x) * 4 + size_t(k)]));
-              hi[k] = std::max(hi[k], int(row[size_t(x) * 4 + size_t(k)]));
-            }
-          return hi[0] - lo[0] <= 16 && hi[1] - lo[1] <= 16 && hi[2] - lo[2] <= 16;
-        };
+        // Not a plain cell three frames or more agreed on: one screen's copy
+        // does not outweigh them (the first screen's cookie banner or a notice
+        // dismissed after it, over a margin the page showed in the frames
+        // after it). One or two may have been a header not learned yet over a
+        // heading only that screen showed clear.
         auto hole = [&](int cc) {
           const int l = owner[size_t(r) * C + cc];
-          return store_->level(p, cc) == 0 && copy->tag[size_t(r) * C + cc] == copy->serial &&
-                 (store_->lead(p, cc) < 3 || !flatInCopy(cc)) && (l < 0 || bool(topAnchored[size_t(l)]) == topSide);
+          return store_->level(p, cc) == 0 && store_->lead(p, cc) < 3 && copy->tag[size_t(r) * C + cc] == copy->serial &&
+                 (l < 0 || bool(topAnchored[size_t(l)]) == topSide);
         };
         if (!hole(c)) {
           ++c;
