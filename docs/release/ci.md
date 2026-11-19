@@ -786,7 +786,16 @@ and dwz steps. It works in three layers:
   first mirror of `/etc/apt/putgd-mirrors.txt` behind the other usable ones, when more
   than one mirror answered the probe, so the next attempt starts on another mirror. (The
   workflows' own `putgd_apt_install` moves it only after an attempt that fetched less
-  than 128 MiB.)
+  than 128 MiB.) `putgd_apt_install` gives each of its three attempts 8 minutes for the
+  update and the download only (`PUTGD_APT_ATTEMPT_SECONDS=480`). The install of what was
+  downloaded has no limit of its own: it runs under the step's outer `timeout-minutes` (30
+  for the `linux` and `sanitizers` installs), which has to hold the three download attempts
+  too. After a failed attempt it waits up to 600 s for any process holding a dpkg or apt
+  lock, such as a dpkg that outlived its stopped `apt-get`, before `dpkg --configure -a`
+  and the retry
+  ([#1702](https://github.com/patrick-hudson/put.gd-desktop/issues/1702)). Those recovery
+  waits come out of the same 30 minutes, so when they run, the third attempt and the
+  install have less headroom left.
   Downloaded packages stay in the cache, so the retry resumes them. Inside an attempt, apt drops a
   connection that moves nothing for 60 s (`Acquire::http(s)::Timeout=60`) and
   dnf one under 1 kB/s for 60 s (`timeout=60`, `minrate=1000`); both retry the
@@ -882,19 +891,31 @@ and dwz steps. It works in three layers:
   snapshot install are warning annotations and rows of a "Package install
   retries" table in the job summary. A stopped attempt's row says
   `**stopped**`, which limit stopped it and the last line it printed. A clean
-  install writes nothing. The pre-checkout bootstrap (git only) retries 3 times
-  inline, each attempt limited to 10 minutes, and reports in a table of the same form.
+  install writes nothing. The pre-checkout bootstrap (git and ca-certificates, plus zstd
+  on ubuntu24.04) retries 3 times inline and reports in a table of the same form. Each
+  attempt's update and download are limited to 10 minutes. On apt the install of what was
+  downloaded has no limit of its own, and the step's 30-minute limit bounds it. A failed
+  attempt that is not the last waits for any process holding a dpkg or apt lock and runs
+  `dpkg --configure -a` before the retry.
 
 The 2026-10-22 mirror incident behind this design and its demonstration are in [the CI records](../history/ci-records.md#fedora-mirror-incident-and-retry-demonstration-368).
 
-Not covered yet: the `linux` and `sanitizers` installs in `ci.yml` run before
-checkout with bare `apt-get`. They have the acquire timeouts and a 20-minute
-step limit, but no retry or snapshot
-([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). The
-`contracts` install uses the helper. `npm ci` in the Proton helper step runs
-with `npm_config_fetch_retries=5`. Its separate exit-152 failure
-([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is a
-CPU-time kill, not a network error.
+Not covered yet: a package snapshot for `ci.yml`. The `linux` and `sanitizers`
+installs run before checkout, so they use the workflow's own `putgd_apt_install`
+instead of `tools/ci/install-packages.sh`
+([#389](https://github.com/patrick-hudson/put.gd-desktop/issues/389)). That gives
+them the mirror probe, three attempts with an 8-minute limit on each update and
+download, a kept archives directory, mirror demotion and a 30-minute step limit.
+They restore no package snapshot, so when all three attempts fail there is no
+offline install. The `contracts` install runs `tools/ci/install-packages.sh` with
+its online retries, also without a snapshot (`PUTGD_PKG_CACHE`). In `package.yml`'s
+native and AppImage jobs, `npm ci` in the Proton helper step runs with
+`npm_config_fetch_retries=5`. `ci.yml`'s `linux` job runs the same step with npm's
+default of 2 retries. All three have a 15-minute step limit. That step's exit-152
+failure ([#332](https://github.com/patrick-hudson/put.gd-desktop/issues/332)) is
+128 + 24, SIGXCPU, which points to a CPU-time limit rather than a network error.
+It was last seen on 2026-10-21, and the issue was closed as stale with the cause
+unconfirmed.
 
 ### Stalled installs
 
