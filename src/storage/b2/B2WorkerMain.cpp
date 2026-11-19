@@ -466,7 +466,14 @@ private:
             client_.sentBytes = [&](qint64 sent) { progress("uploading", sent, artifact.bytes); };
             const auto r = client_.send("POST", QUrl(url.json["uploadUrl"].toString()), headers, {}, &body);
             client_.sentBytes = {};
-            if (r.ok() && r.json["fileId"].isString()) return r.json["fileId"].toString();
+            if (r.ok() && !r.json["fileId"].toString().isEmpty()) return r.json["fileId"].toString();
+            // A success without a usable file ID (a cut-off reply, or an empty ID): the file may be
+            // stored, and nothing names it (#1690).
+            if (r.ok()) {
+                error = {"b2_upload_unconfirmed", "Backblaze B2 answered the upload without a file ID; the file may be stored", {{"requestStage", "upload_file"}}};
+                uncertain = true;
+                return {};
+            }
             // A lost or failed reply may still have stored the file: look for it first.
             if (r.transport || r.status >= 500 || r.status == 408 || r.status == 429) {
                 Error lookup;
@@ -580,15 +587,9 @@ private:
         return fileId;
     }
     // Cancel the unfinished large file so its parts stop using storage.
-    // A refusal counts as cancelled only when B2 confirms the unfinished file is gone (#1690): a
-    // 400 can also be a request B2 rejected while the file and its parts remain.
     Error cancelLarge(const QString& fileId) {
         const auto r = client_.call("b2_cancel_large_file", {{"fileId", fileId}}, true);
-        if (r.ok() || r.status == 404) return {};
-        if (r.status == 400) {
-            const auto info = client_.call("b2_get_file_info", {{"fileId", fileId}}, true);
-            if (info.status == 404 || (info.status == 400 && (info.code() == "file_not_present" || info.code() == "no_such_file"))) return {};
-        }
+        if (r.ok() || r.status == 400 || r.status == 404) return {};
         return Client::failure(r, "large_cancel");
     }
     QString abortLarge(const QString& fileId, Error cause, Error& error) {
@@ -656,8 +657,7 @@ private:
         progress["phase"] = "delete_intent";
         if (auto e = checkpoint(progress)) { error = e; progress["phase"] = previousPhase; return {{"status", "failed"}, {"progress", progress}}; }
         const auto r = client_.call("b2_delete_file_version", {{"fileName", expected.objectReference["key"].toString()}, {"fileId", expected.objectReference["fileId"].toString()}}, false);
-        // B2 itself confirmed the deletion; a later lookup alone is weaker evidence (#1690).
-        if (r.ok()) { progress["deleted"] = true; return finish("removed"); }
+        if (r.ok()) return finish("removed");
         Error again;
         if (identity(expected, again) == "missing") return finish("removed");
         error = Client::failure(r, "delete_version");
@@ -749,16 +749,22 @@ private:
             largeError = e;
         } else {
             const auto start = client_.call("b2_start_large_file", {{"bucketId", client_.session.bucketId}, {"fileName", largeName}, {"contentType", "text/plain"}}, false);
-            const bool unclear = !start.ok() && (start.transport || start.status >= 500 || start.status == 408 || start.status == 429);
-            large["start"] = start.ok() ? "ok" : unclear ? "unknown" : "failed";
+            const auto fileId = start.json["fileId"].toString();
+            // A success without a usable file ID started a large file nothing names (#1690).
+            const bool unclear = start.ok() ? fileId.isEmpty() : (start.transport || start.status >= 500 || start.status == 408 || start.status == 429);
+            large["start"] = start.ok() && !unclear ? "ok" : unclear ? "unknown" : "failed";
             if (!start.ok()) largeError = Client::failure(start, "large_start");
+            else if (unclear) largeError = {"b2_large_unconfirmed", "Backblaze B2 started the large file without returning its file ID; it may remain unfinished", {{"requestStage", "large_start"}}};
             else {
-                const auto fileId = start.json["fileId"].toString();
                 large["fileId"] = fileId;
                 if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_started"}, {"name", largeName}, {"fileId", fileId}})) largeError = e;
-                const auto refused = cancelLarge(fileId);
-                large["cancel"] = refused ? "failed" : "cancelled";
-                if (refused && !largeError) largeError = refused;
+                // Only B2's own success confirms the cancel; any refusal leaves it unconfirmed (#1690).
+                const auto cancel = client_.call("b2_cancel_large_file", {{"fileId", fileId}}, true);
+                large["cancel"] = cancel.ok() ? "cancelled" : "not_confirmed";
+                if (!cancel.ok() && !largeError) {
+                    largeError = Client::failure(cancel, "large_cancel");
+                    largeError.message = "Backblaze B2 did not confirm cancelling the test's unfinished large file " + largeName + "; check the bucket for it. " + largeError.message;
+                }
                 if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_large_finished"}, {"name", largeName}, {"fileId", fileId}, {"cancel", large["cancel"]}}); e && !largeError) largeError = e;
             }
         }

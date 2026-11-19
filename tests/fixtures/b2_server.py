@@ -3,7 +3,7 @@
 
 Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions}, /__rules {rules}, GET /__state.
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
-"store": true (store, then drop the connection), "competitor": true (another upload of the same name lands first),
+"store": true (store, then drop the connection), "noFileId": true (act, then answer 2xx without a fileId), "competitor": true (another upload of the same name lands first),
 "partNumber": n, "after": n (let n matching requests through first), "race": n (n racing uploads store together, reply together, and all list the name before any deletes)}.
 """
 import base64, hashlib, json, os, socket, threading, time, urllib.parse, uuid
@@ -264,6 +264,8 @@ class Handler(BaseHTTPRequestHandler):
         state['versions'].append(v)
         if r and r.get('store'):
             return self.drop()
+        if r and r.get('noFileId'):
+            return self.reply(200, {k: x for k, x in public(v).items() if k != 'fileId'})
         if r and r.get('race'):
             state['stored'] += 1
             self.wait_for(lambda: state['stored'] >= r['race'])
@@ -304,6 +306,8 @@ class Handler(BaseHTTPRequestHandler):
         v = {'fileId': fid, 'fileName': body['fileName'], 'bucketId': body['bucketId'], 'action': 'start', 'contentLength': 0, 'contentSha1': 'none',
              'contentType': body.get('contentType'), 'fileInfo': body.get('fileInfo', {}), 'uploadTimestamp': now(), 'parts': {}}
         state['versions'].append(v)
+        if rule and rule.get('noFileId'):
+            return self.reply(200, {k: x for k, x in public(v).items() if k != 'fileId'})
         self.reply(200, public(v))
 
     def b2_get_upload_part_url(self, body, rule):

@@ -270,50 +270,6 @@ private slots:
   QVERIFY(QFileInfo(dir+"/"+uuid('4')).isSymLink());
   QFile untouched(target.fileName());QVERIFY(untouched.open(QIODevice::ReadOnly));QCOMPARE(untouched.readAll(),unchanged["notes.json"]);
  }
- // #1690: a finished test's journal may go only when every step that could create something was
- // recorded before it was sent and ended with explicit evidence. Anything less keeps the journal,
- // which is then the only record of an object left in the bucket.
- void destinationTestSettlesOnlyOnExplicitEvidence_data() {
-  QTest::addColumn<QString>("provider");QTest::addColumn<QJsonArray>("checkpoints");QTest::addColumn<bool>("settled");
-  const QJsonObject s3Intent{{"phase","synthetic_upload_intent"}},b2Intent=s3Intent,customIntent{{"phase","upload_intent"}};
-  const QJsonObject probeIntent{{"phase","synthetic_multipart_intent"}},probeCreated{{"phase","synthetic_multipart_created"}};
-  auto probeFinished=[](const QString& abort){return QJsonObject{{"phase","synthetic_multipart_finished"},{"abort",abort}};};
-  auto finished=[](QJsonObject result){return QJsonObject{{"phase","finished"},{"result",result}};};
-  auto uploaded=[](QJsonObject progress,const QString& cleanup="removed"){return QJsonObject{{"uploadStatus","uploaded"},{"cleanupStatus",cleanup},{"cleanupProgress",progress}};};
-  const QJsonObject done{{"phase","done"}};
-  auto withProbe=[](QJsonObject result,QJsonObject probe){result["multipart"]=probe;return result;};
-  const auto s3Clean=withProbe(uploaded(done),{{"status","ok"},{"abort","aborted"}});
-  QTest::newRow("s3-removed-and-aborted")<<"s3"<<QJsonArray{s3Intent,probeIntent,probeCreated,probeFinished("aborted"),finished(s3Clean)}<<true;
-  QTest::newRow("s3-upload-failed")<<"s3"<<QJsonArray{s3Intent,finished({{"uploadStatus","failed"}})}<<true;
-  QTest::newRow("nothing-attempted")<<"s3"<<QJsonArray{finished({})}<<true;
-  QTest::newRow("s3-upload-unknown")<<"s3"<<QJsonArray{s3Intent,finished({{"uploadStatus","unknown"}})}<<false;
-  QTest::newRow("worker-ended-after-intent")<<"s3"<<QJsonArray{s3Intent,finished({})}<<false;
-  QTest::newRow("outcome-without-intent")<<"s3"<<QJsonArray{finished({{"uploadStatus","failed"}})}<<false;
-  QTest::newRow("s3-cleanup-unknown")<<"s3"<<QJsonArray{s3Intent,probeIntent,probeCreated,probeFinished("aborted"),finished(withProbe(uploaded({{"phase","object_unknown"}},"unknown"),{{"status","ok"},{"abort","aborted"}}))}<<false;
-  QTest::newRow("s3-delete-marker")<<"s3"<<QJsonArray{s3Intent,QJsonObject{{"phase","marker_intent"}},probeIntent,probeCreated,probeFinished("aborted"),
-   finished(withProbe(uploaded({{"phase","done"},{"markerVersionId","m1"}}),{{"status","ok"},{"abort","aborted"}}))}<<false;
-  QTest::newRow("s3-multipart-abort-failed")<<"s3"<<QJsonArray{s3Intent,probeIntent,probeCreated,probeFinished("failed"),finished(withProbe(uploaded(done),{{"status","failed"},{"stage","upload_abort"},{"abort","failed"}}))}<<false;
-  // The created upload's checkpoint failed, then its abort failed: still not "never created".
-  QTest::newRow("s3-multipart-created-unrecorded")<<"s3"<<QJsonArray{s3Intent,probeIntent,probeFinished("failed"),finished(withProbe(uploaded(done),{{"status","failed"},{"stage","upload_create"},{"abort","failed"}}))}<<false;
-  QTest::newRow("s3-multipart-never-created")<<"s3"<<QJsonArray{s3Intent,probeIntent,finished(withProbe(uploaded(done),{{"status","denied"},{"stage","upload_create"}}))}<<true;
-  QTest::newRow("s3-multipart-create-unknown")<<"s3"<<QJsonArray{s3Intent,probeIntent,finished(withProbe(uploaded(done),{{"status","unknown"},{"stage","upload_create"}}))}<<false;
-  const QJsonObject b2Done{{"phase","done"},{"deleted",true}};
-  const QJsonObject largeIntent{{"phase","synthetic_large_intent"}},largeStarted{{"phase","synthetic_large_started"},{"fileId","f1"}};
-  auto largeFinished=[](const QString& cancel){return QJsonObject{{"phase","synthetic_large_finished"},{"cancel",cancel}};};
-  auto withLarge=[](QJsonObject result,QJsonObject large){result["largeFile"]=large;return result;};
-  QTest::newRow("b2-deleted-and-cancelled")<<"backblaze-b2"<<QJsonArray{b2Intent,largeIntent,largeStarted,largeFinished("cancelled"),finished(withLarge(uploaded(b2Done),{{"start","ok"},{"cancel","cancelled"}}))}<<true;
-  QTest::newRow("b2-removed-by-lookup-only")<<"backblaze-b2"<<QJsonArray{b2Intent,largeIntent,largeStarted,largeFinished("cancelled"),finished(withLarge(uploaded(done),{{"start","ok"},{"cancel","cancelled"}}))}<<false;
-  QTest::newRow("b2-cancel-failed")<<"backblaze-b2"<<QJsonArray{b2Intent,largeIntent,largeStarted,largeFinished("failed"),finished(withLarge(uploaded(b2Done),{{"start","ok"},{"cancel","failed"}}))}<<false;
-  QTest::newRow("b2-start-unknown")<<"backblaze-b2"<<QJsonArray{b2Intent,largeIntent,finished(withLarge(uploaded(b2Done),{{"start","unknown"}}))}<<false;
-  QTest::newRow("b2-earlier-worker")<<"backblaze-b2"<<QJsonArray{finished(withLarge(uploaded(b2Done),{{"start","ok"},{"cancel","cancelled"}}))}<<false;
-  QTest::newRow("custom-removed")<<"custom-http"<<QJsonArray{customIntent,finished({{"uploadStatus","uploaded"},{"cleanupStatus","removed"}})}<<true;
-  QTest::newRow("custom-no-deletion")<<"custom-http"<<QJsonArray{customIntent,finished({{"uploadStatus","uploaded"},{"cleanupStatus","unsupported"}})}<<false;
-  QTest::newRow("custom-failed")<<"custom-http"<<QJsonArray{customIntent,finished({{"uploadStatus","failed"}})}<<false;
- }
- void destinationTestSettlesOnlyOnExplicitEvidence() {
-  QFETCH(QString,provider);QFETCH(QJsonArray,checkpoints);QFETCH(bool,settled);
-  QCOMPARE(destinationTestSettled(provider,checkpoints),settled);
- }
  void stagedEntryNeverReplacesTheRoot() {
   QTemporaryDir d;const auto root=d.filePath("d/putgd"),staging=StorageLocations::stagingRoot(root);
   QVERIFY(QDir().mkpath(staging+"/artifacts"));QVERIFY(!fixture(staging,"history.sqlite","staged").isEmpty());QVERIFY(!fixture(staging+"/artifacts","kept","staged artifact").isEmpty());

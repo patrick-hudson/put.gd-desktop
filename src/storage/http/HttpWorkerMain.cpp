@@ -468,6 +468,9 @@ public:
     }
 private:
     QJsonObject request_;
+    // Test upload and link (#1690): its upload is sent once. A 307 or 308 asking for it again
+    // elsewhere ends it unclear instead of sending the file a second time.
+    bool synthetic_ = false;
     Destination destination_;
     Client client_;
     // The checks of a file's link around a deletion: a visitor with no cookies and no
@@ -678,6 +681,12 @@ private:
             }
             const bool same = sameHost(url, target);
             if (r.status == 307 || r.status == 308) {
+                if (configured && synthetic_) {
+                    answered = true;
+                    error = {"http_outcome_unknown", QString("The server asked for the test upload again at another address (HTTP %1). Test upload and link sends its file once, so put.gd did not follow; "
+                             "the server may have stored it.").arg(r.status), details};
+                    return r;
+                }
                 // The server asks for the same request elsewhere: only on its own host.
                 if (configured && !same) {
                     error = {"http_redirect_refused", "The server redirected the upload to another host (" + shown(target.host(), 96) +
@@ -955,6 +964,12 @@ private:
                 confirmed = true;
             }
         }
+        // A 202 accepts the deletion for later: nothing confirms the file is gone (#1690).
+        if (r.status == 202) {
+            uncertain = true;
+            error = {"http_delete_pending", "The server accepted the deletion for later (HTTP 202) but has not confirmed it. Retry checks again, or check the file on the server.", details};
+            return {{"status", "unknown"}, {"progress", progress}};
+        }
         // The outcome. Byte comparisons cannot tell a deleted file from a page that only
         // changed (an error banner on an HTML host), so only these show anything:
         // - removed: the deletion itself succeeded (a 2xx from the deletion URL, or from
@@ -1025,9 +1040,13 @@ private:
         request_["publicationId"] = synthetic;
         request_["objectReference"] = QJsonObject{{"schemaVersion", 1}, {"nonce", synthetic}};
         request_["includeReply"] = true;
-        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "upload_intent"}, {"name", artifact.name}})) { error = e; return out; }
+        // Where the file goes, without what could hold a credential: no user info, query or fragment.
+        const auto destination = QUrl(settings()["requestUrl"].toString()).toString(QUrl::RemoveUserInfo | QUrl::RemoveQuery | QUrl::RemoveFragment);
+        if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "upload_intent"}, {"name", artifact.name}, {"destination", destination}})) { error = e; return out; }
         bool uncertain = false;
+        synthetic_ = true;
         const auto uploaded = upload(error, uncertain);
+        synthetic_ = false;
         out["uploadStatus"] = uploaded["status"].toString(error ? "failed" : "unknown");
         if (uploaded.contains("replyExcerpt")) out["replyExcerpt"] = uploaded["replyExcerpt"];
         if (error || uploaded["status"] != "uploaded") return out;

@@ -52,20 +52,41 @@ private slots:
     }
 
 
-    // #1690: Test upload and link sends its synthetic file once. After an unclear reply with the key
-    // still absent it stays unknown with its intent journaled, instead of sending again: the first
-    // request could land after the second copy was cleaned up, leaving an object no journal records.
-    void testUploadIsSentOnceAndAnUnclearOneStaysJournaled() {
+    // #1690: Test upload and link sends its synthetic writes once. A reply that doesn't prove a
+    // refusal (a 503, a 408) leaves the upload or the multipart check unknown, with the upload's
+    // intent journaled first, instead of sending again: the first request could land after the
+    // second copy was cleaned up, leaving an object no journal records.
+    void testWritesStayUnknownAfterAnUnclearReply_data() {
+        QTest::addColumn<QJsonObject>("rule");QTest::addColumn<QString>("uploadStatus");QTest::addColumn<QString>("multipart");
+        QTest::newRow("put-503") << QJsonObject{{"method","PUT"},{"status",503},{"code","SlowDown"}} << QString("unknown") << QString();
+        QTest::newRow("put-408") << QJsonObject{{"method","PUT"},{"status",408},{"code","RequestTimeout"}} << QString("unknown") << QString();
+        QTest::newRow("multipart-create-408") << QJsonObject{{"method","POST"},{"query","uploads"},{"status",408},{"code","RequestTimeout"}} << QString("uploaded") << QString("unknown");
+    }
+    void testWritesStayUnknownAfterAnUnclearReply() {
+        QFETCH(QJsonObject,rule);QFETCH(QString,uploadStatus);QFETCH(QString,multipart);
         S3Fixture f;
-        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"status",503},{"code","SlowDown"}}}}});
+        f.reset({{"rules",QJsonArray{rule}}});
         QJsonArray journal;
         const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
             f.provider.testDestination(f.destination,[&journal](auto value,auto ack){journal.append(value);ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
         QVERIFY(tested.second);
-        QCOMPARE(tested.first["uploadStatus"].toString(),QString("unknown"));
+        QCOMPARE(tested.first["uploadStatus"].toString(),uploadStatus);
         QCOMPARE(f.events("PUT").size(),1);
         QCOMPARE(journal.first().toObject()["phase"].toString(),QString("synthetic_upload_intent"));
         QVERIFY(journal.first().toObject()["objectReference"].toObject()["key"].toString().contains("putgd-test-"));
+        if(!multipart.isEmpty())QCOMPARE(tested.first["multipart"].toObject()["status"].toString(),multipart);
+    }
+    // #1690: the synthetic PutObject follows the name check on the same connection. When that
+    // reused connection is lost under it, libcurl must not send it again by itself: one PUT
+    // reaches the server, and the test settles it with a HEAD.
+    void testUploadGoesOutOnceOnAReusedConnection() {
+        S3Fixture f;
+        f.reset({{"rules",QJsonArray{QJsonObject{{"method","PUT"},{"drop",true}}}}});
+        const auto tested=f.await<std::pair<QJsonObject,Error>>([&](auto cb){
+            f.provider.testDestination(f.destination,[](auto,auto ack){ack({});},[cb](QJsonObject value,Error e){cb({std::move(value),std::move(e)});});});
+        QCOMPARE(f.events("PUT").size(),1);
+        QCOMPARE(tested.first["uploadStatus"].toString(),QString("uploaded"));
+        QCOMPARE(tested.first["cleanupStatus"].toString(),QString("removed"));
     }
 
     void failedNameHeadRetainsSafeTransportDiagnostics() {
