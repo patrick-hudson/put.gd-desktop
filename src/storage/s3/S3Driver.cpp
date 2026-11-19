@@ -16,6 +16,7 @@
 #include <aws/core/http/HttpResponse.h>
 #include <algorithm>
 #include <array>
+#include <aws/core/client/CoreErrors.h>
 #include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/utils/memory/stl/AWSStreamFwd.h>
 #include <aws/core/utils/threading/PooledThreadExecutor.h>
@@ -187,7 +188,27 @@ Error withNameCharactersHint(Error error, const QString& key) {
         }
     return error;
 }
+// The SDK refused the request before sending it: it could not build an endpoint from
+// Region and Endpoint, such as a Region it drops because it is not a DNS label (#1675).
+template<class E> bool notSent(const E& error) {
+    return int(error.GetErrorType()) == int(Aws::Client::CoreErrors::ENDPOINT_RESOLUTION_FAILURE);
+}
+// The SDK's reason in put.gd's words: its own text may quote the endpoint, which
+// messages and diagnostics never carry.
+template<class E> Error notSentError(const E& error, S3Stage stage) {
+    const auto reason = qt(error.GetMessage());
+    QString why = "it could not build a request address from Region and Endpoint.";
+    if (reason.contains("region must be set", Qt::CaseInsensitive) || reason.contains("invalid region", Qt::CaseInsensitive) ||
+        reason.contains("region was not a valid", Qt::CaseInsensitive))
+        why = "Region is not a region code, so the library had no region to send the request to.";
+    else if (reason.contains("endpoint", Qt::CaseInsensitive) || reason.contains("URI", Qt::CaseSensitive) || reason.contains("hostname", Qt::CaseInsensitive))
+        why = "Endpoint is not an address it can send S3 requests to.";
+    return {"s3_settings_invalid", "put.gd's S3 library refused these settings before sending anything: " + why +
+            " Check Region and Endpoint in Settings. Region takes a code such as us-east-1; for Cloudflare R2, enter auto.",
+            {{"httpStatus", int(error.GetResponseCode())}, {"sdkErrorType", int(error.GetErrorType())}, {"requestStage", s3StageName(stage)}, {"requestSent", false}}};
+}
 template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedMs) {
+    if (notSent(error)) return notSentError(error, stage);
     const auto name = qt(error.GetExceptionName());
     const int status = int(error.GetResponseCode());
     const int curlCode = sdkCurlCode({error.GetMessage().data(), error.GetMessage().size()});
@@ -219,6 +240,7 @@ template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedM
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
 template<class E> bool ambiguous(const E& error) {
+    if (notSent(error)) return false;
     const int status = int(error.GetResponseCode());
     // 501 Not Implemented is a definite refusal of an unsupported request.
     return status < 200 || (status >= 500 && status != 501);

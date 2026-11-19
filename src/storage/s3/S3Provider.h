@@ -19,6 +19,7 @@ public:
     ProviderCapabilities capabilities(const Destination&) const override;
     QString serializationKey(const Destination&, const QJsonObject&, const QString&) const override;
     Error validateSettings(const QJsonObject&) const override;
+    Error validateStoredSettings(const QJsonObject&) const override;
     Error readiness(const Destination&) const;
     void checkName(const Destination&, const QString&, std::function<void(NameCheck)>, std::shared_ptr<std::atomic_bool> cancellation = {}) override;
     void upload(const UploadRequest&, std::function<void(UploadResult)>) override;
