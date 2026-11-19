@@ -577,6 +577,8 @@ struct ScrollTracker::Store {
   }
   // A plain cell's colour by vote, where no frame wrote more (see flushPending).
   bool plain(long long r, int c) const { return has(r) && plainVotes[size_t(r - origin) * cells + size_t(c)] != 0; }
+  // The lead of the colour voted at a plain cell (0 where none).
+  int lead(long long r, int c) const { return has(r) ? plainVotes[size_t(r - origin) * cells + size_t(c)] & 0x7F : 0; }
   int level(long long r, int c) const {
     if (!has(r)) return 0;
     const size_t i = size_t(r - origin) * words + size_t(c >> 6);
@@ -4113,9 +4115,14 @@ TrackTotals ScrollTracker::finish() {
         // Never under a part pinned at the other end: a side bar is at the top
         // once, and an advertisement's plain colour below its artwork (shown
         // only once the page had moved) is not drawn at the image's end.
+        // Not a plain cell three frames or more agreed on: one screen's copy
+        // does not outweigh them (the first screen's cookie banner over a
+        // margin the page showed in 36 frames after it); one or two may have
+        // been a header not learned yet over a heading only that screen
+        // showed clear.
         auto hole = [&](int cc) {
           const int l = owner[size_t(r) * C + cc];
-          return store_->level(p, cc) == 0 && copy->tag[size_t(r) * C + cc] == copy->serial &&
+          return store_->level(p, cc) == 0 && store_->lead(p, cc) < 3 && copy->tag[size_t(r) * C + cc] == copy->serial &&
                  (l < 0 || bool(topAnchored[size_t(l)]) == topSide);
         };
         if (!hole(c)) {
