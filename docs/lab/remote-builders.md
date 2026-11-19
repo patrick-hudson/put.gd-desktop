@@ -736,15 +736,17 @@ controller.
    hash. Retirement then leaves that attempt out of `attachments.tgz`, keeps it
    in place, marks the completion `failed`, lists it under
    `unauditedAttempts` and hashes both files into `completion-manifest.json`.
-   It never counts as a result. The command refuses an attempt whose terminal
-   proof is valid.
+   It never counts as a result. The command refuses an attempt that has any
+   `terminal.json`: a terminal proof that fails its checks keeps the guest.
 5. **Record the resolution.**
 
    ```sh
-   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup
+   python3 tools/lab/nightly_desktops.py --resolve-live-cleanup n<8 hex>
    ```
 
-   Add `--guest-only-error 'EXACT TEXT'` once for each error you checked in
+   Give the run directory name you checked. The command refuses when the slot
+   now holds another run, or while a lend or recipe for the run is still live
+   (it may still be uploading). Add `--guest-only-error 'EXACT TEXT'` once for each error you checked in
    step 3. If the marker is already gone, add `--destination`, `--prefix` and
    `--object-key` with the values you checked in step 2. The command writes
    `live-cleanup-resolution.json` in the evidence directory and then removes
