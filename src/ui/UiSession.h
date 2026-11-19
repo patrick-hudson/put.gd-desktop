@@ -22,6 +22,9 @@ public:
  QJsonObject diagnostics()const{return diagnostics_;}
  QJsonObject build()const{return build_;}
  QString residentEpoch()const{return epoch_;}
+ // Each destination's last check, as the resident keeps it (#1692): passed, failed or
+ // untested against the saved settings, with the connection fingerprint it was for.
+ QJsonObject destinationStatus()const{return destinationStatus_;}
  SessionClient::RequestId request(const QString&,const QJsonObject&,QObject*,SessionClient::Reply);
  void saveAsync(const QJsonObject&,const QString&,std::function<void(Result)>);
  void reloadAsync(std::function<void(Result)>);
@@ -39,11 +42,13 @@ signals:
  // A storeCredentials or unlockCredentials job ended since the last snapshot,
  // such as the resident's startup unlock: saved-key hints may have changed.
  void credentialsChanged();
+ // A destination's last check changed in the resident: a Test, an upload or new credentials.
+ void destinationStatusChanged();
 private:
  void applySettings(const QJsonObject&);
  ShortcutRecordingHandler shortcutRecording_;
  SessionClient& client_;
- QJsonObject document_,metadata_,diagnostics_,build_;
+ QJsonObject document_,metadata_,diagnostics_,build_,destinationStatus_;
  QString epoch_;
  Error journalError_;
  QThreadPool previews_;

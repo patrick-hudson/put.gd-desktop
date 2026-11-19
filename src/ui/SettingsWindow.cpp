@@ -7,6 +7,7 @@
 #include "storage/b2/B2Common.h"
 #include "platform/HostOpen.h"
 #include "core/HostEnvironment.h"
+#include "core/DestinationCheck.h"
 #include <QUrl>
 #include "ViewState.h"
 #include <QTimer>
@@ -1196,7 +1197,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(advanced,&QToolButton::toggled,this,[this]{updateProviderVisibility_();emit viewStateChanged();});connect(customEndpoint,&QCheckBox::toggled,this,[this]{updateProviderVisibility_();});
  connect(providerType_,&QComboBox::currentIndexChanged,this,&SettingsWindow::switchProvider);
  connect(destinationList_,&QListWidget::currentRowChanged,this,[this](int index){if(!loading_)profile_->setCurrentIndex(index);});connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;storeProfile();loadProfile();refreshDestinationList();if(destinationPage_->isVisible())activateDestinations();emit viewStateChanged();});
- connect(defaultButton_,&QPushButton::clicked,this,[this]{if(testedDestinations_.value(profileId_->text())!=editedProfile()&&!Ui::confirm(this,"Use an untested destination","This connection has not passed a test in this session. Use \""+profileLabel_->text()+"\" as the capture default? Per-action exceptions will stay unchanged.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
+ connect(defaultButton_,&QPushButton::clicked,this,[this]{if(checkState(editedProfile())!="passed"&&!Ui::confirm(this,"Use an untested destination","This connection has not passed a test with its current settings. Use \""+profileLabel_->text()+"\" as the capture default? Per-action exceptions will stay unchanged.","Make default"))return;{const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(captureProfile_->findData(profileId_->text()));}queueCaptureEdit(defaultButton_);});
  connect(remove,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Remove destination","Remove \""+profileLabel_->text()+"\" from settings? Existing history and remote files remain.","Remove destination",true))return;storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;const auto id=profiles[index].toObject()["id"].toString();if(captureProfile_->currentData()==id){const QSignalBlocker block(captureProfile_);captureProfile_->setCurrentIndex(0);updateCaptureInheritance();}for(const auto& action:Settings::presentationOrder())if(actionProfiles_[action]->currentData()==id){actionProfiles_[action]->setCurrentIndex(0);}captureDefaultsEnabled_=true;captureRoutingEdited_=true;profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);if(index<credentialDrafts_.size())credentialDrafts_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));queueEdit(defaultButton_,"/");refreshDestinationList();});
  connect(dev,&QPushButton::clicked,this,&SettingsWindow::importDevelopmentProfile);
  connect(s3_["region"],&QLineEdit::textChanged,this,[this](const QString& region){if(loading_)return;auto* endpoint=s3_["endpoint"];const auto previous=s3_["region"]->property("previousRegion").toString();if(endpoint->text()=="https://s3."+previous+".amazonaws.com")endpoint->setText("https://s3."+region+".amazonaws.com");s3_["region"]->setProperty("previousRegion",region);updateProviderVisibility_();});
@@ -1253,7 +1254,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  const auto sharedForms=tabs_->findChildren<QFormLayout*>();for(int page=0;page<tabs_->count();++page)if(auto* scroll=qobject_cast<QScrollArea*>(tabs_->widget(page)))Ui::alignForms(scroll->widget(),sharedForms);Ui::alignChoices(tabs_,sharedForms);
  for(auto* field:findChildren<QLineEdit*>())if(field!=profileLabel_&&!qobject_cast<QComboBox*>(field->parentWidget())&&!qobject_cast<QAbstractSpinBox*>(field->parentWidget())&&field->maximumWidth()==QWIDGETSIZE_MAX&&!field->property("uiFullWidth").toBool())field->setMaximumWidth(Ui::scaled(480));
  for(auto* box:{general,capture,shortcutsPage,advancedPage})for(int i=0;i<box->count();++i)if(auto* widget=box->itemAt(i)->widget())widget->setMaximumWidth(Ui::scaled(760));
- connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});
+ connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();refreshEffectiveLimits();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});connect(&settings_,&UiSession::destinationStatusChanged,this,[this]{refreshDestinationList();updateProtonAccountDisplay();});
  // The resident's startup unlock can end after Destinations opened; show the key it read (#600).
  connect(&settings_,&UiSession::credentialsChanged,this,[this]{refreshCredentialHint();});connect(tabs_,&QTabWidget::currentChanged,this,&SettingsWindow::viewStateChanged);
  // #348: Updates stays in view while a freshly shown window settles its size and
@@ -2162,7 +2163,7 @@ void SettingsWindow::refreshDestinationList(const QJsonObject& document){
  // Rows are updated in place: rebuilding them here, which runs when a press changes the
  // selection, would drop the view's pressed row, so the drag that follows never starts.
  while(destinationList_->count()>profiles.size())delete destinationList_->takeItem(destinationList_->count()-1);int row=0;const auto actions=doc["actions"].toObject();bool selectedDefault=false;
- for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":testedDestinations_.value(profile["id"].toString())==profile?"Account and folder checked":"Configured"):profile["provider"]==CustomUploaderPanel::provider()?(s["requestUrl"].toString().isEmpty()?"Needs a request URL":(profile["id"]==profileId_->text()&&uploader_&&(!uploader_->typedSecrets().isEmpty()||!uploader_->missingSecrets().isEmpty()))||(credentialAvailability_.contains(profile["id"].toString())&&!credentialAvailability_.value(profile["id"].toString()))?"Needs credentials":testedDestinations_.value(profile["id"].toString())==profile?"Connected":"Ready to test"):(s["bucket"].toString().isEmpty()?"Needs a bucket":credentialAvailability_.contains(profile["id"].toString())&&!credentialAvailability_.value(profile["id"].toString())?"Needs credentials":testedDestinations_.value(profile["id"].toString())==profile?"Connected":"Ready to test");if(isDefault)state="Default · "+state;auto* item=row<destinationList_->count()?destinationList_->item(row):new QListWidgetItem(destinationList_);++row;item->setIcon(Ui::icon(proton?"proton":profile["provider"]==CustomUploaderPanel::provider()?"upload":"bucket"));item->setText(profile["label"].toString()+"\n"+state);item->setToolTip(profile["label"].toString()+"\n"+state);if(profile["id"]==profileId_->text()){selectedDefault=isDefault;if(auto* status=findControl<QLabel*>("destinationProviderState")){status->setText(state);findControl<QPushButton*>("addDestinationCredentials")->setVisible(state.contains("Needs credentials"));const bool needsSetup=state.contains("Needs ")||state.contains("Signed out")||state.contains("Choose a folder");Ui::role(status,needsSetup?"version":"secondary");}defaultButton_->setText(testedDestinations_.value(profile["id"].toString())==profile?"Make default":"Make default…");}}
+ for(const auto& value:profiles){const auto profile=value.toObject();bool isDefault=true;if(doc.contains("captureDefaults")){const auto capture=doc["captureDefaults"].toObject();isDefault=capture["destination"]=="upload"&&capture["profileId"]==profile["id"];}else for(const auto& action:Settings::actionNames())if(actions[action].toObject()["profileId"]!=profile["id"]||actions[action].toObject()["destination"]!="upload")isDefault=false;const auto s=profile["settings"].toObject();const bool proton=profile["provider"]=="proton-drive";QString state=proton?(s["accountRootUid"].toString().isEmpty()?"Signed out":s["folderUid"].toString().isEmpty()?"Choose a folder":checkText(profile,"Account and folder checked","Check failed","Needs checking","Configured")):profile["provider"]==CustomUploaderPanel::provider()?(s["requestUrl"].toString().isEmpty()?"Needs a request URL":(profile["id"]==profileId_->text()&&uploader_&&(!uploader_->typedSecrets().isEmpty()||!uploader_->missingSecrets().isEmpty()))||(credentialAvailability_.contains(profile["id"].toString())&&!credentialAvailability_.value(profile["id"].toString()))?"Needs credentials":checkText(profile,"Connected","Test failed","Needs testing","Ready to test")):(s["bucket"].toString().isEmpty()?"Needs a bucket":credentialAvailability_.contains(profile["id"].toString())&&!credentialAvailability_.value(profile["id"].toString())?"Needs credentials":checkText(profile,"Connected","Test failed","Needs testing","Ready to test"));if(isDefault)state="Default · "+state;auto* item=row<destinationList_->count()?destinationList_->item(row):new QListWidgetItem(destinationList_);++row;item->setIcon(Ui::icon(proton?"proton":profile["provider"]==CustomUploaderPanel::provider()?"upload":"bucket"));item->setText(profile["label"].toString()+"\n"+state);item->setToolTip(profile["label"].toString()+"\n"+state);if(profile["id"]==profileId_->text()){selectedDefault=isDefault;if(auto* status=findControl<QLabel*>("destinationProviderState")){status->setText(state);findControl<QPushButton*>("addDestinationCredentials")->setVisible(state.contains("Needs credentials"));const bool needsSetup=state.contains("Needs ")||state.contains(" failed")||state.contains("Signed out")||state.contains("Choose a folder");Ui::role(status,needsSetup?"version":"secondary");}defaultButton_->setText(checkState(profile)=="passed"?"Make default":"Make default…");}}
  destinationList_->setCurrentRow(profileIndex_);const bool has=profileIndex_>=0;if(moveUp_){moveUp_->setEnabled(profileIndex_>0);moveDown_->setEnabled(has&&profileIndex_<int(profiles.size())-1);}defaultButton_->setEnabled(has&&!selectedDefault&&!(providerType_->currentData()=="s3"&&s3_["bucket"]->text().isEmpty()));
  // The sidebar already identifies the default; only offer an action for others.
  defaultButton_->setVisible(has&&!selectedDefault);Ui::setLocked(defaultButton_,false);defaultButton_->setToolTip(selectedDefault?"Captures and clipboard uploads use this destination by default.":"Use this destination for captures and clipboard uploads by default.");
@@ -2343,8 +2344,20 @@ void SettingsWindow::configurationChanged(){
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
  auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty())status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }
+QString SettingsWindow::checkState(const QJsonObject& profile)const{
+ const auto record=settings_.destinationStatus()[profile["id"].toString()].toObject();
+ const auto state=record["state"].toString();
+ if((state!="passed"&&state!="failed")||record["fingerprint"].toString()!=destinationcheck::fingerprint(profile))return QStringLiteral("untested");
+ return state;
+}
+QString SettingsWindow::checkText(const QJsonObject& profile,const QString& passed,const QString& testFailed,const QString& uploadFailed,const QString& untested)const{
+ const auto state=checkState(profile);
+ if(state=="passed")return passed;
+ if(state=="failed")return settings_.destinationStatus()[profile["id"].toString()].toObject()["source"]=="upload"?uploadFailed:testFailed;
+ return untested;
+}
 void SettingsWindow::updateProtonAccountDisplay(){
- const bool connected=!protonAccountUid_.isEmpty();const bool tested=testedDestinations_.contains(profileId_->text())&&testedDestinations_.value(profileId_->text())==editedProfile();
+ const bool connected=!protonAccountUid_.isEmpty();const bool tested=checkState(editedProfile())=="passed";
  PreferenceRows::sectionFor(findControl<QWidget*>("protonFolderSection")->findChild<QFormLayout*>())->setVisible(connected);findControl<QWidget*>("protonFolderPrerequisite")->setVisible(!connected);
  protonAccount_->setText(tested?QString("Account and folder checked · Upload and sharing aren't tested"):connected?(protonAccountEmail_.isEmpty()?QString("Account configured"):protonAccountEmail_):QString("Not connected"));
  findControl<QPushButton*>("connectProtonAccount")->setText(connected?"Reconnect account…":"Connect Proton Drive…");sizeProtonAccountButtons();
@@ -2414,7 +2427,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  if(selectedDestinationChanged()||saving_||conflict_||initialProfile_||profile_->currentIndex()<0){status({"save_first","Finish valid destination edits before connecting. Changes save automatically.",{}});return;}
  const auto profileId=profileId_->text(),revision=settings_.revision();QJsonObject params{{"profileId",profileId},{"expectedRevision",revision}};if(kind=="storeCredentials")params["credentials"]=input;else if(kind=="createFolder"||kind=="storeSharePassword")params["input"]=input;
  const auto testMessage=providerType_->currentData()=="proton-drive"?QString("Checking the Proton account and selected folder…"):QString("Testing upload, link and cleanup…");
- if(kind=="testDestination"){testedDestinations_.remove(profileId);updateProtonAccountDisplay();refreshDestinationList();testAccepting_=true;setupFeedback(testMessage);}
+ if(kind=="testDestination"){testAccepting_=true;setupFeedback(testMessage);}
  updateSetupButton();
  if(kind=="connectAccount"||kind=="inspectAccount")folderRequests_.insert(profileId);
  ++setupAccepting_;updateSetupButton();emit viewStateChanged();
@@ -2428,7 +2441,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
    else if(kind=="storeSharePassword"){protonPassword_->clear();rememberCredentialInputs();}
   }
   for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}
-  setupJobs_.append(QJsonObject{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision}});
+  setupJobs_.append(QJsonObject{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",destinationcheck::fingerprint(editedProfile())}});
   // Say what is happening; the confirmed result replaces it. Folder loading is
   // shown beside the folder, so the page status doesn't repeat it.
   static const QHash<QString,QString> progress{{"connectAccount","Connecting account…"},{"storeCredentials","Storing credentials…"},{"unlockCredentials","Unlocking saved credentials…"},{"createFolder","Creating folder…"},{"storeSharePassword","Storing link password…"}};
@@ -2511,16 +2524,19 @@ void SettingsWindow::pollSetup(){
   const auto job=setupJobs_[index].toObject();const auto event=data["event"].toObject();
   if(!e&&event["event"]=="auth"&&!protonBrowserOpened_){const QUrl url(event["url"].toString());if(url.scheme()=="https"&&url.host()=="account.proton.me"){protonBrowserOpened_=true;pendingProtonUrl_=url;pendingProtonSetup_=id;retryProtonBrowser();updateSetupButton();}}
   if(e.code=="setup_not_found"||(!e&&data["state"]!="running")){
+   // The resident recorded what the test found (#1692); its snapshot brings the row's state.
+   if(job["kind"]=="testDestination")settings_.refreshSnapshot();
    if(pendingProtonSetup_==id){pendingProtonUrl_.clear();pendingProtonSetup_.clear();protonBrowserOpening_=false;protonBrowserRetry_->hide();sizeProtonAccountButtons();}
    setupJobs_.removeAt(index);updateSetupButton();if(setupJobs_.isEmpty())setupTimer_->stop();
    if(e)e.message="This setup result is no longer available; the action was not repeated.";
    else{const auto error=data["error"].toObject();e={error["code"].toString(),error["message"].toString(),error["details"].toObject()};}
-   if(e){if(job["kind"]=="testDestination"&&(job["profileId"]!=profileId_->text()||(!job["revision"].toString().isEmpty()&&job["revision"]!=settings_.revision())))e.message="Connection test failed for the original destination settings. "+e.message;
+   // A test is for the shown destination while its connection is the one tested, the rule
+   // its row follows: a rename or a reorder during the test keeps it current (#1692).
+   const bool currentTest=job["profileId"]==profileId_->text()&&job["fingerprint"]==destinationcheck::fingerprint(editedProfile());
+   if(e){if(job["kind"]=="testDestination"&&!currentTest)e.message="Connection test failed for the original destination settings. "+e.message;
     // A custom uploader's test shows the start of a reply it could not read, so the Response fields can be fixed.
     if(const auto excerpt=data["result"].toObject()["replyExcerpt"].toString();!excerpt.isEmpty())e.message+=" The reply began: "+excerpt;
     status(e);if(data["kind"]=="connectAccount"&&data["profileId"]==profileId_->text())protonAccount_->setText("Connection failed: "+e.message);}else {
-    const bool currentTest=data["profileId"]==profileId_->text()&&(job["revision"].toString().isEmpty()||job["revision"]==settings_.revision())&&!selectedDestinationChanged();
-    if(data["kind"]=="testDestination"&&currentTest){testedDestinations_.insert(data["profileId"].toString(),editedProfile());updateProtonAccountDisplay();refreshDestinationList();}
     if(data["kind"]=="storeCredentials"&&data["profileId"]==profileId_->text()&&providerType_->currentData()==CustomUploaderPanel::provider()){clearCurrentCredentialInputs();uploader_->setNotice({});}
     if(data["kind"]=="storeCredentials"||data["kind"]=="unlockCredentials")refreshCredentialHint();
     const auto result=data["result"].toObject();const auto kind=data["kind"].toString();

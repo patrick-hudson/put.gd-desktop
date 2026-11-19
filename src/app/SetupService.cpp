@@ -1,4 +1,5 @@
 #include "SetupService.h"
+#include "core/DestinationCheck.h"
 #include <QJsonArray>
 #include <QPointer>
 #include <QUuid>
@@ -57,6 +58,10 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  jobs_.insert(id,{{"setupId",id},{"kind",kind},{"profileId",profileId},{"state","running"},{"error",Error{}.toJson()}});
  active_.insert(key);
+ if(kind=="testDestination"&&status_)testStarts_.insert(id,{destinationcheck::fingerprint(profile),status_->credentialRevision(profileId)});
+ // The keys change from here on, so an earlier check never vouches for the new ones, even
+ // when the resident stops before this job ends.
+ if(status_&&(kind=="storeCredentials"||kind=="connectAccount"))status_->credentialsChanged(profileId);
  // Only a safe job ID and lifetime context cross the asynchronous boundary.
  // Queue under the lock so destruction cannot race the context passed to Qt.
  const auto complete=[context=completion_,id](Error error) {
@@ -165,6 +170,14 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
  startupUnlocks_.remove(id);
  if(record["kind"]=="storeCredentials"||record["kind"]=="unlockCredentials")++credentialGeneration_;
+ // The record of the destination's last check changes before anyone hears the job ended.
+ const auto started=testStarts_.take(id);
+ if(status_) {
+  const auto profileId=record["profileId"].toString();
+  if(record["kind"]=="testDestination")status_->testFinished(profileId,started.fingerprint,started.credentialRevision,error);
+  // New keys, or a Proton sign-in, are another connection than the one checked before.
+  else if(!error&&(record["kind"]=="storeCredentials"||record["kind"]=="connectAccount"))status_->credentialsChanged(profileId);
+ }
  completed_.enqueue(id);while(completed_.size()>64)jobs_.remove(completed_.dequeue());
  emit changed(id);
 }

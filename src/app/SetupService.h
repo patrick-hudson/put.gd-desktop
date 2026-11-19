@@ -1,6 +1,7 @@
 #pragma once
 #include "OperationService.h"
 #include "secrets/CredentialStore.h"
+#include "DestinationStatus.h"
 #include <QQueue>
 #include <QSet>
 #include <memory>
@@ -22,6 +23,8 @@ public:
  // values over the cached ones and stores the set.
  using NamedCredentials=std::function<Error(const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names)>;
  void setNamedCredentials(NamedCredentials handler){namedCredentials_=std::move(handler);}
+ // Where a Test's result and a store of new credentials are recorded (#1692).
+ void setDestinationStatus(DestinationStatus* status){status_=status;}
  void start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply);
  void inspect(const QString& id,JsonReply);
  void credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply);
@@ -51,6 +54,10 @@ private:
  DestinationTester tester_;
  ProviderSetup providerSetup_;
  NamedCredentials namedCredentials_;
+ DestinationStatus* status_=nullptr;
+ // A running Test's connection fingerprint and credential revision when it started.
+ struct TestStart {QString fingerprint;quint64 credentialRevision=0;};
+ QHash<QString,TestStart> testStarts_;
  bool usesCredentialStore(const QJsonObject& profile) const;
  QHash<QString,QJsonObject> jobs_;
  QQueue<QString> completed_;

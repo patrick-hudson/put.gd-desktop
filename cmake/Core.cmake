@@ -16,7 +16,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_text_child STATIC src/ocr/TextJobChild.cpp)
   target_link_libraries(putgd_text_child PUBLIC putgd_text_protocol putgd_ui_control putgd_build_identity)
 endif()
-add_library(putgd_core STATIC src/core/Settings.cpp src/core/CommandText.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
+add_library(putgd_core STATIC src/core/Settings.cpp src/core/DestinationCheck.cpp src/core/CommandText.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
   src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/TextJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp

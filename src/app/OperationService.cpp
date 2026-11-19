@@ -908,7 +908,7 @@ void OperationService::editorCommand(const QString& id,const QString& command,co
  });
 }
 void OperationService::pump() {
- while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
+ while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;if(!job.op.destination.profileId.isEmpty())emit uploadStarting(job.op);background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
 }
 Operation OperationService::run(Job job) {
  auto op=job.op;HistoryStore store(databasePath());ArtifactStore artifacts(root_+"/artifacts");
@@ -1257,6 +1257,7 @@ void OperationService::settled(const QString& id) {
  if(finishing_.remove(id)){emit changed(id);emit observationsChanged();}
 }
 void OperationService::finish(Operation op,JsonReply reply) {
+ emit uploadSettled(op);
  if(scrollEditorReleases_.contains(op.id))scrollEditorReleases_.take(op.id)();
  anticipated_.remove(op.id);clipboardImports_.remove(op.id);pumpCopies();
  finishing_.insert(op.id);

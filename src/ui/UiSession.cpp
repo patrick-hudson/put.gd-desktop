@@ -10,6 +10,7 @@ void UiSession::applySettings(const QJsonObject& settings){document_=settings["d
 void UiSession::applySnapshot(const QJsonObject& data){const auto previous=revision();const auto wasReady=ready_;applySettings(data["settings"].toObject());diagnostics_=data["diagnostics"].toObject();build_=data["build"].toObject();epoch_=data["residentEpoch"].toString();ready_=data["operationsReady"].toBool();{const auto e=data["operationsError"].toObject();journalError_=ready_?Error{}:Error{e["code"].toString(),e["message"].toString(),e["details"].toObject()};}if(previous!=revision())emit accepted(revision());emit statusChanged();if(!wasReady&&ready_)emit initialized();emit operationsChanged();
  // A credential read or store ended in the resident, whoever started it (#600).
  if(const auto credentials=data["credentials"].toObject();credentials.contains("generation")){const auto previous=std::exchange(credentialGeneration_,credentials["generation"].toInteger());if(previous>=0&&previous!=credentialGeneration_)emit credentialsChanged();}
+ if(data.contains("destinationStatus")&&data["destinationStatus"].toObject()!=destinationStatus_){destinationStatus_=data["destinationStatus"].toObject();emit destinationStatusChanged();}
 }
 void UiSession::refreshSnapshot(std::function<void(Error)> callback){
  if(callback)snapshotCallbacks_.append(std::move(callback));

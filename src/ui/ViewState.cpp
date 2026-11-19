@@ -1,4 +1,5 @@
 #include "ViewState.h"
+#include <QRegularExpression>
 #include <QJsonArray>
 #include <QDir>
 #include <QJsonDocument>
@@ -155,7 +156,9 @@ bool settingsState(const QJsonObject& s){
   if(!provisional.toObject().isEmpty()&&(!safeProfile(provisional.toObject()["profile"])||!profileEditor(provisional.toObject()["editor"])))return false;
  }
  if(!s["setupJobs"].isArray())return false;
- for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
+ for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision","fingerprint"},true))return false;auto job=v.toObject();
+  // The connection a Test started with (#1692): a SHA-256 in lowercase hex, never settings.
+  if(job.contains("fingerprint")&&!QRegularExpression(QRegularExpression::anchoredPattern("[0-9a-f]{64}")).match(job["fingerprint"].toString()).hasMatch())return false;if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
  return true;
 }
 bool historyState(const QJsonObject& s){if(s.contains("savedPath")&&(!s["savedPath"].isString()||s["savedPath"].toString().contains(QChar(0))||(!s["savedPath"].toString().isEmpty()&&!QDir::isAbsolutePath(s["savedPath"].toString()))))return false;for(const auto& key:QStringList{"gridMode","showCancelled","detailsOpen","detailsFromGallery","detailsWanted"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId","detailsOpen","detailsFromGallery","detailsWanted","galleryScroll","listScroll","savedPath"})||!fields(s["query"],filterKeys()+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys(),true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;for(const auto& key:QStringList{"galleryScroll","listScroll"})if(s.contains(key)&&(!s[key].isDouble()||s[key].toDouble()<0||s[key].toDouble()>2147483647||std::floor(s[key].toDouble())!=s[key].toDouble()))return false;return true;}

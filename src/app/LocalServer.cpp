@@ -459,11 +459,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!operations_.ready())snapshot["operationsError"]=operations_.notReadyError().toJson();
   // A changed generation tells an open window that a credential read or store ended (#600).
   if(setup_)snapshot["credentials"]=QJsonObject{{"generation",double(setup_->credentialGeneration())}};
+  if(destinationStatus_)snapshot["destinationStatus"]=destinationStatus_->publicJson();
   reply({},snapshot);
  }
  else if(method=="ui.viewState"){if(uiViewState_)reply({},uiViewState_());else reply({"ui_unavailable","This resident has no interface view state",{}},{});}
  // effectiveLimits: the resolved byte limits (null for none) and the disk that bounds imports.
- else if(method=="settings.get"){auto limits=settings_.snapshot().effectiveArtifactLimits();limits["disk"]=operations_.artifactDisk();reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()},{"effectiveLimits",limits}});}
+ else if(method=="settings.get"){auto limits=settings_.snapshot().effectiveArtifactLimits();limits["disk"]=operations_.artifactDisk();QJsonObject result{{"document",settings_.document()},{"metadata",settings_.metadata()},{"effectiveLimits",limits}};if(destinationStatus_)result["destinationStatus"]=destinationStatus_->publicJson();reply({},result);}
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());

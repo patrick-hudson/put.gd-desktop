@@ -198,6 +198,10 @@ signals:
  void textFinished(const QString& operationId,const QJsonObject& record,const QString& notification);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
+ // An upload operation's provider work starts, and the operation ends (#1692): the record of
+ // its destination's last check follows what the upload found. Both are sent on this thread.
+ void uploadStarting(const putgd::Operation& operation);
+ void uploadSettled(const putgd::Operation& operation);
  // Someone asked for a capture, the editor or a recording (tray, shortcut, CLI or
  // MCP): an explicit request that shows a put.gd window, so the no-tray startup
  // recovery must not open Settings over it (#1252).

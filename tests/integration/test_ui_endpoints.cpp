@@ -1,6 +1,8 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/LocalServer.h"
 #include "app/SetupService.h"
+#include "app/DestinationStatus.h"
+#include "core/DestinationCheck.h"
 #include "core/BuildInfo.h"
 #include <QLocalSocket>
 #include <QElapsedTimer>
@@ -39,6 +41,93 @@ class UiEndpointsTest : public QObject {
   return QJsonDocument::fromJson(response).object();
  }
 private slots:
+ // #1692: a passed Test is the resident's, on disk, so a new helper or a restarted resident
+ // still shows it. A label change keeps it, a connection or credential change does not, and
+ // uploads confirm it: a refused sign-in fails it, a network failure leaves it.
+ void destinationCheckOutlivesTheResidentAndFollowsUploads() {
+  QTemporaryDir dir;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(dir.path()),{}));
+  const auto statusPath=dir.filePath("data/destination-status.json");
+  const auto edited=[&](const std::function<void(QJsonObject&)>& change){auto document=settings.document();auto profiles=document["profiles"].toArray();auto profile=profiles[0].toObject();change(profile);profiles[0]=profile;document["profiles"]=profiles;return bool(settings.save(document,settings.revision()));};
+  // The opaque destination keeps no keys, so its session-mode check is saved like any other.
+  const auto keyless=[](const QJsonObject&){return false;};
+  {
+   Source source;source.payload=textPayload();OperationService operations(dir.filePath("data"),settings,providers,source);HistoryService history(operations);
+   LocalServer server(settings,operations,history);QVERIFY(server.listen(dir.filePath("runtime")));PUTGD_TRY_VERIFY(operations.ready());
+   DestinationStatus status(statusPath,settings);status.setUsesCredentials(keyless);status.load();status.follow(operations);server.setDestinationStatus(&status);
+   CredentialStore credentials;std::function<void(Error)> finish;
+   SetupService setup(settings,credentials,[&](const QString&,const QJsonObject&,auto reply){finish=std::move(reply);});setup.setDestinationStatus(&status);server.setSetupService(&setup);
+   const auto check=[&]{QJsonObject snapshot;request(server,"ui.snapshot",{},[&](Error,QJsonObject value){snapshot=value;});return snapshot["destinationStatus"].toObject()["test"].toObject();};
+   int settled=0;connect(&operations,&OperationService::uploadSettled,&operations,[&]{++settled;});
+   QString last;const auto upload=[&]{const auto before=settled;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);last=value["operationId"].toString();});PUTGD_TRY_VERIFY(settled>before);};
+   const auto test=[&]{finish={};setup.start("testDestination","test",settings.revision(),{},[](Error e,QJsonObject){QVERIFY(!e);});QVERIFY(finish);finish({});};
+   QCOMPARE(check()["state"].toString(),QString("untested"));
+   test();
+   PUTGD_TRY_COMPARE(check()["state"].toString(),QString("passed"));QCOMPARE(check()["source"].toString(),QString("test"));
+   // settings.get, which MCP inspect returns, says the same.
+   QJsonObject got;request(server,"settings.get",{},[&](Error,QJsonObject value){got=value;});QCOMPARE(got["destinationStatus"].toObject()["test"].toObject()["state"].toString(),QString("passed"));
+   // A Test held back before it reached the provider, as during journal recovery, keeps the pass.
+   finish={};setup.start("testDestination","test",settings.revision(),{},[](Error e,QJsonObject){QVERIFY(!e);});QVERIFY(finish);finish({"initializing","Synthetic journal recovery",QJsonObject{{"notAttempted",true}}});
+   PUTGD_COMPARE_STEADY(check()["state"].toString(),QString("passed"),50);
+   QVERIFY(edited([](QJsonObject& profile){profile["label"]="Renamed destination";}));QCOMPARE(check()["state"].toString(),QString("passed"));
+   provider->failUpload=true;provider->uploadError={"s3_transport_unknown","Synthetic network failure",{}};upload();
+   QCOMPARE(check()["state"].toString(),QString("passed"));
+   provider->uploadError={"s3_authentication_failed","Synthetic refused sign-in",{}};upload();
+   PUTGD_TRY_COMPARE(check()["state"].toString(),QString("failed"));QCOMPARE(check()["source"].toString(),QString("upload"));QCOMPARE(check()["errorCode"].toString(),QString("s3_authentication_failed"));
+   provider->failUpload=false;upload();PUTGD_TRY_COMPARE(check()["state"].toString(),QString("passed"));
+   // The Proton helper's plain codes are refusals too.
+   provider->failUpload=true;provider->uploadError={"authentication_required","Synthetic Proton session ended",{}};upload();
+   PUTGD_TRY_COMPARE(check()["errorCode"].toString(),QString("authentication_required"));
+   // A Test replaces the upload's record; a retry that carries the same refusal from History does not fail it again.
+   test();PUTGD_TRY_COMPARE(check()["state"].toString(),QString("passed"));QCOMPARE(check()["source"].toString(),QString("test"));
+   {const auto before=settled;QString answer;
+    // The failed run may still be settling; Retry is accepted once it is done.
+    PUTGD_TRY_VERIFY([&]{if(answer.isEmpty()||answer=="operation_settling"){answer="pending";operations.retry(last,[&](Error e,QJsonObject){answer=e?e.code:QStringLiteral("accepted");});}return answer=="accepted";}());
+    PUTGD_TRY_VERIFY(settled>before);}
+   QCOMPARE(check()["state"].toString(),QString("passed"));
+   provider->failUpload=false;upload();QCOMPARE(check()["source"].toString(),QString("test"));
+  }
+  // A restarted resident reads the record back, still for the renamed destination.
+  {
+   Source source;OperationService operations(dir.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);
+   DestinationStatus status(statusPath,settings);status.setUsesCredentials(keyless);status.load();server.setDestinationStatus(&status);
+   CredentialStore credentials;SetupService setup(settings,credentials,{});setup.setDestinationStatus(&status);
+   const auto check=[&](const QString& id="test"){QJsonObject snapshot;request(server,"ui.snapshot",{},[&](Error,QJsonObject value){snapshot=value;});return snapshot["destinationStatus"].toObject()[id].toObject()["state"].toString();};
+   QCOMPARE(check(),QString("passed"));
+   QVERIFY(edited([](QJsonObject& profile){profile["settings"]=QJsonObject{{"workspace","another-workspace"}};}));QCOMPARE(check(),QString("untested"));
+   QVERIFY(edited([](QJsonObject& profile){profile["settings"]=QJsonObject{{"workspace","fixture-workspace"}};}));QCOMPARE(check(),QString("passed"));
+   setup.start("storeCredentials","test",settings.revision(),{{"accessKey","SYNTHETICKEY"},{"secretKey","synthetic-secret"}},[](Error e,QJsonObject){QVERIFY(!e);});
+   PUTGD_TRY_COMPARE(check(),QString("untested"));
+   QFile file(statusPath);QVERIFY(file.open(QIODevice::ReadOnly));const auto bytes=file.readAll();QVERIFY(!bytes.contains("synthetic-secret"));QVERIFY(!bytes.contains("SYNTHETICKEY"));
+   QCOMPARE(file.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ReadOther|QFile::WriteOther),QFile::Permissions());
+   // Two destinations that name one keychain entry: new keys for one are new keys for both.
+   auto document=settings.document();auto profiles=document["profiles"].toArray();
+   for(const auto* id:{"a","b"})profiles.append(QJsonObject{{"id",id},{"label",id},{"provider","opaque"},{"settings",QJsonObject{{"workspace","fixture-workspace"}}},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/shared"}}}});
+   document["profiles"]=profiles;QVERIFY(settings.save(document,settings.revision()));
+   JsonReply pending;setup.setProviderSetup([&](const QString&,const Destination&,const QJsonObject&,JsonReply reply,auto){pending=std::move(reply);});
+   setup.start("testDestination","a",settings.revision(),{},[](Error e,QJsonObject){QVERIFY(!e);});QVERIFY(pending);std::exchange(pending,{})({},{});
+   PUTGD_TRY_COMPARE(check("a"),QString("passed"));
+   setup.start("connectAccount","b",settings.revision(),{},[](Error e,QJsonObject){QVERIFY(!e);});QVERIFY(pending);
+   QCOMPARE(check("a"),QString("untested"));
+   std::exchange(pending,{})({},{});PUTGD_COMPARE_STEADY(check("a"),QString("untested"),50);
+  }
+  // Keys kept only for the session: the pass is the session's and a restart forgets it.
+  {
+   DestinationStatus status(statusPath,settings);status.load();
+   CredentialStore credentials;std::function<void(Error)> finish;
+   SetupService setup(settings,credentials,[&](const QString&,const QJsonObject&,auto reply){finish=std::move(reply);});setup.setDestinationStatus(&status);
+   setup.start("testDestination","test",settings.revision(),{},[](Error e,QJsonObject){QVERIFY(!e);});QVERIFY(finish);finish({});
+   PUTGD_TRY_COMPARE(status.publicJson()["test"].toObject()["state"].toString(),QString("passed"));
+   DestinationStatus restarted(statusPath,settings);restarted.load();
+   QCOMPARE(restarted.publicJson()["test"].toObject()["state"].toString(),QString("untested"));
+  }
+  // For S3, the fingerprint follows the endpoint and the credential reference, not a timeout.
+  const QJsonObject s3{{"endpoint","https://s3.example.invalid"},{"bucket","b"},{"requestTimeoutMs",60000}};const QJsonObject keychain{{"mode","keychain"},{"reference","putgd/a"}};
+  const auto base=destinationcheck::fingerprint("s3",s3,keychain);
+  auto slower=s3;slower["requestTimeoutMs"]=90000;QCOMPARE(destinationcheck::fingerprint("s3",slower,keychain),base);
+  auto moved=s3;moved["endpoint"]="https://other.example.invalid";QVERIFY(destinationcheck::fingerprint("s3",moved,keychain)!=base);
+  QVERIFY(destinationcheck::fingerprint("s3",s3,{{"mode","keychain"},{"reference","putgd/b"}})!=base);
+ }
  void configurationFolderActionForwardsThroughDiagnostics() {
   Fixture f;QString group;QJsonObject forwarded;f.server.setUiCommand([&](const QString& name,const QJsonObject& params,JsonReply reply){group=name;forwarded=params;reply({},{{"opened",true}});});Error error;QJsonObject result;request(f.server,"ui.diagnostics",{{"action","showConfigFolder"}},[&](Error e,QJsonObject value){error=e;result=value;});QVERIFY(!error);QCOMPARE(group,QString("diagnostics"));QCOMPARE(forwarded,QJsonObject({{"action","showConfigFolder"}}));QVERIFY(result["opened"].toBool());
  }

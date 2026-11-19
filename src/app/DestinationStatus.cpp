@@ -1,0 +1,138 @@
+#include "DestinationStatus.h"
+#include "OperationService.h"
+#include "core/DestinationCheck.h"
+#include "core/Log.h"
+#include <QFile>
+#include <QFileInfo>
+#include <QDir>
+#include <QJsonDocument>
+#include <QSaveFile>
+#include <cmath>
+namespace putgd {
+namespace {
+constexpr qint64 maximumFileBytes=1024*1024;
+// A JSON number that is an exact integer from 0 to 2^53: a revision this file can hold.
+bool revisionValue(const QJsonValue& value,quint64* out) {
+ const auto number=value.toDouble(-1);
+ if(!value.isDouble()||number<0||number>9007199254740992.0||number!=std::floor(number))return false;
+ *out=quint64(number);return true;
+}
+bool validRecord(const QJsonObject& record,quint64* revision) {
+ const auto state=record["state"].toString(),source=record["source"].toString(),code=record["errorCode"].toString();
+ if(!((state=="passed"||state=="failed")&&(source=="test"||source=="upload")&&record["fingerprint"].toString().size()==64&&revisionValue(record["credentialRevision"],revision)))return false;
+ // Only a refusal the upload rules recognize names why a destination failed.
+ return !record.contains("errorCode")||destinationcheck::rejectsDestination(Error{code,{},{}});
+}
+}
+DestinationStatus::DestinationStatus(QString path,SettingsService& settings,QObject* parent)
+ :QObject(parent),path_(std::move(path)),settings_(settings) {}
+void DestinationStatus::load() {
+ records_.clear();credentialRevisions_.clear();
+ QFile file(path_);
+ if(!file.exists())return;
+ if(!file.open(QIODevice::ReadOnly)||file.size()>maximumFileBytes){logging::warning(logSettings(),"Destination check records unreadable; starting without them",{});return;}
+ QJsonParseError parse;const auto document=QJsonDocument::fromJson(file.readAll(),&parse);
+ if(parse.error!=QJsonParseError::NoError||!document.isObject()||document.object()["schemaVersion"]!=1){logging::warning(logSettings(),"Destination check records invalid; starting without them",{});return;}
+ const auto root=document.object();
+ const auto revisions=root["credentialRevisions"].toObject();
+ for(auto it=revisions.begin();it!=revisions.end();++it)if(quint64 revision=0;revisionValue(it.value(),&revision))credentialRevisions_.insert(it.key(),revision);
+ const auto destinations=root["destinations"].toObject();
+ for(auto it=destinations.begin();it!=destinations.end();++it) {
+  const auto value=it.value().toObject();quint64 revision=0;if(!validRecord(value,&revision))continue;
+  records_.insert(it.key(),{value["state"].toString(),value["source"].toString(),value["errorCode"].toString(),value["fingerprint"].toString(),revision});
+ }
+}
+void DestinationStatus::follow(OperationService& operations) {
+ connect(&settings_,&SettingsService::accepted,this,[this]{prune();});
+ connect(&operations,&OperationService::uploadStarting,this,&DestinationStatus::uploadStarting);
+ connect(&operations,&OperationService::uploadSettled,this,&DestinationStatus::uploadSettled);
+}
+void DestinationStatus::save() {
+ QJsonObject destinations,revisions;
+ // Keys kept only for this session make a check that ends with the session.
+ const auto profiles=settings_.snapshot().profiles;
+ const auto sessionOnly=[&](const QString& id){const auto found=profiles.constFind(id);return found!=profiles.cend()&&(*found)["credentials"].toObject()["mode"]=="session"&&(!usesCredentials_||usesCredentials_(*found));};
+ for(auto it=records_.cbegin();it!=records_.cend();++it) {
+  if(sessionOnly(it.key()))continue;
+  QJsonObject record{{"state",it->state},{"source",it->source},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}};
+  if(!it->errorCode.isEmpty())record["errorCode"]=it->errorCode;
+  destinations.insert(it.key(),record);
+ }
+ for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnly(it.key()))revisions.insert(it.key(),double(it.value()));
+ const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions}}).toJson(QJsonDocument::Compact);
+ QDir().mkpath(QFileInfo(path_).absolutePath());
+ QSaveFile file(path_);file.setDirectWriteFallback(false);
+ // The record stays in memory when the write fails; the next change writes it again.
+ if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||file.write(bytes)!=bytes.size()||!file.commit())
+  logging::warning(logSettings(),"Cannot save destination check records",{});
+}
+bool DestinationStatus::current(const QString& profileId,const QString& fingerprint,quint64 revision) const {
+ const auto profiles=settings_.snapshot().profiles;
+ const auto found=profiles.constFind(profileId);
+ return found!=profiles.cend()&&revision==credentialRevision(profileId)&&destinationcheck::fingerprint(*found)==fingerprint;
+}
+void DestinationStatus::put(const QString& profileId,Record record) {
+ const auto old=records_.constFind(profileId);
+ if(old!=records_.cend()&&old->state==record.state&&old->source==record.source&&old->errorCode==record.errorCode&&old->fingerprint==record.fingerprint&&old->credentialRevision==record.credentialRevision)return;
+ // An upload that passes keeps a pass as it was; a Test's result always replaces it.
+ if(old!=records_.cend()&&record.source=="upload"&&record.state=="passed"&&old->state=="passed"&&old->fingerprint==record.fingerprint&&old->credentialRevision==record.credentialRevision)return;
+ records_.insert(profileId,std::move(record));save();emit changed();
+}
+void DestinationStatus::credentialsChanged(const QString& profileId) {
+ // Two destinations can name one keychain entry; session keys are each destination's own.
+ const auto profiles=settings_.snapshot().profiles;
+ const auto credentials=profiles.value(profileId)["credentials"].toObject();
+ credentialRevisions_[profileId]+=1;
+ if(credentials["mode"]=="keychain")for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(it.key()!=profileId&&(*it)["credentials"].toObject()==credentials)credentialRevisions_[it.key()]+=1;
+ save();emit changed();
+}
+void DestinationStatus::testFinished(const QString& profileId,const QString& fingerprint,quint64 revision,const Error& error) {
+ // A test held back before it reached the provider, such as during journal recovery, proves nothing.
+ if(error&&error.details.value("notAttempted").toBool())return;
+ if(!current(profileId,fingerprint,revision))return;
+ put(profileId,{error?QStringLiteral("failed"):QStringLiteral("passed"),QStringLiteral("test"),error.code,fingerprint,revision});
+}
+void DestinationStatus::uploadStarting(const Operation& op) {
+ if(op.destination.profileId.isEmpty()||op.destination.providerId.isEmpty())return;
+ Attempt attempt{credentialRevision(op.destination.profileId),{},{}};
+ for(const auto& item:op.items){if(item.uploadStatus=="uploaded")attempt.uploaded.insert(item.artifact.id);if(item.error)attempt.errors.insert(item.artifact.id,item.error.code);}
+ attempts_.insert(op.id,std::move(attempt));
+}
+void DestinationStatus::uploadSettled(const Operation& op) {
+ const auto found=attempts_.constFind(op.id);if(found==attempts_.cend())return;
+ const auto attempt=*found;attempts_.erase(found);
+ bool uploaded=false;QString refusal;
+ for(const auto& item:op.items) {
+  if(item.uploadStatus=="uploaded"&&!attempt.uploaded.contains(item.artifact.id))uploaded=true;
+  // A retry carries History's item errors; only one this run met, link refusals included, counts.
+  if(refusal.isEmpty()&&destinationcheck::rejectsDestination(item.error)&&attempt.errors.value(item.artifact.id)!=item.error.code)refusal=item.error.code;
+ }
+ if(refusal.isEmpty()&&destinationcheck::rejectsDestination(op.error))refusal=op.error.code;
+ // A file that reached the destination in this run shows the connection works.
+ if(!uploaded&&refusal.isEmpty())return;
+ const auto fingerprint=destinationcheck::fingerprint(op.destination.providerId,op.destination.settings,op.destination.credentialReference);
+ if(!current(op.destination.profileId,fingerprint,attempt.credentialRevision))return;
+ put(op.destination.profileId,{uploaded?QStringLiteral("passed"):QStringLiteral("failed"),QStringLiteral("upload"),uploaded?QString():refusal,fingerprint,attempt.credentialRevision});
+}
+void DestinationStatus::prune() {
+ // An invalid configuration file is not a list of removed destinations.
+ if(!settings_.metadata()["validation"].toObject()["ok"].toBool())return;
+ const auto profiles=settings_.snapshot().profiles;
+ bool removed=false;
+ for(auto it=records_.begin();it!=records_.end();)if(!profiles.contains(it.key())){it=records_.erase(it);removed=true;}else ++it;
+ for(auto it=credentialRevisions_.begin();it!=credentialRevisions_.end();)if(!profiles.contains(it.key())){it=credentialRevisions_.erase(it);removed=true;}else ++it;
+ if(removed){save();emit changed();}
+}
+QJsonObject DestinationStatus::publicJson() const {
+ QJsonObject out;
+ const auto profiles=settings_.snapshot().profiles;
+ for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
+  const auto record=records_.constFind(it.key());
+  if(record==records_.cend()||record->credentialRevision!=credentialRevision(it.key())||record->fingerprint!=destinationcheck::fingerprint(*it)){out.insert(it.key(),QJsonObject{{"state","untested"}});continue;}
+  QJsonObject value{{"state",record->state},{"source",record->source},{"fingerprint",record->fingerprint}};
+  if(!record->errorCode.isEmpty())value["errorCode"]=record->errorCode;
+  out.insert(it.key(),value);
+ }
+ return out;
+}
+}
