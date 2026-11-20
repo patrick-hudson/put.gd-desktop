@@ -902,7 +902,9 @@ then start again from step 1.
    `disk.qcow2` is already gone) and then stopped or had its lease release
    refused, a retry finishes or
    re-checks that cleanup against the row's existing `completion-manifest.json`
-   instead of retiring twice. Its evidence goes to
+   instead of retiring twice. When the disk is gone, that check needs an
+   `overlay-cleanup.json` that matches the manifest; without one the slot stays
+   kept, so ask your coordinator. Its evidence goes to
    `operator-recovery/<time>-<hex>/stale-recovery/` in the row's evidence
    directory. A refusal prints its reason. An unexpected failure after that
    directory exists leaves `stale-recovery-error.json` in
