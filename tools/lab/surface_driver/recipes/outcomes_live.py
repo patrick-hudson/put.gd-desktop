@@ -56,6 +56,9 @@ def _retry_deletion(ctx, current):
                              in settled else None), 'retried deletion settled', timeout=90)
 
 
+COPY_LINK = {'name': 'Copy link', 'role': 'push button'}
+
+
 def _cleanup(ctx, detail):
     """Reuse #687's exact-row UI deletion; Proton uses its supported revoke UI."""
     outcomes._history(ctx, detail)
@@ -70,7 +73,8 @@ def _cleanup(ctx, detail):
     if not (len(inside) == 1 and inside[0].get('rect')):
         # The pane can grow after the first wheel (Budgie: its link row lays out late), leaving the action
         # below the window's end: wheel again until it stops moving, as the History recipes do.
-        history._scroll_details_to_end(ctx, button, (button, history.RECEIPT_TOGGLE, history.PREVIEW))
+        # Wheel over a plain button of the pane: History's preview takes the wheel itself (Budgie).
+        history._scroll_details_to_end(ctx, button, (button, COPY_LINK, history.RECEIPT_TOGGLE, history.PREVIEW))
     ctx.frame('history-before-remote-cleanup', window='history')
     if ctx.destination == 'proton':
         # Qt 6.4 does not publish objectName, and the pinned S3 catalog has

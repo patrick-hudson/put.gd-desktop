@@ -287,7 +287,17 @@ class DriverContext(Context):
                     return None
             result = self.wait(mapped, window + ' owned selector geometry', timeout=30)
         else:
-            result = self._probe('geometry', query)
+            for attempt in range(3):
+                try:
+                    result = self._probe('geometry', query)
+                    break
+                except RecipeBlocked as error:
+                    # An application that answers too slowly for one walk (Firefox while it closes or
+                    # loads a page) is asked again shortly; one that stays slow still blocks the read.
+                    if attempt == 2 or 'accessibility walk exceeded' not in str(error):
+                        raise
+                    self.note('geometry walk retried: ' + str(error)[:160])
+                    time.sleep(2)
         if window in ('region', 'recsel'):
             self._current_window = window
         return self._map_geometry(result)
