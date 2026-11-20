@@ -165,6 +165,46 @@ class ApplicationNames(Walk):
         self.assertEqual(silent.calls, 0)
 
 
+class RelativePopups(Walk):
+    """labwc and Hyprland list no popups: Qt reports a menu in its parent's coordinates."""
+    HYPRLAND = {'kind': 'hyprctl'}
+    PARENT = {'windows': [{'id': '0xa1', 'title': 'put.gd', 'pid': 50, 'wm_class': 'putgd', 'type': 0,
+                           'frame': [412, 86, 1213, 768], 'content': [412, 86, 1213, 768], 'focus': True,
+                           'minimized': False, 'stack': 3, 'transient_for': None}]}
+
+    def history_menu(self):
+        delete = Node('Delete from destination', 'menu item', [304, 230, 172, 26])
+        menu = Node('', 'popup menu', [300, 200, 180, 90], children=[delete])
+        frame = Node('put.gd', 'frame', [0, 0, 1213, 768], identifier='QApplication.putgdMainWindow')
+        return Node('putgd-ui', 'application', None, children=[menu, frame])  # LIFO: the parent is walked first
+
+    def test_the_guard_gets_the_popup_in_the_point_s_desktop_coordinates(self):
+        with patch.object(probe, 'compositor_windows', return_value=self.PARENT):
+            api = fake_pyatspi(self.history_menu())
+            with patch.dict(sys.modules, pyatspi=api), \
+                 patch.object(probe, 'desktop_root', return_value=api.Registry.getDesktop(0)), \
+                 patch.dict('os.environ', {'XDG_SESSION_TYPE': 'wayland'}), \
+                 patch.object(probe, 'owned', side_effect=lambda pid: pid == 50), \
+                 patch.object(probe, 'popup_roots', return_value=[]):
+                rows = probe.accessible({'owned': True, 'name': 'Delete from destination', 'compositor': self.HYPRLAND})
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertNotIn('coordinate_error', row, row.get('coordinate_error'))
+        self.assertEqual(row['rect'], [716, 316, 172, 26])
+        self.assertEqual(row['popup']['rect'], [712, 286, 180, 90])
+        x, y, width, height = row['rect']
+        target = {'window_id': '0xa1', 'pid': 50}
+        def guard(point, popup=row['popup']):
+            return probe.witness_foreground({'compositor': self.HYPRLAND, 'geometry': target, 'point': point, 'popup': popup})
+        with patch.dict('os.environ', {'XDG_SESSION_TYPE': 'wayland'}):
+            self.assertTrue(guard([x + width / 2, y + height / 2])['ok'])
+            # Still a guard: a point beside the menu, or a popup of another process, is refused.
+            beside = guard([712 + 180 + 5, y + height / 2])
+            self.assertFalse(beside['ok'])
+            self.assertTrue(beside['unverified'])
+            self.assertFalse(guard([x + 2, y + 2], dict(row['popup'], pid=77))['ok'])
+
+
 SLOW_SERVER = r'''
 import sys, time, json
 for count, line in enumerate(sys.stdin):

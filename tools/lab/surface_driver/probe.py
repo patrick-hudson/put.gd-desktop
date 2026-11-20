@@ -1548,6 +1548,11 @@ def accessible(query, toplevel=False, detail=True):
             return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
         row['rect'] = placed
         row['window_id'] = where['window_id']
+        if row['popup']:
+            # The popup's own rectangle goes to the input guard with the row's point, so it
+            # must be in the same desktop coordinates: on labwc and Hyprland the accessible
+            # one is in the parent's coordinates. A copy: the walk shares it between rows.
+            row['popup'] = dict(row['popup'], rect=list(where['frame']))
         for ancestor in row['ancestors']:
             if ancestor.get('rect') not in (None, UNREAD) and ancestor.get('role') != 'application':
                 ancestor['rect'] = shift(ancestor['rect'], where)
@@ -2699,7 +2704,8 @@ def witness_foreground(query):
                     'obscuring_window': 'popup of another process', 'obscuring_window_id': None}
         # The popup's rectangle was read from the screen just before; the click must fall inside it.
         return {'ok': inside, 'unverified': not inside, 'backend': compositor['kind'] + '-popup', 'target': wid,
-                'obscuring_window': None if inside else 'the point is outside the observed popup', 'obscuring_window_id': None}
+                'obscuring_window': None if inside else 'the point %s is outside the observed popup %s' % (
+                    [round(v, 1) for v in point], rect), 'obscuring_window_id': None}
     if point is not None and compositor.get('kind') == 'toplevel-pixels':
         result = toplevel_pixels_foreground(compositor, target, point)
         if (not result['ok'] and query.get('raise') and not query.get('popup')
