@@ -51,6 +51,8 @@ QString renamedAwayFrom(const Settings& settings,const QString& name,int maximum
  const auto* fresh=settings.namingMode=="generated"?&settings.randomName:nullptr;
  auto renamed=UploadNaming::renamedCandidate(name,maximumBytes,fresh);
  for(int draws=1;draws<32&&taken.contains(renamed);++draws)renamed=UploadNaming::renamedCandidate(name,maximumBytes,fresh);
+ // Still another item's name: fall back to the UUID suffix, which does not repeat.
+ if(taken.contains(renamed))renamed=UploadNaming::renamedCandidate(name,maximumBytes);
  return renamed;
 }
 QSet<QString> otherCandidates(const QList<OperationItem>& items,int index) {
@@ -1163,7 +1165,7 @@ Operation OperationService::run(Job job) {
     if(cancel->load()||check.error||check.status!="present")break;
    }
    if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
-   if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
+   if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error=check.status=="present"&&!check.error?Error{"collision_exhausted","Every renamed candidate was taken",{}}:Error{"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
    guard.unlock();lock=objectLock(op.destination,item.objectReference,item.candidate);guard=std::unique_lock<std::timed_mutex>(*lock);
    if(attempts==31) {item.uploadStatus=undone;item.error={"collision_exhausted","Collision search exhausted",{}};commit(item,index);}
   }
