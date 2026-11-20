@@ -685,8 +685,8 @@ NIGHTLY_IMAGE_EXTENSION
             try:
                 report = lab.guest_session(run, 'export XDG_CONFIG_HOME="$HOME/.config"\n'+TRAY_HOST_READY, timeout=60)
             except lab.LabError as error:
-                raise RuntimeError('Fedora AppIndicator extension did not register a tray host after the reboot; '
-                                   'private guest log retained') from error
+                raise RuntimeError('could not verify that the Fedora AppIndicator extension registered a tray host '
+                                   'after the reboot') from error
             (out/'tray-host-ready.json').write_text(report)
     elif 'kde' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
