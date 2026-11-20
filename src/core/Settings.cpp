@@ -309,12 +309,19 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     const auto naming = doc["naming"].toObject();
     const QStringList templateKeys{"fileTemplate", "captureTemplate", "imageTemplate", "textTemplate", "recordingTemplate"};
     auto namingKeys = templateKeys;
-    namingKeys.append({"mode", "collisionPolicy"});
+    namingKeys.append({"mode", "collisionPolicy", "randomStyle", "randomLength", "randomUppercase", "randomDigits"});
     if (!doc["naming"].isObject() || !naming.contains("mode") || !naming.contains("collisionPolicy") ||
         !choice(naming["mode"], {"generated", "original", "template"}) || !choice(naming["collisionPolicy"], {"rename", "skip", "overwrite"}))
         return invalid("/naming", "Upload naming or collision policy is invalid.");
     for (auto field = naming.begin(); field != naming.end(); ++field)
         if (!namingKeys.contains(field.key())) return invalid("/naming", "Upload naming contains an unsupported field.");
+    if (naming.contains("randomStyle") && !choice(naming["randomStyle"], {"uuid", "string"}))
+        return invalid("/naming/randomStyle", "Choose uuid or string random names.");
+    if (naming.contains("randomLength") && !integer(naming["randomLength"], 4, 64))
+        return invalid("/naming/randomLength", "Random names are 4 to 64 characters long.");
+    for (const auto& field : {QStringLiteral("randomUppercase"), QStringLiteral("randomDigits")})
+        if (naming.contains(field) && !naming[field].isBool())
+            return invalid("/naming/" + field, "Random name character choices are true or false.");
     for (const auto& field : templateKeys) {
         if (!naming.contains(field)) continue;
         if (!text(naming[field], 1, 4096)) return invalid("/naming/" + field, "Filename templates must be nonempty strings.");
@@ -530,6 +537,10 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.imageTemplate = naming["imageTemplate"].toString(settings.imageTemplate);
     settings.textTemplate = naming["textTemplate"].toString(settings.textTemplate);
     settings.recordingTemplate = naming["recordingTemplate"].toString(settings.recordingTemplate);
+    settings.randomName.style = naming["randomStyle"].toString(settings.randomName.style);
+    settings.randomName.length = naming["randomLength"].toInt(settings.randomName.length);
+    settings.randomName.uppercase = naming["randomUppercase"].toBool(settings.randomName.uppercase);
+    settings.randomName.digits = naming["randomDigits"].toBool(settings.randomName.digits);
     const auto retention = doc["retention"].toObject();
     settings.failedArtifactDays = retention["failedArtifactDays"].toInt();
     settings.recentActivityLimit = retention["recentActivityLimit"].toInt();

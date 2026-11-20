@@ -88,6 +88,18 @@ private slots:
         doc.remove("captureDefaults");QVERIFY(putgd::Settings::validate(doc,validator));
     }
 
+    void randomNameOptionsAreOptionalAndBounded() {
+        auto document=putgd::Settings::defaults();
+        auto defaults=putgd::Settings::fromValidated(document).randomName;
+        QCOMPARE(defaults.style,QString("uuid"));QCOMPARE(defaults.length,12);QVERIFY(defaults.uppercase);QVERIFY(defaults.digits);
+        auto naming=document["naming"].toObject();
+        naming["randomStyle"]="string";naming["randomLength"]=4;naming["randomUppercase"]=false;naming["randomDigits"]=false;document["naming"]=naming;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto chosen=putgd::Settings::fromValidated(document).randomName;
+        QCOMPARE(chosen.style,QString("string"));QCOMPARE(chosen.length,4);QVERIFY(!chosen.uppercase);QVERIFY(!chosen.digits);
+        const QList<QPair<QString,QJsonValue>> invalid{{"randomStyle","base64"},{"randomLength",3},{"randomLength",65},{"randomLength",8.5},{"randomLength","8"},{"randomUppercase","yes"},{"randomDigits",1}};
+        for(const auto& [key,value]:invalid){auto bad=naming;bad[key]=value;document["naming"]=bad;QCOMPARE(putgd::Settings::validate(document).code,QString("config_invalid"));}
+    }
     void pendingImageBudgetIsOptionalAndValidated() {
         auto document=putgd::Settings::defaults();
         auto limits=document["limits"].toObject();

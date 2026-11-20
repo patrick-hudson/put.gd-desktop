@@ -266,15 +266,16 @@ def checked_socket(path):
     return path
 
 
-def only_unreachable(error):
+def only_unreachable(error, stop=None):
     """Whether every blocked step behind ``error`` was the guest being unreachable.
 
     A later transport failure can replace an earlier refusal the guest answered (the clipboard keeper
     failed, then the exact stop lost SSH). The chain keeps both, and an answer keeps the guest from being
-    retired as lost.
+    retired as lost. ``stop`` is an exception already being handled when the step ran (a fixture setup
+    failure): Python chains it, but it is not this step's, so the walk ends there.
     """
     seen = False
-    while error is not None:
+    while error is not None and error is not stop:
         if isinstance(error, RecipeBlocked):
             if not isinstance(error, GuestUnreachable):
                 return False
@@ -854,7 +855,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.
-            code='''import os,shutil,stat,time
+            code='''import json,os,shutil,stat,time
 from pathlib import Path
 root=Path(ROOT)
 for attempt in range(50):
@@ -870,7 +871,9 @@ for attempt in range(50):
 else:raise RuntimeError('private resident still running')
 info=root.lstat()
 assert root.resolve()==root and stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
-assert not list(root.glob('fx-*')), 'fixture cleanup still pending'
+pending=sorted(p.name for p in root.glob('fx-*'))
+if pending:
+ print(json.dumps(pending));raise SystemExit(3)
 for line in Path('/proc/self/mountinfo').read_text().splitlines():
  mount=Path(line.split()[4].replace(chr(92)+'040',' '))
  assert mount!=root and not mount.is_relative_to(root)
@@ -878,7 +881,18 @@ shutil.rmtree(root)
 '''.replace('ROOT',repr(self.root))
             try:
                 result=self.execute("python3 - <<'SD_CLEANUP'\n"+code+'\nSD_CLEANUP\n',timeout=8)
-                if result['returncode']:
+                if result['returncode']==3:
+                    # Fixture directories are still there. When each belongs to a scope whose cleanup
+                    # failed only because the guest was unreachable (fixtures/base.py), they hold guest
+                    # state alone, and retiring the guest removes them with the root.
+                    try:
+                        pending=set(json.loads(result['stdout']))
+                    except (TypeError,ValueError):
+                        pending=set()
+                    local_roots=getattr(self,'guest_local_roots',None)
+                    record('private session root cleanup refused',
+                           bool(pending) and isinstance(local_roots,set) and pending<=local_roots)
+                elif result['returncode']:
                     errors.append('private session root cleanup refused')
                 else:
                     self._created_root=False
@@ -886,4 +900,8 @@ shutil.rmtree(root)
                     self.private_cleanup = 'resident-log-and-state-root-removed'
             except RecipeBlocked as error:
                 record('private session root cleanup unavailable', only_unreachable(error))
+        # A fixture scope whose cleanup failed in a way retiring the guest would not resolve (a copy out of
+        # the guest, say) keeps the guest even when the root was never checked because the guest was lost.
+        if getattr(self, 'kept_fixture_roots', None) and getattr(self, '_created_root', False):
+            errors.append('fixture cleanup incomplete; private session retained')
         return errors

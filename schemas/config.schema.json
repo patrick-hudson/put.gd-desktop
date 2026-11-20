@@ -839,6 +839,31 @@
             "overwrite"
           ]
         },
+        "randomStyle": {
+          "enum": [
+            "uuid",
+            "string"
+          ],
+          "description": "Random names: a UUID, or a random string of randomLength characters.",
+          "default": "uuid"
+        },
+        "randomLength": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 64,
+          "description": "Characters in a random-string name, before the extension.",
+          "default": 12
+        },
+        "randomUppercase": {
+          "type": "boolean",
+          "description": "Random-string names may use capital letters as well as lowercase letters.",
+          "default": true
+        },
+        "randomDigits": {
+          "type": "boolean",
+          "description": "Random-string names may use the digits 0-9.",
+          "default": true
+        },
         "fileTemplate": {
           "type": "string",
           "minLength": 1,
