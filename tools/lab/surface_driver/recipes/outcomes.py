@@ -598,6 +598,10 @@ def _show_banners(ctx, scope):
     scope.defer('GNOME banners', lambda: ctx.shell(native + 'set' + key + ' false', cleanup=True))
 
 
+def _head_scale(ctx, box):
+    return 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+
+
 def _node_point(ctx, role, node):
     """A point on a live node, toward its start, as head pixels.
 
@@ -608,7 +612,7 @@ def _node_point(ctx, role, node):
     point = (x + min(width / 2, 2 * height), y + height / 2)
     ctx.expect(min(width, height) > 0 and node.get('coordinate_space') != 'window-relative',
                'file manager node has desktop bounds')
-    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    scale = _head_scale(ctx, box)
     return box, tuple(round((value - box.get(origin, 0)) * scale) for value, origin in zip(point, ('screen_x', 'screen_y')))
 
 
@@ -638,13 +642,18 @@ def _drawn_entry(ctx, scope, box, entry=ENTRY, near=None):
     from ..probe import POPUP_WINDOW_TYPES
     if ctx.profile['compositor'].get('kind') in ('hyprctl', 'toplevel-pixels'):
         # The popover opens at the right-click (head pixels): read the window around it.
-        x0, y0, w0, h0 = [round(box[k]) for k in ('x', 'y', 'width', 'height')]
+        scale = _head_scale(ctx, box)
+        x0, y0 = (round((box[k] - box.get(origin, 0)) * scale) for k, origin in (('x', 'screen_x'), ('y', 'screen_y')))
+        w0, h0 = (round(box[k] * scale) for k in ('width', 'height'))
         if near:
             left, top = max(x0, round(near[0]) - 360), max(y0, round(near[1]) - 300)
             frame = [left, top, min(x0 + w0, round(near[0]) + 360) - left, min(y0 + h0, round(near[1]) + 400) - top]
         else:
             frame = [x0, y0, w0, h0]
-        menu = {'pid': box['pid'], 'frame': frame}
+        # The input guard compares this rectangle with the click in desktop coordinates.
+        rect = [frame[0] / scale + box.get('screen_x', 0), frame[1] / scale + box.get('screen_y', 0),
+                frame[2] / scale, frame[3] / scale]
+        menu = {'pid': box['pid'], 'frame': frame, 'rect': rect}
     else:
         def popup():
             windows = ctx._probe('compositor_windows', {'compositor': ctx.profile['compositor']})['windows']
@@ -699,10 +708,10 @@ def _click_menu_entry(ctx, scope, role, manager, clicked=None):
         if manager.get('submenu'):
             # The AppImage's Nautilus entry is a script: Scripts, then the entry.
             menu, point = _drawn_entry(ctx, scope, box, manager['submenu'], near)
-            _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu['frame']}, point, box)
+            _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu.get('rect', menu['frame'])}, point, box)
         menu, point = _drawn_entry(ctx, scope, box, near=near)
         ctx.frame('right-click-menu')
-        _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu['frame']}, point, box)
+        _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu.get('rect', menu['frame'])}, point, box)
         return
     query = {'owned': True, 'name': glob.escape(ENTRY), 'visible': True, 'showing': True, 'enabled': True,
              **manager.get('accessible', {})}

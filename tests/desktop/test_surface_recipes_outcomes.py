@@ -187,6 +187,29 @@ class FileManagerUpload(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'is in the right-click menu'):
             outcomes._click_menu_entry(ctx, scope, 'role', {'menu': 'drawn'})
 
+    def test_a_drawn_popover_reaches_the_guard_in_desktop_coordinates(self):
+        # Hyprland and labwc list no popups: the popover is read in head pixels around the
+        # right-click, here on a second head at scale 2. The guard's point is in desktop
+        # coordinates, so the popup rectangle it gets must be too.
+        ctx = self.context('wayland')
+        ctx.profile['compositor'] = dict(kind='hyprctl')
+        ctx.geometry = Mock(return_value=dict(x=1380, y=100, width=800, height=600, head=1, pid=7,
+                                              screen_x=1280, screen_y=0, scale=2))
+        popups = []
+        ctx.click_at = Mock(side_effect=lambda *a, **k: popups.append(ctx._popup))
+        crops = []
+        ctx.target = SimpleNamespace(capture_image=lambda head: SimpleNamespace(
+            convert=lambda mode: SimpleNamespace(crop=lambda box: crops.append(box) or Image.new('RGB', (box[2] - box[0], box[3] - box[1])))))
+        ctx.shell = Mock(return_value=dict(returncode=0, stdout=self.TSV.format(line=2, last='put.gd')))
+        scope = SimpleNamespace(root='/synthetic', write=Mock())
+        outcomes._click_menu_entry(ctx, scope, 'role', {'menu': 'drawn'}, clicked=(None, (400, 400)))
+        self.assertEqual(crops, [(200, 200, 760, 800)])
+        ctx.click_at.assert_called_once_with(245, 305, head=1)
+        self.assertEqual(popups, [dict(pid=7, rect=[1380, 100, 280, 300])])
+        x, y = 245 / 2 + 1280, 305 / 2
+        rect = popups[0]['rect']
+        self.assertTrue(rect[0] <= x < rect[0] + rect[2] and rect[1] <= y < rect[1] + rect[3])
+
     def upload_case(self, *, notices=1, uploaded='digest', name='fm.txt'):
         ctx = self.context()
         ctx.profile.update(file_manager={'process': 'nemo'}, guest='cinnamon-x11')
