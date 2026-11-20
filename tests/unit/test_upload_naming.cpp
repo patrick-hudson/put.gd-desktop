@@ -1,6 +1,7 @@
 #include "core/UploadNaming.h"
 #include <QTest>
 #include <QSet>
+#include <QRegularExpression>
 using namespace putgd;
 class NamingTest:public QObject {
  Q_OBJECT
@@ -46,6 +47,29 @@ private slots:
   QCOMPARE(UploadNaming::candidate(Artifact::fromJson(file.toJson()),"generated"),random.name);
   file.name="README";file.originalFile=true;
   QCOMPARE(UploadNaming::acquiredName(file,settings,"clipboard",acquired).name,file.id);
+ }
+ void randomStringNamesUseTheChosenLengthAndCharacters() {
+  const QRegularExpression lower("^[a-z]{6}\\.png$"),mixed("^[a-zA-Z0-9]{40}\\.png$"),uuid("^[0-9a-f-]{36}\\.png$");
+  RandomNameSettings random;random.style="string";random.length=6;random.uppercase=false;random.digits=false;
+  Artifact file;file.name="shot.png";file.originalFile=true;
+  for(int i=0;i<50;++i)QVERIFY(lower.match(UploadNaming::candidate(file,"generated",false,255,random)).hasMatch());
+  random.length=40;random.uppercase=true;random.digits=true;QSet<QChar> seen;
+  for(int i=0;i<50;++i){const auto name=UploadNaming::candidate(file,"generated",false,255,random);QVERIFY(mixed.match(name).hasMatch());for(const auto c:name.chopped(4))seen.insert(c.isUpper()?QChar('A'):c.isDigit()?QChar('0'):QChar('a'));}
+  QCOMPARE(seen.size(),3);
+  QVERIFY(uuid.match(UploadNaming::candidate(file,"generated")).hasMatch());
+  // Prepared at acquisition, then kept: the name doesn't change on retry.
+  auto settings=Settings::fromValidated(Settings::defaults());settings.namingMode="generated";settings.randomName=random;settings.randomName.length=8;
+  file.originalFile=false;file.mime="image/png";
+  const auto acquired=UploadNaming::acquiredName(file,settings,"region",QDateTime::currentDateTime());
+  QVERIFY(!acquired.error);QVERIFY(QRegularExpression("^[a-zA-Z0-9]{8}\\.png$").match(acquired.name).hasMatch());
+  file.name=acquired.name;file.namingPrepared=true;
+  QCOMPARE(UploadNaming::candidate(file,"generated",false,255,settings.randomName),acquired.name);
+  // A taken random string is replaced by a fresh one of the same shape, not given a UUID suffix.
+  const auto renamed=UploadNaming::renamedCandidate(acquired.name,255,&settings.randomName);
+  QVERIFY(renamed!=acquired.name);QVERIFY(QRegularExpression("^[a-zA-Z0-9]{8}\\.png$").match(renamed).hasMatch());
+  QList<Artifact> same{file,file,file};
+  const auto batch=UploadNaming::batch(same,"generated","rename",255,settings.randomName);
+  QCOMPARE(batch[0].name,acquired.name);for(int i=1;i<3;++i){QCOMPARE(batch[i].name.size(),12);QVERIFY(batch[i].name!=batch[0].name);}
  }
  void unsafeTemplatesAndEmptyResultsFail() {
   Artifact file;file.name="README";

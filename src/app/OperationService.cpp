@@ -961,7 +961,7 @@ Operation OperationService::run(Job job) {
  // A server that names its own objects has no name to collide with: the policy does not apply (#1361).
  if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","Provider cannot enforce this collision policy",{}};op.advance(OperationState::Failed);save();return op;}
  bool needsNames=job.acquire;for(const auto& item:std::as_const(op.items))if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
- if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes);QJsonArray chosen;
+ if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes,op.settings.randomName);QJsonArray chosen;
   for(int i=0;i<op.items.size();++i) {
    if(!op.items[i].candidate.isEmpty())continue;
    // A diagnostics package ignores naming templates: an unguessable name.
@@ -997,7 +997,7 @@ Operation OperationService::run(Job job) {
    if(job.cancelled->load())break;
    if(check.error||check.status=="inconclusive"||check.objectReference.isEmpty()) {item.error=check.error?check.error:Error{"existence_unknown","Name availability is inconclusive",{}};item.uploadStatus="failed";auto fields=itemFields(op,item);fields["status"]=check.status;fields["error"]=logging::errorFields(item.error);logging::warning(providerLog(op.destination.providerId),"Name check failed",fields);break;}
    if(check.status=="present"&&op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";break;}
-   if(check.status=="present"&&op.settings.collisionPolicy=="rename") {item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);if(!saveItem(item))return op;continue;}
+   if(check.status=="present"&&op.settings.collisionPolicy=="rename") {item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes,op.settings.namingMode=="generated"?&op.settings.randomName:nullptr);if(!saveItem(item))return op;continue;}
    item.objectReference=check.objectReference;item.concurrencyToken=check.concurrencyToken;item.condition=check.status=="present"?"match":"absent";
    if(item.condition=="match"&&item.concurrencyToken.isEmpty()) {item.error={"precondition_missing","Provider returned no replacement precondition",{}};item.uploadStatus="failed";break;}
    item.uploadStatus="stored";targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);checked=true;break;
@@ -1141,7 +1141,7 @@ Operation OperationService::run(Job job) {
    if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!commit(item,index))return;break;}
    if(op.settings.collisionPolicy!="rename") {item.uploadStatus=undone;item.error={"precondition_changed","Original replacement precondition changed",{}};if(!commit(item,index))return;break;}
-   item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
+   item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes,op.settings.namingMode=="generated"?&op.settings.randomName:nullptr);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";if(!commit(item,index))return;
    auto check=storageRequest<NameCheck>([&](auto cb) {provider->checkName(op.destination,item.candidate,cb,cancel);});
    if(cancel->load()) {item.uploadStatus=undone=="unknown"?undone:QStringLiteral("cancelled");item.phase="cancelled";item.error={"cancelled","Destination check cancelled; Retry uploads this file",{}};commit(item,index);break;}
    if(check.status!="absent"||check.error||check.objectReference.isEmpty()) {item.uploadStatus=undone;item.error={"existence_unknown","Renamed candidate could not be reserved",{}};if(!commit(item,index))return;break;}item.objectReference=check.objectReference;if(!commit(item,index))return;
