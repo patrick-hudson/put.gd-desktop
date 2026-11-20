@@ -211,6 +211,22 @@ private slots:
   job.words={word("o",{QRect(20,12,12,14)},95),word("@",{QRect(100,10,20,20)},60),word("end",{QRect(130,12,6,16),QRect(137,12,6,16),QRect(144,12,6,16)},96)};
   QCOMPARE(recognized(job,canvas.view()),QString::fromUtf8("o @ end\n\U0001F602 \U0001F9DC"));
  }
+ // An emoji goes where the line reads past it: between two words of a
+ // right-to-left line in their logical order, after the one word of a
+ // right-to-left line when it stands left of it, and in a left-to-right run
+ // inside a right-to-left paragraph as that run reads.
+ void emojiFollowTheLineDirection(){
+  const QString face=QString::fromUtf8("\U0001F602");
+  const auto place=[&](bool rightToLeft,const QList<Word>& words){
+   Recognition job;job.lines={{QRect(0,10,200,20),0,0,rightToLeft}};job.words=words;
+   placeEmoji(job,{{face,QRect(60,10,20,20),0.02,0}});
+   return copiedText(job);
+  };
+  const auto hebrew=[](const char* text,int x){return word(QString::fromUtf8(text),{QRect(x,12,30,16)},95);};
+  QCOMPARE(place(true,{hebrew("\u05D0\u05D1\u05D2",100),hebrew("\u05D3\u05D4\u05D5",20)}),QString::fromUtf8("\u05D0\u05D1\u05D2 ")+face+QString::fromUtf8(" \u05D3\u05D4\u05D5"));
+  QCOMPARE(place(true,{hebrew("\u05D0\u05D1\u05D2",100)}),QString::fromUtf8("\u05D0\u05D1\u05D2 ")+face);
+  QCOMPARE(place(true,{word("foo",{QRect(20,12,30,16)},95),word("bar",{QRect(100,12,30,16)},95)}),"foo "+face+" bar");
+ }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));
   QVERIFY(plan(4898,4898,lines(4898,4898,12,4),{}).error.isEmpty());

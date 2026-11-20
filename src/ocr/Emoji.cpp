@@ -92,10 +92,10 @@ struct Seeds {
 };
 // isColour says which pixels count; the whole image uses colour(), a flat
 // coloured region its own (colour, and not the region's colour). Stops, with
-// what it has, when stop says so or there are more than `limit` runs. Lets
-// rows go behind it only for the whole image (`release`).
+// what it has, when stop says so or `runs`, an allowance shared by every pass
+// of one scan, is spent. Lets the rows behind it go.
 template<class IsColour>
-bool scanSeeds(const ColourView& image,const Box& area,const IsColour& isColour,int limit,const std::function<bool()>& stop,bool release,Buffer<Box>& out){
+bool scanSeeds(const ColourView& image,const Box& area,const IsColour& isColour,int& runs,const std::function<bool()>& stop,Buffer<Box>& out){
  const int w=area.width(),h=area.height();
  Buffer<uint8_t> above(w),below(w),blockAbove(w,0),block(w,0),core(w);
  const auto saturate=[&](int y,Buffer<uint8_t>& row){const auto* p=image.row(area.y0+y)+3*area.x0;for(int x=0;x<w;++x)row[x]=isColour(p+3*x);};
@@ -112,7 +112,7 @@ bool scanSeeds(const ColourView& image,const Box& area,const IsColour& isColour,
   for(int x=0;x<w;){
    if(!core[x]){++x;continue;}
    const int start=x;while(x<w&&core[x])++x;
-   const int label=int(seeds.parent.size());
+   const int label=int(seeds.parent.size());--runs;
    seeds.parent.push_back(label);seeds.box.push_back({area.x0+start,area.y0+y,area.x0+x-1,area.y0+y});seeds.pixels.push_back(x-start);
    current.push_back({start,x-1,label});
   }
@@ -122,11 +122,11 @@ bool scanSeeds(const ColourView& image,const Box& area,const IsColour& isColour,
    for(size_t k=j;k<previous.size()&&previous[k].x0<=current[i].x1+1;++k)seeds.join(current[i].label,previous[k].label);
   }
   std::swap(previous,current);std::swap(above,below);std::swap(blockAbove,block);
-  if(int(seeds.parent.size())>limit){complete=false;break;}
+  if(runs<=0){complete=false;break;}
   // Rows above y are finished with once y+1 has been read.
-  if(release&&image.done&&y-released>=64){image.done(area.y0+released,area.y0+y);released=y;}
+  if(image.done&&y-released>=64){image.done(area.y0+released,area.y0+y);released=y;}
  }
- if(release&&image.done)image.done(area.y0+released,area.y0+h);
+ if(image.done)image.done(area.y0+released,area.y0+h);
  for(int i=0;i<int(seeds.parent.size());++i)if(seeds.parent[i]==i&&seeds.pixels[i]>=4)out.push_back(seeds.box[i]);
  return complete;
 }
@@ -134,14 +134,21 @@ bool scanSeeds(const ColourView& image,const Box& area,const IsColour& isColour,
 // Seeds inside one glyph (a face and its tears, a cone and its confetti) become
 // one: the larger seeds first, a smaller one joining a group whose box, grown by
 // 15% of its side, holds it. A spatial grid keeps it near linear.
-Buffer<Box> group(Buffer<Box> seeds,int width,int height,const std::function<bool()>& stop,bool& cut){
+Buffer<Box> group(Buffer<Box> seeds,int width,int height,int maximumSize,const std::function<bool()>& stop,bool& cut){
  std::sort(seeds.begin(),seeds.end(),[](const Box& a,const Box& b){return qint64(a.width())*a.height()>qint64(b.width())*b.height();});
  constexpr int cell=64;
  const int columns=width/cell+1,rows=height/cell+1;
  std::vector<std::vector<int>> grid(size_t(columns)*rows);
  const auto at=[&](int gx,int gy)->std::vector<int>*{return gx<0||gy<0||gx>=columns||gy>=rows?nullptr:&grid[size_t(gy)*columns+gx];};
  Buffer<Box> groups;
- const auto enter=[&](int index){const auto& g=groups[size_t(index)];for(int gy=g.y0/cell;gy<=g.y1/cell;++gy)for(int gx=g.x0/cell;gx<=g.x1/cell;++gx)if(auto* c=at(gx,gy))c->push_back(index);};
+ // A group goes in the cells its box covers, and in the new ones when it grows.
+ const auto enter=[&](int index,const Box* before){
+  const auto& g=groups[size_t(index)];
+  for(int gy=g.y0/cell;gy<=g.y1/cell;++gy)for(int gx=g.x0/cell;gx<=g.x1/cell;++gx){
+   if(before&&gx>=before->x0/cell&&gx<=before->x1/cell&&gy>=before->y0/cell&&gy<=before->y1/cell)continue;
+   if(auto* c=at(gx,gy))c->push_back(index);
+  }
+ };
  for(size_t n=0;n<seeds.size();++n){
   if(stop&&n%4096==0&&stop()){cut=true;break;}
   const auto& s=seeds[n];
@@ -150,13 +157,20 @@ Buffer<Box> group(Buffer<Box> seeds,int width,int height,const std::function<boo
    const auto* found=at(gx,gy);if(!found)continue;
    for(const int index:*found){
     const auto& g=groups[size_t(index)];const int m=std::max(1,int(0.15*g.side()));
-    if(s.x0>=g.x0-m&&s.x1<=g.x1+m&&s.y0>=g.y0-m&&s.y1<=g.y1+m){joined=index;break;}
+    // Never past a glyph's largest size: what would make it larger is not part of it.
+    const int side=std::max(std::max(g.x1,s.x1)-std::min(g.x0,s.x0),std::max(g.y1,s.y1)-std::min(g.y0,s.y0))+1;
+    if(s.x0>=g.x0-m&&s.x1<=g.x1+m&&s.y0>=g.y0-m&&s.y1<=g.y1+m&&side<=maximumSize){joined=index;break;}
    }
   }
   // The group takes the part's box too, so a part across a blank row or
   // column is still inside the glyph's box.
-  if(joined>=0){auto& g=groups[size_t(joined)];g={std::min(g.x0,s.x0),std::min(g.y0,s.y0),std::max(g.x1,s.x1),std::max(g.y1,s.y1)};enter(joined);continue;}
-  groups.push_back(s);enter(int(groups.size())-1);
+  if(joined>=0){
+   auto& g=groups[size_t(joined)];const Box before=g;
+   g={std::min(g.x0,s.x0),std::min(g.y0,s.y0),std::max(g.x1,s.x1),std::max(g.y1,s.y1)};
+   if(!(g==before))enter(joined,&before);
+   continue;
+  }
+  groups.push_back(s);enter(int(groups.size())-1,nullptr);
  }
  return groups;
 }
@@ -453,30 +467,33 @@ bool EmojiTemplates::shape(int index)const{return entries_[12*index+9]&1;}
 EmojiScan findEmoji(const ColourView& image,const EmojiTemplates& templates,const EmojiOptions& options,const std::function<bool()>& stop){
  EmojiScan scan;
  if(!image.valid()||templates.count()==0)return scan;
- constexpr int runLimit=1<<20;
+ int runs=1<<20;  // runs of colour pixels, for every pass of this scan together
  Buffer<Box> found0;
- if(!scanSeeds(image,{0,0,image.width-1,image.height-1},colour,runLimit,stop,true,found0))scan.cut=true;
+ if(!scanSeeds(image,{0,0,image.width-1,image.height-1},colour,runs,stop,found0))scan.cut=true;
  // A flat coloured region (a chat bubble, a coloured panel) is one large
  // core that would swallow the emoji on it: inside it, colour means colour
- // that is not the region's own.
+ // that is not the region's own. Only a region whose own colour is a colour,
+ // three quarters or more of it, is read again; what that finds larger than a
+ // glyph is no glyph.
  Buffer<Box> seeds;
  for(const auto& seed:found0){
   if(seed.side()<=options.maximumSize){seeds.push_back(seed);continue;}
   if(scan.cut||(stop&&stop())){scan.cut=true;continue;}
-  // Flat as a chat bubble is: three quarters or more of it one colour.
   double share=0;const auto flat=regionColour(image,seed,share);
-  if(share<0.75)continue;
+  const uint8_t dominant[3]={uint8_t(std::lround(flat.r)),uint8_t(std::lround(flat.g)),uint8_t(std::lround(flat.b))};
+  if(share<0.75||!colour(dominant)){if(image.done)image.done(seed.y0,seed.y1+1);continue;}
   const auto inside=[&flat](const uint8_t* p){return colour(p)&&ink(p,flat);};
-  if(!scanSeeds(image,seed,inside,runLimit,stop,false,seeds))scan.cut=true;
-  if(image.done)image.done(seed.y0,seed.y1+1);
+  Buffer<Box> parts;
+  if(!scanSeeds(image,seed,inside,runs,stop,parts))scan.cut=true;
+  for(const auto& part:parts)if(part.side()<=options.maximumSize)seeds.push_back(part);
  }
  struct Candidate { Box box;Colour bg; };
  Buffer<Candidate> candidates;
  // Rows read around a glyph go again once it is done with, so the colour
  // plane never comes back whole.
  const auto letGo=[&](const Box& b,int margin){if(image.done)image.done(std::max(0,b.y0-margin),std::min(image.height,b.y1+margin+1));};
- for(const auto& g:group(std::move(seeds),image.width,image.height,stop,scan.cut)){
-  if(scan.cut&&stop&&stop())break;
+ for(const auto& g:group(std::move(seeds),image.width,image.height,options.maximumSize,stop,scan.cut)){
+  if(stop&&stop()){scan.cut=true;break;}
   if(g.side()>options.maximumSize||g.side()<2)continue;
   double share=0;const auto bg=background(image,g,share);
   if(share<flatShare){letGo(g,g.side());continue;}
@@ -501,6 +518,7 @@ EmojiScan findEmoji(const ColourView& image,const EmojiTemplates& templates,cons
   // a named emoji, if it could hold another, is matched again.
   std::vector<Box> pending{candidate.box};int named=0;bool first=true;
   while(!pending.empty()&&named<4){
+   if(named>0&&stop&&stop()){scan.cut=true;break;}
    const Box rest=pending.back();pending.pop_back();
    const auto fit=matcher.best(rest,candidate.bg);
    if(options.keepCandidates&&first){scan.examined.last().distance=fit.distance;scan.examined.last().stretched=matcher.lastStretched_;}

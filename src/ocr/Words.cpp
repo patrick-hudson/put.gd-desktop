@@ -202,9 +202,19 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // Its place among the line's words, in the line's own direction.
   int first=0;while(first<job.words.size()&&job.words[first].line<line)++first;
   int end=first;while(end<job.words.size()&&job.words[end].line==line)++end;
-  const bool rightToLeft=job.lines[line].rightToLeft;
-  int at=first;
-  while(at<end&&(rightToLeft?job.words[at].rect.center().x()>glyph.center().x():job.words[at].rect.center().x()<glyph.center().x()))++at;
+  // Beside the nearest word across, on the side the line reads there: which
+  // way is told by that word and its neighbour in Tesseract's order (a
+  // left-to-right run inside a right-to-left paragraph reads left to right),
+  // or by the paragraph on a line of one word.
+  bool rightToLeft=job.lines[line].rightToLeft;int at=first;
+  if(end>first){
+   const int middle=glyph.center().x();int near=first;
+   for(int i=first;i<end;++i)if(std::abs(job.words[i].rect.center().x()-middle)<std::abs(job.words[near].rect.center().x()-middle))near=i;
+   const int other=near+1<end?near+1:near-1;
+   if(other>=first&&other<end&&job.words[other].rect.center().x()!=job.words[near].rect.center().x())
+    rightToLeft=(other>near)==(job.words[other].rect.center().x()<job.words[near].rect.center().x());
+   at=(middle>job.words[near].rect.center().x())!=rightToLeft?near+1:near;
+  }
   Word emoji;emoji.text=hit.text;emoji.rect=glyph;emoji.line=line;emoji.lineHeight=job.lines[line].rect.height();emoji.emoji=true;
   emoji.confidence=float(std::clamp(100*(1-5*hit.distance),1.0,99.0));
   // Almost no gap to a neighbour, under a quarter of the glyph's height: no space
