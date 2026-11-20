@@ -1407,7 +1407,19 @@ def _target(action, values):
                 raise _TargetError('Recipient URL is not on the expected live provider before fresh navigation')
             handle = client.call('WebDriver:GetWindowHandle')
             client.call('WebDriver:SwitchToWindow', {'handle':handle, 'focus':True})
-            if not client.script('return document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height;'):
+            foreground = 'return document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height;'
+            if not client.script('return innerWidth>=screen.width && innerHeight>=screen.height;'):
+                # Hyprland ends a kiosk's fullscreen when another window (History, for the revoke)
+                # opens over it; ask Firefox for it back, as the blank-kiosk setup does.
+                try:
+                    client.call('WebDriver:FullscreenWindow')
+                except _TargetError:
+                    if client.broken:
+                        raise
+            settle = time.monotonic()+5
+            while not client.script(foreground) and time.monotonic() < settle:
+                time.sleep(.25)
+            if not client.script(foreground):
                 raise _TargetError('Recipient kiosk did not regain foreground for fresh navigation')
             client.call('WebDriver:Navigate', {'url':'about:blank'})
             # All HTTP memory/disk caches are disabled in this private profile.
