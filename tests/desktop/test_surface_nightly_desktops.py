@@ -1572,13 +1572,25 @@ with n.controller_shutdown(workers):
             # The password reaches sudo from its own pipe; the script itself is on sudo's stdin otherwise.
             self.assertIn("printf '%s\\n' putgd-lab | sudo -S", script)
             self.assertNotIn('sudo -n', script)
-            # An updater still running after the mask, or a unit the guest did not report, stops the row.
+            # A running updater is stopped before it is masked, so its own stop settings apply.
+            self.assertLess(script.index('systemctl stop'), script.index('systemctl mask'))
+            self.assertNotIn('--now', script)
+            # Whatever the unit looked like before, it must end absent or masked and not running;
+            # a unit the guest did not report stops the row too.
             for broken in (reply(**{'apt-daily-upgrade.service': 'loaded masked deactivating'}),
                            reply(**{'apt-daily.timer': 'loaded loaded active'}),
+                           reply(**{'apt-daily-upgrade.service': 'masked masked activating'}),
+                           reply(**{'apt-daily.service': 'unknown loaded active'}),
                            reply().replace('dnf5-automatic.timer not-found not-found inactive\n', '')):
                 with self.subTest(broken=broken[:40]), patch.object(guest.lab, 'ssh', return_value=broken):
                     with self.assertRaisesRegex(RuntimeError, 'could not be held'):
                         guest.hold_package_updates(out, out)
+            # A lost guest still leaves the report that says why setup stopped.
+            with patch.object(guest.lab, 'ssh', side_effect=guest.lab.LabError('ssh failed (exit 255)')):
+                with self.assertRaises(guest.lab.LabError):
+                    guest.hold_package_updates(out, out)
+            report = json.loads((out/'package-updates.json').read_text())
+            self.assertEqual((report['error'], len(report['notHeld'])), ('LabError', len(guest.UPDATE_UNITS)))
 
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

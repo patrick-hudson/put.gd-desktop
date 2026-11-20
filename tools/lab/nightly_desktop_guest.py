@@ -35,12 +35,17 @@ UPDATE_UNITS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automa
                 'dnf-automatic-install.service', 'dnf5-automatic.service')
 # The goldens' sudo rules cover only their package manager; other root commands take the standard
 # guest password (docs/lab/remote-golden-images.md) from a pipe, never from the script on stdin.
-# Masking a running updater waits for it to stop at a safe point (apt's TimeoutStopSec is 900 s).
+# The timers come first in UPDATE_UNITS, so nothing starts an updater again once they are held. A running
+# updater is stopped before its unit is masked: masking first reloads it without its own stop settings
+# (apt's KillMode=process and 900 s TimeoutStopSec, which let unattended-upgrade finish its package).
 HOLD_UPDATES = r'''set -u
 root() { printf '%s\n' putgd-lab | sudo -S -p '' "$@"; }
 for unit in UNITS; do
  before=$(systemctl show -P LoadState "$unit" 2>/dev/null) || before=unknown
- if [ "$before" = loaded ]; then root timeout 960 systemctl mask --now "$unit" >/dev/null 2>&1 || true; fi
+ if [ "$before" = loaded ]; then
+  root timeout 960 systemctl stop "$unit" >/dev/null 2>&1 || true
+  root systemctl mask "$unit" >/dev/null 2>&1 || true
+ fi
  printf '%s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
   "$(systemctl show -P ActiveState "$unit" 2>/dev/null)"
 done
@@ -48,24 +53,28 @@ done
 
 
 def hold_package_updates(run, out):
-    """Mask and stop the guest's own package updaters in this disposable overlay, before anything is installed.
+    """Stop and mask the guest's own package updaters in this disposable overlay, before anything is installed.
 
-    A unit the golden has must end masked and inactive, or the row stops here: an updater left running can
-    restart sshd or the desktop under a live cell.
+    Every unit must end absent or masked, and not running, or the row stops here: an updater left running
+    can restart sshd or the desktop under a live cell. The report is written whatever happens.
     """
     lab.verify_owned_guest(run)
-    units = {}
-    for line in lab.ssh(run, HOLD_UPDATES, timeout=1200).splitlines():
-        fields = line.split()
-        if len(fields) == 4 and fields[0] in UPDATE_UNITS:
-            units[fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3])
-    report = dict(overlayOnly=True, units=units,
-                  held=sorted(name for name, unit in units.items() if unit['before'] == 'loaded'),
-                  notHeld=sorted(name for name, unit in units.items() if unit['before'] == 'loaded' and
-                                 (unit['after'] != 'masked' or unit['active'] not in ('inactive', 'failed'))))
-    if set(units) != set(UPDATE_UNITS):
-        report['notHeld'] = sorted(set(report['notHeld']) | (set(UPDATE_UNITS) - set(units)))
-    lab.write_json(Path(out)/'package-updates.json', report)
+    report = dict(overlayOnly=True, units={})
+    try:
+        for line in lab.ssh(run, HOLD_UPDATES, timeout=1200).splitlines():
+            fields = line.split()
+            if len(fields) == 4 and fields[0] in UPDATE_UNITS:
+                report['units'][fields[0]] = dict(before=fields[1], after=fields[2], active=fields[3])
+    except Exception as error:
+        report['error'] = type(error).__name__
+        raise
+    finally:
+        units = report['units']
+        held = {name for name, unit in units.items()
+                if unit['after'] in ('not-found', 'masked') and unit['active'] in ('inactive', 'failed')}
+        report.update(held=sorted(name for name in held if units[name]['after'] == 'masked'),
+                      notHeld=sorted(set(UPDATE_UNITS) - held))
+        lab.write_json(Path(out)/'package-updates.json', report)
     if report['notHeld']:
         raise RuntimeError('guest package updaters could not be held: '+', '.join(report['notHeld']))
     return report
