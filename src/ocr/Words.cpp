@@ -209,6 +209,10 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // the whole run of the word it follows in that direction, or first on the
   // line when no word comes before it.
   const bool rightToLeft=job.lines[line].rightToLeft;int at=first;
+  // The words beside it on the page that decide the joins with the word before
+  // it and the word after it in that order: at a run's edge those are the run's
+  // nearest word and the word on the other side, not the run's far end.
+  int touchBefore=-1,touchAfter=-1;
   {
    const int middle=glyph.center().x();int left=-1,right=-1;
    for(int i=first;i<end;++i){
@@ -216,15 +220,15 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
     if(x<middle&&(left<0||x>job.words[left].rect.center().x()))left=i;
     if(x>=middle&&(right<0||x<job.words[right].rect.center().x()))right=i;
    }
-   if(left>=0&&right>=0&&std::abs(left-right)==1)at=std::max(left,right);
+   if(left>=0&&right>=0&&std::abs(left-right)==1){at=std::max(left,right);touchBefore=std::min(left,right);touchAfter=at;}
    else if(const int before=rightToLeft?right:left;before>=0){
     // The run of the other direction it ends: words onward in Tesseract's
     // order that step across the page against the paragraph.
     int last=before;
     const auto against=[&](int a,int b){return rightToLeft?job.words[b].rect.center().x()>job.words[a].rect.center().x():job.words[b].rect.center().x()<job.words[a].rect.center().x();};
     while(last+1<end&&against(last,last+1))++last;
-    at=last+1;
-   }
+    at=last+1;touchBefore=before;touchAfter=rightToLeft?left:right;
+   }else touchAfter=rightToLeft?left:right;
   }
   Word emoji;emoji.text=hit.text;emoji.rect=glyph;emoji.line=line;emoji.lineHeight=job.lines[line].rect.height();emoji.emoji=true;
   emoji.confidence=float(std::clamp(100*(1-5*hit.distance),1.0,99.0));
@@ -233,8 +237,8 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // 0.15 of its height, and one after a space 0.25 or more but for 1 in 248.
   const auto gap=[&](const QRect& word){return std::max(word.left()-glyph.right()-1,glyph.left()-word.right()-1);};
   const int tight=std::max(1,glyph.height()/4);
-  if(at>first&&gap(job.words[at-1].rect)<tight)emoji.attach=true;
-  if(at<end&&gap(job.words[at].rect)<tight)job.words[at].attach=true;
+  if(at>first&&touchBefore>=0&&gap(job.words[touchBefore].rect)<tight)emoji.attach=true;
+  if(at<end&&touchAfter>=0&&gap(job.words[touchAfter].rect)<tight)job.words[at].attach=true;
   job.words.insert(at,emoji);
  }
 }

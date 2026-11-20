@@ -233,6 +233,9 @@ private slots:
   QCOMPARE(place(true,mixed,112),a+" foo "+face+" bar "+b);   // inside the run, nearer bar
   QCOMPARE(place(true,mixed,40),a+" foo bar "+face+" "+b);    // left of the run: after it
   QCOMPARE(place(true,mixed,190),a+" "+face+" foo bar "+b);   // right of the run: before it
+  // Touching the run's edge on the page joins the word next to it in that order.
+  QCOMPARE(place(true,mixed,50),a+" foo bar"+face+" "+b);
+  QCOMPARE(place(true,mixed,170),a+" "+face+"foo bar "+b);
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));
