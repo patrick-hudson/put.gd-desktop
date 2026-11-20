@@ -190,6 +190,8 @@ class TheOpenMenu(unittest.TestCase):
         # A row drawn twice in one view is caught; Capture region & edit is not a second Capture region.
         self.assertEqual(tp.repeated_labels(labels, lines), [])
         self.assertEqual(tp.repeated_labels(labels, lines + [dict(lines[0])]), ['Capture region'])
+        shortened = [dict(text='Capture region', rect=[0, 0, 1, 1]), dict(text='Capture region & e', rect=[0, 0, 1, 1])]
+        self.assertEqual(tp.repeated_labels(labels, shortened), [])
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 

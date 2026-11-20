@@ -294,8 +294,12 @@ def repeated_labels(labels, view, *, threshold=.85):
 
     Views of a scrolled menu overlap, so only lines of one view are compared with each other.
     """
-    return [label for label in labels
-            if sum(label_score(label, line['text']) >= threshold for line in view) > 1]
+    counts = {}
+    for line in view:
+        score, label = max((label_score(label, line['text']), label) for label in labels)
+        if score >= threshold:  # Each line counts once, toward the label it reads best as.
+            counts[label] = counts.get(label, 0) + 1
+    return [label for label in labels if counts.get(label, 0) > 1]
 
 
 def clipped_top(labels, view, box, overlap, *, band=20, threshold=.85):
