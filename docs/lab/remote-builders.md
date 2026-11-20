@@ -723,6 +723,26 @@ reference that can delete the object. The slot stays in
 stops at `guest retained: live remote cleanup unresolved` until a person
 resolves it. The guest stays kept until you finish these steps.
 
+The nightly also keeps a guest for other cleanup errors, and the same commands
+recover it. Never retire the overlay, release the lease or remove the slot's
+files by hand. Two cases change the steps:
+
+- **No live publication pending.** The run directory has no marker and no
+  receipt in the row says `unresolved_live_cleanup`; for example, a fixture
+  cleanup only lost its SSH connection to the guest. Skip steps 1 and 2, do
+  steps 3 and 4, and in step 5 give only the `--guest-only-error` values you
+  checked, with no publication. The guest needs no pause and no destination
+  check. The command refuses if a marker or a receipt flag turns up, and the
+  record it writes never clears a live-cleanup flag. If no error needs
+  recording either, go straight to step 6.
+- **QEMU already exited.** The worker's transient unit can kill the guest's
+  QEMU when it stops. A VM that is gone can't publish anything, but it can't be
+  paused either: `--check-live-cleanup` then checks that no QEMU process on the
+  builder uses the run's overlay, records that time and prints
+  `"guestExited": true` next to `"guestPaused": true`. The 120 s wait runs from
+  that check. A pause recorded while QEMU was still running doesn't count once
+  it has exited, so run `--check-live-cleanup` again in that case.
+
 Run the commands below on the builder that holds the slot, from its nightly
 checkout, while no nightly worker is running there. They refuse a slot whose
 worker is still alive. Only the manual nightly trigger (`--now`) runs on the d69
@@ -734,8 +754,9 @@ destination check counts until `--check-live-cleanup` has run (step 2). It
 refuses while a recipe or lend for the run is live, and otherwise pauses the
 guest's VM so nothing in it can publish. An upload that had already reached
 the destination can still commit just after the pause, so the command waits
-until 120 s after it before it returns. `--resolve-live-cleanup` refuses
-unless the VM is still paused and that time has passed. Resuming the VM, for
+until 120 s after it before it returns. For a live publication,
+`--resolve-live-cleanup` refuses unless the VM is still paused and that time
+has passed. Resuming the VM, for
 any reason, voids every check made before: run `--check-live-cleanup` again
 and repeat the destination checks before step 5. If a command refuses because a recipe or lend
 is live, wait until it stops, then start again from step 1.
@@ -836,14 +857,30 @@ is live, wait until it stops, then start again from step 1.
    the hash of every receipt in the row. The command refuses a marker for
    another run, values that differ from the marker and an error that no
    receipt holds.
-6. **Let the next nightly recover the slot**, or start one from d69 with
-   `--now`. Recovery uses the record only for receipts whose hash still
-   matches. For those receipts it clears the live-cleanup gate and the errors
-   you named, and nothing else. A receipt that changed or appeared after the
-   record goes through the ordinary checks, so its own live-cleanup flag still
-   keeps the guest. The other checks still apply too: the Proton lend
-   receipts, the overlay owner and the exact QEMU process. The records stay
-   with the row's evidence.
+6. **Recover the slot.**
+
+   ```sh
+   python3 tools/lab/nightly_desktops.py --recover-retained RUN_NAME
+   ```
+
+   This runs the recovery the next nightly would run, now: it retires the
+   guest, releases the desktop lease (and a Proton lease whose lend is
+   returned) and removes the slot. The next nightly, or one started from d69
+   with `--now`, does the same if you skip this step. Recovery uses the record
+   only for receipts whose hash still matches. For those receipts it clears the
+   live-cleanup gate (only when the record names a publication confirmed gone)
+   and the errors you named, and nothing else. A receipt that changed or
+   appeared after the record goes through the ordinary checks, so its own
+   live-cleanup flag still keeps the guest. The other checks still apply too:
+   the Proton lend receipts, the overlay owner, the exact QEMU process and the
+   release check of the desktop lease. The command refuses another run, a live
+   recipe or lend, and a desktop lease that is still live; a kept lease turns
+   stale 15 minutes after its last heartbeat. Its evidence goes to
+   `operator-recovery/<time>/` in the row's evidence directory, and every
+   recovery, by this command or the nightly, writes
+   `~/putgd-lab/locks/history/recovered/<time>-<run>-<hex>.json`. That record
+   holds the slot's files as they were, the reason the slot was kept and what
+   cleared each gate. The records stay with the row's evidence.
 
 ## Weekly stress lane on k72
 
