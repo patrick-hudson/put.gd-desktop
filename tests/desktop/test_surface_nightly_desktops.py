@@ -1574,6 +1574,8 @@ with n.controller_shutdown(workers):
             self.assertNotIn('sudo -n', script)
             # A running updater is stopped before it is masked, so its own stop settings apply.
             self.assertLess(script.index('systemctl stop'), script.index('systemctl mask'))
+            # Only a stop that succeeded is followed by the mask.
+            self.assertIn('if root timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then root systemctl mask', script)
             self.assertNotIn('--now', script)
             # Whatever the unit looked like before, it must end absent or masked and not running;
             # a unit the guest did not report stops the row too.

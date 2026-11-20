@@ -43,8 +43,8 @@ root() { printf '%s\n' putgd-lab | sudo -S -p '' "$@"; }
 for unit in UNITS; do
  before=$(systemctl show -P LoadState "$unit" 2>/dev/null) || before=unknown
  if [ "$before" = loaded ]; then
-  root timeout 960 systemctl stop "$unit" >/dev/null 2>&1 || true
-  root systemctl mask "$unit" >/dev/null 2>&1 || true
+  # A stop that fails or times out leaves the unit unmasked (loaded), which the report counts as not held.
+  if root timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then root systemctl mask "$unit" >/dev/null 2>&1 || true; fi
  fi
  printf '%s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
   "$(systemctl show -P ActiveState "$unit" 2>/dev/null)"
