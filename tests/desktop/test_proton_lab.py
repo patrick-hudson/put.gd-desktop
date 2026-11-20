@@ -499,6 +499,18 @@ class LiveKeyringRestart(unittest.TestCase):
         self.assertIn('kill -TERM 4242', scripts[-1])
         self.assertIn('= 991 ]', scripts[-1])
 
+    def test_a_daemon_whose_connection_never_shows_is_ended(self):
+        sys.path.insert(0, str(ROOT))
+        from tools.lab import nightly_desktop_guest as guest
+        scripts = []
+        def session(run, body, timeout=60):
+            scripts.append(body)
+            return json.dumps({'pid': 4242, 'start': '991'} if 'gnome-keyring-daemon' in body else [])
+        with mock.patch.object(guest.lab, 'guest_session', session), mock.patch('time.monotonic', side_effect=[0, 0, 99]):
+            with self.assertRaises(RuntimeError):
+                guest._start_live_keyring('/synthetic/run', fresh=False)
+        self.assertIn('kill -TERM 4242', scripts[-1])
+
     def test_a_guest_on_its_desktop_secret_service_has_nothing_to_restart(self):
         record, scripts, _ = self.restart({}, secret_service=None)
         self.assertIsNone(record)

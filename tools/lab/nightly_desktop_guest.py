@@ -228,13 +228,17 @@ def _start_live_keyring(run, fresh):
     identity = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+script+'\nPY\n'))
     probe = UNIQUE_SERVICE.replace('IDENTITY', repr(identity))
     deadline = time.monotonic()+10
-    while True:
-        names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
-        if len(names) == 1:
-            return identity, names[0]
-        if len(names) > 1 or time.monotonic() >= deadline:
-            raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
-        time.sleep(.2)
+    try:
+        while True:
+            names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
+            if len(names) == 1:
+                return identity, names[0]
+            if len(names) > 1 or time.monotonic() >= deadline:
+                raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
+            time.sleep(.2)
+    except BaseException:
+        _stop_live_keyring(run, identity)  # never a daemon nobody can name
+        raise
 
 
 def _stop_live_keyring(run, identity):
@@ -328,12 +332,12 @@ def restart_live_keyring(run):
                 raise KeyringRestartRefused('the restarted live keyring is not the unlocked lab collection')
             if json.loads(lab.guest_session(run, owner)) != prior:
                 raise KeyringRestartRefused("the desktop's own Secret Service changed during the restart")
+            info['secret_service'] = name
+            lab.write_json(run/'state.json', info)
         except BaseException:
             # Never leave the new daemon behind: it could hold the desktop's name or the folder.
             _stop_live_keyring(run, identity)
             raise
-        info['secret_service'] = name
-        lab.write_json(run/'state.json', info)
         return dict(restarted=True, previousBusName=previous, busName=name, pid=identity['pid'],
                     start=identity['start'], collection=status)
 
