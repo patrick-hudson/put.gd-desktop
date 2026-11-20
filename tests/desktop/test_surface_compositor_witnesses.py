@@ -177,12 +177,55 @@ class PixelWitness(unittest.TestCase):
         self.assertIsNone(probe.content_box(shadowed, 82, 50))
         self.assertIsNone(probe.content_box((120, 90, bytes(120 * 90 * 3)), 80, 50))
 
-    def test_a_dialog_is_the_one_change_over_its_parent(self):
-        dialog = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 140, 60)
-        self.assertEqual(probe.difference_box(self.window, dialog, [113, 47, 80, 50]), [140, 60, 30, 20])
-        self.assertIsNone(probe.difference_box(self.window, self.screen, [113, 47, 80, 50]))
-        edge = paste(self.screen, (30, 20, b'\x07' * (30 * 20 * 3)), 180, 80)  # partly past the parent
-        self.assertEqual(probe.difference_box(self.window, edge, [113, 47, 80, 50]), [180, 80, 13, 17])
+    def test_a_window_rule_position_must_show_the_window(self):
+        rules = {'window_rules': [{'app_id': 'putgd-ui', 'title': 'Delete', 'position': [113, 47]}]}
+        placed = probe.place_pixels(rules, 'Delete', 'putgd-ui', self.window, self.screen)
+        self.assertEqual((placed['rect'], placed['by']), ([113, 47, 80, 50], 'window rule'))
+        moved = {'window_rules': [{'app_id': 'putgd-ui', 'title': 'Delete', 'position': [10, 10]}]}
+        with self.assertRaisesRegex(RuntimeError, 'window-rule position'):
+            probe.place_pixels(moved, 'Delete', 'putgd-ui', self.window, self.screen)
+        # A rule for another app or title does not apply; without one a dialog is refused.
+        self.assertEqual(probe.place_pixels(moved, 'Delete', 'other', self.window, self.screen)['by'], 'pixels')
+        with self.assertRaisesRegex(RuntimeError, 'no lab window rule'):
+            probe.place_pixels({}, 'Delete', 'putgd-ui', self.window, self.screen, rule_only=True)
+
+    def test_a_flat_window_is_placed_only_where_it_fills_one_output(self):
+        flat = (320, 200, b'\x20' * (320 * 200 * 3))
+        with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200], [320, 0, 640, 480]]):
+            with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels.*nor does it fill one output'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, self.screen)
+            placed = probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat)
+        self.assertEqual((placed['rect'], placed['by']), ([0, 0, 320, 200], 'output'))
+
+    def test_a_dialog_shows_its_pixels_in_its_parents_capture_corner(self):
+        # labwc draws the dialog into its parent's capture at the origin and captures it alone as 1x1.
+        dialog = (30, 20, noise(30, 20, 5))
+        screen = paste(self.screen, dialog, 140, 60)
+        parent = paste(self.window, dialog, 0, 0)
+        windows = {'windows': [{'id': 'p', 'wm_class': 'putgd-ui'}, {'id': 'd', 'wm_class': 'putgd-ui'},
+                               {'id': 'o', 'wm_class': 'other'}]}
+        captures = {'p': parent, 'd': (1, 1, b'\0\0\0'), 'o': self.window}
+        rules = {'window_rules': [{'app_id': 'putgd-ui', 'title': 'Delete', 'position': [140, 60]}]}
+        with patch.object(probe, 'toplevel_pixel_windows', return_value=windows), \
+             patch.object(probe, 'grim', side_effect=lambda identifier=None: captures[identifier]), \
+             patch.object(probe, 'app_id_names', side_effect=lambda app_id, pid: app_id == 'putgd-ui'):
+            parent_id, image, rect = probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), screen)
+            self.assertEqual((parent_id, image, rect), ('p', dialog, [140, 60, 30, 20]))
+            with self.assertRaisesRegex(RuntimeError, '0 of its process'):
+                probe.dialog_place(rules, 7, 'Delete', windows['windows'][1], (30, 20), self.screen)
+            with self.assertRaisesRegex(RuntimeError, 'no lab window rule'):
+                probe.dialog_place({}, 7, 'Delete', windows['windows'][1], (30, 20), screen)
+
+    def test_the_display_snapshot_stands_for_the_outputs_over_the_target(self):
+        import base64
+        import zlib
+        crop = probe.crop(self.screen, 113, 47, 80, 50)
+        display = {'size': [320, 200], 'rect': [113, 47, 80, 50], 'rgb': base64.b64encode(zlib.compress(crop[2])).decode()}
+        screen = probe.display_screen(display)
+        self.assertEqual(probe.crop(screen, 113, 47, 80, 50), self.window)
+        self.assertTrue(probe.pixels_at(self.window, screen, [113, 47, 80, 50], (150, 70)))
+        with self.assertRaisesRegex(RuntimeError, 'does not match'):
+            probe.display_screen(dict(display, rect=[300, 47, 80, 50]))
 
     def test_a_cursor_at_the_point_is_not_a_cover(self):
         rect = [113, 47, 80, 50]

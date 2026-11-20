@@ -1092,36 +1092,106 @@ def content_box(image, width, height):
     return width, height, box
 
 
-def difference_box(window, screen, rect):
-    """Desktop box of the pixels where the outputs differ from the window placed at rect, or None."""
+def crop(image, x, y, width, height):
+    """The width x height box of a capture at (x, y)."""
+    iw, _, data = image
+    return width, height, b''.join(data[((y + r) * iw + x) * 3:((y + r) * iw + x + width) * 3] for r in range(height))
+
+
+# A window shown where the desktop is known to put it must match there almost everywhere.
+KNOWN_SHARE = .9
+
+
+def pixel_share(window, screen, x, y):
+    """The share of the window's cells the outputs show exactly, with the window at (x, y).
+
+    Every cell counts, flat ones too: at a position known in advance there is no
+    other offset for a flat cell to agree with. Cells off the outputs don't count.
+    """
     ww, wh, wb = window
     sw, sh, sb = screen
-    def first(a, b):
-        low, high = 0, len(a)
-        while low < high:  # the longest equal prefix
-            middle = (low + high + 1) // 2
-            if a[:middle] == b[:middle]:
-                low = middle
-            else:
-                high = middle - 1
-        return low
-    rows, left, right = [], ww, 0
-    for r in range(wh):
-        sy = rect[1] + r
-        if not 0 <= sy < sh:
+    total = equal = 0
+    for r in range(0, wh, max(1, wh // 64)):
+        for c in range(0, ww, 64):
+            n = min(64, ww - c)
+            sy, sx = y + r, x + c
+            if not 0 <= sy < sh or sx < 0 or sx + n > sw:
+                continue
+            total += 1
+            at = (r * ww + c) * 3
+            equal += sb[(sy * sw + sx) * 3:(sy * sw + sx + n) * 3] == wb[at:at + n * 3]
+    return equal / total if total else 0.0
+
+
+def rule_rect(compositor, title, app_id, size):
+    """The rectangle the lab guest's window rule puts this window at (labwc), or None.
+
+    The nightly guest writes these rules into labwc's rc.xml from the same profile entries
+    (nightly_desktop_guest.prepare_labwc_rules): no server-side decoration, so the rule's
+    position is the content's.
+    """
+    rules = [r for r in (compositor or {}).get('window_rules', ())
+             if r.get('title') == title and r.get('app_id') == app_id and r.get('position')]
+    if len(rules) > 1:
+        raise RuntimeError('more than one window rule places %r' % title)
+    return [int(rules[0]['position'][0]), int(rules[0]['position'][1])] + list(size) if rules else None
+
+
+def place_pixels(compositor, title, app_id, window, screen, rule_only=False):
+    """Where a toplevel's pixels are on the outputs: {'rect', 'visible', 'by'} or RuntimeError.
+
+    A window a lab window rule places must show at the rule's position. Any other is found by its
+    own pixels; when it has none to find (a blank fullscreen kiosk), a window exactly the size of
+    one output must show on that output.
+    """
+    size = list(window[:2])
+    known = rule_rect(compositor, title, app_id, size)
+    if known:
+        share = pixel_share(window, screen, known[0], known[1])
+        if share < KNOWN_SHARE:
+            raise RuntimeError('%r is not at its window-rule position %s (%.2f of its pixels there)'
+                               % (title, known[:2], share))
+        return {'rect': known, 'visible': round(share, 3), 'by': 'window rule'}
+    if rule_only:
+        raise RuntimeError('no lab window rule places %r (%s)' % (title, app_id))
+    try:
+        return dict(locate_pixels(window, screen), by='pixels')
+    except RuntimeError as error:
+        if 'no distinctive pixels' not in str(error):
+            raise
+        fits = [o for o in wlr_outputs() if o[2:] == size]
+        shown = [o for o in fits if pixel_share(window, screen, o[0], o[1]) >= KNOWN_SHARE]
+        if len(shown) != 1:
+            raise RuntimeError(str(error) + ('; nor does it fill one output (%d of %d outputs its size show it)'
+                                             % (len(shown), len(fits)))) from None
+        return {'rect': shown[0], 'visible': round(pixel_share(window, screen, *shown[0][:2]), 3), 'by': 'output'}
+
+
+def dialog_place(compositor, pid, title, window, size, screen):
+    """(parent id, the dialog's own pixels, its rect) for a dialog labwc captures as 1x1.
+
+    labwc draws a toplevel's dialogs into that toplevel's own capture at its origin, so the
+    dialog's pixels are the top-left corner of one other toplevel of the same process. Only a
+    dialog a lab window rule places is accepted: its pixels must show at the rule's position,
+    from exactly one such corner.
+    """
+    placed, refused = [], []
+    for other in toplevel_pixel_windows(compositor)['windows']:
+        if other['id'] == window['id'] or other.get('minimized') or not app_id_names(other['wm_class'], pid):
             continue
-        start = max(0, -rect[0])
-        stop = min(ww, sw - rect[0])
-        a = wb[(r * ww + start) * 3:(r * ww + stop) * 3]
-        b = sb[(sy * sw + rect[0] + start) * 3:(sy * sw + rect[0] + stop) * 3]
-        if a == b:
+        image = grim(other['id'])
+        if image[:2] == (1, 1) or image[0] < size[0] or image[1] < size[1]:
             continue
-        rows.append(r)
-        left = min(left, start + first(a, b) // 3)
-        right = max(right, start + -(-(len(a) - first(a[::-1], b[::-1])) // 3))
-    if not rows:
-        return None
-    return [rect[0] + left, rect[1] + rows[0], right - left, rows[-1] + 1 - rows[0]]
+        corner = crop(image, 0, 0, *size)
+        try:
+            placed.append((other['id'], corner, place_pixels(compositor, title, window['wm_class'], corner, screen,
+                                                             rule_only=True)['rect']))
+        except RuntimeError as error:
+            refused.append(str(error))
+    if len(placed) != 1:
+        raise RuntimeError('labwc captured dialog %r as 1x1 and %d of its process\'s toplevels show it at its '
+                           'window-rule position%s' % (title, len(placed), (': ' + '; '.join(refused[:2])) if refused else ''))
+    return placed[0]
 
 
 def app_id_names(app_id, pid):
@@ -1210,8 +1280,27 @@ def shell_overlays_showing(applications):
     return found
 
 
-def toplevel_pixels_foreground(compositor, target, point, attempts=3):
-    """Pointer input on labwc: the target's own pixels must be what the outputs show at the point."""
+def display_screen(display):
+    """The outputs as the driver read them from the guest's display over the target window (else black)."""
+    import base64
+    import zlib
+    width, height = display['size']
+    x, y, w, h = display['rect']
+    crop = zlib.decompress(base64.b64decode(display['rgb']))
+    if len(crop) != w * h * 3 or not (0 <= x and 0 <= y and x + w <= width and y + h <= height):
+        raise RuntimeError('display snapshot does not match its rectangle')
+    data = bytearray(width * height * 3)
+    for r in range(h):
+        data[((y + r) * width + x) * 3:((y + r) * width + x + w) * 3] = crop[r * w * 3:(r + 1) * w * 3]
+    return width, height, bytes(data)
+
+
+def toplevel_pixels_foreground(compositor, target, point, attempts=3, display=None):
+    """Pointer input on labwc: the target's own pixels must be what the outputs show at the point.
+
+    With DISPLAY (the driver's read of the guest display over the target), that is the outputs;
+    otherwise grim's capture of them.
+    """
     wid = target['window_id']
     if str(wid).startswith('layer:'):
         # put.gd's own full-output overlay selector: nothing but another overlay can cover it.
@@ -1226,24 +1315,21 @@ def toplevel_pixels_foreground(compositor, target, point, attempts=3):
     for attempt in range(attempts):
         if attempt:
             time.sleep(.2)
-        window, screen = grim(wid), grim()
+        window, screen = grim(wid), display_screen(display) if display else grim()
         size = (target.get('width'), target.get('height'))
-        if window[:2] == (1, 1):
-            # A dialog labwc cannot capture: it must still be the one change over its parent.
-            rect = [target.get(k) for k in ('x', 'y', 'width', 'height')]
-            try:
-                where = WaylandPlacement(compositor)._dialog_over_parent(target.get('pid'), target.get('name', ''), rect, wid)
-            except RuntimeError as error:
-                reason = str(error)
-                continue
-            # A change of the dialog's size over its parent is not the dialog's own pixels:
-            # anything that size could make it. The click is never verified this way.
-            reason = 'labwc captured the dialog as 1x1; its pixels at the point cannot be verified'
-            break
-        if window[:2] != size and window[0] >= size[0] and window[1] >= size[1]:
-            window = content_box(window, *size) or window
         try:
-            where = locate_pixels(window, screen)['rect']
+            me = next(w for w in toplevel_pixel_windows(compositor)['windows'] if w['id'] == wid)
+        except StopIteration:
+            reason = 'the compositor no longer lists the window'
+            continue
+        try:
+            if window[:2] == (1, 1):
+                # A dialog labwc captures as 1x1: its own pixels come from its parent's capture.
+                _, window, where = dialog_place(compositor, target.get('pid'), target.get('name', ''), me, size, screen)
+            else:
+                if window[:2] != size and window[0] >= size[0] and window[1] >= size[1]:
+                    window = content_box(window, *size) or window
+                where = place_pixels(compositor, target.get('name', ''), me['wm_class'], window, screen)['rect']
         except RuntimeError as error:
             reason = str(error)
             continue
@@ -1384,7 +1470,7 @@ class WaylandPlacement:
             self._screen = None
         if image[:2] == (1, 1):
             # labwc 0.20 captures a transient (modal) dialog as a 1x1 placeholder.
-            return self._dialog_over_parent(pid, title, rect, found[0]['id'])
+            return self._dialog(pid, title, rect, found[0])
         if image[:2] != (width, height) and image[0] >= width and image[1] >= height:
             # A client-side shadow (Firefox) is captured with the window: transparent black around
             # the window geometry. Keep the content box when it is exactly the accessible size.
@@ -1392,33 +1478,33 @@ class WaylandPlacement:
         if image[:2] != (width, height):
             raise RuntimeError('toplevel %r captures %dx%d but its accessible window is %dx%d'
                                % (title, image[0], image[1], width, height))
-        content = locate_pixels(image, self.screen())['rect']
+        deadline = time.monotonic() + self.MAP_SETTLE
+        while True:
+            # A window just shown may still be under one that is closing: look again, bounded.
+            try:
+                content = place_pixels(self.compositor, title, found[0]['wm_class'], image, self.screen())['rect']
+                break
+            except RuntimeError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(.2)
+                self._screen = None
         return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': content}
 
-    def _dialog_over_parent(self, pid, title, rect, window_id):
-        """A dialog labwc cannot capture, found where the outputs differ from its one parent.
-
-        The parent (the process's one other toplevel) is placed by its own pixels; the
-        dialog is the box where the outputs no longer show the parent's pixels, and it
-        must be exactly the dialog's accessible size.
-        """
+    def _dialog(self, pid, title, rect, window):
+        """A dialog labwc captures as 1x1, at its window-rule position (see dialog_place)."""
         x, y, width, height = rect
-        parents = []
-        for window in self.windows():
-            if window['id'] == window_id or not app_id_names(window['wm_class'], pid):
-                continue
-            image = grim(window['id'])
-            if image[0] > 1 and image[1] > 1:
-                parents.append((window, image))
-        if len(parents) != 1:
-            raise RuntimeError('dialog %r has no single capturable parent (%d)' % (title, len(parents)))
-        screen = self.screen()
-        parent = locate_pixels(parents[0][1], screen)['rect']
-        box = difference_box(parents[0][1], screen, parent)
-        if box is None or box[2:] != [width, height]:
-            raise RuntimeError('dialog %r is not the one %dx%d change over its parent (changed box %s)'
-                               % (title, width, height, box))
-        return {'dx': box[0] - x, 'dy': box[1] - y, 'window_id': window_id, 'frame': box, 'parent': parents[0][0]['id']}
+        deadline = time.monotonic() + self.MAP_SETTLE
+        while True:
+            try:
+                parent, _, box = dialog_place(self.compositor, pid, title, window, (width, height), self.screen())
+                break
+            except RuntimeError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(.2)
+                self._screen = None
+        return {'dx': box[0] - x, 'dy': box[1] - y, 'window_id': window['id'], 'frame': box, 'parent': parent}
 
     def recording_bar(self, pid, title, rect):
         """Narrow captionless KWin layer-shell association; never a title wildcard.
@@ -2707,10 +2793,11 @@ def witness_foreground(query):
                 'obscuring_window': None if inside else 'the point %s is outside the observed popup %s' % (
                     [round(v, 1) for v in point], rect), 'obscuring_window_id': None}
     if point is not None and compositor.get('kind') == 'toplevel-pixels':
-        result = toplevel_pixels_foreground(compositor, target, point)
+        result = toplevel_pixels_foreground(compositor, target, point, display=query.get('display'))
         if (not result['ok'] and query.get('raise') and not query.get('popup')
                 and not str(wid).startswith('layer:') and compositor_activate(compositor, wid)):
             # labwc keeps a fullscreen window above an activated one until that one is activated again.
+            # A display read before this activation no longer says what is on top: use grim's.
             time.sleep(.3)
             result = toplevel_pixels_foreground(compositor, target, point)
         return result

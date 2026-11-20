@@ -383,14 +383,20 @@ class DriverContext(Context):
         if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
-        witness = self._probe('foreground', query)
+        witness = self._probe('foreground', self._with_display(query))
         for _ in range(3):
             if witness.get('ok'):
                 break
             if not self._try_clear_screen(obscuring=witness.get('obscuring_window_id')):
                 break
             time.sleep(.5)
-            witness = self._probe('foreground', query)
+            witness = self._probe('foreground', self._with_display(query))
+        for _ in range(2):
+            if witness.get('ok') or not witness.get('unverified') or 'display' not in query:
+                break
+            # A capture of labwc's can still hold pixels the window has since replaced; look again.
+            time.sleep(.5)
+            witness = self._probe('foreground', self._with_display(query))
         if role.startswith('bar') and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
             self.note('KWin recording bar input=' + json.dumps({
                 'pid': geometry.get('pid'), 'window_id': geometry.get('window_id'),
@@ -402,6 +408,35 @@ class DriverContext(Context):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')
         return witness
+
+    # The display is read over the guest's VNC, so the request stays under the probe's 1 MiB cap.
+    DISPLAY_BYTES = 768 * 1024
+
+    def _with_display(self, query):
+        """A pointer hit-test on labwc, with what the display shows over the target window now.
+
+        labwc's own output capture (grim) can hold a region's earlier pixels while the display
+        already shows the window's new ones (Fedora 45 Budgie, labwc 0.20: History's inspector
+        after it lays out its link row). The guest's VNC display is what the user sees, so the
+        hit-test compares the window's own capture with it instead. One head only; anything
+        else, and a request that would be too large, keeps grim.
+        """
+        geometry, point = query.get('geometry') or {}, query.get('point')
+        query = {k: v for k, v in query.items() if k != 'display'}
+        if (point is None or query.get('popup') or self.target.physical
+                or self.profile.get('compositor', {}).get('kind') != 'toplevel-pixels'
+                or str(geometry.get('window_id', '')).startswith('layer:') or len(self.profile.get('screens', [])) > 1):
+            return query
+        import base64, zlib
+        image = self.target.capture_image(0).convert('RGB')
+        rect = [int(geometry[k]) for k in ('x', 'y', 'width', 'height')]
+        if rect[0] < 0 or rect[1] < 0 or rect[0]+rect[2] > image.width or rect[1]+rect[3] > image.height:
+            return query
+        data = zlib.compress(image.crop((rect[0], rect[1], rect[0]+rect[2], rect[1]+rect[3])).tobytes(), 6)
+        if len(data) > self.DISPLAY_BYTES:
+            return query
+        return dict(query, display={'size': [image.width, image.height], 'rect': rect,
+                                    'rgb': base64.b64encode(data).decode('ascii')})
 
     def use_catalog(self, window, reference):
         self.catalog.reference(reference)
