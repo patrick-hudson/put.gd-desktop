@@ -284,7 +284,7 @@ def unknown_lines(labels, lines, *, threshold=.85):
     than three letters or digits (submenu arrows, a scroll bar) are not rows.
     """
     return [line['text'] for line in lines
-            if len(normal(line['text']).replace(' ', '')) >= 3
+            if len(re.findall(r'[^\W_]', line['text'])) >= 3
             and not any(label_score(label, line['text']) >= threshold for label in labels)]
 
 

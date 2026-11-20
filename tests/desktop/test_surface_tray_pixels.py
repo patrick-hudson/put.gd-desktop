@@ -172,6 +172,8 @@ class TheOpenMenu(unittest.TestCase):
         # Every line read must be an agreed row; a row read twice in overlapping views still is.
         self.assertEqual(tp.unknown_lines(labels, lines + [lines[3], dict(text='›', rect=[0, 0, 1, 1])]), [])
         self.assertEqual(tp.unknown_lines(labels, lines + [dict(text='Pin to bar', rect=[0, 0, 1, 1])]), ['Pin to bar'])
+        self.assertEqual(tp.unknown_lines(labels, [dict(text='&&&', rect=[0, 0, 1, 1]), dict(text='設定項目', rect=[0, 0, 1, 1])]),
+                         ['設定項目'])
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 

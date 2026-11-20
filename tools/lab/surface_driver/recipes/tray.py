@@ -262,14 +262,18 @@ import json, os, sys
 from pathlib import Path
 path = Path.home()/'.config/omarchy/shell.json'
 action, value = sys.argv[1], sys.argv[2]
+def tray(document):
+    entries = [e for side in document['bar']['layout'].values() if isinstance(side, list) for e in side
+               if isinstance(e, dict) and e.get('id') == 'omarchy.tray']
+    if len(entries) != 1:
+        sys.exit('no single omarchy.tray bar entry')
+    return entries[0]
 document = json.loads(path.read_text())
-entries = [e for side in document['bar']['layout'].values() if isinstance(side, list) for e in side
-           if isinstance(e, dict) and e.get('id') == 'omarchy.tray']
-if len(entries) != 1:
-    sys.exit('no single omarchy.tray bar entry')
-entry = entries[0]
-if action == 'pin':
+entry = tray(document)
+if action == 'read':
     print(json.dumps(entry.get('pinned')))
+    sys.exit(0)
+if action == 'pin':
     entry['pinned'] = list(dict.fromkeys((entry.get('pinned') or []) + [value]))
 else:
     previous = json.loads(value)
@@ -277,10 +281,10 @@ else:
         entry.pop('pinned', None)
     else:
         entry['pinned'] = previous
-    print(json.dumps(entry.get('pinned')))
 temporary = path.with_name(path.name + '.putgd-lab')
 temporary.write_text(json.dumps(document, indent=2) + '\n')
 os.replace(temporary, path)
+print(json.dumps(tray(json.loads(path.read_text())).get('pinned')))
 PIN
 '''
 
@@ -297,15 +301,19 @@ def _tray_shown(ctx, item):
     if (_profile(ctx).get('pixels') or {}).get('reveal') != 'omarchy-pin':
         yield
         return
-    pinned = ctx.shell('set -- pin ' + shlex.quote(item['id']) + '\n' + OMARCHY_PIN)
-    if pinned.get('returncode') != 0:
-        ctx.blocked('could not pin put.gd\'s tray item on Omarchy\'s bar', 670)
-    previous = pinned['stdout'].strip()
+    read = ctx.shell('set -- read -\n' + OMARCHY_PIN)
+    if read.get('returncode') != 0:
+        ctx.blocked('could not read Omarchy\'s tray pin setting', 670)
+    previous = read['stdout'].strip()
     def restore():
+        # The value read back from disk after the write must be the one the cell found.
         result = ctx.shell('set -- restore ' + shlex.quote(previous) + '\n' + OMARCHY_PIN)
         if result.get('returncode') != 0 or result.get('stdout', '').strip() != previous:
             raise RecipeBlocked('Omarchy\'s tray pin setting was not put back')
+    # Cleanup is registered before anything is written.
     ctx._fixture_manager.scope.defer('omarchy tray pin', restore, guest_only=True)
+    if ctx.shell('set -- pin ' + shlex.quote(item['id']) + '\n' + OMARCHY_PIN).get('returncode') != 0:
+        ctx.blocked('could not pin put.gd\'s tray item on Omarchy\'s bar', 670)
     ctx.note('omarchy_tray_pin=' + item['id'] + ' (was ' + previous + ')')
     yield
 
@@ -390,7 +398,7 @@ def _pixel_menu(ctx, labels, glyphs):
         park = (box[0] - 40 if box[0] >= 60 else box[2] + 40, (box[1] + box[3]) // 2)
         ctx.click_drawn(*park, 0, lambda image: showing(image) is not None, button=None)
         box = _seen(ctx, lambda: showing(ctx.target.capture_image(0)), 'the menu still drawn with the pointer moved off the icon')
-        image = _settled_menu(ctx, box)
+        image = _settled_menu(ctx, box, showing)
         opened.update(box=box, image=image)
         first = _read_menu(ctx, image, box)
         clickable = tray_pixels.align(labels, first)
@@ -400,15 +408,17 @@ def _pixel_menu(ctx, labels, glyphs):
             # then scroll back to the first view, the one whose rows are clicked.
             centre = ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2)
             ctx.click_drawn(*centre, 0, lambda current: _same(image, current, box), wheel=-10)
-            rest = _read_menu(ctx, _settled_menu(ctx, box), box)
+            rest = _read_menu(ctx, _settled_menu(ctx, box, showing), box)
             read = tray_pixels.align(labels, first + rest)
             # Back to the top, then click from a fresh read of that view: rows are clicked only where
             # they are drawn now.
             for _ in range(2):
                 ctx.click_drawn(*centre, 0, lambda current: showing(current) is not None, wheel=10)
                 ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
-                image = _settled_menu(ctx, box)
-                clickable = tray_pixels.align(labels, _read_menu(ctx, image, box))
+                image = _settled_menu(ctx, box, showing)
+                top = _read_menu(ctx, image, box)
+                rest += top
+                clickable = tray_pixels.align(labels, top)
                 if clickable[0] is not None:
                     break
             opened.update(image=image)
@@ -436,11 +446,11 @@ def _read_menu(ctx, image, box, margin=12):
     return lines
 
 
-def _settled_menu(ctx, box):
-    """The capture once the popup's pixels stop changing (fade-in, scrolling)."""
+def _settled_menu(ctx, box, showing):
+    """The capture once the popup's pixels stop changing (fade-in, scrolling), with the popup there."""
     def settled():
         first = ctx.target.capture_image(0)
-        return first if _same(first, _stable_menu(ctx, box), box) else None
+        return first if showing(first) is not None and _same(first, _stable_menu(ctx, box), box) else None
     return _seen(ctx, settled, 'the drawn menu settled')
 
 
@@ -497,9 +507,10 @@ def _dismiss_drawn_menu(ctx, opened):
     import time
     box = opened['box']
     def showing(image):
-        if 'image' in opened:
-            return _same(opened['image'], image, box)
-        return opened['showing'](image) is not None
+        # A popup is still drawn next to the icon, and it is the one the cell read.
+        if opened['showing'](image) is None:
+            return False
+        return 'image' not in opened or _same(opened['image'], image, box)
     for attempt in ('key', 'icon'):
         try:
             if attempt == 'key':
