@@ -467,8 +467,9 @@ jobs:
   caches:
     # Deletes the caches this push superseded and those of closed pull requests and
     # deleted branches (docs/release/ci.md, "Cache budget"). Not part of the `CI` summary.
+    # After the package jobs too, so their superseded compiler caches go in the same run.
     name: prune caches
-    needs: [linux, sanitizers]
+    needs: [linux, sanitizers, packages]
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/nightly' }}
     runs-on: ubuntu-24.04
     permissions:
