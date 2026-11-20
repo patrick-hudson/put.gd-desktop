@@ -1,16 +1,19 @@
 // History actions that remove or cancel something: each reaches exactly the
 // confirmed targets. Layout, copy and view states are left to acceptance and
-// the rendered catalog.
+// the rendered catalog, except a layout that puts a control out of reach.
 #include <QDateTime>
 #include <QApplication>
+#include <QCryptographicHash>
 #include <QDialog>
 #include <QLabel>
 #include <QListView>
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSignalSpy>
 #include <QTimer>
+#include <QToolButton>
 #include "ui/HistoryModel.h"
 #include "ui/HistoryWindow.h"
 #include "ui/Ui.h"
@@ -154,6 +157,22 @@ private slots:
   auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),2);
   for(int row=0;row<2;++row){const auto record=qobject_cast<HistoryModel*>(list->model())->record(row);QVERIFY(HistoryModel::failed(record));QVERIFY(HistoryModel::retryUpload(record));QVERIFY(HistoryModel::statusText(record).startsWith("Upload failed"));}
   auto* categories=window.findChild<QListWidget*>("historyCategories");PUTGD_TRY_COMPARE(categories->item(5)->data(Ui::NavigationDelegate::TrailingRole).toString(),QString("2"));
+ }
+ // A file name with no break opportunity wraps inside the details pane rather than
+ // widening it past the window, where its close button and Copy link were cut off.
+ void unbrokenFileNameStaysInsideTheDetailsPane() {
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  const QString name="Tier1-"+QString(QCryptographicHash::hash("unbroken",QCryptographicHash::Sha256).toHex());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="long-name";op.created="2026-11-19T00:00:00.000Z";op.restore(OperationState::Completed);op.settings=settings.snapshot();OperationItem item;item.artifact.id="long-name-item";item.artifact.name=name+".png";item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus="uploaded";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1280,746);window.show();
+  auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);
+  auto* title=window.findChild<QLabel*>("historyTitle");PUTGD_TRY_VERIFY(title->isVisible()&&title->text()==name);
+  auto* pane=window.findChild<QScrollArea*>("historyInspectorScroll");auto* close=window.findChild<QToolButton*>("historyDetailsClose");
+  PUTGD_TRY_VERIFY(close->isVisible());
+  // The name alone is wider than the pane, so it has to wrap inside it.
+  QVERIFY(QFontMetrics(title->font()).horizontalAdvance(name)>pane->viewport()->width());
+  // Nothing in the pane is laid out past its edge: its content fits and the close button shows.
+  PUTGD_VERIFY_STEADY(pane->widget()->width()<=pane->viewport()->width()&&pane->viewport()->rect().contains(QRect(close->mapTo(pane->viewport(),QPoint()),close->size())),200);
  }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
