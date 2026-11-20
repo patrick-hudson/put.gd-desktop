@@ -523,7 +523,9 @@ Release manual desktop leases by 12:15 UTC so the check can acquire them.
 #### What the nightly check runs
 
 Each row boots a fresh guest of its golden, installs the published package and runs
-these cells, each judged by an independent check, not the app's own report. Before it
+these cells, each judged by an independent check, not the app's own report. The one exception is the Tray menu cell
+on trays without AT-SPI, where the rows come from put.gd's record of what it served the tray host and the screen is
+read only to confirm them. Before it
 installs anything, the row holds the apt guests' own package updaters (`apt-daily`,
 `apt-daily-upgrade` and Mint Update's automation) in the overlay, as root through the
 goldens' passwordless `apt-get` (its Pre-Invoke hook, with no sources, no package cache
@@ -551,7 +553,7 @@ guest and sshd's restart cost the row its guest.
 | Survives exit | The auto-copied link is still on the clipboard after Quit and a restart |
 | Right-click upload | The file manager's upload entry uploads exactly the selected file |
 | Window recording | A recording of the moving pattern window, by its identity (`recording.windows`, or its X id on X11); the resident must freeze exactly that identity. The exported clip lasts 4 to 30 s, its frames differ and it is the window's size (one pixel less allowed for encoder alignment) |
-| Tray menu | A real right-click on the tray icon shows the agreed rows (#1532) in order and no other named row in that menu; a region capture started from it uploads at the dragged size and its link is auto-copied |
+| Tray menu | A real right-click on put.gd's tray icon opens its menu; Capture region from it uploads at the dragged size and its link is auto-copied. Where the tray exports the icon to AT-SPI (GNOME with the AppIndicator extension, Plasma), the menu's named rows there must be the agreed rows (#1532) in order, with no other named row. Where it doesn't (Cinnamon, Budgie, Omarchy), the icon is found by its pixels (below). put.gd's own `diagnostics.trayMenu` must then show the host asking for the menu after the click and list exactly the agreed rows in order as the visible rows it serves (red otherwise); tesseract must read each agreed label in order in the popup that opened next to the icon, and no other text there (a shortcut on a line of its own, or a mark of fewer than three letters or digits, is not counted); the click lands on the drawn Capture region row and put.gd must record that row as the one the host reported clicked |
 | Copy text / redact | Copy text of a drawn two-line pattern puts those two lines on the clipboard (compared with whitespace collapsed and blank lines ignored); Quick redact (`name`, `list`) turns the login name and a listed word solid in the saved copy, and two decoy words stay unchanged |
 | Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the link is signed for at most a day and records its expiry, the signed GET returns the file, the same URL unsigned gets 403, and the deletion leaves the origin without the object |
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
@@ -559,11 +561,36 @@ guest and sshd's restart cost the row its guest.
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
-words; empty today); it is never red and opens no issue. ⚪ means not run or no valid
-result: setup or infrastructure failures, checks that could not decide, and cells the
-harness cannot drive on a desktop, each with the reason, for example Tray menu on Cinnamon, Budgie and Hyprland,
-whose tray items have no accessible name, and on the stock Fedora GNOME guest, which has
-no tray host.
+words; empty today); it is never red and opens no issue. Use it only for something no user
+of that desktop can do. What a user can set up is set up in the guest instead: stock Fedora
+GNOME has no tray host, so the Fedora GNOME row installs Fedora's AppIndicator extension
+(`gnome-shell-extension-appindicator`) before the witness reboot (the transaction is in
+`tray-host.json`), enables it after the reboot, as a Fedora user does for put.gd's tray, and
+waits for a registered StatusNotifier host before put.gd starts (`tray-host-ready.json`).
+⚪ means not run or no valid result: setup or infrastructure failures, checks that could not
+decide, and cells the harness cannot drive on a desktop, each with the reason.
+
+On trays without AT-SPI the Tray menu cell finds put.gd's icon by its pixels. The template is
+what the running resident publishes at that moment: its `IconPixmap` frames, which must read
+the same twice a moment apart with no upload or completion showing, plus its `IconName` PNG
+on hosts that read names, taken with the second read. The cell compares the glyph's shape with each drawn shape on the
+profile's panel strip, at the size it was drawn, so the season's glyph, the tint and a host's
+recolouring don't matter. No shape scoring at least 0.8, or a second shape within 0.12 of the
+best, is ⚪ with the scores, and so is a second shape at 0.8 or above however far behind. A popup
+that can't be placed or doesn't settle, or that shows text that is no agreed row, is ⚪ too;
+those checks come before the served rows are compared, so a wrong served menu is red only once
+the popup was placed, settled and showed nothing else. A popup missing an agreed label is ⚪,
+checked after the served rows. Omarchy keeps tray items in a drawer that opens on hover: the
+cell adds put.gd's item to the tray's `pinned` list in `~/.config/omarchy/shell.json` (what the
+tray's Pin does) for its duration. It registers the cleanup before writing, and the cleanup
+writes the earlier value back and reads it back from disk; if that fails, the run's cleanup
+fails. Omarchy's menu card shows about twelve rows, so the cell scrolls it
+to read the rest, scrolls back and reads the top again before clicking Capture region. Scrolled
+down, the card cuts the row at its top edge; that one line is set aside, and noted, only when the
+line below it is an agreed row the first view also read. The pointer is moved off the panel
+before the icon is matched and kept off the rows while the menu is read. Cinnamon's host
+sometimes asks put.gd for the menu and draws none, then takes the next click as closing it, so
+the cell right-clicks up to three times, each only while no popup shows.
 
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs

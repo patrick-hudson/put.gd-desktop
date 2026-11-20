@@ -305,7 +305,9 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
   but that only locates it: a click on a dialog captured as 1×1 is never verified, so it is
   not run. Deleting from History needs such a click, so the row runs no live cells
   ([why](../lab/remote-builders.md#what-the-nightly-check-runs)). budgie-panel's tray items have no
-  accessible name, so the Tray menu cell is not run; the tray itself works for users.
+  accessible name, so the Tray menu cell finds put.gd's icon by its pixels and reads the menu
+  with put.gd's `diagnostics.trayMenu` and tesseract
+  ([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
 - Routing rows in `test_native_session.cpp` cover `Budgie`, `Budgie:GNOME`,
   `labwc:wlroots` and `wayland;xcb`.
 - The VM rows are in [the acceptance matrix](../testing/acceptance-matrix.md).

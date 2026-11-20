@@ -132,6 +132,13 @@ ordinary one that never touches PRIMARY. The graphical X11 route that serves GNO
 Repeat's rectangle alone. The selector's visible hint is the generic one for every action and does not say
 that the capture copies text. Recognition runs in the confined `putgd-ocr` helper on every desktop (see [text recognition](../design/text-recognition.md)), which needs the kernel's Landlock at version 3 or later (Linux 6.2 or newer with Landlock enabled).
 
+## Tray
+
+Cinnamon's panel shows put.gd's StatusNotifier item through `xapp-sn-watcher`, which draws the
+menu as a GTK menu and asks for it with dbusmenu `AboutToShowGroup`. The panel icon has no
+accessible node, so the nightly's Tray menu cell finds it by its pixels
+([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
+
 ## Evidence boundary
 
 The automated X11 tests run in a disposable Xvfb display with synthetic clipboard ownership and pixels. They do not establish Cinnamon focus behavior, a physical monitor layout, real global keys, clipboard paste into an independent desktop app, live S3 public links, or release timing.

@@ -195,12 +195,22 @@ restart: at local midnight, on logind's resume signal, on each tray refresh, and
 within five minutes of a clock or time zone change. `ui.snapshot`
 `diagnostics.trayIcon` reports `{glyph, shown, localDate, calendarOverride}`:
 `glyph` is the calendar's choice, `shown` is what a badge leaves on screen.
+`diagnostics.trayMenu` reports what tray hosts asked of the StatusNotifier menu: `shows`
+(root `AboutToShow` or `AboutToShowGroup` calls), `opened` and `closed` (the root's events,
+which not every host sends), `clicked` (the last eight rows a host reported clicked, each
+`{id, name, label}`) and `rows` (the top-level rows served now, in order, separators left out,
+each `{id, name, label, visible, enabled, submenu}`); `{"native": false}` for the Qt fallback
+tray. It is read-only: the counters only grow over the resident's life, `rows` includes
+hidden rows (`visible: false`), and the same object goes into diagnostics packages. It records
+the dbusmenu calls and events hosts send, whatever caused them; it never opens the menu. The lab uses it to check the menu
+on trays that export nothing to AT-SPI.
 
 For lab previews and tests, `PUTGD_TRAY_CALENDAR_NOW` (a local ISO date, or date
 and time) starts the tray's own clock at that moment and lets it run, so a run
 started at `2026-11-30T23:59:50` crosses into December ten seconds later. It
 moves only the tray glyph and greeting, is logged as a warning, and reports
-`calendarOverride: true`. Don't change a builder's system clock to see a season.
+`calendarOverride: true`. Don't change a builder's system clock to see a season. Set in the
+surface driver's environment, it is passed through to the guest resident it starts.
 
 ## View state
 

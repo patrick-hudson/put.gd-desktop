@@ -103,6 +103,16 @@ Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
 through the package manager and an AppImage's owned copy with `--remove-gnome-extension`; remove only your own user directory for a manual
 installation. Disable removes all helper bindings, signals, pending selectors, transfer buffers, and the exported endpoint. Re-enable recreates them once. Shell/session restart requires the resident application's helper discovery to reconnect and rebind accepted settings.
 
+## Tray
+
+GNOME has no tray of its own. Ubuntu enables its AppIndicator extension by default; on stock
+Fedora a user installs and enables `gnome-shell-extension-appindicator`
+(`appindicatorsupport@rgcjonas.gmail.com`) to get put.gd's tray icon and menu, and logs out and
+back in once so the Shell loads it. Without a tray host, quit from the main window's menu
+(**☰ → Quit put.gd**). The nightly's Fedora GNOME guest installs the extension, restarts the
+session, enables it and waits for a registered tray host before put.gd starts
+([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
+
 ## Modal dialogs
 
 GNOME's session defaults `org.gnome.mutter attach-modal-dialogs` to `true`. On
