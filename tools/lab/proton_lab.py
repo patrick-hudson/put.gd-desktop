@@ -820,12 +820,16 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
         stage['name'] = 'guest'
         guest.stop_app()
         stage['name'] = 'builder'
-        chain = chain_factory(brokers(layout.host_bridge), registry['reference'])
+        if 'chain' not in stage:
+            # Built once: a retry keeps the first export as its CAS baseline, so a change to the
+            # builder's entry between attempts is a conflict at carry-back, never an overwrite.
+            stage['chain'] = chain_factory(brokers(layout.host_bridge), registry['reference'])
+        chain = stage['chain']
         stage['name'] = 'guest'
         chain.recover(str(provision), reference, run, guest_broker)
         stage['name'] = 'builder'  # the builder's entry: never retried with a fresh baseline
         carried = str(carry_back(chain, folder, 1 + len(list(folder.glob('carry-back-*.json')))))
-        stage.update(name='guest', carried=carried, chain=chain)
+        stage.update(name='guest', carried=carried)
         chain.cleanup(run, guest_broker, reference)
         return carried
 

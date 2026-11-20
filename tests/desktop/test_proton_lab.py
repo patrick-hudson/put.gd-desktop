@@ -350,7 +350,7 @@ class DeadGuestKeyring(Recovery):
         folder, result = self.recover(RESTARTED, fail=1)
         self.assertEqual([call[0] for call in self.calls],
                          ['stop_app', 'export', 'recover', 'restart_keyring',
-                          'stop_app', 'export', 'recover', 'carry_back', 'cleanup', 'remove_brokers'])
+                          'stop_app', 'recover', 'carry_back', 'cleanup', 'remove_brokers'])
         self.assertEqual(result['keyringRestarted'], RESTARTED)
         recorded = self.lent(folder)
         self.assertEqual((recorded['step'], [r['busName'] for r in recorded['keyringRestarts']]), ('recovered', [':1.77']))
@@ -400,6 +400,39 @@ class DeadGuestKeyring(Recovery):
         names = [call[0] for call in self.calls]
         self.assertNotIn('restart_keyring', names)
         self.assertEqual((names.count('carry_back'), names.count('cleanup')), (1, 0))
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def test_a_builder_entry_changed_between_attempts_is_a_conflict_not_an_overwrite(self):
+        builder = {'entry': BASELINE}
+        calls = self.calls
+
+        class Cas(Chain):
+            # Exports the builder's entry as its baseline; carry-back is a compare-and-swap on it.
+            def __call__(self, host_broker, reference):
+                calls.append(('export', reference))
+                self.baseline = self.current = builder['entry']
+                return self
+
+            def carry_back(self, receipt):
+                calls.append(('carry_back', Path(receipt).name))
+                Path(receipt).open('x').close()
+                if builder['entry'] != self.baseline:
+                    raise proton.bridge.ProvisionError('credential_provisioning_failed')
+                builder['entry'] = self.current
+
+        class Updating(KeyringGuest):
+            def restart_keyring(self):
+                builder['entry'] = 'synthetic-same-session-update'  # lands while the daemon restarts
+                return super().restart_keyring()
+
+        folder = self.interrupted()
+        loaded = lambda path: (str(path), json.loads(Path(path).read_text()))
+        with mock.patch.object(proton.bridge, '_load_receipt', loaded), self.assertRaises(proton.bridge.ProvisionError):
+            proton.recover(self.layout, folder, 'local_lender', 'lender', chain_factory=Cas(calls, fail={'recover': 1}),
+                           guest_factory=lambda run: Updating(calls, run, RESTARTED), clock=self.clock)
+        self.assertEqual(builder['entry'], 'synthetic-same-session-update')
+        self.assertEqual([call[0] for call in calls].count('export'), 1)
+        self.assertNotIn('cleanup', [call[0] for call in calls])
         self.assertEqual(self.lock().status()['state'], 'blocked')
 
     def test_a_failed_builder_step_is_never_retried(self):
