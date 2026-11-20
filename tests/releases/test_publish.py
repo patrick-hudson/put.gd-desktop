@@ -528,14 +528,17 @@ class NightlyPublicationTest(unittest.TestCase):
                     self.assertRaisesRegex(ValueError, 'reused push-CI run record'):
                 self.invoke('--built-by', str(record))
             self.assertFalse(self.commands)
+            linked.assert_not_called()
         record = self.reused_record()
         data = json.loads(record.read_text())
         data['reused'] = False
         record.write_text(json.dumps(data))
-        with patch.object(publish.support_assets, 'publish'), patch.object(publish.support_assets, 'verify_proton'), \
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_proton'), \
                 self.assertRaisesRegex(ValueError, 'reused push-CI run record'):
             self.invoke('--built-by', str(record))
         self.assertFalse(self.commands)
+        linked.assert_not_called()
 
     def test_a_rehearsal_writes_the_notes_and_stops_before_any_github_write(self):
         self.installer_fixture()

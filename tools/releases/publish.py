@@ -375,6 +375,9 @@ def main():
     release = verify(Path.cwd(), args.tag)
     if args.nightly and (parse_tag(args.tag).channel != 'nightly' or release.get('channel') != 'nightly'):
         raise ValueError('Automated nightly publication requires a verified strict nightly tag')
+    if args.built_by:
+        # Reject a bad record before anything is published, the linked sources release included.
+        reused_builder(args.built_by, release, run_provenance(), rehearsal=args.rehearse)
     if args.nightly and args.acceptance:
         parser.error('--nightly uses automated evidence, not package acceptance')
     if args.publish and release.get('channel') == 'nightly':
