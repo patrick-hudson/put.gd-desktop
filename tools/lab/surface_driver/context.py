@@ -396,6 +396,8 @@ class DriverContext(Context):
                 'pid': geometry.get('pid'), 'window_id': geometry.get('window_id'),
                 'rect': [geometry.get(k) for k in ('x', 'y', 'width', 'height')], 'point': point,
                 'before_prepare': getattr(self, '_recording_bar_before', None), 'foreground': witness}))
+        if not witness.get('ok') and witness.get('unverified'):
+            raise RecipeBlocked('input target '+repr(role)+' could not be verified on screen: '+str(witness.get('obscuring_window')))
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')

@@ -1202,6 +1202,8 @@ with n.controller_shutdown(workers):
             row = dict(desktop='Budgie', host='d69', cells=cells)
             self.assertIn('➖', nightly.table(dict(desktops=[row])))
         self.assertEqual(set(nightly.row_cells(dict(desktop='x'), 'setup')), set(nightly.LOCAL))
+        no_proton = nightly.row_cells(dict(desktop='x', live=True, proton=False), 'setup')
+        self.assertEqual(set(no_proton), set(nightly.FLOWS) - {'proton_region_upload'})
 
     def test_guest_service_selection_is_explicit_and_never_changes_host_default(self):
         from tools.lab import lab, lab_keyring
