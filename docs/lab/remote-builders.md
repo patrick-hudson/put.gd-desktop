@@ -758,7 +758,8 @@ destination check counts until `--check-live-cleanup` has run (step 2). It
 refuses while a recipe or lend for the run is live. Otherwise it pauses the
 guest's VM, or records that its QEMU has exited, so nothing in it can publish.
 An upload that had already reached the destination can still commit just
-after that, so the command waits 120 s before it returns. For a live
+after that, so the command returns only once 120 s have passed since the
+recorded pause or exit. For a live
 publication, `--resolve-live-cleanup` refuses unless the VM is still paused,
 or its QEMU still gone, and that time has passed. Resuming the VM or starting
 a QEMU on the overlay, for any reason, voids every check made before: run
@@ -892,15 +893,19 @@ then start again from step 1.
    release check of the desktop lease. The command refuses another run and a
    live recipe or lend. It also refuses a desktop lease unless the lease is free, or is
    the retained session's own `nightly-desktops` lease and has expired or gone
-   stale; a kept lease turns stale 15 minutes after its last heartbeat. It
-   refuses a Proton lease that belongs to another session, or that has no
-   matching lend receipt, and a lend that isn't returned. If an earlier
+   stale; a kept lease turns stale 15 minutes after its last heartbeat. A
+   held Proton lease must be the retained session's own `nightly-desktops`
+   lease with a matching lend receipt. When that lend isn't returned and the run
+   directory still exists, recovery first runs `proton_lab.py recover` for it
+   (bounded to 120 s) and refuses unless that returns the lend. If an earlier
    recovery retired the guest but its lease release refused, a retry checks
    that retirement again instead of retiring twice. Its evidence goes to
    `operator-recovery/<time>-<hex>/stale-recovery/` in the row's evidence
-   directory. A refusal prints its reason; an unexpected failure leaves
-   `stale-recovery-error.json` in `operator-recovery/<time>-<hex>/`. Every successful
-   recovery, by this command or the nightly, writes
+   directory. A refusal prints its reason. An unexpected failure after that
+   directory exists leaves `stale-recovery-error.json` in
+   `operator-recovery/<time>-<hex>/`; one before it (an unreadable slot file)
+   only prints. Only a command that exits 0 and prints its summary has removed
+   the slot. Recovery, by this command or the nightly, writes
    `~/putgd-lab/locks/history/recovered/<time>-<run>-<hex>.json`. That record
    holds the slot's owner, which slot files were there, the reason the slot
    was kept and what cleared each gate. The records stay with the row's
