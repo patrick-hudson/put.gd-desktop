@@ -530,10 +530,9 @@ goldens' passwordless `apt-get` (its Pre-Invoke hook, with no sources, no packag
 and no lists lock). It stops and masks their timers, then waits up to 20 minutes for the
 updater services to drain: a running or queued updater is left to finish, because
 stopping one could kill dpkg or leave `unattended-upgrade` running. It then masks each
-loaded service only if it is `inactive` or `failed` with no queued job and an empty
-cgroup, and records every unit in `package-updates.json`. The row goes on only if the guest reports every listed unit as
-absent (`not-found`) or `masked`, as `inactive` or `failed`, and with no queued job or
-process left in its cgroup; any other state, or no report for a unit, stops it there. Fedora installs no updates by
+loaded service only if it is `inactive` or `failed` with no queued job and a cgroup
+that is absent or reports `populated 0`, and records every unit in `package-updates.json`. The row goes on only if the guest reports every listed unit as
+absent (`not-found`) or `masked`, as `inactive` or `failed`, and with no queued job and a cgroup that is absent or reports `populated 0`; any other state, or no report for a unit, stops it there. Fedora installs no updates by
 itself and Aurora's `uupd` is held by its tools step. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
 hour the check runs: on 2026-11-20 it upgraded `openssh-server` mid-row in the Kubuntu
 guest and sshd's restart cost the row its guest.
