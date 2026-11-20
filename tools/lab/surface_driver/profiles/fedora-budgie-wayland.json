@@ -46,6 +46,11 @@
     "reason": "Budgie's notification popups are budgie-daemon layer-shell surfaces: AT-SPI shows the showing summary label, and labwc reports no position for a layer surface"
   },
   "windows": {
+    "history": {
+      "accessible": {
+        "application": "putgd*"
+      }
+    },
     "editor.canvas": {
       "owner": "editor",
       "accessible": {

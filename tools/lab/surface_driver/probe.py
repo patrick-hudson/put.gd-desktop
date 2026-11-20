@@ -1676,6 +1676,11 @@ def accessible(query, toplevel=False, detail=True):
                 pid = node.get_process_id()
                 if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not is_owned(pid)):
                     continue
+                # Nor an owned one whose executable cannot be the queried application (the lab's
+                # private Firefox, which can stop answering while it shows a page).
+                pattern = query.get('application')
+                if pattern and not any(fnmatch.fnmatchcase(n, pattern) for n in executable(pid)):
+                    continue
             bus = (getattr(node, 'bus', None) or getattr(getattr(node, 'app', None), 'bus_name', None)
                    if depth == 1 and names is not None else None)
             if bus and names is UNREAD:

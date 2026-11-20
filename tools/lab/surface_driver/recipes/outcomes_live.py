@@ -79,8 +79,9 @@ def _cleanup(ctx, detail):
     ctx.focus('history', raise_window=ctx.profile.get('session') == 'x11')
     box = ctx.geometry('history')
     # The remote actions live below the preview in the inspector. Scroll its
-    # right side with guarded real input; older Qt does not export its ID.
-    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.6*box['height']), -16, head=box.get('head', 0))
+    # right side with guarded real input; older Qt does not export its ID. Below
+    # the preview: resting on it shows its tooltip over the point (Hyprland).
+    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.85*box['height']), -16, head=box.get('head', 0))
     button = ({'name': 'Revoke link…', 'role': 'push button'} if ctx.destination == 'proton' else history.DELETE_BUTTON)
     in_view = ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
                                   within=[box[k] for k in ('x', 'y', 'width', 'height')]))
