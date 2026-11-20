@@ -577,11 +577,15 @@ def live_resolution(run, evidence, session):
         return None
     record = json.loads(private_file(path).read_text())
     publication = record.get('publication')
+    # Either a confirmed-gone publication, or a record that the row had none pending (it clears no live gate).
+    confirmed = (record.get('objectConfirmedGone') is True and isinstance(publication, dict)
+                 and sorted(publication) == ['destination', 'objectKey', 'prefix']
+                 and all(isinstance(v, str) and v for v in publication.values()))
+    nothing_pending = (publication is None and record.get('objectConfirmedGone') is False
+                       and record.get('livePublicationPending') is False)
     if (record.get('schemaVersion') != 1 or record.get('kind') != 'live-cleanup-resolution'
             or record.get('run') != str(run) or record.get('session') != session
-            or record.get('runId') != run_identity(run) or record.get('objectConfirmedGone') is not True
-            or not isinstance(publication, dict) or sorted(publication) != ['destination', 'objectKey', 'prefix']
-            or not all(isinstance(v, str) and v for v in publication.values())
+            or record.get('runId') != run_identity(run) or not (confirmed or nothing_pending)
             or not isinstance(record.get('receipts'), dict) or not isinstance(record.get('guestOnlyErrors'), dict)):
         raise NotRun('guest retained: '+str(path)+' does not record a confirmed cleanup of this run')
     return record
@@ -628,7 +632,8 @@ def frozen_overlay(owner, checked_run):
     run, evidence = settled_overlay(owner, checked_run)
     paused = guest_paused(run)
     if paused is None:
-        raise NotRun('the guest VM is running; run --check-live-cleanup (it pauses the VM), then check the destination again')
+        raise NotRun('the guest VM is running, or its stop is not recorded; run --check-live-cleanup (it pauses the VM or '
+                     'records that QEMU has exited), then check the destination again')
     if time.time()-paused < PAUSE_SETTLE_SECONDS:
         raise NotRun('the guest VM was paused under '+str(PAUSE_SETTLE_SECONDS)+' s ago; check the destination again after that')
     return run, evidence
@@ -641,53 +646,141 @@ PAUSE_SETTLE_SECONDS = 120
 PAUSE_RECORD = 'live-cleanup-paused.json'
 
 
+def vm_process_gone(run):
+    """True only when the lab's full host inventory finds no QEMU, TPM or open/mapped handle on the run's overlay.
+
+    The same check guarded retirement makes: a filtered /proc or hidden PID namespace is no proof, and the
+    overlay is matched by file identity, not only by path.
+    """
+    from tools.lab import overlay_cleanup
+    disk = run/'disk.qcow2'
+    try:
+        overlay_cleanup._no_symlinks(disk)
+        if not disk.is_file():
+            return False
+        overlay_cleanup._check_processes(run, disk)
+    except (overlay_cleanup.CleanupError, OSError):
+        return False
+    return True
+
+
+def disk_identity(run):
+    """The overlay's identity and last write; a QEMU that ran on it since changes this."""
+    info = (run/'disk.qcow2').stat()
+    return [info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns]
+
+
+def pause_record(run, kind):
+    """The pausedAt of the run's pause record when it is of KIND ('paused' or 'exited'); else None.
+
+    An exit record holds only while the overlay is unchanged since it was written: a QEMU started on it
+    again writes to it, and its exit later must start a new settle period.
+    """
+    try:
+        held = json.loads(private_file(run/PAUSE_RECORD).read_text())
+        # Records written before the exited kind existed are pauses.
+        if held.get('vm', 'paused') != kind:
+            return None
+        if kind == 'exited' and held.get('disk') != disk_identity(run):
+            return None
+        return float(held['pausedAt'])
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
 def guest_paused(run, *, pause=False):
     """When the guest's VM is paused, the time.time() it was paused; else None. ``pause`` pauses it first.
 
     A recipe killed on the host can leave put.gd in the guest finishing an upload; a destination check made
     while the VM runs proves nothing. Retirement still quits a paused VM; QMP ``cont`` resumes it, and the
     next pause starts a new settle period. A run with neither disk nor state has no VM (paused at 0).
+
+    A VM whose QEMU has already exited (a transient unit can kill it with its worker) can never publish
+    again. ``pause`` records the first look that found no QEMU on the overlay, and the settle period runs
+    from then; a pause recorded before QEMU exited does not count, since the VM may have resumed in between.
     """
     from tools.lab import lab
-    if not (run/'qmp.sock').exists():
-        return 0 if not (run/'disk.qcow2').exists() and not (run/'state.json').exists() else None
+    if not any((run/name).exists() for name in ('qmp.sock', 'disk.qcow2', 'state.json')):
+        return 0
     record = run/PAUSE_RECORD
-    try:
-        with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
-            running = qmp.execute('query-status').get('running')
-            if pause and running is not False:
-                # A stale time must never outlive a resume, even if the stop reply is lost.
-                record.unlink(missing_ok=True)
-                qmp.execute('stop')
+    if (run/'qmp.sock').exists():
+        try:
+            with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
+                # A QEMU answered: any exit record is from an earlier one, even if this session drops next.
+                if pause_record(run, 'paused') is None:
+                    record.unlink(missing_ok=True)
                 running = qmp.execute('query-status').get('running')
-                if running is False:
-                    save(record, dict(pausedAt=time.time()))
-            if running is not False:
-                return None
-    except (OSError, lab.LabError):
+                if pause and running is not False:
+                    # A stale time must never outlive a resume, even if the stop reply is lost.
+                    record.unlink(missing_ok=True)
+                    qmp.execute('stop')
+                    running = qmp.execute('query-status').get('running')
+                    if running is False:
+                        save(record, dict(pausedAt=time.time(), vm='paused'))
+                if running is not False:
+                    # The VM ran after that pause: a later pause, by anything, starts a new settle period.
+                    record.unlink(missing_ok=True)
+                    return None
+            if pause and pause_record(run, 'paused') is None:
+                # Paused by something else (or an exit record from an earlier QEMU): the settle period starts now.
+                save(record, dict(pausedAt=time.time(), vm='paused'))
+            return pause_record(run, 'paused')
+        except (OSError, lab.LabError) as error:
+            # Only a refused or missing socket says nothing listens. Anything that accepted the connection
+            # (even one that dropped during the greeting or negotiation) was a QEMU: no exit record outlives it.
+            if not isinstance(error, (ConnectionRefusedError, FileNotFoundError)) and pause_record(run, 'paused') is None:
+                record.unlink(missing_ok=True)
+    # No QMP answer: only a QEMU that is provably gone counts as stopped.
+    if not vm_process_gone(run):
+        if pause_record(run, 'paused') is None:
+            record.unlink(missing_ok=True)
         return None
-    if pause and not record.exists():
-        # Paused by something else: the settle period starts now.
-        save(record, dict(pausedAt=time.time()))
-    try:
-        return float(json.loads(private_file(record).read_text())['pausedAt'])
-    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
-        return None
+    if pause and pause_record(run, 'exited') is None:
+        save(record, dict(pausedAt=time.time(), vm='exited', disk=disk_identity(run)))
+    return pause_record(run, 'exited')
 
 
-def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_errors=(), now=None):
-    """Record that a person confirmed the remote object is gone, then remove the marker.
+def publication_pending(run, evidence):
+    """Whether the run's marker or any receipt of the row records a live publication not yet cleaned up."""
+    from tools.lab import lab
+    if (run/lab.LIVE_CLEANUP_MARKER).exists():
+        return True
+    return any(json.loads(path.read_text()).get('environment', {}).get('unresolved_live_cleanup')
+               for path in evidence.glob('*/receipt.json'))
+
+
+def resolution_overlay(owner, checked_run, no_live_publication=False):
+    """The overlay a resolution may be recorded for: frozen for a live publication, settled for none."""
+    if not no_live_publication:
+        return frozen_overlay(owner, checked_run)
+    run, evidence = settled_overlay(owner, checked_run)
+    if publication_pending(run, evidence):
+        raise NotRun('a live publication is pending (a marker or a receipt flag); follow the live cleanup steps instead')
+    return run, evidence
+
+
+def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_errors=(), no_live_publication=False, now=None):
+    """Record what a person checked about a retained row; for a live publication, then remove the marker.
 
     The record names the run, its lab run id, the publication from the marker and the hash of every
     receipt in the row, so it clears the live-cleanup gate for exactly those receipts. ``guest_only_errors``
     are receipt cleanup errors the person checked are held only in the guest; recovery counts them as
     guest-local for those receipts and nothing more.
+
+    ``no_live_publication`` is for a row with no marker and no receipt flag. It needs no paused guest or
+    destination check, names no publication, never touches a marker and clears no live-cleanup gate.
     """
     from tools.lab import lab
-    run, evidence = frozen_overlay(owner, checked_run)
+    if no_live_publication and publication:
+        raise NotRun('--no-live-publication names no publication')
+    if no_live_publication and not guest_only_errors:
+        raise NotRun('nothing to record: give the --guest-only-error values you checked, or run --recover-retained')
+    run, evidence = resolution_overlay(owner, checked_run, no_live_publication)
     marker = run/lab.LIVE_CLEANUP_MARKER
     identity = run_identity(run)
-    if marker.exists():
+    if no_live_publication:
+        pass
+    elif marker.exists():
         details = json.loads(private_file(marker).read_text())
         found = {k: details.get(k) for k in ('destination', 'prefix', 'objectKey')}
         if details.get('schemaVersion') != 1 or details.get('runId') != identity:
@@ -696,11 +789,13 @@ def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_err
             raise NotRun('the given publication differs from the marker; check the object named in '+str(marker))
         publication = found
     elif not publication:
-        raise NotRun('no live cleanup marker; give --destination, --prefix and --object-key of the confirmed object')
-    if not all(isinstance(v, str) and v for v in publication.values()):
-        raise NotRun('live cleanup publication needs a destination, prefix and object key')
-    if not publication['objectKey'].startswith(publication['prefix']):
-        raise NotRun('live cleanup object key is outside its prefix')
+        raise NotRun('no live cleanup marker; give --destination, --prefix and --object-key of the confirmed object, '
+                     'or --no-live-publication when the row had none')
+    if publication is not None:
+        if not all(isinstance(v, str) and v for v in publication.values()):
+            raise NotRun('live cleanup publication needs a destination, prefix and object key')
+        if not publication['objectKey'].startswith(publication['prefix']):
+            raise NotRun('live cleanup object key is outside its prefix')
     receipts, errors = {}, {}
     for path in sorted(evidence.glob('*/receipt.json')):
         receipts[path.parent.name] = digest(path)
@@ -711,14 +806,18 @@ def resolve_live_cleanup(owner, checked_run, *, publication=None, guest_only_err
     if unknown:
         raise NotRun('--guest-only-error must be an exact cleanup error of a receipt in this row')
     record = dict(schemaVersion=1, kind='live-cleanup-resolution', run=str(run), runId=identity,
-                  session=owner['session'], publication=publication, objectConfirmedGone=True,
+                  session=owner['session'], publication=publication, objectConfirmedGone=publication is not None,
                   markerPresent=marker.exists(), receipts=receipts, guestOnlyErrors=errors,
                   resolvedAt=now or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()))
+    if publication is None:
+        record['livePublicationPending'] = False
     if (evidence/LIVE_RESOLUTION).exists():
         shutil.copy2(evidence/LIVE_RESOLUTION, evidence/(LIVE_RESOLUTION+'.before-'+uuid.uuid4().hex[:8]))
     # The record first: a crash in between leaves both, which still keeps the guest.
     save(evidence/LIVE_RESOLUTION, record)
-    marker.unlink(missing_ok=True)
+    if publication is not None:
+        # A marker written after a no-publication check stays, and keeps the guest.
+        marker.unlink(missing_ok=True)
     return record
 
 
@@ -830,6 +929,7 @@ def recover_guest(config, owner, out, cells):
         if lent.get('run') == str(run) and lent.get('session') == session:
             lends.append((lent.get('updated', ''), path.parent, lent))
     safe_steps = ('cleaned', 'recovered', 'recovered_nothing_lent', 'provision_failed_abandoned')
+    lend_step = None
     if lends:
         _, folder, lent = max(lends, key=lambda item:item[0])
         if lent.get('step') not in safe_steps:
@@ -850,6 +950,7 @@ def recover_guest(config, owner, out, cells):
                         and provision.get('cleanupAllowed') is True
                         and provision.get('state') in ('cleanup_pending', 'cleanup_confirmed')):
                     raise NotRun('guest missing with unresolved Proton carry-back; inspect retained lend receipts')
+        lend_step = lent.get('step')
         # The guest is no longer the sole current copy. This also handles old
         # expired leases whose VM/run directory has already been retired.
         if proton.status()['state'] != 'free':
@@ -864,8 +965,9 @@ def recover_guest(config, owner, out, cells):
         resolved = bool(resolution) and resolution['receipts'].get(path.parent.name) == digest(path)
         # A live destination that still holds an object or share link keeps its History row and credential
         # reference in this guest. Retiring would discard the only way to remove it (never retire) until a
-        # person confirms the object is gone and records it (LIVE_RESOLUTION).
-        if environment.get('unresolved_live_cleanup') and not resolved:
+        # person confirms the object is gone and records it (LIVE_RESOLUTION). A record that the row had
+        # no publication pending never clears this gate.
+        if environment.get('unresolved_live_cleanup') and not (resolved and resolution['publication'] is not None):
             raise NotRun('guest retained: live remote cleanup unresolved in '+str(path)+'; resolve it before recovery')
         # The receipt's own record of which cleanup errors only the guest holds (the guest was unreachable
         # or its resident refused to quit). Retire only when every error is one of those.
@@ -875,12 +977,30 @@ def recover_guest(config, owner, out, cells):
         if (any(error not in guest_local for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
-    if (run/'state.json').exists():
+    if ((run/'state.json').exists() and (evidence/'completion-manifest.json').exists()
+            and (os.path.lexists(run/'overlay-cleanup.json') or not os.path.lexists(run/'disk.qcow2'))):
+        # An earlier retirement got as far as guarded cleanup (prepared or completed), then stopped or its lease
+        # release refused. Finish or re-verify it against its own manifest; retiring again would write new
+        # evidence that no longer matches the cleanup receipt.
+        lab.cleanup_overlay(run, evidence_manifest=evidence/'completion-manifest.json',
+                            images_root=Path(lab.state(run)['golden']).parents[1])
+        guest = 'cleanup finished or re-checked from the earlier manifest'
+    elif (run/'state.json').exists():
         # retire uses exact QEMU/overlay ownership and the existing evidence gate.
         retire(run, evidence, cells)
+        guest = 'retired'
     elif run.exists():
         raise NotRun('guest retained: missing state.json; inspect exact overlay before recovery')
-    save(out/'guest-recovered.json', dict(session=session, run=str(run), evidence=str(evidence)))
+    else:
+        guest = 'run directory already gone'
+    # Why the guest could go: each gate and what cleared it.
+    summary = dict(session=session, run=str(run), evidence=str(evidence), guest=guest, protonLend=lend_step)
+    if resolution:
+        summary['resolution'] = dict(path=str(evidence/LIVE_RESOLUTION), sha256=digest(evidence/LIVE_RESOLUTION),
+                                     publication=resolution['publication'],
+                                     guestOnlyErrors=resolution['guestOnlyErrors'])
+    save(out/'guest-recovered.json', summary)
+    return summary
 
 
 @contextmanager
@@ -894,32 +1014,50 @@ def recovery_mutex():
         yield
 
 
-def recover_stale_guest(config, out):
-    """Before waiting, reconcile one dead worker's durable slot. Never steal a live lease."""
+def recover_stale_guest(config, out, *, checked_run=None, by='nightly'):
+    """Before waiting, reconcile one dead worker's durable slot. Never steal a live lease.
+
+    The nightly calls this before every row; ``--recover-retained`` calls it for the run a person checked
+    (``checked_run``). Each recovery leaves one record in locks/history/recovered naming the slot's files,
+    the reason it was kept and the gates that cleared.
+    """
     from tools.lab.desktop_lock import Desktop
     locks = Path.home()/'putgd-lab/locks'
     slot = locks/'tier1-guest.lock.d'
     if not slot.exists():
+        if checked_run:
+            raise NotRun('no retained nightly guest slot on this builder')
         return
     try:
         with recovery_mutex():
             owner = retained_owner()
+            if checked_run and Path(owner['run']).name != checked_run:
+                raise NotRun('the retained slot holds '+Path(owner['run']).name+', not the run you checked ('+checked_run+')')
             desktop = Desktop(locks, config['host'])
             state = desktop.status()
             if state['state'] != 'free' and (state.get('lock', {}).get('session') != owner['session']
                     or state.get('lock', {}).get('owner') != 'nightly-desktops' or not state.get('breakable')):
-                raise NotRun('nightly guest recovery refused: desktop lease is live or belongs to another session')
+                raise NotRun('nightly guest recovery refused: desktop lease is live or belongs to another session '
+                             '(a kept lease turns stale 15 minutes after its last heartbeat)')
             recovery = out/'stale-recovery'
             recovery.mkdir(mode=0o700)
-            recover_guest(config, owner, recovery, {})
+            summary = recover_guest(config, owner, recovery, {})
             # Ordinary checked release refuses any unexplained host leftovers.
+            released = None
             if state['state'] != 'free':
                 save(recovery/'desktop-release.json', desktop.release(owner['session'], verified_clean=True,
                      not_mine=controller_ssh_identities if config['host'] == 'd69' else []))
-            save(locks/'history/recovered'/(uuid.uuid4().hex+'.json'), owner)
+                released = str(recovery/'desktop-release.json')
+            files = [name for name in ('session', 'owner.json', 'retained.json') if os.path.lexists(slot/name)]
+            stamp = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+            save(locks/'history/recovered'/(stamp+'-'+Path(owner['run']).name+'-'+uuid.uuid4().hex[:8]+'.json'),
+                 dict(schemaVersion=1, kind='tier1-slot-recovered', recoveredBy=by, recoveredAt=stamp,
+                      owner=owner, keptReason=owner.get('reason'), slotFiles=files, cleared=summary,
+                      recovery=str(recovery), desktopRelease=released))
             for name in ('session', 'owner.json', 'retained.json'):
                 (slot/name).unlink(missing_ok=True)
             slot.rmdir()
+            return summary
     except NotRun:
         raise
     except Exception as error:
@@ -927,6 +1065,17 @@ def recover_stale_guest(config, out):
         save(out/'stale-recovery-error.json', dict(type=type(error).__name__))
         raise NotRun('nightly guest recovery incomplete; inspect '+str(out/'stale-recovery-error.json')+
                      ' and tier1-guest.lock.d; explicit recovery required') from None
+
+
+def recover_retained(config, checked_run):
+    """--recover-retained: recover the slot now, exactly as the next nightly would, for the run a person checked."""
+    owner = retained_owner()
+    # Refuse a wrong run or a live client before writing anything into the row.
+    run, evidence = settled_overlay(owner, checked_run)
+    out = evidence/'operator-recovery'/(time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())+'-'+uuid.uuid4().hex[:8])
+    out.mkdir(mode=0o700, parents=True)
+    with recovery_deadline():
+        return recover_stale_guest(config, out, checked_run=checked_run, by='operator')
 
 
 @contextmanager
@@ -1760,16 +1909,26 @@ def main():
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     operator = parser.add_argument_group('a nightly guest kept for live cleanup (docs/lab/remote-builders.md); run on its builder')
     operator.add_argument('--resolve-live-cleanup', metavar='RUN', help='record that you confirmed the remote object of run RUN (n<8 hex>) is gone, then remove the marker')
+    operator.add_argument('--no-live-publication', action='store_true', help='with --resolve-live-cleanup: the row has no marker and no receipt flag; record only the --guest-only-error values you checked')
     operator.add_argument('--destination', help='when the marker is already gone')
     operator.add_argument('--prefix', help='when the marker is already gone')
     operator.add_argument('--object-key', help='when the marker is already gone')
     operator.add_argument('--guest-only-error', action='append', default=[], metavar='ERROR', help='an exact receipt cleanup error you checked is held only in the guest')
     operator.add_argument('--check-live-cleanup', action='store_true', help='pause the guest VM so nothing in it can publish; for S3, then check that the object, its prefix and its versions are gone')
     operator.add_argument('--unaudited-attempt', action='append', default=[], metavar='NAME', help='record an attempt killed before its terminal proof as unaudited')
+    operator.add_argument('--recover-retained', metavar='RUN', help='recover the retained slot of run RUN now, with every check the next nightly makes, and release its desktop lease')
     args = parser.parse_args()
     given = dict(destination=args.destination, prefix=args.prefix, objectKey=args.object_key)
     if any(given.values()) and not all(given.values()):
         parser.error('--destination, --prefix and --object-key go together')
+    for run_name in (args.recover_retained, args.resolve_live_cleanup):
+        if run_name is not None and not re.fullmatch(r'n[0-9a-f]{8}', run_name):
+            parser.error('RUN is a nightly run directory name such as n1234abcd')
+    if args.recover_retained is not None and (args.check_live_cleanup or args.resolve_live_cleanup or args.unaudited_attempt
+                                              or any(given.values()) or args.guest_only_error or args.no_live_publication):
+        parser.error('--recover-retained runs alone, after the records it needs')
+    if args.no_live_publication and (not args.resolve_live_cleanup or any(given.values()) or args.check_live_cleanup):
+        parser.error('--no-live-publication goes with --resolve-live-cleanup alone and names no publication')
     if args.check_live_cleanup:
         from tools.lab import lab
         try:
@@ -1797,6 +1956,8 @@ def main():
             if guest_paused(run) != paused:
                 raise NotRun('the guest VM was resumed during the wait; run --check-live-cleanup again')
             result = dict(guestPaused=True)
+            if pause_record(run, 'exited') == paused:
+                result['guestExited'] = True
             if publication['destination'] == 's3':
                 result.update(check_s3_absent(publication))
         except NotRun as error:
@@ -1810,12 +1971,26 @@ def main():
             with recovery_mutex():
                 owner = retained_owner()
                 if args.resolve_live_cleanup:
-                    frozen_overlay(owner, args.resolve_live_cleanup)
+                    if args.no_live_publication and not args.guest_only_error:
+                        raise NotRun('nothing to record: give the --guest-only-error values you checked, or run --recover-retained')
+                    resolution_overlay(owner, args.resolve_live_cleanup, args.no_live_publication)
                 for name in args.unaudited_attempt:
                     print(json.dumps(record_unaudited_attempt(owner, name), indent=2))
                 if args.resolve_live_cleanup:
                     print(json.dumps(resolve_live_cleanup(owner, args.resolve_live_cleanup, publication=given if all(given.values()) else None,
-                                                          guest_only_errors=args.guest_only_error), indent=2))
+                                                          guest_only_errors=args.guest_only_error,
+                                                          no_live_publication=args.no_live_publication), indent=2))
+        except NotRun as error:
+            raise SystemExit(str(error)) from None
+        return
+    if args.recover_retained is not None:
+        try:
+            config = json.loads(private_file(args.config).read_text())
+            hosts = [host for host, builder in config['builders'].items()
+                     if socket.gethostname() in builder.get('hostnames', ())]
+            if len(hosts) != 1:
+                raise NotRun('this machine is not exactly one configured nightly builder')
+            print(json.dumps(recover_retained(dict(config['builders'][hosts[0]], host=hosts[0]), args.recover_retained), indent=2))
         except NotRun as error:
             raise SystemExit(str(error)) from None
         return
