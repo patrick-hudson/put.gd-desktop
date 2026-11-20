@@ -24,8 +24,8 @@ public:
  textjob::Options options() const {std::lock_guard lock(mutex_);return options_;}
  QJsonObject capabilities() const override {return report;}
  QList<textjob::Language> languages() const override {return installed;}
- TextResult recognize(const QImage& grey,const textjob::Options& options,Error& failure,TextJob::Cancel cancel) override {
-  {std::lock_guard lock(mutex_);image_=grey;options_=options;}
+ TextResult recognize(QImage image,const textjob::Options& options,Error& failure,TextJob::Cancel cancel) override {
+  {std::lock_guard lock(mutex_);image_=std::move(image);options_=options;}
   ++calls;running.store(true);
   while(hold.load()&&!(cancel&&cancel->load()))QThread::msleep(2);
   running.store(false);

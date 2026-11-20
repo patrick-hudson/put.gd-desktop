@@ -1136,7 +1136,7 @@ void EditorWindow::copyRecognizedText(bool all,TextDone done){
  const auto text=all?text_->allText():text_->layer().selectedText();
  if(text.isEmpty()){if(done)done({"text_unavailable",all?"No text was found":"Select words to copy",{}},{});return;}
  if(!textCopier_){textOutcome({},{"clipboard_unavailable","The clipboard is not available",{}},0,done);return;}
- const int characters=int(text.size());const auto what=QLocale().toString(characters)+(characters==1?" character":" characters");
+ const int characters=int(textjob::characters(text));const auto what=QLocale().toString(characters)+(characters==1?" character":" characters");
  textCopier_(text,[g=QPointer<EditorWindow>(this),what,characters,done](Error error){if(g)g->textOutcome(what,error,characters,done);else if(done)done(error,{});});
 }
 void EditorWindow::copyCode(int index,TextDone done){
@@ -1144,7 +1144,7 @@ void EditorWindow::copyCode(int index,TextDone done){
  if(index<0||index>=codes.size()){if(done)done({"invalid_request","There is no code with that index",{}},{});return;}
  if(codes.at(index).binary){if(done)done({"code_binary","A binary code is neither copied nor shown",{}},{});return;}
  if(!textCopier_){textOutcome({},{"clipboard_unavailable","The clipboard is not available",{}},0,done);return;}
- const auto text=codes.at(index).text;const int characters=int(text.size());
+ const auto text=codes.at(index).text;const int characters=int(textjob::characters(text));
  textCopier_(text,[g=QPointer<EditorWindow>(this),characters,done](Error error){if(g)g->textOutcome("the code",error,characters,done);else if(done)done(error,{});});
 }
 void EditorWindow::openCode(int index,TextDone done){

@@ -146,16 +146,12 @@ void TextService::acquired(const QString& id,Error error,Load load){
    :textjob::defaultLanguages(guard->host_.settings().textRecognitionLanguages,guard->host_.locale?guard->host_.locale():QLocale::system().name(),guard->backend_->languages());
   auto result=std::make_shared<TextResult>();auto failure=std::make_shared<Error>();
   guard->host_.background([backend=guard->backend_,load,options,result,failure,cancel=guard->cancel_]{
-   QImage grey;
-   {
-    // The colour copy goes as soon as the grey one exists.
-    auto pixels=load(*failure);if(*failure)return;
-    if(pixels.isNull()){*failure={"source_unsupported","This source holds no image to read",{}};return;}
-    if(qint64(pixels.width())*pixels.height()>textjob::maximumInputPixels||pixels.width()>textjob::maximumEdge||pixels.height()>textjob::maximumEdge){*failure=textjob::failure("input_excessive");return;}
-    grey=TextJob::grey(pixels);
-   }
+   auto pixels=load(*failure);if(*failure)return;
+   if(pixels.isNull()){*failure={"source_unsupported","This source holds no image to read",{}};return;}
+   if(qint64(pixels.width())*pixels.height()>textjob::maximumInputPixels||pixels.width()>textjob::maximumEdge||pixels.height()>textjob::maximumEdge){*failure=textjob::failure("input_excessive");return;}
    if(cancel->load()){*failure=textjob::failure("cancelled");return;}
-   *result=backend->recognize(grey,options,*failure,cancel);
+   // Taken by the job, which lets it go once its grey and colour planes are written.
+   *result=backend->recognize(std::move(pixels),options,*failure,cancel);
   },[guard,id,result,failure]{if(guard)guard->recognized(id,*failure,result);});
  });
 }
@@ -176,7 +172,7 @@ void TextService::recognized(const QString& id,Error error,std::shared_ptr<TextR
 }
 void TextService::complete(const QString& id,std::shared_ptr<TextResult> result,const QString& copyStatus){
  op_.advance(OperationState::Completed);op_.phase="completed";op_.copyStatus=copyStatus;
- QJsonObject record{{"operationId",id},{"state","completed"},{"source",request_.source},{"characterCount",double(result->text.toUcs4().size())},{"codeCount",result->textCodes()},{"copyStatus",copyStatus},
+ QJsonObject record{{"operationId",id},{"state","completed"},{"source",request_.source},{"characterCount",double(textjob::characters(result->text))},{"codeCount",result->textCodes()},{"copyStatus",copyStatus},
   {"truncated",result->truncated},{"banded",result->banded},{"languagesUsed",strings(result->languagesUsed)},{"languagesSkipped",strings(result->languagesSkipped)},
   {"timings",QJsonObject{{"spawnMs",double(result->spawnMs)},{"engineStartMs",double(result->engineStartMs)},{"recognizeMs",double(result->recognizeMs)},{"copyMs",double(copyMs_)},{"totalMs",double(result->totalMs)}}}};
  if(request_.keepResult)keep(id,*result);

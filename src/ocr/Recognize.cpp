@@ -43,6 +43,18 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
  result.recognition.codes=readCodes(image);
  QList<Quad> areas;for(const auto& code:std::as_const(result.recognition.codes))areas.append(code.quad);
  result.timings.codesMs=stage.elapsed();
+ // Emoji (#1748): Tesseract has no emoji, so it reads one as stray symbols or
+ // glued letters. Colour glyphs are named from the templates now, before any
+ // engine starts, so the pages read here are given back before recognition
+ // reaches its peak; what was found replaces Tesseract's reading at the end.
+ EmojiScan emoji;
+ if(options.colour.valid()&&options.emojiTemplates&&options.emojiTemplates->count()>0){
+  stage.restart();
+  emoji=findEmoji(options.colour,*options.emojiTemplates,options.emoji,[&]{return options.emojiBudgetMs>0&&total.elapsed()>=options.emojiBudgetMs;});
+  options.emojiTemplates->release();
+  result.emoji=int(emoji.hits.size());result.emojiCandidates=emoji.candidates;result.emojiCut=emoji.cut;
+  result.timings.emojiMs=stage.elapsed();
+ }
  result.profile=measure(image,areas);
  const int threads=workerThreads(options.threads);
 
@@ -326,6 +338,8 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
   result.recognition.scale=std::max(result.recognition.scale,p.plan.scale);result.recognition.bands+=int(p.plan.bands.size());
  }
  result.timings.recognitionMs=stage.elapsed();
+ // Emoji, found before recognition, take the place of what Tesseract made of them.
+ placeEmoji(result.recognition,emoji.hits);
  joinUrls(result.recognition);
  applyCopyFilter(result.recognition,image,options.filter);
  result.text=copiedText(result.recognition,&result.lineTops);
@@ -335,7 +349,7 @@ JobResult recognizeImage(const GreyView& image,const JobOptions& options){
 TextResult toTextResult(const JobResult& job,const JobOptions& options){
  TextResult out;out.text=job.text;out.lineTops=job.lineTops;out.truncated=job.truncated;out.banded=job.recognition.banded;
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
- out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs;
+ out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiMs;
  const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence))};};
  for(const auto& w:job.recognition.words){
   if(options.words&&w.kept)out.words.append(word(w));

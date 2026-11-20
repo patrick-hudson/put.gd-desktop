@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 
 namespace putgd::ocr {
 namespace {
@@ -19,6 +20,7 @@ double overlap(const QRect& a,const QRect& b){
  const double smaller=std::min(double(a.width())*a.height(),double(b.width())*b.height());
  return smaller>0?double(i.width())*i.height()/smaller:0;
 }
+qint64 area(const QRect& r){return r.isEmpty()?0:qint64(r.width())*r.height();}
 bool codeSymbol(char32_t c){
  static const char32_t symbols[]=U"{}()[]<>;:=+-*/\\|&!?#$%^~@,.'\"`_";
  for(const auto s:symbols)if(s&&s==c)return true;
@@ -50,6 +52,8 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
   Word word;word.text=textjob::sanitizeText(item.text).trimmed();
   if(word.text.isEmpty())continue;
   word.rect=toSource(item.rect,placement,scale,border,imageWidth,imageHeight);
+  // Symbols only while they still spell the text the filter left.
+  if(word.text==item.text)for(auto symbol:item.symbols){symbol.rect=toSource(symbol.rect,placement,scale,border,imageWidth,imageHeight);word.symbols.append(symbol);}
   word.confidence=item.confidence;word.line=lineBase+item.line;word.seamOrder=k;
   if(seam){
    if(word.rect.top()<=placement.top+1)continue;
@@ -60,7 +64,7 @@ int mergeBand(Recognition& job,const BandText& band,const Band& placement,const 
      duplicate=true;
      if(!sameLine.contains(item.line))sameLine.insert(item.line,earlier.line);
      earlier.seamOrder=k;
-     if(word.confidence>earlier.confidence){earlier.text=word.text;earlier.rect=word.rect;earlier.confidence=word.confidence;}
+     if(word.confidence>earlier.confidence){earlier.text=word.text;earlier.rect=word.rect;earlier.confidence=word.confidence;earlier.symbols=word.symbols;}
      break;
     }
    }
@@ -118,6 +122,8 @@ void joinUrls(Recognition& job){
    const bool more=continues&&((joints.contains(last.text.back())&&(next.isDigit()||next.isLower()))||QStringLiteral("/?#&=").contains(next));
    const bool domain=address.match(last.text).hasMatch()&&(next.isDigit()||next.isLower());
    if(sameLine&&(start||more||domain)){
+    // Spelled by both words' symbols, or by none when either has none.
+    if(!last.symbols.isEmpty()&&!word.symbols.isEmpty())last.symbols+=word.symbols;else last.symbols.clear();
     last.text+=word.text;last.rect=last.rect.united(word.rect);last.confidence=std::min(last.confidence,word.confidence);
     continue;
    }
@@ -126,9 +132,80 @@ void joinUrls(Recognition& job){
  }
  job.words=std::move(out);
 }
+void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
+ for(const auto& hit:hits){
+  const QRect glyph=hit.rect;
+  // The characters the glyph covers leave their words.
+  for(int i=0;i<job.words.size();){
+   const auto word=job.words[i];
+   if(word.emoji||!word.rect.intersects(glyph)){++i;continue;}
+   if(word.symbols.isEmpty()){
+    if(area(word.rect.intersected(glyph))*2>=area(word.rect))job.words.removeAt(i);else ++i;
+    continue;
+   }
+   QList<Word> pieces;Word piece;int at=0;bool covered=false;
+   const auto flush=[&]{if(!piece.symbols.isEmpty()){pieces.append(piece);}piece=Word{};};
+   for(const auto& symbol:word.symbols){
+    const auto text=word.text.mid(at,symbol.length);at+=symbol.length;
+    if(area(symbol.rect.intersected(glyph))*5>=area(symbol.rect)*2){covered=true;flush();continue;}
+    if(piece.symbols.isEmpty()){piece=word;piece.text.clear();piece.symbols.clear();piece.rect=symbol.rect;piece.attach=word.attach&&pieces.isEmpty();}
+    piece.text+=text;piece.symbols.append(symbol);piece.rect=piece.rect.united(symbol.rect);
+   }
+   flush();
+   if(!covered){++i;continue;}
+   job.words.removeAt(i);
+   for(int k=0;k<pieces.size();++k)job.words.insert(i+k,pieces[k]);
+   i+=int(pieces.size());
+  }
+  // The line it belongs to: one it shares at least 40% of its height with,
+  // the nearest across, within three glyph widths.
+  int line=-1;qint64 nearest=std::numeric_limits<qint64>::max();int bestOverlap=0;
+  for(int l=0;l<job.lines.size();++l){
+   const auto& r=job.lines[l].rect;
+   const int overlap=std::min(r.bottom(),glyph.bottom())-std::max(r.top(),glyph.top())+1;
+   if(overlap*5<2*std::min(r.height(),glyph.height()))continue;
+   const qint64 across=std::max({0,r.left()-glyph.right()-1,glyph.left()-r.right()-1});
+   if(across>3*qint64(glyph.width()))continue;
+   if(across<nearest||(across==nearest&&overlap>bestOverlap)){line=l;nearest=across;bestOverlap=overlap;}
+  }
+  if(line<0){
+   // A line of its own, after the last line above it in its column (or the
+   // last above it at all), in that line's block.
+   int after=-1;
+   for(int pass=0;pass<2&&after<0;++pass)for(int l=0;l<job.lines.size();++l){
+    const auto& r=job.lines[l].rect;
+    const bool column=r.left()<=glyph.right()&&glyph.left()<=r.right();
+    if((pass==0&&!column)||r.center().y()>glyph.center().y())continue;
+    if(after<0||r.bottom()>=job.lines[after].rect.bottom())after=l;
+   }
+   line=after+1;
+   const int block=after>=0?job.lines[after].block:(job.lines.isEmpty()?0:job.lines.first().block);
+   job.lines.insert(line,Line{glyph,block,after>=0?job.lines[after].band:0});
+   for(auto& w:job.words)if(w.line>=line)++w.line;
+  }else job.lines[line].rect=job.lines[line].rect.united(glyph);
+  // Its place among the line's words, in the line's own direction.
+  int first=0;while(first<job.words.size()&&job.words[first].line<line)++first;
+  int end=first;while(end<job.words.size()&&job.words[end].line==line)++end;
+  const bool rightToLeft=end-first>=2&&job.words[first].rect.center().x()>job.words[end-1].rect.center().x();
+  int at=first;
+  while(at<end&&(rightToLeft?job.words[at].rect.center().x()>glyph.center().x():job.words[at].rect.center().x()<glyph.center().x()))++at;
+  Word emoji;emoji.text=hit.text;emoji.rect=glyph;emoji.line=line;emoji.lineHeight=job.lines[line].rect.height();emoji.emoji=true;
+  emoji.confidence=float(std::clamp(100*(1-5*hit.distance),1.0,99.0));
+  // Almost no gap to a neighbour, under a quarter of the glyph's height: no space
+  // between them. Measured on rendered lines: a glued emoji's gap was a median
+  // 0.15 of its height, and one after a space 0.25 or more but for 1 in 248.
+  const auto gap=[&](const QRect& before,const QRect& after){return rightToLeft?before.left()-after.right()-1:after.left()-before.right()-1;};
+  const int tight=std::max(1,glyph.height()/4);
+  if(at>first&&gap(job.words[at-1].rect,glyph)<tight)emoji.attach=true;
+  if(at<end&&gap(glyph,job.words[at].rect)<tight)job.words[at].attach=true;
+  job.words.insert(at,emoji);
+ }
+}
 void applyCopyFilter(Recognition& job,const GreyView& source,const CopyFilter& filter){
  for(auto& word:job.words){
   word.kept=true;
+  // An emoji the colour plane named is copied whatever Tesseract would make of its pixels.
+  if(word.emoji)continue;
   if(word.lineHeight<filter.minimumLineHeight){word.kept=false;continue;}
   const auto points=word.text.toUcs4();
   if(points.size()<=2&&word.confidence<filter.confidence){word.kept=false;continue;}
@@ -156,7 +233,7 @@ QString copiedText(const Recognition& job,QList<int>* lineTops){
    if(line>=0){text+=wordBlock!=block?QStringLiteral("\n\n"):QStringLiteral("\n");if(wordBlock!=block&&lineTops)lineTops->append(top);}
    if(lineTops)lineTops->append(top);
    line=word.line;block=wordBlock;
-  }else text+=QLatin1Char(' ');
+  }else if(!word.attach)text+=QLatin1Char(' ');
   text+=word.text;
  }
  return text;

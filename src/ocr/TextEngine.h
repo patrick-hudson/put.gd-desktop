@@ -24,7 +24,7 @@ struct EngineOptions {
 };
 // One band's words and lines, in Tesseract's reading order, in the band's pixels.
 struct BandText {
- struct Item { QString text;QRect rect;float confidence=0;int line=0; };
+ struct Item { QString text;QRect rect;float confidence=0;int line=0;QList<Symbol> symbols={}; };
  struct LineBox { QRect rect;int block=0; };
  QList<LineBox> lines;
  QList<Item> words;

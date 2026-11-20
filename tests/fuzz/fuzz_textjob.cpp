@@ -5,11 +5,21 @@
 #include "FuzzSupport.h"
 #include "core/TextJobProtocol.h"
 #include <QJsonDocument>
+#include <string>
 using namespace putgd;
 namespace tj = putgd::textjob;
 
 namespace {
-bool forbidden(const QString& text, bool joinersAllowed) {
+bool forbidden(const QString& input, bool joinersAllowed) {
+    // Recognized text keeps the tags of exactly three flags (England, Scotland, Wales).
+    QString text = input;
+    if (joinersAllowed)
+        for (const auto* region : {U"gbeng", U"gbsct", U"gbwls"}) {
+            std::u32string flag = U"\U0001F3F4";
+            for (const char32_t* c = region; *c; ++c) flag += char32_t(0xE0000 + *c);
+            flag += U'\U000E007F';
+            text.remove(QString::fromUcs4(flag.data(), qsizetype(flag.size())));
+        }
     for (qsizetype i = 0; i < text.size(); ++i) {
         char32_t c = text.at(i).unicode();
         if (text.at(i).isHighSurrogate() && i + 1 < text.size() && text.at(i + 1).isLowSurrogate()) { c = QChar::surrogateToUcs4(text.at(i), text.at(i + 1)); ++i; }
@@ -48,11 +58,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         const auto bytes = in.part();
         const qint64 total = qint64(in.number(0xffff)) * in.number(0xffff);
         if (tj::decodeInputHeader(bytes, total, header)) {
-            FUZZ_REQUIRE(tj::admitted(header.width, header.height, header.stride));
+            FUZZ_REQUIRE(tj::admitted(header.width, header.height, header.stride, header.colourStride));
             FUZZ_REQUIRE(tj::encodeInputHeader(header) == bytes.left(tj::inputHeaderBytes));
-            FUZZ_REQUIRE(tj::inputBytes(header) + tj::inputHeaderBytes == total);
+            FUZZ_REQUIRE(tj::inputBytes(header) == total);
         }
-        tj::admitted(int(in.number(0xffff)) - 100, int(in.number(0xffff)), int(in.number(0xffff)));
+        tj::admitted(int(in.number(0xffff)) - 100, int(in.number(0xffff)), int(in.number(0xffff)), int(in.number(0xffff)));
         return 0;
     }
     const auto document = QJsonDocument::fromJson(in.rest());
@@ -67,7 +77,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     default: {
         // The output file, as the helper wrote it. What decodes is bounded and clean, and
         // survives the encoder's cap.
-        const auto header = tj::InputHeader{int(object["w"].toInt(200)), int(object["h"].toInt(100)), int(object["s"].toInt(200))};
+        const auto header = tj::InputHeader{int(object["w"].toInt(200)), int(object["h"].toInt(100)), int(object["s"].toInt(200)), int(object["c"].toInt(600))};
         tj::Options options;
         options.words = choice & 1;
         options.candidates = choice & 2;

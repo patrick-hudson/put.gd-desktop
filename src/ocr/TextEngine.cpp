@@ -237,7 +237,23 @@ BandText TextEngine::recognize(const GreyImage& band,double scale,int deadlineMs
    // After a deadline, words it never reached have no text.
    if(!text||!*text.get())continue;
    int l=0,t=0,r=0,b=0;it->BoundingBox(tesseract::RIL_WORD,&l,&t,&r,&b);
-   out.words.append({QString::fromUtf8(text.get()),QRect(l,t,std::max(1,r-l),std::max(1,b-t)),it->Confidence(tesseract::RIL_WORD),int(out.lines.size()-1)});
+   BandText::Item item{QString::fromUtf8(text.get()),QRect(l,t,std::max(1,r-l),std::max(1,b-t)),it->Confidence(tesseract::RIL_WORD),int(out.lines.size()-1),{}};
+   // The word's characters, in its own order (#1748: an emoji glued to a word
+   // takes only the characters its glyph covers). Kept only when they spell
+   // the word exactly.
+   {
+    tesseract::ResultIterator symbol(*it);int spelled=0;
+    for(;;){
+     std::unique_ptr<char[]> character(symbol.GetUTF8Text(tesseract::RIL_SYMBOL));
+     if(!character||!*character.get()){item.symbols.clear();break;}
+     int sl=0,st=0,sr=0,sb=0;symbol.BoundingBox(tesseract::RIL_SYMBOL,&sl,&st,&sr,&sb);
+     const int length=int(QString::fromUtf8(character.get()).size());
+     item.symbols.append({QRect(sl,st,std::max(1,sr-sl),std::max(1,sb-st)),symbol.Confidence(tesseract::RIL_SYMBOL),length});spelled+=length;
+     if(symbol.IsAtFinalElement(tesseract::RIL_WORD,tesseract::RIL_SYMBOL)||!symbol.Next(tesseract::RIL_SYMBOL))break;
+    }
+    if(spelled!=item.text.size())item.symbols.clear();
+   }
+   out.words.append(std::move(item));
   }while(it->Next(tesseract::RIL_WORD));
  }
  api_->Clear();

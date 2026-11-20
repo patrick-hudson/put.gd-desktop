@@ -11,8 +11,9 @@ namespace putgd {
 // resident and for the editor. The contract is in TextJobProtocol.h; this is
 // its parent side:
 //  - the deadline is fixed before the input is prepared, 20 s at most;
-//  - the pixels go in a sealed memfd (header, then 8-bit grey) the parent fills
-//    with write() and closes once the child has started; the result comes back
+//  - the pixels go in a sealed memfd (header, 8-bit grey, then 8-bit RGB) the
+//    parent fills strip by strip and closes once the child has started; the
+//    image itself is let go before the helper runs; the result comes back
 //    in a second memfd, read only after the authenticated checkpoint and a zero
 //    exit. Nothing is staged in a directory;
 //  - the child gets the two memfds at fixed descriptor numbers, every other
@@ -34,15 +35,13 @@ public:
  // by default the fixed table for this user and installation.
  void setDataDirectories(QStringList directories) {dataDirectories_=std::move(directories);}
  QStringList dataDirectories() const;
- // What recognition reads: alpha flattened onto white, then 8-bit grey. The
- // caller applies the crop and any Redact mark first.
- static QImage grey(const QImage&);
  // A job is running in this process.
  static bool busy();
- // `grey` is Format_Grayscale8 of at most 24 megapixels. On failure the result
- // is empty and error holds one code of textjob::parentErrorCodes(), a child
- // code or `cancelled`.
- TextResult recognize(const QImage& grey,const Options&,Error&,Cancel={}) const;
+ // `image` is any format of at most 24 megapixels; the caller applies the crop
+ // and any Redact mark first. Recognition reads its alpha flattened onto white,
+ // as 8-bit grey and as 8-bit RGB. On failure the result is empty and error
+ // holds one code of textjob::parentErrorCodes(), a child code or `cancelled`.
+ TextResult recognize(QImage image,const Options&,Error&,Cancel={}) const;
 private:
  QString helperPath_;
  int timeoutMs_;

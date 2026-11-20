@@ -55,7 +55,7 @@
    "description": "copied, suppressed (the user changed the clipboard after acceptance, or a later explicit copy took its place) or failed; no_result when nothing was found or the operation did not complete; not_requested with copy false."
   },
   "helper": {
-   "description": "Control frames between TextJob (the parent) and putgd-ocr, on the image worker's framed UiControl transport: bootstrap, ready, activate, checkpoint, checkpointAccepted. The input is a sealed memfd at descriptor 3: a 32-byte little-endian header (the bytes PGTJ, version 1, width, height, stride, three zero words) and then stride*height bytes of 8-bit grey. The output is a memfd at descriptor 4 holding helper.output.",
+   "description": "Control frames between TextJob (the parent) and putgd-ocr, on the image worker's framed UiControl transport: bootstrap, ready, activate, checkpoint, checkpointAccepted. The input is a sealed memfd at descriptor 3: a 32-byte little-endian header (the bytes PGTJ, version 2, width, height, stride, colour stride, two zero words), then stride*height bytes of 8-bit grey, then colourStride*height bytes of 8-bit RGB (the colour finds emoji), both flattened onto white. The output is a memfd at descriptor 4 holding helper.output.",
    "$defs": {
     "bootstrap": {
      "type": "object",
@@ -70,12 +70,13 @@
       "input": {
        "type": "object",
        "additionalProperties": false,
-       "required": ["bytes", "width", "height", "stride"],
+       "required": ["bytes", "width", "height", "stride", "colourStride"],
        "properties": {
         "bytes": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
         "width": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
         "height": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
-        "stride": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"}
+        "stride": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
+        "colourStride": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"}
        },
        "description": "The input memfd: its exact size and the image in it. At most 24 megapixels."
       },

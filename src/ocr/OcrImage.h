@@ -24,6 +24,14 @@ struct GreyImage {
  GreyView view()const{return {reinterpret_cast<const uint8_t*>(pixels.constData()),width,height,width};}
  uint8_t* row(int y){return reinterpret_cast<uint8_t*>(pixels.data())+qsizetype(y)*width;}
 };
+// One character of a word as Tesseract read it: its box and confidence, and
+// how many UTF-16 units of the word's text it is. A word's symbols, in order,
+// spell its text exactly; a word whose symbols do not has none.
+struct Symbol {
+ QRect rect;          // source pixels (band pixels inside a BandText)
+ float confidence=0;
+ int length=0;
+};
 struct Word {
  QString text;
  QRect rect;          // source pixels
@@ -32,6 +40,9 @@ struct Word {
  int lineHeight=0;    // its line's box height in source pixels
  bool kept=true;      // passes the copy filters
  double seamOrder=-1; // while merging a seam: the word's place in the engine's logical order
+ QList<Symbol> symbols={};
+ bool emoji=false;    // an emoji glyph the colour plane named (#1748), not Tesseract's
+ bool attach=false;   // joins the word before it with no space
 };
 struct Line {
  QRect rect;          // source pixels

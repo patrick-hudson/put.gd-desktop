@@ -31,6 +31,8 @@ private slots:
   QCOMPARE(error.code,code);
   if(code.isEmpty()) {
    QVERIFY2(result.text.contains("image 64x32 stride 64 sum 14336\n"),qPrintable(result.text));
+   // The colour plane too: the same grey 7 as packed RGB (#1748).
+   QVERIFY2(result.text.contains("\ncolour stride 192 sum 43008\n"),qPrintable(result.text));
    QVERIFY2(result.text.contains("\ndescriptors 0,1,2,3,4\n"),qPrintable(result.text));
    QVERIFY2(result.text.contains("\nenvironment LC_ALL,OMP_THREAD_LIMIT,PUTGD_TEXT_DATA\n"),qPrintable(result.text));
    QVERIFY2(result.text.endsWith("input sealed"),qPrintable(result.text));
