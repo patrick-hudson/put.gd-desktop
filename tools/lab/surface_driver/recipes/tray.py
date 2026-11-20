@@ -437,10 +437,10 @@ def _pixel_menu(ctx, labels, glyphs):
             rest = _read_menu(ctx, scrolled, box)
             # Omarchy's card cuts the row at its top edge once scrolled; that row was read whole in
             # the first view, which overlaps this one.
-            cut = tray_pixels.clipped_edges(labels, rest, box, first)
-            rest = [l for l in rest if l['text'] not in cut]
-            ctx.note('tray_menu_scrolled=' + json.dumps(dict(lines=[l['text'] for l in rest], cut_by_edge=cut),
-                                                        ensure_ascii=False))
+            cut = tray_pixels.clipped_top(labels, rest, box, first)
+            rest = [l for l in rest if l is not cut]
+            ctx.note('tray_menu_scrolled=' + json.dumps(dict(lines=[l['text'] for l in rest],
+                                                             cut_by_edge=cut['text'] if cut else None), ensure_ascii=False))
             read = tray_pixels.align(labels, first + rest)
             # Back to the top, then click from a fresh read of that view: rows are clicked only where
             # they are drawn now.

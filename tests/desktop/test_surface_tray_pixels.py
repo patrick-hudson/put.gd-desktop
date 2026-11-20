@@ -180,10 +180,13 @@ class TheOpenMenu(unittest.TestCase):
         first = [dict(text=t, rect=[10, 20 + 30 * i, 100, 12]) for i, t in enumerate(['Capture region', 'Repeat last region', 'Capture window'])]
         view = [dict(text='vapLul e usencup', rect=[10, 12, 100, 8]), dict(text='Capture window', rect=[10, 40, 100, 12]),
                 dict(text='Quit put.gd', rect=[10, 380, 100, 12])]
-        self.assertEqual(tp.clipped_edges(labels, view, box, first), ['vapLul e usencup'])
-        self.assertEqual(tp.clipped_edges(labels, view, box, first[:2]), [])  # the next line wasn't in the first view
-        lower = [dict(view[0], rect=[10, 60, 100, 12])] + view[1:]
-        self.assertEqual(tp.clipped_edges(labels, lower, box, first), [])  # not at the edge
+        self.assertIs(tp.clipped_top(labels, view, box, first), view[0])
+        self.assertIsNone(tp.clipped_top(labels, view, box, first[:2]))  # the next line wasn't in the first view
+        self.assertIsNone(tp.clipped_top(labels, [dict(view[0], rect=[10, 60, 100, 12])] + view[1:], box, first))  # not at the edge
+        # Never at the bottom edge, which shows rows the first view didn't.
+        bottom = [view[1], dict(text='Pin to bar', rect=[10, 385, 100, 12])]
+        self.assertIsNone(tp.clipped_top(labels, bottom, box, first))
+        self.assertEqual(tp.unknown_lines(labels, bottom), ['Pin to bar'])
         # The lookalike alone is not read as Capture region.
         self.assertEqual(tp.align(['Capture region'], [lines[2]]), [None])
 
