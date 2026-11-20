@@ -190,6 +190,35 @@ def snapshot(path):
     return {'ext': ext, 'wlr': wlr, 'active': match, 'protocols': protocols}
 
 
+def activate(path, identifier):
+    """Ask the compositor to activate the one window with this ext identifier.
+
+    The ext list has no requests, so the request goes to the wlr handle with
+    the same app ID and title, exactly as put.gd pairs the two lists; no match
+    or more than one is refused. Returns once the compositor has processed it.
+    """
+    client = Client(path)
+    try:
+        client.snapshot()
+        ext = [w['current'] for w in client.ext.values() if w['current'] and not w.get('closed')
+               and w['current'].get('identifier') == identifier]
+        if len(ext) != 1:
+            raise RuntimeError('no single toplevel has that identifier')
+        handles = [handle for handle, w in client.wlr.items() if w['current'] and not w.get('closed')
+                   and w['current'].get('app_id') == ext[0].get('app_id') and w['current'].get('title') == ext[0].get('title')]
+        if len(handles) != 1 or 'wl_seat' not in client.globals:
+            raise RuntimeError('the toplevel has no single activatable handle')
+        seat = client.new_id('wl_seat')
+        name, offered = client.globals['wl_seat']
+        client.send(message(client.registry, 0, struct.pack('<I', name) + encode_string('wl_seat')
+                            + struct.pack('<II', 1, seat)))
+        client.send(message(handles[0], 4, struct.pack('<I', seat)))  # zwlr_foreign_toplevel_handle_v1.activate
+        client.sync()
+    finally:
+        client.sock.close()
+    return True
+
+
 def socket_path(display=None):
     display = display or os.environ.get('WAYLAND_DISPLAY', 'wayland-0')
     return display if display.startswith('/') else os.path.join(os.environ['XDG_RUNTIME_DIR'], display)

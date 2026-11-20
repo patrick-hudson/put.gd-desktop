@@ -875,7 +875,7 @@ class NightlyTests(unittest.TestCase):
                     patch('tools.lab.desktop_lock.Desktop') as lock:
                 lock.return_value.status.return_value = dict(state='held')
                 with self.assertRaisesRegex(nightly.NotRun, 'awaiting host'):
-                    nightly.await_host(dict(host='d69', rows=[{}], waitSeconds=1200), Path(tmp),
+                    nightly.await_host(dict(host='d69', rows=[{}], waitSeconds=1200), Path(tmp), {},
                                        clock=lambda:clock[0], sleep=sleep, worker_deadline=45)
             self.assertEqual(clock[0], 45)
 
@@ -936,20 +936,78 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
                                  'vtest', root, archive, root, local_workers=Mock())
-            cleanup = command.call_args_list[-1].args[0][-1]
+            # The remote shell removes exactly what was unpacked once its worker exits, keeping its status.
+            worker = next(c.args[0][-1] for c in command.call_args_list if '--worker' in c.args[0][-1])
             inputs = '/repo/inputs/'+root.name
-            self.assertEqual(cleanup, f"rm -f -- '{inputs}/artifacts/packages/put gd.deb' && "
-                                      f'rmdir -- {inputs}/artifacts/packages {inputs}/artifacts {inputs}')
+            cleanup = (f"rm -f -- '{inputs}/artifacts/packages/put gd.deb' && "
+                       f'rmdir -- {inputs}/artifacts/packages {inputs}/artifacts {inputs}')
+            self.assertTrue(worker.endswith('; status=$?; '+cleanup+'; exit $status'))
             self.assertNotIn('-r', cleanup.split())
+            self.assertFalse(any(c.args[0][-1].startswith('rm ') for c in command.call_args_list))
 
-    def test_failed_cleanup_keeps_the_result(self):
+    def test_a_recheck_runs_and_accepts_only_the_selected_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             archive = self.remote_inputs(root)
-            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', RuntimeError('rm failed')]), \
+            builder = dict(ssh=['ssh', 'builder'], root='/repo', config='/private',
+                           rows=[dict(name='Budgie', desktop='fedora-budgie-wayland', live=False)])
+            # The worker returned a row the controller did not select (and has no package for).
+            other = json.dumps([dict(desktop='Ubuntu GNOME', cells={})])
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, other, None]) as command, \
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
-                self.assertEqual(nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
-                                                  'vtest', root, archive, root, local_workers=Mock()), [])
+                rows = nightly.run_host('d69', builder, 'vtest', root, archive, root, local_workers=Mock())
+            worker = next(c.args[0][-1] for c in command.call_args_list if '--worker' in c.args[0][-1])
+            self.assertIn('--row Budgie', worker)
+            self.assertEqual([r['desktop'] for r in rows], ['Budgie'])
+            self.assertIn('other rows than the controller selected', rows[0]['notRunReason'])
+
+    def test_a_worker_that_stops_after_its_first_row_still_reports_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            builder = dict(ssh=['ssh', 'builder'], root='/repo', config='/private',
+                           rows=[dict(name='Ubuntu GNOME', desktop='ubuntu-gnome-wayland'),
+                                 dict(name='Budgie', desktop='fedora-budgie-wayland')])
+            saved = json.dumps([dict(desktop='Ubuntu GNOME', cells={'idle_memory': nightly.cell('green')})])
+            with patch.object(nightly, 'command', side_effect=[None, None, None, subprocess.TimeoutExpired('ssh', 1),
+                                                               saved, None]) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                rows = nightly.run_host('d69', builder, 'vtest', root, archive, root, local_workers=Mock())
+            self.assertEqual([r['desktop'] for r in rows], ['Ubuntu GNOME', 'Budgie'])
+            self.assertEqual(rows[0]['cells']['idle_memory']['status'], 'green')
+            self.assertIn('worker timed out', rows[1]['notRunReason'])
+            # The controller never deletes the inputs itself: a dropped connection may hide a running worker.
+            self.assertFalse(any(c.args[0][-1].startswith('rm ') for c in command.call_args_list))
+
+    def test_a_stop_request_starts_no_further_row(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = [dict(name='Ubuntu GNOME', desktop='ubuntu-gnome-wayland', profile='gnome-wayland'),
+                    dict(name='Budgie', desktop='fedora-budgie-wayland', profile='fedora45-budgie')]
+            identity = dict(driver='d'*40, gitCommit='a'*40)
+            with patch.object(nightly, 'command', side_effect=lambda argv, **kw: identity['driver'] if 'rev-parse' in argv else None), \
+                    patch.object(nightly, 'lease', side_effect=AssertionError('a lease was taken')), \
+                    patch.object(nightly, 'recover_stale_guest', side_effect=AssertionError('a guest was touched')), \
+                    patch.dict(nightly.STOP, reason='worker terminated; cleanup required'):
+                result = nightly.worker_run(dict(host='d69', rows=rows), 'vtest', identity, Path(tmp), Path(tmp)/'out',
+                                            nightly.time.monotonic()+600)
+            self.assertEqual([r['desktop'] for r in result], ['Ubuntu GNOME', 'Budgie'])
+            self.assertTrue(all('row not started: worker terminated' in r['notRunReason'] for r in result))
+            self.assertEqual(json.loads((Path(tmp)/'out/results.json').read_text())[1]['desktop'], 'Budgie')
+
+    def test_failed_cleanup_keeps_the_workers_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]']) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
+                                 'vtest', root, archive, root, local_workers=Mock())
+            line = next(c.args[0][-1] for c in command.call_args_list if '--worker' in c.args[0][-1])
+            worker, _, rest = line.partition('; status=$?; ')
+            self.assertTrue(rest.endswith('; exit $status'))
+            # Run the generated line with a worker that exits 3 and a cleanup step that fails.
+            shell = 'sh -c "exit 3"; status=$?; ' + rest.replace(rest[:-len('; exit $status')], 'false')
+            self.assertEqual(subprocess.run(['sh', '-c', shell]).returncode, 3)
 
     def test_remote_worker_has_its_own_watchdog(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1167,13 +1225,29 @@ with n.controller_shutdown(workers):
         self.assertEqual(list(nightly.selected_builders(builders, ['aurora-amd-profile'])), ['aurora-amd'])
         with self.assertRaises(RuntimeError):
             nightly.selected_builders(builders, ['typo'])
-        previous = dict(release='tag', build=BUILD, desktops=[dict(host=h, cells={'old': h}) for h in builders])
-        result = dict(release='tag', build=BUILD, desktops=[dict(host='aurora-amd', cells={'new': True})])
+        previous = dict(release='tag', build=BUILD, desktops=[dict(host=h, desktop=h, cells={'old': h}) for h in builders])
+        result = dict(release='tag', build=BUILD, desktops=[dict(host='aurora-amd', desktop='aurora-amd', cells={'new': True})])
         merged = nightly.merge_desktops(previous, result)
         self.assertIs(merged[0], previous['desktops'][0])
         self.assertIs(merged[3], result['desktops'][0])
         with self.assertRaises(RuntimeError):
             nightly.merge_desktops(previous, dict(result, build='b'*40))
+
+    def test_a_builder_with_two_rows_rechecks_only_the_named_row(self):
+        builders = {host: dict(rows=[dict(name=host, desktop=host+'-profile')]) for host in nightly.HOSTS}
+        builders['d69']['rows'].append(dict(name='Budgie', desktop='fedora-budgie-wayland'))
+        only = nightly.selected_builders(builders, ['Budgie'])
+        self.assertEqual(list(only), ['d69'])
+        self.assertEqual([r['name'] for r in only['d69']['rows']], ['Budgie'])
+        self.assertEqual(len(builders['d69']['rows']), 2)  # The configuration itself is untouched.
+        both = nightly.selected_builders(builders, ['d69'])
+        self.assertEqual([r['name'] for r in both['d69']['rows']], ['d69', 'Budgie'])
+        previous = dict(release='tag', build=BUILD, desktops=[dict(host='d69', desktop='d69', cells={}),
+                                                              dict(host='d69', desktop='Budgie', cells={})])
+        result = dict(release='tag', build=BUILD, desktops=[dict(host='d69', desktop='Budgie', cells={'new': 1})])
+        merged = nightly.merge_desktops(previous, result)
+        self.assertIs(merged[0], previous['desktops'][0])
+        self.assertIs(merged[1], result['desktops'][0])
 
     def test_unsupported_cells_are_neither_red_nor_run(self):
         with patch.dict(nightly.UNSUPPORTED, {('budgie', 'window_recording'): 'matrix: not offered'}):
@@ -1186,6 +1260,8 @@ with n.controller_shutdown(workers):
             row = dict(desktop='Budgie', host='d69', cells=cells)
             self.assertIn('➖', nightly.table(dict(desktops=[row])))
         self.assertEqual(set(nightly.row_cells(dict(desktop='x'), 'setup')), set(nightly.LOCAL))
+        no_proton = nightly.row_cells(dict(desktop='x', live=True, proton=False), 'setup')
+        self.assertEqual(set(no_proton), set(nightly.FLOWS) - {'proton_region_upload'})
 
     def test_guest_service_selection_is_explicit_and_never_changes_host_default(self):
         from tools.lab import lab, lab_keyring
@@ -1453,7 +1529,7 @@ with n.controller_shutdown(workers):
             marker = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
             out = Path(marker['results']).parent
             self.assertTrue((out/'results.md').is_file())
-            self.assertTrue((out/'d69-receipt.json').is_file())
+            self.assertEqual(len(list(out.glob('d69-d69-*-receipt.json'))), 1)  # One receipt per builder and row.
             self.assertIn('dry run', (out/'results.md').read_text())
 
     def test_checksum_failure_blocks_before_guest_launch(self):

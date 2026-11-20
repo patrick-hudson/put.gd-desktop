@@ -1,0 +1,37 @@
+{
+  "selectors": {
+    "bar_drag": false
+  },
+  "window_titles": {
+    "bar": "^put.gd recording controls$",
+    "bar-ready": "^put.gd recording controls$",
+    "bar-recording": "^put.gd recording controls$",
+    "bar-paused": "^put.gd recording controls$",
+    "bar-question-recording": "^put.gd recording controls$",
+    "bar-question-paused": "^put.gd recording controls$",
+    "bar-handle": "^put.gd recording controls$"
+  },
+  "catalog_windows": {
+    "bar": [
+      "33-record-ready-bar"
+    ],
+    "bar-ready": [
+      "33-record-ready-bar"
+    ],
+    "bar-recording": [
+      "34-record-recording-bar"
+    ],
+    "bar-paused": [
+      "35-record-paused-bar"
+    ],
+    "bar-question-recording": [
+      "36-record-discard-confirm"
+    ],
+    "bar-question-paused": [
+      "42-record-paused-discard-confirm"
+    ],
+    "bar-handle": [
+      "34-record-recording-bar"
+    ]
+  }
+}

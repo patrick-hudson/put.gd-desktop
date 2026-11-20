@@ -873,8 +873,13 @@ def launch(args):
             try:
                 ssh(run, 'true\n', bootstrap=True)
                 break
-            except (LabError, subprocess.TimeoutExpired):
+            except (LabError, subprocess.TimeoutExpired) as error:
                 if time.monotonic() >= deadline:
+                    # Keep what the guest showed and how SSH failed: a boot timeout says nothing else.
+                    with contextlib.suppress(Exception):
+                        screenshot(run, 'boot-timeout')
+                    with contextlib.suppress(Exception):
+                        write_json(run / 'boot-timeout.json', {'lastSshError': str(error)[:300]})
                     raise LabError('Guest SSH boot timeout')
                 time.sleep(2)
         public_key = (run / 'identity.pub').read_text().strip()

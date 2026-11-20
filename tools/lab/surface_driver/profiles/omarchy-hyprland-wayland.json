@@ -1,0 +1,179 @@
+{
+  "desktop": "omarchy-hyprland-wayland",
+  "input_backend": {
+    "guest": "qmp",
+    "native": "vnc-or-host-input"
+  },
+  "catalog_tolerance": 0.025,
+  "notification_server": "quickshell",
+  "default_browser_kind": "firefox",
+  "at_spi": {
+    "available": true,
+    "reason": ""
+  },
+  "session": "wayland",
+  "known_gaps": [
+    "Catalogs are synthetic content; desktop drawn surfaces require human review",
+    "Hyprland reports no z-order: the witness orders surfaces by Hyprland's fixed drawing order and decides a point under Omarchy's span-the-output bar or notification layer by the window's own pixels",
+    "xdg popups are not listed by Hyprland: a popup is placed by the coordinates xdg_popup.configure gave its client, relative to its one parent toplevel"
+  ],
+  "window_titles": {
+    "history": "^put\\.gd$",
+    "settings": "^put\\.gd$",
+    "main": "^put\\.gd$",
+    "editor": "^Edit (image|& upload)",
+    "review": "Review",
+    "diagnostics": "Diagnostics",
+    "about": "About",
+    "destinations": "^put\\.gd$",
+    "updates": "^put\\.gd$",
+    "bar": "^put\\.gd recording controls$",
+    "fileDialog": ".*",
+    "putgdFileDialog": ".*",
+    "region": ".*",
+    "recsel": ".*"
+  },
+  "catalog_windows": {},
+  "focus": {
+    "backend": "compositor-witness",
+    "raise_before_input": false,
+    "reason": "Hyprland's IPC (j/clients, j/layers, j/monitors, j/activewindow on its request socket) gives every window's address, pid, geometry and the focused window; a point under a shell layer surface is decided by the target's own pixels",
+    "raise_browser": true
+  },
+  "notifications": {
+    "accessible": {
+      "application": "quickshell"
+    },
+    "placement": "unplaced",
+    "reason": "Omarchy's notification cards are drawn by quickshell on a layer surface and export nothing to AT-SPI: a drawn banner is read on screen (tesseract) in the top-right card column",
+    "ocr_area": {
+      "anchor": "top-right",
+      "width": 400,
+      "height": 0.5
+    }
+  },
+  "windows": {
+    "editor.canvas": {
+      "owner": "editor",
+      "accessible": {
+        "name": "Image being edited"
+      }
+    },
+    "fileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "putgdFileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "region": {
+      "title": ".*",
+      "accessible": {
+        "name": "Capture region",
+        "application": "putgd*"
+      }
+    },
+    "recsel": {
+      "title": ".*",
+      "accessible": {
+        "name": "Recording region",
+        "application": "putgd*"
+      }
+    },
+    "historyContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyRowMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "maskOptionsMenu": {
+      "owner": "review",
+      "popup": true
+    },
+    "confirmAction": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirm": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationDefault": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationReload": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationRemove": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    }
+  },
+  "compositor": {
+    "kind": "hyprctl",
+    "shell_application": "",
+    "stage": "none: read-only requests on Hyprland's request socket per observation; grim (in the golden) for pixel decisions"
+  },
+  "evidence": {
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
+    "notification_areas": [
+      {
+        "anchor": "top-right",
+        "width": 400,
+        "height": 0.5
+      }
+    ],
+    "window_list_panels": [
+      {
+        "anchor": "top",
+        "height": 30
+      }
+    ],
+    "browser": {
+      "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
+      "chrome_height": 170
+    },
+    "shell_processes": [
+      "quickshell",
+      "Hyprland"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "top",
+        "height": 30
+      }
+    ]
+  },
+  "recording": {
+    "consent": {
+      "kind": "none",
+      "reason": "Hyprland records through ext-image-copy-capture on put.gd's own connection; the ScreenCast portal and its share picker are never used"
+    }
+  }
+}

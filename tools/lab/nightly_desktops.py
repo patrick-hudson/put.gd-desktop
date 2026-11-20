@@ -56,6 +56,7 @@ STATUS_MARK = {'green': '🟢', 'red': '🔴', 'not_run': '⚪', 'unsupported': 
 STABLE_TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+')
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
 HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
+MAX_ROWS = 2  # Per builder, run in turn; each row is about half an hour.
 # The worker budget includes checkout verification, await_host and setup. Leave
 # fifteen minutes for retirement/lease cleanup before the controller's limit.
 HOST_TIMEOUT = 18000
@@ -75,7 +76,10 @@ def cell(status='not_run', assertion='', **proof):
 def row_cells(row, reason):
     """Every cell a row runs, each starting not run with REASON; unsupported cells say why."""
     cells = {}
-    for flow in LOCAL + (LIVE if row.get('live') else []):
+    # A row with "proton": false has not proven a Proton lend on its golden: its Live Proton cell is
+    # left out (— in the table), so a failed lend can't leave an outstanding Proton copy there.
+    live = [f for f in LIVE if f != 'proton_region_upload' or row.get('proton', True)] if row.get('live') else []
+    for flow in LOCAL + live:
         unsupported = UNSUPPORTED.get((row.get('desktop'), flow))
         cells[flow] = cell('unsupported', unsupported) if unsupported else cell(assertion=reason)
     return cells
@@ -207,16 +211,23 @@ def run_command(argv, *, env, stdout, stderr, timeout, terminate_grace, local_wo
             local_workers.forget(process)
 
 
+# Why the worker must stop before its next row (termination or the spent budget), once known.
+STOP = {}
+
+
 @contextmanager
 def worker_deadline():
     """Bound setup and flow work, then disarm the timer while finally blocks run."""
     deadline = time.monotonic() + WORKER_SECONDS
+    STOP.clear()
     def expired(signum, _frame):
         signal.setitimer(signal.ITIMER_REAL, 0)
         # A second termination request must not interrupt retirement.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        raise NotRun('worker terminated; cleanup required' if signum == signal.SIGTERM
-                     else 'worker deadline exhausted; remaining flows not run')
+        reason = ('worker terminated; cleanup required' if signum == signal.SIGTERM
+                  else 'worker deadline exhausted; remaining flows not run')
+        STOP.setdefault('reason', reason)
+        raise NotRun(reason)
     previous_term = signal.signal(signal.SIGTERM, expired)
     previous_alarm = signal.signal(signal.SIGALRM, expired)
     previous_timer = signal.setitimer(signal.ITIMER_REAL, WORKER_SECONDS)
@@ -1001,9 +1012,8 @@ def lease(host, session, out, *, reservation=None):
                 raise
 
 
-def preflight(config):
+def preflight(config, row):
     from tools.lab import lab
-    row = config['rows'][0]
     if not Path(row['golden']).is_file():
         if Path(row['golden']+'.partial').is_file():
             raise NotRun('golden copy awaiting checksum verification')
@@ -1032,7 +1042,7 @@ def preflight(config):
                 overlay='sparse qcow2; no preallocation', placement='guest')
 
 
-def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep, worker_deadline=None):
+def await_host(config, out, row, *, clock=time.monotonic, sleep=time.sleep, worker_deadline=None):
     """Wait outside every desktop/Proton lease; other guests are never touched."""
     from tools.lab.desktop_lock import Desktop
     started = clock()
@@ -1044,13 +1054,13 @@ def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep, worker_de
         if worker_deadline is not None and clock() >= worker_deadline:
             raise NotRun('worker deadline exhausted while awaiting host')
         try:
-            for resource in ('desktop', 'proton') if config['rows'][0].get('live') else ('desktop',):
+            for resource in ('desktop', 'proton') if row.get('live') and row.get('proton', True) else ('desktop',):
                 state = Desktop(Path.home()/'putgd-lab/locks', config['host'], resource=resource).status()
                 if state['state'] != 'free':
                     raise NotRun(resource+' lease held by another session')
             if (Path.home()/'putgd-lab/locks/tier1-guest.lock.d').exists():
                 raise NotRun('nightly guest slot held by another session')
-            ready = preflight(config)
+            ready = preflight(config, row)
             save(out/'availability.json', dict(attempts=attempts, waitedSeconds=round(clock()-started, 3), ready=ready))
             return clock()-started
         except NotRun as error:
@@ -1143,10 +1153,22 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         raise NotRun('invalid tested source identity')
     command(['git', 'fetch', '--no-tags', 'origin', identity['gitCommit']], log=out/'build-source-fetch.txt')
     host = config['host']
-    if len(config['rows']) != 1:
-        raise NotRun('configure exactly one desktop per builder')
+    if not 1 <= len(config['rows']) <= MAX_ROWS:
+        raise NotRun('configure one to '+str(MAX_ROWS)+' desktops per builder')
     result = []
+    # Rows on one builder run one after another: one guest slot, one set of ports.
     for row in config['rows']:
+        if STOP.get('reason'):
+            # Terminated or out of budget during an earlier row: take no new lease, launch nothing.
+            result += [dict(record, profile=row['profile'], release=tag, build=identity['gitCommit'])
+                       for record in not_run_rows(host, dict(config, rows=[row]), 'row not started: '+STOP['reason'], out)]
+            save(out/'results.json', result)
+            continue
+        # The previous row's cleanup disarmed the alarm; the rest of the shared budget bounds this one.
+        # With nothing left, the row's own deadline checks (await_host) record it as not run.
+        left = deadline - time.monotonic()
+        if left > 0:
+            signal.setitimer(signal.ITIMER_REAL, left)
         started = time.monotonic()
         rowout = out/row['name'].lower().replace(' ', '-')
         rowout.mkdir(mode=0o700)
@@ -1161,12 +1183,12 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         try:
             with recovery_deadline():
                 recover_stale_guest(config, rowout)
-            record['waitSeconds'] = round(await_host(config, rowout, worker_deadline=deadline), 3)
+            record['waitSeconds'] = round(await_host(config, rowout, row, worker_deadline=deadline), 3)
             with lease(host, session, rowout, reservation=reservation) as lease_errors:
                 try:
                     setup_started = time.monotonic()
                     command(['uptime'], log=rowout/'uptime.txt')
-                    save(rowout/'host-preflight.json', preflight(config))
+                    save(rowout/'host-preflight.json', preflight(config, row))
                     command([sys.executable, 'tools/diagnostics/check_socket_paths.py', '--socket',
                              run/'qmp.sock', run/'vnc.sock', '/dev/shm/nd/runtime/putgd/session.sock'],
                             log=rowout/'sockets.json')
@@ -1202,8 +1224,10 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                             continue
                         flow_started = time.monotonic()
                         destination = 's3' if flow.startswith('s3_') else 'proton' if flow.startswith('proton_') else 'local'
-                        if destination == 's3' and row['desktop'] == 'aurora-kde-wayland' and not keyring_ready:
-                            # One private keyring per guest serves both S3 cells.
+                        if (destination == 's3' and row['desktop'] in ('aurora-kde-wayland', 'fedora-budgie-wayland')
+                                and not keyring_ready):
+                            # KWallet (Aurora) and oo7-daemon (Budgie) can't take the lab collection;
+                            # one private keyring per guest serves both S3 cells.
                             prepare_live_keyring(run, rowout)
                             keyring_ready = True
                         recipe = ('outcomes.' if destination == 'local' else 'outcomes_live.')+flow
@@ -1282,7 +1306,9 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                     # A failed live cleanup may own the only current baton or a
                     # remote publication. Preserve that running guest for recover.
                     proton = Path.home()/'putgd-lab/locks/proton.lock'
-                    outstanding = proton.exists() and 'lent copy outstanding' in proton.read_text()
+                    # Only a row that lends Proton can hold its baton; another session's lend isn't this guest's.
+                    outstanding = (bool(row.get('live')) and row.get('proton', True) and proton.exists()
+                                   and 'lent copy outstanding' in proton.read_text())
                     retained = False
                     for receipt_path in rowout.glob('*/receipt.json'):
                         evidence = json.loads(receipt_path.read_text())
@@ -1329,6 +1355,8 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         record['finishedAt'] = dt.datetime.now(dt.timezone.utc).isoformat()
         save(rowout/'result.json', record)
         result.append(record)
+        # A finished row stays reported even if a later row's watchdog ends the worker.
+        save(out/'results.json', result)
         print(json.dumps(dict(desktop=row['name'], green=sum(c['green'] for c in cells.values()), total=len(cells))), flush=True)
     save(out/'results.json', result)
     return result
@@ -1381,7 +1409,9 @@ def publish(github, result, out, *, previous=None):
         # Acceptance attachments stay private/local until a person attaches them.
         # Do not update #1003, pin an issue, or file/close nightly regressions.
         for row in result['desktops']:
-            save(out/(row['host']+'-receipt.json'), row)
+            # The slug is for people; the digest of the exact row name keeps distinct rows apart.
+            slug = re.sub(r'[^a-z0-9]+', '-', row['desktop'].lower()).strip('-')
+            save(out/(row['host']+'-'+slug+'-'+hashlib.sha256(row['desktop'].encode()).hexdigest()[:8]+'-receipt.json'), row)
         (out/'results.md').write_text(f'Stable draft: **{result["release"]}** · {result["date"]}\n\n'+table(result))
         save(out/'results.json', result)
         return
@@ -1429,9 +1459,10 @@ def publish(github, result, out, *, previous=None):
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
     markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · ➖ not supported on this desktop (acceptance matrix) · — disabled.\n'
-    markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
+    markdown += '\n| Desktop / host | Row seconds | Host total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: | ---: |\n'
     for row in result['desktops']:
-        markdown += f'| {row["host"]} | {row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n'
+        markdown += (f'| {row["desktop"]} / {row["host"]} | {row.get("seconds", 0):.1f} | '
+                     f'{row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n')
     markdown += '\nFrames remain evidence attachments; no manual visual review is required.\n'
     github.issue(title, markdown, pinned)
     query = 'query($id:ID!){node(id:$id){... on Repository{pinnedIssues(first:10){nodes{issue{id}}}}}}'
@@ -1450,26 +1481,32 @@ def not_run_rows(host, builder, reason, out):
 
 
 def selected_builders(builders, desktops):
+    """The builders to run, each with only the rows named (a builder ID names all of its rows)."""
     if not desktops:
         return builders
     selected = {}
     for name in desktops:
-        matches = {host: builder for host, builder in builders.items() if
-                   name.casefold() in {host.casefold(), *(r['name'].casefold() for r in builder['rows']),
-                                       *(r['desktop'].casefold() for r in builder['rows'])}}
+        key = name.casefold()
+        matches = {host: [r for r in builder['rows'] if key == host.casefold()
+                          or key in (r['name'].casefold(), r['desktop'].casefold())]
+                   for host, builder in builders.items()}
+        matches = {host: rows for host, rows in matches.items() if rows}
         if len(matches) != 1:
             raise RuntimeError('desktop filter must identify exactly one configured builder: '+name)
-        selected.update(matches)
-    return {host: builder for host, builder in builders.items() if host in selected}
+        for host, rows in matches.items():
+            chosen = selected.setdefault(host, [])
+            chosen += [r for r in rows if r not in chosen]
+    return {host: dict(builder, rows=[r for r in builder['rows'] if r in selected[host]])
+            for host, builder in builders.items() if host in selected}
 
 
 def merge_desktops(previous, result):
     if (previous['release'], previous['build']) != (result['release'], result['build']):
         raise RuntimeError('filtered publication requires the same release and exact build')
-    replacements = {r['host']: r for r in result['desktops']}
-    if not replacements.keys() <= {r['host'] for r in previous['desktops']}:
+    replacements = {(r['host'], r['desktop']): r for r in result['desktops']}
+    if not replacements.keys() <= {(r['host'], r['desktop']) for r in previous['desktops']}:
         raise RuntimeError('filtered publication cannot introduce an unknown desktop')
-    return [replacements.get(r['host'], r) for r in previous['desktops']]
+    return [replacements.get((r['host'], r['desktop']), r) for r in previous['desktops']]
 
 
 def follow_nightly(argv):
@@ -1503,14 +1540,14 @@ def sync_checkout(builder, driver):
         raise NotRun('builder checkout cannot reach the controller driver') from None
 
 
-def remove_inputs(ssh, inputs, archive):
-    """Delete only what this run unpacked; each night's packages would fill the builder."""
+def removal_command(inputs, archive):
+    """The shell command that deletes only what this run unpacked; each night's packages would fill the builder."""
     with tarfile.open(archive) as stream:
         members = stream.getmembers()
     names = [shlex.quote(inputs+'/'+m.name) for m in members if not m.isdir()]
     folders = [m.name for m in members if m.isdir()]
     folders = [shlex.quote(inputs+'/'+name) for name in sorted(folders, key=len, reverse=True)]
-    command([*ssh, ' && '.join(['rm -f -- '+' '.join(names), 'rmdir -- '+' '.join([*folders, shlex.quote(inputs)])])])
+    return ' && '.join(['rm -f -- '+' '.join(names), 'rmdir -- '+' '.join([*folders, shlex.quote(inputs)])])
 
 
 def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None, controller=None):
@@ -1521,6 +1558,7 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
     root = builder['root']
     output = str(Path(root).parent/'ne'/uuid.uuid4().hex[:8])
     waited = 0
+    inputs = None
     try:
         if ssh:
             deadline = time.monotonic()+builder.get('waitSeconds', 1200)
@@ -1544,28 +1582,64 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
         else:
             selected = str(artifacts)
         args = ['nice','-n','10','python3',root+'/tools/lab/nightly_desktops.py', '--worker',host,
-                '--config',builder['config'], '--artifacts',selected, '--output',output, tag]
+                '--config',builder['config'], '--artifacts',selected, '--output',output,
+                *[a for r in builder.get('rows', []) for a in ('--row', r['name'])], tag]
         # A remote watchdog survives loss of the SSH client. Signal only the
         # worker (foreground), allowing its own finally blocks to retire guests.
         remote = ['timeout', '--foreground', '--signal=TERM', f'--kill-after={TERMINATE_GRACE}',
                   str(HOST_TIMEOUT), *args]
         env = dict(os.environ, PUTGD_NIGHTLY_CONTROLLER=json.dumps(controller)) if controller and not ssh else None
-        command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'), env=env,
-                timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
-                terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
-        text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
-        rows = json.loads(text)
-        if ssh:
-            try:
-                remove_inputs(ssh, inputs, archive)
-            except (RuntimeError, subprocess.TimeoutExpired) as error:
-                print(json.dumps(dict(host=host, inputsKept=str(error))), flush=True)
+        worker_error = None
+        # On a remote builder the same shell removes the unpacked packages once its worker has exited,
+        # however the SSH connection fares; the worker's own status is kept.
+        remote_line = (shlex.join(remote)+'; status=$?; '+removal_command(inputs, archive)+'; exit $status') if ssh else None
+        try:
+            command([*ssh, remote_line] if ssh else args, log=out/(host+'.log'), env=env,
+                    timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
+                    terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
+        except (RuntimeError, subprocess.TimeoutExpired) as error:
+            if not builder.get('rows'):
+                raise
+            # The worker saves each row as it finishes: keep those, whatever ended the rest.
+            worker_error = ('worker timed out' if isinstance(error, subprocess.TimeoutExpired)
+                            else 'worker exited with an error') + ' before reporting this row'
+        try:
+            text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
+            reported = json.loads(text)
+        except (RuntimeError, subprocess.TimeoutExpired, OSError, ValueError):
+            if worker_error is None:
+                raise
+            reported = []
+        rows = selected_rows(host, builder, reported, worker_error, out/host)
     except Exception as error:
         reason = str(error) if isinstance(error, NotRun) else 'worker infrastructure failed: '+type(error).__name__
         rows = not_run_rows(host, builder, reason, out/host)
     for row in rows:
         row.update(totalSeconds=round(time.monotonic()-started,3), startedAt=started_at)
         row['waitSeconds'] = round(row.get('waitSeconds', 0)+waited, 3)
+    return rows
+
+
+def selected_rows(host, builder, reported, missing_reason, out):
+    """The worker's rows the controller selected, in its order; each selected row it didn't report is not run.
+
+    A row it reports that wasn't selected (it has no package for it) is never published.
+    """
+    if not builder.get('rows'):
+        return reported
+    names = [r['name'] for r in builder['rows']]
+    found = {}
+    for row in reported if isinstance(reported, list) else []:
+        if isinstance(row, dict) and row.get('desktop') in names:
+            found.setdefault(row['desktop'], row)
+    stray = [r.get('desktop') for r in reported if isinstance(r, dict) and r.get('desktop') not in names] \
+        if isinstance(reported, list) else []
+    reason = missing_reason or ('worker reported other rows than the controller selected' if stray
+                                else 'worker reported no result for this row')
+    rows = []
+    for row in builder['rows']:
+        rows += [found[row['name']]] if row['name'] in found else \
+            not_run_rows(host, dict(builder, rows=[row]), reason, out)
     return rows
 
 
@@ -1624,8 +1698,9 @@ def controller(args, config, *, local_workers=None):
         if tested_release(done) and not args.now and not stable_draft:
             print('Already tested '+tag)
             return
-        if set(config['builders']) != set(HOSTS) or any(len(b['rows']) != 1 for b in config['builders'].values()):
-            raise RuntimeError('configure exactly one desktop on each of the five builders')
+        if set(config['builders']) != set(HOSTS) or any(not 1 <= len(b['rows']) <= MAX_ROWS
+                                                        for b in config['builders'].values()):
+            raise RuntimeError('configure one to '+str(MAX_ROWS)+' desktops on each of the five builders')
         builders = selected_builders(config['builders'], args.desktops)
         previous = None
         if args.desktops and not stable_draft:
@@ -1681,6 +1756,7 @@ def main():
     parser.add_argument('--config', type=Path, default=Path.home()/'.config/putgd-nightly/config.json')
     parser.add_argument('--worker', choices=HOSTS, help=argparse.SUPPRESS)
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--row', action='append', default=[], help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     operator = parser.add_argument_group('a nightly guest kept for live cleanup (docs/lab/remote-builders.md); run on its builder')
     operator.add_argument('--resolve-live-cleanup', metavar='RUN', help='record that you confirmed the remote object of run RUN (n<8 hex>) is gone, then remove the marker')
@@ -1758,7 +1834,13 @@ def main():
         tools_bin = config['builders'][args.worker].get('toolsBin')
         if tools_bin:
             os.environ['PATH'] = tools_bin+os.pathsep+os.environ.get('PATH', '/usr/bin:/bin')
-        worker(dict(config['builders'][args.worker], host=args.worker), args.tag,
+        builder = dict(config['builders'][args.worker], host=args.worker)
+        if args.row:
+            # Exactly the rows the controller downloaded packages for, in the configured order.
+            if not set(args.row) <= {r['name'] for r in builder['rows']}:
+                parser.error('--row names a row this builder does not have')
+            builder['rows'] = [r for r in builder['rows'] if r['name'] in args.row]
+        worker(builder, args.tag,
                json.loads((args.artifacts/'identity.json').read_text()), args.artifacts, args.output)
     else:
         local_workers = LocalWorkers()

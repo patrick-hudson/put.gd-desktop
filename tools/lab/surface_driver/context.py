@@ -163,7 +163,7 @@ class DriverContext(Context):
                 compositor = dict(compositor, recording_bar_before=before)
             query = dict(query, compositor=compositor)
         witness = query.get('compositor') or {}
-        if witness.get('kind') == 'wayland-toplevels' and 'witness_source' not in witness:
+        if witness.get('kind') in ('wayland-toplevels', 'toplevel-pixels') and 'witness_source' not in witness:
             # The probe runs from shipped source with no file of its own; send the witness it imports (review #1275).
             query = dict(query, compositor=dict(witness, witness_source=(Path(__file__).resolve().parents[1]/'wayland_toplevels.py').read_text()))
         source = Path(__file__).with_name('probe.py').read_text()
@@ -396,6 +396,8 @@ class DriverContext(Context):
                 'pid': geometry.get('pid'), 'window_id': geometry.get('window_id'),
                 'rect': [geometry.get(k) for k in ('x', 'y', 'width', 'height')], 'point': point,
                 'before_prepare': getattr(self, '_recording_bar_before', None), 'foreground': witness}))
+        if not witness.get('ok') and witness.get('unverified'):
+            raise RecipeBlocked('input target '+repr(role)+' could not be verified on screen: '+str(witness.get('obscuring_window')))
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')
@@ -823,7 +825,8 @@ asyncio.run(main())
                                              'shell': self.profile.get('evidence', {}).get('shell_processes', [])})
         stopped = ['%s (%s)' % (row['title'], row['process']) for row in reply.get('stopped', [])]
         banners = 'kept' if not notifications else 'close requested' if reply.get('newest_notification') is not None else 'close failed'
-        self.note('cleared screen: banners '+banners+'; windows closed: '+(', '.join(stopped) or 'none'))
+        self.note('cleared screen: banners '+banners+'; windows closed: '+(', '.join(stopped) or 'none')
+                  + ('; surfaces with no known process left alone: %d' % reply['unknown_process'] if reply.get('unknown_process') else ''))
         return reply
 
     def _try_clear_screen(self, **options):

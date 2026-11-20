@@ -127,7 +127,8 @@ def admit(ctx):
         raise RecipeBlocked('Tier 1 live requires the admitted builder guest; boat and native are forbidden')
     allowed = {'mint-cinnamon-x11': ('d69', 'f44', 'm74'), 'ubuntu-gnome-wayland': ('d69', 'f44'),
                'kubuntu-kde-wayland': ('f44', 'k72'), 'aurora-kde-wayland': ('f44', 'd69', 'aurora-amd'),
-               'fedora-gnome-wayland': ('f44',)}
+               'fedora-gnome-wayland': ('f44',), 'fedora-budgie-wayland': ('d69', 'f44'),
+               'omarchy-hyprland-wayland': ('m74',)}
     if ctx.host not in allowed.get(ctx.desktop, ()):
         raise RecipeBlocked('Tier 1 live desktop is not on an authorized builder')
     # Additional AppImage coverage is confined to the two declared builder guests.
@@ -138,9 +139,22 @@ def admit(ctx):
     if ctx.package == 'appimage' and appimage_profile and ctx.profile.get('guest') == appimage_profile:
         from tools.lab import lab
         appimage_guest = lab.state(ctx.target.run)['profile'] == appimage_profile
-    expected = {'aurora-kde-wayland': 'appimage', 'fedora-gnome-wayland': 'rpm'}.get(ctx.desktop, 'deb')
+    expected = {'aurora-kde-wayland': 'appimage', 'fedora-gnome-wayland': 'rpm', 'fedora-budgie-wayland': 'rpm',
+                'omarchy-hyprland-wayland': 'appimage'}.get(ctx.desktop, 'deb')
     if not appimage_guest and ctx.package != expected:
         raise RecipeBlocked('Tier 1 live requires an approved guest package/profile combination')
+    if ctx.desktop == 'omarchy-hyprland-wayland':
+        # Omarchy's clipboard history writes copied text to its own store on disk, and the app
+        # auto-copies every link, a signed one included. That would outlive the guest's tmpfs.
+        raise RecipeBlocked('Tier 1 live is refused on Omarchy: its clipboard history stores copied links on disk')
+    # The VM-only desktops are bound to their one lab golden: its profile and its exact image.
+    golden = {'fedora-budgie-wayland': ('fedora45-budgie', 'work/put.gd/work/lab-images/fedora45-budgie/image.qcow2')}.get(ctx.desktop)
+    if golden:
+        from tools.lab import lab
+        state = lab.state(ctx.target.run)
+        approved = (Path.home()/golden[1]).resolve()
+        if state['profile'] != golden[0] or Path(state['golden']).resolve() != approved:
+            raise RecipeBlocked('Tier 1 live requires the desktop\'s own lab golden')
     from tools.lab import desktop_lock
     session = os.environ.get('PUTGD_TIER1_SESSION', '')
     if not session:
@@ -150,6 +164,14 @@ def admit(ctx):
     guest_lock = Path.home()/'putgd-lab/locks/tier1-guest.lock.d/session'
     if guest_lock.is_symlink() or guest_lock.read_text().strip() != session:
         raise RecipeBlocked('Tier 1 live requires the builder guest slot lock')
+    # The slot must be held for this very run, not only by this session.
+    slot_owner = guest_lock.with_name('owner.json')
+    try:
+        owner_run = json.loads(slot_owner.read_text()).get('run') if not slot_owner.is_symlink() else None
+    except (OSError, ValueError, AttributeError):
+        owner_run = None
+    if owner_run is None or Path(owner_run).resolve() != Path(ctx.target.run).resolve():
+        raise RecipeBlocked('Tier 1 live requires the guest slot held for this exact run')
     if ctx.destination == 'proton':
         desktop_lock.Desktop(Path.home()/'putgd-lab/locks', ctx.host, resource='proton').heartbeat(session)
         if Path(os.environ.get('PUTGD_LAB_RUN', '/missing')).resolve() != ctx.target.run:
