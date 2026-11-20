@@ -1569,13 +1569,14 @@ with n.controller_shutdown(workers):
             self.assertEqual(report['held'], ['apt-daily-upgrade.service', 'apt-daily-upgrade.timer'])
             self.assertEqual(json.loads((out/'package-updates.json').read_text())['notHeld'], [])
             script = ssh.call_args.args[1]
-            # The password reaches sudo from its own pipe; the script itself is on sudo's stdin otherwise.
-            self.assertIn("printf '%s\\n' putgd-lab | sudo -S", script)
-            self.assertNotIn('sudo -n', script)
-            # A running updater is stopped before it is masked, so its own stop settings apply.
-            self.assertLess(script.index('systemctl stop'), script.index('systemctl mask'))
-            # Only a stop that succeeded is followed by the mask.
-            self.assertIn('if root timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then root systemctl mask', script)
+            # Root comes only from the goldens' passwordless apt-get, which must neither fetch, wait for the
+            # lists lock a running apt-daily holds, nor read the script on stdin; no guest password is used.
+            for option in ('sudo -n /usr/bin/apt-get', 'Debug::NoLocking=1', 'Dir::Etc::sourcelist=/dev/null',
+                           'APT::Update::Pre-Invoke::=sh $hold', '< /dev/null'):
+                self.assertIn(option, script)
+            self.assertNotIn('putgd-lab', script)
+            # Only a stop that succeeded is followed by the mask, so the unit's own stop settings apply.
+            self.assertIn('if timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then systemctl mask', script)
             self.assertNotIn('--now', script)
             # Whatever the unit looked like before, it must end absent or masked and not running;
             # a unit the guest did not report stops the row too.
@@ -1583,7 +1584,7 @@ with n.controller_shutdown(workers):
                            reply(**{'apt-daily.timer': 'loaded loaded active'}),
                            reply(**{'apt-daily-upgrade.service': 'masked masked activating'}),
                            reply(**{'apt-daily.service': 'unknown loaded active'}),
-                           reply().replace('dnf5-automatic.timer not-found not-found inactive\n', '')):
+                           reply().replace('apt-daily.service not-found not-found inactive\n', '')):
                 with self.subTest(broken=broken[:40]), patch.object(guest.lab, 'ssh', return_value=broken):
                     with self.assertRaisesRegex(RuntimeError, 'could not be held'):
                         guest.hold_package_updates(out, out)

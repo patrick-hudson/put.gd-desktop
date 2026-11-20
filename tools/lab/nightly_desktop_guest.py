@@ -24,31 +24,44 @@ FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesse
                 'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring '
                 'openh264 gstreamer1-plugin-openh264')
 
-# The distros' own package updaters. Ubuntu's apt-daily-upgrade fires between 06:00 and 07:00 guest time,
-# which is when the nightly runs: on 2026-11-20 it upgraded openssh-server mid-row in the Kubuntu guest,
-# restarting sshd under a live cell, so the cell and every cleanup step lost the guest.
+# The Debian-family guests' own package updaters. Ubuntu's apt-daily-upgrade fires between 06:00 and 07:00
+# guest time, which is when the nightly runs: on 2026-11-20 it upgraded openssh-server mid-row in the
+# Kubuntu guest, restarting sshd under a live cell, so the cell and every cleanup step lost the guest.
+# Fedora installs no updates by itself (dnf-makecache only refreshes metadata), Aurora's uupd is held by
+# ATOMIC_TOOLS and Omarchy has no updater unit.
 UPDATE_UNITS = ('apt-daily.timer', 'apt-daily-upgrade.timer', 'mintupdate-automation-upgrade.timer',
-                'mintupdate-automation-autoremove.timer', 'dnf-makecache.timer', 'dnf-automatic.timer',
-                'dnf-automatic-install.timer', 'dnf5-automatic.timer',
-                'apt-daily.service', 'apt-daily-upgrade.service', 'mintupdate-automation-upgrade.service',
-                'mintupdate-automation-autoremove.service', 'dnf-makecache.service', 'dnf-automatic.service',
-                'dnf-automatic-install.service', 'dnf5-automatic.service')
-# The goldens' sudo rules cover only their package manager; other root commands take the standard
-# guest password (docs/lab/remote-golden-images.md) from a pipe, never from the script on stdin.
-# The timers come first in UPDATE_UNITS, so nothing starts an updater again once they are held. A running
-# updater is stopped before its unit is masked: masking first reloads it without its own stop settings
-# (apt's KillMode=process and 900 s TimeoutStopSec, which let unattended-upgrade finish its package).
+                'mintupdate-automation-autoremove.timer', 'apt-daily.service', 'apt-daily-upgrade.service',
+                'mintupdate-automation-upgrade.service', 'mintupdate-automation-autoremove.service')
+# The apt goldens' only passwordless root command is apt-get, and their lab passwords differ (Mint's is
+# not the standard one), so the hold runs as root from apt-get's Pre-Invoke hook, as lab.py's helper
+# staging does: no sources (nothing is fetched), no package cache written, and no lists lock, which a
+# running apt-daily holds. The timers come first in UPDATE_UNITS, so nothing starts an updater again once
+# they are held. A running updater is stopped before its unit is masked, and masked only if that stop
+# succeeded: masking first reloads it without its own stop settings (apt's KillMode=process and 900 s
+# TimeoutStopSec, which let unattended-upgrade finish its package).
 HOLD_UPDATES = r'''set -u
-root() { printf '%s\n' putgd-lab | sudo -S -p '' "$@"; }
+hold=$(mktemp)
+cat > "$hold" <<'NIGHTLY_HOLD'
 for unit in UNITS; do
- before=$(systemctl show -P LoadState "$unit" 2>/dev/null) || before=unknown
- if [ "$before" = loaded ]; then
-  # A stop that fails or times out leaves the unit unmasked (loaded), which the report counts as not held.
-  if root timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then root systemctl mask "$unit" >/dev/null 2>&1 || true; fi
+ if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ]; then
+  if timeout 960 systemctl stop "$unit" >/dev/null 2>&1; then systemctl mask "$unit" >/dev/null 2>&1; fi
  fi
+done
+exit 0
+NIGHTLY_HOLD
+for unit in UNITS; do
+ printf '%s %s\n' "$unit" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" >> "$hold.before"
+done
+if command -v apt-get >/dev/null 2>&1; then
+ LC_ALL=C sudo -n /usr/bin/apt-get -o Debug::NoLocking=1 -o Dir::Etc::sourcelist=/dev/null \
+  -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 -o Dir::Cache::pkgcache= -o Dir::Cache::srcpkgcache= \
+  -o "APT::Update::Pre-Invoke::=sh $hold" update >/dev/null 2>&1 < /dev/null || true
+fi
+while read -r unit before; do
  printf '%s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
   "$(systemctl show -P ActiveState "$unit" 2>/dev/null)"
-done
+done < "$hold.before"
+rm -f -- "$hold" "$hold.before"
 '''.replace('UNITS', ' '.join(UPDATE_UNITS))
 
 
