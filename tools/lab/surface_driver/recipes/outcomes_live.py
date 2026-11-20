@@ -288,8 +288,12 @@ def _region_upload(ctx):
                     raise
 
 
-def _capture_once(ctx, service, scene):
-    """One real region capture of the pattern to the live destination; the saved bytes and History row."""
+def _capture_once(ctx, service, scene, owned):
+    """One real region capture of the pattern to the live destination; its History row and rectangle.
+
+    OWNED receives the row as soon as it is proven to be this operation's, before anything else is
+    asserted, so a later failure still deletes the object it published.
+    """
     x, y, w, h = scene.rect
     rect = (x+20, y+20, x+w-20, y+h-20)
     with selectors._portal_scope(ctx):
@@ -299,6 +303,7 @@ def _capture_once(ctx, service, scene):
         op, detail = _published(ctx, oid, service.pending)
     if detail.get('uploadStatus') == 'uploaded':
         _owned(ctx, service, detail, oid)
+        owned.append(detail)
     ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
                and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
     return detail, rect
@@ -312,11 +317,13 @@ def _settle_extra(ctx, service, detail, gone):
     ctx.click('windowClose', window='history')
 
 
-def _link_pass(ctx, settings, check, gone, *, oracle=None):
+def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
     """Switch the live destination's link settings, publish one capture, CHECK it, delete it, GONE proves it.
 
     Each pass has its own object key, recorded in the cleanup marker before anything is published.
-    With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop.
+    With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop. A SIGNED link
+    carries the access key ID and a working signature, and History shows it in full: no frame is saved
+    from the start of the pass until History is closed again, the runner's after-frame included.
     """
     scope = ctx._fixture_manager.scope
     service = ctx._live_service
@@ -329,9 +336,11 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None):
                  'naming': {'captureTemplate': template}})
     scene.command('freeze')
     scene.command('raise')
-    detail = None
+    if signed:
+        ctx._frames_withheld = 'a signed link may be on screen'
+    owned = []
     try:
-        detail, rect = _capture_once(ctx, service, scene)
+        detail, rect = _capture_once(ctx, service, scene, owned)
         data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
         if oracle is not None:
             Image, _, _ = image_modules()
@@ -339,10 +348,11 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None):
                        'live region pixels equal independently captured pattern crop (tolerance=0)')
         check(detail, data)
     finally:
-        if detail and detail.get('uploadStatus') == 'uploaded':
+        if owned:
             failed = sys.exc_info()[0] is not None
             try:
-                _settle_extra(ctx, service, detail, gone)
+                _settle_extra(ctx, service, owned[0], gone)
+                ctx._frames_withheld = None  # History is closed: nothing signed is on screen.
             except Exception as error:
                 ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
                 if not failed:
@@ -354,8 +364,8 @@ def _presigned_upload(ctx):
     """#1366: the same S3 destination switched to expiring links publishes a signed link; unsigned is refused."""
     service = ctx._live_service
     _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1),
-               lambda detail, data: verify_presigned(ctx, service, detail, data),
-               lambda detail: verify_s3(ctx, service, detail, absent=True))
+               lambda detail, data: verify_presigned(ctx, service, detail, data, host='s3.'+service.region+'.amazonaws.com'),
+               lambda detail: verify_s3(ctx, service, detail, absent=True), signed=True)
     ctx.note('presigned_link_count=1')
 
 
@@ -392,9 +402,10 @@ def _r2_flow(ctx):
     def signed(detail, data):
         verify_r2(ctx, service, detail, data)
         # R2 refuses an unsigned S3 API request; the status it uses is not AWS's.
-        verify_presigned(ctx, service, detail, data, refused=(400, 401, 403))
+        verify_presigned(ctx, service, detail, data, host=service.account+'.r2.cloudflarestorage.com',
+                         refused=(400, 401, 403))
     _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1), signed,
-               lambda detail: verify_r2(ctx, service, detail, absent=True))
+               lambda detail: verify_r2(ctx, service, detail, absent=True), signed=True)
     ctx.note('r2_presigned_link_count=1')
 
 

@@ -988,9 +988,13 @@ TRAY_LAYOUT = ('Capture region', 'Repeat last region', 'Capture window', 'Captur
                'Open put.gd', 'Settings', 'Quit put.gd')
 
 
-def _top(node):
+def _box(node):
     rect = node.get('rect', node.get('bounds'))
-    return rect['y'] if isinstance(rect, dict) else rect[1]
+    return [rect[k] for k in ('x', 'y', 'width', 'height')] if isinstance(rect, dict) else list(rect)
+
+
+def _top(node):
+    return _box(node)[1]
 
 
 @recipe('tray.context-menu', 'tray.menu-capture-region', desktop_drawn=True, timeout=300)
@@ -1005,11 +1009,15 @@ def tray_menu(ctx):
             found = ctx.wait(lambda: tray._nodes(ctx, name, 'menu item'), 'tray menu row: ' + name, timeout=5)
             ctx.expect(len(found) == 1, 'tray menu shows one row: ' + name)
             rows.append(found[0])
-        for name in ('History', 'Destinations', 'About put.gd'):
-            ctx.expect(not tray._nodes(ctx, name, 'menu item'), 'tray menu has no row: ' + name)
         tops = [_top(n) for n in rows]
         ctx.note('tray_rows=' + json.dumps([[n['name'], top] for n, top in zip(rows, tops)]))
         ctx.expect(tops == sorted(tops) and len(set(tops)) == len(tops), 'tray rows are in the agreed order')
+        # Nothing else in the menu: every named row in the menu's own column is one of the agreed rows.
+        left = _box(rows[0])[0]
+        column = sorted((n for n in tray._nodes(ctx, '*', 'menu item')
+                         if n.get('name') and _box(n)[0] == left), key=_top)
+        extra = [n['name'] for n in column if n['name'] not in {r['name'] for r in rows}]
+        ctx.expect(not extra, 'tray menu shows only the agreed rows; also: ' + ', '.join(extra))
         tray._menu_frame(ctx, 'tray-menu-agreed-layout')
         tray._press(ctx, 'region', 'menu item')
         oid = tray._new_operation(ctx, before, 'region')['id']

@@ -1116,8 +1116,15 @@ SD_CLIPBOARD
         return self._probe('layout', query)['windows']
 
     def frame(self, label, window=None, reference=None):
-        """Save evidence: the window's pixels, or the whole desktop without one."""
+        """Save evidence: the window's pixels, or the whole desktop without one.
+
+        A recipe sets ``_frames_withheld`` (a reason) while the screen can show something that
+        must never reach evidence, such as a signed link; no pixels are captured then.
+        """
         self._check_time()
+        if getattr(self, '_frames_withheld', None):
+            self.review('frame withheld: '+self._frames_withheld)
+            return None
         label = self.evidence.redactor.text(label)
         safe = re.sub('[^a-zA-Z0-9_.-]','_',label)[:80] or 'frame'
         recipe = self.recipe.name if self.recipe else 'setup'

@@ -6,6 +6,7 @@ import re
 import shlex
 import uuid
 from urllib.parse import unquote, urlsplit
+import urllib.request
 
 from ..api import RecipeBlocked
 from .base import Fixture
@@ -105,6 +106,11 @@ def r2_scoped(text):
         keys = bridge.parse_s3_credentials(block)['credentials']
     except Exception:
         raise RecipeBlocked('R2 object-scoped key pair could not be parsed') from None
+    # R2 keys have their own shape: a 32-hex key ID and a 64-hex secret. Anything else (an AWS pair
+    # pasted under the heading) is refused here, before any request could carry it to Cloudflare.
+    if (not re.fullmatch(r'[0-9a-f]{32}', keys['accessKey']) or not re.fullmatch(r'[0-9a-f]{64}', keys['secretKey'])
+            or keys.get('sessionToken')):
+        raise RecipeBlocked('R2 object-scoped block does not hold an R2 key pair')
     public = re.findall(r'(?im)^\s*R2 public URL\s*:\s*(https://pub-[0-9a-f]+\.r2\.dev)/?\s*$', text)
     bucket = re.findall(r'(?im)^\s*R2 bucket\s*:\s*([a-z0-9][a-z0-9-]{1,61}[a-z0-9])\s*$', text)
     accounts = set(re.findall(r'https://([0-9a-f]{32})\.r2\.cloudflarestorage\.com', text))
@@ -330,7 +336,8 @@ def _r2_setup(scope, fixture, prefix, guarded):
                              objectPrefix=prefix, linkMode='public', linkValidityDays=7,
                              publicUrlBase=settings['publicUrlBase'], connectTimeoutMs=5000, requestTimeoutMs=60000,
                              lowSpeedBytesPerSecond=1, lowSpeedTimeSeconds=30)
-    fixture.update(client=client, bucket=settings['bucket'], region='auto', public_base=settings['publicUrlBase'])
+    fixture.update(client=client, bucket=settings['bucket'], region='auto', public_base=settings['publicUrlBase'],
+                   account=settings['accountId'])
     return 'cloudflare-r2', provider_settings, reference
 
 
@@ -398,6 +405,12 @@ def reconcile_refused_s3(ctx, fixture, op, detail):
     ctx.expect(False, 'refused Put still has a remote object; preserve its row and credential')
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A checked link must answer itself: a redirect is its status, never followed."""
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
 def _public_get(url, *, timeout=20):
     """An independent unauthenticated GET from the builder: status and SHA-256, nothing else."""
     import hashlib
@@ -405,7 +418,7 @@ def _public_get(url, *, timeout=20):
     import urllib.request
     request = urllib.request.Request(url, headers={'User-Agent': 'putgd-tier1-check'})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.build_opener(_NoRedirect).open(request, timeout=timeout) as response:
             data = response.read(32*1024*1024+1)
             return dict(status=response.status, sha256=hashlib.sha256(data).hexdigest(), bytes=len(data))
     except urllib.error.HTTPError as error:
@@ -456,22 +469,27 @@ def verify_r2(ctx, fixture, detail, data=None, *, absent=False, base=None):
                    'public '+base.split('//', 1)[1]+' GET 200 SHA-256 equals saved file')
 
 
-# A signed link lives on the S3 API host: AWS's, or the R2 account's.
-PRESIGNED_HOSTS = ('.amazonaws.com', '.r2.cloudflarestorage.com')
+def verify_presigned(ctx, fixture, detail, data, *, host, refused=(403,)):
+    """An expiring link (#1366): signed GET returns the file, the same URL unsigned is refused (REFUSED).
 
-
-def verify_presigned(ctx, fixture, detail, data, *, refused=(403,)):
-    """An expiring link (#1366): signed GET returns the file, the same URL unsigned is refused (REFUSED)."""
+    The link must be on exactly HOST, the destination's S3 API endpoint, and name this run's bucket and
+    key (path style, or the bucket as HOST's first label), before any request is sent.
+    """
     import hashlib
-    from urllib.parse import parse_qs, urlsplit, urlunsplit
+    from urllib.parse import parse_qs, unquote, urlsplit, urlunsplit
     receipt = detail['receipt']
+    key = receipt['objectReference']['key']
     link = urlsplit(receipt['directUrl'])
     query = parse_qs(link.query)
     expires = query.get('X-Amz-Expires', ['0'])[0]
-    ctx.expect(link.scheme == 'https' and (link.hostname or '').endswith(PRESIGNED_HOSTS)
+    place = {(host, '/'+fixture.bucket+'/'+key), (fixture.bucket+'.'+host, '/'+key)}
+    ctx.expect(key.startswith(fixture.prefix) and receipt['destination']['settings']['bucket'] == fixture.bucket
+               and link.scheme == 'https' and link.port in (None, 443) and not link.username and not link.password
+               and (link.hostname, unquote(link.path)) in place and not link.fragment
                and query.get('X-Amz-Algorithm') == ['AWS4-HMAC-SHA256'] and 'X-Amz-Signature' in query
                and expires.isdigit() and 0 < int(expires) <= 86400,
-               'copied link is a SigV4 presigned GET on the S3 API host, valid for at most the chosen day')
+               'copied link is a SigV4 presigned GET of this run\'s key on the destination\'s S3 API host, '
+               'valid for at most the chosen day')
     ctx.expect(bool(receipt.get('linkExpiresAt') or detail.get('linkExpiresAt')), 'the receipt records when the link expires')
     digest = hashlib.sha256(data).hexdigest()
     signed = _public_get(receipt['directUrl'])

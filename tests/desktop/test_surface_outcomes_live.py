@@ -191,16 +191,18 @@ class LiveOutcomes(unittest.TestCase):
         account='0123456789abcdef0123456789abcdef'
         broad=('Cloudflare R2\nAccess key ID: broad-expired\nSecret access key: broad-secret\n'
                'S3 API: https://'+account+'.r2.cloudflarestorage.com\n')
-        scoped=('\nR2 object-scoped\nAccess key ID: scoped-id\nSecret access key: scoped-secret\n'
+        scoped=('\nR2 object-scoped\nAccess key ID: '+'c'*32+'\nSecret access key: '+'d'*64+'\n'
                 'R2 public URL: https://pub-0a1b2c.r2.dev\nR2 bucket: putgd-test\n')
         text='AKIA'+'A'*16+' '+'b'*40+'\n'+broad+scoped
         parsed=r2_scoped(text)
-        self.assertEqual(parsed['credentials'],dict(accessKey='scoped-id',secretKey='scoped-secret',sessionToken=''))
+        self.assertEqual(parsed['credentials'],dict(accessKey='c'*32,secretKey='d'*64,sessionToken=''))
         self.assertEqual(parsed['settings'],dict(accountId=account,bucket='putgd-test',publicUrlBase='https://pub-0a1b2c.r2.dev'))
         for bad in (broad, text+scoped, text.replace('R2 bucket: putgd-test\n',''),
                     text.replace('R2 public URL: https://pub-0a1b2c.r2.dev\n',''),
                     text.replace(account+'.r2', 'f'*32+'.r2')+'https://'+account+'.r2.cloudflarestorage.com\n',
-                    text.replace('Secret access key: scoped-secret\n','')):
+                    text.replace('Secret access key: '+'d'*64+'\n',''),
+                    # An AWS pair under the R2 heading must never reach Cloudflare.
+                    text.replace('c'*32,'AKIA'+'A'*16).replace('d'*64,'b'*40)):
             with self.subTest(bad=bad[-60:]), self.assertRaises(RecipeBlocked):
                 r2_scoped(bad)
 
@@ -243,24 +245,31 @@ class LiveOutcomes(unittest.TestCase):
     def test_presigned_link_must_work_signed_and_be_refused_unsigned(self):
         data=b'synthetic presigned bytes'
         digest=hashlib.sha256(data).hexdigest()
-        url=('https://s3.us-east-2.amazonaws.com/put.gd/acceptance/x.png?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+        key='acceptance/tier1-live/'+'a'*32+'/x.png'
+        url=('https://s3.us-east-2.amazonaws.com/put.gd/'+key+'?X-Amz-Algorithm=AWS4-HMAC-SHA256'
              '&X-Amz-Expires=86400&X-Amz-Signature=abc')
+        fx=Fixture(prefix='acceptance/tier1-live/'+'a'*32+'/', bucket='put.gd')
+        host='s3.us-east-2.amazonaws.com'
+        receipt=lambda u: dict(directUrl=u, linkExpiresAt='x', objectReference=dict(key=key),
+                               destination=dict(settings=dict(bucket='put.gd')))
         def expect(ok, message):
             if not ok: raise RecipeFailed(message)
         ctx=SimpleNamespace(expect=expect, note=lambda _text: None)
-        detail=dict(receipt=dict(directUrl=url, linkExpiresAt='2026-11-21T00:00:00Z'))
+        detail=dict(receipt=receipt(url))
         answers={url: dict(status=200, sha256=digest), url.split('?')[0]: dict(status=403)}
         with patch('tools.lab.surface_driver.fixtures.live_outcomes._public_get', side_effect=lambda u: answers[u]):
-            verify_presigned(ctx, None, detail, data)
+            verify_presigned(ctx, fx, detail, data, host=host)
             answers[url.split('?')[0]]=dict(status=200, sha256=digest)
             with self.assertRaisesRegex(RecipeFailed, 'without the signature'):
-                verify_presigned(ctx, None, detail, data)
+                verify_presigned(ctx, fx, detail, data, host=host)
             answers[url.split('?')[0]]=dict(status=403)
             for broken in (url.replace('86400','604800'), url.replace('&X-Amz-Signature=abc',''),
-                           'https://put.gd/acceptance/x.png'):
+                           'https://put.gd/'+key, url.replace(host, 's3.us-west-1.amazonaws.com'),
+                           url.replace('/put.gd/', '/other-bucket/'), url.replace(key, key.replace('x.png', 'y.png')),
+                           url.replace(host, '0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com')):
                 answers[broken]=dict(status=200, sha256=digest)
                 with self.subTest(broken=broken), self.assertRaises(RecipeFailed):
-                    verify_presigned(ctx, None, dict(receipt=dict(directUrl=broken, linkExpiresAt='x')), data)
+                    verify_presigned(ctx, fx, dict(receipt=receipt(broken)), data, host=host)
 
     def test_live_rejects_boat_native_wrong_desktop_before_secret_read(self):
         for placement,host,desktop in [('boat','boat','mint-cinnamon-x11'),('native','f44','kubuntu-kde-wayland'),
