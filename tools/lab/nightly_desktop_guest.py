@@ -138,6 +138,78 @@ def hold_package_updates(run, out):
     return report
 
 
+def rpm_inventory(run):
+    """Every installed RPM in the guest: {name.arch: [epoch:version-release]}."""
+    value = lab.ssh(run, "rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\\n'\n")
+    packages = {}
+    for line in value.splitlines():
+        name, version = line.split(maxsplit=1)
+        packages.setdefault(name, []).append(version)
+    return {name: sorted(versions) for name, versions in packages.items()}
+
+
+def protected_packages(packages, desktop):
+    return {name: version for name, version in packages.items()
+            if any(fnmatch.fnmatchcase(name, pattern) for pattern in desktop)}
+
+
+# Stock Fedora GNOME has no tray host. A Fedora user who wants put.gd's tray installs and enables
+# Fedora's AppIndicator extension, which serves org.kde.StatusNotifierWatcher (docs/desktops/gnome.md).
+TRAY_HOST_PACKAGE = 'gnome-shell-extension-appindicator'
+TRAY_HOST_EXTENSION = 'appindicatorsupport@rgcjonas.gmail.com'
+# The tray host joins the desktop; nothing it brings may move the Shell, Mutter, GDM or the portals.
+TRAY_HOST_PROTECTED = ('gnome-shell.*', 'gnome-shell-common.*', 'gnome-shell-extension-common.*', 'mutter*',
+                       'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
+
+
+def install_tray_host(run, out):
+    """Install Fedora's AppIndicator extension in the disposable guest, before the Shell restarts."""
+    lab.verify_owned_guest(run)
+    run, out = Path(run), Path(out)
+    before = rpm_inventory(run)
+    exclude = shlex.quote('--exclude=' + ','.join(p.rstrip('.*') if p.endswith('.*') else p
+                                                   for p in TRAY_HOST_PROTECTED))
+    result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900,
+        input=f'sudo -n dnf --color=never {exclude} install -y {TRAY_HOST_PACKAGE}\n')
+    (out/'tray-host-install.txt').write_text(result.stdout+'\n'+result.stderr)
+    after = rpm_inventory(run)
+    changes = [dict(package=name, before=before.get(name), after=after.get(name))
+               for name in sorted(before.keys() | after.keys()) if before.get(name) != after.get(name)]
+    report = dict(exitCode=result.returncode, package=TRAY_HOST_PACKAGE, packagesChanged=changes,
+                  installed=any(name.startswith(TRAY_HOST_PACKAGE + '.') for name in after),
+                  desktopUnchanged=protected_packages(before, TRAY_HOST_PROTECTED) == protected_packages(after, TRAY_HOST_PROTECTED),
+                  # New packages only: an upgrade of something the desktop already runs is refused.
+                  nothingUpgraded=all(c['before'] is None for c in changes))
+    lab.write_json(out/'tray-host.json', report)
+    if result.returncode or not report['installed']:
+        raise RuntimeError('Fedora AppIndicator tray host could not be installed; private transaction retained')
+    if not report['desktopUnchanged'] or not report['nothingUpgraded']:
+        raise RuntimeError('installing the AppIndicator tray host changed the desktop; private transaction retained')
+    return report
+
+
+TRAY_HOST_READY = r'''python3 - <<'NIGHTLY_TRAY_HOST'
+import dbus,json,subprocess,time
+uuid='EXTENSION'
+subprocess.run(['gnome-extensions','enable',uuid],check=True,capture_output=True)
+bus=dbus.SessionBus()
+deadline=time.monotonic()+20
+while True:
+ state=None
+ try:
+  watcher=bus.get_object('org.kde.StatusNotifierWatcher','/StatusNotifierWatcher')
+  state=bool(dbus.Interface(watcher,'org.freedesktop.DBus.Properties').Get(
+   'org.kde.StatusNotifierWatcher','IsStatusNotifierHostRegistered'))
+ except dbus.DBusException:pass
+ if state:break
+ assert time.monotonic()<deadline, 'no StatusNotifierWatcher with a registered host after enabling '+uuid
+ time.sleep(.25)
+info=subprocess.run(['gnome-extensions','info',uuid],capture_output=True,text=True).stdout
+print(json.dumps(dict(extension=uuid,hostRegistered=True,info=[l.strip() for l in info.splitlines() if l.strip()])))
+NIGHTLY_TRAY_HOST
+'''.replace('EXTENSION', TRAY_HOST_EXTENSION)
+
+
 def install_rpm(run, package, out):
     """Install the published RPM through the golden's authorized package manager.
 
@@ -152,16 +224,10 @@ def install_rpm(run, package, out):
     desktop = PROTECTED_DESKTOPS.get(info.get('profile'), FEDORA_DESKTOP)
 
     def inventory():
-        value = lab.ssh(run, "rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\\n'\n")
-        packages = {}
-        for line in value.splitlines():
-            name, version = line.split(maxsplit=1)
-            packages.setdefault(name, []).append(version)
-        return {name: sorted(versions) for name, versions in packages.items()}
+        return rpm_inventory(run)
 
     def protected(packages):
-        return {name: version for name, version in packages.items()
-                if any(fnmatch.fnmatchcase(name, pattern) for pattern in desktop)}
+        return protected_packages(packages, desktop)
 
     before = inventory()
     lab.write_json(out/'rpm-before.json', before)
@@ -608,9 +674,20 @@ NIGHTLY_IMAGE_EXTENSION
             (out/'appimage-gnome-extension.json').write_text(lab.guest_session(run, extension))
         from tools.lab.surface_driver.compositor.stage_gnome_witness import stage
         from tools.lab.guest_reboot import reboot
+        if row['desktop'] == 'fedora-gnome-wayland':
+            # The Shell loads a newly installed extension only when it starts: the reboot below.
+            install_tray_host(run, out)
         (out/'witness.txt').write_text(stage(run, Path(__file__).parent/'surface_driver/compositor/gnome-witness'))
         (out/'reboot.json').write_text(json.dumps(reboot(run), indent=2))
         prepare_gnome_desktop(run, out)
+        if row['desktop'] == 'fedora-gnome-wayland':
+            # The resident starts only after this: its tray must find a registered host.
+            try:
+                report = lab.guest_session(run, 'export XDG_CONFIG_HOME="$HOME/.config"\n'+TRAY_HOST_READY, timeout=60)
+            except lab.LabError as error:
+                raise RuntimeError('could not verify that the Fedora AppIndicator extension registered a tray host '
+                                   'after the reboot') from error
+            (out/'tray-host-ready.json').write_text(report)
     elif 'kde' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
         (out/'accessibility.txt').write_text(stage(run))
