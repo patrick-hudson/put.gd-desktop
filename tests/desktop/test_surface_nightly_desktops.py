@@ -942,6 +942,22 @@ class NightlyTests(unittest.TestCase):
                                       f'rmdir -- {inputs}/artifacts/packages {inputs}/artifacts {inputs}')
             self.assertNotIn('-r', cleanup.split())
 
+    def test_a_recheck_runs_and_accepts_only_the_selected_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            builder = dict(ssh=['ssh', 'builder'], root='/repo', config='/private',
+                           rows=[dict(name='Budgie', desktop='fedora-budgie-wayland', live=False)])
+            # The worker returned a row the controller did not select (and has no package for).
+            other = json.dumps([dict(desktop='Ubuntu GNOME', cells={})])
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, other, None]) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                rows = nightly.run_host('d69', builder, 'vtest', root, archive, root, local_workers=Mock())
+            worker = next(c.args[0][-1] for c in command.call_args_list if '--worker' in c.args[0][-1])
+            self.assertIn('--row Budgie', worker)
+            self.assertEqual([r['desktop'] for r in rows], ['Budgie'])
+            self.assertIn('other rows than the controller selected', rows[0]['notRunReason'])
+
     def test_failed_cleanup_keeps_the_result(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1471,7 +1487,7 @@ with n.controller_shutdown(workers):
             marker = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
             out = Path(marker['results']).parent
             self.assertTrue((out/'results.md').is_file())
-            self.assertTrue((out/'d69-receipt.json').is_file())
+            self.assertTrue((out/'d69-d69-receipt.json').is_file())  # One receipt per builder and row.
             self.assertIn('dry run', (out/'results.md').read_text())
 
     def test_checksum_failure_blocks_before_guest_launch(self):

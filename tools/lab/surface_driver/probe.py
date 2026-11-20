@@ -1043,10 +1043,10 @@ def locate_pixels(window, screen):
 def pixels_at(window, screen, rect, point, radius=6):
     """True when the outputs show the window's own pixels around the point.
 
-    The four boxes that meet at the point are compared; at least two must be the
-    window's own pixels. Hyprland draws its software cursor into every output copy,
-    and an arrow whose hotspot is at the point covers only the box below and right
-    of it; anything that covers the point itself covers the boxes around it.
+    Of the four boxes that meet at the point, the three a cursor arrow whose hotspot
+    is at the point can't reach (above left, above right and below left) must all be
+    the window's own pixels. Hyprland draws its software cursor into every output
+    copy, and the arrow covers only the box below and right of its hotspot.
     """
     ww, wh, wb = window
     sw, sh, sb = screen
@@ -1068,7 +1068,7 @@ def pixels_at(window, screen, rect, point, radius=6):
     gap = 2  # the arrow's outline reaches a pixel or so past its hotspot
     boxes = ((px - gap - radius, px - gap, py - gap - radius, py - gap), (px + gap, px + gap + radius, py - gap - radius, py - gap),
              (px - gap - radius, px - gap, py + gap, py + gap + radius), (px + gap, px + gap + radius, py + gap, py + gap + radius))
-    return sum(same(*box) for box in boxes) >= 2
+    return all(same(*box) for box in boxes[:3])
 
 
 def content_box(image, width, height):
@@ -1233,12 +1233,10 @@ def toplevel_pixels_foreground(compositor, target, point, attempts=3):
             except RuntimeError as error:
                 reason = str(error)
                 continue
-            inside = where['frame'][0] <= point[0] < where['frame'][0] + where['frame'][2] and \
-                where['frame'][1] <= point[1] < where['frame'][1] + where['frame'][3]
-            if where['frame'] == rect and inside:
-                return {'ok': True, 'backend': 'toplevel-pixels-dialog', 'target': wid, 'obscuring_window': None}
-            reason = 'the dialog moved or the point is outside it'
-            continue
+            # A change of the dialog's size over its parent is not the dialog's own pixels:
+            # anything that size could make it. The click is never verified this way.
+            reason = 'labwc captured the dialog as 1x1; its pixels at the point cannot be verified'
+            break
         if window[:2] != size and window[0] >= size[0] and window[1] >= size[1]:
             window = content_box(window, *size) or window
         try:
@@ -2690,9 +2688,15 @@ def witness_foreground(query):
     if point is not None and query.get('popup') and compositor.get('kind') in ('toplevel-pixels', 'hyprctl'):
         # A popup is drawn above its own parent; neither compositor lists or captures it alone.
         popup = query['popup']
-        ok = popup.get('pid') == target.get('pid') and bool(popup.get('rect'))
-        return {'ok': ok, 'backend': compositor['kind'] + '-popup', 'target': wid,
-                'obscuring_window': None if ok else 'popup of another process', 'obscuring_window_id': None}
+        rect = popup.get('rect') or []
+        inside = (len(rect) == 4 and min(rect[2:]) > 0
+                  and rect[0] <= point[0] < rect[0] + rect[2] and rect[1] <= point[1] < rect[1] + rect[3])
+        if popup.get('pid') != target.get('pid'):
+            return {'ok': False, 'backend': compositor['kind'] + '-popup', 'target': wid,
+                    'obscuring_window': 'popup of another process', 'obscuring_window_id': None}
+        # The popup's rectangle was read from the screen just before; the click must fall inside it.
+        return {'ok': inside, 'unverified': not inside, 'backend': compositor['kind'] + '-popup', 'target': wid,
+                'obscuring_window': None if inside else 'the point is outside the observed popup', 'obscuring_window_id': None}
     if point is not None and compositor.get('kind') == 'toplevel-pixels':
         result = toplevel_pixels_foreground(compositor, target, point)
         if (not result['ok'] and query.get('raise') and not query.get('popup')
@@ -2850,13 +2854,18 @@ def signal_processes(pids, number):
 
 
 def stop_windows(rows):
-    """Stop these windows' processes: TERM all, wait two seconds once, then KILL what's left."""
-    pids = {row['pid'] for row in rows}
-    signal_processes(pids, signal.SIGTERM)
-    deadline = time.monotonic() + (2 if pids else 0)
-    while time.monotonic() < deadline and any(process_start(pid) for pid in pids):
+    """Stop these windows' processes: TERM all, wait two seconds once, then KILL what's left.
+
+    A process is known by its pid and start time, read before TERM; KILL goes only to
+    that same process, never to a pid reused meanwhile.
+    """
+    started = {pid: process_start(pid) for pid in {row['pid'] for row in rows}}
+    started = {pid: start for pid, start in started.items() if start}
+    signal_processes(started, signal.SIGTERM)
+    deadline = time.monotonic() + (2 if started else 0)
+    while time.monotonic() < deadline and any(process_start(pid) == start for pid, start in started.items()):
         time.sleep(.1)
-    signal_processes([pid for pid in pids if process_start(pid)], signal.SIGKILL)
+    signal_processes([pid for pid, start in started.items() if process_start(pid) == start], signal.SIGKILL)
 
 
 def clear_screen(query):
@@ -2879,7 +2888,8 @@ def clear_screen(query):
     for row in rows:
         unknown += row['pid'] is None and not row['owned']
         if (row['owned'] or not isinstance(row['pid'], int) or row['pid'] <= 1 or row.get('layer')
-                or row['process'] is None or row['process'] in query.get('shell', [])):
+                or row.get('minimized') or row['process'] is None or row['process'] in query.get('shell', [])):
+            # Nor a window that isn't showing (minimized, or on another Hyprland workspace).
             # A layer-shell surface is the desktop's own (panel, wallpaper, notifications), and a
             # surface whose client has no known process (Hyprland reports pid -1) is never signalled.
             continue

@@ -1151,6 +1151,11 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
     result = []
     # Rows on one builder run one after another: one guest slot, one set of ports.
     for row in config['rows']:
+        # The previous row's cleanup disarmed the alarm; the rest of the shared budget bounds this one.
+        # With nothing left, the row's own deadline checks (await_host) record it as not run.
+        left = deadline - time.monotonic()
+        if left > 0:
+            signal.setitimer(signal.ITIMER_REAL, left)
         started = time.monotonic()
         rowout = out/row['name'].lower().replace(' ', '-')
         rowout.mkdir(mode=0o700)
@@ -1288,7 +1293,9 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                     # A failed live cleanup may own the only current baton or a
                     # remote publication. Preserve that running guest for recover.
                     proton = Path.home()/'putgd-lab/locks/proton.lock'
-                    outstanding = proton.exists() and 'lent copy outstanding' in proton.read_text()
+                    # Only a row that lends Proton can hold its baton; another session's lend isn't this guest's.
+                    outstanding = (bool(row.get('live')) and row.get('proton', True) and proton.exists()
+                                   and 'lent copy outstanding' in proton.read_text())
                     retained = False
                     for receipt_path in rowout.glob('*/receipt.json'):
                         evidence = json.loads(receipt_path.read_text())
@@ -1335,6 +1342,8 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         record['finishedAt'] = dt.datetime.now(dt.timezone.utc).isoformat()
         save(rowout/'result.json', record)
         result.append(record)
+        # A finished row stays reported even if a later row's watchdog ends the worker.
+        save(out/'results.json', result)
         print(json.dumps(dict(desktop=row['name'], green=sum(c['green'] for c in cells.values()), total=len(cells))), flush=True)
     save(out/'results.json', result)
     return result
@@ -1387,7 +1396,7 @@ def publish(github, result, out, *, previous=None):
         # Acceptance attachments stay private/local until a person attaches them.
         # Do not update #1003, pin an issue, or file/close nightly regressions.
         for row in result['desktops']:
-            save(out/(row['host']+'-receipt.json'), row)
+            save(out/(row['host']+'-'+re.sub(r'[^a-z0-9]+', '-', row['desktop'].lower()).strip('-')+'-receipt.json'), row)
         (out/'results.md').write_text(f'Stable draft: **{result["release"]}** · {result["date"]}\n\n'+table(result))
         save(out/'results.json', result)
         return
@@ -1557,7 +1566,8 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
         else:
             selected = str(artifacts)
         args = ['nice','-n','10','python3',root+'/tools/lab/nightly_desktops.py', '--worker',host,
-                '--config',builder['config'], '--artifacts',selected, '--output',output, tag]
+                '--config',builder['config'], '--artifacts',selected, '--output',output,
+                *[a for r in builder.get('rows', []) for a in ('--row', r['name'])], tag]
         # A remote watchdog survives loss of the SSH client. Signal only the
         # worker (foreground), allowing its own finally blocks to retire guests.
         remote = ['timeout', '--foreground', '--signal=TERM', f'--kill-after={TERMINATE_GRACE}',
@@ -1568,6 +1578,9 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
                 terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
         text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
         rows = json.loads(text)
+        expected = sorted(r['name'] for r in builder.get('rows', []))
+        if expected and sorted(r.get('desktop') for r in rows) != expected:
+            raise NotRun('worker reported other rows than the controller selected')
         if ssh:
             try:
                 remove_inputs(ssh, inputs, archive)
@@ -1695,6 +1708,7 @@ def main():
     parser.add_argument('--config', type=Path, default=Path.home()/'.config/putgd-nightly/config.json')
     parser.add_argument('--worker', choices=HOSTS, help=argparse.SUPPRESS)
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--row', action='append', default=[], help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     operator = parser.add_argument_group('a nightly guest kept for live cleanup (docs/lab/remote-builders.md); run on its builder')
     operator.add_argument('--resolve-live-cleanup', metavar='RUN', help='record that you confirmed the remote object of run RUN (n<8 hex>) is gone, then remove the marker')
@@ -1772,7 +1786,13 @@ def main():
         tools_bin = config['builders'][args.worker].get('toolsBin')
         if tools_bin:
             os.environ['PATH'] = tools_bin+os.pathsep+os.environ.get('PATH', '/usr/bin:/bin')
-        worker(dict(config['builders'][args.worker], host=args.worker), args.tag,
+        builder = dict(config['builders'][args.worker], host=args.worker)
+        if args.row:
+            # Exactly the rows the controller downloaded packages for, in the configured order.
+            if not set(args.row) <= {r['name'] for r in builder['rows']}:
+                parser.error('--row names a row this builder does not have')
+            builder['rows'] = [r for r in builder['rows'] if r['name'] in args.row]
+        worker(builder, args.tag,
                json.loads((args.artifacts/'identity.json').read_text()), args.artifacts, args.output)
     else:
         local_workers = LocalWorkers()

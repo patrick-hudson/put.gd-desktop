@@ -104,18 +104,27 @@ class HyprlandWitness(unittest.TestCase):
                                                   'namespace': 'wallpaper', 'pid': -1}]}}}
         document = self.document(clients, layers=layers)
         self.assertEqual([w['pid'] for w in document['windows']], [4321, None, None])
-        sent = []
+        sent, starts = [], iter(['777'] + [None] * 50)
         with patch.object(probe, 'hyprland_windows', return_value=document), \
              patch.object(probe, 'close_notifications', return_value=1), \
              patch.object(probe, 'owned', return_value=False), \
              patch.object(probe, 'process_name', side_effect=lambda pid: {4321: 'nag'}.get(pid)), \
-             patch.object(probe, 'process_start', return_value=None), \
-             patch.object(probe.os, 'kill', side_effect=lambda pid, number: sent.append(pid)):
+             patch.object(probe, 'process_start', side_effect=lambda pid: next(starts)), \
+             patch.object(probe.os, 'kill', side_effect=lambda pid, number: sent.append((pid, number))):
             result = probe.clear_screen({'compositor': {'kind': 'hyprctl'}, 'above': '0xa1', 'obscuring': '0xa2', 'shell': []})
-        self.assertEqual(sent, [4321])
+        # TERM only: the process (known by its start time) was gone before KILL.
+        self.assertEqual(sent, [(4321, probe.signal.SIGTERM)])
         self.assertEqual(result['stopped'], [{'title': 'nag', 'process': 'nag'}])
         with patch.object(probe.os, 'kill', side_effect=AssertionError('signalled')):
             probe.signal_processes([-1, 0, 1, None, True], 15)
+
+    def test_kill_goes_only_to_the_process_term_was_sent_to(self):
+        sent = []
+        starts = {4321: iter(['777', '999', '999'])}  # pid reused by another process after TERM
+        with patch.object(probe, 'process_start', side_effect=lambda pid: next(starts[pid])), \
+             patch.object(probe.os, 'kill', side_effect=lambda pid, number: sent.append((pid, number))):
+            probe.stop_windows([{'pid': 4321}])
+        self.assertEqual(sent, [(4321, probe.signal.SIGTERM)])
 
     def test_activate_refuses_a_malformed_address(self):
         with self.assertRaises(RuntimeError):

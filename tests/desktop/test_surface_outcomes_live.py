@@ -314,19 +314,24 @@ class LiveOutcomes(unittest.TestCase):
                         admit(ctx)
 
     def test_budgie_and_hyprland_live_are_their_own_golden_on_their_builder(self):
-        for host, desktop, package, actual, reason in (
-                ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'synthetic lock denied'),
-                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', 'synthetic lock denied'),
-                ('f44', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'synthetic lock denied'),
-                ('k72', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'not on an authorized builder'),
-                ('d69', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', 'not on an authorized builder'),
-                ('d69', 'fedora-budgie-wayland', 'appimage', 'fedora45-budgie', 'requires an approved guest package/profile'),
-                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'fedora45-budgie', 'own lab golden profile')):
-            with self.subTest(host=host, desktop=desktop, package=package, actual=actual):
+        budgie, omarchy = 'fedora45-budgie', 'omarchy-hyprland-20261108'
+        for host, desktop, package, actual, image, reason in (
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
+                ('f44', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'synthetic lock denied'),
+                # Omarchy's clipboard history keeps copied links on disk: no live cell there.
+                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'refused on Omarchy'),
+                ('k72', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', budgie, 'not on an authorized builder'),
+                ('d69', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', omarchy, 'not on an authorized builder'),
+                ('d69', 'fedora-budgie-wayland', 'appimage', 'fedora45-budgie', budgie, 'requires an approved guest package/profile'),
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'omarchy-hyprland', budgie, "own lab golden"),
+                # The right profile label on another image is still refused.
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'fedora44-budgie', "own lab golden")):
+            with self.subTest(host=host, desktop=desktop, package=package, actual=actual, image=image):
                 ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop=desktop, package=package,
                                       target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
                                       profile={'guest': actual}, _live_admitted=True)
-                with patch('tools.lab.lab.state', return_value={'profile': actual}), \
+                state = {'profile': actual, 'golden': '/synthetic/lab-images/'+image+'/image.qcow2'}
+                with patch('tools.lab.lab.state', return_value=state), \
                      patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
                      patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
                     with self.assertRaisesRegex(RecipeBlocked, reason):

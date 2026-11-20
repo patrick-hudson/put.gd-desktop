@@ -143,12 +143,17 @@ def admit(ctx):
                 'omarchy-hyprland-wayland': 'appimage'}.get(ctx.desktop, 'deb')
     if not appimage_guest and ctx.package != expected:
         raise RecipeBlocked('Tier 1 live requires an approved guest package/profile combination')
-    # The VM-only desktops are bound to their one lab golden profile.
-    golden = {'fedora-budgie-wayland': 'fedora45-budgie', 'omarchy-hyprland-wayland': 'omarchy-hyprland'}.get(ctx.desktop)
+    if ctx.desktop == 'omarchy-hyprland-wayland':
+        # Omarchy's clipboard history writes copied text to its own store on disk, and the app
+        # auto-copies every link, a signed one included. That would outlive the guest's tmpfs.
+        raise RecipeBlocked('Tier 1 live is refused on Omarchy: its clipboard history stores copied links on disk')
+    # The VM-only desktops are bound to their one lab golden: its profile and its image directory.
+    golden = {'fedora-budgie-wayland': ('fedora45-budgie', 'fedora45-budgie')}.get(ctx.desktop)
     if golden:
         from tools.lab import lab
-        if lab.state(ctx.target.run)['profile'] != golden:
-            raise RecipeBlocked('Tier 1 live requires the desktop\'s own lab golden profile')
+        state = lab.state(ctx.target.run)
+        if state['profile'] != golden[0] or Path(state['golden']).parent.name != golden[1]:
+            raise RecipeBlocked('Tier 1 live requires the desktop\'s own lab golden')
     from tools.lab import desktop_lock
     session = os.environ.get('PUTGD_TIER1_SESSION', '')
     if not session:
@@ -158,6 +163,14 @@ def admit(ctx):
     guest_lock = Path.home()/'putgd-lab/locks/tier1-guest.lock.d/session'
     if guest_lock.is_symlink() or guest_lock.read_text().strip() != session:
         raise RecipeBlocked('Tier 1 live requires the builder guest slot lock')
+    # The slot must be held for this very run, not only by this session.
+    slot_owner = guest_lock.with_name('owner.json')
+    try:
+        owner_run = json.loads(slot_owner.read_text()).get('run') if not slot_owner.is_symlink() else None
+    except (OSError, ValueError, AttributeError):
+        owner_run = None
+    if owner_run is None or Path(owner_run).resolve() != Path(ctx.target.run).resolve():
+        raise RecipeBlocked('Tier 1 live requires the guest slot held for this exact run')
     if ctx.destination == 'proton':
         desktop_lock.Desktop(Path.home()/'putgd-lab/locks', ctx.host, resource='proton').heartbeat(session)
         if Path(os.environ.get('PUTGD_LAB_RUN', '/missing')).resolve() != ctx.target.run:
