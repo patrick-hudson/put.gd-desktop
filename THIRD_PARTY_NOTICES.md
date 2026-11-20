@@ -12,6 +12,14 @@ Font Name Plex, under SIL OFL 1.1. The sources and original per-family licences
 are in `src/ui/fonts`; packages install `OFL-sans.txt` and `OFL-mono.txt` beside
 their runtime notices.
 
+The text-recognition helper `putgd-ocr` embeds small pictures of each emoji as
+two fonts draw them, used only to recognize emoji on the screen (#1748). No font
+is included. They are drawn from Noto Color Emoji 2.051, copyright Google Inc.,
+under SIL OFL 1.1, and from Twemoji Mozilla 0.7.0, graphics copyright Twitter,
+Inc and other contributors, under CC-BY 4.0. The template file, its inputs and
+their checksums are in `src/ocr/emoji`; packages install `OFL.txt`,
+`CC-BY-4.0.txt` and `SOURCE.md` in `share/doc/putgd/emoji`.
+
 The package privately includes the official AWS SDK for C++ and its CRT shared
 libraries. `cmake/dependency-lock.json` identifies SDK 1.11.907 and all 15 pinned
 submodules. `tools/verify_dependencies.py` checks the actual source tree. Packaging
