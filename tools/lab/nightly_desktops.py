@@ -211,16 +211,23 @@ def run_command(argv, *, env, stdout, stderr, timeout, terminate_grace, local_wo
             local_workers.forget(process)
 
 
+# Why the worker must stop before its next row (termination or the spent budget), once known.
+STOP = {}
+
+
 @contextmanager
 def worker_deadline():
     """Bound setup and flow work, then disarm the timer while finally blocks run."""
     deadline = time.monotonic() + WORKER_SECONDS
+    STOP.clear()
     def expired(signum, _frame):
         signal.setitimer(signal.ITIMER_REAL, 0)
         # A second termination request must not interrupt retirement.
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        raise NotRun('worker terminated; cleanup required' if signum == signal.SIGTERM
-                     else 'worker deadline exhausted; remaining flows not run')
+        reason = ('worker terminated; cleanup required' if signum == signal.SIGTERM
+                  else 'worker deadline exhausted; remaining flows not run')
+        STOP.setdefault('reason', reason)
+        raise NotRun(reason)
     previous_term = signal.signal(signal.SIGTERM, expired)
     previous_alarm = signal.signal(signal.SIGALRM, expired)
     previous_timer = signal.setitimer(signal.ITIMER_REAL, WORKER_SECONDS)
@@ -1151,6 +1158,12 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
     result = []
     # Rows on one builder run one after another: one guest slot, one set of ports.
     for row in config['rows']:
+        if STOP.get('reason'):
+            # Terminated or out of budget during an earlier row: take no new lease, launch nothing.
+            result += [dict(record, profile=row['profile'], release=tag, build=identity['gitCommit'])
+                       for record in not_run_rows(host, dict(config, rows=[row]), 'row not started: '+STOP['reason'], out)]
+            save(out/'results.json', result)
+            continue
         # The previous row's cleanup disarmed the alarm; the rest of the shared budget bounds this one.
         # With nothing left, the row's own deadline checks (await_host) record it as not run.
         left = deadline - time.monotonic()
@@ -1527,14 +1540,14 @@ def sync_checkout(builder, driver):
         raise NotRun('builder checkout cannot reach the controller driver') from None
 
 
-def remove_inputs(ssh, inputs, archive):
-    """Delete only what this run unpacked; each night's packages would fill the builder."""
+def removal_command(inputs, archive):
+    """The shell command that deletes only what this run unpacked; each night's packages would fill the builder."""
     with tarfile.open(archive) as stream:
         members = stream.getmembers()
     names = [shlex.quote(inputs+'/'+m.name) for m in members if not m.isdir()]
     folders = [m.name for m in members if m.isdir()]
     folders = [shlex.quote(inputs+'/'+name) for name in sorted(folders, key=len, reverse=True)]
-    command([*ssh, ' && '.join(['rm -f -- '+' '.join(names), 'rmdir -- '+' '.join([*folders, shlex.quote(inputs)])])])
+    return ' && '.join(['rm -f -- '+' '.join(names), 'rmdir -- '+' '.join([*folders, shlex.quote(inputs)])])
 
 
 def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None, controller=None):
@@ -1577,8 +1590,11 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
                   str(HOST_TIMEOUT), *args]
         env = dict(os.environ, PUTGD_NIGHTLY_CONTROLLER=json.dumps(controller)) if controller and not ssh else None
         worker_error = None
+        # On a remote builder the same shell removes the unpacked packages once its worker has exited,
+        # however the SSH connection fares; the worker's own status is kept.
+        remote_line = (shlex.join(remote)+'; status=$?; '+removal_command(inputs, archive)+'; exit $status') if ssh else None
         try:
-            command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'), env=env,
+            command([*ssh, remote_line] if ssh else args, log=out/(host+'.log'), env=env,
                     timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
                     terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
         except (RuntimeError, subprocess.TimeoutExpired) as error:
@@ -1598,13 +1614,6 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
     except Exception as error:
         reason = str(error) if isinstance(error, NotRun) else 'worker infrastructure failed: '+type(error).__name__
         rows = not_run_rows(host, builder, reason, out/host)
-    finally:
-        # Once the worker is done (or never started), its unpacked packages go, whatever the result.
-        if ssh and inputs:
-            try:
-                remove_inputs(ssh, inputs, archive)
-            except (RuntimeError, subprocess.TimeoutExpired, OSError, tarfile.TarError) as error:
-                print(json.dumps(dict(host=host, inputsKept=str(error))), flush=True)
     for row in rows:
         row.update(totalSeconds=round(time.monotonic()-started,3), startedAt=started_at)
         row['waitSeconds'] = round(row.get('waitSeconds', 0)+waited, 3)

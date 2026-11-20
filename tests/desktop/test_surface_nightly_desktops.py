@@ -936,11 +936,14 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
                                  'vtest', root, archive, root, local_workers=Mock())
-            cleanup = command.call_args_list[-1].args[0][-1]
+            # The remote shell removes exactly what was unpacked once its worker exits, keeping its status.
+            worker = next(c.args[0][-1] for c in command.call_args_list if '--worker' in c.args[0][-1])
             inputs = '/repo/inputs/'+root.name
-            self.assertEqual(cleanup, f"rm -f -- '{inputs}/artifacts/packages/put gd.deb' && "
-                                      f'rmdir -- {inputs}/artifacts/packages {inputs}/artifacts {inputs}')
+            cleanup = (f"rm -f -- '{inputs}/artifacts/packages/put gd.deb' && "
+                       f'rmdir -- {inputs}/artifacts/packages {inputs}/artifacts {inputs}')
+            self.assertTrue(worker.endswith('; status=$?; '+cleanup+'; exit $status'))
             self.assertNotIn('-r', cleanup.split())
+            self.assertFalse(any(c.args[0][-1].startswith('rm ') for c in command.call_args_list))
 
     def test_a_recheck_runs_and_accepts_only_the_selected_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -973,7 +976,23 @@ class NightlyTests(unittest.TestCase):
             self.assertEqual([r['desktop'] for r in rows], ['Ubuntu GNOME', 'Budgie'])
             self.assertEqual(rows[0]['cells']['idle_memory']['status'], 'green')
             self.assertIn('worker timed out', rows[1]['notRunReason'])
-            self.assertIn('rm -f', command.call_args_list[-1].args[0][-1])  # Inputs removed after a timeout too.
+            # The controller never deletes the inputs itself: a dropped connection may hide a running worker.
+            self.assertFalse(any(c.args[0][-1].startswith('rm ') for c in command.call_args_list))
+
+    def test_a_stop_request_starts_no_further_row(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = [dict(name='Ubuntu GNOME', desktop='ubuntu-gnome-wayland', profile='gnome-wayland'),
+                    dict(name='Budgie', desktop='fedora-budgie-wayland', profile='fedora45-budgie')]
+            identity = dict(driver='d'*40, gitCommit='a'*40)
+            with patch.object(nightly, 'command', side_effect=lambda argv, **kw: identity['driver'] if 'rev-parse' in argv else None), \
+                    patch.object(nightly, 'lease', side_effect=AssertionError('a lease was taken')), \
+                    patch.object(nightly, 'recover_stale_guest', side_effect=AssertionError('a guest was touched')), \
+                    patch.dict(nightly.STOP, reason='worker terminated; cleanup required'):
+                result = nightly.worker_run(dict(host='d69', rows=rows), 'vtest', identity, Path(tmp), Path(tmp)/'out',
+                                            nightly.time.monotonic()+600)
+            self.assertEqual([r['desktop'] for r in result], ['Ubuntu GNOME', 'Budgie'])
+            self.assertTrue(all('row not started: worker terminated' in r['notRunReason'] for r in result))
+            self.assertEqual(json.loads((Path(tmp)/'out/results.json').read_text())[1]['desktop'], 'Budgie')
 
     def test_failed_cleanup_keeps_the_result(self):
         with tempfile.TemporaryDirectory() as tmp:
