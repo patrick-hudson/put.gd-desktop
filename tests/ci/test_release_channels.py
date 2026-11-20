@@ -169,6 +169,10 @@ class Workflows(unittest.TestCase):
         self.assertIn('publish.py --tag "$TAG" --directory build/publish --nightly', publish)
         self.assertIn('collect.py --tag "$TAG" --inputs build/downloaded --output build/publish --installers-only', publish)
         self.assertEqual(publish.count('run-id: ${{ env.REUSED_RUN }}'), 2)
+        # Exactly the artifacts `plan` checked, never the newest of a name.
+        self.assertIn('artifact-ids: ${{ needs.plan.outputs.package_artifact_ids }}', publish)
+        self.assertIn('artifact-ids: ${{ needs.plan.outputs.sources_artifact_id }}', publish)
+        self.assertNotIn('pattern:', publish.split('Download the push-CI run', 1)[1])
         self.assertIn("if: ${{ !cancelled() && needs.publish.result == 'success' }}", job(nightly, 'surface-map'))
         notify = publish.split('- name: Notify put.gd-site\n', 1)[1].split('      - name:', 1)[0]
         self.assertIn('SITE_DISPATCH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}', notify)

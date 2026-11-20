@@ -168,6 +168,11 @@ def packages(repository, commit, output, *, wait, rehearse=None):
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.write(f'run_id={proof["runId"] if proof else ""}\n')
+            # The exact artifacts checked here, so a later rerun's same-named uploads are never published.
+            ids = proof['artifacts'] if proof else {}
+            stream.write('package_artifact_ids=' + ','.join(str(ids[name]) for name in PACKAGE_ARTIFACTS
+                                                            if name in ids and name != 'appimage-sources') + '\n')
+            stream.write(f'sources_artifact_id={ids.get("appimage-sources", "")}\n')
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             if proof:

@@ -188,11 +188,14 @@ class Packages(unittest.TestCase):
                 reuse_ci.packages('owner/repo', self.commit, output, wait=0)
                 record = json.loads(output.read_text())
                 self.assertEqual((record['reused'], record['packages'], record['producer']['runId']), (True, True, 77))
-                self.assertEqual(values.read_text(), 'run_id=77\n')
+                ids = record['producer']['artifacts']
+                packages = ','.join(str(ids[name]) for name in reuse_ci.PACKAGE_ARTIFACTS if name != 'appimage-sources')
+                self.assertEqual(values.read_text(), f'run_id=77\npackage_artifact_ids={packages}\n'
+                                                     f'sources_artifact_id={ids["appimage-sources"]}\n')
                 with patch.object(reuse_ci, 'find_package_run', side_effect=subprocess.CalledProcessError(1, ['gh'])):
                     self.assertIsNone(reuse_ci.packages('owner/repo', self.commit, output, wait=0))
                 self.assertFalse(json.loads(output.read_text())['reused'])
-                self.assertTrue(values.read_text().endswith('run_id=\n'))
+                self.assertTrue(values.read_text().endswith('run_id=\npackage_artifact_ids=\nsources_artifact_id=\n'))
 
     def test_a_rehearsal_accepts_a_manual_run_and_marks_its_record(self):
         self.run.update(event='workflow_dispatch', head_branch='ci/topic')
