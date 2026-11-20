@@ -1788,7 +1788,8 @@ void testPlayingVideo() {
                             ro.wrong, ro.firstWrong.c_str(), oscBad, oscFirstBad, oscVid));
 
     // 3c. Full-width 60% playing video extending past the text margins
-    // (changingX = 0, changingW = W): edge blocks must not pin (#1537 S3).
+    // (changingX = 0, changingW = W): edge blocks must not pin and the entire
+    // full-width video (including outer margins) must come from one frame (#1537 S3).
     SceneSpec ssFull = ss;
     ssFull.changingX = 0;
     ssFull.changingW = W;
@@ -1798,10 +1799,14 @@ void testPlayingVideo() {
     for (const TrackResult& t : rf.results) fullLost += t.state == TrackState::Lost;
     int fullFirstBad = 0;
     const long long fullBad = differing(rf, pageRows(doc.img, 0, doc.img.h, W), {{0, 592, W, 848}}, 0, &fullFirstBad);
-    report("full-width 60% playing video: margin edges never pin",
-           rf.wrong == 0 && fullLost == 0 && rf.totals.pinnedRegions == 0 && fullBad == 0 && rf.totals.bottom == doc.img.h,
-           counts(rf) + fmt(", %d pinned, %d lost, %d wrong%s, %lld px differ (row %d)", rf.totals.pinnedRegions, fullLost,
-                            rf.wrong, rf.firstWrong.c_str(), fullBad, fullFirstBad));
+    int fullVid = -1;
+    const bool fullVidExact = matchesOneVideoFrame(rf, sceneFull, oscPos, 0, ssFull.changingY, W,
+                                                   ssFull.changingY + ssFull.changingH, &fullVid);
+    report("full-width 60% playing video: margin edges never pin, one frame",
+           rf.wrong == 0 && fullLost == 0 && rf.totals.pinnedRegions == 0 && fullBad == 0 && fullVidExact &&
+               rf.totals.bottom == doc.img.h,
+           counts(rf) + fmt(", %d pinned, %d lost, %d wrong%s, %lld px differ (row %d), video frame %d", rf.totals.pinnedRegions, fullLost,
+                            rf.wrong, rf.firstWrong.c_str(), fullBad, fullFirstBad, fullVid));
   }
 
   {
@@ -1915,6 +1920,46 @@ void testPlayingVideo() {
       report("240-px playing video at top of capture: snapshot keeps frame 0 exact",
              r.wrong == 0 && bad == 0 && videoExact && matchedVid == 0 && r.totals.bottom == doc.img.h,
              counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
+    }
+    // 5d. Mirror of 5c: 240-px playing video at the bottom of the capture
+    // scrolling upward in 8-px steps uses retained bottomCopy_ (#1537 S4).
+    {
+      SceneSpec ssBot = ss;
+      ssBot.changingY = doc.img.h - ss.changingH;
+      const Scene sceneBot(doc.img, ssBot);
+      std::vector<int> pos{end};
+      while (pos.back() > 0) pos.push_back(std::max(0, pos.back() - 8));
+      const Played r = play(sceneBot, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, ssBot.changingY - 8, 456, doc.img.h}}, 0, &firstBad);
+      int matchedVid = -1;
+      const bool videoExact = matchesOneVideoFrame(r, sceneBot, pos, ssBot.changingX, ssBot.changingY,
+                                                   ssBot.changingX + ssBot.changingW, doc.img.h, &matchedVid);
+      report("240-px playing video at bottom of capture: upward scroll keeps frame 0",
+             r.wrong == 0 && bad == 0 && videoExact && matchedVid == 0 && r.totals.bottom - r.totals.top == doc.img.h,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
+    }
+    // 5e. Edge lookback safety (#1537 S4): a transient frame-0 overlay above a
+    // video starting at row 40 must never be copied and locked in when scrolling
+    // down and back to the top.
+    {
+      SceneSpec ssOff = ss;
+      ssOff.changingY = 40;
+      const Scene sceneOff(doc.img, ssOff);
+      std::vector<int> pos{0};
+      for (int p = 8; p <= 96; p += 8) pos.push_back(p);
+      for (int p = 88; p >= 0; p -= 8) pos.push_back(p);
+      const Played r = play(sceneOff, pos, {}, [](size_t i, Image& f) {
+        if (i == 0)
+          for (int y = 0; y < 24; ++y)
+            for (int x = 32; x < 448; ++x) f.at(x, y) = 0xE02020;
+        return false;
+      });
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, int(r.totals.bottom), W), {{24, 32, 456, 288}}, 0, &firstBad);
+      report("transient frame-0 overlay above video at y=40 is not retained",
+             r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
     }
   }
 
