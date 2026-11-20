@@ -70,14 +70,6 @@ class DriverContext(Context):
         self._noted_ids=set()
         self._notifications_since = time.time()
         self._deadline = time.monotonic() + (recipe.timeout if recipe else 120)
-        if getattr(self, '_frames_withheld', None):
-            # An earlier recipe showed a signed link in History. Frames come back only once no
-            # put.gd window that could still show it is on screen; otherwise this recipe has none.
-            try:
-                if not self.windows({'title': self._window_query('history')['title']}):
-                    self._frames_withheld = None
-            except (RecipeBlocked, RecipeFailed):
-                pass
 
     def _check_time(self):
         if time.monotonic() > self._deadline:
