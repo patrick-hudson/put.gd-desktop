@@ -87,7 +87,7 @@ jobs:
     needs: [plan, ci]
     # After `ci` built everything here, or after `plan` found the push-CI run that did.
     if: >-
-      always() && needs.plan.result == 'success' && needs.plan.outputs.skip == 'false' &&
+      !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.skip == 'false' &&
       (needs.ci.result == 'success' || (needs.ci.result == 'skipped' && needs.plan.outputs.reused_run != ''))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -202,7 +202,7 @@ jobs:
     # acceptance coverage recorded under tools/lab/surface_map/coverage. Rendered
     # from the linux (26.04) job's UI catalog; never gates publication.
     needs: [plan, ci, publish]
-    if: always() && needs.publish.result == 'success'
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

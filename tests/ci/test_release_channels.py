@@ -163,13 +163,13 @@ class Workflows(unittest.TestCase):
         publish = job(nightly, 'publish')
         self.assertIn('needs: [plan, ci]', publish)
         # Publication follows a successful `ci` here, or a reused push-CI run with `ci` skipped; never a failure.
-        self.assertIn("always() && needs.plan.result == 'success' && needs.plan.outputs.skip == 'false' &&\n"
+        self.assertIn("!cancelled() && needs.plan.result == 'success' && needs.plan.outputs.skip == 'false' &&\n"
                       "      (needs.ci.result == 'success' || (needs.ci.result == 'skipped' && needs.plan.outputs.reused_run != ''))",
                       publish)
         self.assertIn('publish.py --tag "$TAG" --directory build/publish --nightly', publish)
         self.assertIn('collect.py --tag "$TAG" --inputs build/downloaded --output build/publish --installers-only', publish)
         self.assertEqual(publish.count('run-id: ${{ env.REUSED_RUN }}'), 2)
-        self.assertIn("if: always() && needs.publish.result == 'success'", job(nightly, 'surface-map'))
+        self.assertIn("if: ${{ !cancelled() && needs.publish.result == 'success' }}", job(nightly, 'surface-map'))
         notify = publish.split('- name: Notify put.gd-site\n', 1)[1].split('      - name:', 1)[0]
         self.assertIn('SITE_DISPATCH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}', notify)
         self.assertIn('if [ -z "$SITE_DISPATCH_TOKEN" ]', notify)
