@@ -526,8 +526,9 @@ Each row boots a fresh guest of its golden, installs the published package and r
 these cells, each judged by an independent check, not the app's own report. Before it
 installs anything, the row masks and stops the guest's own package updaters (`apt-daily`,
 `apt-daily-upgrade`, Mint Update's automation, dnf makecache and automatic) in the
-overlay, and records them in `package-updates.json`; a unit still loaded or active
-stops the row. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
+overlay, and records them in `package-updates.json`. The row stops there when a unit
+the golden has doesn't end masked and inactive (or failed), or when the guest reports
+no state for one of the units. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
 hour the check runs: on 2026-11-20 it upgraded `openssh-server` mid-row in the Kubuntu
 guest and sshd's restart cost the row its guest.
 
@@ -563,10 +564,12 @@ A builder runs one or two rows, one after the other, sharing its one guest slot 
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
 Ubuntu GNOME (DEB) then Fedora 45 Budgie (RPM); k72 Kubuntu (DEB), aurora-amd Aurora
 (AppImage) and f44 Fedora GNOME (RPM) run one each. The Budgie row runs no live cells
-(`"live": false` in d69's config since 2026-11-20): its live S3 cleanup deletes the
-object from History, and on labwc the driver can't verify a click on the deletion
-confirmation, which labwc captures as 1×1, so the first live run kept its guest with
-the object still published. Each builder reads its own
+(`"live": false` in d69's config since 2026-11-20). Live S3 cleanup deletes the object
+from History, which labwc doesn't let the driver do: on 2026-11-20 the Live S3 cell
+couldn't verify its click on the History window, so its cleanup stayed unresolved and
+the row kept its guest with the object still published. Had that click worked, the
+deletion confirmation would have stopped it: the same row's History delete cell couldn't
+place that dialog, and a click on a dialog labwc captures as 1×1 is never verified. Each builder reads its own
 `~/.config/putgd-nightly/config.json`, so a row added to a builder goes in that
 builder's copy and in d69's. The cells added on 2026-11-20 add about nine minutes to a
 live row (Live R2 alone takes about five) and three to a local-only one; a builder with
