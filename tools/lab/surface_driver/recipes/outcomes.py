@@ -932,9 +932,11 @@ def window_recording(ctx):
             # The desktop's own window list, as an agent or the picker-free bar uses it.
             target['identity'] = _pattern_window(ctx, ctx.call('recording.windows')['windows'])['identity']
         else:
-            # X11 records the active window: make the fixture active with real input.
-            ctx.focus('outcome-pattern', raise_window=False)
-            ctx.click_at(scene.rect[0] + 10, scene.rect[1] + 10)
+            # X11 takes the window's X id (recording.windows is Wayland only), found independently by its title.
+            found = ctx.shell("xdotool search --onlyvisible --name '^putgd synthetic fixture$'")
+            ids = found.get('stdout', '').split()
+            ctx.expect(found['returncode'] == 0 and len(ids) == 1, 'one visible X window is the fixture')
+            target['identity'] = ids[0]
         ctx.note('recording window acquisition=' + str(caps.get('windowAcquisition')))
         opened = ctx.view('recording.prepare', {'target': target, 'format': 'mp4', 'codec': 'h264', 'fps': 15,
                                                 'audio': {'system': False}})
@@ -945,7 +947,7 @@ def window_recording(ctx):
             window = ready.get('window') or {}
             ctx.note('recording window=' + json.dumps({k: window.get(k) for k in ('appId', 'rect')}, sort_keys=True))
             # The fixture covers its monitor, so the size alone cannot tell a window from a monitor recording.
-            ctx.expect(window.get('title') == 'putgd synthetic fixture' or (not window and 'identity' not in target),
+            ctx.expect(window.get('title') == 'putgd synthetic fixture' or (not window and ctx.profile.get('session') == 'x11'),
                        'the resident froze the fixture window, not another one')
             ctx.call('recording.start', {'id': rid})
             selectors._state(ctx, rid, 'recording')
