@@ -1895,101 +1895,103 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
       const int bandColLo = bandLo_[size_t(minK)], bandColHi = bandLo_[size_t(maxK + 1)];
       const int writeLo = minK == 0 ? 0 : bandColLo;
       const int writeHi = maxK == B - 1 ? C : bandColHi;
-      int frameCovered = 0;
+      // Score each candidate frame by the exact number of unblocked cells it
+      // can write across [writeLo, writeHi) over the confirmed dynamic rows
+      // [p0, p1), so clearing an exclusion in an outer margin or widening the
+      // dynamic region replaces an earlier partial snapshot without letting a
+      // permanently pinned scrollbar zero out the score (#1537 S3).
+      long long frameCovered = 0;
       for (long long p = c0; p < c1; ++p) {
         const int y = int(p - pos);
         const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
         const uint64_t* blk = &blocked[size_t(brow) * size_t(words)];
-        bool rowClear = true;
-        for (int c = bandColLo; c < bandColHi && rowClear; ++c)
-          if ((blk[c >> 6] >> (c & 63)) & 1ull) rowClear = false;
-        frameCovered += rowClear;
+        for (int c = writeLo; c < writeHi; ++c)
+          if (!((blk[c >> 6] >> (c & 63)) & 1ull)) ++frameCovered;
       }
-      // Whether a row just outside [p0, p1) already has confirmed static page
-      // content (verified cells or confirmed plain background) across the
-      // dynamic bands, so edge lookback stops before overwriting static page
-      // rows (#1537 S4).
-      const auto rowConfirmedStatic = [&](long long p) {
-        if (!store_->has(p)) return true;
-        const size_t at = size_t(p - store_->origin) * size_t(words);
-        const uint8_t* votes = &store_->plainVotes[size_t(p - store_->origin) * size_t(C)];
-        int verCells = 0, plainConfirmed = 0;
-        for (int c = bandColLo; c < bandColHi; ++c) {
-          if ((store_->ver[at + size_t(c >> 6)] >> (c & 63)) & 1ull) ++verCells;
-          if ((votes[c] & 0x7F) >= 2) ++plainConfirmed;
-        }
-        return verCells * 4 >= (bandColHi - bandColLo) || plainConfirmed * 2 >= (bandColHi - bandColLo);
-      };
       // Also consider the retained topmost (`topCopy_`) and bottommost
-      // (`bottomCopy_`) frames when the dynamic region already started leaving
-      // the top or bottom of the viewport before it was marked dynamic (#1537 S4).
+      // (`bottomCopy_`) frames over the confirmed dynamic rows [p0, p1) so a
+      // video that started leaving the top or bottom of the viewport before
+      // being marked dynamic is still written cleanly from one frame (#1537 S4).
       const auto scoreCopy = [&](const FrameCopy& copy, long long r0, long long r1) {
-        int cov = 0;
+        long long cov = 0;
         for (long long p = r0; p < r1; ++p) {
           const int y = int(p - copy.pos);
           const int brow = std::min(y / opts_.blockRows, blockRowCount_ - 1);
-          bool rowClear = true;
-          for (int c = bandColLo; c < bandColHi && rowClear; ++c) {
+          for (int c = writeLo; c < writeHi; ++c) {
             const size_t bi = size_t(brow) * size_t(C) + size_t(c);
-            if (copy.tag[bi] != copy.serial || closed_[bi] || excl_[bi] || ghost_[bi]) rowClear = false;
+            if (copy.tag[bi] == copy.serial && !closed_[bi] && !excl_[bi] && !ghost_[bi]) ++cov;
           }
-          cov += rowClear;
         }
         return cov;
       };
-      int topCovered = 0, botCovered = 0;
+      long long topCovered = 0, botCovered = 0;
       long long tc0 = 0, tc1 = 0, bc0 = 0, bc1 = 0;
       if (!topCopy_.tag.empty() && topCopy_.pos < pos) {
         tc0 = std::max({p0, topCopy_.pos, allowLo_});
         tc1 = std::min({p1, topCopy_.pos + H, allowHi_});
-        if (tc1 > tc0 && p0 <= pos + 8 && p0 > topCopy_.pos) {
-          const long long limit = std::max({topCopy_.pos, allowLo_, p0 - 64});
-          while (tc0 > limit && !rowConfirmedStatic(tc0 - 1)) --tc0;
-        }
         if (tc1 > tc0) topCovered = scoreCopy(topCopy_, tc0, tc1);
       }
       if (!bottomCopy_.tag.empty() && bottomCopy_.pos > pos) {
         bc0 = std::max({p0, bottomCopy_.pos, allowLo_});
         bc1 = std::min({p1, bottomCopy_.pos + H, allowHi_});
-        if (bc1 > bc0 && p1 >= pos + H - 8 && p1 < bottomCopy_.pos + H) {
-          const long long limit = std::min({bottomCopy_.pos + H, allowHi_, p1 + 64});
-          while (bc1 < limit && !rowConfirmedStatic(bc1)) ++bc1;
-        }
         if (bc1 > bc0) botCovered = scoreCopy(bottomCopy_, bc0, bc1);
       }
       const FrameCopy* chosenCopy = nullptr;
-      int unblockedRows = frameCovered;
+      long long unblockedCells = frameCovered;
       long long w0 = c0, w1 = c1;
-      if (topCovered > 0 && topCovered >= unblockedRows) {
+      if (topCovered > 0 && topCovered >= unblockedCells) {
         chosenCopy = &topCopy_;
-        unblockedRows = topCovered;
+        unblockedCells = topCovered;
         w0 = tc0;
         w1 = tc1;
       }
-      if (botCovered > 0 && botCovered >= unblockedRows && (!chosenCopy || botCovered > unblockedRows)) {
+      if (botCovered > 0 && botCovered >= unblockedCells && (!chosenCopy || botCovered > unblockedCells)) {
         chosenCopy = &bottomCopy_;
-        unblockedRows = botCovered;
+        unblockedCells = botCovered;
         w0 = bc0;
         w1 = bc1;
       }
-      if (unblockedRows <= 0) continue;
-      int prevBest = 0;
-      int prevK0 = B, prevK1 = -1;
+      if (unblockedCells <= 0) continue;
+      long long prevBest = 0;
       for (const DynSnap& s : dynSnaps_)
-        if (s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK) {
-          if (s.coveredRows > prevBest) {
-            prevBest = s.coveredRows;
-            prevK0 = s.k0;
-            prevK1 = s.k1;
-          } else if (s.coveredRows == prevBest) {
-            prevK0 = std::min(prevK0, s.k0);
-            prevK1 = std::max(prevK1, s.k1);
+        if (s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK) prevBest = std::max(prevBest, s.coveredCells);
+      const bool replace = unblockedCells > prevBest;
+      // When replacing from a retained copy (`topCopy_` / `bottomCopy_`), also
+      // include contiguous boundary rows just outside [p0, p1) that were
+      // already observed changing (`dynHits >= 1` across at least half the
+      // dynamic bands) before scrolling off the viewport edge, without ever
+      // touching unobserved rows or locking them as verified (#1537 S4).
+      long long extW0 = w0, extW1 = w1;
+      if (replace && chosenCopy) {
+        const auto rowIsStatic = [&](long long p) {
+          if (!store_->has(p)) return true;
+          const size_t at = size_t(p - store_->origin) * size_t(words);
+          const uint8_t* votes = &store_->plainVotes[size_t(p - store_->origin) * size_t(C)];
+          int verCells = 0, plainConfirmed = 0;
+          for (int c = bandColLo; c < bandColHi; ++c) {
+            if ((store_->ver[at + size_t(c >> 6)] >> (c & 63)) & 1ull) ++verCells;
+            if ((votes[c] & 0x7F) >= 2) ++plainConfirmed;
           }
+          return verCells * 4 >= (bandColHi - bandColLo) || plainConfirmed * 2 >= (bandColHi - bandColLo);
+        };
+        const auto rowHasDynHit = [&](long long p) {
+          const uint8_t* dh = store_->dynHitsRow(p);
+          int hitBands = 0;
+          for (int k = minK; k <= maxK; ++k) hitBands += dh[k] > 0;
+          return hitBands * 2 >= (maxK - minK + 1);
+        };
+        if (chosenCopy == &topCopy_ && p0 <= pos + 8 && w0 > topCopy_.pos) {
+          const long long limit = std::max({topCopy_.pos, allowLo_, p0 - 64});
+          for (long long p = w0 - 1; p >= limit && !rowIsStatic(p); --p)
+            if (rowHasDynHit(p)) extW0 = p;
+        } else if (chosenCopy == &bottomCopy_ && p1 >= pos + H - 8 && w1 < bottomCopy_.pos + H) {
+          const long long limit = std::min({bottomCopy_.pos + H, allowHi_, p1 + 64});
+          for (long long p = w1; p < limit && !rowIsStatic(p); ++p)
+            if (rowHasDynHit(p)) extW1 = p + 1;
         }
-      const bool widened = prevBest > 0 && unblockedRows == prevBest && (minK < prevK0 || maxK > prevK1);
-      const bool replace = unblockedRows > prevBest || widened;
+      }
       const long long srcPos = chosenCopy ? chosenCopy->pos : pos;
-      for (long long p = w0; p < w1; ++p) {
+      for (long long p = extW0; p < extW1; ++p) {
         if (!store_->has(p)) continue;
         const bool confirmedRow = p >= p0 && p < p1;
         const int y = int(p - srcPos);
@@ -2011,14 +2013,16 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
           const bool cellBlocked =
               chosenCopy ? (chosenCopy->tag[bi] != chosenCopy->serial || closed_[bi] || excl_[bi] || ghost_[bi])
                          : ((blk[w] & bit) != 0);
-          const bool confirmedCell = confirmedRow;
           const bool skip = cellBlocked || (!replace && (store_->prov[at + size_t(w)] & bit) != 0);
           if (skip) {
             flushSpan(c);
             continue;
           }
           store_->prov[at + size_t(w)] |= bit;
-          if (confirmedCell) store_->ver[at + size_t(w)] |= bit;
+          if (confirmedRow)
+            store_->ver[at + size_t(w)] |= bit;
+          else
+            store_->ver[at + size_t(w)] &= ~bit;
           if (spanStart < 0) spanStart = c;
         }
         flushSpan(writeHi);
@@ -2027,7 +2031,7 @@ void ScrollTracker::snapshotDynamic(const FrameView& frame, long long pos) {
         std::erase_if(dynSnaps_, [&](const DynSnap& s) {
           return s.p0 < p1 && s.p1 > p0 && s.k0 <= maxK && s.k1 >= minK;
         });
-        dynSnaps_.push_back({w0, w1, minK, maxK, unblockedRows});
+        dynSnaps_.push_back({w0, w1, minK, maxK, unblockedCells});
       }
     }
   }

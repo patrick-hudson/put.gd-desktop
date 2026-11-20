@@ -533,7 +533,7 @@ class ScrollTracker {
   struct DynSnap {
     long long p0 = 0, p1 = 0;
     int k0 = 0, k1 = 0;
-    int coveredRows = 0;
+    long long coveredCells = 0;
   };
   bool hasDyn_ = false;
   std::vector<DynSnap> dynSnaps_;

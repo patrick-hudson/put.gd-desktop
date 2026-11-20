@@ -1807,6 +1807,17 @@ void testPlayingVideo() {
                rf.totals.bottom == doc.img.h,
            counts(rf) + fmt(", %d pinned, %d lost, %d wrong%s, %lld px differ (row %d), video frame %d", rf.totals.pinnedRegions, fullLost,
                             rf.wrong, rf.firstWrong.c_str(), fullBad, fullFirstBad, fullVid));
+
+    // 3d. Full-width 60% playing video with an 8x8 exclusion in the outer left
+    // margin at (0, 324): once a later frame clears the exclusion, it must
+    // replace the earlier partial margin snapshot cleanly (#1537 S3).
+    const Played rfe = play(sceneFull, oscPos, {}, {}, TrackerRect{0, 324, 8, 8});
+    int exclVid = -1;
+    const bool exclVidExact = matchesOneVideoFrame(rfe, sceneFull, oscPos, 0, ssFull.changingY, W,
+                                                   ssFull.changingY + ssFull.changingH, &exclVid);
+    report("full-width 60% video with margin exclusion: clear frame replaces",
+           rfe.wrong == 0 && exclVidExact && rfe.totals.bottom == doc.img.h,
+           counts(rfe) + fmt(", %d wrong%s, video frame %d", rfe.wrong, rfe.firstWrong.c_str(), exclVid));
   }
 
   {
@@ -1960,6 +1971,51 @@ void testPlayingVideo() {
       report("transient frame-0 overlay above video at y=40 is not retained",
              r.wrong == 0 && bad == 0,
              counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+    // 5f. Mirror of 5e at the bottom edge (#1537 S4): video ending 16 px above
+    // the capture bottom with a transient frame-0 red overlay in the bottom 16
+    // rows; scrolling up 96 px and back in 8-px steps retains zero red pixels.
+    {
+      SceneSpec ssBotOff = ss;
+      ssBotOff.changingY = doc.img.h - ss.changingH - 16;
+      const Scene sceneBotOff(doc.img, ssBotOff);
+      std::vector<int> pos{end};
+      for (int p = end - 8; p >= end - 96; p -= 8) pos.push_back(p);
+      for (int p = end - 88; p <= end; p += 8) pos.push_back(p);
+      const Played r = play(sceneBotOff, pos, {}, [&](size_t i, Image& f) {
+        if (i == 0)
+          for (int y = V - 16; y < V; ++y)
+            for (int x = 32; x < 448; ++x) f.at(x, y) = 0xE02020;
+        return false;
+      });
+      const int outStart = end + int(r.totals.top);
+      const int outRows = int(r.totals.bottom - r.totals.top);
+      int firstBad = 0;
+      const long long bad = differing(
+          r, pageRows(doc.img, outStart, outStart + outRows, W),
+          {{24, ssBotOff.changingY - outStart - 8, 456, ssBotOff.changingY + ssBotOff.changingH - outStart + 8}}, 0, &firstBad);
+      report("transient frame-0 overlay below bottom video is not retained",
+             r.wrong == 0 && bad == 0,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d)", r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    }
+    // 5g. Top-edge video scrolling down 96 px and back to 0 in 12-px steps:
+    // returning over the top edge must keep one consistent video frame (#1537 S4).
+    {
+      SceneSpec ssTop = ss;
+      ssTop.changingY = 0;
+      const Scene sceneTop(doc.img, ssTop);
+      std::vector<int> pos{0};
+      for (int p = 12; p <= 96; p += 12) pos.push_back(p);
+      for (int p = 84; p >= 0; p -= 12) pos.push_back(p);
+      const Played r = play(sceneTop, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, int(r.totals.bottom), W), {{24, 0, 456, 248}}, 0, &firstBad);
+      int matchedVid = -1;
+      const bool videoExact = matchesOneVideoFrame(r, sceneTop, pos, ssTop.changingX, 0,
+                                                   ssTop.changingX + ssTop.changingW, ssTop.changingH, &matchedVid);
+      report("top-edge video scrolled down 96 px and back in 12-px steps: one frame",
+             r.wrong == 0 && bad == 0 && videoExact,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
     }
   }
 
