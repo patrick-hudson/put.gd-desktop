@@ -394,8 +394,14 @@ def _pixel_menu(ctx, labels, glyphs):
         served = _menu_activity(ctx)
         ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same_icon(image, panel, glyphs, found['rect'])
                         and showing(image) is None, button='right')
-        menu = ctx.wait(lambda: (m if _asked(m := _menu_activity(ctx)) > _asked(served) else None),
-                        'the tray host asking put.gd for its menu after the right-click', timeout=5)
+        asked = lambda: (m if _asked(m := _menu_activity(ctx)) > _asked(served) else None)
+        what = 'the tray host asking put.gd for its menu after the right-click'
+        if attempt == 1:
+            menu = ctx.wait(asked, what, timeout=5)
+        else:
+            # The first click was asked for and drew nothing: a host that also ignores the second is
+            # the host's state the lab can't judge, not put.gd's menu.
+            menu = _seen(ctx, asked, what + ' again')
         try:
             box = ctx.wait(lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon', timeout=5)
             break
@@ -426,7 +432,15 @@ def _pixel_menu(ctx, labels, glyphs):
             ctx.click_drawn(*centre, 0, lambda current: _same(image, current, box), wheel=-10)
             # Off the rows again before reading: a hovered row reads badly.
             ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
-            rest = _read_menu(ctx, _settled_menu(ctx, box, showing), box)
+            scrolled = _settled_menu(ctx, box, showing)
+            _menu_frame(ctx, 'tray-menu-scrolled')
+            rest = _read_menu(ctx, scrolled, box)
+            # Omarchy's card cuts the row at its top edge once scrolled; that row was read whole in
+            # the first view, which overlaps this one.
+            cut = tray_pixels.clipped_edges(labels, rest, box, first)
+            rest = [l for l in rest if l['text'] not in cut]
+            ctx.note('tray_menu_scrolled=' + json.dumps(dict(lines=[l['text'] for l in rest], cut_by_edge=cut),
+                                                        ensure_ascii=False))
             read = tray_pixels.align(labels, first + rest)
             # Back to the top, then click from a fresh read of that view: rows are clicked only where
             # they are drawn now.

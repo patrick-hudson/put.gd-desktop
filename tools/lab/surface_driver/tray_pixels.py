@@ -289,6 +289,28 @@ def unknown_lines(labels, lines, *, threshold=.85):
             and not any(label_score(label, line['text']) >= threshold for label in labels)]
 
 
+def clipped_edges(labels, view, box, overlap, *, band=20, threshold=.85):
+    """Lines of a scrolled menu VIEW that are rows cut by the scroll edge, not rows of their own.
+
+    Only the line at the top or bottom edge of BOX (within BAND pixels) can be cut, and only when
+    the line next to it is a label also read in the OVERLAP view, so the cut row lies where both
+    views show the menu and was read in full there.
+    """
+    if len(view) < 2:
+        return []
+    known = {normal(line['text']) for line in overlap}
+    def anchored(line):
+        return normal(line['text']) in known and any(label_score(label, line['text']) >= threshold for label in labels)
+    cut = []
+    top, second = view[0], view[1]
+    if top['rect'][1] < box[1] + band and anchored(second):
+        cut.append(top)
+    bottom, previous = view[-1], view[-2]
+    if bottom['rect'][1] + bottom['rect'][3] > box[3] - band and anchored(previous):
+        cut.append(bottom)
+    return [line['text'] for line in cut if unknown_lines(labels, [line])]
+
+
 def align(labels, lines, *, threshold=.85):
     """Match LABELS to OCR LINES in order (each line used once); the matched line per label or None."""
     n, m = len(labels), len(lines)
