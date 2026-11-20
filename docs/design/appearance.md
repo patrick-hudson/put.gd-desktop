@@ -195,6 +195,12 @@ restart: at local midnight, on logind's resume signal, on each tray refresh, and
 within five minutes of a clock or time zone change. `ui.snapshot`
 `diagnostics.trayIcon` reports `{glyph, shown, localDate, calendarOverride}`:
 `glyph` is the calendar's choice, `shown` is what a badge leaves on screen.
+`diagnostics.trayMenu` reports what tray hosts asked of the StatusNotifier menu: `shows`
+(root `AboutToShow` or `AboutToShowGroup` calls), `opened` and `closed` (the root's events,
+which not every host sends), `clicked` (the last eight rows a host reported clicked, each
+`{id, name, label}`) and `rows` (the top-level rows served now, in order, separators left out,
+each `{id, name, label, visible, enabled, submenu}`); `{"native": false}` for the Qt fallback
+tray. The lab uses it to open and check the menu on trays that export nothing to AT-SPI.
 
 For lab previews and tests, `PUTGD_TRAY_CALENDAR_NOW` (a local ISO date, or date
 and time) starts the tray's own clock at that moment and lets it run, so a run

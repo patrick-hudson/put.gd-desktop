@@ -551,7 +551,7 @@ guest and sshd's restart cost the row its guest.
 | Survives exit | The auto-copied link is still on the clipboard after Quit and a restart |
 | Right-click upload | The file manager's upload entry uploads exactly the selected file |
 | Window recording | A recording of the moving pattern window, by its identity (`recording.windows`, or its X id on X11); the resident must freeze exactly that identity. The exported clip lasts 4 to 30 s, its frames differ and it is the window's size (one pixel less allowed for encoder alignment) |
-| Tray menu | A real right-click on the tray icon shows the agreed rows (#1532) in order and no other named row in that menu; a region capture started from it uploads at the dragged size and its link is auto-copied |
+| Tray menu | A real right-click on the tray icon shows the agreed rows (#1532) in order and no other row in that menu; Capture region from it uploads at the dragged size and its link is auto-copied. Where the tray exports the icon to AT-SPI (GNOME with the AppIndicator extension, Plasma) the rows are read there. Where it doesn't (Cinnamon, Budgie, Omarchy) the icon is found by its pixels: the template is the IconPixmap the running resident publishes at that moment (its season's glyph and tint), matched by shape on the panel and only when exactly one place matches. put.gd's own `diagnostics.trayMenu` must then show the host asking for the menu after the click, serving the agreed rows, and the Capture region row as the one clicked; the drawn popup is read with tesseract as a cross-check |
 | Copy text / redact | Copy text of a drawn two-line pattern puts those two lines on the clipboard (compared with whitespace collapsed and blank lines ignored); Quick redact (`name`, `list`) turns the login name and a listed word solid in the saved copy, and two decoy words stay unchanged |
 | Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the link is signed for at most a day and records its expiry, the signed GET returns the file, the same URL unsigned gets 403, and the deletion leaves the origin without the object |
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
@@ -559,11 +559,18 @@ guest and sshd's restart cost the row its guest.
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
-words; empty today); it is never red and opens no issue. ⚪ means not run or no valid
-result: setup or infrastructure failures, checks that could not decide, and cells the
-harness cannot drive on a desktop, each with the reason, for example Tray menu on Cinnamon, Budgie and Hyprland,
-whose tray items have no accessible name, and on the stock Fedora GNOME guest, which has
-no tray host.
+words; empty today); it is never red and opens no issue. Use it only for something no user
+of that desktop can do. What a user can set up is set up in the guest instead: stock Fedora
+GNOME has no tray host, so the Fedora GNOME row installs and enables Fedora's AppIndicator
+extension (`gnome-shell-extension-appindicator`), as a Fedora user does for put.gd's tray,
+before the witness reboot, and waits for a registered StatusNotifier host before any
+resident starts. ⚪ means not run or no valid result: setup or infrastructure failures,
+checks that could not decide, and cells the harness cannot drive on a desktop, each with
+the reason. A tray icon found in more than one place, or a drawn menu the lab can't read,
+is ⚪ with that reason, never red. Omarchy keeps tray items in a drawer that opens on hover;
+the Tray menu cell pins put.gd's item for its duration (the tray's own Pin, in
+`~/.config/omarchy/shell.json`) and puts the setting back, and scrolls Omarchy's menu card,
+which shows about twelve rows, to read the rest.
 
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs

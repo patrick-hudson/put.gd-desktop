@@ -309,8 +309,12 @@ adapter never writes the user's Hyprland configuration and uses no `hl.unbind` o
   Hyprland drops a selection with its owner. Omarchy's clipboard history records
   copies but doesn't put them back on the clipboard. A crash, `kill -9` or a result
   over 64 MiB isn't kept. See [Clipboard after quitting](../design/clipboard-keeper.md).
-- quickshell is the tray host: put.gd's item and its menu work. quickshell exports no tray
-  items to AT-SPI, so the nightly's Tray menu cell can't find the icon there and is not run.
+- quickshell is the tray host: put.gd's item and its menu work. Omarchy keeps tray items in a
+  drawer that opens while the pointer is over its chevron; right-click the chevron and Pin an
+  item to keep it on the bar. Its menu card shows about twelve rows and scrolls for the rest.
+  quickshell exports no tray items to AT-SPI, so the nightly's Tray menu cell pins put.gd's item
+  for its duration and finds the icon by its pixels
+  ([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
 - quickshell is the notification server. It keeps **critical** notifications
   in `~/.local/state/omarchy/notifications/live.json` until they are dismissed,
   across reboots. put.gd's critical notices (failures and warnings) stay
