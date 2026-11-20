@@ -623,45 +623,61 @@ def _right_click_file(ctx, role, name, manager):
     box, point = _node_point(ctx, role, node)
     ctx.focus(role, raise_window=False)
     ctx.click_at(*point, button='right', head=box.get('head', 0))
+    return box, point
 
 
 ENTRY = 'Upload with put.gd'
 
 
-def _drawn_entry(ctx, scope, box):
-    """GTK4 exports its menu items without names, so read the drawn popup (head pixels)."""
+def _drawn_entry(ctx, scope, box, entry=ENTRY, near=None):
+    """GTK4 exports its menu items without names, so read the drawn popup (head pixels).
+
+    Where the compositor lists no popups (Hyprland, labwc), the popover is read
+    inside its file manager window, where GTK4 draws it.
+    """
     from ..probe import POPUP_WINDOW_TYPES
-    def popup():
-        windows = ctx._probe('compositor_windows', {'compositor': ctx.profile['compositor']})['windows']
-        found = [w for w in windows if w['pid'] == box['pid'] and w.get('type') in POPUP_WINDOW_TYPES]
-        return found[0] if len(found) == 1 else None
-    menu = ctx.wait(popup, 'the right-click menu is drawn', timeout=15)
+    if ctx.profile['compositor'].get('kind') in ('hyprctl', 'toplevel-pixels'):
+        # The popover opens at the right-click (head pixels): read the window around it.
+        x0, y0, w0, h0 = [round(box[k]) for k in ('x', 'y', 'width', 'height')]
+        if near:
+            left, top = max(x0, round(near[0]) - 360), max(y0, round(near[1]) - 300)
+            frame = [left, top, min(x0 + w0, round(near[0]) + 360) - left, min(y0 + h0, round(near[1]) + 400) - top]
+        else:
+            frame = [x0, y0, w0, h0]
+        menu = {'pid': box['pid'], 'frame': frame}
+    else:
+        def popup():
+            windows = ctx._probe('compositor_windows', {'compositor': ctx.profile['compositor']})['windows']
+            found = [w for w in windows if w['pid'] == box['pid'] and w.get('type') in POPUP_WINDOW_TYPES]
+            return found[0] if len(found) == 1 else None
+        menu = ctx.wait(popup, 'the right-click menu is drawn', timeout=15)
     x, y, width, height = menu['frame']
     attempts = []
-    def entry():
+    def read_menu():
         crop = ctx.target.capture_image(box.get('head', 0)).convert('RGB').crop((x, y, x + width, y + height))
         stream = io.BytesIO()
         crop.resize((width * 2, height * 2)).save(stream, format='PNG')
         attempts.append(None)
-        path = scope.root + '/menu-' + str(len(attempts)) + '.png'
+        path = scope.root + '/menu-' + re.sub('[^a-z]', '', wanted.lower())[:12] + '-' + str(len(attempts)) + '.png'
         scope.write(path, stream.getvalue())
         read = ctx.shell('tesseract ' + shlex.quote(path) + ' - --psm 6 tsv')
         if read['returncode']:
             ctx.blocked('tesseract could not read the drawn menu')
-        return _menu_line(read['stdout'])
-    line = ctx.wait(entry, ENTRY + ' is in the right-click menu', timeout=15)
+        return _menu_line(read['stdout'], wanted)
+    wanted = entry
+    line = ctx.wait(read_menu, wanted + ' is in the right-click menu', timeout=15)
     return menu, (x + line[0] // 2, y + line[1] // 2)
 
 
-def _menu_line(tsv):
+def _menu_line(tsv, entry=ENTRY):
     """(x, y) of the entry's first word in tesseract's TSV, or None."""
     rows = [row.split('\t') for row in tsv.splitlines()[1:]]
     words = [row for row in rows if len(row) == 12 and row[11].strip()]
-    wanted = ENTRY.split()
+    wanted = entry.split()
     for index in range(len(words) - len(wanted) + 1):
         group = words[index:index + len(wanted)]
         # The last word only by its start: "put.gd" is the one tesseract can misread.
-        if ([w[11] for w in group[:-1]] == wanted[:-1] and group[-1][11].startswith('put')
+        if ([w[11] for w in group[:-1]] == wanted[:-1] and group[-1][11].startswith(wanted[-1][:3])
                 and len({tuple(w[1:5]) for w in group}) == 1):
             left, top, width, height = map(int, group[0][6:10])
             return left + width // 2, top + height // 2
@@ -676,10 +692,15 @@ def _click_in_popup(ctx, popup, point, box):
         ctx._popup = None
 
 
-def _click_menu_entry(ctx, scope, role, manager):
+def _click_menu_entry(ctx, scope, role, manager, clicked=None):
     if manager.get('menu') == 'drawn':
         box = ctx.geometry(role)
-        menu, point = _drawn_entry(ctx, scope, box)
+        near = clicked[1] if clicked else None
+        if manager.get('submenu'):
+            # The AppImage's Nautilus entry is a script: Scripts, then the entry.
+            menu, point = _drawn_entry(ctx, scope, box, manager['submenu'], near)
+            _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu['frame']}, point, box)
+        menu, point = _drawn_entry(ctx, scope, box, near=near)
         ctx.frame('right-click-menu')
         _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu['frame']}, point, box)
         return
@@ -706,8 +727,8 @@ def file_manager_upload(ctx):
         role, name, digest, window = _file_manager_window(ctx, scope, manager)
         ctx.frame('file-manager-open')
         before = {o['id'] for o in ctx.call('operation.recent')['operations']}
-        _right_click_file(ctx, role, name, manager)
-        _click_menu_entry(ctx, scope, role, manager)
+        clicked = _right_click_file(ctx, role, name, manager)
+        _click_menu_entry(ctx, scope, role, manager, clicked)
         oid = history._new_operation(ctx, before, 'files')['id']
         notice = tray._notice(ctx, 'Upload complete')
         tray._drawn_notice(ctx, notice)
@@ -743,6 +764,10 @@ def link_browser(ctx):
             ctx.click('copyHistoryLink', window='history')
             ctx.wait(lambda: ctx.clipboard_text() == detail['receipt']['directUrl'], 'copied link equals uploaded object URL')
             ctx.click('windowClose', window='history')
+            if ctx.profile.get('focus', {}).get('raise_browser'):
+                # Hyprland gives focus back to the last focused tiled window, not the fullscreen
+                # kiosk under it, and ignores Firefox's own activation request.
+                ctx.focus('outcome-browser', raise_window=True)
             def paste():
                 # The helper proves the private blank kiosk's foreground first;
                 # bind keyboard input through the normal owned-window guard.

@@ -443,6 +443,13 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if result['returncode']:
             raise RecipeBlocked('private session directory already exists or cannot be created')
         self._created_root = True
+        # Hyprland's IPC sockets live under the session's runtime directory, and put.gd
+        # finds them through XDG_RUNTIME_DIR. Point the private runtime at that one
+        # directory only; the session socket and everything else stay private.
+        linked = self.execute('[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || ln -s "$PIPEWIRE_RUNTIME_DIR/hypr" '
+                              + shlex.quote(self.root + '/runtime/hypr'))
+        if linked['returncode']:
+            raise RecipeBlocked('cannot give the private runtime the Hyprland IPC directory')
         self.preserve_clipboard()
         if not first_launch:
             # Use the checked-in schema example as a baseline; discard every
@@ -534,7 +541,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             # probes. Only desktop connection variables cross this boundary.
             keys = ('DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','XDG_SESSION_TYPE',
                     'XDG_CURRENT_DESKTOP','WAYLAND_DISPLAY','QT_QPA_PLATFORM',
-                    'XDG_RUNTIME_DIR','XDG_CONFIG_DIRS','XDG_DATA_DIRS')
+                    'XDG_RUNTIME_DIR','XDG_CONFIG_DIRS','XDG_DATA_DIRS','HYPRLAND_INSTANCE_SIGNATURE')
             script = "python3 - <<'SD_PROBE_ENV'\nimport os,json\nprint(json.dumps({k:os.environ[k] for k in " + repr(keys) + " if k in os.environ}))\nSD_PROBE_ENV\n"
             native = json.loads(self.session(script, timeout=timeout))
             command = 'set -eu\n' + ''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in native.items())

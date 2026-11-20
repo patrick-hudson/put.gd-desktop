@@ -15,6 +15,11 @@ DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-o
              'libqt6keychain1')  # The native stdin credential bridge also runs beside AppImages.
 
 FEDORA_DESKTOP = ('gnome-shell*', 'mutter*', 'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
+# Fedora 45 Budgie: the panel, labwc and its bridge, the display manager, the
+# portals, the media stack and the Secret Service the session starts.
+BUDGIE_DESKTOP = ('budgie*', 'labwc*', 'wlroots*', 'gtk-layer-shell*', 'gtklock*', 'swaybg*', 'sddm*',
+                  'xdg-desktop-portal*', 'pipewire*', 'wireplumber*', 'mesa*', 'oo7*', 'kernel*')
+PROTECTED_DESKTOPS = {'fedora45-budgie': BUDGIE_DESKTOP}
 FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesseract '
                 'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring '
                 'openh264 gstreamer1-plugin-openh264')
@@ -27,9 +32,11 @@ def install_rpm(run, package, out):
     under test must retain its exact installed packages. Record the full RPM
     inventory delta as well as verifying the installed application bytes.
     """
-    lab.verify_owned_guest(run)
+    info = lab.verify_owned_guest(run)
     run, package, out = Path(run), Path(package), Path(out)
     (run/'package.json').unlink(missing_ok=True)
+    # The guest's own profile names the desktop stack that must not move.
+    desktop = PROTECTED_DESKTOPS.get(info.get('profile'), FEDORA_DESKTOP)
 
     def inventory():
         value = lab.ssh(run, "rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\\n'\n")
@@ -41,12 +48,12 @@ def install_rpm(run, package, out):
 
     def protected(packages):
         return {name: version for name, version in packages.items()
-                if any(fnmatch.fnmatchcase(name, pattern) for pattern in FEDORA_DESKTOP)}
+                if any(fnmatch.fnmatchcase(name, pattern) for pattern in desktop)}
 
     before = inventory()
     lab.write_json(out/'rpm-before.json', before)
     lab.put(run, str(package), 'putgd-nightly.rpm')
-    exclude = shlex.quote('--exclude='+','.join(FEDORA_DESKTOP))
+    exclude = shlex.quote('--exclude='+','.join(desktop))
     result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900,
         input=f'sudo -n dnf --color=never {exclude} install -y "$HOME/putgd-nightly.rpm" {FEDORA_TOOLS}\n')
     (out/'rpm-install.txt').write_text(result.stdout+'\n'+result.stderr)
@@ -54,7 +61,7 @@ def install_rpm(run, package, out):
     lab.write_json(out/'rpm-after.json', after)
     changes = [dict(package=name, before=before.get(name), after=after.get(name))
                for name in sorted(before.keys() | after.keys()) if before.get(name) != after.get(name)]
-    report = dict(exitCode=result.returncode, excluded=list(FEDORA_DESKTOP),
+    report = dict(exitCode=result.returncode, excluded=list(desktop),
                   desktopUnchanged=protected(before) == protected(after), packagesChanged=changes)
     lab.write_json(out/'rpm-transaction.json', report)
     if not report['desktopUnchanged']:
@@ -168,6 +175,9 @@ NIGHTLY_RAM
 '''
 
 
+ISOLATED_SECRET_SERVICES = ('ksecretd', 'oo7-daemon')
+
+
 def prepare_live_keyring(run, out):
     """Use the local fixture's unique GNOME connection alongside Atomic KWallet.
 
@@ -178,7 +188,9 @@ def prepare_live_keyring(run, out):
     from tools.lab.surface_driver.fixtures.keyring import OWNER, UNIQUE_SERVICE
     lab.verify_owned_guest(run)
     prior = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+OWNER+'\nPY\n'))
-    if prior['provider'] != 'ksecretd':
+    # Atomic's KWallet (ksecretd) and Fedora 45 Budgie's oo7-daemon, whose login
+    # collection stays locked after autologin, keep their name and collections.
+    if prior['provider'] not in ISOLATED_SECRET_SERVICES:
         return
     root = '/dev/shm/nd-keys'
     from tools.lab.surface_driver.target import checked_socket
@@ -249,12 +261,76 @@ fi
 '''
 
 
+# Omarchy's golden has no synced package databases, and its mirror moves: a
+# sync then -S is a partial upgrade. Only packages that are not installed may
+# enter; a transaction that would upgrade, downgrade or remove any installed
+# package (Hyprland, quickshell, Qt, Mesa, PipeWire, portals...) is refused.
+PACMAN_TOOLS = ('python-atspi', 'python-pyqt6', 'python-pillow', 'gst-plugin-gtk', 'gst-plugins-base')
+PACMAN = r'''set -eu
+before=$(pacman -Q)
+sudo -n pacman -Sy --noconfirm >/dev/null
+plan=$(sudo -n pacman -S --needed --print --print-format '%n %v' TOOLS)
+printf '%s\n' "$plan" > "$HOME/nightly-pacman-plan.txt"
+conflict=''
+while read -r name version; do
+ [ -n "$name" ] || continue
+ installed=$(printf '%s\n' "$before" | awk -v n="$name" '$1==n{print $2}')
+ if [ -n "$installed" ] && [ "$installed" != "$version" ]; then conflict="$conflict $name:$installed->$version"; fi
+done <<PLAN
+$plan
+PLAN
+if [ -n "$conflict" ]; then echo "NIGHTLY_PACMAN_REFUSED$conflict"; exit 3; fi
+[ -z "$plan" ] || sudo -n pacman -S --needed --noconfirm TOOLS
+after=$(pacman -Q)
+changed=$(printf '%s\n' "$before" | while read -r name version; do
+ now=$(printf '%s\n' "$after" | awk -v n="$name" '$1==n{print $2}')
+ [ "$now" = "$version" ] || printf '%s %s->%s\n' "$name" "$version" "${now:-removed}"
+done)
+if [ -n "$changed" ]; then printf 'NIGHTLY_PACMAN_CHANGED\n%s\n' "$changed"; exit 4; fi
+printf 'NIGHTLY_PACMAN_OK\n%s\n' "$plan"
+'''.replace('TOOLS', ' '.join(PACMAN_TOOLS))
+
+# Probe programs each desktop's cells use. X11 tools only where X11 runs the session.
+WAYLAND_TOOLS = {'fedora45-budgie': ('tesseract', 'wl-copy', 'wl-paste', 'grim', 'wlr-randr'),
+                 'omarchy-hyprland': ('tesseract', 'wl-copy', 'wl-paste', 'grim')}
+X11_TOOLS = ('tesseract', 'xdotool', 'xprop', 'xwininfo', 'xrandr', 'xclip', 'wl-copy', 'wl-paste')
+
+QUIET_OMARCHY = r'''python3 - <<'NIGHTLY_OMARCHY'
+import json,os,subprocess
+from pathlib import Path
+# Omarchy's update and first-run notices are critical quickshell cards that stay on screen.
+state=Path.home()/'.local/state/omarchy/notifications/live.json'
+cards=[]
+try:cards=json.loads(state.read_text())
+except (OSError,ValueError):pass
+print(json.dumps(dict(overlayOnly=True,liveNotificationsBefore=len(cards) if isinstance(cards,list) else None,
+                      stayAwake=(Path.home()/'.local/state/omarchy/indicators/stay-awake').exists())))
+NIGHTLY_OMARCHY
+'''
+
+
+def prepare_pacman(run, out):
+    """Probe tools for the Omarchy golden: new packages only, nothing installed may move."""
+    result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900, input=PACMAN)
+    (out/'pacman-install.txt').write_text(result.stdout+'\n'+result.stderr)
+    report = dict(exitCode=result.returncode, tools=list(PACMAN_TOOLS),
+                  installedUnchanged=result.returncode == 0 and 'NIGHTLY_PACMAN_OK' in result.stdout,
+                  refused=next((line for line in result.stdout.splitlines() if line.startswith('NIGHTLY_PACMAN_REFUSED')), None))
+    lab.write_json(out/'pacman-transaction.json', report)
+    if not report['installedUnchanged']:
+        raise RuntimeError('Omarchy probe tools would change an installed package; private transaction retained')
+    return report
+
+
 def prepare(run, row, out):
     lab.verify_owned_guest(run)
     # AppImages also run on Debian-derived guests. Their probe dependencies
     # still come from apt; selecting the probes never changes the app artifact.
-    package = row.get('probePackageManager', row['package'])
-    if package == 'deb':
+    guest = lab.state(run)['profile']
+    package = 'pacman' if guest == 'omarchy-hyprland' else row.get('probePackageManager', row['package'])
+    if package == 'pacman':
+        prepare_pacman(run, out)
+    elif package == 'deb':
         plan = lab.ssh(run, 'sudo -n apt-get -s install --no-install-recommends '+DEB_TOOLS, timeout=120)
         for line in plan.splitlines():
             if line.startswith('Inst ') and re.search(r'\b(?:mutter|gnome-shell|kwin|plasma|xorg|mesa|pipewire|xdg-desktop-portal)', line):
@@ -279,9 +355,9 @@ modules={}
 for name in ('pyatspi','dbus','PyQt6.QtGui'):
  try:importlib.import_module(name);modules[name]=True
  except Exception:modules[name]=False
-print(json.dumps(dict(modules=modules,tools={name:bool(shutil.which(name)) for name in ('tesseract','xdotool','xprop','xwininfo','xrandr','xclip','wl-copy','wl-paste')})))
+print(json.dumps(dict(modules=modules,tools={name:bool(shutil.which(name)) for name in TOOLS})))
 PROBES
-''')
+'''.replace('TOOLS', repr(WAYLAND_TOOLS.get(guest, X11_TOOLS))))
     (out/'guest-probes.json').write_text(probes)
     missing = [name for group in json.loads(probes).values() for name,present in group.items() if not present]
     if missing:
@@ -316,6 +392,8 @@ NIGHTLY_IMAGE_EXTENSION
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
         (out/'accessibility.txt').write_text(stage(run))
     (out/'nag-suppression.json').write_text(lab.guest_session(run, QUIET, timeout=60))
+    if guest == 'omarchy-hyprland':
+        (out/'omarchy-state.json').write_text(lab.guest_session(run, QUIET_OMARCHY, timeout=60))
     (out/'ram-placement.json').write_text(lab.guest_session(run, RAM))
     from tools.lab.stage_firefox import stage
     browser = json.loads(stage(run))

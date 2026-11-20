@@ -817,7 +817,32 @@ def upload_complete(ctx):
     _frame(ctx, 'after')
 
 
+def _ocr_notice(ctx, notice, area):
+    """The banner's summary read from the screen's notification area (head 0), for a shell whose
+    notification cards export nothing to AT-SPI (Omarchy's quickshell)."""
+    import base64
+    import io
+    image = ctx.target.capture_image(0).convert('RGB')
+    width, height = image.size
+    w = int(area['width']) if area['width'] > 1 else int(width * area['width'])
+    h = int(area['height']) if area['height'] > 1 else int(height * area['height'])
+    x = width - w if area.get('anchor', 'top-right').endswith('right') else 0
+    y = height - h if area.get('anchor', 'top-right').startswith('bottom') else 0
+    stream = io.BytesIO()
+    image.crop((x, y, x + w, y + h)).resize((w * 2, h * 2)).save(stream, format='PNG')
+    read = ctx.shell('printf %s ' + shlex.quote(base64.b64encode(stream.getvalue()).decode())
+                     + ' | base64 -d | tesseract stdin - --psm 6 2>/dev/null')
+    if read['returncode']:
+        ctx.blocked('tesseract could not read the notification area')
+    return ' '.join(notice['summary'].split()) in ' '.join(read['stdout'].split())
+
+
 def _drawn_notice(ctx, notice, *, by_body=False):
+    area = ctx.profile.get('notifications', {}).get('ocr_area')
+    if area and not by_body:
+        ctx.wait(lambda: _ocr_notice(ctx, notice, area), 'drawn shell popup (read on screen): ' + notice['summary'],
+                 timeout=ctx.profile.get('notifications', {}).get('draw_seconds', 3))
+        return
     policy = ctx.profile.get('notifications', {}).get('accessible')
     if not policy:
         ctx.blocked('Notification profile has no shell ownership selector', 670)
@@ -825,10 +850,14 @@ def _drawn_notice(ctx, notice, *, by_body=False):
         name = (glob.escape(__import__('html').unescape(notice.get('body', ''))) if by_body else
                 ctx.profile.get('notifications', {}).get('title_name_glob', '{summary}').replace('{summary}', glob.escape(notice['summary'])))
         ctx.expect(bool(name), 'notification has an observable body or title')
+        unplaced = ctx.profile.get('notifications', {}).get('placement') == 'unplaced'
         def on_screen(node):
             rect = node.get('rect')
             if isinstance(rect, dict):
                 rect = [rect[k] for k in ('x', 'y', 'width', 'height')]
+            if not rect and unplaced:
+                # A layer-shell popup the compositor gives no position (labwc): showing is all there is to prove.
+                return node.get('coordinate_space') == 'window-relative'
             return rect and min(rect[:2]) >= 0 and min(rect[2:]) > 0
         for field in ('text', 'name') if by_body else ('name',):
             nodes = ctx.accessible({**policy, field: name, 'visible': True, 'showing': True})

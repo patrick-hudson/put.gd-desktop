@@ -313,6 +313,25 @@ class LiveOutcomes(unittest.TestCase):
                     with self.assertRaisesRegex(RecipeBlocked, reason):
                         admit(ctx)
 
+    def test_budgie_and_hyprland_live_are_their_own_golden_on_their_builder(self):
+        for host, desktop, package, actual, reason in (
+                ('d69', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'synthetic lock denied'),
+                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', 'synthetic lock denied'),
+                ('f44', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'synthetic lock denied'),
+                ('k72', 'fedora-budgie-wayland', 'rpm', 'fedora45-budgie', 'not on an authorized builder'),
+                ('d69', 'omarchy-hyprland-wayland', 'appimage', 'omarchy-hyprland', 'not on an authorized builder'),
+                ('d69', 'fedora-budgie-wayland', 'appimage', 'fedora45-budgie', 'requires an approved guest package/profile'),
+                ('m74', 'omarchy-hyprland-wayland', 'appimage', 'fedora45-budgie', 'own lab golden profile')):
+            with self.subTest(host=host, desktop=desktop, package=package, actual=actual):
+                ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop=desktop, package=package,
+                                      target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
+                                      profile={'guest': actual}, _live_admitted=True)
+                with patch('tools.lab.lab.state', return_value={'profile': actual}), \
+                     patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                     patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
+                    with self.assertRaisesRegex(RecipeBlocked, reason):
+                        admit(ctx)
+
     def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
         """Reject unsupported or misidentified AppImages before any lease or credential access."""
         for host, desktop, guest, actual in (

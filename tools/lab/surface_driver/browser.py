@@ -520,6 +520,36 @@ def _mime_paths(config, data):
     return sorted(paths)
 
 
+def _desktop_specific_default(config, mime, entry):
+    """xdg-mime writes mimeapps.list only, but an existing <desktop>-mimeapps.list wins
+    (Omarchy keeps its browser in hyprland-mimeapps.list). Set the entry there too; the
+    file is in the transaction's byte backup, so it is restored with the others."""
+    for desktop in os.environ.get('XDG_CURRENT_DESKTOP', '').lower().split(':'):
+        path = Path(config) / (desktop + '-mimeapps.list')
+        if not re.fullmatch(r'[a-z0-9_-]+', desktop) or not path.is_file() or path.is_symlink():
+            continue
+        lines, section, done = path.read_text().splitlines(), None, False
+        out = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('[') and stripped.endswith(']'):
+                if section == '[Default Applications]' and not done:
+                    out.append(mime + '=' + entry)
+                    done = True
+                section = stripped
+            elif section == '[Default Applications]' and stripped.split('=', 1)[0].strip() == mime:
+                if not done:
+                    out.append(mime + '=' + entry)
+                    done = True
+                continue
+            out.append(line)
+        if not done:
+            if section != '[Default Applications]':
+                out.append('[Default Applications]')
+            out.append(mime + '=' + entry)
+        path.write_text('\n'.join(out) + '\n')
+
+
 def _snapshot(paths):
     result = []
     for path in paths:
@@ -936,6 +966,7 @@ def _prepare(options):
             for scheme in ('http', 'https'):
                 subprocess.run(['xdg-mime', 'default', desktop.name, 'x-scheme-handler/' + scheme],
                                env=mime_env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                _desktop_specific_default(profile_config, 'x-scheme-handler/' + scheme, desktop.name)
                 check = subprocess.run(['xdg-mime', 'query', 'default', 'x-scheme-handler/' + scheme],
                                        env=mime_env, capture_output=True, text=True, check=True, timeout=10)
                 if check.stdout.strip() != desktop.name:
@@ -1059,6 +1090,13 @@ def _blank(client, timeout):
             raise
         # A slow (software-rendered) load; the page itself is checked below.
     deadline = time.monotonic() + timeout
+    if not client.script("return innerWidth>=screen.width && innerHeight>=screen.height;"):
+        # Hyprland ends a kiosk's fullscreen when another window opens over it; ask Firefox for it back.
+        try:
+            client.call('WebDriver:FullscreenWindow')
+        except _TargetError:
+            if client.broken:
+                raise
     while True:
         safe = client.script("return location.href==='about:blank' && document.hasFocus() && "
                              "innerWidth>=screen.width && innerHeight>=screen.height;")

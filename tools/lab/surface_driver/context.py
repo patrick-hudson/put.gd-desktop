@@ -163,7 +163,7 @@ class DriverContext(Context):
                 compositor = dict(compositor, recording_bar_before=before)
             query = dict(query, compositor=compositor)
         witness = query.get('compositor') or {}
-        if witness.get('kind') == 'wayland-toplevels' and 'witness_source' not in witness:
+        if witness.get('kind') in ('wayland-toplevels', 'toplevel-pixels') and 'witness_source' not in witness:
             # The probe runs from shipped source with no file of its own; send the witness it imports (review #1275).
             query = dict(query, compositor=dict(witness, witness_source=(Path(__file__).resolve().parents[1]/'wayland_toplevels.py').read_text()))
         source = Path(__file__).with_name('probe.py').read_text()
