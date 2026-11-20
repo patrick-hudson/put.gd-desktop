@@ -868,7 +868,9 @@ def hyprland_foreground(target, point, attempts=3):
             return dict(result, ok=True, obscuring_window=None, backend='hyprctl-pick-translucent')
         return dict(result, ok=False, obscuring_window=window['wm_class'] + (
             ' (the bar\'s reserved strip)' if reserved else ' (%s notification cards)' % cards))
-    return dict(result, ok=False, obscuring_window=window['wm_class'] + ' (shell layer, drawn over the window)')
+    cards = quickshell_cards()
+    return dict(result, ok=False, obscuring_window=window['wm_class'] + ' (shell layer, drawn over the window%s)' % (
+        '; %d notification cards' % cards if cards else ''))
 
 
 def window_share(window, screen, rect):
@@ -2915,7 +2917,11 @@ def close_notifications(deadline):
                            stderr=subprocess.DEVNULL, timeout=left)
         except subprocess.TimeoutExpired:
             break
-    quickshell_dismiss(deadline)
+    if quickshell_dismiss(deadline):
+        # quickshell takes its cards down with an animation; the next look at the screen must not
+        # find the one this clearing posted, or one still leaving.
+        while quickshell_cards() not in (0, None) and time.monotonic() < deadline:
+            time.sleep(.1)
     return newest
 
 
