@@ -294,6 +294,8 @@ def repeated_labels(labels, view, *, threshold=.85):
 
     Views of a scrolled menu overlap, so only lines of one view are compared with each other.
     """
+    if not labels:
+        return []
     counts = {}
     for line in view:
         score, label = max((label_score(label, line['text']), label) for label in labels)
