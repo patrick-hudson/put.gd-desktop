@@ -1774,12 +1774,12 @@ QJsonObject SettingsWindow::candidate() const {
  const auto channel=!changed?updateChannelSetting_:chosen==buildUpdateChannel()?QString("build"):chosen;
  // Both keys are optional in a stored object; one it leaves out stays out until it differs from
  // its default, or the draft never matches the file and every action reports unsaved settings.
- if(preferences.contains("updates")||!checkUpdates_->isChecked()||channel!="build"){
-  const bool stored=preferences.contains("updates");auto updates=preferences["updates"].toObject();
-  if(!stored||updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();
-  if(!stored||updates.contains("channel")||channel!="build")updates["channel"]=channel;
-  preferences["updates"]=updates;
- }
+ // Each is written on its own: a saved edit sends only the field changed, so writing the other
+ // too would leave the draft different from the file. A stored object stays, even empty.
+ {const bool stored=preferences.contains("updates");auto updates=preferences["updates"].toObject();
+  if(updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();
+  if(updates.contains("channel")||channel!="build")updates["channel"]=channel;
+  if(stored||!updates.isEmpty())preferences["updates"]=updates;}
  // debugLogging is always written with the object; packageFolder stays as the draft holds it.
  if(preferences.contains("diagnostics")||debugLogging_->isChecked()){auto diagnostics=preferences["diagnostics"].toObject();diagnostics["debugLogging"]=debugLogging_->isChecked();preferences["diagnostics"]=diagnostics;}
  doc["preferences"]=preferences;auto limits=doc["limits"].toObject(),retention=doc["retention"].toObject();

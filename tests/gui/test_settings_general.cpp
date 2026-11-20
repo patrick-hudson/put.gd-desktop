@@ -39,6 +39,11 @@ private slots:
   PUTGD_TRY_VERIFY(window.settings()->flushAutosave()&&!window.settings()->actionSaveError());
   const auto saved=service.document()["preferences"].toObject();
   QVERIFY(!saved.contains("scrollCaptureMaxHeight")&&!saved.contains("scrollCaptureFromTop"));
+  // Updates is optional too: turning off the daily check saves it without leaving Settings unsaved.
+  QVERIFY(!saved.contains("updates"));
+  auto* check=window.settings()->findChild<QCheckBox*>("checkForUpdates");QVERIFY(check&&check->isChecked());check->click();
+  PUTGD_TRY_VERIFY(service.document()["preferences"].toObject()["updates"].toObject()["check"]==QJsonValue(false));
+  PUTGD_TRY_VERIFY(window.settings()->flushAutosave()&&!window.settings()->actionSaveError());
  }
  // The status band ends in the same state whether the window opened at a width
  // or was resized to it, either way, and gives way in order: the delay control
