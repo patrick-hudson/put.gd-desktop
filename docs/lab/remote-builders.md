@@ -577,9 +577,10 @@ on hosts that read names, taken with the second read. The cell compares the glyp
 profile's panel strip, at the size it was drawn, so the season's glyph, the tint and a host's
 recolouring don't matter. No shape scoring at least 0.8, or a second shape within 0.12 of the
 best, is ⚪ with the scores, and so is a second shape at 0.8 or above however far behind. A popup
-that can't be placed or doesn't settle, or whose text can't be accounted for, is ⚪ too. Those
-screen checks come before the served rows are compared, so a wrong served menu shows as red
-only when the popup was read. Omarchy keeps tray items in a drawer that opens on hover: the
+that can't be placed or doesn't settle, or that shows text that is no agreed row, is ⚪ too;
+those checks come before the served rows are compared, so a wrong served menu is red only once
+the popup was placed, settled and showed nothing else. A popup missing an agreed label is ⚪,
+checked after the served rows. Omarchy keeps tray items in a drawer that opens on hover: the
 cell adds put.gd's item to the tray's `pinned` list in `~/.config/omarchy/shell.json` (what the
 tray's Pin does) for its duration. It registers the cleanup before writing, and the cleanup
 writes the earlier value back and reads it back from disk; if that fails, the run's cleanup
