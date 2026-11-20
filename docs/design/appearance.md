@@ -202,7 +202,7 @@ which not every host sends), `clicked` (the last eight rows a host reported clic
 each `{id, name, label, visible, enabled, submenu}`); `{"native": false}` for the Qt fallback
 tray. It is read-only: the counters only grow over the resident's life, `rows` includes
 hidden rows (`visible: false`), and the same object goes into diagnostics packages. It records
-what a host did after a real click; it never opens the menu. The lab uses it to check the menu
+the dbusmenu calls and events hosts send, whatever caused them; it never opens the menu. The lab uses it to check the menu
 on trays that export nothing to AT-SPI.
 
 For lab previews and tests, `PUTGD_TRAY_CALENDAR_NOW` (a local ISO date, or date

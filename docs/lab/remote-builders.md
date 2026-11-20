@@ -553,7 +553,7 @@ guest and sshd's restart cost the row its guest.
 | Survives exit | The auto-copied link is still on the clipboard after Quit and a restart |
 | Right-click upload | The file manager's upload entry uploads exactly the selected file |
 | Window recording | A recording of the moving pattern window, by its identity (`recording.windows`, or its X id on X11); the resident must freeze exactly that identity. The exported clip lasts 4 to 30 s, its frames differ and it is the window's size (one pixel less allowed for encoder alignment) |
-| Tray menu | A real right-click on put.gd's tray icon opens its menu; Capture region from it uploads at the dragged size and its link is auto-copied. Where the tray exports the icon to AT-SPI (GNOME with the AppIndicator extension, Plasma), the menu's named rows there must be the agreed rows (#1532) in order, with no other named row. Where it doesn't (Cinnamon, Budgie, Omarchy), the icon is found by its pixels (below). put.gd's own `diagnostics.trayMenu` must then show the host asking for the menu after the click and list exactly the agreed rows in order as the visible rows it serves (red otherwise); tesseract must read each agreed label in order in the popup that opened next to the icon, and nothing else there; the click lands on the drawn Capture region row and put.gd must record that row as the one the host reported clicked |
+| Tray menu | A real right-click on put.gd's tray icon opens its menu; Capture region from it uploads at the dragged size and its link is auto-copied. Where the tray exports the icon to AT-SPI (GNOME with the AppIndicator extension, Plasma), the menu's named rows there must be the agreed rows (#1532) in order, with no other named row. Where it doesn't (Cinnamon, Budgie, Omarchy), the icon is found by its pixels (below). put.gd's own `diagnostics.trayMenu` must then show the host asking for the menu after the click and list exactly the agreed rows in order as the visible rows it serves (red otherwise); tesseract must read each agreed label in order in the popup that opened next to the icon, and no other text there (a shortcut on a line of its own, or a mark of fewer than three letters or digits, is not counted); the click lands on the drawn Capture region row and put.gd must record that row as the one the host reported clicked |
 | Copy text / redact | Copy text of a drawn two-line pattern puts those two lines on the clipboard (compared with whitespace collapsed and blank lines ignored); Quick redact (`name`, `list`) turns the login name and a listed word solid in the saved copy, and two decoy words stay unchanged |
 | Live S3 (live rows) | A public upload, its CloudFront link in Firefox and its deletion; then the destination switched to expiring links (#1366): the link is signed for at most a day and records its expiry, the signed GET returns the file, the same URL unsigned gets 403, and the deletion leaves the origin without the object |
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
@@ -571,14 +571,15 @@ waits for a registered StatusNotifier host before put.gd starts (`tray-host-read
 decide, and cells the harness cannot drive on a desktop, each with the reason.
 
 On trays without AT-SPI the Tray menu cell finds put.gd's icon by its pixels. The template is
-what the running resident publishes at that moment: its `IconPixmap` frames, and its
-`IconName` PNG on hosts that read names; they must read the same twice a moment apart, with no
-upload or completion showing. The cell compares the glyph's shape with each drawn shape on the
+what the running resident publishes at that moment: its `IconPixmap` frames, which must read
+the same twice a moment apart with no upload or completion showing, plus its `IconName` PNG
+on hosts that read names, taken with the second read. The cell compares the glyph's shape with each drawn shape on the
 profile's panel strip, at the size it was drawn, so the season's glyph, the tint and a host's
 recolouring don't matter. No shape scoring at least 0.8, or a second shape within 0.12 of the
-best, is ⚪ with the scores, and so is a second shape at 0.8 or above however far behind; so is
-a popup that can't be placed or doesn't settle, one whose agreed labels can't all be read, and
-one that shows other text, while the rows put.gd served are as agreed. Omarchy keeps tray items in a drawer that opens on hover: the
+best, is ⚪ with the scores, and so is a second shape at 0.8 or above however far behind. A popup
+that can't be placed or doesn't settle, or whose text can't be accounted for, is ⚪ too. Those
+screen checks come before the served rows are compared, so a wrong served menu shows as red
+only when the popup was read. Omarchy keeps tray items in a drawer that opens on hover: the
 cell adds put.gd's item to the tray's `pinned` list in `~/.config/omarchy/shell.json` (what the
 tray's Pin does) for its duration. It registers the cleanup before writing, and the cleanup
 writes the earlier value back and reads it back from disk; if that fails, the run's cleanup
