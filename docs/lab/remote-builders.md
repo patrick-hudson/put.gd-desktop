@@ -524,13 +524,15 @@ Release manual desktop leases by 12:15 UTC so the check can acquire them.
 
 Each row boots a fresh guest of its golden, installs the published package and runs
 these cells, each judged by an independent check, not the app's own report. Before it
-installs anything, the row stops and masks the apt guests' own package updaters
-(`apt-daily`, `apt-daily-upgrade` and Mint Update's automation) in the overlay, as root
-through the goldens' passwordless `apt-get` (its Pre-Invoke hook, with no sources, no
-package cache and no lists lock), and records them in `package-updates.json`. The row
-goes on only if the guest reports every listed unit as absent (`not-found`) or
-`masked`, and as `inactive` or `failed`; any other state, or no report for a unit,
-stops it there. Fedora installs no updates by
+installs anything, the row holds the apt guests' own package updaters (`apt-daily`,
+`apt-daily-upgrade` and Mint Update's automation) in the overlay, as root through the
+goldens' passwordless `apt-get` (its Pre-Invoke hook, with no sources, no package cache
+and no lists lock). It stops and masks their timers, lets an updater that is already
+running finish (up to 20 minutes; stopping one could kill dpkg or leave
+`unattended-upgrade` running), then masks the services, and records them in
+`package-updates.json`. The row goes on only if the guest reports every listed unit as
+absent (`not-found`) or `masked`, as `inactive` or `failed`, and with no queued job or
+process left in its cgroup; any other state, or no report for a unit, stops it there. Fedora installs no updates by
 itself and Aurora's `uupd` is held by its tools step. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
 hour the check runs: on 2026-11-20 it upgraded `openssh-server` mid-row in the Kubuntu
 guest and sshd's restart cost the row its guest.
