@@ -108,8 +108,9 @@ installation. Disable removes all helper bindings, signals, pending selectors, t
 GNOME has no tray of its own. Ubuntu enables its AppIndicator extension by default; on stock
 Fedora a user installs and enables `gnome-shell-extension-appindicator`
 (`appindicatorsupport@rgcjonas.gmail.com`) to get put.gd's tray icon and menu, and logs out and
-back in once so the Shell loads it. Without a tray host, Settings has Quit put.gd. The nightly's
-Fedora GNOME guest sets the extension up the same way before put.gd starts
+back in once so the Shell loads it. Without a tray host, quit from the main window's menu
+(**☰ → Quit put.gd**). The nightly's Fedora GNOME guest installs the extension, restarts the
+session, enables it and waits for a registered tray host before put.gd starts
 ([how](../lab/remote-builders.md#what-the-nightly-check-runs)).
 
 ## Modal dialogs

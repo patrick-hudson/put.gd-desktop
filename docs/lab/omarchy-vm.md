@@ -75,7 +75,9 @@ python3 tools/lab/lab.py launch --profile omarchy-hyprland \
   `mimeapps.list`. The lab's browser helper changes the HTTP and HTTPS handlers in both for
   the run and restores both files afterwards.
 - quickshell exports no tray items and no notification text to AT-SPI. The nightly reads its
-  banners from the screen, and its Tray menu cell is not run.
+  banners from the screen. Its Tray menu cell pins put.gd's tray item, finds the icon by its
+  pixels and scrolls the menu card
+  ([how](remote-builders.md#what-the-nightly-check-runs)).
 - The nightly guest adds its probe packages (python-atspi, python-pyqt6, python-pillow,
   gst-plugin-gtk, gst-plugins-base) in the disposable overlay. Before installing it refuses a
   plan that would change an installed package's version; after installing it compares the
