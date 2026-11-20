@@ -42,15 +42,21 @@ UPDATE_UNITS = UPDATE_TIMERS + UPDATE_SERVICES
 # The timers are stopped and masked, so nothing new starts; then a running or queued updater is left to
 # finish (its unit inactive, no job, an empty cgroup) within the deadline, and only then masked.
 UPDATE_DRAIN_SECONDS = 1200
+# Idle needs positive evidence: a job list that was read, and a unit cgroup that is absent or reports
+# `populated 0`. A failed read counts as busy.
 _IDLE = r'''idle() {
  [ -e /sys/fs/cgroup/cgroup.controllers ] || return 1
  case "$(systemctl show -P ActiveState "$1" 2>/dev/null)" in inactive|failed) ;; *) return 1 ;; esac
- systemctl list-jobs --no-legend 2>/dev/null | awk '{print $2}' | grep -qxF -- "$1" && return 1
- [ -z "$(cat "/sys/fs/cgroup/system.slice/$1/cgroup.procs" 2>/dev/null)" ]
+ jobs=$(systemctl list-jobs --no-legend --no-pager 2>/dev/null) || return 1
+ printf '%s\n' "$jobs" | awk '{print $2}' | grep -qxF -- "$1" && return 1
+ group=/sys/fs/cgroup/system.slice/$1
+ if [ -e "$group" ]; then grep -qx 'populated 0' "$group/cgroup.events" 2>/dev/null || return 1; fi
+ return 0
 }
 '''
 HOLD_UPDATES = (r'''set -u
-hold=$(mktemp)
+# The root hooks live in a private directory only lab can write; any failure to make them stops here.
+hold=$(mktemp -d) || exit 1
 ''' + _IDLE + r'''as_root() {
  command -v apt-get >/dev/null 2>&1 || return 0
  LC_ALL=C sudo -n /usr/bin/apt-get -o Debug::NoLocking=1 -o Dir::Etc::sourcelist=/dev/null \
@@ -59,8 +65,8 @@ hold=$(mktemp)
 }
 for unit in @TIMERS@ @SERVICES@; do
  printf '%s %s\n' "$unit" "$(systemctl show -P LoadState "$unit" 2>/dev/null)"
-done > "$hold.before"
-cat > "$hold.timers" <<'NIGHTLY_TIMERS'
+done > "$hold/before" || exit 1
+cat > "$hold/timers" <<'NIGHTLY_TIMERS' || exit 1
 for unit in @TIMERS@; do
  if [ "$(systemctl show -P LoadState "$unit" 2>/dev/null)" = loaded ]; then
   systemctl stop "$unit" >/dev/null 2>&1 && systemctl mask "$unit" >/dev/null 2>&1
@@ -68,7 +74,7 @@ for unit in @TIMERS@; do
 done
 exit 0
 NIGHTLY_TIMERS
-as_root "$hold.timers"
+as_root "$hold/timers"
 deadline=$(( $(date +%s) + @DRAIN@ ))
 while :; do
  busy=
@@ -86,14 +92,15 @@ for unit in @SERVICES@; do
 done
 exit 0
 NIGHTLY_SERVICES
-} > "$hold.services"
-as_root "$hold.services"
+} > "$hold/services" || exit 1
+as_root "$hold/services"
 while read -r unit before; do
  if idle "$unit"; then drained=drained; else drained=busy; fi
  printf '%s %s %s %s %s\n' "$unit" "${before:-unknown}" "$(systemctl show -P LoadState "$unit" 2>/dev/null)" \
   "$(systemctl show -P ActiveState "$unit" 2>/dev/null)" "$drained"
-done < "$hold.before"
-rm -f -- "$hold" "$hold.before" "$hold.timers" "$hold.services"
+done < "$hold/before"
+rm -f -- "$hold/before" "$hold/timers" "$hold/services"
+rmdir -- "$hold"
 ''').replace('@TIMERS@', ' '.join(UPDATE_TIMERS)).replace(
     '@SERVICES@', ' '.join(UPDATE_SERVICES)).replace('@DRAIN@', str(UPDATE_DRAIN_SECONDS))
 

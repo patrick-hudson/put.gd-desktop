@@ -1580,7 +1580,7 @@ with n.controller_shutdown(workers):
             services = script[script.index("<<'NIGHTLY_SERVICES'"):]
             self.assertNotIn('systemctl stop', services)
             self.assertIn('idle "$unit"; then', services)
-            self.assertIn('cgroup.procs', script)
+            self.assertIn('hold=$(mktemp -d) || exit 1', script)
             self.assertNotIn('--now', script)
             # Whatever the unit looked like before, it must end absent or masked, not running and drained;
             # a unit the guest did not report stops the row too.
@@ -1588,6 +1588,7 @@ with n.controller_shutdown(workers):
                            reply(**{'apt-daily.timer': 'loaded loaded active drained'}),
                            reply(**{'apt-daily-upgrade.service': 'masked masked activating busy'}),
                            reply(**{'apt-daily-upgrade.service': 'loaded loaded inactive busy'}),
+                           reply(**{'apt-daily-upgrade.service': 'masked masked inactive busy'}),
                            reply(**{'apt-daily.service': 'unknown loaded active busy'}),
                            reply().replace('apt-daily.service not-found not-found inactive drained\n', '')):
                 with self.subTest(broken=broken[:40]), patch.object(guest.lab, 'ssh', return_value=broken):
@@ -1599,6 +1600,21 @@ with n.controller_shutdown(workers):
                     guest.hold_package_updates(out, out)
             report = json.loads((out/'package-updates.json').read_text())
             self.assertEqual((report['error'], len(report['notHeld'])), ('LabError', len(guest.UPDATE_UNITS)))
+
+    def test_an_updater_counts_as_idle_only_on_positive_evidence(self):
+        from tools.lab import nightly_desktop_guest as guest
+        if not Path('/sys/fs/cgroup/cgroup.controllers').exists():
+            self.skipTest('needs a cgroup v2 host')
+        unit = 'putgd-test-absent-'+uuid.uuid4().hex+'.service'
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp)/'systemctl'
+            def idle(jobs_exit):
+                fake.write_text('#!/bin/sh\ncase "$1" in show) echo inactive;; list-jobs) exit %d;; esac\n' % jobs_exit)
+                fake.chmod(0o700)
+                return subprocess.run(['sh', '-c', guest._IDLE+'idle "$1"', 'sh', unit],
+                                      env=dict(os.environ, PATH=tmp+':'+os.environ['PATH'])).returncode
+            # A job list that could not be read is not an empty queue.
+            self.assertEqual((idle(0), idle(1)), (0, 1))
 
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
