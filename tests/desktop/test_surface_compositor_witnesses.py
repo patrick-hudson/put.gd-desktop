@@ -97,6 +97,26 @@ class HyprlandWitness(unittest.TestCase):
             result = probe.hyprland_foreground({'window_id': '0xa1', 'pid': 100}, (10, 10))
         self.assertEqual((result['ok'], result['obscuring_window']), (False, 'Firefox'))
 
+    def test_unknown_pids_and_shell_layers_are_never_signalled(self):
+        clients = [client('0xa1', 'fixture', [0, 0], [1280, 800], fullscreen=2, pid=-1),
+                   client('0xa2', 'nag', [10, 10], [300, 200], floating=True, pid=4321, wm_class='nag')]
+        layers = {'Virtual-1': {'levels': {'3': [{'address': '0xb3', 'x': 0, 'y': 0, 'w': 1280, 'h': 800,
+                                                  'namespace': 'wallpaper', 'pid': -1}]}}}
+        document = self.document(clients, layers=layers)
+        self.assertEqual([w['pid'] for w in document['windows']], [4321, None, None])
+        sent = []
+        with patch.object(probe, 'hyprland_windows', return_value=document), \
+             patch.object(probe, 'close_notifications', return_value=1), \
+             patch.object(probe, 'owned', return_value=False), \
+             patch.object(probe, 'process_name', side_effect=lambda pid: {4321: 'nag'}.get(pid)), \
+             patch.object(probe, 'process_start', return_value=None), \
+             patch.object(probe.os, 'kill', side_effect=lambda pid, number: sent.append(pid)):
+            result = probe.clear_screen({'compositor': {'kind': 'hyprctl'}, 'above': '0xa1', 'obscuring': '0xa2', 'shell': []})
+        self.assertEqual(sent, [4321])
+        self.assertEqual(result['stopped'], [{'title': 'nag', 'process': 'nag'}])
+        with patch.object(probe.os, 'kill', side_effect=AssertionError('signalled')):
+            probe.signal_processes([-1, 0, 1, None, True], 15)
+
     def test_activate_refuses_a_malformed_address(self):
         with self.assertRaises(RuntimeError):
             probe.hyprland_activate('0xa1; reload')
