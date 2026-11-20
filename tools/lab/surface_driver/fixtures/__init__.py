@@ -120,13 +120,21 @@ class FixtureManager:
         self.ctx=ctx
         self.scope=Scope(ctx)
         self.errors=[]
+        # Errors of scopes that failed only to reach the guest (Scope._guest_local): those of
+        # discarded scopes until the next close, then the ones the last close returned.
+        self.guest_local=[]
+        self.closed_guest_local=[]
         # Outer fallback for setup failure, cancellation or exceptions outside
         # run_recipes. Target.close still quits the owned resident afterwards.
         close=getattr(ctx.target,'close',None)
         if close:
             def close_with_fixtures():
                 errors=self.close()
-                return errors+list(close() or [])
+                local=self.closed_guest_local
+                errors=errors+list(close() or [])
+                # Target.close starts its own guest-local list; these fixture errors belong in it too.
+                ctx.target.guest_local_cleanup=local+list(getattr(ctx.target,'guest_local_cleanup',None) or [])
+                return errors
             ctx.target.close=close_with_fixtures
 
     def get(self,name,**options):
@@ -151,11 +159,14 @@ class FixtureManager:
         with critical(getattr(self.ctx,'review',None),failed=True,label='fixture setup-failure cleanup'):
             failed, self.scope = self.scope, Scope(self.ctx)
             self.errors.extend(failed.close())
+            self.guest_local.extend(failed.guest_local_errors)
 
     @entry
     def close(self):
         with critical(getattr(self.ctx,'review',None),label='fixture cleanup'):
             errors=self.errors+self.scope.close()
+            self.closed_guest_local=self.guest_local+self.scope.guest_local_errors
+            self.guest_local=[]
             self.errors=[]
             self.scope=Scope(self.ctx)
             self.ctx._fixtures.clear()

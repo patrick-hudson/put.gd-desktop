@@ -261,10 +261,21 @@ class Running(unittest.TestCase):
         (Path(target.root)/'fx-pending').mkdir(mode=0o700)
         self.assertEqual(target.close(),['private session root cleanup refused'])
         self.assertTrue(Path(target.root).exists())
-        (Path(target.root)/'fx-pending').rmdir()
+        self.assertEqual(target.guest_local_cleanup,[])
+        # A fixture directory left by a scope that could not reach the guest holds guest state alone.
+        target.guest_local_roots={'fx-pending'}
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertEqual(target.guest_local_cleanup,['private session root cleanup refused'])
+        # Any other leftover keeps the refusal an error.
+        (Path(target.root)/'fx-other').mkdir(mode=0o700)
+        self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertEqual(target.guest_local_cleanup,[])
+        self.assertTrue(Path(target.root).exists())
+        (Path(target.root)/'fx-other').rmdir();(Path(target.root)/'fx-pending').rmdir()
         mountinfo='1 0 0:1 / '+target.root.replace(' ',chr(92)+'040')+' rw - tmpfs tmpfs rw\n'
         target.execute=lambda script,**kwargs:execute(script.replace("Path('/proc/self/mountinfo').read_text()",repr(mountinfo)),**kwargs)
         self.assertEqual(target.close(),['private session root cleanup refused'])
+        self.assertEqual(target.guest_local_cleanup,[])
         self.assertTrue(Path(target.root).exists())
 
     def closing_target(self, transport):

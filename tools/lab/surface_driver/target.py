@@ -854,7 +854,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.
-            code='''import os,shutil,stat,time
+            code='''import json,os,shutil,stat,time
 from pathlib import Path
 root=Path(ROOT)
 for attempt in range(50):
@@ -870,7 +870,9 @@ for attempt in range(50):
 else:raise RuntimeError('private resident still running')
 info=root.lstat()
 assert root.resolve()==root and stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
-assert not list(root.glob('fx-*')), 'fixture cleanup still pending'
+pending=sorted(p.name for p in root.glob('fx-*'))
+if pending:
+ print(json.dumps(pending));raise SystemExit(3)
 for line in Path('/proc/self/mountinfo').read_text().splitlines():
  mount=Path(line.split()[4].replace(chr(92)+'040',' '))
  assert mount!=root and not mount.is_relative_to(root)
@@ -878,7 +880,18 @@ shutil.rmtree(root)
 '''.replace('ROOT',repr(self.root))
             try:
                 result=self.execute("python3 - <<'SD_CLEANUP'\n"+code+'\nSD_CLEANUP\n',timeout=8)
-                if result['returncode']:
+                if result['returncode']==3:
+                    # Fixture directories are still there. When each belongs to a scope whose cleanup
+                    # failed only because the guest was unreachable (fixtures/base.py), they hold guest
+                    # state alone, and retiring the guest removes them with the root.
+                    try:
+                        pending=set(json.loads(result['stdout']))
+                    except (TypeError,ValueError):
+                        pending=set()
+                    local_roots=getattr(self,'guest_local_roots',None)
+                    record('private session root cleanup refused',
+                           bool(pending) and isinstance(local_roots,set) and pending<=local_roots)
+                elif result['returncode']:
                     errors.append('private session root cleanup refused')
                 else:
                     self._created_root=False

@@ -27,6 +27,7 @@ class Scope:
         self.root = ctx.target.root + '/fx-' + self.token[:8]
         self.finalizers = []
         self.errors = []
+        self.guest_local_errors = []
         self.values = {}
         self.initialized = False
         self._environment = {}
@@ -204,6 +205,7 @@ except (ProcessLookupError,FileNotFoundError):pass
         with critical(getattr(self.ctx, 'review', None), label='fixture cleanup'):
             previous = self.ctx._deadline
             self.ctx._deadline = time.monotonic()+180
+            failures = []
             try:
                 self.finalizers.sort(key=_priority)
                 while self.finalizers:
@@ -212,10 +214,30 @@ except (ProcessLookupError,FileNotFoundError):pass
                         function()
                     except Exception as error:
                         self.errors.append(label+': '+type(error).__name__)
+                        failures.append(error)
             finally:
                 self.ctx._deadline = previous
             errors, self.errors = self.errors, []
+            self.guest_local_errors = self._guest_local(errors, failures)
         return errors
+
+    def _guest_local(self, errors, failures):
+        """``errors`` when every one of them is a finalizer that could not reach the guest, else none.
+
+        What such a finalizer would have removed lives in the guest, so retiring the guest resolves it
+        (target.close). The scope's directory stays behind in the private session root; the target
+        learns its name, so that refusing the root over it alone is guest-local too.
+        """
+        from ..target import only_unreachable
+        if not errors or len(failures) != len(errors) or not all(only_unreachable(f) for f in failures):
+            return []
+        target = getattr(self.ctx, 'target', None)
+        if target is not None and self.initialized:
+            roots = getattr(target, 'guest_local_roots', None)
+            if not isinstance(roots, set):
+                roots = target.guest_local_roots = set()
+            roots.add(PurePosixPath(self.root).name)
+        return list(errors)
 
 
 def _priority(item):
