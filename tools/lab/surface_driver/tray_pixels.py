@@ -280,11 +280,12 @@ def label_score(label, text):
 def unknown_lines(labels, lines, *, threshold=.85):
     """Lines read in a menu that are none of LABELS: a row the host added, or text OCR couldn't place.
 
-    Overlapping scroll views read some rows twice; those still match a label. Marks with fewer
-    than three letters or digits (submenu arrows, a scroll bar) are not rows.
+    Overlapping scroll views read some rows twice; those still match a label. A row's shortcut read
+    on a line of its own, and marks with fewer than three letters or digits (submenu arrows, a
+    scroll bar), are not rows.
     """
     return [line['text'] for line in lines
-            if len(re.findall(r'[^\W_]', line['text'])) >= 3
+            if len(re.findall(r'[^\W_]', SHORTCUT.sub(' ', line['text']))) >= 3
             and not any(label_score(label, line['text']) >= threshold for label in labels)]
 
 
