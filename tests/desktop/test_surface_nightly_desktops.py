@@ -846,6 +846,14 @@ class NightlyTests(unittest.TestCase):
                     for extra in (('--check-live-cleanup',), ('--guest-only-error', error_text), ('--no-live-publication',)):
                         error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n12345678', *extra)
                         self.assertEqual(error, '2')
+                    # An empty or malformed run never falls through to the controller.
+                    for argv in (('--recover-retained', '', '--now'), ('--recover-retained', '../n12345678'),
+                                 ('--resolve-live-cleanup', '', '--no-live-publication'),
+                                 ('--check-live-cleanup', '--resolve-live-cleanup', 'n12345678', '--no-live-publication')):
+                        with patch.object(nightly, 'controller') as controller:
+                            error, _ = self.operator(root, desktop, proton, *argv)
+                        self.assertEqual(error, '2')
+                        controller.assert_not_called()
                 paused.assert_not_called()
                 error, summary = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
             self.assertIsNone(error)
@@ -1000,6 +1008,18 @@ class NightlyTests(unittest.TestCase):
             with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError):
                 self.assertIsNone(nightly.guest_paused(run))
                 self.assertGreaterEqual(nightly.guest_paused(run, pause=True), paused)
+            # A QMP that completes its greeting proves a QEMU ran, even if it drops before answering.
+            nightly.save(run/nightly.PAUSE_RECORD, dict(pausedAt=1.0, vm='exited', disk=nightly.disk_identity(run)))
+            self.assertEqual(nightly.guest_paused(run), 1.0)
+            dropping = Mock()
+            dropping.__enter__ = Mock(return_value=dropping)
+            dropping.__exit__ = Mock(return_value=False)
+            dropping.execute.side_effect = ConnectionResetError
+            with patch.object(lab, 'QMP', return_value=dropping):
+                self.assertIsNone(nightly.guest_paused(run))
+            self.assertFalse((run/nightly.PAUSE_RECORD).exists())
+            with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError):
+                nightly.guest_paused(run, pause=True)
             # The socket file can be gone too.
             (run/'qmp.sock').unlink()
             self.assertIsNotNone(nightly.guest_paused(run))
@@ -1050,20 +1070,33 @@ class NightlyTests(unittest.TestCase):
             root = Path(tmp)
             slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
             evidence = Path(owner['evidence'])
-            # The first recovery retired the overlay (no disk left) and wrote its manifest.
+            run = Path(owner['run'])
+            # The first recovery got to guarded cleanup and wrote its manifest: done (no disk left) or only
+            # prepared (disk still there) when it stopped.
             nightly.save(evidence/'completion-manifest.json', dict(files={}))
-            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
-                    patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
-                          proton if kw.get('resource') == 'proton' else desktop), \
-                    patch.object(lab, 'state', return_value=dict(id='n12345678', golden=str(root/'g/a/b/golden'))), \
-                    patch.object(lab, 'cleanup_overlay', return_value={'status': 'completed'}) as cleanup, \
-                    patch.object(nightly, 'retire') as retire:
-                summary = nightly.recover_stale_guest(dict(host='d69'), out)
-            retire.assert_not_called()
-            cleanup.assert_called_once_with(Path(owner['run']), evidence_manifest=evidence/'completion-manifest.json',
-                                            images_root=root/'g/a')
-            self.assertEqual(summary['guest'], 'retired by an earlier recovery')
-            self.assertFalse(slot.exists())
+            nightly.save(run/'overlay-cleanup.json', dict(status='completed'))
+            for disk_left in (False, True):
+                if disk_left:
+                    (run/'disk.qcow2').write_text('')
+                    nightly.save(run/'overlay-cleanup.json', dict(status='prepared'))
+                    slot.mkdir(mode=0o700)
+                    nightly.save(slot/'retained.json', owner)
+                    (slot/'session').write_text(owner['session'])
+                with self.subTest(disk_left=disk_left), patch.object(nightly, 'ROOT', root), \
+                        patch.object(nightly.Path, 'home', return_value=root), \
+                        patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                              proton if kw.get('resource') == 'proton' else desktop), \
+                        patch.object(lab, 'state', return_value=dict(id='n12345678', golden=str(root/'g/a/b/golden'))), \
+                        patch.object(lab, 'cleanup_overlay', return_value={'status': 'completed'}) as cleanup, \
+                        patch.object(nightly, 'retire') as retire:
+                    attempt = out/str(disk_left)
+                    attempt.mkdir()
+                    summary = nightly.recover_stale_guest(dict(host='d69'), attempt)
+                    retire.assert_not_called()
+                    cleanup.assert_called_once_with(run, evidence_manifest=evidence/'completion-manifest.json',
+                                                    images_root=root/'g/a')
+                    self.assertEqual(summary['guest'], 'retired by an earlier recovery')
+                    self.assertFalse(slot.exists())
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):

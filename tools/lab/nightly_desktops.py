@@ -706,6 +706,9 @@ def guest_paused(run, *, pause=False):
     if (run/'qmp.sock').exists():
         try:
             with lab.QMP(run/'qmp.sock', timeout=5) as qmp:
+                # A QEMU answered: any exit record is from an earlier one, even if this session drops next.
+                if pause_record(run, 'paused') is None:
+                    record.unlink(missing_ok=True)
                 running = qmp.execute('query-status').get('running')
                 if pause and running is not False:
                     # A stale time must never outlive a resume, even if the stop reply is lost.
@@ -714,9 +717,6 @@ def guest_paused(run, *, pause=False):
                     running = qmp.execute('query-status').get('running')
                     if running is False:
                         save(record, dict(pausedAt=time.time(), vm='paused'))
-                # An answering QEMU voids any exit record from an earlier one.
-                if pause_record(run, 'paused') is None:
-                    record.unlink(missing_ok=True)
                 if running is not False:
                     return None
             if pause and pause_record(run, 'paused') is None:
@@ -972,9 +972,11 @@ def recover_guest(config, owner, out, cells):
         if (any(error not in guest_local for error in errors) or
                 'retained' in str(environment.get('private_cleanup', '')) and not errors):
             raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
-    if (run/'state.json').exists() and not (run/'disk.qcow2').exists() and (evidence/'completion-manifest.json').exists():
-        # An earlier recovery retired the overlay, then its lease release refused. Re-verify that proof
-        # against its own manifest; retiring again would write new evidence that no longer matches it.
+    if ((run/'state.json').exists() and os.path.lexists(run/'overlay-cleanup.json')
+            and (evidence/'completion-manifest.json').exists()):
+        # An earlier retirement got as far as guarded cleanup (prepared or completed), then stopped or its lease
+        # release refused. Finish or re-verify it against its own manifest; retiring again would write new
+        # evidence that no longer matches the cleanup receipt.
         lab.cleanup_overlay(run, evidence_manifest=evidence/'completion-manifest.json',
                             images_root=Path(lab.state(run)['golden']).parents[1])
         guest = 'retired by an earlier recovery'
@@ -1914,11 +1916,14 @@ def main():
     given = dict(destination=args.destination, prefix=args.prefix, objectKey=args.object_key)
     if any(given.values()) and not all(given.values()):
         parser.error('--destination, --prefix and --object-key go together')
-    if args.recover_retained and (args.check_live_cleanup or args.resolve_live_cleanup or args.unaudited_attempt
-                                  or any(given.values()) or args.guest_only_error or args.no_live_publication):
+    for run_name in (args.recover_retained, args.resolve_live_cleanup):
+        if run_name is not None and not re.fullmatch(r'n[0-9a-f]{8}', run_name):
+            parser.error('RUN is a nightly run directory name such as n1234abcd')
+    if args.recover_retained is not None and (args.check_live_cleanup or args.resolve_live_cleanup or args.unaudited_attempt
+                                              or any(given.values()) or args.guest_only_error or args.no_live_publication):
         parser.error('--recover-retained runs alone, after the records it needs')
-    if args.no_live_publication and (not args.resolve_live_cleanup or any(given.values())):
-        parser.error('--no-live-publication goes with --resolve-live-cleanup and names no publication')
+    if args.no_live_publication and (not args.resolve_live_cleanup or any(given.values()) or args.check_live_cleanup):
+        parser.error('--no-live-publication goes with --resolve-live-cleanup alone and names no publication')
     if args.check_live_cleanup:
         from tools.lab import lab
         try:
@@ -1973,7 +1978,7 @@ def main():
         except NotRun as error:
             raise SystemExit(str(error)) from None
         return
-    if args.recover_retained:
+    if args.recover_retained is not None:
         try:
             config = json.loads(private_file(args.config).read_text())
             hosts = [host for host, builder in config['builders'].items()
