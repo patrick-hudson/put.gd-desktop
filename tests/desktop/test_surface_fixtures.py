@@ -203,6 +203,44 @@ class Fixtures(FixtureCase):
             self.assertEqual(caught.exception.issue,issue)
         with self.assertRaisesRegex(RecipeBlocked,'unknown fixture'):self.ctx.fixture('misspelled')
 
+    def test_a_scope_that_could_not_reach_the_guest_leaves_guest_local_errors_only(self):
+        from tools.lab.surface_driver.api import GuestUnreachable
+        def lost(*args,**kwargs):raise GuestUnreachable('target session command unavailable: LabError exit 255')
+        scope=self.ctx.manager.scope;scope.initialize()
+        with patch.object(self.ctx,'shell',side_effect=lost):
+            self.assertEqual(self.ctx.manager.close(),['owned directory: GuestUnreachable'])
+        self.assertEqual(self.ctx.manager.closed_guest_local,['owned directory: GuestUnreachable'])
+        self.assertEqual(self.ctx.target.guest_local_roots,{Path(scope.root).name})
+        # A step the guest answered keeps the whole scope's errors out of the guest-local list.
+        scope=self.ctx.manager.scope;scope.initialize()
+        def refused():raise RecipeBlocked('refused by the guest')
+        scope.defer('answered',refused,priority=10)
+        with patch.object(self.ctx,'shell',side_effect=lost):
+            self.assertEqual(sorted(self.ctx.manager.close()),['answered: RecipeBlocked','owned directory: GuestUnreachable'])
+        self.assertEqual(self.ctx.manager.closed_guest_local,[])
+        self.assertNotIn(Path(scope.root).name,self.ctx.target.guest_local_roots)
+        # A finalizer not marked guest-only (one that copies media out, say) keeps a lost connection an error.
+        scope=self.ctx.manager.scope;scope.initialize()
+        def export():lost()
+        scope.defer('retain recording media',export,priority=10)
+        with patch.object(self.ctx,'shell',side_effect=lost):self.ctx.manager.close()
+        self.assertEqual(self.ctx.manager.closed_guest_local,[])
+        self.assertIn(Path(scope.root).name,self.ctx.target.kept_fixture_roots)
+        # A setup failure the guest answered, still being handled, is not the finalizers' own.
+        scope=self.ctx.manager.scope;scope.initialize()
+        try:
+            raise RecipeBlocked('setup refused by the guest')
+        except RecipeBlocked:
+            with patch.object(self.ctx,'shell',side_effect=lost):errors=scope.close()
+        self.assertEqual(scope.guest_local_errors,errors)
+        self.ctx.manager.scope=Scope(self.ctx)
+        # The run's final close carries such errors into the receipt's guest-local list.
+        self.ctx.manager.scope.initialize()
+        with patch.object(self.ctx,'shell',side_effect=lost):
+            errors=self.ctx.target.close()
+        self.assertEqual(errors,['owned directory: GuestUnreachable'])
+        self.assertEqual(self.ctx.target.guest_local_cleanup,errors)
+
     def test_cleanup_never_removes_unowned_sibling(self):
         sibling=self.root/'existing';sibling.write_text('preserve')
         self.ctx.fixture('image');self.ctx.manager.close()
