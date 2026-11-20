@@ -213,19 +213,26 @@ private slots:
  }
  // An emoji goes where the line reads past it: between two words of a
  // right-to-left line in their logical order, after the one word of a
- // right-to-left line when it stands left of it, and in a left-to-right run
- // inside a right-to-left paragraph as that run reads.
+ // right-to-left line when it stands left of it, inside a left-to-right run of
+ // a right-to-left paragraph as that run reads, and at the run's edges as the
+ // paragraph reads.
  void emojiFollowTheLineDirection(){
   const QString face=QString::fromUtf8("\U0001F602");
-  const auto place=[&](bool rightToLeft,const QList<Word>& words){
-   Recognition job;job.lines={{QRect(0,10,200,20),0,0,rightToLeft}};job.words=words;
-   placeEmoji(job,{{face,QRect(60,10,20,20),0.02,0}});
+  const auto place=[&](bool rightToLeft,const QList<Word>& words,int x=60){
+   Recognition job;job.lines={{QRect(0,10,260,20),0,0,rightToLeft}};job.words=words;
+   placeEmoji(job,{{face,QRect(x,10,20,20),0.02,0}});
    return copiedText(job);
   };
   const auto hebrew=[](const char* text,int x){return word(QString::fromUtf8(text),{QRect(x,12,30,16)},95);};
   QCOMPARE(place(true,{hebrew("\u05D0\u05D1\u05D2",100),hebrew("\u05D3\u05D4\u05D5",20)}),QString::fromUtf8("\u05D0\u05D1\u05D2 ")+face+QString::fromUtf8(" \u05D3\u05D4\u05D5"));
   QCOMPARE(place(true,{hebrew("\u05D0\u05D1\u05D2",100)}),QString::fromUtf8("\u05D0\u05D1\u05D2 ")+face);
   QCOMPARE(place(true,{word("foo",{QRect(20,12,30,16)},95),word("bar",{QRect(100,12,30,16)},95)}),"foo "+face+" bar");
+  // Hebrew A (right), "foo bar" (a left-to-right run), Hebrew B (left), in Tesseract's order A foo bar B.
+  const auto a=QString::fromUtf8("\u05D0\u05D1\u05D2"),b=QString::fromUtf8("\u05D3\u05D4\u05D5");
+  const QList<Word> mixed{hebrew("\u05D0\u05D1\u05D2",220),word("foo",{QRect(70,12,30,16)},95),word("bar",{QRect(140,12,30,16)},95),hebrew("\u05D3\u05D4\u05D5",0)};
+  QCOMPARE(place(true,mixed,112),a+" foo "+face+" bar "+b);   // inside the run, nearer bar
+  QCOMPARE(place(true,mixed,40),a+" foo bar "+face+" "+b);    // left of the run: after it
+  QCOMPARE(place(true,mixed,190),a+" "+face+" foo bar "+b);   // right of the run: before it
  }
  void refusesInputOverTheLimit(){
   QCOMPARE(plan(4900,4900,lines(4900,4900,12,4),{}).error,QStringLiteral("input_excessive"));

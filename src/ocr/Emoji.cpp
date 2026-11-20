@@ -197,17 +197,27 @@ Colour background(const ColourView& image,const Box& b,double& share){
 }
 bool ink(const uint8_t* p,const Colour& bg){return std::abs(p[0]-bg.r)>inkMinimum||std::abs(p[1]-bg.g)>inkMinimum||std::abs(p[2]-bg.b)>inkMinimum;}
 // The commonest colour (to 4 bits a channel) inside a box, from every other
-// pixel of every other row, and its share of them.
+// pixel of every other row, and its share of them. One pass, letting each run
+// of rows go behind it, so a region the size of the image never comes back whole.
 Colour regionColour(const ColourView& image,const Box& b,double& share){
- thread_local std::vector<int> count(4096,0);qint64 total=0;int mode=0;
- const auto each=[&](auto&& visit){for(int y=b.y0;y<=b.y1;y+=2){const auto* row=image.row(y);for(int x=b.x0;x<=b.x1;x+=2){const auto* p=row+3*x;visit(p,(p[0]>>4)<<8|(p[1]>>4)<<4|(p[2]>>4));}}};
- each([&](const uint8_t*,int key){if(++count[key]>count[mode])mode=key;++total;});
- share=total>0?double(count[mode])/double(total):0;
- qint64 sum[3]={0,0,0},n=0;
- each([&](const uint8_t* p,int key){count[key]=0;if(key==mode){sum[0]+=p[0];sum[1]+=p[1];sum[2]+=p[2];++n;}});
- count[mode]=0;
- if(n==0)return {};
- return {double(sum[0])/n,double(sum[1])/n,double(sum[2])/n};
+ struct Bin { qint64 count=0,r=0,g=0,b=0; };
+ thread_local std::vector<Bin> bins(4096);
+ std::vector<int> used;qint64 total=0;int mode=-1;int released=b.y0;
+ for(int y=b.y0;y<=b.y1;y+=2){
+  const auto* row=image.row(y);
+  for(int x=b.x0;x<=b.x1;x+=2){
+   const auto* p=row+3*x;const int key=(p[0]>>4)<<8|(p[1]>>4)<<4|(p[2]>>4);auto& bin=bins[size_t(key)];
+   if(bin.count==0)used.push_back(key);
+   ++bin.count;bin.r+=p[0];bin.g+=p[1];bin.b+=p[2];++total;
+   if(mode<0||bin.count>bins[size_t(mode)].count)mode=key;
+  }
+  if(image.done&&y-released>=64){image.done(released,y);released=y;}
+ }
+ if(image.done)image.done(released,b.y1+1);
+ Colour out;share=0;
+ if(mode>=0&&total>0){const auto& m=bins[size_t(mode)];share=double(m.count)/double(total);out={double(m.r)/m.count,double(m.g)/m.count,double(m.b)/m.count};}
+ for(const int key:used)bins[size_t(key)]={};
+ return out;
 }
 // Grows a colour core to the ink touching it, one row or column at a time,
 // at most growShare of its side in any direction.

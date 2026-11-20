@@ -202,28 +202,39 @@ void placeEmoji(Recognition& job,const QList<EmojiHit>& hits){
   // Its place among the line's words, in the line's own direction.
   int first=0;while(first<job.words.size()&&job.words[first].line<line)++first;
   int end=first;while(end<job.words.size()&&job.words[end].line==line)++end;
-  // Beside the nearest word across, on the side the line reads there: which
-  // way is told by that word and its neighbour in Tesseract's order (a
-  // left-to-right run inside a right-to-left paragraph reads left to right),
-  // or by the paragraph on a line of one word.
-  bool rightToLeft=job.lines[line].rightToLeft;int at=first;
-  if(end>first){
-   const int middle=glyph.center().x();int near=first;
-   for(int i=first;i<end;++i)if(std::abs(job.words[i].rect.center().x()-middle)<std::abs(job.words[near].rect.center().x()-middle))near=i;
-   const int other=near+1<end?near+1:near-1;
-   if(other>=first&&other<end&&job.words[other].rect.center().x()!=job.words[near].rect.center().x())
-    rightToLeft=(other>near)==(job.words[other].rect.center().x()<job.words[near].rect.center().x());
-   at=(middle>job.words[near].rect.center().x())!=rightToLeft?near+1:near;
+  // Its place in Tesseract's order. Between two words that are next to each
+  // other in that order, it goes between them. Otherwise it is at the edge of
+  // a run of the other direction (a left-to-right run inside a right-to-left
+  // paragraph, or the reverse) and reads in the paragraph's direction: after
+  // the whole run of the word it follows in that direction, or first on the
+  // line when no word comes before it.
+  const bool rightToLeft=job.lines[line].rightToLeft;int at=first;
+  {
+   const int middle=glyph.center().x();int left=-1,right=-1;
+   for(int i=first;i<end;++i){
+    const int x=job.words[i].rect.center().x();
+    if(x<middle&&(left<0||x>job.words[left].rect.center().x()))left=i;
+    if(x>=middle&&(right<0||x<job.words[right].rect.center().x()))right=i;
+   }
+   if(left>=0&&right>=0&&std::abs(left-right)==1)at=std::max(left,right);
+   else if(const int before=rightToLeft?right:left;before>=0){
+    // The run of the other direction it ends: words onward in Tesseract's
+    // order that step across the page against the paragraph.
+    int last=before;
+    const auto against=[&](int a,int b){return rightToLeft?job.words[b].rect.center().x()>job.words[a].rect.center().x():job.words[b].rect.center().x()<job.words[a].rect.center().x();};
+    while(last+1<end&&against(last,last+1))++last;
+    at=last+1;
+   }
   }
   Word emoji;emoji.text=hit.text;emoji.rect=glyph;emoji.line=line;emoji.lineHeight=job.lines[line].rect.height();emoji.emoji=true;
   emoji.confidence=float(std::clamp(100*(1-5*hit.distance),1.0,99.0));
   // Almost no gap to a neighbour, under a quarter of the glyph's height: no space
   // between them. Measured on rendered lines: a glued emoji's gap was a median
   // 0.15 of its height, and one after a space 0.25 or more but for 1 in 248.
-  const auto gap=[&](const QRect& before,const QRect& after){return rightToLeft?before.left()-after.right()-1:after.left()-before.right()-1;};
+  const auto gap=[&](const QRect& word){return std::max(word.left()-glyph.right()-1,glyph.left()-word.right()-1);};
   const int tight=std::max(1,glyph.height()/4);
-  if(at>first&&gap(job.words[at-1].rect,glyph)<tight)emoji.attach=true;
-  if(at<end&&gap(glyph,job.words[at].rect)<tight)job.words[at].attach=true;
+  if(at>first&&gap(job.words[at-1].rect)<tight)emoji.attach=true;
+  if(at<end&&gap(job.words[at].rect)<tight)job.words[at].attach=true;
   job.words.insert(at,emoji);
  }
 }
