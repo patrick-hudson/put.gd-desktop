@@ -585,7 +585,12 @@ cell adds put.gd's item to the tray's `pinned` list in `~/.config/omarchy/shell.
 tray's Pin does) for its duration. It registers the cleanup before writing, and the cleanup
 writes the earlier value back and reads it back from disk; if that fails, the run's cleanup
 fails. Omarchy's menu card shows about twelve rows, so the cell scrolls it
-to read the rest, scrolls back and reads the top again before clicking Capture region.
+to read the rest, scrolls back and reads the top again before clicking Capture region. Scrolled
+down, the card cuts the row at its top edge; that one line is set aside, and noted, only when the
+line below it is an agreed row the first view also read. The pointer is moved off the panel
+before the icon is matched and kept off the rows while the menu is read. Cinnamon's host
+sometimes asks put.gd for the menu and draws none, then takes the next click as closing it, so
+the cell right-clicks up to three times, each only while no popup shows.
 
 A builder runs one or two rows, one after the other, sharing its one guest slot and
 ports: m74 runs Mint Cinnamon (DEB) then Hyprland on Omarchy (AppImage); d69 runs
