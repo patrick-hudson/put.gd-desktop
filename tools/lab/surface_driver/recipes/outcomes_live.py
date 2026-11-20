@@ -83,9 +83,12 @@ def _cleanup(ctx, detail):
     # the preview: resting on it shows its tooltip over the point (Hyprland).
     ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.85*box['height']), -16, head=box.get('head', 0))
     button = ({'name': 'Revoke link…', 'role': 'push button'} if ctx.destination == 'proton' else history.DELETE_BUTTON)
-    in_view = ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
-                                  within=[box[k] for k in ('x', 'y', 'width', 'height')]))
-    in_view = len(in_view) == 1 and bool(in_view[0].get('rect'))
+    # On labwc the read below captures History to place it, which puts the pane back at the top:
+    # whatever it saw is gone by the click, so cleanup there always uses the row's own menu.
+    labwc = ctx.profile.get('compositor', {}).get('kind') == 'toplevel-pixels'
+    in_view = not labwc and ctx.accessible(dict(button, owned=True, visible=True, showing=True, pid=box.get('pid'),
+                                                within=[box[k] for k in ('x', 'y', 'width', 'height')]))
+    in_view = bool(in_view) and len(in_view) == 1 and bool(in_view[0].get('rect'))
     ctx.frame('history-before-remote-cleanup', window='history')
     if ctx.destination == 'proton':
         # Qt 6.4 does not publish objectName, and the pinned S3 catalog has

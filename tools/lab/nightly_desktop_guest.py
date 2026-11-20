@@ -690,20 +690,32 @@ bridge=lambda a:a[1:2]==[BRIDGE]
 old=own(bridge)
 assert len(old)==1,'the Budgie labwc bridge is not running exactly once'
 env=dict(v.split('=',1) for v in Path('/proc/%d/environ'%old[0]).read_bytes().decode().split('\0') if '=' in v)
+original=rc.read_text()
+merged=merge_labwc_rules(original,RULES)  # a bad rule or rc.xml fails here, with the bridge still running
+start=lambda:subprocess.Popen(['/usr/bin/python3',BRIDGE],env=env,cwd=env.get('HOME','/'),stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 fd=os.pidfd_open(old[0])
 try:
  signal.pidfd_send_signal(fd,signal.SIGTERM)
  assert select.select([fd],[],[],10)[0],'the labwc bridge did not stop'
 finally:os.close(fd)
-rc.write_text(merge_labwc_rules(rc.read_text(),RULES))
-before=rc.stat().st_mtime_ns
-p=subprocess.Popen(['/usr/bin/python3',BRIDGE],env=env,cwd=env.get('HOME','/'),stdin=subprocess.DEVNULL,
-                   stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
-deadline=time.monotonic()+30
-while rc.stat().st_mtime_ns==before:
- assert p.poll() is None,'the restarted labwc bridge exited'
- assert time.monotonic()<deadline,'the restarted labwc bridge did not write rc.xml'
- time.sleep(.2)
+try:
+ rc.write_text(merged)
+ before=rc.stat().st_mtime_ns
+ p=start()
+ deadline=time.monotonic()+30
+ while rc.stat().st_mtime_ns==before:
+  assert p.poll() is None,'the restarted labwc bridge exited'
+  assert time.monotonic()<deadline,'the restarted labwc bridge did not write rc.xml'
+  time.sleep(.2)
+except BaseException:
+ # Leave the session as it was: its own rc.xml and one bridge running.
+ for pid in own(bridge):
+  try:os.kill(pid,signal.SIGTERM)
+  except OSError:pass
+ rc.write_text(original)
+ start()
+ raise
 time.sleep(1)
 text=rc.read_text()
 import xml.etree.ElementTree as ET
@@ -721,6 +733,7 @@ def prepare_labwc_rules(run, out, rules):
     """Install the profile's labwc window rules in this disposable guest's Budgie session."""
     import inspect
     lab.verify_owned_guest(run)
+    merge_labwc_rules('<labwc_config/>', rules)  # refuse a bad rule before the guest's bridge is touched
     script = (LABWC_RULES.replace('MERGE', inspect.getsource(merge_labwc_rules))
               .replace('RULES_JSON', repr(json.dumps(rules))))
     report = json.loads(lab.guest_session(run, script, timeout=90))

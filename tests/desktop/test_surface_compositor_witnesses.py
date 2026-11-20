@@ -3,6 +3,7 @@ import random
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -189,16 +190,60 @@ class PixelWitness(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'no lab window rule'):
             probe.place_pixels({}, 'Delete', 'putgd-ui', self.window, self.screen, rule_only=True)
 
-    def test_a_flat_window_is_placed_only_where_it_fills_one_output(self):
+    def test_a_flat_window_is_placed_only_where_it_fills_the_one_output(self):
         flat = (320, 200, b'\x20' * (320 * 200 * 3))
-        with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200], [320, 0, 640, 480]]):
-            with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels.*nor does it fill one output'):
-                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, self.screen, active=True)
-            # Only the active toplevel: another flat surface the same size proves nothing about this one.
+        with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200]]):
+            with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels.*nor does it fill the one output'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, self.screen, fullscreen=True)
+            # Only an active fullscreen toplevel: flat pixels alone prove no position.
             with self.assertRaisesRegex(RuntimeError, 'no distinctive pixels'):
                 probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat)
-            placed = probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat, active=True)
+            placed = probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat, fullscreen=True)
         self.assertEqual((placed['rect'], placed['by']), ([0, 0, 320, 200], 'output'))
+        # A second enabled output, even of another size, leaves the fallback unproven.
+        with patch.object(probe, 'wlr_outputs', return_value=[[0, 0, 320, 200], [320, 0, 640, 480]]):
+            with self.assertRaisesRegex(RuntimeError, r'nor does it fill the one output \(2 enabled'):
+                probe.place_pixels({}, 'Mozilla Firefox', 'kiosk', flat, flat, fullscreen=True)
+
+    def test_the_display_crop_falls_back_to_grim_when_vnc_or_the_request_limit_fails(self):
+        from tools.lab.surface_driver.context import DriverContext
+        notes = []
+        ctx = SimpleNamespace(profile={'compositor': {'kind': 'toplevel-pixels'}, 'screens': [{}]}, note=notes.append,
+                              DISPLAY_BYTES=DriverContext.DISPLAY_BYTES, target=SimpleNamespace(physical=None))
+        query = {'geometry': {'x': 0, 'y': 0, 'width': 4, 'height': 4, 'window_id': 'w'}, 'point': [1, 1]}
+        for error in (TimeoutError('frame'), RuntimeError('connection closed'), ConnectionRefusedError()):
+            def fail(head, error=error):
+                raise error
+            ctx.target.capture_image = fail
+            self.assertEqual(DriverContext._with_display(ctx, query), query)
+        self.assertEqual(len(notes), 3)
+        # The whole serialized request is measured: a crop that fits alone but not with the rest is dropped.
+        sent = {}
+        def probe_(name, q, source, timeout):
+            sent.clear()
+            sent.update(q)
+            return {'ok': True, 'result': {}}
+        ctx = SimpleNamespace(profile={}, note=notes.append, _check_time=lambda: None, _deadline=float('inf'),
+                              PROBE_REQUEST_BYTES=DriverContext.PROBE_REQUEST_BYTES, _observed=lambda value: None,
+                              target=SimpleNamespace(probe=probe_))
+        DriverContext._probe(ctx, 'foreground', dict(query, display={'rgb': 'x' * (1024 * 1024)}))
+        self.assertNotIn('display', sent)
+        DriverContext._probe(ctx, 'foreground', dict(query, display={'rgb': 'x' * 1024}))
+        self.assertIn('display', sent)
+
+    def test_the_toplevel_list_reports_fullscreen_only_for_a_window_it_names_once(self):
+        module = SimpleNamespace(socket_path=lambda: 'x', snapshot=lambda _: {
+            'active': {'identifier': 'k'},
+            'ext': [{'identifier': 'k', 'app_id': 'firefox', 'title': 'Kiosk'},
+                    {'identifier': 'a', 'app_id': 'putgd-ui', 'title': 'History'},
+                    {'identifier': 'b', 'app_id': 'putgd-ui', 'title': 'History'}],
+            'wlr': [{'app_id': 'firefox', 'title': 'Kiosk', 'fullscreen': True},
+                    {'app_id': 'putgd-ui', 'title': 'History', 'fullscreen': True},
+                    {'app_id': 'putgd-ui', 'title': 'History', 'fullscreen': False}]})
+        with patch.object(probe, 'toplevels_module', return_value=module):
+            windows = {w['id']: w for w in probe.toplevel_pixel_windows({})['windows']}
+        self.assertEqual([(i, windows[i]['fullscreen'], windows[i]['focus']) for i in 'kab'],
+                         [('k', True, True), ('a', False, False), ('b', False, False)])
 
     def test_a_dialog_shows_its_pixels_in_its_parents_capture_corner(self):
         # labwc draws the dialog into its parent's capture at the origin and captures it alone as 1x1.

@@ -1674,6 +1674,11 @@ with n.controller_shutdown(workers):
             self.assertEqual(probe.rule_rect(compositor, rule['title'], rule['app_id'], [10, 20]), [*rule['position'], 10, 20])
         with self.assertRaises(ValueError):
             guest.merge_labwc_rules(text, [dict(rules[0], title='Delete*')])
+        # A bad rule is refused on the host, before the guest's bridge is stopped.
+        with patch.object(guest.lab, 'verify_owned_guest'), patch.object(guest.lab, 'guest_session') as session:
+            with self.assertRaises(ValueError):
+                guest.prepare_labwc_rules('run', 'out', [dict(rules[0], title='Delete*')])
+        session.assert_not_called()
 
     def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

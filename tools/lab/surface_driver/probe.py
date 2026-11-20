@@ -902,17 +902,23 @@ def hyprland_reserved(point):
     return True
 
 
-def quickshell_cards():
-    """quickshell's own count of notification cards, or None when it cannot be asked."""
+def quickshell_cards(limit=8):
+    """quickshell's own count of notification cards, or None when it cannot be asked within `limit` s."""
+    started = time.monotonic()
+    if limit <= 0:
+        return None
     try:
-        owner = run('gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path', '/org/freedesktop/DBus',
-                    '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', 'org.freedesktop.Notifications')
+        owner = subprocess.check_output(
+            ['gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path', '/org/freedesktop/DBus',
+             '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', 'org.freedesktop.Notifications'],
+            text=True, stderr=subprocess.DEVNULL, timeout=min(5, limit))
         pid = int(re.search(r'uint32 (\d+)', owner)[1])
-        if process_name(pid) != 'quickshell':
+        left = min(3, limit - (time.monotonic() - started))
+        if process_name(pid) != 'quickshell' or left <= 0:
             return None
         runtime = os.environ.get('PIPEWIRE_RUNTIME_DIR') or os.environ.get('XDG_RUNTIME_DIR', '')
         reply = subprocess.run(['qs', 'ipc', '--pid', str(pid), 'call', 'notifications', 'count'], capture_output=True,
-                               text=True, timeout=3, env=dict(os.environ, XDG_RUNTIME_DIR=runtime, LANG='C.UTF-8'))
+                               text=True, timeout=left, env=dict(os.environ, XDG_RUNTIME_DIR=runtime, LANG='C.UTF-8'))
         return int(reply.stdout.strip()) if reply.returncode == 0 else None
     except (OSError, subprocess.SubprocessError, TypeError, ValueError):
         return None
@@ -1142,12 +1148,13 @@ def rule_rect(compositor, title, app_id, size):
     return [int(rules[0]['position'][0]), int(rules[0]['position'][1])] + list(size) if rules else None
 
 
-def place_pixels(compositor, title, app_id, window, screen, rule_only=False, active=False):
+def place_pixels(compositor, title, app_id, window, screen, rule_only=False, fullscreen=False):
     """Where a toplevel's pixels are on the outputs: {'rect', 'visible', 'by'} or RuntimeError.
 
     A window a lab window rule places must show at the rule's position. Any other is found by its
-    own pixels; when it has none to find (a blank fullscreen kiosk), the active toplevel, exactly
-    the size of one output, must show on that output.
+    own pixels. When it has none to find (a blank fullscreen kiosk), only a toplevel the compositor
+    reports active and fullscreen (`fullscreen`), on the guest's single enabled output and exactly
+    its size, is placed on that output: flat pixels alone prove no position.
     """
     size = list(window[:2])
     known = rule_rect(compositor, title, app_id, size)
@@ -1162,13 +1169,13 @@ def place_pixels(compositor, title, app_id, window, screen, rule_only=False, act
     try:
         return dict(locate_pixels(window, screen), by='pixels')
     except RuntimeError as error:
-        if 'no distinctive pixels' not in str(error) or not active:
+        if 'no distinctive pixels' not in str(error) or not fullscreen:
             raise
-        fits = [o for o in wlr_outputs() if o[2:] == size]
-        shown = [o for o in fits if pixel_share(window, screen, o[0], o[1]) >= KNOWN_SHARE]
-        if len(shown) != 1:
-            raise RuntimeError(str(error) + ('; nor does it fill one output (%d of %d outputs its size show it)'
-                                             % (len(shown), len(fits)))) from None
+        outputs = wlr_outputs()
+        shown = [o for o in outputs if o[2:] == size and pixel_share(window, screen, o[0], o[1]) >= KNOWN_SHARE]
+        if len(outputs) != 1 or len(shown) != 1:
+            raise RuntimeError(str(error) + ('; nor does it fill the one output (%d enabled, %d its size showing it)'
+                                             % (len(outputs), len(shown)))) from None
         return {'rect': shown[0], 'visible': round(pixel_share(window, screen, *shown[0][:2]), 3), 'by': 'output'}
 
 
@@ -1239,9 +1246,14 @@ def toplevel_pixel_windows(compositor):
     seen = module.snapshot(module.socket_path())
     active = (seen.get('active') or {}).get('identifier')
     minimized = {(w.get('app_id'), w.get('title')) for w in seen.get('wlr', []) if w.get('minimized')}
+    # wlr-foreign-toplevel states, matched by app ID and title: only a pair it lists once counts.
+    wlr = [(w.get('app_id'), w.get('title')) for w in seen.get('wlr', [])]
+    fullscreen = {(w.get('app_id'), w.get('title')) for w in seen.get('wlr', [])
+                  if w.get('fullscreen') and wlr.count((w.get('app_id'), w.get('title'))) == 1}
     windows = [{'id': w.get('identifier'), 'title': w.get('title') or '', 'pid': None, 'wm_class': w.get('app_id') or '',
                 'frame': None, 'content': None, 'focus': w.get('identifier') == active, 'stack': None,
-                'minimized': (w.get('app_id'), w.get('title')) in minimized, 'type': 0, 'popup': False}
+                'minimized': (w.get('app_id'), w.get('title')) in minimized,
+                'fullscreen': (w.get('app_id'), w.get('title')) in fullscreen, 'type': 0, 'popup': False}
                for w in seen.get('ext', [])]
     return {'windows': windows, 'protocols': seen.get('protocols', {})}
 
@@ -1340,7 +1352,7 @@ def toplevel_pixels_foreground(compositor, target, point, attempts=3, display=No
                 if window[:2] != size and window[0] >= size[0] and window[1] >= size[1]:
                     window = content_box(window, *size) or window
                 where = place_pixels(compositor, target.get('name', ''), me['wm_class'], window, screen,
-                                     active=bool(me.get('focus')))['rect']
+                                     fullscreen=bool(me.get('focus') and me.get('fullscreen')))['rect']
         except RuntimeError as error:
             reason = str(error)
             continue
@@ -1494,7 +1506,7 @@ class WaylandPlacement:
             # A window just shown may still be under one that is closing: look again, bounded.
             try:
                 content = place_pixels(self.compositor, title, found[0]['wm_class'], image, self.screen(),
-                                       active=bool(found[0].get('focus')))['rect']
+                                       fullscreen=bool(found[0].get('focus') and found[0].get('fullscreen')))['rect']
                 break
             except RuntimeError:
                 if time.monotonic() >= deadline:
@@ -1504,6 +1516,12 @@ class WaylandPlacement:
                 # It may have become active meanwhile (the kiosk once a closing window is gone).
                 self._windows = None
                 found = [w for w in self.windows() if w['id'] == found[0]['id']] or found
+                # And it may have repainted as its cover closed: compare its current pixels.
+                again = grim(found[0]['id'])
+                if again[:2] != (width, height) and again[0] >= width and again[1] >= height:
+                    again = content_box(again, width, height) or again
+                if again[:2] == (width, height):
+                    image = again
         return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': content}
 
     def _dialog(self, pid, title, rect, window):
@@ -2944,7 +2962,7 @@ def close_notifications(deadline):
     if quickshell_dismiss(deadline):
         # quickshell takes its cards down with an animation; the next look at the screen must not
         # find the one this clearing posted, or one still leaving.
-        while quickshell_cards() not in (0, None) and time.monotonic() < deadline:
+        while deadline - time.monotonic() > 0 and quickshell_cards(deadline - time.monotonic()) not in (0, None):
             time.sleep(.1)
     return newest
 

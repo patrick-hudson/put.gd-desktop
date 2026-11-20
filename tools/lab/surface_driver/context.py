@@ -166,6 +166,10 @@ class DriverContext(Context):
         if witness.get('kind') in ('wayland-toplevels', 'toplevel-pixels') and 'witness_source' not in witness:
             # The probe runs from shipped source with no file of its own; send the witness it imports (review #1275).
             query = dict(query, compositor=dict(witness, witness_source=(Path(__file__).resolve().parents[1]/'wayland_toplevels.py').read_text()))
+        if query.get('display') and len(json.dumps({'probe': name, 'query': query}))+1 > self.PROBE_REQUEST_BYTES:
+            # The whole request is capped, not only the display crop: send it without the crop (grim).
+            self.note('display crop dropped: the '+name+' request would exceed 1 MiB')
+            query = {k: v for k, v in query.items() if k != 'display'}
         source = Path(__file__).with_name('probe.py').read_text()
         persistent = getattr(self.target, 'probe', None)
         if persistent:
@@ -294,7 +298,7 @@ class DriverContext(Context):
                 except RecipeBlocked as error:
                     # An application that answers too slowly for one walk (Firefox while it closes or
                     # loads a page) is asked again shortly; one that stays slow still blocks the read.
-                    if attempt == 2 or 'accessibility walk exceeded' not in str(error):
+                    if attempt == 2 or not any(m in str(error) for m in ('accessibility walk exceeded', 'accessibility walk incomplete')):
                         raise
                     self.note('geometry walk retried: ' + str(error)[:160])
                     time.sleep(2)
@@ -421,6 +425,7 @@ class DriverContext(Context):
 
     # The display crop travels base64-encoded in the probe request, which is capped at 1 MiB.
     DISPLAY_BYTES = 640 * 1024
+    PROBE_REQUEST_BYTES = 1024 * 1024  # target.py's limit on one serialized probe request
 
     def _with_display(self, query, probe=True):
         """A pointer hit-test on labwc, with what the display shows over the target window now.
@@ -440,7 +445,11 @@ class DriverContext(Context):
         if not probe:
             return dict(query, display=None)  # only says that a display would be read
         import base64, zlib
-        image = self.target.capture_image(0).convert('RGB')
+        try:
+            image = self.target.capture_image(0).convert('RGB')
+        except (TimeoutError, OSError, RuntimeError) as error:  # tools/lab/rfb.py: handshake and stream errors
+            self.note('display read failed, the hit-test keeps grim: '+type(error).__name__+': '+str(error)[:120])
+            return query
         rect = [int(geometry[k]) for k in ('x', 'y', 'width', 'height')]
         if rect[0] < 0 or rect[1] < 0 or rect[0]+rect[2] > image.width or rect[1]+rect[3] > image.height:
             return query

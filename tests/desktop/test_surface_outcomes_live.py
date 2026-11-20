@@ -506,6 +506,15 @@ class LiveOutcomes(unittest.TestCase):
         menu.assert_called_once_with(ctx,{'id':'owned'})
         ctx.click.assert_not_called()
         confirm.assert_not_called()  # a foreign prepared target is still refused
+        # On labwc the button read itself resets the pane: the row menu deletes even when it saw the button.
+        ctx.profile={'compositor':{'kind':'toplevel-pixels'}}
+        ctx.accessible=Mock(return_value=[{'rect':[0,700,100,20]}])
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'), \
+             patch.object(outcomes_live,'_delete_from_row_menu') as menu,patch.object(outcomes_live.history,'_confirm_button'):
+            with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
+        menu.assert_called_once_with(ctx,{'id':'owned'})
+        ctx.accessible.assert_not_called()
+        ctx.click.assert_not_called()
 
     def test_saved_hash_cannot_read_a_foreign_file_or_symlink(self):
         def execute(code):
