@@ -10,7 +10,7 @@
 #endif
 // The file's SHA-256, so a compiler cache that sees only this source still
 // rebuilds it when the file changes.
-static const char templatesSha256[] [[maybe_unused]]=PUTGD_EMOJI_TEMPLATES_SHA256;
+[[maybe_unused]] static const char templatesSha256[]=PUTGD_EMOJI_TEMPLATES_SHA256;
 __asm__(".section .rodata.putgd_emoji,\"a\",@progbits\n"
         ".balign 4096\n"
         ".globl putgd_emoji_templates\n.hidden putgd_emoji_templates\n"
