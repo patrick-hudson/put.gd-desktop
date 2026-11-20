@@ -263,8 +263,8 @@ Built on EC2 on 2026-11-08 from the Omarchy 4.5.0 ISO; see
 | Compressed SHA-256 | `c56cfe7ddb2fe345663ff2c18f07c8ede9bc692ba6b2354267228dadb1eb2a1b` |
 | Image / compressed / virtual bytes | 4,923,523,072 / 4,869,090,452 / 51,539,607,552 |
 | Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
-| Host copies | `f44` and `d69`: `~/work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2`, with `known_hosts`, the manifest and `restore-sha256sums.txt` |
-| Bootstrap key | `~/work/put.gd/work/lab-bootstrap-omarchy/identity` on `f44` and `d69` |
+| Host copies | `f44`, `d69` and `m74` (verified copy, `copy-receipt.json`, 2026-11-20, for the nightly row): `~/work/put.gd/work/lab-images/omarchy-hyprland-20261108/image.qcow2`, with `known_hosts`, the manifest and `restore-sha256sums.txt` |
+| Bootstrap key | `~/work/put.gd/work/lab-bootstrap-omarchy/identity` on `f44`, `d69` and `m74` |
 
 The S3 object passed a download round trip on EC2 (both hashes and `qemu-img compare`),
 and each builder's restore checked both hashes, the format, backing file and virtual size,

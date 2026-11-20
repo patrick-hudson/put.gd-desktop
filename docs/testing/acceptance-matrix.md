@@ -68,8 +68,9 @@ needs splitting into "already released" and "new on master":
 
 Budgie runs as VM rows on the [Budgie goldens](../lab/vm-lab.md#budgie-goldens)
 ([#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275)). They are
-not in `nightly_desktops.py` or the required release gates; adding them is
-Patrick's call. The [Budgie page](../desktops/budgie.md) says what each row must
+not required release gates. The nightly desktop check runs the Fedora 45 Budgie
+row with its RPM, the only nightly row that installs the `fedora45` RPM
+([nightly cells](../lab/remote-builders.md#what-the-nightly-check-runs)). The [Budgie page](../desktops/budgie.md) says what each row must
 show; `tests/desktop/budgie.yaml` lists the scenarios.
 
 | Row | Golden | Package | Must show |
@@ -122,7 +123,7 @@ still test each format, and the AppImage profile does not replace them.
 ## Hyprland (Omarchy) VM row
 
 Hyprland is accepted on Omarchy 4.5 in a VM only (no physical Hyprland machine);
-it is not a nightly or release gate. Both packages run on fresh overlays of
+it is not a release gate. The nightly desktop check runs it with the AppImage. Both packages run on fresh overlays of
 `omarchy-hyprland-20261108`, profile `omarchy-hyprland`, with real keyboard and
 tablet input through QEMU ([Hyprland adapter](../desktops/hyprland.md),
 [Omarchy VM](../lab/omarchy-vm.md)).

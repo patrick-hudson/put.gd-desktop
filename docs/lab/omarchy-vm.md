@@ -5,8 +5,8 @@ Omarchy is an Arch Linux and Hyprland setup from omarchy.org
 Hyprland and for Arch packages, tracked in
 [#1275](https://github.com/patrick-hudson/put.gd-desktop/issues/1275). It has an acceptance
 row in the [matrix](../testing/acceptance-matrix.md#hyprland-omarchy-vm-row) that is not a
-nightly or release gate; adding it to the nightly desktop check is Patrick's decision.
-The nightly desktop check runs only the five physical builders, so no nightly row installs
+release gate. The nightly desktop check runs it as a row on m74 with the AppImage (Patrick,
+2026-11-19). No nightly row installs
 the Arch package on an Omarchy package set; the Arch CI job installs it on current Arch,
 where OpenSSL always matches. That is why [#1525](https://github.com/patrick-hudson/put.gd-desktop/issues/1525)
 (a package that pacman accepted on Omarchy and that then could not load `libcrypto.so.4`)
@@ -28,10 +28,10 @@ to S3 from there, and only downloaded to the builders. The instance is terminate
 | Unattended unlock | LUKS keyslot 1 holds a 64-byte `/crypto_keyfile.bin` (pbkdf2, 1,000 iterations). `/etc/mkinitcpio.conf.d/zz-putgd-lab-luks-keyfile.conf` adds it to the initramfs (`FILES+=(/crypto_keyfile.bin)`), and Omarchy's busybox `encrypt` hook uses it without a prompt. The key sits in the unified kernel image on the unencrypted ESP: this disk is not encrypted in any useful sense, which is fine for a lab guest only. |
 | Firmware | UEFI without Secure Boot. Overlays boot from a fresh OVMF variables copy, as `lab.py` makes one, through the installer's fallback `EFI/BOOT/BOOTX64.EFI` (Limine), then the UKI. SSH answers about 16 s after QEMU starts. |
 | Lab settings | Omarchy's Stay Awake on (`~/.local/state/omarchy/indicators/stay-awake`: no idle lock or screensaver); the four first-run intro notifications dismissed (they otherwise return at every login); `/etc/sudoers.d/90-putgd-lab-pacman` lets `lab` run only `/usr/bin/pacman` without a password, as the apt and dnf rules on other goldens do; sshd enabled and ufw allowing SSH (the installer does this when `authorized_keys` is supplied); hostname `omarchy-lab`; America/Chicago. |
-| SSH | Host key `SHA256:QXkymaRZDqZC2DYzEmSJbqiZ1HNfVfRI41Lh/vokXSs`; the golden's `known_hosts` pins `[127.0.0.1]:22440` to `:22443`. Authorized key: only the bootstrap key `putgd-lab-omarchy` (`SHA256:iujcLZEruB3NquogHdTqR4ot4OVpcc+coKpR4z6nqKg`), kept on the workstation and at `~/work/put.gd/work/lab-bootstrap-omarchy/identity` on `f44` and `d69`. |
+| SSH | Host key `SHA256:QXkymaRZDqZC2DYzEmSJbqiZ1HNfVfRI41Lh/vokXSs`; the golden's `known_hosts` pins `[127.0.0.1]:22440` to `:22443`. Authorized key: only the bootstrap key `putgd-lab-omarchy` (`SHA256:iujcLZEruB3NquogHdTqR4ot4OVpcc+coKpR4z6nqKg`), kept on the workstation and at `~/work/put.gd/work/lab-bootstrap-omarchy/identity` on `f44`, `d69` and `m74`. |
 | Display | Hyprland renders in software with plain `-device virtio-vga` (no virgl and no host GPU), as Omarchy's own CI runs it. It boots at 1280x800; `lab.py layout` sets other sizes. The desktop shows on the wall like any other VM. |
 | Image | Standalone qcow2, 4,923,523,072 bytes, virtual 51,539,607,552 (48 GiB), SHA-256 `bd74b7832c4a43f15a06f5a5b448e670a77d33ae75516b5bc5856773b69f3256`, `qemu-img compare` identical to the provisioned disk, `qemu-img check` clean. The encrypted root barely compresses: the zstd object is 4,869,090,452 bytes. |
-| Copies | S3 and `f44` and `d69`; see [golden images](remote-golden-images.md#omarchy-hyprland-golden). |
+| Copies | S3, `f44`, `d69` and `m74`; see [golden images](remote-golden-images.md#omarchy-hyprland-golden). |
 
 Use the `omarchy-hyprland` profile in `tools/lab/profiles/` with this golden. It needs
 the lab changes from [#1284](https://github.com/patrick-hudson/put.gd-desktop/pull/1284):
@@ -71,6 +71,15 @@ python3 tools/lab/lab.py launch --profile omarchy-hyprland \
   crashes under software rendering (`DRM_IOCTL_MODE_CREATE_DUMB` permission denied), so the
   asking client hangs. Use explicit `hl.permission` rules in the VM.
 - `lab.py run` scenarios need `putgd-desktop-fixture`, which only lab DEB builds ship.
+- Omarchy keeps its browser default in `~/.config/hyprland-mimeapps.list`, read before
+  `mimeapps.list`. The lab's browser helper changes the HTTP and HTTPS handlers in both for
+  the run and restores both files afterwards.
+- quickshell exports no tray items and no notification text to AT-SPI. The nightly reads its
+  banners from the screen, and its Tray menu cell is not run.
+- The nightly guest adds its probe packages (python-atspi, python-pyqt6, python-pillow,
+  gst-plugin-gtk, gst-plugins-base) in the disposable overlay. Before installing it refuses a
+  plan that would change an installed package's version; after installing it compares the
+  whole installed inventory and fails the row if any package changed or disappeared.
 
 ## How it was made
 
