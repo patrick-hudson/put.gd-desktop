@@ -183,9 +183,8 @@ class NightlyTests(unittest.TestCase):
                 record = json.loads(archived[0].read_text())
                 # The record keeps the slot's own files and says why the slot could go.
                 self.assertEqual((record['owner'], record['recoveredBy']), (owner, 'nightly'))
-                self.assertEqual(sorted(record['slotFiles']), ['retained.json', 'session'])
-                self.assertEqual(json.loads(record['slotFiles']['retained.json']), owner)
-                self.assertEqual(record['slotFiles']['session'], owner['session'])
+                # Names only: file contents never reach history, only the validated owner.
+                self.assertEqual(record['slotFiles'], ['session', 'retained.json'])
                 self.assertEqual((record['cleared']['guest'], record['cleared']['protonLend']),
                                  ('run directory already gone', 'carried_back'))
                 self.assertTrue(record['desktopRelease'])
@@ -770,15 +769,19 @@ class NightlyTests(unittest.TestCase):
             evidence = Path(owner['evidence'])
             retire, error = self.recover_kept(root, out, desktop, proton)
             self.assertIn('inspect private cleanup', error)
-            with patch.object(nightly, 'guest_paused') as paused, patch.object(nightly, 'retire'):
+            with patch.object(nightly, 'guest_paused', return_value=None) as paused, patch.object(nightly, 'retire'):
+                # Without the explicit flag the command still expects a confirmed live publication.
+                error, _ = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678',
+                                         '--guest-only-error', error_text)
+                self.assertIn('VM is running', error)
                 # Nothing to record: say what to run instead, and write nothing.
-                error, _ = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678')
+                error, _ = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678', '--no-live-publication')
                 self.assertIn('--recover-retained', error)
                 self.assertFalse((evidence/nightly.LIVE_RESOLUTION).exists())
                 error, record = self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678',
-                                              '--guest-only-error', error_text)
+                                              '--no-live-publication', '--guest-only-error', error_text)
             # No publication is pending, so no pause or destination check is needed.
-            paused.assert_not_called()
+            self.assertEqual(paused.call_count, 1)  # Only the refused call without the flag.
             self.assertIsNone(error)
             self.assertEqual((record['publication'], record['objectConfirmedGone'], record['livePublicationPending']),
                              (None, False, False))
@@ -797,8 +800,8 @@ class NightlyTests(unittest.TestCase):
             (run/'live-cleanup-pending.json').unlink()
             with self.assertRaisesRegex(nightly.NotRun, 'give --destination'):
                 self.resolve(root, guest_only_errors=['private session root cleanup refused'])
-            with self.assertRaisesRegex(nightly.NotRun, 'VM is running'):
-                self.resolve(root, guest_only_errors=['private session root cleanup refused'], paused=None)
+            with self.assertRaisesRegex(nightly.NotRun, 'live publication is pending'):
+                self.resolve(root, guest_only_errors=['private session root cleanup refused'], no_live_publication=True)
             self.assertFalse((evidence/nightly.LIVE_RESOLUTION).exists())
             # A hand-made record claiming nothing was pending clears only the errors it names.
             nightly.save(evidence/nightly.LIVE_RESOLUTION, dict(
@@ -836,7 +839,14 @@ class NightlyTests(unittest.TestCase):
                 retire.assert_not_called()
                 self.assertTrue(slot.exists())
                 self.assertNotEqual(desktop.status()['state'], 'free')
-                self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678', '--guest-only-error', error_text)
+                self.operator(root, desktop, proton, '--resolve-live-cleanup', 'n12345678', '--no-live-publication',
+                              '--guest-only-error', error_text)
+                # It runs alone: a combined check could pause the guest and exit without recovering.
+                with patch.object(nightly, 'guest_paused') as paused, patch.object(sys, 'stderr'):
+                    for extra in (('--check-live-cleanup',), ('--guest-only-error', error_text), ('--no-live-publication',)):
+                        error, _ = self.operator(root, desktop, proton, '--recover-retained', 'n12345678', *extra)
+                        self.assertEqual(error, '2')
+                paused.assert_not_called()
                 error, summary = self.operator(root, desktop, proton, '--recover-retained', 'n12345678')
             self.assertIsNone(error)
             retire.assert_called_once_with(Path(owner['run']), evidence, {})
@@ -880,6 +890,7 @@ class NightlyTests(unittest.TestCase):
             slot, out, owner, desktop, proton = self.kept_live_row(root)
             run = Path(owner['run'])
             (run/'qmp.sock').write_text('')
+            (run/'disk.qcow2').write_text('')
             with patch.object(lab, 'QMP', side_effect=ConnectionRefusedError), \
                     patch.object(nightly, 'vm_process_gone', return_value=True), \
                     patch.object(nightly.time, 'sleep') as sleep, \
@@ -992,26 +1003,67 @@ class NightlyTests(unittest.TestCase):
             # The socket file can be gone too.
             (run/'qmp.sock').unlink()
             self.assertIsNotNone(nightly.guest_paused(run))
+            # A QEMU that ran on the overlay between two looks wrote to it: its exit starts a new settle period.
+            (run/'disk.qcow2').write_text('written by a later QEMU')
+            self.assertIsNone(nightly.guest_paused(run))
 
-    def test_vm_process_gone_needs_every_process_readable_and_none_on_the_overlay(self):
+    def test_vm_process_gone_uses_the_lab_overlay_inventory(self):
+        from tools.lab import overlay_cleanup
         with tempfile.TemporaryDirectory() as tmp:
-            proc, run = Path(tmp)/'proc', Path(tmp)/'run'
-            def process(pid, argv):
-                (proc/str(pid)).mkdir(parents=True)
-                (proc/str(pid)/'cmdline').write_bytes(b'\0'.join(os.fsencode(a) for a in argv)+b'\0')
-            process(10, ['python3', str(run/'disk.qcow2')])
-            process(11, ['/usr/bin/qemu-system-x86_64', '-drive', 'file='+str(Path(tmp)/'other/disk.qcow2')])
-            (proc/'12').mkdir()  # Exited between listing and reading.
-            real = nightly.Path
-            def fake(*parts):
-                return proc if parts == ('/proc',) else real(*parts)
-            with patch.object(nightly, 'Path', side_effect=fake):
+            run = Path(tmp)
+            # No overlay file: nothing to match by identity, so no proof.
+            self.assertFalse(nightly.vm_process_gone(run))
+            (run/'disk.qcow2').write_text('')
+            with patch.object(overlay_cleanup, '_check_processes') as check:
                 self.assertTrue(nightly.vm_process_gone(run))
-                process(13, ['/usr/bin/qemu-system-x86_64', '-drive', 'file='+str(run/'disk.qcow2')+',format=qcow2'])
+            check.assert_called_once_with(run, run/'disk.qcow2')
+            for refusal in (overlay_cleanup.CleanupError('Hidden /proc inventory prevents safe cleanup'),
+                            overlay_cleanup.CleanupError('A process still has the overlay open'), PermissionError()):
+                with patch.object(overlay_cleanup, '_check_processes', side_effect=refusal):
+                    self.assertFalse(nightly.vm_process_gone(run))
+            (run/'disk.qcow2').unlink()
+            (run/'disk.qcow2').symlink_to(run/'elsewhere')
+            with patch.object(overlay_cleanup, '_check_processes'):
                 self.assertFalse(nightly.vm_process_gone(run))
-                (proc/'13/cmdline').unlink()
-                (proc/'13/cmdline').mkdir()  # Unreadable: no proof.
-                self.assertFalse(nightly.vm_process_gone(run))
+
+    def test_a_no_publication_record_leaves_a_marker_that_appeared_after_its_check(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.lost_ssh_row(root)
+            marker = Path(owner['run'])/lab.LIVE_CLEANUP_MARKER
+            real = nightly.resolution_overlay
+            def raced(*args):
+                value = real(*args)
+                nightly.save(marker, dict(schemaVersion=1, destination='s3', prefix='p/', objectKey='p/x.png', runId='n12345678'))
+                return value
+            with patch.object(nightly, 'resolution_overlay', side_effect=raced):
+                self.resolve(root, guest_only_errors=['fixture cleanup failed: ssh connection lost'], no_live_publication=True)
+            self.assertTrue(marker.exists())
+            retire, error = self.recover_kept(root, out, desktop, proton)
+            self.assertIn('live remote cleanup unresolved', error)
+            retire.assert_not_called()
+
+    def test_a_retry_after_a_refused_release_reverifies_the_earlier_retirement(self):
+        from tools.lab import lab
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+            evidence = Path(owner['evidence'])
+            # The first recovery retired the overlay (no disk left) and wrote its manifest.
+            nightly.save(evidence/'completion-manifest.json', dict(files={}))
+            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                    patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                          proton if kw.get('resource') == 'proton' else desktop), \
+                    patch.object(lab, 'state', return_value=dict(id='n12345678', golden=str(root/'g/a/b/golden'))), \
+                    patch.object(lab, 'cleanup_overlay', return_value={'status': 'completed'}) as cleanup, \
+                    patch.object(nightly, 'retire') as retire:
+                summary = nightly.recover_stale_guest(dict(host='d69'), out)
+            retire.assert_not_called()
+            cleanup.assert_called_once_with(Path(owner['run']), evidence_manifest=evidence/'completion-manifest.json',
+                                            images_root=root/'g/a')
+            self.assertEqual(summary['guest'], 'retired by an earlier recovery')
+            self.assertFalse(slot.exists())
 
     def test_the_s3_cleanup_check_reads_only_the_marker_key_and_prefix(self):
         class NoSuchKey(Exception):
