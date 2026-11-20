@@ -1582,19 +1582,29 @@ void testJumpPastLookAlikes() {
 // contradicted.
 void testPlayingVideo() {
   std::printf("\n[playing video] changing content in the region keeps Following (#1537)\n");
-  // Helper: check that the video rectangle in the output image actually has
-  // varied (video) pixels, not blank page background wiped out by pinning.
-  const auto hasVideoPixels = [](const Played& r, int x0, int y0, int x1, int y1) {
-    const long long rows = r.totals.bottom - r.totals.top;
-    long long nonBg = 0, total = 0;
-    for (int y = std::max(0, y0); y < std::min<long long>(rows, y1); ++y)
-      for (int x = std::max(0, x0); x < std::min(r.width, x1); ++x) {
-        uint32_t v;
-        std::memcpy(&v, &r.image[(size_t(y) * r.width + x) * 4], 4);
-        ++total;
-        nonBg += (v & 0xFFFFFFu) != (kBg & 0xFFFFFFu);
+  // Helper: check that the entire video rectangle [x0, x1) x [y0, y1) in the
+  // stitched output matches ONE single source frame pixel-for-pixel (#1537 S4).
+  const auto matchesOneVideoFrame = [](const Played& r, const Scene& scene, const std::vector<int>& pos,
+                                       int x0, int y0, int x1, int y1, int* matchedFrame = nullptr) {
+    if (matchedFrame) *matchedFrame = -1;
+    const int V = scene.spec().height;
+    const long long outRows = r.totals.bottom - r.totals.top;
+    if (y0 < 0 || y1 > outRows || x0 < 0 || x1 > r.width) return false;
+    for (size_t i = 0; i < pos.size(); ++i) {
+      if (pos[i] > y0 || pos[i] + V < y1) continue;
+      const Image src = scene.frame(pos[i], int(i));
+      bool eq = true;
+      for (int y = y0; y < y1 && eq; ++y) {
+        const int sy = y - pos[i];
+        if (std::memcmp(&r.image[(size_t(y) * r.width + x0) * 4], src.row(sy) + x0, size_t(x1 - x0) * 4) != 0)
+          eq = false;
       }
-    return total > 0 && nonBg * 2 >= total;
+      if (eq) {
+        if (matchedFrame) *matchedFrame = int(i);
+        return true;
+      }
+    }
+    return false;
   };
 
   {
@@ -1642,11 +1652,13 @@ void testPlayingVideo() {
     int firstBad = 0;
     const Image expected = pageRows(doc, 0, doc.h, W);
     const long long bad = differing(r, expected, {{0, 0, W, 48}, {0, doc.h - 80, W, doc.h}, {140, 892, 500, 1068}}, 0, &firstBad);
-    const bool videoWritten = hasVideoPixels(r, 156, 908, 484, 1052);
+    int matchedVid = -1;
+    const bool videoExact = matchesOneVideoFrame(r, scene, pos, ss.changingX, ss.changingY,
+                                                 ss.changingX + ss.changingW, ss.changingY + ss.changingH, &matchedVid);
     report("article with header, banner and playing video: stays Following, rest exact",
-           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 2 && bad == 0 && videoWritten && r.totals.bottom == doc.h,
-           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d), video written %d, height %lld/%d", lostFrames, r.wrong,
-                           r.firstWrong.c_str(), bad, firstBad, int(videoWritten), r.totals.bottom - r.totals.top, doc.h));
+           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 2 && bad == 0 && videoExact && r.totals.bottom == doc.h,
+           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d), video frame %d, height %lld/%d", lostFrames, r.wrong,
+                           r.firstWrong.c_str(), bad, firstBad, matchedVid, r.totals.bottom - r.totals.top, doc.h));
   }
 
   {
@@ -1728,18 +1740,52 @@ void testPlayingVideo() {
     Rng rng(147);
     std::vector<int> pos{0};
     while (pos.back() < 520) pos.push_back(std::min(520, pos.back() + rng.range(12, 32)));
+    const size_t pauseBegin = pos.size();
     for (int k = 0; k < 20; ++k) pos.push_back(520);  // paused with 60% video in view
+    const size_t pauseEnd = pos.size();
     while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(12, 32)));
     const Played r = play(scene, pos);
-    int lostFrames = 0;
-    for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+    int lostFrames = 0, badPause = 0, badMove = 0;
+    for (size_t i = 0; i < r.results.size(); ++i) {
+      const TrackResult& t = r.results[i];
+      lostFrames += t.state == TrackState::Lost;
+      if (i >= pauseBegin && i < pauseEnd)
+        badPause += t.status != TrackStatus::NoMovement || t.position != 520;
+      else
+        badMove += t.status != TrackStatus::Placed || t.position != pos[i];
+    }
     int firstBad = 0;
     const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 592, 456, 848}}, 0, &firstBad);
-    const bool videoWritten = hasVideoPixels(r, 40, 608, 440, 832);
+    int matchedVid = -1;
+    const bool videoExact = matchesOneVideoFrame(r, scene, pos, ss.changingX, ss.changingY,
+                                                 ss.changingX + ss.changingW, ss.changingY + ss.changingH, &matchedVid);
     report("60% playing video: pause at rest and scroll past stay Following, exact",
-           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 2 && bad == 0 && videoWritten && r.totals.bottom == doc.img.h,
-           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d), video written %d", lostFrames, r.wrong, r.firstWrong.c_str(), bad,
-                           firstBad, int(videoWritten)));
+           r.wrong == 0 && lostFrames == 0 && badPause == 0 && badMove == 0 && bad == 0 && videoExact && r.totals.bottom == doc.img.h,
+           counts(r) + fmt(", %d badPause, %d badMove, %d lost, %d wrong%s, %lld px differ (row %d), video frame %d", badPause, badMove,
+                           lostFrames, r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
+
+    // 3b. Slowly scrolling back and forth over the same 60% playing video
+    // (8-px steps over a 32-px range): must not falsely pin the video (#1537 S3).
+    std::vector<int> oscPos{0};
+    Rng oscRng(148);
+    while (oscPos.back() < 520) oscPos.push_back(std::min(520, oscPos.back() + oscRng.range(12, 32)));
+    for (int cyc = 0; cyc < 5; ++cyc) {
+      for (int k = 0; k < 4; ++k) oscPos.push_back(oscPos.back() + 8);
+      for (int k = 0; k < 4; ++k) oscPos.push_back(oscPos.back() - 8);
+    }
+    while (oscPos.back() < end) oscPos.push_back(std::min(end, oscPos.back() + oscRng.range(12, 32)));
+    const Played ro = play(scene, oscPos);
+    int oscLost = 0;
+    for (const TrackResult& t : ro.results) oscLost += t.state == TrackState::Lost;
+    int oscFirstBad = 0;
+    const long long oscBad = differing(ro, pageRows(doc.img, 0, doc.img.h, W), {{24, 592, 456, 848}}, 0, &oscFirstBad);
+    int oscVid = -1;
+    const bool oscVidExact = matchesOneVideoFrame(ro, scene, oscPos, ss.changingX, ss.changingY,
+                                                  ss.changingX + ss.changingW, ss.changingY + ss.changingH, &oscVid);
+    report("60% playing video: 8-px back-and-forth oscillation never pins video",
+           ro.wrong == 0 && oscLost == 0 && ro.totals.pinnedRegions == 0 && oscBad == 0 && oscVidExact && ro.totals.bottom == doc.img.h,
+           counts(ro) + fmt(", %d pinned, %d lost, %d wrong%s, %lld px differ (row %d), video frame %d", ro.totals.pinnedRegions, oscLost,
+                            ro.wrong, ro.firstWrong.c_str(), oscBad, oscFirstBad, oscVid));
   }
 
   {
@@ -1778,9 +1824,8 @@ void testPlayingVideo() {
   }
 
   {
-    // 5. Capture starts on frame 0 with a 60% playing video already in view:
-    // the person pauses for 6 frames while it plays, then scrolls down to the
-    // end. Must recover from frame 1 (never Lost) and capture the page exact.
+    // 5a. Capture starts on frame 0 with a 60% playing video already in view
+    // and scrolls immediately with no initial pause (#1537 S1, S4).
     const int W = 480, V = 400;
     DocSpec ds;
     ds.seed = 153;
@@ -1802,17 +1847,40 @@ void testPlayingVideo() {
     ss.changingW = 416;
     ss.changingH = 240;  // 60% of the first viewport
     const Scene scene(doc.img, ss);
-    Rng rng(155);
-    std::vector<int> pos{0, 0, 0, 0, 0, 0};
-    while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(12, 32)));
-    const Played r = play(scene, pos);
-    int lostFrames = 0;
-    for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
-    int firstBad = 0;
-    const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 72, 456, 328}}, 0, &firstBad);
-    report("60% playing video on frame 0: pause then scroll stays Following, exact",
-           r.wrong == 0 && lostFrames == 0 && r.totals.skipped <= 1 && bad == 0 && r.totals.bottom == doc.img.h,
-           counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d)", lostFrames, r.wrong, r.firstWrong.c_str(), bad, firstBad));
+    {
+      Rng rng(155);
+      std::vector<int> pos{0};
+      while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(12, 32)));
+      const Played r = play(scene, pos);
+      int lostFrames = 0;
+      for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 72, 456, 328}}, 0, &firstBad);
+      int matchedVid = -1;
+      const bool videoExact = matchesOneVideoFrame(r, scene, pos, ss.changingX, ss.changingY,
+                                                   ss.changingX + ss.changingW, ss.changingY + ss.changingH, &matchedVid);
+      report("60% playing video on frame 0: immediate scroll recovers fast, exact",
+             r.wrong == 0 && r.totals.skipped <= 2 && r.totals.placed >= int(pos.size()) - 2 && bad == 0 && videoExact &&
+                 r.totals.bottom == doc.img.h,
+             counts(r) + fmt(", %d lost, %d wrong%s, %lld px differ (row %d), video frame %d", lostFrames, r.wrong, r.firstWrong.c_str(), bad,
+                             firstBad, matchedVid));
+    }
+    // 5b. Same scene with a 6-frame initial pause before scrolling: recovers as
+    // soon as scrolling starts, captures the full page exact and video from one frame.
+    {
+      Rng rng(155);
+      std::vector<int> pos{0, 0, 0, 0, 0, 0};
+      while (pos.back() < end) pos.push_back(std::min(end, pos.back() + rng.range(12, 32)));
+      const Played r = play(scene, pos);
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {{24, 72, 456, 328}}, 0, &firstBad);
+      int matchedVid = -1;
+      const bool videoExact = matchesOneVideoFrame(r, scene, pos, ss.changingX, ss.changingY,
+                                                   ss.changingX + ss.changingW, ss.changingY + ss.changingH, &matchedVid);
+      report("60% playing video on frame 0: pause then scroll recovers, exact",
+             r.wrong == 0 && bad == 0 && videoExact && r.totals.bottom == doc.img.h && r.totals.placed >= int(pos.size()) - 7,
+             counts(r) + fmt(", %d wrong%s, %lld px differ (row %d), video frame %d", r.wrong, r.firstWrong.c_str(), bad, firstBad, matchedVid));
+    }
   }
 
   {
@@ -1917,17 +1985,24 @@ void testPlayingVideo() {
     ss.pinned.push_back(PinnedPart{0, 0, W, 40, 0xD8DCE6, 0x202430, 0, 165});
     ss.pinned.push_back(PinnedPart{0, 40, 112, V - 40, 0xE2E6EE, 0x202430, 0, 167});
     const Scene scene(doc, ss);
-    std::vector<int> pos{0, 60};  // 1 placed scroll step (unpinned chrome!)
-    for (int p = 700; p + V <= doc.h; p += 520) pos.push_back(p);
-    const Played r = play(scene, pos);
-    int falseStill = 0, lost = 0;
-    for (size_t i = 2; i < r.results.size(); ++i) {
-      falseStill += r.results[i].status == TrackStatus::NoMovement;
-      lost += r.results[i].state == TrackState::Lost;
+    // Test 0-px (immediate jump), 1-px (< learnMinStep), and 60-px initial steps (#1537 S2).
+    for (const int firstStep : {0, 1, 60}) {
+      std::vector<int> pos{0};
+      if (firstStep > 0) pos.push_back(firstStep);
+      const size_t jumpStart = pos.size();
+      for (int p = 700; p + V <= doc.h; p += 520) pos.push_back(p);
+      const Played r = play(scene, pos);
+      const bool setupPlaced = firstStep == 0 || (r.results.size() > 1 && r.results[1].status == TrackStatus::Placed &&
+                                                  r.results[1].position == firstStep);
+      int falseStill = 0, lost = 0;
+      for (size_t i = jumpStart; i < r.results.size(); ++i) {
+        falseStill += r.results[i].status == TrackStatus::NoMovement;
+        lost += r.results[i].state == TrackState::Lost;
+      }
+      report(fmt("jumps past viewport with unpinned sticky chrome (%d-px step) stay Lost", firstStep),
+             setupPlaced && r.wrong == 0 && falseStill == 0 && lost > 0,
+             counts(r) + fmt(", setupPlaced %d, %d false NoMovement, %d Lost frames", int(setupPlaced), falseStill, lost));
     }
-    report("jumps past viewport with unpinned sticky chrome stay Lost, not NoMovement",
-           r.wrong == 0 && falseStill == 0 && lost > 0,
-           counts(r) + fmt(", %d false NoMovement, %d Lost frames", falseStill, lost));
   }
 }
 

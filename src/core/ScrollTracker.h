@@ -382,8 +382,8 @@ class ScrollTracker {
     bool keptTile(size_t i) const { return inf[i] > 0 && 2 * agree[i] >= inf[i]; }
   };
 
-  void computeExcluded(const Signature& cur, const Signature& ref);
-  void refreshRefIncl();
+  void computeExcluded(const Signature& cur, const Signature& ref, long long refPos);
+  void refreshRefIncl(long long refPos);
   void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
   void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const;
@@ -397,11 +397,12 @@ class ScrollTracker {
   double coarseShare(const Signature& cur, const Signature& ref, int d, double abortBelow,
                      const std::vector<uint16_t>& incl) const;
   void searchPass(const Signature& cur, const Signature& ref, int expected, const std::vector<uint16_t>& incl,
-                  std::vector<Candidate>& out) const;
+                  std::vector<Candidate>& out, double floorOverride = -1.0) const;
   double storeCoarseShare(const Signature& cur, long long pos, double abortBelow) const;
   std::vector<int> pickPeaks(const std::vector<float>& coarse, double floor, long long center) const;
   bool stillFrame(const Signature& cur, const Signature& ref, double* share) const;
-  std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected) const;
+  std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected,
+                                    double floorOverride = -1.0) const;
   std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, long long lo, long long hi,
                                      size_t maxPeaks) const;
   // The slice of the image a lost frame looks through after the near window,
@@ -412,11 +413,12 @@ class ScrollTracker {
              bool* byExpectation, SkipReason* why, int* unexplainedPick = nullptr) const;
   bool observeDynamic(const Signature& cur, const Signature& other, long long curPos, long long otherPos,
                       const std::vector<Candidate>* cands, int pick, bool verifyAgreement);
+  void snapshotDynamic(const FrameView& frame, long long pos);
   const Signature* prevSig() const;
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
   double wholeCells(const Signature& cur, const Signature& ref, int d) const;
-  double selfRepeat(const Signature& sig, int y0, int y1) const;
+  double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos) const;
   // Frames skipped since the last placed frame (a frame that only stood
   // still while nothing was proved does not end the count).
   int skipsSincePlaced_ = 0;
@@ -502,7 +504,7 @@ class ScrollTracker {
   // (#1537). When prevIsLast_ is true, last_ already holds that frame.
   std::unique_ptr<Signature> prev_;
   long long prevPos_ = 0;
-  bool prevIsLast_ = false, prevHasPos_ = false;
+  bool prevIsLast_ = false, prevHasPos_ = false, prevViewMoved_ = false;
   long long lastPos_ = 0;
   long long top_ = 0, bottom_ = 0;            // extent written
   // Expectation: the last movement per frame, and the hints since the last
@@ -515,10 +517,22 @@ class ScrollTracker {
   int skipRun_ = 0;
   // The pinned mask, per block: steps it stayed, steps it moved, pinned.
   std::vector<uint8_t> stayed_, wandering_, pinned_, closed_, stillNow_;
-  // Cumulative scroll distance while wandering_ > 0, so an in-page playing
-  // video scrolled slowly through the page's area is not mistaken for a pinned
-  // animated rail (#1537).
-  std::vector<uint16_t> wanderingDist_;
+  // Page position span [min, max] seen while wandering_ > 0, so an in-page
+  // playing video scrolled slowly or back and forth through the page's area
+  // cannot build up pinning evidence until the page actually moves a full
+  // frame height across it (#1537).
+  std::vector<long long> wanderingMinPos_, wanderingMaxPos_;
+  // Blocks that have shown textured motion with the page (`move >= 3`), never
+  // expiring while scrolling back and forth over an in-page video (#1537).
+  std::vector<uint8_t> pageMoved_;
+  // Best single-frame snapshot written for each dynamic page region (#1537).
+  struct DynSnap {
+    long long p0 = 0, p1 = 0;
+    int k0 = 0, k1 = 0;
+    int coveredRows = 0;
+  };
+  bool hasDyn_ = false;
+  std::vector<DynSnap> dynSnaps_;
   // Colours behind the text that moved with the page, by bin, over every pair learned from.
   std::array<uint64_t, 256> behindSeen_{};
   // What a placed frame does not offer the image: pinned or stood still in
