@@ -327,7 +327,7 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
     Each pass has its own object key, recorded in the cleanup marker before anything is published.
     With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop. A SIGNED link
     carries the access key ID and a working signature, and History shows it in full: no frame is saved
-    from the start of the pass to the end of the recipe, the runner's after-frame included.
+    from the start of the pass to the end of the driver process, the runner's after-frame included.
     """
     scope = ctx._fixture_manager.scope
     service = ctx._live_service
