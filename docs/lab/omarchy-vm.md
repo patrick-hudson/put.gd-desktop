@@ -71,6 +71,13 @@ python3 tools/lab/lab.py launch --profile omarchy-hyprland \
   crashes under software rendering (`DRM_IOCTL_MODE_CREATE_DUMB` permission denied), so the
   asking client hangs. Use explicit `hl.permission` rules in the VM.
 - `lab.py run` scenarios need `putgd-desktop-fixture`, which only lab DEB builds ship.
+- Omarchy keeps its browser default in `~/.config/hypr/hyprland-mimeapps.list`, read before
+  `mimeapps.list`; a lab that sets the default browser changes both.
+- quickshell exports no tray items and no notification text to AT-SPI. The nightly reads its
+  banners from the screen, and its Tray menu cell is not run.
+- The nightly guest adds only new packages for its probes (python-atspi, python-pyqt6,
+  python-pillow, gst-plugin-gtk, gst-plugins-base) and refuses if any installed package
+  would change.
 
 ## How it was made
 

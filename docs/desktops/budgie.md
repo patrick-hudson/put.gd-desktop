@@ -297,6 +297,12 @@ Budgie 11 alpha ([#1290](https://github.com/patrick-hudson/put.gd-desktop/issues
   round trips and click highlights are left to Budgie desktop acceptance. The
   Ubuntu 26.04 CI leg installs labwc; the test skips where labwc is absent. Headless results are supporting evidence,
   never desktop acceptance.
+- The nightly desktop check runs a Fedora 45 Budgie row (RPM). labwc gives no window
+  geometry, so the lab places a window only where its own pixels show on screen, and a
+  click it can't verify that way is not run rather than red. labwc 0.20 captures a modal
+  dialog as a 1×1 surface (a plain PyQt6 dialog does the same), so cells that click inside
+  a dialog are not run there. budgie-panel's tray items have no accessible name, so the
+  Tray menu cell is not run.
 - Routing rows in `test_native_session.cpp` cover `Budgie`, `Budgie:GNOME`,
   `labwc:wlroots` and `wayland;xcb`.
 - The VM rows are in [the acceptance matrix](../testing/acceptance-matrix.md).
