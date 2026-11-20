@@ -291,14 +291,16 @@ one in a private runtime folder, then carries the session back.
 **A dead guest keyring.** On Aurora and Budgie the nightly runs its own
 `gnome-keyring-daemon` in the guest, on `/dev/shm/nd-keys`, and every guest step reaches it by
 its unique D-Bus name in the run's `state.json`. If that daemon dies, the name is gone and
-nothing starts it again, so every return of a lend fails. When a return fails, `recover` checks
-that the recorded connection has no owner and that no process still serves the keyring's
-folder. It then starts the daemon again with the nightly's own command on the same files,
-opens the blank `putgd lab` collection with its empty password, points `state.json` at the
-new connection and tries the return once more. `lend.json` records `keyringRestart` with the
-connection names, the daemon's pid and the collection's lock state, and never a secret. A
-daemon that still answers, or still holds the folder, is never replaced, and a second failure
-keeps the lock blocked as before. A desktop's own Secret Service (GNOME, Cinnamon, Plasma) is
+nothing starts it again, so every return of a lend fails. When a return fails in a guest
+step, `recover` checks that the recorded connection has no owner, that no process still
+serves the keyring's folder and that the desktop's own Secret Service is running. It then
+starts the daemon again with the nightly's own command on the same files and opens the blank
+`putgd lab` collection with its empty password. Only then does it point `state.json` at the new
+connection and try the return once more. `lend.json` appends each attempt to
+`keyringRestarts`, with the connection names, the daemon's pid and the collection's lock
+state, and never a secret. A daemon that still answers, or still holds the folder, is never
+replaced. A failed carry-back is never retried, and a second failure keeps the lock blocked
+as before. A desktop's own Secret Service (GNOME, Cinnamon, Plasma) is
 started again by D-Bus on the next call, so it needs none of this.
 
 ## Recording fixture: consent, retained media and the GTK sink
