@@ -2672,7 +2672,7 @@ void SettingsWindow::revealUpdates(){
 // Everything the draft holds that the accepted document doesn't, path by path: a new destination
 // whole, each changed field of the others, each one gone, the order, and each changed setting.
 // Used where nothing is queued yet: Retry saving after a restored checkpoint, or after a conflict.
-void SettingsWindow::queueDraftDifferences(const QJsonObject& base){
+void SettingsWindow::queueDraftDifferences(const QJsonObject& base,bool withOrder){
  restoredDraft_=false;storeProfile();const auto draft=candidate();const auto accepted=base.isEmpty()?acceptedDocument():base;
  std::function<void(const QJsonValue&,const QJsonValue&,const QString&,QStringList&)> leaves=[&](const QJsonValue& now,const QJsonValue& before,const QString& path,QStringList& out){
   if(now==before)return;
@@ -2698,7 +2698,7 @@ void SettingsWindow::queueDraftDifferences(const QJsonObject& base){
   }
   for(const auto& id:std::as_const(savedOrder))if(!drafted.contains(id))queueRemoval(id);
   QStringList kept;for(const auto& id:std::as_const(drafted))if(saved.contains(id))kept.append(id);QStringList was;for(const auto& id:std::as_const(savedOrder))if(drafted.contains(id))was.append(id);
-  if(kept!=was)queueOrder();
+  if(withOrder&&kept!=was)queueOrder();
  }
  QStringList routes,settings;
  for(const auto& key:draft.keys()+accepted.keys()){
@@ -2726,7 +2726,8 @@ bool SettingsWindow::replayRestoredDraft(){
  // be told from what changed elsewhere, so nothing is guessed.
  if(restoredBase_.isEmpty()){status({"config_conflict",QStringLiteral("Changes made before an update can't be merged automatically; Reload discards them."),{}});return false;}
  auto later=std::exchange(saveQueue_,{});
- queueDraftDifferences(restoredBase_);
+ // A kept destination order is never replayed; a move made since restoring is queued already (#1716).
+ queueDraftDifferences(restoredBase_,false);
  for(auto& op:later){bool merged_=false;for(auto& queuedOp:saveQueue_)if(queuedOp.key==op.key){queuedOp=merged(std::move(queuedOp),op);merged_=true;break;}if(!merged_)saveQueue_.append(std::move(op));}
  checkQueue();return true;
 }
@@ -3147,6 +3148,11 @@ bool SettingsWindow::restoreViewState(const QJsonObject& state){
  populate();loading_=true;profile_->setCurrentIndex(state["profileIndex"].toInt(-1));loadProfile();const auto numbers=state["numbers"].toObject();for(auto it=numbers_.begin();it!=numbers_.end();++it)it.value()->setText(numbers[it.key()].toString());
  findChild<QToolButton*>("desktopSupportDetailsToggle")->setChecked(state["desktopSupportDetails"].toBool());resourceLimitsToggle_->setChecked(state["resourceLimits"].toBool());findControl<QToolButton*>("advancedSettings")->setChecked(state["advanced"].toBool());tabs_->setCurrentIndex(state["section"].toInt());const auto box=state["geometry"].toArray();setGeometry(box[0].toInt(),box[1].toInt(),box[2].toInt(),box[3].toInt());
  dirty_=state["dirty"].toBool();restoredDraft_=dirty_;restoredBase_=state.contains("baseDocument")?state["baseDocument"].toObject():baseRevision_==settings_.revision()?settings_.document():QJsonObject{};autosaveBlocked_=state["autosaveBlocked"].toBool();for(auto* button:std::as_const(retryAutosave_))button->setVisible(autosaveBlocked_||state["conflict"].toBool());conflict_=state["conflict"].toBool();baseDocument_=settings_.document();showConflictActions();loading_=false;updateResourceLimits();setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
+ // A kept destination order isn't restored: the list shows the file's, and the draft's other
+ // edits replay on Retry saving (#1716). A checkpoint that held only a move then holds nothing,
+ // so it isn't kept as unsaved.
+ if(restoredDraft_){showFileOrder();
+  if(candidate()==settings_.document()&&saveQueue_.isEmpty()&&notSaved_.isEmpty()){restoredDraft_=false;dirty_=false;autosaveBlocked_=false;conflict_=false;for(auto* button:std::as_const(retryAutosave_))button->hide();}}
  configurationChanged();stateSignals.unblock();emit viewStateChanged();return true;
 }
 
