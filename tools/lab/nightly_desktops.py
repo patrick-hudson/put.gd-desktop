@@ -718,6 +718,8 @@ def guest_paused(run, *, pause=False):
                     if running is False:
                         save(record, dict(pausedAt=time.time(), vm='paused'))
                 if running is not False:
+                    # The VM ran after that pause: a later pause, by anything, starts a new settle period.
+                    record.unlink(missing_ok=True)
                     return None
             if pause and pause_record(run, 'paused') is None:
                 # Paused by something else (or an exit record from an earlier QEMU): the settle period starts now.

@@ -955,9 +955,17 @@ class NightlyTests(unittest.TestCase):
                 self.assertEqual(nightly.guest_paused(run, pause=True), paused)
             self.assertEqual([c.args[0] for c in qmp.execute.call_args_list],
                              ['query-status', 'query-status', 'stop', 'query-status', 'query-status'])
+            # A pause long past its settle period, then a resume QMP reports.
+            nightly.save(run/nightly.PAUSE_RECORD, dict(pausedAt=1.0, vm='paused'))
             status['running'] = True
             with patch.object(lab, 'QMP', return_value=qmp):
                 self.assertIsNone(nightly.guest_paused(run))
+                # The resume voids the old pause, even when the VM is next paused by something else.
+                self.assertFalse((run/nightly.PAUSE_RECORD).exists())
+                status['running'] = False
+                self.assertIsNone(nightly.guest_paused(run))
+                self.assertAlmostEqual(nightly.guest_paused(run, pause=True), nightly.time.time(), delta=5)
+                status['running'] = True
             # A QMP that does not answer is no pause while QEMU may still run on the overlay.
             with patch.object(lab, 'QMP', side_effect=OSError), patch.object(nightly, 'vm_process_gone', return_value=False):
                 self.assertIsNone(nightly.guest_paused(run, pause=True))
