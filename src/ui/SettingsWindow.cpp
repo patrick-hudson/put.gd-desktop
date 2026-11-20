@@ -1775,8 +1775,11 @@ QJsonObject SettingsWindow::candidate() const {
  // Both keys are optional in a stored object; one it leaves out stays out until it differs from
  // its default, or the draft never matches the file and every action reports unsaved settings.
  // Each is written on its own: a saved edit sends only the field changed, so writing the other
- // too would leave the draft different from the file. A stored object stays, even empty.
- {const bool stored=preferences.contains("updates");auto updates=preferences.value("updates").toObject();
+ // too would leave the draft different from the file. Which keys are stored comes from the file
+ // as last accepted too (a saved edit can add or empty the object); a stored object stays, even empty.
+ {const auto accepted=acceptedDocument()["preferences"].toObject();
+  const bool stored=preferences.contains("updates")||accepted.contains("updates");
+  auto updates=preferences.contains("updates")?preferences.value("updates").toObject():accepted.value("updates").toObject();
   if(updates.contains("check")||!checkUpdates_->isChecked())updates["check"]=checkUpdates_->isChecked();
   if(updates.contains("channel")||channel!="build")updates["channel"]=channel;
   if(stored||!updates.isEmpty())preferences["updates"]=updates;}
