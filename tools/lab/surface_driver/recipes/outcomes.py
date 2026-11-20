@@ -1048,35 +1048,85 @@ def tray_menu(ctx):
         _clipboard_reader(scope)
         tray._begin(ctx, show_ui=False)
         before = {o['id'] for o in ctx.call('operation.recent')['operations']}
-        tray._menu(ctx)
-        rows = []
-        for name in TRAY_LAYOUT:
-            found = ctx.wait(lambda: tray._nodes(ctx, name, 'menu item'), 'tray menu row: ' + name, timeout=5)
-            ctx.expect(len(found) == 1, 'tray menu shows one row: ' + name)
-            rows.append(found[0])
-        tops = [_top(n) for n in rows]
-        ctx.note('tray_rows=' + json.dumps([[n['name'], top] for n, top in zip(rows, tops)]))
-        ctx.expect(tops == sorted(tops) and len(set(tops)) == len(tops), 'tray rows are in the agreed order')
-        # Nothing else in the menu: every shown, named row inside the same open menu is an agreed one.
-        menus = {_menu_chain(n) for n in rows}
-        ctx.expect(len(menus) == 1 and next(iter(menus)) != '[]', 'the agreed rows share one open tray menu')
-        role = tray._profile(ctx).get('menu', {}).get('role', 'menu item')
-        inside = [n for n in ctx.accessible({'name': '*', 'role': role,
-                                             'application': tray._profile(ctx)['icon']['application']})
-                  if n.get('name') and n.get('visible', True) and n.get('showing', True) and _menu_chain(n) in menus]
-        extra = sorted({n['name'] for n in inside} - {r['name'] for r in rows})
-        ctx.expect(not extra, 'tray menu shows only the agreed rows; also: ' + ', '.join(extra))
-        tray._menu_frame(ctx, 'tray-menu-agreed-layout')
-        tray._press(ctx, 'region', 'menu item')
+        # A tray that exports put.gd's icon to AT-SPI is driven through it; one that exports
+        # nothing (Cinnamon, Budgie, Omarchy) by the icon's own pixels (tray_pixels.py).
+        by_pixels = bool(tray._profile(ctx).get('pixels')) and tray._icon_node(ctx, timeout=5) is None
+        if by_pixels:
+            _tray_menu_by_pixels(ctx)
+        else:
+            _tray_menu_by_accessibility(ctx)
         oid = tray._new_operation(ctx, before, 'region')['id']
         selectors._focus_selector(ctx, 'region')
-        x, y, w, h = selectors._screen(ctx)
+        if by_pixels:
+            # The selector covers the output; a fixture window opened over it now never shows on Omarchy.
+            selector = ctx.geometry('region')
+            x, y, w, h = (selector[k] for k in ('x', 'y', 'width', 'height'))
+        else:
+            x, y, w, h = selectors._screen(ctx)
         rect = (round(x + w / 4), round(y + h / 4), round(x + w / 4) + 400, round(y + h / 4) + 240)
         ctx.drag(rect[:2], rect[2:])
         detail, _ = _complete(scope, service, oid, None)
         selectors._png_dimensions(ctx, detail['local']['path'], 400, 240)
         _auto_copy(ctx, scope, detail)
         ctx.note('tray_capture_count=1; region from the tray menu uploaded with the dragged size')
+
+
+def _tray_menu_by_accessibility(ctx):
+    tray._menu(ctx)
+    rows = []
+    for name in TRAY_LAYOUT:
+        found = ctx.wait(lambda: tray._nodes(ctx, name, 'menu item'), 'tray menu row: ' + name, timeout=5)
+        ctx.expect(len(found) == 1, 'tray menu shows one row: ' + name)
+        rows.append(found[0])
+    tops = [_top(n) for n in rows]
+    ctx.note('tray_rows=' + json.dumps([[n['name'], top] for n, top in zip(rows, tops)]))
+    ctx.expect(tops == sorted(tops) and len(set(tops)) == len(tops), 'tray rows are in the agreed order')
+    # Nothing else in the menu: every shown, named row inside the same open menu is an agreed one.
+    menus = {_menu_chain(n) for n in rows}
+    ctx.expect(len(menus) == 1 and next(iter(menus)) != '[]', 'the agreed rows share one open tray menu')
+    role = tray._profile(ctx).get('menu', {}).get('role', 'menu item')
+    inside = [n for n in ctx.accessible({'name': '*', 'role': role,
+                                         'application': tray._profile(ctx)['icon']['application']})
+              if n.get('name') and n.get('visible', True) and n.get('showing', True) and _menu_chain(n) in menus]
+    extra = sorted({n['name'] for n in inside} - {r['name'] for r in rows})
+    ctx.expect(not extra, 'tray menu shows only the agreed rows; also: ' + ', '.join(extra))
+    tray._menu_frame(ctx, 'tray-menu-agreed-layout')
+    tray._press(ctx, 'region', 'menu item')
+
+
+def _agreed(label, want):
+    return label.startswith(want[:-1]) if want.endswith('*') else label == want
+
+
+def _tray_menu_by_pixels(ctx):
+    """The same checks where the tray exports nothing to AT-SPI.
+
+    The rows are those put.gd served the host that asked for the menu after the right-click; the
+    drawn popup must read as them in order; the click lands on the drawn Capture region row, and
+    put.gd must record that row as the one the host reported clicked.
+    """
+    glyphs, item = tray._published_glyphs(ctx)
+    with tray._tray_shown(ctx, item):
+        opened = tray._pixel_menu(ctx, TRAY_LAYOUT, glyphs)
+        pressed = False
+        try:
+            labels = [r.get('label', '') for r in opened['rows']]
+            ctx.note('tray_rows=' + json.dumps(labels, ensure_ascii=False))
+            ctx.expect(len(labels) == len(TRAY_LAYOUT) and all(_agreed(a, b) for a, b in zip(labels, TRAY_LAYOUT)),
+                       'put.gd served its tray host the agreed rows, in order, and no other: ' + ', '.join(labels))
+            unread = [label for label in TRAY_LAYOUT if not opened['read'].get(label)]
+            if unread:
+                ctx.blocked('the drawn tray menu could not be read for: ' + ', '.join(unread), 670)
+            earlier = tray._menu_activity(ctx).get('clicked', [])
+            tray._press_drawn_row(ctx, opened, 'Capture region')
+            pressed = True
+            clicked = ctx.wait(lambda: (c if (c := tray._menu_activity(ctx).get('clicked', [])) != earlier else None),
+                               'put.gd recording the row its tray host reported clicked', timeout=5)
+            ctx.expect(clicked[-1].get('name') == 'region',
+                       'the tray host reported the Capture region row clicked, not ' + str(clicked[-1].get('label')))
+        finally:
+            if not pressed:
+                tray._dismiss_drawn_menu(ctx, opened)
 
 
 TEXT_WORDS = ('QUARTZ', 'HARBOR', 'VIOLET', 'MESA', 'LANTERN', 'COPPER', 'MEADOW', 'TIMBER')

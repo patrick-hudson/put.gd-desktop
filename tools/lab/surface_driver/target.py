@@ -395,10 +395,15 @@ class Target:
 
     def prefix(self):
         root = shlex.quote(self.root)
+        # The tray's calendar override (a lab preview of the seasonal glyphs, docs/design/appearance.md).
+        season = os.environ.get('PUTGD_TRAY_CALENDAR_NOW', '')
+        if season and not re.fullmatch(r'\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?)?', season):
+            raise RecipeBlocked('PUTGD_TRAY_CALENDAR_NOW must be a local ISO date or date and time')
+        season = 'export PUTGD_TRAY_CALENDAR_NOW=' + season + '\n' if season else ''
         # session() (and the probe/clipboard native-session bootstrap) supplies
         # the real desktop runtime here. Preserve its PipeWire endpoint before
         # isolating the resident's session socket and other runtime files.
-        return ('umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n'
+        return (season + 'umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n'
                 'export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR:?native session runtime required}"\n') + ('export PATH='+shlex.quote(self.bin_dir)+':"$PATH"\n' if self.bin_dir else '') + ''.join('export '+key+'='+root+'/'+suffix+'\n' for key,suffix in (
             ('XDG_CONFIG_HOME','config'),('XDG_DATA_HOME','data'),('XDG_STATE_HOME','state'),
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
