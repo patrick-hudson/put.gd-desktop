@@ -776,7 +776,7 @@ def hyprland_parse(clients, monitors, layers, active):
         band = 3 if fullscreen else 2 if client.get('floating') else 1
         recency = client.get('focusHistoryID')
         rows.append(((band, -(recency if isinstance(recency, int) and recency >= 0 else 1 << 20)), {
-            'id': str(client['address']), 'title': client.get('title') or '', 'pid': client.get('pid'),
+            'id': str(client['address']), 'title': client.get('title') or '', 'pid': _real_pid(client.get('pid')),
             'wm_class': client.get('class') or '', 'frame': rect, 'content': rect,
             'focus': client['address'] == focused,
             'minimized': bool(client.get('hidden')) or (client.get('workspace') or {}).get('id') not in shown,
@@ -793,7 +793,7 @@ def hyprland_parse(clients, monitors, layers, active):
             for index, surface in enumerate(surfaces):
                 rect = [int(surface[k]) for k in ('x', 'y', 'w', 'h')]
                 rows.append(((band, index), {
-                    'id': str(surface['address']), 'title': '', 'pid': surface.get('pid'),
+                    'id': str(surface['address']), 'title': '', 'pid': _real_pid(surface.get('pid')),
                     'wm_class': surface.get('namespace') or '', 'frame': rect, 'content': rect,
                     'focus': False, 'minimized': False, 'floating': False, 'fullscreen': False,
                     'layer': name, 'monitor': monitor, 'type': 0, 'popup': False, 'transient_for': None,
@@ -804,6 +804,11 @@ def hyprland_parse(clients, monitors, layers, active):
         row['stack'] = stack
         windows.append(row)
     return {'windows': windows}
+
+
+def _real_pid(pid):
+    """Hyprland reports -1 for a client whose process it could not learn; that is no process."""
+    return pid if isinstance(pid, int) and not isinstance(pid, bool) and pid > 1 else None
 
 
 def hyprland_windows():
@@ -2787,9 +2792,11 @@ def layout(query):
         if w.get('frame') is None:
             # labwc/Mir witnesses report no geometry: refuse rather than invent a rectangle.
             raise RuntimeError('this compositor witness reports no window geometry, so the desktop layout is unknown')
-        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'), 'process': process_name(w.get('pid')),
-                     'owned': bool(w.get('pid') and owned(w['pid'])), 'rect': list(w['frame']),
-                     'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden'))})
+        pid = w.get('pid') if isinstance(w.get('pid'), int) and w.get('pid') > 1 else None
+        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': pid, 'process': process_name(pid) if pid else None,
+                     'owned': bool(pid and owned(pid)), 'rect': list(w['frame']),
+                     'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden')),
+                     'layer': w.get('layer')})
     return {'windows': rows, 'coordinate_space': 'logical'}
 
 
@@ -2835,6 +2842,9 @@ def quickshell_dismiss(deadline):
 
 def signal_processes(pids, number):
     for pid in pids:
+        # Only one real process: kill(-1) is every process this user owns, 0 our own group.
+        if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 1:
+            continue
         with contextlib.suppress(ProcessLookupError):
             os.kill(pid, number)
 
@@ -2865,15 +2875,20 @@ def clear_screen(query):
             closed = close_notifications(deadline)
     rows = layout({'compositor': query.get('compositor')})['windows']
     above = next((row for row in rows if str(row['id']) == str(query.get('above'))), None)
-    targets = []
+    targets, unknown = [], 0
     for row in rows:
-        if row['owned'] or not row['pid'] or row['process'] in query.get('shell', []):
+        unknown += row['pid'] is None and not row['owned']
+        if (row['owned'] or not isinstance(row['pid'], int) or row['pid'] <= 1 or row.get('layer')
+                or row['process'] is None or row['process'] in query.get('shell', [])):
+            # A layer-shell surface is the desktop's own (panel, wallpaper, notifications), and a
+            # surface whose client has no known process (Hyprland reports pid -1) is never signalled.
             continue
         over = above is not None and (row['stack'] is None or above['stack'] is None or row['stack'] > above['stack'])
         if over or str(row['id']) == str(query.get('obscuring')):
             targets.append(row)
     stop_windows(targets)
-    return {'newest_notification': closed, 'stopped': [{'title': row['title'], 'process': row['process']} for row in targets]}
+    return {'newest_notification': closed, 'stopped': [{'title': row['title'], 'process': row['process']} for row in targets],
+            'unknown_process': unknown}
 
 
 def windows(query):
