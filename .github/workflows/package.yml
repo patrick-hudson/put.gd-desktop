@@ -1,7 +1,9 @@
 name: Packages
 # Called by CI. Builds and audits the native packages and AppImage. With a
 # release tag, the builds carry that exact identity and `collect` assembles the
-# verified public asset set as the `release-assets` artifact.
+# verified public asset set as the `release-assets` artifact. With
+# planned_nightly, they carry the nightly name the commit will get, and the
+# nightly cut publishes them after its own checks (nightly.yml).
 on:
   workflow_call:
     inputs:
@@ -13,6 +15,10 @@ on:
         description: JSON object, CI image profile -> image reference (ci-images.yml)
         type: string
         required: true
+      planned_nightly:
+        description: Build under the nightly tag this commit will get; the tag exists only in each job's checkout
+        type: boolean
+        default: false
 permissions:
   contents: read
 env:
@@ -73,8 +79,12 @@ jobs:
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Trust the container checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Name the build after the nightly this commit will be
+        # nightly.py stamp tags HEAD in this checkout only and sets RELEASE_TAG; nothing pushes it.
+        if: inputs.planned_nightly
+        run: python3 tools/releases/nightly.py stamp
       - name: Validate exact release source
-        if: inputs.release_tag != ''
+        if: inputs.release_tag != '' || inputs.planned_nightly
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Identify release dependency environment
         id: sdk-key
@@ -231,6 +241,13 @@ jobs:
           path: build/ccache-package
           key: ccache-package-archlinux-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ccache-package-archlinux-
+      - name: Name the build after the nightly this commit will be
+        # nightly.py stamp tags HEAD in this checkout only and sets RELEASE_TAG; nothing pushes it.
+        # build-arch.sh verifies the tag.
+        if: inputs.planned_nightly
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          python tools/releases/nightly.py stamp
       - name: Hand the workspace to the build user
         # The image has the packages and the builder user (tools/ci/images/provision.sh).
         run: |
@@ -308,8 +325,12 @@ jobs:
           ref: ${{ inputs.release_tag || github.sha }}
       - name: Trust the container checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Name the build after the nightly this commit will be
+        # nightly.py stamp tags HEAD in this checkout only and sets RELEASE_TAG; nothing pushes it.
+        if: inputs.planned_nightly
+        run: python3 tools/releases/nightly.py stamp
       - name: Validate exact release source
-        if: inputs.release_tag != ''
+        if: inputs.release_tag != '' || inputs.planned_nightly
         run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Verify pinned SDK source
         timeout-minutes: 20
@@ -513,6 +534,10 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.sha }}
+      - name: Scan under the nightly this commit will be
+        # nightly.py stamp tags HEAD in this checkout only and sets RELEASE_TAG; nothing pushes it.
+        if: inputs.planned_nightly
+        run: python3 tools/releases/nightly.py stamp
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: 'release-{native-*,appimage}'

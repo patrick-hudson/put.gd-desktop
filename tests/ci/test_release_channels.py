@@ -73,6 +73,27 @@ class Workflows(unittest.TestCase):
                         self.assertNotEqual(run().returncode, 0)
                 needs[name]['result'] = want
 
+    def test_nightly_publishes_push_ci_packages_only_from_a_verified_nightly_push(self):
+        plan = job(workflow('nightly.yml'), 'plan')
+        self.assertIn('python3 tools/ci/reuse_ci.py packages --commit "$SOURCE_SHA" --wait-minutes 25', plan)
+        self.assertIn('actions: read', plan)
+        self.assertIn("if: steps.reuse.outputs.run_id != ''", plan.split('name: source-ci-provenance', 1)[0])
+        # Push CI on nightly, and manual runs as a test, build under the planned nightly name; callers with a
+        # release tag and pull requests never do.
+        ci = workflow('ci.yml')
+        self.assertIn("planned_nightly: ${{ !inputs.release_tag && ((github.event_name == 'push' && "
+                      "github.ref == 'refs/heads/nightly') || (github.event_name == 'workflow_dispatch' && "
+                      "inputs.planned_nightly == true)) }}", job(ci, 'packages'))
+        packages = workflow('package.yml')
+        for name in ('native', 'appimage', 'sbom'):
+            self.assertIn('if: inputs.planned_nightly\n        run: python3 tools/releases/nightly.py stamp\n',
+                          job(packages, name))
+        self.assertIn('python tools/releases/nightly.py stamp', job(packages, 'arch'))
+        # Stamping never reaches GitHub: the package jobs hold a read-only token and push nothing.
+        self.assertIn('permissions:\n  contents: read\nenv:', packages)
+        self.assertNotIn('git push', packages)
+        self.assertNotIn('contents: write', packages)
+
     def test_only_nightly_callers_opt_into_exact_source_ci_reuse(self):
         self.assertIn('reuse_source_ci: true', job(workflow('nightly.yml'), 'ci'))
         self.assertNotIn('reuse_source_ci: true', job(workflow('release.yml'), 'ci'))
@@ -108,8 +129,8 @@ class Workflows(unittest.TestCase):
                      'check_source_build.py --inputs-of build/release'):
             self.assertIn(text, packages)
         for name in ('native', 'appimage'):
-            self.assertIn("if: inputs.release_tag != ''\n        run: python3 tools/releases/verify_tag.py",
-                          job(packages, name))
+            self.assertIn("if: inputs.release_tag != '' || inputs.planned_nightly\n"
+                          '        run: python3 tools/releases/verify_tag.py', job(packages, name))
             self.assertIn('bash tools/ci/sdk-source.sh', job(packages, name))
         self.assertIn('bash tools/releases/build-arch.sh', job(packages, 'arch'))
         install = job(packages, 'arch-install')
@@ -137,12 +158,18 @@ class Workflows(unittest.TestCase):
         self.assertIn('group: nightly-publication\n  cancel-in-progress: false', nightly)
         self.assertIn('python3 tools/releases/nightly.py plan', job(nightly, 'plan'))
         ci = job(nightly, 'ci')
-        self.assertIn("if: needs.plan.outputs.skip == 'false'", ci)
+        self.assertIn("if: needs.plan.outputs.skip == 'false' && needs.plan.outputs.reused_run == ''", ci)
         self.assertIn('uses: ./.github/workflows/ci.yml', ci)
         publish = job(nightly, 'publish')
         self.assertIn('needs: [plan, ci]', publish)
-        self.assertIn("if: needs.plan.outputs.skip == 'false'", publish)
+        # Publication follows a successful `ci` here, or a reused push-CI run with `ci` skipped; never a failure.
+        self.assertIn("always() && needs.plan.result == 'success' && needs.plan.outputs.skip == 'false' &&\n"
+                      "      (needs.ci.result == 'success' || (needs.ci.result == 'skipped' && needs.plan.outputs.reused_run != ''))",
+                      publish)
         self.assertIn('publish.py --tag "$TAG" --directory build/publish --nightly', publish)
+        self.assertIn('collect.py --tag "$TAG" --inputs build/downloaded --output build/publish --installers-only', publish)
+        self.assertEqual(publish.count('run-id: ${{ env.REUSED_RUN }}'), 2)
+        self.assertIn("if: always() && needs.publish.result == 'success'", job(nightly, 'surface-map'))
         notify = publish.split('- name: Notify put.gd-site\n', 1)[1].split('      - name:', 1)[0]
         self.assertIn('SITE_DISPATCH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}', notify)
         self.assertIn('if [ -z "$SITE_DISPATCH_TOKEN" ]', notify)

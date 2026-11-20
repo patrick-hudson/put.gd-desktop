@@ -3,6 +3,9 @@
 
 A nightly is skipped only when the exact source is already a complete, verified
 public nightly. Creating a tag never moves an existing one.
+
+`stamp` names a package build after the nightly its commit will become, before
+that tag exists, so the nightly can publish the packages push CI already built.
 """
 import argparse
 import datetime
@@ -189,6 +192,31 @@ def plan(api, root, ref):
     return {**prepared, 'skip': False, 'publishedNightly': None}
 
 
+def stamp(root, event, ref):
+    """Name this checkout's build after the nightly tag `plan` would give HEAD.
+
+    Push CI on the nightly branch builds its packages under that name, so a nightly
+    cut of the same commit can publish them instead of rebuilding them. The tag is
+    created only in this checkout, never pushed: package jobs hold a read-only token.
+    `plan` creates the public tag, and the cut checks every artifact against it.
+    A manual run on any branch may stamp too, as a test of this path.
+    """
+    if not ((event == 'push' and ref == NIGHTLY_REF) or event == 'workflow_dispatch'):
+        raise ValueError('Only nightly pushes and manual runs build under a planned nightly name, not '
+                         f'{event} on {ref}')
+    prepared = prepare(root)
+    tag = prepared['tag']
+    existing = subprocess.run(['git', '-C', str(root), 'rev-parse', '--verify', '--quiet',
+                               'refs/tags/' + tag + '^{commit}'], capture_output=True, text=True)
+    if existing.returncode == 0:
+        # A rerun after the cut: the fetched public tag must name this commit.
+        if existing.stdout.strip() != prepared['sourceSha']:
+            raise ValueError('Existing tag identifies another commit: ' + tag)
+    else:
+        git(root, 'tag', tag, prepared['sourceSha'])
+    return {**prepared, 'release': verify(root, tag)}
+
+
 def write_outputs(result):
     if os.environ.get('GITHUB_OUTPUT'):
         with Path(os.environ['GITHUB_OUTPUT']).open('a') as stream:
@@ -205,10 +233,22 @@ def write_outputs(result):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('plan',))
+    parser.add_argument('command', choices=('plan', 'stamp'))
     parser.add_argument('--root', type=Path, default=Path.cwd())
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
+    if args.command == 'stamp':
+        result = stamp(args.root, os.environ.get('GITHUB_EVENT_NAME', ''), os.environ.get('GITHUB_REF', ''))
+        # The package jobs' later steps build, audit and scan under this name.
+        if os.environ.get('GITHUB_ENV'):
+            with Path(os.environ['GITHUB_ENV']).open('a') as stream:
+                stream.write(f"RELEASE_TAG={result['tag']}\n")
+        if os.environ.get('GITHUB_STEP_SUMMARY'):
+            with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a') as stream:
+                stream.write(f"Packages carry `{result['tag']}`, the nightly name of `{result['sourceSha'][:12]}`. "
+                             'That tag exists only in this job\'s checkout until a nightly cut creates it.\n')
+        print(json.dumps(result))
+        return
     result = plan(GitHub(os.environ['GITHUB_REPOSITORY']), args.root, os.environ['GITHUB_REF'])
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

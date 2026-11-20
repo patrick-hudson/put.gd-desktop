@@ -8,6 +8,11 @@ on:
   push:
     branches: [nightly]
   workflow_dispatch:
+    inputs:
+      planned_nightly:
+        description: Test only. Build the packages under the nightly name this commit would get; no tag is pushed and nothing is published
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_tag:
@@ -496,6 +501,9 @@ jobs:
     with:
       release_tag: ${{ inputs.release_tag || '' }}
       images: ${{ needs.images.outputs.images }}
+      # Nightly pushes build under the nightly name, so the nightly cut can publish
+      # these packages instead of rebuilding the same commit (nightly.yml).
+      planned_nightly: ${{ !inputs.release_tag && ((github.event_name == 'push' && github.ref == 'refs/heads/nightly') || (github.event_name == 'workflow_dispatch' && inputs.planned_nightly == true)) }}
 
   pipewire:
     # Package runs test their own image immediately after assembly. Only
