@@ -682,7 +682,11 @@ NIGHTLY_IMAGE_EXTENSION
         prepare_gnome_desktop(run, out)
         if row['desktop'] == 'fedora-gnome-wayland':
             # The resident starts only after this: its tray must find a registered host.
-            report = lab.guest_session(run, 'export XDG_CONFIG_HOME="$HOME/.config"\n'+TRAY_HOST_READY, timeout=60)
+            try:
+                report = lab.guest_session(run, 'export XDG_CONFIG_HOME="$HOME/.config"\n'+TRAY_HOST_READY, timeout=60)
+            except lab.LabError as error:
+                raise RuntimeError('Fedora AppIndicator extension did not register a tray host after the reboot; '
+                                   'private guest log retained') from error
             (out/'tray-host-ready.json').write_text(report)
     elif 'kde' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
