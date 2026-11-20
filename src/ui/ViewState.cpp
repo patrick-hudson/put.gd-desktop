@@ -93,7 +93,7 @@ bool safeDocument(const QJsonValue& value){
  for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;
  if(!fields(d["archive"],{"root","keepUploads","folders"}))return false;
  const auto archive=d["archive"].toObject();if(!archive["root"].isString()||!archive["keepUploads"].isBool()||!scalars(archive["folders"],{"images","videos","text","other"}))return false;
- return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate","recordingTemplate"})&&scalars(d["limits"],limitKeys())&&scalars(d["retention"],retentionKeys())&&preferencesDraft(d["preferences"]);
+ return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate","recordingTemplate","randomStyle","randomLength","randomUppercase","randomDigits"})&&scalars(d["limits"],limitKeys())&&scalars(d["retention"],retentionKeys())&&preferencesDraft(d["preferences"]);
 }
 bool protonEditor(const QJsonValue& value){
  if(!fields(value,{"accountRootUid","accountEmail","folders","folderIndex","share","expiration","timeout"}))return false;

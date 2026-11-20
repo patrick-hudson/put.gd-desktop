@@ -11,6 +11,26 @@ private slots:
   PUTGD_COMPARE_STEADY(service.document(),original,500);QVERIFY(stored.open(QIODevice::ReadOnly));QCOMPARE(stored.readAll(),bytes);stored.close();
   auto* base=window.findChild<QComboBox*>("defaultCaptureDestination");base->setCurrentIndex(base->findData("synthetic-alternate"));PUTGD_TRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("synthetic-alternate"));QCOMPARE(service.document()["actions"].toObject()["record"].toObject(),record);
  }
+ // #1729: the random-name rows show only for Random names, length and characters only for
+ // Random characters, and each choice saves to naming.random*.
+ void randomNameRowsFollowTheModeAndSave(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
+  auto* mode=window.findChild<QComboBox*>("namingMode");auto* style=window.findChild<QComboBox*>("randomStyle");auto* length=window.findChild<QSpinBox*>("randomLength");auto* capitals=window.findChild<QCheckBox*>("randomUppercase");auto* digits=window.findChild<QCheckBox*>("randomDigits");
+  QVERIFY(mode&&style&&length&&capitals&&digits);
+  PUTGD_TRY_VERIFY(!style->isVisible()&&!length->isVisible());
+  mode->setCurrentIndex(mode->findData("generated"));PUTGD_TRY_VERIFY(style->isVisible());QVERIFY(!length->isVisible());QVERIFY(!digits->isVisible());
+  PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["mode"].toString(),QString("generated"));QVERIFY(!service.document()["naming"].toObject().contains("randomStyle"));
+  style->setCurrentIndex(style->findData("string"));PUTGD_TRY_VERIFY(length->isVisible()&&capitals->isVisible()&&digits->isVisible());
+  PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomStyle"].toString(),QString("string"));
+  length->setValue(8);PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomLength"].toInt(),8);
+  capitals->setChecked(false);PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomUppercase"].toBool(true),false);
+  digits->setChecked(false);PUTGD_TRY_COMPARE(service.document()["naming"].toObject()["randomDigits"].toBool(true),false);
+  // The kept view state accepts the new keys, or the dashboard refuses to close or capture.
+  QVERIFY(!window.settings()->saveViewState().contains("stateError"));
+  const auto random=Settings::fromValidated(service.document()).randomName;QCOMPARE(random.style,QString("string"));QCOMPARE(random.length,8);QVERIFY(!random.uppercase);QVERIFY(!random.digits);
+  mode->setCurrentIndex(mode->findData("original"));PUTGD_TRY_VERIFY(!style->isVisible()&&!length->isVisible());
+ }
  // Global hotkeys are suspended while one is recorded; every way a recording
  // ends or fails gives them back.
  void shortcutRecordingCancellationAndFailuresReleaseSuspension(){

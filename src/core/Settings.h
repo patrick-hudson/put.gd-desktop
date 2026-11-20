@@ -41,6 +41,14 @@ struct ResourceLimits {
     qint64 recordingAnimationSeconds = 60;
     int recordingAnimationEdge = 1280;
 };
+// naming.random* (Random names): a UUID, or a string of lowercase letters plus,
+// when chosen, capitals and digits.
+struct RandomNameSettings {
+    QString style = "uuid"; // "uuid" or "string"
+    int length = 12;
+    bool uppercase = true;
+    bool digits = true;
+};
 // Value type: an accepted operation receives its own immutable copy.
 struct Settings {
     QJsonObject document;
@@ -50,6 +58,7 @@ struct Settings {
     ResourceLimits limits;
     QString namingMode;
     QString collisionPolicy;
+    RandomNameSettings randomName;
     QString fileTemplate = "{name}.{ext}";
     QString captureTemplate = "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
     QString imageTemplate = "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
