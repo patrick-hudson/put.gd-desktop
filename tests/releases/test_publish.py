@@ -493,6 +493,69 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertIn('CI artifacts', delivery)
         self.assertNotIn('combined ZIP', notes)
 
+    def reused_record(self, **producer):
+        record = {'gitCommit': self.commit, 'reused': True, 'packages': True, 'reason': 'fixture',
+                  'producer': {'runId': 900, 'runAttempt': 2, 'gitCommit': self.commit,
+                               'url': 'https://github.com/fixture/putgd/actions/runs/900',
+                               'jobs': {'CI': 1}, 'artifacts': {'release-sbom': 5}, **producer}}
+        path = self.directory / 'reused-ci.json'
+        path.write_text(json.dumps(record))
+        return path
+
+    def test_reused_push_ci_packages_name_the_run_that_built_them(self):
+        self.installer_fixture()
+        record = self.reused_record()
+        with patch.object(publish.support_assets, 'publish'), patch.object(publish.support_assets, 'verify_proton'), \
+                patch.object(publish.support_assets, 'verify_public'):
+            self.invoke('--built-by', str(record))
+        notes = (self.directory / 'release-notes.md').read_text()
+        # Debug symbols live in the run that built the packages.
+        self.assertIn('[CI artifacts](https://github.com/fixture/putgd/actions/runs/900)', notes)
+        self.assertIn('Built and packaged by https://github.com/fixture/putgd/actions/runs/900, ', notes)
+        self.assertIn('published by https://github.com/fixture/putgd/actions/runs/77\n', notes)
+        receipt = json.loads((self.directory / 'publication.json').read_text())
+        self.assertEqual((receipt['producer']['runId'], receipt['builder']['runId']), (77, 900))
+        self.assertEqual((receipt['builder']['event'], receipt['builder']['ref']), ('push', 'refs/heads/nightly'))
+        self.assertTrue(receipt['published'])
+
+    def test_a_record_of_another_commit_run_or_a_rehearsal_cannot_be_published(self):
+        self.installer_fixture()
+        for change in ({'gitCommit': 'c' * 40}, {'url': 'https://github.com/other/repo/actions/runs/900'},
+                       {'runId': 0}, {'artifacts': None}, {'rehearsal': True}):
+            record = self.reused_record(**change)
+            with self.subTest(change=change), patch.object(publish.support_assets, 'publish') as linked, \
+                    patch.object(publish.support_assets, 'verify_proton'), \
+                    self.assertRaisesRegex(ValueError, 'reused push-CI run record'):
+                self.invoke('--built-by', str(record))
+            self.assertFalse(self.commands)
+            linked.assert_not_called()
+        record = self.reused_record()
+        data = json.loads(record.read_text())
+        data['reused'] = False
+        record.write_text(json.dumps(data))
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_proton'), \
+                self.assertRaisesRegex(ValueError, 'reused push-CI run record'):
+            self.invoke('--built-by', str(record))
+        self.assertFalse(self.commands)
+        linked.assert_not_called()
+
+    def test_a_rehearsal_writes_the_notes_and_stops_before_any_github_write(self):
+        self.installer_fixture()
+        record = self.reused_record(rehearsal=True, event='workflow_dispatch', headBranch='ci/topic')
+        with patch.object(publish.support_assets, 'publish') as linked, \
+                patch.object(publish.support_assets, 'verify_proton') as proton:
+            self.invoke('--built-by', str(record), '--rehearse')
+        linked.assert_not_called()
+        proton.assert_called_once()
+        self.assertEqual(self.commands, [])
+        self.assertFalse((self.directory / 'publication.json').exists())
+        rehearsal = json.loads((self.directory / 'publication-rehearsal.json').read_text())
+        self.assertEqual((rehearsal['rehearsal'], rehearsal['published']), (True, False))
+        self.assertEqual(rehearsal['builder']['event'], 'workflow_dispatch')
+        self.assertIn('Built and packaged by https://github.com/fixture/putgd/actions/runs/900',
+                      (self.directory / 'release-notes.md').read_text())
+
     def test_missing_linked_sources_block_installer_publication(self):
         self.installer_fixture()
         with patch.object(publish.support_assets, 'verify_proton'), \

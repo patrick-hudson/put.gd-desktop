@@ -190,6 +190,51 @@ class NightlyPlan(Fixture):
             self.assertIn(self.tag(), summary.read_text())
 
 
+class PlannedNightly(Fixture):
+    """Push CI names its packages after the nightly the commit will become; the tag stays local."""
+    tag = 'v26.1012.1-nightly'
+
+    def test_a_nightly_push_tags_only_its_checkout_and_names_the_build(self):
+        result = nightly.stamp(self.root, 'push', 'refs/heads/nightly')
+        self.assertEqual((result['tag'], result['release']['gitCommit']), (self.tag, self.sha))
+        self.assertEqual(result['release']['channel'], 'nightly')
+        self.assertEqual(self.git('rev-parse', self.tag + '^{commit}'), self.sha)
+        # No GitHub call at all: the public tag is created by plan, never here.
+        self.assertEqual(self.api.created, [])
+        # A rerun, or a job whose checkout already fetched the public tag, keeps it.
+        self.assertEqual(nightly.stamp(self.root, 'push', 'refs/heads/nightly')['tag'], self.tag)
+
+    def test_a_manual_run_may_stamp_but_pull_requests_and_other_pushes_never(self):
+        self.assertEqual(nightly.stamp(self.root, 'workflow_dispatch', 'refs/heads/topic')['tag'], self.tag)
+        self.git('tag', '-d', self.tag)
+        for event, ref in (('pull_request', 'refs/pull/1/merge'), ('push', 'refs/heads/main'),
+                           ('schedule', 'refs/heads/nightly'), ('', '')):
+            with self.subTest(event=event), self.assertRaisesRegex(ValueError, 'planned nightly name'):
+                nightly.stamp(self.root, event, ref)
+        self.assertEqual(self.git('tag', '--list', 'v*'), '')
+
+    def test_a_same_named_tag_on_another_commit_is_refused_and_kept(self):
+        (self.root / 'CMakeLists.txt').write_text('project(putgd LANGUAGES CXX C)\n')
+        subprocess.run(['git', '-C', str(self.root), 'commit', '-qam', 'Second'], check=True,
+                       env=dict(os.environ, GIT_AUTHOR_DATE='2026-10-12T04:04:05Z',
+                                GIT_COMMITTER_DATE='2026-10-12T04:04:05Z'))
+        self.git('tag', 'v26.1012.2-nightly', self.sha)
+        with self.assertRaisesRegex(ValueError, 'another commit'):
+            nightly.stamp(self.root, 'push', 'refs/heads/nightly')
+        self.assertEqual(self.git('rev-parse', 'v26.1012.2-nightly^{commit}'), self.sha)
+
+    def test_cli_sets_release_tag_for_the_later_steps(self):
+        with tempfile.TemporaryDirectory(prefix='pgout-') as directory:
+            env = Path(directory) / 'env'
+            with patch.dict(os.environ, {'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/nightly',
+                                         'GITHUB_ENV': str(env), 'GITHUB_STEP_SUMMARY': str(Path(directory) / 's')}), \
+                 patch.object(sys, 'argv', ['nightly.py', 'stamp', '--root', str(self.root)]), \
+                 patch.object(nightly, 'GitHub', side_effect=AssertionError('stamp must not call GitHub')), \
+                 patch('builtins.print'):
+                nightly.main()
+            self.assertEqual(env.read_text(), f'RELEASE_TAG={self.tag}\n')
+
+
 class StableRelease(Fixture):
     def cut(self):
         return release_tag.cut(self.api, self.root, 'refs/heads/main')
