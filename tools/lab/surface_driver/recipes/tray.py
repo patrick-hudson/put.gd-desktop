@@ -380,17 +380,33 @@ def _pixel_menu(ctx, labels, glyphs):
     the rows put.gd served, the drawn line of each label and the popup's box and capture.
     """
     from tools.lab.surface_driver import tray_pixels
+    # A pointer left over the panel (an earlier run's click) draws over the icon and its hover
+    # highlight: move it to the middle of the output, where no tray shape is, before matching.
+    width, height = ctx.target.capture_image(0).size
+    ctx.click_drawn(width // 2, height // 2, 0, lambda image: True, button=None)
     found, panel, before = _pixel_icon(ctx, glyphs)
-    served = _menu_activity(ctx)
     x, y, w, h = found['rect']
-    ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same_icon(image, panel, glyphs, found['rect']), button='right')
-    menu = ctx.wait(lambda: (m if _asked(m := _menu_activity(ctx)) > _asked(served) else None),
-                    'the tray host asking put.gd for its menu after the right-click', timeout=5)
+    showing = lambda image: tray_pixels.menu_box(before, image, panel, found['rect'])
+    box = None
+    # Cinnamon's host sometimes asks put.gd for the menu and then draws nothing; a user right-clicks
+    # again. Once, and only while no popup shows; put.gd must have been asked each time.
+    for attempt in (1, 2):
+        served = _menu_activity(ctx)
+        ctx.click_drawn(x + w / 2, y + h / 2, 0, lambda image: _same_icon(image, panel, glyphs, found['rect'])
+                        and showing(image) is None, button='right')
+        menu = ctx.wait(lambda: (m if _asked(m := _menu_activity(ctx)) > _asked(served) else None),
+                        'the tray host asking put.gd for its menu after the right-click', timeout=5)
+        try:
+            box = ctx.wait(lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon', timeout=5)
+            break
+        except RecipeFailed:
+            ctx.note('tray menu not drawn after right-click ' + str(attempt))
+    if box is None:
+        _frame(ctx, 'tray-menu-not-seen')
+        ctx.blocked('tray menu by its pixels: the host asked put.gd for the menu twice and drew none within 5 s', 670)
     rows = [r for r in menu['rows'] if r.get('visible')]
     ctx.note('tray_menu_served=' + json.dumps(dict(rows=[r.get('label') for r in rows], shows=menu.get('shows'),
                                                    opened=menu.get('opened')), ensure_ascii=False))
-    showing = lambda image: tray_pixels.menu_box(before, image, panel, found['rect'])
-    box = _seen(ctx, lambda: showing(ctx.target.capture_image(0)), 'a menu drawn next to the tray icon')
     opened = dict(rows=rows, icon=found['rect'], glyphs=glyphs, box=box, showing=showing, panel=panel)
     try:
         # The pointer still rests on the icon, whose tooltip can cover the first row (Omarchy): park
@@ -408,6 +424,8 @@ def _pixel_menu(ctx, labels, glyphs):
             # then scroll back to the first view, the one whose rows are clicked.
             centre = ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2)
             ctx.click_drawn(*centre, 0, lambda current: _same(image, current, box), wheel=-10)
+            # Off the rows again before reading: a hovered row reads badly.
+            ctx.click_drawn(*park, 0, lambda current: showing(current) is not None, button=None)
             rest = _read_menu(ctx, _settled_menu(ctx, box, showing), box)
             read = tray_pixels.align(labels, first + rest)
             # Back to the top, then click from a fresh read of that view: rows are clicked only where
