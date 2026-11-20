@@ -528,8 +528,9 @@ installs anything, the row stops and masks the apt guests' own package updaters
 (`apt-daily`, `apt-daily-upgrade` and Mint Update's automation) in the overlay, as root
 through the goldens' passwordless `apt-get` (its Pre-Invoke hook, with no sources, no
 package cache and no lists lock), and records them in `package-updates.json`. The row
-stops there when a unit the golden has doesn't end masked and inactive (or failed), or
-when the guest reports no state for one of the units. Fedora installs no updates by
+goes on only if the guest reports every listed unit as absent (`not-found`) or
+`masked`, and as `inactive` or `failed`; any other state, or no report for a unit,
+stops it there. Fedora installs no updates by
 itself and Aurora's `uupd` is held by its tools step. Ubuntu's upgrade timer fires between 06:00 and 07:00 guest time, the
 hour the check runs: on 2026-11-20 it upgraded `openssh-server` mid-row in the Kubuntu
 guest and sshd's restart cost the row its guest.
