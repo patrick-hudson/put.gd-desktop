@@ -1555,6 +1555,37 @@ with n.controller_shutdown(workers):
             self.assertEqual(len(inventory['kernel-core.x86_64']), 2)
             self.assertIn('solver diagnostic', (out/'rpm-install.txt').read_text())
 
+    def test_fedora_gnome_gets_the_appindicator_tray_a_user_installs_and_nothing_else_moves(self):
+        from tools.lab import nightly_desktop_guest as guest
+        before = 'gnome-shell.x86_64 0:50.0-1.fc44\nmutter.x86_64 0:50.0-1.fc44\nputgd.x86_64 0:26.1120.1-1.fc44\n'
+        added = before + ('gnome-shell-extension-appindicator.noarch 0:64-1.fc44\n'
+                          'libappindicator-gtk3.x86_64 0:12.10.1-10.fc44\n')
+        cases = {'installed': (added, 0, None), 'failed': (before, 1, 'could not be installed'),
+                 'shell moved': (added.replace('gnome-shell.x86_64 0:50.0', 'gnome-shell.x86_64 0:50.6'), 0, 'changed the desktop'),
+                 'upgrade': (added.replace('putgd.x86_64 0:26.1120.1', 'putgd.x86_64 0:26.1120.2'), 0, 'changed the desktop')}
+        for name, (after, code, error) in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp, \
+                    patch.object(guest.lab, 'verify_owned_guest'), patch.object(guest.lab, 'ssh', side_effect=[before, after]), \
+                    patch.object(guest.lab, 'ssh_args', return_value=['ssh']), \
+                    patch.object(guest.lab, 'command', return_value=SimpleNamespace(returncode=code, stdout='', stderr='')) as command:
+                if error:
+                    with self.assertRaisesRegex(RuntimeError, error):
+                        guest.install_tray_host(Path(tmp), Path(tmp))
+                else:
+                    report = guest.install_tray_host(Path(tmp), Path(tmp))
+                    self.assertTrue(report['installed'] and report['desktopUnchanged'] and report['nothingUpgraded'])
+                script = command.call_args.kwargs['input']
+                # Through the guest's passwordless dnf; the Shell, Mutter, GDM and portals are held where they are.
+                self.assertIn('sudo -n dnf ', script)
+                self.assertIn(' install -y gnome-shell-extension-appindicator', script)
+                for held in ('gnome-shell,', 'mutter*', 'gdm*', 'xdg-desktop-portal*'):
+                    self.assertIn(held, script)
+                self.assertNotIn('gnome-shell*', script)
+        # The check after the Shell restart enables it and waits for a registered StatusNotifier host.
+        self.assertIn("'gnome-extensions','enable',uuid", guest.TRAY_HOST_READY)
+        self.assertIn('IsStatusNotifierHostRegistered', guest.TRAY_HOST_READY)
+        self.assertIn(guest.TRAY_HOST_EXTENSION, guest.TRAY_HOST_READY)
+
     def test_guest_package_updaters_are_held_or_the_row_stops(self):
         from tools.lab import nightly_desktop_guest as guest
         def reply(**override):
