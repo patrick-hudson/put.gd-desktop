@@ -657,6 +657,14 @@ done''').split()
         if self.directory:
             lab.ssh(self.run, f'rm -rf -- {self.directory}\n')
 
+    def restart_keyring(self):
+        """Start the guest's own live keyring daemon again if it died (nightly_desktop_guest); None
+        when this guest uses its desktop's Secret Service, which D-Bus starts again on the next call."""
+        if str(HERE.parents[1]) not in sys.path:
+            sys.path.insert(0, str(HERE.parents[1]))
+        from tools.lab import nightly_desktop_guest
+        return nightly_desktop_guest.restart_live_keyring(self.run)
+
 
 def receipts_folder(layout, run):
     layout.private_directory(layout.receipts)
@@ -754,9 +762,30 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
     return result
 
 
+def restart_dead_keyring(guest, folder):
+    """After a failed lend return: start the guest's keyring daemon again if it has died.
+
+    Records what happened in the receipts (connection names and lock state only, never
+    secrets) and returns the record when a daemon was started again, otherwise None."""
+    restart = getattr(guest, 'restart_keyring', None)
+    if restart is None:
+        return None
+    try:
+        record = restart()
+    except Exception as error:  # noqa: BLE001 - recorded by kind; the first failure is re-raised
+        # Only the restart's own refusals are fixed text; anything else is recorded by its kind.
+        refused = type(error).__name__ == 'KeyringRestartRefused'
+        record = {'restarted': False, 'reason': str(error) if refused else 'check failed: ' + type(error).__name__}
+    if record is None:
+        return None
+    note(folder, keyringRestart=dict(record, at=now_text()))
+    return record if record.get('restarted') else None
+
+
 def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Guest, clock=desktop_lock.now_utc):
     """Finish an interrupted lend from its receipts: carry the guest's copy back, then clean it up.
-    The VM must still be running; its copy may be the only current one."""
+    The VM must still be running; its copy may be the only current one. A return that fails because
+    the guest's keyring daemon died starts that daemon again and is tried once more."""
     registry = require_registry(layout)
     folder = Path(folder).resolve()
     lent = json.loads((folder / 'lend.json').read_text())
@@ -767,12 +796,8 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
     guest_broker, reference, run = lent.get('guestBroker'), lent.get('reference'), str(guest.run)
     if lab_app_processes(layout):
         raise LabFailure('The lab profile is running on this builder; close it first')
-    with holding(proton_lock(layout, registry['host'], clock), session, owner, 'proton_lab.py recover',
-                 finishing=True) as progress:
-        if not reference:
-            note(folder, step='recovered_nothing_lent')
-            return {'recovered': False}
-        progress['outstanding'] = True
+
+    def give_back():
         provision = folder / 'provision.json'
         _, receipt = bridge._load_receipt(provision)
         if receipt['state'] == 'import_pending' or (receipt['state'] in ('cleanup_pending', 'cleanup_confirmed')
@@ -780,18 +805,36 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
             # Nothing used an unconfirmed import, and a started cleanup follows a confirmed carry-back.
             bridge.cleanup({'op': 'cleanup', 'provider': 'proton', 'run': run, 'guestBroker': guest_broker,
                             'reference': reference, 'receipt': str(provision)})
-            carried = None
-        else:
-            guest.stop_app()
-            chain = chain_factory(brokers(layout.host_bridge), registry['reference'])
-            chain.recover(str(provision), reference, run, guest_broker)
-            carried = str(carry_back(chain, folder, 1 + len(list(folder.glob('carry-back-*.json')))))
-            chain.cleanup(run, guest_broker, reference)
+            return None
+        guest.stop_app()
+        chain = chain_factory(brokers(layout.host_bridge), registry['reference'])
+        chain.recover(str(provision), reference, run, guest_broker)
+        carried = str(carry_back(chain, folder, 1 + len(list(folder.glob('carry-back-*.json')))))
+        chain.cleanup(run, guest_broker, reference)
+        return carried
+
+    with holding(proton_lock(layout, registry['host'], clock), session, owner, 'proton_lab.py recover',
+                 finishing=True) as progress:
+        if not reference:
+            note(folder, step='recovered_nothing_lent')
+            return {'recovered': False}
+        progress['outstanding'] = True
+        restarted = None
+        try:
+            carried = give_back()
+        except (bridge.ProvisionError, lab.LabError):
+            restarted = restart_dead_keyring(guest, folder)
+            if restarted is None:
+                raise
+            carried = give_back()  # once: the receipts say how far the first try got
         progress['outstanding'] = False
         note(folder, step='recovered', carriedBack=carried)
         guest.directory = guest_broker['qt'].rsplit('/', 1)[0]
         guest.remove_brokers()
-        return {'recovered': True, 'carriedBack': carried}
+        result = {'recovered': True, 'carriedBack': carried}
+        if restarted:
+            result['keyringRestarted'] = restarted
+        return result
 
 
 def keychain(layout):

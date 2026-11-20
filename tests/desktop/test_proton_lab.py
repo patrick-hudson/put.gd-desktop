@@ -76,6 +76,7 @@ class Chain:
 
     def recover(self, receipt, reference, run, broker):
         self.calls.append(('recover', reference))
+        self.step('recover')
         self.current = ROTATED
 
 
@@ -306,6 +307,145 @@ class Recovery(LendTest):
         self.assertEqual(result['carriedBack'], None)
         self.assertEqual([request['reference'] for request in cleaned], [BORROWED])
         self.assertNotIn('export', [call[0] for call in self.calls])
+
+
+
+class KeyringGuest(Guest):
+    """A guest whose live keyring daemon died; restart_keyring answers with a synthetic record."""
+
+    def __init__(self, calls, run, record):
+        super().__init__(calls, run)
+        self.record = record
+
+    def restart_keyring(self):
+        self.calls.append(('restart_keyring',))
+        if isinstance(self.record, Exception):
+            raise self.record
+        return self.record
+
+
+RESTARTED = {'restarted': True, 'previousBusName': ':1.40', 'busName': ':1.77', 'pid': 4242, 'start': '991',
+             'collection': {'label': 'putgd lab', 'locked': False}}
+
+
+class DeadGuestKeyring(Recovery):
+    def recover(self, record, fail):
+        folder = self.interrupted()
+        loaded = lambda path: (str(path), json.loads(Path(path).read_text()))
+        with mock.patch.object(proton.bridge, '_load_receipt', loaded):
+            result = proton.recover(self.layout, folder, 'local_lender', 'lender',
+                                    chain_factory=Chain(self.calls, fail={'recover': fail}),
+                                    guest_factory=lambda run: KeyringGuest(self.calls, run, record), clock=self.clock)
+        return folder, result
+
+    def lent(self, folder):
+        return json.loads((folder / 'lend.json').read_text())
+
+    def test_a_dead_daemon_is_started_again_and_the_return_is_tried_once_more(self):
+        folder, result = self.recover(RESTARTED, fail=1)
+        self.assertEqual([call[0] for call in self.calls],
+                         ['stop_app', 'export', 'recover', 'restart_keyring',
+                          'stop_app', 'export', 'recover', 'carry_back', 'cleanup', 'remove_brokers'])
+        self.assertEqual(result['keyringRestarted'], RESTARTED)
+        recorded = self.lent(folder)
+        self.assertEqual((recorded['step'], recorded['keyringRestart']['busName']), ('recovered', ':1.77'))
+        self.assertEqual(self.lock().status()['state'], 'free')
+
+    def test_the_return_is_retried_only_once(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(RESTARTED, fail=2)
+        self.assertEqual([call[0] for call in self.calls].count('restart_keyring'), 1)
+        self.assertEqual([call[0] for call in self.calls].count('recover'), 2)
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def test_a_daemon_that_still_answers_is_left_alone_and_the_failure_stands(self):
+        answering = {'restarted': False, 'busName': ':1.40', 'reason': 'the live keyring daemon still answers'}
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(answering, fail=1)
+        folder = next(self.layout.receipts.iterdir())
+        self.assertEqual(self.lent(folder)['keyringRestart']['reason'], answering['reason'])
+        self.assertEqual([call[0] for call in self.calls].count('recover'), 1)
+        self.assertEqual(self.lock().status()['state'], 'blocked')
+
+    def failed_restart(self, error, reason):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(error, fail=1)
+        folder = next(self.layout.receipts.iterdir())
+        self.assertEqual(self.lent(folder)['keyringRestart']['reason'], reason)
+        self.assertNotIn('synthetic-secret-output', (folder / 'lend.json').read_text())
+
+    def test_a_failed_restart_check_records_only_its_kind(self):
+        self.failed_restart(RuntimeError('ssh said: synthetic-secret-output'), 'check failed: RuntimeError')
+
+    def test_a_refused_restart_records_its_fixed_reason(self):
+        refused = type('KeyringRestartRefused', (RuntimeError,), {})
+        reason = 'the live keyring files are missing from the guest'
+        self.failed_restart(refused(reason), reason)
+
+    def test_a_guest_on_its_desktop_secret_service_is_not_restarted(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.recover(None, fail=1)
+        folder = next(self.layout.receipts.iterdir())
+        self.assertNotIn('keyringRestart', self.lent(folder))
+
+
+
+class LiveKeyringRestart(unittest.TestCase):
+    """nightly_desktop_guest.restart_live_keyring against a scripted guest; no VM or keyring."""
+
+    def restart(self, found, secret_service=':1.40', status=None):
+        sys.path.insert(0, str(ROOT))
+        from tools.lab import nightly_desktop_guest as guest
+        info = {'secret_service': secret_service} if secret_service else {}
+        scripts, written = [], []
+        def session(run, body, timeout=60):
+            scripts.append(body)
+            if 'NameHasOwner' in body:
+                return json.dumps(found)
+            if 'gnome-keyring-daemon' in body:
+                return json.dumps({'pid': 4242, 'start': '991'})
+            if 'ListNames' in body:
+                return json.dumps([':1.77'])
+            return json.dumps(status or {'provider': 'gnome-keyring-d', 'label': 'putgd lab', 'locked': False,
+                                         'default': '/org/freedesktop/secrets/collection/putgd_5flab'})
+        with mock.patch.object(guest.lab, 'verify_owned_guest'), \
+                mock.patch.object(guest.lab, 'state', return_value=info), \
+                mock.patch.object(guest.lab, 'write_json', lambda path, value: written.append(dict(value))), \
+                mock.patch.object(guest.lab, 'guest_session', session):
+            try:
+                return guest.restart_live_keyring('/synthetic/run'), scripts, written
+            except guest.KeyringRestartRefused as error:
+                return error, scripts, written
+
+    def started(self, scripts):
+        return [body for body in scripts if 'gnome-keyring-daemon' in body]
+
+    def test_a_dead_daemon_starts_again_on_its_own_files_and_the_run_names_its_new_connection(self):
+        record, scripts, written = self.restart({'owned': False, 'daemons': [], 'data': True})
+        self.assertEqual((record['restarted'], record['previousBusName'], record['busName']), (True, ':1.40', ':1.77'))
+        start = self.started(scripts)
+        self.assertEqual(len(start), 1)
+        self.assertIn('if False:', start[0])  # the existing folders are reused, never made afresh
+        self.assertEqual(written, [{'secret_service': ':1.77'}])
+
+    def test_a_daemon_that_answers_or_still_serves_the_folder_is_never_replaced(self):
+        record, scripts, written = self.restart({'owned': True, 'daemons': [4100], 'data': True})
+        self.assertFalse(record['restarted'])
+        record, scripts, written = self.restart({'owned': False, 'daemons': [4100], 'data': True})
+        self.assertIsInstance(record, RuntimeError)
+        record, scripts, more = self.restart({'owned': False, 'daemons': [], 'data': False})
+        self.assertIsInstance(record, RuntimeError)
+        self.assertEqual((self.started(scripts), written, more), ([], [], []))
+
+    def test_a_restart_that_is_not_the_unlocked_lab_collection_is_refused(self):
+        record, _, _ = self.restart({'owned': False, 'daemons': [], 'data': True},
+                                    status={'label': 'Login', 'locked': True})
+        self.assertIsInstance(record, RuntimeError)
+
+    def test_a_guest_on_its_desktop_secret_service_has_nothing_to_restart(self):
+        record, scripts, _ = self.restart({}, secret_service=None)
+        self.assertIsNone(record)
+        self.assertEqual(scripts, [])
 
 
 class Resident:

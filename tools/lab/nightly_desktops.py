@@ -937,7 +937,7 @@ def recover_guest(config, owner, out, cells):
                 # Use this driver's recover implementation, including on Atomic.
                 command([sys.executable, ROOT/'tools/lab/proton_lab.py', 'recover', folder,
                          '--session', session, '--owner', 'nightly-desktops'],
-                        log=out/'proton-recover.json', timeout=120,
+                        log=out/'proton-recover.json', timeout=300,  # room for a keyring restart and one retry
                         env=dict(os.environ, HOME=str(Path.home().resolve())))
                 lent = json.loads((folder/'lend.json').read_text())
                 if lent.get('step') not in safe_steps:
